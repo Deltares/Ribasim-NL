@@ -76,7 +76,7 @@ def GetFractionalGridPerBasin(xll_coords: np.ndarray, yll_coords: np.ndarray, ba
     # Read in the modelbasins and prepare the geometries for spatial intersection
     nodeids = basins["node_id"].tolist()
     prepared_geoms = [(nodeids[i], prep(geom)) for i, geom in enumerate(basins.geometry)]
-    node_geoms = dict(zip(nodeids, basins.geometry))  # For actual intersection area calc
+    node_geoms = dict(zip(nodeids, basins.geometry, strict=True))  # For actual intersection area calc
 
     # Get the height and the width of the grid
     height = len(yll_coords)

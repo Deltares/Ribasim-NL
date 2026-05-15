@@ -5,7 +5,7 @@
 - [Laatste modelversie](https://deltares.thegood.cloud/s/4ozjqW39eJakmao)
 
 ## Systeembeschrijving
-![Systeembeschrijving De Dommel](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/DeDommel.svg)
+![Systeembeschrijving De Dommel](https://s3.deltares.nl/ribasim/doc-image/ribasim-nl/watersystems/DeDommel.svg){.lightbox}
 
 Het beheersgebied van de Dommel is grotendeels vrij afwaterend met een paar gebieden waar water kan worden aangevoerd vanuit het Wilhelminakanaal en kanaal Bocholt en Herentals. De ingetekende aanvoergebieden geven aan waar het water in theorie kan komen.
 
@@ -39,4 +39,4 @@ Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h
 Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](/workflow/gravity-controlled.qmd). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
 
 - Documentatie Distributiemodel (Deel E, pagina 39-1)
-- [Waterakkoord: 2022-06-27_waterakkoord]
+- [Waterakkoord: 15 juni 2022, Waterakkoord Midden-Limburgse en NoordBrabantse Kanalen 2021,Definitieve versie 1.2, Rijkswaterstaat Zuid-Nederland]

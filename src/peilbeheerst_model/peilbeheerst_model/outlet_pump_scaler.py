@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import logging
-import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
 
+import numpy as np
 import pandas as pd
 import xarray as xr
 from ribasim import run_ribasim
@@ -55,17 +55,7 @@ class OutletPumpScalingConfig:
     @property
     def results_path(self) -> Path:
         """Return the expected Ribasim basin-results file for the model run."""
-        try:
-            file = Path(self.ribasim_model_path).parent / "results" / "basin.nc"
-        except FileNotFoundError:
-            file = Path(self.ribasim_model_path).parent / "results" / "basin.arrow"
-            warnings.warn(
-                "Scaling of outlets and pumps based on *.arrow-file will be deprecated. "
-                "Please switch to new Ribasim version (v2026.1.0-rc2 or higher).",
-                UserWarning,
-                stacklevel=2,
-            )
-        return file
+        return Path(self.ribasim_model_path).parent / "results" / "basin.nc"
 
 
 def read_output_data(file: Path, columns: list[str] | None = None) -> pd.DataFrame:
@@ -447,14 +437,14 @@ def overwrite_demand_values_with_drainage_values(from_to_node_function_table):
         from_to_node_function_table.loc[both_allowed, "scaled_flow_rate"] = (
             from_to_node_function_table.loc[both_allowed, [latest_demand_column, latest_drainage_column]]
             .max(axis=1)
-            .to_numpy(dtype=float)
+            .to_numpy(dtype=float, na_value=np.nan)
         )
         from_to_node_function_table.loc[demand_only, "scaled_flow_rate"] = from_to_node_function_table.loc[
             demand_only, latest_demand_column
-        ]
+        ].to_numpy(dtype=float, na_value=np.nan)
         from_to_node_function_table.loc[drainage_only, "scaled_flow_rate"] = from_to_node_function_table.loc[
             drainage_only, latest_drainage_column
-        ]
+        ].to_numpy(dtype=float, na_value=np.nan)
 
     return from_to_node_function_table
 

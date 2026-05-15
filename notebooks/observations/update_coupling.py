@@ -15,6 +15,7 @@
 # Packages
 import ast
 import os
+from pathlib import Path
 
 import pandas as pd
 from shapely.geometry import Point
@@ -121,7 +122,7 @@ def update_koppeltabel_with_feedback(
     input_koppeltabel["status"] = None
 
     # Iterate through the feedback koppeltabel to match and update rows in the input koppeltabel
-    for index, feedback_row in feedback_koppeltabel.iterrows():
+    for _index, feedback_row in feedback_koppeltabel.iterrows():
         meetreeks_c = feedback_row["MeetreeksC"]
         aan_af_value = feedback_row["Aan/Af"]
 
@@ -131,7 +132,7 @@ def update_koppeltabel_with_feedback(
             (input_koppeltabel["MeetreeksC"] == meetreeks_c) & (input_koppeltabel["Aan/Af"] == aan_af_value)
         ]
 
-        for input_index, input_row in matching_rows.iterrows():
+        for input_index, _input_row in matching_rows.iterrows():
             link_ids = feedback_row["link_id_correct"]
             if not isinstance(link_ids, list):
                 link_ids = (
@@ -160,19 +161,15 @@ def update_koppeltabel_with_feedback(
             to_node_types = [search_type_nodes(lhm_model, node_id) for node_id in to_node_ids]
 
             # Update columns in input koppeltabel
-            input_koppeltabel.at[input_index, "new_link_id"] = link_ids if link_ids else None
+            input_koppeltabel.at[input_index, "new_link_id"] = link_ids or None
 
-            input_koppeltabel.at[input_index, "new_from_node_geometry"] = (
-                from_node_geometries if from_node_geometries else None
-            )
+            input_koppeltabel.at[input_index, "new_from_node_geometry"] = from_node_geometries or None
 
-            input_koppeltabel.at[input_index, "new_to_node_geometry"] = (
-                to_node_geometries if to_node_geometries else None
-            )
+            input_koppeltabel.at[input_index, "new_to_node_geometry"] = to_node_geometries or None
 
-            input_koppeltabel.at[input_index, "new_from_node_types"] = from_node_types if from_node_types else None
+            input_koppeltabel.at[input_index, "new_from_node_types"] = from_node_types or None
 
-            input_koppeltabel.at[input_index, "new_to_node_types"] = to_node_types if to_node_types else None
+            input_koppeltabel.at[input_index, "new_to_node_types"] = to_node_types or None
 
             # Als we een update doen dan ook de status en de match_nodes aanpassen als we
             input_koppeltabel.at[input_index, "status"] = "Updated obv feedback"
@@ -184,7 +181,7 @@ def update_koppeltabel_with_feedback(
 
     # Generate output file name
     _folder, filename = os.path.split(input_koppeltabel_path)
-    basename, ext = os.path.splitext(filename)
+    basename, ext = Path(filename).stem, Path(filename).suffix
     base_without_feedback = basename.split("_Feedback")[0]
 
     if partij:

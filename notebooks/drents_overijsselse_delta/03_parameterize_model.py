@@ -5,6 +5,7 @@ import geopandas as gpd
 import pandas as pd
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl.check_basin_level import add_check_basin_level
+from ribasim_nl.parametrization.level_boundary_table import update_level_boundary_static
 
 from ribasim_nl import CloudStorage, Model
 
@@ -61,16 +62,14 @@ joined = gpd.sjoin(outlet_gdf, inlaten_gdf, how="inner", predicate="intersects")
 if joined.empty:
     print("Geen intersectie gevonden tussen buffered outlet-punten en inlaten-lijnen.")
 else:
-    for node_id, row in joined.iterrows():
+    for node_id, _row in joined.iterrows():
         model.outlet.static.df.loc[model.outlet.static.df.node_id == node_id, ["meta_categorie"]] = "Inlaat"
 
 node_ids = model.outlet.static.df[model.outlet.static.df["meta_categorie"] == "Inlaat"]["node_id"].to_numpy()
 model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids), "max_flow_rate"] = 0.1
 
 # %%
-model.update_node(node_id=1401, node_type="Outlet")
-model.reverse_link(link_id=894)
-model.reverse_link(link_id=1983)
+
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1401, "min_upstream_level"] = -2.6
 model.pump.static.df.loc[model.pump.static.df.node_id == 600, "min_upstream_level"] = 4.0
 model.pump.static.df.loc[model.pump.static.df.node_id == 601, "min_upstream_level"] = 4.0
@@ -87,13 +86,46 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 1086, "flow_rate"] 
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1086, "meta_categorie"] = "Inlaat"
 model.pump.static.df.loc[model.pump.static.df.node_id == 667, "flow_rate"] = 1.0
 model.pump.static.df.loc[model.pump.static.df.node_id == 385, "flow_rate"] = 1.0
-model.merge_basins(basin_id=1763, to_basin_id=1764, are_connected=False)
-model.merge_basins(basin_id=2474, to_basin_id=2185, are_connected=False)
-model.merge_basins(basin_id=2011, to_basin_id=2008, are_connected=True)
-model.merge_basins(basin_id=56, to_basin_id=59, are_connected=True)
-model.merge_basins(basin_id=1681, to_basin_id=1717, are_connected=True)
-model.merge_basins(basin_id=2348, to_basin_id=1756, are_connected=False)
-model.merge_basins(basin_id=2192, to_basin_id=2194, are_connected=False)
+
+
+basin_level_overrides = [
+    # Paradijssluis ZP peilenkaart
+    ([59, 58, 2150, 2306, 2113, 2140], -0.2),
+    # Haveltersluis ZP peilenkaart
+    ([2105], 1.82),
+    # Ossesluis ZP peilenkaart
+    ([1680], 4.8),
+    # Nieuwebrugsluis ZP peilenkaart
+    ([1772], 11.1),
+    # Smildigersluis ZP peilenkaart
+    ([1747], 13.27),
+    # Zwiggeltersluissluis ZP peilenkaart
+    ([1901], 14.95),
+    # Overijsels kanaal (Ankersmit)
+    ([1761, 2008, 2229, 2247], 5.75),
+    ([1721], 8.35),
+    # Rietberg
+    ([2288], 1.6),
+    # Peilgebied VL169
+    ([1635], 4.95),
+    # BoezemNW
+    ([2580], -0.73),
+    # Bentpolder
+    ([2185], -0.45),
+]
+
+for node_ids, meta_streefpeil in basin_level_overrides:
+    mask = model.basin.area.df.node_id.isin(node_ids)
+    model.basin.area.df.loc[mask, "meta_streefpeil"] = meta_streefpeil
+
+# Herbereken afgeleide tabellen na handmatige streefpeil-overrides.
+model.basin.state.df = model.basin.area.df[["node_id", "meta_streefpeil"]].rename(columns={"meta_streefpeil": "level"})
+
+update_level_boundary_static(
+    model=model,
+    static_data_xlsx=static_data_xlsx,
+    code_column="meta_code_waterbeheerder",
+)
 
 
 # %%

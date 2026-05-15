@@ -50,7 +50,11 @@ bin/
 # Data
 *.arrow
 *.gpkg
+*.gpkg-shm
+*.gpkg-wal
 *.toml
+!pixi.toml
+!pyproject.toml
 *.qgz
 *.dbf
 *.xlsx
@@ -78,6 +82,7 @@ bin/
 *.log
 *.lyr
 *.msg
+*.out
 *.cst
 *.zip
 *.txt

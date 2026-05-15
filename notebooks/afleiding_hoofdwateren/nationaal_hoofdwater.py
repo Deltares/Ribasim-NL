@@ -72,10 +72,7 @@ if RE_DISSOLVE:
         # dissolve touching polygons (magic!)
         geometry = df.geometry.buffer(0.1).union_all().buffer(-0.1)
         # make sure we have a list of single polygons
-        if isinstance(geometry, MultiPolygon):
-            geometries = list(geometry.geoms)
-        else:
-            geometries = [geometry]  # that is 1 Polygon
+        geometries = list(geometry.geoms) if isinstance(geometry, MultiPolygon) else [geometry]
         # add to data
         data["geometry"] += geometries
         data["naam"] += [name] * len(geometries)

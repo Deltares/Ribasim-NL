@@ -52,7 +52,7 @@ for row in basin_df.itertuples():
 
 # Manuals
 for node_id, name in [(1228, "Beatrixkanaal"), (1278, "Eindhovens kanaal")]:
-    data += [{"node_id": node_id, "geometry": dissolved_area_gdf[dissolved_area_gdf.NAAM == name].iloc[0].geometry}]
+    data += [{"node_id": node_id, "geometry": dissolved_area_gdf[name == dissolved_area_gdf.NAAM].iloc[0].geometry}]
     links_mask = (model.link.df.from_node_id == node_id) | (model.link.df.to_node_id == node_id)
     model.link.df.loc[links_mask, "name"] = name
 
@@ -60,7 +60,7 @@ node_id, name = (1030, "Reusel")
 data += [
     {
         "node_id": node_id,
-        "geometry": dissolved_area_gdf[dissolved_area_gdf.NAAM == name]
+        "geometry": dissolved_area_gdf[name == dissolved_area_gdf.NAAM]
         .clip(basin_area_df.loc[[1015, 1030]].union_all())
         .union_all(),
     }

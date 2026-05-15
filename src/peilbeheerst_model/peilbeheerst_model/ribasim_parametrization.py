@@ -1,8 +1,6 @@
-# import pathlib
 import datetime
 import json
 import logging
-import os
 import shutil
 import subprocess
 import sys
@@ -19,11 +17,14 @@ import shapely
 import tqdm.auto as tqdm
 import xarray as xr
 from ribasim.nodes import continuous_control
-from shapely.geometry import LineString
+from ribasim_nl.case_conversions import pascal_to_snake_case
+from shapely.geometry import LineString, Point
 
 from peilbeheerst_model import supply
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage, Model, settings
+
+logger = logging.getLogger(__name__)
 
 
 # FIXME: Seems to be giving already used node IDs due to inconsistent node ID definitions
@@ -33,10 +34,7 @@ def get_current_max_node_id(ribasim_model: Model) -> int:
         warnings.simplefilter(action="ignore", category=FutureWarning)
         df_all_nodes = ribasim_model.node.df
 
-    if len(df_all_nodes) == 0:
-        max_id = 1
-    else:
-        max_id = int(df_all_nodes.meta_node_id.max())
+    max_id = 1 if len(df_all_nodes) == 0 else int(df_all_nodes.meta_node_id.max())
 
     return max_id
 
@@ -528,6 +526,10 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0) -> None:
     )
     ribasim_model.level_boundary.static = new_static_LevelBoundary
 
+    # empty FlowBoundary-tables
+    ribasim_model.flow_boundary.static.df = None
+    ribasim_model.flow_boundary.time.df = None
+
     return
 
 
@@ -608,13 +610,10 @@ def add_discrete_control_nodes(ribasim_model) -> None:
         dfs_pump = pd.concat(dfs_pump, ignore_index=True)
         ribasim_model.pump.static.df = dfs_pump
 
-    for i, row in enumerate(ribasim_model.pump.node.df.itertuples()):
+    for _i, row in enumerate(ribasim_model.pump.node.df.itertuples()):
         # Get max nodeid and iterate
         cur_max_node_id = get_current_max_node_id(ribasim_model)
-        if cur_max_node_id < 90000:
-            new_nodeid = 90000 + cur_max_node_id + 1  # aanpassen loopt vanaf 90000 +1
-        else:
-            new_nodeid = cur_max_node_id + 1
+        new_nodeid = 90000 + cur_max_node_id + 1 if cur_max_node_id < 90000 else cur_max_node_id + 1
         # print(new_nodeid, end="\r")
 
         # @TODO Ron aangeven in geval van meerdere matches welke basin gepakt moet worden
@@ -798,8 +797,8 @@ def create_sufficient_Qh_relation_points(ribasim_model) -> None:
 
 def write_ribasim_model_Zdrive(ribasim_model, path_ribasim_toml) -> None:
     # Write Ribasim model to the Z drive
-    if not os.path.exists(path_ribasim_toml):
-        os.makedirs(path_ribasim_toml)
+    if not Path(path_ribasim_toml).exists():
+        Path(path_ribasim_toml).mkdir(parents=True)
 
     ribasim_model.write(path_ribasim_toml)
 
@@ -811,23 +810,20 @@ def write_ribasim_model_GoodCloud(ribasim_model, work_dir, waterschap, include_r
     Also clear the directory of modellen/parametereized, as there may be old results in it.
     The log file of the feedback form is not included to avoid cluttering.'
     """
-    destination_path = os.path.join(
-        settings.ribasim_nl_data_dir, waterschap, "modellen", f"{waterschap}_parameterized/"
-    )
+    destination_path = settings.ribasim_nl_data_dir / waterschap / "modellen" / f"{waterschap}_parameterized/"
 
     # clear the modellen/parameterized dir
-    if os.path.exists(destination_path):
+    if destination_path.exists():
         shutil.rmtree(destination_path)  # Remove the entire directory
-    os.makedirs(destination_path)  # Recreate the empty folder
+    destination_path.mkdir(parents=True)  # Recreate the empty folder
 
     # copy the work_dir to the "modellen" dir to maintain the same folder structure locally as well as on the 'GoodCloud'
     shutil.copytree(work_dir, destination_path, dirs_exist_ok=True)
 
     # it is not necessary to inlcude the log file of the feedback forms. Delete it
-    for file in os.listdir(destination_path):
-        file_path = os.path.join(destination_path, file)
-        if file.endswith(".log") and os.path.isfile(file_path):
-            os.remove(file_path)
+    for file in destination_path.iterdir():
+        if file.suffix == ".log" and file.is_file():
+            file.unlink()
 
     cloud_storage = CloudStorage()
 
@@ -901,9 +897,10 @@ def iterate_TRC(
             basins_converged = []
             for basin_node, trc_group in df_trc.groupby("from_node_id"):
                 # Check for a single streefpeil for all connected tabulated rating curves
-                trc_streefpeilen = []
-                for row in trc_group.itertuples():
-                    trc_streefpeilen.append(df_trc_static.loc[df_trc_static.node_id == row.to_node_id, "level"].min())
+                trc_streefpeilen = [
+                    df_trc_static.loc[df_trc_static.node_id == row.to_node_id, "level"].min()
+                    for row in trc_group.itertuples()
+                ]
                 assert len(set(trc_streefpeilen)) == 1
 
                 # Assert that we have a single unique basin
@@ -981,17 +978,17 @@ def validate_basin_area(model, threshold_area=45000) -> None:
     """
     too_small_basins = []
     error = False
-    for index, row in model.basin.node.df.iterrows():
+    for _index, row in model.basin.node.df.iterrows():
         basin_id = int(row["meta_node_id"])
         basin_geometry = model.basin.area.df.loc[model.basin.area.df["meta_node_id"] == basin_id, "geometry"]
         if not basin_geometry.empty:
             basin_area = basin_geometry.iloc[0].area
             if basin_area < threshold_area:
                 error = True
-                print(f"Basin with Node ID {basin_id} has an area smaller than {threshold_area} m²: {basin_area} m²")
+                print(f"Basin with Node ID {basin_id} has an area smaller than {threshold_area} m2: {basin_area} m2")
                 too_small_basins.append(basin_id)
     if not error:
-        print(f"All basins are larger than {threshold_area} m²")
+        print(f"All basins are larger than {threshold_area} m2")
 
     return
 
@@ -1397,7 +1394,7 @@ def set_aanvoer_flags(
 
     # skip 'aanvoer'-flagging
     if not aanvoer_enabled:
-        logging.info("Aanvoer-flagging skipped.")
+        logger.info("Aanvoer-flagging skipped.")
         assert not isinstance(ribasim_model, str)
         ribasim_model.basin.area.df["meta_aanvoer"] = False
         ribasim_model.outlet.static.df["meta_aanvoer"] = False
@@ -1407,7 +1404,7 @@ def set_aanvoer_flags(
 
     # all is 'aanvoergebied'
     if aanvoer_regions is None:
-        logging.warning(
+        logger.warning(
             f'With aanvoer_regions={aanvoer_regions}, the whole region is considered an "aanvoergebied". '
             f"This is a temporary catch and will be deprecated in the future: "
             f'Make sure that all water boards have a geometry-file from which the "aanvoergebieden" can be deduced.'
@@ -1450,7 +1447,7 @@ def load_model_settings(file_path):
     script_path = Path(__file__)  # Get the path to the current python file
     file_path = script_path.parent.parent / "Parametrize" / file_path  # Correct the path to the JSON file
 
-    with open(file_path) as file:
+    with Path(file_path).open() as file:
         settings = json.load(file)
     return settings
 
@@ -1538,7 +1535,8 @@ def determine_min_upstream_max_downstream_levels(ribasim_model: Model, waterscha
         if df[columns_to_check].isnull().values.any():
             warnings.warn(
                 f"Warning: NaN values found in the following columns of the {outlet_or_pump} dataframe: "
-                f"{', '.join([col for col in columns_to_check if df[col].isnull().any()])}"
+                f"{', '.join([col for col in columns_to_check if df[col].isnull().any()])}",
+                stacklevel=2,
             )
 
     check_for_nans_in_columns(outlet, "outlet")
@@ -1631,7 +1629,7 @@ def add_discrete_control(ribasim_model, waterschap, default_level) -> None:
     ]
 
     # fill the discrete control. Do this table by tables, where the condition table is determined by the meta_categorie
-    for nodes_to_control, category in zip(nodes_to_control_list_stuw, category_list_stuw):
+    for nodes_to_control, category in zip(nodes_to_control_list_stuw, category_list_stuw, strict=True):
         if len(nodes_to_control) > 0:
             print(f"Sturing has been added for the category {category}")
             add_discrete_control_partswise(
@@ -1741,7 +1739,7 @@ def add_discrete_control(ribasim_model, waterschap, default_level) -> None:
     ]
 
     # fill the discrete control. Do this table by tables, where the condition table is determined by the meta_categorie
-    for nodes_to_control, category in zip(nodes_to_control_list_gemaal, category_list_gemaal):
+    for nodes_to_control, category in zip(nodes_to_control_list_gemaal, category_list_gemaal, strict=True):
         if len(nodes_to_control) > 0:
             print(f"Sturing has been added for the category {category}")
             add_discrete_control_partswise(
@@ -2127,7 +2125,7 @@ def add_continuous_control_node(
         except IndexError:
             listen_targets = []
             node_types = [ribasim_model.node.df.loc[i, "node_type"] for i in listen_nodes]
-            for i, t in zip(listen_nodes, node_types):
+            for i, t in zip(listen_nodes, node_types, strict=True):
                 match t.lower():
                     case "basin":
                         value = ribasim_model.basin.area.df.loc[
@@ -2142,7 +2140,7 @@ def add_continuous_control_node(
                             f"Unknown node-type ({t.lower()}) for implementation of `ContinuousControl`-node for "
                             f"{connection_node.node_type} #{connection_node.node_id}."
                         )
-                        raise NotImplementedError(msg)
+                        raise NotImplementedError(msg) from None
 
                 listen_targets.append(float(value.values[0]))
 
@@ -2153,7 +2151,7 @@ def add_continuous_control_node(
 
     # set ON-switch for continuous control node
     margin = 2 * numerical_tolerance
-    on_switch = sum(t * w for t, w in zip(listen_targets, weights))
+    on_switch = sum(t * w for t, w in zip(listen_targets, weights, strict=True))
 
     # add continuous control
     point = connection_node.geometry
@@ -2444,9 +2442,15 @@ def clean_tables(ribasim_model: Model, waterschap: str) -> None:
     # set crs
     ribasim_model.node.df = gpd.GeoDataFrame(ribasim_model.node.df.set_crs(crs="EPSG:28992"))
 
-    # section below as asked by D2HYDRO
+    # update meta category
+    update_meta(ribasim_model, waterschap)
 
-    # #add category in the .node table
+
+def update_meta(ribasim_model: Model, waterschap: str) -> Model:
+    # add category in the .node table
+    if "meta_categorie" in ribasim_model.node.df.columns:
+        ribasim_model.node.df = ribasim_model.node.df.drop(columns=["meta_categorie"])
+
     basin_node = ribasim_model.basin.node.df.merge(
         right=ribasim_model.basin.state.df[["node_id", "meta_categorie"]],
         how="left",
@@ -2459,6 +2463,9 @@ def clean_tables(ribasim_model: Model, waterschap: str) -> None:
 
     # add waterschap name, remove meta_node_id
     ribasim_model.node.df.loc[basin_node.index, "meta_waterbeheerder"] = waterschap
+
+    # return updated model
+    return ribasim_model
 
 
 def find_upstream_downstream_target_levels(ribasim_model: Model, node: str) -> None:
@@ -2700,4 +2707,72 @@ def remove_non_free_flowing_outlets(
         print(f"Following {len(non_free_flowing_outlets_ids)} non free flowing outlets were removed:")
         print(non_free_flowing_outlets_ids)
 
+    return ribasim_model
+
+
+def reassign_level_boundaries(ribasim_model: Model, lb_node_ids: set[int], *, dx: float = 50, dy: float = 0) -> Model:
+    """Replace multi-connected LevelBoundary-nodes by single-connected LevelBoundary-nodes.
+
+    Multi-connected LevelBoundary-nodes are farther away from the connected connector-nodes, which can cause snapping
+    issues when sub-models are coupled. Replacing these multi-connected LevelBoundary-nodes by local single-connected
+    LevelBoundary-nodes, these issues are resolved.
+
+    In this function, local copies of the multi-connected LevelBoundary-nodes are created and linked to the connector
+    nodes after which the multi-connected LevelBoundary-nodes are removed, including their links with the connector
+    nodes.
+
+    :param ribasim_model: Ribasim model
+    :param lb_node_ids: node-IDs of LevelBoundary-nodes that are 'multi-connected'
+    :param dx: horizontal distance from connector node to new LevelBoundary-node, defaults to 50.0
+    :param dy: vertical distance from connector node to new LevelBoundary-node, defaults to 0.0
+
+    :return: updated Ribasim model
+    """
+
+    def new_lb_node(c_id: int, level: float) -> tuple[ribasim.geometry.node.NodeData, ribasim.geometry.node.NodeData]:
+        """Add new LevelBoundary-node near the existing connector node.
+
+        :param c_id: node-ID of connector node
+        :param level: water level at LevelBoundary
+
+        :return: connector- and (created) LevelBoundary-nodes
+        """
+        (_c_type,) = ribasim_model.node.df.loc[ribasim_model.node.df.index == c_id, "node_type"]
+        _c_node = getattr(ribasim_model, pascal_to_snake_case(_c_type))[c_id]
+        _lb_node = ribasim_model.level_boundary.add(
+            ribasim.Node(geometry=Point(_c_node.geometry.x + dx, _c_node.geometry.y + dy)),
+            [ribasim.nodes.level_boundary.Static(level=[level])],
+        )
+        return _c_node, _lb_node
+
+    # get Flow-links only
+    assert ribasim_model.link.df is not None
+    flow_table = ribasim_model.link.df[ribasim_model.link.df["link_type"] == "flow"]
+
+    # re-assign LevelBoundary-nodes
+    for i in lb_node_ids:
+        # > extract node-data
+        (i_level,) = ribasim_model.level_boundary.static.df.loc[
+            ribasim_model.level_boundary.static.df["node_id"] == i, "level"
+        ]
+        c_node_ids = {
+            "to_lb": flow_table.loc[flow_table["to_node_id"] == i, "from_node_id"],
+            "from_lb": flow_table.loc[flow_table["from_node_id"] == i, "to_node_id"],
+        }
+        n_to_add = sum(len(v) for v in c_node_ids.values())
+        logger.info(
+            f"Replacing 'multi-connected' LevelBoundary {i} by {n_to_add} 'single-connected' LevelBoundary-nodes"
+        )
+        # > remove "old" LevelBoundary
+        ribasim_model.remove_node(i, True)
+        # > towards LevelBoundary
+        for ci in c_node_ids["to_lb"]:
+            c_node, lb_node = new_lb_node(ci, i_level)
+            ribasim_model.link.add(c_node, lb_node)
+        # > from LevelBoundary
+        for ci in c_node_ids["from_lb"]:
+            c_node, lb_node = new_lb_node(ci, i_level)
+            ribasim_model.link.add(lb_node, c_node)
+
+    # return the updated model
     return ribasim_model

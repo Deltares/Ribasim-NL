@@ -24,7 +24,7 @@ from ribasim_nl import CloudStorage, Model
 # Globale settings
 
 MODEL_EXEC: bool = True  # execute model run
-AUTHORITY: str = "limburg"
+AUTHORITY: str = "Limburg"
 SHORT_NAME: str = "limburg"
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
@@ -84,7 +84,7 @@ def add_discharge_supply_nodes(
         model,
         node_ids=list(discharge_supply_nodes.keys()),
     )
-    node_types = model.node_table().df["node_type"]
+    node_types = model.node.df["node_type"]
 
     # demand parameters
     summer_season_start: tuple[int, int] = (4, 1)
@@ -286,7 +286,7 @@ level_supply_nodes = [
     445,  # Aanvoerleiding Vredepeel
 ]
 
-double_defined = [i for i in level_supply_nodes if i in discharge_supply_nodes.keys()]
+double_defined = [i for i in level_supply_nodes if i in discharge_supply_nodes]
 if double_defined:
     raise ValueError(f"these nodes are labelled as q-supply and level-supply {double_defined}")
 
@@ -321,7 +321,7 @@ supply_nodes = []
 flow_control_nodes = [1241]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -386,7 +386,7 @@ supply_nodes = []
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -451,7 +451,7 @@ supply_nodes = []
 flow_control_nodes = [164, 523, 652, 653, 711, 827, 2500]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -516,7 +516,7 @@ flow_control_nodes = [
 ]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -557,7 +557,7 @@ supply_nodes = []
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -620,7 +620,7 @@ supply_nodes = []
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -660,7 +660,7 @@ supply_nodes = []
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -701,7 +701,7 @@ supply_nodes = []
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -742,7 +742,7 @@ supply_nodes = []
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -873,9 +873,8 @@ model.write(ribasim_toml_dry)
 
 # run hoofdmodel
 if MODEL_EXEC:
-    result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml_dry, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml_dry, qlr_path=qlr_path).run_all()
     model = Model.read(ribasim_toml_dry)
 
 # prerun om het model te initialiseren met neerslag
@@ -884,9 +883,8 @@ model.write(ribasim_toml_wet)
 
 # run prerun model
 if MODEL_EXEC:
-    prerun_result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml_wet, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml_wet, qlr_path=qlr_path).run_all()
     model = Model.read(ribasim_toml_wet)
 
 # hoofd run
@@ -894,8 +892,7 @@ update_basin_static(model=model, precipitation_mm_per_day=1.5)
 model.write(ribasim_toml)
 # run hoofdmodel
 if MODEL_EXEC:
-    result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path).run_all()
 
 # %%

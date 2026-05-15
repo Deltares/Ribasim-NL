@@ -1,5 +1,6 @@
 # import packages and functions
 import os
+from pathlib import Path
 from typing import Any
 
 import geopandas as gpd
@@ -23,16 +24,16 @@ output_gpkg_path = "../../Data_postprocessed/Waterschappen/WSRL"
 # WSRL has delivered the data per catchment. Loop through each catchment, and concat all data to a single dictionary
 WSRL: dict[str, Any] = {}
 
-for root, dirs, files in os.walk(data_path):
+for root, _dirs, files in os.walk(data_path):
     for file in files:
         if file.endswith(".gpkg"):
-            gpkg_path = os.path.join(root, file)
+            gpkg_path = Path(root) / file
 
             if WSRL == {}:
                 WSRL = read_gpkg_layers(gpkg_path=gpkg_path)
             else:
                 temp_WSRL = read_gpkg_layers(gpkg_path=gpkg_path)
-                for variable in WSRL.keys():
+                for variable in WSRL:
                     WSRL[variable] = pd.concat([WSRL[variable], temp_WSRL[variable]]).reset_index(drop=True)
 
 
@@ -230,8 +231,8 @@ show_layers_and_columns(waterschap=WSRL)
 
 
 # Check if the directory exists
-if not os.path.exists(output_gpkg_path):
+if not Path(output_gpkg_path).exists():
     # If it doesn't exist, create it
-    os.makedirs(output_gpkg_path)
+    Path(output_gpkg_path).mkdir(parents=True)
 
 store_data(waterschap=WSRL, output_gpkg_path=output_gpkg_path + "/WSRL")

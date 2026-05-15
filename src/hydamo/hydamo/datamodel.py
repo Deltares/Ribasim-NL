@@ -81,22 +81,21 @@ def map_definition(definition: dict[str, Any]) -> list[dict[str, Any]]:
         else:
             properties = default_properties.copy()
             properties["id"] = k
-            if "type" in v.keys():
+            if "type" in v:
                 properties["dtype"] = DTYPE_MAPPING[v["type"]]
-                if "format" in v.keys():
+                if "format" in v:
                     properties["dtype"] = DTYPE_MAPPING[v["format"]]
 
             # set required
-            if "minItems" in v.keys():
-                if v["minItems"] == 1:
-                    properties["required"] = True
+            if "minItems" in v and v["minItems"] == 1:
+                properties["required"] = True
 
             # set unique
-            if "uniqueItems" in v.keys():
+            if "uniqueItems" in v:
                 properties["unique"] = v["uniqueItems"]
 
             # set domain
-            if "enum" in v.keys():
+            if "enum" in v:
                 properties["domain"] = [{"value": i} for i in v["enum"]]
             result.append(properties)
     return result
@@ -175,15 +174,16 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
 
     def _check_geotype(self) -> None:
         """Check geometry type"""
-        if self.geotype:
-            if not all(any(isinstance(geo, GEOTYPE_MAPPING[i]) for i in self.geotype) for geo in self.geometry):
-                raise TypeError(
-                    'Geometry-type "{}" required in layer "{}". The input feature-file has geometry type(s) {}.'.format(
-                        re.findall("([A-Z].*)'", repr(self.geotype))[0],
-                        self.layer_name,
-                        self.geometry.type.unique().tolist(),
-                    )
+        if self.geotype and not all(
+            any(isinstance(geo, GEOTYPE_MAPPING[i]) for i in self.geotype) for geo in self.geometry
+        ):
+            raise TypeError(
+                'Geometry-type "{}" required in layer "{}". The input feature-file has geometry type(s) {}.'.format(
+                    re.findall("([A-Z].*)''", repr(self.geotype))[0],
+                    self.layer_name,
+                    self.geometry.type.unique().tolist(),
                 )
+            )
 
     def _get_schema(self):
         """Return fiona schema dict from validation_schema."""
@@ -202,7 +202,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
         index_col=None,
         check_columns=True,
         check_geotype=True,
-        extra_attributes={},
+        extra_attributes=None,
     ) -> None:
         """
         Set data to the ExtendedGeoDataFrame.
@@ -224,6 +224,8 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
         None.
 
         """
+        if extra_attributes is None:
+            extra_attributes = {}
         if not self.empty:
             self.delete_all()
 
@@ -335,14 +337,16 @@ class HyDAMO:
         self,
         version: str = "2.2",
         schemas_path: Path = SCHEMAS_DIR,
-        ignored_layers: list[str] = [
-            "afvoeraanvoergebied",
-            "imwa_geoobject",
-            "leggerwatersysteem",
-            "leggerwaterveiligheid",
-            "waterbeheergebied",
-        ],
+        ignored_layers: list[str] | None = None,
     ) -> None:
+        if ignored_layers is None:
+            ignored_layers = [
+                "afvoeraanvoergebied",
+                "imwa_geoobject",
+                "leggerwatersysteem",
+                "leggerwaterveiligheid",
+                "waterbeheergebied",
+            ]
         self.version = version
         self.schema_json = schemas_path.joinpath(f"HyDAMO_{version}.json")
         self.layers: list[str] = []
@@ -359,7 +363,7 @@ class HyDAMO:
         self.validation_schemas: dict[str, Any] = {}
 
         # read schema as dict
-        with open(self.schema_json) as src:
+        with self.schema_json.open() as src:
             schema = json.load(src)
             hydamo_layers = [Path(i["$ref"]).name for i in schema["properties"]["HyDAMO"]["anyOf"]]
             self.layers = [i for i in hydamo_layers if i not in self.ignored_layers]
@@ -372,7 +376,7 @@ class HyDAMO:
             # add layer to data_model
             geotype = next((i["dtype"] for i in layer_schema if i["id"] == "geometry"), None)
 
-            required_columns = [i["id"] for i in [i for i in layer_schema if "required" in i.keys()] if i["required"]]
+            required_columns = [i["id"] for i in [i for i in layer_schema if "required" in i] if i["required"]]
 
             setattr(
                 self,
@@ -411,7 +415,7 @@ class HyDAMO:
         index_col=None,
         check_columns=True,
         check_geotype=True,
-        extra_values={},
+        extra_values=None,
     ) -> None:
         """
         Set data to a HyDAMO object-layer.
@@ -435,6 +439,8 @@ class HyDAMO:
         None.
 
         """
+        if extra_values is None:
+            extra_values = {}
         getattr(self, layer).set_data(
             gdf,
             index_col=index_col,
