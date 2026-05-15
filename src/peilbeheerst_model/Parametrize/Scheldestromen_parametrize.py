@@ -524,6 +524,9 @@ ribasim_model, from_to_node_table = scale_outlets_pumps(
     )
 )
 
+# check if meta_categorie in the basin.node.df is completely filled
+assert ribasim_model.basin.node.df["meta_categorie"].notna().all(), "Not all basins have a meta_categorie assigned."
+
 # set numerical settings
 # write model output
 ribasim_model.use_validation = True

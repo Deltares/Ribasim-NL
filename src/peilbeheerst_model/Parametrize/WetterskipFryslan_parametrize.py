@@ -800,6 +800,9 @@ ribasim_model.outlet.static.df.loc[
     ribasim_model.outlet.static.df.flow_rate > ribasim_model.outlet.static.df.max_flow_rate, "flow_rate"
 ] = ribasim_model.outlet.static.df.max_flow_rate
 
+# check if meta_categorie in the basin.node.df is completely filled
+assert ribasim_model.basin.node.df["meta_categorie"].notna().all(), "Not all basins have a meta_categorie assigned."
+
 # set numerical settings
 # write model output
 ribasim_model.use_validation = True

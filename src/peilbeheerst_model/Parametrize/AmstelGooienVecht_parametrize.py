@@ -592,6 +592,9 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
 # manually assign max_flow_rates (as suggested by JWV in FF)
 ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 826, "max_flow_rate"] = 0.05
 
+# check if meta_categorie in the basin.node.df is completely filled
+assert ribasim_model.basin.node.df["meta_categorie"].notna().all(), "Not all basins have a meta_categorie assigned."
+
 # write model output
 ribasim_model.use_validation = True
 ribasim_model.starttime = starttime
