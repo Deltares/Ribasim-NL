@@ -34,8 +34,8 @@ class OutletPumpScalingConfig:
     from_to_node_function_table: pd.DataFrame
     waterschap: str
     cloud: CloudStorage
-    max_iterations: int = 12
-    initial_guess_flow_rate_outlet: float = 0.01
+    max_iterations: int = 15
+    initial_guess_flow_rate_outlet: float = 1.0
     initial_guess_flow_rate_pump: float = 10.0
     design_precipitation_event: float = 10
     design_potential_evaporation_event: float = 1.5
