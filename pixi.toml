@@ -48,6 +48,7 @@ quarto = "1.8.*"
 quartodoc = ">=0.11.1"
 rasterstats = ">=0.20"
 requests = ">=2.32"
+# sync with config in install_ribasim_core.py
 ribasim = "==2026.1.1"
 ruff = ">=0.14"
 seaborn = ">=0.13"
