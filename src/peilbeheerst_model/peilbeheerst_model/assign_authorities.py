@@ -9,7 +9,7 @@ cloud = CloudStorage()
 # TODO: Embed correct usage of `static` v. `time` dataframes in `AssignAuthorities`
 class AssignAuthorities:
     """
-    Assign authority polygons to LevelBoundary nodes in a RIBASIM model.
+    Assign authority polygons to LevelBoundary nodes in a Ribasim model.
 
     This includes assigning Waterschappen and Rijkswaterstaat polygons based on spatial
     intersection. Priority is given to 'Rijkswaterstaat' when multiple polygons overlap.
