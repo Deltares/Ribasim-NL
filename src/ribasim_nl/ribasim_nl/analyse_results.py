@@ -1178,6 +1178,7 @@ def CompareOutputMeasurements(
                     "P90_reldev": [],
                     "geometry": [],
                     "figure_path": [],
+                    "QGIS_map_tip": [],
                 }
 
             results_measurements[waterschap] = _leeg_results()
@@ -1320,6 +1321,7 @@ def CompareOutputMeasurements(
                             "link_id": link,
                             "basin_node_id": fractie_basin_node_id,
                             "figure_path": pop_up_fractie,
+                            "QGIS_map_tip": f"figures_fracties/{waterschap}/{fig_name_clean}_fractie.png",
                             "geometry": meetlocaties_link.iloc[0]["geometry_parsed"],
                         }
                     )
@@ -1344,6 +1346,7 @@ def CompareOutputMeasurements(
             ("geometry", meetlocaties_link.iloc[0]["geometry_parsed"]),
             ("waterschap", waterschap),
             ("figure_path", pop_up_figure),
+            ("QGIS_map_tip", f"figures/{waterschap}/{fig_name_clean}.png"),
         ]:
             results_measurements[waterschap][key].append(val)
 
@@ -1378,6 +1381,7 @@ def CompareOutputMeasurements(
             ("geometry", meetlocaties_link.iloc[0]["geometry_parsed"]),
             ("waterschap", waterschap),
             ("figure_path", pop_up_figure_dec),
+            ("QGIS_map_tip", f"figures/{waterschap}/{fig_name_dec_clean}.png"),
         ]:
             results_measurements_decade[waterschap][key].append(val)
 
@@ -2216,8 +2220,9 @@ def _lhm41_plot_vergelijking(
     ax_dec.set_ylabel("Debiet [m³/s]", fontdict={"fontsize": 12, "fontname": font, "fontweight": "bold"})
     ax_dec.legend(fontsize=10, loc="upper right")
     ax_dec.grid(True, linewidth=0.5)
-    ax_dec.tick_params(axis="both", labelsize=11)
-    for lbl in ax_dec.get_xticklabels() + ax_dec.get_yticklabels():
+    ax_dec.tick_params(axis="x", labelbottom=False)
+    ax_dec.tick_params(axis="y", labelsize=11)
+    for lbl in ax_dec.get_yticklabels():
         lbl.set_fontweight("bold")
 
     ax_cum.plot(datum, cum_meting, label="Meting cum.", color="tab:orange", linewidth=2.0)
@@ -2612,6 +2617,7 @@ def AnalyseLHM41Vergelijking(
                 "CumZomer_lhm": _r(s_lhm.get("CumZomer"), 1),
                 "RelBias_lhm": _r(s_lhm.get("RelBias"), 1),
                 "figure_path": f'<img src="../figures_lhm4_1_vergelijking/{fig_naam}.png" width=400 height=300>',
+                "QGIS_map_tip": f"figures_lhm4_1_vergelijking/{fig_naam}.png",
                 "geometry": geom,
             }
         )
