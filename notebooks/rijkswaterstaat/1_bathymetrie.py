@@ -36,7 +36,7 @@ water_mask_path = out_dir / "water-mask.gpkg"
 
 
 cloud.synchronize(filepaths=[krw_poly_gpkg, water_mask_path])
-cloud.synchronize(filepaths=[baseline_file, bathymetrie_nl], overwrite=False)
+cloud.synchronize(filepaths=[bathymetrie_nl], overwrite=False)
 
 res = 5
 tile_size = 10000
