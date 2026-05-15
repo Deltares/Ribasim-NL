@@ -209,6 +209,8 @@ ribasim_model.merge_basins(node_id=107, to_node_id=198)  # klein gebiedje
 ribasim_model.merge_basins(node_id=67, to_node_id=21)  # klein gebiedje
 ribasim_model.merge_basins(node_id=281, to_node_id=51)  # klein gebiedje
 
+ribasim_model.merge_basins(node_id=285, to_node_id=73)  # klein gebiedje
+
 ribasim_model.merge_basins(node_id=286, to_node_id=283)  # klein gebiedje in stedelijk gebied
 
 ribasim_model.merge_basins(node_id=11, to_node_id=16)  # klein gebiedje in hoge vaart
@@ -759,35 +761,73 @@ assign_metadata.add_meta_to_basins(
     min_overlap=0.95,
 )
 
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 719, "max_flow_rate"] = (
-    1  # unknown capacity, 1 m3/s based on expert judgement
-)
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 856, "max_flow_rate"] = 50  # Wortman
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 852, "max_flow_rate"] = (
-    770 * 2 / 60
-)  # Blocq van Kuffeler, Lage Vaart
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 854, "max_flow_rate"] = (
-    935 * 2 / 60
-)  # Blocq van Kuffeler, Hoge Vaart
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 787, "max_flow_rate"] = (
-    500 * 2 / 60
-)  # Colijn, Lage Vaart
+# data availability (and thus delivery) is not complete for all pumps. Hard code the flow rates based on some emails.
+ribasim_model.pump.static.df["meta_known_flow_rate"] = False
 
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 788, "max_flow_rate"] = (
-    580 / 60
-)  # Colijn, Hoge Vaart
+# based on Excel for D-HYDRO model. Also set the meta_known_flow_rate to True for these pumps, as we have data for these.
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 364,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 4.44, True
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 708,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 2.78, True
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 517,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 3.00, True
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 564,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 1.22, True
 
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 823, "max_flow_rate"] = 580 * 2 / 60  # Lovink
+# based on Gemalen stichting
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 719,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 1, True  # unknown capacity, 1 m3/s based on expert judgement
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 856,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 50, True  # Wortman
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 853,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 770 * 2 / 60, True  # Blocq van Kuffeler, Lage Vaart
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 855,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 935 * 2 / 60, True  # Blocq van Kuffeler, Hoge Vaart
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 787,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 500 * 2 / 60, True  # Colijn, Lage Vaart
 
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 814, "max_flow_rate"] = (
-    800 * 3 / 60
-)  # Vissering
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 788,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 580 / 60, True  # Colijn, Hoge Vaart
+
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 823,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 580 * 2 / 60, True  # Lovink
+
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 814,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 800 * 3 / 60, True  # Vissering
 
 
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 834, "max_flow_rate"] = 620 * 2 / 60  # Smeenge
-
-
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 815, "max_flow_rate"] = 720 * 3 / 60  # Buma
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 834,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 620 * 2 / 60, True  # Smeenge
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 815,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 720 * 3 / 60, True  # Buma
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
@@ -807,7 +847,6 @@ if MIXED_CONDITIONS:
 
 # set the pumps and outlets with unknown flow capacities to have unknown flow capacities in the model, so they can be scaled in the next step.
 ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
-ribasim_model.pump.static.df["meta_known_flow_rate"] = True
 ribasim_model.pump.static.df.loc[
     (ribasim_model.pump.static.df.max_flow_rate.isna()) | (ribasim_model.pump.static.df.max_flow_rate == 0),
     "meta_known_flow_rate",
@@ -831,6 +870,12 @@ if RESCALE_FLOW_CAPACITIES:
 else:
     print(f"No scaling of outlets/pumps: {RESCALE_FLOW_CAPACITIES=}")
 
+# increase max flow rate of some specific outlets which have high drainage rates
+ribasim_model.outlet.static.df.loc[
+    ribasim_model.outlet.static.df.node_id.isin([337, 371, 416, 474]), ("flow_rate", "max_flow_rate")
+] = 1.0
+
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id.isin([914]), ("flow_rate", "max_flow_rate")] = 1.0
 
 # add the water authority column to couple the model with
 assign = AssignAuthorities(

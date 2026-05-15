@@ -624,21 +624,13 @@ class _OutletPumpScaler:
         original_basin_time = ribasim_model.basin.time.df.copy()
         original_endtime = ribasim_model.endtime
 
-        # FIXME: Setting critical(?) static-table columns
-        # ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
-        # ribasim_model.pump.static.df["meta_known_flow_rate"] = True
-        # ribasim_model.outlet.static.df.loc[
-        #     ribasim_model.outlet.static.df["max_flow_rate"].astype(bool), "max_flow_rate"
-        # ] = config.initial_guess_flow_rate_outlet
-        # ribasim_model.pump.static.df.loc[
-        #     ribasim_model.pump.static.df["max_flow_rate"].astype(bool), "max_flow_rate"
-        # ] = config.initial_guess_flow_rate_pump
-
-        # if max_flow_rate is 0.0, change to 0.1
+        # if max_flow_rate is 0.0, change to initial value
         pump_static_df = cast(pd.DataFrame, ribasim_model.pump.static.df)
         outlet_static_df = cast(pd.DataFrame, ribasim_model.outlet.static.df)
-        pump_static_df.loc[pump_static_df.max_flow_rate == 0.0, "max_flow_rate"] = 0.1
-        outlet_static_df.loc[outlet_static_df.max_flow_rate == 0.0, "max_flow_rate"] = 0.1
+        pump_static_df.loc[pump_static_df.max_flow_rate == 0.0, "max_flow_rate"] = config.initial_guess_flow_rate_pump
+        outlet_static_df.loc[outlet_static_df.max_flow_rate == 0.0, "max_flow_rate"] = (
+            config.initial_guess_flow_rate_outlet
+        )
 
         ###########################
 
