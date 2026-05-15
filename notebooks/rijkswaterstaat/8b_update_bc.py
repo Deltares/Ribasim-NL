@@ -91,7 +91,6 @@ model.flow_boundary.static.df = model.flow_boundary.static.df[
     ~model.flow_boundary.static.df.node_id.isin([lobith_node_id, monsin_node_id])
 ]
 
-
 # %% update LevelBoundary / Time
 
 node_ids = model.level_boundary.node.df[
