@@ -23,6 +23,7 @@ EXCLUDE_NODES = {
     161,  # Bulsterverlaat (Scheepvaart)
     174,  # Koppelsluis (Scheepvaart)
     183,  # Haansluis (scheepvaart)
+    156,  # Vriescheloostersluis (Veelerveen)
 }
 
 # %%
@@ -54,7 +55,8 @@ model.merge_basins(node_id=1763, to_node_id=1381, are_connected=False)
 # En als flow_rate niet bekend is de flow
 model.outlet.static.df.max_flow_rate = 30.0
 model.outlet.static.df.flow_rate = 30.0
-model.pump.static.df.max_flow_rate = 30.0
+model.pump.static.df.flow_rate = 50.0
+model.pump.static.df.max_flow_rate = 50.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0.0
 model.pump.static.df.loc[model.pump.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0.0
 
@@ -77,11 +79,40 @@ mask = model.node.df["meta_code_waterbeheerder"].str.contains("KIN-", case=False
 model.node.df.loc[mask, IS_SUPPLY_NODE_COLUMN] = True
 
 # user-defined drain_nodes
-drain_nodes = [59, 1046, 196, 325, 892, 514, 316, 233, 88, 99, 256, 369, 792]
+drain_nodes = [
+    59,
+    62,
+    80,
+    88,
+    99,
+    133,
+    135,
+    196,
+    206,
+    231,
+    233,
+    250,
+    256,
+    285,
+    316,
+    321,
+    325,
+    352,
+    369,
+    425,
+    431,
+    507,
+    514,
+    524,
+    558,
+    792,
+    892,
+    1046,
+]
 # user-defined supply_nodes
-supply_nodes = [573, 62, 20, 70, 107, 972]
+supply_nodes = [20, 62, 70, 107, 573, 972]
 # user-defined flow_control_nodes
-flow_control_nodes = [330, 573, 634]
+flow_control_nodes = [182, 330, 573, 634]
 
 
 # markeer inlaten
