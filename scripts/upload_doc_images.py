@@ -21,7 +21,7 @@ if not settings.minio_access_key or not settings.minio_secret_key:
     raise OSError("MINIO_ACCESS_KEY and MINIO_SECRET_KEY must be set in the environment or .env file.")
 
 MINIO_SERVER = "s3.deltares.nl"
-BUCKET_NAME = "ribasim"
+BUCKET_NAME = "ribasim-nl"
 
 
 def upload_file(
