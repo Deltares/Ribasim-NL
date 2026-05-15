@@ -106,10 +106,7 @@ class Network:
 
         # snap line_boundaries
         if self.snap_line_boundaries:
-            if self.tolerance is not None:
-                tolerance = self.tolerance
-            else:
-                tolerance = 0.25
+            tolerance = self.tolerance if self.tolerance is not None else 0.25
             self.lines_gdf = snap_line_boundaries(self.lines_gdf, tolerance=tolerance)
 
     @classmethod
@@ -192,10 +189,7 @@ class Network:
                     link_def["name"] = getattr(row, self.name_col)
 
                 # select nodes of interest
-                if self.tolerance:
-                    bounds = box(*geometry.bounds).buffer(self.tolerance).bounds
-                else:
-                    bounds = row.geometry.bounds
+                bounds = box(*geometry.bounds).buffer(self.tolerance).bounds if self.tolerance else row.geometry.bounds  # pyrefly: ignore[missing-attribute]
                 nodes_select = nodes_gdf.iloc[nodes_gdf.sindex.intersection(bounds)]
                 if self.tolerance is None:
                     nodes_select = nodes_select[nodes_select.distance(geometry) == 0]
@@ -207,7 +201,7 @@ class Network:
                     continue
 
                 # More than one node. We order selected nodes by distance from start_node
-                nodes_select["distance"] = nodes_select.geometry.apply(lambda x: geometry.project(x))
+                nodes_select["distance"] = nodes_select.geometry.apply(lambda x: geometry.project(x))  # noqa: B023
                 nodes_select.sort_values("distance", inplace=True)
 
                 # More than one node. We select start_node and point-geometry
@@ -298,10 +292,9 @@ class Network:
         value = None
         for idx in range(max_iters):
             node = self._graph.nodes[upstream_nodes[idx]]
-            if attribute in node.keys():
-                if pd.notna(node[attribute]):
-                    value = node[attribute]
-                    break
+            if attribute in node and pd.notna(node[attribute]):
+                value = node[attribute]
+                break
         if include_node_id:
             return value, upstream_nodes[idx]
         else:
@@ -313,10 +306,9 @@ class Network:
         value = None
         for idx in range(max_iters):
             node = self._graph.nodes[downstream_nodes[idx]]
-            if attribute in node.keys():
-                if pd.notna(node[attribute]):
-                    value = node[attribute]
-                    break
+            if attribute in node and pd.notna(node[attribute]):
+                value = node[attribute]
+                break
         if include_node_id:
             return value, downstream_nodes[idx]
         else:
@@ -338,13 +330,13 @@ class Network:
             first_node = self._graph.nodes[downstream_nodes[idx]]
             second_node = self._graph.nodes[downstream_nodes[idx + 1]]
 
-            if attribute in first_node.keys():
+            if attribute in first_node:
                 if pd.notna(first_node[attribute]):
                     first_value = first_node[attribute]
                 if stop_iter(first_value, second_value):
                     break
 
-            if attribute in second_node.keys():
+            if attribute in second_node:
                 if pd.notna(pd.notna(second_node[attribute])):
                     second_value = second_node[attribute]
                 if stop_iter(first_value, second_value):
@@ -376,13 +368,13 @@ class Network:
             us_node = self._graph.nodes[upstream_nodes[idx]]
             ds_node = self._graph.nodes[downstream_nodes[idx]]
 
-            if attribute in us_node.keys():
+            if attribute in us_node:
                 if pd.notna(us_node[attribute]):
                     upstream_value = us_node[attribute]
                 if stop_iter(upstream_value, downstream_value):
                     break
 
-            if attribute in ds_node.keys():
+            if attribute in ds_node:
                 if pd.notna(pd.notna(ds_node[attribute])):
                     downstream_value = ds_node[attribute]
                 if stop_iter(upstream_value, downstream_value):
@@ -398,7 +390,7 @@ class Network:
         point: Point,
         max_distance: float,
         align_distance: float,
-        node_types=["connection", "upstream_boundary", "downstream_boundary"],
+        node_types=None,
     ):
         """Move network nodes and links to new location
 
@@ -412,6 +404,8 @@ class Network:
             Distance over link, from node, where vertices will be removed to align adjacent links with Point
         """
         # take links and nodes as gdf
+        if node_types is None:
+            node_types = ["connection", "upstream_boundary", "downstream_boundary"]
         nodes_gdf = self.nodes
         links_gdf = self.links
 
@@ -491,7 +485,7 @@ class Network:
             self.graph.add_node(node_id, geometry=node_geometry, type="connection")
             # add links
             self.graph.remove_edge(node_from, node_to)
-            split_result = split_line(link_geometry, node_geometry, as_multilinestring=False)
+            split_result = split_line(link_geometry, node_geometry)
             if len(split_result) == 1:
                 if self.verbose:
                     logger.warning(f"Splitting link: {link_id} resulted in a single LineString)")
@@ -550,8 +544,11 @@ class Network:
         directed=True,
         duplicated_nodes=True,
         weight="length",
-        ignore_links=[],
+        ignore_links=None,
     ) -> GeoDataFrame:
+        if ignore_links is None:
+            ignore_links = []
+
         def find_duplicates(lst, counts):
             counter = Counter(lst)
             duplicates = [item for item, count in counter.items() if count == counts]
@@ -564,10 +561,7 @@ class Network:
         ]
 
         node_ids = list(chain(*paths))
-        if duplicated_nodes:
-            node_ids = find_duplicates(node_ids, len(paths))
-        else:
-            node_ids = list(set(chain(*paths)))
+        node_ids = find_duplicates(node_ids, len(paths)) if duplicated_nodes else list(set(chain(*paths)))
         if not inclusive:
             exclude_nodes = nodes_from + nodes_to
             node_ids = [i for i in node_ids if i not in exclude_nodes]

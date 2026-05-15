@@ -4,9 +4,9 @@ import io
 import itertools
 import json
 import logging
-import pathlib
 import time
 import zipfile
+from pathlib import Path
 
 import geopandas as gpd
 import requests
@@ -47,7 +47,7 @@ def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon | None
     # optional arguments
     fn: str = kwargs.get("fn", "bgt_water.gpkg")
     sleep_time: float = kwargs.get("sleep_time", 1)
-    wd: pathlib.Path | None = kwargs.get("wd")
+    wd: Path | None = kwargs.get("wd")
 
     # API URL
     __full_custom_url = "lv/bgt/download/v1_0/full/custom"
@@ -57,17 +57,16 @@ def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon | None
         LOG.warning("No geo-filter provided; download BGT-data of the whole Netherlands? [y/n] ")
 
     # download description
-    if geo_filter is None:
-        data = DATA.copy()
-    else:
-        data = {**DATA, **{"geofilter": str(geo_filter)}}
+    data = DATA.copy() if geo_filter is None else {**DATA, **{"geofilter": str(geo_filter)}}
     headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",
     }
 
     # download request
-    post_response = requests.post(f"{BASE_URL}/{__full_custom_url}", headers=headers, data=json.dumps(data))
+    post_response = requests.post(
+        f"{BASE_URL}/{__full_custom_url}", headers=headers, data=json.dumps(data), timeout=300
+    )
     if post_response.status_code == 202:
         download_request_id = post_response.json()["downloadRequestId"]
         LOG.debug(f"{download_request_id=}")
@@ -77,7 +76,7 @@ def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon | None
     # request download
     get_url = f"{BASE_URL}/{__full_custom_url}/{download_request_id}/status"
     while True:
-        get_response = requests.get(get_url, headers=headers)
+        get_response = requests.get(get_url, headers=headers, timeout=300)
         match get_response.status_code:
             case 200:
                 LOG.debug(f"Download not yet ready; sleep {sleep_time} seconds")
@@ -94,7 +93,7 @@ def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon | None
     relative_download_url = get_response.json()["_links"]["download"]["href"]
     download_url = BASE_URL + relative_download_url
     LOG.debug(f"{download_url=}")
-    download_response = requests.get(download_url)
+    download_response = requests.get(download_url, timeout=300)
     LOG.debug(f"{download_response.status_code=}")
 
     # download BGT-data
@@ -113,7 +112,7 @@ def download_bgt_water(geo_filter: shapely.Polygon | shapely.MultiPolygon | None
     return bgt_data
 
 
-def get_water_surfaces(wd: pathlib.Path, **kwargs) -> gpd.GeoDataFrame:
+def get_water_surfaces(wd: Path, **kwargs) -> gpd.GeoDataFrame:
     """Get water surfaces data, i.e., BGT-data.
 
     If the data is not saved locally (i.e., `wd`) or `overwrite=True`, the data is downloaded via de PDOK API.
@@ -126,7 +125,7 @@ def get_water_surfaces(wd: pathlib.Path, **kwargs) -> gpd.GeoDataFrame:
     :key overwrite: overwrite the downloaded BGT-data with a new download, defaults to False
     :key write: export the newly downloaded BGT-data to `wd`, defaults to True
 
-    :type wd: pathlib.Path
+    :type wd: Path
 
     :return: BGT-data
     :rtype: geopandas.GeoDataFrame
@@ -151,7 +150,7 @@ def get_water_surfaces(wd: pathlib.Path, **kwargs) -> gpd.GeoDataFrame:
     return bgt_data
 
 
-def upload_bgt_water(authority: str, cloud: CloudStorage = CloudStorage(), **kwargs) -> None:
+def upload_bgt_water(authority: str, cloud: CloudStorage = CloudStorage(), **kwargs) -> None:  # noqa: B008
     """Upload BGT-data per water authority.
 
     The geo-filter used for the download of the BGT-data is based on the basins of the water authority: A convex hull is
@@ -208,7 +207,7 @@ def upload_bgt_water(authority: str, cloud: CloudStorage = CloudStorage(), **kwa
 def save_bgt_coupling(
     hydro_objects: gpd.GeoDataFrame,
     bgt_data: gpd.GeoDataFrame,
-    wd: pathlib.Path,
+    wd: Path,
     *,
     fn: str = "int_output.gpkg",
     layer: str = "bgt",
@@ -227,7 +226,7 @@ def save_bgt_coupling(
 
     :type hydro_objects: geopandas.GeoDataFrame
     :type bgt_data: geopandas.GeoDataFrame
-    :type wd: pathlib.Path
+    :type wd: Path
     :type fn: str, optional
     :type layer: str, optional
 

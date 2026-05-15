@@ -37,6 +37,13 @@ update_basin_static(model=model, evaporation_mm_per_day=1)
 #  changing conditions (e.g., 1/3 precipitation, 2/3 evaporation).
 # set forcing conditions
 
+# TODO fixes
+# 256 moet een inlaat zijn
+# 237 moet ook een inlaat zijn, link toevoegen
+# 462 moet ook een inlaat zijn, link toevoegen
+# 228 moet ook een inlaat zijn, link toevoegen
+# %%
+
 model.basin.area.df.loc[model.basin.area.df.node_id == 864, "meta_streefpeil"] = -0.5
 model.basin.area.df.loc[model.basin.area.df.node_id == 1271, "meta_streefpeil"] = 1.2
 
@@ -320,7 +327,7 @@ model.write(ribasim_toml)
 
 # run model
 if MODEL_EXEC:
-    result = model.run()
+    model.run()
 
     """Note that currently, the Ribasim-model is unstable but it does execute, i.e., the model re-parametrisation is
     successful. This might be due to forcing the schematisation with precipitation while setting the 'sturing' of the
@@ -328,5 +335,4 @@ if MODEL_EXEC:
     adding `ContinuousControl`-nodes is implemented.
     """
 
-    controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path).run_all()

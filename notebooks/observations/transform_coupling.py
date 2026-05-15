@@ -1,6 +1,6 @@
 # %%
 import ast
-import os
+from pathlib import Path
 
 import geopandas as gdf
 import geopandas as gpd
@@ -313,7 +313,7 @@ if filter_waterschappen:
 
 # model = Model.read(os.path.join(model_folder, toml_naam)) # Aangepast van lhm.toml
 
-model = Model.read(os.path.join(model_folder_temporary, toml_naam))  # Aangepast van lhm.toml
+model = Model.read(Path(model_folder_temporary) / toml_naam)  # Aangepast van lhm.toml
 
 links = model.link.df
 
@@ -475,7 +475,7 @@ new_cols = [
 
 if any(col in koppeltabel.columns for col in previous_cols):
     # Case A: previous already exists -> move current new_ → previous_
-    for pcol, ncol in zip(previous_cols, new_cols[:-1]):  # skip opmerking_transform
+    for pcol, ncol in zip(previous_cols, new_cols[:-1], strict=True):  # skip opmerking_transform
         if ncol in koppeltabel.columns:
             koppeltabel[pcol] = koppeltabel[ncol]
     # Reinitialize fresh new_* columns
@@ -548,7 +548,9 @@ for index, row in koppeltabel.iterrows():
 
         # loop per rij over de verschillende links (combi van from en to nodes)
 
-        for from_node, to_node, from_type, to_type in zip(prev_from_geom, prev_to_geom, prev_from_types, prev_to_types):
+        for from_node, to_node, from_type, to_type in zip(
+            prev_from_geom, prev_to_geom, prev_from_types, prev_to_types, strict=True
+        ):
             # default values for this iteration
             # found_from_nodes_geom = None
             # found_to_nodes_geom = None
@@ -764,7 +766,7 @@ gdf = gpd.GeoDataFrame(koppeltabel, geometry="geometry")
 # Set CRS (e.g., EPSG:28992 for RD New, modify as needed)
 gdf.set_crs(epsg=28992, inplace=True)  # Update EPSG code based on your data's CRS
 
-output_path = os.path.splitext(wegschrijven_nieuwe_tabel)[0] + ".gpkg"
+output_path = Path(wegschrijven_nieuwe_tabel).with_suffix(".gpkg")
 
 gdf.to_file(output_path, layer="Koppeling_model_meting", driver="GPKG")
 

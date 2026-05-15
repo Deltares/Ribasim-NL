@@ -1,186 +1,122 @@
-# copied from notebooks\meteo\add_meteo.py
+"""Assign dynamic precipitation and evaporation forcing from LHM zarr budgets to Ribasim Basin nodes."""
 
-import geopandas as gpd
+import imod
 import numpy as np
 import pandas as pd
-import tqdm
 import xarray as xr
-from shapely.geometry import box
-from shapely.prepared import prep
 
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import Model
+from ribasim_nl.assign_offline_budgets import _compute_budgets_per_basin, _crop_to_gdf
+
+# Makkink to open water evaporation factor, depending on the month of the year (rows)
+# and the decade in the month, starting at day 1, 11, 21 (cols). As used in Mozart.
+EVAP_FACTOR = np.array(
+    [
+        [0.00, 0.50, 0.70],
+        [0.80, 1.00, 1.00],
+        [1.20, 1.30, 1.30],
+        [1.30, 1.30, 1.30],
+        [1.31, 1.31, 1.31],
+        [1.30, 1.30, 1.30],
+        [1.29, 1.27, 1.24],
+        [1.21, 1.19, 1.18],
+        [1.17, 1.17, 1.17],
+        [1.00, 0.90, 0.80],
+        [0.80, 0.70, 0.60],
+        [0.00, 0.00, 0.00],
+    ]
+)
+
+
+def _open_water_factor(times: np.ndarray) -> np.ndarray:
+    """Return an array of open water evaporation factors for each timestep."""
+    ts = pd.DatetimeIndex(times)
+    months = ts.month - 1  # 0-based row index
+    decades = np.where(ts.day < 11, 0, np.where(ts.day < 21, 1, 2))
+    return EVAP_FACTOR[months, decades]
+
+
+# Variable names in the LHM zarr store
+PRECIPITATION_VAR = "precipitation_mmd"
+EVAPORATION_VAR = "makkink_mmd"
 
 
 class SetDynamicForcing:
     def __init__(
         self,
         model: Model,
-        cloud: CloudStorage,
+        budgets: xr.Dataset,
         startdate: str,
         enddate: str,
     ) -> None:
         self.model = model
-        self.cloud = cloud
+        self.budgets = budgets
         self.startdate = startdate
         self.enddate = enddate
 
     def add(self) -> Model:
-        ############# SET THE DESIRED MODEL AND TIME PERIOD ###################
-        # authority = "Rijkswaterstaat"  # Water authority folder that is used on the Cloud Storage
-        # model = "lhm_coupled_2025_5_0"  # Model that is selected on the Cloud Storage
-        # startdate = "2017-01-01"  # Startdate of the modelrun
-        # enddate = "2017-12-31"  # Enddate of the modelrun
-        ######################################################################
-
-        # Load the precipitation, evaporation and basins
-        precip = xr.open_dataset(self.cloud.joinpath("Basisgegevens/WIWB/Meteobase.Precipitation.nc"))
-        evp = xr.open_dataset(self.cloud.joinpath("Basisgegevens/WIWB/Meteobase.Evaporation.Makkink.nc"))
-
-        # Load the basins from the model
+        """Compute basin-averaged precipitation and evaporation from LHM zarr and add to model."""
         basins = self.model.basin.area.df
+        assert basins is not None
+        basin_definition = basins[["node_id", "geometry"]].copy()
 
-        # Extract arrays of x and y coordinates from the meteo grids
-        xll_coords = precip["x"].values
-        yll_coords = precip["y"].values
+        like = _crop_to_gdf(self.budgets[PRECIPITATION_VAR].isel(time=0, drop=True), basin_definition)
+        assert isinstance(like, xr.DataArray)
+        basin_mask = imod.prepare.rasterize(
+            basin_definition,
+            column="node_id",
+            like=like,
+            fill=-999,
+            dtype=np.int32,
+        )
 
-        # Get a dictionary with fractional coverage for each basin
-        fraction_map = self._get_fractional_grid_per_basin(xll_coords, yll_coords, basins)
+        # Build precipitation dataset
+        precip_ds = _crop_to_gdf(self.budgets[[PRECIPITATION_VAR]], basin_definition)
+        assert isinstance(precip_ds, xr.Dataset)
 
-        # Get the meteo input per basin as pd.DataFrame
-        meteo_time_df = self._get_meteo_per_basin(self.startdate, self.enddate, precip, evp, fraction_map)
+        # Build evaporation dataset
+        evap_ds = _crop_to_gdf(self.budgets[[EVAPORATION_VAR]], basin_definition)
+        assert isinstance(evap_ds, xr.Dataset)
 
-        # Add the meteo information to the selected model
-        new_model = self._add_meteo_to_model(meteo_time_df)
+        # Compute basin-averaged values (mm/day per basin)
+        # _compute_budgets_per_basin sums over cells; divide by cell count to get the mean
+        print("compute precipitation per basin")
+        precip_df = _compute_budgets_per_basin(precip_ds, basin_mask)
+        print("compute evaporation per basin")
+        evap_df = _compute_budgets_per_basin(evap_ds, basin_mask)
 
-        # return the new model with the meteo information added
+        # Count cells per basin for averaging
+        mask_flat = basin_mask.values.reshape(-1)
+        valid = np.isfinite(mask_flat) & (mask_flat != -999)
+        ids = mask_flat[valid].astype(np.int64)
+        unique_ids, counts = np.unique(ids, return_counts=True)
+        cell_counts = pd.Series(counts, index=unique_ids, name="count")
+        # Broadcast cell counts to match the MultiIndex (node_id, time)
+        node_ids = precip_df.index.get_level_values("node_id")
+        counts_per_row = node_ids.map(cell_counts.to_dict()).values
+
+        # Convert summed mm/day -> averaged mm/day -> m/s
+        mm_per_day_to_m_per_s = 1 / 86400 / 1000
+        precip_series = precip_df[PRECIPITATION_VAR] / counts_per_row * mm_per_day_to_m_per_s
+        evap_series = evap_df[EVAPORATION_VAR] / counts_per_row * mm_per_day_to_m_per_s
+
+        # Apply open-water evaporation factor
+        times = evap_series.index.get_level_values("time")
+        evap_factors = _open_water_factor(times.values)
+        evap_series = evap_series * evap_factors
+
+        # Build meteo DataFrame
+        meteo_df = pd.DataFrame(
+            {
+                "node_id": precip_series.index.get_level_values("node_id"),
+                "time": times,
+                "precipitation": precip_series.values,
+                "potential_evaporation": evap_series.values,
+            }
+        )
+
+        new_model = self._add_meteo_to_model(meteo_df)
         return new_model
-
-    def _sync_meteo_from_cloud(self) -> None:
-        """
-        Synchronize Meteo information from cloud to local directory
-
-        Function that syncs the LHM Precipitation and Makkink Evaporation (Meteobase) from the Deltares GoodCloud
-        storage to a local directory (if not available yet)
-        """
-        WIWB_dir = self.cloud.joinpath("Basisgegevens/WIWB")
-        WIWB_Precip_path = WIWB_dir / "Meteobase.Precipitation.nc"
-        WIWB_Evap_path = WIWB_dir / "Meteobase.Evaporation.Makkink.nc"
-        self.cloud.synchronize(filepaths=[WIWB_Precip_path, WIWB_Evap_path])
-        print(f"WIWB Meteo data synced from cloud. Available in {WIWB_dir}")
-
-    def _get_fractional_grid_per_basin(self, xll_coords: np.ndarray, yll_coords: np.ndarray, basins: gpd.GeoDataFrame):
-        """
-        Get the meteo grid coverage per basin, expressed as a fraction for each of the covered cells
-
-        Calculates the fractional overlap of supplied basins given a set of x and y coordinates.
-        It returns a dictionary with the touching cells (indices) for each basin, and the fractional coverage.
-        """
-        cell_area = abs((xll_coords[1] - xll_coords[0]) * (yll_coords[1] - yll_coords[0]))
-        nodeids = basins["node_id"].tolist()
-        prepared_geoms = [(nodeids[i], prep(geom)) for i, geom in enumerate(basins.geometry)]
-        node_geoms = dict(zip(nodeids, basins.geometry))
-
-        height = len(yll_coords)
-        width = len(xll_coords)
-        fraction_map: dict[int, list[tuple[int, int, float]]] = {}
-
-        for node_id, prep_geom in tqdm.tqdm(prepared_geoms, desc="Overlapping polygons with rasters"):
-            geom = node_geoms[node_id]
-            xl, yl, xr, yu = geom.bounds
-            xmin_diff = xl - xll_coords
-            xmax_diff = xr - xll_coords
-            ymin_diff = yl - yll_coords
-            ymax_diff = yu - yll_coords
-
-            col_start = np.where(xmin_diff > 0)[0][np.argmin(xmin_diff[xmin_diff > 0])] if any(xmin_diff > 0) else 0
-            col_end = np.where(xmax_diff > 0)[0][np.argmin(xmax_diff[xmax_diff > 0])] if any(xmax_diff > 0) else 0
-            row_end = np.where(ymin_diff > 0)[0][np.argmin(ymin_diff[ymin_diff > 0])] if any(ymin_diff > 0) else 0
-            row_start = np.where(ymax_diff > 0)[0][np.argmin(ymax_diff[ymax_diff > 0])] if any(ymax_diff > 0) else 0
-
-            fraction_map[node_id] = []
-            if row_start >= row_end or row_end <= 0 or col_start >= col_end or col_end <= 0:
-                closest_row = min(max(0, row_start), height - 1)
-                closest_col = min(max(0, col_start), width - 1)
-                fraction_map[node_id].append((closest_row, closest_col, 1))
-            else:
-                for row in range(row_start, row_end):
-                    for col in range(col_start, col_end):
-                        cell_poly = box(xll_coords[col], yll_coords[row], xll_coords[col + 1], yll_coords[row + 1])
-                        if prep_geom.intersects(cell_poly):
-                            intersection = cell_poly.intersection(geom)
-                            if not intersection.is_empty:
-                                frac = intersection.area / cell_area
-                                if frac > 0:
-                                    fraction_map[node_id].append((row, col, frac))
-        return fraction_map
-
-    def _get_meteo_per_basin(
-        self,
-        startdate: str,
-        enddate: str,
-        precip: xr.Dataset,
-        evp: xr.Dataset,
-        fraction_map: dict[int, list[tuple[int, int, float]]],
-    ) -> pd.DataFrame:
-        """
-        Get dynamic meteo per basin
-
-        Function takes meteo information and extracts the required timeseries per basin, taking into account which
-        cells are covered by the basin using the fraction_map argument.
-        """
-        time = precip["time"].values
-        startdate_dt = np.datetime64(startdate)
-        enddate_dt = np.datetime64(enddate)
-        mask = (time >= startdate_dt) & (time <= enddate_dt)
-        time_indices = np.where(mask)[0]
-
-        precip_data = precip["P"].isel(time=slice(time_indices[0], time_indices[-1] + 1)).load().data
-        evp_data = evp["Evaporation"].isel(time=slice(time_indices[0], time_indices[-1] + 1)).load().data
-
-        means: dict[int, dict[str, list[float]]] = {}
-        for node_id, pixels in tqdm.tqdm(fraction_map.items(), desc="Extracting meteo per basin"):
-            means[node_id] = {}
-            if len(pixels) == 0:
-                means[node_id]["prec"] = [np.nan] * len(time_indices)
-                means[node_id]["evp"] = [np.nan] * len(time_indices)
-                continue
-            values_P = np.stack([precip_data[:, row, col] for row, col, _ in pixels], axis=1)
-            values_ET = np.stack([evp_data[:, row, col] for row, col, _ in pixels], axis=1)
-            weights = np.array([frac for _, _, frac in pixels])
-
-            averaged_P_ms = np.average(values_P, axis=1, weights=weights) / 86400 / 1000
-            averaged_ET_ms = np.average(values_ET, axis=1, weights=weights) / 86400 / 1000 * 1.26
-
-            means[node_id]["prec"] = averaged_P_ms.tolist()
-            means[node_id]["evp"] = averaged_ET_ms.tolist()
-
-        # Convert into the right pd.DataFrame format to add to the model
-        # pyrefly: ignore[bad-argument-type]
-        full_time_df = self._combine_meteo_into_df(means, startdate_dt, enddate_dt)
-        print("Converted the meteo data to a pd.DataFrame")
-        return full_time_df
-
-    def _combine_meteo_into_df(
-        self,
-        meteo_per_node: dict[int, dict[str, list[float]]],
-        start_date: "str | np.datetime64[int | None]",
-        end_date: "str | np.datetime64[int | None]",
-    ) -> pd.DataFrame:
-        """
-        Convert a dict with meteo info to a pd.Dataframe
-
-        Function converts a given dictionary with timeseries per basin to a proper dataframe that can be used
-        as input to Ribasim models.
-        """
-        meteo_dataframe = {nodeid: pd.DataFrame(v) for nodeid, v in meteo_per_node.items()}
-        list_of_dfs = []
-        for nodeid, df in meteo_dataframe.items():
-            df["time"] = pd.date_range(start_date, end_date)
-            df["node_id"] = nodeid
-            list_of_dfs.append(df)
-        full_time_df = pd.concat(list_of_dfs, ignore_index=True)
-        full_time_df.rename(columns={"evp": "potential_evaporation", "prec": "precipitation"}, inplace=True)
-        return full_time_df
 
     def _add_meteo_to_model(self, meteo_means: pd.DataFrame) -> Model:
         """

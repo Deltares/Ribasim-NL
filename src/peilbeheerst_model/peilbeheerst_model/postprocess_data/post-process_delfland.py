@@ -97,7 +97,7 @@ print(f"Number of overlapping shapes with filter: {len(overlap_ids)}")
 peilgebieden_cat = []
 ids: list[Any] = []
 
-for index, row in delfland["peilgebied"].iterrows():
+for _index, row in delfland["peilgebied"].iterrows():
     if row.code.startswith("BZM") or row.HWS_BZM:
         print("yes")
         peilgebieden_cat.append(1)
@@ -190,6 +190,6 @@ if remove_cat_2:
 # ## Write output
 
 
-for key in delfland.keys():
+for key in delfland:
     print(key)
     delfland[str(key)].to_file(f"{output_folder}/{waterschap}.gpkg", layer=str(key), driver="GPKG")

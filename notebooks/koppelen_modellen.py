@@ -1,15 +1,22 @@
 # %%
 
+import logging
 from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
 from networkx import NetworkXNoPath
+from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.settings import settings
 from shapely.geometry import LineString, Point
 from tqdm import tqdm
 
 from ribasim_nl import Model, Network
+
+logger = logging.getLogger(__name__)
+
+# reverse lookup: prefix -> authority name
+_prefix_to_authority = {v: k for k, v in waterbeheercode.items()}
 
 # Constants
 SNAP_DISTANCE = 20
@@ -17,6 +24,8 @@ MIN_LEVEL_DIFF = 0.04  # Minimum level difference for the control
 MIN_BASIN_OUTLET_DIFF = 0.5
 # Configuration
 data_dir = settings.ribasim_nl_data_dir
+couple_lhm: bool = True
+sub_models: bool = False
 
 remove_nodes = [
     3401752,  # Dokwerd NZV
@@ -259,6 +268,25 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
         # we check if coupling is overruled
         if boundary_node_id in forced_coupling:
             couple_with_basin_id = forced_coupling[boundary_node_id]
+            if couple_with_basin_id not in model.node.df.index:
+                # determine the authority that owns the missing target node
+                target_prefix = couple_with_basin_id // 10**5
+                target_authority = _prefix_to_authority.get(target_prefix)
+                included_authorities = set(model.node.df["meta_waterbeheerder"].dropna().unique())
+                if target_authority and target_authority not in included_authorities:
+                    logger.warning(
+                        "Forced coupling target %d (%s) not in model (authority not included), skipping %s.",
+                        couple_with_basin_id,
+                        target_authority,
+                        boundary_node,
+                    )
+                else:
+                    raise KeyError(
+                        f"Forced coupling target {couple_with_basin_id} not found in model, "
+                        f"but its authority '{target_authority}' is included. "
+                        f"Check forced_coupling for boundary node {boundary_node_id}."
+                    )
+                continue
         else:
             # Check whether there are very close LB from the other authority
             lb_neighbors = model.level_boundary.node.df[
@@ -393,6 +421,24 @@ def fix_basin_profiles(model: Model) -> None:
                 model.basin.profile.df.loc[(mask[mask]).index[0], "level"] = min_level - MIN_BASIN_OUTLET_DIFF
 
 
+def remove_invalid_topology_nodes(model: Model) -> None:
+    """Remove nodes with invalid flow/control topology and clean up their control references."""
+    for link_type in ["flow", "control"]:
+        invalid_topology = model.invalid_topology_at_node(link_type=link_type)
+        while not invalid_topology.empty:
+            for node_id, row in invalid_topology.iterrows():
+                logger.warning(
+                    "Invalid %s topology at node %d (%s): %s — removing node.",
+                    link_type,
+                    node_id,
+                    row["node_type"],
+                    row["exception"],
+                )
+                replace_listen_node_id(model, node_id, None)
+                model.remove_node(node_id, remove_links=True)
+            invalid_topology = model.invalid_topology_at_node(link_type=link_type)
+
+
 def save_model_and_outputs(model: Model, all_link_table: list[dict], toml_file: Path) -> None:
     """Save the model and create output files.
 
@@ -515,6 +561,12 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
         )
         return
 
+    # only merge if both nodes are controlled
+    controlled_nodes = model.link.df[model.link.df["link_type"] == "control"].to_node_id.values
+    if (from_node_ids in controlled_nodes) != (to_node_ids in controlled_nodes):
+        print(f"Cannot merge {boundary_node} => {neighbor_node}: One of the two is controlled, the other is not")
+        return
+
     # Update listen references for removed boundary nodes
     upstream_basin_id = model.upstream_node_id(from_node_ids)
     if isinstance(upstream_basin_id, pd.Series):
@@ -535,10 +587,37 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
     return merged_outlet
 
 
+def find_toml_path(model_dir: Path) -> Path:
+    tomls = list(model_dir.glob("*.toml"))
+    if len(tomls) == 0:
+        raise ValueError(f"No TOML file found at: {model_dir}")
+    elif len(tomls) > 1:
+        raise ValueError(f"User provided more than one toml-file: {len(tomls)}, remove one! {tomls}")
+    return tomls[0]
+
+
 # %% Process lhm_parts model
 
-toml_file = data_dir / "Rijkswaterstaat/modellen/lhm_parts/lhm.toml"
-model, network, basin_areas_df = initialize_models(toml_file)
-all_link_table = process_boundary_nodes(model, network, basin_areas_df)
-fix_basin_profiles(model)
-save_model_and_outputs(model, all_link_table, toml_file)
+# couple LHM
+if couple_lhm:
+    toml_file = data_dir / "Rijkswaterstaat/modellen/lhm_parts/lhm.toml"
+    model, network, basin_areas_df = initialize_models(toml_file)
+    all_link_table = process_boundary_nodes(model, network, basin_areas_df)
+    fix_basin_profiles(model)
+    remove_invalid_topology_nodes(model)
+    save_model_and_outputs(model, all_link_table, toml_file)
+
+if sub_models:
+    # couple sub-models if any
+    sub_models_dir = data_dir / "Rijkswaterstaat/modellen/lhm_sub_models"
+    for model_dir in [p for p in sub_models_dir.iterdir() if p.is_dir() and not p.name.endswith("coupled")]:
+        try:
+            toml_file = find_toml_path(model_dir)
+        except ValueError:
+            print(f"Not exactly one TOML in {model_dir}, skipping.")
+            continue
+        model, network, basin_areas_df = initialize_models(toml_file)
+        all_link_table = process_boundary_nodes(model, network, basin_areas_df)
+        fix_basin_profiles(model)
+        remove_invalid_topology_nodes(model)
+        save_model_and_outputs(model, all_link_table, toml_file)

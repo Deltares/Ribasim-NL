@@ -67,9 +67,9 @@ def add_demand(
     line = network.get_line(network_from_id, network_to_id)
 
     # Extend to demand_node
-    if not line.coords[-1] == inlet_geometry.coords:
+    if line.coords[-1] != inlet_geometry.coords:
         line = LineString(list(line.coords) + list(inlet_geometry.coords))
-    if not line.coords[-1] == geometry.coords:
+    if line.coords[-1] != geometry.coords:
         line = LineString(list(line.coords) + list(geometry.coords))
 
     # Link from inlet_basin to demand_node
@@ -101,9 +101,9 @@ def add_demand(
         line = network.get_line(network_from_id, network_to_id)
 
         # Extend to demand_node
-        if not line.coords[0] == outlet_geometry.coords:
+        if line.coords[0] != outlet_geometry.coords:
             line = LineString(list(outlet_geometry.coords) + list(line.coords))
-        if not line.coords[0] == geometry.coords:
+        if line.coords[0] != geometry.coords:
             line = LineString(list(geometry.coords) + list(line.coords))
 
         # Link from demand_node to outlet_basin

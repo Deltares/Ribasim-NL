@@ -1,4 +1,4 @@
-import pathlib
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -484,7 +484,7 @@ def plot_guessed_max_flow_rate_per_iteration(from_to_node_function_table, node_i
 # paths and parameters
 ribasim_model_path = r"D:\Users\Bruijns\Documents\PR4750_30\Delfland_parameterized_2026_3_0\ribasim.toml"
 ribasim_scaling_path = r"D:\Users\Bruijns\Documents\PR4750_30\Delfland_scaling_test\ribasim.toml"
-results_path = pathlib.Path(ribasim_scaling_path).parent / "results" / "basin.arrow"
+results_path = Path(ribasim_scaling_path).parent / "results" / "basin.arrow"
 max_iterations = 12
 initial_guess_flow_rate_outlet = 0.1  # m3/s, will be updated iteratively
 initial_guess_flow_rate_pump = 10.0  # m3/s, will be updated iteratively. Set higher than outlet to force flow through pumps when both are available, as water is primarily pumped away to the boezem instead of passing it to other basins.
@@ -719,12 +719,10 @@ print("Done")
 # Inspect results.
 supply_nodes = from_to_node_function_table.loc[from_to_node_function_table.function == "supply"]
 
-count = 0
-for supply_node_id in supply_nodes.node_id:
+for count, supply_node_id in enumerate(supply_nodes.node_id, start=1):
     plot_guessed_max_flow_rate_per_iteration(
         from_to_node_function_table=from_to_node_function_table, node_id=supply_node_id
     )
-    count += 1
     if count >= 20:
         break
 
@@ -732,9 +730,6 @@ node_id_to_plot = 201
 plot_guessed_max_flow_rate_per_iteration(
     from_to_node_function_table=from_to_node_function_table, node_id=node_id_to_plot
 )
-
-from_to_node_function_table.loc[from_to_node_function_table.node_id == node_id_to_plot]
-ribasim_model.basin.time.df
 
 from_to_node_function_table.to_csv(
     r"D:\Users\Bruijns\Documents\PR4750_30\Delfland_scaling_test\from_to_node_function_table.csv", index=False

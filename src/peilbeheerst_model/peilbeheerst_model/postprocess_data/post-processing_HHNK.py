@@ -111,7 +111,7 @@ peilgebieden_cat = []
 # code_list = ["dummy_code_5188","dummy_code_5161","dummy_code_5210","dummy_code_4352","dummy_code_5164","dummy_code_5200","dummy_code_5167","dummy_code_37"]
 
 
-for index, row in HHNK["peilgebied"].iterrows():
+for _index, row in HHNK["peilgebied"].iterrows():
     if row.HWS_BZM:
         print("yes")
         peilgebieden_cat.append(1)
@@ -206,7 +206,7 @@ if remove_cat_2:
 # ## Write output
 
 
-for key in HHNK.keys():
+for key in HHNK:
     print(key)
     HHNK[str(key)].to_file(f"{output_folder}/{waterschap2}.gpkg", layer=str(key), driver="GPKG")
 

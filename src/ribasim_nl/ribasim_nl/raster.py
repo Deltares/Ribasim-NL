@@ -122,7 +122,7 @@ def sample_elevation_distance(raster_path: Path, line: LineString) -> gpd.GeoDat
     with rasterio.open(raster_path) as src:
         sample_dist = abs(src.res[0])
         gdf = line_to_samples(line, sample_dist)
-        coords = zip(gdf["geometry"].x, gdf["geometry"].y)
+        coords = zip(gdf["geometry"].x, gdf["geometry"].y, strict=True)
         gdf["elevation"] = [i[0] for i in src.sample(coords)]
 
         gdf = gdf[gdf.elevation != src.nodata]

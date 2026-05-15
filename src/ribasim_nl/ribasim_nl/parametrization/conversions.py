@@ -46,10 +46,10 @@ def round_to_precision(number: float, precision: float | int) -> float:
 
     dec_number = Decimal(str(number))
     if precision == 0:
-        rounded = dec_number.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+        rounded = dec_number.quantize(Decimal(1), rounding=ROUND_HALF_UP)
     else:
         dec_precision = Decimal(str(precision))
-        rounded = (dec_number / dec_precision).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * dec_precision
+        rounded = (dec_number / dec_precision).quantize(Decimal(1), rounding=ROUND_HALF_UP) * dec_precision
 
     return float(rounded)
 

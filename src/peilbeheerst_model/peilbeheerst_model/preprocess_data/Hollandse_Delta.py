@@ -1,5 +1,5 @@
 # import packages and functions
-import os
+from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -144,8 +144,6 @@ peilgebieden.plot()
 
 
 # Check if the directory exists
-if not os.path.exists(output_gpkg_path):
-    # If it doesn't exist, create it
-    os.makedirs(output_gpkg_path)
+Path(output_gpkg_path).mkdir(parents=True, exist_ok=True)
 
 store_data(waterschap=HD, output_gpkg_path=output_gpkg_path + "/HD")

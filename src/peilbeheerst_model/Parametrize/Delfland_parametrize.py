@@ -1,10 +1,10 @@
 """Parametrisation of water board: Delfland."""
 
 import datetime
-import os
 import warnings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
+import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
@@ -20,6 +20,7 @@ from ribasim_nl.control import (
     set_node_functions,
 )
 from ribasim_nl.profiles import implement
+from ribasim_nl.split_basins import NodeMetaCache, SplitBasins
 from shapely import Point
 
 from peilbeheerst_model import supply
@@ -61,6 +62,10 @@ aanvoer_path = cloud.joinpath(
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 
+splitted_basin_2_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_2.gpkg")
+splitted_basin_9_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_9.gpkg")
+splitted_basin_10_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_10.gpkg")
+
 cloud.synchronize(
     filepaths=[
         ribasim_base_model_dir,
@@ -71,43 +76,36 @@ cloud.synchronize(
         aanvoer_path,
         meteo_path,
         profiles_path,
+        splitted_basin_2_path,
+        splitted_basin_9_path,
+        splitted_basin_10_path,
     ]
 )
 
-# # refresh only the feedback form from cloud (instead of all "verwerkt" files)
+# refresh only the feedback form from cloud (instead of all "verwerkt" files)
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
-# set paths to the TEMP working directory
-work_dir = cloud.joinpath(waterschap, "verwerkt/Work_dir", f"{waterschap}_parameterized")
-ribasim_gpkg = work_dir.joinpath("database.gpkg")
+work_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_parameterized")
+work_dir.mkdir(parents=True, exist_ok=True)
+
 ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 
 # set path to base model toml
 ribasim_base_model_toml = ribasim_base_model_dir.joinpath("ribasim.toml")
 
-# create work_dir/parameterized
-parameterized = os.path.join(work_dir, f"{waterschap}_parameterized/")
-os.makedirs(parameterized, exist_ok=True)
-
 # define variables and model
-# basin area percentage
-# regular_percentage = 10
-# boezem_percentage = 90
 unknown_streefpeil = (
     0.00012345  # we need a streefpeil to create the profiles, Q(h)-relations, and af- and aanslag peil for pumps
 )
 
 # forcing settings
 starttime = datetime.datetime(2017, 1, 1)
-endtime = datetime.datetime(2018, 1, 1)
+endtime = datetime.datetime(2020, 1, 1)
 saveat = 3600 * 24
 timestep_size = "d"
 timesteps = 2
 delta_crest_level = 0.1  # delta waterlevel of boezem compared to streefpeil till no water can flow through an outlet
-if AANVOER_CONDITIONS:
-    default_level = 0.42
-else:
-    default_level = -0.42
+default_level = 0.42 if AANVOER_CONDITIONS else -0.42
 
 # process the feedback form
 name = "HKV"
@@ -228,36 +226,48 @@ ribasim_param.validate_basin_area(ribasim_model)
 # check streefpeilen at manning nodes
 ribasim_param.validate_manning_basins(ribasim_model)
 
-# insert standard profiles to each basin. These are [depth_profiles] meter deep, defined from the streefpeil
-# ribasim_param.insert_standard_profile(
-#     ribasim_model,
-#     unknown_streefpeil=unknown_streefpeil,
-#     regular_percentage=regular_percentage,
-#     boezem_percentage=boezem_percentage,
-#     depth_profile=2,
-# )
-# add_storage_basins = AddStorageBasins(
-#     ribasim_model=ribasim_model, exclude_hoofdwater=True, additional_basins_to_exclude=[]
-# )
-# add_storage_basins.create_bergende_basins()
+# convert all boundary nodes to LevelBoundaries
+ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
+ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
 
+# add outlet
+ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
+
+ribasim_param.clean_tables(ribasim_model, waterschap)
+
+# split large basins: "boezems"
+node_cache = NodeMetaCache(ribasim_model)
+for splitted_basin_path, basin_id in zip(
+    [splitted_basin_2_path, splitted_basin_9_path, splitted_basin_10_path], [2, 9, 10], strict=True
+):
+    # split basins to improve model convergence
+    splitter = SplitBasins(
+        model=ribasim_model, splitted_basin_path=splitted_basin_path, basin_node_id_to_split=basin_id
+    )
+    ribasim_model = splitter.run()
+
+node_cache.set_meta_category(ribasim_model)
+ribasim_model.write(ribasim_work_dir_model_toml)
+del node_cache
+
+# set basin profiles
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud)  # , min_area=100
 
 # set forcing
 if DYNAMIC_CONDITIONS:
-    # Add dynamic meteo
+    # Add dynamic meteo and groundwater from LHM zarr
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink")
+    cloud.synchronize(filepaths=[lhm_budget_path], overwrite=False)
+    budgets = xr.open_zarr(str(lhm_budget_path)).sel(time=slice(starttime, endtime))
+    offline_budgets = AssignOfflineBudgets(budgets)
+
     forcing = SetDynamicForcing(
         model=ribasim_model,
-        cloud=cloud,
+        budgets=budgets,
         startdate=starttime,
         enddate=endtime,
     )
-
     ribasim_model = forcing.add()
-
-    # Add dynamic groundwater
-    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
-    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
     offline_budgets.compute_budgets(ribasim_model)
 
 elif MIXED_CONDITIONS:
@@ -275,10 +285,6 @@ else:
     }
     ribasim_param.set_static_forcing(timesteps, timestep_size, starttime, forcing_dict, ribasim_model)
 
-# convert all boundary nodes to LevelBoundaries
-ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
-ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
-
 # add the default levels
 if MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_level_boundaries(
@@ -286,9 +292,6 @@ if MIXED_CONDITIONS:
     )
 else:
     ribasim_model.level_boundary.static.df["level"] = default_level
-
-# add outlet
-ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
 # add control, based on the meta_categorie
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
@@ -308,12 +311,11 @@ ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOE
 # ribasim_param.add_continuous_control(ribasim_model, dy=-50)
 
 ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
-
 from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
 from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_model, from_to_node_table)
 from_to_node_function_table["demand"] = None
 # manual adjustments to control settings
-to_supply = 167, 371, 239, 223, 306, 525, 377, 150, 224, 468, 163, 201, 475
+to_supply = 167, 371, 239, 223, 258, 306, 525, 377, 150, 224, 468, 163, 201, 475
 set_node_functions(from_to_node_function_table, to_supply=to_supply)
 
 outlet_copy = ribasim_model.outlet.static.df[
@@ -426,8 +428,7 @@ ribasim_model.pump.static.df.loc[
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
-mr_null_geom = ribasim_model.manning_resistance.node.df[ribasim_model.manning_resistance.node.df.geometry.isna()].index
-ribasim_model.node.df = ribasim_model.node.df.drop(mr_null_geom)
+ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
 # lower the difference in waterlevel for each manning node
 ribasim_model.manning_resistance.static.df["length"] = 100.0
 ribasim_model.manning_resistance.static.df["manning_n"] = 0.01
@@ -485,15 +486,9 @@ ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
 run_ribasim(ribasim_work_dir_model_toml, ribasim_home=settings.ribasim_home)
+ribasim_model.update_state()
+ribasim_model.basin.state.write()
 
 # model performance
 controle_output = Control(work_dir=work_dir, qlr_path=qlr_path)
 indicators = controle_output.run_dynamic_forcing() if MIXED_CONDITIONS else controle_output.run_all()
-
-# write model
-ribasim_param.write_ribasim_model_GoodCloud(
-    ribasim_model=ribasim_model,
-    work_dir=work_dir,
-    waterschap=waterschap,
-    include_results=True,
-)

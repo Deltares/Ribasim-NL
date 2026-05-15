@@ -192,10 +192,7 @@ for node_id in node_ids:
     peilgebieden_select_df = peilgebieden_rd_df[peilgebieden_rd_df.contains(containing_point)]
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
-        if peilgebied["GPGZMRPL"] != 0 and peilgebied["GPGZMRPL"] < 30:
-            level = peilgebied["GPGZMRPL"]
-        else:
-            level = None
+        level = peilgebied["GPGZMRPL"] if peilgebied["GPGZMRPL"] != 0 and peilgebied["GPGZMRPL"] < 30 else None
     else:
         level = None
     levels += [level]

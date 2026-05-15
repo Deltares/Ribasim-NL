@@ -1,6 +1,6 @@
 # %% import modules
-import os
 from datetime import timedelta
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -144,8 +144,6 @@ model = Model.read(ribasim_toml)
 start_time = model.starttime + timedelta(days=40)
 end_time = model.endtime
 
-ribasim_model_dir
-
 plots_dir.mkdir(exist_ok=True)
 
 flow_df = xr.open_dataset(ribasim_toml.parent / "results" / "flow.nc").to_dataframe().reset_index().set_index("time")
@@ -165,7 +163,7 @@ meting_df = meting_df.resample("D").mean()
 
 for k, v in CONFIG.items():
     name = k
-    if "link_id" in v.keys():
+    if "link_id" in v:
         Q_meting = meting_df["Debiet"]["(m3/s)"][name]
         Q_meting.columns = ["meting"]
         Q_berekening = flow_df[flow_df["link_id"] == v["link_id"]][["flow_rate"]].rename(
@@ -176,7 +174,7 @@ for k, v in CONFIG.items():
         fig = plot.get_figure()
         fig.savefig(plots_dir / f"{name}_m3_s.png")
 
-    if "node_id" in v.keys():
+    if "node_id" in v:
         H_meting = meting_df["Waterstand"]["(m) "][name]
         H_meting.columns = ["meting"]
         H_berekening = basin_df[basin_df["node_id"] == v["node_id"]][["level"]].rename(columns={"level": "berekend"})
@@ -247,8 +245,8 @@ print(df)
 cloud = CloudStorage()
 
 # Create output directory for temporary storage of plots
-output_dir = "plots"
-os.makedirs(output_dir, exist_ok=True)
+output_dir = Path("plots")
+output_dir.mkdir(parents=True, exist_ok=True)
 
 # Plot data for each MEETPUNT_IDENTIFICATIE
 for monster_id, group in grouped:
@@ -263,7 +261,7 @@ for monster_id, group in grouped:
     plt.grid(True)
 
     # Save plot as PNG
-    plot_file_path = os.path.join(output_dir, f"{monster_id}.png")
+    plot_file_path = output_dir / f"{monster_id}.png"
     plt.savefig(plot_file_path)
     plt.close()
 
@@ -288,7 +286,7 @@ request = {
 }
 
 # Send the POST request
-resp = requests.post(collect_catalogus, json=request)
+resp = requests.post(collect_catalogus, json=request, timeout=300)
 elements = resp.json()
 
 
