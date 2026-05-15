@@ -87,8 +87,16 @@ bc_time_df = pd.concat([lobith_df, monsin_df])
 
 model.flow_boundary.time = flow_boundary.Time(**bc_time_df.to_dict(orient="list"))
 
-model.starttime = max(eijsden_series.index.min(), lobith_series.index.min())
-model.endtime = min(eijsden_series.index.max(), lobith_series.index.max())
+start_time = max(lobith_series.index.min(), monsin_series.index.min())
+end_time = min(lobith_series.index.max(), monsin_series.index.max())
+
+# update model start and end time in right order
+if start_time < model.endtime:
+    model.starttime = start_time
+    model.endtime = end_time
+else:
+    model.endtime = end_time
+    model.starttime = start_time
 
 # remove fixed values from static
 model.flow_boundary.static.df = model.flow_boundary.static.df[
