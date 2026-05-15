@@ -104,6 +104,8 @@ Several settings need to be configured via environment variables, managed by [py
 | `ribasim_nl_cloud_pass` | `RIBASIM_NL_CLOUD_PASS` | Password for [cloud storage](/cloudstorage.qmd) access |
 | `ribasim_nl_data_dir` | `RIBASIM_NL_DATA_DIR` | Local directory for data files |
 | `overwrite_files_from_cloud` | `OVERWRITE_FILES_FROM_CLOUD` | Whether cloud downloads overwrite local files |
+| `minio_access_key` | `MINIO_ACCESS_KEY` | Access key for MinIO storage |
+| `minio_secret_key` | `MINIO_SECRET_KEY` | Secret key for MinIO storage |
 
 In the root of the repository is a `.env.default` file with the defaults that can serve as a template.
 Copy it to `.env` and fill in `RIBASIM_NL_CLOUD_PASS` with the actual password, and adjust the other paths as needed.
