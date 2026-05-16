@@ -45,16 +45,17 @@ remove_nodes = [
 # force LevelBoundary node_id to Basin node_id, overriding the automatic coupling
 forced_coupling = {
     3400005: 5901608,
-    3400007: 200184,  # Gaarkeuken naar juiste kanaalpand
-    3400012: 200184,  # Gaarkeuken naar juiste kanaalpand
-    3400004: 200184,  # Gaarkeuken naar juiste kanaalpand
-    210884: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
-    213460: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
-    203848: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
-    203812: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
-    211639: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
     203787: 200184,  # ivm ontbreken Grootegaster tocht bij NZV
     203804: 200184,  # ivm ontbreken Grootegaster tocht bij NZV
+    5900028: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900029: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900030: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900031: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900032: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900033: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900034: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900096: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900097: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
 }
 
 
