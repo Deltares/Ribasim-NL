@@ -50,6 +50,14 @@ for node_id in remove_nodes:
 
 model.merge_basins(node_id=1908, to_node_id=1372, are_connected=True)
 model.merge_basins(node_id=1763, to_node_id=1381, are_connected=False)
+model.reverse_direction_at_node(node_id=871)  # inlaat stond verkeerde kant op
+model.reverse_direction_at_node(node_id=691)  # inlaat stond verkeerde kant op
+model.update_node(
+    node_id=166, node_type="ManningResistance"
+)  # Grote Slapersluis; hier wordt ook water ingelaten; hopelijk lukt dit met ManningResistance
+model.update_node(node_id=632, node_type="Pump")  # Inlaat Vestdijklaan lijkt een pomp(je) te zijn
+model.update_node(node_id=1111, node_type="Outlet")  # Manning tussen basins met verschillende streefpeilen gaat niet
+model.update_node(node_id=854, node_type="Pump")  # Inlaat Vestdijklaan lijkt een pomp(je) te zijn
 
 # alle uitlaten en inlaten op 30m3/s, geen cap verdeling. Dit wordt de max flow in model.
 # En als flow_rate niet bekend is de flow
@@ -108,11 +116,15 @@ drain_nodes = [
     792,
     892,
     1046,
+    79,
+    297,
+    30,
+    447,
 ]
 # user-defined supply_nodes
 supply_nodes = [20, 62, 70, 107, 573, 972]
 # user-defined flow_control_nodes
-flow_control_nodes = [182, 330, 573, 634]
+flow_control_nodes = [182, 330, 573, 634, 165, 505, 1017, 1111]
 
 
 # markeer inlaten
@@ -157,6 +169,34 @@ node_functions_df = add_controllers_to_supply_area(
     is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
     control_node_types=CONTROL_NODE_TYPES,
 )
+
+
+# %%
+# Borgerzijtak
+
+polygon = aanvoergebieden_df.loc[["Borgerzijtak"], "geometry"].union_all().buffer(1).buffer(-1)
+# links die intersecten die we kunnen negeren
+# link_id: beschrijving
+ignore_intersecting_links: list[int] = [2719]
+# 2453: Sifon onder Winschoterdiep
+
+# doorspoeling (op uitlaten)
+flushing_nodes = {}
+
+# toevoegen sturing
+node_functions_df = add_controllers_to_supply_area(
+    model=model,
+    polygon=polygon,
+    exclude_nodes=EXCLUDE_NODES,
+    ignore_intersecting_links=ignore_intersecting_links,
+    drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
+    flow_control_nodes=flow_control_nodes,
+    supply_nodes=supply_nodes,
+    is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
+    control_node_types=CONTROL_NODE_TYPES,
+)
+
 
 # %%
 # Oldambt
