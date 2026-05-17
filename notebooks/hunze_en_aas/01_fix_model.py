@@ -8,6 +8,7 @@ from ribasim.nodes import basin, level_boundary, outlet, tabulated_rating_curve
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
+from shapely.geometry import Point
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -215,6 +216,14 @@ model.node.df.loc[basin_node_ids, "meta_gestuwd"] = True
 downstream_node_ids = pd.Series([model.downstream_node_id(i) for i in basin_node_ids]).explode().to_numpy()
 model.node.df.loc[model.outlet.node.df.index.intersection(downstream_node_ids), "meta_gestuwd"] = True
 
+# N.a.v. overleg 22-04-2026
+model.add_and_connect_node(
+    from_basin_id=1954,
+    to_basin_id=1938,
+    node_type="Outlet",
+    geometry=Point(260556, 577871),
+    meta_code_waterbeheerder="Scheemder Verlaat",
+)  # dit is een inlaat van 0.3 m3/s
 
 sanitize_node_table(
     model,

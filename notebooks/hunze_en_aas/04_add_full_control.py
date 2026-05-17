@@ -1,201 +1,468 @@
 # %%
-
-import inspect
-
 import geopandas as gpd
-import pandas as pd
 from peilbeheerst_model.controle_output import Control
-from ribasim_nl.from_to_nodes_and_levels import add_from_to_nodes_and_levels
+from ribasim_nl.control import add_controllers_to_supply_area, add_controllers_to_uncontrolled_connector_nodes
+
+# from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 
-from peilbeheerst_model import ribasim_parametrization
-from ribasim_nl import CloudStorage, Model, check_basin_level
+from ribasim_nl import CloudStorage, Model
 
-# execute model run
-MODEL_EXEC: bool = False
+# %%
+# Globale settings
 
-# model settings
-AUTHORITY: str = "HunzeenAas"
-SHORT_NAME: str = "hea"
-MODEL_ID: str = "2025_7_0"
+MODEL_EXEC: bool = True  # execute model run
+AUTHORITY: str = "HunzeenAas"  # authority
+SHORT_NAME: str = "hea"  # short_name used in toml-file
+CONTROL_NODE_TYPES = ["Outlet", "Pump"]
+IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 
-# connect with the GoodCloud
+# Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
+EXCLUDE_NODES = {
+    152,  # Dorkswerdersluis (Scheepvaart)
+    161,  # Bulsterverlaat (Scheepvaart)
+    174,  # Koppelsluis (Scheepvaart)
+    183,  # Haansluis (scheepvaart)
+    156,  # Vriescheloostersluis (Veelerveen)
+}
+
+# %%
+# Definieren paden en syncen met cloud
 cloud = CloudStorage()
-
-# collect relevant data from the GoodCloud
-ribasim_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
-ribasim_toml = ribasim_dir / f"{SHORT_NAME}.toml"
+ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
+ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
-aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt/4_ribasim/areas.gpkg")
-
-model_edits_aanvoer_gpkg = cloud.joinpath(AUTHORITY, "verwerkt/model_edits_aanvoer.gpkg")
-
-cloud.synchronize(filepaths=[aanvoer_path, model_edits_aanvoer_gpkg, qlr_path])
-
-# read model
-model = Model.read(ribasim_toml)
-original_model = model.model_copy(deep=True)
-aanvoergebieden_df = gpd.read_file(aanvoer_path, layer="supply_areas")
-aanvoergebieden_df_dissolved = aanvoergebieden_df.dissolve()
-update_basin_static(model=model, evaporation_mm_per_day=1)
-
-# alle niet-gecontrolleerde basins krijgen een meta_streefpeil uit de final state van de parameterize_model.py
-update_levels = model.basin_outstate.df.set_index("node_id")["level"]
-basin_ids = model.basin.node.df[model.basin.node.df["meta_gestuwd"] == "False"].index
-mask = model.basin.area.df["node_id"].isin(basin_ids)
-model.basin.area.df.loc[mask, "meta_streefpeil"] = model.basin.area.df[mask]["node_id"].apply(
-    lambda x: update_levels[x]
-)
-add_from_to_nodes_and_levels(model)
-
-# re-parameterize
-ribasim_parametrization.set_aanvoer_flags(model, aanvoergebieden_df_dissolved, overruling_enabled=True)
-ribasim_parametrization.determine_min_upstream_max_downstream_levels(
-    model,
-    AUTHORITY,
-    aanvoer_upstream_offset=0.02,
-    aanvoer_downstream_offset=0.0,
-    afvoer_upstream_offset=0.02,
-    afvoer_downstream_offset=0.0,
-)
-check_basin_level.add_check_basin_level(model=model)
-
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
-mask = model.outlet.static.df["meta_aanvoer"] == 0
-model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
-model.outlet.static.df.flow_rate = 100.0
-model.pump.static.df.flow_rate = 100.0
-model.outlet.static.df.max_flow_rate = original_model.outlet.static.df.max_flow_rate
-model.pump.static.df.max_flow_rate = original_model.pump.static.df.max_flow_rate
-
-# Area basin 1516 niet OK, te klein, model instabiel
-model.explode_basin_area()
-actions = gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()
-for action in actions:
-    print(action)
-    # get method and args
-    method = getattr(model, action)
-    keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_aanvoer_gpkg, layer=action, fid_as_index=True)
-    if "order" in df.columns:
-        df.sort_values("order", inplace=True)
-    for row in df.itertuples():
-        # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
-        method(**kwargs)
+aanvoergebieden_gpkg = cloud.joinpath(rf"{AUTHORITY}/verwerkt/sturing/aanvoergebieden.gpkg")
+# cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
 
 
 # %%
-def set_values(df, node_ids, values: dict):
-    """Hulpfunctie om meerdere kolommen tegelijk te updaten voor bepaalde node_ids."""
-    mask = df["node_id"].isin(node_ids)
-    for col, val in values.items():
-        df.loc[mask, col] = val
+# Read data
+model = Model.read(ribasim_toml)
+
+# fixes (zo snel mogelijk)
+remove_nodes = [152, 534, 678]
+# 152: Dorkwerdersluis (scheepvaart)
+# 534: Vispassage "de Bult"
+# 678: Koker bij gemaal westerpolder
+for node_id in remove_nodes:
+    model.remove_node(node_id=node_id, remove_links=True)
+
+model.merge_basins(node_id=1908, to_node_id=1372, are_connected=True)
+model.merge_basins(node_id=1763, to_node_id=1381, are_connected=False)
+model.reverse_direction_at_node(node_id=871)  # inlaat stond verkeerde kant op
+model.reverse_direction_at_node(node_id=691)  # inlaat stond verkeerde kant op
+model.update_node(
+    node_id=166, node_type="ManningResistance"
+)  # Grote Slapersluis; hier wordt ook water ingelaten; hopelijk lukt dit met ManningResistance
+model.update_node(node_id=632, node_type="Pump")  # Inlaat Vestdijklaan lijkt een pomp(je) te zijn
+model.update_node(node_id=1111, node_type="Outlet")  # Manning tussen basins met verschillende streefpeilen gaat niet
+model.update_node(node_id=854, node_type="Pump")  # Inlaat Vestdijklaan lijkt een pomp(je) te zijn
+
+# alle uitlaten en inlaten op 30m3/s, geen cap verdeling. Dit wordt de max flow in model.
+# En als flow_rate niet bekend is de flow
+model.outlet.static.df.max_flow_rate = 30.0
+model.outlet.static.df.flow_rate = 30.0
+model.pump.static.df.flow_rate = 50.0
+model.pump.static.df.max_flow_rate = 50.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0.0
+model.pump.static.df.loc[model.pump.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0.0
 
 
-# === 1. Bepaal upstream/downstream connection nodes ===
-upstream_outlet_nodes = model.upstream_connection_node_ids(node_type="Outlet")
-downstream_outlet_nodes = model.downstream_connection_node_ids(node_type="Outlet")
-upstream_pump_nodes = model.upstream_connection_node_ids(node_type="Pump")
-downstream_pump_nodes = model.downstream_connection_node_ids(node_type="Pump")
-
-# === 2. Zet waardes voor upstream nodes ===
-set_values(
-    model.outlet.static.df,
-    upstream_outlet_nodes,
-    {
-        "flow_rate": 10,
-        "max_flow_rate": 10,
-        "min_upstream_level": pd.NA,
-    },
+# capaciteit inlaten/doorlaten
+model.pump.static.df.loc[model.pump.static.df.node_id == 20, "flow_rate"] = 20  # Aanvoergemaal Dorkwerd
+model.pump.static.df.loc[model.pump.static.df.node_id == 972, "flow_rate"] = 7.5  # Aanvoergemaal Küpers
+model.pump.static.df.loc[model.pump.static.df.node_id == 70, "flow_rate"] = 4.2  # Aanvoergemaal Vennix
+model.pump.static.df.loc[model.pump.static.df.node_id == 107, "flow_rate"] = 1.92  # Aanvoergemaal Ter Apelkanaal
+model.pump.static.df.loc[model.pump.static.df.node_id == 330, "flow_rate"] = (
+    7.5  # De Bult (Afvoer-capaciteit gelijk aan Küpers!)
 )
-set_values(
-    model.pump.static.df,
-    upstream_pump_nodes,
-    {
-        "flow_rate": 10,
-        "max_flow_rate": 10,
-        "min_upstream_level": pd.NA,
-    },
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 767, "flow_rate"] = 3.6  # Inlaat Purit
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 2014, "flow_rate"] = 0.3  # Inlaat Verl. Hoogeveense Vaart
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 2011, "flow_rate"] = 0.3  # Inlaat Verl. Hoogeveense Vaart
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 847, "flow_rate"] = 0.3  # Inlaat Barriereweg
+
+model.node.df[IS_SUPPLY_NODE_COLUMN] = False
+mask = model.node.df["meta_code_waterbeheerder"].str.contains("KIN-", case=False, na=False)
+model.node.df.loc[mask, IS_SUPPLY_NODE_COLUMN] = True
+
+# user-defined drain_nodes
+drain_nodes = [
+    59,
+    62,
+    80,
+    88,
+    99,
+    133,
+    135,
+    196,
+    206,
+    231,
+    233,
+    250,
+    256,
+    285,
+    316,
+    321,
+    325,
+    352,
+    369,
+    425,
+    431,
+    507,
+    514,
+    524,
+    558,
+    792,
+    892,
+    1046,
+    79,
+    297,
+    30,
+    447,
+]
+# user-defined supply_nodes
+supply_nodes = [20, 62, 70, 107, 573, 972]
+# user-defined flow_control_nodes
+flow_control_nodes = [182, 330, 573, 634, 165, 505, 1017, 1111]
+
+
+# markeer inlaten
+model.node.df[IS_SUPPLY_NODE_COLUMN] = False
+mask = model.node.df["meta_code_waterbeheerder"].str.contains("KIN-", case=False, na=False)
+model.node.df.loc[mask, IS_SUPPLY_NODE_COLUMN] = True
+model.node.df.loc[drain_nodes + flow_control_nodes, IS_SUPPLY_NODE_COLUMN] = False
+
+# %%
+aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True)
+conflicting_node_ids = aanvoergebieden_df.groupby("node_id")["aanvoergebied"].nunique()
+conflicting_node_ids = conflicting_node_ids[conflicting_node_ids > 1].index
+if len(conflicting_node_ids) > 0:
+    conflicts = aanvoergebieden_df.loc[
+        aanvoergebieden_df["node_id"].isin(conflicting_node_ids), ["node_id", "aanvoergebied"]
+    ].sort_values(["node_id", "aanvoergebied"])
+    raise ValueError(f"node_id values linked to multiple aanvoergebieden found:\n{conflicts.to_string(index=True)}")
+aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
+
+
+# %%
+# Hoogeveense Vaart
+
+polygon = aanvoergebieden_df.loc[["Verl. Hoogeveense Vaart"], "geometry"].union_all().buffer(1).buffer(-1)
+# links die intersecten die we kunnen negeren
+# link_id: beschrijving
+ignore_intersecting_links: list[int] = []
+
+# doorspoeling (op uitlaten)
+flushing_nodes = {}
+
+# toevoegen sturing
+node_functions_df = add_controllers_to_supply_area(
+    model=model,
+    polygon=polygon,
+    exclude_nodes=EXCLUDE_NODES,
+    ignore_intersecting_links=ignore_intersecting_links,
+    drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
+    flow_control_nodes=flow_control_nodes,
+    supply_nodes=supply_nodes,
+    is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
+    control_node_types=CONTROL_NODE_TYPES,
 )
 
-# === 3. Zet waardes voor downstream nodes ===
-set_values(
-    model.outlet.static.df,
-    downstream_outlet_nodes,
-    {
-        "max_downstream_level": pd.NA,
-    },
+
+# %%
+# Borgerzijtak
+
+polygon = aanvoergebieden_df.loc[["Borgerzijtak"], "geometry"].union_all().buffer(1).buffer(-1)
+# links die intersecten die we kunnen negeren
+# link_id: beschrijving
+ignore_intersecting_links: list[int] = [2719]
+# 2453: Sifon onder Winschoterdiep
+
+# doorspoeling (op uitlaten)
+flushing_nodes = {}
+
+# toevoegen sturing
+node_functions_df = add_controllers_to_supply_area(
+    model=model,
+    polygon=polygon,
+    exclude_nodes=EXCLUDE_NODES,
+    ignore_intersecting_links=ignore_intersecting_links,
+    drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
+    flow_control_nodes=flow_control_nodes,
+    supply_nodes=supply_nodes,
+    is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
+    control_node_types=CONTROL_NODE_TYPES,
 )
-set_values(
-    model.pump.static.df,
-    downstream_pump_nodes,
-    {
-        "max_downstream_level": pd.NA,
-    },
+
+
+# %%
+# Oldambt
+
+polygon = aanvoergebieden_df.loc[["Oldambt"], "geometry"].union_all().buffer(1).buffer(-1)
+# links die intersecten die we kunnen negeren
+# link_id: beschrijving
+ignore_intersecting_links: list[int] = [2453]
+# 2453: Sifon onder Winschoterdiep
+
+# doorspoeling (op uitlaten)
+flushing_nodes = {}
+
+# toevoegen sturing
+node_functions_df = add_controllers_to_supply_area(
+    model=model,
+    polygon=polygon,
+    exclude_nodes=EXCLUDE_NODES,
+    ignore_intersecting_links=ignore_intersecting_links,
+    drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
+    flow_control_nodes=flow_control_nodes,
+    supply_nodes=supply_nodes,
+    is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
+    control_node_types=CONTROL_NODE_TYPES,
 )
 
-# === 2b. Verhoog mmin_upstream_level met offset voor downstream Outlets
-mask = model.outlet.static.df["node_id"].isin(downstream_outlet_nodes)
-model.outlet.static.df.loc[mask, "min_upstream_level"] = model.outlet.static.df.loc[mask, "min_upstream_level"] + 0.02
-model.pump.static.df["max_downstream_level"] = model.pump.static.df["max_downstream_level"] - 0.02
+# %%
+# TAK
 
-# === 4. Zet max/min levels op NA voor niet-gestuwde, niet-verbonden outlets ===
-# non_control_nodes = model.outlet.node.df.query("meta_gestuwd == 'False'").index
-# excluded_nodes = set(upstream_outlet_nodes) | set(downstream_outlet_nodes)
+polygon = aanvoergebieden_df.loc[["TAK"], "geometry"].union_all().buffer(1).buffer(-1)
+# links die intersecten die we kunnen negeren
+# link_id: beschrijving
+ignore_intersecting_links: list[int] = [3650]
+# 3650: Sifon onder Ter Apelkanaal
 
-# model.outlet.static.df.loc[
-#    model.outlet.static.df["node_id"].isin(non_control_nodes) & ~model.outlet.static.df["node_id"].isin(excluded_nodes),
-#    ["max_downstream_level", "min_upstream_level"],
-# ] = pd.NA
+# doorspoeling (op uitlaten)
+flushing_nodes = {}
+
+# toevoegen sturing
+node_functions_df = add_controllers_to_supply_area(
+    model=model,
+    polygon=polygon,
+    exclude_nodes=EXCLUDE_NODES,
+    ignore_intersecting_links=ignore_intersecting_links,
+    drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
+    flow_control_nodes=flow_control_nodes,
+    supply_nodes=supply_nodes,
+    is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
+    control_node_types=CONTROL_NODE_TYPES,
+)
+
+# %%
+# Fiemel/Westerwolde
+
+polygon = aanvoergebieden_df.loc[["Fiemel/Westerwolde"], "geometry"].union_all().buffer(1).buffer(-1)
+# links die intersecten die we kunnen negeren
+# link_id: beschrijving
+ignore_intersecting_links: list[int] = []
+# 3650: Sifon onder Ter Apelkanaal
+
+# doorspoeling (op uitlaten)
+flushing_nodes = {}
+
+# toevoegen sturing
+node_functions_df = add_controllers_to_supply_area(
+    model=model,
+    polygon=polygon,
+    exclude_nodes=EXCLUDE_NODES,
+    ignore_intersecting_links=ignore_intersecting_links,
+    drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
+    flow_control_nodes=flow_control_nodes,
+    supply_nodes=supply_nodes,
+    is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
+    control_node_types=CONTROL_NODE_TYPES,
+)
 
 
-# Dokwerd, sluis ten onrechte op 10m3/s gezet
-model.pump.static.df.loc[model.pump.static.df.node_id == 20, "max_flow_rate"] = 20.0
-model.pump.static.df.loc[model.pump.static.df.node_id == 20, "flow_rate"] = 20.0
-model.pump.static.df.loc[model.pump.static.df.node_id == 152, "max_flow_rate"] = 0.1
-model.pump.static.df.loc[model.pump.static.df.node_id == 152, "flow_rate"] = 0.1
+# %%
+# Küpers
 
-# Zomerpeil KST-W-20240 en KST-W-10430(Borgerweg) was 6.55, verhoogd naar 6.8m, anders geen aanvoer mogelijk
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 227, "min_upstream_level"] = 6.78
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 227, "max_downstream_level"] = 6.78
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 492, "min_upstream_level"] = 6.82
+polygon = aanvoergebieden_df.loc[["Küpers"], "geometry"].union_all().buffer(1).buffer(-1)
+# links die intersecten die we kunnen negeren
+# link_id: beschrijving
+ignore_intersecting_links: list[int] = [235, 2776, 2778]
+# 235: Manning richting Winschoterdiep
+# 2776: Manning richting Wildervanckkanaal
+# 2778: Manning richting Pekel Aa
 
-# Bij boundaries downstream level nodig
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 2011, "max_downstream_level"] = 15.82
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 2014, "max_downstream_level"] = 14.92
+# doorspoeling (op uitlaten)
+flushing_nodes = {}
 
-# Oude Sluis en Nieuwsluis alleen lekverliezen, afvoer via gemaal Rozema
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 984, "flow_rate"] = 0.1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 986, "flow_rate"] = 0.1
+# toevoegen sturing
+node_functions_df = add_controllers_to_supply_area(
+    model=model,
+    polygon=polygon,
+    exclude_nodes=EXCLUDE_NODES,
+    ignore_intersecting_links=ignore_intersecting_links,
+    drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
+    flow_control_nodes=flow_control_nodes,
+    supply_nodes=supply_nodes,
+    is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
+    control_node_types=CONTROL_NODE_TYPES,
+)
 
-# Beetserwijk/Ruiten: lek
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 231, "min_upstream_level"] = 6.8
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 548, "min_upstream_level"] = 6.8
+# %%
+# Vennix
 
-# Dokwerd, sluis ten onrechte op 10m3/s gezet
+polygon = aanvoergebieden_df.loc[["Vennix"], "geometry"].union_all().buffer(1).buffer(-1)
+# links die intersecten die we kunnen negeren
+# link_id: beschrijving
+ignore_intersecting_links: list[int] = [3650]
+# 3650: Sifon onder Ter Apelkanaal
 
-# Alle inlaten en duikers op max cap 5m3/s
-# node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("KIN")].index.to_numpy()
-# model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 5
+# doorspoeling (op uitlaten)
+flushing_nodes = {}
 
-# node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("KDU")].index.to_numpy()
-# model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 5
+# toevoegen sturing
+node_functions_df = add_controllers_to_supply_area(
+    model=model,
+    polygon=polygon,
+    exclude_nodes=EXCLUDE_NODES,
+    ignore_intersecting_links=ignore_intersecting_links,
+    drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
+    flow_control_nodes=flow_control_nodes,
+    supply_nodes=supply_nodes,
+    is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
+    control_node_types=CONTROL_NODE_TYPES,
+)
 
-# write model
+# %%
+# Drentse Aa
+
+polygon = aanvoergebieden_df.loc[["Drentse Aa"], "geometry"].union_all().buffer(1).buffer(-1)
+# links die intersecten die we kunnen negeren
+# link_id: beschrijving
+ignore_intersecting_links: list[int] = [2751]
+# ###: beschrijving
+
+# doorspoeling (op uitlaten)
+flushing_nodes = {}
+
+# toevoegen sturing
+node_functions_df = add_controllers_to_supply_area(
+    model=model,
+    polygon=polygon,
+    exclude_nodes=EXCLUDE_NODES,
+    ignore_intersecting_links=ignore_intersecting_links,
+    drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
+    flow_control_nodes=flow_control_nodes,
+    supply_nodes=supply_nodes,
+    is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
+    control_node_types=CONTROL_NODE_TYPES,
+)
+
+# %%
+# Zuidlaardermeer/Winschoterdiep
+
+polygon = aanvoergebieden_df.loc[["Zuidlaardermeer/Winschoterdiep"], "geometry"].union_all().buffer(1).buffer(-1)
+# links die intersecten die we kunnen negeren
+# link_id: beschrijving
+ignore_intersecting_links: list[int] = [2286, 2384, 2607]
+# 2286: Manning Drentsche Diep
+# 2384: Manning Winschoterdiep
+# 2607: Manning Winschoterdiep
+
+# doorspoeling (op uitlaten)
+flushing_nodes = {}
+
+# toevoegen sturing
+node_functions_df = add_controllers_to_supply_area(
+    model=model,
+    polygon=polygon,
+    exclude_nodes=EXCLUDE_NODES,
+    ignore_intersecting_links=ignore_intersecting_links,
+    drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
+    flow_control_nodes=flow_control_nodes,
+    supply_nodes=supply_nodes,
+    is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
+    control_node_types=CONTROL_NODE_TYPES,
+)
+
+# %%
+# Duurswold
+
+node_ids = [829, 822, 810, 190, 162]
+model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "flow_rate"] = (
+    0  # geen aanvoer vanuit de Eems (i.v.m. zout)
+)
+
+polygon = aanvoergebieden_df.loc[["Duurswold"], "geometry"].union_all().buffer(1).buffer(-1)
+# links die intersecten die we kunnen negeren
+# link_id: beschrijving
+ignore_intersecting_links: list[int] = [747]
+# 747: sifon onder Eemskanaal, dus helemaal prima
+
+# doorspoeling (op uitlaten)
+flushing_nodes = {}
+
+# toevoegen sturing
+node_functions_df = add_controllers_to_supply_area(
+    model=model,
+    polygon=polygon,
+    exclude_nodes=EXCLUDE_NODES,
+    ignore_intersecting_links=ignore_intersecting_links,
+    drain_nodes=drain_nodes,
+    flushing_nodes=flushing_nodes,
+    flow_control_nodes=flow_control_nodes,
+    supply_nodes=supply_nodes,
+    is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
+    control_node_types=CONTROL_NODE_TYPES,
+)
+
+
+# %%
+# En de rest toevoegen
+
+
+add_controllers_to_uncontrolled_connector_nodes(
+    model=model, exclude_nodes=list(EXCLUDE_NODES), supply_nodes=supply_nodes
+)
+
+# %% Junctionfy!
+# junctionify(model)
+
+# %%
+# Model run
+
+ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_wet", f"{SHORT_NAME}.toml")
+ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_dry", f"{SHORT_NAME}.toml")
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
-model.pump.static.df["meta_func_afvoer"] = 1
-model.pump.static.df["meta_func_aanvoer"] = 0
-model.write(ribasim_toml)
 
+model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 
-# run model
+# hoofd run met verdamping
+update_basin_static(model=model, evaporation_mm_per_day=0.1)
+model.write(ribasim_toml_dry)
+
+# run hoofdmodel
 if MODEL_EXEC:
     model.run()
-    """Note that currently, the Ribasim-model is unstable but it does execute, i.e., the model re-parametrisation is
-    successful. This might be due to forcing the schematisation with precipitation while setting the 'sturing' of the
-    outlets on 'aanvoer' instead of the more suitable 'afvoer'. This should no longer be a problem once the next step of
-    adding `ContinuousControl`-nodes is implemented.
-    """
+    Control(ribasim_toml=ribasim_toml_dry, qlr_path=qlr_path).run_all()
+    model = Model.read(ribasim_toml_dry)
 
+# prerun om het model te initialiseren met neerslag
+update_basin_static(model=model, precipitation_mm_per_day=2)
+model.write(ribasim_toml_wet)
+
+# run prerun model
+if MODEL_EXEC:
+    model.run()
+    Control(ribasim_toml=ribasim_toml_wet, qlr_path=qlr_path).run_all()
+    model = Model.read(ribasim_toml_wet)
+
+# hoofd run
+update_basin_static(model=model, precipitation_mm_per_day=1.5)
+model.write(ribasim_toml)
+# run hoofdmodel
+if MODEL_EXEC:
+    model.run()
     Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path).run_all()
+
+# %%
