@@ -163,3 +163,7 @@ stages:
       - data/Rijkswaterstaat/verwerkt/netwerk.gpkg
     outs:
       - data/Rijkswaterstaat/modellen/lhm_coupled
+  run_coupled:
+    cmd: pixi run ribasim data/Rijkswaterstaat/modellen/lhm_coupled/lhm_coupled.toml
+    deps:
+      - data/Rijkswaterstaat/modellen/lhm_coupled
