@@ -137,12 +137,12 @@ stages:
       size: 3731456
     - path: notebooks/koppelen_modellen.py
       hash: md5
-      md5: 3c3153cf66054647feae9b7cfb379fd3
-      size: 25436
+      md5: 51e8c450322c8f6d94d3b070fe8609d3
+      size: 25833
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: 0ccd29ab6811b9692827b01fe0762e6b.dir
+      md5: f9472d4b5d57d016ef9e1915b7eb7eb4.dir
       size: 804864035
       nfiles: 4
   rwzi:
