@@ -26,7 +26,7 @@ INCLUDE_MODELS: list[str] = [
     "Scheldestromen",
     "SchielandendeKrimpenerwaard",
     "WetterskipFryslan",
-    "Zuiderzeeland",
+    # "Zuiderzeeland",
     "AaenMaas",
     "BrabantseDelta",
     "DeDommel",
