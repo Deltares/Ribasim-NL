@@ -6,7 +6,7 @@ import pandas as pd
 import xarray as xr
 
 from ribasim_nl import Model
-from ribasim_nl.assign_offline_budgets import _compute_budgets_per_basin, _crop_to_gdf
+from ribasim_nl.assign_offline_budgets import _compute_budgets_per_basin, _crop_to_gdf, split_basin_definitions
 
 # Makkink to open water evaporation factor, depending on the month of the year (rows)
 # and the decade in the month, starting at day 1, 11, 21 (cols). As used in Mozart.
@@ -27,18 +27,42 @@ EVAP_FACTOR = np.array(
     ]
 )
 
+# Variable names in the LHM zarr store
+PRECIPITATION_VAR = "precipitation_mmd"
+EVAPORATION_VAR = "makkink_mmd"
+
+# Conversion factor: summed mm/day per cell -> m/s (after dividing by cell count)
+MM_PER_DAY_TO_M_PER_S = 1 / 86400 / 1000
+
 
 def _open_water_factor(times: np.ndarray) -> np.ndarray:
-    """Return an array of open water evaporation factors for each timestep."""
+    """Return an array of open-water evaporation correction factors per timestep (Makkink -> open water)."""
     ts = pd.DatetimeIndex(times)
     months = ts.month - 1  # 0-based row index
     decades = np.where(ts.day < 11, 0, np.where(ts.day < 21, 1, 2))
     return EVAP_FACTOR[months, decades]
 
 
-# Variable names in the LHM zarr store
-PRECIPITATION_VAR = "precipitation_mmd"
-EVAPORATION_VAR = "makkink_mmd"
+def _count_cells_per_basin(mask: xr.DataArray, nodata: int = -999) -> pd.Series:
+    """Count the number of valid raster cells per basin node_id in a rasterized basin mask.
+
+    Parameters
+    ----------
+    mask : xr.DataArray
+        Rasterized basin mask where each cell value is a node_id, and nodata cells are filled with ``nodata``.
+    nodata : int, optional
+        Fill value for cells outside any basin, by default -999.
+
+    Returns
+    -------
+    pd.Series
+        Series indexed by node_id with the number of raster cells assigned to each basin.
+    """
+    flat = mask.values.reshape(-1)
+    valid = np.isfinite(flat) & (flat != nodata)
+    ids = flat[valid].astype(np.int64)
+    unique, counts = np.unique(ids, return_counts=True)
+    return pd.Series(counts, index=unique, name="count")
 
 
 class SetDynamicForcing:
@@ -49,63 +73,98 @@ class SetDynamicForcing:
         startdate: str,
         enddate: str,
     ) -> None:
+        """Set up dynamic precipitation and evaporation forcing for a Ribasim model.
+
+        Parameters
+        ----------
+        model : Model
+            Ribasim model to add forcing to. Note: ``basin.time.df`` will be cleared on ``add()``.
+        budgets : xr.Dataset
+            LHM zarr dataset containing precipitation and evaporation variables.
+        startdate : str
+            Model start date (ISO format, e.g. "2000-01-01").
+        enddate : str
+            Model end date (ISO format, e.g. "2001-01-01").
+        """
         self.model = model
         self.budgets = budgets
         self.startdate = startdate
         self.enddate = enddate
 
     def add(self) -> Model:
-        """Compute basin-averaged precipitation and evaporation from LHM zarr and add to model."""
+        """Compute basin-averaged precipitation and evaporation from LHM zarr and add to model.
+
+        Basins are split into primary and secondary definitions to correctly handle overlapping
+        basin areas. Cell counts are summed across both masks for node_ids present in both,
+        ensuring correct spatial averaging.
+
+        Returns
+        -------
+        Model
+            Updated Ribasim model with dynamic meteo forcing in ``basin.time``.
+        """
+        self.model.basin.time.df = None  # reset any existing time forcing before rebuilding
+
         basins = self.model.basin.area.df
         assert basins is not None
         basin_definition = basins[["node_id", "geometry"]].copy()
 
         like = _crop_to_gdf(self.budgets[PRECIPITATION_VAR].isel(time=0, drop=True), basin_definition)
         assert isinstance(like, xr.DataArray)
-        basin_mask = imod.prepare.rasterize(
-            basin_definition,
+
+        # Split basins into primary and secondary to handle overlapping basin areas
+        primary_basin_definition, secondary_basin_definition = split_basin_definitions(ribasim_model=self.model)
+        primary_basin_mask = imod.prepare.rasterize(
+            primary_basin_definition,
+            column="node_id",
+            like=like,
+            fill=-999,
+            dtype=np.int32,
+        )
+        secondary_basin_mask = imod.prepare.rasterize(
+            secondary_basin_definition,
             column="node_id",
             like=like,
             fill=-999,
             dtype=np.int32,
         )
 
-        # Build precipitation dataset
+        # Crop budgets to the basin extent
         precip_ds = _crop_to_gdf(self.budgets[[PRECIPITATION_VAR]], basin_definition)
         assert isinstance(precip_ds, xr.Dataset)
-
-        # Build evaporation dataset
         evap_ds = _crop_to_gdf(self.budgets[[EVAPORATION_VAR]], basin_definition)
         assert isinstance(evap_ds, xr.Dataset)
 
-        # Compute basin-averaged values (mm/day per basin)
-        # _compute_budgets_per_basin sums over cells; divide by cell count to get the mean
+        # Sum budgets over raster cells per basin, for both primary and secondary masks
         print("compute precipitation per basin")
-        precip_df = _compute_budgets_per_basin(precip_ds, basin_mask)
-        print("compute evaporation per basin")
-        evap_df = _compute_budgets_per_basin(evap_ds, basin_mask)
+        primary_precip_df = _compute_budgets_per_basin(precip_ds, primary_basin_mask)
+        secondary_precip_df = _compute_budgets_per_basin(precip_ds, secondary_basin_mask)
 
-        # Count cells per basin for averaging
-        mask_flat = basin_mask.values.reshape(-1)
-        valid = np.isfinite(mask_flat) & (mask_flat != -999)
-        ids = mask_flat[valid].astype(np.int64)
-        unique_ids, counts = np.unique(ids, return_counts=True)
-        cell_counts = pd.Series(counts, index=unique_ids, name="count")
-        # Broadcast cell counts to match the MultiIndex (node_id, time)
+        print("compute evaporation per basin")
+        primary_evap_df = _compute_budgets_per_basin(evap_ds, primary_basin_mask)
+        secondary_evap_df = _compute_budgets_per_basin(evap_ds, secondary_basin_mask)
+
+        # Merge primary and secondary: sum duplicate (node_id, time) rows that appear in both masks
+        precip_df = pd.concat([primary_precip_df, secondary_precip_df]).groupby(level=["node_id", "time"]).sum()
+        evap_df = pd.concat([primary_evap_df, secondary_evap_df]).groupby(level=["node_id", "time"]).sum()
+
+        # Cell counts per basin: sum primary and secondary so overlapping node_ids get their full count
+        cell_counts = (
+            _count_cells_per_basin(primary_basin_mask)
+            .add(_count_cells_per_basin(secondary_basin_mask), fill_value=0)
+            .astype(int)
+        )
+
+        # Divide summed mm/day by cell count to get the basin-mean, then convert to m/s
         node_ids = precip_df.index.get_level_values("node_id")
         counts_per_row = node_ids.map(cell_counts.to_dict()).values
+        precip_series = precip_df[PRECIPITATION_VAR] / counts_per_row * MM_PER_DAY_TO_M_PER_S
+        evap_series = evap_df[EVAPORATION_VAR] / counts_per_row * MM_PER_DAY_TO_M_PER_S
 
-        # Convert summed mm/day -> averaged mm/day -> m/s
-        mm_per_day_to_m_per_s = 1 / 86400 / 1000
-        precip_series = precip_df[PRECIPITATION_VAR] / counts_per_row * mm_per_day_to_m_per_s
-        evap_series = evap_df[EVAPORATION_VAR] / counts_per_row * mm_per_day_to_m_per_s
-
-        # Apply open-water evaporation factor
+        # Apply open-water evaporation correction factor (Makkink -> open water)
         times = evap_series.index.get_level_values("time")
-        evap_factors = _open_water_factor(times.values)
-        evap_series = evap_series * evap_factors
+        evap_series = evap_series * _open_water_factor(times.values)
 
-        # Build meteo DataFrame
         meteo_df = pd.DataFrame(
             {
                 "node_id": precip_series.index.get_level_values("node_id"),
@@ -115,8 +174,7 @@ class SetDynamicForcing:
             }
         )
 
-        new_model = self._add_meteo_to_model(meteo_df)
-        return new_model
+        return self._add_meteo_to_model(meteo_df)
 
     def _add_meteo_to_model(self, meteo_means: pd.DataFrame) -> Model:
         """
