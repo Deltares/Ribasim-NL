@@ -31,7 +31,7 @@ INCLUDE_MODELS: list[str] = [
     "BrabantseDelta",
     "DeDommel",
     "DrentsOverijsselseDelta",
-    # "HunzeenAas",
+    "HunzeenAas",
     "Limburg",
     "Noorderzijlvest",
     "RijnenIJssel",
