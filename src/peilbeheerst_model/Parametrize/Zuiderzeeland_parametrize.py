@@ -21,7 +21,7 @@ from ribasim_nl.control import (
     set_node_functions,
 )
 from ribasim_nl.profiles import implement
-from ribasim_nl.split_basins import NodeMetaCache, SplitBasins
+from ribasim_nl.split_basins import NodeMetaCache
 from shapely import Point
 
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model
@@ -31,7 +31,7 @@ MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
 add_lhm_fractions: bool = False
-add_rwzi: bool = True
+add_rwzi: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -557,16 +557,16 @@ ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
 ribasim_param.clean_tables(ribasim_model, waterschap)
 
-# loop through all splitted basins
+# # loop through all splitted basins
 node_cache = NodeMetaCache(ribasim_model)
-for splitted_basin_path, basin_id in zip(
-    [splitted_basin_16_path, splitted_basin_31_path, splitted_basin_73_path], [16, 31, 73], strict=True
-):
-    # split basins to improve model convergence
-    splitter = SplitBasins(
-        model=ribasim_model, splitted_basin_path=splitted_basin_path, basin_node_id_to_split=basin_id
-    )
-    ribasim_model = splitter.run()
+# for splitted_basin_path, basin_id in zip(
+#     [splitted_basin_16_path, splitted_basin_31_path, splitted_basin_73_path], [16, 31, 73], strict=True
+# ):
+#     # split basins to improve model convergence
+#     splitter = SplitBasins(
+#         model=ribasim_model, splitted_basin_path=splitted_basin_path, basin_node_id_to_split=basin_id
+#     )
+#     ribasim_model = splitter.run()
 
 node_cache.set_meta_category(ribasim_model)
 ribasim_model.write(ribasim_work_dir_model_toml)
@@ -621,34 +621,11 @@ else:
 for node in inlaat_structures:
     ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_aanvoer"] = 1
 
-# # add control, based on the meta_categorie
-# ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
-# ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
-# ribasim_param.set_aanvoer_flags(
-#     ribasim_model,
-#     aanvoergebieden,
-#     processor,
-#     outlet_aanvoer_on=tuple(inlaat_structures),
-#     aanvoer_enabled=AANVOER_CONDITIONS,
-# )
-# ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
-
-# ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
-# ribasim_param.add_continuous_control(ribasim_model, dy=-50)
-
-#####
-
 # add control, based on the meta_categorie
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
 ribasim_param.set_aanvoer_flags(ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS)
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
-
-# Apply outlet meta_aanvoer labelling and overrule non-hoofdwater routes when direct hoofdwater supply exists.
-# supply.SupplyOutlet(ribasim_model).exec(overruling_enabled=True)
-
-# ribasim_param.determine_min_upstream_max_downstream_levels(ribasim_model, waterschap)
-# ribasim_param.add_continuous_control(ribasim_model, dy=-50)
 
 ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
 
@@ -700,15 +677,6 @@ add_controllers_to_connector_nodes(
     target_level_column="meta_streefpeil",
     drain_capacity=20,
 )
-
-# # set discharge to 0 in supply state as suggested by D2Hydro
-# flow_demand_nodes = ribasim_model.flow_demand.node.df.index.unique()
-# pump_with_flow_demand = ribasim_model.link.df.loc[ribasim_model.link.df.from_node_id.isin(flow_demand_nodes), "to_node_id"].unique()
-# ribasim_model.pump.static.df.loc[
-#     (ribasim_model.pump.static.df.node_id.isin(pump_with_flow_demand))
-#     & (ribasim_model.pump.static.df.control_state == "aanvoer"),
-#     ["flow_rate", "max_flow_rate"],
-# ] = 0
 
 # replace the meta_data to the pump and outlet tables again, as the add_controllers_to_connector_nodes function might have changed/added node_id's
 outlet_columns_to_add_back = [
@@ -856,8 +824,14 @@ assign = AssignAuthorities(
         857: "Rijkswaterstaat",
         873: "Rijkswaterstaat",
         875: "Rijkswaterstaat",
+        876: "Rijkswaterstaat",
         879: "Rijkswaterstaat",
+        858: "Rijkswaterstaat",
+        872: "Rijkswaterstaat",
+        874: "Rijkswaterstaat",
+        880: "Rijkswaterstaat",
     },
+    fill_na_Rijkswaterstaat=True,
 )
 ribasim_model = assign.assign_authorities()
 
