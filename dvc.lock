@@ -1186,15 +1186,20 @@ stages:
     - pixi run python
       src/peilbeheerst_model/Parametrize/Zuiderzeeland_parametrize.py
     deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: 326d538cfadb88b162cd1547e8541ca3.dir
+      size: 22462644
+      nfiles: 2
     - path: src/peilbeheerst_model/Parametrize/Zuiderzeeland_parametrize.py
       hash: md5
-      md5: b42457781d4760790e9031abaeecf09a
-      size: 38603
+      md5: 62a16155518f783b9f497c4b555691e4
+      size: 40911
     outs:
     - path: data/Zuiderzeeland/modellen/Zuiderzeeland_parameterized
       hash: md5
-      md5: 38f78b695c3aa845ddf52239fe0aa651.dir
-      size: 20582581
+      md5: 5d4b3630b1f507be27871dd97ea7701c.dir
+      size: 20852933
       nfiles: 2
   hws_demand:
     cmd:
