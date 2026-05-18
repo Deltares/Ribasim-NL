@@ -1,17 +1,4 @@
 # %%
-
-#######################################################################################################
-#######################################################################################################
-# Dit script is specifiek gemaakt om de koppeltabel zoals deze wordt gegeneerd door het script
-# Transform_koppeltabel.py te updaten als de linkjes in deze koppeltabel nog niet correct zijn gekoppeld.
-
-# In principe doet dit script hetzelfde als de functie die gedefineerd is in UpdateKoppeltabel.py, alleen
-# Worden er andere kolom namen gebruikt, omdat het Transform_koppeltabel.py script, andere kolom namen genereerd
-# als de nieuwe geometrie van een nieuw model wordt afgeleid.
-#######################################################################################################
-#######################################################################################################
-
-# %%
 # Packages
 import ast
 from pathlib import Path
@@ -82,32 +69,6 @@ def update_koppeltabel_with_feedback(
     if cloud_sync:
         cloud_sync.upload_file(path_specifiek_bewerking)
 
-    # def update_specifiek_column(input_koppeltabel: pd.DataFrame, feedback_koppeltabel: pd.DataFrame) -> pd.DataFrame:
-    #     # Check if "Specifiek" is in feedback
-    #     if "Specifiek" not in feedback_koppeltabel.columns:
-    #         return input_koppeltabel.copy()
-
-    #     updated_df = input_koppeltabel.copy()
-
-    #     if "Specifiek" in updated_df.columns:
-    #         # Case 1: Update only matching rows
-    #         updated_df = updated_df.merge(
-    #             feedback_koppeltabel[["MeetreeksC", "Aan/Af" ,"Specifiek"]], on="MeetreeksC", how="left", suffixes=("", "_fb")
-    #         )
-
-    #         updated_df["Specifiek"] = updated_df["Specifiek_fb"].combine_first(updated_df["Specifiek"])
-    #         updated_df = updated_df.drop(columns=["Specifiek_fb"])
-
-    #     else:
-    #         # Case 2: Add new Specifiek column
-    #         updated_df = updated_df.merge(
-    #             feedback_koppeltabel[["MeetreeksC", "Aan/Af", "Specifiek"]], on="MeetreeksC", how="left"
-    #         )
-
-    #     return updated_df
-
-    # input_koppeltabel = update_specifiek_column(input_koppeltabel, feedback_koppeltabel)
-
     # Add missing columns
     # Toevoegen als we een model voor een specifiek waterschaps model draaien
     # Dan is deze info niet aanwezig tov van een samengevoegd model
@@ -126,6 +87,18 @@ def update_koppeltabel_with_feedback(
     links_model = lhm_model.link.df.reset_index()
 
     input_koppeltabel["status"] = None
+
+    if not transformed_koppeltabel:
+        for col in [
+            "previous_from_node_geometry",
+            "previous_to_node_geometry",
+            "previous_from_node_types",
+            "previous_to_node_types",
+            "previous_meta_link_id_waterbeheerder",
+            "previous_link_id",
+        ]:
+            if col not in input_koppeltabel.columns:
+                input_koppeltabel[col] = None
 
     # Iterate through the feedback koppeltabel to match and update rows in the input koppeltabel
     for _index, feedback_row in feedback_koppeltabel.iterrows():
@@ -194,21 +167,23 @@ def update_koppeltabel_with_feedback(
                     input_koppeltabel.at[input_index, "new_meta_link_id_waterbeheerder"] = str(meta_link_ids)
 
             else:
-                input_koppeltabel.at[input_index, "link_id"] = str(link_ids) if link_ids else None
-                input_koppeltabel.at[input_index, "from_node_geometry"] = (
+                input_koppeltabel.at[input_index, "new_link_id"] = str(link_ids) if link_ids else None
+                input_koppeltabel.at[input_index, "new_from_node_geometry"] = (
                     str(from_node_geometries) if from_node_geometries else None
                 )
-                input_koppeltabel.at[input_index, "to_node_geometry"] = (
+                input_koppeltabel.at[input_index, "new_to_node_geometry"] = (
                     str(to_node_geometries) if to_node_geometries else None
                 )
-                input_koppeltabel.at[input_index, "from_node_types"] = str(from_node_types) if from_node_types else None
-                input_koppeltabel.at[input_index, "to_node_types"] = str(to_node_types) if to_node_types else None
+                input_koppeltabel.at[input_index, "new_from_node_types"] = (
+                    str(from_node_types) if from_node_types else None
+                )
+                input_koppeltabel.at[input_index, "new_to_node_types"] = str(to_node_types) if to_node_types else None
 
-                input_koppeltabel.at[input_index, "from_node_id"] = str(from_node_ids) if from_node_ids else None
-                input_koppeltabel.at[input_index, "to_node_id"] = str(to_node_ids) if to_node_ids else None
+                # input_koppeltabel.at[input_index, "from_node_id"] = str(from_node_ids) if from_node_ids else None
+                # input_koppeltabel.at[input_index, "to_node_id"] = str(to_node_ids) if to_node_ids else None
 
                 if meta_link_ids:
-                    input_koppeltabel.at[input_index, "meta_link_id_waterbeheerder"] = str(meta_link_ids)
+                    input_koppeltabel.at[input_index, "new_meta_link_id_waterbeheerder"] = str(meta_link_ids)
 
             # Als we een update doen dan ook de status en de match_nodes aanpassen als we
             input_koppeltabel.at[input_index, "status"] = "Updated obv feedback"

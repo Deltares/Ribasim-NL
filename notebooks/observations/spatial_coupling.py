@@ -23,10 +23,6 @@ def search_geometry_nodes(lhm_model, node_id):
     -------
     - geometry (object): Geometry of the node if found, else None.
     """
-    # TODO: Hier wil je eigenlijk components toevoegen waarbinnen je de geometrie zoekt
-    # Voor nu triggert de loop een FileNotFoundError als we de results_dir niet hebben en
-    # Wel deze attribute aanroepen met getattr.
-
     component_names = [
         "allocation",
         "basin",
@@ -66,33 +62,6 @@ def search_geometry_nodes(lhm_model, node_id):
                     return matched_node.iloc[0]["geometry"]
 
     return None
-
-    ###########################
-    # Dit stukje code hieronder vervangen door de code hierboven om specifieker de geometry
-    # op te zoeken
-    ###########################
-
-    # for attr_name in dir(lhm_model):
-    #     print(attr_name)
-
-    #     attr = getattr(lhm_model, attr_name, None)
-    #     if hasattr(attr, "node") and hasattr(attr.node, "df"):
-    #         node_df = attr.node.df.copy()
-    #         node_df = (
-    #             node_df.reset_index()
-    #         )  # Ensure index is reset so node_id is a column
-
-    #         if "node_id" in node_df.columns and "geometry" in node_df.columns:
-    #             matched_node = node_df[node_df["node_id"] == node_id]
-    #             if not matched_node.empty:
-    #                 # ff checken to wkt lukt nog niet
-    #                 return matched_node.iloc[0]["geometry"]
-    #                 # return matched_node.iloc[0]["geometry"].to_wkt()  # Return the geometry of the first match
-
-    # return None  # Return None if not found
-
-
-#####################################################################################
 
 
 def search_type_nodes(lhm_model, node_id):
@@ -145,86 +114,6 @@ def search_type_nodes(lhm_model, node_id):
 
                 if not matched_node.empty:
                     return matched_node.iloc[0]["node_type"]
-
-    # for attr_name in dir(lhm_model):
-    #     attr = getattr(lhm_model, attr_name, None)
-    #     if hasattr(attr, "node") and hasattr(attr.node, "df"):
-    #         node_df = attr.node.df.copy()
-    #         node_df = (
-    #             node_df.reset_index()
-    #         )  # Ensure index is reset so node_id is a column
-
-    #         if "node_id" in node_df.columns and "node_type" in node_df.columns:
-    #             matched_node = node_df[node_df["node_id"] == node_id]
-    #             if not matched_node.empty:
-    #                 return matched_node.iloc[0][
-    #                     "node_type"
-    #                 ]  # Return the node type of the first match
-
-    # return None  # Return None if not found
-
-
-#####################################################################################
-
-
-# def filter_for_waterboard(lhm_model, connector_nodes, links_gdf, waterboard_name):
-#     """
-#     Filter connector nodes and links for a specific waterboard.
-
-#     Parameters
-#     ----------
-#     - lhm_model (Model): The Ribasim model containing connector nodes and links.
-#     - connector_nodes (list): List of connector nodes to process.
-#     - links_gdf (GeoDataFrame): GeoDataFrame containing links with geometry and node IDs.
-#     - waterboard_name (str): Name of the waterboard to filter data for.
-
-#     Returns
-#     -------
-#     - filtered_connector_gdfs (dict): Dictionary of filtered connector GeoDataFrames for each node.
-#     - region_links (GeoDataFrame): Filtered links GeoDataFrame for the specified waterboard.
-#     """
-#     filtered_connector_gdfs = {}
-
-#     # Filter connector nodes for the specified waterboard
-#     for node_name in connector_nodes:
-#         attr = getattr(lhm_model, node_name, None)
-#         if attr and hasattr(attr, "node") and hasattr(attr.node, "df"):
-#             connector_df = attr.node.df
-#             if "geometry" in connector_df.columns and "meta_waterbeheerder" in connector_df.columns:
-#                 # Filter the connector_df by the current waterboard if information is available
-#                 if not connector_df["meta_waterbeheerder"].isna().all():
-#                     filtered_connector_gdf = connector_df[connector_df["meta_waterbeheerder"] == waterboard_name]
-
-#                     if not filtered_connector_gdf.empty:
-#                         filtered_connector_gdf = filtered_connector_gdf.reset_index()
-
-#                     else:
-#                         # met het lhm_ctwq_compat is in meta_waterbeheerder
-#                         # alleen "Rijkswaterstaat", we zoeken dus niet meer binnen de
-#                         # specfieke waterschaps nodes en linkjes.
-
-#                         filtered_connector_gdf = connector_df.reset_index()
-
-#                     filtered_connector_gdfs[node_name] = filtered_connector_gdf
-
-#                 else:
-#                     filtered_connector_gdfs[node_name] = connector_df.reset_index()
-#             else:
-#                 filtered_connector_gdfs[node_name] = gpd.GeoDataFrame()  # Empty GeoDataFrame if missing columns
-
-# # Filter links for the specified waterboard
-# region_links = gpd.GeoDataFrame()
-# for node_name, filtered_connector_df in filtered_connector_gdfs.items():
-#     if not filtered_connector_df.empty:
-#         # Check for links connected to the nodes in this connector_df
-#         node_ids = filtered_connector_df["node_id"].unique()
-#         links_to = links_gdf[links_gdf["to_node_id"].isin(node_ids)]
-#         links_from = links_gdf[links_gdf["from_node_id"].isin(node_ids)]
-
-#         # Concatenate these links into the regional links_gdf
-#         region_links = pd.concat([region_links, links_to, links_from]).drop_duplicates()
-
-#     return filtered_connector_gdfs, region_links
 
 
 def filter_for_waterboard(lhm_model, connector_nodes, links_gdf, waterboard_name, print_logging=False):
@@ -322,7 +211,6 @@ def filter_for_waterboard(lhm_model, connector_nodes, links_gdf, waterboard_name
     return filtered_connector_gdfs, region_links
 
 
-#####################################################################################
 def filter_only_flow_links(region_links):
     """
     Filter the region_links GeoDataFrame to include only rows where link_type is "flow".
@@ -344,7 +232,6 @@ def filter_only_flow_links(region_links):
     return flow_links
 
 
-#####################################################################################
 def filter_connector_nodes_and_links_aan_af(filtered_connector_gdfs, region_links, lhm_model, aan_af):
     """
     Filter connector nodes and region links based on "Aanvoer" or "Afvoer" status.
@@ -398,9 +285,6 @@ def filter_connector_nodes_and_links_aan_af(filtered_connector_gdfs, region_link
             filtered_connector_gdfs_new[key] = connector_gdf
 
     # Filter the region_links based on the updated filtered_connector_gdfs
-    # lijst maken van alle
-
-    # Filter links for the specified waterboard
 
     valid_node_ids = [
         node_id
@@ -445,10 +329,6 @@ def match_with_connector_nodes(row, filtered_connector_gdfs, region_links, buffe
         for filtered_connector_df in filtered_connector_gdfs.values():
             if not filtered_connector_df.empty:
                 connector_gdf = gpd.GeoDataFrame(filtered_connector_df, geometry="geometry")
-
-                # Find connector nodes within the buffer
-                # max range toepassen en vervolgens de dichtsbijzijnde zoeken
-                # joinen op min distance --> sjoin_nearest geopandas.
 
                 nearby_connectors = connector_gdf[connector_gdf.geometry.within(measurement_buffer)]
                 if not nearby_connectors.empty:
@@ -656,40 +536,6 @@ def spatial_match(
             shape_koppeling.at[idx, "status"] = "Found, via connector nodes"
             matched_buffers.append(method1_results["matched_buffer"])
 
-        # for buffer_size in buffer_range_nodes:
-        #     # Create a buffer around the measurement point
-        #     measurement_buffer = row.geometry.buffer(buffer_size)
-
-        #     for node_name, filtered_connector_df in filtered_connector_gdfs.items():
-        #         if not filtered_connector_df.empty:
-        #             connector_gdf = gpd.GeoDataFrame(filtered_connector_df, geometry="geometry")
-
-        #             # Find connector nodes within the buffer
-        #             nearby_connectors = connector_gdf[connector_gdf.geometry.within(measurement_buffer)]
-        #             if not nearby_connectors.empty:
-        #                 # Append matched connector nodes
-        #                 matched_nodes.extend(nearby_connectors["node_id"].tolist())
-
-        #                 # Handle "Aan/Afvoer" logic
-        #                 if row["Aan/Af"] == "Aanvoer":
-        #                     links = region_links[region_links["to_node_id"].isin(nearby_connectors["node_id"])]
-        #                 elif row["Aan/Af"] == "Afvoer":
-        #                     links = region_links[region_links["from_node_id"].isin(nearby_connectors["node_id"])]
-        #                 else:
-        #                     links = gpd.GeoDataFrame()  # Empty in case of missing "Aan/Af"
-
-        #                 # Append link information
-        #                 if not links.empty:
-        #                     links = links.reset_index()  # Resets index to make link_id a column
-        #                     for col in link_columns:
-        #                         matched_links[col].extend(links[col].tolist())
-        #                     match_found = True
-        #                     shape_koppeling.at[idx, "status"] = "Found, via connector nodes"
-        #                     matched_buffers.append({"geometry": measurement_buffer, "buffer_size": buffer_size})
-        #                     break
-        #     if match_found:
-        #         break
-
         # Method 2: Match with links using buffer_range_links
         if not match_found:
             method2_results = match_with_links(row, region_links, buffer_range_links, link_columns)
@@ -699,22 +545,6 @@ def spatial_match(
             if match_found:
                 shape_koppeling.at[idx, "status"] = "Found, via link overlap"
                 matched_buffers.append(method2_results["matched_buffer"])
-
-        # if not match_found:
-        #     for buffer_size in buffer_range_links:
-        #         measurement_buffer = row.geometry.buffer(buffer_size)
-
-        #         # Use the filtered region_links for searching
-        #         nearby_links = region_links[region_links.geometry.intersects(measurement_buffer)]
-        #         if not nearby_links.empty:
-        #             # Ensure link_id is included in the output
-        #             nearby_links = nearby_links.reset_index()  # Resets index to make link_id a column
-        #             for col in link_columns:
-        #                 matched_links[col].extend(nearby_links[col].tolist())
-        #             shape_koppeling.at[idx, "status"] = "Found, via link overlap"
-        #             matched_buffers.append({"geometry": measurement_buffer, "buffer_size": buffer_size})
-        #             match_found = True
-        #             break
 
         # Store results
         # Als er op connector knoop is gematch, deze opnemen in de tabel

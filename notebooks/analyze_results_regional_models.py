@@ -66,6 +66,7 @@ MIN_GROEPEN_VOLDOEN = 3  # ≥ 3 van de 6 criteria Goed
 DREMPEL_HWS = 75.0  # HWS: 75% van locaties moet voldoen
 DREMPEL_REGIONAAL = 50.0  # Regionaal: 50% van locaties moet voldoen
 HWS_WATERSCHAP = "Rijkswaterstaat"
+ABS_DREMPEL_M3S = 0.15  # Absolute afwijking toegestaan voor Bias en percentielen bij lage debieten
 
 # %%
 # LHM 4.1-toetsingscriteria
@@ -188,6 +189,7 @@ for waterschap, cfg in WATERSCHAP_CONFIG.items():
             # !TODO: kloppen de gebruikte prefixen ook nog wel voor de nieuwe LHM modellen ?
             criteria_grenzen=CRITERIA_GRENZEN,
             beoor_kleuren=BEOOR_KLEUREN,
+            abs_drempel=ABS_DREMPEL_M3S,
             save_results_combined=True,
             output_is_feather=False,
             output_is_nc=True,
