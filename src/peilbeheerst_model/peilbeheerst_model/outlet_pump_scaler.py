@@ -865,43 +865,6 @@ class _OutletPumpScaler:
                 # update the max_flow_rate in the ribasim_model based on the new flow rates in the from_to_node_function_table
                 ribasim_model = update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_table)
 
-                if situation == "water_demand":
-                    basin_78_below_threshold = (
-                        ribasim_water_levels.loc[ribasim_water_levels["node_id"] == 78, "level"] < -1.88
-                    ).sum()
-                    latest_flow_rate_columns = [
-                        c
-                        for c in from_to_node_function_table.columns
-                        if c.startswith("new_max_flow_rates_") and c.endswith("_water_demand")
-                    ]
-                    outlet_220_scaled_flow_rate = None
-                    if latest_flow_rate_columns:
-                        latest_flow_rate_column = latest_flow_rate_columns[-1]
-                        outlet_220_scaled_flow_rate = from_to_node_function_table.loc[
-                            from_to_node_function_table["node_id"] == 220, latest_flow_rate_column
-                        ]
-                        if not outlet_220_scaled_flow_rate.empty:
-                            outlet_220_scaled_flow_rate = outlet_220_scaled_flow_rate.iloc[0]
-
-                    outlet_220_static = ribasim_model.outlet.static.df.loc[
-                        ribasim_model.outlet.static.df["node_id"] == 220, ["flow_rate", "max_flow_rate"]
-                    ]
-                    if outlet_220_static.empty:
-                        outlet_220_flow_rate = None
-                        outlet_220_max_flow_rate = None
-                    else:
-                        outlet_220_flow_rate = outlet_220_static.iloc[0]["flow_rate"]
-                        outlet_220_max_flow_rate = outlet_220_static.iloc[0]["max_flow_rate"]
-
-                    print(
-                        "Debug water_demand "
-                        f"iteration {iteration + 1}: "
-                        f"basin 78 level < -1.88 for {basin_78_below_threshold} timesteps; "
-                        f"outlet 220 scaled_flow_rate={outlet_220_scaled_flow_rate}, "
-                        f"flow_rate={outlet_220_flow_rate}, "
-                        f"max_flow_rate={outlet_220_max_flow_rate}"
-                    )
-
                 # set flow rate equal to max flow rate
                 ribasim_model.outlet.static.df["flow_rate"] = ribasim_model.outlet.static.df["max_flow_rate"]
                 ribasim_model.pump.static.df["flow_rate"] = ribasim_model.pump.static.df["max_flow_rate"]
