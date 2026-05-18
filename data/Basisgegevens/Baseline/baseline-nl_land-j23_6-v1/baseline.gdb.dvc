@@ -1,0 +1,6 @@
+outs:
+- md5: c9d11e2cab63ac8096c553a9b491c9c3.dir
+  size: 8081071635
+  nfiles: 215
+  hash: md5
+  path: baseline.gdb

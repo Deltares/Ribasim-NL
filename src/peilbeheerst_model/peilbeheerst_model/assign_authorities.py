@@ -9,7 +9,7 @@ cloud = CloudStorage()
 # TODO: Embed correct usage of `static` v. `time` dataframes in `AssignAuthorities`
 class AssignAuthorities:
     """
-    Assign authority polygons to LevelBoundary nodes in a RIBASIM model.
+    Assign authority polygons to LevelBoundary nodes in a Ribasim model.
 
     This includes assigning Waterschappen and Rijkswaterstaat polygons based on spatial
     intersection. Priority is given to 'Rijkswaterstaat' when multiple polygons overlap.
@@ -26,6 +26,7 @@ class AssignAuthorities:
         ws_buffer=1000,
         RWS_buffer=1000,
         custom_nodes=None,
+        fill_na_Rijkswaterstaat=False,
     ) -> None:
         # make sure files exist locally
         cloud.synchronize([ws_grenzen_path, RWS_grenzen_path])
@@ -38,6 +39,7 @@ class AssignAuthorities:
         self.ribasim_model = ribasim_model
         self.waterschap = waterschap
         self.custom_nodes = custom_nodes
+        self.fill_na_Rijkswaterstaat = fill_na_Rijkswaterstaat
 
     def assign_authorities(self):
         authority_borders = self.retrieve_geodataframe()
@@ -170,6 +172,9 @@ class AssignAuthorities:
             .merge(right=joined[["node_id", "meta_couple_authority"]], on="node_id", how="left")
             .set_index("node_id")
         )
+        if self.fill_na_Rijkswaterstaat:  # fill blank lines with Rijkswaterstaat
+            LB_node["meta_couple_authority"] = LB_node["meta_couple_authority"].fillna("Rijkswaterstaat")
+
         lb_ids = ribasim_model.level_boundary.node.df.index
         ribasim_model.node.df = pd.concat([ribasim_model.node.df.drop(lb_ids), LB_node])
         return ribasim_model

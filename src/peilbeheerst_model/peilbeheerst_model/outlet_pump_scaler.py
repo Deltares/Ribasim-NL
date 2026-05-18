@@ -12,7 +12,7 @@ import pandas as pd
 import xarray as xr
 from ribasim import run_ribasim
 
-from ribasim_nl import CloudStorage, Model, settings
+from ribasim_nl import CloudStorage, Model
 
 pd.set_option("display.max_columns", None)
 
@@ -34,8 +34,8 @@ class OutletPumpScalingConfig:
     from_to_node_function_table: pd.DataFrame
     waterschap: str
     cloud: CloudStorage
-    max_iterations: int = 12
-    initial_guess_flow_rate_outlet: float = 0.01
+    max_iterations: int = 15
+    initial_guess_flow_rate_outlet: float = 1.0
     initial_guess_flow_rate_pump: float = 10.0
     design_precipitation_event: float = 10
     design_potential_evaporation_event: float = 1.5
@@ -227,12 +227,11 @@ def set_vertical_static_forcing(
     # only use one timestamp to avoid merging conflicts
     ribasim_model.basin.time.df = ribasim_model.basin.time.df.drop_duplicates(subset="node_id", keep="first")
 
-    # percentage open water may differ. To reduce lines of code: only set drainage and infiltration fluxes, based on size of the basin
-    if "meta_area" not in ribasim_model.basin.time.df.columns:
-        ribasim_model.basin.area.df["meta_area"] = ribasim_model.basin.area.df.area
-        ribasim_model.basin.time.df = ribasim_model.basin.time.df.merge(
-            ribasim_model.basin.area.df[["node_id", "meta_area"]], left_on="node_id", right_on="node_id", how="left"
-        )
+    # add all basin.area.df id's to the time dataframe to ensure that all basins are present in the forcing table
+    basin_time = ribasim_model.basin.area.df[["node_id"]].copy()
+    basin_time["meta_area"] = ribasim_model.basin.area.df.area.to_numpy()
+    basin_time["time"] = ribasim_model.starttime
+    ribasim_model.basin.time.df = basin_time[["node_id", "time", "meta_area"]]
 
     if situation == "water_drainage":
         precipitation = design_precipitation_event / 1000 / (24 * 3600)  # convert mm/day to m/s
@@ -288,67 +287,63 @@ def update_from_to_node_function_table_with_new_flow_rate(
     iteration: int,
     situation: str,
     column_name_direction: str,
+    initial_guess_flow_rate_outlet: float,
+    initial_guess_flow_rate_pump: float,
 ) -> pd.DataFrame:
     """Add a new guessed flow-rate column based on earlier iteration results.
 
-    The output column is named `new_max_flow_rates_[iteration]_[situation]`.
-
-    Parameters
-    ----------
-    from_to_node_function_table : pd.DataFrame
-        Connector-node table with current and historical flow-rate guesses.
-    iteration : int
-        Iteration number used in the output column name.
-    situation : str
-        Scenario name used in the output column name (water_drainage or water_demand).
-    column_name_direction : str
-        Column containing scaling directions such as `higher`, `lower`, or `equal`.
-
-    Returns
-    -------
-    pd.DataFrame
-        The input table with one additional guessed flow-rate column.
+    The first guessed value must match the initial value written to the Ribasim
+    model for unknown capacities. Otherwise the CSV bisection history starts
+    from the original max_flow_rate, while the model starts from the configured
+    initial guess.
     """
     column_name_new_flow_rate = f"new_max_flow_rates_{iteration}_{situation}"
 
-    # Find all historical new_max_flow_rates columns for this situation
     history_prefix = "new_max_flow_rates_"
     history_suffix = "_" + situation
     history_columns = [
         c for c in from_to_node_function_table.columns if c.startswith(history_prefix) and c.endswith(history_suffix)
     ]
 
-    # Sort history by iteration number in the column name
     def _iteration_from_column(col_name: str) -> int:
         return int(col_name.replace(history_prefix, "").replace(history_suffix, ""))
 
     history_columns = sorted(history_columns, key=_iteration_from_column)
 
-    # Create output column for this iteration
     from_to_node_function_table[column_name_new_flow_rate] = pd.NA
+    max_flow_rates = pd.to_numeric(from_to_node_function_table["max_flow_rate"], errors="coerce")
+    history_values = from_to_node_function_table[history_columns].apply(pd.to_numeric, errors="coerce")
 
     for row_idx in from_to_node_function_table.index:
         direction_value = from_to_node_function_table.at[row_idx, column_name_direction]
 
-        # Collect non-null historical values for this row
-        row_history = []
-        for col in history_columns:
-            val = from_to_node_function_table.at[row_idx, col]
-            if pd.notna(val):
-                row_history.append(float(val))  # pyrefly: ignore[bad-argument-type]
+        row_history = history_values.loc[row_idx].dropna().to_numpy(dtype=float).tolist()
 
-        # No history yet: fall back to current max_flow_rate if present
+        # No history yet: use the same initial value as written to the model.
+        # Known-flow nodes keep their original max_flow_rate because they are not scaled.
         if len(row_history) == 0:
-            base_value = from_to_node_function_table.at[row_idx, "max_flow_rate"]
+            known_flow_rate = bool(from_to_node_function_table.at[row_idx, "meta_known_flow_rate"])
+
+            if known_flow_rate:
+                base_value = max_flow_rates.at[row_idx]
+            else:
+                node_type = from_to_node_function_table.at[row_idx, "node_type"]
+
+                if node_type == "Outlet":
+                    base_value = initial_guess_flow_rate_outlet
+                elif node_type == "Pump":
+                    base_value = initial_guess_flow_rate_pump
+                else:
+                    base_value = max_flow_rates.at[row_idx]
+
             if pd.notna(base_value):
-                # pyrefly: ignore[bad-argument-type]
-                from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = float(base_value)
+                from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = base_value
+
             continue
 
         latest_value = row_history[-1]
         preceding_values = row_history[:-1]
 
-        # Only one known value so far: expand directly by direction
         if len(preceding_values) == 0:
             if direction_value == "higher":
                 from_to_node_function_table.at[row_idx, column_name_new_flow_rate] = latest_value * 2.0
@@ -624,21 +619,13 @@ class _OutletPumpScaler:
         original_basin_time = ribasim_model.basin.time.df.copy()
         original_endtime = ribasim_model.endtime
 
-        # FIXME: Setting critical(?) static-table columns
-        # ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
-        # ribasim_model.pump.static.df["meta_known_flow_rate"] = True
-        # ribasim_model.outlet.static.df.loc[
-        #     ribasim_model.outlet.static.df["max_flow_rate"].astype(bool), "max_flow_rate"
-        # ] = config.initial_guess_flow_rate_outlet
-        # ribasim_model.pump.static.df.loc[
-        #     ribasim_model.pump.static.df["max_flow_rate"].astype(bool), "max_flow_rate"
-        # ] = config.initial_guess_flow_rate_pump
-
-        # if max_flow_rate is 0.0, change to 0.1
+        # if max_flow_rate is 0.0, change to initial value
         pump_static_df = cast(pd.DataFrame, ribasim_model.pump.static.df)
         outlet_static_df = cast(pd.DataFrame, ribasim_model.outlet.static.df)
-        pump_static_df.loc[pump_static_df.max_flow_rate == 0.0, "max_flow_rate"] = 0.1
-        outlet_static_df.loc[outlet_static_df.max_flow_rate == 0.0, "max_flow_rate"] = 0.1
+        pump_static_df.loc[pump_static_df.max_flow_rate == 0.0, "max_flow_rate"] = config.initial_guess_flow_rate_pump
+        outlet_static_df.loc[outlet_static_df.max_flow_rate == 0.0, "max_flow_rate"] = (
+            config.initial_guess_flow_rate_outlet
+        )
 
         ###########################
 
@@ -780,7 +767,7 @@ class _OutletPumpScaler:
                 if printing:
                     print(f"Running Ribasim simulation: {iteration + 1}/{max_iterations} for situation: {situation}")
 
-                run_ribasim(toml_path=config.ribasim_model_path, ribasim_home=settings.ribasim_home)
+                run_ribasim(toml_path=config.ribasim_model_path)
 
                 # extract results, only select relevant columns, merge streefpeil to node_id
                 # ribasim_water_levels = pd.read_feather(results_path)
@@ -854,6 +841,8 @@ class _OutletPumpScaler:
                     iteration=iteration + 1,
                     situation=situation,
                     column_name_direction=column_name_direction,
+                    initial_guess_flow_rate_outlet=initial_guess_flow_rate_outlet,
+                    initial_guess_flow_rate_pump=initial_guess_flow_rate_pump,
                 )
 
                 # only run in the last situation and last iteration
@@ -877,12 +866,8 @@ class _OutletPumpScaler:
                 ribasim_model = update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_table)
 
                 # set flow rate equal to max flow rate
-                ribasim_model.outlet.static.df.loc[
-                    ribasim_model.outlet.static.df.flow_rate > ribasim_model.outlet.static.df.max_flow_rate, "flow_rate"
-                ] = ribasim_model.outlet.static.df.max_flow_rate
-                ribasim_model.pump.static.df.loc[
-                    ribasim_model.pump.static.df.flow_rate > ribasim_model.pump.static.df.max_flow_rate, "flow_rate"
-                ] = ribasim_model.pump.static.df.max_flow_rate
+                ribasim_model.outlet.static.df["flow_rate"] = ribasim_model.outlet.static.df["max_flow_rate"]
+                ribasim_model.pump.static.df["flow_rate"] = ribasim_model.pump.static.df["max_flow_rate"]
 
                 # store model
                 ribasim_model.write(config.ribasim_model_path)

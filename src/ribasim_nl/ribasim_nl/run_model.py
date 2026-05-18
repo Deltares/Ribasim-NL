@@ -9,8 +9,6 @@ from pathlib import Path
 
 from ribasim.cli import _find_cli
 
-from ribasim_nl.settings import settings
-
 RunSpecs = namedtuple("RunSpecs", ["exit_code", "simulation_time"])
 
 
@@ -39,13 +37,11 @@ def parse_computation_time(line: str) -> timedelta | None:
 
 def run(
     toml_path: Path,
-    ribasim_home: str | Path | None = settings.ribasim_home,
 ) -> RunSpecs:
     """To run a Ribasim model
 
     Args:
         toml_path (Path): path to your ribasim toml-file
-        ribasim_home (str | Path | None): path to Ribasim installation directory
 
     """
     toml_path = Path(toml_path)
@@ -53,7 +49,7 @@ def run(
     if not toml_path.exists():
         raise FileNotFoundError(f"{toml_path} does not exist!")
 
-    cli = _find_cli(ribasim_home=ribasim_home)
+    cli = _find_cli()
     args = [cli.as_posix(), toml_path.absolute().as_posix()]
 
     proc = subprocess.Popen(
