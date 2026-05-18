@@ -214,8 +214,13 @@ for static_df in [model.outlet.static.df, model.pump.static.df]:
 # Linkrichting fixes
 reverse_link_ids = [244, 875, 926, 422, 351, 853, 605, 1018, 378]
 
+missing_reverse_link_ids = [link_id for link_id in reverse_link_ids if link_id not in model.link.df.index]
+if missing_reverse_link_ids:
+    print(f"Skipping missing reverse_link_ids: {missing_reverse_link_ids}")
 
 for link_id in reverse_link_ids:
+    if link_id not in model.link.df.index:
+        continue
     model.reverse_link(link_id=link_id)
 
 model.redirect_link(278, to_node_id=936)
