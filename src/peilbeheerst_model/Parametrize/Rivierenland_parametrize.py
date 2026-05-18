@@ -33,7 +33,7 @@ MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
 add_lhm_fractions: bool = False
-add_rwzi: bool = True
+add_rwzi: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -655,6 +655,7 @@ assign = AssignAuthorities(
         1004: "Rijkswaterstaat",
         1005: "Rijkswaterstaat",
     },
+    fill_na_Rijkswaterstaat=True,
 )
 ribasim_model = assign.assign_authorities()
 
@@ -696,8 +697,6 @@ ribasim_model, from_to_node_table = scale_outlets_pumps(
         waterschap=waterschap,
         cloud=cloud,
         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
-        max_iterations=15,
-        initial_guess_flow_rate_outlet=0.01,  # set flow rates higher due to convergence issues. Therefore slightly higher number of iterations to compensate.
         initial_guess_flow_rate_pump=15,
         design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
         design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,

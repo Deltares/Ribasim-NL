@@ -33,7 +33,7 @@ MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
 add_lhm_fractions: bool = False
-add_rwzi: bool = True
+add_rwzi: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -562,6 +562,7 @@ assign = AssignAuthorities(
         1394: "AmstelGooienVecht",
         3657: "AmstelGooienVecht",
     },
+    fill_na_Rijkswaterstaat=True,
 )
 ribasim_model = assign.assign_authorities()
 

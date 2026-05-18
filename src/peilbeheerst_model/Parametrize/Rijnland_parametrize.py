@@ -33,7 +33,7 @@ MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
 add_lhm_fractions: bool = False
-add_rwzi: bool = True
+add_rwzi: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -454,7 +454,15 @@ assign = AssignAuthorities(
     RWS_grenzen_path=RWS_grenzen_path,
     custom_nodes={
         1367: "Delfland",
+        1481: "StichtseRijnlanden",
+        1485: "StichtseRijnlanden",
+        1486: "StichtseRijnlanden",
+        1487: "StichtseRijnlanden",
+        1488: "StichtseRijnlanden",
+        1489: "StichtseRijnlanden",
+        1490: "StichtseRijnlanden",
     },
+    fill_na_Rijkswaterstaat=True,
 )
 ribasim_model = assign.assign_authorities()
 
