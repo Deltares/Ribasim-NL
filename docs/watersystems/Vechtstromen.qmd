@@ -47,17 +47,14 @@ De inlaten `Herikervlier`, `aanvoergemaal Stokkumervlier` en `Oude Poelsbeek` la
 ## Lateraalkanaal
 Via `aanvoergemaal Hedeman` en `inlaat Banis` wordt water ingelaten vanuit het `Kanaal Almelo-Nordhorn`  Via `Inlaat Banis Almelo` wordt het water via het `Lateraalkanaal` over verschillende inlaten verdeeld. Het `Lateraalkanaal` stroomt onder het `Overijsselsch Kanaal (Kanaal Almelo-De Haandrik)` door naar de `Veeneleiding` waar ook diverse inlaten zijn.
 
-## De Pollen
-??
-
 ## Vriezenveen
-Via inlaat `Vriezenveensche Veenkam` wordt water ingelaten vanuit `Kanaal Almelo–Haandrik` naar het `Vrienzenveensche Veenkanaal`. Dit kanaal voert het water door naar het `Nieuwe Stroomkanaal` van waaruit het via diverse inlaten het gebied ingelaten.
+Via inlaat `Vriezenveensche Veenkam` wordt water ingelaten vanuit `Kanaal Almelo–Haandrik` naar het `Vrienzenveensche Veenkanaal` via `aanvoergemaal Westerhaar`. Dit kanaal voert het water door naar het `Nieuwe Stroomkanaal` van waaruit het via diverse inlaten het gebied ingelaten.
 
 ## Overrijsselsche Vecht
 De `Overijsselsche Vecht` wordt grotendeels in droge tijden grotendeels van water voorzien via de `Beneden Regge`, via inlaat `Alte Picardi` en via het `Kanaal Almelo–Haandrik`. Er komt nauwelijks water van de `Overijsselsche Vecht` in het `Kanaal Almelo–Haandrik`, behalve als de waterstand op de Vecht te hoog wordt.
 
 ## Dooze
-Via inlaat Fortwijk aan het `Nieuwe Stroomkanaal` wordt water ingelaten. En verder via Ittrebecker See????
+Een groot deel van Dooze staat in open verbinding met het `Kanaal Almelo–Haandrik`. Via opvoergemaal `Dooze` kan water verder over het gebied worden verdeeld.
 
 ## Overijsselsch Kanaal noord
 Via verschillende inlaten wordt water ingelaten vanuit het `Kanaal Almelo–Haandrik`.
@@ -93,7 +90,7 @@ Vanuit de `Dinkel` wordt alleen water het gebied ingelaten als er voldoende wate
 De Verlengde Hoogeveensche Vaart staat in verbinding met het Oranjekanaal, het Stieltjeskanaal, het Kanaal Coevorden – Zwinderen en de Hoogeveensche Vaart. De `Verlengde Hoogeveensche Vaart` bestaat uit twee panden. Dit is een pand van `Oranjesluis` tot aan de `Ericasluis` en een pand van de `Ericasluis` naar de `Noordscheschutsluis` (WDOD). De panden hebben een peil van respectievelijk NAP +15.80 m en NAP +12.9 m. De Verlengde Hoogeveensche Vaart heeft naast de verbinding met de Hoogeveensche Vaart nog twee afvoerpunten. Dit zijn de `Stieltjeskanaalsluis` en de `Zwindersluis`. De `Zwindersluis` wordt pas bij een extreme afvoer gebruikt als afvoerpunt. Het water wordt dan afgevoerd naar het `Kanaal Coevorden – Zwinderen`. In de zomerperiode gaat in principe al het water naar `Noordscheschut`. Pas als bij de `Noordscheschut` de spuicapaciteit niet voldoende is, wordt het water gespuid via de sluis bij het `Stieltjeskanaal`.
 
 Het `Coevorden – Vechtkanaal` is de verbinding tussen de stadswateren van Coevorden en de `Overijsselsche Vecht`. De `Coevordensluis` kan het `Coevorden – Vechtkanaal` afsluiten van de `Overijsselsche Vecht`. Onder normale omstandigheden is de sluis open en loost het `Coevorden – Vechtkanaal` op de `Overijsselsche Vecht`. Bij een toenemende waterstand zal de stromingsrichting omdraaien en stroomt het water vanaf de Vecht op het `Coevorden – Vechtkanaal`. Als dit zich voordoet, wordt de `Coevordensluis` gesloten. Om de afwatering van het Coevorden – Vechtkanaal te continueren kan de `Overijsselse Stuw` tussen het Coevorden – Vechtkanaal opengezet worden.
-De `Drentse Stuw` verdeeld het `Afwateringskanaal` in een boven en beneden pand. Bij hoogwater ontvangt het beneden pand van het Afwateringskanaal ook water van het `Coevorden – Vechtkanaal`.
+De `Drentse Stuw` verdeelt het `Afwateringskanaal` in een boven en beneden pand. Bij hoogwater ontvangt het beneden pand van het Afwateringskanaal ook water van het `Coevorden – Vechtkanaal`.
 
 Het `Afwateringskanaal`, het `Coevorden – Vechtkanaal`, `Ommerkanaal` en het `Kanaal Almelo–Haandrik` zijn verbonden met de Overijsselse Vecht. In de `Overijsselse Vecht` liggen zes stuwen. Dit zijn de `Haandrik`, `Hardenberg`, `Mariënberg`, `Junne`, Vilsteren (WDOD) en Vechterweerd (WDOD). Als de waterstand hoger wordt dan de hoogte van de stuwen, overstromen de stuwen. Er is dus geen maximale afvoer capaciteit in de Vecht. De afvoer van het `Kanaal Almelo–Haandrik` naar de Vecht vindt theoretisch plaats via `Sluis de Haandrik`. In principe is deze sluis het gehele jaar open. In werkelijkheid wordt er nauwelijks water via de Haandrik Sluis naar de Vecht gestuurd. Het water stroomt vanuit het `Kanaal Almelo–Haandrik` via `Aflaatschuif Prinsen` naar het `Marienberg Vechtkanaal` naar de `Overijsselsche Vecht`. Dit gebeurt met een maximale capaciteit van 11 m3/s.
 
