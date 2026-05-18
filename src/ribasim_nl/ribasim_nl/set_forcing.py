@@ -112,8 +112,14 @@ class SetDynamicForcing:
         like = _crop_to_gdf(self.budgets[PRECIPITATION_VAR].isel(time=0, drop=True), basin_definition)
         assert isinstance(like, xr.DataArray)
 
-        # Split basins into primary and secondary to handle overlapping basin areas
+        # Split basins into primary and secondary to handle overlapping basin areas.
+        # Exclude node_ids already in primary from secondary so each node_id is counted exactly once.
         primary_basin_definition, secondary_basin_definition = split_basin_definitions(ribasim_model=self.model)
+        primary_node_ids = set(primary_basin_definition["node_id"].unique())
+        secondary_basin_definition = secondary_basin_definition[
+            ~secondary_basin_definition["node_id"].isin(primary_node_ids)
+        ]
+
         primary_basin_mask = imod.prepare.rasterize(
             primary_basin_definition,
             column="node_id",
@@ -135,7 +141,7 @@ class SetDynamicForcing:
         evap_ds = _crop_to_gdf(self.budgets[[EVAPORATION_VAR]], basin_definition)
         assert isinstance(evap_ds, xr.Dataset)
 
-        # Sum budgets over raster cells per basin, for both primary and secondary masks
+        # Sum budgets over raster cells per basin, for primary and secondary masks (no overlap)
         print("compute precipitation per basin")
         primary_precip_df = _compute_budgets_per_basin(precip_ds, primary_basin_mask)
         secondary_precip_df = _compute_budgets_per_basin(precip_ds, secondary_basin_mask)
@@ -144,15 +150,13 @@ class SetDynamicForcing:
         primary_evap_df = _compute_budgets_per_basin(evap_ds, primary_basin_mask)
         secondary_evap_df = _compute_budgets_per_basin(evap_ds, secondary_basin_mask)
 
-        # Merge primary and secondary: sum duplicate (node_id, time) rows that appear in both masks
-        precip_df = pd.concat([primary_precip_df, secondary_precip_df]).groupby(level=["node_id", "time"]).sum()
-        evap_df = pd.concat([primary_evap_df, secondary_evap_df]).groupby(level=["node_id", "time"]).sum()
+        # Concatenate — no duplicate (node_id, time) rows since secondary excludes primary node_ids
+        precip_df = pd.concat([primary_precip_df, secondary_precip_df]).sort_index()
+        evap_df = pd.concat([primary_evap_df, secondary_evap_df]).sort_index()
 
-        # Cell counts per basin: sum primary and secondary so overlapping node_ids get their full count
-        cell_counts = (
-            _count_cells_per_basin(primary_basin_mask)
-            .add(_count_cells_per_basin(secondary_basin_mask), fill_value=0)
-            .astype(int)
+        # Cell counts per basin: combine primary and secondary (disjoint sets, no summing needed)
+        cell_counts = pd.concat(
+            [_count_cells_per_basin(primary_basin_mask), _count_cells_per_basin(secondary_basin_mask)]
         )
 
         # Divide summed mm/day by cell count to get the basin-mean, then convert to m/s
