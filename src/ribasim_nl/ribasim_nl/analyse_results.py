@@ -1,5 +1,77 @@
 # %%
-"""Script met verschillende functies om de uitvoer van de Ribasim modellen te vergelijken met meetreeksen"""
+"""Functions for comparing Ribasim model output against measurement series (koppeltabel workflow).
+
+Overview
+--------
+The module is split into two main blocks:
+
+**Block 1 — Standard validation (CompareOutputMeasurements)**
+  Reads a koppeltabel (Excel) that maps measurement series to Ribasim link IDs, loads
+  model output and measurement CSVs, and produces per-water-authority GeoPackages, PNG
+  figures, decade time series Excel files, and a statistics/assessment Excel file.
+
+  Key public functions:
+    ReadOutputFile              Read Ribasim .arrow or .nc output; resample to daily.
+    LaadKoppeltabel             Load and parse the koppeltabel Excel (link_id, geometry).
+    LaadSpecifiekeBewerking     Load the specific-operations table.
+    LoadMeasurements            Load aanvoer/afvoer daily measurement CSVs.
+    ApplySpecificOperation      Apply sum / negate / formula to model output for a link.
+    ConvertToDecade             Aggregate daily data to decade (10-day) averages.
+    AddCumulative               Add cumulative columns to a combined daily/decade DataFrame.
+    GetStatisticsComparison     NSE, RMSE, MAE, RelBias, KGE, P10/P25/P75/P90.
+    GetStatisticsPerPeriod      Statistics per year + total period.
+    BeoordeelCriteria           WFD assessment per criterion ('Goed'/'Matig'/'Onvoldoende').
+    PlotAndSave                 Time series + cumulative + statistics panel figure.
+    PlotAndSaveFractie          Stacked LHM fraction figure combined with discharge.
+    SaveTimeseries              Write daily + decade time series to Excel (two sheets).
+    ExportToExcel               Write per-water-authority statistics sheet to Excel.
+    BerekenModelEindbeoordeling Read Validatie_criteria.xlsx and compute final model score.
+    ExtraInfoToevoegenAllData   Add P95/P05 discharge-magnitude classification to GeoPackages.
+    CompareOutputMeasurements   Main entry point for the standard validation workflow.
+
+  Key private helpers:
+    _sanitize_filename          Strip/replace characters invalid in filenames.
+    _resample_to_daily          Auto-resample sub-daily output to daily averages.
+    _safe_eval_formula          AST-safe evaluation of arithmetic formula strings.
+    _KleurBeoordelingen         Colour assessment columns in an openpyxl worksheet.
+    _build_model_graph          Build upstream/downstream lookup dicts for a model once.
+    _find_basin_for_link        Traverse model graph to find the Basin for a link.
+
+**Block 2 — LHM 4.1 comparison (AnalyseLHM41Vergelijking)**
+  Loads a GeoPackage coupling layer, groups measurement series by LHM 4.1 CSV, sums
+  Ribasim and measurement series per group, and compares both against LHM 4.1 on
+  decade resolution. Produces comparison figures, a statistics Excel, and a GeoPackage.
+
+  Key public function:
+    AnalyseLHM41Vergelijking    Main entry point for the LHM 4.1 comparison workflow.
+
+  Key private helpers (prefix _lhm41_):
+    _lhm41_laad_decade_tijdreeks   Load decade Excel written by SaveTimeseries.
+    _lhm41_laad_csv                Load an LHM 4.1 CSV with optional sign correction.
+    _lhm41_bereken_p95_klasse      Classify a single series by P05/P95 magnitude.
+    _lhm41_bereken_p95_klasse_som  Classify a group (summed series) by P05/P95 magnitude.
+    _lhm41_cum_afwijking_jaarlijks Cumulative deviation per year (full year + summer).
+    _lhm41_bereken_statistieken    Full statistics set including NSE/cumulative metrics.
+    _lhm41_toets_locaties          Evaluate statistics against criteria per category/class.
+    _lhm41_stats_regels            Build text lines for the statistics panel in a figure.
+    _lhm41_plot_vergelijking       Decade + cumulative comparison figure (3 series).
+    _lhm41_kleur_toetsing          Colour the 'Beoordeling' column in an openpyxl sheet.
+
+Data flow (Block 1)
+-------------------
+koppeltabel.xlsx + Specifiek_bewerking.xlsx
+    → LaadKoppeltabel / LaadSpecifiekeBewerking
+    → CompareOutputMeasurements
+        ├─ ReadOutputFile          (model .arrow / .nc)
+        ├─ LoadMeasurements        (measurement CSVs)
+        ├─ ApplySpecificOperation  (per link)
+        ├─ ConvertToDecade + AddCumulative
+        ├─ GetStatisticsPerPeriod → BeoordeelCriteria
+        ├─ PlotAndSave (+ PlotAndSaveFractie)
+        ├─ SaveTimeseries
+        └─ ExportToExcel → Validatie_criteria.xlsx
+                         → Validatie_resultaten[_dec].gpkg
+"""
 
 import ast
 import operator
@@ -20,20 +92,16 @@ from shapely import wkt
 
 from ribasim_nl import CloudStorage
 from ribasim_nl.aquo import waterbeheercode
+from ribasim_nl.assign_lhm_fractions import get_lhm_fractions
 from ribasim_nl.html_viewer import CreateHTMLViewer
 from ribasim_nl.model import Model
 
-try:
-    from ribasim_nl.assign_lhm_fractions import get_lhm_fractions
-except ImportError:
-    get_lhm_fractions = None  # type: ignore[assignment]
-
 
 def _sanitize_filename(name: str) -> str:
-    r"""Verwijdert of vervangt tekens die niet geldig zijn in bestandsnamen op Windows/Linux.
+    r"""Remove or replace characters that are invalid in filenames on Windows/Linux.
 
-    Spaties worden underscores, alle overige ongeldige tekens (/ \\ : * ? " < > | ( ) , )
-    worden weggelaten.
+    Spaces become underscores; all other invalid characters (/ \\ : * ? " < > | ( ) , )
+    are stripped.
     """
     name = name.replace(" ", "_").replace("/", "_")
     invalid = r'\:*?"<>|()'
@@ -95,29 +163,29 @@ def ReadOutputFile(
     output_is_nc: bool = False,
     resample_to_daily: bool = True,
 ) -> pd.DataFrame:
-    """Leest een Ribasim outputbestand en retourneert een DataFrame met daggemiddelden.
+    """Read a Ribasim output file and return a DataFrame with daily averages.
 
     Parameters
     ----------
     model_folder
-        Map van het Ribasim-model; outputbestanden worden gelezen uit ``{model_folder}/results/``.
+        Root directory of the Ribasim model; output files are read from ``{model_folder}/results/``.
     filetype
-        Type outputbestand. Mogelijke waarden: ``'basin'``, ``'flow'``, ``'control'``,
-        ``'solver_stats'``, ``'basin_state'``.
+        Output file type. Supported values: ``'basin'``, ``'flow'``, ``'control'``,
+        ``'solver_stats'``, ``'basin_state'``, ``'concentration'``.
     output_is_feather
-        Lees het bestand als Arrow/Feather (``.arrow``). Standaard ``True``.
+        Read the file as Arrow/Feather (``.arrow``). Default ``True``.
     output_is_nc
-        Lees het bestand als NetCDF (``.nc``). Standaard ``False``.
+        Read the file as NetCDF (``.nc``). Default ``False``.
     resample_to_daily
-        Als ``True`` (standaard) wordt het tijdstap van de data gedetecteerd en automatisch
-        naar daggemiddelden geresamplet als het interval korter dan één dag is. Zet op
-        ``False`` als de data al dagwaarden bevat en je de hersampling wilt overslaan.
+        When ``True`` (default) the time step is detected automatically and sub-daily
+        data is resampled to daily averages. Set to ``False`` when data is already at
+        daily resolution to skip the resampling step.
 
     Returns
     -------
     pd.DataFrame
-        DataFrame met kolommen ``time``, ``link_id`` (of vergelijkbaar) en waarden,
-        altijd op dagresolutie wanneer ``resample_to_daily=True``.
+        DataFrame with columns ``time``, ``link_id`` (or similar) and values,
+        always at daily resolution when ``resample_to_daily=True``.
     """
     possible_filetypes = ["basin", "flow", "control", "solver_stats", "basin_state", "concentration"]
     if filetype.lower() not in possible_filetypes:
@@ -149,11 +217,11 @@ def ReadOutputFile(
 
 
 def _resample_to_daily(data: pd.DataFrame) -> pd.DataFrame:
-    """Resamplet een lang-formaat DataFrame naar daggemiddelden als het tijdstap sub-dagelijks is.
+    """Resample a long-format DataFrame to daily averages when the time step is sub-daily.
 
-    Detecteert het mediane tijdstap en doet niets als de data al op dagresolutie staat.
-    Werkt voor elk lang-formaat outputbestand: groepeert op alle niet-tijd/niet-waarde kolommen
-    en middelt de numerieke waardekolommen per dag.
+    Detects the median time step and returns the data unchanged when it is already at daily
+    or coarser resolution. Works for any long-format output file: groups on all non-time/
+    non-value columns and averages the numeric value columns per day.
     """
     if "time" not in data.columns:
         return data
@@ -239,6 +307,21 @@ def LaadSpecifiekeBewerking(loc_specifics) -> pd.DataFrame:
 
 
 def get_unique(items):
+    """Return unique elements in their original order of first occurrence.
+
+    Unlike ``set()``, the insertion order is preserved. Elements are compared
+    with ``==`` so the function also works for lists and numpy arrays.
+
+    Parameters
+    ----------
+    items
+        Iterable of comparable elements.
+
+    Returns
+    -------
+    list
+        List of unique elements in order of first occurrence.
+    """
     seen = []
     for item in items:
         if not any(item == s for s in seen):
@@ -390,19 +473,20 @@ def AddCumulative(data, decade=False):
 
 
 def GetStatisticsComparison(combined_df: pd.DataFrame) -> dict:
-    """Berekent NSE, RMSE, MAE, relatieve bias, KGE en percentielen (P10/P25/P75/P90).
+    """Calculate NSE, RMSE, MAE, relative bias, KGE and percentiles (P10/P25/P75/P90).
 
-    Berekening op basis van de gecombineerde model- en meetreeks DataFrame.
+    Computed from the combined model-output and measurement DataFrame.
 
     Parameters
     ----------
     combined_df
-        DataFrame met kolommen 'flow_rate' (model) en 'sum' (meting).
-        Rijen met NaN in 'sum' worden uitgesloten van de berekening.
+        DataFrame with columns 'flow_rate' (model) and 'sum' (measurement).
+        Rows with NaN in 'sum' are excluded from the calculation.
 
     Returns
     -------
-    dict met alle statistieken.
+    dict
+        Dictionary with all statistics.
     """
     stats: dict[str, float | int] = {}
 
@@ -480,29 +564,29 @@ def GetStatisticsComparison(combined_df: pd.DataFrame) -> dict:
     return stats
 
 
-# Interne kleurentabel voor Excel-opmaak (PatternFill-objecten worden eenmalig aangemaakt)
-_BEOOR_KLEUREN = {
-    "Goed": PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid"),
-    "Matig": PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid"),
-    "Onvoldoende": PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid"),
-    "n.v.t.": PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid"),
-}
-
-
-def BeoordeelCriteria(stats: dict, criteria_grenzen: dict | None = None) -> dict:
-    """Beoordeelt de statistieken op basis van de KRW-toetsingscriteria.
+def BeoordeelCriteria(
+    stats: dict,
+    criteria_grenzen: dict | None = None,
+    abs_drempel: float | None = None,
+) -> dict:
+    """Evaluate statistics against WFD (KRW) assessment criteria.
 
     Parameters
     ----------
     stats
-        Dictionary met statistieken zoals teruggegeven door GetStatisticsComparison.
+        Dictionary of statistics as returned by GetStatisticsComparison.
     criteria_grenzen
-        Grenswaarden per criterium. Standaard KRW-drempelwaarden worden gebruikt als
-        None wordt meegegeven.
+        Threshold values per criterion. Default WFD threshold values are used when None.
+    abs_drempel
+        Absolute deviation threshold in m³/s for Bias and percentiles. When the absolute
+        deviation (sim - obs) is smaller than this value the criterion is always 'Goed'
+        regardless of the relative deviation. Use this to handle near-zero discharges.
+        Default None (no absolute check).
 
     Returns
     -------
-    dict met per criterium de beoordeling: 'Goed', 'Matig', 'Onvoldoende' of 'n.v.t.'
+    dict
+        Assessment per criterion: 'Goed', 'Matig', 'Onvoldoende' or 'n.v.t.'
     """
     if criteria_grenzen is None:
         criteria_grenzen = {
@@ -517,46 +601,55 @@ def BeoordeelCriteria(stats: dict, criteria_grenzen: dict | None = None) -> dict
 
     beoordeling = {}
 
-    def _beoordeel(waarde, criterium, hoger_is_beter=False):
+    def _abs_dev(sim_key: str, obs_key: str) -> float | None:
+        s = stats.get(sim_key)
+        o = stats.get(obs_key)
+        if s is None or o is None or np.isnan(float(s)) or np.isnan(float(o)):
+            return None
+        return abs(float(s) - float(o))
+
+    def _beoordeel(waarde, criterium, hoger_is_beter=False, abs_dev=None):
         if waarde is None or np.isnan(waarde):
             return "n.v.t."
         grenzen = criteria_grenzen[criterium]
         if hoger_is_beter:
             return "Goed" if waarde > grenzen["Goed"] else "Onvoldoende"
-        else:
-            abs_val = abs(waarde)
-            if "Matig" in grenzen:
-                return (
-                    "Goed" if abs_val < grenzen["Goed"] else ("Matig" if abs_val < grenzen["Matig"] else "Onvoldoende")
-                )
-            else:
-                return "Goed" if abs_val < grenzen["Goed"] else "Onvoldoende"
+        # Absolute vloer: als absolute afwijking in m³/s <= abs_drempel → altijd Goed
+        #!!!TODO: let op kleiner en gelijk aan abs drempel toegestaan
 
-    beoordeling["Bias"] = _beoordeel(stats.get("RelBias"), "Bias")
+        if abs_drempel is not None and abs_dev is not None and abs_dev <= abs_drempel:
+            return "Goed"
+        abs_val = abs(waarde)
+        if "Matig" in grenzen:
+            return "Goed" if abs_val < grenzen["Goed"] else ("Matig" if abs_val < grenzen["Matig"] else "Onvoldoende")
+        return "Goed" if abs_val < grenzen["Goed"] else "Onvoldoende"
+
+    beoordeling["Bias"] = _beoordeel(stats.get("RelBias"), "Bias", abs_dev=_abs_dev("mean_sim", "mean_obs"))
     beoordeling["NSE"] = _beoordeel(stats.get("NSE"), "NSE", hoger_is_beter=True)
     beoordeling["KGE"] = _beoordeel(stats.get("KGE"), "KGE", hoger_is_beter=True)
-    beoordeling["P10"] = _beoordeel(stats.get("P10_reldev"), "P10")
-    beoordeling["P25"] = _beoordeel(stats.get("P25_reldev"), "P25")
-    beoordeling["P75"] = _beoordeel(stats.get("P75_reldev"), "P75")
-    beoordeling["P90"] = _beoordeel(stats.get("P90_reldev"), "P90")
+    beoordeling["P10"] = _beoordeel(stats.get("P10_reldev"), "P10", abs_dev=_abs_dev("P10_sim", "P10_obs"))
+    beoordeling["P25"] = _beoordeel(stats.get("P25_reldev"), "P25", abs_dev=_abs_dev("P25_sim", "P25_obs"))
+    beoordeling["P75"] = _beoordeel(stats.get("P75_reldev"), "P75", abs_dev=_abs_dev("P75_sim", "P75_obs"))
+    beoordeling["P90"] = _beoordeel(stats.get("P90_reldev"), "P90", abs_dev=_abs_dev("P90_sim", "P90_obs"))
 
     return beoordeling
 
 
 def GetStatisticsPerPeriod(combined_df: pd.DataFrame) -> dict:
-    """Berekent statistieken voor elk uniek jaar in de data én voor de totale periode.
+    """Calculate statistics for each unique year in the data and for the total period.
 
-    De perioden worden afgeleid vanuit de Ribasim modeluitvoer zelf, zodat het script
-    automatisch werkt voor andere tijdsperioden dan 2017-2019.
+    Years are derived from the Ribasim model output itself, so the function works
+    automatically for any simulation period.
 
     Parameters
     ----------
     combined_df
-        DataFrame met kolommen 'time', 'flow_rate' en 'sum'.
+        DataFrame with columns 'time', 'flow_rate' and 'sum'.
 
     Returns
     -------
-    dict met per jaar (als string) en 'totaal' de statistieken.
+    dict
+        Statistics per year (as string key) and under 'totaal' for the full period.
     """
     results: dict[str, dict | None] = {}
     unique_years = sorted(combined_df["time"].dt.year.unique())
@@ -579,20 +672,20 @@ def SaveTimeseries(
     meetreeks_naam: str,
     output_folder: str,
 ) -> None:
-    """Schrijft de tijdsreeksen (dag en decade) weg als Excel-bestand met twee sheets.
+    """Write time series (daily and decade) to an Excel file with two sheets.
 
     Parameters
     ----------
     combined_df
-        DataFrame met dagwaarden (kolommen: time, flow_rate, sum).
+        DataFrame with daily values (columns: time, flow_rate, sum).
     combined_df_decade
-        DataFrame met decadewaarden (kolommen: time, flow_rate, sum).
+        DataFrame with decade values (columns: time, flow_rate, sum).
     fig_name_clean
-        Bestandsnaam (zonder extensie) afgeleid van de meetreeksnaam.
+        Filename (without extension) derived from the measurement series name.
     meetreeks_naam
-        Naam van de meetreeks, gebruikt als kolomnaam in de output.
+        Name of the measurement series, used as column header in the output.
     output_folder
-        Map waar het Excel-bestand wordt opgeslagen.
+        Directory where the Excel file will be saved.
     """
     Path(output_folder).mkdir(parents=True, exist_ok=True)
     filepath = Path(output_folder) / f"{fig_name_clean}.xlsx"
@@ -610,20 +703,28 @@ def SaveTimeseries(
         dec_df.to_excel(writer, sheet_name="Decade", index=False)
 
 
-def _KleureerBeoordelingen(ws, df: pd.DataFrame, beoor_kleuren: dict | None = None) -> None:
-    """Kleurt de beoordelingskolommen (kolommen die 'Beoor_' bevatten) in het worksheet.
+def _KleurBeoordelingen(ws, df: pd.DataFrame, beoor_kleuren: dict | None = None) -> None:
+    """Colour assessment columns (columns whose name starts with 'Beoor_') in a worksheet.
 
     Parameters
     ----------
     ws
         openpyxl worksheet object.
     df
-        DataFrame waaruit het worksheet is aangemaakt (voor kolomindexen).
+        DataFrame from which the worksheet was created (used for column indices).
     beoor_kleuren
-        Kleurentabel voor Excel-opmaak. Standaard: interne ``_BEOOR_KLEUREN``.
+        Colour table for Excel formatting. Default: internal ``_BEOOR_KLEUREN``.
     """
     if beoor_kleuren is None:
+        _BEOOR_KLEUREN = {
+            "Goed": PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid"),
+            "Matig": PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid"),
+            "Onvoldoende": PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid"),
+            "n.v.t.": PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid"),
+        }
+
         beoor_kleuren = _BEOOR_KLEUREN
+
     beoor_cols = [i + 1 for i, col in enumerate(df.columns) if col.startswith("Beoor_")]
     for row_idx in range(2, ws.max_row + 1):  # rij 1 = header
         for col_idx in beoor_cols:
@@ -643,45 +744,46 @@ def BerekenModelEindbeoordeling(
     hws_waterschap: str = "Rijkswaterstaat",
     beoor_kleuren: dict | None = None,
 ) -> pd.DataFrame:
-    """Leest de weggeschreven Validatie_criteria.xlsx en berekent de eindbeoordeling.
+    """Read the saved Validatie_criteria.xlsx and compute the final model assessment.
 
-    Werkt op de decade-beoordelingskolommen (Beoor_*_dec) die per waterschap-sheet
-    aanwezig zijn. De criteria zijn gegroepeerd in drie overkoepelende groepen
+    Operates on the decade assessment columns (Beoor_*_dec) present in each water
+    authority sheet. Criteria are grouped into three overarching groups
     (``criteria_groepen``):
 
     - Bias         : RelBias_dec
-    - NSE/KGE      : NSE_dec en/of KGE_dec  (Goed als ≥ 1 Goed)
-    - Percentielen : P10, P25, P75, P90      (Goed als ≥ 2 van 4 Goed)
+    - NSE/KGE      : NSE_dec and/or KGE_dec  (Good when ≥ 1 is Good)
+    - Percentiles  : P10, P25, P75, P90       (Good when ≥ 2 of 4 are Good)
 
-    Een locatie 'voldoet' als ``min_groepen_voldoen`` (standaard 2) van de 3 groepen Goed zijn.
-    Het model is 'Geschikt' als het % voldoende locaties de drempel haalt:
-    - ``drempel_hws`` voor sheet ``hws_waterschap`` (hoofdwatersysteem)
-    - ``drempel_regionaal`` voor overige sheets
+    A location 'passes' when ``min_groepen_voldoen`` (default 2) of the 3 groups are Good.
+    The model is 'Geschikt' (suitable) when the percentage of passing locations meets the threshold:
+    - ``drempel_hws`` for the sheet named ``hws_waterschap`` (main water system)
+    - ``drempel_regionaal`` for all other sheets
 
     Parameters
     ----------
     validatie_xlsx
-        Pad naar de weggeschreven Validatie_criteria.xlsx.
+        Path to the saved Validatie_criteria.xlsx.
     output_xlsx
-        Optioneel uitvoerpad voor een nieuwe Excel met de eindbeoordeling.
+        Optional output path for a new Excel file with the final assessment.
     periode
-        Rij-filter op de kolom 'Periode'; standaard 'totaal'.
+        Row filter on the 'Periode' column; default 'totaal'.
     criteria_groepen
-        Groepdefinities met kolommen en min_goed per groep.
+        Group definitions with column names and min_goed per group.
     min_groepen_voldoen
-        Minimaal aantal groepen dat 'Goed' moet zijn voor een locatie om te voldoen.
+        Minimum number of groups that must be 'Goed' for a location to pass.
     drempel_hws
-        Minimaal % voldoende locaties voor het hoofdwatersysteem.
+        Minimum percentage of passing locations for the main water system.
     drempel_regionaal
-        Minimaal % voldoende locaties voor regionale waterschappen.
+        Minimum percentage of passing locations for regional water authorities.
     hws_waterschap
-        Naam van het HWS-sheet (krijgt strengere drempel).
+        Name of the HWS sheet (receives the stricter threshold).
     beoor_kleuren
-        Kleurentabel voor Excel-opmaak. Standaard: interne ``_BEOOR_KLEUREN``.
+        Colour table for Excel formatting. Default: internal ``_BEOOR_KLEUREN``.
 
     Returns
     -------
-    pd.DataFrame met de eindbeoordeling per waterschap + samenvattingsrijen.
+    pd.DataFrame
+        Final assessment per water authority plus summary rows.
     """
     if criteria_groepen is None:
         criteria_groepen = {
@@ -692,7 +794,15 @@ def BerekenModelEindbeoordeling(
                 "min_goed": 4,
             },
         }
+
     if beoor_kleuren is None:
+        _BEOOR_KLEUREN = {
+            "Goed": PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid"),
+            "Matig": PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid"),
+            "Onvoldoende": PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid"),
+            "n.v.t.": PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid"),
+        }
+
         beoor_kleuren = _BEOOR_KLEUREN
 
     # Open de validatie-Excel zonder alle sheets tegelijk in geheugen te laden
@@ -811,7 +921,7 @@ def BerekenModelEindbeoordeling(
             # Sheet 1: samenvatting per waterschap met eindbeoordeling
             df_sam.to_excel(writer, sheet_name="Eindbeoordeling", index=False)
             ws = writer.sheets["Eindbeoordeling"]
-            # Kleureer de Beoordeling-kolom (Geschikt = groen, Ongeschikt = rood)
+            # Kleur de Beoordeling-kolom (Geschikt = groen, Ongeschikt = rood)
             beoor_col = df_sam.columns.tolist().index("Beoordeling") + 1
             for row_idx in range(2, ws.max_row + 1):
                 cell = ws.cell(row=row_idx, column=beoor_col)
@@ -828,7 +938,7 @@ def BerekenModelEindbeoordeling(
             if not df_det.empty:
                 df_det.to_excel(writer, sheet_name="Details_per_locatie", index=False)
                 ws_det = writer.sheets["Details_per_locatie"]
-                # Kleureer de Groep_*- en Voldoet-kolommen
+                # Kleur de Groep_*- en Voldoet-kolommen
                 kleur_cols = [i + 1 for i, c in enumerate(df_det.columns) if c.startswith("Groep_") or c == "Voldoet"]
                 for row_idx in range(2, ws_det.max_row + 1):
                     for col_idx in kleur_cols:
@@ -842,22 +952,36 @@ def BerekenModelEindbeoordeling(
 
 
 def ExportToExcel(
-    results_excel: dict, output_path: str | Path, criteria_grenzen: dict | None, beoor_kleuren: dict | None = None
+    results_excel: dict,
+    output_path: str | Path,
+    criteria_grenzen: dict | None,
+    beoor_kleuren: dict | None = None,
+    abs_drempel: float | None = None,
 ) -> None:
-    """Schrijft per waterschap een sheet naar een Excel-bestand.
+    """Write one sheet per water authority to an Excel file.
 
-    Bevat alle statistieken en beoordelingen voor dag- en decadewaarden,
-    uitgesplitst per periode.
+    Each sheet contains all statistics and assessments for daily and decade values,
+    broken down by period.
 
     Parameters
     ----------
     results_excel
-        Dict met structuur:
-        {waterschap: [{"locatie": str,
-                       "stats_dag":  {periode: stats_dict | None},
-                       "stats_dec":  {periode: stats_dict | None}}, ...]}
+        Dict with structure:
+        {water_authority: [{"locatie": str,
+                            "stats_dag":  {period: stats_dict | None},
+                            "stats_dec":  {period: stats_dict | None}}, ...]}
     output_path
-        Pad naar het te schrijven Excel-bestand.
+        Path to the Excel file to write.
+    criteria_grenzen
+        Threshold values per criterion passed to BeoordeelCriteria.
+        Uses default WFD thresholds when None.
+    beoor_kleuren
+        Colour table for Excel assessment-column formatting.
+        Uses internal defaults when None.
+    abs_drempel
+        Absolute deviation threshold in m³/s passed to BeoordeelCriteria.
+        Locations with an absolute deviation below this value are always 'Goed'.
+        Default None (no absolute check).
     """
     with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
         for waterschap, records in results_excel.items():
@@ -876,12 +1000,12 @@ def ExportToExcel(
                         return round(float(val), 3) if not np.isnan(val) else np.nan
 
                     beoor_d = (
-                        BeoordeelCriteria(stats_d, criteria_grenzen)
+                        BeoordeelCriteria(stats_d, criteria_grenzen, abs_drempel)
                         if stats_d is not None
                         else dict.fromkeys(["NSE", "KGE", "Bias", "P10", "P25", "P75", "P90"], "n.v.t.")
                     )
                     beoor_dc = (
-                        BeoordeelCriteria(stats_dc, criteria_grenzen)
+                        BeoordeelCriteria(stats_dc, criteria_grenzen, abs_drempel)
                         if stats_dc is not None
                         else dict.fromkeys(["NSE", "KGE", "Bias", "P10", "P25", "P75", "P90"], "n.v.t.")
                     )
@@ -935,7 +1059,7 @@ def ExportToExcel(
 
             # Kleurcodering op beoordelingskolommen
             ws = writer.sheets[sheet_name]
-            _KleureerBeoordelingen(ws, df_sheet, beoor_kleuren=beoor_kleuren)
+            _KleurBeoordelingen(ws, df_sheet, beoor_kleuren=beoor_kleuren)
 
             # Kolombreedte automatisch aanpassen
             for col_idx, col_name in enumerate(df_sheet.columns, start=1):
@@ -943,22 +1067,45 @@ def ExportToExcel(
                 ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = min(max_len + 2, 30)
 
 
-def _PlotAndSaveFractie(
+def PlotAndSaveFractie(
     combined_df: pd.DataFrame,
     concentration_path: Path | None,
     basin_node_id: int,
+    basin_richting: str,
     tracers: list[str] | None,
     fig_name: str,
     waterschap: str,
     output_folder: Path,
 ) -> str | None:
-    """Gecombineerd figuur: gestapelde fracties (boven) + Ribasim+meting tijdreeks (onder).
+    """Combined figure: stacked fractions (top panel) + Ribasim and measurement time series (bottom panel).
 
-    De twee panelen delen de x-as zodat pieken direct te correleren zijn met de
-    bijdragende fracties. Opgeslagen in {output_folder}/{waterschap}/{fig_name}_fractie.png.
+    The two panels share the x-axis so that discharge peaks can be directly correlated with
+    the contributing fractions. Saved to {output_folder}/{waterschap}/{fig_name}_fractie.png.
 
-    Returns HTML img-tag string voor gebruik in popup, of None als er geen fractie
-    data beschikbaar is voor dit basin.
+    Parameters
+    ----------
+    combined_df
+        DataFrame with columns 'time', 'flow_rate' and optionally 'sum'.
+    concentration_path
+        Path to the concentration.nc NetCDF file. Returns None immediately when None.
+    basin_node_id
+        Node ID of the basin for which fractions are plotted.
+    basin_richting
+        Direction label used in the plot title ('bovenstroomse' or 'benedenstroomse').
+    tracers
+        List of tracer/substance names to include. All available substances are used when None.
+    fig_name
+        Base name used for the plot title and output filename.
+    waterschap
+        Name of the water authority, used as subfolder name.
+    output_folder
+        Root folder under which {waterschap}/ is created.
+
+    Returns
+    -------
+    str or None
+        HTML ``<img>`` tag string for use in a popup, or None when no fraction data
+        is available for this basin.
     """
     if concentration_path is None:
         return None
@@ -989,7 +1136,9 @@ def _PlotAndSaveFractie(
     ax.set_ylabel("Fractie [-]", fontdict={"fontsize": 13, "fontname": font, "fontweight": "bold"})
     ax.set_ylim(0, 1.05)
     ax.grid(True, color="#555555", alpha=0.5, linewidth=0.7)
-    ax.set_title(f"{fig_name} — Basin {basin_node_id}", fontsize=11, fontweight="bold", wrap=True)
+    ax.set_title(
+        f"{fig_name} — Basin {basin_node_id} ({basin_richting} bakje)", fontsize=11, fontweight="bold", wrap=True
+    )
     ax.tick_params(axis="both", labelsize=11)
     for lbl in ax.get_xticklabels() + ax.get_yticklabels():
         lbl.set_fontweight("bold")
@@ -1055,46 +1204,52 @@ def CompareOutputMeasurements(
     filetype="flow",
     criteria_grenzen: dict | None = None,
     beoor_kleuren: dict | None = None,
+    abs_drempel: float | None = None,
     apply_for_water_authority: str | None = None,
     save_results_combined: bool = False,
     output_is_feather: bool = True,
     output_is_nc: bool = False,
     resample_to_daily: bool = True,
 ) -> None:
-    """Compares model output measurements with actual measurements, calculates statistics, and saves the results in a geopackage per waterboard as well as producing the necessary figures.
+    """Compare model output with measurements, calculate statistics, and save results.
+
+    Produces PNG figures, a GeoPackage per water authority, time series Excel files per
+    measurement location, and an Excel file with criteria and assessments.
+    When concentration.nc is present, a Fractie_locaties.gpkg is also written.
 
     Parameters
     ----------
     loc_koppeltabel
-        The location of the koppeltabel (Excel file):
+        Path to the koppeltabel Excel file linking measurement series to model links.
     loc_specifics
-        The location of the table with specific operations per measurement (Excel file)
+        Path to the Excel file with specific operations per measurement series.
     meas_folder
-        The `meas_folder` refers to the folder location where measurements data is stored.
+        Folder containing the measurement CSV files.
     model_folder
-        The `model_folder` refers to the directory path where the model is stored.
+        Root directory of the Ribasim model.
+    toml_file
+        Name of the model TOML file (relative to model_folder), used to load the model
+        for fraction plots.
     filetype
-        The `filetype` parameter specifies the type of output file to be read from the `model_folder`.
-        By default, it is set to `'flow'`, but you can change it to
+        Output file type to read from model_folder. Default ``'flow'``.
+    criteria_grenzen
+        Threshold values per criterion for BeoordeelCriteria. Uses WFD defaults when None.
+    beoor_kleuren
+        Colour table for Excel assessment-column formatting. Uses internal defaults when None.
+    abs_drempel
+        Absolute deviation threshold in m³/s; locations below this value are always 'Goed'.
+        Default None.
     apply_for_water_authority
-        Optional specification to read koppeltabel for a specific water authority. Defaults to None
+        Restrict the koppeltabel to a single water authority. Default None (all authorities).
     save_results_combined
-        Optional boolean to check if all the results are to be written to a single layer in a geopackage instead of
-        one per water authority. Defaults to False
-    model
-        Optioneel geladen ribasim.Model object voor het genereren van gecombineerde
-        fractie+tijdreeks plots. Vereist dat concentration.nc aanwezig is in
-        model.results_path. Locaties met meerdere links of zonder bereikbaar Basin
-        worden automatisch overgeslagen. Als None (standaard) worden geen fractie
-        plots aangemaakt.
-
-    Returns
-    -------
-    The function returns nothing, but saves the results in .png figures, geopackages,
-    tijdsreeksen per meetlocatie en een Excel-bestand met criteria en beoordelingen.
-    Als model is opgegeven en concentration.nc beschikbaar is, wordt ook
-    Fractie_locaties.gpkg geschreven.
-
+        When True, also write a single combined GeoPackage with all water authorities.
+        Default False.
+    output_is_feather
+        Read model output as Arrow/Feather. Default True.
+    output_is_nc
+        Read model output as NetCDF. Default False.
+    resample_to_daily
+        Resample sub-daily model output to daily averages. Default True.
     """
     koppeltabel = LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority=apply_for_water_authority)
     specifics = LaadSpecifiekeBewerking(loc_specifics)
@@ -1295,18 +1450,21 @@ def CompareOutputMeasurements(
             bron_meting=bron_meting,
             output_folder=Path(model_folder, "results", "figures"),
             criteria_grenzen=criteria_grenzen,
+            abs_drempel=abs_drempel,
         )
         fig_name_clean = _sanitize_filename(fig_name)
         pop_up_figure = f'<img src="../figures/{waterschap}/{fig_name_clean}.png" width=400 height=300>'
 
         # Fractie plot (optioneel — enkelvoudige link + model vereist)
         if _frac_available and isinstance(link, int):
-            fractie_basin_node_id = _find_basin_for_link(model, link, _graph=_model_graph)
-            if fractie_basin_node_id is not None:
-                pop_up_fractie = _PlotAndSaveFractie(
+            _fractie_result = _find_basin_for_link(model, link, _graph=_model_graph)
+            if _fractie_result is not None:
+                fractie_basin_node_id, basin_richting = _fractie_result
+                pop_up_fractie = PlotAndSaveFractie(
                     combined_df=combined_df,
                     concentration_path=_concentration_path,
                     basin_node_id=fractie_basin_node_id,
+                    basin_richting=basin_richting,
                     tracers=_tracers,
                     fig_name=fig_name,
                     waterschap=waterschap,
@@ -1360,6 +1518,7 @@ def CompareOutputMeasurements(
             bron_meting=bron_meting,
             output_folder=Path(model_folder) / "results" / "figures",
             criteria_grenzen=criteria_grenzen,
+            abs_drempel=abs_drempel,
         )
         fig_name_dec_clean = _sanitize_filename(fig_name) + "_decade"
         pop_up_figure_dec = f'<img src="../figures/{waterschap}/{fig_name_dec_clean}.png" width=400 height=300>'
@@ -1430,7 +1589,13 @@ def CompareOutputMeasurements(
 
     # Schrijf het Excel-criteriabestand weg
     excel_path = Path(model_folder) / "results" / "Validatie_criteria.xlsx"
-    ExportToExcel(results_excel, excel_path, criteria_grenzen=criteria_grenzen, beoor_kleuren=beoor_kleuren)
+    ExportToExcel(
+        results_excel,
+        excel_path,
+        criteria_grenzen=criteria_grenzen,
+        beoor_kleuren=beoor_kleuren,
+        abs_drempel=abs_drempel,
+    )
     print(f"Criteria Excel opgeslagen: {excel_path}")
 
     # ── Schrijf Fractie_locaties.gpkg met alleen locaties waarvoor een fractieplot is gemaakt ──
@@ -1443,6 +1608,22 @@ def CompareOutputMeasurements(
 
 
 def ConvertToDecade(combined_df_results):
+    """Aggregate a daily DataFrame to decade (10-day period) averages.
+
+    Each month is split into three decades: days 1-10, days 11-20, and days 21-end.
+    The resulting time stamp is set to the first day of each decade (1, 11, or 21).
+
+    Parameters
+    ----------
+    combined_df_results
+        DataFrame with columns 'time', 'flow_rate' and 'sum' at daily resolution.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with columns 'time', 'flow_rate' and 'sum' aggregated to decade averages.
+    """
+
     def get_decade(ts) -> int:
         day = ts.day
         if day <= 10:
@@ -1521,24 +1702,41 @@ def LoadMeasurements(meas_folder) -> dict[str, pd.DataFrame]:
     return measurements
 
 
-def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_folder, criteria_grenzen):
-    """Plots data from a pd.DataFrame, adds statistical information, and saves the plot as an image in a specified folder.
+def PlotAndSave(
+    combined_df,
+    stats,
+    koppelinfo,
+    fig_name,
+    bron_meting,
+    output_folder,
+    criteria_grenzen,
+    abs_drempel: float | None = None,
+):
+    """Plot model output and measurements and save the figure as a PNG.
+
+    The figure consists of a time series panel (left) with daily discharge and cumulative
+    discharge on a twin y-axis, and a statistics panel (right) with colour-coded criteria.
 
     Parameters
     ----------
     combined_df
-        `combined_df` is a pd.DataFrame containing data to be plotted.
+        DataFrame with columns 'time', 'flow_rate', 'sum', 'flow_rate_cum' and 'sum_cum'.
     stats
-        The `stats` in the `PlotAndSave` function parameter contains statistical information (NSE, KGE, RelBias, RMSE, MAE,
-        percentielen) calculated for the data being plotted.
+        Statistics dictionary as returned by GetStatisticsComparison (NSE, KGE, RelBias,
+        RMSE, MAE, percentiles).
     koppelinfo
-        The `koppelinfo` parameter in the `PlotAndSave` function supplies the name of the measurement location. Used as title.
+        Full measurement location label, used as the plot title.
+    fig_name
+        Base filename (without extension) for the saved PNG.
     bron_meting
-        The `bron_meting` parameter in the `PlotAndSave` function represents the origin of the measurement (waterboard).
+        Water authority name used as subfolder under output_folder.
+        When None the figure is saved directly in output_folder.
     output_folder
-        The `output_folder` parameter in the `PlotAndSave` function is the directory where the plot will be
-        saved. It is the location where the folder for the specific `bron_meting` will be created, and
-        within that folder, the plot will be saved as a PNG file with the name supplied by 'koppelinfo'
+        Directory under which the PNG is saved.
+    criteria_grenzen
+        Threshold values per criterion passed to BeoordeelCriteria. Uses WFD defaults when None.
+    abs_drempel
+        Absolute deviation threshold in m³/s passed to BeoordeelCriteria. Default None.
     """
     if bron_meting is None:
         Path(output_folder).mkdir(parents=True, exist_ok=True)
@@ -1557,7 +1755,7 @@ def PlotAndSave(combined_df, stats, koppelinfo, fig_name, bron_meting, output_fo
     def _fmt(val, decimals=3):
         return f"{round(val, decimals)}" if val is not None and not np.isnan(val) else "n.v.t."
 
-    beoordeling = BeoordeelCriteria(stats, criteria_grenzen)
+    beoordeling = BeoordeelCriteria(stats, criteria_grenzen, abs_drempel)
 
     fig = plt.figure(figsize=(11, 5))
     gs = fig.add_gridspec(1, 2, width_ratios=[4, 1.1], wspace=0.20)
@@ -1712,13 +1910,35 @@ def ExtraInfoToevoegenAllData(
     mode="any",
     above_operator=">=",
 ):
-    """Voegt P95_P05_alle_beschikbare_data toe aan bestaande validatie-geopackages.
+    """Add a discharge-magnitude classification column to existing validation GeoPackages.
 
-    Stap 1 — classificeer per (MeetreeksC, Aan/Af) op basis van de volledige meetreeks:
-      - '{above_operator}{threshold}' als de conditie geldt (mode='any'/'all')
-      - '<{threshold}' anders
-      - 'geen_data' als de meetreeks niet in de CSV staat
-    Stap 2 — voeg classificatie toe aan koppeltabel en merge met geopackages.
+    Step 1 — classify each (MeetreeksC, Aan/Af) combination based on the full measurement series:
+      - '{above_operator}{threshold}' when the condition holds (mode='any'/'all')
+      - '<{threshold}' otherwise
+      - 'geen_data' when the series is not present in the CSV
+    Step 2 — merge the classification into the koppeltabel and into all validation GeoPackages.
+
+    Parameters
+    ----------
+    loc_koppeltabel
+        Path to the koppeltabel Excel file.
+    meas_folder
+        Folder containing the measurement CSV files.
+    model_folder
+        Root directory of the Ribasim model (GeoPackages are read from results/).
+    apply_for_water_authority
+        Restrict the koppeltabel to a single water authority. Default None (all authorities).
+    stat_cols
+        Quantile-based statistic columns used for classification (e.g. 'abs_q95', 'abs_q05').
+    threshold
+        Numeric threshold in m³/s for the classification.
+    new_col
+        Name of the new classification column added to the GeoPackages.
+    mode
+        'any' — classify as above-threshold when at least one stat_col exceeds the threshold.
+        'all' — classify as above-threshold only when all stat_cols exceed the threshold.
+    above_operator
+        Comparison operator string used in labels: '>=' or '>'.
     """
     if isinstance(stat_cols, str):
         stat_cols = list(stat_cols)
@@ -1785,30 +2005,36 @@ def ExtraInfoToevoegenAllData(
 
 
 def _build_model_graph(model) -> dict:
-    """Bouw eenmalig O(1)-opzoekstructuren voor link/node traversal.
+    """Build lookup structures for link/node traversal once before a loop.
 
-    Dient éénmalig aangeroepen te worden vóór een loop over meerdere links, zodat
-    elke aanroep van _find_basin_for_link O(1) dictionary-lookups gebruikt in plaats
-    van O(n) DataFrame-scans.
+    Call this once before iterating over multiple links so that each call to
+    _find_basin_for_link uses dictionary lookups instead of DataFrame scans.
+
+    Parameters
+    ----------
+    model
+        Loaded Ribasim Model object with link and node DataFrames.
 
     Returns
     -------
-    dict met sleutels:
-        node_type_map  - node_id  → node_type (str)
-        inflow_count   - node_id  → aantal instromen (int)
-        upstream_map   - to_node_id   → from_node_id
-        downstream_map - from_node_id → to_node_id
-        link_endpoints - link_id  → (from_node_id, to_node_id)
+    dict
+        Dict with keys:
+            node_type_map  - node_id  → node_type (str)
+            inflow_count   - node_id  → number of inflows (int)
+            outflow_count  - node_id  → number of outflows (int)
+            upstream_map   - to_node_id   → list of from_node_ids
+            downstream_map - from_node_id → list of to_node_ids
+            link_endpoints - link_id  → (from_node_id, to_node_id)
     """
-    from collections import Counter
+    from collections import Counter, defaultdict
 
     links_df = model.link.df
     if links_df.index.name == "link_id":
         links_df = links_df.reset_index()
 
-    from_ids = links_df["from_node_id"].astype(int)
-    to_ids = links_df["to_node_id"].astype(int)
-    link_ids = links_df["link_id"].astype(int)
+    from_ids = links_df["from_node_id"].astype(int).tolist()
+    to_ids = links_df["to_node_id"].astype(int).tolist()
+    link_ids = links_df["link_id"].astype(int).tolist()
 
     node_type_map: dict[int, str] = {}
     try:
@@ -1823,29 +2049,47 @@ def _build_model_graph(model) -> dict:
     except AttributeError:
         pass
 
+    upstream_map: dict[int, list[int]] = defaultdict(list)
+    downstream_map: dict[int, list[int]] = defaultdict(list)
+    for from_id, to_id in zip(from_ids, to_ids, strict=False):
+        upstream_map[to_id].append(from_id)
+        downstream_map[from_id].append(to_id)
+
     return {
         "node_type_map": node_type_map,
         "inflow_count": dict(Counter(to_ids)),
-        "upstream_map": dict(zip(to_ids, from_ids, strict=False)),
-        "downstream_map": dict(zip(from_ids, to_ids, strict=False)),
+        "outflow_count": dict(Counter(from_ids)),
+        "upstream_map": dict(upstream_map),
+        "downstream_map": dict(downstream_map),
         "link_endpoints": dict(zip(link_ids, zip(from_ids, to_ids, strict=False), strict=False)),
     }
 
 
-def _find_basin_for_link(model, link_id: int, max_hops: int = 20, _graph: dict | None = None) -> int | None:
-    """Zoek het Basin knooppunt dat hoort bij een link_id.
+def _find_basin_for_link(model, link_id: int, max_hops: int = 20, _graph: dict | None = None) -> tuple[int, str] | None:
+    """Find the Basin node associated with a given link_id.
 
-    Loopt eerst stroomopwaarts (via from_node_id) totdat een Basin gevonden is of een
-    Junction aangetroffen wordt. Bij een Junction of mislukking wordt stroomafwaarts
-    gezocht (via to_node_id van de originele link). Een Junction stroomafwaarts
-    betekent dat geen Basin gevonden kan worden → returns None.
+    First traverses upstream (via from_node_id) until a Basin is found or a Junction is
+    encountered. On failure, traverses downstream (via to_node_id of the original link).
+    A Junction encountered downstream means no Basin is reachable → returns None.
 
     Parameters
     ----------
+    model
+        Loaded Ribasim Model object.
+    link_id
+        ID of the link for which the associated Basin is searched.
+    max_hops
+        Maximum number of traversal steps in each direction. Default 20.
     _graph
-        Pre-gebouwde opzoekstructuren van _build_model_graph. Als None wordt het
-        graph éénmalig intern aangemaakt (handig voor losse aanroepen, maar gebruik
-        _build_model_graph vóór een loop voor O(1) performance per aanroep).
+        Pre-built lookup structures from _build_model_graph. When None, the graph is
+        built internally (convenient for standalone calls, but use _build_model_graph
+        before a loop for performance).
+
+    Returns
+    -------
+    tuple[int, str] or None
+        Tuple (basin_node_id, direction) where direction is 'bovenstroomse' or
+        'benedenstroomse', or None when no Basin is reachable.
     """
     if _graph is None:
         _graph = _build_model_graph(model)
@@ -1871,12 +2115,13 @@ def _find_basin_for_link(model, link_id: int, max_hops: int = 20, _graph: dict |
         if node_type is None:
             break
         if node_type == "Basin":
-            return node_id
+            return (node_id, "bovenstroomse")
         if node_type == "Junction" and inflow_count.get(node_id, 0) > 1:
             break
-        node_id = upstream_map.get(node_id)
-        if node_id is None:
+        next_nodes = upstream_map.get(node_id, [])
+        if len(next_nodes) != 1:
             break
+        node_id = next_nodes[0]
 
     # Stroomafwaarts: begin bij to_node_id van originele link
     node_id = orig_to
@@ -1889,12 +2134,13 @@ def _find_basin_for_link(model, link_id: int, max_hops: int = 20, _graph: dict |
         if node_type is None:
             break
         if node_type == "Basin":
-            return node_id
+            return (node_id, "benedenstroomse")
         if node_type == "Junction":
             return None
-        node_id = downstream_map.get(node_id)
-        if node_id is None:
-            break
+        next_nodes = downstream_map.get(node_id, [])
+        if len(next_nodes) != 1:
+            return None
+        node_id = next_nodes[0]
 
     return None
 
@@ -1913,6 +2159,26 @@ def _find_basin_for_link(model, link_id: int, max_hops: int = 20, _graph: dict |
 
 
 def _lhm41_laad_decade_tijdreeks(ts_root: str | Path, waterschap: str, fig_name_clean: str) -> pd.DataFrame | None:
+    """Load the decade time series for a single measurement location from its Excel file.
+
+    Reads the 'Decade' sheet of the time series Excel written by SaveTimeseries and
+    returns the first three columns renamed to ['Datum', 'meting', 'Ribasim'].
+
+    Parameters
+    ----------
+    ts_root
+        Root folder containing per-water-authority sub-folders with time series Excel files.
+    waterschap
+        Name of the water authority; used as a sub-folder name under ts_root.
+    fig_name_clean
+        Sanitised filename (without extension) of the measurement location.
+
+    Returns
+    -------
+    pd.DataFrame or None
+        DataFrame with columns ['Datum', 'meting', 'Ribasim'] at decade resolution,
+        or None when the file does not exist.
+    """
     path = Path(ts_root) / waterschap / f"{fig_name_clean}.xlsx"
     if not path.exists():
         print(f"  Tijdreeks niet gevonden: {path}")
@@ -1927,6 +2193,27 @@ def _lhm41_laad_decade_tijdreeks(ts_root: str | Path, waterschap: str, fig_name_
 
 
 def _lhm41_laad_csv(lhm41_folder: str | Path, csv_naam: str, LHM41_TEKEN_CORRECTIE: dict | None) -> pd.DataFrame | None:
+    """Load an LHM 4.1 decade CSV file and optionally apply a sign correction.
+
+    The CSV is expected to have two columns: a date column and a discharge column.
+    The result is renamed to ['Datum', 'LHM41'].
+
+    Parameters
+    ----------
+    lhm41_folder
+        Folder containing the LHM 4.1 CSV files.
+    csv_naam
+        Filename (including extension) of the CSV to load.
+    LHM41_TEKEN_CORRECTIE
+        Optional dict mapping CSV filenames to a multiplication factor (e.g. -1 to
+        flip the sign). No correction is applied when None or when the filename is
+        not present in the dict.
+
+    Returns
+    -------
+    pd.DataFrame or None
+        DataFrame with columns ['Datum', 'LHM41'], or None when the file does not exist.
+    """
     path = Path(lhm41_folder) / csv_naam
     if not path.exists():
         print(f"  LHM 4.1 CSV niet gevonden: {path}")
@@ -1950,6 +2237,28 @@ def _lhm41_bereken_p95_klasse(
     aan_af: str,
     threshold: float = 5.0,
 ) -> str:
+    """Classify a single measurement series by its P05/P95 discharge magnitude.
+
+    Returns '>=5' when the absolute value of either the 5th or 95th percentile of the
+    full measurement series exceeds the threshold, '<5' otherwise, and 'geen_data' when
+    the series cannot be found or is empty.
+
+    Parameters
+    ----------
+    measurements
+        Dict as returned by LoadMeasurements with keys 'aanvoer_dag' and 'afvoer_dag'.
+    meetreeks_c
+        Column name (measurement series ID) to look up in the measurement DataFrame.
+    aan_af
+        Flow direction ('Afvoer', 'Aanvoer', or 'Aan&Af'); determines which DataFrame to use.
+    threshold
+        Discharge magnitude threshold in m³/s. Default 5.0.
+
+    Returns
+    -------
+    str
+        '>=5', '<5', or 'geen_data'.
+    """
     meas_df = measurements["afvoer_dag"] if aan_af in ("Afvoer", "Aan&Af") else measurements["aanvoer_dag"]
     if meetreeks_c not in meas_df.columns:
         return "geen_data"
@@ -1966,6 +2275,26 @@ def _lhm41_bereken_p95_klasse_som(
     locs: list,
     threshold: float = 5.0,
 ) -> str:
+    """Classify a group of measurement series by the P05/P95 of their combined (summed) discharge.
+
+    Sums the daily measurements of all locations in the group, then applies the same
+    P05/P95 threshold logic as _lhm41_bereken_p95_klasse.
+
+    Parameters
+    ----------
+    measurements
+        Dict as returned by LoadMeasurements with keys 'aanvoer_dag' and 'afvoer_dag'.
+    locs
+        List of location dicts, each with at least 'MeetreeksC' and 'Aan/Af'.
+        The flow direction of the first entry is used for all locations in the group.
+    threshold
+        Discharge magnitude threshold in m³/s. Default 5.0.
+
+    Returns
+    -------
+    str
+        '>=5', '<5', or 'geen_data'.
+    """
     aan_af = locs[0]["Aan/Af"]
     meas_df = measurements["afvoer_dag"] if aan_af in ("Afvoer", "Aan&Af") else measurements["aanvoer_dag"]
 
@@ -1994,6 +2323,32 @@ def _lhm41_cum_afwijking_jaarlijks(
     col_obs: str,
     zomer: bool = False,
 ) -> dict:
+    """Calculate the cumulative discharge deviation between model and observations per year.
+
+    For each year the cumulative deviation is defined as:
+    ``abs(1 - cum_model / cum_obs) * 100`` [%], computed up to the last date that has a
+    valid observation. The mean over all years and the deviation over the full period are
+    also returned.
+
+    Parameters
+    ----------
+    df
+        DataFrame with at least a 'Datum' column and the two discharge columns.
+    col_model
+        Column name for the model discharge series.
+    col_obs
+        Column name for the observed discharge series.
+    zomer
+        When True only the summer months (April-September) are included. Default False.
+
+    Returns
+    -------
+    dict
+        Dict with keys:
+            'per_jaar'  - {year (int): deviation [%]}
+            'gemiddeld' - mean deviation over all years [%]
+            'totaal'    - deviation over the full period [%]
+    """
     leeg = {"per_jaar": {}, "gemiddeld": np.nan, "totaal": np.nan}
 
     d = df.copy()
@@ -2039,6 +2394,32 @@ def _lhm41_bereken_statistieken(
     col_model: str,
     col_obs: str,
 ) -> dict:
+    """Calculate the full set of LHM 4.1 comparison statistics for a model vs. observation pair.
+
+    Extends the standard statistics from GetStatisticsPerPeriod with NSE per year,
+    cumulative annual deviation (full year), and cumulative summer deviation (Apr-Sep).
+
+    Parameters
+    ----------
+    df
+        DataFrame with columns 'Datum', col_model, and col_obs at decade resolution.
+    col_model
+        Column name for the model discharge series.
+    col_obs
+        Column name for the observed discharge series.
+
+    Returns
+    -------
+    dict
+        Standard statistics dict (NSE, KGE, RelBias, …) extended with:
+            'NSE_per_jaar'      - {year: NSE}
+            'CumJaar'           - mean annual cumulative deviation [%]
+            'CumJaar_totaal'    - total-period cumulative deviation [%]
+            'CumJaar_per_jaar'  - {year: cumulative deviation [%]}
+            'CumZomer'          - mean summer cumulative deviation [%]
+            'CumZomer_totaal'   - total-period summer cumulative deviation [%]
+            'CumZomer_per_jaar' - {year: summer cumulative deviation [%]}
+    """
     df_stats = df.rename(columns={col_model: "flow_rate", col_obs: "sum", "Datum": "time"})
 
     stats_per_periode = GetStatisticsPerPeriod(df_stats)
@@ -2070,6 +2451,29 @@ def _lhm41_toets_locaties(
     p95_klasse: str,
     criteria_lhm41: dict,
 ) -> list[dict]:
+    """Evaluate a list of location statistics against the LHM 4.1 criteria for one category/class.
+
+    For each criterion the fraction of locations that meets the threshold is computed and
+    compared against the required percentage.
+
+    Parameters
+    ----------
+    stats_lijst
+        List of statistics dicts (as returned by _lhm41_bereken_statistieken) — one per location.
+    categorie
+        Flow category, e.g. 'Afvoer' or 'Aanvoer'.
+    p95_klasse
+        Discharge magnitude class, e.g. '>=5' or '<5'.
+    criteria_lhm41
+        Dict mapping (categorie, p95_klasse) to a list of criterion tuples:
+        (stat_key, threshold, pct_required, label).
+
+    Returns
+    -------
+    list[dict]
+        One row-dict per criterion with keys:
+        'Criterium', 'N', 'N_voldoet', 'Pct_voldoet', 'Pct_vereist', 'Beoordeling'.
+    """
     criteria = criteria_lhm41.get((categorie, p95_klasse), [])
     rijen = []
     for type_stat, drempel, pct_vereist, label in criteria:
@@ -2105,6 +2509,30 @@ def _lhm41_toets_locaties(
 def _lhm41_stats_regels(
     stats_rib: dict, stats_lhm: dict, categorie: str, p95_klasse: str, criteria_lhm41: dict
 ) -> list[dict]:
+    """Build a list of text lines for the statistics panel in the LHM 4.1 comparison figure.
+
+    Each line is a dict with keys 'text', 'color', 'bold', 'indent', and optionally
+    'suffix' and 'suffix_color'. These are rendered by _lhm41_plot_vergelijking.
+
+    Parameters
+    ----------
+    stats_rib
+        Statistics dict for the Ribasim model (from _lhm41_bereken_statistieken).
+    stats_lhm
+        Statistics dict for the LHM 4.1 model (from _lhm41_bereken_statistieken).
+    categorie
+        Flow category, e.g. 'Afvoer' or 'Aanvoer'.
+    p95_klasse
+        Discharge magnitude class, e.g. '>=5' or '<5'.
+    criteria_lhm41
+        Dict mapping (categorie, p95_klasse) to criterion tuples used to determine
+        whether each statistic value meets the norm.
+
+    Returns
+    -------
+    list[dict]
+        Ordered list of line-descriptor dicts ready for rendering.
+    """
     criteria = criteria_lhm41.get((categorie, p95_klasse), [])
 
     def _beoordeling(waarde: float, type_stat: str, drempel: float) -> tuple[str, str]:
@@ -2181,6 +2609,35 @@ def _lhm41_plot_vergelijking(
     p95_klasse: str = "",
     criteria_lhm41: dict | None = None,
 ) -> None:
+    """Create and save an LHM 4.1 comparison figure (decade discharge + cumulative discharge).
+
+    The figure has two rows: decade discharge (top) and cumulative discharge (bottom).
+    When statistics are provided a right-hand panel is added showing the criteria scores
+    for both Ribasim and LHM 4.1.
+
+    Parameters
+    ----------
+    df_merged
+        DataFrame with columns 'Datum', 'meting_som', 'Ribasim_som', and 'LHM41'.
+    titel
+        Figure title (usually the measurement series names joined with a comma).
+    output_folder
+        Directory where the PNG is saved.
+    fig_naam
+        Base filename (without extension) for the saved PNG.
+    stats_rib
+        Statistics dict for Ribasim (from _lhm41_bereken_statistieken). When None the
+        statistics panel is omitted.
+    stats_lhm
+        Statistics dict for LHM 4.1 (from _lhm41_bereken_statistieken). When None the
+        statistics panel is omitted.
+    categorie
+        Flow category passed to _lhm41_stats_regels, e.g. 'Afvoer'.
+    p95_klasse
+        Discharge magnitude class passed to _lhm41_stats_regels, e.g. '>=5'.
+    criteria_lhm41
+        Dict mapping (categorie, p95_klasse) to criterion tuples. Default empty dict.
+    """
     if criteria_lhm41 is None:
         criteria_lhm41 = {}
     Path(output_folder).mkdir(parents=True, exist_ok=True)
@@ -2295,11 +2752,30 @@ def _lhm41_plot_vergelijking(
 
 
 def _lhm41_kleur_toetsing(ws, df: pd.DataFrame) -> None:
+    """Apply colour fills to the 'Beoordeling' column of an openpyxl worksheet.
+
+    Colours: 'Goed' → green, 'Matig' → yellow, 'Onvoldoende' → red, other → grey.
+
+    Parameters
+    ----------
+    ws
+        openpyxl worksheet object to colour.
+    df
+        DataFrame that was written to the worksheet (used to locate the column index).
+    """
     if "Beoordeling" not in df.columns:
         return
     col_idx = df.columns.tolist().index("Beoordeling") + 1
     for row_idx in range(2, ws.max_row + 1):
         cell = ws.cell(row=row_idx, column=col_idx)
+
+        _BEOOR_KLEUREN = {
+            "Goed": PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid"),
+            "Matig": PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid"),
+            "Onvoldoende": PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid"),
+            "n.v.t.": PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid"),
+        }
+
         cell.fill = _BEOOR_KLEUREN.get(cell.value, _BEOOR_KLEUREN["n.v.t."])
 
 
@@ -2313,28 +2789,39 @@ def AnalyseLHM41Vergelijking(
     output_path: str | Path | None = None,
     LHM41_TEKEN_CORRECTIE: dict | None = None,
 ) -> None:
-    """Voert de LHM 4.1-vergelijkingsanalyse uit en schrijft een criteria-Excel weg.
+    """Run the LHM 4.1 comparison analysis and write the results to an Excel file and GeoPackage.
+
+    Steps:
+    1. Load the coupling layer (GeoPackage) linking measurement series to LHM 4.1 CSVs.
+    2. Load measurement CSV files for P05/P95 classification.
+    3. Per location: load the decade time series and calculate Ribasim vs. measurement statistics.
+    4. Group locations by LHM 4.1 CSV, sum the series, and compare with LHM 4.1.
+    5. Evaluate the LHM 4.1 assessment criteria per (category, P95 class).
+    6. Write an Excel file with statistics and assessments.
+    7. Write a GeoPackage for use in the HTML viewer.
 
     Parameters
     ----------
     gpkg_koppellaag
-        Pad naar de geopackage met de koppellaag.
+        Path to the GeoPackage containing the coupling layer.
     layer_naam
-        Naam van de laag in de geopackage (bijv. ``'koppeling_lhm4_1_reeksen'``).
+        Layer name in the GeoPackage, e.g. ``'koppeling_lhm4_1_reeksen'``.
     model_folder
-        Map van het Ribasim-model; tijdreeksen worden gelezen uit
+        Root directory of the Ribasim model; decade time series are read from
         ``{model_folder}/results/tijdreeksen/``.
     meas_folder
-        Map met de meetbestanden (Metingen_aanvoer/afvoer_dag_totaal.csv).
+        Folder with measurement CSV files (Metingen_aanvoer/afvoer_dag_totaal.csv).
     lhm41_folder
-        Map met de LHM 4.1 decade CSV-bestanden.
+        Folder containing the LHM 4.1 decade CSV files.
     criteria_lhm41
-        Toetsingscriteria per (categorie, P95-klasse). Standaard: _CRITERIA_LHM41_DEFAULT.
+        Assessment criteria per (category, P95 class). Default: internal
+        ``_CRITERIA_LHM41_DEFAULT``.
     output_path
-        Pad voor het output-Excel. Standaard:
+        Output path for the Excel file. Default:
         ``{model_folder}/results/Validatie_criteria_lhm4_1.xlsx``.
     LHM41_TEKEN_CORRECTIE
-        Tekencorrectie per CSV-bestandsnaam. Standaard: geen correcties.
+        Optional sign correction per CSV filename (dict mapping filename to factor).
+        Default None (no corrections applied).
     """
     _CRITERIA_LHM41_DEFAULT = {
         ("Afvoer", ">=5"): [
@@ -2696,6 +3183,8 @@ if __name__ == "__main__":
     DREMPEL_HWS = 75.0  # HWS: 75% van locaties moet voldoen
     DREMPEL_REGIONAAL = 50.0  # Regionaal: 50% van locaties moet voldoen
     HWS_WATERSCHAP = "Rijkswaterstaat"
+    # Absolute vloer voor Bias en percentielen: bij |sim - obs| < drempel altijd Goed
+    ABS_DREMPEL_M3S = 0.15
 
     # ── LHM 4.1-toetsingscriteria ────────────────────────────────────────────
     CRITERIA_LHM41 = {
@@ -2752,6 +3241,7 @@ if __name__ == "__main__":
             filetype="flow",
             criteria_grenzen=CRITERIA_GRENZEN,
             beoor_kleuren=BEOOR_KLEUREN,
+            abs_drempel=ABS_DREMPEL_M3S,
             save_results_combined=True,
             output_is_feather=False,
             output_is_nc=True,
