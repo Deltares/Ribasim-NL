@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 import platform
 import shutil
-import stat
+import subprocess
 import sys
 import urllib.request
 import zipfile
@@ -72,6 +72,15 @@ def _download_minio(dest: Path) -> None:
     client.fget_object(MINIO_BUCKET, object_name, str(dest))
 
 
+def _extract(zip_path: Path, dest: Path) -> None:
+    """Extract a zip archive, preserving symlinks and permissions."""
+    if platform.system() != "Windows":
+        subprocess.run(["unzip", "-o", str(zip_path), "-d", str(dest)], check=True)
+    else:
+        with zipfile.ZipFile(zip_path) as zf:
+            zf.extractall(dest)
+
+
 def main() -> int:
     ribasim_home = _ribasim_home()
     bin_dir = ribasim_home.parent
@@ -90,15 +99,9 @@ def main() -> int:
         else:
             raise RuntimeError(f"Unknown SOURCE: {SOURCE!r}. Use 'github' or 'minio'.")
 
-        with zipfile.ZipFile(zip_path) as zf:
-            zf.extractall(bin_dir)
+        _extract(zip_path, bin_dir)
     finally:
         zip_path.unlink(missing_ok=True)
-
-    # Restore executable bit on Linux (zip doesn't preserve it).
-    if platform.system() != "Windows":
-        exe = ribasim_home / "bin" / "ribasim"
-        exe.chmod(exe.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
     print(f"Installed Ribasim core ({SOURCE}: {NAME}) to {ribasim_home}")
     return 0

@@ -42,6 +42,11 @@ remove_nodes = [
     203809,  # "Gaarkeuken" Fryslân
 ]
 
+# Pumps with min_upstream_level below upstream basin bottom; reset to NA
+reset_pump_min_upstream_level = [
+    5900602,  # min_upstream_level (2.61) below upstream Basin #4402052 bottom (3.3)
+]
+
 # force LevelBoundary node_id to Basin node_id, overriding the automatic coupling
 forced_coupling = {
     3400005: 5901608,
@@ -409,6 +414,11 @@ def fix_basin_profiles(model: Model) -> None:
     Args:
         model: Model to fix profiles for
     """
+    for pump_id in reset_pump_min_upstream_level:
+        mask = model.pump.static.df.node_id == pump_id
+        if mask.any():
+            model.pump.static.df.loc[mask, "min_upstream_level"] = pd.NA
+
     for outlet in model.outlet.node.df.index:
         upstream_basin = model.upstream_node_id(outlet)
         if upstream_basin is None:
