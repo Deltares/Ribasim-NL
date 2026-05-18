@@ -32,9 +32,9 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = True
-add_lhm_fractions: bool = False
-add_rwzi: bool = False
+RESCALE_FLOW_CAPACITIES: bool = False
+add_lhm_fractions: bool = True
+add_rwzi: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -520,6 +520,16 @@ ribasim_model.use_validation = True
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 ribasim_model.write(ribasim_work_dir_model_toml)
 
+# check if meta_categorie in the basin.node.df is completely filled
+missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
+    ribasim_model.basin.node.df["meta_categorie"].isna()
+].index.tolist()
+if missing_meta_categorie_node_ids:
+    raise ValueError(
+        "Not all basins have a meta_categorie assigned. "
+        f"Missing meta_categorie for basin node IDs: {missing_meta_categorie_node_ids}"
+    )
+
 # set forcing
 if DYNAMIC_CONDITIONS:
     # Add dynamic meteo and groundwater from LHM zarr
@@ -536,6 +546,10 @@ if DYNAMIC_CONDITIONS:
     )
     ribasim_model = forcing.add()
     offline_budgets.compute_budgets(ribasim_model)
+    assign_validation_path = work_dir / "results" / "assign_validation.png"
+    assign_validation_path.parent.mkdir(parents=True, exist_ok=True)
+    offline_budgets.plot_assign_validation(ribasim_model, path=assign_validation_path)
+
 
 elif MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_forcing(
@@ -760,7 +774,7 @@ assign = AssignAuthorities(
         10958: "Rijkswaterstaat",
         5022: "Rijkswaterstaat",
     },
-    fill_na_Rijkswaterstaat=False,  # dont fill with RWS, as there are quite some many links with the Wadden Sea
+    fill_na_Rijkswaterstaat=True,
 )
 ribasim_model = assign.assign_authorities()
 
