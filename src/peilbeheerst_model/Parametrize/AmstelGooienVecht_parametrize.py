@@ -31,7 +31,7 @@ MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
 add_lhm_fractions: bool = False
-add_rwzi: bool = True
+add_rwzi: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -557,7 +557,9 @@ assign = AssignAuthorities(
         966: "Rijkswaterstaat",
         2956: "Rijkswaterstaat",
         994: "Rijnland",
+        995: "Rijkswaterstaat",
     },
+    fill_na_Rijkswaterstaat=True,
 )
 ribasim_model = assign.assign_authorities()
 

@@ -34,7 +34,7 @@ MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
 add_lhm_fractions: bool = False
-add_rwzi: bool = True
+add_rwzi: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -758,7 +758,9 @@ assign = AssignAuthorities(
     RWS_grenzen_path=RWS_grenzen_path,
     custom_nodes={
         10958: "Rijkswaterstaat",
+        5022: "Rijkswaterstaat",
     },
+    fill_na_Rijkswaterstaat=False,  # dont fill with RWS, as there are quite some many links with the Wadden Sea
 )
 ribasim_model = assign.assign_authorities()
 

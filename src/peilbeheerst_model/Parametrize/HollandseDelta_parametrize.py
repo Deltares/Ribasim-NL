@@ -32,7 +32,7 @@ MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
 add_lhm_fractions: bool = False
-add_rwzi: bool = True
+add_rwzi: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -970,6 +970,7 @@ assign = AssignAuthorities(
         9141: None,  # dunes
         2687: None,  # dunes
     },
+    fill_na_Rijkswaterstaat=True,
 )
 ribasim_model = assign.assign_authorities()
 
@@ -1003,10 +1004,10 @@ ribasim_model, from_to_node_table = scale_outlets_pumps(
         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
         design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
         design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
+        initial_guess_flow_rate_pump=15.0,  # set higher as no pump capacity is known
     )
 )
 
-# WEGHALEN !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ribasim_model.pump.static.df.max_flow_rate *= 1.25
 
 # check if meta_categorie in the basin.node.df is completely filled

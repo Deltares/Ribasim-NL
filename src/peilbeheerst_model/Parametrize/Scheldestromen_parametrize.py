@@ -32,7 +32,7 @@ MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
 add_lhm_fractions: bool = False
-add_rwzi: bool = True
+add_rwzi: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -63,18 +63,18 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 
-# cloud.synchronize(
-#     filepaths=[
-#         ribasim_base_model_dir,
-#         FeedbackFormulier_path,
-#         ws_grenzen_path,
-#         RWS_grenzen_path,
-#         qlr_path,
-#         aanvoer_path,
-#         meteo_path,
-#         profiles_path,
-#     ]
-# )
+cloud.synchronize(
+    filepaths=[
+        ribasim_base_model_dir,
+        FeedbackFormulier_path,
+        ws_grenzen_path,
+        RWS_grenzen_path,
+        qlr_path,
+        aanvoer_path,
+        meteo_path,
+        profiles_path,
+    ]
+)
 
 # refresh only the feedback form from cloud
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
@@ -338,7 +338,6 @@ supply_connectors = (
     305,
     306,
     310,
-    316,
     323,
     343,
     344,
@@ -492,6 +491,7 @@ assign = AssignAuthorities(
     custom_nodes={
         584: "Rijkswaterstaat",  # Westerschelde
     },
+    fill_na_Rijkswaterstaat=True,
 )
 ribasim_model = assign.assign_authorities()
 
