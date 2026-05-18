@@ -16,6 +16,13 @@ coverage.xml
 .coverage.*
 .pytest_cache/
 
+# Local temp/work dirs
+.tmp/
+codex_temp/
+codex_tmp/
+joblib_tmp*/
+tmp_*.json
+
 # mypy
 .mypy_cache/
 .dmypy.json
