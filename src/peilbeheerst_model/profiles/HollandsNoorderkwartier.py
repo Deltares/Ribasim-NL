@@ -6,6 +6,7 @@ if __name__ == "__main__":
     gen_profiles.main(
         "HollandsNoorderkwartier",
         "hhnk_crossings_v26.gpkg",
+        cross_sections_available=False,
         sync=False,
         export_profile_tables=True,
         export_intermediate_output=True,

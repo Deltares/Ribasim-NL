@@ -176,6 +176,7 @@ for node_id, to_node_id in [
     (2294, 1949),
     (1669, 1670),
     (2352, 1819),
+    (1920, 1881),  # Noordscheschutsluis
 ]:
     model.merge_basins(node_id=node_id, to_node_id=to_node_id, are_connected=True)
 
@@ -511,7 +512,7 @@ supply_area_ignore_links = {
     "Vecht-Twentekanalen": [3079, 3080],
     "Dedemsvaart": [287, 2453, 1680, 1094, 1274, 2164, 2344, 3079, 3080],
     "IJsselmeergebied": [1094, 1274, 2164, 2344],
-    "Hoogeveense Vaart": [32, 653, 765, 809, 2499, 2519, 2555, 2572, 2757, 2812, 2970, 3079, 3080],
+    "Hoogeveense Vaart": [32, 653, 654, 765, 809, 2499, 2519, 2555, 2572, 2757, 2812, 2970, 3079, 3080],
     "Wold Aa": [],
     "Drentse Hoofdvaart": [687, 1024],
     "BoezemNW": [671, 2246, 2247],
@@ -544,6 +545,38 @@ add_controllers_to_uncontrolled_connector_nodes(
 
 # Holthe max_downstream iets lager gezet omdat deze pas aangaat als andere inlaten niet meer kunnen aanleveren.
 model.pump.static.df.loc[model.pump.static.df.node_id == 648, "max_downstream_level"] -= 0.1
+
+# Noordscheschutsluis: basin 1920 is gemerged naar 1881; aanvoer stopt 1 cm onder benedenstrooms streefpeil.
+noordscheschutsluis_pump_node_id = 346
+downstream_basin_ids = model.link.df.loc[
+    (model.link.df.from_node_id == noordscheschutsluis_pump_node_id)
+    & model.link.df.to_node_id.isin(model.basin.node.df.index),
+    "to_node_id",
+].unique()
+if len(downstream_basin_ids) != 1:
+    raise ValueError(
+        f"Noordscheschutsluis {noordscheschutsluis_pump_node_id}: "
+        f"verwacht 1 benedenstrooms basin, gevonden {downstream_basin_ids}"
+    )
+
+downstream_basin_id = int(downstream_basin_ids[0])
+downstream_target_level = model.basin.area.df.loc[
+    model.basin.area.df.node_id == downstream_basin_id,
+    "meta_streefpeil",
+].dropna()
+if downstream_target_level.empty:
+    raise ValueError(
+        f"Noordscheschutsluis {noordscheschutsluis_pump_node_id}: "
+        f"geen streefpeil gevonden voor benedenstrooms basin {downstream_basin_id}"
+    )
+
+max_downstream_level = float(downstream_target_level.iloc[0]) - 0.01
+mask = model.pump.static.df.node_id == noordscheschutsluis_pump_node_id
+if "control_state" in model.pump.static.df.columns:
+    aanvoer_mask = mask & (model.pump.static.df.control_state == "aanvoer")
+    if aanvoer_mask.any():
+        mask = aanvoer_mask
+model.pump.static.df.loc[mask, "max_downstream_level"] = max_downstream_level
 
 set_static_values(
     model.level_boundary.static.df,
