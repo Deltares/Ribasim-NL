@@ -18,6 +18,7 @@ def main(
     sync: bool = True,
     overwrite: bool = False,
     export_intermediate_output: bool = False,
+    cross_sections_available: bool = True,
     fn_water_bodies: gpd.GeoDataFrame | None = None,
     **kwargs,
 ) -> None:
@@ -33,6 +34,7 @@ def main(
     :param sync: sync with GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to True
     :param overwrite: overwrite GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to False
     :param export_intermediate_output: export intermediate output steps (for debugging), defaults to False
+    :param cross_sections_available: flag whether cross-sections dataset is available/representative, defaults to True
     :param fn_water_bodies: filename with water bodies with specific, user-defined representative depths used to
         overwrite the determined representative depths per hydro-object, defaults to None
         When `water_bodies` (polygons), hydro-objects within the polygon(s) have their representative depth overwritten
@@ -50,7 +52,7 @@ def main(
     gdf_hydro_objects = gpd.read_file(_fn_network, layer="hydroobject")
     gdf_crossings = gpd.read_file(_fn_network, layer="crossings_hydroobject_filtered")
     gdf_target_levels = _read_target_levels(cloud, water_authority, fn_network)
-    gdf_cross_sections = _read_cross_sections(cloud, water_authority)
+    gdf_cross_sections = _read_cross_sections(cloud, water_authority, cross_sections_available)
     gdf_water_bodies = _read_water_bodies(cloud, water_authority, fn_water_bodies)
     table = _read_hydrotope_table(cloud)
 
@@ -58,12 +60,15 @@ def main(
     fn_bgt = _bgt_path(cloud, water_authority)
     wd_int = _int_output_path(cloud, water_authority, export_intermediate_output)
 
+    # select datasets
+    data = [gdf_basins, gdf_hydro_objects, gdf_crossings]
+    if cross_sections_available and gdf_cross_sections is not None:
+        data.append(gdf_cross_sections)
+    assert len(data) in (3, 4)
+
     # execute profile generation
     profile_tables = run.main(
-        gdf_basins,
-        gdf_hydro_objects,
-        gdf_crossings,
-        gdf_cross_sections,
+        *data,
         hydrotope_table=table,
         target_levels=gdf_target_levels,
         cloud=cloud,
@@ -90,7 +95,9 @@ def flagged_hydro_objects(
     sync: bool = True,
     overwrite: bool = False,
     export_intermediate_output: bool = False,
+    cross_sections_available: bool = True,
     fn_water_bodies: Path | str | tuple[Path, str] | tuple[str, str] | None = None,
+    **kwargs,
 ) -> None:
     """Execute profile table generator with user-defined main-routing.
 
@@ -107,10 +114,12 @@ def flagged_hydro_objects(
     :param sync: sync with GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to True
     :param overwrite: overwrite GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to False
     :param export_intermediate_output: export intermediate output steps (for debugging), defaults to False
+    :param cross_sections_available: flag whether cross-sections dataset is available/representative, defaults to True
     :param fn_water_bodies: filename with water bodies with specific, user-defined representative depths used to
         overwrite the determined representative depths per hydro-object, defaults to None
         When `water_bodies` (polygons), hydro-objects within the polygon(s) have their representative depth overwritten
         by the depth value(s) in `water_bodies`.
+    :param kwargs: (additional) optional arguments passed on to `.run.main()`
     """
     # sync with the GoodCloud
     cloud = CloudStorage()
@@ -121,7 +130,7 @@ def flagged_hydro_objects(
     gdf_basins = _read_basins(cloud, water_authority)
     gdf_hydro_objects = gpd.read_file(cloud.joinpath(water_authority, fn_hydro_objects), layer=layer_hydro_objects)
     gdf_target_levels = _read_target_levels(cloud, water_authority, fn_target_levels)
-    gdf_cross_sections = _read_cross_sections(cloud, water_authority)
+    gdf_cross_sections = _read_cross_sections(cloud, water_authority, cross_sections_available)
     gdf_water_bodies = _read_water_bodies(cloud, water_authority, fn_water_bodies)
     table = _read_hydrotope_table(cloud)
 
@@ -129,11 +138,15 @@ def flagged_hydro_objects(
     fn_bgt = _bgt_path(cloud, water_authority)
     wd_int = _int_output_path(cloud, water_authority, export_intermediate_output)
 
+    # select datasets
+    data = [gdf_basins, gdf_hydro_objects]
+    if cross_sections_available and gdf_cross_sections is not None:
+        data.append(gdf_cross_sections)
+    assert len(data) in (2, 3)
+
     # execute profile generation
     profiles_tables = run.main(
-        gdf_basins,
-        gdf_hydro_objects,
-        gdf_cross_sections,
+        *data,
         hydrotope_table=table,
         col_ho_main_route=col_flag,
         val_ho_main_route=val_flag,
@@ -142,6 +155,7 @@ def flagged_hydro_objects(
         fn_bgt=fn_bgt,
         wd_intermediate_output=wd_int,
         water_bodies=gdf_water_bodies,
+        **kwargs,
     )
 
     # export profile table
