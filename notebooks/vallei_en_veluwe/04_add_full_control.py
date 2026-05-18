@@ -212,7 +212,7 @@ for static_df in [model.outlet.static.df, model.pump.static.df]:
 
 # %%
 # Linkrichting fixes
-reverse_link_ids = [244, 875, 926, 422, 351, 853, 605, 1018, 766, 378]
+reverse_link_ids = [244, 875, 926, 422, 351, 853, 605, 1018, 378]
 
 
 for link_id in reverse_link_ids:
