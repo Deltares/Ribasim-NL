@@ -95,15 +95,17 @@ class SetDynamicForcing:
         """Compute basin-averaged precipitation and evaporation from LHM zarr and add to model.
 
         Basins are split into primary and secondary definitions to correctly handle overlapping
-        basin areas. Cell counts are summed across both masks for node_ids present in both,
-        ensuring correct spatial averaging.
+        basin areas. Cell counts are assigned to exactly one mask (primary takes priority) per node_id.
+
+        Removes any existing Basin / time data.
+        The groundwater budgets need to be added afterwards.
 
         Returns
         -------
         Model
             Updated Ribasim model with dynamic meteo forcing in ``basin.time``.
         """
-        self.model.basin.time.df = None  # reset any existing time forcing before rebuilding
+        self.model.basin.time.df = None
 
         basins = self.model.basin.area.df
         assert basins is not None

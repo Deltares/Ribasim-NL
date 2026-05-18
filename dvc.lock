@@ -932,8 +932,8 @@ stages:
     outs:
     - path: data/RijnenIJssel/modellen/RijnenIJssel_dynamic_model
       hash: md5
-      md5: d25ced2dfcac1703dd76c4a4eb75b4b5.dir
-      size: 37168962
+      md5: 2373adf2fc325516265f0acbe9653c96.dir
+      size: 54750406
       nfiles: 4
   dynamic@stichtse_rijnlanden:
     cmd: pixi run python notebooks/07_add_dynamic_forcing.py StichtseRijnlanden

@@ -180,9 +180,9 @@ def _split_basin_definition(
     secondary_mask = np.isin(secondary_nodes["node_id"], basin_definition.index)
     primary_mask = np.isin(primary_nodes["node_id"], basin_definition.index)
     if not secondary_mask.all():
-        print(f"poped following secondary nodes: {secondary_nodes['node_id'][~secondary_mask]}")
+        print(f"Popped following secondary nodes: {secondary_nodes['node_id'][~secondary_mask]}")
     if not primary_mask.all():
-        print(f"poped following primary nodes: {primary_nodes['node_id'][~primary_mask]}")
+        print(f"Popped following primary nodes: {primary_nodes['node_id'][~primary_mask]}")
     basin_definition_primair = basin_definition.loc[primary_nodes["node_id"][primary_mask]]
     basin_definition_secondair = basin_definition.loc[secondary_nodes["node_id"][secondary_mask]]
     return basin_definition_primair, basin_definition_secondair
@@ -195,7 +195,7 @@ def _validate_meta_basin_column(df: pd.DataFrame, basin_metacol: str, expected_v
         exception += " contains missings;"
     unexpected = [i for i in df[basin_metacol].unique() if i not in expected_values]
     if unexpected:
-        exception += f" contains unexpeced values {unexpected}, check `primary_values` and `secondary_values` input"
+        exception += f" contains unexpected values {unexpected}, check `primary_values` and `secondary_values` input"
     if exception:
         raise ValueError(f"{basin_metacol}{exception}")
 
