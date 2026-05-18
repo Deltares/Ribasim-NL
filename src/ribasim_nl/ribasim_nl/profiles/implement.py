@@ -217,25 +217,11 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     # modify existing basins ('doorgaand')
     ribasim_model.node.df = ribasim_model.node.df.assign(meta_node_id=ribasim_model.node.df.index)
     _basin_profile = ribasim_model.basin.profile.df.copy()
-    basin_ids = _basin_profile["node_id"].unique()
-
-    # Use df_flowing rows for node_ids present in the basin profile
-    _new_profiles = df_flowing[df_flowing["node_id"].isin(basin_ids)].copy()
-
-    # Keep existing basin profile rows for node_ids without new flowing data
-    # (e.g. basins added by `SplitBasins` after profile generation)
-    _flowing_ids = set(_new_profiles["node_id"].unique())
-    _kept_profiles = _basin_profile[~_basin_profile["node_id"].isin(_flowing_ids)].copy()
-
-    # Ensure consistent columns with the basin profile schema
-    for _col in _basin_profile.columns:
-        if _col not in _new_profiles.columns:
-            _new_profiles[_col] = None
-
-    ribasim_model.basin.profile.df = pd.concat(  # pyrefly: ignore[bad-assignment]
-        [_new_profiles[_basin_profile.columns], _kept_profiles], ignore_index=True
-    ).sort_values(["node_id", "level"], ignore_index=True)
-    del _basin_profile, _new_profiles, _kept_profiles
+    _profiles = profile_merging(df_flowing, _basin_profile[["node_id"]], suffixes=("", "_"))
+    ribasim_model.basin.profile.df = _profiles.sort_values(["node_id", "level"], ignore_index=True).combine_first(  # pyrefly: ignore[bad-assignment]
+        _basin_profile.sort_values(["node_id", "level"], ignore_index=True)
+    )[_basin_profile.columns]
+    del _basin_profile, _profiles
 
     # duplicate all basin-tables
     basin_node = ribasim_model.basin.node.df
