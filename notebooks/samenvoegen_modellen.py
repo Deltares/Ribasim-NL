@@ -12,6 +12,7 @@ data_dir = settings.ribasim_nl_data_dir
 
 # Write intermediate models for debugging or scaling tests
 write_intermediate_models: bool = False
+build_lhm: bool = True
 
 # Remove any model from this list to skip it
 INCLUDE_MODELS: list[str] = [
@@ -25,7 +26,7 @@ INCLUDE_MODELS: list[str] = [
     "Scheldestromen",
     "SchielandendeKrimpenerwaard",
     "WetterskipFryslan",
-    "Zuiderzeeland",
+    # "Zuiderzeeland",
     "AaenMaas",
     "BrabantseDelta",
     "DeDommel",
@@ -40,6 +41,7 @@ INCLUDE_MODELS: list[str] = [
 ]
 
 sub_models: dict[str, list[str]] = {
+    # "DOD-Vechtstromen": ["DrentsOverijsselseDelta", "Vechtstromen"],
     # "GR-DR-OV_Delta": ["Noorderzijlvest", "HunzeenAas", "DrentsOverijsselseDelta"],
     # "RDO-Noord": ["Noorderzijlvest", "HunzeenAas", "WetterskipFryslan", "DrentsOverijsselseDelta"],
 }
@@ -197,15 +199,17 @@ for model_name, authorities in sub_models.items():
     assert lhm_model is not None
     ribasim_toml = data_dir / f"Rijkswaterstaat/modellen/lhm_sub_models/{model_name}/{model_name}.toml"
     lhm_model.write(ribasim_toml)
+    print(f"written {ribasim_toml}")
 
-lhm_model = process_model_spec(1, hws_spec, lhm_model)
-for idx, model_spec in enumerate(model_specs):
-    write_toml = data_dir / f"Rijkswaterstaat/modellen/lhm-scaling/lhm-{idx + 2:02}/lhm-{idx + 2:02}.toml"
-    lhm_model = process_model_spec(idx + 2, model_spec, lhm_model, write_toml=write_toml)
-# Write lhm model only if it exists
-print("write lhm model")
-ribasim_toml = data_dir / "Rijkswaterstaat/modellen/lhm_parts/lhm.toml"
-if lhm_model is not None:
-    # Models this large benefit from specialization
-    lhm_model.solver.specialize = True
-    lhm_model.write(ribasim_toml)
+if build_lhm:
+    lhm_model = process_model_spec(1, hws_spec, lhm_model)
+    for idx, model_spec in enumerate(model_specs):
+        write_toml = data_dir / f"Rijkswaterstaat/modellen/lhm-scaling/lhm-{idx + 2:02}/lhm-{idx + 2:02}.toml"
+        lhm_model = process_model_spec(idx + 2, model_spec, lhm_model, write_toml=write_toml)
+    # Write lhm model only if it exists
+    print("write lhm model")
+    ribasim_toml = data_dir / "Rijkswaterstaat/modellen/lhm_parts/lhm.toml"
+    if lhm_model is not None:
+        # Models this large benefit from specialization
+        lhm_model.solver.specialize = True
+        lhm_model.write(ribasim_toml)

@@ -267,7 +267,7 @@ class AssignOfflineBudgets:
         )
         drainage = summed_budgets.clip(
             upper=0
-        ).abs()  # all <0 is drainage. Take absolute its a positive term in RIBASIM
+        ).abs()  # all <0 is drainage. Take absolute its a positive term in Ribasim
         infiltration = summed_budgets.clip(
             lower=0
         )  # alles > 0 (infiltratie is in modflow, ontrekking uit ribasim, maar in ribasim positief teken)
@@ -278,7 +278,7 @@ class AssignOfflineBudgets:
             .sum(axis=1)
             .clip(upper=0)
             .abs()
-        )  # assume surface_runoff can't be <0 in RIBASIM. And negative budgets in MODFLOW-MetaSWAP are positive terms in Ribasim
+        )  # assume surface_runoff can't be <0 in Ribasim. And negative budgets in MODFLOW-MetaSWAP are positive terms in Ribasim
 
         # update basin drainage and infiltration
         assert model.basin.time.df is not None
