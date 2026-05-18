@@ -856,7 +856,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 639, "flow_rate"] =
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 177, "flow_rate"] = 1
 
 # %% Junctionfy(!)
-model = junctionify(model)
+junctionify(model)
 
 # Model run
 

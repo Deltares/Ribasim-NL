@@ -599,7 +599,7 @@ model.outlet.static.df.loc[mask, ["flow_rate", "min_flow_rate", "max_flow_rate"]
 # %%
 # Junctionify(!)
 
-model = junctionify(model)
+junctionify(model)
 
 
 # %%
