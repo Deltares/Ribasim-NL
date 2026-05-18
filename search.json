@@ -1117,22 +1117,11 @@
     ]
   },
   {
-    "objectID": "watersystems/Vechtstromen.html#de-pollen",
-    "href": "watersystems/Vechtstromen.html#de-pollen",
-    "title": "Vechtstromen",
-    "section": "De Pollen",
-    "text": "De Pollen\n??",
-    "crumbs": [
-      "Watersystems",
-      "Vechtstromen"
-    ]
-  },
-  {
     "objectID": "watersystems/Vechtstromen.html#vriezenveen",
     "href": "watersystems/Vechtstromen.html#vriezenveen",
     "title": "Vechtstromen",
     "section": "Vriezenveen",
-    "text": "Vriezenveen\nVia inlaat Vriezenveensche Veenkam wordt water ingelaten vanuit Kanaal Almelo–Haandrik naar het Vrienzenveensche Veenkanaal. Dit kanaal voert het water door naar het Nieuwe Stroomkanaal van waaruit het via diverse inlaten het gebied ingelaten.",
+    "text": "Vriezenveen\nVia inlaat Vriezenveensche Veenkam wordt water ingelaten vanuit Kanaal Almelo–Haandrik naar het Vrienzenveensche Veenkanaal via aanvoergemaal Westerhaar. Dit kanaal voert het water door naar het Nieuwe Stroomkanaal van waaruit het via diverse inlaten het gebied ingelaten.",
     "crumbs": [
       "Watersystems",
       "Vechtstromen"
@@ -1154,7 +1143,7 @@
     "href": "watersystems/Vechtstromen.html#dooze",
     "title": "Vechtstromen",
     "section": "Dooze",
-    "text": "Dooze\nVia inlaat Fortwijk aan het Nieuwe Stroomkanaal wordt water ingelaten. En verder via Ittrebecker See????",
+    "text": "Dooze\nEen groot deel van Dooze staat in open verbinding met het Kanaal Almelo–Haandrik. Via opvoergemaal Dooze kan water verder over het gebied worden verdeeld.",
     "crumbs": [
       "Watersystems",
       "Vechtstromen"
@@ -1275,7 +1264,7 @@
     "href": "watersystems/Vechtstromen.html#capaciteiten",
     "title": "Vechtstromen",
     "section": "Capaciteiten",
-    "text": "Capaciteiten\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nA\nD_25958\n410\ninlaat\n0.02\n0",
+    "text": "Capaciteiten\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nAanvoergemaal Stokkumervlier\nGM00021\n629\ninlaat\n0.42\n0\n\n\nAanvoergemaal Westerhaar\n\n2341\ninlaat\n0.88\n0\n\n\nBanisgemaal\nGM00033\n587\nuitlaat\n0\n10\n\n\nDiepenheimse Molenbeek\nST00558\n411\ninlaat\n2.61\n0\n\n\nGemaal Orveltersluis\nGM00232\n664\ninlaat\n0\n1.2\n\n\nHammerflier\nST01777\n193\ninlaat\n0.8\n0\n\n\nHerikervlier\nGM00181\n560\ninlaat\n0.14\n0\n\n\nInlaat Vroomshoop\nST00633\n553\ninlaat\n1.75\n0\n\n\nOude Poelsbeek\nGM00195\n615\ninlaat\n0.15\n0\n\n\nSluis Aadorp\nSL00015\n44\ninlaat\n8\n0\n\n\nStieltjeskanaalsluis\nSL00008\n52\ninlaat\n1.2\n\n\n\nStokkumervlier\nGM00003\n642\nuitlaat\n0\n0.56\n\n\nTwicklervaart Delden\nST02055\n498\ninlaat\n0.5\n0",
     "crumbs": [
       "Watersystems",
       "Vechtstromen"
