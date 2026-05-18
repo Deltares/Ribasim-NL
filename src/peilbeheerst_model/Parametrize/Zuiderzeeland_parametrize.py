@@ -21,7 +21,7 @@ from ribasim_nl.control import (
     set_node_functions,
 )
 from ribasim_nl.profiles import implement
-from ribasim_nl.split_basins import NodeMetaCache
+from ribasim_nl.split_basins import NodeMetaCache, SplitBasins
 from shapely import Point
 
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model
@@ -559,14 +559,14 @@ ribasim_param.clean_tables(ribasim_model, waterschap)
 
 # # loop through all splitted basins
 node_cache = NodeMetaCache(ribasim_model)
-# for splitted_basin_path, basin_id in zip(
-#     [splitted_basin_16_path, splitted_basin_31_path, splitted_basin_73_path], [16, 31, 73], strict=True
-# ):
-#     # split basins to improve model convergence
-#     splitter = SplitBasins(
-#         model=ribasim_model, splitted_basin_path=splitted_basin_path, basin_node_id_to_split=basin_id
-#     )
-#     ribasim_model = splitter.run()
+for splitted_basin_path, basin_id in zip(
+    [splitted_basin_16_path, splitted_basin_31_path, splitted_basin_73_path], [16, 31, 73], strict=True
+):
+    # split basins to improve model convergence
+    splitter = SplitBasins(
+        model=ribasim_model, splitted_basin_path=splitted_basin_path, basin_node_id_to_split=basin_id
+    )
+    ribasim_model = splitter.run()
 
 node_cache.set_meta_category(ribasim_model)
 ribasim_model.write(ribasim_work_dir_model_toml)
