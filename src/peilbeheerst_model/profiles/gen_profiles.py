@@ -184,16 +184,26 @@ def _read_basins(cloud: CloudStorage, water_authority: str) -> gpd.GeoDataFrame:
     return basins[basins["node_id"].isin(non_storing)]
 
 
-def _read_cross_sections(cloud: CloudStorage, water_authority: str) -> gpd.GeoDataFrame:
+def _read_cross_sections(cloud: CloudStorage, water_authority: str, available: bool) -> gpd.GeoDataFrame | None:
     """Read geospatial dataset with cross-sections (lines).
 
     :param cloud: the GoodCloud
     :param water_authority: water authority
 
-    :return: cross-section dataset (lines)
+    :return: cross-section dataset (lines), if existing (None otherwise)
     """
+    # cross-sections flagged as unavailable/non-representative
+    if not available:
+        return None
+
+    # read cross-sections
     fn = cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate", "lines_z.gpkg")
-    return gpd.read_file(fn)
+    out = gpd.read_file(fn)
+
+    # return cross-sections, if not empty
+    if out.empty:
+        return None
+    return out
 
 
 def _read_target_levels(cloud: CloudStorage, water_authority: str, fn_target_levels: str) -> gpd.GeoDataFrame:
