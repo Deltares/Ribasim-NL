@@ -12,6 +12,7 @@ from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node, run_ribasim
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
+from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
@@ -23,12 +24,14 @@ from ribasim_nl.profiles import implement
 from ribasim_nl.split_basins import NodeMetaCache, SplitBasins
 from shapely import Point
 
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, settings
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
+add_lhm_fractions: bool = False
+add_rwzi: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -90,10 +93,6 @@ ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
 # set path to base model toml
 ribasim_base_model_toml = ribasim_base_model_dir.joinpath("ribasim.toml")
 
-# define variables and model
-# basin area percentage
-regular_percentage = 10
-boezem_percentage = 90
 unknown_streefpeil = (
     0.00012345  # we need a streefpeil to create the profiles, Q(h)-relations, and af- and aanslag peil for pumps
 )
@@ -208,6 +207,8 @@ ribasim_model.merge_basins(node_id=108, to_node_id=32)  # vakantieparkje(?)
 ribasim_model.merge_basins(node_id=107, to_node_id=198)  # klein gebiedje
 ribasim_model.merge_basins(node_id=67, to_node_id=21)  # klein gebiedje
 ribasim_model.merge_basins(node_id=281, to_node_id=51)  # klein gebiedje
+
+ribasim_model.merge_basins(node_id=285, to_node_id=73)  # klein gebiedje
 
 ribasim_model.merge_basins(node_id=286, to_node_id=283)  # klein gebiedje in stedelijk gebied
 
@@ -759,35 +760,73 @@ assign_metadata.add_meta_to_basins(
     min_overlap=0.95,
 )
 
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 719, "max_flow_rate"] = (
-    1  # unknown capacity, 1 m3/s based on expert judgement
-)
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 856, "max_flow_rate"] = 50  # Wortman
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 852, "max_flow_rate"] = (
-    770 * 2 / 60
-)  # Blocq van Kuffeler, Lage Vaart
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 854, "max_flow_rate"] = (
-    935 * 2 / 60
-)  # Blocq van Kuffeler, Hoge Vaart
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 787, "max_flow_rate"] = (
-    500 * 2 / 60
-)  # Colijn, Lage Vaart
+# data availability (and thus delivery) is not complete for all pumps. Hard code the flow rates based on some emails.
+ribasim_model.pump.static.df["meta_known_flow_rate"] = False
 
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 788, "max_flow_rate"] = (
-    580 / 60
-)  # Colijn, Hoge Vaart
+# based on Excel for D-HYDRO model. Also set the meta_known_flow_rate to True for these pumps, as we have data for these.
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 364,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 4.44, True
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 708,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 2.78, True
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 517,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 3.00, True
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 564,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 1.22, True
 
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 823, "max_flow_rate"] = 580 * 2 / 60  # Lovink
+# based on Gemalen stichting
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 719,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 1, True  # unknown capacity, 1 m3/s based on expert judgement
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 856,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 50, True  # Wortman
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 853,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 770 * 2 / 60, True  # Blocq van Kuffeler, Lage Vaart
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 855,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 935 * 2 / 60, True  # Blocq van Kuffeler, Hoge Vaart
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 787,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 500 * 2 / 60, True  # Colijn, Lage Vaart
 
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 814, "max_flow_rate"] = (
-    800 * 3 / 60
-)  # Vissering
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 788,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 580 / 60, True  # Colijn, Hoge Vaart
+
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 823,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 580 * 2 / 60, True  # Lovink
+
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 814,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 800 * 3 / 60, True  # Vissering
 
 
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 834, "max_flow_rate"] = 620 * 2 / 60  # Smeenge
-
-
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 815, "max_flow_rate"] = 720 * 3 / 60  # Buma
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 834,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 620 * 2 / 60, True  # Smeenge
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 815,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 720 * 3 / 60, True  # Buma
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
@@ -804,33 +843,6 @@ ribasim_param.clean_tables(ribasim_model, waterschap)
 if MIXED_CONDITIONS:
     ribasim_model.basin.static.df = None
     ribasim_param.set_dynamic_min_upstream_max_downstream(ribasim_model)
-
-# set the pumps and outlets with unknown flow capacities to have unknown flow capacities in the model, so they can be scaled in the next step.
-ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
-ribasim_model.pump.static.df["meta_known_flow_rate"] = True
-ribasim_model.pump.static.df.loc[
-    (ribasim_model.pump.static.df.max_flow_rate.isna()) | (ribasim_model.pump.static.df.max_flow_rate == 0),
-    "meta_known_flow_rate",
-] = False
-
-# rescaling of outlets (and pumps)
-if RESCALE_FLOW_CAPACITIES:
-    ribasim_model, from_to_node_function_table = scale_outlets_pumps(
-        OutletPumpScalingConfig(
-            ribasim_model_path=ribasim_work_dir_model_toml,
-            ribasim_model=ribasim_model,
-            from_to_node_function_table=from_to_node_function_table,
-            waterschap=waterschap,
-            cloud=cloud,
-            rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
-            max_iterations=12,
-            design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
-            design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
-        )
-    )
-else:
-    print(f"No scaling of outlets/pumps: {RESCALE_FLOW_CAPACITIES=}")
-
 
 # add the water authority column to couple the model with
 assign = AssignAuthorities(
@@ -849,6 +861,55 @@ assign = AssignAuthorities(
 )
 ribasim_model = assign.assign_authorities()
 
+# merge RWZI model
+if add_rwzi:
+    ribasim_model = merge_rwzi_model(ribasim_model, cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml"))
+
+# add LHM fractions
+if add_lhm_fractions:
+    assign_lhm_fractions(ribasim_model)
+
+# set the pumps and outlets with unknown flow capacities to have unknown flow capacities in the model, so they can be scaled in the next step.
+ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
+ribasim_model.pump.static.df.loc[
+    (ribasim_model.pump.static.df.max_flow_rate.isna()) | (ribasim_model.pump.static.df.max_flow_rate == 0),
+    "meta_known_flow_rate",
+] = False
+
+# rescaling of outlets (and pumps)
+if RESCALE_FLOW_CAPACITIES:
+    ribasim_model, from_to_node_function_table = scale_outlets_pumps(
+        OutletPumpScalingConfig(
+            ribasim_model_path=ribasim_work_dir_model_toml,
+            ribasim_model=ribasim_model,
+            from_to_node_function_table=from_to_node_function_table,
+            waterschap=waterschap,
+            cloud=cloud,
+            rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
+            design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
+            design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
+        )
+    )
+else:
+    print(f"No scaling of outlets/pumps: {RESCALE_FLOW_CAPACITIES=}")
+
+# increase max flow rate of some specific outlets which have high drainage rates
+ribasim_model.outlet.static.df.loc[
+    ribasim_model.outlet.static.df.node_id.isin([337, 371, 416, 474]), ("flow_rate", "max_flow_rate")
+] = 1.0
+
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id.isin([914]), ("flow_rate", "max_flow_rate")] = 1.0
+
+# check if meta_categorie in the basin.node.df is completely filled
+missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
+    ribasim_model.basin.node.df["meta_categorie"].isna()
+].index.tolist()
+if missing_meta_categorie_node_ids:
+    raise ValueError(
+        "Not all basins have a meta_categorie assigned. "
+        f"Missing meta_categorie for basin node IDs: {missing_meta_categorie_node_ids}"
+    )
+
 # set numerical settings
 # write model output
 ribasim_model.use_validation = True
@@ -858,7 +919,7 @@ ribasim_model.solver.saveat = saveat
 ribasim_model.write(ribasim_work_dir_model_toml)
 
 # run model
-run_ribasim(ribasim_work_dir_model_toml, ribasim_home=settings.ribasim_home)
+run_ribasim(ribasim_work_dir_model_toml)
 ribasim_model.update_state()
 ribasim_model.basin.state.write()
 

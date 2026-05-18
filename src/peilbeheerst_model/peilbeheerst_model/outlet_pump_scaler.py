@@ -12,7 +12,7 @@ import pandas as pd
 import xarray as xr
 from ribasim import run_ribasim
 
-from ribasim_nl import CloudStorage, Model, settings
+from ribasim_nl import CloudStorage, Model
 
 pd.set_option("display.max_columns", None)
 
@@ -34,8 +34,8 @@ class OutletPumpScalingConfig:
     from_to_node_function_table: pd.DataFrame
     waterschap: str
     cloud: CloudStorage
-    max_iterations: int = 12
-    initial_guess_flow_rate_outlet: float = 0.01
+    max_iterations: int = 15
+    initial_guess_flow_rate_outlet: float = 1.0
     initial_guess_flow_rate_pump: float = 10.0
     design_precipitation_event: float = 10
     design_potential_evaporation_event: float = 1.5
@@ -624,21 +624,13 @@ class _OutletPumpScaler:
         original_basin_time = ribasim_model.basin.time.df.copy()
         original_endtime = ribasim_model.endtime
 
-        # FIXME: Setting critical(?) static-table columns
-        # ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
-        # ribasim_model.pump.static.df["meta_known_flow_rate"] = True
-        # ribasim_model.outlet.static.df.loc[
-        #     ribasim_model.outlet.static.df["max_flow_rate"].astype(bool), "max_flow_rate"
-        # ] = config.initial_guess_flow_rate_outlet
-        # ribasim_model.pump.static.df.loc[
-        #     ribasim_model.pump.static.df["max_flow_rate"].astype(bool), "max_flow_rate"
-        # ] = config.initial_guess_flow_rate_pump
-
-        # if max_flow_rate is 0.0, change to 0.1
+        # if max_flow_rate is 0.0, change to initial value
         pump_static_df = cast(pd.DataFrame, ribasim_model.pump.static.df)
         outlet_static_df = cast(pd.DataFrame, ribasim_model.outlet.static.df)
-        pump_static_df.loc[pump_static_df.max_flow_rate == 0.0, "max_flow_rate"] = 0.1
-        outlet_static_df.loc[outlet_static_df.max_flow_rate == 0.0, "max_flow_rate"] = 0.1
+        pump_static_df.loc[pump_static_df.max_flow_rate == 0.0, "max_flow_rate"] = config.initial_guess_flow_rate_pump
+        outlet_static_df.loc[outlet_static_df.max_flow_rate == 0.0, "max_flow_rate"] = (
+            config.initial_guess_flow_rate_outlet
+        )
 
         ###########################
 
@@ -780,7 +772,7 @@ class _OutletPumpScaler:
                 if printing:
                     print(f"Running Ribasim simulation: {iteration + 1}/{max_iterations} for situation: {situation}")
 
-                run_ribasim(toml_path=config.ribasim_model_path, ribasim_home=settings.ribasim_home)
+                run_ribasim(toml_path=config.ribasim_model_path)
 
                 # extract results, only select relevant columns, merge streefpeil to node_id
                 # ribasim_water_levels = pd.read_feather(results_path)

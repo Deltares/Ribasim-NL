@@ -26,6 +26,13 @@ model = Model.read(ribasim_toml)
 start_time = time.time()
 # %%
 # parameterize
+model.basin.area.df.loc[model.basin.area.df.node_id == 1338, "meta_streefpeil"] = 7.1
+model.basin.area.df.loc[model.basin.area.df.node_id.isin([1432, 1680]), "meta_streefpeil"] = 6.55
+model.basin.area.df.loc[model.basin.area.df.node_id == 1617, "meta_streefpeil"] = 1.75
+model.basin.area.df.loc[model.basin.area.df.node_id == 1325, "meta_streefpeil"] = 5.1
+model.basin.area.df.loc[model.basin.area.df.node_id == 1311, "meta_streefpeil"] = 3.3
+model.basin.area.df.loc[model.basin.area.df.node_id == 1832, "meta_streefpeil"] = 3.3
+
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
