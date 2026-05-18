@@ -96,4 +96,3 @@ delwaq/
 # Main scripts to run workflows per water authority
 notebooks/*/main.py
 ribasim.env
-notebooks/vallei_en_veluwe/04_add_full_control.py
