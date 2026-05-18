@@ -468,6 +468,9 @@ for row in network_validator.link_incorrect_type_connectivity(
 
 model.remove_unassigned_basin_area()
 
+# %% verwijderen i.v.m koppelen met Aa en Maas
+model.remove_node(node_id=144, remove_links=True)
+model.remove_node(node_id=2484, remove_links=True)
 
 # %%
 # Sanitize node_table
