@@ -11,6 +11,7 @@ from ribasim_nl.control import (
     add_controllers_to_supply_area,
     add_controllers_to_uncontrolled_connector_nodes,
 )
+from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from shapely.ops import substring
 
@@ -583,7 +584,7 @@ model.outlet.static.df.loc[mask, ["flow_rate", "min_flow_rate", "max_flow_rate"]
 # %%
 # Junctionify(!)
 
-# model = junctionify(model)
+model = junctionify(model)
 
 
 # %%
