@@ -1048,17 +1048,22 @@ stages:
     - pixi run python
       src/peilbeheerst_model/Parametrize/HollandsNoorderkwartier_parametrize.py
     deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: 326d538cfadb88b162cd1547e8541ca3.dir
+      size: 22462644
+      nfiles: 2
     - path:
         src/peilbeheerst_model/Parametrize/HollandsNoorderkwartier_parametrize.py
       hash: md5
-      md5: bd6a06f6c4058c72fe5e3f8f77b35ed5
-      size: 20234
+      md5: 74a891dc9b4b47a9db4eeeaa7ce9694d
+      size: 21560
     outs:
     - path:
         data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_parameterized
       hash: md5
-      md5: 2b83e8d260046f22acba9e6403a548a7.dir
-      size: 10715317
+      md5: 6e419f8713980a21606480e4fd781610.dir
+      size: 29331653
       nfiles: 2
   peilbeheerst@hollandse_delta:
     cmd:
@@ -1198,8 +1203,8 @@ stages:
     outs:
     - path: data/Zuiderzeeland/modellen/Zuiderzeeland_parameterized
       hash: md5
-      md5: 5d4b3630b1f507be27871dd97ea7701c.dir
-      size: 20852933
+      md5: 1550fd621cc909859feacdeba008f0d6.dir
+      size: 22638789
       nfiles: 2
   hws_demand:
     cmd:

@@ -155,6 +155,10 @@ stages:
       - data/Vechtstromen/modellen/Vechtstromen_dynamic_model
     outs:
       - data/Rijkswaterstaat/modellen/lhm_parts
+  run_lhm_parts:
+    cmd: pixi run ribasim data/Rijkswaterstaat/modellen/lhm_parts/lhm_parts.toml
+    deps:
+      - data/Rijkswaterstaat/modellen/lhm_parts
   koppelen:
     cmd: pixi run python notebooks/koppelen_modellen.py
     deps:
@@ -163,7 +167,7 @@ stages:
       - data/Rijkswaterstaat/verwerkt/netwerk.gpkg
     outs:
       - data/Rijkswaterstaat/modellen/lhm_coupled
-  run_coupled:
+  run_lhm_coupled:
     cmd: pixi run ribasim data/Rijkswaterstaat/modellen/lhm_coupled/lhm_coupled.toml
     deps:
       - data/Rijkswaterstaat/modellen/lhm_coupled
