@@ -30,8 +30,8 @@ AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
-add_lhm_fractions: bool = False
-add_rwzi: bool = False
+add_lhm_fractions: bool = True
+add_rwzi: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True

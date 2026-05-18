@@ -304,7 +304,7 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     link.set_index("link_id", inplace=True)
 
     # clean up basin node table ('bergend')
-    basin_node = basin_node[["node_type", "meta_node_id", "geometry"]]
+    basin_node = basin_node[["node_type", "meta_node_id", "meta_categorie", "geometry"]]
     basin_node["meta_node_id"] = basin_node.index
 
     # concatenate all newly generated tables to Ribasim model
