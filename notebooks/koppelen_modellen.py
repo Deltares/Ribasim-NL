@@ -56,6 +56,13 @@ forced_coupling = {
     5900034: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
     5900096: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
     5900097: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    1500551: 4000298,  # verbind Winsemius met Brielse Meer ipv Hartelkanaal.
+    1500543: 8001616,  # verbind vdBurg met open zee ipv Nieuwe Waterweg
+    1301498: 1300169,  # LevelBoundary buiten de boezem van HDSR geplaatst
+    1301499: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
+    1301496: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
+    1301495: 1404817,  # LevelBoundary buiten de boezem van HDSR geplaatst
+    1301492: 1404817,  # LevelBoundary buiten de boezem van HDSR geplaatst
 }
 
 
