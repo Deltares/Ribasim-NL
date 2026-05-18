@@ -322,52 +322,6 @@ def main(
     return flowing_profiles, storing_profiles
 
 
-@typing.overload
-def _unpack_data(
-    basins: gpd.GeoDataFrame, hydro_objects: gpd.GeoDataFrame, /, *, flagged_main_route: typing.Literal[True]
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, None, None]: ...
-
-
-@typing.overload
-def _unpack_data(
-    basins: gpd.GeoDataFrame,
-    hydro_objects: gpd.GeoDataFrame,
-    cross_sections: gpd.GeoDataFrame,
-    /,
-    *,
-    flagged_main_route: typing.Literal[True],
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, None, gpd.GeoDataFrame]: ...
-
-
-@typing.overload
-def _unpack_data(
-    basins: gpd.GeoDataFrame,
-    hydro_objects: gpd.GeoDataFrame,
-    crossings: gpd.GeoDataFrame,
-    /,
-    *,
-    flagged_main_route: typing.Literal[False],
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, None]: ...
-
-
-@typing.overload
-def _unpack_data(
-    basins: gpd.GeoDataFrame,
-    hydro_objects: gpd.GeoDataFrame,
-    crossings: gpd.GeoDataFrame,
-    cross_sections: gpd.GeoDataFrame,
-    /,
-    *,
-    flagged_main_route: typing.Literal[False],
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]: ...
-
-
-@typing.overload
-def _unpack_data(
-    *data: gpd.GeoDataFrame, flagged_main_route: bool
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame | None, gpd.GeoDataFrame | None]: ...
-
-
 def _unpack_data(
     *data: gpd.GeoDataFrame, flagged_main_route: bool
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame | None, gpd.GeoDataFrame | None]:
