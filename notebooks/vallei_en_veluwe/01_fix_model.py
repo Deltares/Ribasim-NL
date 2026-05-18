@@ -125,7 +125,6 @@ model.merge_basins(node_id=1267, to_node_id=1177, are_connected=False)
 model.remove_node(1268, remove_links=True)
 model.remove_node(360, remove_links=True)
 model.remove_node(394, remove_links=True)
-model.remove_node(232, remove_links=True)
 model.merge_basins(node_id=1269, to_node_id=1087)
 model.merge_basins(node_id=1149, to_node_id=1270, are_connected=False)
 model.merge_basins(node_id=1187, to_node_id=1028)
@@ -298,7 +297,7 @@ model.merge_basins(node_id=1120, to_node_id=862)
 model.merge_basins(node_id=1218, to_node_id=984)
 model.merge_basins(node_id=1159, to_node_id=1058, are_connected=False)
 
-
+model.remove_node(232, remove_links=True)
 # %% corrigeren knoop-topologie
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
 for row in network_validator.link_incorrect_type_connectivity().itertuples():
