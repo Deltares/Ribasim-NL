@@ -11,6 +11,7 @@ from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.model import default_tables
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
+from shapely.geometry import Point
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -747,6 +748,13 @@ sanitize_node_table(
     ],
     names=names,
 )
+
+# basin Deurnsche Peel
+model.move_node(node_id=1961, geometry=Point(192066.2, 377928.7))
+model.move_node(node_id=552, geometry=Point(189926.3, 382222.4))
+model.redirect_link(link_id=2065, from_node_id=255, to_node_id=1961)
+model.redirect_link(link_id=2063, from_node_id=1093, to_node_id=1961)
+model.reverse_direction_at_node(node_id=3092)
 
 # %% set flow-boundaries to level-boundaries (plus outlet)
 for row in model.flow_boundary.node.df.itertuples():
