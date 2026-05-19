@@ -7,8 +7,8 @@ import peilbeheerst_model.ribasim_parametrization as ribasim_param
 import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
-from peilbeheerst_model.basin_snapping import link_to_hydro_object, node_to_hydro_object_from_file
 from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.network_snapping import snap_model
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node, run_ribasim
@@ -25,7 +25,7 @@ from ribasim_nl.profiles import implement
 from shapely import Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, Network, SetDynamicForcing, junctionify, merge_rwzi_model
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, junctionify, merge_rwzi_model
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
@@ -64,18 +64,18 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 
-cloud.synchronize(
-    filepaths=[
-        # ribasim_base_model_dir,
-        # FeedbackFormulier_path,
-        # ws_grenzen_path,
-        # RWS_grenzen_path,
-        # qlr_path,
-        # aanvoer_path,
-        # meteo_path,
-        profiles_path,
-    ]
-)
+# cloud.synchronize(
+#     filepaths=[
+#         ribasim_base_model_dir,
+#         FeedbackFormulier_path,
+#         ws_grenzen_path,
+#         RWS_grenzen_path,
+#         qlr_path,
+#         aanvoer_path,
+#         meteo_path,
+#         profiles_path,
+#     ]
+# )
 
 # refresh only the feedback form from cloud
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
@@ -353,10 +353,16 @@ ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, def
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
-ribasim_param.clean_tables(ribasim_model, waterschap)
+# add junctions and network snapping
+if ADD_JUNCTIONS:
+    ribasim_model = snap_model(ribasim_model, profiles_path)
+    ribasim_model = junctionify(ribasim_model)
 
 # set basin profiles
-implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
+implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=10)
+
+ribasim_model.write(ribasim_work_dir_model_toml)
+raise KeyboardInterrupt
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
@@ -693,14 +699,6 @@ if missing_meta_categorie_node_ids:
         "Not all basins have a meta_categorie assigned. "
         f"Missing meta_categorie for basin node IDs: {missing_meta_categorie_node_ids}"
     )
-
-# add junctions
-if ADD_JUNCTIONS:
-    fn = profiles_path / "intermediate" / "int_output.gpkg"
-    ribasim_model = node_to_hydro_object_from_file(ribasim_model, fn, layer="hydro-objects", main_route_only=False)
-    network = Network.from_lines_gpkg(fn, layer="hydro-objects")
-    ribasim_model = link_to_hydro_object(ribasim_model, network, ("Basin",))
-    ribasim_model = junctionify(ribasim_model)
 
 # set numerical settings
 # write model output
