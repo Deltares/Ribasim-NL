@@ -85,6 +85,7 @@ check = "prek run --all-files"
 pycheck = "prek run --all-files --skip dvc-pre-commit --skip dvc-pre-push --skip dvc-post-checkout"
 docs = { cmd = "quartodoc build && quarto preview", cwd = "docs" }
 ribasim = { cmd = "bin/ribasim/bin/ribasim", depends-on = ["install-core"] }
+edit-toml = "python scripts/edit_toml.py"
 
 [target.win-64.tasks]
 install-core = { cmd = "python scripts/install_ribasim_core.py", inputs = ["scripts/install_ribasim_core.py"], outputs = ["bin/ribasim/README.md"] }

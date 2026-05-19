@@ -395,7 +395,7 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
                 model.link.df.drop(cycles.index, inplace=True)
                 if kwargs["to_node"].node_type != "Basin":
                     print("Removing node", kwargs["to_node"])
-                    model.remove_node(kwargs["to_node"], remove_links=True)
+                    model.remove_node(kwargs["to_node"].node_id, remove_links=True)
                 else:
                     print("Removing node", kwargs["from_node"])
                     model.remove_node(kwargs["from_node"].node_id, remove_links=True)

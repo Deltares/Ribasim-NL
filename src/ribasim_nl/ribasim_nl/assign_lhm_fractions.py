@@ -230,11 +230,18 @@ def assign_lhm_fractions(
 
     assert model.level_boundary.node is not None
     assert model.level_boundary.node.df is not None
+
+    # validate meta_couple_authority
+    if model.level_boundary.node.df["meta_couple_authority"].isna().any():
+        raise Exception("LevelBoundary meta_couple_authority bevat NaN-waarden")
+
+    # meta_couple_authority -> substance
     level_boundary_df = model.level_boundary.node.df.reset_index()[["node_id", "meta_couple_authority"]].rename(
         columns={"meta_couple_authority": "substance"}
     )
-
     level_boundary_df["substance"] = level_boundary_df["substance"].replace(RENAME_MAP)
+
+    # and the rest of the columns
     level_boundary_df["concentration"] = 1.0
     level_boundary_df["time"] = time
     level_boundary_df["meta_lhm_fraction"] = True
