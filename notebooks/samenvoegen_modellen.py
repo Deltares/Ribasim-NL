@@ -43,7 +43,7 @@ INCLUDE_MODELS: list[str] = [
 sub_models: dict[str, list[str]] = {
     "AAM-Limburg": ["AaenMaas", "Limburg"],
     "Brabant-Limburg": ["Rijkswaterstaat", "AaenMaas", "Limburg", "DeDommel", "BrabantseDelta"],
-    # "DOD-Vechtstromen": ["DrentsOverijsselseDelta", "Vechtstromen"],
+    "DOD-Vechtstromen": ["DrentsOverijsselseDelta", "Vechtstromen"],
     # "GR-DR-OV_Delta": ["Noorderzijlvest", "HunzeenAas", "DrentsOverijsselseDelta"],
     # "RDO-Noord": ["Noorderzijlvest", "HunzeenAas", "WetterskipFryslan", "DrentsOverijsselseDelta"],
 }
