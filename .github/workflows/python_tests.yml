@@ -29,6 +29,7 @@ jobs:
         run: |
           pixi run pytest --numprocesses=auto --basetemp=src/hydamo/tests/temp src/hydamo/tests
           pixi run pytest --numprocesses=auto --basetemp=src/ribasim_nl/tests/temp src/ribasim_nl/tests
+          pixi run pytest scripts/test_edit_toml.py
         env:
           RIBASIM_NL_CLOUD_PASS: ${{ secrets.RIBASIM_NL_CLOUD_PASS }}
       - name: Upload coverage to Codecov
