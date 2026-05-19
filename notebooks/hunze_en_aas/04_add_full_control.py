@@ -255,7 +255,7 @@ node_functions_df = add_controllers_to_supply_area(
 polygon = aanvoergebieden_df.loc[["Fiemel/Westerwolde"], "geometry"].union_all().buffer(1).buffer(-1)
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = []
+ignore_intersecting_links: list[int] = [297, 1941]
 # 3650: Sifon onder Ter Apelkanaal
 
 # doorspoeling (op uitlaten)
