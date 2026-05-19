@@ -23,6 +23,7 @@ set -euo pipefail
 
 PARTITION=4vcpu
 TIME=7-00:00:00
+RUNS_DIR=/p/11212758-ribasim-maas-2026/ribasim-nl-runs
 
 # Parse arguments
 NAME=$1; shift
@@ -39,7 +40,7 @@ for arg in "$@"; do
 done
 
 # Setup isolated run directory
-RUN_DIR="runs/${NAME}"
+RUN_DIR="${RUNS_DIR}/${NAME}"
 if [[ -d "${RUN_DIR}" ]]; then
   echo "Error: ${RUN_DIR} already exists. Remove it or choose a different name." >&2
   exit 1
@@ -79,4 +80,4 @@ JOB_ID=$(sbatch --parsable ${DEP_FLAG} \
   --wrap="srun ${RIBASIM_BIN} ${TOML_ABS}")
 
 echo "Submitted job ${JOB_ID} (${NAME})"
-echo "${NAME}	${JOB_ID}	${TOML}	${OVERRIDES[*]:-}" >> runs/jobs.txt
+echo "${NAME}\t${JOB_ID}\t${TOML}\t${OVERRIDES[*]:-}" >> ${RUNS_DIR}/jobs.txt
