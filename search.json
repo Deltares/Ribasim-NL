@@ -565,7 +565,7 @@
     "href": "watersystems/ValleienVeluwe.html#capaciteiten",
     "title": "Vallei en Veluwe",
     "section": "Capaciteiten",
-    "text": "Capaciteiten\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.",
+    "text": "Capaciteiten\nPer kunstwerk, gespecificeerd op naam, code (waterbeheerder), node_id (v.h. Ribasim model) zijn hieronder de functie (inlaat, doorlaat, uitlaat, uitlaat (doorspoeling))) en de capaciteiten onder aanvoer en afvoer condities opgegeven.\n\n\n\n\n\n\n\n\n\n\n\nnaam\ncode\nnode_id\nfunctie\naanvoer [m3/s]\nafvoer [m3/s]\n\n\n\n\nDe Wenden Oosterwolde\nKGM-3\n468\nuitlaat\n0\n8\n\n\nGemaal Nijkerk\nKGM-113\n267\ninlaat\n0\n5.4\n\n\nGemaal Veluwe\nKGM-18\n257\nuitlaat\n0\n27.667\n\n\nGemaal Westdijk\nKGM-91\n254\nuitlaat\n0\n2.5\n\n\nGrebbe\nKST-2307\n288\ninlaat\n2\n0\n\n\nMr. A.C. Baron van der Feltz (Terwolde)\nKGM-19\n240\ninlaat\n0\n14.167\n\n\nPuttergemaal\nKGM-111\n250\ninlaat\n3\n3\n\n\nStuw inlaatwerk Bruinerburgersluis\nKST-2118\n530\ninlaat\n1\n0",
     "crumbs": [
       "Watersystems",
       "Vallei en Veluwe"
