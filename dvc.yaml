@@ -156,7 +156,7 @@ stages:
     outs:
       - data/Rijkswaterstaat/modellen/lhm_parts
   run_lhm_parts:
-    cmd: pixi run ribasim data/Rijkswaterstaat/modellen/lhm_parts/lhm_parts.toml
+    cmd: pixi run ribasim data/Rijkswaterstaat/modellen/lhm_parts/lhm.toml
     deps:
       - data/Rijkswaterstaat/modellen/lhm_parts
   koppelen:

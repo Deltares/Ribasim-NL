@@ -530,11 +530,11 @@ assign_metadata.add_meta_to_basins(
 )
 
 # manually assign better names (as suggested by JWV in FF)
-ribasim_model.basin.node.df.loc[19, "name"] = "Kromme Mijdrecht"
-ribasim_model.basin.node.df.loc[97, "name"] = "Amstel-Drecht kanaal"
-ribasim_model.basin.node.df.loc[20, "name"] = "Amstel"
-ribasim_model.basin.node.df.loc[85, "name"] = "Amstel"
-ribasim_model.basin.node.df.loc[86, "name"] = "Amstel"
+ribasim_model.node.df.loc[19, "name"] = "Kromme Mijdrecht"
+ribasim_model.node.df.loc[97, "name"] = "Amstel-Drecht kanaal"
+ribasim_model.node.df.loc[20, "name"] = "Amstel"
+ribasim_model.node.df.loc[85, "name"] = "Amstel"
+ribasim_model.node.df.loc[86, "name"] = "Amstel"
 
 increase_flow_rate_pumps = [412, 146]
 
