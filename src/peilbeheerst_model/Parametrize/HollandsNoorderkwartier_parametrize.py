@@ -8,6 +8,7 @@ import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.network_snapping import snap_model
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node, run_ribasim
@@ -26,14 +27,15 @@ from ribasim_nl.split_basins import NodeMetaCache, SplitBasins
 from shapely import Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, junctionify, merge_rwzi_model
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
-add_lhm_fractions: bool = True
-add_rwzi: bool = True
+ADD_LHM_FRACTIONS: bool = True
+ADD_RWZI: bool = True
+ADD_JUNCTIONS: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -254,7 +256,10 @@ node_cache.set_meta_category(ribasim_model)
 ribasim_model.write(ribasim_work_dir_model_toml)
 del node_cache
 
-# POTENTIAL DVC-BREAK
+# add junctions and network snapping
+if ADD_JUNCTIONS:
+    ribasim_model = snap_model(ribasim_model, profiles_path)
+    ribasim_model = junctionify(ribasim_model)
 
 # set basin profiles
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=10)
@@ -623,11 +628,11 @@ assign = AssignAuthorities(
 ribasim_model = assign.assign_authorities()
 
 # merge RWZI model
-if add_rwzi:
+if ADD_RWZI:
     ribasim_model = merge_rwzi_model(ribasim_model, cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml"))
 
 # add LHM fractions
-if add_lhm_fractions:
+if ADD_LHM_FRACTIONS:
     assign_lhm_fractions(ribasim_model)
 
 ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
