@@ -692,7 +692,7 @@ if RESCALE_FLOW_CAPACITIES:
 else:
     print(f"No scaling of outlets/pumps: {RESCALE_FLOW_CAPACITIES=}")
 
-ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 342, "max_flow_rate"] = 1
+ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 342, "max_flow_rate"] = 1.0
 
 
 # check if meta_categorie in the basin.node.df is completely filled
