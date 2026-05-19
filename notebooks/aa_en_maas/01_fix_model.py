@@ -749,18 +749,6 @@ sanitize_node_table(
     names=names,
 )
 
-# basin Deurnsche Peel
-model.move_node(node_id=1961, geometry=Point(192066.2, 377928.7))
-model.move_node(node_id=552, geometry=Point(189926.3, 382222.4))
-model.redirect_link(link_id=2065, from_node_id=255, to_node_id=1961)
-model.redirect_link(link_id=2063, from_node_id=1093, to_node_id=1961)
-model.redirect_link(link_id=2146, from_node_id=36, to_node_id=3092)
-model.redirect_link(link_id=2147, from_node_id=3092, to_node_id=1961)
-
-
-# Eindhovens kanaal
-model.move_node(node_id=1089, geometry=Point(170038.16, 384348.73))
-model.redirect_link(link_id=2073, from_node_id=1922, to_node_id=997)
 
 # %% set flow-boundaries to level-boundaries (plus outlet)
 for row in model.flow_boundary.node.df.itertuples():
@@ -788,6 +776,19 @@ for row in model.flow_boundary.node.df.itertuples():
     left_link_geometry, right_link_geometry = split_line(link_geometry, outlet_node_geometry)
     model.link.add(model.level_boundary[node_id], outlet_node, geometry=left_link_geometry)
     model.link.add(outlet_node, model.basin[basin_node_id], geometry=right_link_geometry)
+
+# basin Deurnsche Peel
+model.move_node(node_id=1961, geometry=Point(192066.2, 377928.7))
+model.move_node(node_id=552, geometry=Point(189926.3, 382222.4))
+model.redirect_link(link_id=2065, from_node_id=255, to_node_id=1961)
+model.redirect_link(link_id=2063, from_node_id=1093, to_node_id=1961)
+model.reverse_direction_at_node(node_id=3092)
+
+
+# Eindhovens kanaal
+model.move_node(node_id=1089, geometry=Point(170038.16, 384348.73))
+model.redirect_link(link_id=2073, from_node_id=1922, to_node_id=997)
+
 
 # %%
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
