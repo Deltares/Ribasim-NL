@@ -826,7 +826,7 @@
     "href": "dev/index.html#repro.sh-pipeline-reproduction",
     "title": "Contributing",
     "section": "repro.sh: pipeline reproduction",
-    "text": "repro.sh: pipeline reproduction\nSubmits the DVC pipeline as individual SLURM jobs. Each foreach stage gets its own job, and SLURM --dependency=afterok ensures correct ordering.\nsbatch repro.sh\nThis submits jobs in three waves:\n\nrwzi (shared dependency)\n22 parallel jobs: 11 dynamic@*, 10 peilbeheerst@*, 1 hws_transient\nsamenvoegen → koppelen\n\nOn completion, job IDs are written to repro_jobs.txt for use with run.sh."
+    "text": "repro.sh: pipeline reproduction\nSubmits the DVC pipeline as individual SLURM jobs. Each foreach stage gets its own job, and SLURM --dependency=afterok ensures correct ordering.\n./repro.sh\nThis submits jobs in three waves:\n\nrwzi (shared dependency)\n22 parallel jobs: 11 dynamic@*, 10 peilbeheerst@*, 1 hws_transient\nsamenvoegen → koppelen\n\nOn completion, job IDs are written to repro_jobs.txt for use with run.sh."
   },
   {
     "objectID": "dev/index.html#run.sh-isolated-simulation-runs",
