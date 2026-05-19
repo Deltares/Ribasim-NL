@@ -225,7 +225,10 @@ for link_id in reverse_link_ids:
 
 model.redirect_link(278, to_node_id=936)
 
-# Basin 1134 verwijderen en alle aangrenzende kunstwerken op een boundary zetten.
+# Rijkswaterstaat Basin 1134 verwijderen en alle aangrenzende kunstwerken op een boundary zetten.
+assert model.level_boundary.node.df.meta_couple_authority.notna().all(), (
+    "Zorg dat eerst je LevelBoundaries overal meta_couple_authority hebben"
+)
 basin_1134_boundary_connector_node_ids = remove_basin_with_level_boundaries(
     model,
     basin_id=1134,
@@ -233,6 +236,10 @@ basin_1134_boundary_connector_node_ids = remove_basin_with_level_boundaries(
     remove_neighbor_node_ids={691},
 )
 
+model.node.df.loc[
+    model.node.df.meta_couple_authority.isna() & (model.node.df.node_type == "LevelBoundary"),
+    "meta_couple_authority",
+] = "Rijkswaterstaat"
 
 # %%
 # Node type fixes
