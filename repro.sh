@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=ribasim-nl-repro
+#SBATCH --job-name=nl-repro
 #SBATCH --partition=4vcpu
 #SBATCH --time=1:00:00
 
@@ -11,7 +11,6 @@ module load pixi
 
 PARTITION=4vcpu
 TIME=1-00:00:00
-TIME_RUN=7-00:00:00
 PIXI="module load pixi; cd $PWD"
 
 submit() {
@@ -72,10 +71,9 @@ JOBIDS="${JOBIDS}:${JID}"
 # Step 3: samenvoegen (after all 22 complete)
 JOB_SAMENVOEGEN=$(submit samenvoegen "afterok${JOBIDS}" ${TIME} "$(repro samenvoegen)")
 
-# Step 4: run_lhm_parts (independent of koppelen/run_lhm_coupled)
-submit run_lhm_parts "afterok:${JOB_SAMENVOEGEN}" ${TIME_RUN} "$(repro run_lhm_parts)"
-
-# Step 5: koppelen -> run_lhm_coupled
+# Step 4: koppelen (after samenvoegen)
 JOB_KOPPELEN=$(submit koppelen "afterok:${JOB_SAMENVOEGEN}" ${TIME} "$(repro koppelen)")
 
-submit run_lhm_coupled "afterok:${JOB_KOPPELEN}" ${TIME_RUN} "$(repro run_lhm_coupled)"
+# Log job IDs for run.sh to depend on
+echo "samenvoegen	${JOB_SAMENVOEGEN}" > repro_jobs.txt
+echo "koppelen	${JOB_KOPPELEN}" >> repro_jobs.txt

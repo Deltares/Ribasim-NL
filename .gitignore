@@ -91,6 +91,8 @@ bin/
 *.nc
 *.ps1
 results/
+runs/
+repro_jobs.txt
 delwaq/
 
 # Main scripts to run workflows per water authority
