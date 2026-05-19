@@ -71,21 +71,21 @@ splitted_basin_2_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Op
 splitted_basin_9_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_9.gpkg")
 splitted_basin_10_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_10.gpkg")
 
-# cloud.synchronize(
-#     filepaths=[
-#         ribasim_base_model_dir,
-#         FeedbackFormulier_path,
-#         ws_grenzen_path,
-#         RWS_grenzen_path,
-#         qlr_path,
-#         aanvoer_path,
-#         # meteo_path,
-#         profiles_path,
-#         splitted_basin_2_path,
-#         splitted_basin_9_path,
-#         splitted_basin_10_path,
-#     ]
-# )
+cloud.synchronize(
+    filepaths=[
+        ribasim_base_model_dir,
+        FeedbackFormulier_path,
+        ws_grenzen_path,
+        RWS_grenzen_path,
+        qlr_path,
+        aanvoer_path,
+        meteo_path,
+        profiles_path,
+        splitted_basin_2_path,
+        splitted_basin_9_path,
+        splitted_basin_10_path,
+    ]
+)
 
 # refresh only the feedback form from cloud (instead of all "verwerkt" files)
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
