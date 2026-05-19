@@ -756,6 +756,10 @@ model.redirect_link(link_id=2065, from_node_id=255, to_node_id=1961)
 model.redirect_link(link_id=2063, from_node_id=1093, to_node_id=1961)
 model.reverse_direction_at_node(node_id=3092)
 
+# Eindhovens kanaal
+model.move_node(node_id=1089, geometry=Point(170038.16, 384348.73))
+model.redirect_link(link_id=2073, from_node_id=1922, to_node_id=997)
+
 # %% set flow-boundaries to level-boundaries (plus outlet)
 for row in model.flow_boundary.node.df.itertuples():
     node_id = row.Index
