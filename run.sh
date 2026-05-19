@@ -44,6 +44,19 @@ fi
 
 RUN_DIR="${RUNS_DIR}/${NAME}"
 
+# Quote overrides for embedding in heredoc
+QUOTED_OVERRIDES=""
+for o in "${OVERRIDES[@]+"${OVERRIDES[@]}"}"; do
+  QUOTED_OVERRIDES+=" \"$o\""
+done
+
+# Create output directory so SLURM can write the log file
+if [[ -d "${RUN_DIR}/model" ]]; then
+  echo "Error: ${RUN_DIR}/model already exists. Remove it or choose a different name." >&2
+  exit 1
+fi
+mkdir -p "${RUN_DIR}"
+
 # Submit
 JOB_ID=$(sbatch --parsable ${DEP_FLAG} \
   --job-name="${NAME}" --partition=${PARTITION} --time=${TIME} \
@@ -55,30 +68,22 @@ module load pixi
 cd $PWD
 
 # Setup isolated run directory
-RUN_DIR="${RUN_DIR}"
-if [[ -d "\${RUN_DIR}" ]]; then
-  echo "Error: \${RUN_DIR} already exists. Remove it or choose a different name." >&2
-  exit 1
-fi
-
-echo "Copying model to \${RUN_DIR}..."
-mkdir -p "\${RUN_DIR}"
-cp -r "${MODEL_DIR}" "\${RUN_DIR}/model"
-cp -r bin/ribasim "\${RUN_DIR}/ribasim"
+cp -r "${MODEL_DIR}" "${RUN_DIR}/model"
+cp -r bin/ribasim "${RUN_DIR}/ribasim"
 
 # Find the TOML file in the model directory
-TOML=\$(find "\${RUN_DIR}/model" -maxdepth 1 -name "*.toml" | head -1)
+TOML=\$(find "${RUN_DIR}/model" -maxdepth 1 -name "*.toml" | head -1)
 if [[ -z "\${TOML}" ]]; then
-  echo "Error: no .toml file found in \${RUN_DIR}/model" >&2
+  echo "Error: no .toml file found in ${RUN_DIR}/model" >&2
   exit 1
 fi
 echo "Using TOML: \${TOML}"
 
 # Apply overrides
-${OVERRIDES:+pixi run edit-toml "\${TOML}" ${OVERRIDES[*]}}
+${QUOTED_OVERRIDES:+pixi run edit-toml "\${TOML}"${QUOTED_OVERRIDES}}
 
 # Run
-srun "\${RUN_DIR}/ribasim/bin/ribasim" "\${TOML}"
+srun "${RUN_DIR}/ribasim/bin/ribasim" "\${TOML}"
 EOF
 )
 
