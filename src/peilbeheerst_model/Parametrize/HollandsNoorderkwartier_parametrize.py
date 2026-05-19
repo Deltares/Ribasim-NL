@@ -69,15 +69,15 @@ splitted_basin_3_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Op
 
 cloud.synchronize(
     filepaths=[
-        # ribasim_base_model_dir,
-        # FeedbackFormulier_path,
-        # ws_grenzen_path,
-        # RWS_grenzen_path,
-        # qlr_path,
-        # aanvoer_path,
-        # meteo_path,
-        # profiles_path,
-        # splitted_basin_3_path,
+        ribasim_base_model_dir,
+        FeedbackFormulier_path,
+        ws_grenzen_path,
+        RWS_grenzen_path,
+        qlr_path,
+        aanvoer_path,
+        meteo_path,
+        profiles_path,
+        splitted_basin_3_path,
     ]
 )
 
