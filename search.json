@@ -822,6 +822,20 @@
     "text": "Baseline file\nExisting type errors are stored in a baseline.json file. Pyrefly’s baseline feature suppresses these known errors and only reports new errors. This way, pyrefly check passes cleanly without requiring ignore comments on every line.\nThe baseline is configured in pyproject.toml:\n[tool.pyrefly]\nbaseline = \"baseline.json\"\n\nUpdating the baseline\nAfter fixing existing type errors, regenerate the baseline to remove the fixed entries:\npixi run pyrefly check --update-baseline\nIf you introduce code that triggers new errors (e.g. from incomplete stubs) that cannot be reasonably fixed, you can add them to the baseline by running the same command. Prefer fixing the error or adding a targeted # pyrefly: ignore[error-code] comment when possible.\n\n\nSuppressing individual errors\nFor specific lines where the type checker is wrong, use a targeted ignore comment:\nx = some_expression  # pyrefly: ignore[error-code]\nFor lines that would exceed 120 characters with the comment appended, place the comment on the line above:\n# pyrefly: ignore[error-code]\nx = some_very_long_expression_that_would_be_too_long_with_an_inline_comment"
   },
   {
+    "objectID": "dev/index.html#repro.sh-pipeline-reproduction",
+    "href": "dev/index.html#repro.sh-pipeline-reproduction",
+    "title": "Contributing",
+    "section": "repro.sh: pipeline reproduction",
+    "text": "repro.sh: pipeline reproduction\nSubmits the DVC pipeline as individual SLURM jobs. Each foreach stage gets its own job, and SLURM --dependency=afterok ensures correct ordering.\nsbatch repro.sh\nThis submits jobs in three waves:\n\nrwzi (shared dependency)\n22 parallel jobs: 11 dynamic@*, 10 peilbeheerst@*, 1 hws_transient\nsamenvoegen → koppelen\n\nOn completion, job IDs are written to repro_jobs.txt for use with run.sh."
+  },
+  {
+    "objectID": "dev/index.html#run.sh-isolated-simulation-runs",
+    "href": "dev/index.html#run.sh-isolated-simulation-runs",
+    "title": "Contributing",
+    "section": "run.sh: isolated simulation runs",
+    "text": "run.sh: isolated simulation runs\nCopies a model and the Ribasim binary to runs/&lt;name&gt;/ and submits a SLURM job. This isolates runs from the DVC pipeline and from each other, preventing Bus errors from concurrent file access.\n./run.sh &lt;name&gt; &lt;model_dir&gt; [--after=&lt;jobid&gt;] [key=value ...]\nTOML overrides use dot notation for nested keys.\n\nExamples\nRun lhm_coupled after koppelen finishes:\n./run.sh lhm_coupled data/Rijkswaterstaat/modellen/lhm_coupled \\\n  --after=$(grep koppelen repro_jobs.txt | cut -f2)\nRun lhm_parts with a shorter simulation period:\n./run.sh lhm_parts_1yr data/Rijkswaterstaat/modellen/lhm_parts \\\n  --after=$(grep samenvoegen repro_jobs.txt | cut -f2) \\\n  endtime=\"2018-01-01 00:00:00\"\nCompare solver settings:\n./run.sh lhm_coupled_tight data/Rijkswaterstaat/modellen/lhm_coupled \\\n  --after=$(grep koppelen repro_jobs.txt | cut -f2) \\\n  solver.abstol=1e-6\n\n./run.sh lhm_coupled_qndf data/Rijkswaterstaat/modellen/lhm_coupled \\\n  --after=$(grep koppelen repro_jobs.txt | cut -f2) \\\n  solver.algorithm=QNDF solver.abstol=1e-5\nAll submissions are logged to runs/jobs.txt. Run directories and job logs are gitignored."
+  },
+  {
     "objectID": "reference/add_styles_to_geopackage.html",
     "href": "reference/add_styles_to_geopackage.html",
     "title": "add_styles_to_geopackage",

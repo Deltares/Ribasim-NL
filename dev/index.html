@@ -185,6 +185,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#suppressing-individual-errors" id="toc-suppressing-individual-errors" class="nav-link" data-scroll-target="#suppressing-individual-errors">Suppressing individual errors</a></li>
   </ul></li>
   </ul></li>
+  <li><a href="#running-on-slurm" id="toc-running-on-slurm" class="nav-link" data-scroll-target="#running-on-slurm">Running on SLURM</a>
+  <ul class="collapse">
+  <li><a href="#repro.sh-pipeline-reproduction" id="toc-repro.sh-pipeline-reproduction" class="nav-link" data-scroll-target="#repro.sh-pipeline-reproduction">repro.sh: pipeline reproduction</a></li>
+  <li><a href="#run.sh-isolated-simulation-runs" id="toc-run.sh-isolated-simulation-runs" class="nav-link" data-scroll-target="#run.sh-isolated-simulation-runs">run.sh: isolated simulation runs</a>
+  <ul class="collapse">
+  <li><a href="#examples" id="toc-examples" class="nav-link" data-scroll-target="#examples">Examples</a></li>
+  </ul></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -331,6 +339,51 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>For lines that would exceed 120 characters with the comment appended, place the comment on the line above:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># pyrefly: ignore[error-code]</span></span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> some_very_long_expression_that_would_be_too_long_with_an_inline_comment</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+</section>
+</section>
+<section id="running-on-slurm" class="level1">
+<h1>Running on SLURM</h1>
+<p>The full pipeline can be reproduced on an HPC cluster using two scripts:</p>
+<ul>
+<li><code>repro.sh</code> — submits DVC pipeline stages as SLURM jobs with correct dependencies</li>
+<li><code>run.sh</code> — submits isolated Ribasim simulation runs</li>
+</ul>
+<section id="repro.sh-pipeline-reproduction" class="level2">
+<h2 class="anchored" data-anchor-id="repro.sh-pipeline-reproduction">repro.sh: pipeline reproduction</h2>
+<p>Submits the DVC pipeline as individual SLURM jobs. Each <code>foreach</code> stage gets its own job, and SLURM <code>--dependency=afterok</code> ensures correct ordering.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="ex">sbatch</span> repro.sh</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This submits jobs in three waves:</p>
+<ol type="1">
+<li><code>rwzi</code> (shared dependency)</li>
+<li>22 parallel jobs: 11 <code>dynamic@*</code>, 10 <code>peilbeheerst@*</code>, 1 <code>hws_transient</code></li>
+<li><code>samenvoegen</code> → <code>koppelen</code></li>
+</ol>
+<p>On completion, job IDs are written to <code>repro_jobs.txt</code> for use with <code>run.sh</code>.</p>
+</section>
+<section id="run.sh-isolated-simulation-runs" class="level2">
+<h2 class="anchored" data-anchor-id="run.sh-isolated-simulation-runs">run.sh: isolated simulation runs</h2>
+<p>Copies a model and the Ribasim binary to <code>runs/&lt;name&gt;/</code> and submits a SLURM job. This isolates runs from the DVC pipeline and from each other, preventing Bus errors from concurrent file access.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./run.sh</span> <span class="op">&lt;</span>name<span class="op">&gt;</span> <span class="op">&lt;</span>model_dir<span class="op">&gt;</span> [--after=<span class="op">&lt;</span>jobid<span class="op">&gt;</span>] [key=value ...]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>TOML overrides use dot notation for nested keys.</p>
+<section id="examples" class="level3">
+<h3 class="anchored" data-anchor-id="examples">Examples</h3>
+<p>Run <code>lhm_coupled</code> after koppelen finishes:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./run.sh</span> lhm_coupled data/Rijkswaterstaat/modellen/lhm_coupled <span class="dt">\</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--after</span><span class="op">=</span><span class="va">$(</span><span class="fu">grep</span> koppelen repro_jobs.txt <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-f2</span><span class="va">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Run <code>lhm_parts</code> with a shorter simulation period:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./run.sh</span> lhm_parts_1yr data/Rijkswaterstaat/modellen/lhm_parts <span class="dt">\</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--after</span><span class="op">=</span><span class="va">$(</span><span class="fu">grep</span> samenvoegen repro_jobs.txt <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-f2</span><span class="va">)</span> <span class="dt">\</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>  endtime=<span class="st">"2018-01-01 00:00:00"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Compare solver settings:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./run.sh</span> lhm_coupled_tight data/Rijkswaterstaat/modellen/lhm_coupled <span class="dt">\</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--after</span><span class="op">=</span><span class="va">$(</span><span class="fu">grep</span> koppelen repro_jobs.txt <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-f2</span><span class="va">)</span> <span class="dt">\</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>  solver.abstol=1e-6</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a><span class="ex">./run.sh</span> lhm_coupled_qndf data/Rijkswaterstaat/modellen/lhm_coupled <span class="dt">\</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--after</span><span class="op">=</span><span class="va">$(</span><span class="fu">grep</span> koppelen repro_jobs.txt <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-f2</span><span class="va">)</span> <span class="dt">\</span></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>  solver.algorithm=QNDF solver.abstol=1e-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>All submissions are logged to <code>runs/jobs.txt</code>. Run directories and job logs are gitignored.</p>
 
 
 </section>
