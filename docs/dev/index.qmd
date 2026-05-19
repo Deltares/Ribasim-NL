@@ -191,7 +191,7 @@ The full pipeline can be reproduced on an HPC cluster using two scripts:
 Submits the DVC pipeline as individual SLURM jobs. Each `foreach` stage gets its own job, and SLURM `--dependency=afterok` ensures correct ordering.
 
 ```sh
-sbatch repro.sh
+./repro.sh
 ```
 
 This submits jobs in three waves:

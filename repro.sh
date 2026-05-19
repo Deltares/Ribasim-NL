@@ -1,10 +1,7 @@
 #!/bin/bash
 
-#SBATCH --job-name=nl-repro
-#SBATCH --partition=4vcpu
-#SBATCH --time=1:00:00
-
 # Submit the full Ribasim-NL pipeline as individual SLURM jobs.
+# Run directly on the login node: ./repro.sh
 # Uses `dvc repro` per stage; SLURM dependencies ensure correct ordering.
 
 module load pixi

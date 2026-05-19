@@ -1,10 +1,7 @@
 #!/bin/bash
 
-#SBATCH --job-name=nl-run
-#SBATCH --partition=4vcpu
-#SBATCH --time=1:00:00
-
 # Submit an isolated Ribasim simulation run on SLURM.
+# Run directly on the login node.
 #
 # Usage:
 #   ./run.sh <name> <model_dir> [--after=<jobid>] [key=value ...]
