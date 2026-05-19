@@ -548,16 +548,16 @@ ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
 ribasim_model.manning_resistance.static.df["length"] = 100.0
 ribasim_model.manning_resistance.static.df["manning_n"] = 0.01
 
-# increase aanslagpeil for Dolkgemaal
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 569, "max_downstream_level"] += (
-    0.05  # 5 cm higher than streefpeil to make sure Winsemius pumps first
+# idecrease aanslagpeil for Dolkgemaal
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 569, "max_downstream_level"] -= (
+    0.05  # 5 cm lower than streefpeil to make sure Winsemius pumps first
 )
 ribasim_model.discrete_control.condition.df.loc[
     ribasim_model.discrete_control.condition.df.node_id == 3118, "threshold_high"
-] += 0.05
+] -= 0.05
 ribasim_model.discrete_control.condition.df.loc[
     ribasim_model.discrete_control.condition.df.node_id == 3118, "threshold_low"
-] += 0.05
+] -= 0.05
 
 
 # last formating of the tables
@@ -575,7 +575,9 @@ assign = AssignAuthorities(
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
     custom_nodes={
+        530: "Noordzee",
         532: "Rijkswaterstaat",
+        543: "Noordzee",
     },
     fill_na_authority="Rijkswaterstaat",
 )

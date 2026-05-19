@@ -771,8 +771,9 @@ assign = AssignAuthorities(
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
     custom_nodes={
-        10958: "Rijkswaterstaat",
+        3820: "Noordzee",
         5022: "Rijkswaterstaat",
+        10958: "Rijkswaterstaat",
     },
     fill_na_authority="Noordzee",
 )
