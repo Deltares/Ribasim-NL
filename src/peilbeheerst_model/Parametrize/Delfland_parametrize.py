@@ -436,27 +436,7 @@ from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
 from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_model, from_to_node_table)
 from_to_node_function_table["demand"] = None
 # manual adjustments to control settings
-to_supply = (
-    150,
-    163,
-    167,
-    179,
-    201,
-    223,
-    224,
-    239,
-    245,
-    247,
-    258,
-    306,
-    353,
-    371,
-    377,
-    403,
-    468,
-    475,
-    525,
-)
+to_supply = 167, 371, 239, 223, 258, 306, 525, 377, 150, 224, 468, 163, 201, 475
 set_node_functions(from_to_node_function_table, to_supply=to_supply)
 
 outlet_copy = ribasim_model.outlet.static.df[
