@@ -1249,18 +1249,18 @@ stages:
       nfiles: 4
     - path: notebooks/rijkswaterstaat
       hash: md5
-      md5: 8a6aed4dce2503a96226453229ea7190.dir
-      size: 93888
+      md5: 313cb3021dd3b9cf35479153cc388800.dir
+      size: 93880
       nfiles: 13
     outs:
     - path: data/Rijkswaterstaat/modellen/hws_demand
       hash: md5
-      md5: d3504ce4581a3f34eb8d9027805edd01.dir
+      md5: 8c48e7df2d7d210f0dd31a915dd4e1c8.dir
       size: 42651828
       nfiles: 2
     - path: data/Rijkswaterstaat/verwerkt/netwerk.gpkg
       hash: md5
-      md5: 12c20e308c5df1b820592d4f1e1ba451
+      md5: 1483e211c280b98d532480709f07cb2c
       size: 3731456
   hws_transient:
     cmd:
@@ -1268,7 +1268,7 @@ stages:
     deps:
     - path: data/Rijkswaterstaat/modellen/hws_demand
       hash: md5
-      md5: d3504ce4581a3f34eb8d9027805edd01.dir
+      md5: 8c48e7df2d7d210f0dd31a915dd4e1c8.dir
       size: 42651828
       nfiles: 2
     - path: notebooks/rijkswaterstaat/8b_update_bc.py
@@ -1278,6 +1278,6 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/modellen/hws_transient
       hash: md5
-      md5: 99a07babfa97e531a4ef81ecdcb71564.dir
+      md5: f43f695b3c314f33665f787b479edc95.dir
       size: 48525492
       nfiles: 2
