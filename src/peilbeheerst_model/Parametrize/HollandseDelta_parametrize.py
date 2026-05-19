@@ -33,7 +33,7 @@ DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = False
 add_lhm_fractions: bool = True
 add_rwzi: bool = True
-
+# TO DO ITERATIONS @scaling WEGHALEN !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
 
@@ -1013,6 +1013,7 @@ ribasim_model, from_to_node_table = scale_outlets_pumps(
         from_to_node_function_table=from_to_node_function_table,
         waterschap=waterschap,
         cloud=cloud,
+        max_iterations=1,  # WEGHALEN, TEST TODO
         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
         design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
         design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
