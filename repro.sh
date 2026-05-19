@@ -17,7 +17,7 @@ submit() {
     --wrap="${PIXI}; $*"
 }
 
-repro() { echo "srun pixi run dvc repro -f $1"; }
+repro() { echo "srun pixi run dvc repro -f -s $*"; }
 
 # Step 1: shared dependency
 JOB_RWZI=$(submit rwzi singleton ${TIME} "$(repro rwzi)")
@@ -40,7 +40,7 @@ for key in \
   vallei_en_veluwe \
   vechtstromen
 do
-  JID=$(submit "${key}" "${DEP}" ${TIME} "$(repro dynamic@${key})")
+  JID=$(submit "${key}" "${DEP}" ${TIME} "$(repro parameterized@${key} bergend@${key} dynamic@${key})")
   JOBIDS="${JOBIDS}:${JID}"
 done
 
@@ -61,8 +61,8 @@ do
   JOBIDS="${JOBIDS}:${JID}"
 done
 
-# hws_transient (hws_demand -> hws_transient chain)
-JID=$(submit hws_transient "${DEP}" ${TIME} "$(repro hws_transient)")
+# hws (hws_demand -> hws_transient chain)
+JID=$(submit hws "${DEP}" ${TIME} "$(repro hws_demand hws_transient)")
 JOBIDS="${JOBIDS}:${JID}"
 
 # Step 3: samenvoegen (after all 22 complete)
