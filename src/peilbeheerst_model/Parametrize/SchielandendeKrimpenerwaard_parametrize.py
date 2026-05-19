@@ -665,6 +665,16 @@ ribasim_model.pump.static.df.loc[
     "meta_known_flow_rate",
 ] = False
 
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 363,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 5, True  # actually not known, but its otherwise too low
+
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == 166,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 10, True  # actually not known, but its otherwise too low
+
 # rescaling of outlets (and pumps)
 if RESCALE_FLOW_CAPACITIES:
     ribasim_model, from_to_node_function_table = scale_outlets_pumps(
@@ -681,6 +691,9 @@ if RESCALE_FLOW_CAPACITIES:
     )
 else:
     print(f"No scaling of outlets/pumps: {RESCALE_FLOW_CAPACITIES=}")
+
+ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 342, "max_flow_rate"] = 1
+
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
