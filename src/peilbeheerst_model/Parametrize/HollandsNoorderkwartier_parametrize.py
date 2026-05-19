@@ -637,10 +637,6 @@ ribasim_model.pump.static.df.loc[
     "meta_known_flow_rate",
 ] = False
 
-# WEGHALEN !!!!!!!!!!!!!!!!!!!!!!!!!!
-ribasim_model.use_validation = False
-ribasim_model.write(ribasim_work_dir_model_toml)
-
 ribasim_model, from_to_node_table = scale_outlets_pumps(
     OutletPumpScalingConfig(
         ribasim_model_path=ribasim_work_dir_model_toml,
