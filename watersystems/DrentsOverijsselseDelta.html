@@ -232,6 +232,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#watersysteem" id="toc-watersysteem" class="nav-link" data-scroll-target="#watersysteem">Watersysteem</a></li>
   </ul></li>
   </ul></li>
+  <li><a href="#waterbeheer-natte-periode-hoofdsysteem" id="toc-waterbeheer-natte-periode-hoofdsysteem" class="nav-link" data-scroll-target="#waterbeheer-natte-periode-hoofdsysteem">Waterbeheer natte periode hoofdsysteem:</a></li>
   <li><a href="#waterbeheer-droge-perioden-hoofdsysteem" id="toc-waterbeheer-droge-perioden-hoofdsysteem" class="nav-link" data-scroll-target="#waterbeheer-droge-perioden-hoofdsysteem">Waterbeheer droge perioden hoofdsysteem</a></li>
   <li><a href="#aanvoergebieden" id="toc-aanvoergebieden" class="nav-link" data-scroll-target="#aanvoergebieden">Aanvoergebieden</a>
   <ul class="collapse">
@@ -245,10 +246,8 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#dedemsvaart" id="toc-dedemsvaart" class="nav-link" data-scroll-target="#dedemsvaart">Dedemsvaart</a></li>
   <li><a href="#vecht-twentekanalen" id="toc-vecht-twentekanalen" class="nav-link" data-scroll-target="#vecht-twentekanalen">Vecht-Twentekanalen</a></li>
   <li><a href="#ijsselmeergebied" id="toc-ijsselmeergebied" class="nav-link" data-scroll-target="#ijsselmeergebied">IJsselmeergebied</a></li>
-  </ul></li>
-  <li><a href="#waterbeheer-natte-periode-hoofdsysteem" id="toc-waterbeheer-natte-periode-hoofdsysteem" class="nav-link" data-scroll-target="#waterbeheer-natte-periode-hoofdsysteem">Waterbeheer natte periode hoofdsysteem:</a>
-  <ul class="collapse">
   <li><a href="#capaciteiten" id="toc-capaciteiten" class="nav-link" data-scroll-target="#capaciteiten">Capaciteiten</a></li>
+  <li><a href="#bronnen" id="toc-bronnen" class="nav-link" data-scroll-target="#bronnen">Bronnen</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -273,6 +272,11 @@ ul.task-list li input[type="checkbox"] {
 <h3 class="anchored" data-anchor-id="watersysteem">Watersysteem</h3>
 </section>
 </section>
+</section>
+<section id="waterbeheer-natte-periode-hoofdsysteem" class="level1">
+<h1>Waterbeheer natte periode hoofdsysteem:</h1>
+<p>In natte perioden wordt het water in Groot Salland afgevoerd naar de <code>IJssel</code>, het <code>Zwarte Water</code>/ <code>Zwarte Meer</code> en de <code>Veluwse Randmeren</code>. Het grootste deel van het gebied watert onder vrij verval af.</p>
+<p>Het noordelijk gebied van Drentse Overijsselse Delta wordt bemalen door twee belangrijke gemalen. Dit zijn gemaal <code>Stroink</code> en het gemaal <code>Zedemuden</code>. Gemaal <code>Stroink</code> watert het westelijk deel van het beheersgebied af op het <code>Vollenhovermeer</code>. Gemaal <code>Zedemuden</code> watert via de <code>Drentsche Kanalen</code> het oostelijke deel van het beheersgebied af op het <code>Zwarte Water</code>.</p>
 </section>
 <section id="waterbeheer-droge-perioden-hoofdsysteem" class="level1">
 <h1>Waterbeheer droge perioden hoofdsysteem</h1>
@@ -323,11 +327,6 @@ ul.task-list li input[type="checkbox"] {
 <h2 class="anchored" data-anchor-id="ijsselmeergebied">IJsselmeergebied</h2>
 <p>Het <code>IJsselmeergebied</code> wordt van water voorzien door diverse inlaten aan de <code>IJssel</code>, het <code>Zwartemeer</code>/<code>Zwarte Water</code> en het <code>Meppelerdiep</code>.</p>
 </section>
-</section>
-<section id="waterbeheer-natte-periode-hoofdsysteem" class="level1">
-<h1>Waterbeheer natte periode hoofdsysteem:</h1>
-<p>In natte perioden wordt het water in Groot Salland afgevoerd naar de <code>IJssel</code>, het <code>Zwarte Water</code>/ <code>Zwarte Meer</code> en de <code>Veluwse Randmeren</code>. Het grootste deel van het gebied watert onder vrij verval af.</p>
-<p>Het noordelijk gebied van Drentse Overijsselse Delta wordt bemalen door twee belangrijke gemalen. Dit zijn gemaal <code>Stroink</code> en het gemaal <code>Zedemuden</code>. Gemaal <code>Stroink</code> watert het westelijk deel van het beheersgebied af op het <code>Vollenhovermeer</code>. Gemaal <code>Zedemuden</code> watert via de <code>Drentsche Kanalen</code> het oostelijke deel van het beheersgebied af op het <code>Zwarte Water</code>.</p>
 <section id="capaciteiten" class="level2">
 <h2 class="anchored" data-anchor-id="capaciteiten">Capaciteiten</h2>
 <p>Per kunstwerk, gespecificeerd op <code>naam</code>, <code>code</code> (waterbeheerder), <code>node_id</code> (v.h. Ribasim model) zijn hieronder de functie (<code>inlaat</code>, <code>doorlaat</code>, <code>uitlaat</code>, <code>uitlaat (doorspoeling))</code>) en de capaciteiten onder <code>aanvoer</code> en <code>afvoer</code> condities opgegeven.</p>
@@ -387,19 +386,11 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: left;">Galgenrak</td>
 <td style="text-align: left;">gemaal.11488</td>
 <td style="text-align: right;">596</td>
-<td style="text-align: left;">uitlaat</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">inlaat/uitlaat</td>
+<td style="text-align: right;">5.75</td>
 <td style="text-align: right;">5.75</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">Galgenrak</td>
-<td style="text-align: left;"></td>
-<td style="text-align: right;">3199</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">5.75</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
 <td style="text-align: left;">Gemaal Ankersmit</td>
 <td style="text-align: left;">gemaal.11472_aanvoer</td>
 <td style="text-align: right;">1190</td>
@@ -407,7 +398,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: right;">8.5</td>
 <td style="text-align: right;">0</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Haarsluis</td>
 <td style="text-align: left;">gemaal.21193</td>
 <td style="text-align: right;">665</td>
@@ -415,7 +406,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: right;">5.8</td>
 <td style="text-align: right;">0</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Haveltersluis</td>
 <td style="text-align: left;">gemaal.21189</td>
 <td style="text-align: right;">645</td>
@@ -423,7 +414,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: right;">6.6</td>
 <td style="text-align: right;">0</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Holthe</td>
 <td style="text-align: left;">gemaal.76</td>
 <td style="text-align: right;">648</td>
@@ -431,7 +422,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: right;">3</td>
 <td style="text-align: right;">0</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Langewijk</td>
 <td style="text-align: left;">gemaal.11495</td>
 <td style="text-align: right;">602</td>
@@ -439,7 +430,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: right;">1.06</td>
 <td style="text-align: right;">0</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Nieuwebrugsluis</td>
 <td style="text-align: left;">gemaal.9451</td>
 <td style="text-align: right;">676</td>
@@ -447,7 +438,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: right;">7.1</td>
 <td style="text-align: right;">0</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Noordscheschutsluis</td>
 <td style="text-align: left;">gemaal.25694</td>
 <td style="text-align: right;">346</td>
@@ -455,7 +446,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: right;">6.8</td>
 <td style="text-align: right;">0</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Oldenhave</td>
 <td style="text-align: left;">gemaal.108</td>
 <td style="text-align: right;">633</td>
@@ -463,7 +454,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: right;">?00</td>
 <td style="text-align: right;">0</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Ossesluis</td>
 <td style="text-align: left;">gemaal.21195</td>
 <td style="text-align: right;">694</td>
@@ -471,7 +462,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: right;">7.5</td>
 <td style="text-align: right;">0</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Paradijssluis</td>
 <td style="text-align: left;">gemaal.21188</td>
 <td style="text-align: right;">704</td>
@@ -479,7 +470,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: right;">6.7</td>
 <td style="text-align: right;">0</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Rogatsluis</td>
 <td style="text-align: left;">gemaal.21196</td>
 <td style="text-align: right;">647</td>
@@ -487,7 +478,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: right;">8.2</td>
 <td style="text-align: right;">0</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Roggebot</td>
 <td style="text-align: left;">gemaal.11428</td>
 <td style="text-align: right;">1096</td>
@@ -495,7 +486,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">3</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Smildersluis</td>
 <td style="text-align: left;">gemaal.91</td>
 <td style="text-align: right;">652</td>
@@ -503,15 +494,15 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: right;">1.5</td>
 <td style="text-align: right;">0</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Stroink</td>
 <td style="text-align: left;">gemaal.19</td>
 <td style="text-align: right;">547</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;">inlaat/uitlaat</td>
+<td style="text-align: right;">53.3</td>
 <td style="text-align: right;">53.3</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Uffeltersluis</td>
 <td style="text-align: left;">gemaal.21190</td>
 <td style="text-align: right;">705</td>
@@ -519,7 +510,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: right;">6.3</td>
 <td style="text-align: right;">0</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Veenesluis</td>
 <td style="text-align: left;">gemaal.21192</td>
 <td style="text-align: right;">631</td>
@@ -527,7 +518,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: right;">5.9</td>
 <td style="text-align: right;">0</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Westerveld</td>
 <td style="text-align: left;">gemaal.11450</td>
 <td style="text-align: right;">579</td>
@@ -535,7 +526,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: right;">1.16</td>
 <td style="text-align: right;">0</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Zedemuden</td>
 <td style="text-align: left;">gemaal.145</td>
 <td style="text-align: right;">3192</td>
@@ -543,7 +534,7 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">127.5</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Zwiggeltersluis</td>
 <td style="text-align: left;">gemaal.92</td>
 <td style="text-align: right;">636</td>
@@ -553,7 +544,10 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 </tbody>
 </table>
-<p>De Verlengde Hoogeveensche Vaart bestaat uit twee panden. Dit is een pand van Bladderswijk tot aan de Ericasluis en een pand van de Ericasluis naar de Noordscheschutsluis. De panden hebben een peil van respectievelijk NAP+15.80 m en NAP+12.9 m. ## Bronnen Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze <a href="../workflow/gravity-controlled.html">workflow</a>.</p>
+</section>
+<section id="bronnen" class="level2">
+<h2 class="anchored" data-anchor-id="bronnen">Bronnen</h2>
+<p>Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze <a href="../workflow/gravity-controlled.html">workflow</a>.</p>
 <ul>
 <li>Documentatie Distributiemodel (Deel C, hoofdstuk 22 en 24)</li>
 <li>Waterakkoord Twentekanalen/Overijsselse Vecht</li>
