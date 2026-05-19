@@ -432,9 +432,6 @@ if ADD_JUNCTIONS:
 # set basin profiles
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 
-ribasim_model.write(ribasim_work_dir_model_toml)
-raise KeyboardInterrupt
-
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
     ribasim_model.basin.node.df["meta_categorie"].isna()
