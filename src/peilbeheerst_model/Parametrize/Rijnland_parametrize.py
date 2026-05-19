@@ -35,6 +35,7 @@ DYNAMIC_CONDITIONS: bool = False
 RESCALE_FLOW_CAPACITIES: bool = True
 ADD_LHM_FRACTIONS: bool = True
 ADD_RWZI: bool = True
+ADD_JUNCTIONS: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -520,11 +521,12 @@ if missing_meta_categorie_node_ids:
     )
 
 # add junctions
-ribasim_model = junctionify(ribasim_model)
-fn = profiles_path / "intermediate" / "int_output.gpkg"
-ribasim_model = node_to_hydro_object_from_file(ribasim_model, fn, layer="hydro-objects", main_route_only=False)
-network = Network.from_lines_gpkg(fn, layer="hydro-objects")
-ribasim_model = link_to_hydro_object(ribasim_model, network, ("Basin", "ManningResistance", "Outlet", "Pump"))
+if ADD_JUNCTIONS:
+    fn = profiles_path / "intermediate" / "int_output.gpkg"
+    ribasim_model = node_to_hydro_object_from_file(ribasim_model, fn, layer="hydro-objects", main_route_only=False)
+    network = Network.from_lines_gpkg(fn, layer="hydro-objects")
+    ribasim_model = link_to_hydro_object(ribasim_model, network, ("Basin",))
+    ribasim_model = junctionify(ribasim_model)
 
 # set numerical settings
 # write model output
