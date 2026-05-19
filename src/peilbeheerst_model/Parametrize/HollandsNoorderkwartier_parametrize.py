@@ -11,7 +11,7 @@ from peilbeheerst_model.controle_output import Control
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node, run_ribasim
-from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
+from ribasim.nodes import level_boundary, manning_resistance, pump, tabulated_rating_curve
 from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.control import (
@@ -268,6 +268,15 @@ ribasim_model.link.add(ribasim_model.basin[2], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 ribasim_model.node.df.loc[level_boundary_node.node_id, "meta_node_id"] = level_boundary_node.node_id
 ribasim_model.node.df.loc[pump_node.node_id, "meta_node_id"] = pump_node.node_id
+
+# a manning node misses at splitted boezem due to awkward basin shape
+manning_node = ribasim_model.manning_resistance.add(
+    Node(geometry=Point(110789, 518114)),
+    [manning_resistance.Static(length=[10.0], manning_n=[0.01], profile_width=[10.0], profile_slope=[3.0])],
+)
+ribasim_model.link.add(ribasim_model.basin[2769], manning_node)
+ribasim_model.link.add(manning_node, ribasim_model.basin[2757])
+ribasim_model.node.df.loc[manning_node.node_id, "meta_node_id"] = manning_node.node_id
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
