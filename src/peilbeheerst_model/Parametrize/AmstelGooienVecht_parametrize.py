@@ -29,7 +29,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = True
+RESCALE_FLOW_CAPACITIES: bool = False
 add_lhm_fractions: bool = True
 add_rwzi: bool = True
 
@@ -289,7 +289,7 @@ ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 ribasim_param.clean_tables(ribasim_model, waterschap)
 
 # set basin profiles and add storing basins where applicable
-implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=100)
+implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
@@ -341,7 +341,7 @@ else:
 # add the default levels
 if MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_level_boundaries(
-        ribasim_model, starttime, endtime, -0.42, -0.4, DYNAMIC_CONDITIONS
+        ribasim_model, starttime, endtime, -0.42, -0.20, DYNAMIC_CONDITIONS
     )
 else:
     ribasim_model.level_boundary.static.df["level"] = default_level
@@ -404,11 +404,10 @@ to_supply = (
     789,
     861,
     1012,
-    1014,
     1018,
 )
 to_flow_control = (290, 417, 557, 762, 1013, 1032, 1033)
-to_drain = (256, 626, 863)
+to_drain = (256, 626, 863, 1014)
 from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
 )
@@ -611,6 +610,13 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
 
 # manually assign max_flow_rates (as suggested by JWV in FF)
 ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 826, "max_flow_rate"] = 0.05
+
+# manually assign max_flow_rates to keep the lakes on target level, maybe due to large groundwater fluxes
+ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 393, "max_flow_rate"] = 2
+ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 676, "max_flow_rate"] = 2
+ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 886, "max_flow_rate"] = 2
+ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 1051, "max_flow_rate"] = 10
+
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
