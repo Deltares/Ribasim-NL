@@ -503,9 +503,15 @@ assign = AssignAuthorities(
     RWS_grenzen_path=RWS_grenzen_path,
     RWS_buffer=2000,  # mainly neighbouring RWS, so increase buffer. Not too much, due to nodes within Belgium.
     custom_nodes={
+        567: "Rijkswaterstaat",
+        578: "Rijkswaterstaat",
         584: "Rijkswaterstaat",  # Westerschelde
+        639: "Buitenland",
+        641: "Buitenland",
+        1119: "Buitenland",
+        1188: "Buitenland",
     },
-    fill_na_Rijkswaterstaat=True,
+    fill_na_authority="Rijkswaterstaat",
 )
 ribasim_model = assign.assign_authorities()
 

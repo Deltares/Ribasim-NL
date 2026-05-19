@@ -36,7 +36,7 @@ add_rwzi: bool = True
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
 
-MIXED_CONDITIONS_DESIGN_P = 12
+MIXED_CONDITIONS_DESIGN_P = 16
 MIXED_CONDITIONS_DESIGN_E = 4
 
 # model settings
@@ -633,7 +633,7 @@ from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
 from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_model, from_to_node_table)
 from_to_node_function_table["demand"] = None
 
-to_supply = (493, 659, 664, 672)
+to_supply = (453, 493, 525, 659, 664, 672)
 to_flow_control = (617,)
 to_drain = ()
 from_to_node_function_table = set_node_functions(
@@ -805,6 +805,17 @@ ribasim_model.node.df = ribasim_model.node.df.drop(mr_null_geom)
 ribasim_model.manning_resistance.static.df["length"] = 100.0
 ribasim_model.manning_resistance.static.df["manning_n"] = 0.01
 
+# increase aanslagpeil for gemaal Wortman
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 2436, "min_upstream_level"] += (
+    0.05  # 5 cm higher than streefpeil
+)
+ribasim_model.discrete_control.condition.df.loc[
+    ribasim_model.discrete_control.condition.df.node_id == 14970, "threshold_high"
+] += 0.05
+ribasim_model.discrete_control.condition.df.loc[
+    ribasim_model.discrete_control.condition.df.node_id == 14970, "threshold_low"
+] += 0.05
+
 # last formatting of the tables
 # only retain node_id's which are present in the .node table
 ribasim_param.clean_tables(ribasim_model, waterschap)
@@ -831,7 +842,7 @@ assign = AssignAuthorities(
         874: "Rijkswaterstaat",
         880: "Rijkswaterstaat",
     },
-    fill_na_Rijkswaterstaat=True,
+    fill_na_authority="Rijkswaterstaat",
 )
 ribasim_model = assign.assign_authorities()
 

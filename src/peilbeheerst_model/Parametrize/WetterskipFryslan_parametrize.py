@@ -645,6 +645,7 @@ to_supply = (
     3272,
     3376,
     3411,
+    3452,
     3760,
     3880,
     3882,
@@ -771,10 +772,11 @@ assign = AssignAuthorities(
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
     custom_nodes={
-        10958: "Rijkswaterstaat",
+        3820: "Noordzee",
         5022: "Rijkswaterstaat",
+        10958: "Rijkswaterstaat",
     },
-    fill_na_Rijkswaterstaat=True,
+    fill_na_authority="Noordzee",
 )
 ribasim_model = assign.assign_authorities()
 
@@ -812,11 +814,6 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
         design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
     )
 )
-
-# depending on the state, a different flow_rate is set. Set max value to the max_flow_rate when exceeding the max_flow_rate
-ribasim_model.outlet.static.df.loc[
-    ribasim_model.outlet.static.df.flow_rate > ribasim_model.outlet.static.df.max_flow_rate, "flow_rate"
-] = ribasim_model.outlet.static.df.max_flow_rate
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[

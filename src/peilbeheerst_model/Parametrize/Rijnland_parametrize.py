@@ -467,6 +467,7 @@ assign = AssignAuthorities(
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
     custom_nodes={
+        1354: "Noordzee",
         1367: "Delfland",
         1481: "StichtseRijnlanden",
         1485: "StichtseRijnlanden",
@@ -476,7 +477,7 @@ assign = AssignAuthorities(
         1489: "StichtseRijnlanden",
         1490: "StichtseRijnlanden",
     },
-    fill_na_Rijkswaterstaat=True,
+    fill_na_authority="Rijkswaterstaat",
 )
 ribasim_model = assign.assign_authorities()
 
