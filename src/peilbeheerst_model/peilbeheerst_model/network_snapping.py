@@ -143,10 +143,8 @@ def snap_connectors(
     nodes = typing.cast(gpd.GeoDataFrame, model.node.df.copy(deep=True))
     areas = typing.cast(gpd.GeoDataFrame, model.basin.area.df.copy(deep=True))
 
-    # selection of connector-nodes (ex. connectors between flowing and storing basin nodes)
-    # TODO: Ensure that the `meta_categorie` remains set for ManningResistance-nodes of storing basins
-    # nodes = nodes[(nodes["node_type"].isin(CONNECTOR_NODE_TYPES)) & (nodes.index == nodes["meta_node_id"])]
-    nodes = nodes[(nodes["node_type"].isin(CONNECTOR_NODE_TYPES)) & (nodes["meta_categorie"] != "bergend")]
+    # selection of connector-nodes
+    nodes = nodes[nodes["node_type"].isin(CONNECTOR_NODE_TYPES)]
     if nodes.empty:
         msg = "No connector nodes found."
         raise NetworkSnappingError(msg)
