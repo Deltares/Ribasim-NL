@@ -4,7 +4,7 @@ from typing import Literal
 
 import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
-from ribasim.nodes import flow_demand, outlet
+from ribasim.nodes import flow_demand, outlet, pump
 from ribasim_nl.control import (
     _offset_new_node,
     _target_level,
@@ -52,10 +52,13 @@ aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).diss
 
 # alle uitlaten en inlaten op 20m3/s, geen cap verdeling. Dit wordt de max flow in model.
 # En als flow_rate niet bekend is de flow
-model.outlet.static.df.max_flow_rate = 20
-model.outlet.static.df.flow_rate = 20
+model.outlet.static.df.max_flow_rate = 100
+model.outlet.static.df.flow_rate = 100
 model.pump.static.df.max_flow_rate = model.pump.static.df.flow_rate
 
+# Erg klein basin, numerieke problemen
+model.merge_basins(node_id=2394, to_node_id=1507, are_connected=True)
+model.merge_basins(node_id=1672, to_node_id=1556, are_connected=True)
 # %%
 # Node 651 moet dicht zijn na overleg Limburg
 model.pump.static.df.loc[model.pump.static.df.node_id == 651, "max_flow_rate"] = 0
@@ -64,7 +67,11 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 651, "max_flow_rate"] =
 for link_id in [529, 1036]:
     model.reverse_link(link_id=link_id)
 
+# Gemaal Helenavaart
+model.update_node(node_id=590, node_type="Pump")
 
+# Gemaal Beringe
+model.update_node(node_id=583, node_type="Pump")
 # %%
 # Note: when using a FlowDemand, the parallel node must be configured as a drain node.
 # The node with the FlowDemand is supplied first, because its min_upstream_level
@@ -116,22 +123,33 @@ def add_discharge_supply_nodes(
             allow_missing=False,
         )
 
-        # zorg dat node een Outlet is
-        model.update_node(node_id, "Outlet")
-
-        # update outlet static
-        model.update_node(
-            node_id,
-            "Outlet",
-            [
-                outlet.Static(
-                    min_upstream_level=[us_target_level + us_target_level_offset_supply],
-                    flow_rate=[0],
-                    min_flow_rate=[float("nan")],
-                    max_flow_rate=[float("nan")],
-                )
-            ],
-        )
+        # Gemaal Beringe blijft een Pump; de andere discharge supply nodes modelleren we als Outlet.
+        if node_id == 583:
+            model.update_node(
+                node_id,
+                "Pump",
+                [
+                    pump.Static(
+                        min_upstream_level=[us_target_level + us_target_level_offset_supply],
+                        flow_rate=[0],
+                        min_flow_rate=[float("nan")],
+                        max_flow_rate=[float("nan")],
+                    )
+                ],
+            )
+        else:
+            model.update_node(
+                node_id,
+                "Outlet",
+                [
+                    outlet.Static(
+                        min_upstream_level=[us_target_level + us_target_level_offset_supply],
+                        flow_rate=[0],
+                        min_flow_rate=[float("nan")],
+                        max_flow_rate=[float("nan")],
+                    )
+                ],
+            )
 
         # demand node toevoegen
         demand_node_name = f"{demand_name_prefix} {demand_flow_str} [m3/s]"
@@ -168,7 +186,7 @@ def add_discharge_supply_nodes(
 # Handmatige koppeling naam -> node_id
 name_to_node = {
     "Gemaal Beringe": 583,
-    "Gemaal Helenaveen": 590,
+    #  "Gemaal Helenaveen": 590,
     "Zijtak Helenavaart": 532,
     "Houtstraatlossing": 351,
     "Hushoverbeek": 2502,
@@ -183,7 +201,7 @@ name_to_node = {
     "Nederweerter Hovenlossing": 534,
     "Nederweerter Riet": 464,
     "Oude Graaf": 1136,
-    "Snepheiderbeek": 411,
+    #  "Snepheiderbeek": 411,
     "Snepheiderbeek_1": 750,
     "Waatskamplossing": 598,
     "Eendlossing": 772,
@@ -221,11 +239,11 @@ flow_demand_data_ls = {
     "Inlaat Hulsenlossing": {"summer": 10, "winter": 10},
     "Inlaat Rietbeek": {"summer": 25, "winter": 10},
     "Waatskamplossing": {"summer": 15, "winter": 10},
-    "Snepheiderbeek": {"summer": 40, "winter": 20},  # tabel geeft bandbreedte zomer 10-20, winter 30-40 (verkeerd om)
+    #  "Snepheiderbeek": {"summer": 40, "winter": 20},  # tabel geeft bandbreedte zomer 10-20, winter 30-40 (verkeerd om)
     "Snepheiderbeek_1": {"summer": 40, "winter": 20},  # Bovenstrooms Snepheiderbeek is echte inlaat
     # Grote aanvoeren
     "Gemaal Beringe": {"summer": 550, "winter": 350},
-    "Gemaal Helenaveen": {"summer": 350, "winter": 350},  # winter in tabel: laatste 2 jaar 350, normaal 150
+    #   "Gemaal Helenaveen": {"summer": 350, "winter": 350},  # winter in tabel: laatste 2 jaar 350, normaal 150
     "Zijtak Helenavaart": {"summer": 350, "winter": 350},  # winter in tabel: laatste 2 jaar
     "Katsberg": {"summer": 3400, "winter": 3400},  # winter in tabel 1000-3400; hier bovengrens gekozen
     "Eendlossing": {"summer": 20, "winter": 10},  # WATAK
@@ -584,6 +602,7 @@ if isinstance(polygon, MultiPolygon):
 # links die intersecten die we kunnen negeren
 ignore_intersecting_links: list[int] = [
     831,
+    411,
     832,
     837,
     838,
@@ -773,7 +792,7 @@ add_controllers_to_supply_nodes(
 # handmatig opgegeven flow control nodes definieren
 
 
-flow_control_nodes = [220, 252, 545, 471, 711, 2493, 2494, 2496, 2497]
+flow_control_nodes = [220, 252, 411, 545, 471, 711, 2493, 2494, 2496, 2497]
 
 # handmatig opgegeven supply nodes (inlaten)
 supply_nodes = []
@@ -825,15 +844,7 @@ for node_id, level in boundary_levels.items():
     model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == node_id, "level"] = level
 
 # %% fixes
-# Gemaal Helenavaart
-model.update_node(node_id=590, node_type="Pump")
-model.pump.static.df.loc[model.pump.static.df.node_id == 590, "min_upstream_level"] = 31.12
-model.pump.static.df.loc[model.pump.static.df.node_id == 590, "flow_rate"] = 0
 
-# Gemaal Beringe
-model.update_node(node_id=583, node_type="Pump")
-model.pump.static.df.loc[model.pump.static.df.node_id == 583, "min_upstream_level"] = 31
-model.pump.static.df.loc[model.pump.static.df.node_id == 583, "flow_rate"] = 0
 # %%
 fixed_levels = {
     535: 31.12,  # Helenavaart-Grenssloot
@@ -856,7 +867,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 639, "flow_rate"] =
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 177, "flow_rate"] = 1
 
 # %% Junctionfy(!)
-model = junctionify(model)
+junctionify(model)
 
 # Model run
 

@@ -421,7 +421,7 @@ model.link.add(boundary_node, outlet_node)
 model.link.add(outlet_node, model.basin[1192])
 
 # %% Create junctions
-model = junctionify(model)
+junctionify(model)
 
 # manning_resistances die inlaten of uitlaten horen te zijn
 model.update_node(node_id=943, node_type="Outlet")

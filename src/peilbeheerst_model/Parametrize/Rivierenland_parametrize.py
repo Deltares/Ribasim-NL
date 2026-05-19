@@ -32,7 +32,7 @@ AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
-add_lhm_fractions: bool = False
+add_lhm_fractions: bool = True
 add_rwzi: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
@@ -425,6 +425,16 @@ ribasim_param.clean_tables(ribasim_model, waterschap)
 # set basin profiles
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 
+# check if meta_categorie in the basin.node.df is completely filled
+missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
+    ribasim_model.basin.node.df["meta_categorie"].isna()
+].index.tolist()
+if missing_meta_categorie_node_ids:
+    raise ValueError(
+        "Not all basins have a meta_categorie assigned. "
+        f"Missing meta_categorie for basin node IDs: {missing_meta_categorie_node_ids}"
+    )
+
 # set forcing
 if DYNAMIC_CONDITIONS:
     # Add dynamic meteo and groundwater from LHM zarr
@@ -441,6 +451,10 @@ if DYNAMIC_CONDITIONS:
     )
     ribasim_model = forcing.add()
     offline_budgets.compute_budgets(ribasim_model)
+    assign_validation_path = work_dir / "results" / "assign_validation.png"
+    assign_validation_path.parent.mkdir(parents=True, exist_ok=True)
+    offline_budgets.plot_assign_validation(ribasim_model, path=assign_validation_path)
+
 
 elif MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_forcing(
@@ -655,6 +669,7 @@ assign = AssignAuthorities(
         1004: "Rijkswaterstaat",
         1005: "Rijkswaterstaat",
     },
+    fill_na_Rijkswaterstaat=True,
 )
 ribasim_model = assign.assign_authorities()
 
@@ -696,8 +711,6 @@ ribasim_model, from_to_node_table = scale_outlets_pumps(
         waterschap=waterschap,
         cloud=cloud,
         rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
-        max_iterations=15,
-        initial_guess_flow_rate_outlet=0.01,  # set flow rates higher due to convergence issues. Therefore slightly higher number of iterations to compensate.
         initial_guess_flow_rate_pump=15,
         design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
         design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,

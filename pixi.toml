@@ -75,10 +75,6 @@ types-requests = ">=2.32"
 pandas-stubs = ">=3"
 xlwings = ">=0.33"
 
-[activation.env]
-# RIBASIM_HOME points to the Ribasim core installation directory.
-# Beware: the install-core task removes and recreates this directory.
-
 [tasks]
 typecheck = "pyrefly check"
 install-prek = "prek install -f"
@@ -89,15 +85,18 @@ check = "prek run --all-files"
 pycheck = "prek run --all-files --skip dvc-pre-commit --skip dvc-pre-push --skip dvc-post-checkout"
 docs = { cmd = "quartodoc build && quarto preview", cwd = "docs" }
 ribasim = { cmd = "bin/ribasim/bin/ribasim", depends-on = ["install-core"] }
+edit-toml = "python scripts/edit_toml.py"
 
 [target.win-64.tasks]
 install-core = { cmd = "python scripts/install_ribasim_core.py", inputs = ["scripts/install_ribasim_core.py"], outputs = ["bin/ribasim/README.md"] }
 
-[target.win-64.activation.env]
-RIBASIM_HOME = "%PIXI_PROJECT_ROOT%\\bin\\ribasim"
-
 [target.linux-64.tasks]
 install-core = { cmd = "python scripts/install_ribasim_core.py", inputs = ["scripts/install_ribasim_core.py"], outputs = ["bin/ribasim/README.md"] }
+
+# RIBASIM_HOME points to the Ribasim core installation directory.
+# Beware: the install-core task removes and recreates this directory.
+[target.win-64.activation.env]
+RIBASIM_HOME = "%PIXI_PROJECT_ROOT%\\bin\\ribasim"
 
 [target.linux-64.activation.env]
 RIBASIM_HOME = "$PIXI_PROJECT_ROOT/bin/ribasim"

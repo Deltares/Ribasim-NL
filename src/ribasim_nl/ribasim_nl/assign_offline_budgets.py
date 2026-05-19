@@ -79,6 +79,217 @@ def _compute_budgets_per_basin(budgets: xr.Dataset, basin_mask: xr.DataArray, no
     return df
 
 
+def _transpose_basin_definition_polygons(
+    basin_definition_primary: gpd.GeoDataFrame, basin_definition_secundary: gpd.GeoDataFrame
+) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
+    """
+    Returns basin_definition_out with index of basin_definition_in that intersect the basin_definition_out polygons.
+
+    Parameters
+    ----------
+    basin_definition_primary : gpd.GeoDataFrame
+        Basin definition with (multi) polygons
+    basin_definition_secundary : gpd.GeoDataFrame
+        Basin definition with (multi) polygons
+
+    Returns
+    -------
+    tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]
+        basin_definition_secundary geometry with primary based index, Basin definition with
+        polygons without any intersection for primary and secundary basins
+    """
+    tree = shapely.STRtree(basin_definition_secundary["geometry"])
+    index_in, index_out = tree.query(basin_definition_primary.representative_point(), predicate="intersects")
+    index_in = basin_definition_primary.index[index_in]
+    index_out = basin_definition_secundary.index[index_out]
+    index_undefined_secundary = basin_definition_secundary.index[~np.isin(basin_definition_secundary.index, index_out)]
+    undefined_secondary_basins = basin_definition_secundary.loc[index_undefined_secundary]
+    index_undefined_primary = basin_definition_primary.index[~np.isin(basin_definition_primary.index, index_in)]
+    undefined_primary_basins = basin_definition_primary.loc[index_undefined_primary]
+    basin_definition_secundary = basin_definition_secundary.loc[index_out]
+    basin_definition_secundary = basin_definition_secundary.set_index([index_in])
+    basin_definition_primary_out = gpd.GeoDataFrame(
+        pd.concat([basin_definition_secundary, basin_definition_primary.loc[index_undefined_primary]])
+    )
+    return basin_definition_primary_out, undefined_primary_basins, undefined_secondary_basins
+
+
+def _fill_basin_definition_from_points(
+    basin_definition: gpd.GeoDataFrame,
+    nodes: gpd.GeoDataFrame,
+) -> gpd.GeoDataFrame:
+    """
+    Returns basin_definition with indices of basins located within each polygon.
+
+    Parameters
+    ----------
+    basin_definition : gpd.GeoDataFrame
+        Basin definition with (multi)polygons.
+    nodes : gpd.GeoDataFrame
+        Ribasim basin nodes.
+
+    Returns
+    -------
+    gpd.GeoDataFrame
+        basin_definition with indices derived from the underlying Ribasim basins.
+    """
+    tree = shapely.STRtree(basin_definition["geometry"])
+    index_nodes, index_basin_definition = tree.query(nodes["geometry"], predicate="within")
+    index_basin_definition = basin_definition.index[index_basin_definition]
+    index_nodes = nodes.index[index_nodes]
+    basin_definition = basin_definition.loc[index_basin_definition]
+    return basin_definition.set_index(index_nodes)
+
+
+def _split_basin_definition(
+    basin_definition: gpd.GeoDataFrame,
+    nodes: gpd.GeoDataFrame,
+    basin_metacol: str,
+    primary_values: set[str],
+    secondary_values: set[str],
+) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+    """
+    Split a basin definition into primary and secondary basins based on a metadata column.
+
+    Parameters
+    ----------
+    basin_definition : gpd.GeoDataFrame
+        GeoDataFrame containing basin geometries (polygons or multipolygons).
+    nodes : gpd.GeoDataFrame
+        GeoDataFrame containing Ribasim basin nodes with metadata attributes.
+    basin_metacol : str
+        Name of the column in ``nodes`` that contains the classification values.
+    primary_values : set[str]
+        Set of values that define primary basins.
+    secondary_values : set[str]
+        Set of values that define secondary basins.
+
+    Returns
+    -------
+    tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]
+        primary basin geometries, secondary basin geometries
+    """
+    all_known = primary_values | secondary_values
+    unique_values = set(nodes[basin_metacol].dropna().unique())
+    unknown_values = unique_values - all_known
+    if unknown_values:
+        raise ValueError(f"Unknown values in {basin_metacol}: {unknown_values} (all known: {all_known})")
+    secondary_nodes = nodes[nodes[basin_metacol].isin(secondary_values)]
+    primary_nodes = nodes[nodes[basin_metacol].isin(primary_values)]
+    basin_definition = basin_definition.set_index("node_id", drop=True)
+    secondary_mask = np.isin(secondary_nodes["node_id"], basin_definition.index)
+    primary_mask = np.isin(primary_nodes["node_id"], basin_definition.index)
+    if not secondary_mask.all():
+        print(f"Popped following secondary nodes: {secondary_nodes['node_id'][~secondary_mask]}")
+    if not primary_mask.all():
+        print(f"Popped following primary nodes: {primary_nodes['node_id'][~primary_mask]}")
+    basin_definition_primair = basin_definition.loc[primary_nodes["node_id"][primary_mask]]
+    basin_definition_secondair = basin_definition.loc[secondary_nodes["node_id"][secondary_mask]]
+    return basin_definition_primair, basin_definition_secondair
+
+
+def _validate_meta_basin_column(df: pd.DataFrame, basin_metacol: str, expected_values: set[str]) -> None:
+    """Validate if all values as expected are present in basin_metacol"""
+    exception = ""
+    if df[basin_metacol].isna().any():
+        exception += " contains missings;"
+    unexpected = [i for i in df[basin_metacol].unique() if i not in expected_values]
+    if unexpected:
+        exception += f" contains unexpected values {unexpected}, check `primary_values` and `secondary_values` input"
+    if exception:
+        raise ValueError(f"{basin_metacol}{exception}")
+
+
+def split_basin_definitions(
+    ribasim_model: Model,
+    basin_split: str = "area",
+    basin_subtype: str = "node",
+    basin_metacol: str = "meta_categorie",
+    primary_values: set[str] | None = None,
+    secondary_values: set[str] | None = None,
+    primary_labels: set[str] | None = None,
+    secondary_labels: set[str] | None = None,
+) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+    """Split basin areas into primary and secondary categories.
+
+    Parameters
+    ----------
+    ribasim_model : Model
+        Ribasim Model
+    basin_split : str, optional
+        Table to be split, by default "area"
+    basin_subtype : str, optional
+        subtype to optionally read basin_metacol from, by default "node"
+    basin_metacol : str, optional
+        column with category, by default "meta_categorie"
+    primary_values : set[str] | None, optional
+        Set of values in basin_metacol that represent primary basins.
+        Falls back to primary_labels, then {"hoofdwater", "doorgaand"}.
+    secondary_values : set[str] | None, optional
+        Set of values in basin_metacol that represent secondary basins.
+        Falls back to secondary_labels, then {"bergend"}.
+    primary_labels : set[str] | None, optional
+        Fallback for primary_values when primary_values is None.
+    secondary_labels : set[str] | None, optional
+        Fallback for secondary_values when secondary_values is None.
+
+    Returns
+    -------
+    tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]
+        primary and secondary basin GeoDataFrames
+    """
+    if secondary_values is None:
+        secondary_values = secondary_labels if secondary_labels is not None else {"bergend"}
+    if primary_values is None:
+        primary_values = primary_labels if primary_labels is not None else {"hoofdwater", "doorgaand"}
+    assert ribasim_model.basin.node is not None
+    assert ribasim_model.basin.node.df is not None
+    if basin_metacol in ribasim_model.basin.node.df.columns:
+        nodes = ribasim_model.basin.node.df[[basin_metacol, "geometry"]].copy().reset_index(drop=False)
+    else:
+        df_cat = getattr(ribasim_model.basin, basin_subtype).df.copy()
+        if basin_metacol not in df_cat:
+            raise ValueError(
+                f"category column {basin_metacol} not in basin.node or basin.{basin_subtype} tables. "
+                "Provide column or another `basin_subtype` value"
+            )
+        nodes = ribasim_model.basin.node.df[["geometry"]].copy()
+        if "node_id" in df_cat.columns:
+            df_cat = df_cat[["node_id", basin_metacol]].set_index("node_id")
+        else:
+            df_cat = df_cat[[basin_metacol]]
+        nodes = nodes.join(df_cat, how="left").reset_index(drop=False)
+    # TODO: fix upstream - some basin nodes have NaN in meta_categorie; they won't be assigned offline forcing
+    nodes = nodes.dropna(subset=[basin_metacol])
+    _validate_meta_basin_column(nodes, basin_metacol, expected_values=primary_values | secondary_values)
+    basin_definition = getattr(ribasim_model.basin, basin_split).df.copy()
+    basin_definition_primair, basin_definition_secondair = _split_basin_definition(
+        basin_definition=basin_definition,
+        nodes=nodes,
+        basin_metacol=basin_metacol,
+        primary_values=primary_values,
+        secondary_values=secondary_values,
+    )
+    basin_definition_primair_polygon, basin_definition_undefined_primair, basin_definition_undefined_secundair = (
+        _transpose_basin_definition_polygons(basin_definition_primair, basin_definition_secondair)
+    )
+    if not basin_definition_undefined_primair.empty:
+        # Add undefined primary elements to secondary basins so secondary budgets will also be assigned
+        basin_definition_secondair = gpd.GeoDataFrame(
+            pd.concat([basin_definition_secondair, basin_definition_undefined_primair])
+        )
+    basin_definition_primair_points = _fill_basin_definition_from_points(
+        basin_definition_undefined_secundair, nodes[nodes[basin_metacol].isin(primary_values)]
+    )
+    if not basin_definition_primair_points.empty:
+        basin_definition_primair = gpd.GeoDataFrame(
+            pd.concat([basin_definition_primair_polygon, basin_definition_primair_points])
+        )
+    basin_definition_primair = basin_definition_primair.reset_index(names="node_id")
+    basin_definition_secondair = basin_definition_secondair.reset_index()
+    return basin_definition_primair, basin_definition_secondair
+
+
 class AssignOfflineBudgets:
     def __init__(
         self,
@@ -210,13 +421,15 @@ class AssignOfflineBudgets:
 
         # Split into primary and secondary basin definition
         print("split basins into primary and secondary")
-        primary_basin_definition, secondary_basin_definition = self._split_basin_definitions(
+        primary_basin_definition, secondary_basin_definition = split_basin_definitions(
             model,
             basin_split=basin_split,
             basin_subtype=basin_subtype,
             basin_metacol=basin_metacol,
             primary_values=primary_values,
             secondary_values=secondary_values,
+            primary_labels=self.primary_labels,
+            secondary_labels=self.secondary_labels,
         )
         print("rasterize basins to masks")
         primary_basin_mask = imod.prepare.rasterize(
@@ -350,237 +563,6 @@ class AssignOfflineBudgets:
                 f"budgets {missing} not supplied in budgets-file. Please check {self.budgets}",
             )
 
-    def _transpose_basin_definition_polygons(
-        self, basin_definition_primary: gpd.GeoDataFrame, basin_definition_secundary: gpd.GeoDataFrame
-    ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
-        """
-        Returns basin_difinition_out with index of basin_definition_in that intersect the basin_definition_out polygons
-
-        Args:
-            basin_definition_primary (gpd.GeoDataFrame): Basin definition with (multi) polygons
-            basin_definition_secundary (gpd.GeoDataFrame): Basin definition with (multi) polygons
-
-        Returns
-        -------
-            tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]: basin_definition_secundary geometry with primary based index, Basin definition with
-            polygons without any intersection for primary and secundary basins
-        """
-        tree = shapely.STRtree(basin_definition_secundary["geometry"])
-        index_in, index_out = tree.query(basin_definition_primary.representative_point(), predicate="intersects")
-        index_in = basin_definition_primary.index[index_in]
-        index_out = basin_definition_secundary.index[index_out]
-        # evaluate non-matching items
-        # secondary basins with non matching primary basins
-        index_undefined_secundary = basin_definition_secundary.index[
-            ~np.isin(basin_definition_secundary.index, index_out)
-        ]
-        undefined_secondary_basins = basin_definition_secundary.loc[index_undefined_secundary]
-        # primary basins with non matching secundary basins
-        # strategy: add to output df (fall true logic), and add to undefined output argument
-        index_undefined_primary = basin_definition_primary.index[~np.isin(basin_definition_primary.index, index_in)]
-        undefined_primary_basins = basin_definition_primary.loc[index_undefined_primary]
-        # prepare main output df
-        basin_definition_secundary = basin_definition_secundary.loc[index_out]
-        basin_definition_secundary = basin_definition_secundary.set_index([index_in])
-        basin_definition_primary_out = pd.concat(
-            [basin_definition_secundary, basin_definition_primary.loc[index_undefined_primary]]
-        )
-        return basin_definition_primary_out, undefined_primary_basins, undefined_secondary_basins
-
-    def _fill_basin_definition_from_points(
-        self,
-        basin_definition: gpd.GeoDataFrame,
-        nodes: gpd.GeoDataFrame,
-    ) -> gpd.GeoDataFrame:
-        """
-        Returns basin_definition with indices of basins located within each polygon.
-
-        Parameters
-        ----------
-        basin_definition : gpd.GeoDataFrame
-            Basin definition with (multi)polygons.
-        nodes : gpd.GeoDataFrame
-            Ribasim basin nodes.
-
-        Returns
-        -------
-        gpd.GeoDataFrame
-            basin_definition with indices derived from the underlying Ribasim basins.
-        """
-        tree = shapely.STRtree(basin_definition["geometry"])
-        (
-            index_nodes,
-            index_basin_definition,
-        ) = tree.query(nodes["geometry"], predicate="within")  #'overlaps', 'within'
-        index_basin_definition = basin_definition.index[index_basin_definition]
-        index_nodes = nodes.index[index_nodes]
-        basin_definition = basin_definition.loc[index_basin_definition]
-        return basin_definition.set_index(index_nodes)
-
-    def _split_basin_definition(
-        self,
-        basin_definition: gpd.GeoDataFrame,
-        nodes: gpd.GeoDataFrame,
-        basin_metacol: str,
-        primary_values: set[str],
-        secondary_values: set[str],
-    ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-        """
-        Split a basin definition into primary and secondary basins based on a metadata column.
-
-        The classification is derived from values in the specified metadata column of the
-        Ribasim basin nodes. Basins are assigned to either the primary or secondary group
-        depending on whether their metadata value matches the provided sets.
-
-        Parameters
-        ----------
-        basin_definition : gpd.GeoDataFrame
-            GeoDataFrame containing basin geometries (polygons or multipolygons).
-        nodes : gpd.GeoDataFrame
-            GeoDataFrame containing Ribasim basin nodes with metadata attributes.
-        basin_metacol : str
-            Name of the column in ``nodes`` that contains the classification values.
-        primary_values : set[str]
-            Set of values that define primary basins.
-        secondary_values : set[str]
-            Set of values that define secondary basins.
-
-        Returns
-        -------
-        tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]
-            Two GeoDataFrames:
-            - primary basin geometries
-            - secondary basin geometries
-
-        Raises
-        ------
-        ValueError
-            If values are found in ``basin_metacol`` that are not included in either
-            ``primary_values`` or ``secondary_values``.
-        """
-        # validate if all nodes are convered by primary and secondary values
-        all_known = primary_values | secondary_values
-        unique_values = set(nodes[basin_metacol].dropna().unique())
-        unknown_values = unique_values - all_known
-        if unknown_values:
-            raise ValueError(f"Unknown values in {basin_metacol}: {unknown_values} (all known: {all_known})")
-
-        secondary_nodes = nodes[nodes[basin_metacol].isin(secondary_values)]
-        primary_nodes = nodes[nodes[basin_metacol].isin(primary_values)]
-        basin_definition = basin_definition.set_index("node_id", drop=True)
-        secondary_mask = np.isin(secondary_nodes["node_id"], basin_definition.index)
-        primary_mask = np.isin(primary_nodes["node_id"], basin_definition.index)
-        if not secondary_mask.all():
-            popped = secondary_nodes["node_id"][~secondary_mask]
-            print(f"poped following secondary nodes: {popped}")
-        if not primary_mask.all():
-            popped = primary_nodes["node_id"][~primary_mask]
-            print(f"poped following primary nodes: {popped}")
-        basin_definition_primair = basin_definition.loc[primary_nodes["node_id"][primary_mask]]
-        basin_definition_secondair = basin_definition.loc[secondary_nodes["node_id"][secondary_mask]]
-
-        return basin_definition_primair, basin_definition_secondair
-
-    def _split_basin_definitions(
-        self,
-        ribasim_model: Model,
-        basin_split: str = "area",
-        basin_subtype: str = "node",
-        basin_metacol: str = "meta_categorie",
-        primary_values: set[str] | None = None,
-        secondary_values: set[str] | None = None,
-    ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-        """Split basin areas into primary and secondary categories
-
-        Parameters
-        ----------
-        ribasim_model : Model
-            Ribasim Model
-        basin_split : str, optional
-            Table to be splitted, by default "area"
-        basin_subtype : str, optional
-            subtype to optionally read basin_metacol from, by default "node"
-        basin_metacol : str, optional
-            column with category, by default "meta_categorie"
-        basin_primary : str, optional
-            Not (?) primary value in metacolumn, by default "bergend"
-
-        Returns
-        -------
-        tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]
-            primary and secondary basins
-        """
-        # optionally get basin_metacol from other basin_subtype
-        if secondary_values is None:
-            secondary_values = self.secondary_labels
-        if primary_values is None:
-            primary_values = self.primary_labels
-        assert ribasim_model.basin.node is not None
-        assert ribasim_model.basin.node.df is not None
-        if basin_metacol in ribasim_model.basin.node.df.columns:
-            nodes = ribasim_model.basin.node.df[[basin_metacol, "geometry"]].copy().reset_index(drop=False)
-        else:
-            df_cat = getattr(ribasim_model.basin, basin_subtype).df.copy()
-            if basin_metacol not in df_cat:
-                raise ValueError(
-                    f"category column {basin_metacol} not in basin.node or basin.{basin_subtype} tables. Provide column or another `basin_subtype` value"
-                )
-            nodes = ribasim_model.basin.node.df[["geometry"]].copy()
-            if "node_id" in df_cat.columns:
-                df_cat = df_cat[["node_id", basin_metacol]].set_index("node_id")
-            else:
-                # assume node_id is already the index
-                df_cat = df_cat[[basin_metacol]]
-
-            nodes = nodes.join(df_cat, how="left").reset_index(drop=False)
-
-        # TODO: fix upstream - some basin nodes have NaN in meta_categorie; they won't be assigned offline forcing
-        nodes = nodes.dropna(subset=[basin_metacol])
-
-        self._validate_meta_basin_column(nodes, basin_metacol, expected_values=primary_values | secondary_values)
-
-        # split based on meta_label in Ribasim model definition
-        basin_definition = getattr(ribasim_model.basin, basin_split).df.copy()
-        basin_definition_primair, basin_definition_secondair = self._split_basin_definition(
-            basin_definition=basin_definition,
-            nodes=nodes,
-            basin_metacol=basin_metacol,
-            primary_values=primary_values,
-            secondary_values=secondary_values,
-        )
-
-        # transpose primary basins to secondary basin definition to get rid of the narrow polygons
-        basin_definition_primair_polygon, basin_definition_undefined_primair, basin_definition_undefined_secundair = (
-            self._transpose_basin_definition_polygons(basin_definition_primair, basin_definition_secondair)
-        )
-        if not basin_definition_undefined_primair.empty:
-            # Add undefined primary elements to secondary basins so secondary budgets will also be assigned
-            basin_definition_secondair = pd.concat([basin_definition_secondair, basin_definition_undefined_primair])
-
-        # fill empty basins based on pip for secondary nodes
-        basin_definition_primair_points = self._fill_basin_definition_from_points(
-            basin_definition_undefined_secundair, nodes[nodes[basin_metacol].isin(primary_values)]
-        )
-        if not basin_definition_primair_points.empty:
-            basin_definition_primair = pd.concat([basin_definition_primair_polygon, basin_definition_primair_points])
-        basin_definition_primair = basin_definition_primair.reset_index(names="node_id")
-        basin_definition_secondair = basin_definition_secondair.reset_index()
-
-        return basin_definition_primair, basin_definition_secondair
-
-    def _validate_meta_basin_column(self, df: pd.DataFrame, basin_metacol: str, expected_values: set[str]) -> None:
-        """Validate if all values as expected are present in basin_metacol"""
-        exception = ""
-        if df[basin_metacol].isna().any():
-            exception += " contains missings;"
-
-        unexpected = [i for i in df[basin_metacol].unique() if i not in expected_values]
-        if unexpected:
-            exception += f" contains unexpeced values {unexpected}, check `primary_values` and `secondary_values` input"
-
-        if exception:
-            raise ValueError(f"{basin_metacol}{exception}")
-
     def plot_assign_validation(self, model: Model | Path | str, path: Path | str | None = None):
         """Validate if all budget cells are assigned to a basin and plot the assignment
 
@@ -594,7 +576,11 @@ class AssignOfflineBudgets:
         budgets, model = self._sync_files(model=model)  # read model and budgets from zarr-store
         if path is not None:
             path = Path(path)
-        primary_basin_definition, secondary_basin_definition = self._split_basin_definitions(ribasim_model=model)
+        primary_basin_definition, secondary_basin_definition = split_basin_definitions(
+            ribasim_model=model,
+            primary_labels=self.primary_labels,
+            secondary_labels=self.secondary_labels,
+        )
         primary_basin_mask = imod.prepare.rasterize(
             primary_basin_definition,
             column="node_id",
@@ -633,6 +619,9 @@ class AssignOfflineBudgets:
             secondary_basin_definition=secondary_basin_definition,
             primary_basin_mask=primary_basin_mask,
             secondary_basin_mask=secondary_basin_mask,
+            primary_budget_keys=self.primary_budget_keys,
+            secondary_budget_keys=self.secondary_budget_keys,
+            surface_runoff_budget_keys=self.surface_runoff_budget_keys,
             path=path,
         )
 
@@ -646,6 +635,9 @@ class AssignOfflineBudgets:
         secondary_basin_definition: gpd.GeoDataFrame,
         primary_basin_mask,
         secondary_basin_mask,
+        primary_budget_keys,
+        secondary_budget_keys,
+        surface_runoff_budget_keys,
         path: Path | None = None,
     ):
         # plot imports
@@ -656,16 +648,14 @@ class AssignOfflineBudgets:
         xmin, ymin, xmax, ymax = primary_basin_definition.total_bounds
         # sum over time to get all active nodes
         primary_sum = sum(
-            budgets[v].sel(x=slice(xmin, xmax), y=slice(ymax, ymin)).sum("time").load()
-            for v in self.primary_budget_keys
+            budgets[v].sel(x=slice(xmin, xmax), y=slice(ymax, ymin)).sum("time").load() for v in primary_budget_keys
         )
         secondary_sum = sum(
-            budgets[v].sel(x=slice(xmin, xmax), y=slice(ymax, ymin)).sum("time").load()
-            for v in self.secondary_budget_keys
+            budgets[v].sel(x=slice(xmin, xmax), y=slice(ymax, ymin)).sum("time").load() for v in secondary_budget_keys
         )
         runoff_sum = sum(
             budgets[v].sel(x=slice(xmin, xmax), y=slice(ymax, ymin)).sum("time").load()
-            for v in self.surface_runoff_budget_keys
+            for v in surface_runoff_budget_keys
         )
         # map to node_id of basins — crop masks to the same bbox first so all arrays share coordinates
         primary_mask_cropped = primary_basin_mask.where(primary_basin_mask != -999).sel(

@@ -50,16 +50,24 @@ reset_pump_min_upstream_level = [
 # force LevelBoundary node_id to Basin node_id, overriding the automatic coupling
 forced_coupling = {
     3400005: 5901608,
-    3400007: 200184,  # Gaarkeuken naar juiste kanaalpand
-    3400012: 200184,  # Gaarkeuken naar juiste kanaalpand
-    3400004: 200184,  # Gaarkeuken naar juiste kanaalpand
-    210884: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
-    213460: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
-    203848: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
-    203812: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
-    211639: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
     203787: 200184,  # ivm ontbreken Grootegaster tocht bij NZV
     203804: 200184,  # ivm ontbreken Grootegaster tocht bij NZV
+    5900028: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900029: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900030: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900031: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900032: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900033: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900034: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900096: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900097: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    1500551: 4000298,  # verbind Winsemius met Brielse Meer ipv Hartelkanaal.
+    1500543: 8001616,  # verbind vdBurg met open zee ipv Nieuwe Waterweg
+    1301498: 1300169,  # LevelBoundary buiten de boezem van HDSR geplaatst
+    1301499: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
+    1301496: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
+    1301495: 1404817,  # LevelBoundary buiten de boezem van HDSR geplaatst
+    1301492: 1404817,  # LevelBoundary buiten de boezem van HDSR geplaatst
 }
 
 
@@ -387,7 +395,7 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
                 model.link.df.drop(cycles.index, inplace=True)
                 if kwargs["to_node"].node_type != "Basin":
                     print("Removing node", kwargs["to_node"])
-                    model.remove_node(kwargs["to_node"], remove_links=True)
+                    model.remove_node(kwargs["to_node"].node_id, remove_links=True)
                 else:
                     print("Removing node", kwargs["from_node"])
                     model.remove_node(kwargs["from_node"].node_id, remove_links=True)

@@ -1,8 +1,11 @@
 """Implement profiles in model generation."""
 
+import functools
 import logging
+import typing
 
 import pandas as pd
+import pydantic
 import shapely
 
 from ribasim_nl import CloudStorage, Model
@@ -145,6 +148,34 @@ def single_profile_nodes(
     return storing_ids, out_flowing, out_storing
 
 
+class BasinProfileError(Exception):
+    pass
+
+
+def _handle_validation_error(func: typing.Callable) -> typing.Callable:
+    """Provide useful guidance to validation error caused by misaligned model basins and basin profiles.
+
+    This misalignment is caused by updates to the model's basin IDs due to which these IDs differ from those used by the
+    profile-generator. As a result, setting the basin profiles cannot match all basin profiles to the basins themselves
+    causing empty profiles to the basins with modified IDs.
+    """
+
+    @functools.wraps(func)
+    def wrapper(model: Model, water_authority: str, **kwargs):
+        try:
+            return func(model, water_authority, **kwargs)
+        except pydantic.ValidationError as e:
+            raise BasinProfileError(
+                f"This is likely caused by a mismatch between the node IDs of the basins in the model, "
+                f"and the generated basin profiles node IDs.\n"
+                f"This might be fixed by rerunning the profile generator of {water_authority}:\n\n\t"
+                f"`pixi run python src/peilbeheerst_model/profiles/{water_authority}.py`"
+            ) from e
+
+    return wrapper
+
+
+@_handle_validation_error
 def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> Model:
     """Set basin profiles and add storing basins where applicable.
 
@@ -273,7 +304,7 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     link.set_index("link_id", inplace=True)
 
     # clean up basin node table ('bergend')
-    basin_node = basin_node[["node_type", "meta_node_id", "geometry"]]
+    basin_node = basin_node[["node_type", "meta_node_id", "meta_categorie", "geometry"]]
     basin_node["meta_node_id"] = basin_node.index
 
     # concatenate all newly generated tables to Ribasim model

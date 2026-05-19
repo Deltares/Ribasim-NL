@@ -30,7 +30,7 @@ AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
-add_lhm_fractions: bool = False
+add_lhm_fractions: bool = True
 add_rwzi: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
@@ -129,6 +129,8 @@ ribasim_param.validate_manning_basins(ribasim_model)
 # merge basins
 ribasim_model.merge_basins(node_id=162, to_node_id=177, are_connected=False)
 ribasim_model.merge_basins(node_id=178, to_node_id=177, are_connected=True)
+ribasim_model.merge_basins(node_id=184, to_node_id=205, are_connected=True)  # convergence test
+ribasim_model.merge_basins(node_id=159, to_node_id=54, are_connected=True)  # convergence test
 
 # model specific tweaks
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -289,6 +291,16 @@ ribasim_param.clean_tables(ribasim_model, waterschap)
 # set basin profiles and add storing basins where applicable
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=100)
 
+# check if meta_categorie in the basin.node.df is completely filled
+missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
+    ribasim_model.basin.node.df["meta_categorie"].isna()
+].index.tolist()
+if missing_meta_categorie_node_ids:
+    raise ValueError(
+        "Not all basins have a meta_categorie assigned. "
+        f"Missing meta_categorie for basin node IDs: {missing_meta_categorie_node_ids}"
+    )
+
 # set forcing
 if DYNAMIC_CONDITIONS:
     # Add dynamic meteo and groundwater from LHM zarr
@@ -305,6 +317,10 @@ if DYNAMIC_CONDITIONS:
     )
     ribasim_model = forcing.add()
     offline_budgets.compute_budgets(ribasim_model)
+    assign_validation_path = work_dir / "results" / "assign_validation.png"
+    assign_validation_path.parent.mkdir(parents=True, exist_ok=True)
+    offline_budgets.plot_assign_validation(ribasim_model, path=assign_validation_path)
+
 
 elif MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_forcing(
@@ -514,11 +530,11 @@ assign_metadata.add_meta_to_basins(
 )
 
 # manually assign better names (as suggested by JWV in FF)
-ribasim_model.basin.node.df.loc[19, "name"] = "Kromme Mijdrecht"
-ribasim_model.basin.node.df.loc[97, "name"] = "Amstel-Drecht kanaal"
-ribasim_model.basin.node.df.loc[20, "name"] = "Amstel"
-ribasim_model.basin.node.df.loc[85, "name"] = "Amstel"
-ribasim_model.basin.node.df.loc[86, "name"] = "Amstel"
+ribasim_model.node.df.loc[19, "name"] = "Kromme Mijdrecht"
+ribasim_model.node.df.loc[97, "name"] = "Amstel-Drecht kanaal"
+ribasim_model.node.df.loc[20, "name"] = "Amstel"
+ribasim_model.node.df.loc[85, "name"] = "Amstel"
+ribasim_model.node.df.loc[86, "name"] = "Amstel"
 
 increase_flow_rate_pumps = [412, 146]
 
@@ -557,7 +573,9 @@ assign = AssignAuthorities(
         966: "Rijkswaterstaat",
         2956: "Rijkswaterstaat",
         994: "Rijnland",
+        995: "Rijkswaterstaat",
     },
+    fill_na_Rijkswaterstaat=True,
 )
 ribasim_model = assign.assign_authorities()
 
