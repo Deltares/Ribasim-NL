@@ -754,7 +754,9 @@ model.move_node(node_id=1961, geometry=Point(192066.2, 377928.7))
 model.move_node(node_id=552, geometry=Point(189926.3, 382222.4))
 model.redirect_link(link_id=2065, from_node_id=255, to_node_id=1961)
 model.redirect_link(link_id=2063, from_node_id=1093, to_node_id=1961)
-model.reverse_direction_at_node(node_id=3092)
+model.redirect_link(link_id=2146, from_node_id=36, to_node_id=3092)
+model.redirect_link(link_id=2147, from_node_id=3092, to_node_id=1961)
+
 
 # Eindhovens kanaal
 model.move_node(node_id=1089, geometry=Point(170038.16, 384348.73))
