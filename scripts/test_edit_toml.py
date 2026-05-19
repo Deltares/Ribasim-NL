@@ -1,6 +1,7 @@
 """Tests for scripts/edit_toml.py"""
 
 import sys
+from datetime import date, datetime
 from pathlib import Path
 
 import tomli
@@ -26,6 +27,12 @@ def test_parse_value_float():
     assert parse_value("1e-6") == 1e-6
 
 
+def test_parse_value_datetime():
+    assert parse_value("2020-01-01 00:00:00") == datetime(2020, 1, 1)
+    assert parse_value('"2020-01-01 00:00:00"') == datetime(2020, 1, 1)
+    assert parse_value("2024-01-01") == date(2024, 1, 1)
+
+
 def test_parse_value_string():
     assert parse_value("hello") == "hello"
     assert parse_value('"quoted"') == "quoted"
@@ -34,15 +41,15 @@ def test_parse_value_string():
 
 def test_edit_toml_basic(tmp_path, monkeypatch):
     toml_file = tmp_path / "test.toml"
-    toml_file.write_text('starttime = "2017-01-01"\nendtime = "2020-01-01"\n')
+    toml_file.write_text("starttime = 2017-01-01\nendtime = 2020-01-01\n")
 
     monkeypatch.setattr("sys.argv", ["edit_toml.py", str(toml_file), "endtime=2024-01-01"])
     main()
 
     with toml_file.open("rb") as f:
         cfg = tomli.load(f)
-    assert cfg["endtime"] == "2024-01-01"
-    assert cfg["starttime"] == "2017-01-01"
+    assert cfg["endtime"] == date(2024, 1, 1)
+    assert cfg["starttime"] == date(2017, 1, 1)
 
 
 def test_edit_toml_nested(tmp_path, monkeypatch):
