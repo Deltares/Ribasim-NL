@@ -24,8 +24,8 @@ MIN_LEVEL_DIFF = 0.04  # Minimum level difference for the control
 MIN_BASIN_OUTLET_DIFF = 0.5
 # Configuration
 data_dir = settings.ribasim_nl_data_dir
-couple_lhm: bool = False
-sub_models: bool = True
+couple_lhm: bool = True
+sub_models: bool = False
 
 remove_nodes = [
     3401752,  # Dokwerd NZV
