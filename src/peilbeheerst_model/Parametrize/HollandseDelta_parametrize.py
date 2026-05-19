@@ -67,13 +67,13 @@ profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 
 cloud.synchronize(
     filepaths=[
-        # ribasim_base_model_dir,
-        # FeedbackFormulier_path,
-        # ws_grenzen_path,
-        # RWS_grenzen_path,
-        # qlr_path,
-        # aanvoer_path,
-        # meteo_path,
+        ribasim_base_model_dir,
+        FeedbackFormulier_path,
+        ws_grenzen_path,
+        RWS_grenzen_path,
+        qlr_path,
+        aanvoer_path,
+        meteo_path,
         profiles_path,
     ]
 )
