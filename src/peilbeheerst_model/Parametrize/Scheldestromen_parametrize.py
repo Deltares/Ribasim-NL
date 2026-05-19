@@ -31,8 +31,8 @@ AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
-add_lhm_fractions: bool = True
-add_rwzi: bool = True
+ADD_LHM_FRACTIONS: bool = True
+ADD_RWZI: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -510,11 +510,11 @@ assign = AssignAuthorities(
 ribasim_model = assign.assign_authorities()
 
 # merge RWZI model
-if add_rwzi:
+if ADD_RWZI:
     ribasim_model = merge_rwzi_model(ribasim_model, cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml"))
 
 # add LHM fractions
-if add_lhm_fractions:
+if ADD_LHM_FRACTIONS:
     assign_lhm_fractions(ribasim_model)
 
 ribasim_model.outlet.static.df["meta_known_flow_rate"] = False

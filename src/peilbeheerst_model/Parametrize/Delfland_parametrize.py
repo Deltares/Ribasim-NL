@@ -31,8 +31,8 @@ AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
-add_lhm_fractions: bool = True
-add_rwzi: bool = True
+ADD_LHM_FRACTIONS: bool = True
+ADD_RWZI: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -71,12 +71,12 @@ splitted_basin_10_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/O
 
 cloud.synchronize(
     filepaths=[
-        # ribasim_base_model_dir,
-        # FeedbackFormulier_path,
-        # ws_grenzen_path,
-        # RWS_grenzen_path,
-        # qlr_path,
-        # aanvoer_path,
+        ribasim_base_model_dir,
+        FeedbackFormulier_path,
+        ws_grenzen_path,
+        RWS_grenzen_path,
+        qlr_path,
+        aanvoer_path,
         # meteo_path,
         profiles_path,
         splitted_basin_2_path,
@@ -582,11 +582,11 @@ assign = AssignAuthorities(
 ribasim_model = assign.assign_authorities()
 
 # merge RWZI model
-if add_rwzi:
+if ADD_RWZI:
     ribasim_model = merge_rwzi_model(ribasim_model, cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml"))
 
 # add LHM fractions
-if add_lhm_fractions:
+if ADD_LHM_FRACTIONS:
     assign_lhm_fractions(ribasim_model)
 
 # set the pumps and outlets with unknown flow capacities to have unknown flow capacities in the model, so they can be scaled in the next step.
