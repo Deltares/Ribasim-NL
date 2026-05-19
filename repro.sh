@@ -17,7 +17,7 @@ submit() {
     --wrap="${PIXI}; $*"
 }
 
-repro() { echo "srun pixi run dvc repro -f -s $1"; }
+repro() { echo "srun pixi run dvc repro -f $1"; }
 
 # Step 1: shared dependency
 JOB_RWZI=$(submit rwzi singleton ${TIME} "$(repro rwzi)")
