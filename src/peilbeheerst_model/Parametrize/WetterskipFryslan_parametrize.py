@@ -32,7 +32,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = True
+RESCALE_FLOW_CAPACITIES: bool = False
 add_lhm_fractions: bool = True
 add_rwzi: bool = True
 
@@ -645,6 +645,7 @@ to_supply = (
     3272,
     3376,
     3411,
+    3452,
     3760,
     3880,
     3882,
@@ -813,11 +814,6 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
         design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
     )
 )
-
-# depending on the state, a different flow_rate is set. Set max value to the max_flow_rate when exceeding the max_flow_rate
-ribasim_model.outlet.static.df.loc[
-    ribasim_model.outlet.static.df.flow_rate > ribasim_model.outlet.static.df.max_flow_rate, "flow_rate"
-] = ribasim_model.outlet.static.df.max_flow_rate
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
