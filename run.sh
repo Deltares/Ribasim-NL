@@ -36,44 +36,51 @@ for arg in "$@"; do
   esac
 done
 
-# Setup isolated run directory
-RUN_DIR="${RUNS_DIR}/${NAME}"
-if [[ -d "${RUN_DIR}" ]]; then
-  echo "Error: ${RUN_DIR} already exists. Remove it or choose a different name." >&2
-  exit 1
-fi
-
-echo "Copying model to ${RUN_DIR}..."
-mkdir -p "${RUN_DIR}"
-cp -r "${MODEL_DIR}" "${RUN_DIR}/model"
-cp -r bin/ribasim "${RUN_DIR}/ribasim"
-
-# Find the TOML file in the model directory
-TOML=$(find "${RUN_DIR}/model" -maxdepth 1 -name "*.toml" | head -1)
-if [[ -z "${TOML}" ]]; then
-  echo "Error: no .toml file found in ${RUN_DIR}/model" >&2
-  exit 1
-fi
-echo "Using TOML: ${TOML}"
-
-# Apply overrides
-if [[ ${#OVERRIDES[@]} -gt 0 ]]; then
-  pixi run edit-toml "${TOML}" "${OVERRIDES[@]}"
-fi
-
 # Build dependency flag
 DEP_FLAG=""
 if [[ -n "${AFTER}" ]]; then
   DEP_FLAG="--dependency=afterok:${AFTER}"
 fi
 
-# Submit
-RIBASIM_BIN="${RUN_DIR}/ribasim/bin/ribasim"
+RUN_DIR="${RUNS_DIR}/${NAME}"
 
+# Submit
 JOB_ID=$(sbatch --parsable ${DEP_FLAG} \
   --job-name="${NAME}" --partition=${PARTITION} --time=${TIME} \
   --output="${RUN_DIR}/slurm-%j.out" \
-  --wrap="srun ${RIBASIM_BIN} ${TOML}")
+  <<EOF
+#!/bin/bash
+set -euo pipefail
+module load pixi
+cd $PWD
+
+# Setup isolated run directory
+RUN_DIR="${RUN_DIR}"
+if [[ -d "\${RUN_DIR}" ]]; then
+  echo "Error: \${RUN_DIR} already exists. Remove it or choose a different name." >&2
+  exit 1
+fi
+
+echo "Copying model to \${RUN_DIR}..."
+mkdir -p "\${RUN_DIR}"
+cp -r "${MODEL_DIR}" "\${RUN_DIR}/model"
+cp -r bin/ribasim "\${RUN_DIR}/ribasim"
+
+# Find the TOML file in the model directory
+TOML=\$(find "\${RUN_DIR}/model" -maxdepth 1 -name "*.toml" | head -1)
+if [[ -z "\${TOML}" ]]; then
+  echo "Error: no .toml file found in \${RUN_DIR}/model" >&2
+  exit 1
+fi
+echo "Using TOML: \${TOML}"
+
+# Apply overrides
+${OVERRIDES:+pixi run edit-toml "\${TOML}" ${OVERRIDES[*]}}
+
+# Run
+srun "\${RUN_DIR}/ribasim/bin/ribasim" "\${TOML}"
+EOF
+)
 
 echo "Submitted job ${JOB_ID} (${NAME})"
-echo "${NAME} ${JOB_ID} ${TOML} ${OVERRIDES[*]:-}" >> ${RUNS_DIR}/jobs.txt
+echo "${NAME} ${JOB_ID} ${MODEL_DIR} ${OVERRIDES[*]:-}" >> ${RUNS_DIR}/jobs.txt
