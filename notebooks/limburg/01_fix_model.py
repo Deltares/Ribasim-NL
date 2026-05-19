@@ -540,8 +540,8 @@ model.node.df.loc[
 
 
 # %% merge issues
-model.mode_node(node_id=1926, geometry=Point(196405.5, 396944.8))
-model.mode_node(node_id=807, geometry=Point(196895.8, 397237.0))
+model.move_node(node_id=1926, geometry=Point(196405.5, 396944.8))
+model.move_node(node_id=807, geometry=Point(196895.8, 397237.0))
 model.redirect_link(link_id=2165, from_node_id=810, to_node_id=1926)
 model.redirect_link(link_id=2164, from_node_id=809, to_node_id=1926)
 
