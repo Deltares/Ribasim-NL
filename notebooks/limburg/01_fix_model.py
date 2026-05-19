@@ -6,6 +6,7 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
+from shapely.geometry import Point
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -468,6 +469,9 @@ for row in network_validator.link_incorrect_type_connectivity(
 
 model.remove_unassigned_basin_area()
 
+# %% verwijderen i.v.m koppelen met Aa en Maas
+model.remove_node(node_id=144, remove_links=True)
+model.remove_node(node_id=2484, remove_links=True)
 
 # %%
 # Sanitize node_table
@@ -534,6 +538,12 @@ model.node.df.loc[
     "meta_gestuwd",
 ] = True
 
+
+# %% merge issues
+model.move_node(node_id=1926, geometry=Point(196405.5, 396944.8))
+model.move_node(node_id=807, geometry=Point(196895.8, 397237.0))
+model.redirect_link(link_id=2165, from_node_id=810, to_node_id=1926)
+model.redirect_link(link_id=2164, from_node_id=809, to_node_id=1926)
 
 #  %% write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")

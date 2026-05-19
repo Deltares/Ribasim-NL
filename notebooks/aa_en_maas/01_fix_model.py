@@ -11,6 +11,7 @@ from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.model import default_tables
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
+from shapely.geometry import Point
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -748,6 +749,7 @@ sanitize_node_table(
     names=names,
 )
 
+
 # %% set flow-boundaries to level-boundaries (plus outlet)
 for row in model.flow_boundary.node.df.itertuples():
     node_id = row.Index
@@ -774,6 +776,19 @@ for row in model.flow_boundary.node.df.itertuples():
     left_link_geometry, right_link_geometry = split_line(link_geometry, outlet_node_geometry)
     model.link.add(model.level_boundary[node_id], outlet_node, geometry=left_link_geometry)
     model.link.add(outlet_node, model.basin[basin_node_id], geometry=right_link_geometry)
+
+# basin Deurnsche Peel
+model.move_node(node_id=1961, geometry=Point(192066.2, 377928.7))
+model.move_node(node_id=552, geometry=Point(189926.3, 382222.4))
+model.redirect_link(link_id=2065, from_node_id=255, to_node_id=1961)
+model.redirect_link(link_id=2063, from_node_id=1093, to_node_id=1961)
+model.reverse_direction_at_node(node_id=3092)
+
+
+# Eindhovens kanaal
+model.move_node(node_id=1089, geometry=Point(170038.16, 384348.73))
+model.redirect_link(link_id=2073, from_node_id=1922, to_node_id=997)
+
 
 # %%
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")

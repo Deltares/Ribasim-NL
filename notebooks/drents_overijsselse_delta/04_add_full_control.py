@@ -1,12 +1,15 @@
 # %%
 import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
+from ribasim import Node
+from ribasim.nodes import level_boundary, pump
 from ribasim_nl.control import (
     add_controllers_to_supply_area,
     add_controllers_to_uncontrolled_connector_nodes,
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
+from shapely import Point
 
 from ribasim_nl import CloudStorage, Model
 
@@ -111,6 +114,19 @@ for static_df in [model.outlet.static.df, model.pump.static.df]:
     static_df["max_flow_rate"] = 100.0
     static_df["flow_rate"] = 100.0
 
+# Extra aanvoerpomp bij basin 1901, met boundary op dezelfde plek/level als boundary 72.
+boundary_level = model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 72, "level"].dropna()
+dod_extra_boundary = model.level_boundary.add(
+    Node(geometry=model.level_boundary[72].geometry, name="extra boundary bij 72"),
+    tables=[level_boundary.Static(level=[float(boundary_level.iloc[0]) if not boundary_level.empty else 0.0])],
+)
+dod_extra_supply_pump = model.pump.add(
+    Node(geometry=Point(240732.7023, 541529.6371), name="extra aanvoerpomp bij 3225"),
+    tables=[pump.Static(flow_rate=[1.2], max_flow_rate=[1.2], min_upstream_level=[14.86])],
+)
+model.link.add(dod_extra_boundary, dod_extra_supply_pump)
+model.link.add(dod_extra_supply_pump, model.get_node(1901))
+
 
 # %%
 # Linkrichting fixes
@@ -123,7 +139,7 @@ reverse_link_ids = [
     1350, 1561, 1581, 1604, 1618, 1619, 1635, 1787, 1797, 1874, 1916, 1971, 2009,
     2050, 2071, 2082, 2093, 2110, 2111, 2122, 2166, 2273, 2280, 2361, 2369, 2402,
     2415, 2445, 2456, 2526, 2610, 2652, 2669, 2893, 2940, 2944, 2956, 2958, 2992,
-    2993, 3051, 3073,
+    2993, 3051, 3073,3165,3166,3171,3172
 ]
 # fmt: on
 
@@ -298,7 +314,7 @@ flow_control_nodes = [
     242, 243, 244, 247, 248, 285, 301, 317, 328, 338, 344, 350, 361, 373, 374, 385,
     401, 403, 408, 414, 421, 423, 426, 427, 439, 442, 451, 458, 517, 605, 610, 937,
     938, 1088, 1089, 1115, 1152, 1157, 1228, 1263, 1317, 1328, 1347, 1363, 1414, 2662, 2664, 2666,
-    3130, 3136, 3229, 3234,
+    3130, 3136, 3229, 3234, 3235
 ]
 
 supply_nodes = [
@@ -315,7 +331,7 @@ supply_nodes = [
     1260, 1261, 1262, 1278, 1279, 1283, 1289, 1291, 1294, 1302, 1303, 1307, 1311, 1312, 1325, 1326,
     1332, 1336, 1344, 1391, 1401, 1418, 1423, 1444, 1452, 1473, 2650, 2652, 2653, 2657, 2658, 2659,
     2662, 2665, 2667, 3110, 3116, 3118, 3119, 3122, 3124, 3125, 3126, 3190, 3193, 3196, 3199, 3202,
-    3203, 3224,
+    3203, 3224, 3233
 ]
 
 drain_nodes = [
@@ -338,9 +354,11 @@ drain_nodes = [
     1226, 1233, 1234, 1248, 1257, 1259, 1264, 1268, 1269, 1271, 1273, 1279, 1318, 1320, 1323, 1337,
     1346, 1350, 1360, 1366, 1368, 1369, 1372, 1373, 1376, 1379, 1380, 1381, 1382, 1386, 1394, 1395,
     1406, 1409, 1410, 1428, 1433, 1448, 1459, 1460, 1462, 1466, 1482, 3106, 3112, 3128, 3192, 3194,
-    3195, 3198, 3221, 3223,
+    3195, 3198, 3221
 ]
 # fmt: on
+
+supply_nodes.append(dod_extra_supply_pump.node_id)
 
 
 # %%
@@ -600,6 +618,22 @@ model.outlet.static.df.loc[mask, ["flow_rate", "min_flow_rate", "max_flow_rate"]
 # Junctionify(!)
 
 junctionify(model)
+
+
+# %%
+# Laatste handmatige correcties
+
+# Nieuwe aanvoerpomp: alleen debiet in aanvoer, afvoer blijft 0.
+mask = model.pump.static.df.node_id == dod_extra_supply_pump.node_id
+model.pump.static.df.loc[mask, "min_upstream_level"] = 14.86
+model.pump.static.df.loc[mask, "max_downstream_level"] = 17.7
+model.pump.static.df.loc[mask & (model.pump.static.df.control_state == "aanvoer"), ["flow_rate", "max_flow_rate"]] = 1.2
+model.pump.static.df.loc[mask & (model.pump.static.df.control_state == "afvoer"), ["flow_rate", "max_flow_rate"]] = 0.0
+
+# Handmatige ondergrens voor node 3235.
+for static_df in [model.outlet.static.df, model.pump.static.df]:
+    static_df.loc[static_df.node_id == 3235, "min_upstream_level"] = 17.7
+    static_df.loc[static_df.node_id == 3233, "max_downstream_level"] = 12.94
 
 
 # %%
