@@ -194,8 +194,15 @@ ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_paramete
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoergebieden_gpkg = cloud.joinpath(AUTHORITY, "verwerkt", "sturing", "aanvoergebieden.gpkg")
+inlaatwerken_gdb = cloud.joinpath(
+    AUTHORITY,
+    "verwerkt",
+    "1_ontvangen_data",
+    "20250425_HarmenVandeWerfhorst",
+    "Inlaatwerken en gebieden.gdb",
+)
 
-cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
+cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path, inlaatwerken_gdb])
 
 
 # %%
@@ -390,10 +397,6 @@ drain_nodes = [68, 70, 75, 76, 79, 84, 87, 90, 93, 99, 101, 107, 116, 124, 142, 
 # %%
 # Inlaatwerken uit de GDB koppelen aan Ribasim-nodes
 
-inlaatwerken_gdb = Path(
-    r"d:\Projecten\D2306.LHM_RIBASIM\02.brongegevens\ValleienVeluwe\verwerkt"
-    r"\1_ontvangen_data\20250425_HarmenVandeWerfhorst\Inlaatwerken en gebieden.gdb"
-)
 
 manual_flow_control_nodes = list(flow_control_nodes)
 manual_supply_nodes = list(supply_nodes)
