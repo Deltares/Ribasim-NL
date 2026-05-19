@@ -32,7 +32,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = False
+RESCALE_FLOW_CAPACITIES: bool = True
 add_lhm_fractions: bool = True
 add_rwzi: bool = True
 
