@@ -52,8 +52,8 @@ stages:
       nfiles: 4
     - path: data/Limburg/modellen/Limburg_dynamic_model
       hash: md5
-      md5: f26b01a7281b90ddba388b8e4c0dd644.dir
-      size: 137277702
+      md5: 9c9449f6fb912c64a411691b7271f6c4.dir
+      size: 137138966
       nfiles: 4
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_dynamic_model
       hash: md5
@@ -62,7 +62,7 @@ stages:
       nfiles: 4
     - path: data/Rijkswaterstaat/modellen/hws_transient
       hash: md5
-      md5: 99a07babfa97e531a4ef81ecdcb71564.dir
+      md5: f43f695b3c314f33665f787b479edc95.dir
       size: 48525492
       nfiles: 2
     - path: data/RijnenIJssel/modellen/RijnenIJssel_dynamic_model
@@ -98,8 +98,8 @@ stages:
       nfiles: 4
     - path: data/ValleienVeluwe/modellen/ValleienVeluwe_dynamic_model
       hash: md5
-      md5: 62476e61b7c2b930263c107e7171e66b.dir
-      size: 80013174
+      md5: c3885e1a4de178652aee779291dc0eeb.dir
+      size: 79305454
       nfiles: 4
     - path: data/Vechtstromen/modellen/Vechtstromen_dynamic_model
       hash: md5
@@ -123,8 +123,8 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: a0dfd801109aa1d2e7291e1e0081d43e.dir
-      size: 2247332038
+      md5: ae418c9b7f75d7ab2fcf628444d1695d.dir
+      size: 2246340806
       nfiles: 2
   bathymetry:
     cmd: pixi run python notebooks/rijkswaterstaat/1_bathymetrie.py
@@ -144,22 +144,22 @@ stages:
     deps:
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: fe15670f4c23cc0b77276467792b441e.dir
-      size: 1226289350
+      md5: ae418c9b7f75d7ab2fcf628444d1695d.dir
+      size: 2246340806
       nfiles: 2
     - path: data/Rijkswaterstaat/verwerkt/netwerk.gpkg
       hash: md5
-      md5: 12c20e308c5df1b820592d4f1e1ba451
+      md5: 1483e211c280b98d532480709f07cb2c
       size: 3731456
     - path: notebooks/koppelen_modellen.py
       hash: md5
-      md5: 51e8c450322c8f6d94d3b070fe8609d3
-      size: 25833
+      md5: cf6015a57bd63dd805792c55c211ff58
+      size: 26811
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: f9472d4b5d57d016ef9e1915b7eb7eb4.dir
-      size: 804864035
+      md5: d8da7782330ff5ff82cd787290bde5b2.dir
+      size: 1281532619
       nfiles: 4
   rwzi:
     cmd: pixi run python notebooks/create_rwzi_model.py
