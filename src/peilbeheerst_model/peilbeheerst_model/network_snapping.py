@@ -311,11 +311,19 @@ def relocate_link_endpoints(model: Model) -> Model:
     return model
 
 
-def snap_model(model: Model, profiles_path: pathlib.Path) -> Model:
+def snap_model(
+    model: Model,
+    profiles_path: pathlib.Path,
+    max_distance: float | None = None,
+    tolerance: float = 10.0,
+    main_route_only: bool = False,
+) -> Model:
     hydro_objects, graph = get_graph(profiles_path)
 
-    model = snap_basins(model, hydro_objects)
-    model = snap_connectors(model, hydro_objects)
+    model = snap_basins(model, hydro_objects, max_distance=max_distance, main_route_only=main_route_only)
+    model = snap_connectors(
+        model, hydro_objects, max_distance=max_distance, tolerance=tolerance, main_route_only=main_route_only
+    )
     model = snap_links(model, graph)
     model = relocate_link_endpoints(model)
 
