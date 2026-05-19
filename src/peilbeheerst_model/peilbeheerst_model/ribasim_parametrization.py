@@ -312,7 +312,7 @@ def set_dynamic_level_boundaries(
     assert len(time) == len(levels), f"Size of `time` ({len(time)}) and `levels` ({len(levels)}) must be equal."
 
     # set level time-series
-    lb_ids = ribasim_model.level_boundary.node.df[["meta_node_id"]].to_numpy(dtype=int)
+    lb_ids = ribasim_model.level_boundary.node.df.index.to_numpy(dtype=int)
     lb_time = pd.DataFrame(
         {
             "node_id": np.repeat(lb_ids, len(time)),
@@ -349,13 +349,31 @@ def set_hypothetical_dynamic_level_boundaries(
     """
     # define time-series
     if DYNAMIC_CONDITIONS:
-        end_winter = datetime.datetime(start_time.year, 4, 1)
-        end_winter_1 = end_winter + datetime.timedelta(days=1)
-        end_summer = datetime.datetime(start_time.year, 10, 1)
-        end_summer_1 = end_summer + datetime.timedelta(days=1)
 
-        time: tuple[datetime.datetime, ...] = start_time, end_winter, end_winter_1, end_summer, end_summer_1, end_time
-        level: tuple[float, ...] = low, low, high, high, low, low
+        def seasonal_level(timestamp: datetime.datetime) -> float:
+            summer_start = datetime.datetime(timestamp.year, 4, 2)
+            summer_end = datetime.datetime(timestamp.year, 10, 1)
+            return high if summer_start <= timestamp <= summer_end else low
+
+        transitions = (
+            transition
+            for year in range(start_time.year, end_time.year + 1)
+            for transition in (
+                (datetime.datetime(year, 4, 1), low),
+                (datetime.datetime(year, 4, 2), high),
+                (datetime.datetime(year, 10, 1), high),
+                (datetime.datetime(year, 10, 2), low),
+            )
+        )
+        time_levels = {
+            transition_time: transition_level
+            for transition_time, transition_level in transitions
+            if start_time <= transition_time <= end_time
+        }
+
+        time_levels[start_time] = seasonal_level(start_time)
+        time_levels[end_time] = seasonal_level(end_time)
+        time, level = zip(*sorted(time_levels.items()), strict=True)
 
     else:
         halftime = start_time + (end_time - start_time) // 3

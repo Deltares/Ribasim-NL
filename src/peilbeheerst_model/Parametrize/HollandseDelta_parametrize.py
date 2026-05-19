@@ -687,7 +687,7 @@ if ADD_JUNCTIONS:
     ribasim_model = junctionify(ribasim_model)
 
 # set basin profiles
-implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=10)
+implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
@@ -771,6 +771,7 @@ to_drain = (
     1015,
     1118,
     1172,
+    1154,
     1347,
     1378,
     1443,
@@ -781,6 +782,7 @@ to_drain = (
     1690,
     1700,
     1771,
+    1791,  # rondpompen
     1800,
     1820,
     1824,
@@ -805,8 +807,6 @@ to_flow_control = (
     917,
     1004,
     1058,
-    1098,
-    1154,
     1168,
     1184,
     1193,
@@ -834,11 +834,16 @@ to_supply = (
     830,
     839,
     946,
+    954,  # rondpompen
     998,
+    1032,  # rondpompen
     1082,
     1091,
+    1098,  # rondpompen
     1120,
     1281,
+    1283,  # rondpompen
+    1313,  # rondpompen
     1354,
     1451,
     1490,
@@ -991,7 +996,7 @@ assign = AssignAuthorities(
         # 9141: None,  # dunes
         # 2687: None,  # dunes
     },
-    fill_na_Rijkswaterstaat=True,
+    fill_na_authority="Rijkswaterstaat",
 )
 ribasim_model = assign.assign_authorities()
 
@@ -1007,13 +1012,6 @@ if ADD_LHM_FRACTIONS:
 # There are no reliable flow rates for the pumps (data is mixed in m3/s and m3/min, and most dont have a value). Scale it all, include additional safety margin for the pumps afterwards
 ribasim_model.outlet.static.df["meta_known_flow_rate"] = False
 ribasim_model.pump.static.df["meta_known_flow_rate"] = False
-ribasim_model.pump.static.df.loc[
-    (ribasim_model.pump.static.df["max_flow_rate"].isna()) | (ribasim_model.pump.static.df["max_flow_rate"] == 0),
-    "meta_known_flow_rate",
-] = False
-
-# ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.flow_rate!= ribasim_model.pump.static.df.max_flow_rate]
-
 
 ribasim_model, from_to_node_table = scale_outlets_pumps(
     OutletPumpScalingConfig(
@@ -1029,7 +1027,18 @@ ribasim_model, from_to_node_table = scale_outlets_pumps(
     )
 )
 
-ribasim_model.pump.static.df.max_flow_rate *= 1.25
+ribasim_model.pump.static.df.max_flow_rate *= 1.25  # safety factor
+
+# TODO: find out why the flow rate is 0 at WSHD but not at other water boards. Temp fix for validation session.
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df["flow_rate"] == 0,
+    "flow_rate",
+] = ribasim_model.pump.static.df["max_flow_rate"]
+
+ribasim_model.outlet.static.df.loc[
+    ribasim_model.outlet.static.df["flow_rate"] == 0,
+    "flow_rate",
+] = ribasim_model.outlet.static.df["max_flow_rate"]
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
