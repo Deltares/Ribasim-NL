@@ -71,21 +71,21 @@ splitted_basin_2_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Op
 splitted_basin_9_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_9.gpkg")
 splitted_basin_10_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_10.gpkg")
 
-cloud.synchronize(
-    filepaths=[
-        ribasim_base_model_dir,
-        FeedbackFormulier_path,
-        ws_grenzen_path,
-        RWS_grenzen_path,
-        qlr_path,
-        aanvoer_path,
-        # meteo_path,
-        profiles_path,
-        splitted_basin_2_path,
-        splitted_basin_9_path,
-        splitted_basin_10_path,
-    ]
-)
+# cloud.synchronize(
+#     filepaths=[
+#         ribasim_base_model_dir,
+#         FeedbackFormulier_path,
+#         ws_grenzen_path,
+#         RWS_grenzen_path,
+#         qlr_path,
+#         aanvoer_path,
+#         # meteo_path,
+#         profiles_path,
+#         splitted_basin_2_path,
+#         splitted_basin_9_path,
+#         splitted_basin_10_path,
+#     ]
+# )
 
 # refresh only the feedback form from cloud (instead of all "verwerkt" files)
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
@@ -436,7 +436,27 @@ from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
 from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_model, from_to_node_table)
 from_to_node_function_table["demand"] = None
 # manual adjustments to control settings
-to_supply = 167, 371, 239, 223, 258, 306, 525, 377, 150, 224, 468, 163, 201, 475
+to_supply = (
+    150,
+    163,
+    167,
+    179,
+    201,
+    223,
+    224,
+    239,
+    245,
+    247,
+    258,
+    306,
+    353,
+    371,
+    377,
+    403,
+    468,
+    475,
+    525,
+)
 set_node_functions(from_to_node_function_table, to_supply=to_supply)
 
 outlet_copy = ribasim_model.outlet.static.df[
