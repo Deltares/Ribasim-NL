@@ -17,6 +17,7 @@ import typing
 
 import geopandas as gpd
 import networkx as nx
+import numpy as np
 import shapely
 import tqdm
 from ribasim_nl.profiles import path_finder
@@ -195,7 +196,7 @@ def snap_connectors(
     return relocate_nodes(model, nodes)
 
 
-def snap_links(model: Model, graph: nx.Graph) -> Model:
+def snap_links(model: Model, graph: nx.Graph, tolerance: float = 10.0) -> Model:
     """Snap link-geometries onto the hydro-object network.
 
     For each link, the shortest path along the hydro-objects between its from-node and to-node is found and used as
@@ -203,19 +204,25 @@ def snap_links(model: Model, graph: nx.Graph) -> Model:
 
     :param model: Ribasim model
     :param graph: graph of the hydro-object network
+    :param tolerance: buffer around basin area for routing, defaults to 10.0
 
     :return: updated Ribasim model
     """
     # model initiation check
     assert model.node.df is not None
     assert model.link.df is not None
+    assert model.basin.area.df is not None
 
     # copy datasets
     nodes = typing.cast(gpd.GeoDataFrame, model.node.df.copy(deep=True))
     links = typing.cast(gpd.GeoDataFrame, model.link.df.copy(deep=True))
+    areas = typing.cast(gpd.GeoDataFrame, model.basin.area.df.copy(deep=True))
 
     # filter Flow-links
     links = links[(links["link_type"] == "flow") & (links["meta_categorie"] != "bergend")]
+
+    # build basin-area lookup table
+    area_lookup = areas.set_index("node_id")["geometry"].buffer(tolerance)
 
     # build edge-geometry lookup (graph-edge -> LineString)
     link_graph_table: dict[tuple, shapely.LineString] = {}
@@ -225,10 +232,13 @@ def snap_links(model: Model, graph: nx.Graph) -> Model:
             link_graph_table[(u, v)] = geom
             link_graph_table[(v, u)] = geom
 
-    # graph-nodes as MultiPoint (for reuse in crossing_to_node)
+    # pre-compute graph node points for vectorized spatial filtering
+    graph_node_tuple = tuple(graph.nodes)
+    graph_node_points = shapely.points(np.array(graph_node_tuple, dtype=float))
+
+    # graph-nodes as MultiPoint (for reuse in point_to_graph_node)
     graph_as_multipoint = shapely.MultiPoint(graph.nodes)
 
-    # route each link along the hydro-object network
     # route each link along the hydro-object network
     snapped_links: dict[int, shapely.LineString] = {}
     for i, link in tqdm.tqdm(links.iterrows(), "Snapping links", len(links)):
@@ -238,9 +248,21 @@ def snap_links(model: Model, graph: nx.Graph) -> Model:
         from_node = path_finder.point_to_graph_node(graph_as_multipoint, from_point)
         to_node = path_finder.point_to_graph_node(graph_as_multipoint, to_point)
 
+        # determine basin area for this link
+        from_type = nodes.loc[link["from_node_id"], "node_type"]
+        basin_id = link["from_node_id"] if from_type == "Basin" else link["to_node_id"]
+        if basin_id not in area_lookup.index:
+            LOG.debug(f"No basin area found for link {link.name}")
+            continue
+
+        # create subgraph constrained to buffered basin area
+        basin_area = area_lookup[basin_id]
+        within = shapely.within(graph_node_points, basin_area)
+        subgraph = graph.subgraph(itertools.compress(graph_node_tuple, within))
+
         # find the shortest path
         try:
-            path = nx.shortest_path(graph, source=from_node, target=to_node, weight="weight")
+            path = nx.shortest_path(subgraph, source=from_node, target=to_node, weight="weight")
         except (nx.NetworkXNoPath, nx.NodeNotFound) as e:
             LOG.debug(f"Could not snap link {link.name}: {e}")
             continue
@@ -256,7 +278,12 @@ def snap_links(model: Model, graph: nx.Graph) -> Model:
             continue
 
         # merge segments into single LineString
-        snapped_links[i] = shapely.ops.linemerge(shapely.MultiLineString(segments))  # pyrefly: ignore[unsupported-operation]
+        snapped_link = shapely.ops.linemerge(shapely.MultiLineString(segments))
+        if from_point.distance(shapely.Point(snapped_link.coords[0])) > from_point.distance(
+            shapely.Point(snapped_link.coords[-1])
+        ):
+            snapped_link = snapped_link.reverse()
+        snapped_links[i] = snapped_link  # pyrefly: ignore[unsupported-operation]
 
     # update link-geometries
     links.loc[snapped_links.keys(), "geometry"] = gpd.GeoSeries(snapped_links)
@@ -288,20 +315,15 @@ def relocate_link_endpoints(model: Model) -> Model:
     nodes = typing.cast(gpd.GeoDataFrame, model.node.df.copy(deep=True))
     links = typing.cast(gpd.GeoDataFrame, model.link.df.copy(deep=True))
 
-    # current node locations per link
-    from_coords = shapely.get_coordinates(links["from_node_id"].map(nodes["geometry"]).values)  # pyrefly: ignore[bad-argument-type]
-    to_coords = shapely.get_coordinates(links["to_node_id"].map(nodes["geometry"]).values)  # pyrefly: ignore[bad-argument-type]
+    # expected endpoints per link
+    links["start"] = links["from_node_id"].map(nodes["geometry"])
+    links["end"] = links["to_node_id"].map(nodes["geometry"])
 
-    # replace first and last coordinate of each link geometry
-    new_geoms = []
-    for i, (_, link) in enumerate(links.iterrows()):
-        coords = shapely.get_coordinates(link.geometry)
-        coords[0] = from_coords[i]
-        coords[-1] = to_coords[i]
-        new_geoms.append(shapely.LineString(coords))
-
-    # update link-geometries
-    links["geometry"] = gpd.GeoSeries(new_geoms, index=links.index, crs=links.crs)
+    # modify endpoints of links
+    links["geometry"] = links.apply(
+        lambda r: shapely.LineString([r["start"], *r["geometry"].coords[1:-1], r["end"]]),
+        axis=1,
+    )
 
     # update Ribasim model
     tmp = model.link.df.copy()
