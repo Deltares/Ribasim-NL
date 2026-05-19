@@ -31,7 +31,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = True
+RESCALE_FLOW_CAPACITIES: bool = False
 add_lhm_fractions: bool = True
 add_rwzi: bool = True
 
@@ -69,15 +69,15 @@ splitted_basin_3_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Op
 
 cloud.synchronize(
     filepaths=[
-        ribasim_base_model_dir,
-        FeedbackFormulier_path,
-        ws_grenzen_path,
-        RWS_grenzen_path,
-        qlr_path,
-        aanvoer_path,
-        meteo_path,
-        profiles_path,
-        splitted_basin_3_path,
+        # ribasim_base_model_dir,
+        # FeedbackFormulier_path,
+        # ws_grenzen_path,
+        # RWS_grenzen_path,
+        # qlr_path,
+        # aanvoer_path,
+        # meteo_path,
+        # profiles_path,
+        # splitted_basin_3_path,
     ]
 )
 
@@ -227,6 +227,9 @@ ribasim_model.merge_basins(node_id=117, to_node_id=6)  # klein gebiedje in encla
 ribasim_model.merge_basins(node_id=218, to_node_id=3)  # klein gebiedje vlakbij boezem
 ribasim_model.merge_basins(node_id=113, to_node_id=3)  # klein gebiedje in boezem
 ribasim_model.merge_basins(node_id=203, to_node_id=21)  # klein gebiedje in duinen
+ribasim_model.merge_basins(node_id=228, to_node_id=193)  # convergence
+ribasim_model.merge_basins(node_id=110, to_node_id=3)  # convergence
+ribasim_model.merge_basins(node_id=148, to_node_id=2)  # convergence
 
 
 # (re)set 'meta_node_id'-values
@@ -255,6 +258,14 @@ del node_cache
 
 # set basin profiles
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=10)
+
+# add gemaal Kadoelen which is removed due to the merging
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(122405, 491275)), [level_boundary.Static(level=[default_level])]
+)
+pump_node = ribasim_model.pump.add(Node(geometry=Point(122475, 491317)), [pump.Static(flow_rate=[11.67])])
+ribasim_model.link.add(ribasim_model.basin[2], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
@@ -387,7 +398,6 @@ to_flow_control = (
     990,
     1039,
     1052,
-    1113,
     1116,
     1176,
     1212,
@@ -443,6 +453,7 @@ to_supply = (
     1043,
     1049,
     1077,
+    1113,  # rondpompen
     1115,
     1177,
     1214,
@@ -576,7 +587,7 @@ assign = AssignAuthorities(
         1394: "AmstelGooienVecht",
         3657: "AmstelGooienVecht",
     },
-    fill_na_Rijkswaterstaat=True,
+    fill_na_authority="Rijkswaterstaat",
 )
 ribasim_model = assign.assign_authorities()
 

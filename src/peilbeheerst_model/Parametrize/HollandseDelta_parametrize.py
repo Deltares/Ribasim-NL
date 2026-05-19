@@ -984,7 +984,7 @@ assign = AssignAuthorities(
         # 9141: None,  # dunes
         # 2687: None,  # dunes
     },
-    fill_na_Rijkswaterstaat=True,
+    fill_na_authority="Rijkswaterstaat",
 )
 ribasim_model = assign.assign_authorities()
 

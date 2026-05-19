@@ -505,7 +505,7 @@ assign = AssignAuthorities(
     custom_nodes={
         584: "Rijkswaterstaat",  # Westerschelde
     },
-    fill_na_Rijkswaterstaat=True,
+    fill_na_authority="Rijkswaterstaat",
 )
 ribasim_model = assign.assign_authorities()
 

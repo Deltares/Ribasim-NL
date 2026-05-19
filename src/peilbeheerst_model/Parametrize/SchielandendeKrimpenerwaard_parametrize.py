@@ -645,7 +645,7 @@ assign = AssignAuthorities(
     RWS_grenzen_path=RWS_grenzen_path,
     RWS_buffer=400,  # polygons match relatively good, lower buffer
     custom_nodes=None,
-    fill_na_Rijkswaterstaat=True,
+    fill_na_authority="Rijkswaterstaat",
 )
 ribasim_model = assign.assign_authorities()
 
