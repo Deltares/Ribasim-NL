@@ -224,14 +224,14 @@ def select_crossings(
     return crossings_selection.geometry.tolist()
 
 
-def crossing_to_node(graph: nx.Graph | shapely.MultiPoint, crossing: shapely.Point) -> tuple[float, float]:
-    """Snap a crossing (shapely.Point) to its nearest graph-node.
+def point_to_graph_node(graph: nx.Graph | shapely.MultiPoint, point: shapely.Point) -> tuple[float, float]:
+    """Snap a shapely.Point to its nearest graph-node.
 
     :param graph: graph (or graph-nodes)
-    :param crossing: crossing location
+    :param point: point location
 
     :type graph: networkx.Graph | shapely.MultiPoint
-    :type crossing: shapely.Point
+    :type point: shapely.Point
 
     :return: graph-node's coordinates
     :rtype: tuple[float, float]
@@ -239,7 +239,7 @@ def crossing_to_node(graph: nx.Graph | shapely.MultiPoint, crossing: shapely.Poi
     if isinstance(graph, nx.Graph):
         graph = shapely.MultiPoint(graph.nodes)
 
-    _, nearest_node = nearest_points(crossing, graph)
+    _, nearest_node = nearest_points(point, graph)
     return nearest_node.x, nearest_node.y
 
 
@@ -365,7 +365,7 @@ def find_flow_routes(
         for c1, c2 in tqdm.tqdm(itertools.combinations(set_crossings, 2), f"{desc} (F)", n_combinations):
             try:
                 # noinspection PyTypeChecker
-                path = paths[crossing_to_node(mp_graph, c1)][crossing_to_node(mp_graph, c2)]
+                path = paths[point_to_graph_node(mp_graph, c1)][point_to_graph_node(mp_graph, c2)]  # pyrefly: ignore[bad-index]
             except KeyError:
                 LOG.debug(f"No path between {c1} and {c2}")
             else:
@@ -376,8 +376,8 @@ def find_flow_routes(
             try:
                 path = nx.shortest_path(
                     graph,
-                    source=crossing_to_node(mp_graph, c1),
-                    target=crossing_to_node(mp_graph, c2),
+                    source=point_to_graph_node(mp_graph, c1),
+                    target=point_to_graph_node(mp_graph, c2),
                     weight="weight",
                     method="dijkstra",
                 )
