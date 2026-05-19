@@ -8,7 +8,7 @@ from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)
-endtime = datetime(2018, 1, 1)
+endtime = datetime(2020, 1, 1)
 
 FIND_POST_FIXES = ["full_control_model"]
 # pass authorities as arguments, or edit list here

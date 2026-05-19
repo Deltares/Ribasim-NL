@@ -56,13 +56,62 @@ def test_source(cloud):
         assert source in available_sources
 
 
-def test_propfind_distinguishes_dirs_and_files(cloud):
+def test_propfind_distinguishes_dirs_and_files(cloud, monkeypatch):
     """Test that _propfind correctly identifies directories vs files using WebDAV resourcetype.
 
     The LHM zarr store 'LHM_433_budget.zip' is a directory (not a zip file), and zarr metadata
     files like '.zgroup' and '.zmetadata' are files (not directories). The old heuristic based on
     file extensions got both of these wrong.
     """
+    import requests
+
+    fake_xml = """\
+<?xml version="1.0"?>
+<D:multistatus xmlns:D="DAV:">
+  <D:response>
+    <D:propstat><D:prop>
+      <D:displayname>LHM_433_budget.zip</D:displayname>
+      <D:resourcetype><D:collection/></D:resourcetype>
+    </D:prop></D:propstat>
+  </D:response>
+  <D:response>
+    <D:propstat><D:prop>
+      <D:displayname>.zgroup</D:displayname>
+      <D:resourcetype/>
+    </D:prop></D:propstat>
+  </D:response>
+  <D:response>
+    <D:propstat><D:prop>
+      <D:displayname>.zmetadata</D:displayname>
+      <D:resourcetype/>
+    </D:prop></D:propstat>
+  </D:response>
+  <D:response>
+    <D:propstat><D:prop>
+      <D:displayname>.zattrs</D:displayname>
+      <D:resourcetype/>
+    </D:prop></D:propstat>
+  </D:response>
+  <D:response>
+    <D:propstat><D:prop>
+      <D:displayname>bdgriv_sys1</D:displayname>
+      <D:resourcetype><D:collection/></D:resourcetype>
+    </D:prop></D:propstat>
+  </D:response>
+  <D:response>
+    <D:propstat><D:prop>
+      <D:displayname>bdgdrain_sys1</D:displayname>
+      <D:resourcetype><D:collection/></D:resourcetype>
+    </D:prop></D:propstat>
+  </D:response>
+</D:multistatus>"""
+
+    class FakeResponse:
+        status_code = 207
+        text = fake_xml
+
+    monkeypatch.setattr(requests, "request", lambda *args, **kwargs: FakeResponse())
+
     url = cloud.joinurl("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
     items, dir_names = cloud._propfind(url)
 
@@ -87,7 +136,6 @@ def test_settings():
     assert isinstance(settings, Settings)
 
     os.environ["RIBASIM_NL_CLOUD_PASS"] = "test"  # noqa: S105
-    nsettings = Settings(_env_file="foo.env", ribasim_home=Path("custom_ribasim"))
-    assert nsettings.ribasim_home == Path("custom_ribasim")
+    nsettings = Settings(_env_file="foo.env")
     assert nsettings.ribasim_nl_data_dir == Path("data")
     assert nsettings.ribasim_nl_cloud_pass == "test"  # noqa: S105

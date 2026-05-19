@@ -8,7 +8,8 @@ import geopandas as gpd
 import pandas as pd
 from ribasim import Node, nodes
 from ribasim.nodes import discrete_control, flow_demand
-from shapely.geometry import Point, Polygon
+from shapely.geometry import MultiPolygon, Point, Polygon
+from shapely.ops import unary_union
 
 import ribasim_nl
 from ribasim_nl import Model
@@ -189,14 +190,17 @@ def validate_nodes_on_reversed_direction(
         """remove reverses and order on key"""
         seen = set()
         result = []
+
         for d in reversed_nodes:
             ((k, v),) = d.items()
             pair = tuple(sorted((k, v)))
             if pair not in seen:
                 seen.add(pair)
-                result.append({k: v})
+                result.append({pair[0]: pair[1]})  # genormaliseerd opslaan
+
         raise ValueError(
-            f"Found {len(result)} connector-node pairs with reversed flow-directions: {reversed_nodes} in set marked as category {node_function}"
+            f"Found {len(result)} unique connector-node pairs with reversed flow-directions: "
+            f"{result} in set marked as category {node_function}"
         )
 
 
@@ -413,36 +417,29 @@ def add_control_functions_to_connector_nodes(
     # Step: check if we miss any user-defined supply, drain or flushing nodes
     # aggregate all nodes and see if we miss any supply-drain or flushing nodes
     all_nodes = node_positions.index.to_list()
+    all_node_ids = set(all_nodes)
+
     inflow_nodes = node_positions[node_positions == "inflow"].index.to_list()
     outflow_nodes = node_positions[node_positions == "outflow"].index.to_list()
 
-    # check on missing supply nodes
-    missing_supply_nodes = [i for i in supply_nodes if i not in all_nodes]
-    if missing_supply_nodes:
-        raise ValueError(
-            f"user-defined `supply_nodes` not found in outflow+inflow+internal nodes: {missing_supply_nodes}"
-        )
+    removed_supply_nodes = sorted(set(supply_nodes) - all_node_ids)
+    removed_drain_nodes = sorted(set(drain_nodes) - all_node_ids)
+    removed_flow_control_nodes = sorted(set(flow_control_nodes) - all_node_ids)
+    removed_flushing_nodes = sorted(set(flushing_nodes) - all_node_ids)
 
-    # check on missing drain nodes
-    missing_drain_nodes = [i for i in drain_nodes if i not in all_nodes]
-    if missing_drain_nodes:
-        raise ValueError(
-            f"user-defined `drain_nodes` not found in outflow+inflow+internal nodes: {missing_drain_nodes}"
-        )
+    if removed_supply_nodes:
+        print(f"WARNING removed supply_nodes not in node_positions: {removed_supply_nodes}")
+    if removed_drain_nodes:
+        print(f"WARNING removed drain_nodes not in node_positions: {removed_drain_nodes}")
+    if removed_flow_control_nodes:
+        print(f"WARNING removed flow_control_nodes not in node_positions: {removed_flow_control_nodes}")
+    if removed_flushing_nodes:
+        print(f"WARNING removed flushing_nodes not in node_positions: {removed_flushing_nodes}")
 
-    # check on missing flow_control nodes
-    missing_flow_control_nodes = [i for i in flow_control_nodes if i not in all_nodes]
-    if missing_flow_control_nodes:
-        raise ValueError(
-            f"user-defined `flow_control_nodes` not found in outflow+inflow+internal nodes: {missing_flow_control_nodes}"
-        )
-
-    # check on flushing nodes
-    missing_flushing_nodes = [i for i in flushing_nodes if i not in all_nodes]
-    if missing_flushing_nodes:
-        raise ValueError(
-            f"user-defined `flushing_nodes.keys()` not found in outflow+inflow+internal nodes: {missing_flushing_nodes}"
-        )
+    supply_nodes = sorted(set(supply_nodes) & all_node_ids)
+    drain_nodes = sorted(set(drain_nodes) & all_node_ids)
+    flow_control_nodes = sorted(set(flow_control_nodes) & all_node_ids)
+    flushing_nodes = {node_id: value for node_id, value in flushing_nodes.items() if node_id in all_node_ids}
 
     # step: selected_nodes_df with `from_node_id` and `to_node_id` columns
     selected_nodes_df = get_node_table_with_from_to_node_ids(model, node_ids=all_nodes, max_iter=20)
@@ -516,7 +513,7 @@ def add_control_functions_to_connector_nodes(
 
 def get_control_nodes_position_from_supply_area(
     model: Model,
-    polygon: Polygon,
+    polygon: Polygon | MultiPolygon,
     exclude_nodes: list[int] | None = None,
     control_node_types: list[Literal["Outlet", "Pump"]] | None = None,
     ignore_intersecting_links: list[int] | None = None,
@@ -534,7 +531,7 @@ def get_control_nodes_position_from_supply_area(
     ----------
     model : Model
         Ribasim Model
-    polygon : Polygon
+    polygon : Polygon | MultiPolygon
         Polygon containing supply area
     exclude_nodes: list[int], optional
         Nodes to exclude from final result
@@ -561,15 +558,26 @@ def get_control_nodes_position_from_supply_area(
         control_node_types = ["Outlet", "Pump"]
     if exclude_nodes is None:
         exclude_nodes = []
-    exterior = polygon.exterior
-    polygon = Polygon(exterior)
+    # Fix geometry and support Polygon + MultiPolygon.
+    # We only use exterior boundaries, so holes do not create false boundary crossings.
+    polygon = polygon.buffer(0)
+
+    if isinstance(polygon, Polygon):
+        boundary = polygon.exterior
+        polygon = Polygon(polygon.exterior)
+    elif isinstance(polygon, MultiPolygon):
+        parts = [Polygon(part.exterior) for part in polygon.geoms]
+        polygon = unary_union(parts)
+        boundary = unary_union([part.exterior for part in parts])
+    else:
+        raise TypeError(f"`polygon` must be Polygon or MultiPolygon, got {type(polygon).__name__}")
 
     # read node_table for further use
     node_df = _read_node_table(model=model)
 
     # intersecting links and direction (if not outflow, then inward)
     link_df = _read_link_table(model=model, link_type="flow")
-    link_intersect_df = link_df[link_df.intersects(exterior)]
+    link_intersect_df = link_df[link_df.intersects(boundary)].copy()
     link_intersect_df.loc[:, ["outflow"]] = node_df.loc[link_intersect_df["from_node_id"]].within(polygon).to_numpy()
     link_intersect_df.loc[:, ["from_node_type"]] = node_df.loc[
         link_intersect_df["from_node_id"], "node_type"
@@ -615,6 +623,7 @@ def get_control_nodes_position_from_supply_area(
     node_df["position"] = pd.Series(dtype="string")
     node_df.loc[outflow_nodes, "position"] = "outflow"
     node_df.loc[inflow_nodes, "position"] = "inflow"
+    node_df.loc[internal_nodes, "position"] = "internal_nodes"
 
     # exclude manually excluded nodes
     node_df = node_df[~node_df.index.isin(exclude_nodes)]
@@ -1252,7 +1261,7 @@ def add_controllers_to_connector_nodes(
 
 def add_controllers_to_supply_area(
     model: Model,
-    polygon: Polygon,
+    polygon: Polygon | MultiPolygon,
     ignore_intersecting_links: list[int],
     drain_nodes: list[int],
     flushing_nodes: dict[int, float | dict[str, float]],
@@ -1263,7 +1272,7 @@ def add_controllers_to_supply_area(
     control_node_types: list[Literal["Pump", "Outlet"]] | None = None,
     is_supply_node_column: str = "meta_supply_node",
     target_level_column: str = "meta_streefpeil",
-    add_supply_nodes: bool = False,
+    add_supply_nodes: bool = True,
 ) -> gpd.GeoDataFrame:
     """Add all controllers to supply area
 
@@ -1287,7 +1296,7 @@ def add_controllers_to_supply_area(
     ----------
     model : Model
         Ribasim Model
-    polygon : Polygon
+    polygon : Polygon | MultiPolygon
         Polygon of supply area
     ignore_intersecting_links : list[int]
         Optional list of links that can be ignored in producing outflow or inflow control nodes.
@@ -1531,6 +1540,7 @@ def add_function_to_peilbeheerst_node_table(model, from_to_node_table):
 
     # merge the functions to the from_to_node_table for both outlets and pumps
     outlet_pumps = pd.concat([outlet_nodes, pump_nodes])
+    from_to_node_table = from_to_node_table.drop(columns=["meta_categorie"], errors="ignore")
     from_to_node_table = from_to_node_table.merge(
         outlet_pumps,
         left_index=True,

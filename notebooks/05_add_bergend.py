@@ -9,7 +9,7 @@ cloud = CloudStorage()
 
 FIND_POST_FIXES = ["full_control_model"]
 # pass authorities as arguments, or edit list here
-SELECTION: set = {"AaenMaas"}
+SELECTION: set = {"RijnenIJssel"}
 INCLUDE_RESULTS = False
 REBUILD = True
 
@@ -59,5 +59,3 @@ for authority in authorities:
             model.write(dst_toml_file)
             result = model.run()
             assert result.exit_code == 0
-
-# %%

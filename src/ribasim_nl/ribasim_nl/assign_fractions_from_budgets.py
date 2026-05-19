@@ -138,9 +138,9 @@ def assign_fractions_from_budgets(
     primary_budgets : set[str]
         set of budgets that are to be summed to primary drainage/infiltration, e.g. {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5"}
     secondary_budgets : set[str]
-        set of budgets that are to be summed to secondary drainage/infiltration, e.g. {"bdgriv_sys2", "bdgriv_sys3", "bdgriv_sys6", "bdgdrn_sys1", "bdgdrn_sys2", "bdgdrn_sys3", "bdgpsswm3"}
+        set of budgets that are to be summed to secondary drainage/infiltration, e.g. {"bdgriv_sys2", "bdgriv_sys3", "bdgriv_sys6", "bdgdrn_sys1", "bdgdrn_sys2", "bdgdrn_sys3", "bdgpssw_m3d"}
     surface_runoff_budgets: set[str]
-        set of budgets that are to be summed to secondary surface_runoff, e.g. {"bdgqrunm3"}
+        set of budgets that are to be summed to secondary surface_runoff, e.g. {"bdgqrun_m3d"}
     secondary_basin_ids: np.ndarray
         list of basin_ids that belong to secondary basins
     primary_basin_ids: np.ndarray

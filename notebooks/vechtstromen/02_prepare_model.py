@@ -422,6 +422,10 @@ type_gemaal.name = "categorie"
 type_gemaal = type_gemaal.apply(lambda x: x.capitalize() if isinstance(x, str) else x)
 valid_values = type_gemaal.dropna()
 static_data.add_series(node_type="Pump", series=valid_values, fill_na=False)
+
+# Fallback voor pompen waarvoor de default-berekening geen flow_rate oplevert.
+static_data.pump.loc[static_data.pump.flow_rate.isna(), "flow_rate"] = 100.0
+
 # %% some customs
 model.remove_node(2297)
 
