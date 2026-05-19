@@ -29,7 +29,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = False
+RESCALE_FLOW_CAPACITIES: bool = True
 add_lhm_fractions: bool = True
 add_rwzi: bool = True
 
@@ -131,6 +131,14 @@ ribasim_model.merge_basins(node_id=162, to_node_id=177, are_connected=False)
 ribasim_model.merge_basins(node_id=178, to_node_id=177, are_connected=True)
 ribasim_model.merge_basins(node_id=184, to_node_id=205, are_connected=True)  # convergence test
 ribasim_model.merge_basins(node_id=159, to_node_id=54, are_connected=True)  # convergence test
+ribasim_model.merge_basins(node_id=1, to_node_id=196, are_connected=True)  # convergence test
+ribasim_model.merge_basins(node_id=62, to_node_id=129, are_connected=True)  # convergence test
+ribasim_model.merge_basins(node_id=131, to_node_id=63, are_connected=True)  # convergence test
+ribasim_model.merge_basins(node_id=222, to_node_id=88, are_connected=True)  # convergence test
+ribasim_model.merge_basins(node_id=227, to_node_id=42, are_connected=True)  # convergence test
+ribasim_model.merge_basins(node_id=133, to_node_id=15, are_connected=False)  # convergence test
+ribasim_model.merge_basins(node_id=13, to_node_id=15, are_connected=False)  # convergence test
+ribasim_model.merge_basins(node_id=196, to_node_id=56, are_connected=True)  # convergence test
 
 # model specific tweaks
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -252,8 +260,8 @@ ribasim_model.remove_node(1000, False)
 ribasim_param.change_pump_func(ribasim_model, 430, "aanvoer", 1)
 ribasim_param.change_pump_func(ribasim_model, 430, "afvoer", 0)
 
-#  a multipolygon occurs in some basins (88, 62). Only retain the largest value
-multipolygon_basins = [88, 62]
+#  a multipolygon occurs in some basins (88, 62). Only retain the largest value. Update: 62 has been merged
+multipolygon_basins = [88]
 for basin_to_explode in multipolygon_basins:
     exploded_basins = ribasim_model.basin.area.df.loc[
         ribasim_model.basin.area.df["node_id"] == basin_to_explode
@@ -362,7 +370,7 @@ ribasim_param.set_aanvoer_flags(
     aanvoergebieden,
     processor,
     basin_aanvoer_on=38,
-    basin_aanvoer_off=(1, 53, 134, 144, 196, 222),
+    basin_aanvoer_off=(53, 134, 144),  # 1, 196 and 222 have been merged together, remove from tuple
     outlet_aanvoer_on=856,
     aanvoer_enabled=AANVOER_CONDITIONS,
 )
