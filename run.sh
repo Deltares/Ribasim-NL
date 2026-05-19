@@ -71,13 +71,12 @@ if [[ -n "${AFTER}" ]]; then
 fi
 
 # Submit
-RIBASIM_BIN="$(pwd)/${RUN_DIR}/ribasim/bin/ribasim"
-TOML_ABS="$(pwd)/${TOML}"
+RIBASIM_BIN="${RUN_DIR}/ribasim/bin/ribasim"
 
 JOB_ID=$(sbatch --parsable ${DEP_FLAG} \
   --job-name="${NAME}" --partition=${PARTITION} --time=${TIME} \
   --output="${RUN_DIR}/slurm-%j.out" \
-  --wrap="srun ${RIBASIM_BIN} ${TOML_ABS}")
+  --wrap="srun ${RIBASIM_BIN} ${TOML}")
 
 echo "Submitted job ${JOB_ID} (${NAME})"
-echo "${NAME}\t${JOB_ID}\t${TOML}\t${OVERRIDES[*]:-}" >> ${RUNS_DIR}/jobs.txt
+echo "${NAME} ${JOB_ID} ${TOML} ${OVERRIDES[*]:-}" >> ${RUNS_DIR}/jobs.txt
