@@ -31,7 +31,7 @@ from ribasim_nl import CloudStorage, Model, SetDynamicForcing, junctionify, merg
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = False
+DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
 ADD_LHM_FRACTIONS: bool = True
 ADD_RWZI: bool = True
