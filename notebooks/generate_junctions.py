@@ -9,5 +9,5 @@ if __name__ == "__main__":
     toml_path_output = cloud.joinpath("Rijkswaterstaat/modellen/lhm_coupled_junction/lhm.toml")
 
     model = Model.read(toml_path_input)
-    model = junctionify(model)
+    junctionify(model)
     model.write(toml_path_output)

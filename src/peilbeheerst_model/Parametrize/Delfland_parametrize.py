@@ -31,8 +31,8 @@ AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
-add_lhm_fractions: bool = False
-add_rwzi: bool = False
+add_lhm_fractions: bool = True
+add_rwzi: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -352,6 +352,16 @@ del node_cache
 # set basin profiles
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud)  # , min_area=100
 
+# check if meta_categorie in the basin.node.df is completely filled
+missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
+    ribasim_model.basin.node.df["meta_categorie"].isna()
+].index.tolist()
+if missing_meta_categorie_node_ids:
+    raise ValueError(
+        "Not all basins have a meta_categorie assigned. "
+        f"Missing meta_categorie for basin node IDs: {missing_meta_categorie_node_ids}"
+    )
+
 # set forcing
 if DYNAMIC_CONDITIONS:
     # Add dynamic meteo and groundwater from LHM zarr
@@ -368,6 +378,10 @@ if DYNAMIC_CONDITIONS:
     )
     ribasim_model = forcing.add()
     offline_budgets.compute_budgets(ribasim_model)
+    assign_validation_path = work_dir / "results" / "assign_validation.png"
+    assign_validation_path.parent.mkdir(parents=True, exist_ok=True)
+    offline_budgets.plot_assign_validation(ribasim_model, path=assign_validation_path)
+
 
 elif MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_forcing(
@@ -391,6 +405,7 @@ if MIXED_CONDITIONS:
     )
 else:
     ribasim_model.level_boundary.static.df["level"] = default_level
+
 
 # add control, based on the meta_categorie
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
@@ -485,6 +500,7 @@ ribasim_model.outlet.static.df.loc[
     ribasim_model.outlet.static.df.node_id == 433, "max_downstream_level"
 ] = -0.63  # 2 cm below Rijnlands streefpeil, to avoid too much water entering from Delfland
 
+
 # assign metadata for pumps and basins
 assign_metadata = AssignMetaData(
     authority=waterschap,
@@ -531,6 +547,18 @@ ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
 # lower the difference in waterlevel for each manning node
 ribasim_model.manning_resistance.static.df["length"] = 100.0
 ribasim_model.manning_resistance.static.df["manning_n"] = 0.01
+
+# increase aanslagpeil for Dolkgemaal
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 569, "max_downstream_level"] += (
+    0.05  # 5 cm higher than streefpeil to make sure Winsemius pumps first
+)
+ribasim_model.discrete_control.condition.df.loc[
+    ribasim_model.discrete_control.condition.df.node_id == 3118, "threshold_high"
+] += 0.05
+ribasim_model.discrete_control.condition.df.loc[
+    ribasim_model.discrete_control.condition.df.node_id == 3118, "threshold_low"
+] += 0.05
+
 
 # last formating of the tables
 # only retain node_id's which are present in the .node table

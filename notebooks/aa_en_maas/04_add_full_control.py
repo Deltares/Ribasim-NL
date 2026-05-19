@@ -1374,7 +1374,7 @@ mask = model.level_boundary.static.df["node_id"].isin(boundary_ids)
 model.level_boundary.static.df.loc[mask, "level"] = model.level_boundary.static.df.loc[mask, "level"] + 0.04
 
 # %% Junctionfy(!)
-model = junctionify(model)
+junctionify(model)
 
 # Model run
 

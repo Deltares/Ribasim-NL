@@ -201,7 +201,7 @@ add_controllers_to_uncontrolled_connector_nodes(
 
 
 # %% Junctionfy(!)
-model = junctionify(model)
+junctionify(model)
 
 # Model run
 
