@@ -266,6 +266,8 @@ level_boundary_node = ribasim_model.level_boundary.add(
 pump_node = ribasim_model.pump.add(Node(geometry=Point(122475, 491317)), [pump.Static(flow_rate=[11.67])])
 ribasim_model.link.add(ribasim_model.basin[2], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
+ribasim_model.node.df.loc[level_boundary_node.node_id, "meta_node_id"] = level_boundary_node.node_id
+ribasim_model.node.df.loc[pump_node.node_id, "meta_node_id"] = pump_node.node_id
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
@@ -586,6 +588,26 @@ assign = AssignAuthorities(
         4565: "AmstelGooienVecht",
         1394: "AmstelGooienVecht",
         3657: "AmstelGooienVecht",
+        1309: "Noordzee",
+        1312: "Noordzee",
+        1322: "Noordzee",
+        1337: "Noordzee",
+        1338: "Noordzee",
+        1345: "Noordzee",
+        1355: "Noordzee",
+        1371: "Noordzee",
+        1376: "Noordzee",
+        1382: "Noordzee",
+        1390: "Noordzee",
+        1392: "Noordzee",
+        1393: "Noordzee",
+        1396: "Noordzee",
+        1421: "Noordzee",
+        2088: "Noordzee",
+        2457: "Noordzee",
+        2517: "Noordzee",
+        2563: "Noordzee",
+        2717: "Noordzee",
     },
     fill_na_authority="Rijkswaterstaat",
 )
@@ -605,6 +627,10 @@ ribasim_model.pump.static.df.loc[
     (ribasim_model.pump.static.df["max_flow_rate"].isna()) | (ribasim_model.pump.static.df["max_flow_rate"] == 0),
     "meta_known_flow_rate",
 ] = False
+
+# WEGHALEN !!!!!!!!!!!!!!!!!!!!!!!!!!
+ribasim_model.use_validation = False
+ribasim_model.write(ribasim_work_dir_model_toml)
 
 ribasim_model, from_to_node_table = scale_outlets_pumps(
     OutletPumpScalingConfig(
