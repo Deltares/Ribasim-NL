@@ -456,8 +456,8 @@ stages:
       size: 17106
     - path: notebooks/vallei_en_veluwe/03_parameterize_model.py
       hash: md5
-      md5: 57ccbe9492c6540e3cfa2e68a13e65f5
-      size: 8961
+      md5: b7eecdfef967f0888e56e450ba13700b
+      size: 2979
     - path: notebooks/vallei_en_veluwe/_preprocess_profielen.py
       hash: md5
       md5: 0902e32583ea04eed4c997277c788fe2
@@ -465,8 +465,8 @@ stages:
     outs:
     - path: data/ValleienVeluwe/modellen/ValleienVeluwe_parameterized_model
       hash: md5
-      md5: b43344d2c35a983514cb24e2fc3e4dc0.dir
-      size: 19923119
+      md5: 561ec8719bb9d13faddf587ac3e84da9.dir
+      size: 20029615
       nfiles: 2
   parameterized@vechtstromen:
     cmd:
@@ -635,13 +635,13 @@ stages:
       size: 1697
     - path: notebooks/limburg/04_add_full_control.py
       hash: md5
-      md5: 11618fe08a782c305cd824f51677603c
-      size: 25147
+      md5: b84bfb842956576de27f5d84b9c81c38
+      size: 25516
     outs:
     - path: data/Limburg/modellen/Limburg_bergend_model
       hash: md5
-      md5: 7a3457a70021f19245dddc3c8ce93656.dir
-      size: 41996463
+      md5: 7aa8117222748ac627dde2f8fc1298ab.dir
+      size: 41971887
       nfiles: 2
   bergend@noorderzijlvest:
     cmd:
@@ -723,8 +723,8 @@ stages:
     deps:
     - path: data/ValleienVeluwe/modellen/ValleienVeluwe_parameterized_model
       hash: md5
-      md5: f8fcedaf576a81021ac3236cfc52b254.dir
-      size: 20025519
+      md5: 561ec8719bb9d13faddf587ac3e84da9.dir
+      size: 20029615
       nfiles: 2
     - path: notebooks/05_add_bergend.py
       hash: md5
@@ -732,13 +732,13 @@ stages:
       size: 1697
     - path: notebooks/vallei_en_veluwe/04_add_full_control.py
       hash: md5
-      md5: 908250042cc63560f233ef03cfb9152b
-      size: 18068
+      md5: 423d6f41ec6b1f0112103fef76abbe1d
+      size: 23498
     outs:
     - path: data/ValleienVeluwe/modellen/ValleienVeluwe_bergend_model
       hash: md5
-      md5: 398598ad19629d04bb7519d2c1522d51.dir
-      size: 37494959
+      md5: efdb60dfcc5b429a3c2db826a642a6ab.dir
+      size: 37019823
       nfiles: 2
   bergend@vechtstromen:
     cmd:
@@ -887,8 +887,8 @@ stages:
     deps:
     - path: data/Limburg/modellen/Limburg_bergend_model
       hash: md5
-      md5: 7a3457a70021f19245dddc3c8ce93656.dir
-      size: 41996463
+      md5: 7aa8117222748ac627dde2f8fc1298ab.dir
+      size: 41971887
       nfiles: 2
     - path: data/Rijkswaterstaat/modellen/rwzi
       hash: md5
@@ -902,8 +902,8 @@ stages:
     outs:
     - path: data/Limburg/modellen/Limburg_dynamic_model
       hash: md5
-      md5: f26b01a7281b90ddba388b8e4c0dd644.dir
-      size: 137277702
+      md5: 9c9449f6fb912c64a411691b7271f6c4.dir
+      size: 137138966
       nfiles: 4
   dynamic@noorderzijlvest:
     cmd: pixi run python notebooks/07_add_dynamic_forcing.py Noorderzijlvest
@@ -984,8 +984,8 @@ stages:
       nfiles: 2
     - path: data/ValleienVeluwe/modellen/ValleienVeluwe_bergend_model
       hash: md5
-      md5: 398598ad19629d04bb7519d2c1522d51.dir
-      size: 37494959
+      md5: efdb60dfcc5b429a3c2db826a642a6ab.dir
+      size: 37019823
       nfiles: 2
     - path: notebooks/07_add_dynamic_forcing.py
       hash: md5
@@ -994,8 +994,8 @@ stages:
     outs:
     - path: data/ValleienVeluwe/modellen/ValleienVeluwe_dynamic_model
       hash: md5
-      md5: 62476e61b7c2b930263c107e7171e66b.dir
-      size: 80013174
+      md5: c3885e1a4de178652aee779291dc0eeb.dir
+      size: 79305454
       nfiles: 4
   dynamic@vechtstromen:
     cmd: pixi run python notebooks/07_add_dynamic_forcing.py Vechtstromen
@@ -1249,18 +1249,18 @@ stages:
       nfiles: 4
     - path: notebooks/rijkswaterstaat
       hash: md5
-      md5: 8a6aed4dce2503a96226453229ea7190.dir
-      size: 93888
+      md5: 313cb3021dd3b9cf35479153cc388800.dir
+      size: 93880
       nfiles: 13
     outs:
     - path: data/Rijkswaterstaat/modellen/hws_demand
       hash: md5
-      md5: d3504ce4581a3f34eb8d9027805edd01.dir
+      md5: 8c48e7df2d7d210f0dd31a915dd4e1c8.dir
       size: 42651828
       nfiles: 2
     - path: data/Rijkswaterstaat/verwerkt/netwerk.gpkg
       hash: md5
-      md5: 12c20e308c5df1b820592d4f1e1ba451
+      md5: 1483e211c280b98d532480709f07cb2c
       size: 3731456
   hws_transient:
     cmd:
@@ -1268,7 +1268,7 @@ stages:
     deps:
     - path: data/Rijkswaterstaat/modellen/hws_demand
       hash: md5
-      md5: d3504ce4581a3f34eb8d9027805edd01.dir
+      md5: 8c48e7df2d7d210f0dd31a915dd4e1c8.dir
       size: 42651828
       nfiles: 2
     - path: notebooks/rijkswaterstaat/8b_update_bc.py
@@ -1278,6 +1278,6 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/modellen/hws_transient
       hash: md5
-      md5: 99a07babfa97e531a4ef81ecdcb71564.dir
+      md5: f43f695b3c314f33665f787b479edc95.dir
       size: 48525492
       nfiles: 2
