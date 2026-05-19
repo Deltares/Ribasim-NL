@@ -4,7 +4,7 @@ from typing import Literal
 
 import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
-from ribasim.nodes import flow_demand, outlet
+from ribasim.nodes import flow_demand, outlet, pump
 from ribasim_nl.control import (
     _offset_new_node,
     _target_level,
@@ -52,10 +52,13 @@ aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).diss
 
 # alle uitlaten en inlaten op 20m3/s, geen cap verdeling. Dit wordt de max flow in model.
 # En als flow_rate niet bekend is de flow
-model.outlet.static.df.max_flow_rate = 20
-model.outlet.static.df.flow_rate = 20
+model.outlet.static.df.max_flow_rate = 100
+model.outlet.static.df.flow_rate = 100
 model.pump.static.df.max_flow_rate = model.pump.static.df.flow_rate
 
+# Erg klein basin, numerieke problemen
+model.merge_basins(node_id=2394, to_node_id=1507, are_connected=True)
+model.merge_basins(node_id=1672, to_node_id=1556, are_connected=True)
 # %%
 # Node 651 moet dicht zijn na overleg Limburg
 model.pump.static.df.loc[model.pump.static.df.node_id == 651, "max_flow_rate"] = 0
@@ -66,13 +69,9 @@ for link_id in [529, 1036]:
 
 # Gemaal Helenavaart
 model.update_node(node_id=590, node_type="Pump")
-# model.pump.static.df.loc[model.pump.static.df.node_id == 590, "min_upstream_level"] = 31.12
-# model.pump.static.df.loc[model.pump.static.df.node_id == 590, "flow_rate"] = 0
 
 # Gemaal Beringe
 model.update_node(node_id=583, node_type="Pump")
-# model.pump.static.df.loc[model.pump.static.df.node_id == 583, "min_upstream_level"] = 31
-# model.pump.static.df.loc[model.pump.static.df.node_id == 583, "flow_rate"] = 0
 # %%
 # Note: when using a FlowDemand, the parallel node must be configured as a drain node.
 # The node with the FlowDemand is supplied first, because its min_upstream_level
@@ -124,22 +123,33 @@ def add_discharge_supply_nodes(
             allow_missing=False,
         )
 
-        # zorg dat node een Outlet is
-        model.update_node(node_id, "Outlet")
-
-        # update outlet static
-        model.update_node(
-            node_id,
-            "Outlet",
-            [
-                outlet.Static(
-                    min_upstream_level=[us_target_level + us_target_level_offset_supply],
-                    flow_rate=[0],
-                    min_flow_rate=[float("nan")],
-                    max_flow_rate=[float("nan")],
-                )
-            ],
-        )
+        # Gemaal Beringe blijft een Pump; de andere discharge supply nodes modelleren we als Outlet.
+        if node_id == 583:
+            model.update_node(
+                node_id,
+                "Pump",
+                [
+                    pump.Static(
+                        min_upstream_level=[us_target_level + us_target_level_offset_supply],
+                        flow_rate=[0],
+                        min_flow_rate=[float("nan")],
+                        max_flow_rate=[float("nan")],
+                    )
+                ],
+            )
+        else:
+            model.update_node(
+                node_id,
+                "Outlet",
+                [
+                    outlet.Static(
+                        min_upstream_level=[us_target_level + us_target_level_offset_supply],
+                        flow_rate=[0],
+                        min_flow_rate=[float("nan")],
+                        max_flow_rate=[float("nan")],
+                    )
+                ],
+            )
 
         # demand node toevoegen
         demand_node_name = f"{demand_name_prefix} {demand_flow_str} [m3/s]"
@@ -782,7 +792,7 @@ add_controllers_to_supply_nodes(
 # handmatig opgegeven flow control nodes definieren
 
 
-flow_control_nodes = [220, 252, 545, 471, 711, 2493, 2494, 2496, 2497]
+flow_control_nodes = [220, 252, 411, 545, 471, 711, 2493, 2494, 2496, 2497]
 
 # handmatig opgegeven supply nodes (inlaten)
 supply_nodes = []
