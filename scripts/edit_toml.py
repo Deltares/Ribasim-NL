@@ -8,6 +8,7 @@ Nested keys use dot notation:
 """
 
 import sys
+from datetime import date, datetime
 from pathlib import Path
 
 import tomli
@@ -16,6 +17,9 @@ import tomli_w
 
 def parse_value(value: str):
     """Parse a string value into the appropriate Python type."""
+    # Strip surrounding quotes early
+    if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+        value = value[1:-1]
     # Boolean
     if value.lower() == "true":
         return True
@@ -30,9 +34,15 @@ def parse_value(value: str):
         return float(value)
     except ValueError:
         pass
-    # String (strip surrounding quotes if present)
-    if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
-        return value[1:-1]
+    # Datetime / date (try date first since fromisoformat on date strings also works as datetime)
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        pass
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        pass
     return value
 
 

@@ -1,10 +1,7 @@
 #!/bin/bash
 
-#SBATCH --job-name=nl-repro
-#SBATCH --partition=4vcpu
-#SBATCH --time=1:00:00
-
 # Submit the full Ribasim-NL pipeline as individual SLURM jobs.
+# Run directly on the login node: ./repro.sh
 # Uses `dvc repro` per stage; SLURM dependencies ensure correct ordering.
 
 module load pixi
@@ -20,7 +17,7 @@ submit() {
     --wrap="${PIXI}; $*"
 }
 
-repro() { echo "srun pixi run dvc repro -f -s $1"; }
+repro() { echo "srun pixi run dvc repro -f -s $*"; }
 
 # Step 1: shared dependency
 JOB_RWZI=$(submit rwzi singleton ${TIME} "$(repro rwzi)")
@@ -43,7 +40,7 @@ for key in \
   vallei_en_veluwe \
   vechtstromen
 do
-  JID=$(submit "${key}" "${DEP}" ${TIME} "$(repro dynamic@${key})")
+  JID=$(submit "${key}" "${DEP}" ${TIME} "$(repro parameterized@${key} bergend@${key} dynamic@${key})")
   JOBIDS="${JOBIDS}:${JID}"
 done
 
@@ -64,8 +61,8 @@ do
   JOBIDS="${JOBIDS}:${JID}"
 done
 
-# hws_transient (hws_demand -> hws_transient chain)
-JID=$(submit hws_transient "${DEP}" ${TIME} "$(repro hws_transient)")
+# hws (hws_demand -> hws_transient chain)
+JID=$(submit hws "${DEP}" ${TIME} "$(repro hws_demand hws_transient)")
 JOBIDS="${JOBIDS}:${JID}"
 
 # Step 3: samenvoegen (after all 22 complete)

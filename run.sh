@@ -1,10 +1,7 @@
 #!/bin/bash
 
-#SBATCH --job-name=nl-run
-#SBATCH --partition=4vcpu
-#SBATCH --time=1:00:00
-
 # Submit an isolated Ribasim simulation run on SLURM.
+# Run directly on the login node.
 #
 # Usage:
 #   ./run.sh <name> <model_dir> [--after=<jobid>] [key=value ...]
@@ -23,6 +20,7 @@ set -euo pipefail
 
 PARTITION=4vcpu
 TIME=7-00:00:00
+RUNS_DIR=/p/11212758-ribasim-maas-2026/ribasim-nl-runs
 
 # Parse arguments
 NAME=$1; shift
@@ -38,45 +36,56 @@ for arg in "$@"; do
   esac
 done
 
-# Setup isolated run directory
-RUN_DIR="runs/${NAME}"
-if [[ -d "${RUN_DIR}" ]]; then
-  echo "Error: ${RUN_DIR} already exists. Remove it or choose a different name." >&2
-  exit 1
-fi
-
-echo "Copying model to ${RUN_DIR}..."
-mkdir -p "${RUN_DIR}"
-cp -r "${MODEL_DIR}" "${RUN_DIR}/model"
-cp -r bin/ribasim "${RUN_DIR}/ribasim"
-
-# Find the TOML file in the model directory
-TOML=$(find "${RUN_DIR}/model" -maxdepth 1 -name "*.toml" | head -1)
-if [[ -z "${TOML}" ]]; then
-  echo "Error: no .toml file found in ${RUN_DIR}/model" >&2
-  exit 1
-fi
-echo "Using TOML: ${TOML}"
-
-# Apply overrides
-if [[ ${#OVERRIDES[@]} -gt 0 ]]; then
-  pixi run edit-toml "${TOML}" "${OVERRIDES[@]}"
-fi
-
 # Build dependency flag
 DEP_FLAG=""
 if [[ -n "${AFTER}" ]]; then
   DEP_FLAG="--dependency=afterok:${AFTER}"
 fi
 
-# Submit
-RIBASIM_BIN="$(pwd)/${RUN_DIR}/ribasim/bin/ribasim"
-TOML_ABS="$(pwd)/${TOML}"
+RUN_DIR="${RUNS_DIR}/${NAME}"
 
+# Quote overrides for embedding in heredoc
+QUOTED_OVERRIDES=""
+for o in "${OVERRIDES[@]+"${OVERRIDES[@]}"}"; do
+  QUOTED_OVERRIDES+=" \"$o\""
+done
+
+# Create output directory so SLURM can write the log file
+if [[ -d "${RUN_DIR}/model" ]]; then
+  echo "Error: ${RUN_DIR}/model already exists. Remove it or choose a different name." >&2
+  exit 1
+fi
+mkdir -p "${RUN_DIR}"
+
+# Submit
 JOB_ID=$(sbatch --parsable ${DEP_FLAG} \
   --job-name="${NAME}" --partition=${PARTITION} --time=${TIME} \
   --output="${RUN_DIR}/slurm-%j.out" \
-  --wrap="srun ${RIBASIM_BIN} ${TOML_ABS}")
+  <<EOF
+#!/bin/bash
+set -euo pipefail
+module load pixi
+cd $PWD
+
+# Setup isolated run directory
+cp -r "${MODEL_DIR}" "${RUN_DIR}/model"
+cp -r bin/ribasim "${RUN_DIR}/ribasim"
+
+# Find the TOML file in the model directory
+TOML=\$(find "${RUN_DIR}/model" -maxdepth 1 -name "*.toml" | head -1)
+if [[ -z "\${TOML}" ]]; then
+  echo "Error: no .toml file found in ${RUN_DIR}/model" >&2
+  exit 1
+fi
+echo "Using TOML: \${TOML}"
+
+# Apply overrides
+${QUOTED_OVERRIDES:+pixi run edit-toml "\${TOML}"${QUOTED_OVERRIDES}}
+
+# Run
+srun "${RUN_DIR}/ribasim/bin/ribasim" "\${TOML}"
+EOF
+)
 
 echo "Submitted job ${JOB_ID} (${NAME})"
-echo "${NAME}	${JOB_ID}	${TOML}	${OVERRIDES[*]:-}" >> runs/jobs.txt
+echo "${NAME} ${JOB_ID} ${MODEL_DIR} ${OVERRIDES[*]:-}" >> ${RUNS_DIR}/jobs.txt

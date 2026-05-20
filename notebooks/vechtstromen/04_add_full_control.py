@@ -3,6 +3,8 @@ from pathlib import Path
 
 import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
+from ribasim import Node
+from ribasim.nodes import level_boundary
 from ribasim_nl.control import (
     add_controllers_to_supply_area,
     add_controllers_to_uncontrolled_connector_nodes,
@@ -72,6 +74,7 @@ def run_model_and_control(model: Model, ribasim_toml, qlr_path):
     input_dir = ribasim_toml.parent / model.input_dir
 
     clean_database_sidecars(input_dir)
+    fill_missing_level_boundary_static_levels(model)
     model.write(ribasim_toml)
     clean_database_sidecars(input_dir)
 
@@ -83,7 +86,18 @@ def run_model_and_control(model: Model, ribasim_toml, qlr_path):
     return model
 
 
+def set_default_flow_rate(static_df, flow_rate: float = 100.0) -> None:
+    if static_df is None:
+        return
+
+    static_df["max_flow_rate"] = flow_rate
+    static_df["flow_rate"] = flow_rate
+
+
 def set_max_flow_rate(static_df, max_flow_rate_by_node_id: dict[int, float]) -> None:
+    if static_df is None:
+        return
+
     max_flow_rate = static_df["node_id"].map(max_flow_rate_by_node_id)
     mask = max_flow_rate.notna()
 
@@ -93,6 +107,24 @@ def set_max_flow_rate(static_df, max_flow_rate_by_node_id: dict[int, float]) -> 
 
 def node_list(*groups: list[int]) -> list[int]:
     return [node_id for group in groups for node_id in group]
+
+
+def reverse_existing_links(model: Model, link_ids: list[int]) -> None:
+    for link_id in link_ids:
+        if link_id in model.link.df.index:
+            model.reverse_link(link_id=link_id)
+
+
+def validate_file_gdb(gdb_path: Path) -> None:
+    if not gdb_path.is_dir():
+        raise FileNotFoundError(
+            f"{gdb_path} is geen lokale FileGDB-directory. Synchroniseer dit pad opnieuw met overwrite=True."
+        )
+
+
+def fill_missing_level_boundary_static_levels(model: Model, default_level: float = 0.0) -> None:
+    missing_level_mask = model.level_boundary.static.df["level"].isna()
+    model.level_boundary.static.df.loc[missing_level_mask, "level"] = default_level
 
 
 def lower_outlet_max_downstream_level(model: Model, node_id: int, offset: float = 0.01) -> None:
@@ -120,6 +152,48 @@ def lower_outlet_max_downstream_level(model: Model, node_id: int, offset: float 
     model.outlet.static.df.loc[mask, "max_downstream_level"] = float(downstream_target_level.iloc[0]) - offset
 
 
+def duplicate_level_boundary_for_link(model: Model, source_node_id: int, link_id: int) -> int | None:
+    if link_id not in model.link.df.index:
+        return None
+
+    current_from_node_id = int(model.link.df.at[link_id, "from_node_id"])
+    current_to_node_id = int(model.link.df.at[link_id, "to_node_id"])
+    if current_from_node_id != source_node_id:
+        if current_from_node_id in model.level_boundary.node.df.index:
+            return current_from_node_id
+        if current_to_node_id in model.level_boundary.node.df.index:
+            return current_to_node_id
+        raise ValueError(f"Link {link_id} is niet verbonden met level boundary {source_node_id}.")
+
+    if source_node_id not in model.level_boundary.node.df.index:
+        raise ValueError(f"Node {source_node_id} is geen level boundary in dit model.")
+
+    source_node = model.level_boundary[source_node_id]
+    source_name = model.node.df.at[source_node_id, "name"] if "name" in model.node.df.columns else ""
+    if not isinstance(source_name, str):
+        source_name = ""
+    new_name = f"{source_name} extra boundary".strip()
+    boundary_node = model.level_boundary.add(
+        Node(geometry=source_node.geometry, name=new_name),
+        tables=[level_boundary.Static(level=[0.0])],
+    )
+
+    new_node_id = boundary_node.node_id
+
+    node_columns = [column for column in model.node.df.columns if column not in {"node_type", "name", "geometry"}]
+    model.node.df.loc[new_node_id, node_columns] = model.node.df.loc[source_node_id, node_columns]
+
+    source_static_mask = model.level_boundary.static.df.node_id == source_node_id
+    new_static_mask = model.level_boundary.static.df.node_id == new_node_id
+    static_columns = [column for column in model.level_boundary.static.df.columns if column != "node_id"]
+    source_static = model.level_boundary.static.df.loc[source_static_mask, static_columns].iloc[0].dropna()
+    model.level_boundary.static.df.loc[new_static_mask, source_static.index] = source_static
+
+    model.redirect_link(link_id=link_id, from_node_id=new_node_id)
+
+    return new_node_id
+
+
 # %%
 # Definieren paden en syncen met cloud
 
@@ -131,7 +205,8 @@ qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.ql
 aanvoergebieden_gpkg = cloud.joinpath(AUTHORITY, "verwerkt", "sturing", "aanvoergebieden.gpkg")
 lhm_gemaal_gdb = cloud.joinpath(AUTHORITY, "verwerkt", "1_ontvangen_data", "LHM20230418.gdb")
 
-cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path, lhm_gemaal_gdb])
+cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
+cloud.synchronize(filepaths=[lhm_gemaal_gdb], overwrite=not lhm_gemaal_gdb.is_dir())
 
 
 # %%
@@ -140,6 +215,13 @@ cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path, lhm_gemaal_gdb])
 model = Model.read(ribasim_toml)
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
+# Splits de bestaande boundary bij node 15 zodat link 2822 een eigen boundary node krijgt.
+duplicate_level_boundary_for_link(model=model, source_node_id=15, link_id=2822)
+
+reverse_existing_links(model, [2682, 2823, 2822, 1337])
+
+# Gemaal Orveltersluis was opggedeeld
+model.remove_node(node_id=665, remove_links=True)
 
 # %%
 # Topologie fixes
@@ -147,8 +229,7 @@ aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).diss
 
 # Alle uitlaten en inlaten op 100 m3/s, geen cap verdeling. Dit wordt de max flow in model.
 for static_df in [model.outlet.static.df, model.pump.static.df]:
-    static_df["max_flow_rate"] = 100.0
-    static_df["flow_rate"] = 100.0
+    set_default_flow_rate(static_df)
 
 
 # %%
@@ -290,6 +371,7 @@ def get_lhm_gemaal_supply_nodes(
     name_prefix: str = "inlaat",
     node_types: list[str] = CONTROL_NODE_TYPES,
 ) -> list[int]:
+    validate_file_gdb(lhm_gemaal_gdb)
     gemaal_df = gpd.read_file(lhm_gemaal_gdb, layer=layer)
 
     inlaat_mask = normalize_name_series(gemaal_df[name_column]).str.startswith(name_prefix.lower(), na=False)
@@ -325,7 +407,7 @@ flow_control_nodes = node_list(
     [365, 373, 405, 428, 446, 464, 478, 500],
     [509, 513, 518, 522, 539, 632, 635, 672, 672],
     [700, 765, 820, 840, 853, 908, 963, 971, 998],
-    [1004, 1041, 1074, 1083, 1088, 1314, 1316, 2334],
+    [1004, 1041, 1074, 1083, 1088,1289,1290, 1314, 1316, 2334],
 )
 
 supply_nodes = node_list(
@@ -334,7 +416,7 @@ supply_nodes = node_list(
     [459, 465, 467, 468, 469, 477, 481, 492, 498, 501],
     [547, 553, 554, 560, 564, 571, 584, 589, 595, 596],
     [606, 611, 615, 621, 623, 625, 626, 629, 640, 648],
-    [658, 665, 670, 676, 677, 680, 684, 690, 694, 695],
+    [658, 664, 670, 676, 677, 680, 684, 690, 694, 695],
     [701, 709, 709, 720, 726, 730, 734, 734, 736, 760],
     [762, 768, 768, 846, 914, 961, 964, 973, 976, 978],
     [979, 983, 985, 986, 988, 989, 990, 991, 993, 997],
@@ -345,7 +427,7 @@ supply_nodes = node_list(
 )
 
 drain_nodes = node_list(
-    [36, 39, 40, 43, 45, 46, 47, 52, 79],
+    [36, 39, 40, 41, 43, 45, 46, 47, 52, 79],
     [87, 88, 90, 91, 92, 94, 98, 99, 101, 104],
     [106, 106, 112, 113, 118, 124, 134, 136, 142, 144],
     [150, 154, 157, 160, 161, 162, 163, 169, 171, 174],
@@ -362,7 +444,7 @@ drain_nodes = node_list(
     [556, 557, 558, 559, 565, 568, 577, 578, 582, 583],
     [586, 592, 594, 597, 598, 600, 604, 605, 610],
     [614, 617, 618, 620, 628, 637, 642, 645, 649],
-    [650, 653, 662, 664, 666, 667, 674, 675, 686, 703],
+    [650, 653, 662, 666, 667, 674, 675, 686, 703],
     [704, 707, 712, 713, 714, 715, 722, 723, 724, 729],
     [733, 738, 740, 741, 743, 761, 763, 764],
     [772, 773, 776, 780, 781, 783, 790, 791, 792],
@@ -372,7 +454,7 @@ drain_nodes = node_list(
     [895, 906, 907, 909, 913, 919, 921, 928, 930, 932],
     [933, 935, 949, 952, 957, 958, 960, 965, 966, 968],
     [975, 981, 1005, 1008, 1008, 1050, 1051, 1064, 1066],
-    [1071, 1089, 1095, 1102, 1132, 1269, 1290, 1353, 1367, 1367],
+    [1071, 1089, 1095, 1102, 1132, 1269, 1353, 1367, 1367],
     [2324, 2335, 2336, 2338, 2342, 2345, 2918],
 )
 # fmt: on
@@ -479,6 +561,13 @@ model.outlet.static.df.loc[mask, ["flow_rate", "min_flow_rate", "max_flow_rate"]
 # Junctionify(!)
 
 model = junctionify(model)
+
+
+# %%
+# Laatste handmatige correcties
+
+# Gemaal Orveltersluis
+model.pump.static.df.loc[model.pump.static.df.node_id == 664, "min_upstream_level"] = 14.86
 
 
 # %%
