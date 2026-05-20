@@ -33,7 +33,7 @@ DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
 ADD_LHM_FRACTIONS: bool = True
 ADD_RWZI: bool = True
-ADD_JUNCTIONS: bool = True
+ADD_JUNCTIONS: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -354,6 +354,7 @@ ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, def
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
 ribasim_param.clean_tables(ribasim_model, waterschap)
+ribasim_model.write(r"C:\Users\Hendrickx\Documents\TEMP\ribasim\testing\ribasim.toml")
 
 # add junctions and network snapping
 if ADD_JUNCTIONS:
@@ -364,7 +365,7 @@ if ADD_JUNCTIONS:
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=10)
 
 ribasim_model.write(r"C:\Users\Hendrickx\Documents\TEMP\ribasim\testing\ribasim.toml")
-if ADD_JUNCTIONS:
+if ADD_JUNCTIONS or DYNAMIC_CONDITIONS or RESCALE_FLOW_CAPACITIES:
     raise KeyboardInterrupt
 
 # check if meta_categorie in the basin.node.df is completely filled
