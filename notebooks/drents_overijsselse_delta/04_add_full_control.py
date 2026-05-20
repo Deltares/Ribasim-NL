@@ -117,7 +117,9 @@ for static_df in [model.outlet.static.df, model.pump.static.df]:
 # Extra aanvoerpomp bij basin 1901, met boundary op dezelfde plek/level als boundary 72.
 boundary_level = model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 72, "level"].dropna()
 dod_extra_boundary = model.level_boundary.add(
-    Node(geometry=model.level_boundary[72].geometry, name="extra boundary bij 72"),
+    Node(
+        geometry=model.level_boundary[72].geometry, name="extra boundary bij 72", meta_couple_authority="Vechtstromen"
+    ),
     tables=[level_boundary.Static(level=[float(boundary_level.iloc[0]) if not boundary_level.empty else 0.0])],
 )
 dod_extra_supply_pump = model.pump.add(
