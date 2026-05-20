@@ -15,8 +15,8 @@ stages:
       nfiles: 2
     - path: data/BrabantseDelta/modellen/BrabantseDelta_dynamic_model
       hash: md5
-      md5: e2bfcdd67766847646972686f16e26ae.dir
-      size: 125632502
+      md5: e3b9994e0092aef0728dcc82537b0227.dir
+      size: 125624310
       nfiles: 4
     - path: data/DeDommel/modellen/DeDommel_dynamic_model
       hash: md5
@@ -31,8 +31,8 @@ stages:
     - path:
         data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_dynamic_model
       hash: md5
-      md5: a4bd7d2e9c371828c814e368ee4c833c.dir
-      size: 87490990
+      md5: 8ac98657a2a8c3c5f9cde13445d10dcc.dir
+      size: 87370118
       nfiles: 4
     - path:
         data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_parameterized
@@ -98,7 +98,7 @@ stages:
       nfiles: 4
     - path: data/ValleienVeluwe/modellen/ValleienVeluwe_dynamic_model
       hash: md5
-      md5: c3885e1a4de178652aee779291dc0eeb.dir
+      md5: c96def61618b957d0c95fb2c7498da6f.dir
       size: 79305454
       nfiles: 4
     - path: data/Vechtstromen/modellen/Vechtstromen_dynamic_model
@@ -123,8 +123,8 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: 82daaa4370fde63bdab8128ff2dc1134.dir
-      size: 2234425542
+      md5: 17af4ff77a7d3bf5f3fefdfcd5d12020.dir
+      size: 2234208454
       nfiles: 2
   bathymetry:
     cmd: pixi run python notebooks/rijkswaterstaat/1_bathymetrie.py
@@ -144,8 +144,8 @@ stages:
     deps:
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: 82daaa4370fde63bdab8128ff2dc1134.dir
-      size: 2234425542
+      md5: 17af4ff77a7d3bf5f3fefdfcd5d12020.dir
+      size: 2234208454
       nfiles: 2
     - path: data/Rijkswaterstaat/verwerkt/netwerk.gpkg
       hash: md5
@@ -158,8 +158,8 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: 3705923e73115a666436073c97b91025.dir
-      size: 1274993847
+      md5: 8ead76fda65cd9d96056b74ed1b1ce1b.dir
+      size: 1274762799
       nfiles: 4
   rwzi:
     cmd: pixi run python notebooks/create_rwzi_model.py
