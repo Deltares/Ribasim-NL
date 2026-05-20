@@ -272,16 +272,20 @@ def snap_links(model: Model, graph: nx.Graph, tolerance: float = 10.0) -> Model:
             if geom is not None:
                 segments.append(geom)
 
-        if not segments:
-            continue
+        snapped_link = _assemble_link_geometry(segments, from_point)
+        if snapped_link is not None:
+            snapped_links[i] = snapped_link
 
-        # merge segments into single LineString
-        snapped_link = shapely.ops.linemerge(shapely.MultiLineString(segments))
-        if from_point.distance(shapely.Point(snapped_link.coords[0])) > from_point.distance(
-            shapely.Point(snapped_link.coords[-1])
-        ):
-            snapped_link = snapped_link.reverse()
-        snapped_links[i] = snapped_link  # pyrefly: ignore[unsupported-operation]
+        # if not segments:
+        #     continue
+        #
+        # # merge segments into single LineString
+        # snapped_link = shapely.ops.linemerge(shapely.MultiLineString(segments))
+        # if from_point.distance(shapely.Point(snapped_link.coords[0])) > from_point.distance(
+        #     shapely.Point(snapped_link.coords[-1])
+        # ):
+        #     snapped_link = snapped_link.reverse()
+        # snapped_links[i] = snapped_link
 
     # update link-geometries
     links.loc[snapped_links.keys(), "geometry"] = gpd.GeoSeries(snapped_links)
@@ -292,6 +296,37 @@ def snap_links(model: Model, graph: nx.Graph, tolerance: float = 10.0) -> Model:
     model.link.df = tmp.copy()  # pyrefly: ignore[bad-assignment]
 
     return model
+
+
+def _assemble_link_geometry(
+    segments: list[shapely.LineString], from_point: shapely.Point, to_point: shapely.Point | None = None
+) -> shapely.LineString | None:
+    """Assemble a link geometry from path-segments.
+
+    Segments are oriented and concatenated in order, ensuring the resulting LineString runs from `from_point` to
+    `to_point`. Returns None if no valid geometry can be assembled.
+
+    :param segments: list of LineString segments along the path
+    :param from_point: expected start point of the link
+    :param to_point: expected end point of the link
+
+    :return: assembled LineString, or None if assembly fails
+    """
+    # check 1: no segments, no LineString
+    if not segments:
+        return None
+
+    # check 2: linemerge returning MultiLineString indicates badly connected segments
+    line = shapely.ops.linemerge(shapely.MultiLineString(segments))
+    if line.geom_type == "MultiLineString":
+        LOG.warning("linemerge returned MultiLineString; segments are not properly connected")
+        return None
+
+    # check 3: ensure direction from from_point to to_point
+    if from_point.distance(shapely.Point(line.coords[0])) > from_point.distance(shapely.Point(line.coords[-1])):
+        line = line.reverse()
+
+    return typing.cast(shapely.LineString, line)
 
 
 def relocate_link_endpoints(model: Model) -> Model:
