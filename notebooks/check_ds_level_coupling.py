@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import sqlite3
+from datetime import datetime
 from pathlib import Path
 
 import geopandas as gpd
@@ -176,6 +177,8 @@ def build_check_dataframe(
     authorities: tuple[str, ...] | None,
     tolerance: float,
     upstream_supply_offset: float,
+    rws_upstream_state_offset: float,
+    max_rws_upstream_state_level: float,
     include_excluded: bool,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     node_df = read_table(
@@ -194,6 +197,9 @@ def build_check_dataframe(
     basin_area_df = read_table(con, "Basin / area", columns=["node_id", "meta_streefpeil"])
     basin_area_df = basin_area_df.drop_duplicates(subset=["node_id"]).set_index("node_id")
     checked_level_by_basin_id = normalize_numeric(basin_area_df["meta_streefpeil"]).to_dict()
+    basin_state_df = read_table(con, "Basin / state", columns=["node_id", "level"])
+    basin_state_df = basin_state_df.drop_duplicates(subset=["node_id"]).set_index("node_id")
+    state_level_by_basin_id = normalize_numeric(basin_state_df["level"]).to_dict()
 
     all_node_types_df = read_table(con, "Node", columns=["node_id", "node_type", "meta_waterbeheerder"])
     node_type_by_id = all_node_types_df.set_index("node_id")["node_type"].to_dict()
@@ -244,16 +250,38 @@ def build_check_dataframe(
     candidate_df["downstream_basin_meta_waterbeheerder"] = candidate_df["downstream_basin_id"].map(
         basin_authority_by_id
     )
-    candidate_df["gecheckte_max_downstream_level"] = candidate_df["downstream_basin_id"].map(checked_level_by_basin_id)
+    candidate_df["gecheckte_max_downstream_level"] = normalize_numeric(
+        candidate_df["downstream_basin_id"].map(checked_level_by_basin_id)
+    )
     candidate_df["huidig_max_downstream_level"] = normalize_numeric(candidate_df["max_downstream_level"])
     candidate_df["upstream_basin_id"] = [node_id for node_id, _, _ in upstream_results]
     candidate_df["upstream_link_id"] = [link_id for _, link_id, _ in upstream_results]
     candidate_df["upstream_check_error"] = [error for _, _, error in upstream_results]
     candidate_df["upstream_node_type"] = candidate_df["upstream_basin_id"].map(node_type_by_id)
     candidate_df["upstream_basin_meta_waterbeheerder"] = candidate_df["upstream_basin_id"].map(basin_authority_by_id)
-    candidate_df["gecheckte_min_upstream_level"] = (
-        candidate_df["upstream_basin_id"].map(checked_level_by_basin_id) + upstream_supply_offset
+    candidate_df["upstream_basin_streefpeil"] = normalize_numeric(
+        candidate_df["upstream_basin_id"].map(checked_level_by_basin_id)
     )
+    candidate_df["upstream_basin_state_level"] = normalize_numeric(
+        candidate_df["upstream_basin_id"].map(state_level_by_basin_id)
+    )
+    candidate_df["gecheckte_min_upstream_level"] = candidate_df["upstream_basin_streefpeil"] + upstream_supply_offset
+    candidate_df["min_upstream_level_check_basis"] = pd.Series("upstream_streefpeil", index=candidate_df.index)
+    valid_rws_state_level = candidate_df["upstream_basin_state_level"].le(max_rws_upstream_state_level)
+    candidate_df["rws_upstream_state_level_valid"] = (
+        candidate_df["upstream_basin_meta_waterbeheerder"].eq("Rijkswaterstaat")
+        & candidate_df["upstream_basin_state_level"].notna()
+        & valid_rws_state_level
+    )
+    rws_state_mask = (
+        candidate_df["upstream_basin_meta_waterbeheerder"].eq("Rijkswaterstaat")
+        & candidate_df["upstream_basin_state_level"].notna()
+        & valid_rws_state_level
+    )
+    candidate_df.loc[rws_state_mask, "gecheckte_min_upstream_level"] = (
+        candidate_df.loc[rws_state_mask, "upstream_basin_state_level"] + rws_upstream_state_offset
+    )
+    candidate_df.loc[rws_state_mask, "min_upstream_level_check_basis"] = "rijkswaterstaat_state_level"
     candidate_df["huidig_min_upstream_level"] = normalize_numeric(candidate_df["min_upstream_level"])
 
     checked_mask = candidate_df["downstream_node_type"].eq("Basin")
@@ -340,9 +368,13 @@ def write_deviation_locations(database_path: Path, deviations_df: pd.DataFrame, 
         "upstream_link_id",
         "upstream_basin_id",
         "upstream_basin_meta_waterbeheerder",
+        "upstream_basin_streefpeil",
+        "upstream_basin_state_level",
+        "rws_upstream_state_level_valid",
         "huidig_min_upstream_level",
         "gecheckte_min_upstream_level",
         "verschil_min_upstream_level",
+        "min_upstream_level_check_basis",
         "max_downstream_level_afwijking",
         "min_upstream_level_afwijking",
     ]
@@ -351,7 +383,12 @@ def write_deviation_locations(database_path: Path, deviations_df: pd.DataFrame, 
     output_gdf = deviations_df[output_columns].merge(node_gdf, on="node_id", how="left")
     output_gdf = gpd.GeoDataFrame(output_gdf, geometry="geometry", crs=node_gdf.crs)
     if output_gpkg.exists():
-        output_gpkg.unlink()
+        try:
+            output_gpkg.unlink()
+        except PermissionError:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_gpkg = output_gpkg.with_name(f"{output_gpkg.stem}_{timestamp}{output_gpkg.suffix}")
+            print(f"Bestaande punten-GPKG is in gebruik; schrijf naar {output_gpkg}")
     output_gdf.to_file(output_gpkg, layer="level_correcties", driver="GPKG")
 
 
@@ -369,9 +406,14 @@ def print_deviations(deviations_df: pd.DataFrame) -> None:
         "gecheckte_max_downstream_level",
         "verschil_max_downstream_level",
         "upstream_basin_id",
+        "upstream_basin_meta_waterbeheerder",
+        "upstream_basin_streefpeil",
+        "upstream_basin_state_level",
+        "rws_upstream_state_level_valid",
         "huidig_min_upstream_level",
         "gecheckte_min_upstream_level",
         "verschil_min_upstream_level",
+        "min_upstream_level_check_basis",
     ]
     print(
         deviations_df.sort_values(["meta_waterbeheerder", "downstream_basin_id", "node_id"])[columns].to_string(
@@ -392,7 +434,8 @@ def main() -> None:
         description=(
             "Controleer of max_downstream_level van inlaten en doorlaten overeenkomt met "
             "meta_streefpeil van het downstream basin en min_upstream_level met het upstream "
-            "streefpeil minus 4 cm in een Ribasim database.gpkg."
+            "streefpeil minus 4 cm in een Ribasim database.gpkg. Voor upstream Rijkswaterstaat-basins "
+            "wordt Basin / state.level gebruikt met een aparte offset."
         )
     )
     parser.add_argument("--database", type=Path, default=DEFAULT_DATABASE, help="Pad naar database.gpkg.")
@@ -413,6 +456,18 @@ def main() -> None:
         type=float,
         default=-0.04,
         help="Offset voor min_upstream_level bij aanvoer/inlaat ten opzichte van upstream meta_streefpeil.",
+    )
+    parser.add_argument(
+        "--rws-upstream-state-offset",
+        type=float,
+        default=-2.0,
+        help="Offset voor min_upstream_level als upstream basin Rijkswaterstaat is, ten opzichte van Basin / state.level.",
+    )
+    parser.add_argument(
+        "--max-rws-upstream-state-level",
+        type=float,
+        default=100.0,
+        help="Gebruik Rijkswaterstaat Basin / state.level alleen tot en met deze waarde.",
     )
     parser.add_argument(
         "--include-excluded",
@@ -453,6 +508,8 @@ def main() -> None:
             authorities=authorities,
             tolerance=args.tolerance,
             upstream_supply_offset=args.upstream_supply_offset,
+            rws_upstream_state_offset=args.rws_upstream_state_offset,
+            max_rws_upstream_state_level=args.max_rws_upstream_state_level,
             include_excluded=args.include_excluded,
         )
         max_update_count = 0
