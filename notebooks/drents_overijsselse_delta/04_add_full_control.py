@@ -7,7 +7,6 @@ from ribasim_nl.control import (
     add_controllers_to_supply_area,
     add_controllers_to_uncontrolled_connector_nodes,
 )
-from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from shapely import Point
 
@@ -190,6 +189,7 @@ set_static_values(
 )
 
 for node_id, to_node_id in [
+    (2164, 2120),
     (1970, 1990),
     (2294, 1949),
     (1669, 1670),
@@ -314,9 +314,9 @@ set_max_flow_rate(model.pump.static.df, pump_max_flow_rate_by_node_id)
 flow_control_nodes = [
     107, 119, 125, 133, 146, 148, 152, 153, 154, 173, 193, 198, 199, 226, 227, 241,
     242, 243, 244, 247, 248, 285, 301, 317, 328, 338, 344, 350, 361, 373, 374, 385,
-    401, 403, 408, 414, 421, 423, 426, 427, 439, 442, 451, 458, 517, 605, 610, 937,
+    401, 403, 408, 414, 421, 423, 426, 427, 439, 442, 451, 458, 517, 602, 605, 610, 937,
     938, 1088, 1089, 1115, 1152, 1157, 1228, 1263, 1317, 1328, 1347, 1363, 1414, 2662, 2664, 2666,
-    3130, 3136, 3229, 3234, 3235
+    3130, 3136, 3229, 3234
 ]
 
 supply_nodes = [
@@ -333,7 +333,7 @@ supply_nodes = [
     1260, 1261, 1262, 1278, 1279, 1283, 1289, 1291, 1294, 1302, 1303, 1307, 1311, 1312, 1325, 1326,
     1332, 1336, 1344, 1391, 1401, 1418, 1423, 1444, 1452, 1473, 2650, 2652, 2653, 2657, 2658, 2659,
     2662, 2665, 2667, 3110, 3116, 3118, 3119, 3122, 3124, 3125, 3126, 3190, 3193, 3196, 3199, 3202,
-    3203, 3224, 3233
+    3203, 3224, 3233,3237
 ]
 
 drain_nodes = [
@@ -356,7 +356,7 @@ drain_nodes = [
     1226, 1233, 1234, 1248, 1257, 1259, 1264, 1268, 1269, 1271, 1273, 1279, 1318, 1320, 1323, 1337,
     1346, 1350, 1360, 1366, 1368, 1369, 1372, 1373, 1376, 1379, 1380, 1381, 1382, 1386, 1394, 1395,
     1406, 1409, 1410, 1428, 1433, 1448, 1459, 1460, 1462, 1466, 1482, 3106, 3112, 3128, 3192, 3194,
-    3195, 3198, 3221
+    3195, 3198, 3221,3235
 ]
 # fmt: on
 
@@ -563,6 +563,17 @@ add_controllers_to_uncontrolled_connector_nodes(
     exclude_nodes=list(EXCLUDE_NODES),
 )
 
+# Afvoer: hardcoded default 20 m3/s ophogen naar 100 m3/s voor uitlaten/doorlaten.
+# Handmatig opgegeven capaciteiten blijven ongemoeid.
+for static_df, manual_capacity_nodes in [
+    (model.outlet.static.df, outlet_max_flow_rate_by_node_id),
+    (model.pump.static.df, pump_max_flow_rate_by_node_id),
+]:
+    afvoer_mask = (static_df.control_state == "afvoer") & ~static_df.node_id.isin(manual_capacity_nodes)
+    for column in ["flow_rate", "max_flow_rate"]:
+        default_capacity_mask = afvoer_mask & (static_df[column] == 20.0)
+        static_df.loc[default_capacity_mask, column] = 100.0
+
 # Holthe max_downstream iets lager gezet omdat deze pas aangaat als andere inlaten niet meer kunnen aanleveren.
 model.pump.static.df.loc[model.pump.static.df.node_id == 648, "max_downstream_level"] -= 0.1
 
@@ -619,7 +630,7 @@ model.outlet.static.df.loc[mask, ["flow_rate", "min_flow_rate", "max_flow_rate"]
 # %%
 # Junctionify(!)
 
-junctionify(model)
+# junctionify(model)
 
 
 # %%
