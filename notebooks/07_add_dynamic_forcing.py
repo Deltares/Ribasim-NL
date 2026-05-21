@@ -82,6 +82,7 @@ FIND_POST_FIXES = ["bergend_model"]
 SELECTION: set = {"RijnenIJssel"}
 INCLUDE_RESULTS = False
 REBUILD = True
+RUN_MODEL = False
 
 
 def get_model_dir(authority, post_fix):
@@ -180,16 +181,17 @@ for authority in authorities:
             if model.basin.time.df is not None:
                 model.basin.time.filepath = Path("basin_time.nc")
 
-            # run model
+            # write model and optionally run it
             model.write(dst_toml_file)
             if write_budgets:
                 budgets_df.to_feather(dst_toml_file.with_name("mfms_budgets.arrow"))  # for later reference
-            model.run()
-            model.update_state()
-            model.basin.state.write()
+            if RUN_MODEL:
+                model.run()
+                model.update_state()
+                model.basin.state.write()
 
             # DELWAQ(!)
-            if compute_fractions:
+            if compute_fractions and RUN_MODEL:
                 # generate DELWAQ model
                 delwaq_dir = model.toml_path.with_name("delwaq")
                 print(f"generate DELWAQ model in {delwaq_dir}")
