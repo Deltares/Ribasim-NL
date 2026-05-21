@@ -319,8 +319,12 @@ def _assemble_link_geometry(
     # check 2: linemerge returning MultiLineString indicates badly connected segments
     line = shapely.ops.linemerge(shapely.MultiLineString(segments))
     if line.geom_type == "MultiLineString":
-        LOG.warning("linemerge returned MultiLineString; segments are not properly connected")
-        return None
+        # LOG.warning("linemerge returned MultiLineString; segments are not properly connected")
+        # return None
+        line = shapely.ops.linemerge(shapely.MultiLineString([*reversed(segments)]))
+        if line.geom_type == "MultiLineString":
+            LOG.warning("linemerge returned MultiLineString; segments are not properly connected")
+            return None
 
     # check 3: ensure direction from from_point to to_point
     if from_point.distance(shapely.Point(line.coords[0])) > from_point.distance(shapely.Point(line.coords[-1])):
