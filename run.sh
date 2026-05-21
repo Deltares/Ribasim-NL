@@ -71,7 +71,12 @@ cd $PWD
 
 # Setup isolated run directory
 cp -r "${MODEL_DIR}" "${RUN_DIR}/model"
-${NO_COPY_RIBASIM} || cp -r bin/ribasim "${RUN_DIR}/ribasim"
+if ${NO_COPY_RIBASIM}; then
+  RIBASIM_BIN="$PWD/bin/ribasim/bin/ribasim"
+else
+  cp -r bin/ribasim "${RUN_DIR}/ribasim"
+  RIBASIM_BIN="${RUN_DIR}/ribasim/bin/ribasim"
+fi
 
 # Find the TOML file in the model directory
 TOML=\$(find "${RUN_DIR}/model" -maxdepth 1 -name "*.toml" | head -1)
@@ -85,7 +90,7 @@ echo "Using TOML: \${TOML}"
 ${QUOTED_OVERRIDES:+pixi run edit-toml "\${TOML}"${QUOTED_OVERRIDES}}
 
 # Run
-srun "${RUN_DIR}/ribasim/bin/ribasim" "\${TOML}"
+srun "${RIBASIM_BIN}" "\${TOML}"
 EOF
 )
 
