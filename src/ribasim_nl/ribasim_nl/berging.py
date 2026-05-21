@@ -650,8 +650,8 @@ class VdGaastBerging:
             )
             assert basin_profile.df is not None
             oppervlaktewater_percentage = round(basin_profile.df.area.max() / basin_polygon.area * 100, 1)
-            ini_level = (
-                max((basin_profile.df.level.min(), basin_row["meta_streefpeil"])) + 0.01
+            ini_level = max(
+                (basin_profile.df.level.min() + 0.01, basin_row["meta_streefpeil"])
             )  # 1cm above target-level/bottom-level
             data = [
                 basin_profile,
