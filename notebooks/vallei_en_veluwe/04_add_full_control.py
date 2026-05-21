@@ -20,7 +20,7 @@ from ribasim_nl import CloudStorage, Model
 # %%
 # Globale settings
 
-MODEL_EXEC: bool = True  # execute model run
+MODEL_EXEC: bool = False  # execute model run
 AUTHORITY: str = "ValleienVeluwe"
 SHORT_NAME: str = "venv"
 # MODEL_ID: str = "2025_5_0"
