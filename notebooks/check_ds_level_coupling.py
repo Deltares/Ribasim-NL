@@ -31,10 +31,21 @@ SELECTED_AUTHORITIES = (
     "Limburg",
 )
 
-# Bewuste DOD-instellingen:
-# - 5900346: Noordscheschutsluis, 1 cm onder downstream streefpeil
-# - 5900648: Holthe, 10 cm onder downstream streefpeil
-EXCLUDED_DEVIATION_NODE_IDS = {5900346, 5900648}
+MAX_DOWNSTREAM_LEVEL_OFFSET_BY_NODE_ID = {
+    # StichtseRijnlanden: gefaseerde inlaten, 1 cm onder downstream streefpeil.
+    1400536: -0.01,  # Noordergemaal
+    1401344: -0.01,
+    1401345: -0.01,
+    1400468: -0.01,  # sifon onder ARK
+    1400469: -0.01,  # sifon onder ARK
+    1400470: -0.01,  # sifon onder ARK
+    1400601: -0.01,  # Caspargauw
+    # DrentsOverijsselseDelta: bewuste aanvoer-volgorde en handmatige instelling.
+    5900346: -0.01,  # Noordscheschutsluis
+    5900648: -0.10,  # Holthe
+    5903233: -0.01,
+}
+EXCLUDED_DEVIATION_NODE_IDS: set[int] = set()
 
 
 def quote_name(name: str) -> str:
@@ -253,6 +264,20 @@ def build_check_dataframe(
     candidate_df["gecheckte_max_downstream_level"] = normalize_numeric(
         candidate_df["downstream_basin_id"].map(checked_level_by_basin_id)
     )
+    candidate_df["max_downstream_level_offset"] = (
+        candidate_df["node_id"].map(MAX_DOWNSTREAM_LEVEL_OFFSET_BY_NODE_ID).fillna(0.0)
+    )
+    candidate_df["max_downstream_level_check_basis"] = pd.Series("downstream_streefpeil", index=candidate_df.index)
+    max_downstream_offset_mask = (
+        candidate_df["max_downstream_level_offset"].ne(0.0) & candidate_df["gecheckte_max_downstream_level"].notna()
+    )
+    candidate_df.loc[max_downstream_offset_mask, "gecheckte_max_downstream_level"] = (
+        candidate_df.loc[max_downstream_offset_mask, "gecheckte_max_downstream_level"]
+        + candidate_df.loc[max_downstream_offset_mask, "max_downstream_level_offset"]
+    )
+    candidate_df.loc[max_downstream_offset_mask, "max_downstream_level_check_basis"] = (
+        "downstream_streefpeil_plus_handmatige_offset"
+    )
     candidate_df["huidig_max_downstream_level"] = normalize_numeric(candidate_df["max_downstream_level"])
     candidate_df["upstream_basin_id"] = [node_id for node_id, _, _ in upstream_results]
     candidate_df["upstream_link_id"] = [link_id for _, link_id, _ in upstream_results]
@@ -365,6 +390,8 @@ def write_deviation_locations(database_path: Path, deviations_df: pd.DataFrame, 
         "huidig_max_downstream_level",
         "gecheckte_max_downstream_level",
         "verschil_max_downstream_level",
+        "max_downstream_level_offset",
+        "max_downstream_level_check_basis",
         "upstream_link_id",
         "upstream_basin_id",
         "upstream_basin_meta_waterbeheerder",
@@ -405,6 +432,8 @@ def print_deviations(deviations_df: pd.DataFrame) -> None:
         "huidig_max_downstream_level",
         "gecheckte_max_downstream_level",
         "verschil_max_downstream_level",
+        "max_downstream_level_offset",
+        "max_downstream_level_check_basis",
         "upstream_basin_id",
         "upstream_basin_meta_waterbeheerder",
         "upstream_basin_streefpeil",
