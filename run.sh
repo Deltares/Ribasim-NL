@@ -90,7 +90,7 @@ echo "Using TOML: \${TOML}"
 ${QUOTED_OVERRIDES:+pixi run edit-toml "\${TOML}"${QUOTED_OVERRIDES}}
 
 # Run
-srun "${RIBASIM_BIN}" "\${TOML}"
+srun "\${RIBASIM_BIN}" "\${TOML}"
 EOF
 )
 
