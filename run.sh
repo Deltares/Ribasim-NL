@@ -27,10 +27,12 @@ NAME=$1; shift
 MODEL_DIR=$1; shift
 
 AFTER=""
+NO_COPY_RIBASIM=false
 OVERRIDES=()
 for arg in "$@"; do
   case $arg in
     --after=*) AFTER="${arg#--after=}" ;;
+    --no-copy-ribasim) NO_COPY_RIBASIM=true ;;
     *=*) OVERRIDES+=("$arg") ;;
     *) echo "Unknown argument: $arg" >&2; exit 1 ;;
   esac
@@ -69,7 +71,7 @@ cd $PWD
 
 # Setup isolated run directory
 cp -r "${MODEL_DIR}" "${RUN_DIR}/model"
-cp -r bin/ribasim "${RUN_DIR}/ribasim"
+${NO_COPY_RIBASIM} || cp -r bin/ribasim "${RUN_DIR}/ribasim"
 
 # Find the TOML file in the model directory
 TOML=\$(find "${RUN_DIR}/model" -maxdepth 1 -name "*.toml" | head -1)
