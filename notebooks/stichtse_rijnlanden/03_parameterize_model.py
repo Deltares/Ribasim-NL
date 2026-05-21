@@ -26,7 +26,7 @@ start_time = time.time()
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5)
 print("Elapsed Time:", time.time() - start_time, "seconds")
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 # Fixes
 model.basin.area.df.loc[model.basin.area.df.node_id == 1737, "meta_streefpeil"] = -0.4

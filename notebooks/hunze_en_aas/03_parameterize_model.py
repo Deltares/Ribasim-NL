@@ -35,7 +35,7 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 1832, "meta_streefpeil"] 
 
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5)
 print("Elapsed Time:", time.time() - start_time, "seconds")
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 
 # %% Flow rates are replaced to max_flow_rate, otherwise it affects the flow ratio

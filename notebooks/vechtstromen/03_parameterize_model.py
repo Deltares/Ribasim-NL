@@ -33,7 +33,7 @@ start_time = time.time()
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=1)
 print("Elapsed Time:", time.time() - start_time, "seconds")
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 
 # %%

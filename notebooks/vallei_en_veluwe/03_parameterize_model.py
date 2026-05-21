@@ -60,7 +60,7 @@ model.basin.state.df = model.basin.area.df[["node_id", "meta_streefpeil"]].renam
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 1, "level"] = 0.8
 
 
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 # Havensluis Elburg
 model.reverse_direction_at_node(477)

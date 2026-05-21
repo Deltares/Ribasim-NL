@@ -46,7 +46,7 @@ model.parameterize(
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # %%
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 # %%
 # Inlaten op False zetten
