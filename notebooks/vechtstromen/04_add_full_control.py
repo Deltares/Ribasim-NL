@@ -229,8 +229,8 @@ model.remove_node(node_id=665, remove_links=True)
 
 # Alle uitlaten en inlaten op 100 m3/s, geen cap verdeling. Dit wordt de max flow in model.
 for static_df in [model.outlet.static.df, model.pump.static.df]:
-    set_default_flow_rate(static_df)
-
+    static_df["max_flow_rate"] = 100.0
+    static_df["flow_rate"] = 100.0
 
 # %%
 # Max-capaciteiten inlaten
@@ -542,6 +542,17 @@ add_controllers_to_uncontrolled_connector_nodes(
     flushing_nodes={},
     exclude_nodes=list(EXCLUDE_NODES),
 )
+
+# Afvoer: hardcoded default 20 m3/s ophogen naar 100 m3/s voor uitlaten/doorlaten.
+# Handmatig opgegeven capaciteiten blijven ongemoeid.
+for static_df, manual_capacity_nodes in [
+    (model.outlet.static.df, outlet_max_flow_rate_by_node_id),
+    (model.pump.static.df, pump_max_flow_rate_by_node_id),
+]:
+    afvoer_mask = (static_df.control_state == "afvoer") & ~static_df.node_id.isin(manual_capacity_nodes)
+    for column in ["flow_rate", "max_flow_rate"]:
+        default_capacity_mask = afvoer_mask & (static_df[column] == 20.0)
+        static_df.loc[default_capacity_mask, column] = 100.0
 
 
 # %%
