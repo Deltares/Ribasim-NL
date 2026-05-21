@@ -662,7 +662,7 @@ add_controllers_to_supply_area(
 
 flow_control_nodes = [332, 501]
 
-supply_nodes = [72, 331, 503, 511, 663, 338, 859, 1055]
+supply_nodes = [72, 331, 503, 511, 663, 338, 859, 1055, 218]
 
 
 drain_nodes = [69, 93, 382, 336, 500, 512, 513, 662]
