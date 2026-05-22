@@ -21,24 +21,30 @@ cloud = CloudStorage()
 # paths:
 base = cloud.joinpath("Basisgegevens/resultaatvergelijking/koppeltabel_2026")
 
-loc_ref_koppeltabel = cloud.joinpath(base, "final_koppeltabel_v28_04_2026.xlsx")
+loc_ref_koppeltabel = cloud.joinpath(
+    base, "Transformed_koppeltabel_versie_lhm_coupled_tmin3_Feedback_Verwerkt_HydroLogic.xlsx"
+)
 
-waterboard = "RijnenIJssel"
-waterboard_model_versions = cloud.uploaded_models(authority=waterboard)
+# waterboard = "RijnenIJssel"
+# waterboard_model_versions = cloud.uploaded_models(authority=waterboard)
 
-latest_model_version = sorted(
-    [i for i in waterboard_model_versions if i.model == waterboard], key=lambda x: getattr(x, "sorter", "")
-)[-1]
+# latest_model_version = sorted(
+#     [i for i in waterboard_model_versions if i.model == waterboard], key=lambda x: getattr(x, "sorter", "")
+# )[-1]
 
-model_folder = cloud.joinpath(f"{waterboard}/modellen", latest_model_version.path_string)
+# model_folder = cloud.joinpath(f"{waterboard}/modellen", latest_model_version.path_string)
+
+model_folder = Path(r"C:\Users\micha.veenendaal\Data\HL-P26004\Modellen\lhm_coupled_v20052026")
 
 
 # Filteren of gebruiken we een gekoppeld model:
-filter_waterschappen = True
-waterschapsnaam = ["RijnenIJssel"]
+# filter_waterschappen = True
+# waterschapsnaam = ["RijnenIJssel"]
+# toml_naam = "wrij.toml"
 
-# toml_naam = "lhm-coupled.toml"
-toml_naam = "wrij.toml"
+filter_waterschappen = False
+waterschapsnaam = None
+toml_naam = "lhm_coupled.toml"
 
 
 # Als we wel een geometry hadden opgeslagen in de input koppeltabel, maar we kunnen in de buurt in het nieuwe model
@@ -54,12 +60,14 @@ nieuwe_suggestie_als_oude_geometry_ontbreekt = True
 # eerste_tabel = True
 eerste_tabel = False
 
-versie = f"{latest_model_version.path_string}"
+# versie = f"{latest_model_version.path_string}"
+versie = "Samenwerkdag_26052026"
 
 wegschrijven_nieuwe_tabel = cloud.joinpath(base, f"Transformed_koppeltabel_versie_{versie}.xlsx")
 
 # synchronize paths
-cloud.synchronize([base, model_folder])
+# cloud.synchronize([base, model_folder])
+cloud.synchronize([base])
 
 model = Model.read(Path(model_folder) / toml_naam)  # Aangepast van lhm.toml
 links = model.link.df
@@ -209,8 +217,10 @@ def LaadKoppeltabel(loc_koppeltabel, eerste_tabel=False):
 
 # koppeltabel = LaadKoppeltabel(loc_ref_koppeltabel, eerste_tabel=eerste_tabel)
 koppeltabel = LaadKoppeltabel(loc_ref_koppeltabel, eerste_tabel=False)
-filter_waterschappen = True
-waterschapsnaam = ["RijnenIJssel"]
+# filter_waterschappen = True
+# waterschapsnaam = ["RijnenIJssel"]
+filter_waterschappen = False
+waterschapsnaam = None
 
 # Als we op waterschappen willen filteren:
 if filter_waterschappen:
@@ -333,7 +343,7 @@ koppeling_spatial = spatial_match(
     apply_mapping=False,
     write_buffer_shp=False,
     output_buffer_shapefile=None,
-    cloud_sync=False,
+    cloud_sync=cloud,
     filter_waterschappen=filter_waterschappen,
     lijst_filter_waterschappen=waterschapsnaam,
     print_logging=False,

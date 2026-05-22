@@ -474,6 +474,29 @@ def CreateHTMLViewer(
         }
         .pop-img { width: 620px; border: 1px solid #ddd; border-radius: 3px; display: block; }
 
+        .zoek-wrapper { position: relative; }
+        .zoek-input {
+            width: 100%; padding: 6px 8px; border: 1px solid var(--border);
+            border-radius: 4px; font-size: 12px; outline: none;
+            transition: border-color 0.15s;
+        }
+        .zoek-input:focus { border-color: var(--accent); }
+        .zoek-dropdown {
+            position: absolute; top: 100%; left: 0; right: 0;
+            background: #fff; border: 1px solid var(--border);
+            border-top: none; border-radius: 0 0 4px 4px;
+            max-height: 220px; overflow-y: auto;
+            z-index: 9999; box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+            display: none;
+        }
+        .zoek-item {
+            padding: 6px 10px; font-size: 12px; cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .zoek-item:last-child { border-bottom: none; }
+        .zoek-item:hover { background: var(--licht); color: var(--accent); }
+        .zoek-item-ws { font-size: 10px; color: var(--grijs); margin-top: 1px; }
+
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
@@ -488,6 +511,15 @@ def CreateHTMLViewer(
 
     <div class="inhoud">
         <div class="panel">
+
+            <!-- Zoekbalk -->
+            <div class="sectie">
+                <div class="sectie-titel">Zoek locatie</div>
+                <div class="zoek-wrapper">
+                    <input type="text" id="zoek-input" class="zoek-input" placeholder="Typ locatienaam…" autocomplete="off">
+                    <div id="zoek-dropdown" class="zoek-dropdown"></div>
+                </div>
+            </div>
 
             <!-- Lagen -->
             <div class="sectie">
@@ -961,6 +993,86 @@ function updateFilter() {
         });
     }
 }
+
+// ── Zoekbalk met fly-to ───────────────────────────────────────────────────────
+var _zoekIndex = [];
+function _bouwZoekIndex() {
+    _zoekIndex = [];
+    // Index dag-laag first (primary); dec entries give access to the dec layer popup.
+    var bronnen = [
+        {geojson: geojsonDag, laag: layerDag},
+        {geojson: geojsonDec, laag: layerDec}
+    ];
+    bronnen.forEach(function(bron) {
+        if (!bron.geojson || !bron.geojson.features) return;
+        bron.laag.eachLayer(function(marker) {
+            var p = marker.feature.properties;
+            var naam = p.koppelinfo || p.MeetreeksC || '';
+            if (!naam) return;
+            _zoekIndex.push({naam: naam, waterschap: p.waterschap || '', marker: marker, laag: bron.laag});
+        });
+    });
+    // Also index LHM41 layer if present
+    if (typeof layerLhm41 !== 'undefined' && layerLhm41 && typeof geojsonLhm41 !== 'undefined' && geojsonLhm41) {
+        layerLhm41.eachLayer(function(marker) {
+            var p = marker.feature.properties;
+            var naam = p.koppelinfo || p.MeetreeksC || '';
+            if (!naam) return;
+            _zoekIndex.push({naam: naam, waterschap: p.Waterschap || '', marker: marker, laag: layerLhm41});
+        });
+    }
+}
+
+var _zoekInput    = document.getElementById('zoek-input');
+var _zoekDropdown = document.getElementById('zoek-dropdown');
+
+_zoekInput.addEventListener('input', function() {
+    var term = this.value.trim().toLowerCase();
+    _zoekDropdown.innerHTML = '';
+    if (term.length < 2) { _zoekDropdown.style.display = 'none'; return; }
+
+    if (_zoekIndex.length === 0) _bouwZoekIndex();
+
+    // De-duplicate by name so each location appears once
+    var seen = new Set();
+    var matches = _zoekIndex.filter(function(item) {
+        if (!item.naam.toLowerCase().includes(term)) return false;
+        if (seen.has(item.naam)) return false;
+        seen.add(item.naam);
+        return true;
+    }).slice(0, 15);
+
+    if (matches.length === 0) { _zoekDropdown.style.display = 'none'; return; }
+
+    matches.forEach(function(item) {
+        var div = document.createElement('div');
+        div.className = 'zoek-item';
+        div.innerHTML = '<div>' + item.naam + '</div>'
+                      + '<div class="zoek-item-ws">' + item.waterschap + '</div>';
+        div.addEventListener('mousedown', function(e) {
+            // mousedown fires before input blur so we can act before dropdown hides
+            e.preventDefault();
+            var ll = item.marker.getLatLng();
+            // Ensure the layer is visible before flying to it
+            if (!map.hasLayer(item.laag)) item.laag.addTo(map);
+            map.flyTo(ll, 13, {duration: 1.2});
+            // Open popup after the fly animation finishes (~1.3 s)
+            setTimeout(function() { item.marker.openPopup(); }, 1350);
+            _zoekInput.value = item.naam;
+            _zoekDropdown.style.display = 'none';
+        });
+        _zoekDropdown.appendChild(div);
+    });
+    _zoekDropdown.style.display = 'block';
+});
+
+_zoekInput.addEventListener('blur', function() {
+    // Small delay so a mousedown on a result item fires first
+    setTimeout(function() { _zoekDropdown.style.display = 'none'; }, 150);
+});
+_zoekInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { _zoekInput.value = ''; _zoekDropdown.style.display = 'none'; }
+});
 </script>
 </body>
 </html>"""
