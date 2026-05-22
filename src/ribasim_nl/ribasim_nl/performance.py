@@ -1,14 +1,10 @@
+import tomllib
 from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pandas as pd
 import xarray as xr
-
-try:
-    import tomllib
-except ModuleNotFoundError:  # pragma: no cover
-    import tomli as tomllib
 
 if TYPE_CHECKING:
     from ribasim_nl.model import Model
