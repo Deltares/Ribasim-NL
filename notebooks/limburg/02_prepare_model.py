@@ -270,6 +270,7 @@ assign = AssignAuthorities(
         111: "Buitenland",
         131: "Buitenland",
         132: "AaenMaas",
+        1652: "DeDommel",
     },
 )
 model = assign.assign_authorities()
