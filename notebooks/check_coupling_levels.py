@@ -48,6 +48,11 @@ MAX_DOWNSTREAM_LEVEL_OFFSET_BY_NODE_ID = {
 }
 EXCLUDED_DEVIATION_NODE_IDS: set[int] = set()
 RWS_UPSTREAM_MIN_PROFILE_LEVEL_OFFSET = 0.1
+DEFAULT_AFVOER_FLOW_RATES_BY_NODE_ID = {
+    5902582: 300.0,
+    5900199: 300.0,
+    5900198: 300.0,
+}
 
 
 def reset_index_to_column(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
@@ -695,18 +700,25 @@ def main() -> None:
     afvoer_flow_update_count = 0
     should_set_manning_n = args.set_selected_authorities_manning_n or args.manning_n is not None
     manning_n = 0.03 if args.manning_n is None else args.manning_n
-    afvoer_flow_updates = (
-        [
-            (int(node_id), float(flow_rate), float(max_flow_rate))
-            for node_id, flow_rate, max_flow_rate in args.afvoer_flow_update
-        ]
-        if args.afvoer_flow_update is not None
-        else []
-    )
-    if args.afvoer_flow_rate is not None:
-        afvoer_flow_updates.extend(
-            [(int(node_id), float(flow_rate), float(flow_rate)) for node_id, flow_rate in args.afvoer_flow_rate]
+    afvoer_flow_updates_by_node_id = {
+        int(node_id): (float(flow_rate), float(flow_rate))
+        for node_id, flow_rate in DEFAULT_AFVOER_FLOW_RATES_BY_NODE_ID.items()
+    }
+    if args.afvoer_flow_update is not None:
+        afvoer_flow_updates_by_node_id.update(
+            {
+                int(node_id): (float(flow_rate), float(max_flow_rate))
+                for node_id, flow_rate, max_flow_rate in args.afvoer_flow_update
+            }
         )
+    if args.afvoer_flow_rate is not None:
+        afvoer_flow_updates_by_node_id.update(
+            {int(node_id): (float(flow_rate), float(flow_rate)) for node_id, flow_rate in args.afvoer_flow_rate}
+        )
+    afvoer_flow_updates = [
+        (node_id, flow_rate, max_flow_rate)
+        for node_id, (flow_rate, max_flow_rate) in afvoer_flow_updates_by_node_id.items()
+    ]
 
     if args.apply and not deviations_df.empty:
         max_update_count, min_update_count, min_update_count_rws_inlet = apply_level_updates(model, deviations_df)
