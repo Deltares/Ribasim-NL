@@ -6,13 +6,12 @@ from pathlib import Path
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+from ribasim_nl.settings import settings
 
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import Model
 
-cloud = CloudStorage()
-
-TOML_FILE = cloud.joinpath(
-    r"d:\Repositories\Ribasim-NL\data\Rijkswaterstaat\modellen\lhm_sub_models\VrijAfwaterend_DOD_Vechtstromen_coupled\VrijAfwaterend_DOD_Vechtstromen_coupled.toml"
+TOML_FILE = settings.ribasim_nl_data_dir / Path(
+    r"Rijkswaterstaat\modellen\lhm_sub_models\VrijAfwaterend_DOD_Vechtstromen_coupled\VrijAfwaterend_DOD_Vechtstromen_coupled.toml"
 )
 DEFAULT_OUTPUT_GPKG_NAME = "level_coupling_correcties_selectie.gpkg"
 CONTROL_NODE_TYPES = ("Outlet", "Pump")
@@ -694,6 +693,7 @@ def main() -> None:
     output_gpkg = resolve_output_gpkg(args.toml_file, args.output_gpkg)
     model = Model.read(args.toml_file)
     database_path = database_gpkg_path(model, args.toml_file)
+    model_node_ids = set(model.node.df.index.astype(int))
 
     if args.selected_authorities:
         authorities = SELECTED_AUTHORITIES
@@ -721,6 +721,7 @@ def main() -> None:
     afvoer_flow_updates_by_node_id = {
         int(node_id): (float(flow_rate), float(flow_rate))
         for node_id, flow_rate in DEFAULT_AFVOER_FLOW_RATES_BY_NODE_ID.items()
+        if int(node_id) in model_node_ids
     }
     if args.afvoer_flow_update is not None:
         afvoer_flow_updates_by_node_id.update(
