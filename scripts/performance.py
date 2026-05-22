@@ -1,3 +1,4 @@
+# %%
 """Aggregate solver performance and convergence statistics per water authority."""
 
 from pathlib import Path
