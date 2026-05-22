@@ -253,7 +253,7 @@ def _resample_to_daily(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | None = None) -> pd.DataFrame:
+def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | list[str] | None = None) -> pd.DataFrame:
     """The function `LaadKoppeltabel` reads an Excel file, parses lists in the 'link_id' column, and converts the 'geometry' column to a geometry object.
 
     Parameters
@@ -262,7 +262,8 @@ def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | None = Non
         The `loc_koppeltabel` parameter in the `LaadKoppeltabel` function is expected to be a file location
     pointing to an Excel file that contains data for a koppeltabel (linking table).
     apply_for_water_authority
-        Optional specification to read koppeltabel for a specific water authority. Defaults to None
+        Optional specification to filter the koppeltabel to one or more water authorities.
+        Pass a single string or a list of strings. Defaults to None (all authorities).
 
     Returns
     -------
@@ -274,13 +275,18 @@ def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | None = Non
 
     # filter for water authority if specified
     if apply_for_water_authority is not None:
-        koppeltabel = koppeltabel[koppeltabel["Waterschap"] == apply_for_water_authority]
-        prefix_code = waterbeheercode[apply_for_water_authority]
+        authorities = (
+            [apply_for_water_authority] if isinstance(apply_for_water_authority, str) else apply_for_water_authority
+        )
+        koppeltabel = koppeltabel[koppeltabel["Waterschap"].isin(authorities)]
+        # pyrefly: ignore[no-matching-overload]
+        koppeltabel["link_id_parsed"] = koppeltabel.apply(
+            lambda row: ParseList(row["new_link_id"], waterbeheercode[row["Waterschap"]]),
+            axis=1,
+        )
     else:
-        prefix_code = None
-
-    # Convert the lists in link_id to lists if possible
-    koppeltabel["link_id_parsed"] = koppeltabel["new_link_id"].apply(ParseList, args=(prefix_code,))
+        # Convert the lists in link_id to lists if possible
+        koppeltabel["link_id_parsed"] = koppeltabel["new_link_id"].apply(ParseList, args=(None,))
 
     # Parse the geometry
     koppeltabel["geometry_parsed"] = koppeltabel["geometry"].apply(lambda x: wkt.loads(x))
@@ -1207,7 +1213,7 @@ def CompareOutputMeasurements(
     criteria_grenzen: dict | None = None,
     beoor_kleuren: dict | None = None,
     abs_drempel: float | None = None,
-    apply_for_water_authority: str | None = None,
+    apply_for_water_authority: str | list[str] | None = None,
     exclude_meetreeks: list[str] | None = None,
     min_coverage: float | None = None,
     save_results_combined: bool = False,
@@ -1244,7 +1250,7 @@ def CompareOutputMeasurements(
         Absolute deviation threshold in m³/s; locations below this value are always 'Goed'.
         Default None.
     apply_for_water_authority
-        Restrict the koppeltabel to a single water authority. Default None (all authorities).
+        Restrict the koppeltabel to one or more water authorities (str or list of str). Default None (all authorities).
     exclude_meetreeks
         List of MeetreeksC names to skip entirely. Matching rows are removed from both the
         koppeltabel and the specific-operations table before any processing starts.
@@ -1447,6 +1453,14 @@ def CompareOutputMeasurements(
         # If a list of links is present, a specific operation is required.
         if isinstance(link, list) & pd.isna(spec_op):
             print(f"No specific operation found for measurements {existing_measurements}, around link {link}")
+            continue
+
+        # Check whether all link IDs are present in the model output; skip if not
+        links_as_list = [link] if isinstance(link, int) else link
+        available_link_ids = data["link_id"].unique()
+        missing_links = [lid for lid in links_as_list if lid not in available_link_ids]
+        if missing_links:
+            print(f"Overgeslagen ({existing_measurements}): link_id(s) {missing_links} ontbreken in de modeloutput.")
             continue
 
         # Apply the special operation to get the subset of model output
@@ -1996,7 +2010,7 @@ def ExtraInfoToevoegenAllData(
     model_folder
         Root directory of the Ribasim model (GeoPackages are read from results/).
     apply_for_water_authority
-        Restrict the koppeltabel to a single water authority. Default None (all authorities).
+        Restrict the koppeltabel to one or more water authorities (str or list of str). Default None (all authorities).
     stat_cols
         Quantile-based statistic columns used for classification (e.g. 'abs_q95', 'abs_q05').
     threshold
@@ -3365,6 +3379,7 @@ if __name__ == "__main__":
     )
     lhm41_layer_naam = "koppeling_lhm4_1_reeksen"
     if RUN_LHM41:
+        cloud.synchronize([gpkg_koppellaag])
         # cloud.synchronize([lhm41_folder, gpkg_koppellaag])
         AnalyseLHM41Vergelijking(
             gpkg_koppellaag=gpkg_koppellaag,
