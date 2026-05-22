@@ -43,7 +43,7 @@ def parse_date_series(date_series: pd.Series) -> pd.Series:
     if date_series.empty:
         return pd.to_datetime(date_series)
 
-    parsed = pd.to_datetime(date_series, errors="coerce")
+    parsed = pd.to_datetime(date_series, dayfirst=True, errors="coerce")
 
     string_values = date_series.astype("string")
     missing = parsed.isna() & string_values.notna()
