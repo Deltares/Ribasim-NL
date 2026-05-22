@@ -1,13 +1,11 @@
 import tomllib
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pandas as pd
 import xarray as xr
 
-if TYPE_CHECKING:
-    from ribasim_nl.model import Model
+from ribasim_nl.model import Model
 
 
 def _resolve_toml_and_results_dir(model: Model | str | PathLike[str]) -> tuple[Path, Path]:
