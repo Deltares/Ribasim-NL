@@ -545,6 +545,12 @@ model.move_node(node_id=807, geometry=Point(196895.8, 397237.0))
 model.redirect_link(link_id=2165, from_node_id=810, to_node_id=1926)
 model.redirect_link(link_id=2164, from_node_id=809, to_node_id=1926)
 
+# %% performance bottlenecks
+model.merge_basins(node_id=1841, to_node_id=1406)
+model.remove_node(node_id=4516, remove_links=True)
+model.remove_node(node_id=4517, remove_links=True)
+
+
 #  %% write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
 model.write(ribasim_toml)
