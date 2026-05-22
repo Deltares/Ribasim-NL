@@ -26,23 +26,26 @@ locatie_koppeltabellen = cloud.joinpath("Basisgegevens/resultaatvergelijking/kop
 #     Path(r"C:\Users\micha.veenendaal\Data\Ribasim LHM validatie\LHM_model_2017\lhm_ctwq_compat") / "lhm_ctwq.toml"
 # )
 
-waterboard = "RijnenIJssel"
-waterboard_model_versions = cloud.uploaded_models(authority=waterboard)
+# waterboard = "RijnenIJssel"
+# waterboard_model_versions = cloud.uploaded_models(authority=waterboard)
 
-latest_model_version = sorted(
-    [i for i in waterboard_model_versions if i.model == waterboard], key=lambda x: getattr(x, "sorter", "")
-)[-1]
+# latest_model_version = sorted(
+#     [i for i in waterboard_model_versions if i.model == waterboard], key=lambda x: getattr(x, "sorter", "")
+# )[-1]
 
-versie = f"{latest_model_version.path_string}"
+# versie = f"{latest_model_version.path_string}"
 
-model_folder = cloud.joinpath(f"{waterboard}/modellen", latest_model_version.path_string)
+# model_folder = cloud.joinpath(f"{waterboard}/modellen", latest_model_version.path_string)
 
 # Filteren of gebruiken we een gekoppeld model:
-filter_waterschappen = True
-waterschapsnaam = ["RijnenIJssel"]
+# filter_waterschappen = True
+# waterschapsnaam = ["RijnenIJssel"]
 
+versie = "Samenwerkdag_26052026"
+model_folder = Path(r"C:\Users\micha.veenendaal\Data\HL-P26004\Modellen\lhm_coupled_v20052026")
 # toml_naam = "lhm-coupled.toml"
-toml_naam = "wrij.toml"
+# toml_naam = "wrij.toml"
+toml_naam = "lhm_coupled.toml"
 
 # synchronize paths
 # cloud.synchronize([locatie_koppeltabellen, model_folder])
@@ -90,12 +93,12 @@ partij = "HydroLogic"
 
 # Script met de orginele getransformeerde koppeltabel
 input_koppeltabel_path = cloud.joinpath(
-    locatie_koppeltabellen, "Transformed_koppeltabel_versie_RijnenIJssel_2026_5_1.xlsx"
+    locatie_koppeltabellen, "Transformed_koppeltabel_versie_Samenwerkdag_26052026.xlsx"
 )
 
 # Script waarin de feedback is verwerkt
 feedback_koppeltabel_path = cloud.joinpath(
-    locatie_koppeltabellen, "Transformed_koppeltabel_versie_RijnenIJssel_2026_5_1_check.xlsx"
+    locatie_koppeltabellen, "Transformed_koppeltabel_versie_Samenwerkdag_26052026_check.xlsx"
 )
 
 
@@ -148,7 +151,35 @@ output_path = locatie_koppeltabellen
 #     add_new_data=False,
 # )
 
-remove_meetreeksc = None
+remove_meetreeksc_specifiek = [
+    "AANVOERDERGEMAAL_aanvoer HDSR",  # meer recente meetreeks beschikbaar, oude verwijderen
+    "KEULEVAART_afvoer HDSR",  # meer recente meetreeks beschikbaar, oude verwijderen
+    "KOEKOEK_afvoer HDSR",  # meer recente meetreeks beschikbaar, oude verwijderen
+    "KW1068_gemaal",  # meting klopt niet
+    # "KW214711_unknown",  # Doorslag, lijkt wel koppelbaar?,
+    "KW2163_stuw",  # hoogwaterstuw is altijd verdronken /plat, meting is niet betrouwbaar
+    "KW2187_gemaal",  # niet in model
+    "KW4342_stuw",  # stuw doet rare dingen in de praktijk, dus meting onbetrouwbaar
+    "KW4351_gemaal",  # niet meenemen
+    "KW4352_gemaal",  # niet meenemen
+    "KW4396_stuw",  # niet meenemen
+    "KW4408_gemaal",  # niet meenemen,
+    "Schuitenbeek ValleiEnVeluwe",  # niet meenemen, nieuwere meting beschikbaar,
+    "Stuvers WSRL",  # niet meenemen, nieuwere meting beschikbaar
+    "Hedel WSRL",  # niet meenemen, nieuwere meting beschikbaar
+    "Blauwesluis WSRL",  # niet meenemen, nieuwere meting beschikbaar
+    "Rijcksche Sluis WSRL",  # niet meenemen, nieuwere meting beschikbaar
+    "Doornenburg WSRL",  # niet meenemen, nieuwere meting beschikbaar
+    "Landweijer WSRL",  # niet meenemen, nieuwere meting beschikbaar
+    "Teersesluis WSRL",  # niet meenemen, nieuwere meting beschikbaar
+    "Weurt WSRL",  # niet meenemen, nieuwere meting beschikbaar
+    "Baanbreker, de WSRL",  # niet meenemen, nieuwere meting beschikbaar
+    "Kuijkgemaal WSRL",  # niet meenemen, nieuwere meting beschikbaar
+    "Citters I, van WSRL",  # niet meenemen, nieuwere meting beschikbaar
+    "Citters II, van WSRL",  # niet meenemen, nieuwere meting beschikbaar
+    "Bloemers WSRL",  # niet meenemen, nieuwere meting beschikbaar
+    "Ufford, Quarles van WSRL",  # niet meenemen, nieuwere meting beschikbaar
+]
 
 updated_koppeltabel = update_koppeltabel_with_feedback(
     input_koppeltabel_path,
@@ -159,7 +190,7 @@ updated_koppeltabel = update_koppeltabel_with_feedback(
     cloud_sync=cloud,  # cloud_sync is of CloudStorage() object of False bool
     keep_all_columns=False,
     columns_to_keep=columns_to_keep,
-    remove_meetreeksc=remove_meetreeksc,
+    remove_meetreeksc=remove_meetreeksc_specifiek,
     partij=partij,
     add_new_data=False,
     transformed_koppeltabel=True,
