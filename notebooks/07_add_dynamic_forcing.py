@@ -17,6 +17,7 @@ from ribasim_nl import (
     import_transboundary_inflow,
     merge_rwzi_model,
     settings,
+    write_performance,
 )
 
 cloud = CloudStorage()
@@ -187,6 +188,7 @@ for authority in authorities:
             model.run()
             model.update_state()
             model.basin.state.write()
+            write_performance(model)
 
             # DELWAQ(!)
             if compute_fractions:
