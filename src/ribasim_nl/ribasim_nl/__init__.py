@@ -6,6 +6,7 @@ from ribasim_nl.junctions import junctionify
 from ribasim_nl.model import Model
 from ribasim_nl.network import Network
 from ribasim_nl.network_validator import NetworkValidator
+from ribasim_nl.performance import write_performance
 from ribasim_nl.reset_index import prefix_index, reset_index
 from ribasim_nl.rwzi import merge_rwzi_model
 from ribasim_nl.set_forcing import SetDynamicForcing
@@ -26,4 +27,5 @@ __all__ = [
     "prefix_index",
     "reset_index",
     "settings",
+    "write_performance",
 ]
