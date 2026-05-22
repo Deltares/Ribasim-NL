@@ -621,7 +621,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 470, "max_downstrea
 model.pump.static.df.loc[model.pump.static.df.node_id == 601, "max_downstream_level"] -= 0.01
 
 # %% Junctionfy(!)
-model = junctionify(model)
+junctionify(model)
 
 # Model run
 

@@ -288,7 +288,7 @@ for row in industrie_inlet_gdf[mask].itertuples():
 
 
 # %% add junction nodes
-model = junctionify(model)
+junctionify(model)
 
 # %% wegschrijven model
 ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_demand/hws.toml")

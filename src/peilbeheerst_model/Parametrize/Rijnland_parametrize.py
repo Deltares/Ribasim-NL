@@ -8,6 +8,7 @@ import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.network_snapping import snap_model
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node, run_ribasim
@@ -26,14 +27,15 @@ from ribasim_nl.split_basins import NodeMetaCache, SplitBasins
 from shapely import Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, junctionify, merge_rwzi_model
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
-add_lhm_fractions: bool = False
-add_rwzi: bool = True
+ADD_LHM_FRACTIONS: bool = True
+ADD_RWZI: bool = True
+ADD_JUNCTIONS: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -207,8 +209,23 @@ node_cache.set_meta_category(ribasim_model)
 ribasim_model.write(ribasim_work_dir_model_toml)
 del node_cache
 
+# add junctions and network snapping
+if ADD_JUNCTIONS:
+    ribasim_model = snap_model(ribasim_model, profiles_path)
+    ribasim_model = junctionify(ribasim_model)
+
 # set basin profiles
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=1000)
+
+# check if meta_categorie in the basin.node.df is completely filled
+missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
+    ribasim_model.basin.node.df["meta_categorie"].isna()
+].index.tolist()
+if missing_meta_categorie_node_ids:
+    raise ValueError(
+        "Not all basins have a meta_categorie assigned. "
+        f"Missing meta_categorie for basin node IDs: {missing_meta_categorie_node_ids}"
+    )
 
 # set forcing
 if DYNAMIC_CONDITIONS:
@@ -226,6 +243,10 @@ if DYNAMIC_CONDITIONS:
     )
     ribasim_model = forcing.add()
     offline_budgets.compute_budgets(ribasim_model)
+    assign_validation_path = work_dir / "results" / "assign_validation.png"
+    assign_validation_path.parent.mkdir(parents=True, exist_ok=True)
+    offline_budgets.plot_assign_validation(ribasim_model, path=assign_validation_path)
+
 
 elif MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_forcing(
@@ -296,6 +317,7 @@ to_flow_control = (
 )
 to_supply = (
     398,
+    535,
     630,
     690,
     885,
@@ -304,6 +326,7 @@ to_supply = (
     1030,
     1032,
     1255,
+    1347,
     1349,
     1439,
     1454,
@@ -453,17 +476,26 @@ assign = AssignAuthorities(
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
     custom_nodes={
+        1354: "Noordzee",
         1367: "Delfland",
+        1481: "StichtseRijnlanden",
+        1485: "StichtseRijnlanden",
+        1486: "StichtseRijnlanden",
+        1487: "StichtseRijnlanden",
+        1488: "StichtseRijnlanden",
+        1489: "StichtseRijnlanden",
+        1490: "StichtseRijnlanden",
     },
+    fill_na_authority="Rijkswaterstaat",
 )
 ribasim_model = assign.assign_authorities()
 
 # merge RWZI model
-if add_rwzi:
+if ADD_RWZI:
     ribasim_model = merge_rwzi_model(ribasim_model, cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml"))
 
 # add LHM fractions
-if add_lhm_fractions:
+if ADD_LHM_FRACTIONS:
     assign_lhm_fractions(ribasim_model)
 
 ribasim_model.outlet.static.df["meta_known_flow_rate"] = False

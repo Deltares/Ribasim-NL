@@ -1,8 +1,11 @@
 """Implement profiles in model generation."""
 
+import functools
 import logging
+import typing
 
 import pandas as pd
+import pydantic
 import shapely
 
 from ribasim_nl import CloudStorage, Model
@@ -145,6 +148,34 @@ def single_profile_nodes(
     return storing_ids, out_flowing, out_storing
 
 
+class BasinProfileError(Exception):
+    pass
+
+
+def _handle_validation_error(func: typing.Callable) -> typing.Callable:
+    """Provide useful guidance to validation error caused by misaligned model basins and basin profiles.
+
+    This misalignment is caused by updates to the model's basin IDs due to which these IDs differ from those used by the
+    profile-generator. As a result, setting the basin profiles cannot match all basin profiles to the basins themselves
+    causing empty profiles to the basins with modified IDs.
+    """
+
+    @functools.wraps(func)
+    def wrapper(model: Model, water_authority: str, **kwargs):
+        try:
+            return func(model, water_authority, **kwargs)
+        except pydantic.ValidationError as e:
+            raise BasinProfileError(
+                f"This is likely caused by a mismatch between the node IDs of the basins in the model, "
+                f"and the generated basin profiles node IDs.\n"
+                f"This might be fixed by rerunning the profile generator of {water_authority}:\n\n\t"
+                f"`pixi run python src/peilbeheerst_model/profiles/{water_authority}.py`"
+            ) from e
+
+    return wrapper
+
+
+@_handle_validation_error
 def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> Model:
     """Set basin profiles and add storing basins where applicable.
 
@@ -186,25 +217,11 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     # modify existing basins ('doorgaand')
     ribasim_model.node.df = ribasim_model.node.df.assign(meta_node_id=ribasim_model.node.df.index)
     _basin_profile = ribasim_model.basin.profile.df.copy()
-    basin_ids = _basin_profile["node_id"].unique()
-
-    # Use df_flowing rows for node_ids present in the basin profile
-    _new_profiles = df_flowing[df_flowing["node_id"].isin(basin_ids)].copy()
-
-    # Keep existing basin profile rows for node_ids without new flowing data
-    # (e.g. basins added by `SplitBasins` after profile generation)
-    _flowing_ids = set(_new_profiles["node_id"].unique())
-    _kept_profiles = _basin_profile[~_basin_profile["node_id"].isin(_flowing_ids)].copy()
-
-    # Ensure consistent columns with the basin profile schema
-    for _col in _basin_profile.columns:
-        if _col not in _new_profiles.columns:
-            _new_profiles[_col] = None
-
-    ribasim_model.basin.profile.df = pd.concat(  # pyrefly: ignore[bad-assignment]
-        [_new_profiles[_basin_profile.columns], _kept_profiles], ignore_index=True
-    ).sort_values(["node_id", "level"], ignore_index=True)
-    del _basin_profile, _new_profiles, _kept_profiles
+    _profiles = profile_merging(df_flowing, _basin_profile[["node_id"]], suffixes=("", "_"))
+    ribasim_model.basin.profile.df = _profiles.sort_values(["node_id", "level"], ignore_index=True).combine_first(  # pyrefly: ignore[bad-assignment]
+        _basin_profile.sort_values(["node_id", "level"], ignore_index=True)
+    )[_basin_profile.columns]
+    del _basin_profile, _profiles
 
     # duplicate all basin-tables
     basin_node = ribasim_model.basin.node.df
@@ -287,7 +304,7 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     link.set_index("link_id", inplace=True)
 
     # clean up basin node table ('bergend')
-    basin_node = basin_node[["node_type", "meta_node_id", "geometry"]]
+    basin_node = basin_node[["node_type", "meta_node_id", "meta_categorie", "geometry"]]
     basin_node["meta_node_id"] = basin_node.index
 
     # concatenate all newly generated tables to Ribasim model

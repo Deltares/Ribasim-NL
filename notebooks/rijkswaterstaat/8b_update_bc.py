@@ -1,5 +1,4 @@
 # %%
-from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -97,8 +96,6 @@ node_ids = model.level_boundary.node.df[
     model.level_boundary.node.df["meta_meetlocatie_code"].isin(["KOBU", "OEBU"])
 ].index.to_numpy()
 
-time = pd.date_range(model.starttime, model.endtime)
-
 day_of_year = [
     "01-01",
     "03-01",
@@ -142,20 +139,14 @@ level = [
     -0.4,
     -0.4,
 ]
-level_cycle_df = pd.DataFrame(
+years = range(model.starttime.year, model.endtime.year + 1)
+level_df = pd.DataFrame(
     {
-        "dayofyear": [datetime.strptime(f"2023-{i}", "%Y-%m-%d").timetuple().tm_yday for i in day_of_year],
-        "level": level,
+        "time": [pd.Timestamp(f"{year}-{d}") for year in years for d in day_of_year],
+        "level": level * len(years),
     }
-).set_index("dayofyear")
-
-
-def get_level(timestamp, level_cycle_df):
-    return level_cycle_df.at[level_cycle_df.index[level_cycle_df.index <= timestamp.dayofyear].max(), "level"]
-
-
-time = pd.date_range(model.starttime, model.endtime)
-level_df = pd.DataFrame({"time": time, "level": [get_level(i, level_cycle_df) for i in time]})
+)
+level_df = level_df[(level_df["time"] >= model.starttime) & (level_df["time"] <= model.endtime)]
 
 level_df = pd.concat(
     [pd.concat([level_df, pd.DataFrame({"node_id": [node_id] * len(level_df)})], axis=1) for node_id in node_ids],

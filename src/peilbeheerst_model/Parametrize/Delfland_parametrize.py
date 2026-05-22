@@ -8,10 +8,11 @@ import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.network_snapping import snap_model
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node, run_ribasim
-from ribasim.nodes import level_boundary, pump
+from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.control import (
@@ -25,14 +26,15 @@ from ribasim_nl.split_basins import NodeMetaCache, SplitBasins
 from shapely import Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, junctionify, merge_rwzi_model
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
-add_lhm_fractions: bool = False
-add_rwzi: bool = True
+ADD_LHM_FRACTIONS: bool = True
+ADD_RWZI: bool = True
+ADD_JUNCTIONS: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -188,6 +190,100 @@ ribasim_model.link.add(ribasim_model.basin[41], pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[53])
 inlaat_pump.append(pump_node.node_id)
 
+# move node for improved recognition of the system
+ribasim_model.move_node(node_id=564, geometry=Point(79320, 437067))
+
+# add riool gemaal Vlaardingen West
+pump_node = ribasim_model.pump.add(
+    Node(geometry=Point(81712, 435370), name="Rioolgemaal Vlaardingen West"),
+    [pump.Static(flow_rate=[192 / 60])],
+)
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(81737, 435104)), [level_boundary.Static(level=[default_level])]
+)
+ribasim_model.link.add(ribasim_model.basin[82], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
+
+# add another riool gemaal Vettenoord
+pump_node = ribasim_model.pump.add(
+    Node(geometry=Point(80831, 435239), name="Rioolgemaal Vettenoord"),
+    [pump.Static(flow_rate=[29 / 60])],
+)
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(80824, 434959)), [level_boundary.Static(level=[default_level])]
+)
+ribasim_model.link.add(ribasim_model.basin[82], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
+
+# add riool gemaal Vlaardingen Oost
+pump_node = ribasim_model.pump.add(
+    Node(geometry=Point(84440, 436203), name="Rioolgemaal Vlaardingen Oost"),
+    [pump.Static(flow_rate=[32 / 60])],
+)
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(84531, 435937)), [level_boundary.Static(level=[default_level])]
+)
+ribasim_model.link.add(ribasim_model.basin[31], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
+
+# add riool gemaal Schiedam Oost
+pump_node = ribasim_model.pump.add(
+    Node(geometry=Point(88064, 436633), name="Rioolgemaal Schiedam Oost"),
+    [pump.Static(flow_rate=[62 / 60])],
+)
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(88008, 436382)), [level_boundary.Static(level=[default_level])]
+)
+ribasim_model.link.add(ribasim_model.basin[114], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
+
+# add riool gemaal Spangen
+pump_node = ribasim_model.pump.add(
+    Node(geometry=Point(88312, 437389), name="Rioolgemaal Spangen"),
+    [pump.Static(flow_rate=[34 / 60])],
+)
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(88309, 436358)), [level_boundary.Static(level=[default_level])]
+)
+ribasim_model.link.add(ribasim_model.basin[102], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
+
+# add riool gemaal Oud-Mathenesse
+pump_node = ribasim_model.pump.add(
+    Node(geometry=Point(88657, 436591), name="Rioolgemaal Oud-Mathenesse"),
+    [pump.Static(flow_rate=[7.2 / 60])],
+)
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(88617, 436314)), [level_boundary.Static(level=[default_level])]
+)
+ribasim_model.link.add(ribasim_model.basin[27], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
+
+# add riool gemaal Poldervaartpolder
+pump_node = ribasim_model.pump.add(
+    Node(geometry=Point(85395, 436393), name="Rioolgemaal Poldervaartpolder"),
+    [pump.Static(flow_rate=[1.0])],  # unknown, geusstimate
+)
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(85578, 435846)), [level_boundary.Static(level=[default_level])]
+)
+ribasim_model.link.add(ribasim_model.basin[59], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
+
+inlaat_structures = []
+# add inlaat Bergsluis. Do not add inlaat Schiegemaal, as there is already an inlaat
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(91595, 439326)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(91506, 439278), name="Inlaat Bergsluis"),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[9])
+inlaat_structures.append(tabulated_rating_curve_node.node_id)
+
+
 for n in inlaat_pump:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_aanvoer"] = 1
 
@@ -235,6 +331,9 @@ ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, def
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
+for node in inlaat_structures:
+    ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_aanvoer"] = 1
+
 ribasim_param.clean_tables(ribasim_model, waterschap)
 
 # split large basins: "boezems"
@@ -252,8 +351,23 @@ node_cache.set_meta_category(ribasim_model)
 ribasim_model.write(ribasim_work_dir_model_toml)
 del node_cache
 
+# add junctions and network snapping
+if ADD_JUNCTIONS:
+    ribasim_model = snap_model(ribasim_model, profiles_path)
+    ribasim_model = junctionify(ribasim_model)
+
 # set basin profiles
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud)  # , min_area=100
+
+# check if meta_categorie in the basin.node.df is completely filled
+missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
+    ribasim_model.basin.node.df["meta_categorie"].isna()
+].index.tolist()
+if missing_meta_categorie_node_ids:
+    raise ValueError(
+        "Not all basins have a meta_categorie assigned. "
+        f"Missing meta_categorie for basin node IDs: {missing_meta_categorie_node_ids}"
+    )
 
 # set forcing
 if DYNAMIC_CONDITIONS:
@@ -271,6 +385,10 @@ if DYNAMIC_CONDITIONS:
     )
     ribasim_model = forcing.add()
     offline_budgets.compute_budgets(ribasim_model)
+    assign_validation_path = work_dir / "results" / "assign_validation.png"
+    assign_validation_path.parent.mkdir(parents=True, exist_ok=True)
+    offline_budgets.plot_assign_validation(ribasim_model, path=assign_validation_path)
+
 
 elif MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_forcing(
@@ -294,6 +412,7 @@ if MIXED_CONDITIONS:
     )
 else:
     ribasim_model.level_boundary.static.df["level"] = default_level
+
 
 # add control, based on the meta_categorie
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
@@ -388,6 +507,7 @@ ribasim_model.outlet.static.df.loc[
     ribasim_model.outlet.static.df.node_id == 433, "max_downstream_level"
 ] = -0.63  # 2 cm below Rijnlands streefpeil, to avoid too much water entering from Delfland
 
+
 # assign metadata for pumps and basins
 assign_metadata = AssignMetaData(
     authority=waterschap,
@@ -435,6 +555,18 @@ ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
 ribasim_model.manning_resistance.static.df["length"] = 100.0
 ribasim_model.manning_resistance.static.df["manning_n"] = 0.01
 
+# decrease aanslagpeil for Dolkgemaal
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 569, "max_downstream_level"] -= (
+    0.05  # 5 cm lower than streefpeil to make sure Winsemius pumps first
+)
+ribasim_model.discrete_control.condition.df.loc[
+    ribasim_model.discrete_control.condition.df.node_id == 3118, "threshold_high"
+] -= 0.05
+ribasim_model.discrete_control.condition.df.loc[
+    ribasim_model.discrete_control.condition.df.node_id == 3118, "threshold_low"
+] -= 0.05
+
+
 # last formating of the tables
 # only retain node_id's which are present in the .node table
 ribasim_param.clean_tables(ribasim_model, waterschap)
@@ -450,17 +582,20 @@ assign = AssignAuthorities(
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
     custom_nodes={
+        530: "Noordzee",
         532: "Rijkswaterstaat",
+        543: "Noordzee",
     },
+    fill_na_authority="Rijkswaterstaat",
 )
 ribasim_model = assign.assign_authorities()
 
 # merge RWZI model
-if add_rwzi:
+if ADD_RWZI:
     ribasim_model = merge_rwzi_model(ribasim_model, cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml"))
 
 # add LHM fractions
-if add_lhm_fractions:
+if ADD_LHM_FRACTIONS:
     assign_lhm_fractions(ribasim_model)
 
 # set the pumps and outlets with unknown flow capacities to have unknown flow capacities in the model, so they can be scaled in the next step.
@@ -484,6 +619,27 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
         design_potential_evaporation_event=mixed_conditions_design_E,
     )
 )
+
+# remove outlets where both aanvoer as well as afvoer state have a max_flow_rate of 0.001 or lower
+outlet_static = ribasim_model.outlet.static.df.copy()
+afvoer_node_ids = outlet_static.loc[
+    (outlet_static["control_state"] == "afvoer") & (outlet_static["max_flow_rate"] <= 0.001),
+    "node_id",
+]
+aanvoer_node_ids = outlet_static.loc[
+    (outlet_static["control_state"] == "aanvoer") & (outlet_static["max_flow_rate"] <= 0.001),
+    "node_id",
+]
+too_low_max_flow_rates_outlets = afvoer_node_ids[afvoer_node_ids.isin(aanvoer_node_ids)].unique()
+flow_control_links = ribasim_model.link.df.loc[
+    ribasim_model.link.df.to_node_id.isin(too_low_max_flow_rates_outlets)
+    & (ribasim_model.link.df.link_type == "flow_control"),
+    ["from_node_id", "to_node_id"],
+].drop_duplicates()
+
+for flow_control_link in flow_control_links.itertuples(index=False):
+    ribasim_model.remove_node(node_id=flow_control_link.to_node_id, remove_links=True)
+    ribasim_model.remove_node(node_id=flow_control_link.from_node_id, remove_links=True)
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[

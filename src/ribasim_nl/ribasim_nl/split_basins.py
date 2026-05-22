@@ -313,7 +313,7 @@ class NodeMetaCache:
     def set_meta_category(self, model: Model, fill_nan: bool = True) -> Model:
         """(Re)set the 'meta_category'-data.
 
-        Optionally set all non-cached 'meta_categorie'-data to 'doorgaand' (default).
+        Optionally set all non-cached 'meta_categorie'-data to 'hoofdwater' (default).
         """
         assert model.node.df is not None
         nodes = model.node.df
@@ -321,6 +321,6 @@ class NodeMetaCache:
         if fill_nan:
             nodes.loc[nodes["node_type"] == "Basin", "meta_categorie"] = nodes.loc[
                 nodes["node_type"] == "Basin", "meta_categorie"
-            ].fillna("doorgaand")
+            ].fillna("hoofdwater")
         model.node.df = nodes.copy()  # pyrefly: ignore[bad-assignment]
         return model

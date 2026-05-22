@@ -2,6 +2,7 @@
 import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl.control import add_controllers_to_supply_area, add_controllers_to_uncontrolled_connector_nodes
+from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from shapely.geometry import MultiPolygon
 
@@ -200,7 +201,7 @@ add_controllers_to_uncontrolled_connector_nodes(
 
 
 # %% Junctionfy(!)
-# model = junctionify(model)
+junctionify(model)
 
 # Model run
 

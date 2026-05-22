@@ -8,10 +8,11 @@ import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.network_snapping import snap_model
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import Node, run_ribasim
-from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
+from ribasim.nodes import level_boundary, manning_resistance, pump, tabulated_rating_curve
 from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.control import (
@@ -26,14 +27,15 @@ from ribasim_nl.split_basins import NodeMetaCache, SplitBasins
 from shapely import Point
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, junctionify, merge_rwzi_model
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
-add_lhm_fractions: bool = False
-add_rwzi: bool = True
+ADD_LHM_FRACTIONS: bool = True
+ADD_RWZI: bool = True
+ADD_JUNCTIONS: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -227,6 +229,9 @@ ribasim_model.merge_basins(node_id=117, to_node_id=6)  # klein gebiedje in encla
 ribasim_model.merge_basins(node_id=218, to_node_id=3)  # klein gebiedje vlakbij boezem
 ribasim_model.merge_basins(node_id=113, to_node_id=3)  # klein gebiedje in boezem
 ribasim_model.merge_basins(node_id=203, to_node_id=21)  # klein gebiedje in duinen
+ribasim_model.merge_basins(node_id=228, to_node_id=193)  # convergence
+ribasim_model.merge_basins(node_id=110, to_node_id=3)  # convergence
+ribasim_model.merge_basins(node_id=148, to_node_id=2)  # convergence
 
 
 # (re)set 'meta_node_id'-values
@@ -251,10 +256,42 @@ node_cache.set_meta_category(ribasim_model)
 ribasim_model.write(ribasim_work_dir_model_toml)
 del node_cache
 
-# POTENTIAL DVC-BREAK
+# add junctions and network snapping
+if ADD_JUNCTIONS:
+    ribasim_model = snap_model(ribasim_model, profiles_path)
+    ribasim_model = junctionify(ribasim_model)
 
 # set basin profiles
 implement.set_basin_profiles(ribasim_model, waterschap, cloud=cloud, min_area=10)
+
+# add gemaal Kadoelen which is removed due to the merging
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(122405, 491275)), [level_boundary.Static(level=[default_level])]
+)
+pump_node = ribasim_model.pump.add(Node(geometry=Point(122475, 491317)), [pump.Static(flow_rate=[11.67])])
+ribasim_model.link.add(ribasim_model.basin[2], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
+ribasim_model.node.df.loc[level_boundary_node.node_id, "meta_node_id"] = level_boundary_node.node_id
+ribasim_model.node.df.loc[pump_node.node_id, "meta_node_id"] = pump_node.node_id
+
+# a manning node misses at splitted boezem due to awkward basin shape
+manning_node = ribasim_model.manning_resistance.add(
+    Node(geometry=Point(110789, 518114)),
+    [manning_resistance.Static(length=[10.0], manning_n=[0.01], profile_width=[10.0], profile_slope=[3.0])],
+)
+ribasim_model.link.add(ribasim_model.basin[2769], manning_node)
+ribasim_model.link.add(manning_node, ribasim_model.basin[2757])
+ribasim_model.node.df.loc[manning_node.node_id, "meta_node_id"] = manning_node.node_id
+
+# check if meta_categorie in the basin.node.df is completely filled
+missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
+    ribasim_model.basin.node.df["meta_categorie"].isna()
+].index.tolist()
+if missing_meta_categorie_node_ids:
+    raise ValueError(
+        "Not all basins have a meta_categorie assigned. "
+        f"Missing meta_categorie for basin node IDs: {missing_meta_categorie_node_ids}"
+    )
 
 # set forcing
 if DYNAMIC_CONDITIONS:
@@ -272,6 +309,10 @@ if DYNAMIC_CONDITIONS:
     )
     ribasim_model = forcing.add()
     offline_budgets.compute_budgets(ribasim_model)
+    assign_validation_path = work_dir / "results" / "assign_validation.png"
+    assign_validation_path.parent.mkdir(parents=True, exist_ok=True)
+    offline_budgets.plot_assign_validation(ribasim_model, path=assign_validation_path)
+
 
 elif MIXED_CONDITIONS:
     ribasim_param.set_hypothetical_dynamic_forcing(
@@ -373,7 +414,6 @@ to_flow_control = (
     990,
     1039,
     1052,
-    1113,
     1116,
     1176,
     1212,
@@ -429,6 +469,7 @@ to_supply = (
     1043,
     1049,
     1077,
+    1113,  # rondpompen
     1115,
     1177,
     1214,
@@ -561,16 +602,37 @@ assign = AssignAuthorities(
         4565: "AmstelGooienVecht",
         1394: "AmstelGooienVecht",
         3657: "AmstelGooienVecht",
+        1309: "Noordzee",
+        1312: "Noordzee",
+        1322: "Noordzee",
+        1337: "Noordzee",
+        1338: "Noordzee",
+        1345: "Noordzee",
+        1355: "Noordzee",
+        1371: "Noordzee",
+        1376: "Noordzee",
+        1382: "Noordzee",
+        1390: "Noordzee",
+        1392: "Noordzee",
+        1393: "Noordzee",
+        1396: "Noordzee",
+        1421: "Noordzee",
+        2088: "Noordzee",
+        2457: "Noordzee",
+        2517: "Noordzee",
+        2563: "Noordzee",
+        2717: "Noordzee",
     },
+    fill_na_authority="Rijkswaterstaat",
 )
 ribasim_model = assign.assign_authorities()
 
 # merge RWZI model
-if add_rwzi:
+if ADD_RWZI:
     ribasim_model = merge_rwzi_model(ribasim_model, cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml"))
 
 # add LHM fractions
-if add_lhm_fractions:
+if ADD_LHM_FRACTIONS:
     assign_lhm_fractions(ribasim_model)
 
 ribasim_model.outlet.static.df["meta_known_flow_rate"] = False

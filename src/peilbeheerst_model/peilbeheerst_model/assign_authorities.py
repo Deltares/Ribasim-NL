@@ -26,6 +26,7 @@ class AssignAuthorities:
         ws_buffer=1000,
         RWS_buffer=1000,
         custom_nodes=None,
+        fill_na_authority=None,
     ) -> None:
         # make sure files exist locally
         cloud.synchronize([ws_grenzen_path, RWS_grenzen_path])
@@ -38,6 +39,9 @@ class AssignAuthorities:
         self.ribasim_model = ribasim_model
         self.waterschap = waterschap
         self.custom_nodes = custom_nodes
+        if fill_na_authority is not None and not isinstance(fill_na_authority, str):
+            raise TypeError("fill_na_authority must be an authority name string or None.")
+        self.fill_na_authority = fill_na_authority
 
     def assign_authorities(self):
         authority_borders = self.retrieve_geodataframe()
@@ -170,6 +174,9 @@ class AssignAuthorities:
             .merge(right=joined[["node_id", "meta_couple_authority"]], on="node_id", how="left")
             .set_index("node_id")
         )
+        if self.fill_na_authority is not None:
+            LB_node["meta_couple_authority"] = LB_node["meta_couple_authority"].fillna(self.fill_na_authority)
+
         lb_ids = ribasim_model.level_boundary.node.df.index
         ribasim_model.node.df = pd.concat([ribasim_model.node.df.drop(lb_ids), LB_node])
         return ribasim_model
