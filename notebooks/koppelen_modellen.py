@@ -73,6 +73,8 @@ forced_coupling = {
     1301496: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
     1301495: 1404817,  # LevelBoundary buiten de boezem van HDSR geplaatst
     1301492: 1404817,  # LevelBoundary buiten de boezem van HDSR geplaatst
+    4400015: 5903236,  # LB ligt op exact dezelfde locatie
+    4402348: 5900072,  # LB ligt op exact dezelfde locatie
 }
 
 
@@ -197,6 +199,21 @@ def create_link_geometry(
     return geometry
 
 
+def get_link_authorities(kwargs: dict) -> tuple[str, str]:
+    """Infer `(boundary_node_authority, couple_authority)` from a coupling link."""
+    if kwargs["from_node"].node_type == "Basin":
+        return kwargs["meta_to_authority"], kwargs["meta_from_authority"]
+    return kwargs["meta_from_authority"], kwargs["meta_to_authority"]
+
+
+def remove_control_nodes_for_target(model: Model, target_node_id: int) -> None:
+    """Remove control nodes that operate a specific connector node."""
+    ctrl_links = model.link.df[(model.link.df.to_node_id == target_node_id) & (model.link.df.link_type == "control")]
+    for ctrl_link_id in ctrl_links.index.to_list():
+        ctrl_node_id = int(model.link.df.at[ctrl_link_id, "from_node_id"])
+        model.remove_node(ctrl_node_id, remove_links=True)
+
+
 def add_control(
     model: Model,
     couple_authority: str,
@@ -318,9 +335,22 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
                 continue
 
             if len(lb_neighbors) == 1:
-                merged_outlet = merge_lb(model, lb_neighbors, boundary_node_id)
-                if merged_outlet is not None:
-                    # TODO: Add Continuous control for the merged outlet?
+                merge_result = merge_lb(model, lb_neighbors, boundary_node_id)
+                if merge_result is not None:
+                    for kwargs in merge_result["link_table"]:
+                        link_boundary_authority, link_couple_authority = get_link_authorities(kwargs)
+                        geometry = create_link_geometry(
+                            link_couple_authority,
+                            link_boundary_authority,
+                            kwargs,
+                            network,
+                            kwargs["to_node"].node_id
+                            if kwargs["to_node"].node_type == "Basin"
+                            else kwargs["from_node"].node_id,
+                        )
+                        model.link.add(**kwargs, geometry=geometry)
+                        kwargs["geometry"] = geometry
+                        all_link_table.append(kwargs)
                     continue
 
             distances = basin_areas_df[basin_areas_df.meta_waterbeheerder == couple_authority].distance(
@@ -555,8 +585,84 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
     boundary_node = model.level_boundary[boundary_node_id]
     print(f"Merging {boundary_node} => {neighbor_node}.")
 
-    from_node_ids = model.upstream_node_id(boundary_node_id)
-    to_node_ids = model.downstream_node_id(boundary_node_id)
+    boundary_upstream = model.upstream_node_id(boundary_node_id)
+    boundary_downstream = model.downstream_node_id(boundary_node_id)
+    neighbor_upstream = model.upstream_node_id(neighbor_id)
+    neighbor_downstream = model.downstream_node_id(neighbor_id)
+
+    # Special-case: one side terminates in a Junction, the other in an Outlet -> Basin.
+    # Collapse both boundaries and the downstream outlet/control into a direct Junction -> Basin link.
+    if (
+        boundary_downstream is None
+        and boundary_upstream is not None
+        and neighbor_upstream is None
+        and neighbor_downstream is not None
+    ):
+        upstream_boundary_id = boundary_node_id
+        downstream_boundary_id = neighbor_id
+        upstream_connector_id = boundary_upstream
+        downstream_connector_id = neighbor_downstream
+    elif (
+        neighbor_downstream is None
+        and neighbor_upstream is not None
+        and boundary_upstream is None
+        and boundary_downstream is not None
+    ):
+        upstream_boundary_id = neighbor_id
+        downstream_boundary_id = boundary_node_id
+        upstream_connector_id = neighbor_upstream
+        downstream_connector_id = boundary_downstream
+    else:
+        upstream_boundary_id = None
+        downstream_boundary_id = None
+        upstream_connector_id = None
+        downstream_connector_id = None
+
+    if (
+        upstream_boundary_id is not None
+        and downstream_boundary_id is not None
+        and not isinstance(upstream_connector_id, pd.Series)
+        and not isinstance(downstream_connector_id, pd.Series)
+        and model.get_node_type(upstream_connector_id) == "Junction"
+        and model.get_node_type(downstream_connector_id) == "Outlet"
+    ):
+        upstream_authority = model.level_boundary.node.df.at[upstream_boundary_id, "meta_waterbeheerder"]
+        downstream_authority = model.level_boundary.node.df.at[downstream_boundary_id, "meta_waterbeheerder"]
+        replacement_basin_id = model.downstream_node_id(downstream_connector_id)
+        if isinstance(replacement_basin_id, pd.Series):
+            print(
+                f"Cannot collapse {boundary_node} => {neighbor_node}: downstream outlet {downstream_connector_id} "
+                "connects to multiple basins."
+            )
+            return
+        if replacement_basin_id is None or model.get_node_type(replacement_basin_id) != "Basin":
+            print(
+                f"Cannot collapse {boundary_node} => {neighbor_node}: downstream outlet {downstream_connector_id} "
+                f"does not connect to a Basin, got {replacement_basin_id}."
+            )
+            return
+
+        replace_listen_node_id(model, upstream_boundary_id, replacement_basin_id)
+        replace_listen_node_id(model, downstream_boundary_id, replacement_basin_id)
+
+        remove_control_nodes_for_target(model, downstream_connector_id)
+        model.remove_node(downstream_connector_id, remove_links=True)
+        model.remove_node(upstream_boundary_id, remove_links=True)
+        model.remove_node(downstream_boundary_id, remove_links=True)
+
+        return {
+            "link_table": [
+                {
+                    "from_node": model.get_node(upstream_connector_id),
+                    "to_node": model.get_node(replacement_basin_id),
+                    "meta_from_authority": upstream_authority,
+                    "meta_to_authority": downstream_authority,
+                }
+            ]
+        }
+
+    from_node_ids = boundary_upstream
+    to_node_ids = boundary_downstream
 
     # Inlet
     if from_node_ids is None and to_node_ids is not None:
@@ -612,7 +718,7 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
 
     # And merge the outlets
     merged_outlet = model.merge_outlets(from_node_ids, to_node_ids)
-    return merged_outlet
+    return {"link_table": [], "merged_outlet": merged_outlet}
 
 
 def find_toml_path(model_dir: Path) -> Path:
@@ -635,17 +741,27 @@ if couple_lhm:
     remove_invalid_topology_nodes(model)
     save_model_and_outputs(model, all_link_table, toml_file)
 
+# if sub_models:
+#     # couple sub-models if any
+#     sub_models_dir = data_dir / "Rijkswaterstaat/modellen/lhm_sub_models/"
+#     for model_dir in [p for p in sub_models_dir.iterdir() if p.is_dir() and not p.name.endswith("coupled")]:
+#         try:
+#             toml_file = find_toml_path(model_dir)
+#         except ValueError:
+#             print(f"Not exactly one TOML in {model_dir}, skipping.")
+#             continue
+#         model, network, basin_areas_df = initialize_models(toml_file)
+#         all_link_table = process_boundary_nodes(model, network, basin_areas_df)
+#         fix_basin_profiles(model)
+#         remove_invalid_topology_nodes(model)
+#         save_model_and_outputs(model, all_link_table, toml_file)
 if sub_models:
-    # couple sub-models if any
-    sub_models_dir = data_dir / "Rijkswaterstaat/modellen/lhm_sub_models"
-    for model_dir in [p for p in sub_models_dir.iterdir() if p.is_dir() and not p.name.endswith("coupled")]:
-        try:
-            toml_file = find_toml_path(model_dir)
-        except ValueError:
-            print(f"Not exactly one TOML in {model_dir}, skipping.")
-            continue
-        model, network, basin_areas_df = initialize_models(toml_file)
-        all_link_table = process_boundary_nodes(model, network, basin_areas_df)
-        fix_basin_profiles(model)
-        remove_invalid_topology_nodes(model)
-        save_model_and_outputs(model, all_link_table, toml_file)
+    toml_file = (
+        data_dir
+        / "Rijkswaterstaat\modellen\lhm_sub_models\VrijAfwaterend_DOD_Vechtstromen\VrijAfwaterend_DOD_Vechtstromen.toml"
+    )
+    model, network, basin_areas_df = initialize_models(toml_file)
+    all_link_table = process_boundary_nodes(model, network, basin_areas_df)
+    fix_basin_profiles(model)
+    remove_invalid_topology_nodes(model)
+    save_model_and_outputs(model, all_link_table, toml_file)

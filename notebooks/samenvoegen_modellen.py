@@ -41,23 +41,25 @@ INCLUDE_MODELS: list[str] = [
 ]
 
 sub_models: dict[str, list[str]] = {
-    "Peilbeheerst": [
-        "Rijkswaterstaat",
-        "AaenMaas",
-        "BrabantseDelta",
-        "DeDommel",
-        "DrentsOverijsselseDelta",
-        "HunzeenAas",
-        "Limburg",
-        "Noorderzijlvest",
-        "RijnenIJssel",
-        "StichtseRijnlanden",
-        "ValleienVeluwe",
-        "Vechtstromen",
-    ]
-    # "DOD-Vechtstromen": ["DrentsOverijsselseDelta", "Vechtstromen"],
-    # "GR-DR-OV_Delta": ["Noorderzijlvest", "HunzeenAas", "DrentsOverijsselseDelta"],
-    # "RDO-Noord": ["Noorderzijlvest", "HunzeenAas", "WetterskipFryslan", "DrentsOverijsselseDelta"],
+    # "VrijAfwaterend_DOD_Vechtstromen": [
+    # "Rijkswaterstaat",
+    # "AaenMaas",
+    #  "BrabantseDelta",
+    #  "DeDommel",
+    # "DrentsOverijsselseDelta",
+    #  "HunzeenAas",
+    #  "Limburg",
+    #  "Noorderzijlvest",
+    #  "RijnenIJssel",
+    # "StichtseRijnlanden",
+    # "ValleienVeluwe",
+    # "Vechtstromen",
+    # ]
+    # "DOD-Vechtstromen": ["Rijkswaterstaat","DrentsOverijsselseDelta", "Vechtstromen"],
+    "AaenMaas-Limburg": ["Rijkswaterstaat", "AaenMaas", "Limburg"],
+    #   "NZV_HenA": ["Noorderzijlvest", "HunzeenAas","Rijkswaterstaat"],
+    #   "GR-DR-OV_Delta": ["Noorderzijlvest", "HunzeenAas", "DrentsOverijsselseDelta","Rijkswaterstaat"],
+    #   "RDO-Noord": ["Noorderzijlvest", "HunzeenAas", "WetterskipFryslan", "DrentsOverijsselseDelta"],
 }
 
 
