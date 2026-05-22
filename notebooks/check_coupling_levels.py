@@ -191,18 +191,21 @@ def upstream_node_info(
     return None, first_link_id, f"geen upstream niet-Junction node binnen {max_iter} stappen"
 
 
-def select_inlet_and_flow_control_rows(static_df: pd.DataFrame) -> pd.DataFrame:
-    """Select aanvoer-rijen that can pass water in supply mode.
+def select_active_control_rows(static_df: pd.DataFrame) -> pd.DataFrame:
+    """Select active control rows that can pass water.
 
-    Drain nodes also have an `aanvoer` control state, but with zero flow. They are
-    excluded here because their max_downstream_level is not the relevant check.
+    Zero-flow aanvoer rows for drain nodes are excluded, but active afvoer rows
+    are included so their min_upstream_level can be checked against the upstream basin.
     """
     control_state = static_df["control_state"].astype("string").str.lower()
     flow_rate = normalize_numeric(static_df["flow_rate"]).fillna(0.0)
     max_flow_rate = normalize_numeric(static_df["max_flow_rate"]).fillna(0.0)
     max_downstream_level = normalize_numeric(static_df["max_downstream_level"])
 
-    mask = control_state.eq("aanvoer") & (flow_rate.ne(0.0) | max_flow_rate.gt(0.0) | max_downstream_level.notna())
+    active_row = flow_rate.ne(0.0) | max_flow_rate.gt(0.0)
+    active_aanvoer = control_state.eq("aanvoer") & (active_row | max_downstream_level.notna())
+    active_afvoer = control_state.eq("afvoer") & active_row
+    mask = active_aanvoer | active_afvoer
     return static_df.loc[mask].copy()
 
 
@@ -273,7 +276,7 @@ def build_check_dataframe(
         on=["node_id", "node_type"],
         how="inner",
     )
-    candidate_df = select_inlet_and_flow_control_rows(static_df)
+    candidate_df = select_active_control_rows(static_df)
     candidate_df = add_function_label(candidate_df, static_df)
 
     downstream_results = [
@@ -331,8 +334,14 @@ def build_check_dataframe(
     candidate_df["upstream_basin_min_profile_level"] = normalize_numeric(
         candidate_df["upstream_basin_id"].map(min_profile_level_by_basin_id)
     )
-    candidate_df["gecheckte_min_upstream_level"] = candidate_df["upstream_basin_streefpeil"] + upstream_supply_offset
-    candidate_df["min_upstream_level_check_basis"] = pd.Series("upstream_streefpeil", index=candidate_df.index)
+    control_state = candidate_df["control_state"].astype("string").str.lower()
+    candidate_df["min_upstream_level_offset"] = np.where(control_state.eq("aanvoer"), upstream_supply_offset, 0.0)
+    candidate_df["gecheckte_min_upstream_level"] = (
+        candidate_df["upstream_basin_streefpeil"] + candidate_df["min_upstream_level_offset"]
+    )
+    candidate_df["min_upstream_level_check_basis"] = np.where(
+        control_state.eq("aanvoer"), "upstream_streefpeil_plus_aanvoer_offset", "upstream_streefpeil"
+    )
     candidate_df["gecheckte_min_upstream_level_is_null"] = False
     rws_basin_mask = candidate_df["upstream_basin_meta_waterbeheerder"].eq("Rijkswaterstaat")
     valid_rws_state_level = candidate_df["upstream_basin_state_level"].le(max_rws_upstream_state_level)
@@ -368,12 +377,16 @@ def build_check_dataframe(
     checked_df["verschil_max_downstream_level"] = current_ds - expected_ds
     checked_df["verschil_min_upstream_level"] = current_us - expected_us
 
-    checked_df["max_downstream_level_afwijking"] = expected_ds.notna() & ~np.isclose(
-        current_ds.to_numpy(dtype=float),
-        expected_ds.to_numpy(dtype=float),
-        atol=tolerance,
-        rtol=0.0,
-        equal_nan=False,
+    checked_df["max_downstream_level_afwijking"] = (
+        checked_df["control_state"].eq("aanvoer")
+        & expected_ds.notna()
+        & ~np.isclose(
+            current_ds.to_numpy(dtype=float),
+            expected_ds.to_numpy(dtype=float),
+            atol=tolerance,
+            rtol=0.0,
+            equal_nan=False,
+        )
     )
     min_upstream_numeric_afwijking = (
         checked_df["upstream_node_type"].eq("Basin")
@@ -484,6 +497,7 @@ def write_deviation_locations(model: Model, deviations_df: pd.DataFrame, output_
         "node_id",
         "node_type",
         "functie",
+        "control_state",
         "name",
         "meta_waterbeheerder",
         "downstream_link_id",
@@ -501,6 +515,7 @@ def write_deviation_locations(model: Model, deviations_df: pd.DataFrame, output_
         "upstream_basin_state_level",
         "upstream_basin_min_profile_level",
         "rws_upstream_state_level_valid",
+        "min_upstream_level_offset",
         "huidig_min_upstream_level",
         "gecheckte_min_upstream_level",
         "gecheckte_min_upstream_level_is_null",
@@ -531,6 +546,7 @@ def print_deviations(deviations_df: pd.DataFrame) -> None:
         "node_id",
         "node_type",
         "functie",
+        "control_state",
         "name",
         "meta_waterbeheerder",
         "downstream_link_id",
@@ -547,6 +563,7 @@ def print_deviations(deviations_df: pd.DataFrame) -> None:
         "upstream_basin_state_level",
         "upstream_basin_min_profile_level",
         "rws_upstream_state_level_valid",
+        "min_upstream_level_offset",
         "huidig_min_upstream_level",
         "gecheckte_min_upstream_level",
         "gecheckte_min_upstream_level_is_null",
@@ -571,7 +588,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
             "Controleer of max_downstream_level van inlaten en doorlaten overeenkomt met "
-            "meta_streefpeil van het downstream basin en min_upstream_level met het upstream "
+            "meta_streefpeil van het downstream basin en min_upstream_level van actieve aanvoer- "
+            "en afvoer-rijen met het upstream "
             "streefpeil minus 4 cm in een Ribasim-model. Voor upstream Rijkswaterstaat-basins "
             "wordt standaard Basin / profile.level.min() + 0.1 gebruikt; met een expliciete "
             "Rijkswaterstaat-offset wordt Basin / state.level + offset gebruikt. Leest en schrijft via de "
@@ -736,7 +754,7 @@ def main() -> None:
     print(f"Model-GPKG: {database_path}")
     authority_label = ", ".join(authorities) if authorities is not None else "alle meta_waterbeheerder"
     print(f"Waterbeheerder-filter: {authority_label}")
-    print(f"Gecontroleerde inlaat/doorlaat aanvoer-rijen met downstream Basin: {len(checked_df)}")
+    print(f"Gecontroleerde actieve aanvoer/afvoer-rijen met downstream Basin: {len(checked_df)}")
     print(f"Afwijkingen: {len(deviations_df)}")
 
     if deviations_df.empty:
