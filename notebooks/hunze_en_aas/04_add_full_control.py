@@ -57,6 +57,7 @@ model.update_node(
 model.update_node(node_id=632, node_type="Pump")  # Inlaat Vestdijklaan lijkt een pomp(je) te zijn
 model.update_node(node_id=1111, node_type="Outlet")  # Manning tussen basins met verschillende streefpeilen gaat niet
 model.update_node(node_id=854, node_type="Pump")  # Inlaat Vestdijklaan lijkt een pomp(je) te zijn
+model.update_node(node_id=854, node_type="Outlet")  # Uitlaat Nijlandsloop naar Anreperdiep
 
 # alle uitlaten en inlaten op 30m3/s, geen cap verdeling. Dit wordt de max flow in model.
 # En als flow_rate niet bekend is de flow
@@ -94,6 +95,7 @@ drain_nodes = [
     99,
     133,
     135,
+    179,
     196,
     206,
     231,
