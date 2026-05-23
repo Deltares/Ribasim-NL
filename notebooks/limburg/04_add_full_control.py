@@ -32,6 +32,92 @@ IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 EXCLUDE_NODES = {651}
 
+flushing_nodes: dict[int, float] = {}
+drain_nodes = [
+    160,
+    163,
+    165,
+    166,
+    167,
+    180,
+    181,
+    183,
+    195,
+    196,
+    198,
+    200,
+    253,
+    254,
+    255,
+    261,
+    271,
+    354,
+    408,
+    447,
+    463,
+    494,
+    586,
+    692,
+    710,
+    828,
+    829,
+    834,
+    855,
+    856,
+    857,
+    902,
+    932,
+    936,
+    1054,
+    1104,
+    1120,
+    1204,
+    1244,
+    2499,
+]
+supply_nodes: list[int] = [311, 595, 596]
+flow_control_nodes = [
+    164,
+    176,
+    179,
+    188,
+    191,
+    192,
+    198,
+    220,
+    252,
+    262,
+    411,
+    471,
+    480,
+    496,
+    523,
+    536,
+    541,
+    545,
+    579,
+    652,
+    653,
+    657,
+    708,
+    710,
+    711,
+    725,
+    751,
+    827,
+    839,
+    933,
+    1055,
+    1057,
+    1133,
+    1241,
+    2493,
+    2494,
+    2496,
+    2497,
+    2500,
+]
+
 # %%
 
 # Definieren paden en syncen met cloud
@@ -55,6 +141,8 @@ aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).diss
 model.outlet.static.df.max_flow_rate = 100
 model.outlet.static.df.flow_rate = 100
 model.pump.static.df.max_flow_rate = model.pump.static.df.flow_rate
+model.pump.static.df.loc[model.pump.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0
 
 # Erg klein basin, numerieke problemen
 model.merge_basins(node_id=2394, to_node_id=1507, are_connected=True)
@@ -326,18 +414,6 @@ if isinstance(polygon, MultiPolygon):
 # links die intersecten die we kunnen negeren
 ignore_intersecting_links: list[int] = [529]
 
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven flow control nodes (doorlaten)
-flow_control_nodes = [1241]
-
 # toevoegen sturing
 add_controllers_to_supply_area(
     model=model,
@@ -362,7 +438,6 @@ polygon = polygon.buffer(0).buffer(0)
 
 if isinstance(polygon, MultiPolygon):
     polygon = max(polygon.geoms, key=lambda g: g.area)
-
 
 # links die intersecten die we kunnen negeren
 ignore_intersecting_links: list[int] = [
@@ -390,18 +465,6 @@ ignore_intersecting_links: list[int] = [
     1992,
     2023,
 ]
-
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = [160, 447]
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven flow control nodes (doorlaten)
-flow_control_nodes = []
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -456,18 +519,6 @@ ignore_intersecting_links: list[int] = [
     2023,
 ]
 
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = [163, 165, 166, 167, 494, 183, 834, 828, 829, 932, 1054, 1104, 1120, 1204, 1244, 2499]
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven flow control nodes (doorlaten)
-flow_control_nodes = [164, 523, 652, 653, 711, 827, 2500]
-
 # toevoegen sturing
 add_controllers_to_supply_area(
     model=model,
@@ -491,47 +542,9 @@ polygon = polygon.buffer(0).buffer(0)
 if isinstance(polygon, MultiPolygon):
     polygon = max(polygon.geoms, key=lambda g: g.area)
 
-
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
 ignore_intersecting_links: list[int] = [82, 89, 92, 782, 1740, 1741, 1755, 1840, 1939, 2003]
-
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = [180, 181, 195, 196, 198, 200, 253, 254, 255, 261, 354, 408, 586, 271, 710]
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven flow control nodes (doorlaten)
-flow_control_nodes = [
-    176,
-    179,
-    188,
-    191,
-    192,
-    198,
-    262,
-    471,
-    480,
-    496,
-    536,
-    541,
-    579,
-    657,
-    708,
-    710,
-    725,
-    751,
-    586,
-    839,
-    933,
-    1055,
-    1057,
-    1133,
-]
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -557,22 +570,9 @@ polygon = polygon.buffer(0).buffer(0)
 if isinstance(polygon, MultiPolygon):
     polygon = max(polygon.geoms, key=lambda g: g.area)
 
-
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
 ignore_intersecting_links: list[int] = [155, 157, 709, 710, 711, 1812, 1813]
-
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven flow control nodes (doorlaten)
-flow_control_nodes = []
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -597,7 +597,6 @@ polygon = polygon.buffer(0).buffer(0)
 
 if isinstance(polygon, MultiPolygon):
     polygon = max(polygon.geoms, key=lambda g: g.area)
-
 
 # links die intersecten die we kunnen negeren
 ignore_intersecting_links: list[int] = [
@@ -626,18 +625,6 @@ ignore_intersecting_links: list[int] = [
     2382,
 ]
 
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven flow control nodes (doorlaten)
-flow_control_nodes = []
-
 # toevoegen sturing
 add_controllers_to_supply_area(
     model=model,
@@ -662,21 +649,8 @@ polygon = polygon.buffer(0).buffer(0)
 if isinstance(polygon, MultiPolygon):
     polygon = max(polygon.geoms, key=lambda g: g.area)
 
-
 # links die intersecten die we kunnen negeren
 ignore_intersecting_links: list[int] = []
-
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven flow control nodes (doorlaten)
-flow_control_nodes = []
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -702,22 +676,9 @@ polygon = polygon.buffer(0).buffer(0)
 if isinstance(polygon, MultiPolygon):
     polygon = max(polygon.geoms, key=lambda g: g.area)
 
-
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
 ignore_intersecting_links: list[int] = [822, 823, 824, 961, 962, 2009, 2010]
-
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven flow control nodes (doorlaten)
-flow_control_nodes = []
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -743,22 +704,9 @@ polygon = polygon.buffer(0).buffer(0)
 if isinstance(polygon, MultiPolygon):
     polygon = max(polygon.geoms, key=lambda g: g.area)
 
-
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
 ignore_intersecting_links: list[int] = [2011]
-
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven flow control nodes (doorlaten)
-flow_control_nodes = []
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -788,23 +736,6 @@ add_controllers_to_supply_nodes(
 
 
 # %% add all remaining inlets/outlets
-# add all remaing outlets
-# handmatig opgegeven flow control nodes definieren
-
-
-flow_control_nodes = [220, 252, 411, 545, 471, 711, 2493, 2494, 2496, 2497]
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = [463, 692, 902, 936, 855, 856, 857]
-
-
-# Flushing nodes
-flushing_nodes = {}
-
-
 add_controllers_to_uncontrolled_connector_nodes(
     model=model,
     supply_nodes=supply_nodes,

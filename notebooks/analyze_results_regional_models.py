@@ -125,11 +125,24 @@ WATERSCHAP_CONFIG = {
     # },
     "RijnenIJssel": {
         "active": True,
-        "koppeltabel": "Transformed_koppeltabel_versie_RijnenIJssel_2026_5_1_Feedback_Verwerkt_HydroLogic.xlsx",
-        "specifiek": "Specifiek_bewerking_versieRijnenIJssel_2026_5_1.xlsx",
+        "koppeltabel": "Transformed_koppeltabel_versie_lhm_coupled_tmin3_Feedback_Verwerkt_HydroLogic.xlsx",
+        "specifiek": "Specifiek_bewerking_versielhm_coupled_tmin3.xlsx",
     },
 }
 
+
+# WATERSCHAP_CONFIG = {
+#     # "Limburg": {
+#     #     "active": False,
+#     #     "koppeltabel": "Transformed_koppeltabel_versie_Limburg_2026_4_0_Feedback_Verwerkt_HydroLogic.xlsx",
+#     #     "specifiek":   "Specifiek_bewerking_versieLimburg_2026_4_0.xlsx",
+#     # },
+#     "RijnenIJssel": {
+#         "active": True,
+#         "koppeltabel": "Transformed_koppeltabel_versie_RijnenIJssel_2026_5_1_Feedback_Verwerkt_HydroLogic.xlsx",
+#         "specifiek": "Specifiek_bewerking_versieRijnenIJssel_2026_5_1.xlsx",
+#     },
+# }
 # %%
 # ── Synchroniseer gedeelde paden éénmalig ─────────────────────────────────────
 
@@ -161,6 +174,7 @@ for waterschap, cfg in WATERSCHAP_CONFIG.items():
     model_folder = cloud.joinpath(f"{waterschap}/modellen", latest_model_version.path_string)
 
     # cloud.synchronize([loc_koppeltabel, loc_specifieke_bewerking, model_folder])
+    cloud.synchronize([model_folder])
 
     # Zoek het .toml bestand dynamisch op in de gesynchroniseerde modelfolder
     toml_path = next(Path(model_folder).glob("*.toml"), None)
@@ -181,7 +195,7 @@ for waterschap, cfg in WATERSCHAP_CONFIG.items():
             model_folder=model_folder,
             toml_file=toml_naam,
             filetype="flow",
-            apply_for_water_authority=None,  #!TODO: let op Deze alleen aanzetten als je met een koppeltabel werkt voor het hele LHM
+            apply_for_water_authority=waterschap,  #!TODO: let op Deze alleen aanzetten als je met een koppeltabel werkt voor het hele LHM
             # In dat geval kun je de prefix logica gebruiken, voorkeur heeft eigelijk als je de resultaten
             # gaat terugbrengen naar waterschapsmodellen een aparte losse koppeltabel mee te geven, omdat
             # De koppelingen in de gehele koppeltabel van het LHM soms niet de juiste prefix bevatten en dus is

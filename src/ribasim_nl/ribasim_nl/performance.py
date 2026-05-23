@@ -1,11 +1,11 @@
+import tomllib
 from os import PathLike
 from pathlib import Path
 
 import pandas as pd
-import tomli as tomllib
 import xarray as xr
 
-from ribasim_nl import Model
+from ribasim_nl.model import Model
 
 
 def _resolve_toml_and_results_dir(model: Model | str | PathLike[str]) -> tuple[Path, Path]:

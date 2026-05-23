@@ -73,6 +73,7 @@ koppeltabel.xlsx + Specifiek_bewerking.xlsx
                          → Validatie_resultaten[_dec].gpkg
 """
 
+# %%
 import ast
 import operator
 from collections import defaultdict
@@ -89,6 +90,7 @@ import tqdm
 import xarray as xr
 from openpyxl.styles import PatternFill
 from shapely import wkt
+from shapely.affinity import translate as shapely_translate
 
 from ribasim_nl import CloudStorage
 from ribasim_nl.aquo import waterbeheercode
@@ -251,7 +253,7 @@ def _resample_to_daily(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | None = None) -> pd.DataFrame:
+def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | list[str] | None = None) -> pd.DataFrame:
     """The function `LaadKoppeltabel` reads an Excel file, parses lists in the 'link_id' column, and converts the 'geometry' column to a geometry object.
 
     Parameters
@@ -260,7 +262,8 @@ def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | None = Non
         The `loc_koppeltabel` parameter in the `LaadKoppeltabel` function is expected to be a file location
     pointing to an Excel file that contains data for a koppeltabel (linking table).
     apply_for_water_authority
-        Optional specification to read koppeltabel for a specific water authority. Defaults to None
+        Optional specification to filter the koppeltabel to one or more water authorities.
+        Pass a single string or a list of strings. Defaults to None (all authorities).
 
     Returns
     -------
@@ -272,13 +275,18 @@ def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | None = Non
 
     # filter for water authority if specified
     if apply_for_water_authority is not None:
-        koppeltabel = koppeltabel[koppeltabel["Waterschap"] == apply_for_water_authority]
-        prefix_code = waterbeheercode[apply_for_water_authority]
+        authorities = (
+            [apply_for_water_authority] if isinstance(apply_for_water_authority, str) else apply_for_water_authority
+        )
+        koppeltabel = koppeltabel[koppeltabel["Waterschap"].isin(authorities)]
+        # pyrefly: ignore[no-matching-overload]
+        koppeltabel["link_id_parsed"] = koppeltabel.apply(
+            lambda row: ParseList(row["new_link_id"], waterbeheercode[row["Waterschap"]]),
+            axis=1,
+        )
     else:
-        prefix_code = None
-
-    # Convert the lists in link_id to lists if possible
-    koppeltabel["link_id_parsed"] = koppeltabel["new_link_id"].apply(ParseList, args=(prefix_code,))
+        # Convert the lists in link_id to lists if possible
+        koppeltabel["link_id_parsed"] = koppeltabel["new_link_id"].apply(ParseList, args=(None,))
 
     # Parse the geometry
     koppeltabel["geometry_parsed"] = koppeltabel["geometry"].apply(lambda x: wkt.loads(x))
@@ -1205,7 +1213,9 @@ def CompareOutputMeasurements(
     criteria_grenzen: dict | None = None,
     beoor_kleuren: dict | None = None,
     abs_drempel: float | None = None,
-    apply_for_water_authority: str | None = None,
+    apply_for_water_authority: str | list[str] | None = None,
+    exclude_meetreeks: list[str] | None = None,
+    min_coverage: float | None = None,
     save_results_combined: bool = False,
     output_is_feather: bool = True,
     output_is_nc: bool = False,
@@ -1240,7 +1250,15 @@ def CompareOutputMeasurements(
         Absolute deviation threshold in m³/s; locations below this value are always 'Goed'.
         Default None.
     apply_for_water_authority
-        Restrict the koppeltabel to a single water authority. Default None (all authorities).
+        Restrict the koppeltabel to one or more water authorities (str or list of str). Default None (all authorities).
+    exclude_meetreeks
+        List of MeetreeksC names to skip entirely. Matching rows are removed from both the
+        koppeltabel and the specific-operations table before any processing starts.
+        Default None (nothing excluded).
+    min_coverage
+        Minimum required measurement coverage over the full simulation period as a percentage
+        (0-100). Locations where fewer than this fraction of timesteps have a non-NaN
+        measurement are skipped. Default None (no coverage filter).
     save_results_combined
         When True, also write a single combined GeoPackage with all water authorities.
         Default False.
@@ -1253,6 +1271,17 @@ def CompareOutputMeasurements(
     """
     koppeltabel = LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority=apply_for_water_authority)
     specifics = LaadSpecifiekeBewerking(loc_specifics)
+
+    if exclude_meetreeks:
+        mask_koppel = koppeltabel["MeetreeksC"].isin(exclude_meetreeks)
+        mask_specs = specifics["MeetreeksC"].isin(exclude_meetreeks)
+        print(f"Uitgesloten meetreeksen ({len(exclude_meetreeks)}): {exclude_meetreeks}")
+        if mask_koppel.any():
+            print(f"  {mask_koppel.sum()} rijen verwijderd uit de koppeltabel.")
+        if mask_specs.any():
+            print(f"  {mask_specs.sum()} rijen verwijderd uit de specifieke bewerkingen.")
+        koppeltabel = koppeltabel[~mask_koppel].reset_index(drop=True)
+        specifics = specifics[~mask_specs].reset_index(drop=True)
     data = ReadOutputFile(
         model_folder,
         filetype,
@@ -1296,10 +1325,28 @@ def CompareOutputMeasurements(
     # Pre-bouw graph voor O(1) basin-traversal in de loop hieronder
     _model_graph: dict | None = _build_model_graph(model) if model is not None else None
 
-    # Get the unique link ids
-    unique_links = get_unique(koppeltabel["link_id_parsed"])
+    # Detect MeetreeksC names that appear with multiple Aan/Af values — these would produce duplicate
+    # filenames and overlapping points in the geopackage without special handling.
+    _aanaf_per_meetreeks = koppeltabel.groupby("MeetreeksC")["Aan/Af"].nunique()
+    _duplicate_meetreeks = set(_aanaf_per_meetreeks[_aanaf_per_meetreeks > 1].index)
+    if _duplicate_meetreeks:
+        print(f"Dubbele MeetreeksC namen met meerdere Aan/Af waarden gevonden: {sorted(_duplicate_meetreeks)}")
+        print("  Aan/Af wordt toegevoegd aan bestandsnaam; locaties worden 5 m verschoven in de geopackage.")
+    # Tracks which (meetreeks, aanaf) combinations have been seen for assigning geometry offsets.
+    _meetreeks_aanaf_idx: dict[tuple[str, str], int] = {}
 
-    for link in tqdm.tqdm(unique_links, total=len(unique_links), desc="Verwerken metingen"):
+    # AmstelGooienVecht: group by link_id_parsed so multiple measurement series per link are summed.
+    # All other water authorities: each row is its own group so measurement series stay individual.
+    _agv_mask = koppeltabel["Waterschap"] == "AmstelGooienVecht"
+    _agv_links = get_unique(koppeltabel.loc[_agv_mask, "link_id_parsed"])
+    _agv_groups = [
+        (lnk, koppeltabel[_agv_mask & koppeltabel["link_id_parsed"].apply(lambda x, _l=lnk: x == _l)])
+        for lnk in _agv_links
+    ]
+    _other_groups = [(row["link_id_parsed"], koppeltabel.loc[[i]]) for i, row in koppeltabel.loc[~_agv_mask].iterrows()]
+    _all_groups = _agv_groups + _other_groups
+
+    for link, meetlocaties_link in tqdm.tqdm(_all_groups, total=len(_all_groups), desc="Verwerken metingen"):
         try:
             if np.isnan(link):
                 print("A link with type NaN has been found. Skipped.")
@@ -1307,9 +1354,6 @@ def CompareOutputMeasurements(
         except:  # noqa: E722 S110 TODO: do not use bare except
             pass
 
-        # for n, meetlocatie in tqdm.tqdm(koppeltabel.iterrows(), total=len(koppeltabel), desc='Verwerken metingen'):
-        mask = koppeltabel["link_id_parsed"].apply(lambda x, _link=link: x == _link)
-        meetlocaties_link = koppeltabel[mask]
         waterschap = meetlocaties_link.iloc[0]["Waterschap"]
 
         # Create a result dictionary per waterschap
@@ -1331,6 +1375,7 @@ def CompareOutputMeasurements(
                     "P25_reldev": [],
                     "P75_reldev": [],
                     "P90_reldev": [],
+                    "coverage_pct": [],
                     "geometry": [],
                     "figure_path": [],
                     "QGIS_map_tip": [],
@@ -1410,6 +1455,14 @@ def CompareOutputMeasurements(
             print(f"No specific operation found for measurements {existing_measurements}, around link {link}")
             continue
 
+        # Check whether all link IDs are present in the model output; skip if not
+        links_as_list = [link] if isinstance(link, int) else link
+        available_link_ids = data["link_id"].unique()
+        missing_links = [lid for lid in links_as_list if lid not in available_link_ids]
+        if missing_links:
+            print(f"Overgeslagen ({existing_measurements}): link_id(s) {missing_links} ontbreken in de modeloutput.")
+            continue
+
         # Apply the special operation to get the subset of model output
         subset_modeloutput = ApplySpecificOperation(data, link, spec_op)
 
@@ -1420,6 +1473,14 @@ def CompareOutputMeasurements(
         if combined_df["sum"].isna().all().all():
             print(
                 f"No measured data available for the requested time period for link {link}, a.o. location {meetlocaties_link.iloc[0]['MeetreeksC']}"
+            )
+            continue
+
+        # Coverage: fraction of simulated timesteps that have a non-NaN measurement
+        coverage_pct = round(combined_df["sum"].notna().sum() / len(combined_df) * 100, 1)
+        if min_coverage is not None and coverage_pct < min_coverage:
+            print(
+                f"Overgeslagen ({existing_measurements[0]}): dekking {coverage_pct:.1f}% < minimum {min_coverage:.1f}%"
             )
             continue
 
@@ -1441,7 +1502,26 @@ def CompareOutputMeasurements(
         full_title = " - ".join(existing_measurements)
         fig_name = full_title.split(" - ")[0]
         meetreeks_naam = fig_name  # kolomnaam in tijdsreeks-Excel
-        bron_meting = None if apply_for_water_authority is not None else waterschap
+
+        # Duplicate MeetreeksC: append Aan/Af to prevent filename collisions.
+        _meetreeks_orig = fig_name
+        _aanaf_this = meetlocaties_link.iloc[0]["Aan/Af"]
+        if _meetreeks_orig in _duplicate_meetreeks:
+            fig_name = f"{fig_name}_{_aanaf_this}"
+            meetreeks_naam = fig_name
+            full_title = f"{full_title} ({_aanaf_this})"
+
+        # Shift geometry for duplicates so points are separately visible in map/HTML viewer.
+        _geom = meetlocaties_link.iloc[0]["geometry_parsed"]
+        if _meetreeks_orig in _duplicate_meetreeks:
+            _offset_key = (_meetreeks_orig, _aanaf_this)
+            if _offset_key not in _meetreeks_aanaf_idx:
+                _meetreeks_aanaf_idx[_offset_key] = len(_meetreeks_aanaf_idx)
+            _occ = _meetreeks_aanaf_idx[_offset_key]
+            _SHIFT_M = 5  # meters in RD New (EPSG:28992)
+            _geom = shapely_translate(_geom, xoff=_occ * _SHIFT_M, yoff=_occ * _SHIFT_M)
+
+        bron_meting = waterschap
         PlotAndSave(
             combined_df=combined_df_cum,
             stats=stats,
@@ -1480,7 +1560,7 @@ def CompareOutputMeasurements(
                             "basin_node_id": fractie_basin_node_id,
                             "figure_path": pop_up_fractie,
                             "QGIS_map_tip": f"figures_fracties/{waterschap}/{fig_name_clean}_fractie.png",
-                            "geometry": meetlocaties_link.iloc[0]["geometry_parsed"],
+                            "geometry": _geom,
                         }
                     )
             else:
@@ -1501,7 +1581,8 @@ def CompareOutputMeasurements(
             ("P25_reldev", stats["P25_reldev"]),
             ("P75_reldev", stats["P75_reldev"]),
             ("P90_reldev", stats["P90_reldev"]),
-            ("geometry", meetlocaties_link.iloc[0]["geometry_parsed"]),
+            ("coverage_pct", coverage_pct),
+            ("geometry", _geom),
             ("waterschap", waterschap),
             ("figure_path", pop_up_figure),
             ("QGIS_map_tip", f"figures/{waterschap}/{fig_name_clean}.png"),
@@ -1537,7 +1618,8 @@ def CompareOutputMeasurements(
             ("P25_reldev", stats_dec["P25_reldev"]),
             ("P75_reldev", stats_dec["P75_reldev"]),
             ("P90_reldev", stats_dec["P90_reldev"]),
-            ("geometry", meetlocaties_link.iloc[0]["geometry_parsed"]),
+            ("coverage_pct", coverage_pct),
+            ("geometry", _geom),
             ("waterschap", waterschap),
             ("figure_path", pop_up_figure_dec),
             ("QGIS_map_tip", f"figures/{waterschap}/{fig_name_dec_clean}.png"),
@@ -1689,15 +1771,16 @@ def LoadMeasurements(meas_folder) -> dict[str, pd.DataFrame]:
 
     measurements = {}
     for key, file in meas_files.items():
-        try:
-            measurements[key] = pd.read_csv(Path(meas_folder) / file, parse_dates=["Unnamed: 0"])
-            measurements[key].rename(columns={"Unnamed: 0": "time"}, inplace=True)
-        except:  # noqa: E722 TODO: specify exception
-            try:
-                measurements[key] = pd.read_csv(Path(meas_folder) / file, parse_dates=["Datum"])
-                measurements[key].rename(columns={"Datum": "time"}, inplace=True)
-            except ValueError:
-                print("Cannot identify date/time column. Can be [Unnamed: 0, Datum] ")
+        df = pd.read_csv(Path(meas_folder) / file)
+        if "Unnamed: 0" in df.columns:
+            df.rename(columns={"Unnamed: 0": "time"}, inplace=True)
+        elif "Datum" in df.columns:
+            df.rename(columns={"Datum": "time"}, inplace=True)
+        else:
+            print(f"Cannot identify date/time column in {file}. Expected 'Unnamed: 0' or 'Datum'.")
+            continue
+        df["time"] = pd.to_datetime(df["time"], format="mixed")
+        measurements[key] = df
 
     return measurements
 
@@ -1927,7 +2010,7 @@ def ExtraInfoToevoegenAllData(
     model_folder
         Root directory of the Ribasim model (GeoPackages are read from results/).
     apply_for_water_authority
-        Restrict the koppeltabel to a single water authority. Default None (all authorities).
+        Restrict the koppeltabel to one or more water authorities (str or list of str). Default None (all authorities).
     stat_cols
         Quantile-based statistic columns used for classification (e.g. 'abs_q95', 'abs_q05').
     threshold
@@ -3129,24 +3212,28 @@ if __name__ == "__main__":
     base_koppeltabel = cloud.joinpath("Basisgegevens/resultaatvergelijking/koppeltabel_2026")
 
     loc_koppeltabel = (
-        base_koppeltabel / "Transformed_koppeltabel_versie_RijnenIJssel_2026_5_1_Feedback_Verwerkt_HydroLogic.xlsx"
+        base_koppeltabel / "Transformed_koppeltabel_versie_Samenwerkdag_26052026_Feedback_Verwerkt_HydroLogic.xlsx"
     )
-    loc_specifieke_bewerking = base_koppeltabel / "Specifiek_bewerking_versieRijnenIJssel_2026_5_1.xlsx"
-    waterboard = "RijnenIJssel"
-    waterboard_model_versions = cloud.uploaded_models(authority=waterboard)
+    loc_specifieke_bewerking = base_koppeltabel / "Specifiek_bewerking_versieSamenwerkdag_26052026.xlsx"
 
-    latest_model_version = sorted(
-        [i for i in waterboard_model_versions if i.model == waterboard], key=lambda x: getattr(x, "sorter", "")
-    )[-1]
+    # waterboard = "RijnenIJssel"
+    # waterboard_model_versions = cloud.uploaded_models(authority=waterboard)
 
-    model_folder = cloud.joinpath(f"{waterboard}/modellen", latest_model_version.path_string)
-    # toml_naam = "lhm-coupled.toml"
-    toml_naam = "wrij.toml"
+    # latest_model_version = sorted(
+    #     [i for i in waterboard_model_versions if i.model == waterboard], key=lambda x: getattr(x, "sorter", "")
+    # )[-1]
+
+    # model_folder = cloud.joinpath(f"{waterboard}/modellen", latest_model_version.path_string)
+    # # toml_naam = "lhm-coupled.toml"
+    # toml_naam = "wrij.toml"
 
     meas_folder = cloud.joinpath("Basisgegevens/resultaatvergelijking/meetreeksen_2026")
 
+    model_folder = Path(r"C:\Users\micha.veenendaal\Data\HL-P26004\Modellen\lhm_coupled_2017")
+    toml_naam = "lhm_coupled.toml"
+
     # synchronize paths
-    cloud.synchronize([loc_koppeltabel, loc_specifieke_bewerking, meas_folder, model_folder])
+    # cloud.synchronize([loc_koppeltabel, loc_specifieke_bewerking, meas_folder, model_folder])
 
     # validatie_lhm4_1 = os.path.join(base, "Toetsing LHM 4.1", )
     ########################################################################################################################################
@@ -3226,9 +3313,11 @@ if __name__ == "__main__":
     #!!!TODO: Draai hiervoor eerst notebooks/observations/analyse_lhm41_vergelijking
     include_lhm41_html = RUN_LHM41
     # Als we ook fracties kunnen plotten en tonen in html viewer
-    include_fractie_html = True
+    include_fractie_html = False
 
     RUN_UPLOAD = False
+
+    EXCLUDE_MEETREEKS = [""]
 
     # ── Verwerk meetreeksen, bereken statistieken, schrijf figuren/geopackages/Excel ──
     if RUN_COMPARE:
@@ -3242,6 +3331,7 @@ if __name__ == "__main__":
             criteria_grenzen=CRITERIA_GRENZEN,
             beoor_kleuren=BEOOR_KLEUREN,
             abs_drempel=ABS_DREMPEL_M3S,
+            exclude_meetreeks=EXCLUDE_MEETREEKS,
             save_results_combined=True,
             output_is_feather=False,
             output_is_nc=True,
@@ -3289,7 +3379,8 @@ if __name__ == "__main__":
     )
     lhm41_layer_naam = "koppeling_lhm4_1_reeksen"
     if RUN_LHM41:
-        cloud.synchronize([lhm41_folder, gpkg_koppellaag])
+        cloud.synchronize([gpkg_koppellaag])
+        # cloud.synchronize([lhm41_folder, gpkg_koppellaag])
         AnalyseLHM41Vergelijking(
             gpkg_koppellaag=gpkg_koppellaag,
             layer_naam=lhm41_layer_naam,

@@ -17,6 +17,7 @@ from ribasim_nl import (
     import_transboundary_inflow,
     merge_rwzi_model,
     settings,
+    write_performance,
 )
 
 cloud = CloudStorage()
@@ -185,10 +186,10 @@ for authority in authorities:
             model.write(dst_toml_file)
             if write_budgets:
                 budgets_df.to_feather(dst_toml_file.with_name("mfms_budgets.arrow"))  # for later reference
-            if RUN_MODEL:
-                model.run()
-                model.update_state()
-                model.basin.state.write()
+            model.run()
+            model.update_state()
+            model.basin.state.write()
+            write_performance(model)
 
             # DELWAQ(!)
             if compute_fractions and RUN_MODEL:
