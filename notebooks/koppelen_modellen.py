@@ -73,6 +73,7 @@ forced_coupling = {
     1301496: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
     1301495: 1404817,  # LevelBoundary buiten de boezem van HDSR geplaatst
     1301492: 1404817,  # LevelBoundary buiten de boezem van HDSR geplaatst
+    3300009: 4401377,  # Levelboundary takt niet aan op Verlengde Hoogeveense Vaart
 }
 
 
