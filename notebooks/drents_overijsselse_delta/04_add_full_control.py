@@ -20,6 +20,10 @@ AUTHORITY: str = "DrentsOverijsselseDelta"
 SHORT_NAME: str = "dod"
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
+MIN_FLOW_RATE_BY_NODE_ID = {
+    378: 1.0,  # Rogatsluis
+    541: 0.5,  # Paradijssluis
+}
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 EXCLUDE_NODES = {522, 527, 528, 538, 544}
@@ -646,6 +650,13 @@ model.pump.static.df.loc[mask & (model.pump.static.df.control_state == "afvoer")
 for static_df in [model.outlet.static.df, model.pump.static.df]:
     static_df.loc[static_df.node_id == 3235, "min_upstream_level"] = 17.7
     static_df.loc[static_df.node_id == 3233, "max_downstream_level"] = 12.94
+
+# Minimale afvoer naar buitenwater op specifieke kunstwerken, voor alle control_states.
+for node_id, min_flow_rate in MIN_FLOW_RATE_BY_NODE_ID.items():
+    for static_df in (model.outlet.static.df, model.pump.static.df):
+        if "min_flow_rate" not in static_df.columns:
+            continue
+        static_df.loc[static_df.node_id == node_id, "min_flow_rate"] = min_flow_rate
 
 
 # %%
