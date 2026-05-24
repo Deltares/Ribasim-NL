@@ -25,7 +25,10 @@ MIN_BASIN_OUTLET_DIFF = 0.5
 # Configuration
 data_dir = settings.ribasim_nl_data_dir
 couple_lhm: bool = False
-sub_models: list[str] | bool = ["AAM-Limburg-RWS"]
+sub_models: list[str] | bool = [
+    # "AAM-Limburg-RWS",
+    "Dommel-AAM-Limburg-RWS"
+]
 
 remove_nodes = [
     3401752,  # Dokwerd NZV
@@ -40,6 +43,12 @@ remove_nodes = [
     203840,  # Inlaat hoort bij NZV
     202773,  # "Gaarkeuken" Fryslân
     203809,  # "Gaarkeuken" Fryslân
+    6002493,  # reparatie Helenavaart Limburg
+    6002788,  # reparatie Helenavaart Limburg
+    6002788,  # reparatie Helenavaart Limburg
+    3800052,  # forceren koppeling kanaal van Deurne
+    3800447,  # forceren koppeling kanaal van Deurne
+    3803725,  # forceren koppeling kanaal van Deurne
 ]
 
 # Pumps with min_upstream_level below upstream basin bottom; reset to NA
@@ -73,6 +82,13 @@ forced_coupling = {
     1301496: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
     1301495: 1404817,  # LevelBoundary buiten de boezem van HDSR geplaatst
     1301492: 1404817,  # LevelBoundary buiten de boezem van HDSR geplaatst
+    4400015: 5903236,  # LB ligt op exact dezelfde locatie
+    4402348: 5900072,  # LB ligt op exact dezelfde locatie
+    6000124: 6002492,  # Reparatie Helenavaart
+    6000125: 3801280,  # Forceren Kanaal van Deurne
+    3800053: 3801280,  # Forceren Kanaal van Deurne
+    2700009: 3803096,  # Vuchterstuw naar Drongelens Kanaal
+    3800048: 3801394,  # Aansluiten Drongelens kanaal op Binnenstad
 }
 
 

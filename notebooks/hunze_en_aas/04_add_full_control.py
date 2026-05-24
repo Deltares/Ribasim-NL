@@ -424,7 +424,7 @@ add_controllers_to_uncontrolled_connector_nodes(
     model=model, exclude_nodes=list(EXCLUDE_NODES), supply_nodes=supply_nodes
 )
 
-# Afvoer: hardcoded default 20 m3/s ophogen naar 100 m3/s voor uitlaten/doorlaten.
+# Afvoer: defaultcapaciteit op 100 m3/s zetten voor uitlaten/doorlaten.
 # Handmatig opgegeven capaciteiten blijven ongemoeid.
 for static_df, manual_capacity_nodes in [
     (model.outlet.static.df, globals().get("outlet_max_flow_rate_by_node_id", {})),
@@ -433,9 +433,7 @@ for static_df, manual_capacity_nodes in [
     if "control_state" not in static_df.columns:
         continue
     afvoer_mask = (static_df.control_state == "afvoer") & ~static_df.node_id.isin(manual_capacity_nodes)
-    for column in ["flow_rate", "max_flow_rate"]:
-        default_capacity_mask = afvoer_mask & (static_df[column] == 20.0)
-        static_df.loc[default_capacity_mask, column] = 100.0
+    static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 100.0
 
 # %% Junctionfy!
 junctionify(model)

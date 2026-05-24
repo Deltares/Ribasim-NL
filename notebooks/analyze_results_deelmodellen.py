@@ -3,6 +3,8 @@
 
 from pathlib import Path
 
+import geopandas as gpd
+import pandas as pd
 from openpyxl.styles import PatternFill
 from ribasim_nl.analyse_results import (
     AnalyseLHM41Vergelijking,
@@ -11,8 +13,101 @@ from ribasim_nl.analyse_results import (
     ExtraInfoToevoegenAllData,
 )
 from ribasim_nl.html_viewer import CreateHTMLViewer
+from shapely import wkt
 
-from ribasim_nl import CloudStorage
+from ribasim_nl import CloudStorage, Model
+
+
+def fix_koppeltabel_new_link_id(
+    koppeltabel_path: str | Path,
+    model_path: str | Path,
+    output_path: str | Path | None = None,
+    updates_path: str | Path | None = None,
+    relevant_authorities: set[str] | None = None,
+    max_distance_m: float | None = 5000.0,
+) -> tuple[Path, Path, pd.DataFrame]:
+    koppeltabel_path = Path(koppeltabel_path)
+    model_path = Path(model_path)
+
+    if output_path is None:
+        output_path = koppeltabel_path.with_name(f"{koppeltabel_path.stem}_post_fixen.xlsx")
+    else:
+        output_path = Path(output_path)
+
+    if updates_path is None:
+        updates_path = koppeltabel_path.with_name(f"{koppeltabel_path.stem}_post_fixen_updates.csv")
+    else:
+        updates_path = Path(updates_path)
+
+    df = pd.read_excel(koppeltabel_path)
+
+    model = Model.read(model_path)
+    links = gpd.GeoDataFrame(model.link.df.copy(), geometry="geometry", crs=model.link.df.crs)
+    links = links[links["link_type"] == "flow"].copy().reset_index()
+
+    points = gpd.GeoDataFrame(df.copy(), geometry=df["geometry"].apply(wkt.loads), crs=links.crs)
+
+    nearest = (
+        gpd.sjoin_nearest(
+            points[["Waterschap", "MeetreeksC", "Aan/Af", "new_link_id", "geometry"]].copy(),
+            links[["link_id", "from_node_id", "to_node_id", "geometry"]].copy(),
+            how="left",
+            distance_col="distance_to_link_m",
+            lsuffix="pt",
+            rsuffix="lnk",
+        )
+        .reset_index()
+        .rename(columns={"index": "row_index"})
+    )
+
+    nearest = nearest.sort_values(["row_index", "distance_to_link_m", "link_id"]).drop_duplicates("row_index")
+
+    updated_df = df.copy()
+    changes = []
+
+    for row in nearest.itertuples(index=False):
+        row_index = int(row.row_index)
+        waterschap = updated_df.at[row_index, "Waterschap"]
+
+        if relevant_authorities is not None and waterschap not in relevant_authorities:
+            continue
+
+        if pd.isna(row.link_id):
+            continue
+
+        if max_distance_m is not None and float(row.distance_to_link_m) > max_distance_m:
+            continue
+
+        old_value = updated_df.at[row_index, "new_link_id"]
+        new_value = str([int(row.link_id)])
+
+        if old_value == new_value:
+            continue
+
+        updated_df.at[row_index, "new_link_id"] = new_value
+
+        changes.append(
+            {
+                "row_index": row_index,
+                "Waterschap": waterschap,
+                "MeetreeksC": updated_df.at[row_index, "MeetreeksC"],
+                "Aan/Af": updated_df.at[row_index, "Aan/Af"],
+                "geometry": updated_df.at[row_index, "geometry"],
+                "old_new_link_id": old_value,
+                "new_new_link_id": new_value,
+                "matched_link_id": int(row.link_id),
+                "from_node_id": int(row.from_node_id),
+                "to_node_id": int(row.to_node_id),
+                "distance_to_link_m": float(row.distance_to_link_m),
+            }
+        )
+
+    changes_df = pd.DataFrame(changes)
+    updated_df.to_excel(output_path, index=False)
+    changes_df.to_csv(updates_path, index=False)
+
+    return output_path, updates_path, changes_df
+
 
 # %%
 
@@ -22,17 +117,24 @@ cloud = CloudStorage()
 base_koppeltabel = cloud.joinpath("Basisgegevens/resultaatvergelijking/koppeltabel_2026")
 
 loc_koppeltabel = (
-    base_koppeltabel / "Transformed_koppeltabel_versie_Samenwerkdag_26052026_Feedback_Verwerkt_HydroLogic.xlsx"
+    base_koppeltabel
+    / "Transformed_koppeltabel_versie_Samenwerkdag_26052026_Feedback_Verwerkt_HydroLogic_rev_D2Hydro_230526.xlsx"
 )
-loc_specifieke_bewerking = base_koppeltabel / "Specifiek_bewerking_versieSamenwerkdag_26052026.xlsx"
+loc_specifieke_bewerking = base_koppeltabel / "Specifiek_bewerking_versieSamenwerkdag_26052026_revD2Hydro_230526.xlsx"
 
 meas_folder = cloud.joinpath("Basisgegevens/resultaatvergelijking/meetreeksen_2026")
 
-model_folder = Path(r"C:\Users\micha.veenendaal\Data\HL-P26004\Modellen\VrijAfwaterend_DOD_Vechtstromen_coupled")
-toml_naam = "VrijAfwaterend_DOD_Vechtstromen_coupled.toml"
+model_folder = Path(r"d:/repositories/Ribasim-NL/data/Rijkswaterstaat/modellen/lhm_sub_models/AAM-Limburg-RWS_coupled")
+toml_naam = "AAM-Limburg-RWS_coupled.toml"
 
 # synchronize paths
-cloud.synchronize([loc_koppeltabel, loc_specifieke_bewerking, meas_folder])
+cloud.synchronize(
+    [
+        # loc_koppeltabel,
+        # loc_specifieke_bewerking,
+        meas_folder,
+    ]
+)
 
 ########################################################################################################################################
 

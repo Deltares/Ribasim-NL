@@ -15,7 +15,7 @@ from ribasim_nl.control import (
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
-from shapely.geometry import MultiPolygon
+from shapely.geometry import MultiPolygon, Point
 
 from ribasim_nl import CloudStorage, Model
 
@@ -30,7 +30,8 @@ CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
-EXCLUDE_NODES = {651}
+# Node_id: #335, Millnermolen gaat nauwelijks water door alles via AR(Millen) node_id: #365
+EXCLUDE_NODES = {335, 651, 552}
 
 flushing_nodes: dict[int, float] = {}
 drain_nodes = [
@@ -160,6 +161,18 @@ model.update_node(node_id=590, node_type="Pump")
 
 # Gemaal Beringe
 model.update_node(node_id=583, node_type="Pump")
+
+# Overbodig
+model.remove_node(node_id=250, remove_links=True)
+model.remove_node(node_id=938, remove_links=True)
+model.remove_node(node_id=939, remove_links=True)
+
+# Verplaats node 788, behoud bestaande verbindingen en update gekoppelde linkgeometrieen.
+model.move_node(node_id=788, geometry=Point(193403.3, 352653.3))
+
+# Redirect link 2208 naar node 1802.
+model.redirect_link(link_id=2208, to_node_id=1802)
+
 # %%
 # Note: when using a FlowDemand, the parallel node must be configured as a drain node.
 # The node with the FlowDemand is supplied first, because its min_upstream_level
@@ -745,7 +758,7 @@ add_controllers_to_uncontrolled_connector_nodes(
     exclude_nodes=list(EXCLUDE_NODES),
 )
 
-# Afvoer: hardcoded default 20 m3/s ophogen naar 100 m3/s voor uitlaten/doorlaten.
+# Afvoer: defaultcapaciteit op 100 m3/s zetten voor uitlaten/doorlaten.
 # Handmatig opgegeven capaciteiten blijven ongemoeid.
 for static_df, manual_capacity_nodes in [
     (model.outlet.static.df, globals().get("outlet_max_flow_rate_by_node_id", {})),
@@ -754,9 +767,7 @@ for static_df, manual_capacity_nodes in [
     if "control_state" not in static_df.columns:
         continue
     afvoer_mask = (static_df.control_state == "afvoer") & ~static_df.node_id.isin(manual_capacity_nodes)
-    for column in ["flow_rate", "max_flow_rate"]:
-        default_capacity_mask = afvoer_mask & (static_df[column] == 20.0)
-        static_df.loc[default_capacity_mask, column] = 100.0
+    static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 100.0
 
 
 boundary_levels = {

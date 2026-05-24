@@ -156,6 +156,144 @@ def downstream_node_info(
     return None, first_link_id, f"geen downstream niet-Junction node binnen {max_iter} stappen"
 
 
+def downstream_non_junction_targets(
+    node_id: int,
+    outgoing_flow_links: dict[int, list[tuple[int, int]]],
+    node_type_by_id: dict[int, str],
+    max_iter: int = 20,
+) -> list[tuple[int | None, int, str | None]]:
+    targets = []
+
+    for first_link_id, next_node_id in outgoing_flow_links.get(int(node_id), []):
+        current_node_id = int(next_node_id)
+        seen_node_ids = {int(node_id), current_node_id}
+        error = None
+
+        for _ in range(max_iter):
+            next_node_type = node_type_by_id.get(current_node_id)
+            if next_node_type != "Junction":
+                targets.append((current_node_id, int(first_link_id), None))
+                break
+
+            downstream_links = outgoing_flow_links.get(current_node_id, [])
+            if len(downstream_links) == 0:
+                error = "geen downstream flow-link na Junction"
+                break
+            if len(downstream_links) > 1:
+                error = f"meerdere downstream flow-links na Junction: {downstream_links}"
+                break
+
+            _, current_node_id = downstream_links[0]
+            current_node_id = int(current_node_id)
+            if current_node_id in seen_node_ids:
+                error = f"cyclus gevonden via node {current_node_id}"
+                break
+            seen_node_ids.add(current_node_id)
+        else:
+            error = f"geen downstream niet-Junction node binnen {max_iter} stappen"
+
+        if error is not None:
+            targets.append((None, int(first_link_id), error))
+
+    return targets
+
+
+def max_downstream_level_basin_info(
+    first_downstream_basin_id: int | None,
+    outgoing_flow_links: dict[int, list[tuple[int, int]]],
+    node_type_by_id: dict[int, str],
+    max_iter: int = 50,
+) -> tuple[int | None, int | None, str | None, str]:
+    """Find the basin level that should drive max_downstream_level.
+
+    A direct downstream basin can be connected further downstream through a
+    ManningResistance. In that case, keep walking downstream until a basin is
+    reached that has at least one downstream Outlet/Pump. That basin's level is
+    the relevant level for inlaat/doorlaat max_downstream_level.
+    """
+    if first_downstream_basin_id is None:
+        return None, None, "geen eerste downstream Basin", "geen_downstream_basin"
+
+    current_basin_id = int(first_downstream_basin_id)
+    seen_basin_ids = {current_basin_id}
+    first_manning_link_id = None
+
+    for _ in range(max_iter):
+        targets = downstream_non_junction_targets(
+            node_id=current_basin_id,
+            outgoing_flow_links=outgoing_flow_links,
+            node_type_by_id=node_type_by_id,
+        )
+        target_errors = [error for _, _, error in targets if error is not None]
+        if target_errors:
+            return current_basin_id, first_manning_link_id, "; ".join(target_errors), "downstream_streefpeil"
+
+        control_targets = [
+            (node_id, link_id) for node_id, link_id, _ in targets if node_type_by_id.get(node_id) in CONTROL_NODE_TYPES
+        ]
+        if control_targets:
+            basis = (
+                "downstream_streefpeil"
+                if first_manning_link_id is None
+                else "downstream_streefpeil_na_manning_tot_basin_met_outlet_pump"
+            )
+            return current_basin_id, first_manning_link_id, None, basis
+
+        manning_targets = [
+            (node_id, link_id) for node_id, link_id, _ in targets if node_type_by_id.get(node_id) == "ManningResistance"
+        ]
+        if not manning_targets:
+            basis = (
+                "downstream_streefpeil"
+                if first_manning_link_id is None
+                else "downstream_streefpeil_na_manning_tot_basin_zonder_manning"
+            )
+            return current_basin_id, first_manning_link_id, None, basis
+        if len(manning_targets) > 1:
+            return (
+                current_basin_id,
+                first_manning_link_id,
+                f"meerdere downstream ManningResistance-nodes: {manning_targets}",
+                "downstream_streefpeil",
+            )
+
+        manning_node_id, manning_link_id = manning_targets[0]
+        if first_manning_link_id is None:
+            first_manning_link_id = int(manning_link_id)
+
+        next_basin_id, _, error = downstream_node_info(
+            node_id=int(manning_node_id),
+            outgoing_flow_links=outgoing_flow_links,
+            node_type_by_id=node_type_by_id,
+        )
+        if error is not None:
+            return current_basin_id, first_manning_link_id, error, "downstream_streefpeil"
+        if node_type_by_id.get(next_basin_id) != "Basin":
+            return (
+                current_basin_id,
+                first_manning_link_id,
+                f"downstream van ManningResistance is geen Basin maar {node_type_by_id.get(next_basin_id)}",
+                "downstream_streefpeil",
+            )
+
+        current_basin_id = int(next_basin_id)
+        if current_basin_id in seen_basin_ids:
+            return (
+                current_basin_id,
+                first_manning_link_id,
+                f"cyclus gevonden via Basin {current_basin_id}",
+                "downstream_streefpeil",
+            )
+        seen_basin_ids.add(current_basin_id)
+
+    return (
+        current_basin_id,
+        first_manning_link_id,
+        f"geen max_downstream_level Basin gevonden binnen {max_iter} stappen",
+        "downstream_streefpeil",
+    )
+
+
 def upstream_node_info(
     node_id: int,
     incoming_flow_links: dict[int, list[tuple[int, int]]],
@@ -301,13 +439,32 @@ def build_check_dataframe(
     candidate_df["downstream_basin_meta_waterbeheerder"] = candidate_df["downstream_basin_id"].map(
         basin_authority_by_id
     )
+    max_downstream_level_basin_results = [
+        max_downstream_level_basin_info(
+            first_downstream_basin_id=int(node_id) if node_type_by_id.get(node_id) == "Basin" else None,
+            outgoing_flow_links=outgoing_flow_links,
+            node_type_by_id=node_type_by_id,
+        )
+        for node_id in candidate_df["downstream_basin_id"]
+    ]
+    candidate_df["max_downstream_level_basin_id"] = [node_id for node_id, _, _, _ in max_downstream_level_basin_results]
+    candidate_df["max_downstream_level_manning_link_id"] = [
+        link_id for _, link_id, _, _ in max_downstream_level_basin_results
+    ]
+    candidate_df["max_downstream_level_basin_error"] = [error for _, _, error, _ in max_downstream_level_basin_results]
+    candidate_df["max_downstream_level_check_basis"] = [basis for _, _, _, basis in max_downstream_level_basin_results]
+    candidate_df["max_downstream_level_basin_node_type"] = candidate_df["max_downstream_level_basin_id"].map(
+        node_type_by_id
+    )
+    candidate_df["max_downstream_level_basin_meta_waterbeheerder"] = candidate_df["max_downstream_level_basin_id"].map(
+        basin_authority_by_id
+    )
     candidate_df["gecheckte_max_downstream_level"] = normalize_numeric(
-        candidate_df["downstream_basin_id"].map(checked_level_by_basin_id)
+        candidate_df["max_downstream_level_basin_id"].map(checked_level_by_basin_id)
     )
     candidate_df["max_downstream_level_offset"] = (
         candidate_df["node_id"].map(MAX_DOWNSTREAM_LEVEL_OFFSET_BY_NODE_ID).fillna(0.0)
     )
-    candidate_df["max_downstream_level_check_basis"] = pd.Series("downstream_streefpeil", index=candidate_df.index)
     max_downstream_offset_mask = (
         candidate_df["max_downstream_level_offset"].ne(0.0) & candidate_df["gecheckte_max_downstream_level"].notna()
     )
@@ -316,7 +473,7 @@ def build_check_dataframe(
         + candidate_df.loc[max_downstream_offset_mask, "max_downstream_level_offset"]
     )
     candidate_df.loc[max_downstream_offset_mask, "max_downstream_level_check_basis"] = (
-        "downstream_streefpeil_plus_handmatige_offset"
+        candidate_df.loc[max_downstream_offset_mask, "max_downstream_level_check_basis"] + "_plus_handmatige_offset"
     )
     candidate_df["huidig_max_downstream_level"] = normalize_numeric(candidate_df["max_downstream_level"])
     candidate_df["upstream_basin_id"] = [node_id for node_id, _, _ in upstream_results]
@@ -364,9 +521,9 @@ def build_check_dataframe(
         candidate_df.loc[rws_state_mask, "min_upstream_level_check_basis"] = "rijkswaterstaat_state_level"
     candidate_df["huidig_min_upstream_level"] = normalize_numeric(candidate_df["min_upstream_level"])
 
-    checked_mask = candidate_df["downstream_node_type"].eq("Basin")
+    checked_mask = candidate_df["max_downstream_level_basin_node_type"].eq("Basin")
     if authorities is not None:
-        checked_mask &= candidate_df["downstream_basin_meta_waterbeheerder"].isin(authorities)
+        checked_mask &= candidate_df["max_downstream_level_basin_meta_waterbeheerder"].isin(authorities)
     checked_df = candidate_df[checked_mask].copy()
     current_ds = normalize_numeric(checked_df["huidig_max_downstream_level"])
     expected_ds = normalize_numeric(checked_df["gecheckte_max_downstream_level"])
@@ -407,7 +564,7 @@ def build_check_dataframe(
     if not include_excluded:
         deviations_df = deviations_df[~deviations_df["node_id"].isin(EXCLUDED_DEVIATION_NODE_IDS)].copy()
 
-    skipped_mask = ~candidate_df["downstream_node_type"].eq("Basin")
+    skipped_mask = ~candidate_df["max_downstream_level_basin_node_type"].eq("Basin")
     if authorities is not None:
         skipped_mask &= candidate_df["meta_waterbeheerder"].isin(authorities)
     skipped_df = candidate_df[skipped_mask].copy()
@@ -502,6 +659,10 @@ def write_deviation_locations(model: Model, deviations_df: pd.DataFrame, output_
         "downstream_link_id",
         "downstream_basin_id",
         "downstream_basin_meta_waterbeheerder",
+        "max_downstream_level_basin_id",
+        "max_downstream_level_basin_meta_waterbeheerder",
+        "max_downstream_level_manning_link_id",
+        "max_downstream_level_basin_error",
         "huidig_max_downstream_level",
         "gecheckte_max_downstream_level",
         "verschil_max_downstream_level",
@@ -528,6 +689,7 @@ def write_deviation_locations(model: Model, deviations_df: pd.DataFrame, output_
     node_gdf = node_gdf[["node_id", "geometry"]]
     output_gdf = deviations_df[output_columns].merge(node_gdf, on="node_id", how="left")
     output_gdf = gpd.GeoDataFrame(output_gdf, geometry="geometry", crs=node_gdf.crs)
+    max_downstream_output_gdf = output_gdf[output_gdf["max_downstream_level_afwijking"].fillna(False)].copy()
     output_gpkg.parent.mkdir(parents=True, exist_ok=True)
     if output_gpkg.exists():
         try:
@@ -537,6 +699,8 @@ def write_deviation_locations(model: Model, deviations_df: pd.DataFrame, output_
             output_gpkg = output_gpkg.with_name(f"{output_gpkg.stem}_{timestamp}{output_gpkg.suffix}")
             print(f"Bestaande punten-GPKG is in gebruik; schrijf naar {output_gpkg}")
     output_gdf.to_file(output_gpkg, layer="level_correcties", driver="GPKG")
+    if not max_downstream_output_gdf.empty:
+        max_downstream_output_gdf.to_file(output_gpkg, layer="max_downstream_level_correcties", driver="GPKG")
     return output_gpkg
 
 
@@ -551,6 +715,10 @@ def print_deviations(deviations_df: pd.DataFrame) -> None:
         "downstream_link_id",
         "downstream_basin_id",
         "downstream_basin_meta_waterbeheerder",
+        "max_downstream_level_basin_id",
+        "max_downstream_level_basin_meta_waterbeheerder",
+        "max_downstream_level_manning_link_id",
+        "max_downstream_level_basin_error",
         "huidig_max_downstream_level",
         "gecheckte_max_downstream_level",
         "verschil_max_downstream_level",
@@ -787,6 +955,10 @@ def main() -> None:
             "downstream_basin_meta_waterbeheerder",
             "downstream_node_type",
             "downstream_check_error",
+            "max_downstream_level_basin_id",
+            "max_downstream_level_basin_meta_waterbeheerder",
+            "max_downstream_level_manning_link_id",
+            "max_downstream_level_basin_error",
             "huidig_max_downstream_level",
         ]
         print("\nOvergeslagen kandidaat-nodes:")

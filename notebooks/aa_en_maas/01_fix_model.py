@@ -789,6 +789,23 @@ model.reverse_direction_at_node(node_id=3092)
 model.move_node(node_id=1089, geometry=Point(170038.16, 384348.73))
 model.redirect_link(link_id=2073, from_node_id=1922, to_node_id=997)
 
+# Fix Drongelens kanaal
+df = gpd.read_file(model_edits_gpkg, layer="add_basin_area", fid_as_index=True)
+model.basin.area.df.loc[model.basin.area.df.node_id == 1276, "geometry"] = df.at[154, "geometry"]
+# add new basin
+basin_node = model.basin.add(
+    Node(geometry=model.outlet.node.df.loc[1067].geometry, meta_categorie="doorgaand"),
+    tables=[*default_tables.basin, basin.Area(node_id=[basin_node.node_id], geometry=[df.at[155, "geometry"]])],
+)
+
+# fix topology
+model.move_node(node_id=1067, geometry=Point(145057.6, 409049.8))
+model.redirect_link(link_id=2081, from_node_id=basin_node.node_id, to_node_id=1067)
+outlet_node = model.outlet.add(Node(geometry=Point(148449.6, 410398.1)), tables=default_tables.outlet)
+model.link.add(outlet_node, basin_node)
+model.link.add(model.level_boundary[48], outlet_node)
+# nog een basin-merge i.v.m. manning
+model.merge_basins(node_id=2016, to_node_id=1394)
 
 # %%
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
