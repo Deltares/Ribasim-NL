@@ -89,6 +89,7 @@ forced_coupling = {
     3800053: 3801280,  # Forceren Kanaal van Deurne
     2700009: 3803096,  # Vuchterstuw naar Drongelens Kanaal
     3800048: 3801394,  # Aansluiten Drongelens kanaal op Binnenstad
+    3300009: 4401377,  # Levelboundary takt niet aan op Verlengde Hoogeveense Vaart
 }
 
 
