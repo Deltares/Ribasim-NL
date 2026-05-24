@@ -1,5 +1,6 @@
 # %%
 import argparse
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -46,6 +47,9 @@ MAX_DOWNSTREAM_LEVEL_OFFSET_BY_NODE_ID = {
     4400026: -0.01,
 }
 EXCLUDED_DEVIATION_NODE_IDS: set[int] = set()
+EXCLUDED_MIN_UPSTREAM_LEVEL_NODE_IDS = {3803097}
+EXCLUDED_MAX_DOWNSTREAM_LEVEL_AUTHORITIES = {"WetterskipFryslan"}
+EXCLUDED_MIN_UPSTREAM_LEVEL_AUTHORITIES = {"WetterskipFryslan"}
 RWS_UPSTREAM_MIN_PROFILE_LEVEL_OFFSET = 0.1
 DEFAULT_AFVOER_FLOW_RATES_BY_NODE_ID = {
     5902582: 300.0,
@@ -74,6 +78,13 @@ def database_gpkg_path(model: Model, toml_file: Path) -> Path:
         f"Kan geen database.gpkg vinden voor model {toml_file}. "
         f"Gezocht in {input_database_gpkg} en {legacy_database_gpkg}."
     )
+
+
+def backup_database_gpkg(database_path: Path) -> Path:
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_path = database_path.with_name(f"{database_path.stem}_before_check_coupling_levels_{timestamp}.gpkg")
+    shutil.copy2(database_path, backup_path)
+    return backup_path
 
 
 def default_output_gpkg(toml_file: Path) -> Path:
@@ -535,6 +546,8 @@ def build_check_dataframe(
 
     checked_df["max_downstream_level_afwijking"] = (
         checked_df["control_state"].eq("aanvoer")
+        & checked_df["functie"].isin(["inlaat", "doorlaat"])
+        & ~checked_df["meta_waterbeheerder"].isin(EXCLUDED_MAX_DOWNSTREAM_LEVEL_AUTHORITIES)
         & expected_ds.notna()
         & ~np.isclose(
             current_ds.to_numpy(dtype=float),
@@ -557,7 +570,11 @@ def build_check_dataframe(
         )
     )
     min_upstream_null_afwijking = checked_df["upstream_node_type"].eq("Basin") & explicit_null_us & current_us.notna()
-    checked_df["min_upstream_level_afwijking"] = min_upstream_numeric_afwijking | min_upstream_null_afwijking
+    checked_df["min_upstream_level_afwijking"] = (
+        (min_upstream_numeric_afwijking | min_upstream_null_afwijking)
+        & ~checked_df["meta_waterbeheerder"].isin(EXCLUDED_MIN_UPSTREAM_LEVEL_AUTHORITIES)
+        & ~checked_df["node_id"].isin(EXCLUDED_MIN_UPSTREAM_LEVEL_NODE_IDS)
+    )
     deviations_df = checked_df.loc[
         checked_df["max_downstream_level_afwijking"] | checked_df["min_upstream_level_afwijking"]
     ].copy()
@@ -571,10 +588,98 @@ def build_check_dataframe(
     return checked_df, deviations_df, skipped_df
 
 
-def apply_level_updates(model: Model, deviations_df: pd.DataFrame) -> tuple[int, int, int]:
+def format_control_level(value: float | int | None) -> str | None:
+    if pd.isna(value):
+        return None
+    return f"{float(value):.2f}"
+
+
+def control_node_ids_by_target_node_id(model: Model) -> dict[int, list[int]]:
+    node_type_by_id = reset_index_to_column(model.node.df.copy(), "node_id").set_index("node_id")["node_type"].to_dict()
+    link_df = reset_index_to_column(model.link.df.copy(), "link_id")[["from_node_id", "to_node_id", "link_type"]]
+    control_link_df = link_df[
+        link_df["from_node_id"].map(node_type_by_id).eq("DiscreteControl")
+        & link_df["to_node_id"].map(node_type_by_id).isin(CONTROL_NODE_TYPES)
+    ].copy()
+    if control_link_df.empty:
+        return {}
+    return (
+        control_link_df.groupby("to_node_id")["from_node_id"]
+        .apply(lambda values: [int(value) for value in values])
+        .to_dict()
+    )
+
+
+def control_name_prefix(current_name: object, fallback: object) -> str:
+    if isinstance(current_name, str) and ":" in current_name:
+        prefix = current_name.split(":", 1)[0].strip()
+        if prefix:
+            return prefix
+    if isinstance(fallback, str) and fallback:
+        return fallback
+    return "control"
+
+
+def expected_upstream_control_level(row: pd.Series) -> float | None:
+    if pd.notna(row.get("upstream_basin_streefpeil")):
+        return float(row["upstream_basin_streefpeil"])
+    if pd.notna(row.get("gecheckte_min_upstream_level")):
+        return float(row["gecheckte_min_upstream_level"])
+    return None
+
+
+def expected_downstream_control_level(row: pd.Series) -> float | None:
+    if pd.notna(row.get("gecheckte_max_downstream_level")):
+        return float(row["gecheckte_max_downstream_level"])
+    if pd.notna(row.get("huidig_max_downstream_level")):
+        return float(row["huidig_max_downstream_level"])
+    return None
+
+
+def expected_control_name(row: pd.Series, current_name: object) -> str | None:
+    prefix = control_name_prefix(current_name=current_name, fallback=row.get("functie"))
+    upstream_level = format_control_level(expected_upstream_control_level(row))
+    downstream_level = format_control_level(expected_downstream_control_level(row))
+
+    if prefix == "uitlaat":
+        if upstream_level is None:
+            return None
+        return f"{prefix}: {upstream_level} [m+NAP]"
+
+    if upstream_level is not None and downstream_level is not None:
+        return f"{prefix}: {upstream_level}/{downstream_level} [m+NAP]"
+    if downstream_level is not None:
+        return f"{prefix}: {downstream_level} [m+NAP]"
+    if upstream_level is not None:
+        return f"{prefix}: {upstream_level} [m+NAP]"
+    return None
+
+
+def update_control_node_names(model: Model, deviations_df: pd.DataFrame) -> int:
+    control_ids_by_target = control_node_ids_by_target_node_id(model)
+    if not control_ids_by_target:
+        return 0
+
+    update_count = 0
+    node_df = model.node.df
+    for _, row in deviations_df.drop_duplicates(subset=["node_id"]).iterrows():
+        for control_node_id in control_ids_by_target.get(int(row["node_id"]), []):
+            if control_node_id not in node_df.index:
+                continue
+            current_name = node_df.at[control_node_id, "name"]
+            new_name = expected_control_name(row=row, current_name=current_name)
+            if new_name is not None and current_name != new_name:
+                node_df.at[control_node_id, "name"] = new_name
+                update_count += 1
+
+    return update_count
+
+
+def apply_level_updates(model: Model, deviations_df: pd.DataFrame) -> tuple[int, int, int, int]:
     max_update_count = 0
     min_update_count = 0
     min_update_count_rws_inlet = 0
+    control_name_update_count = 0
 
     static_df_by_node_type = {
         "Outlet": model.outlet.static.df,
@@ -600,7 +705,9 @@ def apply_level_updates(model: Model, deviations_df: pd.DataFrame) -> tuple[int,
             if row.functie == "inlaat" and row.upstream_basin_meta_waterbeheerder == "Rijkswaterstaat":
                 min_update_count_rws_inlet += 1
 
-    return max_update_count, min_update_count, min_update_count_rws_inlet
+    control_name_update_count = update_control_node_names(model=model, deviations_df=deviations_df)
+
+    return max_update_count, min_update_count, min_update_count_rws_inlet, control_name_update_count
 
 
 def set_selected_authorities_manning_n(model: Model, manning_n: float) -> int:
@@ -808,6 +915,14 @@ def main() -> None:
         help="Pas de gevonden afwijkingen toe in de juiste lagen van het Ribasim-model.",
     )
     parser.add_argument(
+        "--update-control-names",
+        action="store_true",
+        help=(
+            "Werk ook bestaande DiscreteControl-naamteksten bij op basis van de gecheckte levels. "
+            "Level-correcties werken hun gekoppelde control-naam al automatisch bij."
+        ),
+    )
+    parser.add_argument(
         "--set-selected-authorities-manning-n",
         action="store_true",
         help="Zet ManningResistance / static.manning_n voor ManningResistance-nodes van SELECTED_AUTHORITIES.",
@@ -882,6 +997,7 @@ def main() -> None:
     max_update_count = 0
     min_update_count = 0
     min_update_count_rws_inlet = 0
+    control_name_update_count = 0
     manning_update_count = 0
     afvoer_flow_update_count = 0
     should_set_manning_n = args.set_selected_authorities_manning_n or args.manning_n is not None
@@ -908,7 +1024,11 @@ def main() -> None:
     ]
 
     if args.apply and not deviations_df.empty:
-        max_update_count, min_update_count, min_update_count_rws_inlet = apply_level_updates(model, deviations_df)
+        max_update_count, min_update_count, min_update_count_rws_inlet, control_name_update_count = apply_level_updates(
+            model, deviations_df
+        )
+    if args.apply and args.update_control_names:
+        control_name_update_count += update_control_node_names(model=model, deviations_df=checked_df)
 
     if should_set_manning_n:
         manning_update_count = set_selected_authorities_manning_n(model, manning_n)
@@ -916,7 +1036,15 @@ def main() -> None:
     if afvoer_flow_updates:
         afvoer_flow_update_count = set_afvoer_flow_updates(model, afvoer_flow_updates)
 
-    if (args.apply and not deviations_df.empty) or should_set_manning_n or afvoer_flow_updates:
+    write_model = (
+        (args.apply and not deviations_df.empty)
+        or control_name_update_count
+        or should_set_manning_n
+        or afvoer_flow_updates
+    )
+    database_backup_path = None
+    if write_model:
+        database_backup_path = backup_database_gpkg(database_path)
         model.write(args.toml_file)
 
     print(f"Model-TOML: {args.toml_file}")
@@ -937,6 +1065,9 @@ def main() -> None:
         print(f"Aangepaste max_downstream_level-waarden: {max_update_count}")
         print(f"Aangepaste min_upstream_level-waarden: {min_update_count}")
         print(f"Aangepaste min_upstream_level-waarden inlaten vanaf RWS: {min_update_count_rws_inlet}")
+        print(f"Aangepaste DiscreteControl-naamteksten: {control_name_update_count}")
+    if database_backup_path is not None:
+        print(f"Backup database voor schrijven: {database_backup_path}")
     if should_set_manning_n:
         print(f"Aangepaste ManningResistance manning_n-waarden: {manning_update_count}")
         print(f"ManningResistance manning_n gezet op: {manning_n}")
