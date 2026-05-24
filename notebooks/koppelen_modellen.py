@@ -27,7 +27,9 @@ data_dir = settings.ribasim_nl_data_dir
 couple_lhm: bool = False
 sub_models: list[str] | bool = [
     # "AAM-Limburg-RWS",
-    "Dommel-AAM-Limburg-RWS"
+    "Limburg-RWS",
+    "AAM-RWS",
+    # "Dommel-AAM-Limburg-RWS"
 ]
 
 remove_nodes = [
@@ -49,6 +51,8 @@ remove_nodes = [
     3800052,  # forceren koppeling kanaal van Deurne
     3800447,  # forceren koppeling kanaal van Deurne
     3803725,  # forceren koppeling kanaal van Deurne
+    3802017,  # verwijderen rand binnenstad
+    3800049,  # verwijderen rand binnenstad
 ]
 
 # Pumps with min_upstream_level below upstream basin bottom; reset to NA
@@ -87,7 +91,7 @@ forced_coupling = {
     6000124: 6002492,  # Reparatie Helenavaart
     6000125: 3801280,  # Forceren Kanaal van Deurne
     3800053: 3801280,  # Forceren Kanaal van Deurne
-    2700009: 3803096,  # Vuchterstuw naar Drongelens Kanaal
+    2700009: 3801394,  # Vuchterstuw naar Binnenstad
     3800048: 3801394,  # Aansluiten Drongelens kanaal op Binnenstad
     3300009: 4401377,  # Levelboundary takt niet aan op Verlengde Hoogeveense Vaart
 }

@@ -367,6 +367,9 @@ model.link.add(outlet_node, model.basin[1609])
 # label flow-boundaries to buitenlandse-aanvoer
 model.node.df.loc[model.flow_boundary.node.df.index, "meta_categorie"] = "buitenlandse aanvoer"
 
+# fix Dommel en Aa
+model.merge_basins(node_id=1557, to_node_id=1140)
+
 # %%
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{short_name}.toml")
 model.write(ribasim_toml)

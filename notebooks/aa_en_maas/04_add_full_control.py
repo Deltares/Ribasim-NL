@@ -24,7 +24,7 @@ from ribasim_nl import CloudStorage, Model
 # %%
 # Globale settings
 
-MODEL_EXEC: bool = True  # execute model run
+MODEL_EXEC: bool = False  # execute model run
 AUTHORITY: str = "AaenMaas"
 SHORT_NAME: str = "aam"
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
@@ -183,7 +183,7 @@ drain_nodes = [
     971,
     981,
 ]
-supply_nodes: list[int] = []
+supply_nodes: list[int] = [2015, 307]
 flow_control_nodes = [
     3097,
     1093,
@@ -289,6 +289,7 @@ flow_control_nodes = [
     822,
     917,
     916,
+    1067,
 ]
 
 
@@ -590,7 +591,6 @@ level_supply_nodes = [
     850,
     909,
     985,
-    1067,
     2020,
     3086,
 ]

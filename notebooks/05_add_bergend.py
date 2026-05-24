@@ -9,7 +9,7 @@ cloud = CloudStorage()
 
 FIND_POST_FIXES = ["full_control_model"]
 # pass authorities as arguments, or edit list here
-SELECTION: set = {"DrentsOverijsselseDelta"}
+SELECTION: set = {"AaenMaas"}
 INCLUDE_RESULTS = False
 REBUILD = True
 RUN_MODEL = False

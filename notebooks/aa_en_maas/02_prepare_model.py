@@ -229,6 +229,7 @@ forced_levels = {
     1394: 2.2,
     2016: 2.2,
     1627: 2.2,
+    3096: 2.2,
 }
 
 mask = static_data.basin["node_id"].isin(forced_levels.keys())

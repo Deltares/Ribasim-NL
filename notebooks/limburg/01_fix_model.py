@@ -553,6 +553,11 @@ model.remove_node(node_id=4517, remove_links=True)
 # Zijtak sluit niet aan op Vlootbeek, verlegd en redirect
 model.move_node(node_id=1162, geometry=Point(193403.3, 352653.3))
 model.redirect_link(link_id=2208, to_node_id=1802)
+
+# Merge bij Niers
+model.merge_basins(node_id=2375, to_node_id=1917)
+
+
 #  %% write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
 model.write(ribasim_toml)
