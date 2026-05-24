@@ -24,7 +24,7 @@ from ribasim_nl import CloudStorage, Model
 # %%
 # Globale settings
 
-MODEL_EXEC: bool = False  # execute model run
+MODEL_EXEC: bool = True  # execute model run
 AUTHORITY: str = "AaenMaas"
 SHORT_NAME: str = "aam"
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
@@ -38,8 +38,10 @@ flushing_nodes: dict[int, float] = {}
 drain_nodes = [
     85,
     92,
+    280,
     312,
     353,
+    369,
     400,
     1089,
     534,
@@ -177,11 +179,14 @@ drain_nodes = [
     777,
     748,
     891,
+    911,
     971,
     981,
 ]
 supply_nodes: list[int] = []
 flow_control_nodes = [
+    3097,
+    1093,
     681,
     774,
     775,
@@ -201,7 +206,6 @@ flow_control_nodes = [
     718,
     768,
     806,
-    807,
     808,
     810,
     813,
@@ -244,7 +248,6 @@ flow_control_nodes = [
     710,
     826,
     828,
-    909,
     954,
     383,
     269,
@@ -392,8 +395,8 @@ aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).diss
 
 # alle uitlaten en inlaten op 30m3/s, geen cap verdeling. Dit wordt de max flow in model.
 # En als flow_rate niet bekend is de flow
-model.outlet.static.df.max_flow_rate = 30
-model.outlet.static.df.flow_rate = 30
+model.outlet.static.df.max_flow_rate = 20
+model.outlet.static.df.flow_rate = 20
 model.pump.static.df.loc[model.pump.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0
 model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0
 model.pump.static.df.max_flow_rate = model.pump.static.df.flow_rate
@@ -565,11 +568,9 @@ level_supply_nodes = [
     251,
     276,
     278,
-    280,
     308,
     335,
     355,
-    369,
     375,
     379,
     392,
@@ -587,6 +588,7 @@ level_supply_nodes = [
     734,
     753,
     850,
+    909,
     985,
     1067,
     2020,
@@ -1178,7 +1180,7 @@ add_controllers_to_uncontrolled_connector_nodes(
     exclude_nodes=list(EXCLUDE_NODES),
 )
 
-# Afvoer: hardcoded default 20 m3/s ophogen naar 100 m3/s voor uitlaten/doorlaten.
+# Afvoer: defaultcapaciteit op 100 m3/s zetten voor uitlaten/doorlaten.
 # Handmatig opgegeven capaciteiten blijven ongemoeid.
 for static_df, manual_capacity_nodes in [
     (model.outlet.static.df, globals().get("outlet_max_flow_rate_by_node_id", {})),
@@ -1187,15 +1189,15 @@ for static_df, manual_capacity_nodes in [
     if "control_state" not in static_df.columns:
         continue
     afvoer_mask = (static_df.control_state == "afvoer") & ~static_df.node_id.isin(manual_capacity_nodes)
-    for column in ["flow_rate", "max_flow_rate"]:
-        default_capacity_mask = afvoer_mask & (static_df[column] == 20.0)
-        static_df.loc[default_capacity_mask, column] = 100.0
+    static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 100.0
 
 
 # %%
 
 # Crevecoeur
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 2018, "max_flow_rate"] = 300
+mask = (model.outlet.static.df.node_id == 2018) & (model.outlet.static.df.control_state == "afvoer")
+model.outlet.static.df.loc[mask, "flow_rate"] = 300
+model.outlet.static.df.loc[mask, "max_flow_rate"] = 300
 
 # 220: #253ZOM Deze stuw zit niet in model en lastig in te bouwen met huidige basins. Daarom Outlet 220 (253BG) en flow op 0 gezet
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 220, "flow_rate"] = 0
@@ -1287,6 +1289,11 @@ model.outlet.static.df.loc[mask, "min_upstream_level"] = model.outlet.static.df.
 boundary_ids = [9, 13, 39, 38, 53, 1958, 1568, 3085, 33, 32, 31, 59, 54, 44, 42, 64, 63]
 mask = model.level_boundary.static.df["node_id"].isin(boundary_ids)
 model.level_boundary.static.df.loc[mask, "level"] = model.level_boundary.static.df.loc[mask, "level"] + 0.04
+
+# Iets hoger dan Crevecoeur, zodat alleen in noodsituaties water door Drongelens kanaal gaat
+mask = (model.outlet.static.df.node_id == 3097) & (model.outlet.static.df.control_state == "afvoer")
+model.outlet.static.df.loc[mask, "min_upstream_level"] += 0.01
+
 
 # %% Junctionfy(!)
 junctionify(model)

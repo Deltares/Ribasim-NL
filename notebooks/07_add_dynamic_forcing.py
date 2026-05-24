@@ -80,7 +80,7 @@ def add_forcing(model, cloud, starttime, endtime, assign_budget_fractions, fract
 FIND_POST_FIXES = ["bergend_model"]
 # FIND_POST_FIXES = ["full_control_model"]
 # pass authorities as arguments, or edit list here
-SELECTION: set = {"Vechtstromen"}
+SELECTION: set = {"AaenMaas"}  # , "Limburg", "DeDommel"}
 INCLUDE_RESULTS = False
 REBUILD = True
 RUN_MODEL = False
@@ -186,10 +186,12 @@ for authority in authorities:
             model.write(dst_toml_file)
             if write_budgets:
                 budgets_df.to_feather(dst_toml_file.with_name("mfms_budgets.arrow"))  # for later reference
-            model.run()
-            model.update_state()
-            model.basin.state.write()
-            write_performance(model)
+
+            if RUN_MODEL:
+                model.run()
+                model.update_state()
+                model.basin.state.write()
+                write_performance(model)
 
             # DELWAQ(!)
             if compute_fractions and RUN_MODEL:
