@@ -15,6 +15,10 @@ AUTHORITY: str = "HunzeenAas"  # authority
 SHORT_NAME: str = "hea"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
+MIN_FLOW_RATE_BY_NODE_ID = {
+    147: 1.0,  # Nieuwe Statenzijl
+    192: 1.65,  # Eems
+}
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 EXCLUDE_NODES = {
@@ -439,6 +443,14 @@ for static_df, manual_capacity_nodes in [
 
 # %% Junctionfy!
 junctionify(model)
+
+# Minimale afvoer naar buitenwater op specifieke kunstwerken, voor alle control_states.
+for node_id, min_flow_rate in MIN_FLOW_RATE_BY_NODE_ID.items():
+    for static_df in (model.outlet.static.df, model.pump.static.df):
+        if "min_flow_rate" not in static_df.columns:
+            continue
+        mask = static_df.node_id == node_id
+        static_df.loc[mask, "min_flow_rate"] = min_flow_rate
 
 # %%
 # Model run

@@ -17,6 +17,9 @@ AUTHORITY: str = "Noorderzijlvest"  # authority
 SHORT_NAME: str = "nzv"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
+SCHUTVERLIES_FLOW_RATE_BY_NODE_ID = {
+    1756: 1.5,  # Oostersluis
+}
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 # 722: KSL001 Waterkering Westerwijtwerdermaar
@@ -366,6 +369,15 @@ ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_
 
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 16, "level"] = -1.0
+
+# Schutverliezen als vaste ondergrens; na EXCLUDE_NODES/defaultcapaciteiten zodat dit niet wordt overschreven.
+for node_id, flow_rate in SCHUTVERLIES_FLOW_RATE_BY_NODE_ID.items():
+    for static_df in (model.outlet.static.df, model.pump.static.df):
+        mask = static_df.node_id == node_id
+        if not mask.any():
+            continue
+        columns = [column for column in ["flow_rate", "min_flow_rate", "max_flow_rate"] if column in static_df.columns]
+        static_df.loc[mask, columns] = flow_rate
 
 # hoofd run met verdamping
 update_basin_static(model=model, evaporation_mm_per_day=0.1)
