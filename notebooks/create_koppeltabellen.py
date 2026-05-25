@@ -1,11 +1,12 @@
 # %%
+import re
 from pathlib import Path
 
 import pandas as pd
 from shapely import wkt
 from shapely.geometry import Point
 
-from ribasim_nl import Model
+from ribasim_nl import CloudStorage, Model
 
 REQUIRED_KOPPELTABEL_COLUMNS = {
     "Waterschap",
@@ -69,6 +70,10 @@ def build_deelmodel_output_path(excel_path: Path, toml_path: Path) -> Path:
     return toml_path.parent / f"{output_stem}.xlsx"
 
 
+def build_deelmodel_specifics_output_path(excel_path: Path, toml_path: Path) -> Path:
+    return toml_path.parent / f"{excel_path.stem}_{toml_path.stem}.xlsx"
+
+
 def validate_koppeltabel_columns(koppeltabel: pd.DataFrame, source_excel_path: Path) -> None:
     missing_columns = sorted(REQUIRED_KOPPELTABEL_COLUMNS - set(koppeltabel.columns))
     if missing_columns:
@@ -92,6 +97,59 @@ def format_id_list_for_excel(link_ids: list[int | None]) -> object:
     if len(cleaned) == 1:
         return str([cleaned[0]])
     return str(cleaned)
+
+
+def count_link_ids(link_ids: object) -> int:
+    if pd.isna(link_ids):
+        return 0
+
+    text = str(link_ids).strip()
+    if not text:
+        return 0
+
+    if text.startswith("[") and text.endswith("]"):
+        values = [value.strip() for value in text[1:-1].split(",") if value.strip()]
+        return len(values)
+
+    return 1
+
+
+def trim_specific_operation(spec_op: object, available_link_count: int) -> object:
+    if pd.isna(spec_op):
+        return spec_op
+
+    if available_link_count <= 0:
+        return None
+
+    spec_text = str(spec_op).strip()
+    if spec_text in {"optellen", "negatief_maken", "optellen_en_negatief_maken"}:
+        return spec_text
+
+    matches = re.findall(r"[+-]?link\d+", spec_text)
+    if not matches:
+        return spec_text
+
+    kept_terms: list[str] = []
+    for term in matches:
+        sign = ""
+        token = term
+        if term[0] in "+-":
+            sign = term[0]
+            token = term[1:]
+
+        link_number = int(token.removeprefix("link"))
+        if link_number > available_link_count:
+            continue
+
+        if not kept_terms:
+            kept_terms.append(token if sign == "+" else f"{sign}{token}")
+        else:
+            kept_terms.append(f"{sign or '+'}{token}")
+
+    if not kept_terms:
+        return None
+
+    return "".join(kept_terms)
 
 
 def build_link_endpoint_lookup(
@@ -237,7 +295,75 @@ def create_deelmodel_koppeltabel(
     return output_path
 
 
-create_deelmodel_koppeltabel(
-    toml_path=r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\Rijkswaterstaat\modellen\lhm_sub_models\Dommel-AAM-Limburg-RWS_coupled2\Dommel-AAM-Limburg-RWS_coupled.toml",
-    source_excel_path=r"d:\repositories\Ribasim-NL\data\Basisgegevens\resultaatvergelijking\koppeltabel_2026\Transformed_koppeltabel_versie_Samenwerkdag_26052026_Feedback_Verwerkt_HydroLogic.xlsx",
+def create_deelmodel_specifics(
+    source_specifics_path: str | Path,
+    deelmodel_koppeltabel_path: str | Path,
+    toml_path: str | Path,
+) -> Path:
+    source_specifics_path = Path(source_specifics_path)
+    deelmodel_koppeltabel_path = Path(deelmodel_koppeltabel_path)
+    toml_path = Path(toml_path)
+
+    specifics = pd.read_excel(source_specifics_path)
+    deelmodel_koppeltabel = pd.read_excel(deelmodel_koppeltabel_path)
+
+    merge_columns = ["Waterschap", "MeetreeksC", "Aan/Af"]
+    specifics = specifics.merge(
+        deelmodel_koppeltabel[[*merge_columns + "new_link_id"]],
+        on=merge_columns,
+        how="inner",
+    )
+
+    specifics["available_link_count"] = specifics["new_link_id"].apply(count_link_ids)
+    specifics["Specifiek"] = specifics.apply(
+        lambda row: trim_specific_operation(row["Specifiek"], row["available_link_count"]),
+        axis=1,
+    )
+    specifics = specifics[specifics["available_link_count"] > 0].copy()
+    specifics = specifics.drop(columns=["new_link_id", "available_link_count"])
+
+    output_path = build_deelmodel_specifics_output_path(source_specifics_path, toml_path)
+    specifics.to_excel(output_path, index=False)
+    return output_path
+
+
+cloud = CloudStorage()
+source_excel_path = cloud.joinpath(
+    r"Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_Samenwerkdag_26052026_Feedback_Verwerkt_HydroLogic.xlsx"
 )
+source_specifics_path = cloud.joinpath(
+    r"Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versieSamenwerkdag_26052026.xlsx"
+)
+
+toml_paths = [
+    Path(
+        r"d:/projecten/D2306.LHM_RIBASIM/12.qgis_projects/samenwerkdag/DrentsOverijsselseDelta-Vechtstromen_HunzeenAas-RWS_coupled/DOD-Vechtstromen_HunzeenAas-RWS_coupled.toml"
+    ),
+    Path(
+        r"d:/projecten/D2306.LHM_RIBASIM/12.qgis_projects/samenwerkdag/Dommel-AAM-Limburg-RWS_coupled/Dommel-AAM-Limburg-RWS_coupled.toml"
+    ),
+    Path(r"d:/projecten\D2306.LHM_RIBASIM/12.qgis_projects/samenwerkdag/HDSR-RWS_coupled/HDSR-RWS_coupled.toml"),
+    Path(
+        r"d:/projecten/D2306.LHM_RIBASIM/12.qgis_projects/samenwerkdag/RijnenIJssel-RWS_coupled/RijnenIJssel-RWS_coupled.toml"
+    ),
+    Path(r"d:/projecten/D2306.LHM_RIBASIM/12.qgis_projects/samenwerkdag/VenV-RWS_coupled/VenV-RWS_coupled.toml"),
+    Path(
+        r"d:/projecten/D2306.LHM_RIBASIM/12.qgis_projects/samenwerkdag/WetterskipFryslan-Noorderzijlvest-HunzeenAas-RWS_coupled/WF-NZV-HunzeenAas-RWS_coupled.toml"
+    ),
+]
+
+for toml_path in toml_paths:
+    deelmodel_koppeltabel_path = build_deelmodel_output_path(source_excel_path, toml_path)
+    deelmodel_specifics_path = build_deelmodel_specifics_output_path(source_specifics_path, toml_path)
+
+    if not deelmodel_koppeltabel_path.exists():
+        deelmodel_koppeltabel_path = create_deelmodel_koppeltabel(
+            toml_path=toml_path,
+            source_excel_path=source_excel_path,
+        )
+    if not deelmodel_specifics_path.exists():
+        create_deelmodel_specifics(
+            source_specifics_path=source_specifics_path,
+            deelmodel_koppeltabel_path=deelmodel_koppeltabel_path,
+            toml_path=toml_path,
+        )
