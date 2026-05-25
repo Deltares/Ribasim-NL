@@ -1,11 +1,33 @@
 # %%
 import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
-from ribasim_nl.control import add_controllers_to_supply_area, add_controllers_to_uncontrolled_connector_nodes
+from ribasim_nl.control import (
+    add_controllers_to_supply_area as _add_controllers_to_supply_area,
+)
+from ribasim_nl.control import (
+    add_controllers_to_uncontrolled_connector_nodes as _add_controllers_to_uncontrolled_connector_nodes,
+)
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 
 from ribasim_nl import CloudStorage, Model
+
+
+def _supply_flow_rate_by_node_id():
+    return globals().get("outlet_max_flow_rate_by_node_id", {}) | globals().get("pump_max_flow_rate_by_node_id", {})
+
+
+def add_controllers_to_supply_area(*args, **kwargs):
+    kwargs.setdefault("supply_flow_rate", _supply_flow_rate_by_node_id())
+    kwargs.setdefault("drain_flow_rate", _supply_flow_rate_by_node_id())
+    return _add_controllers_to_supply_area(*args, **kwargs)
+
+
+def add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs):
+    kwargs.setdefault("supply_flow_rate", _supply_flow_rate_by_node_id())
+    kwargs.setdefault("drain_flow_rate", _supply_flow_rate_by_node_id())
+    return _add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs)
+
 
 # %%
 # Globale settings
@@ -15,10 +37,28 @@ AUTHORITY: str = "HunzeenAas"  # authority
 SHORT_NAME: str = "hea"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
-MIN_FLOW_RATE_BY_NODE_ID = {
-    147: 1.0,  # Nieuwe Statenzijl
-    192: 1.65,  # Eems
+MIN_FLOW_RATE_BY_NODE_ID = {}
+outlet_max_flow_rate_by_node_id = {
+    767: 3.6,  # Inlaat Purit
+    2014: 0.3,  # Inlaat Verl. Hoogeveense Vaart
+    2011: 0.3,  # Inlaat Verl. Hoogeveense Vaart
+    847: 0.3,  # Inlaat Barriereweg
+    829: 0.0,  # Geen aanvoer vanuit de Eems (i.v.m. zout)
+    822: 0.0,
+    810: 0.0,
+    190: 0.0,
+    162: 0.0,
 }
+pump_max_flow_rate_by_node_id = {
+    20: 20.0,  # Aanvoergemaal Dorkwerd
+    972: 7.5,  # Aanvoergemaal Kupers
+    70: 4.2,  # Aanvoergemaal Vennix
+    107: 1.92,  # Aanvoergemaal Ter Apelkanaal
+    330: 7.5,  # De Bult
+}
+# ALWAYS_ON_PUMP_MIN_FLOW_RATE_BY_NODE_ID = {}
+# ALWAYS_ON_PUMP_MAX_DOWNSTREAM_LEVEL = 99999.0
+# ALWAYS_ON_PUMP_MIN_UPSTREAM_LEVEL_OFFSET = -1.0
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 EXCLUDE_NODES = {
@@ -37,6 +77,43 @@ ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoergebieden_gpkg = cloud.joinpath(rf"{AUTHORITY}/verwerkt/sturing/aanvoergebieden.gpkg")
 cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
+
+
+def upstream_basin_target_level(model: Model, node_id: int) -> float | None:
+    upstream_node_ids = model.link.df.loc[model.link.df.to_node_id == node_id, "from_node_id"].unique()
+    basin_levels = model.basin.area.df.dropna(subset=["meta_streefpeil"]).groupby("node_id")["meta_streefpeil"].first()
+    target_levels = basin_levels[basin_levels.index.isin(upstream_node_ids)]
+    if target_levels.empty:
+        return None
+    return float(target_levels.iloc[0])
+
+
+def configure_always_on_pumps(model: Model) -> None:
+    pump_min_flow_rates = globals().get("ALWAYS_ON_PUMP_MIN_FLOW_RATE_BY_NODE_ID", {})
+    max_downstream_level = globals().get("ALWAYS_ON_PUMP_MAX_DOWNSTREAM_LEVEL", 99999.0)
+    min_upstream_level_offset = globals().get("ALWAYS_ON_PUMP_MIN_UPSTREAM_LEVEL_OFFSET", -1.0)
+
+    for node_id, min_flow_rate in pump_min_flow_rates.items():
+        mask = model.pump.static.df.node_id == node_id
+        if not mask.any():
+            raise KeyError(f"Pump node_id={node_id} not found in pump static table")
+
+        flow_rate = model.pump.static.df.loc[mask, "flow_rate"].max()
+        max_flow_rate = model.pump.static.df.loc[mask, "max_flow_rate"].max()
+        current_min_upstream_level = model.pump.static.df.loc[mask, "min_upstream_level"].dropna().max()
+        target_level = upstream_basin_target_level(model=model, node_id=node_id)
+        if target_level is None:
+            if current_min_upstream_level is None:
+                raise KeyError(
+                    f"No upstream basin with meta_streefpeil and no existing min_upstream_level found for node_id={node_id}"
+                )
+            target_level = float(current_min_upstream_level)
+
+        model.pump.static.df.loc[mask, "flow_rate"] = flow_rate
+        model.pump.static.df.loc[mask, "max_flow_rate"] = max_flow_rate
+        model.pump.static.df.loc[mask, "min_flow_rate"] = min_flow_rate
+        model.pump.static.df.loc[mask, "min_upstream_level"] = target_level + min_upstream_level_offset
+        model.pump.static.df.loc[mask, "max_downstream_level"] = max_downstream_level
 
 
 # %%
@@ -62,6 +139,10 @@ model.update_node(node_id=632, node_type="Pump")  # Inlaat Vestdijklaan lijkt ee
 model.update_node(node_id=1111, node_type="Outlet")  # Manning tussen basins met verschillende streefpeilen gaat niet
 model.update_node(node_id=854, node_type="Pump")  # Inlaat Vestdijklaan lijkt een pomp(je) te zijn
 model.update_node(node_id=854, node_type="Outlet")  # Uitlaat Nijlandsloop naar Anreperdiep
+for node_id in [147, 192]:
+    model.update_node(node_id=node_id, node_type="Outlet")
+for node_id in globals().get("ALWAYS_ON_PUMP_MIN_FLOW_RATE_BY_NODE_ID", {}):
+    model.update_node(node_id=node_id, node_type="Pump", node_properties={"meta_function": "pump"})
 
 # alle uitlaten en inlaten op 30m3/s, geen cap verdeling. Dit wordt de max flow in model.
 # En als flow_rate niet bekend is de flow
@@ -430,17 +511,6 @@ add_controllers_to_uncontrolled_connector_nodes(
     model=model, exclude_nodes=list(EXCLUDE_NODES), supply_nodes=supply_nodes
 )
 
-# Afvoer: defaultcapaciteit op 100 m3/s zetten voor uitlaten/doorlaten.
-# Handmatig opgegeven capaciteiten blijven ongemoeid.
-for static_df, manual_capacity_nodes in [
-    (model.outlet.static.df, globals().get("outlet_max_flow_rate_by_node_id", {})),
-    (model.pump.static.df, globals().get("pump_max_flow_rate_by_node_id", {})),
-]:
-    if "control_state" not in static_df.columns:
-        continue
-    afvoer_mask = (static_df.control_state == "afvoer") & ~static_df.node_id.isin(manual_capacity_nodes)
-    static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 100.0
-
 # %% Junctionfy!
 junctionify(model)
 
@@ -451,6 +521,8 @@ for node_id, min_flow_rate in MIN_FLOW_RATE_BY_NODE_ID.items():
             continue
         mask = static_df.node_id == node_id
         static_df.loc[mask, "min_flow_rate"] = min_flow_rate
+
+configure_always_on_pumps(model)
 
 # %%
 # Model run

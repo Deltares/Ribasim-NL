@@ -27,7 +27,7 @@ data_dir = settings.ribasim_nl_data_dir
 couple_lhm: bool = False
 sub_models: list[str] | bool = [
     # "AAM-Limburg-RWS",
-    "RDO-Noord"
+    "DeDommel-RWS"
 ]
 
 remove_nodes = [

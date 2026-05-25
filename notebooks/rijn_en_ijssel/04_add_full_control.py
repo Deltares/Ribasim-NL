@@ -1,11 +1,33 @@
 # %%
 import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
-from ribasim_nl.control import add_controllers_to_supply_area, add_controllers_to_uncontrolled_connector_nodes
+from ribasim_nl.control import (
+    add_controllers_to_supply_area as _add_controllers_to_supply_area,
+)
+from ribasim_nl.control import (
+    add_controllers_to_uncontrolled_connector_nodes as _add_controllers_to_uncontrolled_connector_nodes,
+)
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 
 from ribasim_nl import CloudStorage, Model
+
+
+def _supply_flow_rate_by_node_id():
+    return globals().get("outlet_max_flow_rate_by_node_id", {}) | globals().get("pump_max_flow_rate_by_node_id", {})
+
+
+def add_controllers_to_supply_area(*args, **kwargs):
+    kwargs.setdefault("supply_flow_rate", _supply_flow_rate_by_node_id())
+    kwargs.setdefault("drain_flow_rate", _supply_flow_rate_by_node_id())
+    return _add_controllers_to_supply_area(*args, **kwargs)
+
+
+def add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs):
+    kwargs.setdefault("supply_flow_rate", _supply_flow_rate_by_node_id())
+    kwargs.setdefault("drain_flow_rate", _supply_flow_rate_by_node_id())
+    return _add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs)
+
 
 # %%
 # Globale settings
@@ -15,6 +37,13 @@ AUTHORITY: str = "RijnenIJssel"  # authority
 SHORT_NAME: str = "wrij"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
+outlet_max_flow_rate_by_node_id = {
+    120: 1.3,  # Lochem
+    90: 0.6,  # Herkel
+}
+pump_max_flow_rate_by_node_id = {
+    654: 1.4,  # Schipbeek
+}
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 EXCLUDE_NODES = {}
@@ -156,18 +185,6 @@ supply_nodes = [437, 438]
 add_controllers_to_uncontrolled_connector_nodes(
     model=model, exclude_nodes=list(EXCLUDE_NODES), supply_nodes=supply_nodes
 )
-
-# Afvoer: defaultcapaciteit op 100 m3/s zetten voor uitlaten/doorlaten.
-# Handmatig opgegeven capaciteiten blijven ongemoeid.
-for static_df, manual_capacity_nodes in [
-    (model.outlet.static.df, globals().get("outlet_max_flow_rate_by_node_id", {})),
-    (model.pump.static.df, globals().get("pump_max_flow_rate_by_node_id", {})),
-]:
-    if "control_state" not in static_df.columns:
-        continue
-    afvoer_mask = (static_df.control_state == "afvoer") & ~static_df.node_id.isin(manual_capacity_nodes)
-    static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 100.0
-
 
 # %% Junctionfy!
 junctionify(model)

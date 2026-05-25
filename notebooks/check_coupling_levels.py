@@ -47,7 +47,9 @@ MAX_DOWNSTREAM_LEVEL_OFFSET_BY_NODE_ID = {
     4400026: -0.01,
 }
 EXCLUDED_DEVIATION_NODE_IDS: set[int] = set()
-EXCLUDED_MIN_UPSTREAM_LEVEL_NODE_IDS = {3803097}
+LIMBURG_HANDMATIGE_LEVEL_NODE_IDS = {2496, 2497, 6002496, 6002497}
+EXCLUDED_MIN_UPSTREAM_LEVEL_NODE_IDS = {3803097, *LIMBURG_HANDMATIGE_LEVEL_NODE_IDS}
+EXCLUDED_MAX_DOWNSTREAM_LEVEL_NODE_IDS = LIMBURG_HANDMATIGE_LEVEL_NODE_IDS
 EXCLUDED_MAX_DOWNSTREAM_LEVEL_AUTHORITIES = {"WetterskipFryslan"}
 EXCLUDED_MIN_UPSTREAM_LEVEL_AUTHORITIES = {"WetterskipFryslan"}
 RWS_UPSTREAM_MIN_PROFILE_LEVEL_OFFSET = 0.1
@@ -213,19 +215,48 @@ def max_downstream_level_basin_info(
     first_downstream_basin_id: int | None,
     outgoing_flow_links: dict[int, list[tuple[int, int]]],
     node_type_by_id: dict[int, str],
+    follow_manning_until_control: bool,
     max_iter: int = 50,
 ) -> tuple[int | None, int | None, str | None, str]:
     """Find the basin level that should drive max_downstream_level.
 
-    A direct downstream basin can be connected further downstream through a
-    ManningResistance. In that case, keep walking downstream until a basin is
-    reached that has at least one downstream Outlet/Pump. That basin's level is
-    the relevant level for inlaat/doorlaat max_downstream_level.
+    For inlaat/doorlaat Outlet/Pump nodes, a direct downstream basin can be
+    connected further downstream through a ManningResistance. In that case,
+    keep walking downstream until a basin is reached that has at least one
+    downstream Outlet/Pump. That basin's level is the relevant level for
+    max_downstream_level. Other functions use the direct downstream basin.
     """
     if first_downstream_basin_id is None:
         return None, None, "geen eerste downstream Basin", "geen_downstream_basin"
 
     current_basin_id = int(first_downstream_basin_id)
+    if not follow_manning_until_control:
+        targets = downstream_non_junction_targets(
+            node_id=current_basin_id,
+            outgoing_flow_links=outgoing_flow_links,
+            node_type_by_id=node_type_by_id,
+        )
+        target_errors = [error for _, _, error in targets if error is not None]
+        if target_errors:
+            return current_basin_id, None, "; ".join(target_errors), "downstream_streefpeil"
+
+        manning_targets = [
+            (node_id, link_id) for node_id, link_id, _ in targets if node_type_by_id.get(node_id) == "ManningResistance"
+        ]
+        if len(manning_targets) > 1:
+            return (
+                current_basin_id,
+                None,
+                f"meerdere downstream ManningResistance-nodes: {manning_targets}",
+                "downstream_streefpeil",
+            )
+
+        manning_link_id = int(manning_targets[0][1]) if manning_targets else None
+        basis = "downstream_streefpeil"
+        if manning_link_id is not None:
+            basis = "downstream_streefpeil_manning_niet_doorlopen"
+        return current_basin_id, manning_link_id, None, basis
+
     seen_basin_ids = {current_basin_id}
     first_manning_link_id = None
 
@@ -360,9 +391,16 @@ def select_active_control_rows(static_df: pd.DataFrame) -> pd.DataFrame:
 def add_function_label(candidate_df: pd.DataFrame, all_static_df: pd.DataFrame) -> pd.DataFrame:
     control_state = all_static_df["control_state"].astype("string").str.lower()
     flow_rate = normalize_numeric(all_static_df["flow_rate"]).fillna(0.0)
-    afvoer_nodes = set(all_static_df.loc[control_state.eq("afvoer") & flow_rate.gt(0.0), "node_id"].astype(int))
+    max_flow_rate = normalize_numeric(all_static_df["max_flow_rate"]).fillna(0.0)
+    active_capacity = flow_rate.gt(0.0) | max_flow_rate.gt(0.0)
+    aanvoer_nodes = set(all_static_df.loc[control_state.eq("aanvoer") & active_capacity, "node_id"].astype(int))
+    afvoer_nodes = set(all_static_df.loc[control_state.eq("afvoer") & active_capacity, "node_id"].astype(int))
+    doorlaat_nodes = aanvoer_nodes & afvoer_nodes
+    uitlaat_nodes = afvoer_nodes - aanvoer_nodes
 
-    candidate_df["functie"] = np.where(candidate_df["node_id"].astype(int).isin(afvoer_nodes), "doorlaat", "inlaat")
+    candidate_df["functie"] = "inlaat"
+    candidate_df.loc[candidate_df["node_id"].astype(int).isin(doorlaat_nodes), "functie"] = "doorlaat"
+    candidate_df.loc[candidate_df["node_id"].astype(int).isin(uitlaat_nodes), "functie"] = "uitlaat"
     return candidate_df
 
 
@@ -450,13 +488,21 @@ def build_check_dataframe(
     candidate_df["downstream_basin_meta_waterbeheerder"] = candidate_df["downstream_basin_id"].map(
         basin_authority_by_id
     )
+    candidate_df["downstream_basin_streefpeil"] = normalize_numeric(
+        candidate_df["downstream_basin_id"].map(checked_level_by_basin_id)
+    )
     max_downstream_level_basin_results = [
         max_downstream_level_basin_info(
             first_downstream_basin_id=int(node_id) if node_type_by_id.get(node_id) == "Basin" else None,
             outgoing_flow_links=outgoing_flow_links,
             node_type_by_id=node_type_by_id,
+            follow_manning_until_control=(
+                str(row.control_state).lower() == "aanvoer"
+                and row.node_type in CONTROL_NODE_TYPES
+                and row.functie in ["inlaat", "doorlaat"]
+            ),
         )
-        for node_id in candidate_df["downstream_basin_id"]
+        for row, node_id in zip(candidate_df.itertuples(index=False), candidate_df["downstream_basin_id"], strict=True)
     ]
     candidate_df["max_downstream_level_basin_id"] = [node_id for node_id, _, _, _ in max_downstream_level_basin_results]
     candidate_df["max_downstream_level_manning_link_id"] = [
@@ -502,12 +548,13 @@ def build_check_dataframe(
         candidate_df["upstream_basin_id"].map(min_profile_level_by_basin_id)
     )
     control_state = candidate_df["control_state"].astype("string").str.lower()
-    candidate_df["min_upstream_level_offset"] = np.where(control_state.eq("aanvoer"), upstream_supply_offset, 0.0)
+    supply_side_mask = control_state.eq("aanvoer") & candidate_df["functie"].isin(["inlaat", "doorlaat"])
+    candidate_df["min_upstream_level_offset"] = np.where(supply_side_mask, upstream_supply_offset, 0.0)
     candidate_df["gecheckte_min_upstream_level"] = (
         candidate_df["upstream_basin_streefpeil"] + candidate_df["min_upstream_level_offset"]
     )
     candidate_df["min_upstream_level_check_basis"] = np.where(
-        control_state.eq("aanvoer"), "upstream_streefpeil_plus_aanvoer_offset", "upstream_streefpeil"
+        supply_side_mask, "upstream_streefpeil_plus_aanvoer_offset", "upstream_streefpeil"
     )
     candidate_df["gecheckte_min_upstream_level_is_null"] = False
     rws_basin_mask = candidate_df["upstream_basin_meta_waterbeheerder"].eq("Rijkswaterstaat")
@@ -515,8 +562,17 @@ def build_check_dataframe(
     candidate_df["rws_upstream_state_level_valid"] = (
         rws_basin_mask & candidate_df["upstream_basin_state_level"].notna() & valid_rws_state_level
     )
-    rws_state_mask = rws_basin_mask & candidate_df["upstream_basin_state_level"].notna() & valid_rws_state_level
-    rws_profile_mask = rws_basin_mask & candidate_df["upstream_basin_min_profile_level"].notna()
+    rws_outlet_afvoer_mask = control_state.eq("afvoer") & candidate_df["functie"].eq("uitlaat") & rws_basin_mask
+    rws_min_upstream_override_mask = rws_outlet_afvoer_mask
+    rws_state_mask = (
+        rws_min_upstream_override_mask
+        & rws_basin_mask
+        & candidate_df["upstream_basin_state_level"].notna()
+        & valid_rws_state_level
+    )
+    rws_profile_mask = (
+        rws_min_upstream_override_mask & rws_basin_mask & candidate_df["upstream_basin_min_profile_level"].notna()
+    )
     if rws_upstream_state_offset is None:
         candidate_df.loc[rws_profile_mask, "gecheckte_min_upstream_level"] = (
             candidate_df.loc[rws_profile_mask, "upstream_basin_min_profile_level"]
@@ -531,6 +587,17 @@ def build_check_dataframe(
         )
         candidate_df.loc[rws_state_mask, "min_upstream_level_check_basis"] = "rijkswaterstaat_state_level"
     candidate_df["huidig_min_upstream_level"] = normalize_numeric(candidate_df["min_upstream_level"])
+    keep_current_min_upstream_mask = (
+        candidate_df["gecheckte_min_upstream_level"].isna()
+        & ~candidate_df["gecheckte_min_upstream_level_is_null"].fillna(False)
+        & candidate_df["huidig_min_upstream_level"].notna()
+    )
+    candidate_df.loc[keep_current_min_upstream_mask, "gecheckte_min_upstream_level"] = candidate_df.loc[
+        keep_current_min_upstream_mask, "huidig_min_upstream_level"
+    ]
+    candidate_df.loc[keep_current_min_upstream_mask, "min_upstream_level_check_basis"] = (
+        "huidige_waarde_gebruikt_omdat_streefpeil_ontbreekt"
+    )
 
     checked_mask = candidate_df["max_downstream_level_basin_node_type"].eq("Basin")
     if authorities is not None:
@@ -544,10 +611,16 @@ def build_check_dataframe(
     checked_df["verschil_max_downstream_level"] = current_ds - expected_ds
     checked_df["verschil_min_upstream_level"] = current_us - expected_us
 
+    max_downstream_uses_unresolved_manning = checked_df["max_downstream_level_manning_link_id"].notna() & ~checked_df[
+        "max_downstream_level_check_basis"
+    ].eq("downstream_streefpeil_na_manning_tot_basin_met_outlet_pump")
     checked_df["max_downstream_level_afwijking"] = (
         checked_df["control_state"].eq("aanvoer")
-        & checked_df["functie"].isin(["inlaat", "doorlaat"])
+        & checked_df["functie"].eq("inlaat")
         & ~checked_df["meta_waterbeheerder"].isin(EXCLUDED_MAX_DOWNSTREAM_LEVEL_AUTHORITIES)
+        & ~checked_df["node_id"].isin(EXCLUDED_MAX_DOWNSTREAM_LEVEL_NODE_IDS)
+        & checked_df["max_downstream_level_manning_link_id"].isna()
+        & ~max_downstream_uses_unresolved_manning
         & expected_ds.notna()
         & ~np.isclose(
             current_ds.to_numpy(dtype=float),
@@ -570,10 +643,21 @@ def build_check_dataframe(
         )
     )
     min_upstream_null_afwijking = checked_df["upstream_node_type"].eq("Basin") & explicit_null_us & current_us.notna()
+    connected_to_rws_mask = checked_df["upstream_basin_meta_waterbeheerder"].eq("Rijkswaterstaat") | checked_df[
+        "downstream_basin_meta_waterbeheerder"
+    ].eq("Rijkswaterstaat")
+    afvoer_hoger_eigen_basin_mask = (
+        checked_df["control_state"].eq("afvoer")
+        & checked_df["downstream_basin_streefpeil"].notna()
+        & checked_df["upstream_basin_streefpeil"].notna()
+        & checked_df["downstream_basin_streefpeil"].gt(checked_df["upstream_basin_streefpeil"])
+        & ~connected_to_rws_mask
+    )
     checked_df["min_upstream_level_afwijking"] = (
         (min_upstream_numeric_afwijking | min_upstream_null_afwijking)
         & ~checked_df["meta_waterbeheerder"].isin(EXCLUDED_MIN_UPSTREAM_LEVEL_AUTHORITIES)
         & ~checked_df["node_id"].isin(EXCLUDED_MIN_UPSTREAM_LEVEL_NODE_IDS)
+        & ~afvoer_hoger_eigen_basin_mask
     )
     deviations_df = checked_df.loc[
         checked_df["max_downstream_level_afwijking"] | checked_df["min_upstream_level_afwijking"]

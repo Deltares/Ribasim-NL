@@ -1,12 +1,34 @@
 # %%
 import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
-from ribasim_nl.control import add_controllers_to_supply_area, add_controllers_to_uncontrolled_connector_nodes
+from ribasim_nl.control import (
+    add_controllers_to_supply_area as _add_controllers_to_supply_area,
+)
+from ribasim_nl.control import (
+    add_controllers_to_uncontrolled_connector_nodes as _add_controllers_to_uncontrolled_connector_nodes,
+)
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from shapely.geometry import MultiPolygon
 
 from ribasim_nl import CloudStorage, Model
+
+
+def _supply_flow_rate_by_node_id():
+    return globals().get("outlet_max_flow_rate_by_node_id", {}) | globals().get("pump_max_flow_rate_by_node_id", {})
+
+
+def add_controllers_to_supply_area(*args, **kwargs):
+    kwargs.setdefault("supply_flow_rate", _supply_flow_rate_by_node_id())
+    kwargs.setdefault("drain_flow_rate", _supply_flow_rate_by_node_id())
+    return _add_controllers_to_supply_area(*args, **kwargs)
+
+
+def add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs):
+    kwargs.setdefault("supply_flow_rate", _supply_flow_rate_by_node_id())
+    kwargs.setdefault("drain_flow_rate", _supply_flow_rate_by_node_id())
+    return _add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs)
+
 
 # %%
 # Globale settings
@@ -20,6 +42,13 @@ IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 EXCLUDE_NODES = {}
 EXCLUDE_SUPPLY_NODES = []
+
+# Handmatige inlaatcapaciteiten uit WATAK.
+outlet_max_flow_rate_by_node_id = {
+    417: 0.6,  # Olen
+    405: 0.16,  # Sonse Heide
+    1912: 0.25,  # Bocholt naar Herentals, max aanvoer??, niet in WATAK
+}
 
 # %%
 # Definieren paden en syncen met cloud
@@ -45,7 +74,9 @@ model.outlet.static.df.flow_rate = 30
 model.pump.static.df.max_flow_rate = model.pump.static.df.flow_rate
 
 # %% Fixes
-
+model.merge_basins(node_id=1557, to_node_id=1140)
+model.merge_basins(node_id=1558, to_node_id=1140)
+model.merge_basins(node_id=1563, to_node_id=1140)
 outlet_ids = [968, 754, 705, 709, 710, 923, 753, 649, 766, 926]
 
 for node_id in dict.fromkeys(outlet_ids):
@@ -179,10 +210,9 @@ add_controllers_to_supply_area(
 
 flow_control_nodes = [203]
 
-supply_nodes = [405, 417, 1912]
+supply_nodes = [405, 417, 1912, 1067]
 
-
-drain_nodes = [210, 926]
+drain_nodes = [210, 926, 967]
 
 
 # Flushing nodes
@@ -199,18 +229,6 @@ add_controllers_to_uncontrolled_connector_nodes(
     exclude_nodes=list(EXCLUDE_NODES),
 )
 
-# Afvoer: defaultcapaciteit op 100 m3/s zetten voor uitlaten/doorlaten.
-# Handmatig opgegeven capaciteiten blijven ongemoeid.
-for static_df, manual_capacity_nodes in [
-    (model.outlet.static.df, globals().get("outlet_max_flow_rate_by_node_id", {})),
-    (model.pump.static.df, globals().get("pump_max_flow_rate_by_node_id", {})),
-]:
-    if "control_state" not in static_df.columns:
-        continue
-    afvoer_mask = (static_df.control_state == "afvoer") & ~static_df.node_id.isin(manual_capacity_nodes)
-    static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 100.0
-
-
 # %% Junctionfy(!)
 junctionify(model)
 
@@ -226,17 +244,6 @@ model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 379, "max_flow_rate"] = 0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 293, "min_upstream_level"] = 16.2
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 210, "min_upstream_level"] = 16.2
-
-# flow rates WATAK Olen en Sonse Heide
-flow_updates = {
-    417: 0.6,  # Olen
-    405: 0.16,  # Sonse Heide
-    1912: 0.25,  # Bocholt naar Herentals, max aanvoer??, niet in WATAK
-}
-
-mask = model.outlet.static.df.node_id.isin(flow_updates.keys()) & (model.outlet.static.df["control_state"] == "aanvoer")
-
-model.outlet.static.df.loc[mask, "max_flow_rate"] = model.outlet.static.df.loc[mask, "node_id"].map(flow_updates)
 
 # flow rates WATAK Olen en Sonse Heide
 flow_updates = {

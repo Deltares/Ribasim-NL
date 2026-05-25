@@ -4,13 +4,32 @@ from peilbeheerst_model.controle_output import Control
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump
 from ribasim_nl.control import (
-    add_controllers_to_supply_area,
-    add_controllers_to_uncontrolled_connector_nodes,
+    add_controllers_to_supply_area as _add_controllers_to_supply_area,
+)
+from ribasim_nl.control import (
+    add_controllers_to_uncontrolled_connector_nodes as _add_controllers_to_uncontrolled_connector_nodes,
 )
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from shapely import Point
 
 from ribasim_nl import CloudStorage, Model
+
+
+def _supply_flow_rate_by_node_id():
+    return globals().get("outlet_max_flow_rate_by_node_id", {}) | globals().get("pump_max_flow_rate_by_node_id", {})
+
+
+def add_controllers_to_supply_area(*args, **kwargs):
+    kwargs.setdefault("supply_flow_rate", _supply_flow_rate_by_node_id())
+    kwargs.setdefault("drain_flow_rate", _supply_flow_rate_by_node_id())
+    return _add_controllers_to_supply_area(*args, **kwargs)
+
+
+def add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs):
+    kwargs.setdefault("supply_flow_rate", _supply_flow_rate_by_node_id())
+    kwargs.setdefault("drain_flow_rate", _supply_flow_rate_by_node_id())
+    return _add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs)
+
 
 # %%
 # Globale settings
@@ -21,8 +40,8 @@ SHORT_NAME: str = "dod"
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 MIN_FLOW_RATE_BY_NODE_ID = {
-    378: 1.0,  # Rogatsluis
-    541: 0.5,  # Paradijssluis
+    # 378: 1.0,  # Rogatsluis # model wordt hier heel traag van
+    # 541: 0.5,  # Paradijssluis # model wordt hier heel traag van
 }
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
@@ -567,15 +586,6 @@ add_controllers_to_uncontrolled_connector_nodes(
     flushing_nodes={},
     exclude_nodes=list(EXCLUDE_NODES),
 )
-
-# Afvoer: defaultcapaciteit op 100 m3/s zetten voor uitlaten/doorlaten.
-# Handmatig opgegeven capaciteiten blijven ongemoeid.
-for static_df, manual_capacity_nodes in [
-    (model.outlet.static.df, outlet_max_flow_rate_by_node_id),
-    (model.pump.static.df, pump_max_flow_rate_by_node_id),
-]:
-    afvoer_mask = (static_df.control_state == "afvoer") & ~static_df.node_id.isin(manual_capacity_nodes)
-    static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 100.0
 
 # Holthe max_downstream iets lager gezet omdat deze pas aangaat als andere inlaten niet meer kunnen aanleveren.
 model.pump.static.df.loc[model.pump.static.df.node_id == 648, "max_downstream_level"] -= 0.1
