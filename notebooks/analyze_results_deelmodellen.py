@@ -117,10 +117,9 @@ cloud = CloudStorage()
 base_koppeltabel = cloud.joinpath("Basisgegevens/resultaatvergelijking/koppeltabel_2026")
 
 loc_koppeltabel = (
-    base_koppeltabel
-    / "Transformed_koppeltabel_versie_Samenwerkdag_26052026_Feedback_Verwerkt_HydroLogic_rev_D2Hydro_230526.xlsx"
+    base_koppeltabel / "Transformed_koppeltabel_versie_Samenwerkdag_26052026_Feedback_Verwerkt_HydroLogic.xlsx"
 )
-loc_specifieke_bewerking = base_koppeltabel / "Specifiek_bewerking_versieSamenwerkdag_26052026_revD2Hydro_230526.xlsx"
+loc_specifieke_bewerking = base_koppeltabel / "Specifiek_bewerking_versieSamenwerkdag_26052026.xlsx"
 
 meas_folder = cloud.joinpath("Basisgegevens/resultaatvergelijking/meetreeksen_2026")
 
@@ -130,8 +129,8 @@ toml_naam = "AAM-Limburg-RWS_coupled.toml"
 # synchronize paths
 cloud.synchronize(
     [
-        # loc_koppeltabel,
-        # loc_specifieke_bewerking,
+        loc_koppeltabel,
+        loc_specifieke_bewerking,
         meas_folder,
     ]
 )
