@@ -57,9 +57,10 @@ sub_models: dict[str, list[str]] = {
     # ]
     # "DOD-Vechtstromen": ["Rijkswaterstaat", "DrentsOverijsselseDelta", "Vechtstromen"],
     # "AAM-Limburg-RWS": ["Rijkswaterstaat", "AaenMaas", "Limburg"],
-    "AAM-Limburg-RWS": ["Rijkswaterstaat", "AaenMaas", "Limburg"],
-    "Limburg-RWS": ["Rijkswaterstaat", "Limburg"],
-    "AAM-RWS": ["Rijkswaterstaat", "AaenMaas"],
+    # "AAM-Limburg-RWS": ["Rijkswaterstaat", "AaenMaas", "Limburg"],
+    # "Limburg-RWS": ["Rijkswaterstaat", "Limburg"],
+    # "AAM-RWS": ["Rijkswaterstaat", "AaenMaas"],
+    "DeDommel-RWS": ["DeDommel", "Rijkswaterstaat"]
     # "Dommel-AAM-Limburg-RWS": ["Rijkswaterstaat", "DeDommel", "AaenMaas", "Limburg"],
     #   "NZV_HenA": ["Noorderzijlvest", "HunzeenAas","Rijkswaterstaat"],
     #   "GR-DR-OV_Delta": ["Noorderzijlvest", "HunzeenAas", "DrentsOverijsselseDelta","Rijkswaterstaat"],

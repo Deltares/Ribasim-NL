@@ -4,10 +4,32 @@ import geopandas as gpd
 import pandas as pd
 from peilbeheerst_model.controle_output import Control
 from ribasim.nodes import pid_control
-from ribasim_nl.control import add_controllers_to_supply_area, add_controllers_to_uncontrolled_connector_nodes
+from ribasim_nl.control import (
+    add_controllers_to_supply_area as _add_controllers_to_supply_area,
+)
+from ribasim_nl.control import (
+    add_controllers_to_uncontrolled_connector_nodes as _add_controllers_to_uncontrolled_connector_nodes,
+)
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 
 from ribasim_nl import CloudStorage, Model
+
+
+def _supply_flow_rate_by_node_id():
+    return globals().get("outlet_max_flow_rate_by_node_id", {}) | globals().get("pump_max_flow_rate_by_node_id", {})
+
+
+def add_controllers_to_supply_area(*args, **kwargs):
+    kwargs.setdefault("supply_flow_rate", _supply_flow_rate_by_node_id())
+    kwargs.setdefault("drain_flow_rate", _supply_flow_rate_by_node_id())
+    return _add_controllers_to_supply_area(*args, **kwargs)
+
+
+def add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs):
+    kwargs.setdefault("supply_flow_rate", _supply_flow_rate_by_node_id())
+    kwargs.setdefault("drain_flow_rate", _supply_flow_rate_by_node_id())
+    return _add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs)
+
 
 # %%
 # Globale settings
@@ -18,7 +40,7 @@ SHORT_NAME: str = "nzv"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 SCHUTVERLIES_FLOW_RATE_BY_NODE_ID = {
-    1756: 1.5,  # Oostersluis
+    #    1756: 1.5,  # Oostersluis
 }
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
@@ -47,6 +69,9 @@ cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
 # %%
 # Read data
 model = Model.read(ribasim_toml)
+
+# Oostersluis maken we een pomp voor schutverlies als uitlaat, nog testen
+# model.update_node(node_id=1756)
 
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
@@ -342,23 +367,15 @@ flow_control_nodes = [728, 640, 641]
 # 1753: Gemaal Dorkwerd
 supply_nodes = [39, 680, 165, 1753]
 
+drain_nodes = []
+
 add_controllers_to_uncontrolled_connector_nodes(
     model=model,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
+    drain_nodes=drain_nodes,
     exclude_nodes=list(EXCLUDE_NODES),
 )
-
-# Afvoer: defaultcapaciteit op 100 m3/s zetten voor uitlaten/doorlaten.
-# Handmatig opgegeven capaciteiten blijven ongemoeid.
-for static_df, manual_capacity_nodes in [
-    (model.outlet.static.df, globals().get("outlet_max_flow_rate_by_node_id", {})),
-    (model.pump.static.df, globals().get("pump_max_flow_rate_by_node_id", {})),
-]:
-    if "control_state" not in static_df.columns:
-        continue
-    afvoer_mask = (static_df.control_state == "afvoer") & ~static_df.node_id.isin(manual_capacity_nodes)
-    static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 100.0
 
 # %%
 # Model run

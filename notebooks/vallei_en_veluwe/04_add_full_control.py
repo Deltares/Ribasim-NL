@@ -8,14 +8,33 @@ from peilbeheerst_model.controle_output import Control
 from ribasim import Node
 from ribasim.nodes import level_boundary
 from ribasim_nl.control import (
-    add_controllers_to_supply_area,
-    add_controllers_to_uncontrolled_connector_nodes,
+    add_controllers_to_supply_area as _add_controllers_to_supply_area,
+)
+from ribasim_nl.control import (
+    add_controllers_to_uncontrolled_connector_nodes as _add_controllers_to_uncontrolled_connector_nodes,
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from shapely.ops import substring
 
 from ribasim_nl import CloudStorage, Model
+
+
+def _supply_flow_rate_by_node_id():
+    return globals().get("outlet_max_flow_rate_by_node_id", {}) | globals().get("pump_max_flow_rate_by_node_id", {})
+
+
+def add_controllers_to_supply_area(*args, **kwargs):
+    kwargs.setdefault("supply_flow_rate", _supply_flow_rate_by_node_id())
+    kwargs.setdefault("drain_flow_rate", _supply_flow_rate_by_node_id())
+    return _add_controllers_to_supply_area(*args, **kwargs)
+
+
+def add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs):
+    kwargs.setdefault("supply_flow_rate", _supply_flow_rate_by_node_id())
+    kwargs.setdefault("drain_flow_rate", _supply_flow_rate_by_node_id())
+    return _add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs)
+
 
 # %%
 # Globale settings
@@ -540,6 +559,9 @@ supply_outlet_mask = model.outlet.static.df.node_id.isin(supply_nodes) & ~model.
     outlet_max_flow_rate_by_node_id
 )
 model.outlet.static.df.loc[supply_outlet_mask, ["flow_rate", "max_flow_rate"]] = 1.0
+outlet_max_flow_rate_by_node_id.update(
+    dict.fromkeys(model.outlet.static.df.loc[supply_outlet_mask, "node_id"].astype(int), 1.0)
+)
 
 boundary_supply_node_ids = set(basin_1134_boundary_connector_node_ids) & set(supply_nodes)
 for static_df in [model.outlet.static.df, model.pump.static.df]:
@@ -591,18 +613,6 @@ add_controllers_to_uncontrolled_connector_nodes(
     flushing_nodes=flushing_nodes,
     exclude_nodes=list(EXCLUDE_NODES),
 )
-
-# Afvoer: defaultcapaciteit op 100 m3/s zetten voor uitlaten/doorlaten.
-# Handmatig opgegeven capaciteiten blijven ongemoeid.
-for static_df, manual_capacity_nodes in [
-    (model.outlet.static.df, globals().get("outlet_max_flow_rate_by_node_id", {})),
-    (model.pump.static.df, globals().get("pump_max_flow_rate_by_node_id", {})),
-]:
-    if "control_state" not in static_df.columns:
-        continue
-    afvoer_mask = (static_df.control_state == "afvoer") & ~static_df.node_id.isin(manual_capacity_nodes)
-    static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 100.0
-
 
 # %%
 # EXCLUDE_NODES zonder supply-rol op 0 m3/s zetten

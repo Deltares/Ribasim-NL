@@ -1,12 +1,34 @@
 # %%
 import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
-from ribasim_nl.control import add_controllers_to_supply_area, add_controllers_to_uncontrolled_connector_nodes
+from ribasim_nl.control import (
+    add_controllers_to_supply_area as _add_controllers_to_supply_area,
+)
+from ribasim_nl.control import (
+    add_controllers_to_uncontrolled_connector_nodes as _add_controllers_to_uncontrolled_connector_nodes,
+)
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from shapely.geometry import MultiPolygon
 
 from ribasim_nl import CloudStorage, Model
+
+
+def _supply_flow_rate_by_node_id():
+    return globals().get("outlet_max_flow_rate_by_node_id", {}) | globals().get("pump_max_flow_rate_by_node_id", {})
+
+
+def add_controllers_to_supply_area(*args, **kwargs):
+    kwargs.setdefault("supply_flow_rate", _supply_flow_rate_by_node_id())
+    kwargs.setdefault("drain_flow_rate", _supply_flow_rate_by_node_id())
+    return _add_controllers_to_supply_area(*args, **kwargs)
+
+
+def add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs):
+    kwargs.setdefault("supply_flow_rate", _supply_flow_rate_by_node_id())
+    kwargs.setdefault("drain_flow_rate", _supply_flow_rate_by_node_id())
+    return _add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs)
+
 
 # %%
 # Globale settings
@@ -144,7 +166,7 @@ flushing_nodes = {}
 # 2110:
 # 851: ST0014 Koppeldijk stuw
 # 923: ST1264 Hevelstuw Ravensewetering
-drain_nodes = [554, 851, 864, 893, 969, 971, 1126, 1145, 1168, 1223, 2110]
+drain_nodes = [554, 761, 851, 864, 893, 969, 971, 1126, 1145, 1168, 1223, 2110]
 
 # handmatig opgegeven supply nodes (inlaten)
 # 554: G0007 Koppeldijk gemaal
@@ -196,7 +218,7 @@ flushing_nodes = {}  # {357: 0.02, 393: 0.012, 350: 0.015, 401: 0.017, 501: 0.03
 # 612: Polder Tull En T Waal
 # 844: ST1541
 # 993:T Klooster
-drain_nodes = [978, 980, 551, 588, 612, 591, 844, 979, 993]
+drain_nodes = [978, 980, 551, 588, 612, 591, 761, 844, 979, 993]
 
 # handmatig opgegeven supply nodes (inlaten)
 # 627: G4015 Overeind
@@ -248,7 +270,7 @@ flushing_nodes = {}
 # 634: Hazepad 'T
 # 920: ST1449
 # 818: Zevenhoven stuw
-drain_nodes = [298, 634, 818, 920]
+drain_nodes = [298, 634, 761, 818, 920]
 
 # handmatig opgegeven supply nodes (inlaten)
 # node_id: Naam
@@ -299,7 +321,7 @@ flushing_nodes = {}
 # 513: Gemaal: Terwijde
 # 1077: ST0725
 # 598: Vleuterweide
-drain_nodes = [513, 598, 1077]
+drain_nodes = [513, 598, 761, 1077]
 
 # handmatig opgegeven supply nodes (inlaten)
 # 553:G0096
@@ -351,14 +373,17 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 # node_id: Naam
 # 347: I1317 Nog checken!
-drain_nodes = [347]
+drain_nodes = [
+    347,
+    761,
+]
 
 # handmatig opgegeven supply nodes (inlaten)
 # 564: Reyerscop
 # 754: Doorslag
 # 830: ST3928
 # 1022: ST1319
-supply_nodes = [564, 754, 830, 1022]
+supply_nodes = [564, 754, 761, 830, 1022]
 
 flow_control_nodes = []
 
@@ -399,7 +424,7 @@ flushing_nodes = {}
 # 633: Voordorp
 # 799 Maartendsdijk stuw
 # 944: ST0895
-drain_nodes = [477, 633, 799, 944]
+drain_nodes = [477, 633, 761, 799, 944]
 
 # handmatig opgegeven supply nodes (inlaten)
 # 581: Maartensdijk Pomp
@@ -446,7 +471,7 @@ flushing_nodes = {}
 # node_id: Naam
 # 894: ST2901
 # 956: ST1014
-drain_nodes = [894, 956]
+drain_nodes = [761, 894, 956]
 
 # handmatig opgegeven supply nodes (inlaten)
 # 626: De Strijp
@@ -589,7 +614,7 @@ supply_nodes = [
 # 545: Rijnvliet
 # 173, 168, 139, 198, Oog in Al
 
-drain_nodes = [173, 168, 139, 185, 198, 230, 411, 467, 545, 887]
+drain_nodes = [173, 168, 139, 185, 198, 230, 411, 467, 545, 761, 887]
 
 
 # Flushing nodes
@@ -606,17 +631,6 @@ add_controllers_to_uncontrolled_connector_nodes(
     flushing_nodes=flushing_nodes,
     exclude_nodes=list(EXCLUDE_NODES),
 )
-
-# Afvoer: defaultcapaciteit op 100 m3/s zetten voor uitlaten/doorlaten.
-# Handmatig opgegeven capaciteiten blijven ongemoeid.
-for static_df, manual_capacity_nodes in [
-    (model.outlet.static.df, globals().get("outlet_max_flow_rate_by_node_id", {})),
-    (model.pump.static.df, globals().get("pump_max_flow_rate_by_node_id", {})),
-]:
-    if "control_state" not in static_df.columns:
-        continue
-    afvoer_mask = (static_df.control_state == "afvoer") & ~static_df.node_id.isin(manual_capacity_nodes)
-    static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 100.0
 
 # %% Noordergemaal, node=536 slaat pas aan wanneer Wijk van Duurstede net genoeg kan leveren
 model.pump.static.df.loc[model.pump.static.df.node_id == 536, "max_downstream_level"] -= 0.01

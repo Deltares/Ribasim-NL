@@ -1,4 +1,5 @@
 # %%
+import inspect
 from datetime import datetime
 from typing import Literal
 
@@ -8,16 +9,51 @@ from ribasim.nodes import flow_demand, outlet, pump
 from ribasim_nl.control import (
     _offset_new_node,
     _target_level,
-    add_controllers_to_supply_area,
-    add_controllers_to_supply_nodes,
-    add_controllers_to_uncontrolled_connector_nodes,
     get_node_table_with_from_to_node_ids,
+)
+from ribasim_nl.control import (
+    add_controllers_to_supply_area as _add_controllers_to_supply_area,
+)
+from ribasim_nl.control import (
+    add_controllers_to_supply_nodes as _add_controllers_to_supply_nodes,
+)
+from ribasim_nl.control import (
+    add_controllers_to_uncontrolled_connector_nodes as _add_controllers_to_uncontrolled_connector_nodes,
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from shapely.geometry import MultiPolygon, Point
 
 from ribasim_nl import CloudStorage, Model
+
+
+def _supply_flow_rate_by_node_id():
+    return globals().get("outlet_max_flow_rate_by_node_id", {}) | globals().get("pump_max_flow_rate_by_node_id", {})
+
+
+def _call_with_supported_kwargs(func, *args, **kwargs):
+    signature = inspect.signature(func)
+    if any(parameter.kind == inspect.Parameter.VAR_KEYWORD for parameter in signature.parameters.values()):
+        return func(*args, **kwargs)
+    return func(*args, **{key: value for key, value in kwargs.items() if key in signature.parameters})
+
+
+def add_controllers_to_supply_area(*args, **kwargs):
+    kwargs.setdefault("supply_flow_rate", _supply_flow_rate_by_node_id())
+    kwargs.setdefault("drain_flow_rate", _supply_flow_rate_by_node_id())
+    return _call_with_supported_kwargs(_add_controllers_to_supply_area, *args, **kwargs)
+
+
+def add_controllers_to_supply_nodes(*args, **kwargs):
+    kwargs.setdefault("supply_flow_rate", _supply_flow_rate_by_node_id())
+    return _call_with_supported_kwargs(_add_controllers_to_supply_nodes, *args, **kwargs)
+
+
+def add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs):
+    kwargs.setdefault("supply_flow_rate", _supply_flow_rate_by_node_id())
+    kwargs.setdefault("drain_flow_rate", _supply_flow_rate_by_node_id())
+    return _call_with_supported_kwargs(_add_controllers_to_uncontrolled_connector_nodes, *args, **kwargs)
+
 
 # %%
 
@@ -76,7 +112,7 @@ drain_nodes = [
     1244,
     2499,
 ]
-supply_nodes: list[int] = [311, 595, 596]
+supply_nodes: list[int] = [311, 595, 596, 683]
 flow_control_nodes = [
     164,
     176,
@@ -758,18 +794,6 @@ add_controllers_to_uncontrolled_connector_nodes(
     exclude_nodes=list(EXCLUDE_NODES),
 )
 
-# Afvoer: defaultcapaciteit op 100 m3/s zetten voor uitlaten/doorlaten.
-# Handmatig opgegeven capaciteiten blijven ongemoeid.
-for static_df, manual_capacity_nodes in [
-    (model.outlet.static.df, globals().get("outlet_max_flow_rate_by_node_id", {})),
-    (model.pump.static.df, globals().get("pump_max_flow_rate_by_node_id", {})),
-]:
-    if "control_state" not in static_df.columns:
-        continue
-    afvoer_mask = (static_df.control_state == "afvoer") & ~static_df.node_id.isin(manual_capacity_nodes)
-    static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 100.0
-
-
 boundary_levels = {
     32: 31.65,  # Noordervaart
     33: 31.65,
@@ -814,12 +838,32 @@ fixed_levels = {
 df = model.outlet.static.df
 df["min_upstream_level"] = df["node_id"].map(fixed_levels).fillna(df["min_upstream_level"])
 
-# Procentuele Verdeling 90/10 Heide
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 616, "flow_rate"] = 5
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 639, "flow_rate"] = 50
+mask = model.outlet.static.df.node_id.isin([2496, 2497])
+model.outlet.static.df.loc[mask & (model.outlet.static.df.control_state == "aanvoer"), "min_upstream_level"] = 30.71
+model.outlet.static.df.loc[mask & (model.outlet.static.df.control_state == "aanvoer"), "max_downstream_level"] = 30.75
+model.outlet.static.df.loc[mask & (model.outlet.static.df.control_state == "afvoer"), "min_upstream_level"] = 30.75
 
-# Bijna alles gaat via Boabel, afvoer laag zetten
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 177, "flow_rate"] = 1
+# Procentuele Verdeling 90/10 Heide: alleen afvoer-capaciteit begrenzen.
+afvoer_mask_616 = (model.outlet.static.df.node_id == 616) & (model.outlet.static.df.control_state == "afvoer")
+model.outlet.static.df.loc[afvoer_mask_616, "flow_rate"] = 0
+model.outlet.static.df.loc[afvoer_mask_616, "max_flow_rate"] = 5
+
+afvoer_mask_639 = (model.outlet.static.df.node_id == 639) & (model.outlet.static.df.control_state == "afvoer")
+model.outlet.static.df.loc[afvoer_mask_639, "flow_rate"] = 0
+model.outlet.static.df.loc[afvoer_mask_639, "max_flow_rate"] = 50
+
+# Bijna alles gaat via Boabel: alleen afvoer-capaciteit laag zetten.
+afvoer_mask_177 = (model.outlet.static.df.node_id == 177) & (model.outlet.static.df.control_state == "afvoer")
+model.outlet.static.df.loc[afvoer_mask_177, "flow_rate"] = 0
+model.outlet.static.df.loc[afvoer_mask_177, "max_flow_rate"] = 1
+
+# S_97911 is een RWS-inlaat naar Limburg, geen afvoer richting Limburg.
+aanvoer_mask_683 = (model.outlet.static.df.node_id == 683) & (model.outlet.static.df.control_state == "aanvoer")
+model.outlet.static.df.loc[aanvoer_mask_683, "flow_rate"] = 100
+model.outlet.static.df.loc[aanvoer_mask_683, "max_flow_rate"] = 100
+afvoer_mask_683 = (model.outlet.static.df.node_id == 683) & (model.outlet.static.df.control_state == "afvoer")
+model.outlet.static.df.loc[afvoer_mask_683, "flow_rate"] = 0
+model.outlet.static.df.loc[afvoer_mask_683, "max_flow_rate"] = 0
 
 # %% Junctionfy(!)
 junctionify(model)

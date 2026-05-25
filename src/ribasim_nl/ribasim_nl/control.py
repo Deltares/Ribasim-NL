@@ -2,7 +2,7 @@
 import logging
 import math
 from datetime import datetime
-from typing import Literal
+from typing import Literal, cast
 
 import geopandas as gpd
 import pandas as pd
@@ -17,6 +17,22 @@ from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.downstream import downstream_nodes
 
 LOG = logging.getLogger(__name__)
+
+
+def _node_flow_rate(flow_rate: float | dict[int, float] | None, node_id: int, default: float = 20.0) -> float:
+    if flow_rate is None:
+        return default
+    if isinstance(flow_rate, dict):
+        return float(flow_rate.get(node_id, default))
+    return float(flow_rate)
+
+
+def _node_max_flow_rate(flow_rate: float | dict[int, float] | None, node_id: int, default: float) -> float:
+    if flow_rate is None:
+        return default
+    if isinstance(flow_rate, dict):
+        return float(flow_rate.get(node_id, default))
+    return float(flow_rate)
 
 
 class InvalidTable(Exception):
@@ -656,6 +672,7 @@ def add_controllers_to_drain_nodes(
     max_flow_capacity: float = 100,
     name: str = "uitlaat",
     update_meta_info: bool = True,
+    drain_flow_rate: float | dict[int, float] | None = None,
 ) -> None:
     """Add control nodes to connector nodes draining a system/supply-area
 
@@ -679,6 +696,9 @@ def add_controllers_to_drain_nodes(
         Name assigned to control-nodes, by default "uitlaat"
     update_meta_info: bool, optional
         Update `meta_func_aanvoer` column in Pump.Static table. Default is True
+    drain_flow_rate: float | dict[int, float], optional
+        Flow rate and max_flow_rate for the `afvoer` control state. A mapping can override
+        this per node_id. By default, old behavior is preserved.
 
     Raises
     ------
@@ -718,6 +738,13 @@ def add_controllers_to_drain_nodes(
         original_max_flow_rate = (
             model.get_component(node_type).static.df.set_index("node_id").loc[[node_id], "flow_rate"].max()
         )  # extract flow_rate from existing static-table
+        if drain_flow_rate is None:
+            afvoer_flow_rate = max_flow_capacity
+            afvoer_max_flow_rate = original_max_flow_rate
+        else:
+            node_id_int = cast(int, node_id)
+            afvoer_flow_rate = _node_flow_rate(drain_flow_rate, node_id=node_id_int, default=max_flow_capacity)
+            afvoer_max_flow_rate = _node_max_flow_rate(drain_flow_rate, node_id=node_id_int, default=max_flow_capacity)
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
         model.update_node(
             node_id,
@@ -725,8 +752,8 @@ def add_controllers_to_drain_nodes(
             [
                 static_table(
                     min_upstream_level=min_upstream_level,
-                    flow_rate=[0, max_flow_capacity],
-                    max_flow_rate=[0, original_max_flow_rate],
+                    flow_rate=[0, afvoer_flow_rate],
+                    max_flow_rate=[0, afvoer_max_flow_rate],
                     control_state=control_state,
                 )
             ],
@@ -756,6 +783,7 @@ def add_controllers_to_supply_nodes(
     control_node_angle: int = 90,
     name: str = "inlaat",
     update_meta_info: bool = True,
+    supply_flow_rate: float | dict[int, float] | None = None,
 ) -> None:
     """Add control nodes to connector nodes supplying a system/supply-area
 
@@ -778,6 +806,9 @@ def add_controllers_to_supply_nodes(
     update_meta_info: bool, optional
         Update `meta_func_afvoer` column in Pump.Static table, `meta_afvoer` in Outlet.Static and Basin.Area tables.
         Default is True
+    supply_flow_rate: float | dict[int, float], optional
+        Flow rate for the `aanvoer` control state. A mapping can override this per node_id.
+        By default, the flow_rate remains 20.0 and max_flow_rate uses the existing static flow_rate.
     """
     # update_meta_info we can use in masking control_nodes
     if update_meta_info:
@@ -824,6 +855,11 @@ def add_controllers_to_supply_nodes(
         original_max_flow_rate = (
             model.get_component(node_type).static.df.set_index("node_id").loc[[node_id], "flow_rate"].max()
         )  # extract flow_rate from existing static-table
+        node_id_int = cast(int, node_id)
+        aanvoer_flow_rate = _node_flow_rate(supply_flow_rate, node_id=node_id_int)
+        aanvoer_max_flow_rate = _node_max_flow_rate(
+            supply_flow_rate, node_id=node_id_int, default=float(original_max_flow_rate)
+        )
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
         model.update_node(
             node_id,
@@ -832,8 +868,8 @@ def add_controllers_to_supply_nodes(
                 static_table(
                     min_upstream_level=min_upstream_level,
                     max_downstream_level=max_downstream_level,
-                    flow_rate=[20, 0],
-                    max_flow_rate=[original_max_flow_rate, 0],
+                    flow_rate=[aanvoer_flow_rate, 0],
+                    max_flow_rate=[aanvoer_max_flow_rate, 0],
                     control_state=control_state,
                 )
             ],
@@ -868,6 +904,8 @@ def add_controllers_to_flow_control_nodes(
     control_node_angle: int = 90,
     name: str = "doorlaat",
     update_meta_info: bool = True,
+    supply_flow_rate: float | dict[int, float] | None = None,
+    drain_flow_rate: float | dict[int, float] | None = None,
 ) -> None:
     """Add control nodes to connector nodes controlling flows and water-levels in a system/supply-area
 
@@ -893,6 +931,12 @@ def add_controllers_to_flow_control_nodes(
     update_meta_info: bool, optional
         Update `meta_func_afvoer` column in Pump.Static table, `meta_afvoer` in Outlet.Static and Basin.Area tables.
         Default is True
+    supply_flow_rate: float | dict[int, float], optional
+        Flow rate for the `aanvoer` control state. A mapping can override this per node_id.
+        By default, the flow_rate remains 20.0 and max_flow_rate uses the existing static flow_rate.
+    drain_flow_rate: float | dict[int, float], optional
+        Flow rate and max_flow_rate for the `afvoer` control state. A mapping can override
+        this per node_id. By default, old behavior is preserved.
     """
     # update_meta_info we can use in masking control_nodes
     if update_meta_info:
@@ -941,6 +985,17 @@ def add_controllers_to_flow_control_nodes(
         original_max_flow_rate = (
             model.get_component(node_type).static.df.set_index("node_id").loc[[node_id], "flow_rate"].max()
         )  # extract flow_rate from existing static-table
+        node_id_int = cast(int, node_id)
+        aanvoer_flow_rate = _node_flow_rate(supply_flow_rate, node_id=node_id_int)
+        aanvoer_max_flow_rate = _node_max_flow_rate(
+            supply_flow_rate, node_id=node_id_int, default=float(original_max_flow_rate)
+        )
+        if drain_flow_rate is None:
+            afvoer_flow_rate = 20
+            afvoer_max_flow_rate = original_max_flow_rate
+        else:
+            afvoer_flow_rate = _node_flow_rate(drain_flow_rate, node_id=node_id_int, default=100)
+            afvoer_max_flow_rate = _node_max_flow_rate(drain_flow_rate, node_id=node_id_int, default=100)
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
         model.update_node(
             node_id,
@@ -949,8 +1004,8 @@ def add_controllers_to_flow_control_nodes(
                 static_table(
                     min_upstream_level=min_upstream_level,
                     max_downstream_level=max_downstream_level,
-                    flow_rate=[20, 20],
-                    max_flow_rate=[original_max_flow_rate] * 2,
+                    flow_rate=[aanvoer_flow_rate, afvoer_flow_rate],
+                    max_flow_rate=[aanvoer_max_flow_rate, afvoer_max_flow_rate],
                     control_state=control_state,
                 )
             ],
@@ -1179,6 +1234,8 @@ def add_controllers_to_connector_nodes(
     target_level_column: str = "meta_streefpeil",
     drain_capacity: float = 100,
     add_supply_nodes: bool = True,
+    supply_flow_rate: float | dict[int, float] | None = None,
+    drain_flow_rate: float | dict[int, float] | None = None,
 ) -> None:
     """Add controllers to connector nodes per function
 
@@ -1215,6 +1272,12 @@ def add_controllers_to_connector_nodes(
     add_supply_nodes: bool, optional
         Dirty flag to toggle adding supply nodes. Use this flag to identify flushing nodes between supply-nodes and drain nodes, but avoid adding the control itself
         This is usefull if you want to add a different type of supply-node later. Default is True
+    supply_flow_rate: float | dict[int, float], optional
+        Flow rate for the `aanvoer` control state of supply and flow-control nodes.
+        A mapping can override this per node_id. By default, old behavior is preserved.
+    drain_flow_rate: float | dict[int, float], optional
+        Flow rate for the `afvoer` control state of drain and flow-control nodes.
+        A mapping can override this per node_id. By default, old behavior is preserved.
     """
     # make sure add-api will not duplicate node-ids
     model.node._update_used_ids()
@@ -1228,6 +1291,7 @@ def add_controllers_to_connector_nodes(
             model=model,
             us_target_level_offset_supply=-0.04,
             supply_nodes_df=supply_nodes_df,
+            supply_flow_rate=supply_flow_rate,
         )
 
     # add drain nodes
@@ -1237,6 +1301,7 @@ def add_controllers_to_connector_nodes(
             model=model,
             drain_nodes_df=drain_nodes_df,
             max_flow_capacity=drain_capacity,
+            drain_flow_rate=drain_flow_rate,
         )
 
     # add flow control nodes
@@ -1246,6 +1311,8 @@ def add_controllers_to_connector_nodes(
             model=model,
             flow_control_nodes_df=flow_control_nodes_df,
             us_threshold_offset=level_difference_threshold,
+            supply_flow_rate=supply_flow_rate,
+            drain_flow_rate=drain_flow_rate,
         )
 
     # add flusing_nodes_df
@@ -1273,6 +1340,8 @@ def add_controllers_to_supply_area(
     is_supply_node_column: str = "meta_supply_node",
     target_level_column: str = "meta_streefpeil",
     add_supply_nodes: bool = True,
+    supply_flow_rate: float | dict[int, float] | None = None,
+    drain_flow_rate: float | dict[int, float] | None = None,
 ) -> gpd.GeoDataFrame:
     """Add all controllers to supply area
 
@@ -1322,6 +1391,12 @@ def add_controllers_to_supply_area(
     add_supply_nodes: bool, optional
         Dirty flag to toggle adding supply nodes. Use this flag to identify flushing nodes between supply-nodes and drain nodes, but avoid adding the control itself
         This is usefull if you want to add a different type of supply-node later. Default is True
+    supply_flow_rate: float | dict[int, float], optional
+        Flow rate for the `aanvoer` control state of supply and flow-control nodes.
+        A mapping can override this per node_id. By default, old behavior is preserved.
+    drain_flow_rate: float | dict[int, float], optional
+        Flow rate for the `afvoer` control state of drain and flow-control nodes.
+        A mapping can override this per node_id. By default, old behavior is preserved.
 
     Returns
     -------
@@ -1362,6 +1437,8 @@ def add_controllers_to_supply_area(
         level_difference_threshold=level_difference_threshold,
         target_level_column=target_level_column,
         add_supply_nodes=add_supply_nodes,
+        supply_flow_rate=supply_flow_rate,
+        drain_flow_rate=drain_flow_rate,
     )
 
     return node_functions_df
@@ -1378,6 +1455,8 @@ def add_controllers_to_uncontrolled_connector_nodes(
     control_node_types: list[Literal["Pump", "Outlet"]] | None = None,
     us_target_level_offset_supply: float = -0.04,
     level_difference_threshold: float = 0.02,
+    supply_flow_rate: float | dict[int, float] | None = None,
+    drain_flow_rate: float | dict[int, float] | None = None,
 ) -> None:
     """
     Voeg controllers toe aan ALLE connector nodes (Pump/Outlet) die nog géén control-link hebben.
@@ -1412,6 +1491,12 @@ def add_controllers_to_uncontrolled_connector_nodes(
         Offset voor supply controls.
     level_difference_threshold : float
         Offset for flushing discrete control (must match model.solver.level_difference_threshold), by default 0.02.
+    supply_flow_rate : float | dict[int, float]
+        Flow rate for the `aanvoer` control state of supply and flow-control nodes.
+        A mapping can override this per node_id. By default, old behavior is preserved.
+    drain_flow_rate : float | dict[int, float]
+        Flow rate for the `afvoer` control state of drain and flow-control nodes.
+        A mapping can override this per node_id. By default, old behavior is preserved.
     """
     # make sure add-api will not duplicate node-ids
     model.node._update_used_ids()
@@ -1493,6 +1578,7 @@ def add_controllers_to_uncontrolled_connector_nodes(
             model=model,
             us_target_level_offset_supply=us_target_level_offset_supply,
             supply_nodes_df=supply_df,
+            supply_flow_rate=supply_flow_rate,
         )
 
     # Flow control
@@ -1502,12 +1588,14 @@ def add_controllers_to_uncontrolled_connector_nodes(
             model=model,
             flow_control_nodes_df=flow_df,
             us_threshold_offset=us_threshold_offset,
+            supply_flow_rate=supply_flow_rate,
+            drain_flow_rate=drain_flow_rate,
         )
 
     # Drain
     if drain_set:
         drain_df = connector_df.loc[sorted(drain_set)]
-        add_controllers_to_drain_nodes(model=model, drain_nodes_df=drain_df)
+        add_controllers_to_drain_nodes(model=model, drain_nodes_df=drain_df, drain_flow_rate=drain_flow_rate)
 
 
 def add_function_to_peilbeheerst_node_table(model, from_to_node_table):
