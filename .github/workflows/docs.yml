@@ -36,13 +36,8 @@ jobs:
           pixi-version: "latest"
       - name: Check Quarto installation and all engines
         run: pixi run quarto check all
-      - name: Build API documentation
-        run: pixi run quartodoc build
-        working-directory: docs
-      - name: Clean up API documentation file
-        run: rm docs/objects.json
       - name: Render Quarto Project
-        run: pixi run quarto render docs --to html --execute
+        run: pixi run docs-render
       - name: Publish Quarto Project
         if: github.ref == 'refs/heads/main'
         run: pixi run quarto publish gh-pages --no-render --no-prompt --no-browser
