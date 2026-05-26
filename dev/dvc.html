@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>noorderzijlvest – Ribasim-NL</title>
+<title>DVC (Data Version Control) – Ribasim-NL</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -22,6 +22,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -43,9 +78,6 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../site_libs/bootstrap/bootstrap-21ca2d58089b899f74b84f303993de13.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
-<script src="../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
-<link href="../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
-<link href="../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -73,6 +105,9 @@ ul.task-list li input[type="checkbox"] {
     "search-label": "Search"
   }
 }</script>
+<script src="../site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="../site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="../site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
 
 
 <link rel="stylesheet" href="styles.css">
@@ -108,13 +143,13 @@ ul.task-list li input[type="checkbox"] {
 <span class="menu-text">Workflows</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link active" href="../watersystems/main.html" aria-current="page"> 
+    <a class="nav-link" href="../watersystems/main.html"> 
 <span class="menu-text">Watersystems</span></a>
   </li>  
 </ul>
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../dev/index.html"> 
+    <a class="nav-link active" href="../dev/index.html" aria-current="page"> 
 <span class="menu-text">Contributing</span></a>
   </li>  
   <li class="nav-item compact">
@@ -133,7 +168,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../watersystems/Noorderzijlvest.html">Noorderzijlvest</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/dvc.html">DVC (Data Version Control)</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -147,74 +182,26 @@ ul.task-list li input[type="checkbox"] {
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../watersystems/main.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Watersystemen (NL)</span></a>
+  <a href="../dev/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Contributing</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../watersystems/AaenMaas.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Aa en Maas</span></a>
+  <a href="../dev/dvc.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">DVC (Data Version Control)</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../watersystems/BrabantseDelta.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Brabantse Delta</span></a>
+  <a href="../dev/type-checking.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Type checking</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../watersystems/DeDommel.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">De Dommel</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../watersystems/DrentsOverijsselseDelta.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Drents Overijsselse Delta</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../watersystems/HunzeenAas.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Hunze en Aas</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../watersystems/Limburg.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Limburg</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../watersystems/Noorderzijlvest.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Noorderzijlvest</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../watersystems/RijnenIJssel.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Rijn en IJssel</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../watersystems/StichtseRijnlanden.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Stichtse Rijnlanden</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../watersystems/ValleienVeluwe.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Vallei en Veluwe</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../watersystems/Vechtstromen.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Vechtstromen</span></a>
+  <a href="../dev/slurm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Running on SLURM</span></a>
   </div>
 </li>
     </ul>
@@ -227,323 +214,282 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#noorderzijlvest" id="toc-noorderzijlvest" class="nav-link active" data-scroll-target="#noorderzijlvest">Noorderzijlvest</a>
-  <ul class="collapse">
-  <li><a href="#systeembeschrijving" id="toc-systeembeschrijving" class="nav-link" data-scroll-target="#systeembeschrijving">Systeembeschrijving</a>
-  <ul class="collapse">
-  <li><a href="#inlaat-gaarkeuken" id="toc-inlaat-gaarkeuken" class="nav-link" data-scroll-target="#inlaat-gaarkeuken">Inlaat Gaarkeuken</a></li>
-  <li><a href="#electraboezem" id="toc-electraboezem" class="nav-link" data-scroll-target="#electraboezem">Electraboezem</a></li>
-  <li><a href="#peizerdiep" id="toc-peizerdiep" class="nav-link" data-scroll-target="#peizerdiep">Peizerdiep</a></li>
-  <li><a href="#jonkersvaartdwarsdiep" id="toc-jonkersvaartdwarsdiep" class="nav-link" data-scroll-target="#jonkersvaartdwarsdiep">Jonkersvaart/Dwarsdiep</a></li>
-  <li><a href="#noordpolder-en-spijksterpompen" id="toc-noordpolder-en-spijksterpompen" class="nav-link" data-scroll-target="#noordpolder-en-spijksterpompen">Noordpolder en Spijksterpompen</a></li>
-  <li><a href="#de-fivelingoboezem" id="toc-de-fivelingoboezem" class="nav-link" data-scroll-target="#de-fivelingoboezem">De Fivelingoboezem</a></li>
-  <li><a href="#marnerwaard" id="toc-marnerwaard" class="nav-link" data-scroll-target="#marnerwaard">Marnerwaard</a></li>
-  <li><a href="#dongeradeel" id="toc-dongeradeel" class="nav-link" data-scroll-target="#dongeradeel">Dongeradeel</a></li>
-  </ul></li>
-  <li><a href="#capaciteiten" id="toc-capaciteiten" class="nav-link" data-scroll-target="#capaciteiten">Capaciteiten</a></li>
-  <li><a href="#bronnen" id="toc-bronnen" class="nav-link" data-scroll-target="#bronnen">Bronnen</a></li>
-  </ul></li>
+  <li><a href="#authentication" id="toc-authentication" class="nav-link active" data-scroll-target="#authentication">Authentication</a></li>
+  <li><a href="#pulling-data" id="toc-pulling-data" class="nav-link" data-scroll-target="#pulling-data">Pulling data</a></li>
+  <li><a href="#remotes" id="toc-remotes" class="nav-link" data-scroll-target="#remotes">Remotes</a></li>
+  <li><a href="#pipeline" id="toc-pipeline" class="nav-link" data-scroll-target="#pipeline">Pipeline</a></li>
+  <li><a href="#importing-data-from-remote-storage" id="toc-importing-data-from-remote-storage" class="nav-link" data-scroll-target="#importing-data-from-remote-storage">Importing data from remote storage</a></li>
+  <li><a href="#pushing-changes" id="toc-pushing-changes" class="nav-link" data-scroll-target="#pushing-changes">Pushing changes</a></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"></header>
+<main class="content" id="quarto-document-content">
 
-
-
-
-<section id="noorderzijlvest" class="level1">
-<h1>Noorderzijlvest</h1>
-<ul>
-<li>Laatst bijgewerkt: 07-04-2026</li>
-<li><a href="https://deltares.thegood.cloud/s/LEcDeSTPq8M3itz">Laatste modelversie</a></li>
-</ul>
-<section id="systeembeschrijving" class="level2">
-<h2 class="anchored" data-anchor-id="systeembeschrijving">Systeembeschrijving</h2>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><a href="https://s3.deltares.nl/ribasim-nl/doc-image/watersystems/Noorderzijlvest.svg" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Systeembeschrijving Noorderzijlvest"><img src="https://s3.deltares.nl/ribasim-nl/doc-image/watersystems/Noorderzijlvest.svg" class="img-fluid figure-img" alt="Systeembeschrijving Noorderzijlvest"></a></p>
-<figcaption>Systeembeschrijving Noorderzijlvest</figcaption>
-</figure>
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">DVC (Data Version Control)</h1>
 </div>
-<section id="inlaat-gaarkeuken" class="level3">
-<h3 class="anchored" data-anchor-id="inlaat-gaarkeuken">Inlaat Gaarkeuken</h3>
-<ul>
-<li>Bij <code>Gaarkeuken</code> kan maximaal 24 m³/s uit de Friese boezem worden ingelaten op de Electraboezem van Noorderzijlvest.</li>
-<li>Een deel daarvan (tot 20 m³/s) kan via <code>gemaal Dorkwerd</code> worden opgepompt richting waterschap Hunze en Aa’s.</li>
-<li>Water dat op de Electraboezem nodig is, wordt via de sluis bij <code>Gaarkeuken</code> ingelaten; overschot wordt afgevoerd richting het <code>Lauwersmeer</code>.</li>
-<li>Praktisch geldt een globale verdeling van 1/5 naar de Electraboezem en 4/5 via <code>Dorkwerd</code> naar Hunze en Aa’s (Eemskanaalboezem).</li>
-</ul>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>We use <a href="https://dvc.org/">DVC</a> to version-control large data files (models, input datasets) without storing them in Git. DVC tracks file hashes in <code>.dvc</code> files committed to Git, while the actual data lives on remote storage.</p>
+<section id="authentication" class="level2">
+<h2 class="anchored" data-anchor-id="authentication">Authentication</h2>
+<p>Create a file <code>.dvc/config.local</code> (already gitignored) with credentials for the remotes:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode ini code-with-copy"><code class="sourceCode ini"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">['remote "goodcloud"']</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="dt">    user </span><span class="ot">=</span><span class="st"> nhi_api</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="dt">    password </span><span class="ot">=</span><span class="st"> &lt;RIBASIM_NL_CLOUD_PASS&gt;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">['remote "modeldata"']</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="dt">    user </span><span class="ot">=</span><span class="st"> nhi_api</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="dt">    password </span><span class="ot">=</span><span class="st"> &lt;RIBASIM_NL_CLOUD_PASS&gt;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">['remote "minio"']</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="dt">    region </span><span class="ot">=</span><span class="st"> eu-west-1</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="dt">    endpointurl </span><span class="ot">=</span><span class="st"> https://s3.deltares.nl</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="dt">    access_key_id </span><span class="ot">=</span><span class="st"> &lt;MINIO_ACCESS_KEY&gt;</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="dt">    secret_access_key </span><span class="ot">=</span><span class="st"> &lt;MINIO_SECRET_KEY&gt;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The password is the same as <code>RIBASIM_NL_CLOUD_PASS</code> in your <code>.env</code> file. The MinIO keys correspond to <code>MINIO_ACCESS_KEY</code> and <code>MINIO_SECRET_KEY</code> in <code>.env</code>.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Since <code>pixi run install</code> runs <code>dvc pull</code>, this configuration is needed <strong>before</strong> that step.</p>
+</div>
+</div>
 </section>
-<section id="electraboezem" class="level3">
-<h3 class="anchored" data-anchor-id="electraboezem">Electraboezem</h3>
-<p>Het witte gebied en zalmroze gebied (Elektraboezem-Oost) op de kaart wordt gevormd door de Electraboezem (van Starkenborghkanaal en Reitdiep). Afvoer uit de boezem vindt plaats via twee spui-/maalcomplexen — de gemalen <code>H.D. Louwes</code> (toekomstig Hunsingo) en <code>De Waterwolf</code> — naar het Lauwersmeer. Het Lauwersmeer loost vervolgens via de <code>Cleveringsluizen</code> op de Waddenzee.</p>
+<section id="pulling-data" class="level2">
+<h2 class="anchored" data-anchor-id="pulling-data">Pulling data</h2>
+<p>After authentication is set up, pull all tracked data:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>If you have local changes that you want to overwrite, add <code>--force</code>.</p>
 </section>
-<section id="peizerdiep" class="level3">
-<h3 class="anchored" data-anchor-id="peizerdiep">Peizerdiep</h3>
-<p>In afvoersituaties kan dit gebied vrij afstromen naar het Lauwersmeer via de Electraboezem.</p>
-<p>In het zuidoosten wordt via een reeks kleinere inlaten — <code>Jonkersbrug</code>, <code>Ter Aard</code>, <code>Huis ter Heide</code>, <code>Heideheimheem</code>, <code>Meerweg</code> vanuit Hunze en Aa’s en Drents Overijsselse Delta water ingelaten.</p>
-</section>
-<section id="jonkersvaartdwarsdiep" class="level3">
-<h3 class="anchored" data-anchor-id="jonkersvaartdwarsdiep">Jonkersvaart/Dwarsdiep</h3>
-<p>Dit gebied voert water af naar de Electraboezem via de uitlaat <code>Leek</code> en het Dwarsdiep.</p>
-<p>De wateraanvoer wordt in hoofdzaak verzorgd door het aanvoergemaal bij <code>Leek</code>, aangevuld met enkele kleinere inlaten in het zuidoosten vanuit het Wetterskip. Via <code>Leek</code> wordt het water naar de Jonkersvaart geleid voor beregening, infiltratie en doorspoeling.</p>
-</section>
-<section id="noordpolder-en-spijksterpompen" class="level3">
-<h3 class="anchored" data-anchor-id="noordpolder-en-spijksterpompen">Noordpolder en Spijksterpompen</h3>
-<p>De noordelijke kustpolders lozen direct op de Waddenzee. Het gebied is globaal in twee ongeveer even grote delen te onderscheiden, elk met een hoofdgemaal (<code>Noordpolderzijl</code> en <code>Spijksterpompen</code>).</p>
-<p>In droge periodes wordt water uit de Electraboezem (via boezemgemalen <code>Stad en Lande</code>, <code>Schaphalsterzijl</code> en <code>Tilburg</code>) met kleine aanvoergemalen naar de kustpolders opgemalen.</p>
-</section>
-<section id="de-fivelingoboezem" class="level3">
-<h3 class="anchored" data-anchor-id="de-fivelingoboezem">De Fivelingoboezem</h3>
-<p>Loost via gemaal <code>De Drie Delfzijlen</code> bij Delfzijl naar de Eems. Aanvoer is mogelijk vanuit het Damsterdiep, waarin water vanuit de Electraboezem wordt opgemalen bij de <code>Oostersluis</code>. Daarnaast is aanvoer in het noorden mogelijk via de Electraboezem en het gebied bij <code>Spijksterpompen</code>.</p>
-</section>
-<section id="marnerwaard" class="level3">
-<h3 class="anchored" data-anchor-id="marnerwaard">Marnerwaard</h3>
-<p>Marnerwaard loost water via <code>Nieuw Robbengat</code> op het Lauwersmeer, waar tevens water wordt ingelaten in droge perioden.</p>
-<p>In droge perioden kan water worden aangevoerd via een aantal gemalen in het zuidoosten van het gebied, alsook in het noordwesten via het Lauwersmeer. Doorspoeling vindt plaats via de <code>Herculesstuw</code>.</p>
-</section>
-<section id="dongeradeel" class="level3">
-<h3 class="anchored" data-anchor-id="dongeradeel">Dongeradeel</h3>
-<p>Dongeradeel is het gebied ten westen van het Lauwersmeer en hoort bij Wetterskip Fryslân. Afvoer vindt plaats met gemaal <code>Dongeradielen</code> op het Lauwersmeer en via de sluis <code>Dokkumer Nieuwezijlen</code> onder vrij verval.</p>
-</section>
-</section>
-<section id="capaciteiten" class="level2">
-<h2 class="anchored" data-anchor-id="capaciteiten">Capaciteiten</h2>
-<p>Per kunstwerk, gespecificeerd op <code>naam</code>, <code>code</code> (waterbeheerder), <code>node_id</code> (v.h. Ribasim model) zijn hieronder de functie (<code>inlaat</code>, <code>doorlaat</code>, <code>uitlaat</code>, <code>uitlaat (doorspoeling))</code>) en de capaciteiten onder <code>aanvoer</code> en <code>afvoer</code> condities opgegeven.</p>
+<section id="remotes" class="level2">
+<h2 class="anchored" data-anchor-id="remotes">Remotes</h2>
+<p>Three remotes are configured in <code>.dvc/config</code>:</p>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 23%">
-<col style="width: 9%">
-<col style="width: 10%">
+<col style="width: 36%">
 <col style="width: 22%">
-<col style="width: 17%">
-<col style="width: 16%">
+<col style="width: 40%">
 </colgroup>
 <thead>
 <tr class="header">
-<th style="text-align: left;">naam</th>
-<th style="text-align: left;">code</th>
-<th style="text-align: right;">node_id</th>
-<th style="text-align: left;">functie</th>
-<th style="text-align: right;">aanvoer [m3/s]</th>
-<th style="text-align: right;">afvoer [m3/s]</th>
+<th style="text-align: left;">Remote</th>
+<th style="text-align: left;">URL</th>
+<th style="text-align: left;">Purpose</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">Abelstok</td>
-<td style="text-align: left;">KGM156</td>
-<td style="text-align: right;">147</td>
-<td style="text-align: left;">uitlaat</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">10</td>
+<td style="text-align: left;"><code>minio</code> (default)</td>
+<td style="text-align: left;"><code>s3://ribasim-nl/dvc</code></td>
+<td style="text-align: left;">Primary DVC cache on MinIO</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">Allartsooginlaat</td>
-<td style="text-align: left;">INL201</td>
-<td style="text-align: right;">698</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">20</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;"><code>goodcloud</code></td>
+<td style="text-align: left;">The Good Cloud <code>/dvc</code></td>
+<td style="text-align: left;">Legacy DVC storage</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">De Drie Delfzijlen</td>
-<td style="text-align: left;">KGM046</td>
-<td style="text-align: right;">67</td>
-<td style="text-align: left;">uitlaat</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">25</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">De Waterwolf</td>
-<td style="text-align: left;">KGM001</td>
-<td style="text-align: right;">29</td>
-<td style="text-align: left;">doorlaat</td>
-<td style="text-align: right;">75</td>
-<td style="text-align: right;">75</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Dokkumer Nieuwezijlen</td>
-<td style="text-align: left;"></td>
-<td style="text-align: right;">1755</td>
-<td style="text-align: left;">uitlaat</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Drie-Provinciëninlaat</td>
-<td style="text-align: left;">INL202</td>
-<td style="text-align: right;">699</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">20</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Frieschepaleninlaat</td>
-<td style="text-align: left;">INL077</td>
-<td style="text-align: right;">687</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">20</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Gaarkeukeninlaat</td>
-<td style="text-align: left;"></td>
-<td style="text-align: right;">1741</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">24</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Gemaal Dokwerd</td>
-<td style="text-align: left;"></td>
-<td style="text-align: right;">1753</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">20</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Gemaal de Dongeradielen</td>
-<td style="text-align: left;"></td>
-<td style="text-align: right;">1748</td>
-<td style="text-align: left;">uitlaat</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">H.D. Louwes</td>
-<td style="text-align: left;">KGM002</td>
-<td style="text-align: right;">30</td>
-<td style="text-align: left;">uitlaat</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">16.7</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Heidenheeminlaat</td>
-<td style="text-align: left;">INL055</td>
-<td style="text-align: right;">1743</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.072</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Herculesstuw</td>
-<td style="text-align: left;">KST0169</td>
-<td style="text-align: right;">412</td>
-<td style="text-align: left;">uitlaat (doorspoeling)</td>
-<td style="text-align: right;">0.2</td>
-<td style="text-align: right;">10.2</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Huis ter Heide-inlaat</td>
-<td style="text-align: left;">INL114</td>
-<td style="text-align: right;">1742</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.105</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Jonkersbruginlaat</td>
-<td style="text-align: left;">INL095</td>
-<td style="text-align: right;">1739</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.032</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Leek</td>
-<td style="text-align: left;">KGM009</td>
-<td style="text-align: right;">36</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">1.17</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Meerweg</td>
-<td style="text-align: left;"></td>
-<td style="text-align: right;">1758</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.021</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Nieuwe Robbengat</td>
-<td style="text-align: left;">KGM016</td>
-<td style="text-align: right;">42</td>
-<td style="text-align: left;">uitlaat</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">4.33</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Noordpolderzijl</td>
-<td style="text-align: left;">KGM014</td>
-<td style="text-align: right;">40</td>
-<td style="text-align: left;">uitlaat</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">4</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Oostersluis</td>
-<td style="text-align: left;">KGM148</td>
-<td style="text-align: right;">142</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">2.5</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">R.J. Cleveringsluizen</td>
-<td style="text-align: left;">KSL011</td>
-<td style="text-align: right;">724</td>
-<td style="text-align: left;">uitlaat</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">668</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Schaphalsterzijl</td>
-<td style="text-align: left;">KGM155_i</td>
-<td style="text-align: right;">146</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">2.5</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Spijksterpompen</td>
-<td style="text-align: left;">KGM015</td>
-<td style="text-align: right;">41</td>
-<td style="text-align: left;">uitlaat (doorspoeling)</td>
-<td style="text-align: right;">0.4</td>
-<td style="text-align: right;">12.9</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Stad en Lande</td>
-<td style="text-align: left;">KGM003_i</td>
-<td style="text-align: right;">32</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">1.5</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Ter Aardinlaat</td>
-<td style="text-align: left;">INL001</td>
-<td style="text-align: right;">1751</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.043</td>
-<td style="text-align: right;">0</td>
+<td style="text-align: left;"><code>modeldata</code></td>
+<td style="text-align: left;">The Good Cloud <code>/Ribasim modeldata</code></td>
+<td style="text-align: left;">Source data not under DVC control</td>
 </tr>
 </tbody>
 </table>
 </section>
-<section id="bronnen" class="level2">
-<h2 class="anchored" data-anchor-id="bronnen">Bronnen</h2>
-<p>Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze <a href="../workflow/gravity-controlled.html">workflow</a>. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:</p>
-<ul>
-<li>Documentatie Distributiemodel (Deel C, hoofdstuk 26)</li>
-<li><a href="bronnen/noorderzijlvest/wateraanvoer_en_doorspoeling_input_voor_ribasim_lhm_model_noorderzijlvest.pdf">Noorderzijlvest - beschrijving wateraanvoer en doorspoeling</a></li>
-</ul>
-
-
+<section id="pipeline" class="level2">
+<h2 class="anchored" data-anchor-id="pipeline">Pipeline</h2>
+<p>The DVC pipeline is defined in <a href="https://github.com/Deltares/Ribasim-NL/blob/main/dvc.yaml"><code>dvc.yaml</code></a>. Stages run sequentially with dependencies:</p>
+<div class="cell" data-file="_dvc-dag.mmd" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-dvc-pipeline" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-dvc-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-dvc-pipeline">flowchart LR
+    node1["bathymetry"]
+    node2["bergend@aa_en_maas"]
+    node3["bergend@brabantse_delta"]
+    node4["bergend@de_dommel"]
+    node5["bergend@drents_overijsselse_delta"]
+    node6["bergend@hunze_en_aas"]
+    node7["bergend@limburg"]
+    node8["bergend@noorderzijlvest"]
+    node9["bergend@rijn_en_ijssel"]
+    node10["bergend@stichtse_rijnlanden"]
+    node11["bergend@vallei_en_veluwe"]
+    node12["bergend@vechtstromen"]
+    node13["data/Basisgegevens/Baseline/baseline-nl_land-j23_6-v1/baseline.gdb.dvc"]
+    node14["dynamic@aa_en_maas"]
+    node15["dynamic@brabantse_delta"]
+    node16["dynamic@de_dommel"]
+    node17["dynamic@drents_overijsselse_delta"]
+    node18["dynamic@hunze_en_aas"]
+    node19["dynamic@limburg"]
+    node20["dynamic@noorderzijlvest"]
+    node21["dynamic@rijn_en_ijssel"]
+    node22["dynamic@stichtse_rijnlanden"]
+    node23["dynamic@vallei_en_veluwe"]
+    node24["dynamic@vechtstromen"]
+    node25["hws_demand"]
+    node26["hws_transient"]
+    node27["koppelen"]
+    node28["parameterized@aa_en_maas"]
+    node29["parameterized@brabantse_delta"]
+    node30["parameterized@de_dommel"]
+    node31["parameterized@drents_overijsselse_delta"]
+    node32["parameterized@hunze_en_aas"]
+    node33["parameterized@limburg"]
+    node34["parameterized@noorderzijlvest"]
+    node35["parameterized@rijn_en_ijssel"]
+    node36["parameterized@stichtse_rijnlanden"]
+    node37["parameterized@vallei_en_veluwe"]
+    node38["parameterized@vechtstromen"]
+    node39["peilbeheerst@amstel_gooi_en_vecht"]
+    node40["peilbeheerst@delfland"]
+    node41["peilbeheerst@hollands_noorderkwartier"]
+    node42["peilbeheerst@hollandse_delta"]
+    node43["peilbeheerst@rijnland"]
+    node44["peilbeheerst@rivierenland"]
+    node45["peilbeheerst@scheldestromen"]
+    node46["peilbeheerst@schieland_en_de_krimpenerwaard"]
+    node47["peilbeheerst@wetterskip_fryslan"]
+    node48["peilbeheerst@zuiderzeeland"]
+    node49["rwzi"]
+    node50["samenvoegen"]
+    node1--&gt;node25
+    node2--&gt;node14
+    node3--&gt;node15
+    node4--&gt;node16
+    node5--&gt;node17
+    node6--&gt;node18
+    node7--&gt;node19
+    node8--&gt;node20
+    node9--&gt;node21
+    node10--&gt;node22
+    node11--&gt;node23
+    node12--&gt;node24
+    node13--&gt;node25
+    node14--&gt;node50
+    node15--&gt;node50
+    node16--&gt;node50
+    node17--&gt;node50
+    node18--&gt;node50
+    node19--&gt;node50
+    node20--&gt;node50
+    node21--&gt;node50
+    node22--&gt;node50
+    node23--&gt;node50
+    node24--&gt;node50
+    node25--&gt;node26
+    node25--&gt;node27
+    node26--&gt;node50
+    node28--&gt;node2
+    node29--&gt;node3
+    node30--&gt;node4
+    node31--&gt;node5
+    node32--&gt;node6
+    node33--&gt;node7
+    node34--&gt;node8
+    node35--&gt;node9
+    node36--&gt;node10
+    node37--&gt;node11
+    node38--&gt;node12
+    node39--&gt;node50
+    node40--&gt;node50
+    node41--&gt;node50
+    node42--&gt;node50
+    node43--&gt;node50
+    node44--&gt;node50
+    node45--&gt;node50
+    node46--&gt;node50
+    node47--&gt;node50
+    node48--&gt;node50
+    node49--&gt;node14
+    node49--&gt;node15
+    node49--&gt;node16
+    node49--&gt;node17
+    node49--&gt;node18
+    node49--&gt;node19
+    node49--&gt;node20
+    node49--&gt;node21
+    node49--&gt;node22
+    node49--&gt;node23
+    node49--&gt;node24
+    node49--&gt;node25
+    node49--&gt;node39
+    node49--&gt;node40
+    node49--&gt;node41
+    node49--&gt;node42
+    node49--&gt;node43
+    node49--&gt;node44
+    node49--&gt;node45
+    node49--&gt;node46
+    node49--&gt;node47
+    node49--&gt;node48
+    node50--&gt;node27
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-dvc-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: DVC pipeline DAG (click to zoom)
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<style>
+#fig-dvc-pipeline { cursor: zoom-in; }
+#fig-dvc-pipeline.fullscreen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: white; cursor: zoom-out;
+  display: flex; align-items: center; justify-content: center;
+  padding: 2rem;
+}
+#fig-dvc-pipeline.fullscreen svg { max-width: 100%; max-height: 100%; }
+</style>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const fig = document.getElementById("fig-dvc-pipeline");
+  if (fig) fig.addEventListener("click", () => fig.classList.toggle("fullscreen"));
+});
+</script>
+<p>Reproduce the full pipeline:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc repro</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Reproduce a single stage:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc repro dynamic@aa_en_maas</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
+<section id="importing-data-from-remote-storage" class="level2">
+<h2 class="anchored" data-anchor-id="importing-data-from-remote-storage">Importing data from remote storage</h2>
+<p>Use <code>dvc import-url</code> to download a file from a remote URL and take it under DVC control. The <code>remote://modeldata</code> alias refers to The Good Cloud storage that holds source data:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc import-url <span class="at">-f</span> remote://modeldata/Zuiderzeeland/modellen/Zuiderzeeland_parameterized_2025_9_0 data/Zuiderzeeland/modellen/</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="pushing-changes" class="level2">
+<h2 class="anchored" data-anchor-id="pushing-changes">Pushing changes</h2>
+<p>After producing new outputs (running pipeline stages or adding new data), push to the remote:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc push</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Do this before pushing the updated <code>dvc.lock</code> file to git, so the data hashes referenced therein are avaiable for everyone.</p>
+
+
 </section>
 
 </main> <!-- /main -->
@@ -948,38 +894,6 @@ ul.task-list li input[type="checkbox"] {
   });
   </script>
 </div> <!-- /content -->
-<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox","skin":"fullscreen-lightbox"});
-(function() {
-  let previousOnload = window.onload;
-  window.onload = () => {
-    if (previousOnload) {
-      previousOnload();
-    }
-    lightboxQuarto.on('slide_before_load', (data) => {
-      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
-      const href = trigger.getAttribute('href');
-      if (href !== null) {
-        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
-        if (imgEl !== null) {
-          const srcAttr = imgEl.getAttribute("src");
-          if (srcAttr && srcAttr.startsWith("data:")) {
-            slideConfig.href = srcAttr;
-          }
-        }
-      } 
-    });
-  
-    lightboxQuarto.on('slide_after_load', (data) => {
-      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
-      if (window.Quarto?.typesetMath) {
-        window.Quarto.typesetMath(slideNode);
-      }
-    });
-  
-  };
-  
-})();
-          </script>
 
 
 

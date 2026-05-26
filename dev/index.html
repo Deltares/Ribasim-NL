@@ -2,13 +2,16 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.8.27">
+<meta name="generator" content="quarto-1.9.38">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
 <title>Contributing – Ribasim-NL</title>
 <style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
 div.columns{display: flex; gap: min(4vw, 1.5em);}
@@ -67,15 +70,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <meta name="quarto:offset" content="../">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
-<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-c0381a591b4acc84a696f0214b121f95.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-21ca2d58089b899f74b84f303993de13.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -108,7 +110,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link rel="stylesheet" href="styles.css">
 </head>
 
-<body class="nav-fixed quarto-light">
+<body class="nav-sidebar floating nav-fixed quarto-light">
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top">
@@ -158,10 +160,51 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
       </div> <!-- /container-fluid -->
     </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/index.html">Contributing</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
 </header>
 <!-- content -->
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/index.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Contributing</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/dvc.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">DVC (Data Version Control)</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/type-checking.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Type checking</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/slurm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Running on SLURM</span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
         <nav id="TOC" role="doc-toc" class="toc-active">
@@ -175,23 +218,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#git-hooks" id="toc-git-hooks" class="nav-link" data-scroll-target="#git-hooks">Git hooks</a></li>
   <li><a href="#co-development-with-ribasim" id="toc-co-development-with-ribasim" class="nav-link" data-scroll-target="#co-development-with-ribasim">Co-development with Ribasim</a></li>
   <li><a href="#sec-environment-variables" id="toc-sec-environment-variables" class="nav-link" data-scroll-target="#sec-environment-variables">Environment variables</a></li>
-  </ul></li>
-  <li><a href="#type-checking" id="toc-type-checking" class="nav-link" data-scroll-target="#type-checking">Type checking</a>
-  <ul class="collapse">
-  <li><a href="#running-pyrefly" id="toc-running-pyrefly" class="nav-link" data-scroll-target="#running-pyrefly">Running Pyrefly</a></li>
-  <li><a href="#baseline-file" id="toc-baseline-file" class="nav-link" data-scroll-target="#baseline-file">Baseline file</a>
-  <ul class="collapse">
-  <li><a href="#updating-the-baseline" id="toc-updating-the-baseline" class="nav-link" data-scroll-target="#updating-the-baseline">Updating the baseline</a></li>
-  <li><a href="#suppressing-individual-errors" id="toc-suppressing-individual-errors" class="nav-link" data-scroll-target="#suppressing-individual-errors">Suppressing individual errors</a></li>
-  </ul></li>
-  </ul></li>
-  <li><a href="#running-on-slurm" id="toc-running-on-slurm" class="nav-link" data-scroll-target="#running-on-slurm">Running on SLURM</a>
-  <ul class="collapse">
-  <li><a href="#repro.sh-pipeline-reproduction" id="toc-repro.sh-pipeline-reproduction" class="nav-link" data-scroll-target="#repro.sh-pipeline-reproduction">repro.sh: pipeline reproduction</a></li>
-  <li><a href="#run.sh-isolated-simulation-runs" id="toc-run.sh-isolated-simulation-runs" class="nav-link" data-scroll-target="#run.sh-isolated-simulation-runs">run.sh: isolated simulation runs</a>
-  <ul class="collapse">
-  <li><a href="#examples" id="toc-examples" class="nav-link" data-scroll-target="#examples">Examples</a></li>
-  </ul></li>
   </ul></li>
   </ul>
 </nav>
@@ -309,84 +335,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9" data-include="../../.env.default"><pre class="sourceCode ini code-with-copy"><code class="sourceCode ini"></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Values from the <code>.env</code> file take precedence over environment variables, so you can override system-wide settings per project. If you prefer to set these environment variables in your OS or terminal instead, that will also work.</p>
 <p><code>OVERWRITE_FILES_FROM_CLOUD</code> is <code>true</code> by default. When using <code>cloud.synchronize</code> or <code>cloud.download_content</code>, this determines if local files will be overwritten when the <code>overwrite</code> keyword argument is not explicitly passed. Whilst updating datasets locally, you can set this to <code>false</code> to ensure your modifications are not lost. After uploading the new dataset, set it back to <code>true</code>.</p>
-</section>
-</section>
-<section id="type-checking" class="level1">
-<h1>Type checking</h1>
-<p>We use <a href="https://pyrefly.org/">Pyrefly</a> for static type checking. Pyrefly is configured in the <code>[tool.pyrefly]</code> section of <code>pyproject.toml</code>.</p>
-<section id="running-pyrefly" class="level2">
-<h2 class="anchored" data-anchor-id="running-pyrefly">Running Pyrefly</h2>
-<p>To check for type errors, run:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ex">just</span> pycheck</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This runs all hooks except DVC, including Pyrefly type checking. This is also run in CI via the <code>pyrefly</code> job in <code>.github/workflows/python_lint.yml</code>.</p>
-</section>
-<section id="baseline-file" class="level2">
-<h2 class="anchored" data-anchor-id="baseline-file">Baseline file</h2>
-<p>Existing type errors are stored in a <code>baseline.json</code> file. Pyrefly’s <a href="https://pyrefly.org/en/docs/error-suppressions/#baseline-files-experimental">baseline feature</a> suppresses these known errors and only reports <em>new</em> errors. This way, <code>pyrefly check</code> passes cleanly without requiring ignore comments on every line.</p>
-<p>The baseline is configured in <code>pyproject.toml</code>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode toml code-with-copy"><code class="sourceCode toml"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.pyrefly]</span></span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="dt">baseline</span> <span class="op">=</span> <span class="st">"baseline.json"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<section id="updating-the-baseline" class="level3">
-<h3 class="anchored" data-anchor-id="updating-the-baseline">Updating the baseline</h3>
-<p>After fixing existing type errors, regenerate the baseline to remove the fixed entries:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run pyrefly check <span class="at">--update-baseline</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>If you introduce code that triggers new errors (e.g.&nbsp;from incomplete stubs) that cannot be reasonably fixed, you can add them to the baseline by running the same command. Prefer fixing the error or adding a targeted <code># pyrefly: ignore[error-code]</code> comment when possible.</p>
-</section>
-<section id="suppressing-individual-errors" class="level3">
-<h3 class="anchored" data-anchor-id="suppressing-individual-errors">Suppressing individual errors</h3>
-<p>For specific lines where the type checker is wrong, use a targeted ignore comment:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> some_expression  <span class="co"># pyrefly: ignore[error-code]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>For lines that would exceed 120 characters with the comment appended, place the comment on the line above:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># pyrefly: ignore[error-code]</span></span>
-<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> some_very_long_expression_that_would_be_too_long_with_an_inline_comment</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</section>
-</section>
-</section>
-<section id="running-on-slurm" class="level1">
-<h1>Running on SLURM</h1>
-<p>The full pipeline can be reproduced on an HPC cluster using two scripts:</p>
-<ul>
-<li><code>repro.sh</code> — submits DVC pipeline stages as SLURM jobs with correct dependencies</li>
-<li><code>run.sh</code> — submits isolated Ribasim simulation runs</li>
-</ul>
-<section id="repro.sh-pipeline-reproduction" class="level2">
-<h2 class="anchored" data-anchor-id="repro.sh-pipeline-reproduction">repro.sh: pipeline reproduction</h2>
-<p>Submits the DVC pipeline as individual SLURM jobs. Each <code>foreach</code> stage gets its own job, and SLURM <code>--dependency=afterok</code> ensures correct ordering.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./repro.sh</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This submits jobs in three waves:</p>
-<ol type="1">
-<li><code>rwzi</code> (shared dependency)</li>
-<li>22 parallel jobs: 11 <code>dynamic@*</code>, 10 <code>peilbeheerst@*</code>, 1 <code>hws_transient</code></li>
-<li><code>samenvoegen</code> → <code>koppelen</code></li>
-</ol>
-<p>On completion, job IDs are written to <code>repro_jobs.txt</code> for use with <code>run.sh</code>.</p>
-</section>
-<section id="run.sh-isolated-simulation-runs" class="level2">
-<h2 class="anchored" data-anchor-id="run.sh-isolated-simulation-runs">run.sh: isolated simulation runs</h2>
-<p>Copies a model and the Ribasim binary to <code>runs/&lt;name&gt;/</code> and submits a SLURM job. This isolates runs from the DVC pipeline and from each other, preventing Bus errors from concurrent file access.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./run.sh</span> <span class="op">&lt;</span>name<span class="op">&gt;</span> <span class="op">&lt;</span>model_dir<span class="op">&gt;</span> [--after=<span class="op">&lt;</span>jobid<span class="op">&gt;</span>] [key=value ...]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>TOML overrides use dot notation for nested keys.</p>
-<section id="examples" class="level3">
-<h3 class="anchored" data-anchor-id="examples">Examples</h3>
-<p>Run <code>lhm_coupled</code> after koppelen finishes:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./run.sh</span> lhm_coupled data/Rijkswaterstaat/modellen/lhm_coupled <span class="dt">\</span></span>
-<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--after</span><span class="op">=</span><span class="va">$(</span><span class="fu">grep</span> koppelen repro_jobs.txt <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-f2</span><span class="va">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Run <code>lhm_parts</code> with a shorter simulation period:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./run.sh</span> lhm_parts_1yr data/Rijkswaterstaat/modellen/lhm_parts <span class="dt">\</span></span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--after</span><span class="op">=</span><span class="va">$(</span><span class="fu">grep</span> samenvoegen repro_jobs.txt <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-f2</span><span class="va">)</span> <span class="dt">\</span></span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>  endtime=<span class="st">"2018-01-01 00:00:00"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Compare solver settings:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./run.sh</span> lhm_coupled_tight data/Rijkswaterstaat/modellen/lhm_coupled <span class="dt">\</span></span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--after</span><span class="op">=</span><span class="va">$(</span><span class="fu">grep</span> koppelen repro_jobs.txt <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-f2</span><span class="va">)</span> <span class="dt">\</span></span>
-<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>  solver.abstol=1e-6</span>
-<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a><span class="ex">./run.sh</span> lhm_coupled_qndf data/Rijkswaterstaat/modellen/lhm_coupled <span class="dt">\</span></span>
-<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--after</span><span class="op">=</span><span class="va">$(</span><span class="fu">grep</span> koppelen repro_jobs.txt <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-f2</span><span class="va">)</span> <span class="dt">\</span></span>
-<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>  solver.algorithm=QNDF solver.abstol=1e-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>All submissions are logged to <code>runs/jobs.txt</code>. Run directories and job logs are gitignored.</p>
 
 
-</section>
 </section>
 </section>
 

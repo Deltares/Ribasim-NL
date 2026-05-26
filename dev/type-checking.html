@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>noorderzijlvest – Ribasim-NL</title>
+<title>Type checking – Ribasim-NL</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -22,6 +22,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -43,9 +78,6 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../site_libs/bootstrap/bootstrap-21ca2d58089b899f74b84f303993de13.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
-<script src="../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
-<link href="../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
-<link href="../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -108,13 +140,13 @@ ul.task-list li input[type="checkbox"] {
 <span class="menu-text">Workflows</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link active" href="../watersystems/main.html" aria-current="page"> 
+    <a class="nav-link" href="../watersystems/main.html"> 
 <span class="menu-text">Watersystems</span></a>
   </li>  
 </ul>
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../dev/index.html"> 
+    <a class="nav-link active" href="../dev/index.html" aria-current="page"> 
 <span class="menu-text">Contributing</span></a>
   </li>  
   <li class="nav-item compact">
@@ -133,7 +165,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../watersystems/Noorderzijlvest.html">Noorderzijlvest</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/type-checking.html">Type checking</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -147,74 +179,26 @@ ul.task-list li input[type="checkbox"] {
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../watersystems/main.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Watersystemen (NL)</span></a>
+  <a href="../dev/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Contributing</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../watersystems/AaenMaas.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Aa en Maas</span></a>
+  <a href="../dev/dvc.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">DVC (Data Version Control)</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../watersystems/BrabantseDelta.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Brabantse Delta</span></a>
+  <a href="../dev/type-checking.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Type checking</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../watersystems/DeDommel.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">De Dommel</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../watersystems/DrentsOverijsselseDelta.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Drents Overijsselse Delta</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../watersystems/HunzeenAas.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Hunze en Aas</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../watersystems/Limburg.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Limburg</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../watersystems/Noorderzijlvest.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Noorderzijlvest</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../watersystems/RijnenIJssel.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Rijn en IJssel</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../watersystems/StichtseRijnlanden.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Stichtse Rijnlanden</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../watersystems/ValleienVeluwe.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Vallei en Veluwe</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../watersystems/Vechtstromen.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Vechtstromen</span></a>
+  <a href="../dev/slurm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Running on SLURM</span></a>
   </div>
 </li>
     </ul>
@@ -227,320 +211,63 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#noorderzijlvest" id="toc-noorderzijlvest" class="nav-link active" data-scroll-target="#noorderzijlvest">Noorderzijlvest</a>
+  <li><a href="#running-pyrefly" id="toc-running-pyrefly" class="nav-link active" data-scroll-target="#running-pyrefly">Running Pyrefly</a></li>
+  <li><a href="#baseline-file" id="toc-baseline-file" class="nav-link" data-scroll-target="#baseline-file">Baseline file</a>
   <ul class="collapse">
-  <li><a href="#systeembeschrijving" id="toc-systeembeschrijving" class="nav-link" data-scroll-target="#systeembeschrijving">Systeembeschrijving</a>
-  <ul class="collapse">
-  <li><a href="#inlaat-gaarkeuken" id="toc-inlaat-gaarkeuken" class="nav-link" data-scroll-target="#inlaat-gaarkeuken">Inlaat Gaarkeuken</a></li>
-  <li><a href="#electraboezem" id="toc-electraboezem" class="nav-link" data-scroll-target="#electraboezem">Electraboezem</a></li>
-  <li><a href="#peizerdiep" id="toc-peizerdiep" class="nav-link" data-scroll-target="#peizerdiep">Peizerdiep</a></li>
-  <li><a href="#jonkersvaartdwarsdiep" id="toc-jonkersvaartdwarsdiep" class="nav-link" data-scroll-target="#jonkersvaartdwarsdiep">Jonkersvaart/Dwarsdiep</a></li>
-  <li><a href="#noordpolder-en-spijksterpompen" id="toc-noordpolder-en-spijksterpompen" class="nav-link" data-scroll-target="#noordpolder-en-spijksterpompen">Noordpolder en Spijksterpompen</a></li>
-  <li><a href="#de-fivelingoboezem" id="toc-de-fivelingoboezem" class="nav-link" data-scroll-target="#de-fivelingoboezem">De Fivelingoboezem</a></li>
-  <li><a href="#marnerwaard" id="toc-marnerwaard" class="nav-link" data-scroll-target="#marnerwaard">Marnerwaard</a></li>
-  <li><a href="#dongeradeel" id="toc-dongeradeel" class="nav-link" data-scroll-target="#dongeradeel">Dongeradeel</a></li>
-  </ul></li>
-  <li><a href="#capaciteiten" id="toc-capaciteiten" class="nav-link" data-scroll-target="#capaciteiten">Capaciteiten</a></li>
-  <li><a href="#bronnen" id="toc-bronnen" class="nav-link" data-scroll-target="#bronnen">Bronnen</a></li>
+  <li><a href="#updating-the-baseline" id="toc-updating-the-baseline" class="nav-link" data-scroll-target="#updating-the-baseline">Updating the baseline</a></li>
+  <li><a href="#suppressing-individual-errors" id="toc-suppressing-individual-errors" class="nav-link" data-scroll-target="#suppressing-individual-errors">Suppressing individual errors</a></li>
   </ul></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"></header>
+<main class="content" id="quarto-document-content">
 
-
-
-
-<section id="noorderzijlvest" class="level1">
-<h1>Noorderzijlvest</h1>
-<ul>
-<li>Laatst bijgewerkt: 07-04-2026</li>
-<li><a href="https://deltares.thegood.cloud/s/LEcDeSTPq8M3itz">Laatste modelversie</a></li>
-</ul>
-<section id="systeembeschrijving" class="level2">
-<h2 class="anchored" data-anchor-id="systeembeschrijving">Systeembeschrijving</h2>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><a href="https://s3.deltares.nl/ribasim-nl/doc-image/watersystems/Noorderzijlvest.svg" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Systeembeschrijving Noorderzijlvest"><img src="https://s3.deltares.nl/ribasim-nl/doc-image/watersystems/Noorderzijlvest.svg" class="img-fluid figure-img" alt="Systeembeschrijving Noorderzijlvest"></a></p>
-<figcaption>Systeembeschrijving Noorderzijlvest</figcaption>
-</figure>
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Type checking</h1>
 </div>
-<section id="inlaat-gaarkeuken" class="level3">
-<h3 class="anchored" data-anchor-id="inlaat-gaarkeuken">Inlaat Gaarkeuken</h3>
-<ul>
-<li>Bij <code>Gaarkeuken</code> kan maximaal 24 m³/s uit de Friese boezem worden ingelaten op de Electraboezem van Noorderzijlvest.</li>
-<li>Een deel daarvan (tot 20 m³/s) kan via <code>gemaal Dorkwerd</code> worden opgepompt richting waterschap Hunze en Aa’s.</li>
-<li>Water dat op de Electraboezem nodig is, wordt via de sluis bij <code>Gaarkeuken</code> ingelaten; overschot wordt afgevoerd richting het <code>Lauwersmeer</code>.</li>
-<li>Praktisch geldt een globale verdeling van 1/5 naar de Electraboezem en 4/5 via <code>Dorkwerd</code> naar Hunze en Aa’s (Eemskanaalboezem).</li>
-</ul>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>We use <a href="https://pyrefly.org/">Pyrefly</a> for static type checking. Pyrefly is configured in the <code>[tool.pyrefly]</code> section of <code>pyproject.toml</code>.</p>
+<section id="running-pyrefly" class="level2">
+<h2 class="anchored" data-anchor-id="running-pyrefly">Running Pyrefly</h2>
+<p>To check for type errors, run:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">just</span> pycheck</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This runs all hooks except DVC, including Pyrefly type checking. This is also run in CI via the <code>pyrefly</code> job in <code>.github/workflows/python_lint.yml</code>.</p>
 </section>
-<section id="electraboezem" class="level3">
-<h3 class="anchored" data-anchor-id="electraboezem">Electraboezem</h3>
-<p>Het witte gebied en zalmroze gebied (Elektraboezem-Oost) op de kaart wordt gevormd door de Electraboezem (van Starkenborghkanaal en Reitdiep). Afvoer uit de boezem vindt plaats via twee spui-/maalcomplexen — de gemalen <code>H.D. Louwes</code> (toekomstig Hunsingo) en <code>De Waterwolf</code> — naar het Lauwersmeer. Het Lauwersmeer loost vervolgens via de <code>Cleveringsluizen</code> op de Waddenzee.</p>
+<section id="baseline-file" class="level2">
+<h2 class="anchored" data-anchor-id="baseline-file">Baseline file</h2>
+<p>Existing type errors are stored in a <code>baseline.json</code> file. Pyrefly’s <a href="https://pyrefly.org/en/docs/error-suppressions/#baseline-files-experimental">baseline feature</a> suppresses these known errors and only reports <em>new</em> errors. This way, <code>pyrefly check</code> passes cleanly without requiring ignore comments on every line.</p>
+<p>The baseline is configured in <code>pyproject.toml</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode toml code-with-copy"><code class="sourceCode toml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.pyrefly]</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dt">baseline</span> <span class="op">=</span> <span class="st">"baseline.json"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="updating-the-baseline" class="level3">
+<h3 class="anchored" data-anchor-id="updating-the-baseline">Updating the baseline</h3>
+<p>After fixing existing type errors, regenerate the baseline to remove the fixed entries:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run pyrefly check <span class="at">--update-baseline</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>If you introduce code that triggers new errors (e.g.&nbsp;from incomplete stubs) that cannot be reasonably fixed, you can add them to the baseline by running the same command. Prefer fixing the error or adding a targeted <code># pyrefly: ignore[error-code]</code> comment when possible.</p>
 </section>
-<section id="peizerdiep" class="level3">
-<h3 class="anchored" data-anchor-id="peizerdiep">Peizerdiep</h3>
-<p>In afvoersituaties kan dit gebied vrij afstromen naar het Lauwersmeer via de Electraboezem.</p>
-<p>In het zuidoosten wordt via een reeks kleinere inlaten — <code>Jonkersbrug</code>, <code>Ter Aard</code>, <code>Huis ter Heide</code>, <code>Heideheimheem</code>, <code>Meerweg</code> vanuit Hunze en Aa’s en Drents Overijsselse Delta water ingelaten.</p>
-</section>
-<section id="jonkersvaartdwarsdiep" class="level3">
-<h3 class="anchored" data-anchor-id="jonkersvaartdwarsdiep">Jonkersvaart/Dwarsdiep</h3>
-<p>Dit gebied voert water af naar de Electraboezem via de uitlaat <code>Leek</code> en het Dwarsdiep.</p>
-<p>De wateraanvoer wordt in hoofdzaak verzorgd door het aanvoergemaal bij <code>Leek</code>, aangevuld met enkele kleinere inlaten in het zuidoosten vanuit het Wetterskip. Via <code>Leek</code> wordt het water naar de Jonkersvaart geleid voor beregening, infiltratie en doorspoeling.</p>
-</section>
-<section id="noordpolder-en-spijksterpompen" class="level3">
-<h3 class="anchored" data-anchor-id="noordpolder-en-spijksterpompen">Noordpolder en Spijksterpompen</h3>
-<p>De noordelijke kustpolders lozen direct op de Waddenzee. Het gebied is globaal in twee ongeveer even grote delen te onderscheiden, elk met een hoofdgemaal (<code>Noordpolderzijl</code> en <code>Spijksterpompen</code>).</p>
-<p>In droge periodes wordt water uit de Electraboezem (via boezemgemalen <code>Stad en Lande</code>, <code>Schaphalsterzijl</code> en <code>Tilburg</code>) met kleine aanvoergemalen naar de kustpolders opgemalen.</p>
-</section>
-<section id="de-fivelingoboezem" class="level3">
-<h3 class="anchored" data-anchor-id="de-fivelingoboezem">De Fivelingoboezem</h3>
-<p>Loost via gemaal <code>De Drie Delfzijlen</code> bij Delfzijl naar de Eems. Aanvoer is mogelijk vanuit het Damsterdiep, waarin water vanuit de Electraboezem wordt opgemalen bij de <code>Oostersluis</code>. Daarnaast is aanvoer in het noorden mogelijk via de Electraboezem en het gebied bij <code>Spijksterpompen</code>.</p>
-</section>
-<section id="marnerwaard" class="level3">
-<h3 class="anchored" data-anchor-id="marnerwaard">Marnerwaard</h3>
-<p>Marnerwaard loost water via <code>Nieuw Robbengat</code> op het Lauwersmeer, waar tevens water wordt ingelaten in droge perioden.</p>
-<p>In droge perioden kan water worden aangevoerd via een aantal gemalen in het zuidoosten van het gebied, alsook in het noordwesten via het Lauwersmeer. Doorspoeling vindt plaats via de <code>Herculesstuw</code>.</p>
-</section>
-<section id="dongeradeel" class="level3">
-<h3 class="anchored" data-anchor-id="dongeradeel">Dongeradeel</h3>
-<p>Dongeradeel is het gebied ten westen van het Lauwersmeer en hoort bij Wetterskip Fryslân. Afvoer vindt plaats met gemaal <code>Dongeradielen</code> op het Lauwersmeer en via de sluis <code>Dokkumer Nieuwezijlen</code> onder vrij verval.</p>
-</section>
-</section>
-<section id="capaciteiten" class="level2">
-<h2 class="anchored" data-anchor-id="capaciteiten">Capaciteiten</h2>
-<p>Per kunstwerk, gespecificeerd op <code>naam</code>, <code>code</code> (waterbeheerder), <code>node_id</code> (v.h. Ribasim model) zijn hieronder de functie (<code>inlaat</code>, <code>doorlaat</code>, <code>uitlaat</code>, <code>uitlaat (doorspoeling))</code>) en de capaciteiten onder <code>aanvoer</code> en <code>afvoer</code> condities opgegeven.</p>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 23%">
-<col style="width: 9%">
-<col style="width: 10%">
-<col style="width: 22%">
-<col style="width: 17%">
-<col style="width: 16%">
-</colgroup>
-<thead>
-<tr class="header">
-<th style="text-align: left;">naam</th>
-<th style="text-align: left;">code</th>
-<th style="text-align: right;">node_id</th>
-<th style="text-align: left;">functie</th>
-<th style="text-align: right;">aanvoer [m3/s]</th>
-<th style="text-align: right;">afvoer [m3/s]</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td style="text-align: left;">Abelstok</td>
-<td style="text-align: left;">KGM156</td>
-<td style="text-align: right;">147</td>
-<td style="text-align: left;">uitlaat</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">10</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Allartsooginlaat</td>
-<td style="text-align: left;">INL201</td>
-<td style="text-align: right;">698</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">20</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">De Drie Delfzijlen</td>
-<td style="text-align: left;">KGM046</td>
-<td style="text-align: right;">67</td>
-<td style="text-align: left;">uitlaat</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">25</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">De Waterwolf</td>
-<td style="text-align: left;">KGM001</td>
-<td style="text-align: right;">29</td>
-<td style="text-align: left;">doorlaat</td>
-<td style="text-align: right;">75</td>
-<td style="text-align: right;">75</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Dokkumer Nieuwezijlen</td>
-<td style="text-align: left;"></td>
-<td style="text-align: right;">1755</td>
-<td style="text-align: left;">uitlaat</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Drie-Provinciëninlaat</td>
-<td style="text-align: left;">INL202</td>
-<td style="text-align: right;">699</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">20</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Frieschepaleninlaat</td>
-<td style="text-align: left;">INL077</td>
-<td style="text-align: right;">687</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">20</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Gaarkeukeninlaat</td>
-<td style="text-align: left;"></td>
-<td style="text-align: right;">1741</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">24</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Gemaal Dokwerd</td>
-<td style="text-align: left;"></td>
-<td style="text-align: right;">1753</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">20</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Gemaal de Dongeradielen</td>
-<td style="text-align: left;"></td>
-<td style="text-align: right;">1748</td>
-<td style="text-align: left;">uitlaat</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">H.D. Louwes</td>
-<td style="text-align: left;">KGM002</td>
-<td style="text-align: right;">30</td>
-<td style="text-align: left;">uitlaat</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">16.7</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Heidenheeminlaat</td>
-<td style="text-align: left;">INL055</td>
-<td style="text-align: right;">1743</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.072</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Herculesstuw</td>
-<td style="text-align: left;">KST0169</td>
-<td style="text-align: right;">412</td>
-<td style="text-align: left;">uitlaat (doorspoeling)</td>
-<td style="text-align: right;">0.2</td>
-<td style="text-align: right;">10.2</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Huis ter Heide-inlaat</td>
-<td style="text-align: left;">INL114</td>
-<td style="text-align: right;">1742</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.105</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Jonkersbruginlaat</td>
-<td style="text-align: left;">INL095</td>
-<td style="text-align: right;">1739</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.032</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Leek</td>
-<td style="text-align: left;">KGM009</td>
-<td style="text-align: right;">36</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">1.17</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Meerweg</td>
-<td style="text-align: left;"></td>
-<td style="text-align: right;">1758</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.021</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Nieuwe Robbengat</td>
-<td style="text-align: left;">KGM016</td>
-<td style="text-align: right;">42</td>
-<td style="text-align: left;">uitlaat</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">4.33</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Noordpolderzijl</td>
-<td style="text-align: left;">KGM014</td>
-<td style="text-align: right;">40</td>
-<td style="text-align: left;">uitlaat</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">4</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Oostersluis</td>
-<td style="text-align: left;">KGM148</td>
-<td style="text-align: right;">142</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">2.5</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">R.J. Cleveringsluizen</td>
-<td style="text-align: left;">KSL011</td>
-<td style="text-align: right;">724</td>
-<td style="text-align: left;">uitlaat</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">668</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Schaphalsterzijl</td>
-<td style="text-align: left;">KGM155_i</td>
-<td style="text-align: right;">146</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">2.5</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Spijksterpompen</td>
-<td style="text-align: left;">KGM015</td>
-<td style="text-align: right;">41</td>
-<td style="text-align: left;">uitlaat (doorspoeling)</td>
-<td style="text-align: right;">0.4</td>
-<td style="text-align: right;">12.9</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Stad en Lande</td>
-<td style="text-align: left;">KGM003_i</td>
-<td style="text-align: right;">32</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">1.5</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Ter Aardinlaat</td>
-<td style="text-align: left;">INL001</td>
-<td style="text-align: right;">1751</td>
-<td style="text-align: left;">inlaat</td>
-<td style="text-align: right;">0.043</td>
-<td style="text-align: right;">0</td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="bronnen" class="level2">
-<h2 class="anchored" data-anchor-id="bronnen">Bronnen</h2>
-<p>Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze <a href="../workflow/gravity-controlled.html">workflow</a>. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:</p>
-<ul>
-<li>Documentatie Distributiemodel (Deel C, hoofdstuk 26)</li>
-<li><a href="bronnen/noorderzijlvest/wateraanvoer_en_doorspoeling_input_voor_ribasim_lhm_model_noorderzijlvest.pdf">Noorderzijlvest - beschrijving wateraanvoer en doorspoeling</a></li>
-</ul>
+<section id="suppressing-individual-errors" class="level3">
+<h3 class="anchored" data-anchor-id="suppressing-individual-errors">Suppressing individual errors</h3>
+<p>For specific lines where the type checker is wrong, use a targeted ignore comment:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> some_expression  <span class="co"># pyrefly: ignore[error-code]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>For lines that would exceed 120 characters with the comment appended, place the comment on the line above:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># pyrefly: ignore[error-code]</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> some_very_long_expression_that_would_be_too_long_with_an_inline_comment</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>
@@ -948,38 +675,6 @@ ul.task-list li input[type="checkbox"] {
   });
   </script>
 </div> <!-- /content -->
-<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox","skin":"fullscreen-lightbox"});
-(function() {
-  let previousOnload = window.onload;
-  window.onload = () => {
-    if (previousOnload) {
-      previousOnload();
-    }
-    lightboxQuarto.on('slide_before_load', (data) => {
-      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
-      const href = trigger.getAttribute('href');
-      if (href !== null) {
-        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
-        if (imgEl !== null) {
-          const srcAttr = imgEl.getAttribute("src");
-          if (srcAttr && srcAttr.startsWith("data:")) {
-            slideConfig.href = srcAttr;
-          }
-        }
-      } 
-    });
-  
-    lightboxQuarto.on('slide_after_load', (data) => {
-      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
-      if (window.Quarto?.typesetMath) {
-        window.Quarto.typesetMath(slideNode);
-      }
-    });
-  
-  };
-  
-})();
-          </script>
 
 
 
