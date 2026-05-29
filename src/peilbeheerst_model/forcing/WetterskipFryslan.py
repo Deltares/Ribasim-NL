@@ -17,8 +17,10 @@ from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
     add_function_to_peilbeheerst_node_table,
     get_node_table_with_from_to_node_ids,
+    remove_duplicate_controls,
     set_node_functions,
 )
+from shapely.geometry import Point
 
 from peilbeheerst_model import supply
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing, junctionify, merge_rwzi_model
@@ -177,8 +179,6 @@ if MIXED_CONDITIONS:
 else:
     ribasim_model.level_boundary.static.df["level"] = default_level
 
-inlaat_structures += [3685]  # add some more outlets (created due to FB, hence not in FF)
-
 # prepare 'aanvoergebieden'
 if AANVOER_CONDITIONS:
     aanvoergebieden = supply.special_load_geometry(
@@ -198,7 +198,9 @@ ribasim_param.set_aanvoer_flags(
     ribasim_model,
     aanvoergebieden,
     processor,
-    outlet_aanvoer_on=tuple(inlaat_structures),
+    outlet_aanvoer_on=tuple(
+        ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["meta_func_aanvoer"] == 1, "node_id"]
+    ),
     aanvoer_enabled=AANVOER_CONDITIONS,
 )
 ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOER_CONDITIONS)
@@ -256,6 +258,12 @@ to_supply = (
     3888,
 )
 to_flow_control = (2452, 3064, 3065, 3068)
+
+# look up dynamically-added drain node IDs by geometry
+_trc_node_df = ribasim_model.tabulated_rating_curve.node.df
+_drain_points = [Point(206421, 592530), Point(206360, 592679)]
+to_drain_node_ids = tuple(_trc_node_df.loc[_trc_node_df.geometry.distance(p) < 1].index[0] for p in _drain_points)
+
 to_drain = (2147, 2751, 2944, 3041, 3494, 3568, 3709, *to_drain_node_ids)
 
 from_to_node_function_table = set_node_functions(

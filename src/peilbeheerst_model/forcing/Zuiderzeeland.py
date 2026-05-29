@@ -20,7 +20,6 @@ from ribasim_nl.control import (
     set_node_functions,
 )
 
-from peilbeheerst_model import supply
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing, junctionify, merge_rwzi_model
 
 AANVOER_CONDITIONS: bool = True
@@ -165,9 +164,6 @@ if MIXED_CONDITIONS:
     )
 else:
     ribasim_model.level_boundary.static.df["level"] = default_level
-
-for node in inlaat_structures:
-    ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_aanvoer"] = 1
 
 # add control, based on the meta_categorie
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")

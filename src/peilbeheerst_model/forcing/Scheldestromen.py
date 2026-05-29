@@ -17,6 +17,7 @@ from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
     add_function_to_peilbeheerst_node_table,
     get_node_table_with_from_to_node_ids,
+    remove_duplicate_controls,
     set_node_functions,
 )
 
@@ -193,10 +194,6 @@ ribasim_param.identify_node_meta_categorie(ribasim_model, aanvoer_enabled=AANVOE
 # ribasim_param.add_continuous_control(ribasim_model, dy=-50)
 
 ribasim_model.basin.area.df["meta_streefpeil"] = ribasim_model.basin.area.df["meta_streefpeil"].astype(float)
-
-for node in inlaat_structures:
-    ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_aanvoer"] = 1
-    ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_afvoer"] = 0
 
 from_to_node_table = get_node_table_with_from_to_node_ids(ribasim_model)
 from_to_node_function_table = add_function_to_peilbeheerst_node_table(ribasim_model, from_to_node_table)

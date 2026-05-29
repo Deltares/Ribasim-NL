@@ -176,9 +176,6 @@ if MIXED_CONDITIONS:
 else:
     ribasim_model.level_boundary.static.df["level"] = default_level
 
-for node in inlaat_structures:
-    ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_aanvoer"] = 1
-
 # prepare 'aanvoergebieden'
 if AANVOER_CONDITIONS:
     aanvoergebieden = supply.special_load_geometry(

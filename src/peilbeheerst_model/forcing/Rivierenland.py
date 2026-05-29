@@ -19,6 +19,7 @@ from ribasim_nl.control import (
     get_node_table_with_from_to_node_ids,
     set_node_functions,
 )
+from shapely.geometry import Point
 
 from peilbeheerst_model import supply
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing, junctionify, merge_rwzi_model
@@ -233,6 +234,17 @@ to_flow_control = (
     856,
     879,
 )
+
+# look up dynamically-added inlaten node IDs by geometry
+_trc_node_df = ribasim_model.tabulated_rating_curve.node.df
+_pump_node_df = ribasim_model.pump.node.df
+_inlaat_kuijk_point = Point(174615, 440126)
+_inlaat_points = [_inlaat_kuijk_point, Point(103334, 433570), Point(103446, 433601)]
+inlaten = [_trc_node_df.loc[_trc_node_df.geometry.distance(p) < 1].index[0] for p in _inlaat_points]
+_pannerlingen_point = Point(198568, 434184)
+inlaten.append(_pump_node_df.loc[_pump_node_df.geometry.distance(_pannerlingen_point) < 1].index[0])
+inlaat_Kuijk = inlaten[0]
+
 to_supply = (
     *inlaten,  # add all manually added inlaten
     245,

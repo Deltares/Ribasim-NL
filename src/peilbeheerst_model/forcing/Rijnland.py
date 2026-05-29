@@ -17,6 +17,7 @@ from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
     add_function_to_peilbeheerst_node_table,
     get_node_table_with_from_to_node_ids,
+    remove_duplicate_controls,
     set_node_functions,
 )
 

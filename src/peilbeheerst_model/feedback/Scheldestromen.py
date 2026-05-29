@@ -166,5 +166,9 @@ ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, def
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
+for node in inlaat_structures:
+    ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_aanvoer"] = 1
+    ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_afvoer"] = 0
+
 ribasim_param.clean_tables(ribasim_model, waterschap)
 ribasim_model.write(ribasim_work_dir_model_toml)

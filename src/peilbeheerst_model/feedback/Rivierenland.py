@@ -10,7 +10,7 @@ from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from shapely import LineString, Point
 
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import CloudStorage, Model, geometry
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
