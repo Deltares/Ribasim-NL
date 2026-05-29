@@ -82,7 +82,7 @@ stages:
         - data/Rijkswaterstaat/modellen/rwzi
       outs:
         - data/${item}/modellen/${item}_dynamic_model
-  peilbeheerst:
+  feedback:
     foreach:
       delfland: Delfland
       amstel_gooi_en_vecht: AmstelGooienVecht
@@ -96,12 +96,54 @@ stages:
       zuiderzeeland: Zuiderzeeland
     do:
       cmd:
-        - pixi run python src/peilbeheerst_model/Parametrize/${item}_parametrize.py
+        - pixi run python src/peilbeheerst_model/feedback/${item}.py
       deps:
-        - src/peilbeheerst_model/Parametrize/${item}_parametrize.py
-        - data/Rijkswaterstaat/modellen/rwzi
+        - src/peilbeheerst_model/feedback/${item}.py
       outs:
-        - data/${item}/modellen/${item}_parameterized
+        - data/${item}/modellen/${item}_feedback
+  profile:
+    foreach:
+      delfland: Delfland
+      amstel_gooi_en_vecht: AmstelGooienVecht
+      hollands_noorderkwartier: HollandsNoorderkwartier
+      hollandse_delta: HollandseDelta
+      rijnland: Rijnland
+      rivierenland: Rivierenland
+      scheldestromen: Scheldestromen
+      schieland_en_de_krimpenerwaard: SchielandendeKrimpenerwaard
+      wetterskip_fryslan: WetterskipFryslan
+      zuiderzeeland: Zuiderzeeland
+    do:
+      cmd:
+        - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py ${item}
+        - pixi run python src/peilbeheerst_model/profiles/${item}.py
+      deps:
+        - src/peilbeheerst_model/profiles/prep_cross_sections.py
+        - src/peilbeheerst_model/profiles/${item}.py
+        - data/${item}/modellen/${item}_feedback
+      outs:
+        - data/${item}/modellen/${item}_profile
+  forcing:
+    foreach:
+      delfland: Delfland
+      amstel_gooi_en_vecht: AmstelGooienVecht
+      hollands_noorderkwartier: HollandsNoorderkwartier
+      hollandse_delta: HollandseDelta
+      rijnland: Rijnland
+      rivierenland: Rivierenland
+      scheldestromen: Scheldestromen
+      schieland_en_de_krimpenerwaard: SchielandendeKrimpenerwaard
+      wetterskip_fryslan: WetterskipFryslan
+      zuiderzeeland: Zuiderzeeland
+    do:
+      cmd:
+        - pixi run python src/peilbeheerst_model/forcing/${item}.py
+      deps:
+        - src/peilbeheerst_model/forcing/${item}.py
+        - data/Rijkswaterstaat/modellen/rwzi
+        - data/${item}/modellen/${item}_profile
+      outs:
+        - data/${item}/modellen/${item}_forcing
   hws_demand:
     cmd:
       - pixi run python notebooks/rijkswaterstaat/2_basins.py
@@ -132,16 +174,16 @@ stages:
     deps:
       - notebooks/samenvoegen_modellen.py
       - data/Rijkswaterstaat/modellen/hws_transient
-      - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_parameterized
-      - data/AmstelGooienVecht/modellen/AmstelGooienVecht_parameterized
-      - data/Delfland/modellen/Delfland_parameterized
-      - data/Rijnland/modellen/Rijnland_parameterized
-      - data/Rivierenland/modellen/Rivierenland_parameterized
-      - data/Scheldestromen/modellen/Scheldestromen_parameterized
-      - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_parameterized
-      - data/WetterskipFryslan/modellen/WetterskipFryslan_parameterized
-      - data/Zuiderzeeland/modellen/Zuiderzeeland_parameterized
-      - data/HollandseDelta/modellen/HollandseDelta_parameterized
+      - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_forcing
+      - data/AmstelGooienVecht/modellen/AmstelGooienVecht_forcing
+      - data/Delfland/modellen/Delfland_forcing
+      - data/Rijnland/modellen/Rijnland_forcing
+      - data/Rivierenland/modellen/Rivierenland_forcing
+      - data/Scheldestromen/modellen/Scheldestromen_forcing
+      - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_forcing
+      - data/WetterskipFryslan/modellen/WetterskipFryslan_forcing
+      - data/Zuiderzeeland/modellen/Zuiderzeeland_forcing
+      - data/HollandseDelta/modellen/HollandseDelta_forcing
       - data/AaenMaas/modellen/AaenMaas_dynamic_model
       - data/BrabantseDelta/modellen/BrabantseDelta_dynamic_model
       - data/DeDommel/modellen/DeDommel_dynamic_model
