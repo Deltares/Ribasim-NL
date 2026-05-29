@@ -80,7 +80,7 @@ def main(
 
     # export profile table
     if export_profile_tables:
-        _export_profiles(cloud, water_authority, profile_tables, export_intermediate_output)
+        _export_profiles(cloud, water_authority, profile_tables)
 
 
 def flagged_hydro_objects(
@@ -160,7 +160,7 @@ def flagged_hydro_objects(
 
     # export profile table
     if export_profile_tables:
-        _export_profiles(cloud, water_authority, profiles_tables, export_intermediate_output)
+        _export_profiles(cloud, water_authority, profiles_tables)
 
 
 def _sync(cloud: CloudStorage, water_authority: str, overwrite: bool, *extra_file: str | None) -> None:
@@ -291,20 +291,19 @@ def _int_output_path(cloud: CloudStorage, water_authority: str, export: bool) ->
     """
     if export:
         return cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate")
+    return None
 
 
 def _export_profiles(
     cloud: CloudStorage,
     water_authority: str,
     profile_tables: tuple[gpd.GeoDataFrame, gpd.GeoDataFrame],
-    export_intermediate_output: bool,
 ) -> None:
     """Export profile tables.
 
     :param cloud: the GoodCloud
     :param water_authority: water authority
     :param profile_tables: tables with profile data ("doorgaand" & "bergend")
-    :param export_intermediate_output: export intermediate output
     """
     # set working directory
     wd = cloud.joinpath(water_authority, "verwerkt", "profielen")
@@ -316,11 +315,3 @@ def _export_profiles(
         table = pd.DataFrame(table[[c for c in table.columns if c != "geometry"]])
         table.to_csv(fn, index=False)
         print(f"File saved: {fn}")
-
-    # upload files to the GoodCloud
-    print("Uploading to the GoodCloud...", end="", flush=True)
-    cloud.upload_content(wd, overwrite=True)
-    if export_intermediate_output:
-        (wd / "intermediate").mkdir(exist_ok=True)
-        cloud.upload_content(wd / "intermediate", overwrite=True)
-    print("\rFiles uploaded to the GoodCloud")

@@ -1093,3 +1093,28 @@ stages:
       md5: d22ceb485e60ab0ae5190af82c0bcd79.dir
       size: 2748570
       nfiles: 2
+  profiles@delfland:
+    cmd:
+    - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py
+      Delfland
+    - pixi run python src/peilbeheerst_model/profiles/Delfland.py
+    deps:
+    - path: data/Delfland/modellen/Delfland_feedback
+      hash: md5
+      md5: d22ceb485e60ab0ae5190af82c0bcd79.dir
+      size: 2748570
+      nfiles: 2
+    - path: src/peilbeheerst_model/profiles/Delfland.py
+      hash: md5
+      md5: 427dfd6e0f4942f129c8288c70014b19
+      size: 754
+    - path: src/peilbeheerst_model/profiles/prep_cross_sections.py
+      hash: md5
+      md5: 5769e61980c39dd734d98768f34deca5
+      size: 10674
+    outs:
+    - path: data/Delfland/modellen/Delfland_profiles
+      hash: md5
+      md5: 65ee24868086abc25f92e54c4c7acd21.dir
+      size: 4886682
+      nfiles: 2

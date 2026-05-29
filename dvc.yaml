@@ -101,7 +101,7 @@ stages:
         - src/peilbeheerst_model/feedback/${item}.py
       outs:
         - data/${item}/modellen/${item}_feedback
-  profile:
+  profiles:
     foreach:
       delfland: Delfland
       amstel_gooi_en_vecht: AmstelGooienVecht
@@ -122,7 +122,7 @@ stages:
         - src/peilbeheerst_model/profiles/${item}.py
         - data/${item}/modellen/${item}_feedback
       outs:
-        - data/${item}/modellen/${item}_profile
+        - data/${item}/modellen/${item}_profiles
   forcing:
     foreach:
       delfland: Delfland
@@ -141,7 +141,7 @@ stages:
       deps:
         - src/peilbeheerst_model/forcing/${item}.py
         - data/Rijkswaterstaat/modellen/rwzi
-        - data/${item}/modellen/${item}_profile
+        - data/${item}/modellen/${item}_profiles
       outs:
         - data/${item}/modellen/${item}_forcing
   hws_demand:
