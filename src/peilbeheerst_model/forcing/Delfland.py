@@ -7,6 +7,7 @@ import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
 from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.network_snapping import snap_model
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim import run_ribasim
@@ -20,7 +21,7 @@ from ribasim_nl.control import (
 )
 
 from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, merge_rwzi_model
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, junctionify, merge_rwzi_model
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
@@ -59,6 +60,7 @@ aanvoer_path = cloud.joinpath(
     waterschap, "aangeleverd/Na_levering/Wateraanvoer/Aanvoergebied_Afvoergebied_polders.gpkg"
 )
 meteo_path = cloud.joinpath("Basisgegevens/WIWB")
+profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 
 cloud.synchronize(
     filepaths=[
@@ -114,6 +116,11 @@ processor = RibasimFeedbackProcessor(
 )
 
 ribasim_model = Model.read(ribasim_work_dir_model_toml)
+
+# add junctions and network snapping
+if ADD_JUNCTIONS:
+    ribasim_model = snap_model(ribasim_model, profiles_path)
+    ribasim_model = junctionify(ribasim_model)
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
