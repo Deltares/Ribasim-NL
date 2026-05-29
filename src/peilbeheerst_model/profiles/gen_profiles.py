@@ -189,7 +189,7 @@ def _read_basins(cloud: CloudStorage, water_authority: str) -> gpd.GeoDataFrame:
     :return: basin dataset (polygons)
     """
     # read data
-    fn = cloud.joinpath(water_authority, "modellen", f"{water_authority}_parameterized", "input", "database.gpkg")
+    fn = cloud.joinpath(water_authority, "modellen", f"{water_authority}_feedback", "input", "database.gpkg")
     nodes = gpd.read_file(fn, layer="Node", fid_as_index=True, use_arrow=True)
     basins = gpd.read_file(fn, layer="Basin / area")
 
