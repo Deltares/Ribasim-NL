@@ -1118,3 +1118,27 @@ stages:
       md5: 65ee24868086abc25f92e54c4c7acd21.dir
       size: 4886682
       nfiles: 2
+  forcing@delfland:
+    cmd:
+    - pixi run python src/peilbeheerst_model/forcing/Delfland.py
+    deps:
+    - path: data/Delfland/modellen/Delfland_profiles
+      hash: md5
+      md5: a361a55ecadd0772b68052e86705627f.dir
+      size: 5210266
+      nfiles: 2
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: 326d538cfadb88b162cd1547e8541ca3.dir
+      size: 22462644
+      nfiles: 2
+    - path: src/peilbeheerst_model/forcing/Delfland.py
+      hash: md5
+      md5: ffccbcde78d7cd3d118861f1a1ed7e5f
+      size: 16473
+    outs:
+    - path: data/Delfland/modellen/Delfland_forcing
+      hash: md5
+      md5: 16e9dd764a40aa79bbaba647b629cbe1.dir
+      size: 23064757
+      nfiles: 2
