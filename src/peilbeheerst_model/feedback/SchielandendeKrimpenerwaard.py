@@ -300,6 +300,11 @@ ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "afvoer", 1)
 ribasim_model.link.add(ribasim_model.basin[97], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
+# (re)set 'meta_node_id'-values
+for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
+    mask = ribasim_model.node.df["node_type"] == node_type
+    ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
+
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
 
@@ -313,13 +318,7 @@ ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, def
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
-# (re)set 'meta_node_id'-values
-for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump", "Outlet"]:
-    mask = ribasim_model.node.df["node_type"] == node_type
-    ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
-
 for node in inlaat_structures:
     ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_aanvoer"] = 1
 
-ribasim_param.clean_tables(ribasim_model, waterschap)
 ribasim_model.write(ribasim_work_dir_model_toml)

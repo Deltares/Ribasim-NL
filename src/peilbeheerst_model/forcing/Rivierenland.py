@@ -236,28 +236,12 @@ to_flow_control = (
 )
 
 # look up dynamically-added inlaten node IDs by geometry
-_trc_node_df = ribasim_model.tabulated_rating_curve.node.df
-_outlet_node_df = ribasim_model.outlet.node.df
-_pump_node_df = ribasim_model.pump.node.df
+_node_df = ribasim_model.node.df
 _inlaat_kuijk_point = Point(174615, 440126)
 _inlaat_points = [_inlaat_kuijk_point, Point(103334, 433570), Point(103446, 433601)]
-
-
-def _find_node_by_geom(point):
-    """Find a TRC or Outlet node at the given point (TRCs may be converted to Outlets by add_outlets)."""
-    trc_matches = _trc_node_df.loc[_trc_node_df.geometry.distance(point) < 1]
-    if not trc_matches.empty:
-        return trc_matches.index[0]
-    outlet_matches = _outlet_node_df.loc[_outlet_node_df.geometry.distance(point) < 1]
-    if not outlet_matches.empty:
-        return outlet_matches.index[0]
-    msg = f"No TRC or Outlet node found at {point}"
-    raise ValueError(msg)
-
-
-inlaten = [_find_node_by_geom(p) for p in _inlaat_points]
+inlaten = [_node_df.loc[_node_df.geometry.distance(p) < 1].index[0] for p in _inlaat_points]
 _pannerlingen_point = Point(198568, 434184)
-inlaten.append(_pump_node_df.loc[_pump_node_df.geometry.distance(_pannerlingen_point) < 1].index[0])
+inlaten.append(_node_df.loc[_node_df.geometry.distance(_pannerlingen_point) < 1].index[0])
 inlaat_Kuijk = inlaten[0]
 
 to_supply = (

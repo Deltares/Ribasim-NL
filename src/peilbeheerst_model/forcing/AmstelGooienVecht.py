@@ -293,10 +293,8 @@ add_controllers_to_connector_nodes(
 
 # add increased flushing at the location of Zeesluis
 # zeesluis_node_id is defined during feedback stage; look it up from the model by geometry
-
 zeesluis_point = Point(133336, 482556)
-trc_node_df = ribasim_model.tabulated_rating_curve.node.df
-zeesluis_node_id = trc_node_df.loc[trc_node_df.geometry.distance(zeesluis_point) < 1].index[0]
+zeesluis_node_id = ribasim_model.node.df.loc[ribasim_model.node.df.geometry.distance(zeesluis_point) < 1].index[0]
 from_to_node_function_table.loc[from_to_node_function_table.index == zeesluis_node_id, "demand"] = 5  # 5 m3/s
 
 # replace the meta_data to the pump and outlet tables again, as the add_controllers_to_connector_nodes function might have changed/added node_id's
