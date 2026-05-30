@@ -187,6 +187,12 @@ else:
 # add control, based on the meta_categorie
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
+
+# filter processor basin IDs to only those present in the model
+basin_ids = set(ribasim_model.basin.node.df.index)
+processor._basin_aanvoer_on = tuple(n for n in (processor.basin_aanvoer_on or ()) if n in basin_ids)
+processor._basin_aanvoer_off = tuple(n for n in (processor.basin_aanvoer_off or ()) if n in basin_ids)
+
 ribasim_param.set_aanvoer_flags(
     ribasim_model,
     aanvoergebieden,

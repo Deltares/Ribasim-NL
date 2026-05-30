@@ -261,8 +261,23 @@ to_flow_control = (2452, 3064, 3065, 3068)
 
 # look up dynamically-added drain node IDs by geometry
 _trc_node_df = ribasim_model.tabulated_rating_curve.node.df
+_outlet_node_df = ribasim_model.outlet.node.df
 _drain_points = [Point(206421, 592530), Point(206360, 592679)]
-to_drain_node_ids = tuple(_trc_node_df.loc[_trc_node_df.geometry.distance(p) < 1].index[0] for p in _drain_points)
+
+
+def _find_trc_or_outlet(point):
+    """Find a TRC or Outlet node at the given point (TRCs may be converted to Outlets by add_outlets)."""
+    trc_matches = _trc_node_df.loc[_trc_node_df.geometry.distance(point) < 1]
+    if not trc_matches.empty:
+        return trc_matches.index[0]
+    outlet_matches = _outlet_node_df.loc[_outlet_node_df.geometry.distance(point) < 1]
+    if not outlet_matches.empty:
+        return outlet_matches.index[0]
+    msg = f"No TRC or Outlet node found at {point}"
+    raise ValueError(msg)
+
+
+to_drain_node_ids = tuple(_find_trc_or_outlet(p) for p in _drain_points)
 
 to_drain = (2147, 2751, 2944, 3041, 3494, 3568, 3709, *to_drain_node_ids)
 

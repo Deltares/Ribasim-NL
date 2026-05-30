@@ -212,6 +212,13 @@ basin_aanvoer_off = (
 # add control, based on the meta_categorie
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="outlet")
 ribasim_param.find_upstream_downstream_target_levels(ribasim_model, node="pump")
+
+# filter processor basin IDs to only those present in the model
+basin_ids = set(ribasim_model.basin.node.df.index)
+processor._basin_aanvoer_on = tuple(n for n in (processor.basin_aanvoer_on or ()) if n in basin_ids)
+processor._basin_aanvoer_off = tuple(n for n in (processor.basin_aanvoer_off or ()) if n in basin_ids)
+basin_aanvoer_off = tuple(n for n in basin_aanvoer_off if n in basin_ids)
+
 ribasim_param.set_aanvoer_flags(
     ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=AANVOER_CONDITIONS, basin_aanvoer_off=basin_aanvoer_off
 )

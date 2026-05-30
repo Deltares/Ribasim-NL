@@ -24,7 +24,7 @@ def get_basins(water_authority: str, cloud: CloudStorage = CloudStorage()) -> gp
     :return: basin data
     :rtype: geopandas.GeoDataFrame
     """
-    fn_basins = cloud.joinpath(water_authority, "modellen", f"{water_authority}_feedback", "database.gpkg")
+    fn_basins = cloud.joinpath(water_authority, "modellen", f"{water_authority}_feedback", "input", "database.gpkg")
     return gpd.read_file(fn_basins, layer="Basin / area")
 
 
