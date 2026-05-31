@@ -292,7 +292,7 @@ ribasim_model.merge_basins(node_id=145, to_node_id=2)  # small (boezem)
 ribasim_model.remove_node(478, True)
 ribasim_model.remove_node(641, False)
 level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(93810, 437547)),
+    Node(geometry=Point(93810, 437547)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(93804, 437547)), [pump.Static(flow_rate=[20])])
 ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 0)
