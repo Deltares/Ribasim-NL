@@ -321,4 +321,8 @@ ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 for node in inlaat_structures:
     ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_aanvoer"] = 1
 
+# update_meta adds meta_categorie to node.df (needed by profiles stage)
+# We don't call full clean_tables here as it strips LB static data for converted Terminal nodes
+ribasim_param.update_meta(ribasim_model, waterschap)
+
 ribasim_model.write(ribasim_work_dir_model_toml)
