@@ -56,10 +56,7 @@ RWS_grenzen_path = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/Rijkswa
 qlr_name = "output_controle_cc.qlr" if MIXED_CONDITIONS else "output_controle_202502.qlr"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr", qlr_name)
 aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/peilgebieden.gpkg")
-meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
-
-splitted_basin_73_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_73.gpkg")
 
 cloud.synchronize(
     filepaths=[
@@ -69,8 +66,6 @@ cloud.synchronize(
         RWS_grenzen_path,
         qlr_path,
         aanvoer_path,
-        meteo_path,
-        profiles_path,
     ]
 )
 

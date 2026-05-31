@@ -10,7 +10,6 @@ if __name__ == "__main__":
     gen_profiles.main(
         waterschap,
         "delfland_crossings_v08.gpkg",
-        sync=True,
         export_profile_tables=True,
         export_intermediate_output=True,
     )

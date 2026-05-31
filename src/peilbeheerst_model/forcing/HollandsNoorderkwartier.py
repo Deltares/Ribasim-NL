@@ -62,9 +62,7 @@ qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr", qlr_name)
 aanvoer_path = cloud.joinpath(
     waterschap, "aangeleverd/Na_levering/20240618_peilgebieden_en_polders/Polders_export_2024-06-18.shp"
 )
-meteo_path = cloud.joinpath("Basisgegevens/WIWB")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
-splitted_basin_3_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_3.gpkg")
 
 cloud.synchronize(
     filepaths=[
@@ -74,8 +72,6 @@ cloud.synchronize(
         RWS_grenzen_path,
         qlr_path,
         aanvoer_path,
-        meteo_path,
-        profiles_path,
     ]
 )
 

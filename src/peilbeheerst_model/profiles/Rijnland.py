@@ -11,7 +11,6 @@ if __name__ == "__main__":
     gen_profiles.main(
         waterschap,
         "rijnland_crossings_v05.gpkg",
-        sync=True,
         export_profile_tables=True,
         export_intermediate_output=True,
         fn_water_bodies=fn_water_bodies,

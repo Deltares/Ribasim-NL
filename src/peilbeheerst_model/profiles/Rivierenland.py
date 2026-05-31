@@ -10,7 +10,6 @@ if __name__ == "__main__":
     gen_profiles.main(
         waterschap,
         "wsrl_crossings_v06.gpkg",
-        sync=True,
         export_profile_tables=True,
         export_intermediate_output=True,
     )

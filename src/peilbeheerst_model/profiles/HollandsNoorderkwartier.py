@@ -11,7 +11,6 @@ if __name__ == "__main__":
         waterschap,
         "hhnk_crossings_v26.gpkg",
         cross_sections_available=False,
-        sync=True,
         export_profile_tables=True,
         export_intermediate_output=True,
     )

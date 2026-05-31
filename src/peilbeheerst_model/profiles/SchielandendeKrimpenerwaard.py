@@ -10,7 +10,6 @@ if __name__ == "__main__":
     gen_profiles.main(
         waterschap,
         "hhsk_crossings_voor_profielen_met_OG_hydroobjecten.gpkg",
-        sync=True,
         export_profile_tables=True,
         export_intermediate_output=True,
     )

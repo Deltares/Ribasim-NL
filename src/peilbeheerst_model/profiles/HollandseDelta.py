@@ -14,7 +14,6 @@ if __name__ == "__main__":
         "SOORT_OPPE",
         val_flag="hoofdwaterloop",
         layer_hydro_objects=None,
-        sync=True,
         export_profile_tables=True,
         export_intermediate_output=True,
     )
