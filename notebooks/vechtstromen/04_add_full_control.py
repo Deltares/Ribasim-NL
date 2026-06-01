@@ -13,6 +13,7 @@ from ribasim_nl.control import (
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
+from ribasim_nl.parametrization.manning_level import sync_basin_levels_along_manning_routes
 
 from ribasim_nl import CloudStorage, Model
 
@@ -580,6 +581,94 @@ lower_outlet_max_downstream_level(model=model, node_id=26, offset=0.01)
 mask = model.outlet.static.df.node_id.isin(EXCLUDE_NODES)
 model.outlet.static.df.loc[mask, ["flow_rate", "min_flow_rate", "max_flow_rate"]] = 0.0
 
+# %%
+# Corrigeer basin-peilen/profielen langs open Manning-routes nadat alle full-control-controllers bekend zijn.
+manning_level_updates = sync_basin_levels_along_manning_routes(
+    model=model,
+    output_path=cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_updates.csv"),
+    basin_output_gpkg=cloud.joinpath(
+        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_basin_updates.gpkg"
+    ),
+    control_output_gpkg=cloud.joinpath(
+        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_control_updates.gpkg"
+    ),
+    protected_basin_node_ids=[
+        1160,
+        1388,
+        1393,
+        1405,
+        1421,
+        1428,
+        1433,
+        1442,
+        1448,
+        1461,
+        1479,
+        1493,
+        1495,
+        1513,
+        1518,
+        1528,
+        1534,
+        1540,
+        1544,
+        1554,
+        1561,
+        1574,
+        1593,
+        1605,
+        1621,
+        1623,
+        1633,
+        1634,
+        1635,
+        1637,
+        1643,
+        1644,
+        1659,
+        1660,
+        1670,
+        1681,
+        1700,
+        1723,
+        1730,
+        1744,
+        1768,
+        1823,
+        1830,
+        1834,
+        1839,
+        1843,
+        1844,
+        1847,
+        1852,
+        1856,
+        1862,
+        1864,
+        1873,
+        1878,
+        1879,
+        1881,
+        2003,
+        2030,
+        2061,
+        2085,
+        2147,
+        2150,
+        2153,
+        2156,
+        2157,
+        2158,
+        2163,
+        2178,
+        2180,
+        2192,
+        2222,
+        2238,
+        2308,
+        2340,
+    ],
+)
 
 # %%
 # Junctionify(!)

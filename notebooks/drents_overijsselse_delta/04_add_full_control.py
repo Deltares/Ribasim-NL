@@ -10,6 +10,7 @@ from ribasim_nl.control import (
     add_controllers_to_uncontrolled_connector_nodes as _add_controllers_to_uncontrolled_connector_nodes,
 )
 from ribasim_nl.parametrization.basin_tables import update_basin_static
+from ribasim_nl.parametrization.manning_level import sync_basin_levels_along_manning_routes
 from shapely import Point
 
 from ribasim_nl import CloudStorage, Model
@@ -668,6 +669,40 @@ for node_id, min_flow_rate in MIN_FLOW_RATE_BY_NODE_ID.items():
             continue
         static_df.loc[static_df.node_id == node_id, "min_flow_rate"] = min_flow_rate
 
+# %%
+# Corrigeer basin-peilen/profielen langs open Manning-routes nadat alle full-control-controllers bekend zijn.
+manning_level_updates = sync_basin_levels_along_manning_routes(
+    model=model,
+    output_path=cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_updates.csv"),
+    basin_output_gpkg=cloud.joinpath(
+        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_basin_updates.gpkg"
+    ),
+    control_output_gpkg=cloud.joinpath(
+        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_control_updates.gpkg"
+    ),
+    protected_basin_node_ids=[
+        58,
+        59,
+        1635,
+        1680,
+        1721,
+        1747,
+        1761,
+        1772,
+        1901,
+        2008,
+        2105,
+        2113,
+        2140,
+        2150,
+        2185,
+        2229,
+        2247,
+        2288,
+        2306,
+        2580,
+    ],
+)
 
 # %%
 # Model run

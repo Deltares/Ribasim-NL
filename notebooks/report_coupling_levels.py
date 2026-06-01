@@ -17,6 +17,7 @@ STATIC_TABLE_BY_NODE_TYPE = {
     "Pump": "Pump / static",
 }
 RWS_AUTHORITY = "Rijkswaterstaat"
+SKIP_LEVEL_UPDATE_AUTHORITIES = {"WetterskipFryslan"}
 DEFAULT_UPSTREAM_SUPPLY_OFFSET = -0.04
 DEFAULT_RWS_PROFILE_OFFSET = 0.1
 
@@ -41,6 +42,18 @@ def resolve_output_gpkg(toml_file: Path, output_gpkg: Path | None) -> Path:
     if output_gpkg.is_absolute():
         return output_gpkg
     return toml_file.parent / output_gpkg
+
+
+def resolve_writable_gpkg(output_gpkg: Path, label: str) -> Path:
+    if output_gpkg.exists():
+        try:
+            output_gpkg.unlink()
+        except PermissionError:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_gpkg = output_gpkg.with_name(f"{output_gpkg.stem}_{timestamp}{output_gpkg.suffix}")
+            print(f"{label} is in gebruik; schrijf naar alternatief bestand: {output_gpkg}", flush=True)
+    output_gpkg.parent.mkdir(parents=True, exist_ok=True)
+    return output_gpkg
 
 
 def normalize_numeric(series: pd.Series) -> pd.Series:
@@ -112,140 +125,73 @@ def downstream_targets(
     targets: list[tuple[int | None, int, str | None]] = []
 
     for first_link_id, next_node_id in outgoing_flow_links.get(int(node_id), []):
-        current_node_id = int(next_node_id)
-        seen_node_ids = {int(node_id), current_node_id}
-        error = None
+        queue: list[tuple[int, set[int]]] = [(int(next_node_id), {int(node_id)})]
+        iterations = 0
 
-        for _ in range(max_iter):
+        while queue and iterations < max_iter:
+            iterations += 1
+            current_node_id, seen_node_ids = queue.pop(0)
+            if current_node_id in seen_node_ids:
+                targets.append((None, int(first_link_id), f"cyclus via node {current_node_id}"))
+                continue
+
             next_node_type = node_type_by_id.get(current_node_id)
             if next_node_type != "Junction":
                 targets.append((current_node_id, int(first_link_id), None))
-                break
+                continue
 
             downstream_links = outgoing_flow_links.get(current_node_id, [])
             if len(downstream_links) == 0:
-                error = "geen downstream flow-link na Junction"
-                break
-            if len(downstream_links) > 1:
-                error = f"meerdere downstream flow-links na Junction: {downstream_links}"
-                break
+                targets.append((None, int(first_link_id), "geen downstream flow-link na Junction"))
+                continue
 
-            _, current_node_id = downstream_links[0]
-            current_node_id = int(current_node_id)
-            if current_node_id in seen_node_ids:
-                error = f"cyclus via node {current_node_id}"
-                break
-            seen_node_ids.add(current_node_id)
-        else:
-            error = f"geen downstream niet-Junction node binnen {max_iter} stappen"
+            next_seen_node_ids = {*seen_node_ids, current_node_id}
+            for _, downstream_node_id in downstream_links:
+                queue.append((int(downstream_node_id), next_seen_node_ids))
 
-        if error is not None:
-            targets.append((None, int(first_link_id), error))
+        if queue:
+            targets.append((None, int(first_link_id), f"geen downstream niet-Junction node binnen {max_iter} stappen"))
 
     return targets
 
 
-def downstream_basin_for_max_level(
-    first_downstream_basin_id: int | None,
+def has_alternative_downstream_route(
+    start_node_id: int,
+    blocked_node_id: int,
     outgoing_flow_links: dict[int, list[tuple[int, int]]],
     node_type_by_id: dict[int, str],
-    follow_manning_until_control: bool,
-    max_iter: int = 50,
-) -> tuple[int | None, int | None, str | None, str]:
-    if first_downstream_basin_id is None:
-        return None, None, "geen eerste downstream Basin", "geen_downstream_basin"
+    max_iter: int = 200,
+) -> bool:
+    queue = [int(start_node_id)]
+    seen_node_ids = {int(start_node_id), int(blocked_node_id)}
 
-    current_basin_id = int(first_downstream_basin_id)
-    if not follow_manning_until_control:
-        targets = downstream_targets(current_basin_id, outgoing_flow_links, node_type_by_id)
-        target_errors = [error for _, _, error in targets if error is not None]
-        if target_errors:
-            return current_basin_id, None, "; ".join(target_errors), "downstream_streefpeil"
-
-        manning_targets = [
-            (node_id, link_id) for node_id, link_id, _ in targets if node_type_by_id.get(node_id) == "ManningResistance"
-        ]
-        if len(manning_targets) > 1:
-            return (
-                current_basin_id,
-                None,
-                f"meerdere downstream ManningResistance-nodes: {manning_targets}",
-                ("downstream_streefpeil"),
-            )
-        manning_link_id = int(manning_targets[0][1]) if manning_targets else None
-        basis = (
-            "downstream_streefpeil_manning_niet_doorlopen" if manning_link_id is not None else "downstream_streefpeil"
-        )
-        return current_basin_id, manning_link_id, None, basis
-
-    seen_basin_ids = {current_basin_id}
-    first_manning_link_id = None
     for _ in range(max_iter):
-        targets = downstream_targets(current_basin_id, outgoing_flow_links, node_type_by_id)
-        target_errors = [error for _, _, error in targets if error is not None]
-        if target_errors:
-            return current_basin_id, first_manning_link_id, "; ".join(target_errors), "downstream_streefpeil"
+        if not queue:
+            return False
 
-        control_targets = [
-            (node_id, link_id) for node_id, link_id, _ in targets if node_type_by_id.get(node_id) in CONTROL_NODE_TYPES
-        ]
-        if control_targets:
-            basis = (
-                "downstream_streefpeil"
-                if first_manning_link_id is None
-                else "downstream_streefpeil_na_manning_tot_basin_met_outlet_pump"
-            )
-            return current_basin_id, first_manning_link_id, None, basis
+        current_node_id = queue.pop(0)
+        for _, next_node_id in outgoing_flow_links.get(current_node_id, []):
+            next_node_id = int(next_node_id)
+            if next_node_id in seen_node_ids:
+                continue
 
-        manning_targets = [
-            (node_id, link_id) for node_id, link_id, _ in targets if node_type_by_id.get(node_id) == "ManningResistance"
-        ]
-        if not manning_targets:
-            basis = (
-                "downstream_streefpeil"
-                if first_manning_link_id is None
-                else "downstream_streefpeil_na_manning_tot_basin_zonder_manning"
-            )
-            return current_basin_id, first_manning_link_id, None, basis
-        if len(manning_targets) > 1:
-            return (
-                current_basin_id,
-                first_manning_link_id,
-                (f"meerdere downstream ManningResistance-nodes: {manning_targets}"),
-                "downstream_streefpeil",
-            )
+            node_type = node_type_by_id.get(next_node_id)
+            if node_type != "Junction":
+                return True
 
-        manning_node_id, manning_link_id = manning_targets[0]
-        if first_manning_link_id is None:
-            first_manning_link_id = int(manning_link_id)
+            seen_node_ids.add(next_node_id)
+            queue.append(next_node_id)
 
-        next_basin_id, _, error = first_non_junction(int(manning_node_id), outgoing_flow_links, node_type_by_id)
-        if error is not None:
-            return current_basin_id, first_manning_link_id, error, "downstream_streefpeil"
-        if node_type_by_id.get(next_basin_id) != "Basin":
-            return (
-                current_basin_id,
-                first_manning_link_id,
-                (f"downstream van ManningResistance is geen Basin maar {node_type_by_id.get(next_basin_id)}"),
-                "downstream_streefpeil",
-            )
+    return False
 
-        current_basin_id = int(next_basin_id)
-        if current_basin_id in seen_basin_ids:
-            return (
-                current_basin_id,
-                first_manning_link_id,
-                f"cyclus via Basin {current_basin_id}",
-                "downstream_streefpeil",
-            )
-        seen_basin_ids.add(current_basin_id)
 
-    return (
-        current_basin_id,
-        first_manning_link_id,
-        (f"geen max_downstream_level Basin gevonden binnen {max_iter} stappen"),
-        "downstream_streefpeil",
-    )
+def downstream_basin_for_max_level(
+    first_downstream_basin_id: int | None,
+) -> tuple[int | None, str | None, str]:
+    if first_downstream_basin_id is None:
+        return None, "geen eerste downstream Basin", "geen_downstream_basin"
+
+    return int(first_downstream_basin_id), None, "downstream_streefpeil"
 
 
 def downstream_basin_has_direct_control(
@@ -396,11 +342,12 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
 
     records = []
     leak_records = []
+    outlet_inlet_records = []
+    outlet_inlet_node_ids = set()
     for row in static_df.itertuples(index=False):
         node_id = int(row.node_id)
         row_dict = row._asdict()
         control_state = "" if pd.isna(row.control_state_lower) else str(row.control_state_lower).lower()
-        row_has_capacity = positive(row.flow_rate) or positive(row.max_flow_rate)
         flow_demand_inlaat = bool(row.flow_demand_inlaat)
         upstream_id, upstream_link_id, upstream_error = first_non_junction(
             node_id, incoming_flow_links, node_type_by_id
@@ -413,32 +360,46 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
         downstream_node_type = node_type_by_id.get(downstream_id)
         upstream_authority = basin_authority_by_id.get(upstream_id)
         downstream_authority = basin_authority_by_id.get(downstream_id)
+        level_update_skipped_authority = row.meta_waterbeheerder in SKIP_LEVEL_UPDATE_AUTHORITIES
         upstream_streefpeil = streefpeil_by_basin_id.get(upstream_id, np.nan)
         downstream_streefpeil = streefpeil_by_basin_id.get(downstream_id, np.nan)
         upstream_min_profile = min_profile_by_basin_id.get(upstream_id, np.nan)
 
-        max_basin_id, manning_link_id, max_error, max_basis = downstream_basin_for_max_level(
-            first_downstream_basin_id=downstream_id if downstream_node_type == "Basin" else None,
-            outgoing_flow_links=outgoing_flow_links,
-            node_type_by_id=node_type_by_id,
-            follow_manning_until_control=False,
+        max_basin_id, max_error, max_basis = downstream_basin_for_max_level(
+            first_downstream_basin_id=downstream_id if downstream_node_type == "Basin" else None
         )
         downstream_basin_has_control, downstream_basin_control_error = downstream_basin_has_direct_control(
             basin_id=max_basin_id,
             outgoing_flow_links=outgoing_flow_links,
             node_type_by_id=node_type_by_id,
         )
+        direct_downstream_targets = (
+            downstream_targets(int(max_basin_id), outgoing_flow_links, node_type_by_id)
+            if max_basin_id is not None
+            else []
+        )
+        direct_downstream_control_node_ids = [
+            int(node_id)
+            for node_id, _, error in direct_downstream_targets
+            if error is None and node_type_by_id.get(node_id) in CONTROL_NODE_TYPES
+        ]
+        direct_downstream_control_functions = [
+            functions.get(node_id, "onbekend") for node_id in direct_downstream_control_node_ids
+        ]
         expected_max_downstream = streefpeil_by_basin_id.get(max_basin_id, np.nan)
 
         expected_min_upstream = np.nan
         min_basis = "niet_gecontroleerd"
         if upstream_node_type == "Basin":
-            if control_state == "aanvoer" and row.functie in ["inlaat", "doorlaat"] and row_has_capacity:
+            if row.functie == "uitlaat":
+                expected_min_upstream = upstream_streefpeil
+                min_basis = "upstream_streefpeil"
+            elif control_state == "aanvoer" and row.functie in ["inlaat", "doorlaat"]:
                 expected_min_upstream = (
                     upstream_streefpeil + upstream_supply_offset if pd.notna(upstream_streefpeil) else np.nan
                 )
                 min_basis = "upstream_streefpeil_plus_aanvoer_offset"
-            elif control_state == "afvoer" and row.functie in ["uitlaat", "doorlaat"] and row_has_capacity:
+            elif control_state == "afvoer" and row.functie in ["inlaat", "doorlaat"]:
                 expected_min_upstream = upstream_streefpeil
                 min_basis = "upstream_streefpeil"
 
@@ -454,6 +415,8 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
             and row.functie == "inlaat"
             and (control_state == "aanvoer" or flow_demand_inlaat)
             and pd.notna(upstream_min_profile)
+            and downstream_authority not in SKIP_LEVEL_UPDATE_AUTHORITIES
+            and not level_update_skipped_authority
         )
         rws_inlet_profile_min_upstream = (
             upstream_min_profile + rws_profile_offset if rws_inlet_profile_update_allowed else np.nan
@@ -467,14 +430,14 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
             expected_min_upstream = current_min_upstream
             min_basis = "huidige_waarde_gebruikt_omdat_streefpeil_ontbreekt"
 
-        max_allowed = (
+        max_report_allowed = (
             control_state == "aanvoer"
-            and row.functie == "inlaat"
+            and row.functie in ["inlaat", "doorlaat"]
             and row.node_type in CONTROL_NODE_TYPES
-            and downstream_basin_has_control
+            and max_basin_id is not None
         )
         max_downstream_afwijking = (
-            max_allowed
+            max_report_allowed
             and pd.notna(expected_max_downstream)
             and (
                 pd.isna(row.max_downstream_level)
@@ -509,19 +472,31 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
             "downstream_basin_streefpeil": downstream_streefpeil,
             "max_downstream_level_basin_id": max_basin_id,
             "max_downstream_level_basin_authority": basin_authority_by_id.get(max_basin_id),
-            "max_downstream_level_manning_link_id": manning_link_id,
             "max_downstream_level_basin_error": max_error,
             "max_downstream_level_direct_control": bool(downstream_basin_has_control),
             "max_downstream_level_direct_control_error": downstream_basin_control_error,
+            "max_downstream_level_direct_control_node_ids": ",".join(
+                str(node_id) for node_id in direct_downstream_control_node_ids
+            ),
+            "max_downstream_level_direct_control_functions": ",".join(direct_downstream_control_functions),
             "max_downstream_level_check_basis": max_basis,
             "gecheckte_max_downstream_level": expected_max_downstream,
             "verschil_max_downstream_level": row.max_downstream_level - expected_max_downstream,
             "max_downstream_level_afwijking": bool(max_downstream_afwijking),
+            "max_downstream_level_update_allowed": bool(
+                control_state == "aanvoer"
+                and row.functie in ["inlaat", "doorlaat"]
+                and max_downstream_afwijking
+                and not level_update_skipped_authority
+            ),
+            "gecheckte_max_downstream_level_update": expected_max_downstream,
+            "max_downstream_level_update_basis": max_basis,
             "gecheckte_min_upstream_level": expected_min_upstream,
             "verschil_min_upstream_level": row.min_upstream_level - expected_min_upstream,
             "min_upstream_level_check_basis": min_basis,
             "min_upstream_level_afwijking": bool(min_upstream_afwijking),
             "rws_to_model": bool(rws_to_model),
+            "level_update_skipped_authority": bool(level_update_skipped_authority),
             "rws_inlet_profile_update_allowed": bool(rws_inlet_profile_update_allowed),
             "rws_inlet_profile_min_upstream": rws_inlet_profile_min_upstream,
             "rws_inlet_profile_min_upstream_afwijking": bool(rws_inlet_profile_min_upstream_afwijking),
@@ -529,6 +504,52 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
             "downstream_check_error": downstream_error,
         }
         records.append(record)
+
+        upstream_targets = downstream_targets(node_id, incoming_flow_links, node_type_by_id)
+        upstream_basin_targets = [
+            (int(upstream_target_id), int(upstream_target_link_id))
+            for upstream_target_id, upstream_target_link_id, upstream_target_error in upstream_targets
+            if upstream_target_error is None
+            and upstream_target_id is not None
+            and node_type_by_id.get(upstream_target_id) == "Basin"
+        ]
+        if (
+            row.node_type == "Outlet"
+            and functions.get(node_id) == "inlaat"
+            and len(upstream_basin_targets) == 1
+            and node_id not in outlet_inlet_node_ids
+        ):
+            upstream_basin_id, upstream_basin_link_id = upstream_basin_targets[0]
+            if has_alternative_downstream_route(
+                start_node_id=upstream_basin_id,
+                blocked_node_id=node_id,
+                outgoing_flow_links=outgoing_flow_links,
+                node_type_by_id=node_type_by_id,
+            ):
+                continue
+
+            outlet_inlet_node_ids.add(node_id)
+            node_row = node_by_id[node_id]
+            outlet_inlet_records.append(
+                {
+                    "node_id": node_id,
+                    "node_type": row.node_type,
+                    "functie": functions.get(node_id),
+                    "meta_waterbeheerder": node_row.get("meta_waterbeheerder"),
+                    "meta_code_waterbeheerder": node_row.get("meta_code_waterbeheerder"),
+                    "meta_node_id_waterbeheerder": node_row.get("meta_node_id_waterbeheerder"),
+                    "name": node_row.get("name"),
+                    "upstream_basin_id": upstream_basin_id,
+                    "upstream_link_id": upstream_basin_link_id,
+                    "upstream_basin_authority": basin_authority_by_id.get(upstream_basin_id),
+                    "upstream_basin_name": basin_name_by_id.get(upstream_basin_id),
+                    "upstream_basin_streefpeil": streefpeil_by_basin_id.get(upstream_basin_id, np.nan),
+                    "reden": (
+                        "Outlet is inlaat met precies een bovenstrooms Basin en dat Basin heeft geen andere "
+                        "doorstroomtak."
+                    ),
+                }
+            )
 
     rows_by_node = dict(tuple(static_df.groupby("node_id")))
     for node_id, rows in rows_by_node.items():
@@ -576,8 +597,26 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
         report_df["max_downstream_level_afwijking"] | report_df["min_upstream_level_afwijking"]
     ].copy()
     allowed_updates_df = report_df[report_df["rws_inlet_profile_min_upstream_afwijking"]].copy()
+    direct_min_upstream_updates_df = report_df[
+        report_df["min_upstream_level_afwijking"]
+        & report_df["upstream_node_type"].eq("Basin")
+        & report_df["gecheckte_min_upstream_level"].notna()
+        & ~report_df["rws_inlet_profile_min_upstream_afwijking"]
+        & ~report_df["level_update_skipped_authority"]
+    ].copy()
+    if not direct_min_upstream_updates_df.empty:
+        direct_min_upstream_updates_df["direct_min_upstream_level_update_allowed"] = True
+        direct_min_upstream_updates_df["direct_min_upstream_level_update_basis"] = "direct_upstream_basin_streefpeil"
     leaks_df = pd.DataFrame(leak_records)
-    return report_df, deviations_df, allowed_updates_df, leaks_df
+    outlet_inlets_df = pd.DataFrame(outlet_inlet_records)
+    return (
+        report_df,
+        deviations_df,
+        allowed_updates_df,
+        direct_min_upstream_updates_df,
+        leaks_df,
+        outlet_inlets_df,
+    )
 
 
 def add_geometry(database_path: Path, df: pd.DataFrame) -> gpd.GeoDataFrame:
@@ -591,27 +630,60 @@ def add_geometry(database_path: Path, df: pd.DataFrame) -> gpd.GeoDataFrame:
     return gpd.GeoDataFrame(gdf, geometry="geometry", crs=node_gdf.crs)
 
 
+def prepare_gpkg_layer(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Avoid writing source fid values as the GeoPackage feature id."""
+    gdf = gdf.copy()
+    if "fid" in gdf.columns:
+        gdf = gdf.rename(columns={"fid": "source_fid"})
+    return gdf.reset_index(drop=True)
+
+
 def write_report_gpkg(
     database_path: Path,
     output_gpkg: Path,
     deviations_df: pd.DataFrame,
     allowed_updates_df: pd.DataFrame,
+    direct_min_upstream_updates_df: pd.DataFrame,
     leaks_df: pd.DataFrame,
-) -> None:
-    if output_gpkg.exists():
-        output_gpkg.unlink()
+    outlet_inlets_df: pd.DataFrame,
+) -> Path:
+    output_gpkg = resolve_writable_gpkg(output_gpkg, "Rapport-GPKG")
 
     deviations_gdf = add_geometry(database_path, deviations_df)
     max_gdf = deviations_gdf[deviations_gdf["max_downstream_level_afwijking"].fillna(False)].copy()
     min_gdf = deviations_gdf[deviations_gdf["min_upstream_level_afwijking"].fillna(False)].copy()
     allowed_updates_gdf = add_geometry(database_path, allowed_updates_df)
+    direct_min_upstream_updates_gdf = add_geometry(database_path, direct_min_upstream_updates_df)
     leaks_gdf = add_geometry(database_path, leaks_df)
+    outlet_inlets_gdf = add_geometry(database_path, outlet_inlets_df)
 
-    deviations_gdf.to_file(output_gpkg, layer="level_afwijkingen", driver="GPKG")
-    max_gdf.to_file(output_gpkg, layer="max_downstream_afwijkingen", driver="GPKG")
-    min_gdf.to_file(output_gpkg, layer="min_upstream_afwijkingen", driver="GPKG")
-    allowed_updates_gdf.to_file(output_gpkg, layer="toegestane_rws_inlaat_updates", driver="GPKG")
-    leaks_gdf.to_file(output_gpkg, layer="verdachte_rws_lekken", driver="GPKG")
+    prepare_gpkg_layer(deviations_gdf).to_file(output_gpkg, layer="level_afwijkingen", driver="GPKG")
+    prepare_gpkg_layer(max_gdf).to_file(output_gpkg, layer="max_downstream_afwijkingen", driver="GPKG")
+    prepare_gpkg_layer(min_gdf).to_file(output_gpkg, layer="min_upstream_afwijkingen", driver="GPKG")
+    prepare_gpkg_layer(allowed_updates_gdf).to_file(output_gpkg, layer="toegestane_rws_inlaat_updates", driver="GPKG")
+    prepare_gpkg_layer(direct_min_upstream_updates_gdf).to_file(
+        output_gpkg, layer="toegestane_directe_min_upstream_updates", driver="GPKG"
+    )
+    prepare_gpkg_layer(leaks_gdf).to_file(output_gpkg, layer="verdachte_rws_lekken", driver="GPKG")
+    prepare_gpkg_layer(outlet_inlets_gdf).to_file(output_gpkg, layer="verdachte_outlet_als_inlaat", driver="GPKG")
+    return output_gpkg
+
+
+def write_suspicious_gpkg(
+    database_path: Path,
+    output_gpkg: Path,
+    leaks_df: pd.DataFrame,
+    outlet_inlets_df: pd.DataFrame,
+) -> Path:
+    output_gpkg = resolve_writable_gpkg(output_gpkg, "Verdachte-punten-GPKG")
+
+    prepare_gpkg_layer(add_geometry(database_path, leaks_df)).to_file(
+        output_gpkg, layer="verdachte_rws_lekken", driver="GPKG"
+    )
+    prepare_gpkg_layer(add_geometry(database_path, outlet_inlets_df)).to_file(
+        output_gpkg, layer="verdachte_outlet_als_inlaat", driver="GPKG"
+    )
+    return output_gpkg
 
 
 def backup_database(database_path: Path) -> Path:
@@ -624,33 +696,142 @@ def backup_database(database_path: Path) -> Path:
 def apply_level_updates(
     database_path: Path,
     min_upstream_updates_df: pd.DataFrame,
+    direct_min_upstream_updates_df: pd.DataFrame,
     max_downstream_updates_df: pd.DataFrame,
-) -> tuple[Path | None, int, int]:
-    if min_upstream_updates_df.empty and max_downstream_updates_df.empty:
-        return None, 0, 0
+) -> tuple[Path | None, int, int, int]:
+    if min_upstream_updates_df.empty and direct_min_upstream_updates_df.empty and max_downstream_updates_df.empty:
+        return None, 0, 0, 0
 
     backup_path = backup_database(database_path)
     con = sqlite3.connect(database_path)
     min_update_count = 0
     max_update_count = 0
+    condition_update_count = 0
+    synced_conditions: set[tuple[int, int, float]] = set()
+
+    def update_discrete_control_conditions(
+        target_node_id: int,
+        listen_node_id: int | None,
+        level_value: float,
+    ) -> int:
+        if listen_node_id is None:
+            return 0
+
+        control_node_ids = [
+            int(row[0])
+            for row in con.execute(
+                'SELECT from_node_id FROM "Link" WHERE link_type = "control" AND to_node_id = ?',
+                (int(target_node_id),),
+            ).fetchall()
+        ]
+        if not control_node_ids:
+            return 0
+
+        update_count = 0
+        for control_node_id in control_node_ids:
+            variable_rows = con.execute(
+                (
+                    'SELECT compound_variable_id, weight FROM "DiscreteControl / variable" '
+                    "WHERE node_id = ? AND listen_node_id = ?"
+                ),
+                (control_node_id, int(listen_node_id)),
+            ).fetchall()
+            seen_compound_variable_ids = set()
+            for compound_variable_id, weight in variable_rows:
+                compound_variable_id = int(compound_variable_id)
+                if compound_variable_id in seen_compound_variable_ids:
+                    continue
+                seen_compound_variable_ids.add(compound_variable_id)
+
+                threshold_value = float(level_value) * float(weight)
+                condition_rows = con.execute(
+                    (
+                        'SELECT fid, threshold_high, threshold_low FROM "DiscreteControl / condition" '
+                        "WHERE node_id = ? AND compound_variable_id = ? ORDER BY condition_id"
+                    ),
+                    (control_node_id, compound_variable_id),
+                ).fetchall()
+                if not condition_rows:
+                    continue
+
+                base_high = condition_rows[0][1]
+                base_low = condition_rows[0][2]
+                for fid, threshold_high, threshold_low in condition_rows:
+                    high_offset = (
+                        0.0 if base_high is None or threshold_high is None else float(threshold_high) - float(base_high)
+                    )
+                    low_offset = (
+                        0.0 if base_low is None or threshold_low is None else float(threshold_low) - float(base_low)
+                    )
+                    con.execute(
+                        (
+                            'UPDATE "DiscreteControl / condition" SET threshold_high = ?, threshold_low = ? '
+                            "WHERE fid = ?"
+                        ),
+                        (threshold_value + high_offset, threshold_value + low_offset, int(fid)),
+                    )
+                    update_count += 1
+
+        return update_count
+
+    def sync_once(target_node_id: int, listen_node_id: int | None, level_value: float) -> None:
+        nonlocal condition_update_count
+        if listen_node_id is None or pd.isna(level_value):
+            return
+        key = (int(target_node_id), int(listen_node_id), round(float(level_value), 9))
+        if key in synced_conditions:
+            return
+        synced_conditions.add(key)
+        condition_update_count += update_discrete_control_conditions(
+            target_node_id=int(target_node_id),
+            listen_node_id=int(listen_node_id),
+            level_value=float(level_value),
+        )
 
     for row in min_upstream_updates_df.itertuples(index=False):
         table = row.static_table
         fid = int(row.table_fid)
+        node_id = int(row.node_id)
         value = float(row.rws_inlet_profile_min_upstream)
         con.execute(f'UPDATE "{table}" SET min_upstream_level = ? WHERE fid = ?', (value, fid))  # noqa: S608
+        if pd.notna(row.upstream_node_id) and pd.notna(row.upstream_basin_streefpeil):
+            sync_once(
+                target_node_id=node_id,
+                listen_node_id=int(row.upstream_node_id),
+                level_value=float(row.upstream_basin_streefpeil),
+            )
+        min_update_count += 1
+
+    for row in direct_min_upstream_updates_df.itertuples(index=False):
+        table = row.static_table
+        fid = int(row.table_fid)
+        node_id = int(row.node_id)
+        value = float(row.gecheckte_min_upstream_level)
+        con.execute(f'UPDATE "{table}" SET min_upstream_level = ? WHERE fid = ?', (value, fid))  # noqa: S608
+        control_value = float(row.upstream_basin_streefpeil) if pd.notna(row.upstream_basin_streefpeil) else value
+        sync_once(
+            target_node_id=node_id,
+            listen_node_id=int(row.upstream_node_id) if pd.notna(row.upstream_node_id) else None,
+            level_value=control_value,
+        )
         min_update_count += 1
 
     for row in max_downstream_updates_df.itertuples(index=False):
         table = row.static_table
         fid = int(row.table_fid)
-        value = float(row.gecheckte_max_downstream_level)
+        node_id = int(row.node_id)
+        value = float(row.gecheckte_max_downstream_level_update)
         con.execute(f'UPDATE "{table}" SET max_downstream_level = ? WHERE fid = ?', (value, fid))  # noqa: S608
+        sync_once(
+            target_node_id=node_id,
+            listen_node_id=int(row.downstream_node_id) if pd.notna(row.downstream_node_id) else None,
+            level_value=value,
+        )
         max_update_count += 1
 
     con.commit()
     con.close()
-    return backup_path, min_update_count, max_update_count
+    return backup_path, min_update_count, max_update_count, condition_update_count
 
 
 def parse_args() -> argparse.Namespace:
@@ -665,6 +846,12 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=None,
         help="Output-GPKG. Relatief pad wordt naast de TOML geplaatst.",
+    )
+    parser.add_argument(
+        "--verdachte-output-gpkg",
+        type=Path,
+        default=None,
+        help="Apart GPKG met alleen verdachte punten. Relatief pad wordt naast de TOML geplaatst.",
     )
     parser.add_argument("--tolerance", type=float, default=1e-6)
     parser.add_argument("--upstream-supply-offset", type=float, default=DEFAULT_UPSTREAM_SUPPLY_OFFSET)
@@ -682,9 +869,16 @@ def parse_args() -> argparse.Namespace:
         "--apply-max-downstream-level",
         action="store_true",
         help=(
-            "Pas max_downstream_level aan voor aanvoer-rijen van inlaten als het "
-            "directe downstream Basin naar een Outlet/Pump gaat. ManningResistance-routes "
-            "en doorlaten worden niet aangepast."
+            "Pas max_downstream_level aan voor aanvoer-rijen van inlaten en doorlaten op basis van "
+            "het directe downstream Basin."
+        ),
+    )
+    parser.add_argument(
+        "--apply-direct-min-upstream-level",
+        action="store_true",
+        help=(
+            "Pas min_upstream_level aan voor alle afwijkende rijen met een direct upstream Basin. "
+            "Er wordt niet via ManningResistance/Junction doorgelopen."
         ),
     )
     return parser.parse_args()
@@ -694,31 +888,59 @@ def main() -> int:
     args = parse_args()
     database_path = database_gpkg_path(args.toml_file)
     output_gpkg = resolve_output_gpkg(args.toml_file, args.output_gpkg)
+    verdachte_output_gpkg = (
+        resolve_output_gpkg(args.toml_file, args.verdachte_output_gpkg)
+        if args.verdachte_output_gpkg is not None
+        else None
+    )
 
-    _, deviations_df, allowed_updates_df, leaks_df = build_report(
+    (
+        _report_df,
+        deviations_df,
+        allowed_updates_df,
+        direct_min_upstream_updates_df,
+        leaks_df,
+        outlet_inlets_df,
+    ) = build_report(
         database_path=database_path,
         upstream_supply_offset=args.upstream_supply_offset,
         rws_profile_offset=args.rws_profile_offset,
         tolerance=args.tolerance,
     )
-    write_report_gpkg(
+    output_gpkg = write_report_gpkg(
         database_path=database_path,
         output_gpkg=output_gpkg,
         deviations_df=deviations_df,
         allowed_updates_df=allowed_updates_df,
+        direct_min_upstream_updates_df=direct_min_upstream_updates_df,
         leaks_df=leaks_df,
+        outlet_inlets_df=outlet_inlets_df,
     )
+    if verdachte_output_gpkg is not None:
+        verdachte_output_gpkg = write_suspicious_gpkg(
+            database_path=database_path,
+            output_gpkg=verdachte_output_gpkg,
+            leaks_df=leaks_df,
+            outlet_inlets_df=outlet_inlets_df,
+        )
 
-    max_downstream_updates_df = deviations_df[deviations_df["max_downstream_level_afwijking"].fillna(False)].copy()
+    max_downstream_updates_df = deviations_df[deviations_df["max_downstream_level_update_allowed"].fillna(False)].copy()
     backup_path = None
     min_update_count = 0
     max_update_count = 0
-    if args.apply_rws_inlet_min_upstream or args.apply_max_downstream_level:
-        backup_path, min_update_count, max_update_count = apply_level_updates(
+    condition_update_count = 0
+    apply_direct_min_upstream = args.apply_direct_min_upstream_level or args.apply_max_downstream_level
+    if args.apply_rws_inlet_min_upstream or apply_direct_min_upstream or args.apply_max_downstream_level:
+        backup_path, min_update_count, max_update_count, condition_update_count = apply_level_updates(
             database_path=database_path,
             min_upstream_updates_df=allowed_updates_df
             if args.apply_rws_inlet_min_upstream
             else allowed_updates_df.iloc[0:0],
+            direct_min_upstream_updates_df=(
+                direct_min_upstream_updates_df
+                if apply_direct_min_upstream
+                else direct_min_upstream_updates_df.iloc[0:0]
+            ),
             max_downstream_updates_df=(
                 max_downstream_updates_df if args.apply_max_downstream_level else max_downstream_updates_df.iloc[0:0]
             ),
@@ -727,14 +949,19 @@ def main() -> int:
     print(f"Model-TOML: {args.toml_file}")
     print(f"Model-GPKG: {database_path}")
     print(f"Rapport-GPKG: {output_gpkg}")
+    if verdachte_output_gpkg is not None:
+        print(f"Verdachte-punten-GPKG: {verdachte_output_gpkg}")
     print(f"Level-afwijkingen: {len(deviations_df)}")
     print(f"Toegestane RWS-inlaat min_upstream updates: {len(allowed_updates_df)}")
-    print(f"Toegestane inlaat max_downstream updates: {len(max_downstream_updates_df)}")
+    print(f"Toegestane directe min_upstream updates: {len(direct_min_upstream_updates_df)}")
+    print(f"Toegestane inlaat/doorlaat max_downstream updates: {len(max_downstream_updates_df)}")
     print(f"Verdachte RWS-lekken: {len(leaks_df)}")
+    print(f"Verdachte Outlet-inlaten met enkel bovenstrooms Basin: {len(outlet_inlets_df)}")
     if backup_path is not None:
         print(f"Backup database: {backup_path}")
         print(f"Toegepaste min_upstream_level updates: {min_update_count}")
         print(f"Toegepaste max_downstream_level updates: {max_update_count}")
+        print(f"Gesynchroniseerde DiscreteControl-condition thresholds: {condition_update_count}")
     return 0
 
 

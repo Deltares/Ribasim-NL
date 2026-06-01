@@ -36,6 +36,7 @@ start_time = time.time()
 
 # %%
 # parameterize
+manual_basin_level_node_ids = [1801]
 model.basin.area.df.loc[model.basin.area.df.node_id == 1801, "meta_streefpeil"] = -0.25
 model.parameterize(
     static_data_xlsx=static_data_xlsx,

@@ -9,6 +9,7 @@ from ribasim_nl.control import (
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
+from ribasim_nl.parametrization.manning_level import sync_basin_levels_along_manning_routes
 from shapely.geometry import MultiPolygon
 
 from ribasim_nl import CloudStorage, Model
@@ -74,9 +75,6 @@ model.outlet.static.df.flow_rate = 30
 model.pump.static.df.max_flow_rate = model.pump.static.df.flow_rate
 
 # %% Fixes
-model.merge_basins(node_id=1557, to_node_id=1140)
-model.merge_basins(node_id=1558, to_node_id=1140)
-model.merge_basins(node_id=1563, to_node_id=1140)
 outlet_ids = [968, 754, 705, 709, 710, 923, 753, 649, 766, 926]
 
 for node_id in dict.fromkeys(outlet_ids):
@@ -227,6 +225,19 @@ add_controllers_to_uncontrolled_connector_nodes(
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
     exclude_nodes=list(EXCLUDE_NODES),
+)
+
+# %%
+# Corrigeer basin-peilen/profielen langs open Manning-routes nadat alle full-control-controllers bekend zijn.
+manning_level_updates = sync_basin_levels_along_manning_routes(
+    model=model,
+    output_path=cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_updates.csv"),
+    basin_output_gpkg=cloud.joinpath(
+        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_basin_updates.gpkg"
+    ),
+    control_output_gpkg=cloud.joinpath(
+        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_control_updates.gpkg"
+    ),
 )
 
 # %% Junctionfy(!)

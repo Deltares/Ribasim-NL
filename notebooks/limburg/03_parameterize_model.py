@@ -40,9 +40,11 @@ mask = model.outlet.static.df["node_id"].isin(node_ids)
 model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 
-# %% fixes
+# %% fixes basins and profiles
 
 basin_level_overrides = [
+    ([2309], 31.0),
+    ([2492], 31.4),
     ([2495], 27.75),
     ([2418], 27.27),
     ([1873], 27.6),
@@ -52,7 +54,19 @@ for node_ids, meta_streefpeil in basin_level_overrides:
     mask = model.basin.area.df.node_id.isin(node_ids)
     model.basin.area.df.loc[mask, "meta_streefpeil"] = meta_streefpeil
 
-# Herbereken afgeleide tabellen na handmatige streefpeil-overrides.
+if model.basin.profile.df is not None and not model.basin.profile.df.empty:
+    profile_top = model.basin.profile.df.groupby("node_id")["level"].max()
+    for node_ids, meta_streefpeil in basin_level_overrides:
+        for node_id in node_ids:
+            if node_id not in profile_top.index:
+                continue
+            level_shift = float(meta_streefpeil) - float(profile_top.at[node_id])
+            mask = model.basin.profile.df.node_id.eq(node_id)
+            model.basin.profile.df.loc[mask, "level"] = (
+                model.basin.profile.df.loc[mask, "level"].astype(float) + level_shift
+            )
+
+# Herbereken afgeleide tabellen na handmatige streefpeil-/profiel-overrides.
 model.basin.state.df = model.basin.area.df[["node_id", "meta_streefpeil"]].rename(columns={"meta_streefpeil": "level"})
 
 # %%

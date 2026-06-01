@@ -9,6 +9,7 @@ from ribasim_nl.control import (
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
+from ribasim_nl.parametrization.manning_level import sync_basin_levels_along_manning_routes
 
 from ribasim_nl import CloudStorage, Model
 
@@ -523,6 +524,20 @@ for node_id, min_flow_rate in MIN_FLOW_RATE_BY_NODE_ID.items():
         static_df.loc[mask, "min_flow_rate"] = min_flow_rate
 
 configure_always_on_pumps(model)
+
+# %%
+# Corrigeer basin-peilen/profielen langs open Manning-routes nadat alle full-control-controllers bekend zijn.
+manning_level_updates = sync_basin_levels_along_manning_routes(
+    model=model,
+    output_path=cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_updates.csv"),
+    basin_output_gpkg=cloud.joinpath(
+        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_basin_updates.gpkg"
+    ),
+    control_output_gpkg=cloud.joinpath(
+        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_control_updates.gpkg"
+    ),
+    protected_basin_node_ids=[1311, 1325, 1338, 1432, 1617, 1680, 1832],
+)
 
 # %%
 # Model run

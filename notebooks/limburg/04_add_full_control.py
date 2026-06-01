@@ -22,6 +22,7 @@ from ribasim_nl.control import (
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
+from ribasim_nl.parametrization.manning_level import sync_basin_levels_along_manning_routes
 from shapely.geometry import MultiPolygon, Point
 
 from ribasim_nl import CloudStorage, Model
@@ -828,20 +829,15 @@ for node_id, level in boundary_levels.items():
 fixed_levels = {
     535: 31.12,  # Helenavaart-Grenssloot
     773: 31.12,
-    2493: 31.4,
     750: 31,
-    411: 31,
     604: 31.12,
-    932: 31.685,
 }
 
 df = model.outlet.static.df
 df["min_upstream_level"] = df["node_id"].map(fixed_levels).fillna(df["min_upstream_level"])
 
 mask = model.outlet.static.df.node_id.isin([2496, 2497])
-model.outlet.static.df.loc[mask & (model.outlet.static.df.control_state == "aanvoer"), "min_upstream_level"] = 30.71
 model.outlet.static.df.loc[mask & (model.outlet.static.df.control_state == "aanvoer"), "max_downstream_level"] = 30.75
-model.outlet.static.df.loc[mask & (model.outlet.static.df.control_state == "afvoer"), "min_upstream_level"] = 30.75
 
 # Procentuele Verdeling 90/10 Heide: alleen afvoer-capaciteit begrenzen.
 afvoer_mask_616 = (model.outlet.static.df.node_id == 616) & (model.outlet.static.df.control_state == "afvoer")
@@ -864,6 +860,20 @@ model.outlet.static.df.loc[aanvoer_mask_683, "max_flow_rate"] = 100
 afvoer_mask_683 = (model.outlet.static.df.node_id == 683) & (model.outlet.static.df.control_state == "afvoer")
 model.outlet.static.df.loc[afvoer_mask_683, "flow_rate"] = 0
 model.outlet.static.df.loc[afvoer_mask_683, "max_flow_rate"] = 0
+
+# %%
+# Corrigeer basin-peilen/profielen langs open Manning-routes nadat alle full-control-controllers bekend zijn.
+manning_level_updates = sync_basin_levels_along_manning_routes(
+    model=model,
+    output_path=cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_updates.csv"),
+    basin_output_gpkg=cloud.joinpath(
+        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_basin_updates.gpkg"
+    ),
+    control_output_gpkg=cloud.joinpath(
+        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_control_updates.gpkg"
+    ),
+    protected_basin_node_ids=[1873, 2418, 2495],
+)
 
 # %% Junctionfy(!)
 junctionify(model)

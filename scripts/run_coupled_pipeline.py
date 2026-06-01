@@ -70,6 +70,30 @@ PIPELINES: dict[str, PipelineConfig] = {
             ROOT / "notebooks" / "hunze_en_aas" / "04_add_full_control.py",
         ],
     ),
+    "dod-vecht-wf-nzv-hunze-rws": PipelineConfig(
+        key="dod-vecht-wf-nzv-hunze-rws",
+        model_name="DOD-Vechtstromen-WF-NZV-HunzeenAas-RWS",
+        submodel_authorities=[
+            "Rijkswaterstaat",
+            "DrentsOverijsselseDelta",
+            "Vechtstromen",
+            "WetterskipFryslan",
+            "Noorderzijlvest",
+            "HunzeenAas",
+        ],
+        dynamic_authorities=[
+            "DrentsOverijsselseDelta",
+            "Vechtstromen",
+            "Noorderzijlvest",
+            "HunzeenAas",
+        ],
+        full_control_scripts=[
+            ROOT / "notebooks" / "drents_overijsselse_delta" / "04_add_full_control.py",
+            ROOT / "notebooks" / "vechtstromen" / "04_add_full_control.py",
+            ROOT / "notebooks" / "noorderzijlvest" / "04_add_full_control.py",
+            ROOT / "notebooks" / "hunze_en_aas" / "04_add_full_control.py",
+        ],
+    ),
     "rij-rws": PipelineConfig(
         key="rij-rws",
         model_name="RijnenIJssel-RWS",
@@ -116,6 +140,16 @@ PIPELINES: dict[str, PipelineConfig] = {
         full_control_scripts=[ROOT / "notebooks" / "brabantse_delta" / "04_add_full_control.py"],
     ),
 }
+
+DEFAULT_PIPELINE_KEYS = [
+    "hdsr-rws",
+    "venv-rws",
+    "dod-vecht-hunze-rws",
+    "wf-nzv-hunze-rws",
+    "rij-rws",
+    "dommel-aam-limburg-rws",
+    "brabantse-delta-rws",
+]
 
 
 def safe_label(label: str) -> str:
@@ -220,7 +254,7 @@ STEP_ORDER = {
     "samenvoegen": 4,
     "koppelen": 5,
     "report-coupling-levels": 6,
-    "check-coupling-levels": 7,
+    "report-applied-changes": 7,
 }
 
 
@@ -241,10 +275,9 @@ def run_pipeline(
     *,
     dry_run: bool,
     start_at: str,
-    apply_coupling_levels: bool,
     apply_rws_inlet_min_upstream: bool,
+    apply_direct_min_upstream_level: bool,
     apply_max_downstream_level: bool,
-    manning_n: float | None,
 ) -> None:
     tmp_dir = TMP_ROOT / config.key
     log_dir = tmp_dir / "logs"
@@ -331,9 +364,13 @@ def run_pipeline(
             str(model_toml_path),
             "--output-gpkg",
             "coupling_level_report_uitgekleed.gpkg",
+            "--verdachte-output-gpkg",
+            "verdachte_punten.gpkg",
         ]
-        if apply_rws_inlet_min_upstream or apply_coupling_levels:
+        if apply_rws_inlet_min_upstream:
             command.append("--apply-rws-inlet-min-upstream")
+        if apply_direct_min_upstream_level or apply_max_downstream_level:
+            command.append("--apply-direct-min-upstream-level")
         if apply_max_downstream_level:
             command.append("--apply-max-downstream-level")
 
@@ -345,27 +382,17 @@ def run_pipeline(
             dry_run=dry_run,
         )
 
-    if should_run("check-coupling-levels"):
-        if not apply_coupling_levels:
-            print(
-                "\n=== Check coupling levels overgeslagen ===\n"
-                "Gebruik --apply-coupling-levels om de oude check_coupling_levels.py --apply stap te draaien.",
-                flush=True,
-            )
-            return
-
+    if should_run("report-applied-changes"):
         command = [
             *python_command,
-            str(ROOT / "notebooks" / "check_coupling_levels.py"),
+            str(ROOT / "notebooks" / "report_applied_model_changes.py"),
             "--toml-file",
             str(model_toml_path),
-            "--apply",
+            "--output-gpkg",
+            "toegepaste_model_wijzigingen.gpkg",
         ]
-        if manning_n is not None:
-            command.extend(["--manning-n", str(manning_n)])
-
         run_step(
-            f"Check coupling levels: {config.model_name}",
+            f"Report applied changes: {config.model_name}",
             command,
             env,
             log_dir,
@@ -405,24 +432,16 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help=(
             "Laat report_coupling_levels.py max_downstream_level corrigeren voor "
-            "aanvoer-rijen van inlaten met direct downstream Outlet/Pump; geen Manning en geen doorlaten."
+            "aanvoer-rijen van inlaten en doorlaten op basis van het directe downstream Basin. "
+            "De bijbehorende directe min_upstream-correcties worden dan ook toegepast."
         ),
     )
     parser.add_argument(
-        "--apply-coupling-levels",
+        "--apply-direct-min-upstream-level",
         action="store_true",
         help=(
-            "Draai de oude check_coupling_levels.py --apply stap na het rapport. "
-            "De beperkte RWS->model inlaat min_upstream-correctie uit het rapport wordt dan ook toegepast."
-        ),
-    )
-    parser.add_argument(
-        "--manning-n",
-        type=float,
-        default=0.01,
-        help=(
-            "Waarde voor ManningResistance / static.manning_n in check_coupling_levels.py. "
-            "Standaard 0.01; gebruik --manning-n uitdrukkelijk als je een andere waarde wilt."
+            "Laat report_coupling_levels.py min_upstream_level corrigeren voor afwijkende rijen met een direct "
+            "upstream Basin. Er wordt niet via ManningResistance/Junction doorgelopen."
         ),
     )
     return parser.parse_args()
@@ -437,17 +456,16 @@ def main() -> int:
 
     selected_keys = args.pipelines or ["all"]
     if "all" in selected_keys:
-        selected_keys = list(PIPELINES)
+        selected_keys = list(DEFAULT_PIPELINE_KEYS)
 
     for key in selected_keys:
         run_pipeline(
             PIPELINES[key],
             dry_run=args.dry_run,
             start_at=args.start_at,
-            apply_coupling_levels=args.apply_coupling_levels,
             apply_rws_inlet_min_upstream=args.apply_rws_inlet_min_upstream,
+            apply_direct_min_upstream_level=args.apply_direct_min_upstream_level,
             apply_max_downstream_level=args.apply_max_downstream_level,
-            manning_n=args.manning_n,
         )
     return 0
 

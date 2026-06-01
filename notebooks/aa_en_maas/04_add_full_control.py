@@ -24,6 +24,7 @@ from ribasim_nl.control import (
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
+from ribasim_nl.parametrization.manning_level import sync_basin_levels_along_manning_routes
 from shapely.geometry import MultiPolygon
 
 from ribasim_nl import CloudStorage, Model
@@ -486,7 +487,6 @@ model.remove_node(1054, remove_links=True)
 
 # Mierlo wordt aanvoer als afvoer gemaal
 model.update_node(node_id=92, node_type="Pump")  # wordt outlet, was outlet
-model.pump.static.df.loc[model.pump.static.df.node_id == 92, "min_upstream_level"] = 16.56
 model.update_node(node_id=226, node_type="Pump")  # wordt outlet, was outlet
 
 
@@ -650,18 +650,15 @@ model.node.df[IS_SUPPLY_NODE_COLUMN] = model.node.df.index.isin(all_nodes)
 
 # Gemaal Veluwe
 model.update_node(node_id=100, node_type="Pump")  # wordt outlet, was outlet
-model.pump.static.df.loc[model.pump.static.df.node_id == 100, "min_upstream_level"] = 10.13
 model.pump.static.df.loc[model.pump.static.df.node_id == 100, "flow_rate"] = 5
 
 # Gemaal Kameren
 model.update_node(node_id=95, node_type="Pump")  # wordt outlet, was outlet
-model.pump.static.df.loc[model.pump.static.df.node_id == 95, "min_upstream_level"] = 5.17
 
 
 # Grote Wetering is een gemaal
 model.update_node(node_id=105, node_type="Pump")  # wordt pump was outlet
 model.pump.static.df.loc[model.pump.static.df.node_id == 105, "flow_rate"] = 1
-model.pump.static.df.loc[model.pump.static.df.node_id == 105, "min_upstream_level"] = 2
 
 
 # %%
@@ -1249,14 +1246,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 247, "max_flow_rate
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 960, "max_flow_rate"] = 16.67
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 980, "max_flow_rate"] = 5
 
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 680, "min_upstream_level"] = 18.97
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 955, "min_upstream_level"] = 17.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 956, "min_upstream_level"] = 17.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 584, "min_upstream_level"] = 17.75
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 247, "min_upstream_level"] = 18.2
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 960, "min_upstream_level"] = 18.97
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 980, "min_upstream_level"] = 11.85
-
 reverse_link_ids = [226, 1172]
 
 
@@ -1272,57 +1261,18 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 3089, "min_upstream_lev
 # Inlaat Sambeek
 model.update_node(node_id=124, node_type="Pump")  # wordt pump, was outlet
 model.pump.static.df.loc[model.pump.static.df.node_id == 124, "flow_rate"] = 0
-model.pump.static.df.loc[model.pump.static.df.node_id == 124, "min_upstream_level"] = 10.36
 
 # Gemaal Mierlo
 model.update_node(node_id=226, node_type="Pump")  # wordt pump, was outlet
 model.pump.static.df.loc[model.pump.static.df.node_id == 226, "flow_rate"] = 0
-model.pump.static.df.loc[model.pump.static.df.node_id == 226, "min_upstream_level"] = 14.3
 
 # Inlaten aan Drongelens kanaal krijgen pd.NA bij min_upstream_level
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 98, "min_upstream_level"] = pd.NA
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 103, "min_upstream_level"] = pd.NA
 
-
-# Alle inlaten met demand_nodes moeten min_upstream_level van streefpeil hebben zodat ze in afvoerstand staan (+0.04m)
-#
-outlet_ids = [
-    259,
-    298,
-    3818,
-    283,
-    390,
-    894,
-    335,
-    367,
-    3089,
-    3090,
-    3095,
-    601,
-    156,
-    358,
-    535,
-    996,
-    3091,
-    657,
-    2022,
-    935,
-    997,
-    226,
-    3094,
-    2025,
-    340,
-]
-mask = model.outlet.static.df["node_id"].isin(outlet_ids)
-model.outlet.static.df.loc[mask, "min_upstream_level"] = model.outlet.static.df.loc[mask, "min_upstream_level"] + 0.04
-
 boundary_ids = [9, 13, 39, 38, 53, 1958, 1568, 3085, 33, 32, 31, 59, 54, 44, 42, 64, 63]
 mask = model.level_boundary.static.df["node_id"].isin(boundary_ids)
 model.level_boundary.static.df.loc[mask, "level"] = model.level_boundary.static.df.loc[mask, "level"] + 0.04
-
-# Iets hoger dan Crevecoeur, zodat alleen in noodsituaties water door Drongelens kanaal gaat
-mask = (model.outlet.static.df.node_id == 3097) & (model.outlet.static.df.control_state == "afvoer")
-model.outlet.static.df.loc[mask, "min_upstream_level"] += 0.01
 
 # 201JSL is een RWS-inlaat naar Aa en Maas, geen afvoer richting Aa en Maas.
 mask = (model.outlet.static.df.node_id == 309) & (model.outlet.static.df.control_state == "aanvoer")
@@ -1331,6 +1281,20 @@ model.outlet.static.df.loc[mask, "max_flow_rate"] = 20
 mask = (model.outlet.static.df.node_id == 309) & (model.outlet.static.df.control_state == "afvoer")
 model.outlet.static.df.loc[mask, "flow_rate"] = 0
 model.outlet.static.df.loc[mask, "max_flow_rate"] = 0
+
+# %%
+# Corrigeer basin-peilen/profielen langs open Manning-routes nadat alle full-control-controllers bekend zijn.
+manning_level_updates = sync_basin_levels_along_manning_routes(
+    model=model,
+    output_path=cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_updates.csv"),
+    basin_output_gpkg=cloud.joinpath(
+        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_basin_updates.gpkg"
+    ),
+    control_output_gpkg=cloud.joinpath(
+        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_control_updates.gpkg"
+    ),
+    protected_basin_node_ids=[1149, 1331, 1419, 1446, 1475, 1565, 1572, 1665, 1801, 1852, 1885, 1959],
+)
 
 # %% Junctionfy(!)
 junctionify(model)

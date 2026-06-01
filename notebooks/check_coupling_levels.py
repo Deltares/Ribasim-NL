@@ -53,11 +53,6 @@ EXCLUDED_MAX_DOWNSTREAM_LEVEL_NODE_IDS = LIMBURG_HANDMATIGE_LEVEL_NODE_IDS
 EXCLUDED_MAX_DOWNSTREAM_LEVEL_AUTHORITIES = {"WetterskipFryslan"}
 EXCLUDED_MIN_UPSTREAM_LEVEL_AUTHORITIES = {"WetterskipFryslan"}
 RWS_UPSTREAM_MIN_PROFILE_LEVEL_OFFSET = 0.1
-DEFAULT_AFVOER_FLOW_RATES_BY_NODE_ID = {
-    5902582: 300.0,
-    5900199: 300.0,
-    5900198: 300.0,
-}
 
 
 def reset_index_to_column(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
@@ -133,6 +128,15 @@ def read_static_tables(model: Model) -> pd.DataFrame:
 
 def normalize_numeric(series: pd.Series) -> pd.Series:
     return pd.to_numeric(series, errors="coerce")
+
+
+def positive(value: object) -> bool:
+    try:
+        if value is None or pd.isna(value):
+            return False
+        return float(value) > 0.0
+    except (TypeError, ValueError):
+        return False
 
 
 def downstream_node_info(
@@ -213,127 +217,11 @@ def downstream_non_junction_targets(
 
 def max_downstream_level_basin_info(
     first_downstream_basin_id: int | None,
-    outgoing_flow_links: dict[int, list[tuple[int, int]]],
-    node_type_by_id: dict[int, str],
-    follow_manning_until_control: bool,
-    max_iter: int = 50,
 ) -> tuple[int | None, int | None, str | None, str]:
-    """Find the basin level that should drive max_downstream_level.
-
-    For inlaat/doorlaat Outlet/Pump nodes, a direct downstream basin can be
-    connected further downstream through a ManningResistance. In that case,
-    keep walking downstream until a basin is reached that has at least one
-    downstream Outlet/Pump. That basin's level is the relevant level for
-    max_downstream_level. Other functions use the direct downstream basin.
-    """
     if first_downstream_basin_id is None:
         return None, None, "geen eerste downstream Basin", "geen_downstream_basin"
 
-    current_basin_id = int(first_downstream_basin_id)
-    if not follow_manning_until_control:
-        targets = downstream_non_junction_targets(
-            node_id=current_basin_id,
-            outgoing_flow_links=outgoing_flow_links,
-            node_type_by_id=node_type_by_id,
-        )
-        target_errors = [error for _, _, error in targets if error is not None]
-        if target_errors:
-            return current_basin_id, None, "; ".join(target_errors), "downstream_streefpeil"
-
-        manning_targets = [
-            (node_id, link_id) for node_id, link_id, _ in targets if node_type_by_id.get(node_id) == "ManningResistance"
-        ]
-        if len(manning_targets) > 1:
-            return (
-                current_basin_id,
-                None,
-                f"meerdere downstream ManningResistance-nodes: {manning_targets}",
-                "downstream_streefpeil",
-            )
-
-        manning_link_id = int(manning_targets[0][1]) if manning_targets else None
-        basis = "downstream_streefpeil"
-        if manning_link_id is not None:
-            basis = "downstream_streefpeil_manning_niet_doorlopen"
-        return current_basin_id, manning_link_id, None, basis
-
-    seen_basin_ids = {current_basin_id}
-    first_manning_link_id = None
-
-    for _ in range(max_iter):
-        targets = downstream_non_junction_targets(
-            node_id=current_basin_id,
-            outgoing_flow_links=outgoing_flow_links,
-            node_type_by_id=node_type_by_id,
-        )
-        target_errors = [error for _, _, error in targets if error is not None]
-        if target_errors:
-            return current_basin_id, first_manning_link_id, "; ".join(target_errors), "downstream_streefpeil"
-
-        control_targets = [
-            (node_id, link_id) for node_id, link_id, _ in targets if node_type_by_id.get(node_id) in CONTROL_NODE_TYPES
-        ]
-        if control_targets:
-            basis = (
-                "downstream_streefpeil"
-                if first_manning_link_id is None
-                else "downstream_streefpeil_na_manning_tot_basin_met_outlet_pump"
-            )
-            return current_basin_id, first_manning_link_id, None, basis
-
-        manning_targets = [
-            (node_id, link_id) for node_id, link_id, _ in targets if node_type_by_id.get(node_id) == "ManningResistance"
-        ]
-        if not manning_targets:
-            basis = (
-                "downstream_streefpeil"
-                if first_manning_link_id is None
-                else "downstream_streefpeil_na_manning_tot_basin_zonder_manning"
-            )
-            return current_basin_id, first_manning_link_id, None, basis
-        if len(manning_targets) > 1:
-            return (
-                current_basin_id,
-                first_manning_link_id,
-                f"meerdere downstream ManningResistance-nodes: {manning_targets}",
-                "downstream_streefpeil",
-            )
-
-        manning_node_id, manning_link_id = manning_targets[0]
-        if first_manning_link_id is None:
-            first_manning_link_id = int(manning_link_id)
-
-        next_basin_id, _, error = downstream_node_info(
-            node_id=int(manning_node_id),
-            outgoing_flow_links=outgoing_flow_links,
-            node_type_by_id=node_type_by_id,
-        )
-        if error is not None:
-            return current_basin_id, first_manning_link_id, error, "downstream_streefpeil"
-        if node_type_by_id.get(next_basin_id) != "Basin":
-            return (
-                current_basin_id,
-                first_manning_link_id,
-                f"downstream van ManningResistance is geen Basin maar {node_type_by_id.get(next_basin_id)}",
-                "downstream_streefpeil",
-            )
-
-        current_basin_id = int(next_basin_id)
-        if current_basin_id in seen_basin_ids:
-            return (
-                current_basin_id,
-                first_manning_link_id,
-                f"cyclus gevonden via Basin {current_basin_id}",
-                "downstream_streefpeil",
-            )
-        seen_basin_ids.add(current_basin_id)
-
-    return (
-        current_basin_id,
-        first_manning_link_id,
-        f"geen max_downstream_level Basin gevonden binnen {max_iter} stappen",
-        "downstream_streefpeil",
-    )
+    return int(first_downstream_basin_id), None, None, "downstream_streefpeil"
 
 
 def upstream_node_info(
@@ -493,14 +381,7 @@ def build_check_dataframe(
     )
     max_downstream_level_basin_results = [
         max_downstream_level_basin_info(
-            first_downstream_basin_id=int(node_id) if node_type_by_id.get(node_id) == "Basin" else None,
-            outgoing_flow_links=outgoing_flow_links,
-            node_type_by_id=node_type_by_id,
-            follow_manning_until_control=(
-                str(row.control_state).lower() == "aanvoer"
-                and row.node_type in CONTROL_NODE_TYPES
-                and row.functie in ["inlaat", "doorlaat"]
-            ),
+            first_downstream_basin_id=int(node_id) if node_type_by_id.get(node_id) == "Basin" else None
         )
         for row, node_id in zip(candidate_df.itertuples(index=False), candidate_df["downstream_basin_id"], strict=True)
     ]
@@ -557,13 +438,17 @@ def build_check_dataframe(
         supply_side_mask, "upstream_streefpeil_plus_aanvoer_offset", "upstream_streefpeil"
     )
     candidate_df["gecheckte_min_upstream_level_is_null"] = False
+    candidate_df["loop_min_upstream_basin_id"] = np.nan
+    candidate_df["loop_min_upstream_manning_link_id"] = np.nan
+    candidate_df["loop_min_upstream_error"] = "manning_doorloop_uitgeschakeld"
+    candidate_df["loop_min_upstream_level"] = np.nan
     rws_basin_mask = candidate_df["upstream_basin_meta_waterbeheerder"].eq("Rijkswaterstaat")
     valid_rws_state_level = candidate_df["upstream_basin_state_level"].le(max_rws_upstream_state_level)
     candidate_df["rws_upstream_state_level_valid"] = (
         rws_basin_mask & candidate_df["upstream_basin_state_level"].notna() & valid_rws_state_level
     )
-    rws_outlet_afvoer_mask = control_state.eq("afvoer") & candidate_df["functie"].eq("uitlaat") & rws_basin_mask
-    rws_min_upstream_override_mask = rws_outlet_afvoer_mask
+    rws_inlet_aanvoer_mask = control_state.eq("aanvoer") & candidate_df["functie"].eq("inlaat") & rws_basin_mask
+    rws_min_upstream_override_mask = rws_inlet_aanvoer_mask
     rws_state_mask = (
         rws_min_upstream_override_mask
         & rws_basin_mask
@@ -611,16 +496,11 @@ def build_check_dataframe(
     checked_df["verschil_max_downstream_level"] = current_ds - expected_ds
     checked_df["verschil_min_upstream_level"] = current_us - expected_us
 
-    max_downstream_uses_unresolved_manning = checked_df["max_downstream_level_manning_link_id"].notna() & ~checked_df[
-        "max_downstream_level_check_basis"
-    ].eq("downstream_streefpeil_na_manning_tot_basin_met_outlet_pump")
     checked_df["max_downstream_level_afwijking"] = (
         checked_df["control_state"].eq("aanvoer")
-        & checked_df["functie"].eq("inlaat")
+        & checked_df["functie"].isin(["inlaat", "doorlaat"])
         & ~checked_df["meta_waterbeheerder"].isin(EXCLUDED_MAX_DOWNSTREAM_LEVEL_AUTHORITIES)
         & ~checked_df["node_id"].isin(EXCLUDED_MAX_DOWNSTREAM_LEVEL_NODE_IDS)
-        & checked_df["max_downstream_level_manning_link_id"].isna()
-        & ~max_downstream_uses_unresolved_manning
         & expected_ds.notna()
         & ~np.isclose(
             current_ds.to_numpy(dtype=float),
@@ -725,17 +605,15 @@ def expected_control_name(row: pd.Series, current_name: object) -> str | None:
     upstream_level = format_control_level(expected_upstream_control_level(row))
     downstream_level = format_control_level(expected_downstream_control_level(row))
 
-    if prefix == "uitlaat":
+    if row.get("functie") == "uitlaat":
         if upstream_level is None:
             return None
         return f"{prefix}: {upstream_level} [m+NAP]"
 
-    if upstream_level is not None and downstream_level is not None:
+    if row.get("functie") in ["inlaat", "doorlaat"] and upstream_level is not None and downstream_level is not None:
         return f"{prefix}: {upstream_level}/{downstream_level} [m+NAP]"
-    if downstream_level is not None:
+    if row.get("functie") in ["inlaat", "doorlaat"] and downstream_level is not None:
         return f"{prefix}: {downstream_level} [m+NAP]"
-    if upstream_level is not None:
-        return f"{prefix}: {upstream_level} [m+NAP]"
     return None
 
 
@@ -759,16 +637,94 @@ def update_control_node_names(model: Model, deviations_df: pd.DataFrame) -> int:
     return update_count
 
 
-def apply_level_updates(model: Model, deviations_df: pd.DataFrame) -> tuple[int, int, int, int]:
+def update_discrete_control_conditions(
+    model: Model,
+    control_ids_by_target: dict[int, list[int]],
+    target_node_id: int,
+    listen_node_id: int | None,
+    level_value: float,
+) -> int:
+    if listen_node_id is None:
+        return 0
+
+    variable_df = model.discrete_control.variable.df
+    condition_df = model.discrete_control.condition.df
+    if variable_df is None or condition_df is None:
+        return 0
+
+    control_node_ids = control_ids_by_target.get(int(target_node_id), [])
+    if not control_node_ids:
+        return 0
+
+    update_count = 0
+    for control_node_id in control_node_ids:
+        variable_rows = variable_df[
+            variable_df["node_id"].eq(control_node_id) & variable_df["listen_node_id"].eq(int(listen_node_id))
+        ].copy()
+        if variable_rows.empty:
+            continue
+        variable_rows["weight"] = normalize_numeric(variable_rows["weight"])
+        variable_rows = variable_rows.dropna(subset=["compound_variable_id", "weight"])
+
+        for variable_row in variable_rows.drop_duplicates(subset=["compound_variable_id"]).itertuples(index=False):
+            compound_variable_id = int(variable_row.compound_variable_id)
+            threshold_value = float(level_value) * float(variable_row.weight)
+            condition_mask = condition_df["node_id"].eq(control_node_id) & condition_df["compound_variable_id"].eq(
+                compound_variable_id
+            )
+            if not condition_mask.any():
+                continue
+
+            condition_rows = condition_df.loc[condition_mask].copy()
+            if "condition_id" in condition_rows.columns:
+                condition_rows = condition_rows.sort_values("condition_id")
+
+            base_high = condition_rows.iloc[0]["threshold_high"]
+            base_low = condition_rows.iloc[0]["threshold_low"]
+            for condition_index, condition_row in condition_rows.iterrows():
+                high_offset = (
+                    0.0
+                    if pd.isna(base_high) or pd.isna(condition_row["threshold_high"])
+                    else float(condition_row["threshold_high"]) - float(base_high)
+                )
+                low_offset = (
+                    0.0
+                    if pd.isna(base_low) or pd.isna(condition_row["threshold_low"])
+                    else float(condition_row["threshold_low"]) - float(base_low)
+                )
+                condition_df.loc[condition_index, "threshold_high"] = threshold_value + high_offset
+                condition_df.loc[condition_index, "threshold_low"] = threshold_value + low_offset
+                update_count += 1
+
+    return update_count
+
+
+def control_threshold_for_min_upstream(row: object, static_min_upstream_value: float) -> float:
+    basis = str(getattr(row, "min_upstream_level_check_basis", ""))
+    upstream_streefpeil = getattr(row, "upstream_basin_streefpeil", np.nan)
+
+    if basis in {
+        "upstream_streefpeil_plus_aanvoer_offset",
+        "rijkswaterstaat_min_profile_level_plus_offset",
+        "rijkswaterstaat_state_level",
+    } and pd.notna(upstream_streefpeil):
+        return float(upstream_streefpeil)
+
+    return float(static_min_upstream_value)
+
+
+def apply_level_updates(model: Model, deviations_df: pd.DataFrame) -> tuple[int, int, int, int, int]:
     max_update_count = 0
     min_update_count = 0
     min_update_count_rws_inlet = 0
     control_name_update_count = 0
+    control_condition_update_count = 0
 
     static_df_by_node_type = {
         "Outlet": model.outlet.static.df,
         "Pump": model.pump.static.df,
     }
+    control_ids_by_target = control_node_ids_by_target_node_id(model)
 
     for row in deviations_df.itertuples():
         static_df = static_df_by_node_type[row.node_type]
@@ -776,13 +732,29 @@ def apply_level_updates(model: Model, deviations_df: pd.DataFrame) -> tuple[int,
             raise KeyError(f"Kan rij {row.table_row_id} niet vinden in {row.static_table} voor node_id={row.node_id}")
 
         if bool(row.max_downstream_level_afwijking) and pd.notna(row.gecheckte_max_downstream_level):
-            static_df.loc[row.table_row_id, "max_downstream_level"] = float(row.gecheckte_max_downstream_level)
+            value = float(row.gecheckte_max_downstream_level)
+            static_df.loc[row.table_row_id, "max_downstream_level"] = value
+            control_condition_update_count += update_discrete_control_conditions(
+                model=model,
+                control_ids_by_target=control_ids_by_target,
+                target_node_id=int(row.node_id),
+                listen_node_id=int(row.downstream_basin_id) if pd.notna(row.downstream_basin_id) else None,
+                level_value=value,
+            )
             max_update_count += 1
         if bool(row.min_upstream_level_afwijking):
             if bool(getattr(row, "gecheckte_min_upstream_level_is_null", False)):
                 static_df.loc[row.table_row_id, "min_upstream_level"] = np.nan
             elif pd.notna(row.gecheckte_min_upstream_level):
-                static_df.loc[row.table_row_id, "min_upstream_level"] = float(row.gecheckte_min_upstream_level)
+                value = float(row.gecheckte_min_upstream_level)
+                static_df.loc[row.table_row_id, "min_upstream_level"] = value
+                control_condition_update_count += update_discrete_control_conditions(
+                    model=model,
+                    control_ids_by_target=control_ids_by_target,
+                    target_node_id=int(row.node_id),
+                    listen_node_id=int(row.upstream_basin_id) if pd.notna(row.upstream_basin_id) else None,
+                    level_value=control_threshold_for_min_upstream(row, value),
+                )
             else:
                 continue
             min_update_count += 1
@@ -791,7 +763,13 @@ def apply_level_updates(model: Model, deviations_df: pd.DataFrame) -> tuple[int,
 
     control_name_update_count = update_control_node_names(model=model, deviations_df=deviations_df)
 
-    return max_update_count, min_update_count, min_update_count_rws_inlet, control_name_update_count
+    return (
+        max_update_count,
+        min_update_count,
+        min_update_count_rws_inlet,
+        control_name_update_count,
+        control_condition_update_count,
+    )
 
 
 def set_selected_authorities_manning_n(model: Model, manning_n: float) -> int:
@@ -808,35 +786,6 @@ def set_selected_authorities_manning_n(model: Model, manning_n: float) -> int:
     mask = manning_static_df["node_id"].isin(node_ids)
     model.manning_resistance.static.df.loc[mask, "manning_n"] = manning_n
     return int(mask.sum())
-
-
-def set_afvoer_flow_updates(model: Model, updates: list[tuple[int, float, float | None]]) -> int:
-    static_df_by_node_type = {
-        "Outlet": model.outlet.static.df,
-        "Pump": model.pump.static.df,
-    }
-    update_count = 0
-
-    for node_id, flow_rate, max_flow_rate in updates:
-        node_updated = False
-        for static_df in static_df_by_node_type.values():
-            if static_df is None:
-                continue
-            control_state = static_df["control_state"].astype("string").str.lower()
-            mask = static_df["node_id"].eq(node_id) & control_state.eq("afvoer")
-            if not mask.any():
-                continue
-
-            static_df.loc[mask, "flow_rate"] = float(flow_rate)
-            if max_flow_rate is not None:
-                static_df.loc[mask, "max_flow_rate"] = float(max_flow_rate)
-            update_count += int(mask.sum())
-            node_updated = True
-
-        if not node_updated:
-            raise KeyError(f"Kan geen Outlet/Pump / static afvoer-rij vinden voor node_id={node_id}")
-
-    return update_count
 
 
 def write_deviation_locations(model: Model, deviations_df: pd.DataFrame, output_gpkg: Path) -> Path:
@@ -866,6 +815,10 @@ def write_deviation_locations(model: Model, deviations_df: pd.DataFrame, output_
         "upstream_basin_state_level",
         "upstream_basin_min_profile_level",
         "rws_upstream_state_level_valid",
+        "loop_min_upstream_basin_id",
+        "loop_min_upstream_manning_link_id",
+        "loop_min_upstream_error",
+        "loop_min_upstream_level",
         "min_upstream_level_offset",
         "huidig_min_upstream_level",
         "gecheckte_min_upstream_level",
@@ -1021,27 +974,6 @@ def main() -> None:
         ),
     )
     parser.add_argument(
-        "--afvoer-flow-update",
-        action="append",
-        nargs=3,
-        metavar=("NODE_ID", "FLOW_RATE", "MAX_FLOW_RATE"),
-        default=None,
-        help=(
-            "Herhaalbare update voor Outlet/Pump / static afvoer-rijen: geef node_id, flow_rate en max_flow_rate op."
-        ),
-    )
-    parser.add_argument(
-        "--afvoer-flow-rate",
-        action="append",
-        nargs=2,
-        metavar=("NODE_ID", "FLOW_RATE"),
-        default=None,
-        help=(
-            "Herhaalbare update voor Outlet/Pump / static afvoer-rijen; zet zowel flow_rate "
-            "als max_flow_rate op de opgegeven waarde."
-        ),
-    )
-    parser.add_argument(
         "--output-gpkg",
         type=Path,
         default=None,
@@ -1060,7 +992,6 @@ def main() -> None:
     output_gpkg = resolve_output_gpkg(args.toml_file, args.output_gpkg)
     model = Model.read(args.toml_file)
     database_path = database_gpkg_path(model, args.toml_file)
-    model_node_ids = set(model.node.df.index.astype(int))
 
     if args.selected_authorities:
         authorities = SELECTED_AUTHORITIES
@@ -1082,50 +1013,26 @@ def main() -> None:
     min_update_count = 0
     min_update_count_rws_inlet = 0
     control_name_update_count = 0
+    control_condition_update_count = 0
     manning_update_count = 0
-    afvoer_flow_update_count = 0
     should_set_manning_n = args.set_selected_authorities_manning_n or args.manning_n is not None
     manning_n = 0.03 if args.manning_n is None else args.manning_n
-    afvoer_flow_updates_by_node_id = {
-        int(node_id): (float(flow_rate), float(flow_rate))
-        for node_id, flow_rate in DEFAULT_AFVOER_FLOW_RATES_BY_NODE_ID.items()
-        if int(node_id) in model_node_ids
-    }
-    if args.afvoer_flow_update is not None:
-        afvoer_flow_updates_by_node_id.update(
-            {
-                int(node_id): (float(flow_rate), float(max_flow_rate))
-                for node_id, flow_rate, max_flow_rate in args.afvoer_flow_update
-            }
-        )
-    if args.afvoer_flow_rate is not None:
-        afvoer_flow_updates_by_node_id.update(
-            {int(node_id): (float(flow_rate), float(flow_rate)) for node_id, flow_rate in args.afvoer_flow_rate}
-        )
-    afvoer_flow_updates = [
-        (node_id, flow_rate, max_flow_rate)
-        for node_id, (flow_rate, max_flow_rate) in afvoer_flow_updates_by_node_id.items()
-    ]
 
     if args.apply and not deviations_df.empty:
-        max_update_count, min_update_count, min_update_count_rws_inlet, control_name_update_count = apply_level_updates(
-            model, deviations_df
-        )
+        (
+            max_update_count,
+            min_update_count,
+            min_update_count_rws_inlet,
+            control_name_update_count,
+            control_condition_update_count,
+        ) = apply_level_updates(model, deviations_df)
     if args.apply and args.update_control_names:
         control_name_update_count += update_control_node_names(model=model, deviations_df=checked_df)
 
     if should_set_manning_n:
         manning_update_count = set_selected_authorities_manning_n(model, manning_n)
 
-    if afvoer_flow_updates:
-        afvoer_flow_update_count = set_afvoer_flow_updates(model, afvoer_flow_updates)
-
-    write_model = (
-        (args.apply and not deviations_df.empty)
-        or control_name_update_count
-        or should_set_manning_n
-        or afvoer_flow_updates
-    )
+    write_model = (args.apply and not deviations_df.empty) or control_name_update_count or should_set_manning_n
     database_backup_path = None
     if write_model:
         database_backup_path = backup_database_gpkg(database_path)
@@ -1142,21 +1049,20 @@ def main() -> None:
         print("Geen afwijkingen gevonden.")
     else:
         print_deviations(deviations_df)
-        output_gpkg = write_deviation_locations(model, deviations_df, output_gpkg)
-        print(f"Punten-GPKG: {output_gpkg}")
+    output_gpkg = write_deviation_locations(model, deviations_df, output_gpkg)
+    print(f"Punten-GPKG: {output_gpkg}")
 
     if args.apply:
         print(f"Aangepaste max_downstream_level-waarden: {max_update_count}")
         print(f"Aangepaste min_upstream_level-waarden: {min_update_count}")
         print(f"Aangepaste min_upstream_level-waarden inlaten vanaf RWS: {min_update_count_rws_inlet}")
         print(f"Aangepaste DiscreteControl-naamteksten: {control_name_update_count}")
+        print(f"Aangepaste DiscreteControl-condition thresholds: {control_condition_update_count}")
     if database_backup_path is not None:
         print(f"Backup database voor schrijven: {database_backup_path}")
     if should_set_manning_n:
         print(f"Aangepaste ManningResistance manning_n-waarden: {manning_update_count}")
         print(f"ManningResistance manning_n gezet op: {manning_n}")
-    if afvoer_flow_updates:
-        print(f"Aangepaste Outlet/Pump afvoer flow_rate/max_flow_rate-rijen: {afvoer_flow_update_count}")
 
     if args.show_skipped and not skipped_df.empty:
         columns = [

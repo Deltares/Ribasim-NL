@@ -26,6 +26,7 @@ model = Model.read(ribasim_toml)
 start_time = time.time()
 # %%
 # parameterize
+manual_basin_level_node_ids = [1338, 1432, 1680, 1617, 1325, 1311, 1832]
 model.basin.area.df.loc[model.basin.area.df.node_id == 1338, "meta_streefpeil"] = 7.1
 model.basin.area.df.loc[model.basin.area.df.node_id.isin([1432, 1680]), "meta_streefpeil"] = 6.55
 model.basin.area.df.loc[model.basin.area.df.node_id == 1617, "meta_streefpeil"] = 1.75
@@ -42,21 +43,6 @@ model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 model.outlet.static.df.max_flow_rate = model.outlet.static.df.flow_rate
 model.outlet.static.df.flow_rate = 100.0
 # %% Fixes
-# Alle inlaten en duikers op max cap zetten zodat er weinig lekker zijn, omdat er nog geen sturing is op benedensroomse waterstand
-node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("KIN")].index.to_numpy()
-model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 0.1
-
-node_ids = model.outlet.node.df[model.outlet.node.df.meta_code_waterbeheerder.str.startswith("KDU")].index.to_numpy()
-model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "max_flow_rate"] = 1.0
-
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 183, "flow_rate"] = 0.0
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1220, "flow_rate"] = 0.0
-model.pump.static.df.loc[model.pump.static.df.node_id == 134, "flow_rate"] = 0.0
-model.pump.static.df.loc[model.pump.static.df.node_id == 728, "flow_rate"] = 0.0
-model.pump.static.df.loc[model.pump.static.df.node_id == 62, "flow_rate"] = 0.0
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 570, "min_upstream_level"] = -1.27
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 815, "min_upstream_level"] = -1.27
-
 model.pump.static.df.loc[model.pump.static.df.node_id == 27, "max_flow_rate"] = 5.0
 model.pump.static.df.loc[model.pump.static.df.node_id == 64, "max_flow_rate"] = 1.0
 model.pump.static.df.loc[model.pump.static.df.node_id == 71, "max_flow_rate"] = 5.0

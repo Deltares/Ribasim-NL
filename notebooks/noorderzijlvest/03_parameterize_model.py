@@ -32,6 +32,7 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 # %%
+manual_basin_level_node_ids = [1132]
 model.basin.area.df.loc[model.basin.area.df.node_id == 1132, "meta_streefpeil"] = 3.45
 
 # %%

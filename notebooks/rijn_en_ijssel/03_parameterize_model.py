@@ -33,6 +33,7 @@ model = Model.read(ribasim_toml)
 start_time = time.time()
 # %%
 # %% wat basin-peilen zetten n.a.v. full control-checks
+manual_basin_level_node_ids = [1068, 777, 1085, 793, 857]
 model.basin.area.df.loc[model.basin.area.df.node_id == 1068, "meta_streefpeil"] = 8.55
 model.basin.area.df.loc[model.basin.area.df.node_id == 777, "meta_streefpeil"] = 26.406666666666666
 model.basin.area.df.loc[model.basin.area.df.node_id == 1085, "meta_streefpeil"] = 5.5

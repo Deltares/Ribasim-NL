@@ -29,6 +29,33 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 # Fixes
+manual_basin_level_node_ids = [
+    1737,
+    1452,
+    1426,
+    1975,
+    1836,
+    1698,
+    1474,
+    1492,
+    1396,
+    1562,
+    1387,
+    1462,
+    1501,
+    1986,
+    1987,
+    1988,
+    1516,
+    1376,
+    1380,
+    1572,
+    1886,
+    1436,
+    1847,
+    1583,
+    1586,
+]
 model.basin.area.df.loc[model.basin.area.df.node_id == 1737, "meta_streefpeil"] = -0.4
 model.basin.area.df.loc[model.basin.area.df.node_id == 1452, "meta_streefpeil"] = 1.32
 model.basin.area.df.loc[model.basin.area.df.node_id == 1426, "meta_streefpeil"] = 1.32
@@ -64,6 +91,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 210, "min_upstream_
 
 # stadswater Utrecht beneden peil
 node_ids = [1401, 1406, 1414, 1422, 1426, 1452, 1576, 1588, 1654, 1660, 1668, 1673, 1757, 1760, 1766, 1778]
+manual_basin_level_node_ids.extend(node_ids)
 model.basin.area.df.loc[model.basin.area.df.node_id.isin(node_ids), "meta_streefpeil"] = 0.58
 
 # set basin-state op meta-streefpeil

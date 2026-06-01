@@ -9,6 +9,7 @@ from ribasim_nl.control import (
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
+from ribasim_nl.parametrization.manning_level import sync_basin_levels_along_manning_routes
 from shapely.geometry import MultiPolygon
 
 from ribasim_nl import CloudStorage, Model
@@ -644,6 +645,60 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 470, "max_downstrea
 
 # Caspargauw gaat pas leveren als Wijk bij Duurstede aanvoer te laag is
 model.pump.static.df.loc[model.pump.static.df.node_id == 601, "max_downstream_level"] -= 0.01
+
+# %%
+# Corrigeer basin-peilen/profielen langs open Manning-routes nadat alle full-control-controllers bekend zijn.
+manning_level_updates = sync_basin_levels_along_manning_routes(
+    model=model,
+    output_path=cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_updates.csv"),
+    basin_output_gpkg=cloud.joinpath(
+        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_basin_updates.gpkg"
+    ),
+    control_output_gpkg=cloud.joinpath(
+        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_control_updates.gpkg"
+    ),
+    protected_basin_node_ids=[
+        1376,
+        1380,
+        1387,
+        1396,
+        1401,
+        1406,
+        1414,
+        1422,
+        1426,
+        1436,
+        1452,
+        1462,
+        1474,
+        1492,
+        1501,
+        1516,
+        1562,
+        1572,
+        1576,
+        1583,
+        1586,
+        1588,
+        1654,
+        1660,
+        1668,
+        1673,
+        1698,
+        1737,
+        1757,
+        1760,
+        1766,
+        1778,
+        1836,
+        1847,
+        1886,
+        1975,
+        1986,
+        1987,
+        1988,
+    ],
+)
 
 # %% Junctionfy(!)
 junctionify(model)
