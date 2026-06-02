@@ -30,14 +30,32 @@ def add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs):
     return _add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs)
 
 
+def set_flow_rate(static_df, max_flow_rate_by_node_id: dict[int, float], flow_rates: list[str] | None = None) -> None:
+    max_flow_rate = static_df["node_id"].map(max_flow_rate_by_node_id)
+    mask = max_flow_rate.notna()
+    flow_rates = ["flow_rate", "max_flow_rate"] if flow_rates is None else flow_rates
+
+    for flow_rate in flow_rates:
+        static_df.loc[mask, flow_rate] = max_flow_rate[mask]
+
+
 # %%
 # Globale settings
 
-MODEL_EXEC: bool = False  # execute model run
+MODEL_EXEC: bool = True  # execute model run
 AUTHORITY: str = "RijnenIJssel"  # authority
 SHORT_NAME: str = "wrij"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
+drain_nodes = [59]
+supply_nodes = [654, 479, 437, 438, 677, 409, 1190, 390]
+flushing_nodes = {
+    320: 3,
+    337: 0.9,
+    161: 0.1,
+}
+flow_control_nodes = [306]
+
 outlet_max_flow_rate_by_node_id = {
     120: 1.3,  # Lochem
     90: 0.6,  # Herkel
@@ -69,10 +87,25 @@ model.outlet.static.df.max_flow_rate = 30.0
 model.outlet.static.df.flow_rate = 30.0
 model.pump.static.df.max_flow_rate = 30.0
 
+
+outlet_max_flow_rate_by_node_id = {
+    654: 1.4,  # Schipbeek
+    120: 1.3,  # Lochem
+    90: 0.6,  # Herkel
+    437: 0.05,  # Sifon Boven-Slinge
+    438: 0.05,  # Sifon Boven-Slinge
+    63: 40,  # Haarlo -> Bolksbeek
+    581: 60,  # Haarlo -> Berkel
+    117: 88,  # Aflaatwerk Lochem
+    320: 22,  # Verdeelwerk Lochem Berkel
+    337: 0.9,  # Warken Berkel (Zutphen)
+    161: 0.1,  # Warken Brummeler Laak (Gemaal Helbergen)
+    121: 110,  # Eefde aflaatwerk
+    59: 8,  # Noodoverloop Schipbeek Twentekanaal (uit waterakkoord Twentekanalen)
+}
+
 # capaciteit inlaten
-model.pump.static.df.loc[model.pump.static.df.node_id == 654, "flow_rate"] = 1.4  # schipbeek
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 120, "flow_rate"] = 1.3  # lochem
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 90, "flow_rate"] = 0.6  # herkel
+set_flow_rate(static_df=model.outlet.static.df, max_flow_rate_by_node_id=outlet_max_flow_rate_by_node_id)
 
 # markeer inlaten
 model.node.df[IS_SUPPLY_NODE_COLUMN] = False
@@ -91,18 +124,6 @@ polygon = aanvoergebieden_df.loc[["Schipbeek"], "geometry"].union_all().buffer(1
 # link_id: beschrijving
 ignore_intersecting_links: list[int] = []
 
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = [59]
-# 59: Noodoverloop Schipbeek
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = [654, 479]
-# 654: Gemaal Schipbeek (inlaat Twentekanaal)
-# 479: AF96440002, inlaatduiker (?)
-
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -111,7 +132,7 @@ node_functions_df = add_controllers_to_supply_area(
     ignore_intersecting_links=ignore_intersecting_links,
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
-    flow_control_nodes=[306],
+    flow_control_nodes=flow_control_nodes,
     supply_nodes=supply_nodes,
     is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
     control_node_types=CONTROL_NODE_TYPES,
@@ -125,15 +146,6 @@ polygon = aanvoergebieden_df.loc[["Herkel"], "geometry"].union_all().buffer(1).b
 # link_id: beschrijving
 ignore_intersecting_links: list[int] = []
 
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -143,6 +155,7 @@ node_functions_df = add_controllers_to_supply_area(
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
+    flow_control_nodes=flow_control_nodes,
     is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
     control_node_types=CONTROL_NODE_TYPES,
 )
@@ -155,15 +168,6 @@ polygon = aanvoergebieden_df.loc[["Lochem"], "geometry"].union_all().buffer(1).b
 # link_id: beschrijving
 ignore_intersecting_links: list[int] = []
 
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
     model=model,
@@ -173,6 +177,7 @@ node_functions_df = add_controllers_to_supply_area(
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
+    flow_control_nodes=flow_control_nodes,
     is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
     control_node_types=CONTROL_NODE_TYPES,
 )
@@ -180,11 +185,13 @@ node_functions_df = add_controllers_to_supply_area(
 # %%
 # En de rest toevoegen
 
-supply_nodes = [437, 438]
-# 437 en 438, voor nu inlaten; verifieren bij Waterschap
 
 add_controllers_to_uncontrolled_connector_nodes(
-    model=model, exclude_nodes=list(EXCLUDE_NODES), supply_nodes=supply_nodes
+    model=model,
+    exclude_nodes=list(EXCLUDE_NODES),
+    supply_nodes=supply_nodes,
+    flushing_nodes=flushing_nodes,
+    flow_control_nodes=flow_control_nodes,
 )
 
 # %%
@@ -200,6 +207,32 @@ manning_level_updates = sync_basin_levels_along_manning_routes(
     ),
     protected_basin_node_ids=[777, 793, 857, 1068, 1085],
 )
+
+# %%
+
+# Lochem aflaatwerk limiteren tot 32 m3/s
+mask = (model.outlet.static.df.node_id == 117) & (model.outlet.static.df.control_state == "afvoer")
+model.outlet.static.df.loc[mask, "max_flow_rate"] = 32
+
+# Verdeelwerk Lochem Berkel limiteren tot 3 m3/s in aanvoerstand.
+mask = (model.outlet.static.df.node_id == 320) & (model.outlet.static.df.control_state == "aanvoer")
+model.outlet.static.df.loc[mask, "max_flow_rate"] = 3.1
+
+# Controller 1330: ook bij truth_state FF naar aanvoer.
+mask = (model.discrete_control.logic.df.node_id == 1330) & (model.discrete_control.logic.df.truth_state == "FF")
+model.discrete_control.logic.df.loc[mask, "control_state"] = "aanvoer"
+
+# Noodoverloop Twentekanaal pas bij onvoldoende door sifon (node_id 306)
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 59, "min_upstream_level"] += 0.1
+
+# doorlaten
+min_flow_rates = {
+    320: 3,
+    161: 0.1,
+    337: 0.9,
+}
+
+set_flow_rate(model.outlet.static.df, max_flow_rate_by_node_id=min_flow_rates, flow_rates=["min_flow_rate"])
 
 # %% Junctionfy!
 junctionify(model)

@@ -16,20 +16,20 @@ Hieronder worden de belangrijkste systemen beknopt beschreven.
 ---
 
 ### Aanvoergebied Schipbeek
-- Aanvoer vanuit het `Twentekanaal` via `Inlaat Schipbeek`
-- Bovenstrooms van het Twentekanaal wordt via de `Schipbeek` een deel van het water doorgevoerd naar `Vechtstromen` (Boven-Regge, niet op de kaart)
-- De `Schipbeek` ontvangt daarnaast water vanuit Duitsland
-- Afvoer richting de `IJssel`, met een noodoverlaat op het `Twentekanaal` bij de inlaat
+De `Schipbeek` ontvangt daarnaast water vanuit Duitsland via de Buurserbeek en Zoddebeek. Bovenstrooms van het Twentekanaal wordt via de `Schipbeek` een deel van het water doorgevoerd naar `Vechtstromen` (Boven-Regge, niet op de kaart). Bij het `Twentekanaal` kan water worden ingelaten via `Inlaat Schipbeek`, waar maximaal 1.4 m3/s wordt ingelaten. De Schipbeek voert af op de IJssel en via een noodoverloop op het Twentekanaal (max 8 m3/s).
 
 ### Aanvoergebied Herkel
 - Aanvoer via `Inlaat Herkel` naar de `Eefse Beek`
 - Afvoer via de `Eefse Beek` naar het `Twentekanaal`, bovenstrooms van `Eefde`, deels onder vrij verval en deels via een gemaal
 
 ### Aanvoergebied Lochem/Berkel/Slinge
-- Aanvoer via `Inlaat Lochem` naar de `Berkel` (benedenstrooms richting `Lochem` en `Zutphen`)
-- De `Berkel` en `Slinge` ontvangen tevens water vanuit Duitsland
-- Water wordt op meerdere locaties verdeeld en lokaal ingelaten
-- Afvoer via de `Berkel` richting het `Twentekanaal` en de `IJssel`
+De `Berkel` ontvangt water uit Duitsland. Dit wordt verdeelt bij verdeelwerk `Haarlo`; 40-45% gaat richting de `Bolksbeek` en 55-60% richting de `Berkel`. In aanvoersituaties kan het water uit de `Bolksbeek` lokaal worden ingelaten. Het restant watert af op het Twentekanaal.
+
+Langs de `Berkel`, bedenstrooms `Haarlo` zijn twee verdeelwerken, `Honebrug` en `Beekvliet`, waar bovenstrooms ook water kan worden ingelaten. `Beekvliet` is ook het punt waar de `Slinge` in de Berkel stroomt.
+
+Bij `Verdeelwerk Lochem` wordt, wanneer beschikbaar, 3m/s doorgelaten over de Berkel richting Zutphen. Bij hogere afvoeren wordt tot 32 m3/s afgevoerd via het Twenteknaal via het aflaatwerk. Bij hogere afvoeren gaat de rest over de `Berkel` richting `Warken`. Tussen `Verdeelwerk Lochem` en `Warken` wordt ook water ingelaten bij `Inlaat Lochem`.
+
+Bij `Warken` wordt 0.9 m3/s doorgelaten via de `Berkel`. Ook wordt hier 0.1 m3/s doorgelaten richting de Brummeler Laak. Dit wordt uitgemalen bij gemaal Helbergen
 
 ### Oude-IJssel
 - De bovenlopen van de `Oude-IJssel` ontvangen water vanuit Duitsland

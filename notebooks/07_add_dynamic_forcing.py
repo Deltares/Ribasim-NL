@@ -32,7 +32,7 @@ transboundary_data_path = cloud.joinpath("Basisgegevens/BuitenlandseAanvoer/aang
 cloud.synchronize(filepaths=[transboundary_data_path])
 
 # LHM4.3 mfma budgets to be assign to primary/secondary drainage/surface_runoff columns
-primary_budgets: set[str] = {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5"}
+primary_budgets: set[str] = {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5", "bdgpssw_m3d"}
 secondary_budgets: set[str] = {
     "bdgriv_sys2",
     "bdgriv_sys3",
@@ -40,7 +40,6 @@ secondary_budgets: set[str] = {
     "bdgdrn_sys1",
     "bdgdrn_sys2",
     "bdgdrn_sys3",
-    "bdgpssw_m3d",
 }
 surface_runoff_budgets: set[str] = {"bdgqrun_m3d"}
 
