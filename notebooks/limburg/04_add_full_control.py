@@ -865,7 +865,6 @@ model.outlet.static.df.loc[afvoer_mask_683, "max_flow_rate"] = 0
 # Corrigeer basin-peilen/profielen langs open Manning-routes nadat alle full-control-controllers bekend zijn.
 manning_level_updates = sync_basin_levels_along_manning_routes(
     model=model,
-    output_path=cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_updates.csv"),
     basin_output_gpkg=cloud.joinpath(
         AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_basin_updates.gpkg"
     ),

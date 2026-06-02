@@ -349,6 +349,9 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
         row_dict = row._asdict()
         control_state = "" if pd.isna(row.control_state_lower) else str(row.control_state_lower).lower()
         flow_demand_inlaat = bool(row.flow_demand_inlaat)
+        static_capacity = static_row_has_capacity(row_dict)
+        active_aanvoer_capacity = control_state == "aanvoer" and static_capacity
+        inactive_flow_demand_aanvoer = control_state == "aanvoer" and flow_demand_inlaat and not static_capacity
         upstream_id, upstream_link_id, upstream_error = first_non_junction(
             node_id, incoming_flow_links, node_type_by_id
         )
@@ -394,11 +397,14 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
             if row.functie == "uitlaat":
                 expected_min_upstream = upstream_streefpeil
                 min_basis = "upstream_streefpeil"
-            elif control_state == "aanvoer" and row.functie in ["inlaat", "doorlaat"]:
+            elif active_aanvoer_capacity and row.functie in ["inlaat", "doorlaat"]:
                 expected_min_upstream = (
                     upstream_streefpeil + upstream_supply_offset if pd.notna(upstream_streefpeil) else np.nan
                 )
                 min_basis = "upstream_streefpeil_plus_aanvoer_offset"
+            elif inactive_flow_demand_aanvoer and row.functie in ["inlaat", "doorlaat"]:
+                expected_min_upstream = row.min_upstream_level
+                min_basis = "huidige_waarde_flow_demand_aanvoer_zonder_static_capacity"
             elif control_state == "afvoer" and row.functie in ["inlaat", "doorlaat"]:
                 expected_min_upstream = upstream_streefpeil
                 min_basis = "upstream_streefpeil"
@@ -431,7 +437,7 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
             min_basis = "huidige_waarde_gebruikt_omdat_streefpeil_ontbreekt"
 
         max_report_allowed = (
-            control_state == "aanvoer"
+            active_aanvoer_capacity
             and row.functie in ["inlaat", "doorlaat"]
             and row.node_type in CONTROL_NODE_TYPES
             and max_basin_id is not None
@@ -484,7 +490,7 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
             "verschil_max_downstream_level": row.max_downstream_level - expected_max_downstream,
             "max_downstream_level_afwijking": bool(max_downstream_afwijking),
             "max_downstream_level_update_allowed": bool(
-                control_state == "aanvoer"
+                max_report_allowed
                 and row.functie in ["inlaat", "doorlaat"]
                 and max_downstream_afwijking
                 and not level_update_skipped_authority

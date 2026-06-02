@@ -133,6 +133,28 @@ def _component_boundary_control_node_ids(
     return sorted(control_node_ids)
 
 
+def _upstream_supply_control_node_ids(
+    component_node_ids: set[int],
+    link_df: pd.DataFrame,
+    node_type_by_id: dict[int, str],
+    control_function_by_node_id: dict[int, str | None],
+) -> list[int]:
+    component_node_ids = {int(node_id) for node_id in component_node_ids}
+    control_node_ids: set[int] = set()
+
+    for row in link_df.itertuples(index=False):
+        from_node_id = int(row.from_node_id)
+        to_node_id = int(row.to_node_id)
+        if to_node_id not in component_node_ids:
+            continue
+        if node_type_by_id.get(from_node_id) not in CONTROL_NODE_TYPES:
+            continue
+        if control_function_by_node_id.get(from_node_id) in {"inlaat", "doorlaat"}:
+            control_node_ids.add(from_node_id)
+
+    return sorted(control_node_ids)
+
+
 def _component_boundary_basin_node_ids(
     component_node_ids: set[int],
     link_df: pd.DataFrame,
@@ -156,6 +178,117 @@ def _component_boundary_basin_node_ids(
             boundary_basin_node_ids.add(inside_node_id)
 
     return sorted(boundary_basin_node_ids)
+
+
+def _control_function_by_node_id(model: Model, node_type_by_id: dict[int, str]) -> dict[int, str | None]:
+    function_by_node_id: dict[int, str | None] = {}
+    for node_type in CONTROL_NODE_TYPES:
+        component = getattr(model, node_type.lower(), None)
+        static_df = getattr(getattr(component, "static", None), "df", None)
+        if static_df is None or static_df.empty or "node_id" not in static_df.columns:
+            continue
+
+        for connector_node_id, connector_rows in static_df.groupby("node_id", sort=True):
+            connector_node_id = int(connector_node_id)
+            if node_type_by_id.get(connector_node_id) != node_type:
+                continue
+
+            function_by_node_id[connector_node_id] = _connector_function(connector_rows)
+
+    return function_by_node_id
+
+
+def _upstream_protected_basin_node_ids(
+    component_node_ids: set[int],
+    link_df: pd.DataFrame,
+    node_type_by_id: dict[int, str],
+    control_function_by_node_id: dict[int, str | None],
+    boundary_control_node_ids: list[int],
+) -> set[int]:
+    """Return headwater basins without upstream supply/flow-control steering."""
+    component_control_functions = {
+        control_function_by_node_id.get(int(node_id)) for node_id in boundary_control_node_ids
+    }
+    if any(function in {"inlaat", "doorlaat"} for function in component_control_functions):
+        return set()
+
+    component_node_ids = {int(node_id) for node_id in component_node_ids}
+    basin_node_ids = {node_id for node_id in component_node_ids if node_type_by_id.get(node_id) == "Basin"}
+    upstream_open_by_node_id: dict[int, set[int]] = {node_id: set() for node_id in component_node_ids}
+    upstream_control_by_node_id: dict[int, set[int]] = {node_id: set() for node_id in component_node_ids}
+
+    for row in link_df.itertuples(index=False):
+        from_node_id = int(row.from_node_id)
+        to_node_id = int(row.to_node_id)
+        if to_node_id not in component_node_ids:
+            continue
+
+        if from_node_id in component_node_ids:
+            upstream_open_by_node_id[to_node_id].add(from_node_id)
+        elif node_type_by_id.get(from_node_id) in CONTROL_NODE_TYPES:
+            upstream_control_by_node_id[to_node_id].add(from_node_id)
+
+    protected_basin_node_ids: set[int] = set()
+    for basin_node_id in basin_node_ids:
+        queue: deque[int] = deque([basin_node_id])
+        seen_node_ids = {basin_node_id}
+        has_upstream_basin = False
+        upstream_control_node_ids: set[int] = set()
+
+        while queue:
+            node_id = queue.popleft()
+            upstream_control_node_ids.update(upstream_control_by_node_id[node_id])
+
+            for upstream_node_id in upstream_open_by_node_id[node_id]:
+                if upstream_node_id in seen_node_ids:
+                    continue
+                if upstream_node_id != basin_node_id and node_type_by_id.get(upstream_node_id) == "Basin":
+                    has_upstream_basin = True
+                    break
+                seen_node_ids.add(upstream_node_id)
+                queue.append(upstream_node_id)
+
+            if has_upstream_basin:
+                break
+
+        upstream_control_functions = {control_function_by_node_id.get(node_id) for node_id in upstream_control_node_ids}
+        has_upstream_supply_or_flow_control = any(
+            function in {"inlaat", "doorlaat"} for function in upstream_control_functions
+        )
+        if not has_upstream_basin and not has_upstream_supply_or_flow_control:
+            protected_basin_node_ids.add(basin_node_id)
+
+    return protected_basin_node_ids
+
+
+def _single_manning_branch_basin_node_ids(
+    component_node_ids: set[int],
+    link_df: pd.DataFrame,
+    node_type_by_id: dict[int, str],
+) -> set[int]:
+    protected_basin_node_ids: set[int] = set()
+    component_node_ids = {int(node_id) for node_id in component_node_ids}
+
+    for basin_node_id in component_node_ids:
+        if node_type_by_id.get(basin_node_id) != "Basin":
+            continue
+
+        open_neighbors = [
+            int(row.to_node_id) if int(row.from_node_id) == basin_node_id else int(row.from_node_id)
+            for row in link_df[
+                link_df["from_node_id"].eq(basin_node_id) | link_df["to_node_id"].eq(basin_node_id)
+            ].itertuples(index=False)
+            if (int(row.to_node_id) if int(row.from_node_id) == basin_node_id else int(row.from_node_id))
+            in component_node_ids
+        ]
+        if len(set(open_neighbors)) != 1:
+            continue
+
+        only_neighbor_id = open_neighbors[0]
+        if node_type_by_id.get(only_neighbor_id) == "ManningResistance":
+            protected_basin_node_ids.add(basin_node_id)
+
+    return protected_basin_node_ids
 
 
 def _downstream_targets(
@@ -387,6 +520,21 @@ def _control_node_ids_by_connector_node_id(model: Model, node_type_by_id: dict[i
         .apply(lambda values: [int(value) for value in values])
         .to_dict()
     )
+
+
+def _flow_demand_target_node_ids(model: Model, node_type_by_id: dict[int, str]) -> set[int]:
+    link_df = model.link.df.copy()
+    if "link_type" in link_df.columns:
+        link_df = link_df[link_df["link_type"].eq("control")]
+
+    flow_demand_links = link_df[
+        link_df["from_node_id"].map(node_type_by_id).eq("FlowDemand")
+        & link_df["to_node_id"].map(node_type_by_id).isin(CONTROL_NODE_TYPES)
+    ]
+    if flow_demand_links.empty:
+        return set()
+
+    return set(flow_demand_links["to_node_id"].dropna().astype(int))
 
 
 def _capacity_is_positive(df: pd.DataFrame) -> pd.Series:
@@ -861,6 +1009,15 @@ def sync_control_levels_for_basin_updates(
             "basin_node_id",
         ].dropna()
     }
+    upstream_protected_basin_node_ids = {
+        int(node_id)
+        for node_id in basin_level_updates.loc[
+            basin_level_updates["status"].isin(
+                ["bovenstrooms_zonder_aanvoer_sturing_behouden", "enkele_manning_tak_basin_behouden"]
+            ),
+            "basin_node_id",
+        ].dropna()
+    }
 
     component_connector_node_ids: set[int] = set()
     if "boundary_control_node_ids" in basin_level_updates.columns:
@@ -883,6 +1040,8 @@ def sync_control_levels_for_basin_updates(
     target_level_by_basin_id = _target_level_by_basin_id(model, target_level_column)
     level_boundary_level_by_id = _level_boundary_level_by_id(model)
     control_ids_by_connector_id = _control_node_ids_by_connector_node_id(model, node_type_by_id=node_type_by_id)
+    flow_demand_connector_node_ids = _flow_demand_target_node_ids(model, node_type_by_id=node_type_by_id)
+    component_connector_node_ids -= flow_demand_connector_node_ids
 
     records: list[dict[str, object]] = []
     touched_connector_node_ids: set[int] = set()
@@ -897,6 +1056,8 @@ def sync_control_levels_for_basin_updates(
         table_name = f"{node_type} / static"
         for connector_node_id, connector_rows in static_df.groupby("node_id", sort=True):
             connector_node_id = int(connector_node_id)
+            if connector_node_id in flow_demand_connector_node_ids:
+                continue
             if node_type_by_id.get(connector_node_id) != node_type:
                 continue
 
@@ -927,6 +1088,9 @@ def sync_control_levels_for_basin_updates(
                 level_boundary_level_by_id=level_boundary_level_by_id,
                 max_iter=max_iter,
             )
+            if (upstream_basin_ids | downstream_basin_ids) & upstream_protected_basin_node_ids:
+                continue
+
             in_component_scope = connector_node_id in component_connector_node_ids or bool(
                 (upstream_basin_ids | downstream_basin_ids) & component_basin_node_ids
             )
@@ -952,6 +1116,11 @@ def sync_control_levels_for_basin_updates(
             if not locked_control:
                 touched_connector_node_ids.add(connector_node_id)
             for row_index, state in control_state.items():
+                # Rows without capacity are closed states; syncing their levels can
+                # overwrite intentional offsets in flushing controls.
+                if not bool(positive_capacity.loc[row_index]):
+                    continue
+
                 record = {
                     "node_id": connector_node_id,
                     "node_type": node_type,
@@ -1134,23 +1303,34 @@ def sync_basin_levels_along_manning_routes(
     update_control_levels: bool = True,
     prefer_existing_control_levels: bool = True,
     prefer_dominant_downstream_control_level: bool = True,
+    require_manning_resistance: bool = True,
+    require_downstream_supply_control: bool = True,
+    protect_upstream_basins_without_supply_control: bool = True,
     control_level_tolerance: float = 1e-6,
     verbose: bool = True,
     max_iter: int = 500,
 ) -> pd.DataFrame:
     """Zet basin-peilen in open Manning-componenten gelijk aan het laagste componentpeil.
 
-    Basin, ManningResistance en Junction worden als open/tweerichtings verbindingen
-    behandeld. Outlet en Pump begrenzen zo'n component. Handmatig beschermde basins
+    Basin, ManningResistance en Junction worden als open/tweerichtings verbindingen behandeld om een
+    Manning-component te kunnen doorlopen. Outlet en Pump begrenzen zo'n component. Componenten zonder
+    ManningResistance of zonder benedenstroomse inlaat/doorlaat worden standaard overgeslagen.
+    Bovenstroomse basins zonder aanvoerende sturing worden standaard behouden. Handmatig beschermde basins
     worden gerapporteerd maar niet overschreven.
     """
     node_type_by_id = _node_type_by_id(model)
     link_df = _flow_link_df(model)
     open_adjacency = _undirected_open_adjacency(link_df=link_df, node_type_by_id=node_type_by_id)
     target_level_by_basin_id = _target_level_by_basin_id(model, target_level_column)
+    flow_demand_connector_node_ids = _flow_demand_target_node_ids(model, node_type_by_id=node_type_by_id)
+    control_function_by_node_id = _control_function_by_node_id(model, node_type_by_id=node_type_by_id)
     protected_basin_node_ids = {int(node_id) for node_id in protected_basin_node_ids or []}
     if connector_node_ids is None and start_basin_node_ids is None:
         connector_node_ids = _candidate_connector_node_ids(model)
+    if connector_node_ids is not None:
+        connector_node_ids = [
+            int(node_id) for node_id in connector_node_ids if int(node_id) not in flow_demand_connector_node_ids
+        ]
 
     starts: list[tuple[int | None, int]] = []
     for connector_node_id in connector_node_ids or []:
@@ -1204,12 +1384,65 @@ def sync_basin_levels_along_manning_routes(
     for component_id, component_key in enumerate(sorted(component_connectors_by_key), start=1):
         component_node_ids = set(component_key)
         connector_node_ids_for_component = sorted(component_connectors_by_key[component_key])
+        has_manning_resistance = any(
+            node_type_by_id.get(node_id) == "ManningResistance" for node_id in component_node_ids
+        )
+        if require_manning_resistance and not has_manning_resistance:
+            records.append(
+                {
+                    "component_id": component_id,
+                    "connector_node_ids": ",".join(map(str, connector_node_ids_for_component)),
+                    "start_node_id": component_start_by_key.get(component_key),
+                    "status": "geen_manning_resistance_in_component",
+                }
+            )
+            continue
+
         boundary_control_node_ids = _component_boundary_control_node_ids(
             component_node_ids=component_node_ids,
             link_df=link_df,
             node_type_by_id=node_type_by_id,
         )
+        boundary_control_node_ids = [
+            node_id for node_id in boundary_control_node_ids if node_id not in flow_demand_connector_node_ids
+        ]
+        upstream_supply_control_node_ids = _upstream_supply_control_node_ids(
+            component_node_ids=component_node_ids,
+            link_df=link_df,
+            node_type_by_id=node_type_by_id,
+            control_function_by_node_id=control_function_by_node_id,
+        )
+        upstream_supply_control_node_ids = [
+            node_id for node_id in upstream_supply_control_node_ids if node_id not in flow_demand_connector_node_ids
+        ]
+        if require_downstream_supply_control and not upstream_supply_control_node_ids:
+            records.append(
+                {
+                    "component_id": component_id,
+                    "connector_node_ids": ",".join(map(str, connector_node_ids_for_component)),
+                    "boundary_control_node_ids": ",".join(map(str, boundary_control_node_ids)),
+                    "status": "geen_bovenstroomse_inlaat_of_doorlaat",
+                }
+            )
+            continue
+
         basin_ids = sorted(node_id for node_id in component_node_ids if node_type_by_id.get(node_id) == "Basin")
+        upstream_protected_basin_node_ids = (
+            _upstream_protected_basin_node_ids(
+                component_node_ids=component_node_ids,
+                link_df=link_df,
+                node_type_by_id=node_type_by_id,
+                control_function_by_node_id=control_function_by_node_id,
+                boundary_control_node_ids=boundary_control_node_ids,
+            )
+            if protect_upstream_basins_without_supply_control
+            else set()
+        )
+        single_manning_branch_basin_node_ids = _single_manning_branch_basin_node_ids(
+            component_node_ids=component_node_ids,
+            link_df=link_df,
+            node_type_by_id=node_type_by_id,
+        )
         boundary_basin_ids = _component_boundary_basin_node_ids(
             component_node_ids=component_node_ids,
             link_df=link_df,
@@ -1284,6 +1517,31 @@ def sync_basin_levels_along_manning_routes(
         changed_any_basin = False
         for basin_id in basin_ids:
             old_level = target_level_by_basin_id.get(basin_id)
+            protected_status = None
+            if basin_id in upstream_protected_basin_node_ids:
+                protected_status = "bovenstrooms_zonder_aanvoer_sturing_behouden"
+            elif basin_id in single_manning_branch_basin_node_ids:
+                protected_status = "enkele_manning_tak_basin_behouden"
+
+            if protected_status is not None:
+                changed_any_basin = True
+                records.append(
+                    {
+                        "component_id": component_id,
+                        "connector_node_ids": ",".join(map(str, connector_node_ids_for_component)),
+                        "boundary_control_node_ids": ",".join(map(str, boundary_control_node_ids)),
+                        "target_basin_node_ids": ",".join(map(str, target_basin_ids)),
+                        "target_control_node_ids": ",".join(map(str, target_control_node_ids)),
+                        "target_level_basis": target_level_basis,
+                        "control_level_status": control_level_status,
+                        "basin_node_id": basin_id,
+                        "old_level": old_level,
+                        "new_level": target_level,
+                        "status": protected_status,
+                    }
+                )
+                continue
+
             if pd.notna(old_level) and abs(float(old_level) - float(target_level)) <= control_level_tolerance:
                 records.append(
                     {

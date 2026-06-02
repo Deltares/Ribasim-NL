@@ -1111,8 +1111,8 @@ def add_controllers_and_demand_to_flushing_nodes(
     for connector_node in flushing_nodes_df.itertuples():
         node_id = connector_node.Index
         node_type = connector_node.node_type
-        demand_flow_rate_summer = connector_node.demand_flow_rate_summer
-        demand_flow_rate_winter = connector_node.demand_flow_rate_winter
+        demand_flow_rate_summer = float(cast(float, connector_node.demand_flow_rate_summer))
+        demand_flow_rate_winter = float(cast(float, connector_node.demand_flow_rate_winter))
         # get upstream target_level and define min_upstream_level;
         us_node_id = connector_node.from_node_id
         us_target_level = _target_level(
@@ -1155,9 +1155,10 @@ def add_controllers_and_demand_to_flushing_nodes(
         )
 
         # add discrete control
+        demand_threshold_flow_rate = max(float(demand_flow_rate_summer), float(demand_flow_rate_winter))
         thresholds = [
             us_target_level + us_threshold_offset,
-            -(demand_flow_rate_summer + demand_threshold_offset),
+            -(demand_threshold_flow_rate + demand_threshold_offset),
         ]
 
         tables = [
@@ -1194,9 +1195,9 @@ def add_controllers_and_demand_to_flushing_nodes(
                 flow_demand.Time(
                     time=time,
                     demand=[
-                        float(demand_flow_rate_winter),
                         float(demand_flow_rate_summer),
                         float(demand_flow_rate_winter),
+                        float(demand_flow_rate_summer),
                     ],
                     demand_priority=[1, 1, 1],
                 )

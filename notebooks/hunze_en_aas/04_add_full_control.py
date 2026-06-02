@@ -33,7 +33,7 @@ def add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs):
 # %%
 # Globale settings
 
-MODEL_EXEC: bool = False  # execute model run
+MODEL_EXEC: bool = True  # execute model run
 AUTHORITY: str = "HunzeenAas"  # authority
 SHORT_NAME: str = "hea"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
@@ -63,11 +63,18 @@ pump_max_flow_rate_by_node_id = {
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 EXCLUDE_NODES = {
+    139,  # sluis Vries
     152,  # Dorkswerdersluis (Scheepvaart)
     161,  # Bulsterverlaat (Scheepvaart)
+    167,  # Koppelsluis Pekelerhoofddiep
     174,  # Koppelsluis (Scheepvaart)
+    181,  # Sluis Punt
     183,  # Haansluis (scheepvaart)
     156,  # Vriescheloostersluis (Veelerveen)
+    736,  # Springersverlaat 1e verlaat
+    188,
+    832,
+    165,  # 2e verlaat Stadskanaal
 }
 
 # %%
@@ -138,6 +145,7 @@ model.update_node(
 )  # Grote Slapersluis; hier wordt ook water ingelaten; hopelijk lukt dit met ManningResistance
 model.update_node(node_id=632, node_type="Pump")  # Inlaat Vestdijklaan lijkt een pomp(je) te zijn
 model.update_node(node_id=1111, node_type="Outlet")  # Manning tussen basins met verschillende streefpeilen gaat niet
+model.update_node(node_id=1122, node_type="Outlet")  # Manning tussen basins met verschillende streefpeilen gaat niet
 model.update_node(node_id=854, node_type="Pump")  # Inlaat Vestdijklaan lijkt een pomp(je) te zijn
 model.update_node(node_id=854, node_type="Outlet")  # Uitlaat Nijlandsloop naar Anreperdiep
 for node_id in [147, 192]:
@@ -187,31 +195,40 @@ drain_nodes = [
     231,
     233,
     250,
+    253,
     256,
     285,
     316,
     321,
     325,
+    345,
     352,
     369,
     425,
     431,
     507,
     514,
+    523,
     524,
     558,
+    603,
     792,
     892,
+    988,
+    1043,
     1046,
+    1109,
     79,
     297,
     30,
     447,
 ]
 # user-defined supply_nodes
-supply_nodes = [20, 62, 70, 107, 573, 972]
+supply_nodes = [20, 62, 70, 107, 573, 891, 972, 1122]
 # user-defined flow_control_nodes
 flow_control_nodes = [182, 330, 573, 634, 165, 505, 1017, 1111]
+# user-defined flushing_nodes voor de overige connectoren
+uncontrolled_flushing_nodes = {192: 1.65}
 
 
 # markeer inlaten
@@ -347,7 +364,7 @@ ignore_intersecting_links: list[int] = [297, 1941]
 # 3650: Sifon onder Ter Apelkanaal
 
 # doorspoeling (op uitlaten)
-flushing_nodes = {}
+flushing_nodes = {147: 1.0}
 
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
@@ -509,7 +526,10 @@ node_functions_df = add_controllers_to_supply_area(
 
 
 add_controllers_to_uncontrolled_connector_nodes(
-    model=model, exclude_nodes=list(EXCLUDE_NODES), supply_nodes=supply_nodes
+    model=model,
+    exclude_nodes=list(EXCLUDE_NODES),
+    supply_nodes=supply_nodes,
+    flushing_nodes=uncontrolled_flushing_nodes,
 )
 
 # %% Junctionfy!
@@ -529,7 +549,6 @@ configure_always_on_pumps(model)
 # Corrigeer basin-peilen/profielen langs open Manning-routes nadat alle full-control-controllers bekend zijn.
 manning_level_updates = sync_basin_levels_along_manning_routes(
     model=model,
-    output_path=cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_updates.csv"),
     basin_output_gpkg=cloud.joinpath(
         AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_basin_updates.gpkg"
     ),

@@ -51,6 +51,62 @@ outlet_max_flow_rate_by_node_id = {
     1912: 0.25,  # Bocholt naar Herentals, max aanvoer??, niet in WATAK
 }
 
+# Handmatige indeling control-, supply- en drain-nodes.
+# Houd deze lange data-lijsten compact; formatters klappen ze anders uit naar een node-id per regel.
+
+# fmt: off
+flow_control_nodes = [203, 212, 216, 217, 227, 236, 375]
+
+supply_nodes = [369, 370, 405, 416, 417, 590, 923, 1067, 1912]
+
+drain_nodes = [210, 419, 506, 507, 509, 510, 602, 611, 705, 709, 710, 753, 754, 766, 926, 967]
+
+flushing_nodes = {}
+
+SUPPLY_AREA_IGNORE_LINKS = {
+    "Son en Breugel": [641, 649, 1089, 1392, 1875],
+    "Olen": [336, 349, 350, 381, 855, 856, 1548, 1700, 1854],
+    "Beekloop": [794, 836, 1660, 1661, 1934, 1973],
+}
+# fmt: on
+
+
+# %%
+# Helpers
+
+
+def supply_area_polygon(aanvoergebieden_df: gpd.GeoDataFrame, area_name: str):
+    polygon = aanvoergebieden_df.loc[[area_name], "geometry"].union_all()
+    polygon = polygon.buffer(0).buffer(0)
+
+    if isinstance(polygon, MultiPolygon):
+        polygon = max(polygon.geoms, key=lambda g: g.area)
+
+    return polygon
+
+
+def add_supply_area_control(
+    model: Model,
+    aanvoergebieden_df: gpd.GeoDataFrame,
+    area_name: str,
+    ignore_intersecting_links: list[int],
+    supply_nodes: list[int],
+    drain_nodes: list[int],
+    flow_control_nodes: list[int],
+) -> None:
+    add_controllers_to_supply_area(
+        model=model,
+        polygon=supply_area_polygon(aanvoergebieden_df, area_name),
+        exclude_nodes=EXCLUDE_NODES,
+        ignore_intersecting_links=ignore_intersecting_links,
+        drain_nodes=drain_nodes,
+        flushing_nodes={},
+        supply_nodes=supply_nodes,
+        flow_control_nodes=flow_control_nodes,
+        control_node_types=CONTROL_NODE_TYPES,
+    )
+
+
 # %%
 # Definieren paden en syncen met cloud
 cloud = CloudStorage()
@@ -81,140 +137,19 @@ for node_id in dict.fromkeys(outlet_ids):
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # %%
-# Toevoegen Son en Breugel
+# Toevoegen aanvoergebieden
 
-polygon = aanvoergebieden_df.loc[["Son en Breugel"], "geometry"].union_all()
-
-# kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
-polygon = polygon.buffer(0).buffer(0)
-
-if isinstance(polygon, MultiPolygon):
-    polygon = max(polygon.geoms, key=lambda g: g.area)
-
-
-# links die intersecten die we kunnen negeren
-# link_id: beschrijving
-ignore_intersecting_links: list[int] = [641, 649, 1089, 1392, 1875]
-
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = [419, 753, 766]
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven flow_control_nodes
-flow_control_nodes = []
-
-# toevoegen sturing
-add_controllers_to_supply_area(
-    model=model,
-    polygon=polygon,
-    exclude_nodes=EXCLUDE_NODES,
-    ignore_intersecting_links=ignore_intersecting_links,
-    drain_nodes=drain_nodes,
-    flushing_nodes=flushing_nodes,
-    supply_nodes=supply_nodes,
-    flow_control_nodes=flow_control_nodes,
-    control_node_types=CONTROL_NODE_TYPES,
-)
-
-# %%
-# Toevoegen Olen
-
-polygon = aanvoergebieden_df.loc[["Olen"], "geometry"].union_all()
-
-# kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
-polygon = polygon.buffer(0).buffer(0)
-
-if isinstance(polygon, MultiPolygon):
-    polygon = max(polygon.geoms, key=lambda g: g.area)
-
-
-# links die intersecten die we kunnen negeren
-# link_id: beschrijving
-ignore_intersecting_links: list[int] = [336, 349, 350, 381, 855, 856, 1548, 1700, 1854]
-
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = [506, 507, 509, 510, 602, 754]
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = [416, 923]
-
-# handmatig opgegeven flow_control_nodes
-flow_control_nodes = [212, 216, 217, 227, 236]
-
-# toevoegen sturing
-add_controllers_to_supply_area(
-    model=model,
-    polygon=polygon,
-    exclude_nodes=EXCLUDE_NODES,
-    ignore_intersecting_links=ignore_intersecting_links,
-    drain_nodes=drain_nodes,
-    flushing_nodes=flushing_nodes,
-    supply_nodes=supply_nodes,
-    flow_control_nodes=flow_control_nodes,
-    control_node_types=CONTROL_NODE_TYPES,
-)
-
-# %%
-# Toevoegen Beekloop
-
-polygon = aanvoergebieden_df.loc[["Beekloop"], "geometry"].union_all()
-
-# kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
-polygon = polygon.buffer(0).buffer(0)
-
-if isinstance(polygon, MultiPolygon):
-    polygon = max(polygon.geoms, key=lambda g: g.area)
-
-
-# links die intersecten die we kunnen negeren
-# link_id: beschrijving
-ignore_intersecting_links: list[int] = [794, 836, 1660, 1661, 1934, 1973]
-
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = [705, 709, 710]
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = [369, 370, 590]
-
-# handmatig opgegeven flow_control_nodes
-flow_control_nodes = [375]
-
-# toevoegen sturing
-add_controllers_to_supply_area(
-    model=model,
-    polygon=polygon,
-    exclude_nodes=EXCLUDE_NODES,
-    ignore_intersecting_links=ignore_intersecting_links,
-    drain_nodes=drain_nodes,
-    flushing_nodes=flushing_nodes,
-    supply_nodes=supply_nodes,
-    flow_control_nodes=flow_control_nodes,
-    control_node_types=CONTROL_NODE_TYPES,
-)
-
-
-# %% add all remaining inlets/outlets
-
-flow_control_nodes = [203]
-
-supply_nodes = [405, 417, 1912, 1067]
-
-drain_nodes = [210, 926, 967]
-
-
-# Flushing nodes
-flushing_nodes = {}
+for area_name, ignore_intersecting_links in SUPPLY_AREA_IGNORE_LINKS.items():
+    print(f"Toevoegen {area_name}")
+    add_supply_area_control(
+        model=model,
+        aanvoergebieden_df=aanvoergebieden_df,
+        area_name=area_name,
+        ignore_intersecting_links=ignore_intersecting_links,
+        drain_nodes=drain_nodes,
+        supply_nodes=supply_nodes,
+        flow_control_nodes=flow_control_nodes,
+    )
 
 # %% Toevoegen waar nog geen sturing is toegevoegd
 
@@ -231,7 +166,6 @@ add_controllers_to_uncontrolled_connector_nodes(
 # Corrigeer basin-peilen/profielen langs open Manning-routes nadat alle full-control-controllers bekend zijn.
 manning_level_updates = sync_basin_levels_along_manning_routes(
     model=model,
-    output_path=cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_updates.csv"),
     basin_output_gpkg=cloud.joinpath(
         AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_basin_updates.gpkg"
     ),

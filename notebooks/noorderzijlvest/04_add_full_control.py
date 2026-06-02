@@ -35,7 +35,7 @@ def add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs):
 # %%
 # Globale settings
 
-MODEL_EXEC: bool = False  # execute model run
+MODEL_EXEC: bool = True  # execute model run
 AUTHORITY: str = "Noorderzijlvest"  # authority
 SHORT_NAME: str = "nzv"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
@@ -171,7 +171,7 @@ flushing_nodes = {41: 0.4, 412: 0.2}
 # 412: Marnerwaard
 # 442: Marnerwaard
 # 837: Spijksterpompen
-drain_nodes = [40, 442, 412, 837]
+drain_nodes = [40, 442, 837]
 
 # handmatig opgegeven supply nodes (inlaten)
 # 136: Nieuwstad
@@ -251,8 +251,12 @@ ignore_intersecting_links: list[int] = []
 
 # doorspoeling (op uitlaten)
 # node_id: Naam
-# flushing_nodes = {419: 0.01, 391: 0.01}
-flushing_nodes = {419: {"winter": 0, "summer": 0.043 * 0.25}, 391: {"winter": 0.043, "summer": 0.043 * 0.75}}
+flushing_nodes = {}
+
+# Peizerdiep: geen doorspoelvraag, alleen verdeling over doorlaten.
+flow_control_nodes = [391, 419]
+supply_flow_rate = {391: 0.043 * 0.75, 419: 0.043 * 0.25}
+drain_flow_rate = {391: 100.0, 419: 0.0}
 
 # handmatig opgegeven drain nodes (uitlaten) definieren
 # node_id: Naam
@@ -269,8 +273,11 @@ add_controllers_to_supply_area(
     ignore_intersecting_links=ignore_intersecting_links,
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
+    flow_control_nodes=flow_control_nodes,
     supply_nodes=supply_nodes,
     control_node_types=CONTROL_NODE_TYPES,
+    supply_flow_rate=supply_flow_rate,
+    drain_flow_rate=drain_flow_rate,
 )
 
 # %%
@@ -401,7 +408,6 @@ for node_id, flow_rate in SCHUTVERLIES_FLOW_RATE_BY_NODE_ID.items():
 # Corrigeer basin-peilen/profielen langs open Manning-routes nadat alle full-control-controllers bekend zijn.
 manning_level_updates = sync_basin_levels_along_manning_routes(
     model=model,
-    output_path=cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_updates.csv"),
     basin_output_gpkg=cloud.joinpath(
         AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_basin_updates.gpkg"
     ),

@@ -56,14 +56,14 @@ flow_control_nodes = [
 
 supply_nodes = [
     72, 218, 240, 241, 331, 338, 383, 410, 432, 499, 503, 511, 554, 563, 569, 574, 589, 604, 627,
-    639, 663, 670, 690, 726, 732, 750, 751, 785, 786, 818, 859, 950, 971, 972, 973, 1055
+    639, 663, 670, 690, 726, 732, 750, 751, 785, 786, 818, 859, 950, 971, 972, 973, 1055,2323
 ]
 
 drain_nodes = [
-    69, 76, 93, 101, 102, 103, 104, 107, 110, 113, 125, 126, 127, 247, 249, 336, 339, 358, 362, 369,
+    69, 76, 93, 101, 102, 103, 104, 107, 110, 113, 125, 126, 127, 247, 249, 336, 339, 358, 362, 369, 372, 373, 374,
     382, 425, 434, 455, 460, 470, 488, 500, 512, 513, 526, 528, 541, 545, 546, 564, 571, 575, 609,
     611, 626, 640, 649, 650, 651, 662, 666, 669, 688, 689, 691, 724, 727, 728, 729, 739, 782, 787,
-    790, 793, 801, 886, 887, 932, 939, 940, 941, 959, 962, 988, 990
+    790, 793, 801,806, 886, 887, 932, 939, 940, 941, 958, 959, 962, 988, 990
 ]
 # fmt: on
 
@@ -211,7 +211,6 @@ add_controllers_to_uncontrolled_connector_nodes(
 # maar drains aan aangepaste basins krijgen wel bijgewerkte sturing.
 manning_level_updates = sync_basin_levels_along_manning_routes(
     model=model,
-    output_path=cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_updates.csv"),
     basin_output_gpkg=cloud.joinpath(
         AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_basin_updates.gpkg"
     ),

@@ -429,7 +429,7 @@ model.update_node(node_id=1295, node_type="Outlet")
 # fmt: off
 flow_control_nodes = node_list(
     [42, 81, 89, 135, 156, 159, 198, 201, 231],
-    [271, 282, 312, 317, 331, 337, 349, 359, 361, 364],
+    [260, 271, 282, 312, 317, 331, 337, 349, 359, 361, 364],
     [365, 373, 405, 428, 446, 464, 478, 500],
     [509, 513, 518, 522, 539, 632, 635, 672, 672],
     [700, 765, 840, 853, 908, 963, 971, 998],
@@ -438,7 +438,7 @@ flow_control_nodes = node_list(
 
 supply_nodes = node_list(
     [26, 44, 53, 75, 102, 155, 193, 199, 200, 221, 250],
-    [253, 260, 286, 297, 325, 362,363,389,399, 403, 447],
+    [253, 286, 297, 325, 362,363,389,399, 403, 447],
     [459, 465, 467, 468, 469, 477, 481, 492, 498, 501],
     [508, 547, 553, 554, 560, 564, 571, 580, 584, 589, 595, 596],
     [606, 611, 615, 621, 623, 625, 626, 629, 640, 648],
@@ -478,7 +478,7 @@ drain_nodes = node_list(
     [829, 831, 845, 845, 850, 852, 855, 856, 860],
     [864, 869, 873, 876, 878, 880, 881, 882, 890, 891, 892],
     [895, 906, 907, 909, 913, 919, 921, 928, 930, 932],
-    [933, 935, 947, 949, 952, 957, 958, 960, 965, 966, 968],
+    [933, 935, 947, 949, 950, 952, 957, 958, 960, 965, 966, 968],
     [971, 975, 981, 1002, 1005, 1008, 1050, 1051, 1064, 1066, 1068,],
     [1071, 1089, 1095, 1102, 1132,1245, 1269, 1295, 1316, 1353, 1367, 1367],
     [2324, 2335, 2336, 2338, 2342, 2345, 2918],
@@ -585,7 +585,6 @@ model.outlet.static.df.loc[mask, ["flow_rate", "min_flow_rate", "max_flow_rate"]
 # Corrigeer basin-peilen/profielen langs open Manning-routes nadat alle full-control-controllers bekend zijn.
 manning_level_updates = sync_basin_levels_along_manning_routes(
     model=model,
-    output_path=cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_updates.csv"),
     basin_output_gpkg=cloud.joinpath(
         AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_basin_updates.gpkg"
     ),
