@@ -65,16 +65,17 @@ pump_max_flow_rate_by_node_id = {
 EXCLUDE_NODES = {
     139,  # sluis Vries
     152,  # Dorkswerdersluis (Scheepvaart)
+    156,  # Vriescheloostersluis (Veelerveen)
     161,  # Bulsterverlaat (Scheepvaart)
+    164,  # Benedenverlaat Pekelerhoofddiep
+    165,  # 2e verlaat Stadskanaal
     167,  # Koppelsluis Pekelerhoofddiep
     174,  # Koppelsluis (Scheepvaart)
     181,  # Sluis Punt
     183,  # Haansluis (scheepvaart)
-    156,  # Vriescheloostersluis (Veelerveen)
-    736,  # Springersverlaat 1e verlaat
     188,
+    736,  # Springersverlaat 1e verlaat
     832,
-    165,  # 2e verlaat Stadskanaal
 }
 
 # %%
@@ -129,6 +130,7 @@ def configure_always_on_pumps(model: Model) -> None:
 model = Model.read(ribasim_toml)
 
 # fixes (zo snel mogelijk)
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 6, "level"] = 0.0  # Noordzee
 remove_nodes = [152, 534, 678]
 # 152: Dorkwerdersluis (scheepvaart)
 # 534: Vispassage "de Bult"
@@ -182,11 +184,14 @@ model.node.df.loc[mask, IS_SUPPLY_NODE_COLUMN] = True
 
 # user-defined drain_nodes
 drain_nodes = [
+    39,
     59,
     62,
+    71,
     80,
     88,
     99,
+    103,
     133,
     135,
     179,
@@ -214,7 +219,9 @@ drain_nodes = [
     558,
     603,
     792,
+    870,
     892,
+    966,
     988,
     1043,
     1046,

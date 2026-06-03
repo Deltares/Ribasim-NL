@@ -1295,6 +1295,10 @@ manning_level_updates = sync_basin_levels_along_manning_routes(
     protected_basin_node_ids=[1149, 1331, 1419, 1446, 1475, 1565, 1572, 1665, 1801, 1852, 1885, 1959],
 )
 
+# Node 291 remains 4 cm below its upstream basin bottom after the Manning sync.
+mask = (model.outlet.static.df.node_id == 291) & (model.outlet.static.df.min_upstream_level < 15.1)
+model.outlet.static.df.loc[mask, "min_upstream_level"] = 15.1
+
 # %% Junctionfy(!)
 junctionify(model)
 

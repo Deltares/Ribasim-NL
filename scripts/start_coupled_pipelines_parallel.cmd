@@ -44,6 +44,7 @@ if /I "!ARG!"=="all" (
 if "!ARG:~0,2!"=="--" (
     set "EXTRA_ARGS=!EXTRA_ARGS! !ARG!"
     if /I "!ARG!"=="--start-at" set "EXPECT_OPTION_VALUE=1"
+    if /I "!ARG!"=="--parallel-workers" set "EXPECT_OPTION_VALUE=1"
     shift
     goto parse_args
 )
@@ -82,20 +83,24 @@ for %%P in (%PIPELINES%) do (
 )
 
 for %%P in (%OTHER_PIPELINES%) do (
+    set "PIPELINE_ARGS=!EXTRA_ARGS!"
+    if /I "%%P"=="alle-regionaal-zonder-wf-rws" set "PIPELINE_ARGS=!PIPELINE_ARGS! --parallel-until-samenvoegen --parallel-new-windows"
     if defined DRY_RUN (
-        echo start "%%P" cmd /k ""%RUNNER%" %%P !EXTRA_ARGS!"
+        echo start "%%P" cmd /k ""%RUNNER%" %%P !PIPELINE_ARGS!"
     ) else (
-        start "%%P" cmd /k ""%RUNNER%" %%P !EXTRA_ARGS!"
+        start "%%P" cmd /k ""%RUNNER%" %%P !PIPELINE_ARGS!"
     )
 )
 
 if defined HUNZE_PIPELINES (
     set "HUNZE_COMMAND="
     for %%P in (%HUNZE_PIPELINES%) do (
+        set "PIPELINE_ARGS=!EXTRA_ARGS!"
+        if /I "%%P"=="alle-regionaal-zonder-wf-rws" set "PIPELINE_ARGS=!PIPELINE_ARGS! --parallel-until-samenvoegen --parallel-new-windows"
         if defined HUNZE_COMMAND (
-            set "HUNZE_COMMAND=!HUNZE_COMMAND! ^&^& "%RUNNER%" %%P !EXTRA_ARGS!"
+            set "HUNZE_COMMAND=!HUNZE_COMMAND! ^&^& "%RUNNER%" %%P !PIPELINE_ARGS!"
         ) else (
-            set "HUNZE_COMMAND="%RUNNER%" %%P !EXTRA_ARGS!"
+            set "HUNZE_COMMAND="%RUNNER%" %%P !PIPELINE_ARGS!"
         )
     )
 

@@ -42,7 +42,7 @@ def set_flow_rate(static_df, max_flow_rate_by_node_id: dict[int, float], flow_ra
 # %%
 # Globale settings
 
-MODEL_EXEC: bool = True  # execute model run
+MODEL_EXEC: bool = False  # execute model run
 AUTHORITY: str = "RijnenIJssel"  # authority
 SHORT_NAME: str = "wrij"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]

@@ -34,7 +34,7 @@ def add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs):
 # %%
 # Globale settings
 
-MODEL_EXEC: bool = True  # execute model run
+MODEL_EXEC: bool = False  # execute model run
 AUTHORITY: str = "BrabantseDelta"  # authority
 SHORT_NAME: str = "wbd"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]

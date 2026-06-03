@@ -18,8 +18,12 @@ STATIC_TABLE_BY_NODE_TYPE = {
 }
 RWS_AUTHORITY = "Rijkswaterstaat"
 SKIP_LEVEL_UPDATE_AUTHORITIES = {"WetterskipFryslan"}
+SKIP_MIN_UPSTREAM_UPDATE_NODE_IDS = {3800291}
 DEFAULT_UPSTREAM_SUPPLY_OFFSET = -0.04
 DEFAULT_RWS_PROFILE_OFFSET = 0.1
+FLOW_DEMAND_CONTROL_THRESHOLD_OFFSET = 0.02
+FLOW_DEMAND_RWS_PROFILE_MIN_UPSTREAM_OFFSET = 0.01
+FLOW_DEMAND_RWS_CONTROL_THRESHOLD_OFFSET = 0.03
 
 
 def database_gpkg_path(toml_file: Path) -> Path:
@@ -280,26 +284,45 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
         .to_dict()
     )
     flow_demand_target_info: dict[int, dict[str, object]] = {}
-    if table_exists(con, "FlowDemand / time"):
-        flow_demand_time_df = read_table(con, "FlowDemand / time")
-        flow_demand_time_df["demand"] = normalize_numeric(flow_demand_time_df["demand"])
+    positive_flow_demand_target_node_ids: set[int] = set()
+    flow_demand_controlled_node_ids: set[int] = set()
+    flow_demand_parts = []
+    for flow_demand_table in ["FlowDemand / time", "FlowDemand / static"]:
+        if table_exists(con, flow_demand_table):
+            flow_demand_df = read_table(con, flow_demand_table)
+            flow_demand_df["demand"] = normalize_numeric(flow_demand_df["demand"])
+            flow_demand_parts.append(flow_demand_df[["node_id", "demand"]])
+    if flow_demand_parts:
+        flow_demand_df = pd.concat(flow_demand_parts, ignore_index=True)
+        flow_demand_node_ids = set(flow_demand_df["node_id"].astype(int))
         positive_flow_demand_ids = set(
-            flow_demand_time_df.groupby("node_id")["demand"].max().loc[lambda series: series.gt(0.0)].index.astype(int)
+            flow_demand_df.groupby("node_id")["demand"].max().loc[lambda series: series.gt(0.0)].index.astype(int)
         )
         control_link_df = link_df[
             link_df["link_type"].fillna("").eq("control")
-            & link_df["from_node_id"].astype(int).isin(positive_flow_demand_ids)
+            & link_df["from_node_id"].astype(int).isin(flow_demand_node_ids)
             & link_df["to_node_id"].astype(int).map(node_type_by_id).isin(CONTROL_NODE_TYPES)
         ].copy()
-        max_demand_by_node_id = flow_demand_time_df.groupby("node_id")["demand"].max().to_dict()
+        max_demand_by_node_id = flow_demand_df.groupby("node_id")["demand"].max().to_dict()
         for target_node_id, rows in control_link_df.groupby("to_node_id"):
-            flow_demand_node_ids = sorted({int(node_id) for node_id in rows["from_node_id"]})
+            target_flow_demand_node_ids = sorted({int(node_id) for node_id in rows["from_node_id"]})
+            max_demands = [
+                float(max_demand_by_node_id[node_id])
+                for node_id in target_flow_demand_node_ids
+                if pd.notna(max_demand_by_node_id.get(node_id))
+            ]
+            max_demand = max(max_demands) if max_demands else np.nan
+            positive_flow_demand_target = any(
+                node_id in positive_flow_demand_ids for node_id in target_flow_demand_node_ids
+            )
+            if positive_flow_demand_target:
+                positive_flow_demand_target_node_ids.add(int(target_node_id))
+            flow_demand_controlled_node_ids.add(int(target_node_id))
             flow_demand_target_info[int(target_node_id)] = {
-                "flow_demand_inlaat": True,
-                "flow_demand_node_ids": ",".join(str(node_id) for node_id in flow_demand_node_ids),
-                "flow_demand_max_demand": max(
-                    max_demand_by_node_id.get(node_id, np.nan) for node_id in flow_demand_node_ids
-                ),
+                "flow_demand_inlaat": positive_flow_demand_target,
+                "flow_demand_controlled": True,
+                "flow_demand_node_ids": ",".join(str(node_id) for node_id in target_flow_demand_node_ids),
+                "flow_demand_max_demand": max_demand,
             }
 
     static_parts = []
@@ -325,7 +348,8 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
         on=["node_id", "node_type"],
         how="inner",
     )
-    static_df["flow_demand_inlaat"] = static_df["node_id"].astype(int).isin(flow_demand_target_info)
+    static_df["flow_demand_inlaat"] = static_df["node_id"].astype(int).isin(positive_flow_demand_target_node_ids)
+    static_df["flow_demand_controlled"] = static_df["node_id"].astype(int).isin(flow_demand_controlled_node_ids)
     static_df["flow_demand_node_ids"] = (
         static_df["node_id"]
         .astype(int)
@@ -336,7 +360,7 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
         .astype(int)
         .map(lambda node_id: flow_demand_target_info.get(int(node_id), {}).get("flow_demand_max_demand"))
     )
-    functions = classify_functions(static_df, flow_demand_inlet_nodes=set(flow_demand_target_info))
+    functions = classify_functions(static_df, flow_demand_inlet_nodes=positive_flow_demand_target_node_ids)
     static_df["functie"] = static_df["node_id"].astype(int).map(functions)
     static_df["control_state_lower"] = static_df["control_state"].astype("string").str.lower()
 
@@ -349,6 +373,8 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
         row_dict = row._asdict()
         control_state = "" if pd.isna(row.control_state_lower) else str(row.control_state_lower).lower()
         flow_demand_inlaat = bool(row.flow_demand_inlaat)
+        flow_demand_controlled = bool(row.flow_demand_controlled)
+        min_upstream_update_skipped_node = node_id in SKIP_MIN_UPSTREAM_UPDATE_NODE_IDS
         static_capacity = static_row_has_capacity(row_dict)
         active_aanvoer_capacity = control_state == "aanvoer" and static_capacity
         inactive_flow_demand_aanvoer = control_state == "aanvoer" and flow_demand_inlaat and not static_capacity
@@ -393,8 +419,29 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
 
         expected_min_upstream = np.nan
         min_basis = "niet_gecontroleerd"
+        discrete_control_sync_level = np.nan
+        if flow_demand_controlled and upstream_node_type == "Basin":
+            if upstream_authority == RWS_AUTHORITY and pd.notna(upstream_min_profile):
+                discrete_control_sync_level = upstream_min_profile + FLOW_DEMAND_RWS_CONTROL_THRESHOLD_OFFSET
+            elif pd.notna(upstream_streefpeil):
+                discrete_control_sync_level = upstream_streefpeil + FLOW_DEMAND_CONTROL_THRESHOLD_OFFSET
+
         if upstream_node_type == "Basin":
-            if row.functie == "uitlaat":
+            if (
+                flow_demand_controlled
+                and control_state == "aanvoer"
+                and row.functie in ["inlaat", "doorlaat"]
+                and pd.notna(upstream_min_profile)
+                and upstream_authority == RWS_AUTHORITY
+            ):
+                expected_min_upstream = upstream_min_profile + FLOW_DEMAND_RWS_PROFILE_MIN_UPSTREAM_OFFSET
+                min_basis = "flow_demand_rws_min_profile_level_plus_offset"
+            elif flow_demand_controlled and control_state == "aanvoer" and row.functie in ["inlaat", "doorlaat"]:
+                expected_min_upstream = (
+                    upstream_streefpeil + upstream_supply_offset if pd.notna(upstream_streefpeil) else np.nan
+                )
+                min_basis = "flow_demand_upstream_streefpeil_plus_aanvoer_offset"
+            elif row.functie == "uitlaat":
                 expected_min_upstream = upstream_streefpeil
                 min_basis = "upstream_streefpeil"
             elif active_aanvoer_capacity and row.functie in ["inlaat", "doorlaat"]:
@@ -403,8 +450,10 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
                 )
                 min_basis = "upstream_streefpeil_plus_aanvoer_offset"
             elif inactive_flow_demand_aanvoer and row.functie in ["inlaat", "doorlaat"]:
-                expected_min_upstream = row.min_upstream_level
-                min_basis = "huidige_waarde_flow_demand_aanvoer_zonder_static_capacity"
+                expected_min_upstream = (
+                    upstream_streefpeil + upstream_supply_offset if pd.notna(upstream_streefpeil) else np.nan
+                )
+                min_basis = "flow_demand_upstream_streefpeil_plus_aanvoer_offset"
             elif control_state == "afvoer" and row.functie in ["inlaat", "doorlaat"]:
                 expected_min_upstream = upstream_streefpeil
                 min_basis = "upstream_streefpeil"
@@ -423,6 +472,8 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
             and pd.notna(upstream_min_profile)
             and downstream_authority not in SKIP_LEVEL_UPDATE_AUTHORITIES
             and not level_update_skipped_authority
+            and not flow_demand_controlled
+            and not min_upstream_update_skipped_node
         )
         rws_inlet_profile_min_upstream = (
             upstream_min_profile + rws_profile_offset if rws_inlet_profile_update_allowed else np.nan
@@ -430,6 +481,10 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
         if rws_inlet_profile_update_allowed:
             expected_min_upstream = rws_inlet_profile_min_upstream
             min_basis = "rijkswaterstaat_min_profile_level_plus_offset"
+
+        if min_upstream_update_skipped_node:
+            expected_min_upstream = row.min_upstream_level
+            min_basis = "huidige_waarde_node_uitgesloten_van_min_upstream_update"
 
         current_min_upstream = row.min_upstream_level
         if pd.isna(expected_min_upstream) and pd.notna(current_min_upstream):
@@ -498,11 +553,13 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
             "gecheckte_max_downstream_level_update": expected_max_downstream,
             "max_downstream_level_update_basis": max_basis,
             "gecheckte_min_upstream_level": expected_min_upstream,
+            "gecheckte_discrete_control_level": discrete_control_sync_level,
             "verschil_min_upstream_level": row.min_upstream_level - expected_min_upstream,
             "min_upstream_level_check_basis": min_basis,
             "min_upstream_level_afwijking": bool(min_upstream_afwijking),
             "rws_to_model": bool(rws_to_model),
             "level_update_skipped_authority": bool(level_update_skipped_authority),
+            "min_upstream_update_skipped_node": bool(min_upstream_update_skipped_node),
             "rws_inlet_profile_update_allowed": bool(rws_inlet_profile_update_allowed),
             "rws_inlet_profile_min_upstream": rws_inlet_profile_min_upstream,
             "rws_inlet_profile_min_upstream_afwijking": bool(rws_inlet_profile_min_upstream_afwijking),
@@ -814,7 +871,13 @@ def apply_level_updates(
         node_id = int(row.node_id)
         value = float(row.gecheckte_min_upstream_level)
         con.execute(f'UPDATE "{table}" SET min_upstream_level = ? WHERE fid = ?', (value, fid))  # noqa: S608
-        control_value = float(row.upstream_basin_streefpeil) if pd.notna(row.upstream_basin_streefpeil) else value
+        control_value = (
+            float(row.gecheckte_discrete_control_level)
+            if pd.notna(getattr(row, "gecheckte_discrete_control_level", np.nan))
+            else float(row.upstream_basin_streefpeil)
+            if pd.notna(row.upstream_basin_streefpeil)
+            else value
+        )
         sync_once(
             target_node_id=node_id,
             listen_node_id=int(row.upstream_node_id) if pd.notna(row.upstream_node_id) else None,
@@ -868,7 +931,7 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Pas alleen min_upstream_level aan voor RWS -> regionaal model inlaten "
             "op basis van min(Basin / profile.level) + rws-profile-offset. "
-            "FlowDemand-gestuurde inlaten tellen hierbij mee."
+            "FlowDemand-gestuurde Outlet/Pump-nodes krijgen specifieke doorlaatregels."
         ),
     )
     parser.add_argument(

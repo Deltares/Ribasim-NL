@@ -265,6 +265,7 @@ def _single_manning_branch_basin_node_ids(
     component_node_ids: set[int],
     link_df: pd.DataFrame,
     node_type_by_id: dict[int, str],
+    control_function_by_node_id: dict[int, str | None],
 ) -> set[int]:
     protected_basin_node_ids: set[int] = set()
     component_node_ids = {int(node_id) for node_id in component_node_ids}
@@ -273,14 +274,24 @@ def _single_manning_branch_basin_node_ids(
         if node_type_by_id.get(basin_node_id) != "Basin":
             continue
 
-        open_neighbors = [
-            int(row.to_node_id) if int(row.from_node_id) == basin_node_id else int(row.from_node_id)
-            for row in link_df[
-                link_df["from_node_id"].eq(basin_node_id) | link_df["to_node_id"].eq(basin_node_id)
-            ].itertuples(index=False)
-            if (int(row.to_node_id) if int(row.from_node_id) == basin_node_id else int(row.from_node_id))
-            in component_node_ids
-        ]
+        open_neighbors = []
+        upstream_control_node_ids = set()
+        for row in link_df[
+            link_df["from_node_id"].eq(basin_node_id) | link_df["to_node_id"].eq(basin_node_id)
+        ].itertuples(index=False):
+            from_node_id = int(row.from_node_id)
+            to_node_id = int(row.to_node_id)
+            other_node_id = to_node_id if from_node_id == basin_node_id else from_node_id
+
+            if other_node_id in component_node_ids:
+                open_neighbors.append(other_node_id)
+            if to_node_id == basin_node_id and node_type_by_id.get(from_node_id) in CONTROL_NODE_TYPES:
+                upstream_control_node_ids.add(from_node_id)
+
+        upstream_control_functions = {control_function_by_node_id.get(node_id) for node_id in upstream_control_node_ids}
+        if any(function in {"inlaat", "doorlaat"} for function in upstream_control_functions):
+            continue
+
         if len(set(open_neighbors)) != 1:
             continue
 
@@ -1442,6 +1453,7 @@ def sync_basin_levels_along_manning_routes(
             component_node_ids=component_node_ids,
             link_df=link_df,
             node_type_by_id=node_type_by_id,
+            control_function_by_node_id=control_function_by_node_id,
         )
         boundary_basin_ids = _component_boundary_basin_node_ids(
             component_node_ids=component_node_ids,

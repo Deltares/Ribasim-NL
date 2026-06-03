@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -22,6 +23,12 @@ class PipelineConfig:
     submodel_authorities: list[str]
     dynamic_authorities: list[str]
     full_control_scripts: list[Path]
+
+
+@dataclass(frozen=True)
+class StepSpec:
+    label: str
+    command: list[str]
 
 
 PIPELINES: dict[str, PipelineConfig] = {
@@ -245,6 +252,11 @@ def safe_label(label: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", label).strip("_").lower()
 
 
+def powershell_literal(value: str) -> str:
+    escaped = value.replace("'", "''")
+    return f"'{escaped}'"
+
+
 def run_step(label: str, command: list[str], env: dict[str, str], log_dir: Path, *, dry_run: bool) -> None:
     print(f"\n=== {label} ===", flush=True)
     print(" ".join(command), flush=True)
@@ -276,13 +288,119 @@ def run_step(label: str, command: list[str], env: dict[str, str], log_dir: Path,
         raise subprocess.CalledProcessError(return_code, command)
 
 
+def run_step_in_new_window(step: StepSpec, env: dict[str, str], log_dir: Path, step_tmp_dir: Path) -> None:
+    if os.name != "nt":
+        run_step(step.label, step.command, env, log_dir, dry_run=False)
+        return
+
+    print(f"\n=== {step.label} ===", flush=True)
+    print(" ".join(step.command), flush=True)
+
+    log_file = log_dir / RUN_ID / f"{safe_label(step.label)}.log"
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    runner = step_tmp_dir / f"{safe_label(step.label)}.ps1"
+    command = " ".join(powershell_literal(arg) for arg in step.command)
+    runner.write_text(
+        "\n".join(
+            [
+                "$ErrorActionPreference = 'Continue'",
+                f"Set-Location -LiteralPath {powershell_literal(str(ROOT))}",
+                f"Write-Host {powershell_literal(f'=== {step.label} ===')}",
+                f"Write-Host {powershell_literal(' '.join(step.command))}",
+                f"& {command} 2>&1 | Tee-Object -FilePath {powershell_literal(str(log_file))}",
+                "$exitCode = $LASTEXITCODE",
+                "Write-Host ''",
+                'Write-Host "Exit code: $exitCode"',
+                "exit $exitCode",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    process = subprocess.Popen(
+        [
+            "powershell.exe",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(runner),
+        ],
+        cwd=ROOT,
+        env=env,
+        creationflags=subprocess.CREATE_NEW_CONSOLE,
+    )
+    return_code = process.wait()
+    if return_code != 0:
+        print(f"\nStap faalde met exit code {return_code}. Log: {log_file}", flush=True)
+        raise subprocess.CalledProcessError(return_code, step.command)
+
+
+def run_steps_parallel(
+    group_label: str,
+    steps: list[StepSpec],
+    tmp_dir: Path,
+    log_dir: Path,
+    *,
+    dry_run: bool,
+    max_workers: int | None,
+    new_windows: bool,
+) -> None:
+    if len(steps) == 0:
+        return
+
+    print(f"\n=== {group_label} parallel ({len(steps)} stappen) ===", flush=True)
+    if dry_run:
+        for step in steps:
+            print(f"\n--- {step.label} ---", flush=True)
+            if new_windows and os.name == "nt":
+                print("(nieuw venster)", flush=True)
+            print(" ".join(step.command), flush=True)
+        return
+
+    workers = max_workers or len(steps)
+    workers = min(workers, len(steps))
+
+    def run_one(step: StepSpec) -> None:
+        step_tmp_dir = tmp_dir / "parallel" / safe_label(step.label)
+        env = make_env(step_tmp_dir)
+        if new_windows:
+            run_step_in_new_window(step, env, log_dir, step_tmp_dir)
+        else:
+            run_step(step.label, step.command, env, log_dir, dry_run=False)
+
+    failures: list[tuple[StepSpec, Exception]] = []
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = {executor.submit(run_one, step): step for step in steps}
+        for future in as_completed(futures):
+            step = futures[future]
+            try:
+                future.result()
+            except Exception as exc:
+                failures.append((step, exc))
+                print(f"\nParallelle stap faalde: {step.label}", flush=True)
+
+    if failures:
+        first_step, first_exception = failures[0]
+        print(
+            f"\n{len(failures)} parallelle stap(pen) gefaald. Eerste fout: {first_step.label}",
+            flush=True,
+        )
+        if isinstance(first_exception, subprocess.CalledProcessError):
+            raise first_exception
+        raise RuntimeError(f"Parallelle stap gefaald: {first_step.label}") from first_exception
+
+
 def write_samenvoegen_script(config: PipelineConfig, tmp_dir: Path) -> Path:
     src = ROOT / "notebooks" / "samenvoegen_modellen.py"
     dst = tmp_dir / f"samenvoegen_modellen_{config.key}.py"
     text = src.read_text(encoding="utf-8")
+    authorities = "\n".join(f'        "{authority}",' for authority in config.submodel_authorities)
     replacement = (
         "sub_models: dict[str, list[str]] = {\n"
-        f'    "{config.model_name}": {config.submodel_authorities!r},\n'
+        f'    "{config.model_name}": [\n'
+        f"{authorities}\n"
+        "    ],\n"
         "}\n\n\n# A spec consists"
     )
     text = re.sub(
@@ -364,6 +482,9 @@ def run_pipeline(
     *,
     dry_run: bool,
     start_at: str,
+    parallel_until_samenvoegen: bool,
+    parallel_workers: int | None,
+    parallel_new_windows: bool,
     apply_rws_inlet_min_upstream: bool,
     apply_direct_min_upstream_level: bool,
     apply_max_downstream_level: bool,
@@ -391,14 +512,26 @@ def run_pipeline(
         )
 
     if should_run("full-control"):
-        for script in config.full_control_scripts:
-            run_step(
-                f"Full control: {script.parent.name}",
-                [*python_command, str(script)],
-                env,
+        full_control_steps = [
+            StepSpec(
+                label=f"Full control: {script.parent.name}",
+                command=[*python_command, str(script)],
+            )
+            for script in config.full_control_scripts
+        ]
+        if parallel_until_samenvoegen:
+            run_steps_parallel(
+                f"Full control: {config.model_name}",
+                full_control_steps,
+                tmp_dir,
                 log_dir,
                 dry_run=dry_run,
+                max_workers=parallel_workers,
+                new_windows=parallel_new_windows,
             )
+        else:
+            for step in full_control_steps:
+                run_step(step.label, step.command, env, log_dir, dry_run=dry_run)
 
     only_merge_authorities = sorted(set(config.submodel_authorities) - set(config.dynamic_authorities))
     print(
@@ -408,21 +541,55 @@ def run_pipeline(
     )
 
     if config.dynamic_authorities and should_run("bergend"):
-        run_step(
-            f"Bergend model: {config.model_name}",
-            [*python_command, str(ROOT / "notebooks" / "05_add_bergend.py"), *config.dynamic_authorities],
-            env,
-            log_dir,
-            dry_run=dry_run,
-        )
+        if parallel_until_samenvoegen:
+            run_steps_parallel(
+                f"Bergend model: {config.model_name}",
+                [
+                    StepSpec(
+                        label=f"Bergend model: {authority}",
+                        command=[*python_command, str(ROOT / "notebooks" / "05_add_bergend.py"), authority],
+                    )
+                    for authority in config.dynamic_authorities
+                ],
+                tmp_dir,
+                log_dir,
+                dry_run=dry_run,
+                max_workers=parallel_workers,
+                new_windows=parallel_new_windows,
+            )
+        else:
+            run_step(
+                f"Bergend model: {config.model_name}",
+                [*python_command, str(ROOT / "notebooks" / "05_add_bergend.py"), *config.dynamic_authorities],
+                env,
+                log_dir,
+                dry_run=dry_run,
+            )
     if config.dynamic_authorities and should_run("dynamic"):
-        run_step(
-            f"Dynamic forcing: {config.model_name}",
-            [*python_command, str(ROOT / "notebooks" / "07_add_dynamic_forcing.py"), *config.dynamic_authorities],
-            env,
-            log_dir,
-            dry_run=dry_run,
-        )
+        if parallel_until_samenvoegen:
+            run_steps_parallel(
+                f"Dynamic forcing: {config.model_name}",
+                [
+                    StepSpec(
+                        label=f"Dynamic forcing: {authority}",
+                        command=[*python_command, str(ROOT / "notebooks" / "07_add_dynamic_forcing.py"), authority],
+                    )
+                    for authority in config.dynamic_authorities
+                ],
+                tmp_dir,
+                log_dir,
+                dry_run=dry_run,
+                max_workers=parallel_workers,
+                new_windows=parallel_new_windows,
+            )
+        else:
+            run_step(
+                f"Dynamic forcing: {config.model_name}",
+                [*python_command, str(ROOT / "notebooks" / "07_add_dynamic_forcing.py"), *config.dynamic_authorities],
+                env,
+                log_dir,
+                dry_run=dry_run,
+            )
 
     samenvoegen_script = write_samenvoegen_script(config, tmp_dir)
     koppelen_script = write_koppelen_script(config, tmp_dir)
@@ -508,12 +675,30 @@ def parse_args() -> argparse.Namespace:
         help="Start de pipeline vanaf deze stap.",
     )
     parser.add_argument(
+        "--parallel-until-samenvoegen",
+        action="store_true",
+        help=(
+            "Draai full-control per script en bergend/dynamic per authority parallel. "
+            "Vanaf samenvoegen_modellen draait de pipeline weer sequentieel."
+        ),
+    )
+    parser.add_argument(
+        "--parallel-workers",
+        type=int,
+        default=None,
+        help="Maximaal aantal parallelle processen per stapgroep. Standaard: alle processen tegelijk.",
+    )
+    parser.add_argument(
+        "--parallel-new-windows",
+        action="store_true",
+        help="Open parallelle stappen in aparte Windows-vensters. De pipeline wacht nog steeds op alle stappen.",
+    )
+    parser.add_argument(
         "--apply-rws-inlet-min-upstream",
         action="store_true",
         help=(
             "Laat report_coupling_levels.py alleen toegestane RWS->model inlaat "
-            "min_upstream_level-correcties toepassen op basis van profielhoogte, "
-            "inclusief FlowDemand-gestuurde inlaten."
+            "min_upstream_level-correcties toepassen op basis van profielhoogte."
         ),
     )
     parser.add_argument(
@@ -530,7 +715,8 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help=(
             "Laat report_coupling_levels.py min_upstream_level corrigeren voor afwijkende rijen met een direct "
-            "upstream Basin. Er wordt niet via ManningResistance/Junction doorgelopen."
+            "upstream Basin, inclusief FlowDemand-gestuurde doorlaten. Er wordt niet via "
+            "ManningResistance/Junction doorgelopen."
         ),
     )
     return parser.parse_args()
@@ -538,6 +724,9 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    if args.parallel_workers is not None and args.parallel_workers < 1:
+        raise SystemExit("--parallel-workers moet minimaal 1 zijn.")
+
     if args.list:
         for key, config in PIPELINES.items():
             print(f"{key}: {config.model_name} = {', '.join(config.submodel_authorities)}")
@@ -552,6 +741,9 @@ def main() -> int:
             PIPELINES[key],
             dry_run=args.dry_run,
             start_at=args.start_at,
+            parallel_until_samenvoegen=args.parallel_until_samenvoegen,
+            parallel_workers=args.parallel_workers,
+            parallel_new_windows=args.parallel_new_windows,
             apply_rws_inlet_min_upstream=args.apply_rws_inlet_min_upstream,
             apply_direct_min_upstream_level=args.apply_direct_min_upstream_level,
             apply_max_downstream_level=args.apply_max_downstream_level,

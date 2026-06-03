@@ -63,6 +63,11 @@ reset_outlet_min_upstream_level = [
     3300727,  # min_upstream_level (14.76) below upstream Basin #4401600 bottom (16.3)
 ]
 
+# Outlets with min_upstream_level below the effective upstream Basin bottom; clamp to validation-safe level
+minimum_outlet_min_upstream_level = {
+    3800291: 15.1,  # aanvoer min_upstream_level (9.36) below upstream Basin #3801452 bottom (15.1)
+}
+
 # force LevelBoundary node_id to Basin node_id, overriding the automatic coupling
 forced_coupling = {
     3400005: 5901608,
@@ -447,6 +452,13 @@ def fix_basin_profiles(model: Model) -> None:
         mask = model.outlet.static.df.node_id == outlet_id
         if mask.any():
             model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
+
+    for outlet_id, min_upstream_level in minimum_outlet_min_upstream_level.items():
+        mask = model.outlet.static.df.node_id == outlet_id
+        if mask.any():
+            current = pd.to_numeric(model.outlet.static.df.loc[mask, "min_upstream_level"], errors="coerce")
+            lower_than_minimum = current.lt(min_upstream_level).fillna(False)
+            model.outlet.static.df.loc[current.loc[lower_than_minimum].index, "min_upstream_level"] = min_upstream_level
 
     for outlet in model.outlet.node.df.index:
         upstream_basin = model.upstream_node_id(outlet)
