@@ -9,7 +9,7 @@ from ribasim_nl.control import (
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
-from ribasim_nl.parametrization.manning_level import sync_basin_levels_along_manning_routes
+from ribasim_nl.parametrization.manning_level import sync_full_control_manning_levels
 from shapely.geometry import MultiPolygon
 
 from ribasim_nl import CloudStorage, Model
@@ -164,15 +164,19 @@ add_controllers_to_uncontrolled_connector_nodes(
 
 # %%
 # Corrigeer basin-peilen/profielen langs open Manning-routes nadat alle full-control-controllers bekend zijn.
-manning_level_updates = sync_basin_levels_along_manning_routes(
-    model=model,
-    basin_output_gpkg=cloud.joinpath(
-        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_basin_updates.gpkg"
-    ),
-    control_output_gpkg=cloud.joinpath(
-        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_control_updates.gpkg"
-    ),
-)
+PROTECTED_MANNING_CONTROL_NODE_IDS: set[int] = set()
+
+
+def sync_manning_level_controls(model: Model, *, write_reports: bool = False):
+    return sync_full_control_manning_levels(
+        model=model,
+        output_dir=cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model"),
+        write_reports=write_reports,
+        protected_control_node_ids=PROTECTED_MANNING_CONTROL_NODE_IDS,
+    )
+
+
+manning_level_updates = sync_manning_level_controls(model, write_reports=True)
 
 # %% Junctionfy(!)
 junctionify(model)
@@ -206,6 +210,7 @@ model.outlet.static.df.loc[mask, "max_flow_rate"] = model.outlet.static.df.loc[m
 
 # hoofd run met verdamping
 update_basin_static(model=model, evaporation_mm_per_day=1)
+sync_manning_level_controls(model)
 model.write(ribasim_toml_dry)
 
 # run hoofdmodel
@@ -216,6 +221,7 @@ if MODEL_EXEC:
 
 # prerun om het model te initialiseren met neerslag
 update_basin_static(model=model, precipitation_mm_per_day=2)
+sync_manning_level_controls(model)
 model.write(ribasim_toml_wet)
 
 # run prerun model
@@ -226,6 +232,7 @@ if MODEL_EXEC:
 
 # hoofd run
 update_basin_static(model=model, precipitation_mm_per_day=1.5)
+sync_manning_level_controls(model)
 model.write(ribasim_toml)
 # run hoofdmodel
 if MODEL_EXEC:

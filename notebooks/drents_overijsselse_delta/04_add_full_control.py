@@ -10,7 +10,7 @@ from ribasim_nl.control import (
     add_controllers_to_uncontrolled_connector_nodes as _add_controllers_to_uncontrolled_connector_nodes,
 )
 from ribasim_nl.parametrization.basin_tables import update_basin_static
-from ribasim_nl.parametrization.manning_level import sync_basin_levels_along_manning_routes
+from ribasim_nl.parametrization.manning_level import sync_full_control_manning_levels
 from shapely import Point
 
 from ribasim_nl import CloudStorage, Model
@@ -103,6 +103,7 @@ def add_supply_area_control(
 
 
 def run_model_and_control(model: Model, ribasim_toml, qlr_path):
+    sync_manning_level_controls(model)
     model.write(ribasim_toml)
 
     if MODEL_EXEC:
@@ -671,37 +672,42 @@ for node_id, min_flow_rate in MIN_FLOW_RATE_BY_NODE_ID.items():
 
 # %%
 # Corrigeer basin-peilen/profielen langs open Manning-routes nadat alle full-control-controllers bekend zijn.
-manning_level_updates = sync_basin_levels_along_manning_routes(
-    model=model,
-    basin_output_gpkg=cloud.joinpath(
-        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_basin_updates.gpkg"
-    ),
-    control_output_gpkg=cloud.joinpath(
-        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_control_updates.gpkg"
-    ),
-    protected_basin_node_ids=[
-        58,
-        59,
-        1635,
-        1680,
-        1721,
-        1747,
-        1761,
-        1772,
-        1901,
-        2008,
-        2105,
-        2113,
-        2140,
-        2150,
-        2185,
-        2229,
-        2247,
-        2288,
-        2306,
-        2580,
-    ],
-)
+PROTECTED_MANNING_BASIN_NODE_IDS = [
+    58,
+    59,
+    1635,
+    1680,
+    1721,
+    1747,
+    1761,
+    1772,
+    1901,
+    2008,
+    2105,
+    2113,
+    2140,
+    2150,
+    2185,
+    2229,
+    2247,
+    2288,
+    2306,
+    2580,
+]
+PROTECTED_MANNING_CONTROL_NODE_IDS: set[int] = set()
+
+
+def sync_manning_level_controls(model: Model, *, write_reports: bool = False):
+    return sync_full_control_manning_levels(
+        model=model,
+        output_dir=cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model"),
+        write_reports=write_reports,
+        protected_basin_node_ids=PROTECTED_MANNING_BASIN_NODE_IDS,
+        protected_control_node_ids=PROTECTED_MANNING_CONTROL_NODE_IDS,
+    )
+
+
+manning_level_updates = sync_manning_level_controls(model, write_reports=True)
 
 # %%
 # Model run
