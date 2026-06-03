@@ -39,6 +39,8 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 777, "meta_streefpeil"] =
 model.basin.area.df.loc[model.basin.area.df.node_id == 1085, "meta_streefpeil"] = 5.5
 model.basin.area.df.loc[model.basin.area.df.node_id == 793, "meta_streefpeil"] = 10.7
 model.basin.area.df.loc[model.basin.area.df.node_id == 857, "meta_streefpeil"] = 11.60
+model.basin.area.df.loc[model.basin.area.df.node_id == 1011, "meta_streefpeil"] = 6.5
+
 
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5, profiles_gpkg=profiles_gpkg)

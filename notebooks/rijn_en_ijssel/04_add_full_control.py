@@ -48,7 +48,7 @@ SHORT_NAME: str = "wrij"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 drain_nodes = [59]
-supply_nodes = [654, 479, 437, 438, 677, 409, 1190, 390]
+supply_nodes = [654, 479, 437, 438, 677, 409, 1190, 390, 428]
 flushing_nodes = {
     320: 3,
     337: 0.9,
