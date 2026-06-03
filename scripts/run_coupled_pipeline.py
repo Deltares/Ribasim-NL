@@ -694,30 +694,39 @@ def parse_args() -> argparse.Namespace:
         help="Open parallelle stappen in aparte Windows-vensters. De pipeline wacht nog steeds op alle stappen.",
     )
     parser.add_argument(
+        "--no-apply-coupling-levels",
+        action="store_true",
+        help=(
+            "Draai report_coupling_levels.py alleen rapporterend. Standaard past de pipeline "
+            "de toegestane coupling-level correcties toe."
+        ),
+    )
+    parser.add_argument(
         "--apply-rws-inlet-min-upstream",
         action="store_true",
         help=(
-            "Laat report_coupling_levels.py alleen toegestane RWS->model inlaat "
-            "min_upstream_level-correcties toepassen op basis van profielhoogte."
+            "Pas RWS->model inlaat min_upstream_level-correcties toe. Dit staat standaard aan "
+            "in de pipeline; gebruik deze vlag alleen nog voor een specifieke apply als "
+            "--no-apply-coupling-levels is gezet."
         ),
     )
     parser.add_argument(
         "--apply-max-downstream-level",
         action="store_true",
         help=(
-            "Laat report_coupling_levels.py max_downstream_level corrigeren voor "
+            "Pas max_downstream_level-correcties toe voor "
             "aanvoer-rijen van inlaten en doorlaten op basis van het directe downstream Basin. "
-            "FlowDemand-gestuurde nodes worden hierbij overgeslagen. De bijbehorende directe "
-            "min_upstream-correcties worden dan ook toegepast."
+            "Dit staat standaard aan in de pipeline. FlowDemand-gestuurde nodes worden hierbij "
+            "overgeslagen. De bijbehorende directe min_upstream-correcties worden dan ook toegepast."
         ),
     )
     parser.add_argument(
         "--apply-direct-min-upstream-level",
         action="store_true",
         help=(
-            "Laat report_coupling_levels.py min_upstream_level corrigeren voor afwijkende rijen met een direct "
-            "upstream Basin, inclusief FlowDemand-gestuurde doorlaten. Er wordt niet via "
-            "ManningResistance/Junction doorgelopen."
+            "Pas directe min_upstream_level-correcties toe voor afwijkende rijen met een direct "
+            "upstream Basin, inclusief FlowDemand-gestuurde doorlaten. Dit staat standaard aan "
+            "in de pipeline. Er wordt niet via ManningResistance/Junction doorgelopen."
         ),
     )
     return parser.parse_args()
@@ -737,6 +746,11 @@ def main() -> int:
     if "all" in selected_keys:
         selected_keys = list(DEFAULT_PIPELINE_KEYS)
 
+    default_apply_coupling_levels = not args.no_apply_coupling_levels
+    apply_rws_inlet_min_upstream = default_apply_coupling_levels or args.apply_rws_inlet_min_upstream
+    apply_direct_min_upstream_level = default_apply_coupling_levels or args.apply_direct_min_upstream_level
+    apply_max_downstream_level = default_apply_coupling_levels or args.apply_max_downstream_level
+
     for key in selected_keys:
         run_pipeline(
             PIPELINES[key],
@@ -745,9 +759,9 @@ def main() -> int:
             parallel_until_samenvoegen=args.parallel_until_samenvoegen,
             parallel_workers=args.parallel_workers,
             parallel_new_windows=args.parallel_new_windows,
-            apply_rws_inlet_min_upstream=args.apply_rws_inlet_min_upstream,
-            apply_direct_min_upstream_level=args.apply_direct_min_upstream_level,
-            apply_max_downstream_level=args.apply_max_downstream_level,
+            apply_rws_inlet_min_upstream=apply_rws_inlet_min_upstream,
+            apply_direct_min_upstream_level=apply_direct_min_upstream_level,
+            apply_max_downstream_level=apply_max_downstream_level,
         )
     return 0
 
