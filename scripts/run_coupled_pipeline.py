@@ -707,7 +707,8 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Laat report_coupling_levels.py max_downstream_level corrigeren voor "
             "aanvoer-rijen van inlaten en doorlaten op basis van het directe downstream Basin. "
-            "De bijbehorende directe min_upstream-correcties worden dan ook toegepast."
+            "FlowDemand-gestuurde nodes worden hierbij overgeslagen. De bijbehorende directe "
+            "min_upstream-correcties worden dan ook toegepast."
         ),
     )
     parser.add_argument(

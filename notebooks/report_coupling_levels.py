@@ -549,6 +549,7 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
                 and row.functie in ["inlaat", "doorlaat"]
                 and max_downstream_afwijking
                 and not level_update_skipped_authority
+                and not flow_demand_controlled
             ),
             "gecheckte_max_downstream_level_update": expected_max_downstream,
             "max_downstream_level_update_basis": max_basis,
@@ -939,7 +940,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help=(
             "Pas max_downstream_level aan voor aanvoer-rijen van inlaten en doorlaten op basis van "
-            "het directe downstream Basin."
+            "het directe downstream Basin. FlowDemand-gestuurde nodes worden hierbij overgeslagen."
         ),
     )
     parser.add_argument(
