@@ -32,9 +32,9 @@ Bij `Verdeelwerk Lochem` wordt, wanneer beschikbaar, 3m/s doorgelaten over de Be
 Bij `Warken` wordt 0.9 m3/s doorgelaten via de `Berkel`. Ook wordt hier 0.1 m3/s doorgelaten richting de Brummeler Laak. Dit wordt uitgemalen bij gemaal Helbergen
 
 ### Oude-IJssel
-- De bovenlopen van de `Oude-IJssel` ontvangen water vanuit Duitsland
-- Dit water wordt op verschillende locaties verdeeld
-- Afvoer van de `Oude-IJssel` vindt plaats naar de `IJssel`
+De bovenlopen van de `Oude-IJssel` ontvangen water vanuit Duitsland; 70% van het totale oppervlak van het stroomgebied ligt in Duitsland. Bij `Verdeelwerk Bredevoort` watert de `Schaarsbeek` af op de `Keizersbeek` via een sifon. Hier kan overtollig water uit de `Schaarsbeek` worden afgelaten richting de `Boven-Slinge`. Ook kan water uit de `Boven-Slinge` worden ingelaten op de `Kiezersbeek`.
+
+Afvoer van de `Oude-IJssel` vindt plaats naar de `IJssel` bij sluis-stuwcomplex `Doesburg`. `Gemaal Doesburg` zorgt voor extra capaciteit met 1 m3/s.
 
 ## Capaciteiten
 Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
