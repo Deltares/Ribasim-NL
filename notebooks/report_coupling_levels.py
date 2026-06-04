@@ -562,6 +562,13 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
             expected_min_upstream = row.min_upstream_level
             min_basis = "huidige_waarde_node_uitgesloten_van_min_upstream_update"
 
+        if flow_demand_controlled:
+            expected_min_upstream = row.min_upstream_level
+            expected_max_downstream = row.max_downstream_level
+            discrete_control_sync_level = np.nan
+            min_basis = "huidige_waarde_flow_demand_beschermd"
+            max_basis = "huidige_waarde_flow_demand_beschermd"
+
         if level_update_protected or node_id in SKIP_LEVEL_UPDATE_NODE_IDS:
             expected_min_upstream = row.min_upstream_level
             expected_max_downstream = row.max_downstream_level
@@ -752,6 +759,9 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
         & report_df["gecheckte_min_upstream_level"].notna()
         & ~report_df["rws_inlet_profile_min_upstream_afwijking"]
         & ~report_df["level_update_skipped_authority"]
+        & ~report_df["flow_demand_controlled"]
+        & ~report_df["level_update_protected"]
+        & ~report_df["node_id"].isin(SKIP_LEVEL_UPDATE_NODE_IDS)
     ].copy()
     if not direct_min_upstream_updates_df.empty:
         direct_min_upstream_updates_df["direct_min_upstream_level_update_allowed"] = True
@@ -865,6 +875,8 @@ def apply_level_updates(
         function: str,
         flow_demand_controlled: bool,
     ) -> int:
+        if flow_demand_controlled:
+            return 0
         if listen_node_id is None:
             return 0
 
@@ -956,6 +968,8 @@ def apply_level_updates(
         flow_demand_controlled: bool,
     ) -> None:
         nonlocal condition_update_count
+        if flow_demand_controlled:
+            return
         if listen_node_id is None or pd.isna(level_value):
             return
         key = (int(target_node_id), int(listen_node_id), round(float(level_value), 9))
@@ -971,6 +985,8 @@ def apply_level_updates(
         )
 
     for row in min_upstream_updates_df.itertuples(index=False):
+        if bool(getattr(row, "flow_demand_controlled", False)):
+            continue
         table = row.static_table
         fid = int(row.table_fid)
         node_id = int(row.node_id)
@@ -987,6 +1003,8 @@ def apply_level_updates(
         min_update_count += 1
 
     for row in direct_min_upstream_updates_df.itertuples(index=False):
+        if bool(getattr(row, "flow_demand_controlled", False)):
+            continue
         table = row.static_table
         fid = int(row.table_fid)
         node_id = int(row.node_id)
@@ -1009,6 +1027,8 @@ def apply_level_updates(
         min_update_count += 1
 
     for row in max_downstream_updates_df.itertuples(index=False):
+        if bool(getattr(row, "flow_demand_controlled", False)):
+            continue
         table = row.static_table
         fid = int(row.table_fid)
         node_id = int(row.node_id)
@@ -1056,7 +1076,7 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Pas alleen min_upstream_level aan voor RWS -> regionaal model inlaten "
             "op basis van min(Basin / profile.level) + rws-profile-offset. "
-            "FlowDemand-gestuurde Outlet/Pump-nodes krijgen specifieke doorlaatregels."
+            "FlowDemand-gestuurde Outlet/Pump-nodes worden overgeslagen."
         ),
     )
     parser.add_argument(
@@ -1072,7 +1092,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help=(
             "Pas min_upstream_level aan voor alle afwijkende rijen met een direct upstream Basin. "
-            "Er wordt niet via ManningResistance/Junction doorgelopen."
+            "FlowDemand-gestuurde nodes worden overgeslagen. Er wordt niet via ManningResistance/Junction doorgelopen."
         ),
     )
     return parser.parse_args()

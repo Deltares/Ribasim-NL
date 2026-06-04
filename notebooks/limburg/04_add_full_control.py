@@ -185,6 +185,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(list(EXCLUDE_NODE
 # Erg klein basin, numerieke problemen
 model.merge_basins(node_id=2394, to_node_id=1507, are_connected=True)
 model.merge_basins(node_id=1672, to_node_id=1556, are_connected=True)
+model.merge_basins(node_id=1416, to_node_id=2408, are_connected=True)
 # %%
 # Node 651 moet dicht zijn na overleg Limburg
 model.pump.static.df.loc[model.pump.static.df.node_id == 651, "max_flow_rate"] = 0
