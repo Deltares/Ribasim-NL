@@ -53,6 +53,7 @@ flushing_nodes = {
     320: 3,
     337: 0.9,
     161: 0.1,
+    349: 0.2,  # 0.1-0.3 m3/s volgens waterschap
 }
 flow_control_nodes = [306]
 
@@ -94,14 +95,19 @@ outlet_max_flow_rate_by_node_id = {
     90: 0.6,  # Herkel
     437: 0.05,  # Sifon Boven-Slinge
     438: 0.05,  # Sifon Boven-Slinge
-    63: 40,  # Haarlo -> Bolksbeek
-    581: 60,  # Haarlo -> Berkel
+    63: 48,  # Haarlo -> Bolksbeek (Capaciteit uit DM, 40% van totaal)
+    581: 72,  # Haarlo -> Berkel (60% van totaal)
     117: 88,  # Aflaatwerk Lochem
     320: 22,  # Verdeelwerk Lochem Berkel
     337: 0.9,  # Warken Berkel (Zutphen)
     161: 0.1,  # Warken Brummeler Laak (Gemaal Helbergen)
     121: 110,  # Eefde aflaatwerk
     59: 8,  # Noodoverloop Schipbeek Twentekanaal (uit waterakkoord Twentekanalen)
+    71: 8.87,  # Capaciteit volgens DM rapportage
+    555: 5.3,  # Capaciteit volgens DM rapportage
+    623: 10.3,  # Capaciteit volgens DM rapportage
+    1192: 5.2,  # Capaciteit volgens DM rapportage
+    560: 1.0,  # Capaciteit volgens DM rapportage
 }
 
 # capaciteit inlaten
