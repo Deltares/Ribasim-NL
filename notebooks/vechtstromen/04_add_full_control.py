@@ -11,6 +11,7 @@ from ribasim_nl.control import (
 from ribasim_nl.control import (
     add_controllers_to_uncontrolled_connector_nodes as _add_controllers_to_uncontrolled_connector_nodes,
 )
+from ribasim_nl.control import mark_level_update_protected
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from ribasim_nl.parametrization.manning_level import sync_full_control_manning_levels
@@ -688,7 +689,9 @@ model = junctionify(model)
 # Laatste handmatige correcties
 
 # Gemaal Orveltersluis
-model.pump.static.df.loc[model.pump.static.df.node_id == 664, "min_upstream_level"] = 14.86
+mask = model.pump.static.df.node_id == 664
+model.pump.static.df.loc[mask, "min_upstream_level"] = 14.86
+mark_level_update_protected(model.pump.static.df, mask)
 
 
 # %%

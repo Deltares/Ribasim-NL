@@ -7,6 +7,7 @@ from ribasim_nl.control import (
 from ribasim_nl.control import (
     add_controllers_to_uncontrolled_connector_nodes as _add_controllers_to_uncontrolled_connector_nodes,
 )
+from ribasim_nl.control import mark_level_update_protected
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from ribasim_nl.parametrization.manning_level import sync_full_control_manning_levels
@@ -243,17 +244,22 @@ add_controllers_to_uncontrolled_connector_nodes(
 )
 
 # %% Noordergemaal, node=536 slaat pas aan wanneer Wijk van Duurstede net genoeg kan leveren
-model.pump.static.df.loc[model.pump.static.df.node_id == 536, "max_downstream_level"] -= 0.01
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1344, "max_downstream_level"] -= 0.01
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1345, "max_downstream_level"] -= 0.01
+mask = model.pump.static.df.node_id == 536
+model.pump.static.df.loc[mask, "max_downstream_level"] -= 0.01
+mark_level_update_protected(model.pump.static.df, mask)
+mask = model.outlet.static.df.node_id.isin([1344, 1345])
+model.outlet.static.df.loc[mask, "max_downstream_level"] -= 0.01
+mark_level_update_protected(model.outlet.static.df, mask)
 
 # 3 sifons, 468,469,470 onder Ark wordt later ingeschakeld dan inlaat Vreeswijk
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 468, "max_downstream_level"] -= 0.01
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 469, "max_downstream_level"] -= 0.01
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 470, "max_downstream_level"] -= 0.01
+mask = model.outlet.static.df.node_id.isin([468, 469, 470])
+model.outlet.static.df.loc[mask, "max_downstream_level"] -= 0.01
+mark_level_update_protected(model.outlet.static.df, mask)
 
 # Caspargauw gaat pas leveren als Wijk bij Duurstede aanvoer te laag is
-model.pump.static.df.loc[model.pump.static.df.node_id == 601, "max_downstream_level"] -= 0.01
+mask = model.pump.static.df.node_id == 601
+model.pump.static.df.loc[mask, "max_downstream_level"] -= 0.01
+mark_level_update_protected(model.pump.static.df, mask)
 
 # %%
 # Corrigeer basin-peilen/profielen langs open Manning-routes nadat alle full-control-controllers bekend zijn.

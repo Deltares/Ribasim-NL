@@ -13,6 +13,7 @@ from ribasim_nl.control import (
 from ribasim_nl.control import (
     add_controllers_to_uncontrolled_connector_nodes as _add_controllers_to_uncontrolled_connector_nodes,
 )
+from ribasim_nl.control import mark_level_update_protected
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from ribasim_nl.parametrization.manning_level import sync_full_control_manning_levels
@@ -569,6 +570,7 @@ boundary_supply_node_ids = set(basin_1134_boundary_connector_node_ids) & set(sup
 for static_df in [model.outlet.static.df, model.pump.static.df]:
     mask = static_df.node_id.isin(boundary_supply_node_ids)
     static_df.loc[mask, "min_upstream_level"] = pd.NA
+    mark_level_update_protected(static_df, mask)
 
 print_node_list_diff("supply_nodes", manual_supply_nodes, supply_nodes)
 print_node_list_diff("drain_nodes", manual_drain_nodes, drain_nodes)

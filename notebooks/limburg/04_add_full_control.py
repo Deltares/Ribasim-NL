@@ -10,6 +10,7 @@ from ribasim_nl.control import (
     _offset_new_node,
     _target_level,
     get_node_table_with_from_to_node_ids,
+    mark_level_update_protected,
 )
 from ribasim_nl.control import (
     add_controllers_to_supply_area as _add_controllers_to_supply_area,
@@ -835,10 +836,14 @@ fixed_levels = {
 }
 
 df = model.outlet.static.df
-df["min_upstream_level"] = df["node_id"].map(fixed_levels).fillna(df["min_upstream_level"])
+mask = df["node_id"].isin(fixed_levels)
+df.loc[mask, "min_upstream_level"] = df.loc[mask, "node_id"].map(fixed_levels)
+mark_level_update_protected(df, mask)
 
 mask = model.outlet.static.df.node_id.isin([2496, 2497])
-model.outlet.static.df.loc[mask & (model.outlet.static.df.control_state == "aanvoer"), "max_downstream_level"] = 30.75
+aanvoer_mask = mask & (model.outlet.static.df.control_state == "aanvoer")
+model.outlet.static.df.loc[aanvoer_mask, "max_downstream_level"] = 30.75
+mark_level_update_protected(model.outlet.static.df, aanvoer_mask)
 
 # Procentuele Verdeling 90/10 Heide: alleen afvoer-capaciteit begrenzen.
 afvoer_mask_616 = (model.outlet.static.df.node_id == 616) & (model.outlet.static.df.control_state == "afvoer")

@@ -7,6 +7,7 @@ from ribasim_nl.control import (
 from ribasim_nl.control import (
     add_controllers_to_uncontrolled_connector_nodes as _add_controllers_to_uncontrolled_connector_nodes,
 )
+from ribasim_nl.control import mark_level_update_protected
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from ribasim_nl.parametrization.manning_level import sync_full_control_manning_levels
@@ -191,8 +192,9 @@ model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time
 
 # %% Verdeelwerk bij Eindhoven 10% afvgevoerd via Beatrixkanaal (max 20m3/s) en 90% via Dieze
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 379, "max_flow_rate"] = 0
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 293, "min_upstream_level"] = 16.2
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 210, "min_upstream_level"] = 16.2
+mask = model.outlet.static.df.node_id.isin([293, 210])
+model.outlet.static.df.loc[mask, "min_upstream_level"] = 16.2
+mark_level_update_protected(model.outlet.static.df, mask)
 
 # flow rates WATAK Olen en Sonse Heide
 flow_updates = {

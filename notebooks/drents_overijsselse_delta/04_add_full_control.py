@@ -9,6 +9,7 @@ from ribasim_nl.control import (
 from ribasim_nl.control import (
     add_controllers_to_uncontrolled_connector_nodes as _add_controllers_to_uncontrolled_connector_nodes,
 )
+from ribasim_nl.control import mark_level_update_protected
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from ribasim_nl.parametrization.manning_level import sync_full_control_manning_levels
 from shapely import Point
@@ -65,7 +66,10 @@ def remove_nodes(model: Model, node_ids: list[int]) -> None:
 
 def set_static_values(static_df, node_values: dict[int, float], column: str) -> None:
     for node_id, value in node_values.items():
-        static_df.loc[static_df.node_id == node_id, column] = value
+        mask = static_df.node_id == node_id
+        static_df.loc[mask, column] = value
+        if column in ["min_upstream_level", "max_downstream_level"]:
+            mark_level_update_protected(static_df, mask)
 
 
 def set_max_flow_rate(static_df, max_flow_rate_by_node_id: dict[int, float]) -> None:
@@ -225,7 +229,9 @@ for node_id, to_node_id in [
 
 # Manning moet outlet zijn
 model.update_node(node_id=1468, node_type="Outlet")
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1468, "min_upstream_level"] = 2.63
+mask = model.outlet.static.df.node_id == 1468
+model.outlet.static.df.loc[mask, "min_upstream_level"] = 2.63
+mark_level_update_protected(model.outlet.static.df, mask)
 
 # Westerveld
 update_nodes(model, [1104, 885, 1522], "ManningResistance")
@@ -590,7 +596,9 @@ add_controllers_to_uncontrolled_connector_nodes(
 )
 
 # Holthe max_downstream iets lager gezet omdat deze pas aangaat als andere inlaten niet meer kunnen aanleveren.
-model.pump.static.df.loc[model.pump.static.df.node_id == 648, "max_downstream_level"] -= 0.1
+mask = model.pump.static.df.node_id == 648
+model.pump.static.df.loc[mask, "max_downstream_level"] -= 0.1
+mark_level_update_protected(model.pump.static.df, mask)
 
 # Noordscheschutsluis: basin 1920 is gemerged naar 1881; aanvoer stopt 1 cm onder benedenstrooms streefpeil.
 noordscheschutsluis_pump_node_id = 346
@@ -623,6 +631,7 @@ if "control_state" in model.pump.static.df.columns:
     if aanvoer_mask.any():
         mask = aanvoer_mask
 model.pump.static.df.loc[mask, "max_downstream_level"] = max_downstream_level
+mark_level_update_protected(model.pump.static.df, mask)
 
 set_static_values(
     model.level_boundary.static.df,
@@ -655,13 +664,18 @@ model.outlet.static.df.loc[mask, ["flow_rate", "min_flow_rate", "max_flow_rate"]
 mask = model.pump.static.df.node_id == dod_extra_supply_pump.node_id
 model.pump.static.df.loc[mask, "min_upstream_level"] = 14.86
 model.pump.static.df.loc[mask, "max_downstream_level"] = 17.7
+mark_level_update_protected(model.pump.static.df, mask)
 model.pump.static.df.loc[mask & (model.pump.static.df.control_state == "aanvoer"), ["flow_rate", "max_flow_rate"]] = 1.2
 model.pump.static.df.loc[mask & (model.pump.static.df.control_state == "afvoer"), ["flow_rate", "max_flow_rate"]] = 0.0
 
 # Handmatige ondergrens voor node 3235.
 for static_df in [model.outlet.static.df, model.pump.static.df]:
-    static_df.loc[static_df.node_id == 3235, "min_upstream_level"] = 17.7
-    static_df.loc[static_df.node_id == 3233, "max_downstream_level"] = 12.94
+    mask = static_df.node_id == 3235
+    static_df.loc[mask, "min_upstream_level"] = 17.7
+    mark_level_update_protected(static_df, mask)
+    mask = static_df.node_id == 3233
+    static_df.loc[mask, "max_downstream_level"] = 12.94
+    mark_level_update_protected(static_df, mask)
 
 # Minimale afvoer naar buitenwater op specifieke kunstwerken, voor alle control_states.
 for node_id, min_flow_rate in MIN_FLOW_RATE_BY_NODE_ID.items():

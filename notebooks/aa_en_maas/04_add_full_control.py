@@ -12,6 +12,7 @@ from ribasim_nl.control import (
     _offset_new_node,
     _target_level,
     get_node_table_with_from_to_node_ids,
+    mark_level_update_protected,
 )
 from ribasim_nl.control import (
     add_controllers_to_supply_area as _add_controllers_to_supply_area,
@@ -1256,7 +1257,9 @@ for link_id in reverse_link_ids:
 # Inlaat Waranda pump
 model.update_node(node_id=3089, node_type="Pump")  # wordt pump was outlet
 model.pump.static.df.loc[model.pump.static.df.node_id == 3089, "flow_rate"] = 0
-model.pump.static.df.loc[model.pump.static.df.node_id == 3089, "min_upstream_level"] = 10.36
+mask = model.pump.static.df.node_id == 3089
+model.pump.static.df.loc[mask, "min_upstream_level"] = 10.36
+mark_level_update_protected(model.pump.static.df, mask)
 
 # Inlaat Sambeek
 model.update_node(node_id=124, node_type="Pump")  # wordt pump, was outlet
@@ -1267,8 +1270,9 @@ model.update_node(node_id=226, node_type="Pump")  # wordt pump, was outlet
 model.pump.static.df.loc[model.pump.static.df.node_id == 226, "flow_rate"] = 0
 
 # Inlaten aan Drongelens kanaal krijgen pd.NA bij min_upstream_level
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 98, "min_upstream_level"] = pd.NA
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 103, "min_upstream_level"] = pd.NA
+mask = model.outlet.static.df.node_id.isin([98, 103])
+model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
+mark_level_update_protected(model.outlet.static.df, mask)
 
 boundary_ids = [9, 13, 39, 38, 53, 1958, 1568, 3085, 33, 32, 31, 59, 54, 44, 42, 64, 63]
 mask = model.level_boundary.static.df["node_id"].isin(boundary_ids)
@@ -1303,6 +1307,7 @@ manning_level_updates = sync_manning_level_controls(model, write_reports=True)
 # Node 291 remains 4 cm below its upstream basin bottom after the Manning sync.
 mask = (model.outlet.static.df.node_id == 291) & (model.outlet.static.df.min_upstream_level < 15.1)
 model.outlet.static.df.loc[mask, "min_upstream_level"] = 15.1
+mark_level_update_protected(model.outlet.static.df, mask)
 
 # %% Junctionfy(!)
 junctionify(model)

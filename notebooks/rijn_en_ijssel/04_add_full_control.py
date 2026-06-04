@@ -7,6 +7,7 @@ from ribasim_nl.control import (
 from ribasim_nl.control import (
     add_controllers_to_uncontrolled_connector_nodes as _add_controllers_to_uncontrolled_connector_nodes,
 )
+from ribasim_nl.control import mark_level_update_protected
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from ribasim_nl.parametrization.manning_level import sync_full_control_manning_levels
@@ -227,7 +228,9 @@ mask = (model.discrete_control.logic.df.node_id == 1330) & (model.discrete_contr
 model.discrete_control.logic.df.loc[mask, "control_state"] = "aanvoer"
 
 # Noodoverloop Twentekanaal pas bij onvoldoende door sifon (node_id 306)
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 59, "min_upstream_level"] += 0.1
+mask = model.outlet.static.df.node_id == 59
+model.outlet.static.df.loc[mask, "min_upstream_level"] += 0.1
+mark_level_update_protected(model.outlet.static.df, mask)
 
 # doorlaten
 min_flow_rates = {

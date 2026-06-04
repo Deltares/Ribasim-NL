@@ -7,6 +7,7 @@ from ribasim_nl.control import (
 from ribasim_nl.control import (
     add_controllers_to_uncontrolled_connector_nodes as _add_controllers_to_uncontrolled_connector_nodes,
 )
+from ribasim_nl.control import mark_level_update_protected
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from ribasim_nl.parametrization.manning_level import sync_full_control_manning_levels
@@ -121,6 +122,7 @@ def configure_always_on_pumps(model: Model) -> None:
         model.pump.static.df.loc[mask, "min_flow_rate"] = min_flow_rate
         model.pump.static.df.loc[mask, "min_upstream_level"] = target_level + min_upstream_level_offset
         model.pump.static.df.loc[mask, "max_downstream_level"] = max_downstream_level
+        mark_level_update_protected(model.pump.static.df, mask)
 
 
 # %%

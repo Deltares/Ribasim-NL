@@ -18,6 +18,14 @@ from ribasim_nl.control_layout import control_condition_thresholds, control_logi
 from ribasim_nl.downstream import downstream_nodes
 
 LOG = logging.getLogger(__name__)
+LEVEL_UPDATE_PROTECTION_COLUMN = "meta_level_update_protected"
+
+
+def mark_level_update_protected(static_df: pd.DataFrame, mask: pd.Series) -> None:
+    """Protect manually configured control levels from later coupling-level updates."""
+    if LEVEL_UPDATE_PROTECTION_COLUMN not in static_df.columns:
+        static_df[LEVEL_UPDATE_PROTECTION_COLUMN] = False
+    static_df.loc[mask, LEVEL_UPDATE_PROTECTION_COLUMN] = True
 
 
 def _node_flow_rate(flow_rate: float | dict[int, float] | None, node_id: int, default: float = 20.0) -> float:
