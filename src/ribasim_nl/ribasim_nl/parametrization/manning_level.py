@@ -8,12 +8,15 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
+from ribasim_nl.control_layout import control_condition_thresholds, control_layouts
+
 if TYPE_CHECKING:
     from ribasim_nl import Model
 
 
 CONTROL_NODE_TYPES = {"Outlet", "Pump"}
 OPEN_NODE_TYPES = {"Basin", "ManningResistance", "Junction"}
+LEVEL_UPDATE_PROTECTION_COLUMN = "meta_level_update_protected"
 
 
 def _node_type_by_id(model: Model) -> dict[int, str]:
@@ -554,6 +557,14 @@ def _capacity_is_positive(df: pd.DataFrame) -> pd.Series:
     return flow_rate.gt(0.0) | max_flow_rate.gt(0.0)
 
 
+def _truthy_series(series: pd.Series) -> pd.Series:
+    if series.empty:
+        return pd.Series(dtype=bool)
+    if pd.api.types.is_bool_dtype(series):
+        return series.fillna(False)
+    return series.astype("string").str.lower().isin({"1", "true", "yes", "ja", "y"})
+
+
 def _connector_function(connector_rows: pd.DataFrame) -> str | None:
     control_state = connector_rows["control_state"].astype("string").str.lower()
     positive_capacity = _capacity_is_positive(connector_rows)
@@ -567,6 +578,70 @@ def _connector_function(connector_rows: pd.DataFrame) -> str | None:
     if has_drain_state:
         return "uitlaat"
     return None
+
+
+def _compound_variable_counts(df: pd.DataFrame | None, control_node_id: int) -> dict[int, int]:
+    if df is None or df.empty or "compound_variable_id" not in df.columns:
+        return {}
+
+    rows = df[df["node_id"].eq(int(control_node_id))].copy()
+    if rows.empty:
+        return {}
+
+    compound_variable_ids = pd.to_numeric(rows["compound_variable_id"], errors="coerce").dropna().astype(int)
+    return compound_variable_ids.value_counts().sort_index().to_dict()
+
+
+def _logic_pairs(logic_df: pd.DataFrame | None, control_node_id: int) -> set[tuple[str, str]]:
+    if logic_df is None or logic_df.empty or not {"truth_state", "control_state"}.issubset(logic_df.columns):
+        return set()
+
+    rows = logic_df[logic_df["node_id"].eq(int(control_node_id))].copy()
+    if rows.empty:
+        return set()
+
+    return {
+        (str(row.truth_state), str(row.control_state).lower())
+        for row in rows[["truth_state", "control_state"]].itertuples(index=False)
+    }
+
+
+def _validate_control_layout_for_sync(
+    *,
+    function: str,
+    connector_node_id: int,
+    control_node_id: int,
+    variable_df: pd.DataFrame | None,
+    condition_df: pd.DataFrame | None,
+    logic_df: pd.DataFrame | None,
+) -> None:
+    expected = control_layouts().get(function)
+    if expected is None:
+        return
+
+    expected_variable_counts, expected_condition_counts, expected_logic_pairs = expected
+    variable_counts = _compound_variable_counts(variable_df, control_node_id)
+    condition_counts = _compound_variable_counts(condition_df, control_node_id)
+    logic_pairs = _logic_pairs(logic_df, control_node_id)
+
+    if (
+        variable_counts != expected_variable_counts
+        or condition_counts != expected_condition_counts
+        or logic_pairs != expected_logic_pairs
+    ):
+        raise ValueError(
+            f"{function.capitalize()} #{connector_node_id} met DiscreteControl #{control_node_id} heeft geen "
+            "control.py-layout: "
+            f"variables={variable_counts} verwacht={expected_variable_counts}; "
+            f"conditions={condition_counts} verwacht={expected_condition_counts}; "
+            f"logic={sorted(logic_pairs)} verwacht={sorted(expected_logic_pairs)}"
+        )
+
+
+def _level_difference_threshold(model: Model) -> float:
+    solver = getattr(model, "solver", None)
+    threshold = getattr(solver, "level_difference_threshold", 0.02)
+    return float(threshold)
 
 
 def _control_operating_levels(
@@ -996,6 +1071,7 @@ def sync_control_levels_for_basin_updates(
     basin_level_updates: pd.DataFrame,
     *,
     extra_control_node_ids: list[int] | set[int] | None = None,
+    protected_control_node_ids: list[int] | set[int] | None = None,
     target_level_column: str = "meta_streefpeil",
     us_target_level_offset_supply: float = -0.04,
     output_path: str | Path | None = None,
@@ -1035,6 +1111,7 @@ def sync_control_levels_for_basin_updates(
         for value in basin_level_updates["boundary_control_node_ids"].dropna():
             component_connector_node_ids.update(_parse_node_id_list(value))
     component_connector_node_ids.update(int(node_id) for node_id in extra_control_node_ids or [])
+    protected_control_node_ids = {int(node_id) for node_id in protected_control_node_ids or []}
 
     locked_control_node_ids: set[int] = set()
     if {"target_level_basis", "boundary_control_node_ids"}.issubset(basin_level_updates.columns):
@@ -1057,6 +1134,7 @@ def sync_control_levels_for_basin_updates(
     records: list[dict[str, object]] = []
     touched_connector_node_ids: set[int] = set()
     control_name_levels_by_connector_id: dict[int, tuple[str, float | None, float | None]] = {}
+    condition_basin_scope_by_connector_id: dict[int, set[int]] = {}
 
     for node_type in sorted(CONTROL_NODE_TYPES):
         component = getattr(model, node_type.lower(), None)
@@ -1123,9 +1201,42 @@ def sync_control_levels_for_basin_updates(
             else:
                 function = "uitlaat"
 
+            manual_level_protected = connector_node_id in protected_control_node_ids
+            if LEVEL_UPDATE_PROTECTION_COLUMN in connector_rows.columns:
+                manual_level_protected = manual_level_protected or bool(
+                    _truthy_series(connector_rows[LEVEL_UPDATE_PROTECTION_COLUMN]).any()
+                )
+            if manual_level_protected:
+                records.append(
+                    {
+                        "node_id": connector_node_id,
+                        "node_type": node_type,
+                        "functie": function,
+                        "table": table_name,
+                        "column": "control_levels",
+                        "old_value": None,
+                        "new_value": None,
+                        "status": "handmatig_control_level_behouden",
+                    }
+                )
+                continue
+
+            upstream_component_basin_ids = upstream_basin_ids & component_basin_node_ids
+            downstream_component_basin_ids = downstream_basin_ids & component_basin_node_ids
+            connector_side_was_synced = bool(upstream_component_basin_ids or downstream_component_basin_ids)
+            sync_both_sides = bool(has_supply_state and has_drain_state and connector_side_was_synced)
+            sync_min_upstream = bool(upstream_component_basin_ids) or sync_both_sides
+            sync_max_downstream = bool(downstream_component_basin_ids) or sync_both_sides
+            relevant_condition_basin_ids: set[int] = set()
+            if sync_min_upstream:
+                relevant_condition_basin_ids.update(upstream_basin_ids)
+            if sync_max_downstream and has_supply_state:
+                relevant_condition_basin_ids.update(downstream_basin_ids)
+
             control_name_levels_by_connector_id[connector_node_id] = (function, upstream_level, downstream_level)
-            if not locked_control:
+            if relevant_condition_basin_ids and not locked_control:
                 touched_connector_node_ids.add(connector_node_id)
+                condition_basin_scope_by_connector_id[connector_node_id] = relevant_condition_basin_ids
             for row_index, state in control_state.items():
                 # Rows without capacity are closed states; syncing their levels can
                 # overwrite intentional offsets in flushing controls.
@@ -1144,7 +1255,12 @@ def sync_control_levels_for_basin_updates(
                     "table": table_name,
                 }
 
-                if pd.notna(state) and upstream_level is not None and "min_upstream_level" in static_df.columns:
+                if (
+                    sync_min_upstream
+                    and pd.notna(state)
+                    and upstream_level is not None
+                    and "min_upstream_level" in static_df.columns
+                ):
                     if state == "aanvoer" and has_supply_state:
                         min_upstream_level = float(upstream_level) + us_target_level_offset_supply
                     else:
@@ -1161,7 +1277,8 @@ def sync_control_levels_for_basin_updates(
                     )
 
                 if (
-                    pd.notna(state)
+                    sync_max_downstream
+                    and pd.notna(state)
                     and has_supply_state
                     and state == "aanvoer"
                     and downstream_level is not None
@@ -1180,9 +1297,12 @@ def sync_control_levels_for_basin_updates(
 
     variable_df = getattr(getattr(model.discrete_control, "variable", None), "df", None)
     condition_df = getattr(getattr(model.discrete_control, "condition", None), "df", None)
+    logic_df = getattr(getattr(model.discrete_control, "logic", None), "df", None)
+    level_difference_threshold = _level_difference_threshold(model)
     if variable_df is not None and condition_df is not None:
         for connector_node_id in sorted(touched_connector_node_ids):
             for control_node_id in control_ids_by_connector_id.get(connector_node_id, []):
+                function = None
                 if connector_node_id in control_name_levels_by_connector_id:
                     function, upstream_level, downstream_level = control_name_levels_by_connector_id[connector_node_id]
                     _set_control_node_name_if_changed(
@@ -1194,6 +1314,14 @@ def sync_control_levels_for_basin_updates(
                         records=records,
                         connector_node_id=connector_node_id,
                     )
+                    _validate_control_layout_for_sync(
+                        function=function,
+                        connector_node_id=connector_node_id,
+                        control_node_id=control_node_id,
+                        variable_df=variable_df,
+                        condition_df=condition_df,
+                        logic_df=logic_df,
+                    )
 
                 variable_rows = variable_df[variable_df["node_id"].eq(control_node_id)].copy()
                 if variable_rows.empty:
@@ -1201,6 +1329,7 @@ def sync_control_levels_for_basin_updates(
 
                 variable_rows["weight"] = pd.to_numeric(variable_rows["weight"], errors="coerce")
                 variable_rows = variable_rows.dropna(subset=["listen_node_id", "compound_variable_id", "weight"])
+                relevant_condition_basin_ids = condition_basin_scope_by_connector_id.get(connector_node_id, set())
                 for variable_row in variable_rows.itertuples(index=False):
                     listen_node_id = int(variable_row.listen_node_id)
                     listen_basin_ids, listen_level = _side_basin_ids_and_level(
@@ -1213,12 +1342,9 @@ def sync_control_levels_for_basin_updates(
                     )
                     if listen_level is None:
                         continue
-                    if connector_node_id not in component_connector_node_ids and not (
-                        listen_basin_ids & component_basin_node_ids
-                    ):
+                    if not (listen_basin_ids & relevant_condition_basin_ids):
                         continue
 
-                    threshold_value = float(listen_level) * float(variable_row.weight)
                     condition_mask = condition_df["node_id"].eq(control_node_id) & condition_df[
                         "compound_variable_id"
                     ].eq(variable_row.compound_variable_id)
@@ -1228,22 +1354,26 @@ def sync_control_levels_for_basin_updates(
                     condition_rows = condition_df.loc[condition_mask].copy()
                     if "condition_id" in condition_rows.columns:
                         condition_rows = condition_rows.sort_values("condition_id")
-                    base_high = condition_rows.iloc[0]["threshold_high"]
-                    base_low = condition_rows.iloc[0]["threshold_low"]
+                    threshold_values = control_condition_thresholds(
+                        layout_key=str(function),
+                        compound_variable_id=int(variable_row.compound_variable_id),
+                        variable_name=str(variable_row.variable),
+                        level_value=float(listen_level),
+                        weight=float(variable_row.weight),
+                        level_difference_threshold=level_difference_threshold,
+                    )
+                    if len(threshold_values) != len(condition_rows):
+                        raise ValueError(
+                            f"{function.capitalize()} #{connector_node_id} met DiscreteControl #{control_node_id} "
+                            f"heeft {len(condition_rows)} conditions voor compound_variable_id "
+                            f"{int(variable_row.compound_variable_id)}, verwacht {len(threshold_values)}."
+                        )
 
-                    for condition_index, condition_row in condition_rows.iterrows():
-                        high_offset = (
-                            0.0
-                            if pd.isna(base_high) or pd.isna(condition_row["threshold_high"])
-                            else float(condition_row["threshold_high"]) - float(base_high)
-                        )
-                        low_offset = (
-                            0.0
-                            if pd.isna(base_low) or pd.isna(condition_row["threshold_low"])
-                            else float(condition_row["threshold_low"]) - float(base_low)
-                        )
-                        new_high = threshold_value + high_offset
-                        new_low = threshold_value + low_offset
+                    for threshold_value, (condition_index, _condition_row) in zip(
+                        threshold_values, condition_rows.iterrows(), strict=True
+                    ):
+                        new_high = float(threshold_value)
+                        new_low = float(threshold_value)
                         old_high = condition_df.at[condition_index, "threshold_high"]
                         old_low = condition_df.at[condition_index, "threshold_low"]
                         if (
@@ -1302,6 +1432,7 @@ def sync_basin_levels_along_manning_routes(
     connector_node_ids: list[int] | None = None,
     start_basin_node_ids: list[int] | None = None,
     protected_basin_node_ids: list[int] | None = None,
+    protected_control_node_ids: list[int] | set[int] | None = None,
     target_level_column: str = "meta_streefpeil",
     output_path: str | Path | None = None,
     basin_output_gpkg: str | Path | None = None,
@@ -1679,6 +1810,7 @@ def sync_basin_levels_along_manning_routes(
                 model=model,
                 basin_level_updates=updates_df,
                 extra_control_node_ids=extra_control_node_ids,
+                protected_control_node_ids=protected_control_node_ids,
                 target_level_column=target_level_column,
                 output_path=output_path_for_controls,
                 output_gpkg=control_output_gpkg,
@@ -1720,3 +1852,37 @@ def sync_basin_levels_along_manning_routes(
                 print(f"Manning-route basin GPKG geschreven: {written_basin_output_gpkg}")
 
     return updates_df
+
+
+def sync_full_control_manning_levels(
+    model: Model,
+    *,
+    output_dir: str | Path | None = None,
+    write_reports: bool = False,
+    protected_basin_node_ids: list[int] | None = None,
+    protected_control_node_ids: list[int] | set[int] | None = None,
+    **kwargs,
+) -> pd.DataFrame:
+    """Synchroniseer Manning-route levels voor full-control notebooks.
+
+    De notebooks gebruiken dezelfde basin- en controller-sync, maar schrijven de
+    GPKG-rapporten alleen bij de expliciete rapportstap. Pre-write syncs blijven
+    daardoor stil en schrijven geen tijdelijke CSV-bestanden.
+    """
+    basin_output_gpkg = None
+    control_output_gpkg = None
+    if write_reports:
+        if output_dir is None:
+            raise ValueError("output_dir is verplicht wanneer write_reports=True.")
+        output_dir = Path(output_dir)
+        basin_output_gpkg = output_dir / "manning_level_basin_updates.gpkg"
+        control_output_gpkg = output_dir / "manning_level_control_updates.gpkg"
+
+    return sync_basin_levels_along_manning_routes(
+        model=model,
+        basin_output_gpkg=basin_output_gpkg,
+        control_output_gpkg=control_output_gpkg,
+        protected_basin_node_ids=protected_basin_node_ids,
+        protected_control_node_ids=protected_control_node_ids,
+        **kwargs,
+    )

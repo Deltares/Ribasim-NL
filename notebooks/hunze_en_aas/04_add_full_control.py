@@ -9,7 +9,7 @@ from ribasim_nl.control import (
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
-from ribasim_nl.parametrization.manning_level import sync_basin_levels_along_manning_routes
+from ribasim_nl.parametrization.manning_level import sync_full_control_manning_levels
 
 from ribasim_nl import CloudStorage, Model
 
@@ -33,7 +33,7 @@ def add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs):
 # %%
 # Globale settings
 
-MODEL_EXEC: bool = True  # execute model run
+MODEL_EXEC: bool = False  # execute model run
 AUTHORITY: str = "HunzeenAas"  # authority
 SHORT_NAME: str = "hea"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
@@ -67,11 +67,9 @@ EXCLUDE_NODES = {
     152,  # Dorkswerdersluis (Scheepvaart)
     156,  # Vriescheloostersluis (Veelerveen)
     161,  # Bulsterverlaat (Scheepvaart)
-    164,  # Benedenverlaat Pekelerhoofddiep
     165,  # 2e verlaat Stadskanaal
     167,  # Koppelsluis Pekelerhoofddiep
     174,  # Koppelsluis (Scheepvaart)
-    181,  # Sluis Punt
     183,  # Haansluis (scheepvaart)
     188,
     736,  # Springersverlaat 1e verlaat
@@ -138,6 +136,8 @@ remove_nodes = [152, 534, 678]
 for node_id in remove_nodes:
     model.remove_node(node_id=node_id, remove_links=True)
 
+model.merge_basins(node_id=1621, to_node_id=1601, are_connected=True)
+model.merge_basins(node_id=1325, to_node_id=1666, are_connected=True)
 model.merge_basins(node_id=1908, to_node_id=1372, are_connected=True)
 model.merge_basins(node_id=1763, to_node_id=1381, are_connected=False)
 model.reverse_direction_at_node(node_id=871)  # inlaat stond verkeerde kant op
@@ -185,6 +185,7 @@ model.node.df.loc[mask, IS_SUPPLY_NODE_COLUMN] = True
 # user-defined drain_nodes
 drain_nodes = [
     39,
+    50,
     59,
     62,
     71,
@@ -192,6 +193,8 @@ drain_nodes = [
     88,
     99,
     103,
+    105,
+    112,
     133,
     135,
     179,
@@ -216,9 +219,12 @@ drain_nodes = [
     514,
     523,
     524,
+    528,
     558,
     603,
+    628,
     792,
+    801,
     870,
     892,
     966,
@@ -232,9 +238,9 @@ drain_nodes = [
     447,
 ]
 # user-defined supply_nodes
-supply_nodes = [20, 62, 70, 107, 573, 891, 972, 1122]
+supply_nodes = [20, 62, 70, 107, 179, 573, 891, 972, 1122]
 # user-defined flow_control_nodes
-flow_control_nodes = [182, 330, 573, 634, 165, 505, 1017, 1111]
+flow_control_nodes = [182, 330, 571, 573, 634, 165, 505, 1017, 1111]
 # user-defined flushing_nodes voor de overige connectoren
 uncontrolled_flushing_nodes = {192: 1.65}
 
@@ -555,16 +561,21 @@ configure_always_on_pumps(model)
 
 # %%
 # Corrigeer basin-peilen/profielen langs open Manning-routes nadat alle full-control-controllers bekend zijn.
-manning_level_updates = sync_basin_levels_along_manning_routes(
-    model=model,
-    basin_output_gpkg=cloud.joinpath(
-        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_basin_updates.gpkg"
-    ),
-    control_output_gpkg=cloud.joinpath(
-        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_control_updates.gpkg"
-    ),
-    protected_basin_node_ids=[1311, 1325, 1338, 1432, 1617, 1680, 1832],
-)
+PROTECTED_MANNING_BASIN_NODE_IDS = [1311, 1325, 1338, 1432, 1617, 1680, 1832]
+PROTECTED_MANNING_CONTROL_NODE_IDS: set[int] = set()
+
+
+def sync_manning_level_controls(model: Model, *, write_reports: bool = False):
+    return sync_full_control_manning_levels(
+        model=model,
+        output_dir=cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model"),
+        write_reports=write_reports,
+        protected_basin_node_ids=PROTECTED_MANNING_BASIN_NODE_IDS,
+        protected_control_node_ids=PROTECTED_MANNING_CONTROL_NODE_IDS,
+    )
+
+
+manning_level_updates = sync_manning_level_controls(model, write_reports=True)
 
 # %%
 # Model run
@@ -577,6 +588,7 @@ model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time
 
 # hoofd run met verdamping
 update_basin_static(model=model, evaporation_mm_per_day=0.1)
+sync_manning_level_controls(model)
 model.write(ribasim_toml_dry)
 
 # run hoofdmodel
@@ -587,6 +599,7 @@ if MODEL_EXEC:
 
 # prerun om het model te initialiseren met neerslag
 update_basin_static(model=model, precipitation_mm_per_day=2)
+sync_manning_level_controls(model)
 model.write(ribasim_toml_wet)
 
 # run prerun model
@@ -597,6 +610,7 @@ if MODEL_EXEC:
 
 # hoofd run
 update_basin_static(model=model, precipitation_mm_per_day=1.5)
+sync_manning_level_controls(model)
 model.write(ribasim_toml)
 # run hoofdmodel
 if MODEL_EXEC:

@@ -10,6 +10,7 @@ from pathlib import Path
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+from ribasim_nl.control_layout import control_condition_thresholds, control_layout_key, control_layouts
 
 CONTROL_NODE_TYPES = {"Outlet", "Pump"}
 STATIC_TABLE_BY_NODE_TYPE = {
@@ -18,7 +19,9 @@ STATIC_TABLE_BY_NODE_TYPE = {
 }
 RWS_AUTHORITY = "Rijkswaterstaat"
 SKIP_LEVEL_UPDATE_AUTHORITIES = {"WetterskipFryslan"}
+SKIP_LEVEL_UPDATE_NODE_IDS: set[int] = set()
 SKIP_MIN_UPSTREAM_UPDATE_NODE_IDS = {3800291}
+LEVEL_UPDATE_PROTECTION_COLUMN = "meta_level_update_protected"
 DEFAULT_UPSTREAM_SUPPLY_OFFSET = -0.04
 DEFAULT_RWS_PROFILE_OFFSET = 0.1
 FLOW_DEMAND_CONTROL_THRESHOLD_OFFSET = 0.02
@@ -72,6 +75,14 @@ def positive(value: object) -> bool:
         return math.isfinite(number) and number > 0.0
     except (TypeError, ValueError):
         return False
+
+
+def truthy(value: object) -> bool:
+    if value is None or pd.isna(value):
+        return False
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "ja", "y"}
 
 
 def read_table(con: sqlite3.Connection, table: str) -> pd.DataFrame:
@@ -242,6 +253,65 @@ def classify_functions(static_df: pd.DataFrame, flow_demand_inlet_nodes: set[int
     return functions
 
 
+def grouped_compound_counts(con: sqlite3.Connection, table: str, control_node_id: int) -> dict[int, int]:
+    return {
+        int(compound_variable_id): int(count)
+        for compound_variable_id, count in con.execute(
+            f'SELECT compound_variable_id, COUNT(*) FROM "{table}" '  # noqa: S608
+            "WHERE node_id = ? GROUP BY compound_variable_id",
+            (int(control_node_id),),
+        ).fetchall()
+        if compound_variable_id is not None
+    }
+
+
+def logic_pairs(con: sqlite3.Connection, control_node_id: int) -> set[tuple[str, str]]:
+    return {
+        (str(truth_state), str(control_state).lower())
+        for truth_state, control_state in con.execute(
+            'SELECT truth_state, control_state FROM "DiscreteControl / logic" WHERE node_id = ?',
+            (int(control_node_id),),
+        ).fetchall()
+    }
+
+
+def validate_control_layout_for_sync(
+    con: sqlite3.Connection,
+    *,
+    target_node_id: int,
+    control_node_id: int,
+    function: str,
+    flow_demand_controlled: bool,
+) -> None:
+    control_name_row = con.execute("SELECT name FROM Node WHERE node_id = ?", (int(control_node_id),)).fetchone()
+    control_name = None if control_name_row is None or control_name_row[0] is None else str(control_name_row[0])
+    layout_key = control_layout_key(
+        function=function,
+        flow_demand_controlled=flow_demand_controlled,
+        control_name=control_name,
+    )
+    expected_layout = control_layouts().get(layout_key)
+    if expected_layout is None:
+        return
+
+    expected_variable_counts, expected_condition_counts, expected_logic_pairs = expected_layout
+    variable_counts = grouped_compound_counts(con, "DiscreteControl / variable", control_node_id)
+    condition_counts = grouped_compound_counts(con, "DiscreteControl / condition", control_node_id)
+    found_logic_pairs = logic_pairs(con, control_node_id)
+    if (
+        variable_counts != expected_variable_counts
+        or condition_counts != expected_condition_counts
+        or found_logic_pairs != expected_logic_pairs
+    ):
+        raise ValueError(
+            f"{layout_key} #{target_node_id} met DiscreteControl #{control_node_id} heeft geen control.py-layout: "
+            f"variables={variable_counts} verwacht={expected_variable_counts}; "
+            f"conditions={condition_counts} verwacht={expected_condition_counts}; "
+            f"logic={sorted(found_logic_pairs)} verwacht={sorted(expected_logic_pairs)}; "
+            f"static_functie={function}; control_naam={control_name}"
+        )
+
+
 def capacity_text(rows: pd.DataFrame) -> str:
     parts = []
     for row in rows.itertuples(index=False):
@@ -333,6 +403,9 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
         static_parts.append(static_df)
     static_df = pd.concat(static_parts, ignore_index=True)
     static_df["table_fid"] = static_df["fid"]
+    if LEVEL_UPDATE_PROTECTION_COLUMN not in static_df.columns:
+        static_df[LEVEL_UPDATE_PROTECTION_COLUMN] = False
+    static_df[LEVEL_UPDATE_PROTECTION_COLUMN] = static_df[LEVEL_UPDATE_PROTECTION_COLUMN].map(truthy)
 
     static_df = static_df.merge(
         node_df[
@@ -374,6 +447,7 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
         control_state = "" if pd.isna(row.control_state_lower) else str(row.control_state_lower).lower()
         flow_demand_inlaat = bool(row.flow_demand_inlaat)
         flow_demand_controlled = bool(row.flow_demand_controlled)
+        level_update_protected = bool(getattr(row, LEVEL_UPDATE_PROTECTION_COLUMN))
         min_upstream_update_skipped_node = node_id in SKIP_MIN_UPSTREAM_UPDATE_NODE_IDS
         static_capacity = static_row_has_capacity(row_dict)
         active_aanvoer_capacity = control_state == "aanvoer" and static_capacity
@@ -474,6 +548,8 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
             and not level_update_skipped_authority
             and not flow_demand_controlled
             and not min_upstream_update_skipped_node
+            and not level_update_protected
+            and node_id not in SKIP_LEVEL_UPDATE_NODE_IDS
         )
         rws_inlet_profile_min_upstream = (
             upstream_min_profile + rws_profile_offset if rws_inlet_profile_update_allowed else np.nan
@@ -485,6 +561,19 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
         if min_upstream_update_skipped_node:
             expected_min_upstream = row.min_upstream_level
             min_basis = "huidige_waarde_node_uitgesloten_van_min_upstream_update"
+
+        if flow_demand_controlled:
+            expected_min_upstream = row.min_upstream_level
+            expected_max_downstream = row.max_downstream_level
+            discrete_control_sync_level = np.nan
+            min_basis = "huidige_waarde_flow_demand_beschermd"
+            max_basis = "huidige_waarde_flow_demand_beschermd"
+
+        if level_update_protected or node_id in SKIP_LEVEL_UPDATE_NODE_IDS:
+            expected_min_upstream = row.min_upstream_level
+            expected_max_downstream = row.max_downstream_level
+            min_basis = "huidige_waarde_handmatig_level_beschermd"
+            max_basis = "huidige_waarde_handmatig_level_beschermd"
 
         current_min_upstream = row.min_upstream_level
         if pd.isna(expected_min_upstream) and pd.notna(current_min_upstream):
@@ -550,6 +639,8 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
                 and max_downstream_afwijking
                 and not level_update_skipped_authority
                 and not flow_demand_controlled
+                and not level_update_protected
+                and node_id not in SKIP_LEVEL_UPDATE_NODE_IDS
             ),
             "gecheckte_max_downstream_level_update": expected_max_downstream,
             "max_downstream_level_update_basis": max_basis,
@@ -561,6 +652,7 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
             "rws_to_model": bool(rws_to_model),
             "level_update_skipped_authority": bool(level_update_skipped_authority),
             "min_upstream_update_skipped_node": bool(min_upstream_update_skipped_node),
+            "level_update_protected": bool(level_update_protected),
             "rws_inlet_profile_update_allowed": bool(rws_inlet_profile_update_allowed),
             "rws_inlet_profile_min_upstream": rws_inlet_profile_min_upstream,
             "rws_inlet_profile_min_upstream_afwijking": bool(rws_inlet_profile_min_upstream_afwijking),
@@ -667,6 +759,9 @@ def build_report(database_path: Path, upstream_supply_offset: float, rws_profile
         & report_df["gecheckte_min_upstream_level"].notna()
         & ~report_df["rws_inlet_profile_min_upstream_afwijking"]
         & ~report_df["level_update_skipped_authority"]
+        & ~report_df["flow_demand_controlled"]
+        & ~report_df["level_update_protected"]
+        & ~report_df["node_id"].isin(SKIP_LEVEL_UPDATE_NODE_IDS)
     ].copy()
     if not direct_min_upstream_updates_df.empty:
         direct_min_upstream_updates_df["direct_min_upstream_level_update_allowed"] = True
@@ -777,7 +872,11 @@ def apply_level_updates(
         target_node_id: int,
         listen_node_id: int | None,
         level_value: float,
+        function: str,
+        flow_demand_controlled: bool,
     ) -> int:
+        if flow_demand_controlled:
+            return 0
         if listen_node_id is None:
             return 0
 
@@ -793,21 +892,36 @@ def apply_level_updates(
 
         update_count = 0
         for control_node_id in control_node_ids:
+            control_name_row = con.execute(
+                "SELECT name FROM Node WHERE node_id = ?", (int(control_node_id),)
+            ).fetchone()
+            control_name = None if control_name_row is None or control_name_row[0] is None else str(control_name_row[0])
+            layout_key = control_layout_key(
+                function=function,
+                flow_demand_controlled=flow_demand_controlled,
+                control_name=control_name,
+            )
+            validate_control_layout_for_sync(
+                con,
+                target_node_id=int(target_node_id),
+                control_node_id=int(control_node_id),
+                function=function,
+                flow_demand_controlled=flow_demand_controlled,
+            )
             variable_rows = con.execute(
                 (
-                    'SELECT compound_variable_id, weight FROM "DiscreteControl / variable" '
+                    'SELECT compound_variable_id, variable, weight FROM "DiscreteControl / variable" '
                     "WHERE node_id = ? AND listen_node_id = ?"
                 ),
                 (control_node_id, int(listen_node_id)),
             ).fetchall()
             seen_compound_variable_ids = set()
-            for compound_variable_id, weight in variable_rows:
+            for compound_variable_id, variable_name, weight in variable_rows:
                 compound_variable_id = int(compound_variable_id)
                 if compound_variable_id in seen_compound_variable_ids:
                     continue
                 seen_compound_variable_ids.add(compound_variable_id)
 
-                threshold_value = float(level_value) * float(weight)
                 condition_rows = con.execute(
                     (
                         'SELECT fid, threshold_high, threshold_low FROM "DiscreteControl / condition" '
@@ -818,28 +932,44 @@ def apply_level_updates(
                 if not condition_rows:
                     continue
 
-                base_high = condition_rows[0][1]
-                base_low = condition_rows[0][2]
-                for fid, threshold_high, threshold_low in condition_rows:
-                    high_offset = (
-                        0.0 if base_high is None or threshold_high is None else float(threshold_high) - float(base_high)
+                threshold_values = control_condition_thresholds(
+                    layout_key=layout_key,
+                    compound_variable_id=compound_variable_id,
+                    variable_name=str(variable_name),
+                    level_value=float(level_value),
+                    weight=float(weight),
+                )
+                if len(threshold_values) != len(condition_rows):
+                    raise ValueError(
+                        f"{layout_key} #{target_node_id} met DiscreteControl #{control_node_id} heeft "
+                        f"{len(condition_rows)} conditions voor compound_variable_id {compound_variable_id}, "
+                        f"verwacht {len(threshold_values)}."
                     )
-                    low_offset = (
-                        0.0 if base_low is None or threshold_low is None else float(threshold_low) - float(base_low)
-                    )
+
+                for threshold_value, (fid, _threshold_high, _threshold_low) in zip(
+                    threshold_values, condition_rows, strict=True
+                ):
                     con.execute(
                         (
                             'UPDATE "DiscreteControl / condition" SET threshold_high = ?, threshold_low = ? '
                             "WHERE fid = ?"
                         ),
-                        (threshold_value + high_offset, threshold_value + low_offset, int(fid)),
+                        (float(threshold_value), float(threshold_value), int(fid)),
                     )
                     update_count += 1
 
         return update_count
 
-    def sync_once(target_node_id: int, listen_node_id: int | None, level_value: float) -> None:
+    def sync_once(
+        target_node_id: int,
+        listen_node_id: int | None,
+        level_value: float,
+        function: str,
+        flow_demand_controlled: bool,
+    ) -> None:
         nonlocal condition_update_count
+        if flow_demand_controlled:
+            return
         if listen_node_id is None or pd.isna(level_value):
             return
         key = (int(target_node_id), int(listen_node_id), round(float(level_value), 9))
@@ -850,9 +980,13 @@ def apply_level_updates(
             target_node_id=int(target_node_id),
             listen_node_id=int(listen_node_id),
             level_value=float(level_value),
+            function=function,
+            flow_demand_controlled=flow_demand_controlled,
         )
 
     for row in min_upstream_updates_df.itertuples(index=False):
+        if bool(getattr(row, "flow_demand_controlled", False)):
+            continue
         table = row.static_table
         fid = int(row.table_fid)
         node_id = int(row.node_id)
@@ -863,10 +997,14 @@ def apply_level_updates(
                 target_node_id=node_id,
                 listen_node_id=int(row.upstream_node_id),
                 level_value=float(row.upstream_basin_streefpeil),
+                function=str(row.functie),
+                flow_demand_controlled=bool(row.flow_demand_controlled),
             )
         min_update_count += 1
 
     for row in direct_min_upstream_updates_df.itertuples(index=False):
+        if bool(getattr(row, "flow_demand_controlled", False)):
+            continue
         table = row.static_table
         fid = int(row.table_fid)
         node_id = int(row.node_id)
@@ -883,10 +1021,14 @@ def apply_level_updates(
             target_node_id=node_id,
             listen_node_id=int(row.upstream_node_id) if pd.notna(row.upstream_node_id) else None,
             level_value=control_value,
+            function=str(row.functie),
+            flow_demand_controlled=bool(row.flow_demand_controlled),
         )
         min_update_count += 1
 
     for row in max_downstream_updates_df.itertuples(index=False):
+        if bool(getattr(row, "flow_demand_controlled", False)):
+            continue
         table = row.static_table
         fid = int(row.table_fid)
         node_id = int(row.node_id)
@@ -896,6 +1038,8 @@ def apply_level_updates(
             target_node_id=node_id,
             listen_node_id=int(row.downstream_node_id) if pd.notna(row.downstream_node_id) else None,
             level_value=value,
+            function=str(row.functie),
+            flow_demand_controlled=bool(row.flow_demand_controlled),
         )
         max_update_count += 1
 
@@ -932,7 +1076,7 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Pas alleen min_upstream_level aan voor RWS -> regionaal model inlaten "
             "op basis van min(Basin / profile.level) + rws-profile-offset. "
-            "FlowDemand-gestuurde Outlet/Pump-nodes krijgen specifieke doorlaatregels."
+            "FlowDemand-gestuurde Outlet/Pump-nodes worden overgeslagen."
         ),
     )
     parser.add_argument(
@@ -948,7 +1092,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help=(
             "Pas min_upstream_level aan voor alle afwijkende rijen met een direct upstream Basin. "
-            "Er wordt niet via ManningResistance/Junction doorgelopen."
+            "FlowDemand-gestuurde nodes worden overgeslagen. Er wordt niet via ManningResistance/Junction doorgelopen."
         ),
     )
     return parser.parse_args()

@@ -73,6 +73,8 @@ for %%P in (%PIPELINES%) do (
         set "HUNZE_PIPELINES=!HUNZE_PIPELINES! %%P"
     ) else if /I "%%P"=="dod-vecht-wf-nzv-hunze-rws" (
         set "HUNZE_PIPELINES=!HUNZE_PIPELINES! %%P"
+    ) else if /I "%%P"=="dod-vecht-nzv-hunze-rws" (
+        set "HUNZE_PIPELINES=!HUNZE_PIPELINES! %%P"
     ) else if /I "%%P"=="alle-regionaal-rws" (
         set "HUNZE_PIPELINES=!HUNZE_PIPELINES! %%P"
     ) else if /I "%%P"=="alle-regionaal-zonder-wf-rws" (

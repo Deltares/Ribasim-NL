@@ -9,7 +9,7 @@ from ribasim_nl.control import (
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
-from ribasim_nl.parametrization.manning_level import sync_basin_levels_along_manning_routes
+from ribasim_nl.parametrization.manning_level import sync_full_control_manning_levels
 from shapely.geometry import MultiPolygon
 
 from ribasim_nl import CloudStorage, Model
@@ -257,56 +257,61 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 601, "max_downstream_le
 
 # %%
 # Corrigeer basin-peilen/profielen langs open Manning-routes nadat alle full-control-controllers bekend zijn.
-manning_level_updates = sync_basin_levels_along_manning_routes(
-    model=model,
-    basin_output_gpkg=cloud.joinpath(
-        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_basin_updates.gpkg"
-    ),
-    control_output_gpkg=cloud.joinpath(
-        AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", "manning_level_control_updates.gpkg"
-    ),
-    protected_basin_node_ids=[
-        1376,
-        1380,
-        1387,
-        1396,
-        1401,
-        1406,
-        1414,
-        1422,
-        1426,
-        1436,
-        1452,
-        1462,
-        1474,
-        1492,
-        1501,
-        1516,
-        1562,
-        1572,
-        1576,
-        1583,
-        1586,
-        1588,
-        1654,
-        1660,
-        1668,
-        1673,
-        1698,
-        1737,
-        1757,
-        1760,
-        1766,
-        1778,
-        1836,
-        1847,
-        1886,
-        1975,
-        1986,
-        1987,
-        1988,
-    ],
-)
+PROTECTED_MANNING_BASIN_NODE_IDS = [
+    1376,
+    1380,
+    1387,
+    1396,
+    1401,
+    1406,
+    1414,
+    1422,
+    1426,
+    1436,
+    1452,
+    1462,
+    1474,
+    1492,
+    1501,
+    1516,
+    1562,
+    1572,
+    1576,
+    1583,
+    1586,
+    1588,
+    1654,
+    1660,
+    1668,
+    1673,
+    1698,
+    1737,
+    1757,
+    1760,
+    1766,
+    1778,
+    1836,
+    1847,
+    1886,
+    1975,
+    1986,
+    1987,
+    1988,
+]
+PROTECTED_MANNING_CONTROL_NODE_IDS: set[int] = set()
+
+
+def sync_manning_level_controls(model: Model, *, write_reports: bool = False):
+    return sync_full_control_manning_levels(
+        model=model,
+        output_dir=cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model"),
+        write_reports=write_reports,
+        protected_basin_node_ids=PROTECTED_MANNING_BASIN_NODE_IDS,
+        protected_control_node_ids=PROTECTED_MANNING_CONTROL_NODE_IDS,
+    )
+
+
+manning_level_updates = sync_manning_level_controls(model, write_reports=True)
 
 # %% Junctionfy(!)
 junctionify(model)
@@ -324,6 +329,7 @@ model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time
 
 # hoofd run met verdamping
 update_basin_static(model=model, evaporation_mm_per_day=1)
+sync_manning_level_controls(model)
 model.write(ribasim_toml_dry)
 
 # run hoofdmodel
@@ -334,6 +340,7 @@ if MODEL_EXEC:
 
 # prerun om het model te initialiseren met neerslag
 update_basin_static(model=model, precipitation_mm_per_day=2)
+sync_manning_level_controls(model)
 model.write(ribasim_toml_wet)
 
 # run prerun model
@@ -344,6 +351,7 @@ if MODEL_EXEC:
 
 # hoofd run
 update_basin_static(model=model, precipitation_mm_per_day=1.5)
+sync_manning_level_controls(model)
 model.write(ribasim_toml)
 # run hoofdmodel
 if MODEL_EXEC:

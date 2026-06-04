@@ -101,6 +101,29 @@ PIPELINES: dict[str, PipelineConfig] = {
             ROOT / "notebooks" / "hunze_en_aas" / "04_add_full_control.py",
         ],
     ),
+    "dod-vecht-nzv-hunze-rws": PipelineConfig(
+        key="dod-vecht-nzv-hunze-rws",
+        model_name="DOD-Vechtstromen-NZV-HunzeenAas-RWS",
+        submodel_authorities=[
+            "Rijkswaterstaat",
+            "DrentsOverijsselseDelta",
+            "Vechtstromen",
+            "Noorderzijlvest",
+            "HunzeenAas",
+        ],
+        dynamic_authorities=[
+            "DrentsOverijsselseDelta",
+            "Vechtstromen",
+            "Noorderzijlvest",
+            "HunzeenAas",
+        ],
+        full_control_scripts=[
+            ROOT / "notebooks" / "drents_overijsselse_delta" / "04_add_full_control.py",
+            ROOT / "notebooks" / "vechtstromen" / "04_add_full_control.py",
+            ROOT / "notebooks" / "noorderzijlvest" / "04_add_full_control.py",
+            ROOT / "notebooks" / "hunze_en_aas" / "04_add_full_control.py",
+        ],
+    ),
     "rij-rws": PipelineConfig(
         key="rij-rws",
         model_name="RijnenIJssel-RWS",

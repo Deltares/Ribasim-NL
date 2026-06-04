@@ -14,6 +14,7 @@ from shapely.ops import unary_union
 import ribasim_nl
 from ribasim_nl import Model
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.control_layout import control_condition_thresholds, control_logic
 from ribasim_nl.downstream import downstream_nodes
 
 LOG = logging.getLogger(__name__)
@@ -239,6 +240,14 @@ def discrete_control_tables_single_basin(
     list
         tables for discrete_control.add() function
     """
+    thresholds = control_condition_thresholds(
+        layout_key="inlaat",
+        compound_variable_id=1,
+        variable_name="level",
+        level_value=float(threshold),
+        weight=1.0,
+    )
+    truth_state, logic_control_state = zip(*control_logic("inlaat"), strict=True)
     return [
         discrete_control.Variable(
             compound_variable_id=1,
@@ -249,10 +258,10 @@ def discrete_control_tables_single_basin(
         discrete_control.Condition(
             compound_variable_id=[1],
             condition_id=[1],
-            threshold_high=[threshold],
-            threshold_low=[threshold],
+            threshold_high=thresholds,
+            threshold_low=thresholds,
         ),
-        discrete_control.Logic(truth_state=["F", "T"], control_state=control_state),
+        discrete_control.Logic(truth_state=list(truth_state), control_state=control_state or list(logic_control_state)),
     ]
 
 
@@ -1013,7 +1022,25 @@ def add_controllers_to_flow_control_nodes(
 
         # add control_node
         assert ds_target_level is not None
-        thresholds = [us_target_level, us_target_level + us_threshold_offset, -ds_target_level]
+        thresholds = [
+            *control_condition_thresholds(
+                layout_key="doorlaat",
+                compound_variable_id=1,
+                variable_name="level",
+                level_value=float(us_target_level),
+                weight=1.0,
+                level_difference_threshold=float(us_threshold_offset),
+            ),
+            *control_condition_thresholds(
+                layout_key="doorlaat",
+                compound_variable_id=2,
+                variable_name="level",
+                level_value=float(ds_target_level),
+                weight=-1.0,
+                level_difference_threshold=float(us_threshold_offset),
+            ),
+        ]
+        truth_state, logic_control_state = zip(*control_logic("doorlaat"), strict=True)
         tables = [
             discrete_control.Variable(
                 compound_variable_id=[1, 2],
@@ -1028,8 +1055,8 @@ def add_controllers_to_flow_control_nodes(
                 threshold_low=thresholds,
             ),
             discrete_control.Logic(
-                truth_state=["FFF", "FFT", "TFF", "TFT", "TTF", "TTT"],
-                control_state=["aanvoer", "aanvoer", "afvoer", "aanvoer", "afvoer", "afvoer"],
+                truth_state=list(truth_state),
+                control_state=list(logic_control_state),
             ),
         ]
 
@@ -1157,9 +1184,24 @@ def add_controllers_and_demand_to_flushing_nodes(
         # add discrete control
         demand_threshold_flow_rate = max(float(demand_flow_rate_summer), float(demand_flow_rate_winter))
         thresholds = [
-            us_target_level + us_threshold_offset,
-            -(demand_threshold_flow_rate + demand_threshold_offset),
+            *control_condition_thresholds(
+                layout_key="flow_demand",
+                compound_variable_id=1,
+                variable_name="level",
+                level_value=float(us_target_level) + float(us_threshold_offset),
+                weight=1.0,
+                level_difference_threshold=float(us_threshold_offset),
+            ),
+            *control_condition_thresholds(
+                layout_key="flow_demand",
+                compound_variable_id=2,
+                variable_name="flow_rate",
+                level_value=float(demand_threshold_flow_rate) + float(demand_threshold_offset),
+                weight=-1.0,
+                level_difference_threshold=float(us_threshold_offset),
+            ),
         ]
+        truth_state, logic_control_state = zip(*control_logic("flow_demand"), strict=True)
 
         tables = [
             discrete_control.Variable(
@@ -1175,8 +1217,8 @@ def add_controllers_and_demand_to_flushing_nodes(
                 threshold_low=thresholds,
             ),
             discrete_control.Logic(
-                truth_state=["FF", "FT", "TF", "TT"],
-                control_state=["afvoer", "aanvoer", "afvoer", "afvoer"],
+                truth_state=list(truth_state),
+                control_state=list(logic_control_state),
             ),
         ]
 
