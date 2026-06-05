@@ -313,8 +313,8 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     # > Link-table
     ribasim_model.link.df = pd.concat([ribasim_model.link.df, link], ignore_index=False)  # pyrefly: ignore[bad-assignment]
     # > Basin-tables
-    ribasim_model.basin.static.df = pd.concat([ribasim_model.basin.static.df, basin_static], ignore_index=True)  # pyrefly: ignore[bad-assignment]
-    ribasim_model.basin.state.df = pd.concat([ribasim_model.basin.state.df, basin_state], ignore_index=True)  # pyrefly: ignore[bad-assignment]
+    ribasim_model.basin.static.df = pd.concat([ribasim_model.basin.static.df, basin_static], ignore_index=True)
+    ribasim_model.basin.state.df = pd.concat([ribasim_model.basin.state.df, basin_state], ignore_index=True)
     ribasim_model.basin.profile.df = pd.concat([ribasim_model.basin.profile.df, basin_profile], ignore_index=True)  # pyrefly: ignore[bad-assignment]
     ribasim_model.basin.area.df = pd.concat([ribasim_model.basin.area.df, basin_area], ignore_index=True)  # pyrefly: ignore[bad-assignment]
     # > ManningResistance-tables
