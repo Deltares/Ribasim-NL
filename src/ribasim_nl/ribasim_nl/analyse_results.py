@@ -830,7 +830,7 @@ def BerekenModelEindbeoordeling(
 
     # ── Stap 1: doorloop elke waterschap-sheet ────────────────────────────────
     for sheet in xl.sheet_names:
-        df = xl.parse(sheet)
+        df = pd.read_excel(xl, sheet_name=sheet)
         # Sla sheets over die geen statistieken-structuur hebben (bijv. extra info-sheets)
         if "Periode" not in df.columns:
             continue
