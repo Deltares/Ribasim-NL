@@ -106,6 +106,7 @@ outlet_max_flow_rate_by_node_id = {
     623: 10.3,  # Capaciteit volgens DM rapportage
     1192: 5.2,  # Capaciteit volgens DM rapportage
     560: 1.0,  # Capaciteit volgens DM rapportage
+    677: 0.05,  # Verdeelwerk Koppelleiding
 }
 outlet_max_flow_rate_afvoer_by_node_id = {}
 for max_flow_rates in (
