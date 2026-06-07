@@ -7,6 +7,7 @@ from pathlib import Path
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+from ribasim_nl.control_layout import control_condition_thresholds, control_layout_key, control_layouts
 from ribasim_nl.settings import settings
 
 from ribasim_nl import Model
@@ -53,6 +54,15 @@ EXCLUDED_MAX_DOWNSTREAM_LEVEL_NODE_IDS = LIMBURG_HANDMATIGE_LEVEL_NODE_IDS
 EXCLUDED_MAX_DOWNSTREAM_LEVEL_AUTHORITIES = {"WetterskipFryslan"}
 EXCLUDED_MIN_UPSTREAM_LEVEL_AUTHORITIES = {"WetterskipFryslan"}
 RWS_UPSTREAM_MIN_PROFILE_LEVEL_OFFSET = 0.1
+DEFAULT_UPSTREAM_SUPPLY_OFFSET = -0.04
+UPSTREAM_SUPPLY_OFFSET = DEFAULT_UPSTREAM_SUPPLY_OFFSET
+RWS_UPSTREAM_STATE_OFFSET: float | None = None
+MAX_RWS_UPSTREAM_STATE_LEVEL = 100.0
+INCLUDE_EXCLUDED = False
+APPLY_LEVEL_UPDATES = False
+UPDATE_CONTROL_NAMES = False
+SET_SELECTED_AUTHORITIES_MANNING_N = False
+SELECTED_AUTHORITIES_MANNING_N = 0.03
 
 
 def reset_index_to_column(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
@@ -292,6 +302,59 @@ def add_function_label(candidate_df: pd.DataFrame, all_static_df: pd.DataFrame) 
     return candidate_df
 
 
+def flow_demand_controlled_node_ids(link_df: pd.DataFrame, node_type_by_id: dict[int, str]) -> set[int]:
+    """Return Outlet/Pump node_ids controlled by a FlowDemand node."""
+    if link_df.empty:
+        return set()
+
+    flow_demand_links = link_df[
+        link_df["from_node_id"].map(node_type_by_id).eq("FlowDemand")
+        & link_df["to_node_id"].map(node_type_by_id).isin(CONTROL_NODE_TYPES)
+    ]
+    return set(flow_demand_links["to_node_id"].astype(int))
+
+
+def model_flow_demand_controlled_node_ids(model: Model) -> set[int]:
+    node_type_by_id = reset_index_to_column(model.node.df.copy(), "node_id").set_index("node_id")["node_type"].to_dict()
+    link_df = reset_index_to_column(model.link.df.copy(), "link_id")[["from_node_id", "to_node_id", "link_type"]]
+    return flow_demand_controlled_node_ids(link_df=link_df, node_type_by_id=node_type_by_id)
+
+
+def dataframe_snapshot(df: pd.DataFrame | None, node_ids: set[int] | None = None) -> pd.DataFrame:
+    if df is None:
+        return pd.DataFrame()
+    snapshot = df.copy()
+    if node_ids is not None:
+        snapshot = snapshot[snapshot["node_id"].astype(int).isin(node_ids)].copy() if node_ids else snapshot.iloc[0:0]
+    return snapshot.sort_index(axis=0).sort_index(axis=1).reset_index(drop=True)
+
+
+def protected_apply_snapshots(model: Model) -> dict[str, pd.DataFrame]:
+    flow_demand_node_ids = model_flow_demand_controlled_node_ids(model)
+    return {
+        "DiscreteControl / variable": dataframe_snapshot(model.discrete_control.variable.df),
+        "DiscreteControl / logic": dataframe_snapshot(model.discrete_control.logic.df),
+        "Outlet / static flow_demand": dataframe_snapshot(model.outlet.static.df, flow_demand_node_ids),
+        "Pump / static flow_demand": dataframe_snapshot(model.pump.static.df, flow_demand_node_ids),
+    }
+
+
+def assert_snapshot_unchanged(label: str, before: pd.DataFrame, after: pd.DataFrame) -> None:
+    try:
+        pd.testing.assert_frame_equal(before, after, check_dtype=False, check_like=False)
+    except AssertionError as error:
+        raise RuntimeError(f"{label} is onverwacht aangepast door check_coupling_levels.") from error
+
+
+def assert_protected_apply_snapshots_unchanged(
+    model: Model,
+    snapshots: dict[str, pd.DataFrame],
+) -> None:
+    current = protected_apply_snapshots(model)
+    for label, before in snapshots.items():
+        assert_snapshot_unchanged(label, before, current[label])
+
+
 def build_check_dataframe(
     model: Model,
     authorities: tuple[str, ...] | None,
@@ -332,6 +395,7 @@ def build_check_dataframe(
     link_df = reset_index_to_column(model.link.df.copy(), "link_id")[
         ["link_id", "from_node_id", "to_node_id", "link_type"]
     ]
+    flow_demand_node_ids = flow_demand_controlled_node_ids(link_df=link_df, node_type_by_id=node_type_by_id)
     flow_link_df = link_df[link_df["link_type"].eq("flow")].copy()
     outgoing_flow_links = (
         flow_link_df.groupby("from_node_id")[["link_id", "to_node_id"]]
@@ -352,6 +416,7 @@ def build_check_dataframe(
     )
     candidate_df = select_active_control_rows(static_df)
     candidate_df = add_function_label(candidate_df, static_df)
+    candidate_df["flow_demand_controlled"] = candidate_df["node_id"].astype(int).isin(flow_demand_node_ids)
 
     downstream_results = [
         downstream_node_info(
@@ -375,6 +440,11 @@ def build_check_dataframe(
     candidate_df["downstream_node_type"] = candidate_df["downstream_basin_id"].map(node_type_by_id)
     candidate_df["downstream_basin_meta_waterbeheerder"] = candidate_df["downstream_basin_id"].map(
         basin_authority_by_id
+    )
+    candidate_df["max_downstream_is_coupling_link"] = (
+        candidate_df["meta_waterbeheerder"].notna()
+        & candidate_df["downstream_basin_meta_waterbeheerder"].notna()
+        & candidate_df["meta_waterbeheerder"].ne(candidate_df["downstream_basin_meta_waterbeheerder"])
     )
     candidate_df["downstream_basin_streefpeil"] = normalize_numeric(
         candidate_df["downstream_basin_id"].map(checked_level_by_basin_id)
@@ -419,6 +489,16 @@ def build_check_dataframe(
     candidate_df["upstream_check_error"] = [error for _, _, error in upstream_results]
     candidate_df["upstream_node_type"] = candidate_df["upstream_basin_id"].map(node_type_by_id)
     candidate_df["upstream_basin_meta_waterbeheerder"] = candidate_df["upstream_basin_id"].map(basin_authority_by_id)
+    candidate_df["rws_to_model_link"] = (
+        candidate_df["upstream_basin_meta_waterbeheerder"].eq("Rijkswaterstaat")
+        & candidate_df["downstream_basin_meta_waterbeheerder"].notna()
+        & candidate_df["downstream_basin_meta_waterbeheerder"].ne("Rijkswaterstaat")
+    )
+    candidate_df["min_upstream_is_coupling_link"] = candidate_df["rws_to_model_link"] | (
+        candidate_df["meta_waterbeheerder"].notna()
+        & candidate_df["upstream_basin_meta_waterbeheerder"].notna()
+        & candidate_df["meta_waterbeheerder"].ne(candidate_df["upstream_basin_meta_waterbeheerder"])
+    )
     candidate_df["upstream_basin_streefpeil"] = normalize_numeric(
         candidate_df["upstream_basin_id"].map(checked_level_by_basin_id)
     )
@@ -472,6 +552,15 @@ def build_check_dataframe(
         )
         candidate_df.loc[rws_state_mask, "min_upstream_level_check_basis"] = "rijkswaterstaat_state_level"
     candidate_df["huidig_min_upstream_level"] = normalize_numeric(candidate_df["min_upstream_level"])
+    flow_demand_mask = candidate_df["flow_demand_controlled"]
+    candidate_df.loc[flow_demand_mask, "gecheckte_max_downstream_level"] = candidate_df.loc[
+        flow_demand_mask, "huidig_max_downstream_level"
+    ]
+    candidate_df.loc[flow_demand_mask, "gecheckte_min_upstream_level"] = candidate_df.loc[
+        flow_demand_mask, "huidig_min_upstream_level"
+    ]
+    candidate_df.loc[flow_demand_mask, "max_downstream_level_check_basis"] = "huidige_waarde_flow_demand_beschermd"
+    candidate_df.loc[flow_demand_mask, "min_upstream_level_check_basis"] = "huidige_waarde_flow_demand_beschermd"
     keep_current_min_upstream_mask = (
         candidate_df["gecheckte_min_upstream_level"].isna()
         & ~candidate_df["gecheckte_min_upstream_level_is_null"].fillna(False)
@@ -499,8 +588,10 @@ def build_check_dataframe(
     checked_df["max_downstream_level_afwijking"] = (
         checked_df["control_state"].eq("aanvoer")
         & checked_df["functie"].isin(["inlaat", "doorlaat"])
+        & checked_df["max_downstream_is_coupling_link"]
         & ~checked_df["meta_waterbeheerder"].isin(EXCLUDED_MAX_DOWNSTREAM_LEVEL_AUTHORITIES)
         & ~checked_df["node_id"].isin(EXCLUDED_MAX_DOWNSTREAM_LEVEL_NODE_IDS)
+        & ~checked_df["flow_demand_controlled"]
         & expected_ds.notna()
         & ~np.isclose(
             current_ds.to_numpy(dtype=float),
@@ -512,6 +603,7 @@ def build_check_dataframe(
     )
     min_upstream_numeric_afwijking = (
         checked_df["upstream_node_type"].eq("Basin")
+        & checked_df["min_upstream_is_coupling_link"]
         & ~explicit_null_us
         & expected_us.notna()
         & ~np.isclose(
@@ -522,7 +614,12 @@ def build_check_dataframe(
             equal_nan=False,
         )
     )
-    min_upstream_null_afwijking = checked_df["upstream_node_type"].eq("Basin") & explicit_null_us & current_us.notna()
+    min_upstream_null_afwijking = (
+        checked_df["upstream_node_type"].eq("Basin")
+        & checked_df["min_upstream_is_coupling_link"]
+        & explicit_null_us
+        & current_us.notna()
+    )
     connected_to_rws_mask = checked_df["upstream_basin_meta_waterbeheerder"].eq("Rijkswaterstaat") | checked_df[
         "downstream_basin_meta_waterbeheerder"
     ].eq("Rijkswaterstaat")
@@ -538,6 +635,7 @@ def build_check_dataframe(
         & ~checked_df["meta_waterbeheerder"].isin(EXCLUDED_MIN_UPSTREAM_LEVEL_AUTHORITIES)
         & ~checked_df["node_id"].isin(EXCLUDED_MIN_UPSTREAM_LEVEL_NODE_IDS)
         & ~afvoer_hoger_eigen_basin_mask
+        & ~checked_df["flow_demand_controlled"]
     )
     deviations_df = checked_df.loc[
         checked_df["max_downstream_level_afwijking"] | checked_df["min_upstream_level_afwijking"]
@@ -572,6 +670,83 @@ def control_node_ids_by_target_node_id(model: Model) -> dict[int, list[int]]:
         .apply(lambda values: [int(value) for value in values])
         .to_dict()
     )
+
+
+def grouped_compound_counts(df: pd.DataFrame | None, control_node_id: int) -> dict[int, int]:
+    if df is None or df.empty:
+        return {}
+    rows = df[df["node_id"].eq(int(control_node_id))]
+    if rows.empty:
+        return {}
+    return {
+        int(compound_variable_id): int(count)
+        for compound_variable_id, count in rows.groupby("compound_variable_id").size().items()
+        if pd.notna(compound_variable_id)
+    }
+
+
+def control_logic_pairs(model: Model, control_node_id: int) -> set[tuple[str, str]]:
+    logic_df = model.discrete_control.logic.df
+    if logic_df is None or logic_df.empty:
+        return set()
+    rows = logic_df[logic_df["node_id"].eq(int(control_node_id))]
+    return {(str(row.truth_state), str(row.control_state).lower()) for row in rows.itertuples(index=False)}
+
+
+def control_node_name(model: Model, control_node_id: int) -> str | None:
+    if control_node_id not in model.node.df.index:
+        return None
+    name = model.node.df.at[int(control_node_id), "name"]
+    return None if pd.isna(name) else str(name)
+
+
+def explicit_control_layout_from_name(control_name: str | None) -> str | None:
+    if control_name is None or ":" not in control_name:
+        return None
+    layout_key = control_name.split(":", 1)[0].strip().lower()
+    return layout_key if layout_key in control_layouts() else None
+
+
+def has_intentional_named_layout_mismatch(function: str, control_name: str | None) -> bool:
+    layout_key = explicit_control_layout_from_name(control_name)
+    if layout_key is None:
+        return False
+    return layout_key != str(function).lower()
+
+
+def validate_control_layout_for_sync(
+    model: Model,
+    *,
+    target_node_id: int,
+    control_node_id: int,
+    function: str,
+    flow_demand_controlled: bool = False,
+) -> str:
+    layout_key = control_layout_key(
+        function=function,
+        flow_demand_controlled=flow_demand_controlled,
+        control_name=control_node_name(model, int(control_node_id)),
+    )
+    expected_layout = control_layouts().get(layout_key)
+    if expected_layout is None:
+        return layout_key
+
+    expected_variable_counts, expected_condition_counts, expected_logic_pairs = expected_layout
+    variable_counts = grouped_compound_counts(model.discrete_control.variable.df, int(control_node_id))
+    condition_counts = grouped_compound_counts(model.discrete_control.condition.df, int(control_node_id))
+    found_logic_pairs = control_logic_pairs(model, int(control_node_id))
+    if (
+        variable_counts != expected_variable_counts
+        or condition_counts != expected_condition_counts
+        or found_logic_pairs != expected_logic_pairs
+    ):
+        raise ValueError(
+            f"{layout_key} #{target_node_id} met DiscreteControl #{control_node_id} heeft geen control.py-layout: "
+            f"variables={variable_counts} verwacht={expected_variable_counts}; "
+            f"conditions={condition_counts} verwacht={expected_condition_counts}; "
+            f"logic={sorted(found_logic_pairs)} verwacht={sorted(expected_logic_pairs)}."
+        )
+    return layout_key
 
 
 def control_name_prefix(current_name: object, fallback: object) -> str:
@@ -625,10 +800,16 @@ def update_control_node_names(model: Model, deviations_df: pd.DataFrame) -> int:
     update_count = 0
     node_df = model.node.df
     for _, row in deviations_df.drop_duplicates(subset=["node_id"]).iterrows():
+        if bool(row.get("flow_demand_controlled", False)):
+            continue
         for control_node_id in control_ids_by_target.get(int(row["node_id"]), []):
             if control_node_id not in node_df.index:
                 continue
             current_name = node_df.at[control_node_id, "name"]
+            if has_intentional_named_layout_mismatch(
+                str(row.get("functie")), None if pd.isna(current_name) else str(current_name)
+            ):
+                continue
             new_name = expected_control_name(row=row, current_name=current_name)
             if new_name is not None and current_name != new_name:
                 node_df.at[control_node_id, "name"] = new_name
@@ -643,6 +824,7 @@ def update_discrete_control_conditions(
     target_node_id: int,
     listen_node_id: int | None,
     level_value: float,
+    function: str,
 ) -> int:
     if listen_node_id is None:
         return 0
@@ -658,6 +840,15 @@ def update_discrete_control_conditions(
 
     update_count = 0
     for control_node_id in control_node_ids:
+        current_name = control_node_name(model, int(control_node_id))
+        if has_intentional_named_layout_mismatch(function, current_name):
+            continue
+        layout_key = validate_control_layout_for_sync(
+            model=model,
+            target_node_id=int(target_node_id),
+            control_node_id=int(control_node_id),
+            function=function,
+        )
         variable_rows = variable_df[
             variable_df["node_id"].eq(control_node_id) & variable_df["listen_node_id"].eq(int(listen_node_id))
         ].copy()
@@ -668,7 +859,6 @@ def update_discrete_control_conditions(
 
         for variable_row in variable_rows.drop_duplicates(subset=["compound_variable_id"]).itertuples(index=False):
             compound_variable_id = int(variable_row.compound_variable_id)
-            threshold_value = float(level_value) * float(variable_row.weight)
             condition_mask = condition_df["node_id"].eq(control_node_id) & condition_df["compound_variable_id"].eq(
                 compound_variable_id
             )
@@ -679,21 +869,26 @@ def update_discrete_control_conditions(
             if "condition_id" in condition_rows.columns:
                 condition_rows = condition_rows.sort_values("condition_id")
 
-            base_high = condition_rows.iloc[0]["threshold_high"]
-            base_low = condition_rows.iloc[0]["threshold_low"]
-            for condition_index, condition_row in condition_rows.iterrows():
-                high_offset = (
-                    0.0
-                    if pd.isna(base_high) or pd.isna(condition_row["threshold_high"])
-                    else float(condition_row["threshold_high"]) - float(base_high)
+            threshold_values = control_condition_thresholds(
+                layout_key=layout_key,
+                compound_variable_id=compound_variable_id,
+                variable_name=str(variable_row.variable),
+                level_value=float(level_value),
+                weight=float(variable_row.weight),
+                level_difference_threshold=float(getattr(model.solver, "level_difference_threshold", 0.02)),
+            )
+            if len(threshold_values) != len(condition_rows):
+                raise ValueError(
+                    f"{layout_key} #{target_node_id} met DiscreteControl #{control_node_id} heeft "
+                    f"{len(condition_rows)} conditions voor compound_variable_id {compound_variable_id}, "
+                    f"verwacht {len(threshold_values)}."
                 )
-                low_offset = (
-                    0.0
-                    if pd.isna(base_low) or pd.isna(condition_row["threshold_low"])
-                    else float(condition_row["threshold_low"]) - float(base_low)
-                )
-                condition_df.loc[condition_index, "threshold_high"] = threshold_value + high_offset
-                condition_df.loc[condition_index, "threshold_low"] = threshold_value + low_offset
+
+            for threshold_value, (condition_index, _condition_row) in zip(
+                threshold_values, condition_rows.iterrows(), strict=True
+            ):
+                condition_df.loc[condition_index, "threshold_high"] = float(threshold_value)
+                condition_df.loc[condition_index, "threshold_low"] = float(threshold_value)
                 update_count += 1
 
     return update_count
@@ -719,6 +914,7 @@ def apply_level_updates(model: Model, deviations_df: pd.DataFrame) -> tuple[int,
     min_update_count_rws_inlet = 0
     control_name_update_count = 0
     control_condition_update_count = 0
+    snapshots = protected_apply_snapshots(model)
 
     static_df_by_node_type = {
         "Outlet": model.outlet.static.df,
@@ -727,6 +923,8 @@ def apply_level_updates(model: Model, deviations_df: pd.DataFrame) -> tuple[int,
     control_ids_by_target = control_node_ids_by_target_node_id(model)
 
     for row in deviations_df.itertuples():
+        if bool(getattr(row, "flow_demand_controlled", False)):
+            continue
         static_df = static_df_by_node_type[row.node_type]
         if static_df is None or row.table_row_id not in static_df.index:
             raise KeyError(f"Kan rij {row.table_row_id} niet vinden in {row.static_table} voor node_id={row.node_id}")
@@ -740,6 +938,7 @@ def apply_level_updates(model: Model, deviations_df: pd.DataFrame) -> tuple[int,
                 target_node_id=int(row.node_id),
                 listen_node_id=int(row.downstream_basin_id) if pd.notna(row.downstream_basin_id) else None,
                 level_value=value,
+                function=str(row.functie),
             )
             max_update_count += 1
         if bool(row.min_upstream_level_afwijking):
@@ -754,6 +953,7 @@ def apply_level_updates(model: Model, deviations_df: pd.DataFrame) -> tuple[int,
                     target_node_id=int(row.node_id),
                     listen_node_id=int(row.upstream_basin_id) if pd.notna(row.upstream_basin_id) else None,
                     level_value=control_threshold_for_min_upstream(row, value),
+                    function=str(row.functie),
                 )
             else:
                 continue
@@ -762,6 +962,7 @@ def apply_level_updates(model: Model, deviations_df: pd.DataFrame) -> tuple[int,
                 min_update_count_rws_inlet += 1
 
     control_name_update_count = update_control_node_names(model=model, deviations_df=deviations_df)
+    assert_protected_apply_snapshots_unchanged(model, snapshots)
 
     return (
         max_update_count,
@@ -799,6 +1000,7 @@ def write_deviation_locations(model: Model, deviations_df: pd.DataFrame, output_
         "downstream_link_id",
         "downstream_basin_id",
         "downstream_basin_meta_waterbeheerder",
+        "max_downstream_is_coupling_link",
         "max_downstream_level_basin_id",
         "max_downstream_level_basin_meta_waterbeheerder",
         "max_downstream_level_manning_link_id",
@@ -811,6 +1013,8 @@ def write_deviation_locations(model: Model, deviations_df: pd.DataFrame, output_
         "upstream_link_id",
         "upstream_basin_id",
         "upstream_basin_meta_waterbeheerder",
+        "min_upstream_is_coupling_link",
+        "rws_to_model_link",
         "upstream_basin_streefpeil",
         "upstream_basin_state_level",
         "upstream_basin_min_profile_level",
@@ -859,6 +1063,7 @@ def print_deviations(deviations_df: pd.DataFrame) -> None:
         "downstream_link_id",
         "downstream_basin_id",
         "downstream_basin_meta_waterbeheerder",
+        "max_downstream_is_coupling_link",
         "max_downstream_level_basin_id",
         "max_downstream_level_basin_meta_waterbeheerder",
         "max_downstream_level_manning_link_id",
@@ -870,6 +1075,8 @@ def print_deviations(deviations_df: pd.DataFrame) -> None:
         "max_downstream_level_check_basis",
         "upstream_basin_id",
         "upstream_basin_meta_waterbeheerder",
+        "min_upstream_is_coupling_link",
+        "rws_to_model_link",
         "upstream_basin_streefpeil",
         "upstream_basin_state_level",
         "upstream_basin_min_profile_level",
@@ -921,59 +1128,6 @@ def main() -> None:
     )
     parser.add_argument("--tolerance", type=float, default=1e-6, help="Numerieke tolerantie voor de vergelijking.")
     parser.add_argument(
-        "--upstream-supply-offset",
-        type=float,
-        default=-0.04,
-        help="Offset voor min_upstream_level bij aanvoer/inlaat ten opzichte van upstream meta_streefpeil.",
-    )
-    parser.add_argument(
-        "--rws-upstream-state-offset",
-        type=float,
-        default=None,
-        help=(
-            "Optionele offset voor min_upstream_level als upstream basin Rijkswaterstaat is, "
-            "ten opzichte van Basin / state.level. Laat weg om Basin / profile.level.min() + 0.1 te gebruiken."
-        ),
-    )
-    parser.add_argument(
-        "--max-rws-upstream-state-level",
-        type=float,
-        default=100.0,
-        help="Gebruik Rijkswaterstaat Basin / state.level alleen tot en met deze waarde.",
-    )
-    parser.add_argument(
-        "--include-excluded",
-        action="store_true",
-        help="Neem ook bewust uitgezonderde nodes mee.",
-    )
-    parser.add_argument(
-        "--apply",
-        action="store_true",
-        help="Pas de gevonden afwijkingen toe in de juiste lagen van het Ribasim-model.",
-    )
-    parser.add_argument(
-        "--update-control-names",
-        action="store_true",
-        help=(
-            "Werk ook bestaande DiscreteControl-naamteksten bij op basis van de gecheckte levels. "
-            "Level-correcties werken hun gekoppelde control-naam al automatisch bij."
-        ),
-    )
-    parser.add_argument(
-        "--set-selected-authorities-manning-n",
-        action="store_true",
-        help="Zet ManningResistance / static.manning_n voor ManningResistance-nodes van SELECTED_AUTHORITIES.",
-    )
-    parser.add_argument(
-        "--manning-n",
-        type=float,
-        default=None,
-        help=(
-            "Optionele waarde voor ManningResistance / static.manning_n voor nodes van SELECTED_AUTHORITIES. "
-            "Als opgegeven, wordt de Manning-update automatisch uitgevoerd."
-        ),
-    )
-    parser.add_argument(
         "--output-gpkg",
         type=Path,
         default=None,
@@ -1004,10 +1158,10 @@ def main() -> None:
         model=model,
         authorities=authorities,
         tolerance=args.tolerance,
-        upstream_supply_offset=args.upstream_supply_offset,
-        rws_upstream_state_offset=args.rws_upstream_state_offset,
-        max_rws_upstream_state_level=args.max_rws_upstream_state_level,
-        include_excluded=args.include_excluded,
+        upstream_supply_offset=UPSTREAM_SUPPLY_OFFSET,
+        rws_upstream_state_offset=RWS_UPSTREAM_STATE_OFFSET,
+        max_rws_upstream_state_level=MAX_RWS_UPSTREAM_STATE_LEVEL,
+        include_excluded=INCLUDE_EXCLUDED,
     )
     max_update_count = 0
     min_update_count = 0
@@ -1015,10 +1169,9 @@ def main() -> None:
     control_name_update_count = 0
     control_condition_update_count = 0
     manning_update_count = 0
-    should_set_manning_n = args.set_selected_authorities_manning_n or args.manning_n is not None
-    manning_n = 0.03 if args.manning_n is None else args.manning_n
+    should_set_manning_n = SET_SELECTED_AUTHORITIES_MANNING_N
 
-    if args.apply and not deviations_df.empty:
+    if APPLY_LEVEL_UPDATES and not deviations_df.empty:
         (
             max_update_count,
             min_update_count,
@@ -1026,13 +1179,13 @@ def main() -> None:
             control_name_update_count,
             control_condition_update_count,
         ) = apply_level_updates(model, deviations_df)
-    if args.apply and args.update_control_names:
+    if APPLY_LEVEL_UPDATES and UPDATE_CONTROL_NAMES:
         control_name_update_count += update_control_node_names(model=model, deviations_df=checked_df)
 
     if should_set_manning_n:
-        manning_update_count = set_selected_authorities_manning_n(model, manning_n)
+        manning_update_count = set_selected_authorities_manning_n(model, SELECTED_AUTHORITIES_MANNING_N)
 
-    write_model = (args.apply and not deviations_df.empty) or control_name_update_count or should_set_manning_n
+    write_model = (APPLY_LEVEL_UPDATES and not deviations_df.empty) or control_name_update_count or should_set_manning_n
     database_backup_path = None
     if write_model:
         database_backup_path = backup_database_gpkg(database_path)
@@ -1052,7 +1205,7 @@ def main() -> None:
     output_gpkg = write_deviation_locations(model, deviations_df, output_gpkg)
     print(f"Punten-GPKG: {output_gpkg}")
 
-    if args.apply:
+    if APPLY_LEVEL_UPDATES:
         print(f"Aangepaste max_downstream_level-waarden: {max_update_count}")
         print(f"Aangepaste min_upstream_level-waarden: {min_update_count}")
         print(f"Aangepaste min_upstream_level-waarden inlaten vanaf RWS: {min_update_count_rws_inlet}")
@@ -1062,7 +1215,7 @@ def main() -> None:
         print(f"Backup database voor schrijven: {database_backup_path}")
     if should_set_manning_n:
         print(f"Aangepaste ManningResistance manning_n-waarden: {manning_update_count}")
-        print(f"ManningResistance manning_n gezet op: {manning_n}")
+        print(f"ManningResistance manning_n gezet op: {SELECTED_AUTHORITIES_MANNING_N}")
 
     if args.show_skipped and not skipped_df.empty:
         columns = [

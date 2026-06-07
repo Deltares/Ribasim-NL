@@ -2,33 +2,14 @@
 import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl.control import (
-    add_controllers_to_supply_area as _add_controllers_to_supply_area,
+    add_controllers_to_supply_area,
+    add_controllers_to_uncontrolled_connector_nodes,
+    mark_level_update_protected,
 )
-from ribasim_nl.control import (
-    add_controllers_to_uncontrolled_connector_nodes as _add_controllers_to_uncontrolled_connector_nodes,
-)
-from ribasim_nl.control import mark_level_update_protected
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
-from ribasim_nl.parametrization.manning_level import sync_full_control_manning_levels
 
 from ribasim_nl import CloudStorage, Model
-
-
-def _supply_flow_rate_by_node_id():
-    return globals().get("outlet_max_flow_rate_by_node_id", {}) | globals().get("pump_max_flow_rate_by_node_id", {})
-
-
-def add_controllers_to_supply_area(*args, **kwargs):
-    kwargs.setdefault("supply_flow_rate", _supply_flow_rate_by_node_id())
-    kwargs.setdefault("drain_flow_rate", _supply_flow_rate_by_node_id())
-    return _add_controllers_to_supply_area(*args, **kwargs)
-
-
-def add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs):
-    kwargs.setdefault("supply_flow_rate", _supply_flow_rate_by_node_id())
-    kwargs.setdefault("drain_flow_rate", _supply_flow_rate_by_node_id())
-    return _add_controllers_to_uncontrolled_connector_nodes(*args, **kwargs)
 
 
 def set_flow_rate(static_df, max_flow_rate_by_node_id: dict[int, float], flow_rates: list[str] | None = None) -> None:
@@ -62,6 +43,29 @@ outlet_max_flow_rate_by_node_id = {
     120: 1.3,  # Lochem
     90: 0.6,  # Herkel
 }
+outlet_max_flow_rate_from_results = {
+    65: 56,  # Stokkersbrug
+    68: 29,  # Buurserbeek Gaathuizenweg 52
+    169: 96,  # Het Klooster
+    322: 29,  # ST80160035
+    329: 26,  # Kuipersbrug
+    466: 17,  # DR09180001
+    471: 2,  # DR80740011
+    472: 2,  # AF80740003
+    493: 2,  # DR84620035
+    516: 26,  # St96110095
+    575: 26,  # ST80160105
+    584: 29,  # ST80180034
+    587: 54,  # Voorst
+    591: 20,  # ST96230089
+    1194: 27,  # ST96210074
+}
+outlet_max_flow_rate_coupled_by_node_id = {
+    390: 2,  # gekoppeld max=0.96, huidige max=0.00, link=700040
+    409: 11,  # gekoppeld max=6.45, huidige max=0.00, link=700489
+    428: 3,  # gekoppeld max=1.48, huidige max=0.00, link=700214
+    1190: 12,  # gekoppeld max=7.13, huidige max=0.00, link=701396
+}
 pump_max_flow_rate_by_node_id = {
     654: 1.4,  # Schipbeek
 }
@@ -83,13 +87,6 @@ cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
 # Read data
 model = Model.read(ribasim_toml)
 
-# alle uitlaten en inlaten op 30m3/s, geen cap verdeling. Dit wordt de max flow in model.
-# En als flow_rate niet bekend is de flow
-model.outlet.static.df.max_flow_rate = 30.0
-model.outlet.static.df.flow_rate = 30.0
-model.pump.static.df.max_flow_rate = 30.0
-
-
 outlet_max_flow_rate_by_node_id = {
     654: 1.4,  # Schipbeek
     120: 1.3,  # Lochem
@@ -109,6 +106,25 @@ outlet_max_flow_rate_by_node_id = {
     623: 10.3,  # Capaciteit volgens DM rapportage
     1192: 5.2,  # Capaciteit volgens DM rapportage
     560: 1.0,  # Capaciteit volgens DM rapportage
+}
+outlet_max_flow_rate_afvoer_by_node_id = {}
+for max_flow_rates in (
+    outlet_max_flow_rate_from_results,
+    outlet_max_flow_rate_coupled_by_node_id,
+):
+    for node_id, max_flow_rate in max_flow_rates.items():
+        outlet_max_flow_rate_afvoer_by_node_id[node_id] = max(
+            outlet_max_flow_rate_afvoer_by_node_id.get(node_id, 0.0),
+            max_flow_rate,
+        )
+outlet_max_flow_rate_afvoer_by_node_id.update(outlet_max_flow_rate_by_node_id)
+outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.node_id.astype(int), 10.0)
+
+# Handmatige inlaatcapaciteiten gelden ook in aanvoer; niet terugvallen op de default van 10 m3/s.
+outlet_max_flow_rate_aanvoer_by_node_id.update(outlet_max_flow_rate_by_node_id)
+max_flow_rate_aanvoer_by_node_id = {
+    **outlet_max_flow_rate_aanvoer_by_node_id,
+    **pump_max_flow_rate_by_node_id,
 }
 
 # capaciteit inlaten
@@ -143,6 +159,10 @@ node_functions_df = add_controllers_to_supply_area(
     supply_nodes=supply_nodes,
     is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
     control_node_types=CONTROL_NODE_TYPES,
+    flow_rate_aanvoer=20.0,
+    max_flow_rate_aanvoer=max_flow_rate_aanvoer_by_node_id,
+    flow_rate_afvoer=100.0,
+    max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
 )
 
 # %%
@@ -165,6 +185,10 @@ node_functions_df = add_controllers_to_supply_area(
     flow_control_nodes=flow_control_nodes,
     is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
     control_node_types=CONTROL_NODE_TYPES,
+    flow_rate_aanvoer=20.0,
+    max_flow_rate_aanvoer=max_flow_rate_aanvoer_by_node_id,
+    flow_rate_afvoer=100.0,
+    max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
 )
 
 # %%
@@ -187,6 +211,10 @@ node_functions_df = add_controllers_to_supply_area(
     flow_control_nodes=flow_control_nodes,
     is_supply_node_column=IS_SUPPLY_NODE_COLUMN,
     control_node_types=CONTROL_NODE_TYPES,
+    flow_rate_aanvoer=20.0,
+    max_flow_rate_aanvoer=max_flow_rate_aanvoer_by_node_id,
+    flow_rate_afvoer=100.0,
+    max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
 )
 
 # %%
@@ -199,25 +227,11 @@ add_controllers_to_uncontrolled_connector_nodes(
     supply_nodes=supply_nodes,
     flushing_nodes=flushing_nodes,
     flow_control_nodes=flow_control_nodes,
+    flow_rate_aanvoer=20.0,
+    max_flow_rate_aanvoer=max_flow_rate_aanvoer_by_node_id,
+    flow_rate_afvoer=100.0,
+    max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
 )
-
-# %%
-# Corrigeer basin-peilen/profielen langs open Manning-routes nadat alle full-control-controllers bekend zijn.
-PROTECTED_MANNING_BASIN_NODE_IDS = [777, 793, 857, 1068, 1085]
-PROTECTED_MANNING_CONTROL_NODE_IDS: set[int] = set()
-
-
-def sync_manning_level_controls(model: Model, *, write_reports: bool = False):
-    return sync_full_control_manning_levels(
-        model=model,
-        output_dir=cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model"),
-        write_reports=write_reports,
-        protected_basin_node_ids=PROTECTED_MANNING_BASIN_NODE_IDS,
-        protected_control_node_ids=PROTECTED_MANNING_CONTROL_NODE_IDS,
-    )
-
-
-manning_level_updates = sync_manning_level_controls(model, write_reports=True)
 
 # %%
 
@@ -250,6 +264,59 @@ set_flow_rate(model.outlet.static.df, max_flow_rate_by_node_id=min_flow_rates, f
 # %% Junctionfy!
 junctionify(model)
 
+aanvoer_only_node_ids = set(supply_nodes) - set(drain_nodes) - set(flow_control_nodes)
+
+# Aanvoer-cap: doorlaten/inlaten mogen in aanvoer niet de hoge afvoercapaciteit gebruiken.
+aanvoer_outlet_mask = model.outlet.static.df.control_state == "aanvoer"
+model.outlet.static.df.loc[aanvoer_outlet_mask, ["flow_rate", "max_flow_rate"]] = model.outlet.static.df.loc[
+    aanvoer_outlet_mask, ["flow_rate", "max_flow_rate"]
+].clip(upper=10.0)
+zero_aanvoer_node_ids = {
+    node_id for node_id, max_flow_rate in outlet_max_flow_rate_aanvoer_by_node_id.items() if max_flow_rate == 0
+}
+zero_aanvoer_mask = aanvoer_outlet_mask & model.outlet.static.df.node_id.isin(zero_aanvoer_node_ids)
+model.outlet.static.df.loc[zero_aanvoer_mask, ["flow_rate", "max_flow_rate"]] = 0.0
+
+for static_df, max_flow_rate_by_node_id in (
+    (model.outlet.static.df, outlet_max_flow_rate_by_node_id),
+    (model.pump.static.df, pump_max_flow_rate_by_node_id),
+):
+    max_flow_rate = static_df["node_id"].map(max_flow_rate_by_node_id)
+    aanvoer_mask = (
+        static_df["control_state"].eq("aanvoer")
+        & static_df["node_id"].isin(aanvoer_only_node_ids)
+        & max_flow_rate.notna()
+    )
+    static_df.loc[aanvoer_mask, "flow_rate"] = max_flow_rate[aanvoer_mask]
+    static_df.loc[aanvoer_mask, "max_flow_rate"] = max_flow_rate[aanvoer_mask]
+
+# Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
+node_type_by_id = model.node.df["node_type"].to_dict()
+flow_demand_controlled_node_ids = set(
+    model.link.df.loc[
+        model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),
+        "to_node_id",
+    ]
+    .dropna()
+    .astype(int)
+)
+manual_max_flow_rate_node_ids = set(outlet_max_flow_rate_by_node_id)
+manual_max_flow_rate_node_ids.update(pump_max_flow_rate_by_node_id)
+protected_max_flow_rate_node_ids = set(EXCLUDE_NODES) | flow_demand_controlled_node_ids | manual_max_flow_rate_node_ids
+for static_df in (model.outlet.static.df, model.pump.static.df):
+    afvoer_mask = (
+        static_df["control_state"].eq("afvoer")
+        & static_df["flow_rate"].fillna(0).gt(0)
+        & ~static_df["node_id"].isin(protected_max_flow_rate_node_ids)
+    )
+    static_df.loc[afvoer_mask, "max_flow_rate"] = (
+        static_df.loc[afvoer_mask, "max_flow_rate"].fillna(0.5).clip(lower=0.5)
+    )
+
+for static_df in (model.outlet.static.df, model.pump.static.df):
+    afvoer_mask = static_df["control_state"].eq("afvoer") & static_df["node_id"].isin(aanvoer_only_node_ids)
+    static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 0.0
+
 # %%
 # Model run
 
@@ -261,7 +328,6 @@ model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time
 
 # hoofd run met verdamping
 update_basin_static(model=model, evaporation_mm_per_day=0.1)
-sync_manning_level_controls(model)
 model.write(ribasim_toml_dry)
 
 # run hoofdmodel
@@ -272,7 +338,6 @@ if MODEL_EXEC:
 
 # prerun om het model te initialiseren met neerslag
 update_basin_static(model=model, precipitation_mm_per_day=2)
-sync_manning_level_controls(model)
 model.write(ribasim_toml_wet)
 
 # run prerun model
@@ -283,7 +348,6 @@ if MODEL_EXEC:
 
 # hoofd run
 update_basin_static(model=model, precipitation_mm_per_day=1.5)
-sync_manning_level_controls(model)
 model.write(ribasim_toml)
 # run hoofdmodel
 if MODEL_EXEC:

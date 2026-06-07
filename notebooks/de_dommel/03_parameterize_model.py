@@ -3,6 +3,7 @@ import time
 
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl.check_basin_level import add_check_basin_level
+from ribasim_nl.parametrization.basin_tables import sync_min_upstream_levels_with_profile_bottoms
 
 from ribasim_nl import CloudStorage, Model
 
@@ -10,7 +11,7 @@ cloud = CloudStorage()
 authority = "DeDommel"
 short_name = "dommel"
 
-run_model = True
+run_model = False
 
 parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
@@ -40,8 +41,9 @@ model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
-model.write(ribasim_toml)
+sync_min_upstream_levels_with_profile_bottoms(model=model)
 add_check_basin_level(model=model)
+model.write(ribasim_toml)
 
 # %%
 

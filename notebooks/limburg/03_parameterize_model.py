@@ -3,6 +3,7 @@ import time
 
 import pandas as pd
 from peilbeheerst_model.controle_output import Control
+from ribasim_nl.parametrization.basin_tables import sync_min_upstream_levels_with_profile_bottoms
 
 from ribasim_nl import CloudStorage, Model
 
@@ -10,7 +11,7 @@ cloud = CloudStorage()
 authority = "Limburg"
 short_name = "limburg"
 
-run_model = True
+run_model = False
 
 parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
@@ -43,12 +44,15 @@ model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 # %% fixes basins and profiles
 
 basin_level_overrides = [
+    ([2408], 28.82),
     ([2309], 31.0),
-    ([2492], 31.4),
-    ([2495], 27.75),
+    ([2495], 30.8),
     ([2418], 27.27),
     ([1873], 27.6),
-    ([2408], 28.82),
+    ([5434], 30.75),
+    ([2492], 30.75),
+    ([1553], 30.7),
+    ([1995], 30.75),
 ]
 
 for node_ids, meta_streefpeil in basin_level_overrides:
@@ -74,6 +78,7 @@ model.basin.state.df = model.basin.area.df[["node_id", "meta_streefpeil"]].renam
 # Write model
 model.basin.area.df.loc[:, "meta_area_m2"] = model.basin.area.df.area
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
+sync_min_upstream_levels_with_profile_bottoms(model=model)
 model.write(ribasim_toml)
 
 # %%
@@ -82,7 +87,6 @@ model.write(ribasim_toml)
 if run_model:
     result = model.run()
 
-# # %%
-controle_output = Control(ribasim_toml=ribasim_toml)
-indicators = controle_output.run_afvoer()
+    controle_output = Control(ribasim_toml=ribasim_toml)
+    indicators = controle_output.run_afvoer()
 # %%

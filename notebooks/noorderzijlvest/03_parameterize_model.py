@@ -3,12 +3,14 @@ import time
 
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl.check_basin_level import add_check_basin_level
+from ribasim_nl.parametrization.basin_tables import sync_min_upstream_levels_with_profile_bottoms
 
 from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 authority = "Noorderzijlvest"
 short_name = "nzv"
+run_model = False
 
 
 static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters/static_data.xlsx")
@@ -38,15 +40,16 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 1132, "meta_streefpeil"] 
 # %%
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
+sync_min_upstream_levels_with_profile_bottoms(model=model)
 add_check_basin_level(model=model)
 model.write(ribasim_toml)
 
 # %%
 
 # run model
-result = model.run()
-assert result.exit_code == 0
+if run_model:
+    result = model.run()
+    assert result.exit_code == 0
 
-# %%
-controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-indicators = controle_output.run_afvoer()
+    controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
+    indicators = controle_output.run_afvoer()

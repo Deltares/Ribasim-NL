@@ -232,9 +232,12 @@ static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
 # Handmatige correcties streefpeilen:
 forced_levels = {
-    2495: 31.4,  # Benedenstrooms stuw Katsberg
+    2495: 30.8,  # Benedenstrooms stuw Katsberg
     1413: 30.13,  # Benedenstrooms Grenssloot op Moostdijk en AVL Dorperpeel
-    1861: 31.12,  # Bovenstrooms gemaal Helenaveen
+    1861: 30.75,  # Bovenstrooms gemaal Helenaveen
+    1553: 30.75,
+    1995: 30.75,
+    2492: 30.75,
 }
 
 mask = static_data.basin["node_id"].isin(forced_levels.keys())

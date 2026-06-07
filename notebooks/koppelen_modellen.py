@@ -44,6 +44,7 @@ remove_nodes = [
     202773,  # "Gaarkeuken" Fryslân
     203809,  # "Gaarkeuken" Fryslân
     6002493,  # reparatie Helenavaart Limburg
+    6002497,  # parallel aan doorlaat 6002496 tussen hetzelfde Limburg/AaenMaas basin-paar
     6002788,  # reparatie Helenavaart Limburg
     6002788,  # reparatie Helenavaart Limburg
     3800052,  # forceren koppeling kanaal van Deurne

@@ -22,7 +22,10 @@ class PipelineConfig:
     model_name: str
     submodel_authorities: list[str]
     dynamic_authorities: list[str]
-    full_control_scripts: list[Path]
+
+    @property
+    def full_control_scripts(self) -> list[Path]:
+        return [FULL_CONTROL_SCRIPT_BY_AUTHORITY[authority] for authority in self.dynamic_authorities]
 
 
 @dataclass(frozen=True)
@@ -31,20 +34,33 @@ class StepSpec:
     command: list[str]
 
 
+FULL_CONTROL_SCRIPT_BY_AUTHORITY = {
+    "AaenMaas": ROOT / "notebooks" / "aa_en_maas" / "04_add_full_control.py",
+    "BrabantseDelta": ROOT / "notebooks" / "brabantse_delta" / "04_add_full_control.py",
+    "DeDommel": ROOT / "notebooks" / "de_dommel" / "04_add_full_control.py",
+    "DrentsOverijsselseDelta": ROOT / "notebooks" / "drents_overijsselse_delta" / "04_add_full_control.py",
+    "HunzeenAas": ROOT / "notebooks" / "hunze_en_aas" / "04_add_full_control.py",
+    "Limburg": ROOT / "notebooks" / "limburg" / "04_add_full_control.py",
+    "Noorderzijlvest": ROOT / "notebooks" / "noorderzijlvest" / "04_add_full_control.py",
+    "RijnenIJssel": ROOT / "notebooks" / "rijn_en_ijssel" / "04_add_full_control.py",
+    "StichtseRijnlanden": ROOT / "notebooks" / "stichtse_rijnlanden" / "04_add_full_control.py",
+    "ValleienVeluwe": ROOT / "notebooks" / "vallei_en_veluwe" / "04_add_full_control.py",
+    "Vechtstromen": ROOT / "notebooks" / "vechtstromen" / "04_add_full_control.py",
+}
+
+
 PIPELINES: dict[str, PipelineConfig] = {
     "hdsr-rws": PipelineConfig(
         key="hdsr-rws",
         model_name="HDSR-RWS",
         submodel_authorities=["Rijkswaterstaat", "StichtseRijnlanden"],
         dynamic_authorities=["StichtseRijnlanden"],
-        full_control_scripts=[ROOT / "notebooks" / "stichtse_rijnlanden" / "04_add_full_control.py"],
     ),
     "venv-rws": PipelineConfig(
         key="venv-rws",
         model_name="VenV-RWS",
         submodel_authorities=["Rijkswaterstaat", "ValleienVeluwe"],
         dynamic_authorities=["ValleienVeluwe"],
-        full_control_scripts=[ROOT / "notebooks" / "vallei_en_veluwe" / "04_add_full_control.py"],
     ),
     "dod-vecht-hunze-rws": PipelineConfig(
         key="dod-vecht-hunze-rws",
@@ -56,11 +72,6 @@ PIPELINES: dict[str, PipelineConfig] = {
             "HunzeenAas",
         ],
         dynamic_authorities=["DrentsOverijsselseDelta", "Vechtstromen", "HunzeenAas"],
-        full_control_scripts=[
-            ROOT / "notebooks" / "drents_overijsselse_delta" / "04_add_full_control.py",
-            ROOT / "notebooks" / "vechtstromen" / "04_add_full_control.py",
-            ROOT / "notebooks" / "hunze_en_aas" / "04_add_full_control.py",
-        ],
     ),
     "wf-nzv-hunze-rws": PipelineConfig(
         key="wf-nzv-hunze-rws",
@@ -72,10 +83,6 @@ PIPELINES: dict[str, PipelineConfig] = {
             "HunzeenAas",
         ],
         dynamic_authorities=["Noorderzijlvest", "HunzeenAas"],
-        full_control_scripts=[
-            ROOT / "notebooks" / "noorderzijlvest" / "04_add_full_control.py",
-            ROOT / "notebooks" / "hunze_en_aas" / "04_add_full_control.py",
-        ],
     ),
     "dod-vecht-wf-nzv-hunze-rws": PipelineConfig(
         key="dod-vecht-wf-nzv-hunze-rws",
@@ -94,12 +101,6 @@ PIPELINES: dict[str, PipelineConfig] = {
             "Noorderzijlvest",
             "HunzeenAas",
         ],
-        full_control_scripts=[
-            ROOT / "notebooks" / "drents_overijsselse_delta" / "04_add_full_control.py",
-            ROOT / "notebooks" / "vechtstromen" / "04_add_full_control.py",
-            ROOT / "notebooks" / "noorderzijlvest" / "04_add_full_control.py",
-            ROOT / "notebooks" / "hunze_en_aas" / "04_add_full_control.py",
-        ],
     ),
     "dod-vecht-nzv-hunze-rws": PipelineConfig(
         key="dod-vecht-nzv-hunze-rws",
@@ -117,57 +118,36 @@ PIPELINES: dict[str, PipelineConfig] = {
             "Noorderzijlvest",
             "HunzeenAas",
         ],
-        full_control_scripts=[
-            ROOT / "notebooks" / "drents_overijsselse_delta" / "04_add_full_control.py",
-            ROOT / "notebooks" / "vechtstromen" / "04_add_full_control.py",
-            ROOT / "notebooks" / "noorderzijlvest" / "04_add_full_control.py",
-            ROOT / "notebooks" / "hunze_en_aas" / "04_add_full_control.py",
-        ],
     ),
     "rij-rws": PipelineConfig(
         key="rij-rws",
         model_name="RijnenIJssel-RWS",
         submodel_authorities=["Rijkswaterstaat", "RijnenIJssel"],
         dynamic_authorities=["RijnenIJssel"],
-        full_control_scripts=[ROOT / "notebooks" / "rijn_en_ijssel" / "04_add_full_control.py"],
     ),
     "aam-limburg-rws": PipelineConfig(
         key="aam-limburg-rws",
         model_name="AAM-Limburg-RWS",
         submodel_authorities=["Rijkswaterstaat", "AaenMaas", "Limburg"],
         dynamic_authorities=["AaenMaas", "Limburg"],
-        full_control_scripts=[
-            ROOT / "notebooks" / "aa_en_maas" / "04_add_full_control.py",
-            ROOT / "notebooks" / "limburg" / "04_add_full_control.py",
-        ],
     ),
     "dommel-aam-rws": PipelineConfig(
         key="dommel-aam-rws",
         model_name="Dommel-AAM-RWS",
         submodel_authorities=["Rijkswaterstaat", "DeDommel", "AaenMaas"],
         dynamic_authorities=["DeDommel", "AaenMaas"],
-        full_control_scripts=[
-            ROOT / "notebooks" / "de_dommel" / "04_add_full_control.py",
-            ROOT / "notebooks" / "aa_en_maas" / "04_add_full_control.py",
-        ],
     ),
     "dommel-aam-limburg-rws": PipelineConfig(
         key="dommel-aam-limburg-rws",
         model_name="Dommel-AAM-Limburg-RWS",
         submodel_authorities=["Rijkswaterstaat", "DeDommel", "AaenMaas", "Limburg"],
         dynamic_authorities=["DeDommel", "AaenMaas", "Limburg"],
-        full_control_scripts=[
-            ROOT / "notebooks" / "de_dommel" / "04_add_full_control.py",
-            ROOT / "notebooks" / "aa_en_maas" / "04_add_full_control.py",
-            ROOT / "notebooks" / "limburg" / "04_add_full_control.py",
-        ],
     ),
     "brabantse-delta-rws": PipelineConfig(
         key="brabantse-delta-rws",
         model_name="BrabantseDelta-RWS",
         submodel_authorities=["Rijkswaterstaat", "BrabantseDelta"],
         dynamic_authorities=["BrabantseDelta"],
-        full_control_scripts=[ROOT / "notebooks" / "brabantse_delta" / "04_add_full_control.py"],
     ),
     "alle-regionaal-rws": PipelineConfig(
         key="alle-regionaal-rws",
@@ -200,19 +180,6 @@ PIPELINES: dict[str, PipelineConfig] = {
             "StichtseRijnlanden",
             "RijnenIJssel",
         ],
-        full_control_scripts=[
-            ROOT / "notebooks" / "drents_overijsselse_delta" / "04_add_full_control.py",
-            ROOT / "notebooks" / "noorderzijlvest" / "04_add_full_control.py",
-            ROOT / "notebooks" / "vechtstromen" / "04_add_full_control.py",
-            ROOT / "notebooks" / "hunze_en_aas" / "04_add_full_control.py",
-            ROOT / "notebooks" / "limburg" / "04_add_full_control.py",
-            ROOT / "notebooks" / "de_dommel" / "04_add_full_control.py",
-            ROOT / "notebooks" / "aa_en_maas" / "04_add_full_control.py",
-            ROOT / "notebooks" / "brabantse_delta" / "04_add_full_control.py",
-            ROOT / "notebooks" / "vallei_en_veluwe" / "04_add_full_control.py",
-            ROOT / "notebooks" / "stichtse_rijnlanden" / "04_add_full_control.py",
-            ROOT / "notebooks" / "rijn_en_ijssel" / "04_add_full_control.py",
-        ],
     ),
     "alle-regionaal-zonder-wf-rws": PipelineConfig(
         key="alle-regionaal-zonder-wf-rws",
@@ -243,19 +210,6 @@ PIPELINES: dict[str, PipelineConfig] = {
             "ValleienVeluwe",
             "StichtseRijnlanden",
             "RijnenIJssel",
-        ],
-        full_control_scripts=[
-            ROOT / "notebooks" / "drents_overijsselse_delta" / "04_add_full_control.py",
-            ROOT / "notebooks" / "noorderzijlvest" / "04_add_full_control.py",
-            ROOT / "notebooks" / "vechtstromen" / "04_add_full_control.py",
-            ROOT / "notebooks" / "hunze_en_aas" / "04_add_full_control.py",
-            ROOT / "notebooks" / "limburg" / "04_add_full_control.py",
-            ROOT / "notebooks" / "de_dommel" / "04_add_full_control.py",
-            ROOT / "notebooks" / "aa_en_maas" / "04_add_full_control.py",
-            ROOT / "notebooks" / "brabantse_delta" / "04_add_full_control.py",
-            ROOT / "notebooks" / "vallei_en_veluwe" / "04_add_full_control.py",
-            ROOT / "notebooks" / "stichtse_rijnlanden" / "04_add_full_control.py",
-            ROOT / "notebooks" / "rijn_en_ijssel" / "04_add_full_control.py",
         ],
     ),
 }
@@ -469,6 +423,7 @@ def make_env(tmp_dir: Path) -> dict[str, str]:
     env["NUMBA_CACHE_DIR"] = str(numba_cache_dir)
     env["RIBASIM_NL_TEMP_ROOT"] = str(tmp_dir)
     env["RIBASIM_NL_DISABLE_CONTEXTILY"] = "1"
+    env["RIBASIM_HOME"] = str(ROOT / "bin" / "ribasim")
     env["PYTHONFAULTHANDLER"] = "1"
     env["PYTHONPATH"] = (
         str(SITECUSTOMIZE_DIR) if not env.get("PYTHONPATH") else f"{SITECUSTOMIZE_DIR}{os.pathsep}{env['PYTHONPATH']}"
@@ -500,32 +455,68 @@ def coupled_model_toml_path(config: PipelineConfig) -> Path:
     )
 
 
+def python_step(label: str, script: Path, *args: object) -> StepSpec:
+    return StepSpec(
+        label=label,
+        command=[sys.executable, "-X", "faulthandler", str(script), *(str(arg) for arg in args)],
+    )
+
+
+def run_step_group(
+    group_label: str,
+    steps: list[StepSpec],
+    *,
+    env: dict[str, str],
+    tmp_dir: Path,
+    log_dir: Path,
+    dry_run: bool,
+    parallel: bool,
+    parallel_workers: int | None,
+    parallel_new_windows: bool,
+) -> None:
+    if parallel:
+        run_steps_parallel(
+            group_label,
+            steps,
+            tmp_dir,
+            log_dir,
+            dry_run=dry_run,
+            max_workers=parallel_workers,
+            new_windows=parallel_new_windows,
+        )
+        return
+
+    for step in steps:
+        run_step(step.label, step.command, env, log_dir, dry_run=dry_run)
+
+
 def run_pipeline(
     config: PipelineConfig,
     *,
     dry_run: bool,
     start_at: str,
+    stop_after: str,
     parallel_until_samenvoegen: bool,
     parallel_workers: int | None,
     parallel_new_windows: bool,
-    apply_rws_inlet_min_upstream: bool,
-    apply_direct_min_upstream_level: bool,
-    apply_max_downstream_level: bool,
 ) -> None:
     tmp_dir = TMP_ROOT / config.key
     log_dir = tmp_dir / "logs"
+
     env = make_env(tmp_dir)
-    python_command = [sys.executable, "-X", "faulthandler"]
     start_order = STEP_ORDER[start_at]
+    stop_order = STEP_ORDER[stop_after]
 
     def should_run(step: str) -> bool:
-        return STEP_ORDER[step] >= start_order
+        return start_order <= STEP_ORDER[step] <= stop_order
 
     if should_run("self-test"):
         run_step(
             f"Python import self-test: {config.model_name}",
             [
-                *python_command,
+                sys.executable,
+                "-X",
+                "faulthandler",
                 "-c",
                 "import tempfile; print(tempfile.mkdtemp()); from ribasim_nl import Model; print('ribasim_nl ok')",
             ],
@@ -536,25 +527,19 @@ def run_pipeline(
 
     if should_run("full-control"):
         full_control_steps = [
-            StepSpec(
-                label=f"Full control: {script.parent.name}",
-                command=[*python_command, str(script)],
-            )
-            for script in config.full_control_scripts
+            python_step(f"Full control: {script.parent.name}", script) for script in config.full_control_scripts
         ]
-        if parallel_until_samenvoegen:
-            run_steps_parallel(
-                f"Full control: {config.model_name}",
-                full_control_steps,
-                tmp_dir,
-                log_dir,
-                dry_run=dry_run,
-                max_workers=parallel_workers,
-                new_windows=parallel_new_windows,
-            )
-        else:
-            for step in full_control_steps:
-                run_step(step.label, step.command, env, log_dir, dry_run=dry_run)
+        run_step_group(
+            f"Full control: {config.model_name}",
+            full_control_steps,
+            env=env,
+            tmp_dir=tmp_dir,
+            log_dir=log_dir,
+            dry_run=dry_run,
+            parallel=parallel_until_samenvoegen,
+            parallel_workers=parallel_workers,
+            parallel_new_windows=parallel_new_windows,
+        )
 
     only_merge_authorities = sorted(set(config.submodel_authorities) - set(config.dynamic_authorities))
     print(
@@ -565,70 +550,75 @@ def run_pipeline(
 
     if config.dynamic_authorities and should_run("bergend"):
         if parallel_until_samenvoegen:
-            run_steps_parallel(
-                f"Bergend model: {config.model_name}",
-                [
-                    StepSpec(
-                        label=f"Bergend model: {authority}",
-                        command=[*python_command, str(ROOT / "notebooks" / "05_add_bergend.py"), authority],
-                    )
-                    for authority in config.dynamic_authorities
-                ],
-                tmp_dir,
-                log_dir,
-                dry_run=dry_run,
-                max_workers=parallel_workers,
-                new_windows=parallel_new_windows,
-            )
+            steps = [
+                python_step(f"Bergend model: {authority}", ROOT / "notebooks" / "05_add_bergend.py", authority)
+                for authority in config.dynamic_authorities
+            ]
         else:
-            run_step(
-                f"Bergend model: {config.model_name}",
-                [*python_command, str(ROOT / "notebooks" / "05_add_bergend.py"), *config.dynamic_authorities],
-                env,
-                log_dir,
-                dry_run=dry_run,
-            )
+            steps = [
+                python_step(
+                    f"Bergend model: {config.model_name}",
+                    ROOT / "notebooks" / "05_add_bergend.py",
+                    *config.dynamic_authorities,
+                )
+            ]
+        run_step_group(
+            f"Bergend model: {config.model_name}",
+            steps,
+            env=env,
+            tmp_dir=tmp_dir,
+            log_dir=log_dir,
+            dry_run=dry_run,
+            parallel=parallel_until_samenvoegen,
+            parallel_workers=parallel_workers,
+            parallel_new_windows=parallel_new_windows,
+        )
     if config.dynamic_authorities and should_run("dynamic"):
         if parallel_until_samenvoegen:
-            run_steps_parallel(
-                f"Dynamic forcing: {config.model_name}",
-                [
-                    StepSpec(
-                        label=f"Dynamic forcing: {authority}",
-                        command=[*python_command, str(ROOT / "notebooks" / "07_add_dynamic_forcing.py"), authority],
-                    )
-                    for authority in config.dynamic_authorities
-                ],
-                tmp_dir,
-                log_dir,
-                dry_run=dry_run,
-                max_workers=parallel_workers,
-                new_windows=parallel_new_windows,
-            )
+            steps = [
+                python_step(
+                    f"Dynamic forcing: {authority}",
+                    ROOT / "notebooks" / "07_add_dynamic_forcing.py",
+                    authority,
+                )
+                for authority in config.dynamic_authorities
+            ]
         else:
-            run_step(
-                f"Dynamic forcing: {config.model_name}",
-                [*python_command, str(ROOT / "notebooks" / "07_add_dynamic_forcing.py"), *config.dynamic_authorities],
-                env,
-                log_dir,
-                dry_run=dry_run,
-            )
-
-    samenvoegen_script = write_samenvoegen_script(config, tmp_dir)
-    koppelen_script = write_koppelen_script(config, tmp_dir)
+            steps = [
+                python_step(
+                    f"Dynamic forcing: {config.model_name}",
+                    ROOT / "notebooks" / "07_add_dynamic_forcing.py",
+                    *config.dynamic_authorities,
+                )
+            ]
+        run_step_group(
+            f"Dynamic forcing: {config.model_name}",
+            steps,
+            env=env,
+            tmp_dir=tmp_dir,
+            log_dir=log_dir,
+            dry_run=dry_run,
+            parallel=parallel_until_samenvoegen,
+            parallel_workers=parallel_workers,
+            parallel_new_windows=parallel_new_windows,
+        )
 
     if should_run("samenvoegen"):
+        samenvoegen_script = write_samenvoegen_script(config, tmp_dir)
+        step = python_step(f"Samenvoegen modellen: {config.model_name}", samenvoegen_script)
         run_step(
-            f"Samenvoegen modellen: {config.model_name}",
-            [*python_command, str(samenvoegen_script)],
+            step.label,
+            step.command,
             env,
             log_dir,
             dry_run=dry_run,
         )
     if should_run("koppelen"):
+        koppelen_script = write_koppelen_script(config, tmp_dir)
+        step = python_step(f"Koppelen modellen: {config.model_name}", koppelen_script)
         run_step(
-            f"Koppelen modellen: {config.model_name}",
-            [*python_command, str(koppelen_script)],
+            step.label,
+            step.command,
             env,
             log_dir,
             dry_run=dry_run,
@@ -636,43 +626,36 @@ def run_pipeline(
     model_toml_path = coupled_model_toml_path(config)
 
     if should_run("report-coupling-levels"):
-        command = [
-            *python_command,
-            str(ROOT / "notebooks" / "report_coupling_levels.py"),
+        step = python_step(
+            f"Report coupling levels: {config.model_name}",
+            ROOT / "notebooks" / "report_coupling_levels.py",
             "--toml-file",
-            str(model_toml_path),
+            model_toml_path,
             "--output-gpkg",
             "coupling_level_report_uitgekleed.gpkg",
             "--verdachte-output-gpkg",
             "verdachte_punten.gpkg",
-        ]
-        if apply_rws_inlet_min_upstream:
-            command.append("--apply-rws-inlet-min-upstream")
-        if apply_direct_min_upstream_level or apply_max_downstream_level:
-            command.append("--apply-direct-min-upstream-level")
-        if apply_max_downstream_level:
-            command.append("--apply-max-downstream-level")
-
+        )
         run_step(
-            f"Report coupling levels: {config.model_name}",
-            command,
+            step.label,
+            step.command,
             env,
             log_dir,
             dry_run=dry_run,
         )
 
     if should_run("report-applied-changes"):
-        command = [
-            *python_command,
-            str(ROOT / "notebooks" / "report_applied_model_changes.py"),
+        step = python_step(
+            f"Report applied changes: {config.model_name}",
+            ROOT / "notebooks" / "report_applied_model_changes.py",
             "--toml-file",
-            str(model_toml_path),
+            model_toml_path,
             "--output-gpkg",
             "toegepaste_model_wijzigingen.gpkg",
-        ]
+        )
         run_step(
-            f"Report applied changes: {config.model_name}",
-            command,
+            step.label,
+            step.command,
             env,
             log_dir,
             dry_run=dry_run,
@@ -698,6 +681,12 @@ def parse_args() -> argparse.Namespace:
         help="Start de pipeline vanaf deze stap.",
     )
     parser.add_argument(
+        "--stop-after",
+        choices=list(STEP_ORDER),
+        default="report-applied-changes",
+        help="Stop de pipeline na deze stap.",
+    )
+    parser.add_argument(
         "--parallel-until-samenvoegen",
         action="store_true",
         help=(
@@ -716,42 +705,6 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Open parallelle stappen in aparte Windows-vensters. De pipeline wacht nog steeds op alle stappen.",
     )
-    parser.add_argument(
-        "--no-apply-coupling-levels",
-        action="store_true",
-        help=(
-            "Draai report_coupling_levels.py alleen rapporterend. Standaard past de pipeline "
-            "de toegestane coupling-level correcties toe."
-        ),
-    )
-    parser.add_argument(
-        "--apply-rws-inlet-min-upstream",
-        action="store_true",
-        help=(
-            "Pas RWS->model inlaat min_upstream_level-correcties toe. Dit staat standaard aan "
-            "in de pipeline; gebruik deze vlag alleen nog voor een specifieke apply als "
-            "--no-apply-coupling-levels is gezet."
-        ),
-    )
-    parser.add_argument(
-        "--apply-max-downstream-level",
-        action="store_true",
-        help=(
-            "Pas max_downstream_level-correcties toe voor "
-            "aanvoer-rijen van inlaten en doorlaten op basis van het directe downstream Basin. "
-            "Dit staat standaard aan in de pipeline. FlowDemand-gestuurde nodes worden hierbij "
-            "overgeslagen. De bijbehorende directe min_upstream-correcties worden dan ook toegepast."
-        ),
-    )
-    parser.add_argument(
-        "--apply-direct-min-upstream-level",
-        action="store_true",
-        help=(
-            "Pas directe min_upstream_level-correcties toe voor afwijkende rijen met een direct "
-            "upstream Basin, inclusief FlowDemand-gestuurde doorlaten. Dit staat standaard aan "
-            "in de pipeline. Er wordt niet via ManningResistance/Junction doorgelopen."
-        ),
-    )
     return parser.parse_args()
 
 
@@ -759,6 +712,8 @@ def main() -> int:
     args = parse_args()
     if args.parallel_workers is not None and args.parallel_workers < 1:
         raise SystemExit("--parallel-workers moet minimaal 1 zijn.")
+    if STEP_ORDER[args.stop_after] < STEP_ORDER[args.start_at]:
+        raise SystemExit("--stop-after moet gelijk zijn aan of na --start-at liggen.")
 
     if args.list:
         for key, config in PIPELINES.items():
@@ -769,22 +724,15 @@ def main() -> int:
     if "all" in selected_keys:
         selected_keys = list(DEFAULT_PIPELINE_KEYS)
 
-    default_apply_coupling_levels = not args.no_apply_coupling_levels
-    apply_rws_inlet_min_upstream = default_apply_coupling_levels or args.apply_rws_inlet_min_upstream
-    apply_direct_min_upstream_level = default_apply_coupling_levels or args.apply_direct_min_upstream_level
-    apply_max_downstream_level = default_apply_coupling_levels or args.apply_max_downstream_level
-
     for key in selected_keys:
         run_pipeline(
             PIPELINES[key],
             dry_run=args.dry_run,
             start_at=args.start_at,
+            stop_after=args.stop_after,
             parallel_until_samenvoegen=args.parallel_until_samenvoegen,
             parallel_workers=args.parallel_workers,
             parallel_new_windows=args.parallel_new_windows,
-            apply_rws_inlet_min_upstream=apply_rws_inlet_min_upstream,
-            apply_direct_min_upstream_level=apply_direct_min_upstream_level,
-            apply_max_downstream_level=apply_max_downstream_level,
         )
     return 0
 

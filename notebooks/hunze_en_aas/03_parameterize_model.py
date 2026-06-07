@@ -1,43 +1,70 @@
 # %%
 import time
 
+import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl.check_basin_level import add_check_basin_level
+from ribasim_nl.parametrization.basin_tables import (
+    apply_basin_level_overrides,
+    sync_min_upstream_levels_with_profile_bottoms,
+)
+from ribasim_nl.parametrization.manning_level import sync_parameterized_manning_basin_levels
 
 from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 authority = "HunzeenAas"
 short_name = "hea"
-run_model = True
+run_model = False
 static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters/static_data.xlsx")
+aanvoergebieden_gpkg = cloud.joinpath(authority, "verwerkt", "sturing", "aanvoergebieden.gpkg")
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
 
 # # you need the excel, but the model should be local-only by running 01_fix_model.py
-cloud.synchronize(filepaths=[static_data_xlsx, qlr_path])
+cloud.synchronize(filepaths=[static_data_xlsx, qlr_path, aanvoergebieden_gpkg])
 
 # %%
 
 # read
 model = Model.read(ribasim_toml)
+aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
 start_time = time.time()
+
+# %% fixes basins and profiles
+
+basin_level_overrides = [
+    ([1338], 7.1),
+    ([1432], 6),
+    ([1680], 6),
+    ([1617], 1.75),
+    ([1325], 5.1),
+    ([1311], 3.3),
+    ([1832], 3.3),
+    ([1416], 17.7),
+    ([1832], 11.5),
+]
+
 # %%
-# parameterize
-manual_basin_level_node_ids = [1338, 1432, 1680, 1617, 1325, 1311, 1832]
-model.basin.area.df.loc[model.basin.area.df.node_id == 1338, "meta_streefpeil"] = 7.1
-model.basin.area.df.loc[model.basin.area.df.node_id.isin([1432, 1680]), "meta_streefpeil"] = 6.55
-model.basin.area.df.loc[model.basin.area.df.node_id == 1617, "meta_streefpeil"] = 1.75
-model.basin.area.df.loc[model.basin.area.df.node_id == 1325, "meta_streefpeil"] = 5.1
-model.basin.area.df.loc[model.basin.area.df.node_id == 1311, "meta_streefpeil"] = 3.3
-model.basin.area.df.loc[model.basin.area.df.node_id == 1832, "meta_streefpeil"] = 3.3
 
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5)
 print("Elapsed Time:", time.time() - start_time, "seconds")
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
+protected_basin_node_ids = apply_basin_level_overrides(model=model, basin_level_overrides=basin_level_overrides)
 
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
+sync_parameterized_manning_basin_levels(
+    model=model,
+    aanvoergebieden_df=aanvoergebieden_df,
+    output_gpkg=cloud.joinpath(
+        authority,
+        "modellen",
+        f"{authority}_parameterized_model",
+        "manning_level_basin_updates.gpkg",
+    ),
+    protected_basin_node_ids=protected_basin_node_ids,
+)
 
 # %% Flow rates are replaced to max_flow_rate, otherwise it affects the flow ratio
 model.outlet.static.df.max_flow_rate = model.outlet.static.df.flow_rate
@@ -56,12 +83,8 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 59, "max_flow_rate"] = 
 model.pump.static.df.loc[model.pump.static.df.node_id == 133, "max_flow_rate"] = 3.0
 
 # %%
-node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
-mask = model.outlet.static.df["node_id"].isin(node_ids)
-# model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
-# model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
-
 # Write model
+sync_min_upstream_levels_with_profile_bottoms(model=model)
 add_check_basin_level(model=model)
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
 model.write(ribasim_toml)

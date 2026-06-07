@@ -102,6 +102,22 @@ def _directed_open_neighbors_from_connector(
     return sorted(set(upstream_neighbors))
 
 
+def _open_neighbors_from_connector(
+    node_id: int,
+    link_df: pd.DataFrame,
+    node_type_by_id: dict[int, str],
+) -> list[int]:
+    neighbors: set[int] = set()
+    for row in link_df[link_df["from_node_id"].eq(int(node_id)) | link_df["to_node_id"].eq(int(node_id))].itertuples(
+        index=False
+    ):
+        other_node_id = int(row.to_node_id) if int(row.from_node_id) == int(node_id) else int(row.from_node_id)
+        if node_type_by_id.get(other_node_id) in OPEN_NODE_TYPES:
+            neighbors.add(other_node_id)
+
+    return sorted(neighbors)
+
+
 def _open_component(start_node_id: int, adjacency: dict[int, list[int]], max_iter: int) -> set[int]:
     component = {int(start_node_id)}
     queue: deque[int] = deque([int(start_node_id)])
@@ -136,26 +152,16 @@ def _component_boundary_control_node_ids(
     return sorted(control_node_ids)
 
 
-def _upstream_supply_control_node_ids(
-    component_node_ids: set[int],
-    link_df: pd.DataFrame,
-    node_type_by_id: dict[int, str],
+def _supply_boundary_control_node_ids(
+    *,
+    boundary_control_node_ids: list[int],
     control_function_by_node_id: dict[int, str | None],
 ) -> list[int]:
-    component_node_ids = {int(node_id) for node_id in component_node_ids}
-    control_node_ids: set[int] = set()
-
-    for row in link_df.itertuples(index=False):
-        from_node_id = int(row.from_node_id)
-        to_node_id = int(row.to_node_id)
-        if to_node_id not in component_node_ids:
-            continue
-        if node_type_by_id.get(from_node_id) not in CONTROL_NODE_TYPES:
-            continue
-        if control_function_by_node_id.get(from_node_id) in {"inlaat", "doorlaat"}:
-            control_node_ids.add(from_node_id)
-
-    return sorted(control_node_ids)
+    return sorted(
+        int(node_id)
+        for node_id in boundary_control_node_ids
+        if control_function_by_node_id.get(int(node_id)) in {"inlaat", "doorlaat"}
+    )
 
 
 def _component_boundary_basin_node_ids(
@@ -269,16 +275,18 @@ def _single_manning_branch_basin_node_ids(
     link_df: pd.DataFrame,
     node_type_by_id: dict[int, str],
     control_function_by_node_id: dict[int, str | None],
+    ignored_supply_control_node_ids: set[int] | None = None,
 ) -> set[int]:
     protected_basin_node_ids: set[int] = set()
     component_node_ids = {int(node_id) for node_id in component_node_ids}
+    ignored_supply_control_node_ids = {int(node_id) for node_id in ignored_supply_control_node_ids or set()}
 
     for basin_node_id in component_node_ids:
         if node_type_by_id.get(basin_node_id) != "Basin":
             continue
 
         open_neighbors = []
-        upstream_control_node_ids = set()
+        boundary_control_node_ids = set()
         for row in link_df[
             link_df["from_node_id"].eq(basin_node_id) | link_df["to_node_id"].eq(basin_node_id)
         ].itertuples(index=False):
@@ -288,11 +296,15 @@ def _single_manning_branch_basin_node_ids(
 
             if other_node_id in component_node_ids:
                 open_neighbors.append(other_node_id)
-            if to_node_id == basin_node_id and node_type_by_id.get(from_node_id) in CONTROL_NODE_TYPES:
-                upstream_control_node_ids.add(from_node_id)
+            if node_type_by_id.get(other_node_id) in CONTROL_NODE_TYPES:
+                boundary_control_node_ids.add(other_node_id)
 
-        upstream_control_functions = {control_function_by_node_id.get(node_id) for node_id in upstream_control_node_ids}
-        if any(function in {"inlaat", "doorlaat"} for function in upstream_control_functions):
+        boundary_supply_control_functions = {
+            control_function_by_node_id.get(node_id)
+            for node_id in boundary_control_node_ids
+            if node_id not in ignored_supply_control_node_ids
+        }
+        if any(function in {"inlaat", "doorlaat"} for function in boundary_supply_control_functions):
             continue
 
         if len(set(open_neighbors)) != 1:
@@ -301,6 +313,45 @@ def _single_manning_branch_basin_node_ids(
         only_neighbor_id = open_neighbors[0]
         if node_type_by_id.get(only_neighbor_id) == "ManningResistance":
             protected_basin_node_ids.add(basin_node_id)
+
+    return protected_basin_node_ids
+
+
+def _terminal_manning_branch_basin_node_ids(
+    component_node_ids: set[int],
+    link_df: pd.DataFrame,
+    node_type_by_id: dict[int, str],
+) -> set[int]:
+    """Return terminal basins that should not be leveled through a Manning route."""
+    protected_basin_node_ids: set[int] = set()
+    component_node_ids = {int(node_id) for node_id in component_node_ids}
+
+    for basin_node_id in component_node_ids:
+        if node_type_by_id.get(basin_node_id) != "Basin":
+            continue
+
+        open_neighbor_ids: list[int] = []
+        non_open_neighbor_types: set[str | None] = set()
+        for row in link_df[
+            link_df["from_node_id"].eq(basin_node_id) | link_df["to_node_id"].eq(basin_node_id)
+        ].itertuples(index=False):
+            from_node_id = int(row.from_node_id)
+            to_node_id = int(row.to_node_id)
+            other_node_id = to_node_id if from_node_id == basin_node_id else from_node_id
+
+            if other_node_id in component_node_ids and node_type_by_id.get(other_node_id) in OPEN_NODE_TYPES:
+                open_neighbor_ids.append(other_node_id)
+            else:
+                non_open_neighbor_types.add(node_type_by_id.get(other_node_id))
+
+        if len(open_neighbor_ids) != 1:
+            continue
+        if node_type_by_id.get(open_neighbor_ids[0]) != "ManningResistance":
+            continue
+        if non_open_neighbor_types - {"TabulatedRatingCurve"}:
+            continue
+
+        protected_basin_node_ids.add(basin_node_id)
 
     return protected_basin_node_ids
 
@@ -446,6 +497,21 @@ def _level_boundary_level_by_id(model: Model) -> dict[int, float]:
     return {}
 
 
+def _target_level_for_basin_ids(
+    basin_node_ids: set[int],
+    target_level_by_basin_id: dict[int, float],
+) -> float | None:
+    levels = [
+        float(target_level_by_basin_id[basin_node_id])
+        for basin_node_id in basin_node_ids
+        if basin_node_id in target_level_by_basin_id and pd.notna(target_level_by_basin_id[basin_node_id])
+    ]
+    if not levels:
+        return None
+
+    return min(levels)
+
+
 def _side_basin_ids_and_level(
     node_id: int,
     *,
@@ -562,6 +628,8 @@ def _truthy_series(series: pd.Series) -> pd.Series:
         return pd.Series(dtype=bool)
     if pd.api.types.is_bool_dtype(series):
         return series.fillna(False)
+    if pd.api.types.is_numeric_dtype(series):
+        return pd.to_numeric(series, errors="coerce").fillna(0).ne(0)
     return series.astype("string").str.lower().isin({"1", "true", "yes", "ja", "y"})
 
 
@@ -751,6 +819,114 @@ def _control_level_by_node_id(
     return level_by_node_id
 
 
+def _control_target_level_by_node_id(
+    model: Model,
+    connector_node_ids: list[int],
+    link_df: pd.DataFrame,
+    node_type_by_id: dict[int, str],
+    target_level_by_basin_id: dict[int, float],
+    tolerance: float,
+    max_iter: int,
+) -> dict[int, float]:
+    open_adjacency = _undirected_open_adjacency(link_df=link_df, node_type_by_id=node_type_by_id)
+    level_boundary_level_by_id = _level_boundary_level_by_id(model)
+    control_ids_by_connector_id = _control_node_ids_by_connector_node_id(model, node_type_by_id=node_type_by_id)
+    variable_df = getattr(getattr(model.discrete_control, "variable", None), "df", None)
+    records: list[dict[str, object]] = []
+
+    for connector_node_id in connector_node_ids:
+        node_type = node_type_by_id.get(int(connector_node_id))
+        if node_type not in CONTROL_NODE_TYPES:
+            continue
+
+        component = getattr(model, node_type.lower(), None)
+        static_df = getattr(getattr(component, "static", None), "df", None)
+        if static_df is None or static_df.empty or "control_state" not in static_df.columns:
+            continue
+
+        connector_rows = static_df[static_df["node_id"].eq(int(connector_node_id))].copy()
+        if connector_rows.empty:
+            continue
+
+        function = _connector_function(connector_rows)
+        if function not in {"doorlaat", "uitlaat"}:
+            continue
+
+        control_target_level: float | None = None
+        if function == "uitlaat" and variable_df is not None and not variable_df.empty:
+            listen_node_ids: set[int] = set()
+            for control_node_id in control_ids_by_connector_id.get(int(connector_node_id), []):
+                variable_rows = variable_df[
+                    variable_df["node_id"].eq(int(control_node_id))
+                    & variable_df["variable"].astype("string").str.lower().eq("level")
+                ].copy()
+                variable_rows["weight"] = pd.to_numeric(variable_rows["weight"], errors="coerce")
+                variable_rows = variable_rows[variable_rows["weight"].eq(1.0)]
+                listen_node_ids.update(variable_rows["listen_node_id"].dropna().astype(int).to_list())
+
+            if len(listen_node_ids) == 1:
+                _, control_target_level = _side_basin_ids_and_level(
+                    next(iter(listen_node_ids)),
+                    open_adjacency=open_adjacency,
+                    node_type_by_id=node_type_by_id,
+                    target_level_by_basin_id=target_level_by_basin_id,
+                    level_boundary_level_by_id=level_boundary_level_by_id,
+                    max_iter=max_iter,
+                )
+
+        upstream_node_ids = [
+            int(row.from_node_id)
+            for row in link_df[link_df["to_node_id"].eq(int(connector_node_id))].itertuples(index=False)
+        ]
+        downstream_node_ids = [
+            int(row.to_node_id)
+            for row in link_df[link_df["from_node_id"].eq(int(connector_node_id))].itertuples(index=False)
+        ]
+        if len(upstream_node_ids) != 1 or len(downstream_node_ids) != 1:
+            continue
+
+        control_state = connector_rows["control_state"].astype("string").str.lower()
+        active_rows = connector_rows[_capacity_is_positive(connector_rows)].copy()
+        if control_target_level is not None and not active_rows.empty:
+            records.append({"node_id": int(connector_node_id), "level": float(control_target_level)})
+            continue
+
+        for row_index in active_rows.index:
+            state = control_state.loc[row_index]
+            if state == "aanvoer":
+                side_node_id = downstream_node_ids[0]
+            elif state == "afvoer":
+                side_node_id = upstream_node_ids[0]
+            else:
+                continue
+
+            _, side_level = _side_basin_ids_and_level(
+                side_node_id,
+                open_adjacency=open_adjacency,
+                node_type_by_id=node_type_by_id,
+                target_level_by_basin_id=target_level_by_basin_id,
+                level_boundary_level_by_id=level_boundary_level_by_id,
+                max_iter=max_iter,
+            )
+            if side_level is None:
+                continue
+
+            records.append({"node_id": int(connector_node_id), "level": float(side_level)})
+
+    records_df = pd.DataFrame(records)
+    if records_df.empty:
+        return {}
+
+    level_by_node_id: dict[int, float] = {}
+    for node_id, node_records_df in records_df.groupby("node_id"):
+        levels = node_records_df["level"].astype(float)
+        if levels.max() - levels.min() > tolerance:
+            continue
+        level_by_node_id[int(node_id)] = float(levels.iloc[0])
+
+    return level_by_node_id
+
+
 def _dominant_downstream_control_level(
     model: Model,
     *,
@@ -758,6 +934,7 @@ def _dominant_downstream_control_level(
     boundary_control_node_ids: list[int],
     link_df: pd.DataFrame,
     node_type_by_id: dict[int, str],
+    target_level_by_basin_id: dict[int, float],
     tolerance: float,
     max_iter: int,
 ) -> tuple[float | None, str, list[int]]:
@@ -766,6 +943,17 @@ def _dominant_downstream_control_level(
         connector_node_ids=boundary_control_node_ids,
         node_type_by_id=node_type_by_id,
         tolerance=tolerance,
+    )
+    level_by_node_id.update(
+        _control_target_level_by_node_id(
+            model=model,
+            connector_node_ids=boundary_control_node_ids,
+            link_df=link_df,
+            node_type_by_id=node_type_by_id,
+            target_level_by_basin_id=target_level_by_basin_id,
+            tolerance=tolerance,
+            max_iter=max_iter,
+        )
     )
     if not level_by_node_id:
         return None, "geen_eenduidige_dominante_control_levels", []
@@ -832,6 +1020,192 @@ def _dominant_downstream_control_level(
         float(target_level),
         status,
         sorted(dominant_rows_df["node_id"].astype(int).to_list()),
+    )
+
+
+def _node_ids_of_type_in_geometry(
+    model: Model,
+    *,
+    node_type: str,
+    geometry_df,
+    excluded_node_ids: set[int] | None = None,
+) -> list[int]:
+    import geopandas as gpd
+
+    excluded_node_ids = {int(node_id) for node_id in excluded_node_ids or set()}
+    node_df = model.node.df.copy()
+    if "node_id" not in node_df.columns:
+        index_name = node_df.index.name or "node_id"
+        node_df = node_df.reset_index(drop=False)
+        if index_name in node_df.columns and index_name != "node_id":
+            node_df = node_df.rename(columns={index_name: "node_id"})
+        elif "index" in node_df.columns and "node_id" not in node_df.columns:
+            node_df = node_df.rename(columns={"index": "node_id"})
+
+    geometry_column = getattr(getattr(node_df, "geometry", None), "name", "geometry")
+    if geometry_column not in node_df.columns:
+        raise ValueError("Kan Manning-nodes niet ruimtelijk selecteren: model.node.df heeft geen geometry-kolom.")
+
+    crs = getattr(model.node.df, "crs", None)
+    node_gdf = gpd.GeoDataFrame(node_df, geometry=geometry_column, crs=crs)
+    if getattr(geometry_df, "crs", None) is not None and crs is not None and geometry_df.crs != crs:
+        geometry_df = geometry_df.to_crs(crs)
+
+    geometry_union = geometry_df.geometry.union_all()
+    selected_gdf = node_gdf[node_gdf["node_type"].eq(node_type) & node_gdf.geometry.within(geometry_union)].copy()
+    selected_node_ids = selected_gdf["node_id"].dropna().astype(int).to_list()
+    return sorted(node_id for node_id in selected_node_ids if node_id not in excluded_node_ids)
+
+
+def _nearest_upstream_basin_ids_for_control(
+    control_node_id: int,
+    *,
+    component_node_ids: set[int],
+    link_df: pd.DataFrame,
+    node_type_by_id: dict[int, str],
+    max_iter: int,
+) -> list[int]:
+    incoming: dict[int, list[int]] = defaultdict(list)
+    for row in link_df.itertuples(index=False):
+        from_node_id = int(row.from_node_id)
+        to_node_id = int(row.to_node_id)
+        if from_node_id in component_node_ids or to_node_id == int(control_node_id):
+            incoming[to_node_id].append(from_node_id)
+
+    starts = [
+        int(node_id)
+        for node_id in incoming.get(int(control_node_id), [])
+        if int(node_id) in component_node_ids and node_type_by_id.get(int(node_id)) in OPEN_NODE_TYPES
+    ]
+    if not starts:
+        return []
+
+    queue: deque[tuple[int, int]] = deque((node_id, 0) for node_id in starts)
+    seen_node_ids = set(starts)
+    basin_ids_by_distance: dict[int, list[int]] = defaultdict(list)
+
+    while queue and len(seen_node_ids) < max_iter:
+        current_node_id, distance = queue.popleft()
+        if node_type_by_id.get(current_node_id) == "Basin":
+            basin_ids_by_distance[distance].append(current_node_id)
+            continue
+
+        for next_node_id in incoming.get(current_node_id, []):
+            next_node_id = int(next_node_id)
+            if next_node_id not in component_node_ids or next_node_id in seen_node_ids:
+                continue
+            if node_type_by_id.get(next_node_id) not in OPEN_NODE_TYPES:
+                continue
+
+            seen_node_ids.add(next_node_id)
+            queue.append((next_node_id, distance + 1))
+
+    if not basin_ids_by_distance:
+        return []
+
+    nearest_distance = min(basin_ids_by_distance)
+    return sorted(set(basin_ids_by_distance[nearest_distance]))
+
+
+def _dominant_downstream_parameterized_target_level(
+    *,
+    component_node_ids: set[int],
+    boundary_control_node_ids: list[int],
+    link_df: pd.DataFrame,
+    node_type_by_id: dict[int, str],
+    target_level_by_basin_id: dict[int, float],
+    tolerance: float,
+    max_iter: int,
+) -> tuple[float | None, str, list[int], list[int]]:
+    outgoing: dict[int, list[int]] = defaultdict(list)
+    for row in link_df.itertuples(index=False):
+        outgoing[int(row.from_node_id)].append(int(row.to_node_id))
+
+    boundary_control_node_id_set = set(boundary_control_node_ids)
+    basin_route_count_by_control_id: dict[int, int] = defaultdict(int)
+    open_route_count_by_control_id: dict[int, int] = defaultdict(int)
+    for start_node_id in component_node_ids:
+        queue: deque[int] = deque([int(start_node_id)])
+        seen_node_ids = {int(start_node_id)}
+        reached_control_node_ids: set[int] = set()
+
+        while queue and len(seen_node_ids) < max_iter:
+            current_node_id = queue.popleft()
+            for next_node_id in outgoing.get(current_node_id, []):
+                if next_node_id in boundary_control_node_id_set:
+                    reached_control_node_ids.add(next_node_id)
+                    continue
+                if next_node_id in component_node_ids and next_node_id not in seen_node_ids:
+                    seen_node_ids.add(next_node_id)
+                    queue.append(next_node_id)
+
+        for control_node_id in reached_control_node_ids:
+            open_route_count_by_control_id[control_node_id] += 1
+            if node_type_by_id.get(start_node_id) == "Basin":
+                basin_route_count_by_control_id[control_node_id] += 1
+
+    rows: list[dict[str, object]] = []
+    for control_node_id in boundary_control_node_ids:
+        if open_route_count_by_control_id[control_node_id] == 0:
+            continue
+
+        source_basin_ids = _nearest_upstream_basin_ids_for_control(
+            control_node_id=control_node_id,
+            component_node_ids=component_node_ids,
+            link_df=link_df,
+            node_type_by_id=node_type_by_id,
+            max_iter=max_iter,
+        )
+        source_levels = [
+            float(target_level_by_basin_id[basin_id])
+            for basin_id in source_basin_ids
+            if basin_id in target_level_by_basin_id and pd.notna(target_level_by_basin_id[basin_id])
+        ]
+        if not source_levels:
+            continue
+
+        rows.append(
+            {
+                "node_id": int(control_node_id),
+                "basin_route_count": basin_route_count_by_control_id[control_node_id],
+                "open_route_count": open_route_count_by_control_id[control_node_id],
+                "level": min(source_levels),
+                "source_basin_ids": source_basin_ids,
+            }
+        )
+
+    if not rows:
+        return None, "geen_dominante_downstream_control_met_basinpeil", [], []
+
+    rows_df = pd.DataFrame(rows)
+    max_open_route_count = rows_df["open_route_count"].max()
+    max_basin_route_count = rows_df.loc[rows_df["open_route_count"].eq(max_open_route_count), "basin_route_count"].max()
+    dominant_rows_df = rows_df[
+        rows_df["open_route_count"].eq(max_open_route_count) & rows_df["basin_route_count"].eq(max_basin_route_count)
+    ].copy()
+    level_spread = dominant_rows_df["level"].max() - dominant_rows_df["level"].min()
+    if level_spread > tolerance:
+        target_level = dominant_rows_df["level"].min()
+        dominant_rows_df = dominant_rows_df[(dominant_rows_df["level"] - target_level).abs().le(tolerance)].copy()
+        status = "dominante_downstream_control_gelijke_score_laagste_basinpeil"
+    else:
+        target_level = float(dominant_rows_df["level"].iloc[0])
+        status = "dominante_downstream_control_basinpeil"
+
+    source_basin_ids = sorted(
+        {
+            int(basin_id)
+            for basin_ids in dominant_rows_df["source_basin_ids"].to_list()
+            for basin_id in basin_ids
+            if int(basin_id) in target_level_by_basin_id
+            and abs(float(target_level_by_basin_id[int(basin_id)]) - float(target_level)) <= tolerance
+        }
+    )
+    return (
+        float(target_level),
+        status,
+        sorted(dominant_rows_df["node_id"].astype(int).to_list()),
+        source_basin_ids,
     )
 
 
@@ -1177,10 +1551,15 @@ def sync_control_levels_for_basin_updates(
                 level_boundary_level_by_id=level_boundary_level_by_id,
                 max_iter=max_iter,
             )
-            if (upstream_basin_ids | downstream_basin_ids) & upstream_protected_basin_node_ids:
-                continue
+            upstream_side_protected = (
+                bool(upstream_basin_ids) and upstream_basin_ids <= upstream_protected_basin_node_ids
+            )
+            downstream_side_protected = (
+                bool(downstream_basin_ids) and downstream_basin_ids <= upstream_protected_basin_node_ids
+            )
 
-            in_component_scope = connector_node_id in component_connector_node_ids or bool(
+            connector_is_component_boundary = connector_node_id in component_connector_node_ids
+            in_component_scope = connector_is_component_boundary or bool(
                 (upstream_basin_ids | downstream_basin_ids) & component_basin_node_ids
             )
             if not in_component_scope:
@@ -1223,17 +1602,40 @@ def sync_control_levels_for_basin_updates(
 
             upstream_component_basin_ids = upstream_basin_ids & component_basin_node_ids
             downstream_component_basin_ids = downstream_basin_ids & component_basin_node_ids
+            upstream_sync_level = _target_level_for_basin_ids(upstream_component_basin_ids, target_level_by_basin_id)
+            if upstream_sync_level is None:
+                upstream_sync_level = upstream_level
+            downstream_sync_level = _target_level_for_basin_ids(
+                downstream_component_basin_ids,
+                target_level_by_basin_id,
+            )
+            if downstream_sync_level is None:
+                downstream_sync_level = downstream_level
+
             connector_side_was_synced = bool(upstream_component_basin_ids or downstream_component_basin_ids)
             sync_both_sides = bool(has_supply_state and has_drain_state and connector_side_was_synced)
-            sync_min_upstream = bool(upstream_component_basin_ids) or sync_both_sides
-            sync_max_downstream = bool(downstream_component_basin_ids) or sync_both_sides
+            sync_min_upstream = (
+                upstream_sync_level is not None
+                and not upstream_side_protected
+                and (bool(upstream_component_basin_ids) or connector_is_component_boundary or sync_both_sides)
+            )
+            sync_max_downstream = (
+                downstream_sync_level is not None
+                and has_supply_state
+                and not downstream_side_protected
+                and (bool(downstream_component_basin_ids) or connector_is_component_boundary or sync_both_sides)
+            )
             relevant_condition_basin_ids: set[int] = set()
             if sync_min_upstream:
                 relevant_condition_basin_ids.update(upstream_basin_ids)
             if sync_max_downstream and has_supply_state:
                 relevant_condition_basin_ids.update(downstream_basin_ids)
 
-            control_name_levels_by_connector_id[connector_node_id] = (function, upstream_level, downstream_level)
+            control_name_levels_by_connector_id[connector_node_id] = (
+                function,
+                upstream_sync_level,
+                downstream_sync_level,
+            )
             if relevant_condition_basin_ids and not locked_control:
                 touched_connector_node_ids.add(connector_node_id)
                 condition_basin_scope_by_connector_id[connector_node_id] = relevant_condition_basin_ids
@@ -1258,13 +1660,13 @@ def sync_control_levels_for_basin_updates(
                 if (
                     sync_min_upstream
                     and pd.notna(state)
-                    and upstream_level is not None
+                    and upstream_sync_level is not None
                     and "min_upstream_level" in static_df.columns
                 ):
                     if state == "aanvoer" and has_supply_state:
-                        min_upstream_level = float(upstream_level) + us_target_level_offset_supply
+                        min_upstream_level = float(upstream_sync_level) + us_target_level_offset_supply
                     else:
-                        min_upstream_level = float(upstream_level)
+                        min_upstream_level = float(upstream_sync_level)
                     if locked_control and state != "aanvoer":
                         continue
                     _set_value_if_changed(
@@ -1281,7 +1683,7 @@ def sync_control_levels_for_basin_updates(
                     and pd.notna(state)
                     and has_supply_state
                     and state == "aanvoer"
-                    and downstream_level is not None
+                    and downstream_sync_level is not None
                     and "max_downstream_level" in static_df.columns
                 ):
                     if locked_control:
@@ -1290,7 +1692,7 @@ def sync_control_levels_for_basin_updates(
                         static_df,
                         row_index,
                         "max_downstream_level",
-                        float(downstream_level),
+                        float(downstream_sync_level),
                         records,
                         record,
                     )
@@ -1426,6 +1828,239 @@ def sync_control_levels_for_basin_updates(
     return updates_df
 
 
+def sync_parameterized_manning_basin_levels(
+    model: Model,
+    *,
+    aanvoergebieden_df=None,
+    target_level_column: str = "meta_streefpeil",
+    output_gpkg: str | Path | None = None,
+    excluded_manning_node_ids: list[int] | set[int] | None = None,
+    protected_basin_node_ids: list[int] | set[int] | None = None,
+    apply: bool = True,
+    update_profile: bool = True,
+    update_state: bool = True,
+    tolerance: float = 1e-6,
+    verbose: bool = True,
+    max_iter: int = 500,
+) -> pd.DataFrame:
+    """Synchroniseer basin-peilen in parameterisatie via gesloten Manning-componenten.
+
+    Deze routine raakt alleen Basin / area, Basin / state en Basin / profile. Outlet,
+    Pump en DiscreteControl-tabellen worden niet aangepast. Alleen ManningResistance-nodes
+    binnen `aanvoergebieden_df` worden gebruikt als startpunt; het hele open component
+    rond zo'n Manning-node wordt daarna gesloten op het dominante benedenstroomse basinpeil.
+    Eindbasins met precies een ManningResistance als enige open buur en hooguit
+    TabulatedRatingCurve als overige directe verbinding worden beschermd.
+    """
+    if aanvoergebieden_df is None:
+        raise ValueError("aanvoergebieden_df is verplicht voor parameterisatie-Manning-sync.")
+
+    node_type_by_id = _node_type_by_id(model)
+    link_df = _flow_link_df(model)
+    open_adjacency = _undirected_open_adjacency(link_df=link_df, node_type_by_id=node_type_by_id)
+    target_level_by_basin_id = _target_level_by_basin_id(model, target_level_column)
+    excluded_manning_node_ids = {int(node_id) for node_id in excluded_manning_node_ids or set()}
+    protected_basin_node_ids = {int(node_id) for node_id in protected_basin_node_ids or set()}
+
+    if LEVEL_UPDATE_PROTECTION_COLUMN in model.basin.area.df.columns:
+        protected_basin_node_ids.update(
+            model.basin.area.df.loc[
+                _truthy_series(model.basin.area.df[LEVEL_UPDATE_PROTECTION_COLUMN]),
+                "node_id",
+            ]
+            .dropna()
+            .astype(int)
+            .to_list()
+        )
+
+    start_manning_node_ids = _node_ids_of_type_in_geometry(
+        model=model,
+        node_type="ManningResistance",
+        geometry_df=aanvoergebieden_df,
+        excluded_node_ids=excluded_manning_node_ids,
+    )
+
+    records: list[dict[str, object]] = []
+    component_by_key: dict[tuple[int, ...], set[int]] = {}
+    selected_manning_by_component_key: dict[tuple[int, ...], set[int]] = defaultdict(set)
+    for manning_node_id in start_manning_node_ids:
+        if node_type_by_id.get(int(manning_node_id)) != "ManningResistance":
+            continue
+
+        component_node_ids = _open_component(
+            start_node_id=int(manning_node_id),
+            adjacency=open_adjacency,
+            max_iter=max_iter,
+        )
+        component_key = tuple(sorted(component_node_ids))
+        component_by_key[component_key] = component_node_ids
+        selected_manning_by_component_key[component_key].add(int(manning_node_id))
+
+    for component_id, component_key in enumerate(sorted(component_by_key), start=1):
+        component_node_ids = component_by_key[component_key]
+        basin_ids = sorted(node_id for node_id in component_node_ids if node_type_by_id.get(node_id) == "Basin")
+        component_manning_node_ids = sorted(
+            node_id for node_id in component_node_ids if node_type_by_id.get(node_id) == "ManningResistance"
+        )
+        selected_manning_node_ids = sorted(selected_manning_by_component_key[component_key])
+        boundary_control_node_ids = _component_boundary_control_node_ids(
+            component_node_ids=component_node_ids,
+            link_df=link_df,
+            node_type_by_id=node_type_by_id,
+        )
+
+        if not basin_ids:
+            records.append(
+                {
+                    "component_id": component_id,
+                    "selected_manning_node_ids": ",".join(map(str, selected_manning_node_ids)),
+                    "manning_node_ids": ",".join(map(str, component_manning_node_ids)),
+                    "boundary_control_node_ids": ",".join(map(str, boundary_control_node_ids)),
+                    "status": "geen_basin_in_manning_component",
+                }
+            )
+            continue
+
+        target_level, target_level_status, target_control_node_ids, target_basin_ids = (
+            _dominant_downstream_parameterized_target_level(
+                component_node_ids=component_node_ids,
+                boundary_control_node_ids=boundary_control_node_ids,
+                link_df=link_df,
+                node_type_by_id=node_type_by_id,
+                target_level_by_basin_id=target_level_by_basin_id,
+                tolerance=tolerance,
+                max_iter=max_iter,
+            )
+        )
+        if target_level is None:
+            records.append(
+                {
+                    "component_id": component_id,
+                    "selected_manning_node_ids": ",".join(map(str, selected_manning_node_ids)),
+                    "manning_node_ids": ",".join(map(str, component_manning_node_ids)),
+                    "boundary_control_node_ids": ",".join(map(str, boundary_control_node_ids)),
+                    "target_level_basis": target_level_status,
+                    "status": "target_level_ontbreekt",
+                }
+            )
+            continue
+
+        terminal_manning_branch_basin_node_ids = _terminal_manning_branch_basin_node_ids(
+            component_node_ids=component_node_ids,
+            link_df=link_df,
+            node_type_by_id=node_type_by_id,
+        )
+        changed_any_basin = False
+        for basin_id in basin_ids:
+            old_level = target_level_by_basin_id.get(int(basin_id))
+            if int(basin_id) in protected_basin_node_ids:
+                status = "handmatig_peil_behouden"
+                changed_any_basin = True
+            elif int(basin_id) in terminal_manning_branch_basin_node_ids:
+                status = "manning_eindbasin_behouden"
+                changed_any_basin = True
+            elif pd.notna(old_level) and abs(float(old_level) - float(target_level)) <= tolerance:
+                status = "ongewijzigd"
+            else:
+                status = "update"
+                changed_any_basin = True
+
+            records.append(
+                {
+                    "component_id": component_id,
+                    "selected_manning_node_ids": ",".join(map(str, selected_manning_node_ids)),
+                    "manning_node_ids": ",".join(map(str, component_manning_node_ids)),
+                    "boundary_control_node_ids": ",".join(map(str, boundary_control_node_ids)),
+                    "target_control_node_ids": ",".join(map(str, target_control_node_ids)),
+                    "target_basin_node_ids": ",".join(map(str, target_basin_ids)),
+                    "target_level_basis": target_level_status,
+                    "basin_node_id": int(basin_id),
+                    "old_level": old_level,
+                    "new_level": target_level,
+                    "status": status,
+                }
+            )
+
+        if not changed_any_basin:
+            records.append(
+                {
+                    "component_id": component_id,
+                    "selected_manning_node_ids": ",".join(map(str, selected_manning_node_ids)),
+                    "manning_node_ids": ",".join(map(str, component_manning_node_ids)),
+                    "boundary_control_node_ids": ",".join(map(str, boundary_control_node_ids)),
+                    "target_control_node_ids": ",".join(map(str, target_control_node_ids)),
+                    "target_basin_node_ids": ",".join(map(str, target_basin_ids)),
+                    "target_level_basis": target_level_status,
+                    "status": "geen_level_afwijking",
+                }
+            )
+
+    updates_df = pd.DataFrame(records)
+    if updates_df.empty or "basin_node_id" not in updates_df.columns:
+        return updates_df
+
+    update_rows = updates_df[updates_df["status"].eq("update")].copy()
+    conflicting = update_rows.groupby("basin_node_id")["new_level"].nunique().loc[lambda series: series.gt(1)]
+    if not conflicting.empty:
+        raise ValueError(f"Tegenstrijdige parameterisatie-Manning peilen voor basins: {conflicting.index.to_list()}")
+
+    update_rows = update_rows.drop_duplicates(subset=["basin_node_id"], keep="last")
+    profile_shift_by_basin_id: dict[int, float] = {}
+    if apply and not update_rows.empty:
+        if update_profile and model.basin.profile.df is not None:
+            for row in update_rows.itertuples(index=False):
+                if pd.isna(row.old_level) or pd.isna(row.new_level):
+                    continue
+                basin_id = int(row.basin_node_id)
+                profile_mask = model.basin.profile.df["node_id"].eq(basin_id)
+                if not profile_mask.any():
+                    continue
+
+                level_shift = float(row.new_level) - float(row.old_level)
+                if abs(level_shift) > tolerance:
+                    model.basin.profile.df.loc[profile_mask, "level"] = (
+                        model.basin.profile.df.loc[profile_mask, "level"].astype(float) + level_shift
+                    )
+                    profile_shift_by_basin_id[basin_id] = level_shift
+
+        level_by_basin_id = update_rows.set_index("basin_node_id")["new_level"].astype(float).to_dict()
+        mask = model.basin.area.df["node_id"].isin(level_by_basin_id)
+        model.basin.area.df.loc[mask, target_level_column] = model.basin.area.df.loc[mask, "node_id"].map(
+            level_by_basin_id
+        )
+        if update_state:
+            model.basin.state.df = model.basin.area.df[["node_id", target_level_column]].rename(
+                columns={target_level_column: "level"}
+            )
+
+    if profile_shift_by_basin_id:
+        basin_row_mask = updates_df["basin_node_id"].notna()
+        updates_df.loc[basin_row_mask, "profile_level_shift"] = updates_df.loc[basin_row_mask, "basin_node_id"].map(
+            profile_shift_by_basin_id
+        )
+
+    written_output_gpkg = None
+    if output_gpkg is not None:
+        written_output_gpkg = _write_basin_updates_gpkg(
+            model=model,
+            updates_df=updates_df,
+            output_gpkg=output_gpkg,
+            layer="parameterized_manning_basin_level_updates",
+        )
+
+    if verbose:
+        print("Parameterisatie Manning-route basin level updates:", update_rows["basin_node_id"].nunique())
+        if profile_shift_by_basin_id:
+            print("Parameterisatie Manning-route basin profielen verschoven:", len(profile_shift_by_basin_id))
+        if output_gpkg is not None:
+            if written_output_gpkg is None:
+                print("Parameterisatie Manning-route GPKG niet geschreven: geen basin-updates met geometrie.")
+            else:
+                print(f"Parameterisatie Manning-route GPKG geschreven: {written_output_gpkg}")
+
+    return updates_df
+
+
 def sync_basin_levels_along_manning_routes(
     model: Model,
     *,
@@ -1448,6 +2083,8 @@ def sync_basin_levels_along_manning_routes(
     require_manning_resistance: bool = True,
     require_downstream_supply_control: bool = True,
     protect_upstream_basins_without_supply_control: bool = True,
+    treat_flow_demand_as_supply_control: bool = False,
+    inspect_all_connector_sides: bool = False,
     control_level_tolerance: float = 1e-6,
     verbose: bool = True,
     max_iter: int = 500,
@@ -1458,31 +2095,45 @@ def sync_basin_levels_along_manning_routes(
     Manning-component te kunnen doorlopen. Outlet en Pump begrenzen zo'n component. Componenten zonder
     ManningResistance of zonder benedenstroomse inlaat/doorlaat worden standaard overgeslagen.
     Bovenstroomse basins zonder aanvoerende sturing worden standaard behouden. Handmatig beschermde basins
-    worden gerapporteerd maar niet overschreven.
+    worden gerapporteerd maar niet overschreven. FlowDemand-gestuurde targets tellen alleen als aanvoerende
+    sturing wanneer `treat_flow_demand_as_supply_control=True`; hun eigen static/controller-levels blijven
+    beschermd. Standaard wordt alleen de hydraulisch downstream open zijde van een connector gestart; alle
+    open zijden inspecteren kan met `inspect_all_connector_sides=True`.
     """
     node_type_by_id = _node_type_by_id(model)
     link_df = _flow_link_df(model)
     open_adjacency = _undirected_open_adjacency(link_df=link_df, node_type_by_id=node_type_by_id)
     target_level_by_basin_id = _target_level_by_basin_id(model, target_level_column)
     flow_demand_connector_node_ids = _flow_demand_target_node_ids(model, node_type_by_id=node_type_by_id)
+    ignored_supply_control_node_ids = set() if treat_flow_demand_as_supply_control else flow_demand_connector_node_ids
     control_function_by_node_id = _control_function_by_node_id(model, node_type_by_id=node_type_by_id)
     protected_basin_node_ids = {int(node_id) for node_id in protected_basin_node_ids or []}
     if connector_node_ids is None and start_basin_node_ids is None:
         connector_node_ids = _candidate_connector_node_ids(model)
     if connector_node_ids is not None:
         connector_node_ids = [
-            int(node_id) for node_id in connector_node_ids if int(node_id) not in flow_demand_connector_node_ids
+            int(node_id) for node_id in connector_node_ids if int(node_id) not in ignored_supply_control_node_ids
         ]
 
     starts: list[tuple[int | None, int]] = []
     for connector_node_id in connector_node_ids or []:
-        open_neighbors = _directed_open_neighbors_from_connector(
-            node_id=int(connector_node_id),
-            link_df=link_df,
-            node_type_by_id=node_type_by_id,
-        )
+        if inspect_all_connector_sides:
+            open_neighbors = _open_neighbors_from_connector(
+                node_id=int(connector_node_id),
+                link_df=link_df,
+                node_type_by_id=node_type_by_id,
+            )
+        else:
+            open_neighbors = _directed_open_neighbors_from_connector(
+                node_id=int(connector_node_id),
+                link_df=link_df,
+                node_type_by_id=node_type_by_id,
+            )
+
         if len(open_neighbors) == 1:
             starts.append((int(connector_node_id), open_neighbors[0]))
+        elif inspect_all_connector_sides and open_neighbors:
+            starts.extend((int(connector_node_id), open_neighbor) for open_neighbor in open_neighbors)
         else:
             starts.append((int(connector_node_id), -1))
 
@@ -1546,24 +2197,19 @@ def sync_basin_levels_along_manning_routes(
             node_type_by_id=node_type_by_id,
         )
         boundary_control_node_ids = [
-            node_id for node_id in boundary_control_node_ids if node_id not in flow_demand_connector_node_ids
+            node_id for node_id in boundary_control_node_ids if node_id not in ignored_supply_control_node_ids
         ]
-        upstream_supply_control_node_ids = _upstream_supply_control_node_ids(
-            component_node_ids=component_node_ids,
-            link_df=link_df,
-            node_type_by_id=node_type_by_id,
+        supply_boundary_control_node_ids = _supply_boundary_control_node_ids(
+            boundary_control_node_ids=boundary_control_node_ids,
             control_function_by_node_id=control_function_by_node_id,
         )
-        upstream_supply_control_node_ids = [
-            node_id for node_id in upstream_supply_control_node_ids if node_id not in flow_demand_connector_node_ids
-        ]
-        if require_downstream_supply_control and not upstream_supply_control_node_ids:
+        if require_downstream_supply_control and not supply_boundary_control_node_ids:
             records.append(
                 {
                     "component_id": component_id,
                     "connector_node_ids": ",".join(map(str, connector_node_ids_for_component)),
                     "boundary_control_node_ids": ",".join(map(str, boundary_control_node_ids)),
-                    "status": "geen_bovenstroomse_inlaat_of_doorlaat",
+                    "status": "geen_inlaat_of_doorlaat",
                 }
             )
             continue
@@ -1585,6 +2231,7 @@ def sync_basin_levels_along_manning_routes(
             link_df=link_df,
             node_type_by_id=node_type_by_id,
             control_function_by_node_id=control_function_by_node_id,
+            ignored_supply_control_node_ids=ignored_supply_control_node_ids,
         )
         boundary_basin_ids = _component_boundary_basin_node_ids(
             component_node_ids=component_node_ids,
@@ -1615,6 +2262,7 @@ def sync_basin_levels_along_manning_routes(
                 boundary_control_node_ids=boundary_control_node_ids,
                 link_df=link_df,
                 node_type_by_id=node_type_by_id,
+                target_level_by_basin_id=target_level_by_basin_id,
                 tolerance=control_level_tolerance,
                 max_iter=max_iter,
             )

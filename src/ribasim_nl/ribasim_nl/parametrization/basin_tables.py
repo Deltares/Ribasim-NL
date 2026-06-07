@@ -107,6 +107,141 @@ def update_basin_state(model: Model) -> None:
     model.basin.state.df = model.basin.profile.df.groupby("node_id").max().reset_index()[["node_id", "level"]]
 
 
+def apply_basin_level_overrides(
+    model: Model,
+    basin_level_overrides: list[tuple[list[int], float]],
+    *,
+    target_level_column: str = "meta_streefpeil",
+    update_profile: bool = True,
+    update_state: bool = True,
+) -> list[int]:
+    """Apply manual Basin target levels and keep derived Basin tables consistent."""
+    assert model.basin.area.df is not None
+
+    protected_basin_node_ids = [int(node_id) for node_ids, _ in basin_level_overrides for node_id in node_ids]
+
+    if update_profile and model.basin.profile.df is not None and not model.basin.profile.df.empty:
+        profile_top = model.basin.profile.df.groupby("node_id")["level"].max()
+        for node_ids, target_level in basin_level_overrides:
+            for node_id in node_ids:
+                node_id = int(node_id)
+                if node_id not in profile_top.index:
+                    continue
+
+                level_shift = float(target_level) - float(profile_top.at[node_id])
+                if level_shift == 0:
+                    continue
+
+                mask = model.basin.profile.df["node_id"].eq(node_id)
+                model.basin.profile.df.loc[mask, "level"] = (
+                    model.basin.profile.df.loc[mask, "level"].astype(float) + level_shift
+                )
+
+    for node_ids, target_level in basin_level_overrides:
+        mask = model.basin.area.df["node_id"].isin(node_ids)
+        model.basin.area.df.loc[mask, target_level_column] = float(target_level)
+
+    if update_state:
+        model.basin.state.df = model.basin.area.df[["node_id", target_level_column]].rename(
+            columns={target_level_column: "level"}
+        )
+
+    return protected_basin_node_ids
+
+
+def sync_min_upstream_levels_with_profile_bottoms(
+    model: Model,
+    basin_node_ids: list[int] | set[int] | None = None,
+    *,
+    verbose: bool = True,
+) -> pd.DataFrame:
+    """Keep Outlet/Pump min_upstream_level above direct upstream Basin profile bottoms."""
+    assert model.basin.profile.df is not None
+
+    basin_bottom = model.basin.profile.df.groupby("node_id")["level"].min().astype(float)
+    if basin_node_ids is not None:
+        basin_node_ids = {int(node_id) for node_id in basin_node_ids}
+        basin_bottom = basin_bottom[basin_bottom.index.astype(int).isin(basin_node_ids)]
+    if basin_bottom.empty:
+        return pd.DataFrame()
+
+    node_type_by_id = model.node.df["node_type"].to_dict()
+    link_df = model.link.df.copy()
+    if "link_type" in link_df.columns:
+        link_df = link_df[link_df["link_type"].fillna("flow").eq("flow")]
+
+    requirements: list[dict[str, object]] = []
+    for row in link_df.itertuples(index=False):
+        upstream_node_id = int(row.from_node_id)
+        target_node_id = int(row.to_node_id)
+        target_node_type = node_type_by_id.get(target_node_id)
+        if node_type_by_id.get(upstream_node_id) != "Basin":
+            continue
+        if target_node_type not in {"Outlet", "Pump"}:
+            continue
+        if upstream_node_id not in basin_bottom.index:
+            continue
+
+        requirements.append(
+            {
+                "node_type": target_node_type,
+                "node_id": target_node_id,
+                "upstream_basin_id": upstream_node_id,
+                "required_min_upstream_level": float(basin_bottom.at[upstream_node_id]),
+            }
+        )
+
+    requirements_df = pd.DataFrame(requirements)
+    if requirements_df.empty:
+        return requirements_df
+
+    required_level_by_node = (
+        requirements_df.groupby(["node_type", "node_id"])["required_min_upstream_level"].max().to_dict()
+    )
+    update_records: list[dict[str, object]] = []
+
+    for node_type in ["Outlet", "Pump"]:
+        static_df = getattr(model, node_type.lower()).static.df
+        if static_df is None or "min_upstream_level" not in static_df.columns:
+            continue
+
+        node_requirements = {
+            node_id: required_level
+            for (required_node_type, node_id), required_level in required_level_by_node.items()
+            if required_node_type == node_type
+        }
+        if not node_requirements:
+            continue
+
+        for node_id, required_level in node_requirements.items():
+            mask = static_df["node_id"].eq(int(node_id)) & static_df["min_upstream_level"].notna()
+            if not mask.any():
+                continue
+
+            current_values = static_df.loc[mask, "min_upstream_level"].astype(float)
+            update_index = current_values[current_values.lt(float(required_level))].index
+            if len(update_index) == 0:
+                continue
+
+            update_records.extend(
+                {
+                    "node_type": node_type,
+                    "node_id": int(node_id),
+                    "source_fid": int(static_df.at[index, "fid"]) if "fid" in static_df.columns else None,
+                    "old_min_upstream_level": float(static_df.at[index, "min_upstream_level"]),
+                    "new_min_upstream_level": float(required_level),
+                }
+                for index in update_index
+            )
+            static_df.loc[update_index, "min_upstream_level"] = float(required_level)
+
+    update_df = pd.DataFrame(update_records)
+    if verbose and not update_df.empty:
+        print(f"min_upstream_level gesynchroniseerd met profielbodem voor {len(update_df)} kunstwerk-rijen")
+
+    return update_df
+
+
 def add_basin_time_synthetic(
     model: Model,
     precipitation_mm_per_day: float,
