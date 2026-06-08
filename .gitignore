@@ -95,9 +95,6 @@ runs/
 repro_jobs.txt
 delwaq/
 
-# Runtime temp/cache dirs for coupled pipeline parallel steps
-scripts/_coupled_pipeline_tmp/*/parallel/
-
 # Main scripts to run workflows per water authority
 notebooks/*/main.py
 ribasim.env
