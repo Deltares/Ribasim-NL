@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from ribasim_nl.coupling_level_common import CONTROL_NODE_TYPES
+from ribasim_nl.coupling_level_common import CONTROL_NODE_TYPES, as_int
 
 
 def first_non_junction(
@@ -132,7 +132,7 @@ def downstream_basin_has_direct_control(
     if target_errors:
         return False, "; ".join(target_errors)
 
-    target_types = [node_type_by_id.get(node_id) for node_id, _, _ in targets]
+    target_types = [node_type_by_id.get(node_id) for node_id, _, _ in targets if node_id is not None]
     if any(node_type == "ManningResistance" for node_type in target_types):
         return False, "downstream ManningResistance niet gebruikt voor max_downstream_level"
     if any(node_type in CONTROL_NODE_TYPES for node_type in target_types):
@@ -144,14 +144,16 @@ def flow_link_graphs(
     link_df: pd.DataFrame,
 ) -> tuple[dict[int, list[tuple[int, int]]], dict[int, list[tuple[int, int]]]]:
     flow_link_df = link_df[link_df["link_type"].fillna("flow").eq("flow")].copy()
-    outgoing_flow_links = (
-        flow_link_df.groupby("from_node_id")[["link_id", "to_node_id"]]
-        .apply(lambda rows: [(int(row.link_id), int(row.to_node_id)) for row in rows.itertuples()])
-        .to_dict()
-    )
-    incoming_flow_links = (
-        flow_link_df.groupby("to_node_id")[["link_id", "from_node_id"]]
-        .apply(lambda rows: [(int(row.link_id), int(row.from_node_id)) for row in rows.itertuples()])
-        .to_dict()
-    )
+    outgoing_flow_links: dict[int, list[tuple[int, int]]] = {}
+    for from_node_id, rows in flow_link_df.groupby("from_node_id"):
+        outgoing_flow_links[as_int(from_node_id)] = [
+            (as_int(row.link_id), as_int(row.to_node_id)) for row in rows.itertuples(index=False)
+        ]
+
+    incoming_flow_links: dict[int, list[tuple[int, int]]] = {}
+    for to_node_id, rows in flow_link_df.groupby("to_node_id"):
+        incoming_flow_links[as_int(to_node_id)] = [
+            (as_int(row.link_id), as_int(row.from_node_id)) for row in rows.itertuples(index=False)
+        ]
+
     return outgoing_flow_links, incoming_flow_links

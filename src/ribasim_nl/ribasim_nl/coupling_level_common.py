@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
+from typing import Any, cast
 
 import pandas as pd
 
@@ -48,6 +49,22 @@ def normalize_numeric(series: pd.Series) -> pd.Series:
     return pd.to_numeric(series, errors="coerce")
 
 
+def as_int(value: object) -> int:
+    return int(cast(Any, value))
+
+
+def as_float(value: object) -> float:
+    return float(cast(Any, value))
+
+
+def is_missing(value: object) -> bool:
+    return bool(pd.isna(cast(Any, value)))
+
+
+def is_present(value: object) -> bool:
+    return not is_missing(value)
+
+
 def reset_index_to_column(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
     if column_name in df.columns:
         return df.copy()
@@ -65,14 +82,14 @@ def positive(value: object) -> bool:
     try:
         if value is None:
             return False
-        number = float(value)
+        number = as_float(value)
         return math.isfinite(number) and number > 0.0
     except (TypeError, ValueError):
         return False
 
 
 def truthy(value: object) -> bool:
-    if value is None or pd.isna(value):
+    if is_missing(value):
         return False
     if isinstance(value, bool):
         return value
@@ -105,18 +122,28 @@ def classify_functions(static_df: pd.DataFrame, flow_demand_inlet_nodes: set[int
 def model_level_difference_threshold(model: Model) -> float:
     solver = getattr(model, "solver", None)
     value = getattr(solver, "level_difference_threshold", None)
-    return 0.02 if value is None or pd.isna(value) else float(value)
+    return 0.02 if is_missing(value) else as_float(value)
 
 
 def control_node_name(model: Model, control_node_id: int) -> str | None:
-    if int(control_node_id) not in model.node.df.index:
+    node_df = model.node.df
+    if node_df is None:
         return None
-    name = model.node.df.at[int(control_node_id), "name"]
-    return None if pd.isna(name) else str(name)
+
+    control_node_id = as_int(control_node_id)
+    if control_node_id not in node_df.index:
+        return None
+    name = node_df.at[control_node_id, "name"]
+    return None if is_missing(name) else str(name)
 
 
 def control_node_ids_by_target_node_id(model: Model) -> dict[int, list[int]]:
-    node_type_by_id = model.node.df["node_type"].to_dict()
+    assert model.node.df is not None
+    assert model.link.df is not None
+
+    node_type_by_id = {
+        as_int(node_id): str(node_type) for node_id, node_type in model.node.df["node_type"].to_dict().items()
+    }
     link_df = reset_index_to_column(model.link.df.copy(), "link_id")
     control_links = link_df[
         link_df["link_type"].fillna("").eq("control")
@@ -126,17 +153,22 @@ def control_node_ids_by_target_node_id(model: Model) -> dict[int, list[int]]:
     if control_links.empty:
         return {}
 
-    return (
-        control_links.groupby("to_node_id")["from_node_id"]
-        .apply(lambda values: [int(value) for value in values])
-        .to_dict()
-    )
+    result: dict[int, list[int]] = {}
+    for target_node_id, rows in control_links.groupby("to_node_id"):
+        result[as_int(target_node_id)] = [as_int(value) for value in rows["from_node_id"]]
+    return result
 
 
 def flow_demand_controlled_node_ids(model: Model) -> set[int]:
+    assert model.node.df is not None
+    assert model.link.df is not None
+
     node_df = reset_index_to_column(model.node.df.copy(), "node_id")
     link_df = reset_index_to_column(model.link.df.copy(), "link_id")
-    node_type_by_id = node_df.set_index("node_id")["node_type"].to_dict()
+    node_type_by_id = {
+        as_int(node_id): str(node_type)
+        for node_id, node_type in node_df.set_index("node_id")["node_type"].to_dict().items()
+    }
     flow_demand_links = link_df[
         link_df["link_type"].fillna("").eq("control")
         & link_df["from_node_id"].map(node_type_by_id).eq("FlowDemand")

@@ -3,6 +3,7 @@ from datetime import datetime
 
 import pandas as pd
 
+from ribasim_nl.coupling_level_common import as_float, as_int
 from ribasim_nl.model import Model
 from ribasim_nl.parametrization.conversions import round_to_precision
 from ribasim_nl.parametrization.empty_table import empty_table_df
@@ -128,7 +129,7 @@ def apply_basin_level_overrides(
                 if node_id not in profile_top.index:
                     continue
 
-                level_shift = float(target_level) - float(profile_top.at[node_id])
+                level_shift = float(target_level) - as_float(profile_top.at[node_id])
                 if level_shift == 0:
                     continue
 
@@ -142,6 +143,7 @@ def apply_basin_level_overrides(
         model.basin.area.df.loc[mask, target_level_column] = float(target_level)
 
     if update_state:
+        # pyrefly: ignore[bad-assignment]
         model.basin.state.df = model.basin.area.df[["node_id", target_level_column]].rename(
             columns={target_level_column: "level"}
         )
@@ -165,15 +167,19 @@ def sync_min_upstream_levels_with_profile_bottoms(
     if basin_bottom.empty:
         return pd.DataFrame()
 
-    node_type_by_id = model.node.df["node_type"].to_dict()
+    assert model.node.df is not None
+    assert model.link.df is not None
+    node_type_by_id = {
+        as_int(node_id): str(node_type) for node_id, node_type in model.node.df["node_type"].to_dict().items()
+    }
     link_df = model.link.df.copy()
     if "link_type" in link_df.columns:
         link_df = link_df[link_df["link_type"].fillna("flow").eq("flow")]
 
     requirements: list[dict[str, object]] = []
     for row in link_df.itertuples(index=False):
-        upstream_node_id = int(row.from_node_id)
-        target_node_id = int(row.to_node_id)
+        upstream_node_id = as_int(row.from_node_id)
+        target_node_id = as_int(row.to_node_id)
         target_node_type = node_type_by_id.get(target_node_id)
         if node_type_by_id.get(upstream_node_id) != "Basin":
             continue
@@ -187,7 +193,7 @@ def sync_min_upstream_levels_with_profile_bottoms(
                 "node_type": target_node_type,
                 "node_id": target_node_id,
                 "upstream_basin_id": upstream_node_id,
-                "required_min_upstream_level": float(basin_bottom.at[upstream_node_id]),
+                "required_min_upstream_level": as_float(basin_bottom.at[upstream_node_id]),
             }
         )
 
@@ -195,9 +201,14 @@ def sync_min_upstream_levels_with_profile_bottoms(
     if requirements_df.empty:
         return requirements_df
 
-    required_level_by_node = (
-        requirements_df.groupby(["node_type", "node_id"])["required_min_upstream_level"].max().to_dict()
-    )
+    required_level_by_node: dict[tuple[str, int], float] = {}
+    for key, required_level in (
+        requirements_df.groupby(["node_type", "node_id"])["required_min_upstream_level"].max().items()
+    ):
+        if not isinstance(key, tuple) or len(key) != 2:
+            continue
+        required_node_type, node_id = key
+        required_level_by_node[(str(required_node_type), as_int(node_id))] = as_float(required_level)
     update_records: list[dict[str, object]] = []
 
     for node_type in ["Outlet", "Pump"]:

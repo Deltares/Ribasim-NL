@@ -11,7 +11,11 @@ from ribasim_nl.coupling_level_common import (
     CONTROL_NODE_TYPES,
     LEVEL_UPDATE_PROTECTION_COLUMN,
     STATIC_TABLE_BY_NODE_TYPE,
+    as_float,
+    as_int,
     classify_functions,
+    is_missing,
+    is_present,
     model_level_difference_threshold,
     reset_index_to_column,
     static_row_has_capacity,
@@ -22,20 +26,21 @@ from ribasim_nl.coupling_level_common import (
 def grouped_compound_counts(df: pd.DataFrame | None, control_node_id: int) -> dict[int, int]:
     if df is None or df.empty or "compound_variable_id" not in df.columns:
         return {}
-    rows = df[df["node_id"].astype(int).eq(int(control_node_id))]
+    rows = df[df["node_id"].astype(int).eq(as_int(control_node_id))]
     if rows.empty:
         return {}
-    return {
-        int(compound_variable_id): int(count)
-        for compound_variable_id, count in rows.groupby("compound_variable_id").size().items()
-        if pd.notna(compound_variable_id)
-    }
+    counts: dict[int, int] = {}
+    for compound_variable_id, count in rows.groupby("compound_variable_id").size().items():
+        if is_missing(compound_variable_id):
+            continue
+        counts[as_int(compound_variable_id)] = as_int(count)
+    return counts
 
 
 def logic_pairs(df: pd.DataFrame | None, control_node_id: int) -> set[tuple[str, str]]:
     if df is None or df.empty:
         return set()
-    rows = df[df["node_id"].astype(int).eq(int(control_node_id))]
+    rows = df[df["node_id"].astype(int).eq(as_int(control_node_id))]
     return {(str(row.truth_state), str(row.control_state).lower()) for row in rows.itertuples(index=False)}
 
 
@@ -62,9 +67,12 @@ def validate_control_layout_for_sync(
     flow_demand_controlled: bool,
 ) -> None:
     control_name = None
-    if int(control_node_id) in model.node.df.index:
-        name = model.node.df.at[int(control_node_id), "name"]
-        control_name = None if pd.isna(name) else str(name)
+    node_df = model.node.df
+    if node_df is not None:
+        control_node_id = as_int(control_node_id)
+        if control_node_id in node_df.index:
+            name = node_df.at[control_node_id, "name"]
+            control_name = None if is_missing(name) else str(name)
     layout_key = control_layout_key(
         function=function,
         flow_demand_controlled=flow_demand_controlled,
@@ -141,7 +149,7 @@ def protected_static_level_for_condition(
     values = pd.to_numeric(candidates[column], errors="coerce").dropna()
     if values.empty:
         return None, None
-    return float(values.iloc[0]), basis
+    return as_float(values.iloc[0]), basis
 
 
 def prefer_matching_listen_node(
@@ -156,7 +164,7 @@ def prefer_matching_listen_node(
         if column not in candidates.columns:
             continue
         ids = pd.to_numeric(candidates[column], errors="coerce")
-        matched = candidates.loc[ids.eq(int(listen_node_id))]
+        matched = candidates.loc[ids.eq(as_int(listen_node_id))]
         if not matched.empty:
             return matched
     return candidates
@@ -172,7 +180,7 @@ def checked_level_for_condition_from_report(
     if report_df.empty:
         return None, None
 
-    rows = report_df[report_df["node_id"].astype(int).eq(int(target_node_id))].copy()
+    rows = report_df[report_df["node_id"].astype(int).eq(as_int(target_node_id))].copy()
     if rows.empty:
         return None, None
 
@@ -226,7 +234,7 @@ def checked_level_for_condition_from_report(
     values = pd.to_numeric(candidates[column], errors="coerce").dropna()
     if values.empty:
         return None, None
-    return float(values.iloc[0]), basis
+    return as_float(values.iloc[0]), basis
 
 
 def protected_controller_threshold_updates(
@@ -235,6 +243,9 @@ def protected_controller_threshold_updates(
     tolerance: float,
 ) -> pd.DataFrame:
     """Find coupling/protected levels whose DiscreteControl thresholds do not match."""
+    assert model.node.df is not None
+    assert model.link.df is not None
+
     node_df = reset_index_to_column(model.node.df.copy(), "node_id")
     link_df = reset_index_to_column(model.link.df.copy(), "link_id")
     variable_df = model.discrete_control.variable.df
@@ -261,10 +272,21 @@ def protected_controller_threshold_updates(
     if LEVEL_UPDATE_PROTECTION_COLUMN not in static_df.columns:
         return pd.DataFrame()
 
-    node_type_by_id = node_df.set_index("node_id")["node_type"].to_dict()
-    node_name_by_id = node_df.set_index("node_id")["name"].to_dict()
-    node_authority_by_id = node_df.set_index("node_id")["meta_waterbeheerder"].to_dict()
-    node_meta_id_by_id = node_df.set_index("node_id")["meta_node_id_waterbeheerder"].to_dict()
+    node_type_by_id = {
+        as_int(node_id): str(node_type)
+        for node_id, node_type in node_df.set_index("node_id")["node_type"].to_dict().items()
+    }
+    node_name_by_id = {
+        as_int(node_id): name for node_id, name in node_df.set_index("node_id")["name"].to_dict().items()
+    }
+    node_authority_by_id = {
+        as_int(node_id): authority
+        for node_id, authority in node_df.set_index("node_id")["meta_waterbeheerder"].to_dict().items()
+    }
+    node_meta_id_by_id = {
+        as_int(node_id): meta_id
+        for node_id, meta_id in node_df.set_index("node_id")["meta_node_id_waterbeheerder"].to_dict().items()
+    }
     flow_demand_links = link_df[
         link_df["link_type"].fillna("").eq("control")
         & link_df["from_node_id"].map(node_type_by_id).eq("FlowDemand")
@@ -281,13 +303,13 @@ def protected_controller_threshold_updates(
 
     records = []
     for control_link in control_links.itertuples(index=False):
-        control_node_id = int(control_link.from_node_id)
-        target_node_id = int(control_link.to_node_id)
+        control_node_id = as_int(control_link.from_node_id)
+        target_node_id = as_int(control_link.to_node_id)
         if target_node_id in flow_demand_target_node_ids:
             continue
-        if pd.isna(node_authority_by_id.get(target_node_id)):
+        if is_missing(node_authority_by_id.get(target_node_id)):
             continue
-        if pd.isna(node_meta_id_by_id.get(target_node_id)):
+        if is_missing(node_meta_id_by_id.get(target_node_id)):
             continue
 
         control_name = node_name_by_id.get(control_node_id)
@@ -297,7 +319,7 @@ def protected_controller_threshold_updates(
         layout_key = control_layout_key(
             function=function,
             flow_demand_controlled=False,
-            control_name=None if pd.isna(control_name) else str(control_name),
+            control_name=None if is_missing(control_name) else str(control_name),
         )
         if layout_key not in control_layouts():
             continue
@@ -306,17 +328,17 @@ def protected_controller_threshold_updates(
         has_protected_static = target_static_rows[LEVEL_UPDATE_PROTECTION_COLUMN].map(truthy).any()
         variable_rows = variable_df[variable_df["node_id"].astype(int).eq(control_node_id)].copy()
         for variable_row in variable_rows.itertuples(index=False):
-            compound_variable_id = int(variable_row.compound_variable_id)
+            compound_variable_id = as_int(variable_row.compound_variable_id)
             variable_name = str(variable_row.variable)
             if variable_name.lower() != "level":
                 continue
 
-            listen_node_id = int(variable_row.listen_node_id)
+            listen_node_id = as_int(variable_row.listen_node_id)
             target_authority = node_authority_by_id.get(target_node_id)
             listen_authority = node_authority_by_id.get(listen_node_id)
             is_coupled_condition = (
-                pd.notna(target_authority)
-                and pd.notna(listen_authority)
+                is_present(target_authority)
+                and is_present(listen_authority)
                 and str(target_authority) != str(listen_authority)
             )
             if is_coupled_condition:
@@ -346,8 +368,8 @@ def protected_controller_threshold_updates(
                 layout_key=layout_key,
                 compound_variable_id=compound_variable_id,
                 variable_name=variable_name,
-                level_value=float(level_value),
-                weight=float(variable_row.weight),
+                level_value=as_float(level_value),
+                weight=as_float(variable_row.weight),
                 level_difference_threshold=model_level_difference_threshold(model),
             )
             if len(threshold_values) != len(condition_rows):
@@ -356,13 +378,17 @@ def protected_controller_threshold_updates(
             for threshold_value, condition_row in zip(
                 threshold_values, condition_rows.itertuples(index=False), strict=True
             ):
-                current_high = float(condition_row.threshold_high) if pd.notna(condition_row.threshold_high) else np.nan
-                current_low = float(condition_row.threshold_low) if pd.notna(condition_row.threshold_low) else np.nan
+                current_high = (
+                    as_float(condition_row.threshold_high) if is_present(condition_row.threshold_high) else np.nan
+                )
+                current_low = (
+                    as_float(condition_row.threshold_low) if is_present(condition_row.threshold_low) else np.nan
+                )
                 if (
                     pd.notna(current_high)
                     and pd.notna(current_low)
-                    and np.isclose(current_high, float(threshold_value), atol=tolerance)
-                    and np.isclose(current_low, float(threshold_value), atol=tolerance)
+                    and np.isclose(current_high, as_float(threshold_value), atol=tolerance)
+                    and np.isclose(current_low, as_float(threshold_value), atol=tolerance)
                 ):
                     continue
 
@@ -375,21 +401,21 @@ def protected_controller_threshold_updates(
                         "meta_node_id_waterbeheerder": node_meta_id_by_id.get(target_node_id),
                         "control_node_id": control_node_id,
                         "control_name": control_name,
-                        "condition_fid": int(condition_row.condition_fid),
+                        "condition_fid": as_int(condition_row.condition_fid),
                         "compound_variable_id": compound_variable_id,
-                        "condition_id": int(condition_row.condition_id),
+                        "condition_id": as_int(condition_row.condition_id),
                         "listen_node_id": listen_node_id,
                         "listen_node_authority": listen_authority,
                         "is_coupled_condition": bool(is_coupled_condition),
                         "variable": variable_name,
-                        "weight": float(variable_row.weight),
-                        "protected_static_level": np.nan if is_coupled_condition else float(level_value),
-                        "coupling_checked_level": float(level_value) if is_coupled_condition else np.nan,
-                        "threshold_level": float(level_value),
+                        "weight": as_float(variable_row.weight),
+                        "protected_static_level": np.nan if is_coupled_condition else as_float(level_value),
+                        "coupling_checked_level": as_float(level_value) if is_coupled_condition else np.nan,
+                        "threshold_level": as_float(level_value),
                         "threshold_update_basis": update_basis,
                         "huidig_threshold_high": current_high,
                         "huidig_threshold_low": current_low,
-                        "gecheckte_threshold": float(threshold_value),
+                        "gecheckte_threshold": as_float(threshold_value),
                     }
                 )
 

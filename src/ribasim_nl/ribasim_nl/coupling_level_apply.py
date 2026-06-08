@@ -12,9 +12,13 @@ from ribasim_nl import Model
 from ribasim_nl.control_layout import control_condition_thresholds, control_layout_key
 from ribasim_nl.coupling_level_common import (
     STATIC_TABLE_BY_NODE_TYPE,
+    as_float,
+    as_int,
     control_node_ids_by_target_node_id,
     control_node_name,
     flow_demand_controlled_node_ids,
+    is_missing,
+    is_present,
     model_level_difference_threshold,
 )
 from ribasim_nl.coupling_level_controls import (
@@ -152,9 +156,12 @@ def apply_level_updates(
     manning_update_count = 0
     synced_conditions: set[tuple[int, int, float]] = set()
     control_ids_by_target = control_node_ids_by_target_node_id(model)
-    static_df_by_table = {
-        table: model.get_component(node_type).static.df for node_type, table in STATIC_TABLE_BY_NODE_TYPE.items()
-    }
+    static_df_by_table: dict[str, pd.DataFrame] = {}
+    for node_type, table in STATIC_TABLE_BY_NODE_TYPE.items():
+        static_df = model.get_component(node_type).static.df
+        if static_df is None:
+            raise ValueError(f"{table} ontbreekt in het model.")
+        static_df_by_table[table] = static_df
 
     def update_discrete_control_conditions(
         target_node_id: int,
@@ -165,10 +172,12 @@ def apply_level_updates(
     ) -> int:
         if flow_demand_controlled or listen_node_id is None:
             return 0
-        if model.discrete_control.variable.df is None or model.discrete_control.condition.df is None:
+        variable_df = model.discrete_control.variable.df
+        condition_df = model.discrete_control.condition.df
+        if variable_df is None or condition_df is None:
             return 0
 
-        control_node_ids = control_ids_by_target.get(int(target_node_id), [])
+        control_node_ids = control_ids_by_target.get(as_int(target_node_id), [])
         if not control_node_ids:
             return 0
 
@@ -184,25 +193,23 @@ def apply_level_updates(
             )
             validate_control_layout_for_sync(
                 model,
-                target_node_id=int(target_node_id),
-                control_node_id=int(control_node_id),
+                target_node_id=as_int(target_node_id),
+                control_node_id=as_int(control_node_id),
                 function=function,
                 flow_demand_controlled=flow_demand_controlled,
             )
-            variable_df = model.discrete_control.variable.df
-            condition_df = model.discrete_control.condition.df
             variable_rows = variable_df[
-                variable_df["node_id"].astype(int).eq(int(control_node_id))
-                & variable_df["listen_node_id"].astype(int).eq(int(listen_node_id))
+                variable_df["node_id"].astype(int).eq(as_int(control_node_id))
+                & variable_df["listen_node_id"].astype(int).eq(as_int(listen_node_id))
             ].copy()
             seen_compound_variable_ids = set()
             for variable_row in variable_rows.itertuples(index=False):
-                compound_variable_id = int(variable_row.compound_variable_id)
+                compound_variable_id = as_int(variable_row.compound_variable_id)
                 if compound_variable_id in seen_compound_variable_ids:
                     continue
                 seen_compound_variable_ids.add(compound_variable_id)
 
-                condition_mask = condition_df["node_id"].astype(int).eq(int(control_node_id)) & condition_df[
+                condition_mask = condition_df["node_id"].astype(int).eq(as_int(control_node_id)) & condition_df[
                     "compound_variable_id"
                 ].astype(int).eq(compound_variable_id)
                 condition_rows = condition_df.loc[condition_mask].copy()
@@ -214,8 +221,8 @@ def apply_level_updates(
                     layout_key=layout_key,
                     compound_variable_id=compound_variable_id,
                     variable_name=str(variable_row.variable),
-                    level_value=float(level_value),
-                    weight=float(variable_row.weight),
+                    level_value=as_float(level_value),
+                    weight=as_float(variable_row.weight),
                     level_difference_threshold=model_level_difference_threshold(model),
                 )
                 if len(threshold_values) != len(condition_rows):
@@ -226,8 +233,8 @@ def apply_level_updates(
                     )
 
                 for threshold_value, condition_index in zip(threshold_values, condition_rows.index, strict=True):
-                    condition_df.loc[condition_index, "threshold_high"] = float(threshold_value)
-                    condition_df.loc[condition_index, "threshold_low"] = float(threshold_value)
+                    condition_df.loc[condition_index, "threshold_high"] = as_float(threshold_value)
+                    condition_df.loc[condition_index, "threshold_low"] = as_float(threshold_value)
                     update_count += 1
 
         return update_count
@@ -240,16 +247,16 @@ def apply_level_updates(
         flow_demand_controlled: bool,
     ) -> None:
         nonlocal condition_update_count
-        if flow_demand_controlled or listen_node_id is None or pd.isna(level_value):
+        if flow_demand_controlled or listen_node_id is None or is_missing(level_value):
             return
-        key = (int(target_node_id), int(listen_node_id), round(float(level_value), 9))
+        key = (as_int(target_node_id), as_int(listen_node_id), round(as_float(level_value), 9))
         if key in synced_conditions:
             return
         synced_conditions.add(key)
         condition_update_count += update_discrete_control_conditions(
-            target_node_id=int(target_node_id),
-            listen_node_id=int(listen_node_id),
-            level_value=float(level_value),
+            target_node_id=as_int(target_node_id),
+            listen_node_id=as_int(listen_node_id),
+            level_value=as_float(level_value),
             function=function,
             flow_demand_controlled=flow_demand_controlled,
         )
@@ -259,13 +266,13 @@ def apply_level_updates(
             getattr(row, "limburg_rws_flow_demand_min_upstream", False)
         ):
             continue
-        static_df = static_df_by_table[row.static_table]
-        static_df.loc[int(row.table_fid), "min_upstream_level"] = float(row.rws_inlet_profile_min_upstream)
-        if pd.notna(row.upstream_node_id) and pd.notna(row.upstream_basin_streefpeil):
+        static_df = static_df_by_table[str(row.static_table)]
+        static_df.loc[as_int(row.table_fid), "min_upstream_level"] = as_float(row.rws_inlet_profile_min_upstream)
+        if is_present(row.upstream_node_id) and is_present(row.upstream_basin_streefpeil):
             sync_once(
-                target_node_id=int(row.node_id),
-                listen_node_id=int(row.upstream_node_id),
-                level_value=float(row.upstream_basin_streefpeil),
+                target_node_id=as_int(row.node_id),
+                listen_node_id=as_int(row.upstream_node_id),
+                level_value=as_float(row.upstream_basin_streefpeil),
                 function=str(row.functie),
                 flow_demand_controlled=bool(row.flow_demand_controlled),
             )
@@ -274,13 +281,13 @@ def apply_level_updates(
     for row in direct_min_upstream_updates_df.itertuples(index=False):
         if bool(getattr(row, "flow_demand_controlled", False)):
             continue
-        value = float(row.gecheckte_min_upstream_level)
-        static_df = static_df_by_table[row.static_table]
-        static_df.loc[int(row.table_fid), "min_upstream_level"] = value
-        control_value = float(row.upstream_basin_streefpeil) if pd.notna(row.upstream_basin_streefpeil) else value
+        value = as_float(row.gecheckte_min_upstream_level)
+        static_df = static_df_by_table[str(row.static_table)]
+        static_df.loc[as_int(row.table_fid), "min_upstream_level"] = value
+        control_value = as_float(row.upstream_basin_streefpeil) if is_present(row.upstream_basin_streefpeil) else value
         sync_once(
-            target_node_id=int(row.node_id),
-            listen_node_id=int(row.upstream_node_id) if pd.notna(row.upstream_node_id) else None,
+            target_node_id=as_int(row.node_id),
+            listen_node_id=as_int(row.upstream_node_id) if is_present(row.upstream_node_id) else None,
             level_value=control_value,
             function=str(row.functie),
             flow_demand_controlled=bool(row.flow_demand_controlled),
@@ -290,12 +297,12 @@ def apply_level_updates(
     for row in max_downstream_updates_df.itertuples(index=False):
         if bool(getattr(row, "flow_demand_controlled", False)):
             continue
-        value = float(row.gecheckte_max_downstream_level_update)
-        static_df = static_df_by_table[row.static_table]
-        static_df.loc[int(row.table_fid), "max_downstream_level"] = value
+        value = as_float(row.gecheckte_max_downstream_level_update)
+        static_df = static_df_by_table[str(row.static_table)]
+        static_df.loc[as_int(row.table_fid), "max_downstream_level"] = value
         sync_once(
-            target_node_id=int(row.node_id),
-            listen_node_id=int(row.downstream_node_id) if pd.notna(row.downstream_node_id) else None,
+            target_node_id=as_int(row.node_id),
+            listen_node_id=as_int(row.downstream_node_id) if is_present(row.downstream_node_id) else None,
             level_value=value,
             function=str(row.functie),
             flow_demand_controlled=bool(row.flow_demand_controlled),
@@ -305,10 +312,12 @@ def apply_level_updates(
     for row in protected_controller_updates_df.itertuples(index=False):
         if bool(getattr(row, "flow_demand_controlled", False)):
             continue
-        threshold = float(row.gecheckte_threshold)
+        threshold = as_float(row.gecheckte_threshold)
         condition_df = model.discrete_control.condition.df
-        condition_df.loc[int(row.condition_fid), "threshold_high"] = threshold
-        condition_df.loc[int(row.condition_fid), "threshold_low"] = threshold
+        if condition_df is None:
+            continue
+        condition_df.loc[as_int(row.condition_fid), "threshold_high"] = threshold
+        condition_df.loc[as_int(row.condition_fid), "threshold_low"] = threshold
         condition_update_count += 1
 
     if manning_n is not None:

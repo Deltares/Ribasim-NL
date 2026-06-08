@@ -741,7 +741,7 @@ def add_controllers_to_drain_nodes(
 
     for connector_node in drain_nodes_df.itertuples():
         node_id = connector_node.Index
-        node_type = connector_node.node_type
+        node_type = str(connector_node.node_type)
         # get targed_level and define min_upstream_level; [target_level, target_level]
         us_node_id = connector_node.from_node_id
         us_target_level = _target_level(
@@ -864,7 +864,7 @@ def add_controllers_to_supply_nodes(
     node_types = _read_node_table(model=model)["node_type"]
     for connector_node in supply_nodes_df.itertuples():
         node_id = connector_node.Index
-        node_type = connector_node.node_type
+        node_type = str(connector_node.node_type)
         # get downstream target level, cannot be None (!)
         ds_node_id = connector_node.to_node_id
         ds_target_level = _target_level(
@@ -897,7 +897,7 @@ def add_controllers_to_supply_nodes(
 
         # update static table
         node_id = connector_node.Index
-        node_type = connector_node.node_type
+        node_type = str(connector_node.node_type)
         control_state = ["aanvoer", "afvoer"]
         node_id_int = cast(int, node_id)
         static_df = model.get_component(node_type).static.df.set_index("node_id").loc[[node_id]]
@@ -1027,7 +1027,7 @@ def add_controllers_to_flow_control_nodes(
     node_types = _read_node_table(model=model)["node_type"]
     for connector_node in flow_control_nodes_df.itertuples():
         node_id = connector_node.Index
-        node_type = connector_node.node_type
+        node_type = str(connector_node.node_type)
         # get downstream target level, cannot be None (!)
         ds_node_id = connector_node.to_node_id
         ds_target_level = _target_level(
@@ -1226,7 +1226,7 @@ def add_controllers_and_demand_to_flushing_nodes(
 
     for connector_node in flushing_nodes_df.itertuples():
         node_id = connector_node.Index
-        node_type = connector_node.node_type
+        node_type = str(connector_node.node_type)
         demand_flow_rate_summer = float(cast(float, connector_node.demand_flow_rate_summer))
         demand_flow_rate_winter = float(cast(float, connector_node.demand_flow_rate_winter))
         # get upstream target_level and define min_upstream_level;

@@ -167,7 +167,7 @@ def add_geometry(node_df: gpd.GeoDataFrame, df: pd.DataFrame) -> gpd.GeoDataFram
 
 
 def select_report_columns(gdf: gpd.GeoDataFrame, columns: list[str]) -> gpd.GeoDataFrame:
-    geometry_column = gdf.geometry.name if gdf.geometry.name in gdf.columns else "geometry"
+    geometry_column = str(gdf.geometry.name) if gdf.geometry.name in gdf.columns else "geometry"
     selected_columns = [column for column in columns if column in gdf.columns]
     if geometry_column in gdf.columns and geometry_column not in selected_columns:
         selected_columns.append(geometry_column)
