@@ -64,7 +64,7 @@ hydamo = { path = "src/hydamo", editable = true }
 peilbeheerst_model = { path = "src/peilbeheerst_model", editable = true }
 ribasim_nl = { path = "src/ribasim_nl", editable = true }
 # sync with config in install_ribasim_core.py
-ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "17b62840e2ce2eb79913fe1fb0f43e216abcf830", subdirectory = "python/ribasim" }
+ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "49e0008a168747bf1e30ec4987c768339a95855f", subdirectory = "python/ribasim" }
 types-geopandas = ">=1.1"
 types-networkx = ">=3.6"
 types-pycurl = ">=7.45"

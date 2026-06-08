@@ -323,8 +323,7 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     )
 
     # update model IDs
-    ribasim_model.node._update_used_ids()  # pyrefly: ignore[not-callable]
-    ribasim_model.link._update_used_ids()  # pyrefly: ignore[not-callable]
+    ribasim_model.update_used_ids()
 
     # return the updated Ribasim model
     return ribasim_model

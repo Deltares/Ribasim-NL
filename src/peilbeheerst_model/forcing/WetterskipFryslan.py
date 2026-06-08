@@ -293,7 +293,7 @@ pump_copy = ribasim_model.pump.static.df[
     ]
 ].copy()
 
-# ribasim_model.node._update_used_ids()
+# ribasim_model.update_used_ids()
 
 # # Add flushing data
 # flush = Flushing(
