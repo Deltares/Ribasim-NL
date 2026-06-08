@@ -72,7 +72,7 @@ sub_models: dict[str, list[str]] = {
 # - authority: str; The authority responsible for the model
 #     e.g. "HollandsNoorderkwartier"
 # - model: str; The name of the model folder excluding the version
-#     e.g. "HollandsNoorderkwartier_parameterized"
+#     e.g. "HollandsNoorderkwartier_forcing"
 hws_spec: dict[str, Any] = {
     "authority": "Rijkswaterstaat",
     "model": "hws_transient",
@@ -81,39 +81,39 @@ hws_spec: dict[str, Any] = {
 model_specs: list[dict[str, Any]] = [
     {
         "authority": "HollandsNoorderkwartier",
-        "model": "HollandsNoorderkwartier_parameterized",
+        "model": "HollandsNoorderkwartier_forcing",
     },
     {
         "authority": "AmstelGooienVecht",
-        "model": "AmstelGooienVecht_parameterized",
+        "model": "AmstelGooienVecht_forcing",
     },
     {
         "authority": "Delfland",
-        "model": "Delfland_parameterized",
+        "model": "Delfland_forcing",
     },
     {
         "authority": "Rijnland",
-        "model": "Rijnland_parameterized",
+        "model": "Rijnland_forcing",
     },
     {
         "authority": "Rivierenland",
-        "model": "Rivierenland_parameterized",
+        "model": "Rivierenland_forcing",
     },
     {
         "authority": "Scheldestromen",
-        "model": "Scheldestromen_parameterized",
+        "model": "Scheldestromen_forcing",
     },
     {
         "authority": "SchielandendeKrimpenerwaard",
-        "model": "SchielandendeKrimpenerwaard_parameterized",
+        "model": "SchielandendeKrimpenerwaard_forcing",
     },
     {
         "authority": "WetterskipFryslan",
-        "model": "WetterskipFryslan_parameterized",
+        "model": "WetterskipFryslan_forcing",
     },
     {
         "authority": "Zuiderzeeland",
-        "model": "Zuiderzeeland_parameterized",
+        "model": "Zuiderzeeland_forcing",
     },
     {
         "authority": "AaenMaas",
@@ -161,7 +161,7 @@ model_specs: list[dict[str, Any]] = [
     },
     {
         "authority": "HollandseDelta",
-        "model": "HollandseDelta_parameterized",
+        "model": "HollandseDelta_forcing",
     },
 ]
 

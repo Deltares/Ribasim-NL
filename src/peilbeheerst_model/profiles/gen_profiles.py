@@ -31,8 +31,8 @@ def main(
     :param fn_network: filename with geospatial data of crossings and hydro-objects
         File is considered to be located at '<GoodCloud>/<water_authority>/verwerkt/Crossings/<fn_network>
     :param export_profile_tables: export generated profile tables, defaults to True
-    :param sync: sync with GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to True
-    :param overwrite: overwrite GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to False
+    :param sync: sync required input files from the GoodCloud, defaults to True
+    :param overwrite: overwrite existing local files during sync, defaults to False
     :param export_intermediate_output: export intermediate output steps (for debugging), defaults to False
     :param cross_sections_available: flag whether cross-sections dataset is available/representative, defaults to True
     :param fn_water_bodies: filename with water bodies with specific, user-defined representative depths used to
@@ -44,7 +44,7 @@ def main(
     # sync with the GoodCloud
     cloud = CloudStorage()
     if sync:
-        _sync(cloud, water_authority, overwrite, fn_water_bodies)
+        _sync(cloud, water_authority, overwrite, fn_network, fn_water_bodies)
 
     # read files
     gdf_basins = _read_basins(cloud, water_authority)
@@ -80,7 +80,7 @@ def main(
 
     # export profile table
     if export_profile_tables:
-        _export_profiles(cloud, water_authority, profile_tables, export_intermediate_output)
+        _export_profiles(cloud, water_authority, profile_tables)
 
 
 def flagged_hydro_objects(
@@ -111,8 +111,8 @@ def flagged_hydro_objects(
     :param val_flag: value(s) flagging hydro-object as part of the main route, defaults to True
     :param layer_hydro_objects: layer-name with hydro-objects data, defaults to "hydroobjects"
     :param export_profile_tables: export generated profile tables, defaults to True
-    :param sync: sync with GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to True
-    :param overwrite: overwrite GoodCloud's 'verwerkt'- and 'Basisgegevens/Hydrotypen'-folders, defaults to False
+    :param sync: sync required input files from the GoodCloud, defaults to True
+    :param overwrite: overwrite existing local files during sync, defaults to False
     :param export_intermediate_output: export intermediate output steps (for debugging), defaults to False
     :param cross_sections_available: flag whether cross-sections dataset is available/representative, defaults to True
     :param fn_water_bodies: filename with water bodies with specific, user-defined representative depths used to
@@ -124,7 +124,7 @@ def flagged_hydro_objects(
     # sync with the GoodCloud
     cloud = CloudStorage()
     if sync:
-        _sync(cloud, water_authority, overwrite, fn_hydro_objects, fn_water_bodies)
+        _sync(cloud, water_authority, overwrite, fn_target_levels, fn_hydro_objects, fn_water_bodies)
 
     # read files
     gdf_basins = _read_basins(cloud, water_authority)
@@ -160,23 +160,34 @@ def flagged_hydro_objects(
 
     # export profile table
     if export_profile_tables:
-        _export_profiles(cloud, water_authority, profiles_tables, export_intermediate_output)
+        _export_profiles(cloud, water_authority, profiles_tables)
 
 
-def _sync(cloud: CloudStorage, water_authority: str, overwrite: bool, *extra_file: str | None) -> None:
-    """Sync with the GoodCloud.
+def _sync(
+    cloud: CloudStorage, water_authority: str, overwrite: bool, fn_crossings: str, *extra_files: str | tuple | None
+) -> None:
+    """Sync required input files from the GoodCloud.
+
+    Downloads only the specific files needed for profile generation, rather than the entire 'verwerkt' folder.
 
     :param cloud: the GoodCloud
     :param water_authority: water authority
-    :param overwrite: overwrite files on the GoodCloud
-    :param extra_file: extra files to sync, other than the folders "Verwerkt" and "Basisgegevens/Hydrotypen"
+    :param overwrite: overwrite existing local files
+    :param fn_crossings: filename of crossings/network file in 'verwerkt/Crossings/'
+    :param extra_files: additional files to sync, relative to the water authority root (e.g. fn_water_bodies)
     """
     print("Syncing with the GoodCloud...", end="", flush=True)
-    cloud.download_verwerkt(water_authority, overwrite=overwrite)
-    cloud.download_basisgegevens(["Hydrotypen"], overwrite=overwrite)
-    for f in extra_file:
+    filepaths = [
+        cloud.joinpath(water_authority, "verwerkt", "Crossings", fn_crossings),
+        cloud.joinpath(water_authority, "verwerkt", "BGT", f"bgt_{water_authority}_water.gpkg"),
+        cloud.joinpath("Basisgegevens", "Hydrotypen", "vdGaast_water_depth.csv"),
+    ]
+    for f in extra_files:
         if f is not None:
-            cloud.download_file(cloud.joinurl(water_authority, f))
+            if isinstance(f, tuple):
+                f = f[0]
+            filepaths.append(cloud.joinpath(water_authority, f))
+    cloud.synchronize(filepaths=filepaths, overwrite=overwrite)
     print(f"\rSynced with the GoodCloud: {water_authority}")
 
 
@@ -189,7 +200,7 @@ def _read_basins(cloud: CloudStorage, water_authority: str) -> gpd.GeoDataFrame:
     :return: basin dataset (polygons)
     """
     # read data
-    fn = cloud.joinpath(water_authority, "modellen", f"{water_authority}_parameterized", "input", "database.gpkg")
+    fn = cloud.joinpath(water_authority, "modellen", f"{water_authority}_feedback", "input", "database.gpkg")
     nodes = gpd.read_file(fn, layer="Node", fid_as_index=True, use_arrow=True)
     basins = gpd.read_file(fn, layer="Basin / area")
 
@@ -291,20 +302,19 @@ def _int_output_path(cloud: CloudStorage, water_authority: str, export: bool) ->
     """
     if export:
         return cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate")
+    return None
 
 
 def _export_profiles(
     cloud: CloudStorage,
     water_authority: str,
     profile_tables: tuple[gpd.GeoDataFrame, gpd.GeoDataFrame],
-    export_intermediate_output: bool,
 ) -> None:
     """Export profile tables.
 
     :param cloud: the GoodCloud
     :param water_authority: water authority
     :param profile_tables: tables with profile data ("doorgaand" & "bergend")
-    :param export_intermediate_output: export intermediate output
     """
     # set working directory
     wd = cloud.joinpath(water_authority, "verwerkt", "profielen")
@@ -316,11 +326,3 @@ def _export_profiles(
         table = pd.DataFrame(table[[c for c in table.columns if c != "geometry"]])
         table.to_csv(fn, index=False)
         print(f"File saved: {fn}")
-
-    # upload files to the GoodCloud
-    print("Uploading to the GoodCloud...", end="", flush=True)
-    cloud.upload_content(wd, overwrite=True)
-    if export_intermediate_output:
-        (wd / "intermediate").mkdir(exist_ok=True)
-        cloud.upload_content(wd / "intermediate", overwrite=True)
-    print("\rFiles uploaded to the GoodCloud")

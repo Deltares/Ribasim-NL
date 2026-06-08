@@ -171,8 +171,8 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/modellen/rwzi
       hash: md5
-      md5: 326d538cfadb88b162cd1547e8541ca3.dir
-      size: 22462644
+      md5: bb4f19a6932feb77ded16685587187e3.dir
+      size: 22462618
       nfiles: 2
   parameterized@aa_en_maas:
     cmd:
@@ -1020,208 +1020,6 @@ stages:
       md5: f63535342893711d05639c1b19d43bda.dir
       size: 119973374
       nfiles: 4
-  peilbeheerst@delfland:
-    cmd:
-    - pixi run python src/peilbeheerst_model/Parametrize/Delfland_parametrize.py
-    deps:
-    - path: data/Rijkswaterstaat/modellen/rwzi
-      hash: md5
-      md5: 326d538cfadb88b162cd1547e8541ca3.dir
-      size: 22462644
-      nfiles: 2
-    - path: src/peilbeheerst_model/Parametrize/Delfland_parametrize.py
-      hash: md5
-      md5: 98764d990655a9e2376730bbbd84af92
-      size: 27113
-    outs:
-    - path: data/Delfland/modellen/Delfland_parameterized
-      hash: md5
-      md5: 183c76c110a6c8429e7f7b1e2bf81a95.dir
-      size: 23064773
-      nfiles: 2
-  peilbeheerst@amstel_gooi_en_vecht:
-    cmd:
-    - pixi run python
-      src/peilbeheerst_model/Parametrize/AmstelGooienVecht_parametrize.py
-    deps:
-    - path: data/Rijkswaterstaat/modellen/rwzi
-      hash: md5
-      md5: 326d538cfadb88b162cd1547e8541ca3.dir
-      size: 22462644
-      nfiles: 2
-    - path: src/peilbeheerst_model/Parametrize/AmstelGooienVecht_parametrize.py
-      hash: md5
-      md5: b59434b0698f508a41aa05acba951eb6
-      size: 26559
-    outs:
-    - path: data/AmstelGooienVecht/modellen/AmstelGooienVecht_parameterized
-      hash: md5
-      md5: 62bd02fe2cec4a8b6d1e4ce6d8f899bc.dir
-      size: 43954373
-      nfiles: 2
-  peilbeheerst@hollands_noorderkwartier:
-    cmd:
-    - pixi run python
-      src/peilbeheerst_model/Parametrize/HollandsNoorderkwartier_parametrize.py
-    deps:
-    - path: data/Rijkswaterstaat/modellen/rwzi
-      hash: md5
-      md5: 326d538cfadb88b162cd1547e8541ca3.dir
-      size: 22462644
-      nfiles: 2
-    - path:
-        src/peilbeheerst_model/Parametrize/HollandsNoorderkwartier_parametrize.py
-      hash: md5
-      md5: c242f7cb1c38aa8cd6c5824d4232a8bb
-      size: 24357
-    outs:
-    - path:
-        data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_parameterized
-      hash: md5
-      md5: 0c5c0412b1095efbe0ef45528cf8600a.dir
-      size: 50041029
-      nfiles: 2
-  peilbeheerst@hollandse_delta:
-    cmd:
-    - pixi run python
-      src/peilbeheerst_model/Parametrize/HollandseDelta_parametrize.py
-    deps:
-    - path: data/Rijkswaterstaat/modellen/rwzi
-      hash: md5
-      md5: 326d538cfadb88b162cd1547e8541ca3.dir
-      size: 22462644
-      nfiles: 2
-    - path: src/peilbeheerst_model/Parametrize/HollandseDelta_parametrize.py
-      hash: md5
-      md5: e4374075d0e09a3139602d2706cb5bb3
-      size: 44926
-    outs:
-    - path: data/HollandseDelta/modellen/HollandseDelta_parameterized
-      hash: md5
-      md5: d86d0bd44bd6acc069d06fbe672e876c.dir
-      size: 89919685
-      nfiles: 2
-  peilbeheerst@rijnland:
-    cmd:
-    - pixi run python src/peilbeheerst_model/Parametrize/Rijnland_parametrize.py
-    deps:
-    - path: data/Rijkswaterstaat/modellen/rwzi
-      hash: md5
-      md5: 326d538cfadb88b162cd1547e8541ca3.dir
-      size: 22462644
-      nfiles: 2
-    - path: src/peilbeheerst_model/Parametrize/Rijnland_parametrize.py
-      hash: md5
-      md5: 4115d247565165d257eadf63c3245439
-      size: 20079
-    outs:
-    - path: data/Rijnland/modellen/Rijnland_parameterized
-      hash: md5
-      md5: 1bd159ae0628b1ff7831202510cda985.dir
-      size: 57458885
-      nfiles: 2
-  peilbeheerst@rivierenland:
-    cmd:
-    - pixi run python
-      src/peilbeheerst_model/Parametrize/Rivierenland_parametrize.py
-    deps:
-    - path: data/Rijkswaterstaat/modellen/rwzi
-      hash: md5
-      md5: 326d538cfadb88b162cd1547e8541ca3.dir
-      size: 22462644
-      nfiles: 2
-    - path: src/peilbeheerst_model/Parametrize/Rivierenland_parametrize.py
-      hash: md5
-      md5: d9e2316f97d31ade34e803121606d03e
-      size: 30281
-    outs:
-    - path: data/Rivierenland/modellen/Rivierenland_parameterized
-      hash: md5
-      md5: cc52e5799dd14dbc09ee3c88a2211524.dir
-      size: 47120581
-      nfiles: 2
-  peilbeheerst@scheldestromen:
-    cmd:
-    - pixi run python
-      src/peilbeheerst_model/Parametrize/Scheldestromen_parametrize.py
-    deps:
-    - path: data/Rijkswaterstaat/modellen/rwzi
-      hash: md5
-      md5: 326d538cfadb88b162cd1547e8541ca3.dir
-      size: 22462644
-      nfiles: 2
-    - path: src/peilbeheerst_model/Parametrize/Scheldestromen_parametrize.py
-      hash: md5
-      md5: 5c6d21d43bf4fe5513ad8135ec109ac1
-      size: 20990
-    outs:
-    - path: data/Scheldestromen/modellen/Scheldestromen_parameterized
-      hash: md5
-      md5: b727ab363512df14a34fceb64727309a.dir
-      size: 37425349
-      nfiles: 2
-  peilbeheerst@schieland_en_de_krimpenerwaard:
-    cmd:
-    - pixi run python
-      src/peilbeheerst_model/Parametrize/SchielandendeKrimpenerwaard_parametrize.py
-    deps:
-    - path: data/Rijkswaterstaat/modellen/rwzi
-      hash: md5
-      md5: 326d538cfadb88b162cd1547e8541ca3.dir
-      size: 22462644
-      nfiles: 2
-    - path:
-        src/peilbeheerst_model/Parametrize/SchielandendeKrimpenerwaard_parametrize.py
-      hash: md5
-      md5: a8566e26642ca31d1bc2efd03e65aa11
-      size: 28724
-    outs:
-    - path:
-        data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_parameterized
-      hash: md5
-      md5: b4e58cc859aa49467f6c7419a0d02747.dir
-      size: 29135045
-      nfiles: 2
-  peilbeheerst@wetterskip_fryslan:
-    cmd:
-    - pixi run python
-      src/peilbeheerst_model/Parametrize/WetterskipFryslan_parametrize.py
-    deps:
-    - path: data/Rijkswaterstaat/modellen/rwzi
-      hash: md5
-      md5: 326d538cfadb88b162cd1547e8541ca3.dir
-      size: 22462644
-      nfiles: 2
-    - path: src/peilbeheerst_model/Parametrize/WetterskipFryslan_parametrize.py
-      hash: md5
-      md5: 87bccf662c8f154316f11af6aa0223ad
-      size: 36919
-    outs:
-    - path: data/WetterskipFryslan/modellen/WetterskipFryslan_parameterized
-      hash: md5
-      md5: 93a12d5caaaa0c36ba38c5096a0e5329.dir
-      size: 164823237
-      nfiles: 2
-  peilbeheerst@zuiderzeeland:
-    cmd:
-    - pixi run python
-      src/peilbeheerst_model/Parametrize/Zuiderzeeland_parametrize.py
-    deps:
-    - path: data/Rijkswaterstaat/modellen/rwzi
-      hash: md5
-      md5: 326d538cfadb88b162cd1547e8541ca3.dir
-      size: 22462644
-      nfiles: 2
-    - path: src/peilbeheerst_model/Parametrize/Zuiderzeeland_parametrize.py
-      hash: md5
-      md5: 047564c79f49f6dfdbd87380cbe298a7
-      size: 40379
-    outs:
-    - path: data/Zuiderzeeland/modellen/Zuiderzeeland_parameterized
-      hash: md5
-      md5: bacfc1544492293235719a7e18983bb2.dir
-      size: 39354565
-      nfiles: 2
   hws_demand:
     cmd:
     - pixi run python notebooks/rijkswaterstaat/2_basins.py
@@ -1280,4 +1078,647 @@ stages:
       hash: md5
       md5: 8d8a2c0c17e97e6a679d3abf1936f859.dir
       size: 48525492
+      nfiles: 2
+  feedback@delfland:
+    cmd:
+    - pixi run python src/peilbeheerst_model/feedback/Delfland.py
+    deps:
+    - path: src/peilbeheerst_model/feedback/Delfland.py
+      hash: md5
+      md5: 77378edb5471916491ccacfb3f572476
+      size: 13069
+    outs:
+    - path: data/Delfland/modellen/Delfland_feedback
+      hash: md5
+      md5: d22ceb485e60ab0ae5190af82c0bcd79.dir
+      size: 2748570
+      nfiles: 2
+  profiles@delfland:
+    cmd:
+    - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py
+      Delfland
+    - pixi run python src/peilbeheerst_model/profiles/Delfland.py
+    deps:
+    - path: data/Delfland/modellen/Delfland_feedback
+      hash: md5
+      md5: d22ceb485e60ab0ae5190af82c0bcd79.dir
+      size: 2748570
+      nfiles: 2
+    - path: src/peilbeheerst_model/profiles/Delfland.py
+      hash: md5
+      md5: ee53b1db0bca97e43561f26a5b021085
+      size: 735
+    - path: src/peilbeheerst_model/profiles/prep_cross_sections.py
+      hash: md5
+      md5: 1a77b69f83ef023e78a504fe9d9c4aea
+      size: 10683
+    outs:
+    - path: data/Delfland/modellen/Delfland_profiles
+      hash: md5
+      md5: 15dcc6223ae49738f2dbaecd1681f0ae.dir
+      size: 4776090
+      nfiles: 2
+  forcing@delfland:
+    cmd:
+    - pixi run python src/peilbeheerst_model/forcing/Delfland.py
+    deps:
+    - path: data/Delfland/modellen/Delfland_profiles
+      hash: md5
+      md5: a361a55ecadd0772b68052e86705627f.dir
+      size: 5210266
+      nfiles: 2
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: bb4f19a6932feb77ded16685587187e3.dir
+      size: 22462618
+      nfiles: 2
+    - path: src/peilbeheerst_model/forcing/Delfland.py
+      hash: md5
+      md5: 7250df68bb60a5d6d345815ad3f1c18e
+      size: 16403
+    outs:
+    - path: data/Delfland/modellen/Delfland_forcing
+      hash: md5
+      md5: 8fc147ab90505eae17effcb91e4802bf.dir
+      size: 23064757
+      nfiles: 2
+  feedback@hollands_noorderkwartier:
+    cmd:
+    - pixi run python src/peilbeheerst_model/feedback/HollandsNoorderkwartier.py
+    deps:
+    - path: src/peilbeheerst_model/feedback/HollandsNoorderkwartier.py
+      hash: md5
+      md5: ebdac37fb87029be1844d5dd972ce1f2
+      size: 9383
+    outs:
+    - path:
+        data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_feedback
+      hash: md5
+      md5: f4db78cbec78db35c309b6f40a71bc2a.dir
+      size: 4018330
+      nfiles: 2
+  feedback@wetterskip_fryslan:
+    cmd:
+    - pixi run python src/peilbeheerst_model/feedback/WetterskipFryslan.py
+    deps:
+    - path: src/peilbeheerst_model/feedback/WetterskipFryslan.py
+      hash: md5
+      md5: deb65543b643f81db52b6fff528cf50a
+      size: 24192
+    outs:
+    - path: data/WetterskipFryslan/modellen/WetterskipFryslan_feedback
+      hash: md5
+      md5: 08bab213dd7b4318df3d53b0e06793d1.dir
+      size: 15483034
+      nfiles: 2
+  feedback@hollandse_delta:
+    cmd:
+    - pixi run python src/peilbeheerst_model/feedback/HollandseDelta.py
+    deps:
+    - path: src/peilbeheerst_model/feedback/HollandseDelta.py
+      hash: md5
+      md5: a1b25f6f57b583a5f07873650103a66c
+      size: 31960
+    outs:
+    - path: data/HollandseDelta/modellen/HollandseDelta_feedback
+      hash: md5
+      md5: e1b6f14398afb512875d53b7f7ecbc9e.dir
+      size: 3793050
+      nfiles: 2
+  feedback@zuiderzeeland:
+    cmd:
+    - pixi run python src/peilbeheerst_model/feedback/Zuiderzeeland.py
+    deps:
+    - path: src/peilbeheerst_model/feedback/Zuiderzeeland.py
+      hash: md5
+      md5: 743d1a2f3aaebe30bc0608e2ad3d2335
+      size: 26251
+    outs:
+    - path: data/Zuiderzeeland/modellen/Zuiderzeeland_feedback
+      hash: md5
+      md5: 271fe344e56c13fb0fb4909db5c4e9f8.dir
+      size: 1966234
+      nfiles: 2
+  profiles@zuiderzeeland:
+    cmd:
+    - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py
+      Zuiderzeeland
+    - pixi run python src/peilbeheerst_model/profiles/Zuiderzeeland.py
+    deps:
+    - path: data/Zuiderzeeland/modellen/Zuiderzeeland_feedback
+      hash: md5
+      md5: 271fe344e56c13fb0fb4909db5c4e9f8.dir
+      size: 1966234
+      nfiles: 2
+    - path: src/peilbeheerst_model/profiles/Zuiderzeeland.py
+      hash: md5
+      md5: 2d96a599fefdb3776a0d814199ff1c66
+      size: 1034
+    - path: src/peilbeheerst_model/profiles/prep_cross_sections.py
+      hash: md5
+      md5: 1a77b69f83ef023e78a504fe9d9c4aea
+      size: 10683
+    outs:
+    - path: data/Zuiderzeeland/modellen/Zuiderzeeland_profiles
+      hash: md5
+      md5: a26dda8912206ad34ed8e9892d292487.dir
+      size: 3162266
+      nfiles: 2
+  feedback@scheldestromen:
+    cmd:
+    - pixi run python src/peilbeheerst_model/feedback/Scheldestromen.py
+    deps:
+    - path: src/peilbeheerst_model/feedback/Scheldestromen.py
+      hash: md5
+      md5: ad356491d573ea7f693c1e80e5a906e7
+      size: 7068
+    outs:
+    - path: data/Scheldestromen/modellen/Scheldestromen_feedback
+      hash: md5
+      md5: 9ec90ef2488ed7192539984faa2b3b04.dir
+      size: 2240666
+      nfiles: 2
+  profiles@scheldestromen:
+    cmd:
+    - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py
+      Scheldestromen
+    - pixi run python src/peilbeheerst_model/profiles/Scheldestromen.py
+    deps:
+    - path: data/Scheldestromen/modellen/Scheldestromen_feedback
+      hash: md5
+      md5: 9ec90ef2488ed7192539984faa2b3b04.dir
+      size: 2240666
+      nfiles: 2
+    - path: src/peilbeheerst_model/profiles/Scheldestromen.py
+      hash: md5
+      md5: 64a76f8132c3c1a77f7b111f87f3bf53
+      size: 1277
+    - path: src/peilbeheerst_model/profiles/prep_cross_sections.py
+      hash: md5
+      md5: 1a77b69f83ef023e78a504fe9d9c4aea
+      size: 10683
+    outs:
+    - path: data/Scheldestromen/modellen/Scheldestromen_profiles
+      hash: md5
+      md5: eddb152a01630a684befaec37528d37a.dir
+      size: 3944602
+      nfiles: 2
+  feedback@rijnland:
+    cmd:
+    - pixi run python src/peilbeheerst_model/feedback/Rijnland.py
+    deps:
+    - path: src/peilbeheerst_model/feedback/Rijnland.py
+      hash: md5
+      md5: 40036422a23875f89a2c3f52b9eff95f
+      size: 6916
+    outs:
+    - path: data/Rijnland/modellen/Rijnland_feedback
+      hash: md5
+      md5: a0cac4fd6d561840f0cea58f2beab564.dir
+      size: 8003738
+      nfiles: 2
+  feedback@amstel_gooi_en_vecht:
+    cmd:
+    - pixi run python src/peilbeheerst_model/feedback/AmstelGooienVecht.py
+    deps:
+    - path: src/peilbeheerst_model/feedback/AmstelGooienVecht.py
+      hash: md5
+      md5: dcfc6827715930b62592e524c417f262
+      size: 11855
+    outs:
+    - path: data/AmstelGooienVecht/modellen/AmstelGooienVecht_feedback
+      hash: md5
+      md5: 338a603b96d91358ab9db460f93d2cfb.dir
+      size: 8548506
+      nfiles: 2
+  profiles@amstel_gooi_en_vecht:
+    cmd:
+    - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py
+      AmstelGooienVecht
+    - pixi run python src/peilbeheerst_model/profiles/AmstelGooienVecht.py
+    deps:
+    - path: data/AmstelGooienVecht/modellen/AmstelGooienVecht_feedback
+      hash: md5
+      md5: 338a603b96d91358ab9db460f93d2cfb.dir
+      size: 8548506
+      nfiles: 2
+    - path: src/peilbeheerst_model/profiles/AmstelGooienVecht.py
+      hash: md5
+      md5: 5bb182ee76250a32c3a0b77dfe51fb53
+      size: 767
+    - path: src/peilbeheerst_model/profiles/prep_cross_sections.py
+      hash: md5
+      md5: 1a77b69f83ef023e78a504fe9d9c4aea
+      size: 10683
+    outs:
+    - path: data/AmstelGooienVecht/modellen/AmstelGooienVecht_profiles
+      hash: md5
+      md5: 5bde089d9135ac79584e47de02fbb933.dir
+      size: 11862170
+      nfiles: 2
+  feedback@rivierenland:
+    cmd:
+    - pixi run python src/peilbeheerst_model/feedback/Rivierenland.py
+    deps:
+    - path: src/peilbeheerst_model/feedback/Rivierenland.py
+      hash: md5
+      md5: 0cbe238a30627ac6a66d29a5cabe2cf0
+      size: 17434
+    outs:
+    - path: data/Rivierenland/modellen/Rivierenland_feedback
+      hash: md5
+      md5: 89daa69d93c50b996753635b23ec107f.dir
+      size: 6938778
+      nfiles: 2
+  forcing@zuiderzeeland:
+    cmd:
+    - pixi run python src/peilbeheerst_model/forcing/Zuiderzeeland.py
+    deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: bb4f19a6932feb77ded16685587187e3.dir
+      size: 22462618
+      nfiles: 2
+    - path: data/Zuiderzeeland/modellen/Zuiderzeeland_profiles
+      hash: md5
+      md5: 34f279f8d9ff88ec90f76c298e1f5e92.dir
+      size: 4219034
+      nfiles: 2
+    - path: src/peilbeheerst_model/forcing/Zuiderzeeland.py
+      hash: md5
+      md5: 1c152c0ff712a3570fd5c6246f9748e9
+      size: 16613
+    outs:
+    - path: data/Zuiderzeeland/modellen/Zuiderzeeland_forcing
+      hash: md5
+      md5: a90b42327289c353ab9109ec4ebc1531.dir
+      size: 39354549
+      nfiles: 2
+  profiles@rivierenland:
+    cmd:
+    - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py
+      Rivierenland
+    - pixi run python src/peilbeheerst_model/profiles/Rivierenland.py
+    deps:
+    - path: data/Rivierenland/modellen/Rivierenland_feedback
+      hash: md5
+      md5: 89daa69d93c50b996753635b23ec107f.dir
+      size: 6938778
+      nfiles: 2
+    - path: src/peilbeheerst_model/profiles/Rivierenland.py
+      hash: md5
+      md5: 4b5533afd55bacfe967eb9c11fd5392e
+      size: 754
+    - path: src/peilbeheerst_model/profiles/prep_cross_sections.py
+      hash: md5
+      md5: 1a77b69f83ef023e78a504fe9d9c4aea
+      size: 10683
+    outs:
+    - path: data/Rivierenland/modellen/Rivierenland_profiles
+      hash: md5
+      md5: 8b9c6561b8c0848559a682930940cf28.dir
+      size: 9453722
+      nfiles: 2
+  profiles@hollands_noorderkwartier:
+    cmd:
+    - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py
+      HollandsNoorderkwartier
+    - pixi run python src/peilbeheerst_model/profiles/HollandsNoorderkwartier.py
+    deps:
+    - path:
+        data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_feedback
+      hash: md5
+      md5: f4db78cbec78db35c309b6f40a71bc2a.dir
+      size: 4018330
+      nfiles: 2
+    - path: src/peilbeheerst_model/profiles/HollandsNoorderkwartier.py
+      hash: md5
+      md5: 883f444ddb386125945d14fd4eaaca96
+      size: 815
+    - path: src/peilbeheerst_model/profiles/prep_cross_sections.py
+      hash: md5
+      md5: 1a77b69f83ef023e78a504fe9d9c4aea
+      size: 10683
+    outs:
+    - path:
+        data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_profiles
+      hash: md5
+      md5: ec376bd594d3972e9787c7a10b4db30a.dir
+      size: 6426778
+      nfiles: 2
+  forcing@hollands_noorderkwartier:
+    cmd:
+    - pixi run python src/peilbeheerst_model/forcing/HollandsNoorderkwartier.py
+    deps:
+    - path:
+        data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_profiles
+      hash: md5
+      md5: c2fa4106537fad4c8d5a264c1a9e6f3f.dir
+      size: 8233114
+      nfiles: 2
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: bb4f19a6932feb77ded16685587187e3.dir
+      size: 22462618
+      nfiles: 2
+    - path: src/peilbeheerst_model/forcing/HollandsNoorderkwartier.py
+      hash: md5
+      md5: 8d116b453e8edffb8d2cfca736431be4
+      size: 17898
+    outs:
+    - path:
+        data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_forcing
+      hash: md5
+      md5: 765e7badaca11590c6c45618fb0568f9.dir
+      size: 50041013
+      nfiles: 2
+  profiles@wetterskip_fryslan:
+    cmd:
+    - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py
+      WetterskipFryslan
+    - pixi run python src/peilbeheerst_model/profiles/WetterskipFryslan.py
+    deps:
+    - path: data/WetterskipFryslan/modellen/WetterskipFryslan_feedback
+      hash: md5
+      md5: 08bab213dd7b4318df3d53b0e06793d1.dir
+      size: 15483034
+      nfiles: 2
+    - path: src/peilbeheerst_model/profiles/WetterskipFryslan.py
+      hash: md5
+      md5: 01d99e4589ffd0af81580db23b97ee92
+      size: 771
+    - path: src/peilbeheerst_model/profiles/prep_cross_sections.py
+      hash: md5
+      md5: 1a77b69f83ef023e78a504fe9d9c4aea
+      size: 10683
+    outs:
+    - path: data/WetterskipFryslan/modellen/WetterskipFryslan_profiles
+      hash: md5
+      md5: a577d263894e1883fc3cc551e7effa7c.dir
+      size: 24932506
+      nfiles: 2
+  profiles@rijnland:
+    cmd:
+    - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py
+      Rijnland
+    - pixi run python src/peilbeheerst_model/profiles/Rijnland.py
+    deps:
+    - path: data/Rijnland/modellen/Rijnland_feedback
+      hash: md5
+      md5: a0cac4fd6d561840f0cea58f2beab564.dir
+      size: 8003738
+      nfiles: 2
+    - path: src/peilbeheerst_model/profiles/Rijnland.py
+      hash: md5
+      md5: ce610f9f94a686591a38c665329f6ecc
+      size: 930
+    - path: src/peilbeheerst_model/profiles/prep_cross_sections.py
+      hash: md5
+      md5: 1a77b69f83ef023e78a504fe9d9c4aea
+      size: 10683
+    outs:
+    - path: data/Rijnland/modellen/Rijnland_profiles
+      hash: md5
+      md5: a09be2e4f4b305d3858f464662183ed5.dir
+      size: 14065818
+      nfiles: 2
+  forcing@scheldestromen:
+    cmd:
+    - pixi run python src/peilbeheerst_model/forcing/Scheldestromen.py
+    deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: bb4f19a6932feb77ded16685587187e3.dir
+      size: 22462618
+      nfiles: 2
+    - path: data/Scheldestromen/modellen/Scheldestromen_profiles
+      hash: md5
+      md5: dc60080e220569a4fe0341c21539b192.dir
+      size: 5165210
+      nfiles: 2
+    - path: src/peilbeheerst_model/forcing/Scheldestromen.py
+      hash: md5
+      md5: cd46de2f96950bc85abf467cfac904c3
+      size: 16712
+    outs:
+    - path: data/Scheldestromen/modellen/Scheldestromen_forcing
+      hash: md5
+      md5: d7a2ad35f7f07c7318249f919610215c.dir
+      size: 37421237
+      nfiles: 2
+  forcing@rijnland:
+    cmd:
+    - pixi run python src/peilbeheerst_model/forcing/Rijnland.py
+    deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: bb4f19a6932feb77ded16685587187e3.dir
+      size: 22462618
+      nfiles: 2
+    - path: data/Rijnland/modellen/Rijnland_profiles
+      hash: md5
+      md5: d615610c358bfd0f641e381dac740cf0.dir
+      size: 16199834
+      nfiles: 2
+    - path: src/peilbeheerst_model/forcing/Rijnland.py
+      hash: md5
+      md5: f60d6e72e0be119e99e8bf2268887689
+      size: 15886
+    outs:
+    - path: data/Rijnland/modellen/Rijnland_forcing
+      hash: md5
+      md5: daf42e26b3c7b8cb40cb4300c023f8d1.dir
+      size: 66351285
+      nfiles: 2
+  forcing@amstel_gooi_en_vecht:
+    cmd:
+    - pixi run python src/peilbeheerst_model/forcing/AmstelGooienVecht.py
+    deps:
+    - path: data/AmstelGooienVecht/modellen/AmstelGooienVecht_profiles
+      hash: md5
+      md5: 7688863478d6afadb4d4dbe32b2c9530.dir
+      size: 13353114
+      nfiles: 2
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: bb4f19a6932feb77ded16685587187e3.dir
+      size: 22462618
+      nfiles: 2
+    - path: src/peilbeheerst_model/forcing/AmstelGooienVecht.py
+      hash: md5
+      md5: 988a9404be01c5db70e5085f4c66b3ba
+      size: 17713
+    outs:
+    - path: data/AmstelGooienVecht/modellen/AmstelGooienVecht_forcing
+      hash: md5
+      md5: ec7b03ba49d97acd02164ce402b4ba74.dir
+      size: 43954357
+      nfiles: 2
+  forcing@rivierenland:
+    cmd:
+    - pixi run python src/peilbeheerst_model/forcing/Rivierenland.py
+    deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: bb4f19a6932feb77ded16685587187e3.dir
+      size: 22462618
+      nfiles: 2
+    - path: data/Rivierenland/modellen/Rivierenland_profiles
+      hash: md5
+      md5: f02cbdac99a4c0de07cc39cdc2464478.dir
+      size: 11403418
+      nfiles: 2
+    - path: src/peilbeheerst_model/forcing/Rivierenland.py
+      hash: md5
+      md5: 255092c52340d456bbf5d085d583ddab
+      size: 15944
+    outs:
+    - path: data/Rivierenland/modellen/Rivierenland_forcing
+      hash: md5
+      md5: 2b3a41f1ac4dd3ac2d1a5c5ad7469c7b.dir
+      size: 47214773
+      nfiles: 2
+  forcing@wetterskip_fryslan:
+    cmd:
+    - pixi run python src/peilbeheerst_model/forcing/WetterskipFryslan.py
+    deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: bb4f19a6932feb77ded16685587187e3.dir
+      size: 22462618
+      nfiles: 2
+    - path: data/WetterskipFryslan/modellen/WetterskipFryslan_profiles
+      hash: md5
+      md5: d8c8f2b52d38402404670a9ea4c0a075.dir
+      size: 28680346
+      nfiles: 2
+    - path: src/peilbeheerst_model/forcing/WetterskipFryslan.py
+      hash: md5
+      md5: 6c969edea5ba162c73af6e6be6be72c4
+      size: 16016
+    outs:
+    - path: data/WetterskipFryslan/modellen/WetterskipFryslan_forcing
+      hash: md5
+      md5: 2e133f97ec142dcfe7f776052b29d826.dir
+      size: 154058933
+      nfiles: 2
+  feedback@schieland_en_de_krimpenerwaard:
+    cmd:
+    - pixi run python
+      src/peilbeheerst_model/feedback/SchielandendeKrimpenerwaard.py
+    deps:
+    - path: src/peilbeheerst_model/feedback/SchielandendeKrimpenerwaard.py
+      hash: md5
+      md5: 188dcc6a4b2d852ef349569a615efdaf
+      size: 14600
+    outs:
+    - path:
+        data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_feedback
+      hash: md5
+      md5: d2d2bee1356af7f7ecea00cb4b683257.dir
+      size: 2044058
+      nfiles: 2
+  profiles@hollandse_delta:
+    cmd:
+    - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py
+      HollandseDelta
+    - pixi run python src/peilbeheerst_model/profiles/HollandseDelta.py
+    deps:
+    - path: data/HollandseDelta/modellen/HollandseDelta_feedback
+      hash: md5
+      md5: e1b6f14398afb512875d53b7f7ecbc9e.dir
+      size: 3793050
+      nfiles: 2
+    - path: src/peilbeheerst_model/profiles/HollandseDelta.py
+      hash: md5
+      md5: 8edae5171ae0baf8be8562168ec2e99e
+      size: 945
+    - path: src/peilbeheerst_model/profiles/prep_cross_sections.py
+      hash: md5
+      md5: 1a77b69f83ef023e78a504fe9d9c4aea
+      size: 10683
+    outs:
+    - path: data/HollandseDelta/modellen/HollandseDelta_profiles
+      hash: md5
+      md5: 8858664b13235d434a42ae527cb653a3.dir
+      size: 6172826
+      nfiles: 2
+  profiles@schieland_en_de_krimpenerwaard:
+    cmd:
+    - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py
+      SchielandendeKrimpenerwaard
+    - pixi run python
+      src/peilbeheerst_model/profiles/SchielandendeKrimpenerwaard.py
+    deps:
+    - path:
+        data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_feedback
+      hash: md5
+      md5: d2d2bee1356af7f7ecea00cb4b683257.dir
+      size: 2044058
+      nfiles: 2
+    - path: src/peilbeheerst_model/profiles/SchielandendeKrimpenerwaard.py
+      hash: md5
+      md5: 6cb5886bedcfc9f6ca70e29769a1f03f
+      size: 817
+    - path: src/peilbeheerst_model/profiles/prep_cross_sections.py
+      hash: md5
+      md5: 1a77b69f83ef023e78a504fe9d9c4aea
+      size: 10683
+    outs:
+    - path:
+        data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_profiles
+      hash: md5
+      md5: e95bf911816fc631d3b501e25d848c6a.dir
+      size: 3211418
+      nfiles: 2
+  forcing@schieland_en_de_krimpenerwaard:
+    cmd:
+    - pixi run python
+      src/peilbeheerst_model/forcing/SchielandendeKrimpenerwaard.py
+    deps:
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: bb4f19a6932feb77ded16685587187e3.dir
+      size: 22462618
+      nfiles: 2
+    - path:
+        data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_profiles
+      hash: md5
+      md5: 6c4cf9001ef7a3190379ee493092ecbb.dir
+      size: 4161690
+      nfiles: 2
+    - path: src/peilbeheerst_model/forcing/SchielandendeKrimpenerwaard.py
+      hash: md5
+      md5: 1ec1ebaec3219f39f108e474317306f3
+      size: 17189
+    outs:
+    - path:
+        data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_forcing
+      hash: md5
+      md5: bc9c2232d11601e94ae9af0c2dff8f4c.dir
+      size: 29135029
+      nfiles: 2
+  forcing@hollandse_delta:
+    cmd:
+    - pixi run python src/peilbeheerst_model/forcing/HollandseDelta.py
+    deps:
+    - path: data/HollandseDelta/modellen/HollandseDelta_profiles
+      hash: md5
+      md5: 95edd5c6ba3995baf6b4d18f7b2f3e3f.dir
+      size: 8302746
+      nfiles: 2
+    - path: data/Rijkswaterstaat/modellen/rwzi
+      hash: md5
+      md5: bb4f19a6932feb77ded16685587187e3.dir
+      size: 22462618
+      nfiles: 2
+    - path: src/peilbeheerst_model/forcing/HollandseDelta.py
+      hash: md5
+      md5: 0251df02ae81103eb265b324d86a8fb5
+      size: 15726
+    outs:
+    - path: data/HollandseDelta/modellen/HollandseDelta_forcing
+      hash: md5
+      md5: f50053231c54916fa9be035d7f24a4b8.dir
+      size: 89919669
       nfiles: 2

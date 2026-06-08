@@ -475,11 +475,17 @@ class CloudStorage:
             if overwrite or not path.exists():
                 print(f"download data for {path}")
 
-                if path.suffix == ".shp":  # with shapes we are to download the parent
-                    path = path.parent
-                    url = self.joinurl(*path.relative_to(self.data_dir).parts)
-
-                if self.content(url):
+                if path.suffix == ".shp":  # with shapes we download all files with the same stem
+                    stem = path.stem
+                    parent_url = self.joinurl(*path.parent.relative_to(self.data_dir).parts)
+                    siblings, _ = self._propfind(parent_url)
+                    for item in siblings:
+                        if Path(item).stem == stem:
+                            item_url = f"{parent_url}/{item}"
+                            item_path = path.parent / item
+                            if overwrite or not item_path.exists():
+                                self.download_file(item_url)
+                elif self.content(url):
                     self.download_content(url, overwrite=overwrite)
                 else:
                     self.download_file(url)

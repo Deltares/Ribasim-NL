@@ -1,0 +1,111 @@
+---
+title: "DVC (Data Version Control)"
+---
+
+We use [DVC](https://dvc.org/) to version-control large data files (models, input datasets) without storing them in Git.
+DVC tracks file hashes in `.dvc` files committed to Git, while the actual data lives on remote storage.
+
+## Authentication
+
+Create a file `.dvc/config.local` (already gitignored) with credentials for the remotes:
+
+```ini
+['remote "goodcloud"']
+    user = nhi_api
+    password = <RIBASIM_NL_CLOUD_PASS>
+['remote "modeldata"']
+    user = nhi_api
+    password = <RIBASIM_NL_CLOUD_PASS>
+['remote "minio"']
+    region = eu-west-1
+    endpointurl = https://s3.deltares.nl
+    access_key_id = <MINIO_ACCESS_KEY>
+    secret_access_key = <MINIO_SECRET_KEY>
+```
+
+The password is the same as `RIBASIM_NL_CLOUD_PASS` in your `.env` file.
+The MinIO keys correspond to `MINIO_ACCESS_KEY` and `MINIO_SECRET_KEY` in `.env`.
+
+::: {.callout-note}
+Since `pixi run install` runs `dvc pull`, this configuration is needed **before** that step.
+:::
+
+## Pulling data
+
+After authentication is set up, pull all tracked data:
+
+```sh
+pixi run dvc pull
+```
+
+If you have local changes that you want to overwrite, add `--force`.
+
+## Remotes
+
+Three remotes are configured in `.dvc/config`:
+
+| Remote | URL | Purpose |
+|:-------|:----|:--------|
+| `minio` (default) | `s3://ribasim-nl/dvc` | Primary DVC cache on MinIO |
+| `goodcloud` | The Good Cloud `/dvc` | Legacy DVC storage |
+| `modeldata` | The Good Cloud `/Ribasim modeldata` | Source data not under DVC control |
+
+## Pipeline
+
+The DVC pipeline is defined in [`dvc.yaml`](https://github.com/Deltares/Ribasim-NL/blob/main/dvc.yaml). Stages run sequentially with dependencies:
+
+```{mermaid}
+%%| label: fig-dvc-pipeline
+%%| fig-cap: "DVC pipeline DAG (click to zoom)"
+%%| file: _dvc-dag.mmd
+```
+
+```{=html}
+<style>
+#fig-dvc-pipeline { cursor: zoom-in; }
+#fig-dvc-pipeline.fullscreen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: white; cursor: zoom-out;
+  display: flex; align-items: center; justify-content: center;
+  padding: 2rem;
+}
+#fig-dvc-pipeline.fullscreen svg { max-width: 100%; max-height: 100%; }
+</style>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const fig = document.getElementById("fig-dvc-pipeline");
+  if (fig) fig.addEventListener("click", () => fig.classList.toggle("fullscreen"));
+});
+</script>
+```
+
+Reproduce the full pipeline:
+
+```sh
+pixi run dvc repro
+```
+
+Reproduce a single stage:
+
+```sh
+pixi run dvc repro dynamic@aa_en_maas
+```
+
+## Importing data from remote storage
+
+Use `dvc import-url` to download a file from a remote URL and take it under DVC control.
+The `remote://modeldata` alias refers to The Good Cloud storage that holds source data:
+
+```sh
+pixi run dvc import-url -f remote://modeldata/Zuiderzeeland/modellen/Zuiderzeeland_parameterized_2025_9_0 data/Zuiderzeeland/modellen/
+```
+
+## Pushing changes
+
+After producing new outputs (running pipeline stages or adding new data), push to the remote:
+
+```sh
+pixi run dvc push
+```
+
+Do this before pushing the updated `dvc.lock` file to git, so the data hashes referenced therein are avaiable for everyone.

@@ -830,7 +830,7 @@ def BerekenModelEindbeoordeling(
 
     # ── Stap 1: doorloop elke waterschap-sheet ────────────────────────────────
     for sheet in xl.sheet_names:
-        df = xl.parse(sheet)
+        df = pd.read_excel(xl, sheet_name=sheet)
         # Sla sheets over die geen statistieken-structuur hebben (bijv. extra info-sheets)
         if "Periode" not in df.columns:
             continue
@@ -2071,6 +2071,8 @@ def ExtraInfoToevoegenAllData(
         layers = gpd.list_layers(gpkg_path)["name"].tolist()
         for layer in layers:
             gdf = gpd.read_file(gpkg_path, layer=layer)
+            if new_col in gdf.columns:
+                gdf = gdf.drop(columns=[new_col])
             gdf = gdf.merge(merge_cols, on=["MeetreeksC", "Aan/Af"], how="left")
             gdf[new_col] = gdf[new_col].fillna("geen_data")
             gdf.to_file(gpkg_path, layer=layer)
@@ -2314,6 +2316,15 @@ def _lhm41_laad_csv(lhm41_folder: str | Path, csv_naam: str, LHM41_TEKEN_CORRECT
     return df
 
 
+# Ericasluis vechtstromen was split in the koppellaag into direction-suffixed names
+# but the measurement CSVs still use the original unsuffixed column name.
+_MEETREEKS_KOLOM_UITZONDERINGEN: dict[tuple[str, str], str] = {
+    ("Ericasluis_vechtstromen_Aanvoer", "Aanvoer"): "Ericasluis vechtstromen",
+    ("Ericasluis_vechtstromen_Afvoer", "Afvoer"): "Ericasluis vechtstromen",
+    ("Ericasluis_vechtstromen_Afvoer", "Aan&Af"): "Ericasluis vechtstromen",
+}
+
+
 def _lhm41_bereken_p95_klasse(
     measurements: dict,
     meetreeks_c: str,
@@ -2343,9 +2354,10 @@ def _lhm41_bereken_p95_klasse(
         '>=5', '<5', or 'geen_data'.
     """
     meas_df = measurements["afvoer_dag"] if aan_af in ("Afvoer", "Aan&Af") else measurements["aanvoer_dag"]
-    if meetreeks_c not in meas_df.columns:
+    lookup_col = _MEETREEKS_KOLOM_UITZONDERINGEN.get((meetreeks_c, aan_af), meetreeks_c)
+    if lookup_col not in meas_df.columns:
         return "geen_data"
-    serie = meas_df[meetreeks_c].dropna()
+    serie = meas_df[lookup_col].dropna()
     if len(serie) == 0:
         return "geen_data"
     q05 = serie.quantile(0.05)
@@ -2378,14 +2390,13 @@ def _lhm41_bereken_p95_klasse_som(
     str
         '>=5', '<5', or 'geen_data'.
     """
-    aan_af = locs[0]["Aan/Af"]
-    meas_df = measurements["afvoer_dag"] if aan_af in ("Afvoer", "Aan&Af") else measurements["aanvoer_dag"]
-
     series_list = []
     for loc in locs:
-        col = loc["MeetreeksC"]
-        if col in meas_df.columns:
-            series_list.append(meas_df[col].rename(col))
+        loc_aan_af = loc["Aan/Af"]
+        loc_meas_df = measurements["afvoer_dag"] if loc_aan_af in ("Afvoer", "Aan&Af") else measurements["aanvoer_dag"]
+        col = _MEETREEKS_KOLOM_UITZONDERINGEN.get((loc["MeetreeksC"], loc_aan_af), loc["MeetreeksC"])
+        if col in loc_meas_df.columns:
+            series_list.append(loc_meas_df[col].rename(col))
 
     if not series_list:
         return "geen_data"
@@ -3296,9 +3307,26 @@ if __name__ == "__main__":
             ("CumZomer", 50, 80, "Cum. zomer aanvoer dif. < 50%"),
         ],
     }
+
     # Tekencorrectie per LHM 4.1 CSV-bestand (-1 als tekenconventie verschilt van Ribasim/meting)
+    # LHM41_TEKEN_CORRECTIE: dict[str, float] = {
+    #     "Aanvoer Gemaal Winsemius_LHM_reeks.csv": -1.0,
+    #     "KW218243_unknown": -1.0,
+    #     "Stuvers": -1.0,
+    #     "Hedel": -1.0,
+    #     "Blauwesluis": -1.0,
+    #     "Rijcksche Sluis": -1.0,
+    #     "Pannerling": -1.0,
+    #     "Landweijer": -1.0,
+    #     "Teersesluis": -1.0,
+    #     "Weurt": -1.0,
+    # }
+
     LHM41_TEKEN_CORRECTIE: dict[str, float] = {
         "Aanvoer Gemaal Winsemius_LHM_reeks.csv": -1.0,
+        "Districts aanvoer de BaanBreker_LHM_reeks.csv": -1.0,
+        "Districts aanvoer Bloemers en Quarles van Ufford_LHM_reeks.csv": -1.0,
+        "Aanvoer Doornenburg_LHM_reeks.csv": -1.0,
     }
 
     RUN_COMPARE = True

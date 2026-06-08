@@ -44,12 +44,10 @@ pytest = ">=8.4"
 pytest-cov = ">=7"
 pytest-xdist = ">=3.8"
 python = "3.13.*"
-quarto = "1.8.*"
+quarto = ">=1.9"
 quartodoc = ">=0.11.1"
 rasterstats = ">=0.20"
 requests = ">=2.32"
-# sync with config in install_ribasim_core.py
-ribasim = "==2026.1.1"
 ruff = ">=0.14"
 seaborn = ">=0.13"
 shapely = ">=2.1"
@@ -65,7 +63,8 @@ bokeh_helpers = { path = "src/bokeh_helpers", editable = true }
 hydamo = { path = "src/hydamo", editable = true }
 peilbeheerst_model = { path = "src/peilbeheerst_model", editable = true }
 ribasim_nl = { path = "src/ribasim_nl", editable = true }
-# ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "07344fcf4b856e3de5c79cb7e66179e895c8ab67", subdirectory = "python/ribasim" }
+# sync with config in install_ribasim_core.py
+ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "17b62840e2ce2eb79913fe1fb0f43e216abcf830", subdirectory = "python/ribasim" }
 types-geopandas = ">=1.1"
 types-networkx = ">=3.6"
 types-pycurl = ">=7.45"
@@ -83,7 +82,9 @@ install = { depends-on = ["install-core", "install-prek", "install-dvc"] }
 repro = "dvc repro --keep-going && prek run"
 check = "prek run --all-files"
 pycheck = "prek run --all-files --skip dvc-pre-commit --skip dvc-pre-push --skip dvc-post-checkout"
-docs = { cmd = "quartodoc build && quarto preview", cwd = "docs" }
+dvc-dag = { cmd = "python scripts/dvc_dag.py > docs/dev/_dvc-dag.mmd", inputs = ["dvc.yaml"], outputs = ["docs/dev/_dvc-dag.mmd"] }
+docs = { cmd = "quartodoc build && quarto preview", cwd = "docs", depends-on = ["dvc-dag"] }
+docs-render = { cmd = "quartodoc build && rm -f objects.json && quarto render --to html --execute", cwd = "docs", depends-on = ["dvc-dag"] }
 ribasim = { cmd = "bin/ribasim/bin/ribasim", depends-on = ["install-core"] }
 edit-toml = "python scripts/edit_toml.py"
 
