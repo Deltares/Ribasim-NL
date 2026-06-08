@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
+import geopandas as gpd
 import pandas as pd
 
 from ribasim_nl import Model
@@ -186,8 +187,6 @@ def _node_ids_of_type_in_geometry(
     excluded_node_ids: set[int] | None = None,
 ) -> list[int]:
     """Select model nodes of one type inside a geometry layer."""
-    import geopandas as gpd
-
     excluded_node_ids = {int(node_id) for node_id in excluded_node_ids or set()}
     node_table = _node_df(model)
     node_df = reset_index_to_column(node_table.copy(), "node_id")
@@ -382,8 +381,6 @@ def _write_basin_updates_gpkg(
     basin_updates_df = updates_df[updates_df["status"].eq("update") & updates_df["basin_node_id"].notna()].copy()
     if basin_updates_df.empty:
         return None
-
-    import geopandas as gpd
 
     node_geometry_df = _node_geometry_df(model=model)
     geometry_column = getattr(getattr(node_geometry_df, "geometry", None), "name", "geometry")
