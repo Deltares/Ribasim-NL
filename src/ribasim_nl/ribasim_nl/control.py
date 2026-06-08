@@ -1217,8 +1217,7 @@ def add_controllers_to_connector_nodes(
         This is usefull if you want to add a different type of supply-node later. Default is True
     """
     # make sure add-api will not duplicate node-ids
-    model.node._update_used_ids()
-    model.link._update_used_ids()
+    model.update_used_ids()
     assert level_difference_threshold >= model.solver.level_difference_threshold, "incompatible threshold"
 
     # add supply nodes
@@ -1414,8 +1413,7 @@ def add_controllers_to_uncontrolled_connector_nodes(
         Offset for flushing discrete control (must match model.solver.level_difference_threshold), by default 0.02.
     """
     # make sure add-api will not duplicate node-ids
-    model.node._update_used_ids()
-    model.link._update_used_ids()
+    model.update_used_ids()
 
     # --- defaults veilig maken (nooit [] als default-arg) ---
     exclude_nodes = exclude_nodes or []

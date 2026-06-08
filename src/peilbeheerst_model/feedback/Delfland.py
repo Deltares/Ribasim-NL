@@ -249,7 +249,7 @@ inlaat_structures.append(tabulated_rating_curve_node.node_id)
 for n in inlaat_pump:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_aanvoer"] = 1
 
-ribasim_model.node._update_used_ids()  # pyrefly: ignore[not-callable]
+ribasim_model.update_used_ids()
 ribasim_model.merge_basins(node_id=115, to_node_id=9, are_connected=False)
 ribasim_model.merge_basins(node_id=116, to_node_id=13, are_connected=False)
 ribasim_model.merge_basins(node_id=73, to_node_id=10, are_connected=True)
