@@ -5,8 +5,6 @@ depending on the SOURCE setting below. The zip is extracted into ``bin/``
 (which contains a top-level ``ribasim`` folder).
 """
 
-from __future__ import annotations
-
 import os
 import platform
 import shutil

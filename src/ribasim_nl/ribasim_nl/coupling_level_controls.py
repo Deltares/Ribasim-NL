@@ -1,7 +1,5 @@
 """DiscreteControl checks for coupling-level updates."""
 
-from __future__ import annotations
-
 import numpy as np
 import pandas as pd
 
@@ -24,6 +22,7 @@ from ribasim_nl.coupling_level_common import (
 
 
 def grouped_compound_counts(df: pd.DataFrame | None, control_node_id: int) -> dict[int, int]:
+    """Count rows per compound_variable_id for one DiscreteControl node."""
     if df is None or df.empty or "compound_variable_id" not in df.columns:
         return {}
     rows = df[df["node_id"].astype(int).eq(as_int(control_node_id))]
@@ -38,6 +37,7 @@ def grouped_compound_counts(df: pd.DataFrame | None, control_node_id: int) -> di
 
 
 def logic_pairs(df: pd.DataFrame | None, control_node_id: int) -> set[tuple[str, str]]:
+    """Read the truth_state/control_state pairs for one DiscreteControl node."""
     if df is None or df.empty:
         return set()
     rows = df[df["node_id"].astype(int).eq(as_int(control_node_id))]
@@ -45,6 +45,7 @@ def logic_pairs(df: pd.DataFrame | None, control_node_id: int) -> set[tuple[str,
 
 
 def explicit_control_layout_from_name(control_name: str | None) -> str | None:
+    """Read an explicit layout prefix from a DiscreteControl name."""
     if control_name is None or ":" not in control_name:
         return None
     layout_key = control_name.split(":", 1)[0].strip().lower()
@@ -52,6 +53,7 @@ def explicit_control_layout_from_name(control_name: str | None) -> str | None:
 
 
 def has_intentional_named_layout_mismatch(function: str, control_name: str | None) -> bool:
+    """Check whether a named controller intentionally uses another layout."""
     layout_key = explicit_control_layout_from_name(control_name)
     if layout_key is None:
         return False
@@ -66,6 +68,7 @@ def validate_control_layout_for_sync(
     function: str,
     flow_demand_controlled: bool,
 ) -> None:
+    """Fail when a DiscreteControl does not match the expected control.py layout."""
     control_name = None
     node_df = model.node.df
     if node_df is not None:
@@ -105,6 +108,7 @@ def protected_static_level_for_condition(
     layout_key: str,
     compound_variable_id: int,
 ) -> tuple[float | None, str | None]:
+    """Get the protected static level that should drive one condition."""
     if static_rows.empty or LEVEL_UPDATE_PROTECTION_COLUMN not in static_rows.columns:
         return None, None
 
@@ -157,6 +161,7 @@ def prefer_matching_listen_node(
     listen_node_id: int | None,
     columns: list[str],
 ) -> pd.DataFrame:
+    """Prefer candidate rows that match the current listen_node_id."""
     if candidates.empty or listen_node_id is None:
         return candidates
 
@@ -170,17 +175,18 @@ def prefer_matching_listen_node(
     return candidates
 
 
-def checked_level_for_condition_from_report(
-    report_df: pd.DataFrame,
+def checked_level_for_condition(
+    level_df: pd.DataFrame,
     target_node_id: int,
     listen_node_id: int | None,
     layout_key: str,
     compound_variable_id: int,
 ) -> tuple[float | None, str | None]:
-    if report_df.empty:
+    """Get the checked coupling level that should drive one condition."""
+    if level_df.empty:
         return None, None
 
-    rows = report_df[report_df["node_id"].astype(int).eq(as_int(target_node_id))].copy()
+    rows = level_df[level_df["node_id"].astype(int).eq(as_int(target_node_id))].copy()
     if rows.empty:
         return None, None
 
@@ -239,10 +245,10 @@ def checked_level_for_condition_from_report(
 
 def protected_controller_threshold_updates(
     model: Model,
-    report_df: pd.DataFrame,
+    level_df: pd.DataFrame,
     tolerance: float,
 ) -> pd.DataFrame:
-    """Find coupling/protected levels whose DiscreteControl thresholds do not match."""
+    """Find coupling/protected DiscreteControl thresholds that need syncing."""
     assert model.node.df is not None
     assert model.link.df is not None
 
@@ -342,8 +348,8 @@ def protected_controller_threshold_updates(
                 and str(target_authority) != str(listen_authority)
             )
             if is_coupled_condition:
-                level_value, update_basis = checked_level_for_condition_from_report(
-                    report_df=report_df,
+                level_value, update_basis = checked_level_for_condition(
+                    level_df=level_df,
                     target_node_id=target_node_id,
                     listen_node_id=listen_node_id,
                     layout_key=layout_key,

@@ -1,9 +1,5 @@
 """Apply explicitly allowed coupling-level corrections to a Ribasim model."""
 
-from __future__ import annotations
-
-import shutil
-from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -27,18 +23,12 @@ from ribasim_nl.coupling_level_controls import (
 )
 
 
-def backup_database(database_path: Path) -> Path:
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_path = database_path.with_name(f"{database_path.stem}_before_report_coupling_levels_{timestamp}.gpkg")
-    shutil.copy2(database_path, backup_path)
-    return backup_path
-
-
 def protected_table_copy(
     df: pd.DataFrame | None,
     node_ids: set[int] | None = None,
     excluded_table_fids: set[int] | None = None,
 ) -> pd.DataFrame:
+    """Take a sorted copy of rows that must stay unchanged."""
     if df is None:
         return pd.DataFrame()
     result = df.copy()
@@ -51,6 +41,7 @@ def protected_table_copy(
 
 
 def assert_table_copy_unchanged(label: str, before: pd.DataFrame, after: pd.DataFrame) -> None:
+    """Fail if a protected table copy changed unexpectedly."""
     try:
         pd.testing.assert_frame_equal(
             before.reset_index(drop=True),
@@ -59,13 +50,14 @@ def assert_table_copy_unchanged(label: str, before: pd.DataFrame, after: pd.Data
             check_like=False,
         )
     except AssertionError as error:
-        raise RuntimeError(f"{label} is onverwacht aangepast door report_coupling_levels.") from error
+        raise RuntimeError(f"{label} is onverwacht aangepast door coupling-level apply.") from error
 
 
 def protected_apply_table_copies(
     model: Model,
     allowed_static_table_fids_by_table: dict[str, set[int]] | None = None,
 ) -> dict[str, pd.DataFrame]:
+    """Snapshot tables that coupling-level apply is not allowed to change."""
     flow_demand_node_ids = flow_demand_controlled_node_ids(model)
     allowed_static_table_fids_by_table = allowed_static_table_fids_by_table or {}
     table_copies = {
@@ -87,6 +79,7 @@ def assert_protected_apply_table_copies_unchanged(
     table_copies: dict[str, pd.DataFrame],
     allowed_static_table_fids_by_table: dict[str, set[int]] | None = None,
 ) -> None:
+    """Check that protected tables still match their snapshots."""
     flow_demand_node_ids = flow_demand_controlled_node_ids(model)
     allowed_static_table_fids_by_table = allowed_static_table_fids_by_table or {}
     current_table_copies = {
@@ -103,19 +96,6 @@ def assert_protected_apply_table_copies_unchanged(
 
     for label, before in table_copies.items():
         assert_table_copy_unchanged(label, before, current_table_copies[label])
-
-
-def set_all_manning_n(model: Model, manning_n: float, tolerance: float = 1e-12) -> int:
-    static_df = model.manning_resistance.static.df
-    if static_df is None:
-        return 0
-    if "manning_n" not in static_df.columns:
-        raise KeyError("Kolom 'manning_n' ontbreekt in ManningResistance / static.")
-
-    current = pd.to_numeric(static_df["manning_n"], errors="coerce")
-    mask = current.isna() | (current.sub(float(manning_n)).abs() > float(tolerance))
-    static_df.loc[mask, "manning_n"] = float(manning_n)
-    return int(mask.sum())
 
 
 def allowed_flow_demand_static_update_fids(min_upstream_updates_df: pd.DataFrame) -> dict[str, set[int]]:
@@ -139,21 +119,17 @@ def allowed_flow_demand_static_update_fids(min_upstream_updates_df: pd.DataFrame
 def apply_level_updates(
     model: Model,
     toml_file: Path,
-    database_path: Path,
     min_upstream_updates_df: pd.DataFrame,
     direct_min_upstream_updates_df: pd.DataFrame,
     max_downstream_updates_df: pd.DataFrame,
     protected_controller_updates_df: pd.DataFrame,
-    *,
-    manning_n: float | None = None,
-) -> tuple[Path, int, int, int, int]:
-    backup_path = backup_database(database_path)
+) -> tuple[int, int, int]:
+    """Apply allowed static level updates and sync matching controller thresholds."""
     allowed_static_table_fids_by_table = allowed_flow_demand_static_update_fids(min_upstream_updates_df)
     protected_table_copies = protected_apply_table_copies(model, allowed_static_table_fids_by_table)
     min_update_count = 0
     max_update_count = 0
     condition_update_count = 0
-    manning_update_count = 0
     synced_conditions: set[tuple[int, int, float]] = set()
     control_ids_by_target = control_node_ids_by_target_node_id(model)
     static_df_by_table: dict[str, pd.DataFrame] = {}
@@ -170,6 +146,7 @@ def apply_level_updates(
         function: str,
         flow_demand_controlled: bool,
     ) -> int:
+        """Update one target node's DiscreteControl thresholds for one listen node."""
         if flow_demand_controlled or listen_node_id is None:
             return 0
         variable_df = model.discrete_control.variable.df
@@ -246,6 +223,7 @@ def apply_level_updates(
         function: str,
         flow_demand_controlled: bool,
     ) -> None:
+        """Sync a controller level once per target/listen/level combination."""
         nonlocal condition_update_count
         if flow_demand_controlled or listen_node_id is None or is_missing(level_value):
             return
@@ -320,9 +298,6 @@ def apply_level_updates(
         condition_df.loc[as_int(row.condition_fid), "threshold_low"] = threshold
         condition_update_count += 1
 
-    if manning_n is not None:
-        manning_update_count = set_all_manning_n(model, manning_n)
-
     assert_protected_apply_table_copies_unchanged(model, protected_table_copies, allowed_static_table_fids_by_table)
     model.write(toml_file)
-    return backup_path, min_update_count, max_update_count, condition_update_count, manning_update_count
+    return min_update_count, max_update_count, condition_update_count

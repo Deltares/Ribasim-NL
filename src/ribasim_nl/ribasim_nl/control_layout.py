@@ -1,7 +1,5 @@
 """Shared DiscreteControl layouts used by full-control setup and level syncs."""
 
-from __future__ import annotations
-
 DEFAULT_CONTROL_THRESHOLD_OFFSET = 0.02
 ControlLayout = tuple[dict[int, int], dict[int, int], set[tuple[str, str]]]
 

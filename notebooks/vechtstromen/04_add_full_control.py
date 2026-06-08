@@ -26,7 +26,6 @@ IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 EXCLUDE_NODES = {38, 40, 996}
-LEVEL_UPDATE_PROTECTION_COLUMN = "meta_level_update_protected"
 
 
 # %%
@@ -146,10 +145,8 @@ def lower_outlet_max_downstream_level(model: Model, node_id: int, offset: float 
         if aanvoer_mask.any():
             mask = aanvoer_mask
 
-    if LEVEL_UPDATE_PROTECTION_COLUMN not in model.outlet.static.df.columns:
-        model.outlet.static.df[LEVEL_UPDATE_PROTECTION_COLUMN] = False
     model.outlet.static.df.loc[mask, "max_downstream_level"] = float(downstream_target_level.iloc[0]) - offset
-    model.outlet.static.df.loc[mask, LEVEL_UPDATE_PROTECTION_COLUMN] = True
+    mark_level_update_protected(model.outlet.static.df, mask)
 
 
 def duplicate_level_boundary_for_link(model: Model, source_node_id: int, link_id: int) -> int | None:

@@ -1,7 +1,5 @@
 """Iteratively scale pump and outlet max_flow_rate values for design precipitation and evaporation events."""
 
-from __future__ import annotations
-
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path

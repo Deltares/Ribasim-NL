@@ -1,9 +1,6 @@
 """Shared helpers for coupling-level checks."""
 
-from __future__ import annotations
-
 import math
-from pathlib import Path
 from typing import Any, cast
 
 import pandas as pd
@@ -19,53 +16,36 @@ RWS_AUTHORITY = "Rijkswaterstaat"
 LIMBURG_AUTHORITY = "Limburg"
 SKIP_LEVEL_UPDATE_AUTHORITIES = {"WetterskipFryslan"}
 SKIP_LEVEL_UPDATE_NODE_IDS: set[int] = set()
-SKIP_MIN_UPSTREAM_UPDATE_NODE_IDS = {3800291}
 LEVEL_UPDATE_PROTECTION_COLUMN = "meta_level_update_protected"
 
 
-def database_gpkg_path(model: Model, toml_file: Path) -> Path:
-    model_dir = toml_file.parent
-    input_database_gpkg = model_dir / Path(model.input_dir) / "database.gpkg"
-    legacy_database_gpkg = model_dir / "database.gpkg"
-    if input_database_gpkg.exists():
-        return input_database_gpkg
-    if legacy_database_gpkg.exists():
-        return legacy_database_gpkg
-    raise FileNotFoundError(
-        f"Kan geen database.gpkg vinden voor model {toml_file}. "
-        f"Gezocht in {input_database_gpkg} en {legacy_database_gpkg}."
-    )
-
-
-def resolve_output_gpkg(toml_file: Path, output_gpkg: Path | None) -> Path:
-    if output_gpkg is None:
-        return toml_file.with_name("coupling_level_report.gpkg")
-    if output_gpkg.is_absolute():
-        return output_gpkg
-    return toml_file.parent / output_gpkg
-
-
 def normalize_numeric(series: pd.Series) -> pd.Series:
+    """Convert a Series to numeric values, invalid values become NaN."""
     return pd.to_numeric(series, errors="coerce")
 
 
 def as_int(value: object) -> int:
+    """Cast a table value to int."""
     return int(cast(Any, value))
 
 
 def as_float(value: object) -> float:
+    """Cast a table value to float."""
     return float(cast(Any, value))
 
 
 def is_missing(value: object) -> bool:
+    """Return True for pandas-style missing values."""
     return bool(pd.isna(cast(Any, value)))
 
 
 def is_present(value: object) -> bool:
+    """Return True when a value is not missing."""
     return not is_missing(value)
 
 
 def reset_index_to_column(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
+    """Ensure an index value is available as a normal column."""
     if column_name in df.columns:
         return df.copy()
 
@@ -79,6 +59,7 @@ def reset_index_to_column(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
 
 
 def positive(value: object) -> bool:
+    """Return True for finite numeric values larger than zero."""
     try:
         if value is None:
             return False
@@ -89,6 +70,7 @@ def positive(value: object) -> bool:
 
 
 def truthy(value: object) -> bool:
+    """Interpret bool-like values from TOML/GPKG tables."""
     if is_missing(value):
         return False
     if isinstance(value, bool):
@@ -97,10 +79,12 @@ def truthy(value: object) -> bool:
 
 
 def static_row_has_capacity(row: pd.Series | dict[str, object]) -> bool:
+    """Check whether a static row can convey water."""
     return positive(row.get("flow_rate")) or positive(row.get("max_flow_rate"))
 
 
 def classify_functions(static_df: pd.DataFrame, flow_demand_inlet_nodes: set[int] | None = None) -> dict[int, str]:
+    """Classify each control node as inlaat, uitlaat, doorlaat, or dicht."""
     flow_demand_inlet_nodes = flow_demand_inlet_nodes or set()
     control_state = static_df["control_state"].astype("string").str.lower()
     capacity = static_df.apply(static_row_has_capacity, axis=1)
@@ -120,12 +104,14 @@ def classify_functions(static_df: pd.DataFrame, flow_demand_inlet_nodes: set[int
 
 
 def model_level_difference_threshold(model: Model) -> float:
+    """Read the model hysteresis threshold used for DiscreteControl levels."""
     solver = getattr(model, "solver", None)
     value = getattr(solver, "level_difference_threshold", None)
     return 0.02 if is_missing(value) else as_float(value)
 
 
 def control_node_name(model: Model, control_node_id: int) -> str | None:
+    """Return the name of a DiscreteControl node, if present."""
     node_df = model.node.df
     if node_df is None:
         return None
@@ -138,6 +124,7 @@ def control_node_name(model: Model, control_node_id: int) -> str | None:
 
 
 def control_node_ids_by_target_node_id(model: Model) -> dict[int, list[int]]:
+    """Map controlled Outlet/Pump node_id to its DiscreteControl node_ids."""
     assert model.node.df is not None
     assert model.link.df is not None
 
@@ -160,6 +147,7 @@ def control_node_ids_by_target_node_id(model: Model) -> dict[int, list[int]]:
 
 
 def flow_demand_controlled_node_ids(model: Model) -> set[int]:
+    """Find Outlet/Pump nodes controlled by a FlowDemand node."""
     assert model.node.df is not None
     assert model.link.df is not None
 

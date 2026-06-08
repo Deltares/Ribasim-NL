@@ -12,6 +12,7 @@ from ribasim_nl.control import (
     add_controllers_to_supply_nodes,
     add_controllers_to_uncontrolled_connector_nodes,
     get_node_table_with_from_to_node_ids,
+    mark_level_update_protected,
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
@@ -880,6 +881,9 @@ model.pump.static.df.loc[mask, "max_flow_rate"] = model.pump.static.df.loc[mask,
 # %% Junctionfy(!)
 junctionify(model)
 aanvoer_only_node_ids = set(supply_nodes) - set(drain_nodes) - set(flow_control_nodes)
+
+# Bescherm handmatig ingestelde doorlaat tussen Limburg en RWS tegen latere coupling-level updates.
+mark_level_update_protected(model.outlet.static.df, model.outlet.static.df["node_id"].isin([2496]))
 
 # Aanvoer-cap: doorlaten/inlaten mogen in aanvoer niet de hoge afvoercapaciteit gebruiken.
 aanvoer_outlet_mask = model.outlet.static.df.control_state == "aanvoer"
