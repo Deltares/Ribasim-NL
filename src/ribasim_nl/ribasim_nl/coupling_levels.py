@@ -10,7 +10,9 @@ import pandas as pd
 from ribasim_nl import Model
 from ribasim_nl.coupling_level_apply import apply_level_updates
 from ribasim_nl.coupling_level_common import (
+    AAENMAAS_AUTHORITY,
     CONTROL_NODE_TYPES,
+    DEDOMMEL_AUTHORITY,
     LEVEL_UPDATE_PROTECTION_COLUMN,
     LIMBURG_AUTHORITY,
     RWS_AUTHORITY,
@@ -31,6 +33,9 @@ from ribasim_nl.coupling_level_network import (
     first_non_junction,
     flow_link_graphs,
 )
+
+FLOW_DEMAND_DIRECT_MIN_UPSTREAM_AUTHORITIES = {AAENMAAS_AUTHORITY, LIMBURG_AUTHORITY}
+RWS_FLOW_DEMAND_PROFILE_AUTHORITIES = {AAENMAAS_AUTHORITY, DEDOMMEL_AUTHORITY, LIMBURG_AUTHORITY}
 
 
 @dataclass(frozen=True)
@@ -152,13 +157,20 @@ def direct_min_upstream_updates(level_df: pd.DataFrame) -> pd.DataFrame:
         & level_df["gecheckte_min_upstream_level"].notna()
         & ~level_df["rws_inlet_profile_min_upstream_afwijking"]
         & ~level_df["level_update_skipped_authority"]
-        & ~level_df["flow_demand_controlled"]
+        & (
+            ~level_df["flow_demand_controlled"]
+            | level_df["flow_demand_direct_min_upstream_update_allowed"].fillna(False)
+        )
         & ~level_df["min_upstream_protected_by_static"]
         & ~level_df["node_id"].isin(SKIP_LEVEL_UPDATE_NODE_IDS)
     ].copy()
     if not updates_df.empty:
         updates_df["direct_min_upstream_level_update_allowed"] = True
         updates_df["direct_min_upstream_level_update_basis"] = "direct_upstream_basin_streefpeil"
+        updates_df.loc[
+            updates_df["flow_demand_direct_min_upstream_update_allowed"].fillna(False),
+            "direct_min_upstream_level_update_basis",
+        ] = "flow_demand_upstream_streefpeil_plus_supply_offset"
     return updates_df
 
 
@@ -276,13 +288,16 @@ def connector_level_record(
         and is_present(downstream_authority)
         and downstream_authority != RWS_AUTHORITY
     )
-    limburg_rws_flow_demand_min_upstream = (
+    rws_flow_demand_profile_min_upstream_allowed = (
         flow_demand_controlled
         and rws_to_model
         and row.functie == "inlaat"
         and (
-            (is_present(row.meta_waterbeheerder) and str(row.meta_waterbeheerder) == LIMBURG_AUTHORITY)
-            or (is_present(downstream_authority) and str(downstream_authority) == LIMBURG_AUTHORITY)
+            (
+                is_present(row.meta_waterbeheerder)
+                and str(row.meta_waterbeheerder) in RWS_FLOW_DEMAND_PROFILE_AUTHORITIES
+            )
+            or (is_present(downstream_authority) and str(downstream_authority) in RWS_FLOW_DEMAND_PROFILE_AUTHORITIES)
         )
     )
     rws_inlet_profile_update_allowed = (
@@ -292,7 +307,7 @@ def connector_level_record(
         and is_present(upstream_min_profile)
         and downstream_authority not in SKIP_LEVEL_UPDATE_AUTHORITIES
         and not level_update_skipped_authority
-        and (not flow_demand_controlled or limburg_rws_flow_demand_min_upstream)
+        and (not flow_demand_controlled or rws_flow_demand_profile_min_upstream_allowed)
         and not min_upstream_protected_by_static
         and node_id not in SKIP_LEVEL_UPDATE_NODE_IDS
     )
@@ -302,14 +317,37 @@ def connector_level_record(
     if rws_inlet_profile_update_allowed:
         expected_min_upstream = rws_inlet_profile_min_upstream
 
+    flow_demand_direct_min_upstream_authority_match = (
+        (
+            is_present(row.meta_waterbeheerder)
+            and str(row.meta_waterbeheerder) in FLOW_DEMAND_DIRECT_MIN_UPSTREAM_AUTHORITIES
+        )
+        or (is_present(upstream_authority) and str(upstream_authority) in FLOW_DEMAND_DIRECT_MIN_UPSTREAM_AUTHORITIES)
+        or (
+            is_present(downstream_authority)
+            and str(downstream_authority) in FLOW_DEMAND_DIRECT_MIN_UPSTREAM_AUTHORITIES
+        )
+    )
+    flow_demand_direct_min_upstream_update_allowed = (
+        flow_demand_controlled
+        and row.functie == "inlaat"
+        and upstream_node_type == "Basin"
+        and flow_demand_direct_min_upstream_authority_match
+        and not rws_inlet_profile_update_allowed
+        and not level_update_skipped_authority
+        and not min_upstream_protected_by_static
+        and node_id not in SKIP_LEVEL_UPDATE_NODE_IDS
+    )
     if flow_demand_controlled:
-        if not rws_inlet_profile_update_allowed:
+        if not (rws_inlet_profile_update_allowed or flow_demand_direct_min_upstream_update_allowed):
             expected_min_upstream = row.min_upstream_level
         expected_max_downstream = row.max_downstream_level
     if min_upstream_protected_by_static:
         expected_min_upstream = row.min_upstream_level
     if max_downstream_protected_by_static:
         expected_max_downstream = row.max_downstream_level
+    if flow_demand_direct_min_upstream_update_allowed and is_present(upstream_streefpeil):
+        expected_min_upstream = upstream_streefpeil + upstream_supply_offset
     if pd.isna(expected_min_upstream) and pd.notna(row.min_upstream_level):
         expected_min_upstream = row.min_upstream_level
 
@@ -371,7 +409,9 @@ def connector_level_record(
         "level_update_skipped_authority": bool(level_update_skipped_authority),
         "min_upstream_protected_by_static": bool(min_upstream_protected_by_static),
         "rws_inlet_profile_update_allowed": bool(rws_inlet_profile_update_allowed),
-        "limburg_rws_flow_demand_min_upstream": bool(limburg_rws_flow_demand_min_upstream),
+        "rws_flow_demand_profile_min_upstream_allowed": bool(rws_flow_demand_profile_min_upstream_allowed),
+        "limburg_rws_flow_demand_min_upstream": bool(rws_flow_demand_profile_min_upstream_allowed),
+        "flow_demand_direct_min_upstream_update_allowed": bool(flow_demand_direct_min_upstream_update_allowed),
         "rws_inlet_profile_min_upstream": rws_inlet_profile_min_upstream,
         "rws_inlet_profile_min_upstream_afwijking": bool(rws_inlet_profile_min_upstream_afwijking),
     }

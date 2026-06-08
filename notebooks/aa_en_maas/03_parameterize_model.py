@@ -83,6 +83,7 @@ basin_level_overrides = [
     ([1961], 30.75),
     ([1849], 30.75),
     ([1462], 30.75),
+    ([2495], 30.75),
 ]
 
 for node_ids, meta_streefpeil in basin_level_overrides:

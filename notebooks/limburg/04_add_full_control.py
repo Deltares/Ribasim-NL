@@ -24,7 +24,7 @@ from ribasim_nl import CloudStorage, Model
 
 # Globale settings
 
-MODEL_EXEC: bool = False  # execute model run
+MODEL_EXEC: bool = True  # execute model run
 AUTHORITY: str = "Limburg"
 SHORT_NAME: str = "limburg"
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
@@ -130,6 +130,7 @@ flow_control_nodes = [
     541,
     545,
     579,
+    590,
     652,
     653,
     657,
@@ -321,7 +322,6 @@ def add_discharge_supply_nodes(
 # Handmatige koppeling naam -> node_id
 name_to_node = {
     "Gemaal Beringe": 583,
-    #  "Gemaal Helenaveen": 590,
     "Zijtak Helenavaart": 532,
     "Houtstraatlossing": 351,
     "Hushoverbeek": 2502,
@@ -378,7 +378,6 @@ flow_demand_data_ls = {
     "Snepheiderbeek_1": {"summer": 40, "winter": 20},  # Bovenstrooms Snepheiderbeek is echte inlaat
     # Grote aanvoeren
     "Gemaal Beringe": {"summer": 550, "winter": 350},
-    #   "Gemaal Helenaveen": {"summer": 350, "winter": 350},  # winter in tabel: laatste 2 jaar 350, normaal 150
     "Zijtak Helenavaart": {"summer": 350, "winter": 350},  # winter in tabel: laatste 2 jaar
     "Katsberg": {"summer": 3400, "winter": 3400},  # winter in tabel 1000-3400; hier bovengrens gekozen
     "Eendlossing": {"summer": 20, "winter": 10},  # WATAK
@@ -865,6 +864,11 @@ afvoer_mask_683 = (model.outlet.static.df.node_id == 683) & (model.outlet.static
 model.outlet.static.df.loc[afvoer_mask_683, "flow_rate"] = 0
 model.outlet.static.df.loc[afvoer_mask_683, "max_flow_rate"] = 0
 
+boundary_levels = {120: 30.75, 121: 30.75, 124: 30.75, 125: 30.75, 132: 31.545, 3: 31.545, 136: 32, 95: 30, 98: 30}
+for node_id, level in boundary_levels.items():
+    model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == node_id, "level"] = level
+
+# Gemaal Helenaveen blijft een uitlaat: min_upstream en bijbehorende threshold 4 cm omlaag.
 # Pomp-capaciteiten op basis van hoogste berekende dynamic debiet, afgerond naar boven.
 pump_max_flow_rate_from_results = {
     590: 5,  # Gemaal Helenaveen; oude static flow_rate=0.0101

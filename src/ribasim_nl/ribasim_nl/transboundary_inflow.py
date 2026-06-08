@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -7,6 +7,60 @@ import pandas as pd
 from ribasim_nl.model import Model
 
 logger = logging.getLogger(__name__)
+
+
+def fix_date_string(date_str: str | pd.Timestamp) -> pd.Timestamp:
+    """Fix dates containing '24:00' and parse day-first formatted date strings.
+
+    Parameters
+    ----------
+    date_str : str or pd.Timestamp
+        Date as string or timestamp, e.g. '23-06-2017 24:00'.
+
+    Returns
+    -------
+    pd.Timestamp or pd.NaT
+        A valid datetime value. Returns NaT if parsing fails.
+    """
+    try:
+        if isinstance(date_str, str) and "24:00" in date_str:
+            # Extract the date part
+            base_date = datetime.strptime(date_str.split(" ")[0], "%d-%m-%Y")
+            # Add one day, time will be 00:00 of the next day
+            return pd.Timestamp(base_date + timedelta(days=1))
+        if isinstance(date_str, str) and date_str[:4].isdigit():
+            # ISO format like "2017-06-23 00:00:00"
+            return pd.to_datetime(date_str)
+        # Day-first format like "23-06-2017"
+        return pd.to_datetime(date_str, dayfirst=True)
+    except Exception as e:
+        logger.warning(f"Date parse error: '{date_str}' -> {e}")
+        return pd.NaT  # pyrefly: ignore[bad-return]
+
+
+def parse_date_series(date_series: pd.Series) -> pd.Series:
+    """Vectorized variant of ``fix_date_string`` for Excel date columns."""
+    if date_series.empty:
+        return pd.to_datetime(date_series)
+
+    parsed = pd.to_datetime(date_series, dayfirst=True, errors="coerce")
+
+    string_values = date_series.astype("string")
+    missing = parsed.isna() & string_values.notna()
+    contains_24h = missing & string_values.str.contains("24:00", regex=False)
+
+    if contains_24h.any():
+        parsed.loc[contains_24h] = pd.to_datetime(
+            string_values.loc[contains_24h].str.split(" ").str[0],
+            format="%d-%m-%Y",
+            errors="coerce",
+        ) + pd.Timedelta(days=1)
+
+    remaining = parsed.isna() & string_values.notna()
+    if remaining.any():
+        parsed.loc[remaining] = pd.to_datetime(string_values.loc[remaining], dayfirst=True, errors="coerce")
+
+    return parsed
 
 
 def import_transboundary_inflow(
@@ -56,11 +110,8 @@ def import_transboundary_inflow(
 
             logger.info(f"Importeer de data voor: {', '.join(value_columns)}")
 
-            if not pd.api.types.is_datetime64_any_dtype(df["Datum"]):
-                raise ValueError(f"Expected datetime64 'Datum' column from Excel, got dtype: {df['Datum'].dtype}")
-            df = df.dropna(subset=["Datum"]).set_index("Datum")
-            if not df.index.is_monotonic_increasing:
-                raise ValueError(f"Sheet '{sheet}': Datum column is not sorted by time")
+            df["Datum"] = parse_date_series(df["Datum"])
+            df = df.dropna(subset=["Datum"]).set_index("Datum").sort_index()
             df = df.loc[(df.index >= start_time) & (df.index <= stop_time), value_columns]
 
             if df.empty:

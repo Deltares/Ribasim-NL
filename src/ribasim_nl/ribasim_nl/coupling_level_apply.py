@@ -98,16 +98,39 @@ def assert_protected_apply_table_copies_unchanged(
         assert_table_copy_unchanged(label, before, current_table_copies[label])
 
 
-def allowed_flow_demand_static_update_fids(min_upstream_updates_df: pd.DataFrame) -> dict[str, set[int]]:
-    """FlowDemand blijft beschermd, behalve de expliciet toegestane Limburg/RWS min_upstream-correcties."""
-    if min_upstream_updates_df.empty:
+def allowed_flow_demand_static_update_fids(
+    min_upstream_updates_df: pd.DataFrame,
+    direct_min_upstream_updates_df: pd.DataFrame,
+) -> dict[str, set[int]]:
+    """FlowDemand blijft beschermd, behalve de expliciet toegestane min_upstream-correcties."""
+    allowed_parts = []
+    rws_flow_demand_profile_column = (
+        "rws_flow_demand_profile_min_upstream_allowed"
+        if "rws_flow_demand_profile_min_upstream_allowed" in min_upstream_updates_df.columns
+        else "limburg_rws_flow_demand_min_upstream"
+    )
+
+    if not min_upstream_updates_df.empty:
+        allowed_parts.append(
+            min_upstream_updates_df[
+                min_upstream_updates_df["flow_demand_controlled"].fillna(False)
+                & min_upstream_updates_df["rws_inlet_profile_update_allowed"].fillna(False)
+                & min_upstream_updates_df[rws_flow_demand_profile_column].fillna(False)
+            ].copy()
+        )
+
+    if not direct_min_upstream_updates_df.empty:
+        allowed_parts.append(
+            direct_min_upstream_updates_df[
+                direct_min_upstream_updates_df["flow_demand_controlled"].fillna(False)
+                & direct_min_upstream_updates_df["flow_demand_direct_min_upstream_update_allowed"].fillna(False)
+            ].copy()
+        )
+
+    if not allowed_parts:
         return {}
 
-    allowed_df = min_upstream_updates_df[
-        min_upstream_updates_df["flow_demand_controlled"].fillna(False)
-        & min_upstream_updates_df["rws_inlet_profile_update_allowed"].fillna(False)
-        & min_upstream_updates_df["limburg_rws_flow_demand_min_upstream"].fillna(False)
-    ].copy()
+    allowed_df = pd.concat(allowed_parts, ignore_index=True)
     if allowed_df.empty:
         return {}
 
@@ -125,7 +148,10 @@ def apply_level_updates(
     protected_controller_updates_df: pd.DataFrame,
 ) -> tuple[int, int, int]:
     """Apply allowed static level updates and sync matching controller thresholds."""
-    allowed_static_table_fids_by_table = allowed_flow_demand_static_update_fids(min_upstream_updates_df)
+    allowed_static_table_fids_by_table = allowed_flow_demand_static_update_fids(
+        min_upstream_updates_df,
+        direct_min_upstream_updates_df,
+    )
     protected_table_copies = protected_apply_table_copies(model, allowed_static_table_fids_by_table)
     min_update_count = 0
     max_update_count = 0
@@ -240,9 +266,14 @@ def apply_level_updates(
         )
 
     for row in min_upstream_updates_df.itertuples(index=False):
-        if bool(getattr(row, "flow_demand_controlled", False)) and not bool(
-            getattr(row, "limburg_rws_flow_demand_min_upstream", False)
-        ):
+        rws_flow_demand_profile_allowed = bool(
+            getattr(
+                row,
+                "rws_flow_demand_profile_min_upstream_allowed",
+                getattr(row, "limburg_rws_flow_demand_min_upstream", False),
+            )
+        )
+        if bool(getattr(row, "flow_demand_controlled", False)) and not bool(rws_flow_demand_profile_allowed):
             continue
         static_df = static_df_by_table[str(row.static_table)]
         static_df.loc[as_int(row.table_fid), "min_upstream_level"] = as_float(row.rws_inlet_profile_min_upstream)
@@ -257,7 +288,9 @@ def apply_level_updates(
         min_update_count += 1
 
     for row in direct_min_upstream_updates_df.itertuples(index=False):
-        if bool(getattr(row, "flow_demand_controlled", False)):
+        if bool(getattr(row, "flow_demand_controlled", False)) and not bool(
+            getattr(row, "flow_demand_direct_min_upstream_update_allowed", False)
+        ):
             continue
         value = as_float(row.gecheckte_min_upstream_level)
         static_df = static_df_by_table[str(row.static_table)]

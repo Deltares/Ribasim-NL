@@ -13,6 +13,8 @@ STATIC_TABLE_BY_NODE_TYPE = {
     "Pump": "Pump / static",
 }
 RWS_AUTHORITY = "Rijkswaterstaat"
+AAENMAAS_AUTHORITY = "AaenMaas"
+DEDOMMEL_AUTHORITY = "DeDommel"
 LIMBURG_AUTHORITY = "Limburg"
 SKIP_LEVEL_UPDATE_AUTHORITIES = {"WetterskipFryslan"}
 SKIP_LEVEL_UPDATE_NODE_IDS: set[int] = set()
