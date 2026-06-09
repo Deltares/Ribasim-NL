@@ -5,6 +5,8 @@ depending on the SOURCE setting below. The zip is extracted into ``bin/``
 (which contains a top-level ``ribasim`` folder).
 """
 
+from __future__ import annotations
+
 import os
 import platform
 import shutil
@@ -23,7 +25,7 @@ from ribasim_nl.settings import settings
 #       For minio, a folder name like "storage-formulation".
 # Make sure the version is compatible with the Ribasim Python version in pixi.toml.
 SOURCE = "minio"
-NAME = "storage-pass"
+NAME = "storage-continuous"
 # ───────────────────────────────────────────────────────────────────────────────
 
 GITHUB_RELEASE_URL = "https://github.com/Deltares/Ribasim/releases/download/{name}/{asset}"

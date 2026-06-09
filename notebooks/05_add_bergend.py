@@ -9,10 +9,9 @@ cloud = CloudStorage()
 
 FIND_POST_FIXES = ["full_control_model"]
 # pass authorities as arguments, or edit list here
-SELECTION: set = {"Noorderzijlvest"}
+SELECTION: set = {"RijnenIJssel"}
 INCLUDE_RESULTS = False
 REBUILD = True
-RUN_MODEL = False
 
 
 def get_model_dir(authority, post_fix):
@@ -56,8 +55,7 @@ for authority in authorities:
             add_berging = VdGaastBerging(model=model, cloud=cloud, use_add_api=False)
             add_berging.add()
 
-            # write model and optionally run it
+            # run model
             model.write(dst_toml_file)
-            if RUN_MODEL:
-                result = model.run()
-                assert result.exit_code == 0
+            result = model.run()
+            assert result.exit_code == 0
