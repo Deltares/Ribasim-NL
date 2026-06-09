@@ -284,7 +284,7 @@ df = pd.DataFrame(
     {
         "node_id": model.manning_resistance.node.df.index.to_list(),
         "length": [100.0] * length,
-        "manning_n": [100.0] * length,
+        "manning_n": [0.03] * length,
         "profile_width": [100.0] * length,
         "profile_slope": [100.0] * length,
     }

@@ -391,7 +391,7 @@ for row in model.node.df[model.node.df.node_type == "ManningResistance"].itertup
         length=[round(length)],
         profile_width=[round(profile_width, 2)],
         profile_slope=[round(profile_slope, 2)],
-        manning_n=[0.04],
+        manning_n=[0.03],
     )
     model.update_node(node_id, node_type="ManningResistance", data=[data])
 
