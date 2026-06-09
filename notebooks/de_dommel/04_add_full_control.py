@@ -254,7 +254,7 @@ model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 379, "max_flow_rate"] = 0
 mask = model.outlet.static.df.node_id.isin([293, 210])
 model.outlet.static.df.loc[mask, "min_upstream_level"] = 16.2
-mark_level_update_protected(model.outlet.static.df, mask)
+mark_level_update_protected(model.outlet.static.df, mask, model=model)
 
 # flow rates WATAK Olen en Sonse Heide
 flow_updates = {

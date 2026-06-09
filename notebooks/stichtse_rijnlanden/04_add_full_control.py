@@ -271,20 +271,20 @@ add_controllers_to_uncontrolled_connector_nodes(
 # %% Noordergemaal, node=536 slaat pas aan wanneer Wijk van Duurstede net genoeg kan leveren
 mask = model.pump.static.df.node_id == 536
 model.pump.static.df.loc[mask, "max_downstream_level"] -= 0.01
-mark_level_update_protected(model.pump.static.df, mask)
+mark_level_update_protected(model.pump.static.df, mask, model=model)
 mask = model.outlet.static.df.node_id.isin([1344, 1345])
 model.outlet.static.df.loc[mask, "max_downstream_level"] -= 0.01
-mark_level_update_protected(model.outlet.static.df, mask)
+mark_level_update_protected(model.outlet.static.df, mask, model=model)
 
 # 3 sifons, 468,469,470 onder Ark wordt later ingeschakeld dan inlaat Vreeswijk
 mask = model.outlet.static.df.node_id.isin([468, 469, 470])
 model.outlet.static.df.loc[mask, "max_downstream_level"] -= 0.01
-mark_level_update_protected(model.outlet.static.df, mask)
+mark_level_update_protected(model.outlet.static.df, mask, model=model)
 
 # Caspargauw gaat pas leveren als Wijk bij Duurstede aanvoer te laag is
 mask = model.pump.static.df.node_id == 601
 model.pump.static.df.loc[mask, "max_downstream_level"] -= 0.01
-mark_level_update_protected(model.pump.static.df, mask)
+mark_level_update_protected(model.pump.static.df, mask, model=model)
 
 # Pomp-capaciteiten op basis van hoogste berekende dynamic debiet, afgerond naar boven.
 pump_max_flow_rate_from_results = {

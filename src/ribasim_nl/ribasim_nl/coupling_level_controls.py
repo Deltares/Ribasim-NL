@@ -109,44 +109,61 @@ def protected_static_level_for_condition(
     compound_variable_id: int,
 ) -> tuple[float | None, str | None]:
     """Get the protected static level that should drive one condition."""
-    if static_rows.empty or LEVEL_UPDATE_PROTECTION_COLUMN not in static_rows.columns:
+    return static_level_for_condition(
+        static_rows=static_rows,
+        layout_key=layout_key,
+        compound_variable_id=compound_variable_id,
+        protected_only=True,
+    )
+
+
+def static_level_for_condition(
+    static_rows: pd.DataFrame,
+    layout_key: str,
+    compound_variable_id: int,
+    *,
+    protected_only: bool = False,
+) -> tuple[float | None, str | None]:
+    """Get the static level that should drive one control.py condition."""
+    if static_rows.empty:
+        return None, None
+    if protected_only and LEVEL_UPDATE_PROTECTION_COLUMN not in static_rows.columns:
         return None, None
 
     rows = static_rows.copy()
     rows["control_state_lower"] = rows["control_state"].astype("string").str.lower()
     rows["has_capacity"] = rows.apply(static_row_has_capacity, axis=1)
-    rows["level_update_protected"] = rows[LEVEL_UPDATE_PROTECTION_COLUMN].map(truthy)
     layout_key = str(layout_key).lower()
+    if protected_only:
+        rows["level_update_protected"] = rows[LEVEL_UPDATE_PROTECTION_COLUMN].map(truthy)
+        rows = rows[rows["level_update_protected"]].copy()
 
     if layout_key == "inlaat" and compound_variable_id == 1:
         candidates = rows[
             rows["control_state_lower"].eq("aanvoer")
             & rows["has_capacity"]
-            & rows["level_update_protected"]
             & pd.to_numeric(rows["max_downstream_level"], errors="coerce").notna()
         ]
         column = "max_downstream_level"
-        basis = "protected_aanvoer_max_downstream_level"
+        basis = "protected_aanvoer_max_downstream_level" if protected_only else "static_aanvoer_max_downstream_level"
     elif (layout_key == "uitlaat" and compound_variable_id == 1) or (
         layout_key == "doorlaat" and compound_variable_id == 1
     ):
         candidates = rows[
             rows["control_state_lower"].eq("afvoer")
             & rows["has_capacity"]
-            & rows["level_update_protected"]
             & pd.to_numeric(rows["min_upstream_level"], errors="coerce").notna()
         ]
         column = "min_upstream_level"
-        basis = "protected_afvoer_min_upstream_level"
+        basis = "protected_afvoer_min_upstream_level" if protected_only else "static_afvoer_min_upstream_level"
     elif layout_key == "doorlaat" and compound_variable_id == 2:
         candidates = rows[
             rows["control_state_lower"].eq("aanvoer")
             & rows["has_capacity"]
-            & rows["level_update_protected"]
             & pd.to_numeric(rows["max_downstream_level"], errors="coerce").notna()
         ]
         column = "max_downstream_level"
-        basis = "protected_aanvoer_max_downstream_level"
+        basis = "protected_aanvoer_max_downstream_level" if protected_only else "static_aanvoer_max_downstream_level"
     else:
         return None, None
 
@@ -154,6 +171,15 @@ def protected_static_level_for_condition(
     if values.empty:
         return None, None
     return as_float(values.iloc[0]), basis
+
+
+def static_level_layout_key(layout_key: str, function: str) -> str:
+    """Use the actual static function when a coupled single-state controller changed function."""
+    layout_key = str(layout_key).lower()
+    function = str(function).lower()
+    if layout_key in {"inlaat", "uitlaat"} and function in {"inlaat", "uitlaat"}:
+        return function
+    return layout_key
 
 
 def prefer_matching_listen_node(
@@ -247,10 +273,12 @@ def protected_controller_threshold_updates(
     model: Model,
     level_df: pd.DataFrame,
     tolerance: float,
+    static_level_sync_node_ids: set[int] | None = None,
 ) -> pd.DataFrame:
     """Find coupling/protected DiscreteControl thresholds that need syncing."""
     assert model.node.df is not None
     assert model.link.df is not None
+    static_level_sync_node_ids = static_level_sync_node_ids or set()
 
     node_df = reset_index_to_column(model.node.df.copy(), "node_id")
     link_df = reset_index_to_column(model.link.df.copy(), "link_id")
@@ -276,23 +304,33 @@ def protected_controller_threshold_updates(
 
     static_df = pd.concat(static_dfs, ignore_index=True)
     if LEVEL_UPDATE_PROTECTION_COLUMN not in static_df.columns:
-        return pd.DataFrame()
+        static_df[LEVEL_UPDATE_PROTECTION_COLUMN] = False
 
     node_type_by_id = {
         as_int(node_id): str(node_type)
         for node_id, node_type in node_df.set_index("node_id")["node_type"].to_dict().items()
     }
-    node_name_by_id = {
-        as_int(node_id): name for node_id, name in node_df.set_index("node_id")["name"].to_dict().items()
-    }
-    node_authority_by_id = {
-        as_int(node_id): authority
-        for node_id, authority in node_df.set_index("node_id")["meta_waterbeheerder"].to_dict().items()
-    }
-    node_meta_id_by_id = {
-        as_int(node_id): meta_id
-        for node_id, meta_id in node_df.set_index("node_id")["meta_node_id_waterbeheerder"].to_dict().items()
-    }
+    node_name_by_id = (
+        {as_int(node_id): name for node_id, name in node_df.set_index("node_id")["name"].to_dict().items()}
+        if "name" in node_df.columns
+        else {}
+    )
+    node_authority_by_id = (
+        {
+            as_int(node_id): authority
+            for node_id, authority in node_df.set_index("node_id")["meta_waterbeheerder"].to_dict().items()
+        }
+        if "meta_waterbeheerder" in node_df.columns
+        else {}
+    )
+    node_meta_id_by_id = (
+        {
+            as_int(node_id): meta_id
+            for node_id, meta_id in node_df.set_index("node_id")["meta_node_id_waterbeheerder"].to_dict().items()
+        }
+        if "meta_node_id_waterbeheerder" in node_df.columns
+        else {}
+    )
     flow_demand_links = link_df[
         link_df["link_type"].fillna("").eq("control")
         & link_df["from_node_id"].map(node_type_by_id).eq("FlowDemand")
@@ -311,16 +349,25 @@ def protected_controller_threshold_updates(
     for control_link in control_links.itertuples(index=False):
         control_node_id = as_int(control_link.from_node_id)
         target_node_id = as_int(control_link.to_node_id)
+        sync_from_static_level = target_node_id in static_level_sync_node_ids
         if target_node_id in flow_demand_target_node_ids:
             continue
-        if is_missing(node_authority_by_id.get(target_node_id)):
+        if not sync_from_static_level and is_missing(node_authority_by_id.get(target_node_id)):
             continue
-        if is_missing(node_meta_id_by_id.get(target_node_id)):
+        if not sync_from_static_level and is_missing(node_meta_id_by_id.get(target_node_id)):
             continue
 
         control_name = node_name_by_id.get(control_node_id)
         function = functions.get(target_node_id, "")
-        if has_intentional_named_layout_mismatch(function, control_name):
+        target_authority = node_authority_by_id.get(target_node_id)
+        control_authority = node_authority_by_id.get(control_node_id)
+        is_coupled_control = (
+            is_present(target_authority)
+            and is_present(control_authority)
+            and str(target_authority) != str(control_authority)
+        )
+        named_layout_mismatch = has_intentional_named_layout_mismatch(function, control_name)
+        if named_layout_mismatch and not (is_coupled_control or sync_from_static_level):
             continue
         layout_key = control_layout_key(
             function=function,
@@ -340,14 +387,20 @@ def protected_controller_threshold_updates(
                 continue
 
             listen_node_id = as_int(variable_row.listen_node_id)
-            target_authority = node_authority_by_id.get(target_node_id)
             listen_authority = node_authority_by_id.get(listen_node_id)
             is_coupled_condition = (
                 is_present(target_authority)
                 and is_present(listen_authority)
                 and str(target_authority) != str(listen_authority)
             )
-            if is_coupled_condition:
+            source_layout_key = static_level_layout_key(layout_key, function)
+            if sync_from_static_level:
+                level_value, update_basis = static_level_for_condition(
+                    static_rows=target_static_rows,
+                    layout_key=source_layout_key,
+                    compound_variable_id=compound_variable_id,
+                )
+            elif is_coupled_condition:
                 level_value, update_basis = checked_level_for_condition(
                     level_df=level_df,
                     target_node_id=target_node_id,
@@ -355,10 +408,22 @@ def protected_controller_threshold_updates(
                     layout_key=layout_key,
                     compound_variable_id=compound_variable_id,
                 )
+                if level_value is None and is_coupled_control:
+                    level_value, update_basis = static_level_for_condition(
+                        static_rows=target_static_rows,
+                        layout_key=source_layout_key,
+                        compound_variable_id=compound_variable_id,
+                    )
             elif has_protected_static:
                 level_value, update_basis = protected_static_level_for_condition(
                     static_rows=target_static_rows,
                     layout_key=layout_key,
+                    compound_variable_id=compound_variable_id,
+                )
+            elif is_coupled_control:
+                level_value, update_basis = static_level_for_condition(
+                    static_rows=target_static_rows,
+                    layout_key=source_layout_key,
                     compound_variable_id=compound_variable_id,
                 )
             else:

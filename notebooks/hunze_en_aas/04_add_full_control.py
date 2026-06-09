@@ -137,7 +137,7 @@ def configure_always_on_pumps(model: Model) -> None:
         model.pump.static.df.loc[mask, "min_flow_rate"] = min_flow_rate
         model.pump.static.df.loc[mask, "min_upstream_level"] = target_level + ALWAYS_ON_PUMP_MIN_UPSTREAM_LEVEL_OFFSET
         model.pump.static.df.loc[mask, "max_downstream_level"] = ALWAYS_ON_PUMP_MAX_DOWNSTREAM_LEVEL
-        mark_level_update_protected(model.pump.static.df, mask)
+        mark_level_update_protected(model.pump.static.df, mask, model=model)
 
 
 # %%

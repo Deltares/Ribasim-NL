@@ -146,7 +146,7 @@ def lower_outlet_max_downstream_level(model: Model, node_id: int, offset: float 
             mask = aanvoer_mask
 
     model.outlet.static.df.loc[mask, "max_downstream_level"] = float(downstream_target_level.iloc[0]) - offset
-    mark_level_update_protected(model.outlet.static.df, mask)
+    mark_level_update_protected(model.outlet.static.df, mask, model=model)
 
 
 def duplicate_level_boundary_for_link(model: Model, source_node_id: int, link_id: int) -> int | None:
@@ -750,7 +750,7 @@ model = junctionify(model)
 # Gemaal Orveltersluis
 mask = model.pump.static.df.node_id == 664
 model.pump.static.df.loc[mask, "min_upstream_level"] = 14.86
-mark_level_update_protected(model.pump.static.df, mask)
+mark_level_update_protected(model.pump.static.df, mask, model=model)
 
 aanvoer_only_node_ids = set(supply_nodes) - set(drain_nodes) - set(flow_control_nodes)
 

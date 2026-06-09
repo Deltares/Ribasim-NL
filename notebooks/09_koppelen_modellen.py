@@ -7,6 +7,7 @@ import geopandas as gpd
 import pandas as pd
 from networkx import NetworkXNoPath
 from ribasim_nl.aquo import waterbeheercode
+from ribasim_nl.coupling_level_apply import sync_static_controller_thresholds
 from ribasim_nl.coupling_levels import run_coupling_level_check
 from ribasim_nl.settings import settings
 from shapely.geometry import LineString, Point
@@ -33,8 +34,8 @@ COUPLING_LEVEL_TOLERANCE = 1e-6
 data_dir = settings.ribasim_nl_data_dir
 couple_lhm: bool = False
 sub_models: list[str] | bool = [
-    # "AAM-Limburg-RWS",
-    "DeDommel-RWS"
+    "AAM-Limburg-RWS",
+    # "DeDommel-RWS"
 ]
 
 remove_nodes = [
@@ -59,6 +60,8 @@ remove_nodes = [
     3803725,  # forceren koppeling kanaal van Deurne
     3802017,  # verwijderen rand binnenstad
     3800049,  # verwijderen rand binnenstad
+    3803092,  # verwijderen zijtak Helanvaart Limburg
+    3800036,  # verwijderen zijtak Helanvaart Limburg
 ]
 
 # Pumps with min_upstream_level below upstream basin bottom; reset to NA
@@ -105,6 +108,7 @@ forced_coupling = {
     2700009: 3801394,  # Vuchterstuw naar Binnenstad
     3800048: 3801394,  # Aansluiten Drongelens kanaal op Binnenstad
     3300009: 4401377,  # Levelboundary takt niet aan op Verlengde Hoogeveense Vaart
+    6000003: 3801961,  # Forceren zijtak Helanvaart Limburg
 }
 
 
@@ -467,6 +471,12 @@ def fix_basin_profiles(model: Model) -> None:
             current = pd.to_numeric(model.outlet.static.df.loc[mask, "min_upstream_level"], errors="coerce")
             lower_than_minimum = current.lt(min_upstream_level).fillna(False)
             model.outlet.static.df.loc[current.loc[lower_than_minimum].index, "min_upstream_level"] = min_upstream_level
+            if lower_than_minimum.any():
+                sync_static_controller_thresholds(
+                    model=model,
+                    target_node_ids={outlet_id},
+                    tolerance=COUPLING_LEVEL_TOLERANCE,
+                )
 
     for outlet in model.outlet.node.df.index:
         upstream_basin = model.upstream_node_id(outlet)

@@ -19,6 +19,7 @@ from ribasim_nl.coupling_level_common import (
 )
 from ribasim_nl.coupling_level_controls import (
     has_intentional_named_layout_mismatch,
+    protected_controller_threshold_updates,
     validate_control_layout_for_sync,
 )
 
@@ -137,6 +138,45 @@ def allowed_flow_demand_static_update_fids(
     return {
         str(table): set(rows["table_fid"].dropna().astype(int)) for table, rows in allowed_df.groupby("static_table")
     }
+
+
+def apply_controller_threshold_updates(model: Model, updates_df: pd.DataFrame) -> int:
+    """Apply DiscreteControl condition thresholds from a prepared update table."""
+    if updates_df.empty:
+        return 0
+    condition_df = model.discrete_control.condition.df
+    if condition_df is None:
+        return 0
+
+    update_count = 0
+    for row in updates_df.itertuples(index=False):
+        if bool(getattr(row, "flow_demand_controlled", False)):
+            continue
+        threshold = as_float(row.gecheckte_threshold)
+        condition_df.loc[as_int(row.condition_fid), "threshold_high"] = threshold
+        condition_df.loc[as_int(row.condition_fid), "threshold_low"] = threshold
+        update_count += 1
+    return update_count
+
+
+def sync_static_controller_thresholds(
+    model: Model,
+    target_node_ids: set[int],
+    tolerance: float,
+) -> int:
+    """Sync DiscreteControl thresholds from current static levels for selected targets only."""
+    if not target_node_ids:
+        return 0
+    updates_df = protected_controller_threshold_updates(
+        model=model,
+        level_df=pd.DataFrame(),
+        tolerance=tolerance,
+        static_level_sync_node_ids=target_node_ids,
+    )
+    if updates_df.empty:
+        return 0
+    updates_df = updates_df[updates_df["node_id"].astype(int).isin(target_node_ids)]
+    return apply_controller_threshold_updates(model, updates_df)
 
 
 def apply_level_updates(
@@ -320,16 +360,10 @@ def apply_level_updates(
         )
         max_update_count += 1
 
-    for row in protected_controller_updates_df.itertuples(index=False):
-        if bool(getattr(row, "flow_demand_controlled", False)):
-            continue
-        threshold = as_float(row.gecheckte_threshold)
-        condition_df = model.discrete_control.condition.df
-        if condition_df is None:
-            continue
-        condition_df.loc[as_int(row.condition_fid), "threshold_high"] = threshold
-        condition_df.loc[as_int(row.condition_fid), "threshold_low"] = threshold
-        condition_update_count += 1
+    condition_update_count += apply_controller_threshold_updates(
+        model=model,
+        updates_df=protected_controller_updates_df,
+    )
 
     assert_protected_apply_table_copies_unchanged(model, protected_table_copies, allowed_static_table_fids_by_table)
     model.write(toml_file)

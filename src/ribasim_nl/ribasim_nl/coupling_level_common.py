@@ -77,7 +77,10 @@ def truthy(value: object) -> bool:
         return False
     if isinstance(value, bool):
         return value
-    return str(value).strip().lower() in {"1", "true", "yes", "ja", "y"}
+    try:
+        return float(cast(Any, value)) != 0.0
+    except (TypeError, ValueError):
+        return str(value).strip().lower() in {"true", "yes", "ja", "y"}
 
 
 def static_row_has_capacity(row: pd.Series | dict[str, object]) -> bool:

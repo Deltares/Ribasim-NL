@@ -251,7 +251,7 @@ model.discrete_control.logic.df.loc[mask, "control_state"] = "aanvoer"
 # Noodoverloop Twentekanaal pas bij onvoldoende door sifon (node_id 306)
 mask = model.outlet.static.df.node_id == 59
 model.outlet.static.df.loc[mask, "min_upstream_level"] += 0.1
-mark_level_update_protected(model.outlet.static.df, mask)
+mark_level_update_protected(model.outlet.static.df, mask, model=model)
 
 # doorlaten
 min_flow_rates = {

@@ -21,11 +21,24 @@ LOG = logging.getLogger(__name__)
 LEVEL_UPDATE_PROTECTION_COLUMN = "meta_level_update_protected"
 
 
-def mark_level_update_protected(static_df: pd.DataFrame, mask: pd.Series) -> None:
-    """Protect manually configured control levels from later coupling-level updates."""
+def mark_level_update_protected(static_df: pd.DataFrame, mask: pd.Series, model: Model | None = None) -> None:
+    """Protect manually configured control levels from coupling-level updates.
+
+    When a model is provided, the DiscreteControl thresholds of the selected nodes
+    are synced with the current static levels.
+    """
     if LEVEL_UPDATE_PROTECTION_COLUMN not in static_df.columns:
         static_df[LEVEL_UPDATE_PROTECTION_COLUMN] = False
-    static_df.loc[mask, LEVEL_UPDATE_PROTECTION_COLUMN] = True
+    protected_value = True if pd.api.types.is_bool_dtype(static_df[LEVEL_UPDATE_PROTECTION_COLUMN]) else 1
+    static_df.loc[mask, LEVEL_UPDATE_PROTECTION_COLUMN] = protected_value
+    if model is not None:
+        from ribasim_nl.coupling_level_apply import sync_static_controller_thresholds
+
+        sync_static_controller_thresholds(
+            model=model,
+            target_node_ids=set(static_df.loc[mask, "node_id"].dropna().astype(int)),
+            tolerance=1e-6,
+        )
 
 
 def _node_flow_rate(flow_rate: float | dict[int, float] | None, node_id: int, default: float = 20.0) -> float:
