@@ -7,6 +7,7 @@ import geopandas as gpd
 import pandas as pd
 from networkx import NetworkXNoPath
 from ribasim_nl.aquo import waterbeheercode
+from ribasim_nl.coupling_levels import run_coupling_level_check
 from ribasim_nl.settings import settings
 from shapely.geometry import LineString, Point
 from tqdm import tqdm
@@ -22,6 +23,12 @@ _prefix_to_authority = {v: k for k, v in waterbeheercode.items()}
 SNAP_DISTANCE = 20
 MIN_LEVEL_DIFF = 0.04  # Minimum level difference for the control
 MIN_BASIN_OUTLET_DIFF = 0.5
+COUPLING_LEVEL_UPSTREAM_SUPPLY_OFFSET = -0.04
+COUPLING_LEVEL_RWS_PROFILE_OFFSET = 0.1
+COUPLING_LEVEL_APPLY_RWS_INLET_MIN_UPSTREAM = False
+COUPLING_LEVEL_APPLY_MAX_DOWNSTREAM_LEVEL = False
+COUPLING_LEVEL_APPLY_DIRECT_MIN_UPSTREAM_LEVEL = False
+COUPLING_LEVEL_TOLERANCE = 1e-6
 # Configuration
 data_dir = settings.ribasim_nl_data_dir
 couple_lhm: bool = False
@@ -499,13 +506,17 @@ def remove_invalid_topology_nodes(model: Model) -> None:
             invalid_topology = model.invalid_topology_at_node(link_type=link_type)
 
 
-def save_model_and_outputs(model: Model, all_link_table: list[dict], toml_file: Path) -> None:
+def save_model_and_outputs(model: Model, all_link_table: list[dict], toml_file: Path) -> Path:
     """Save the model and create output files.
 
     Args:
         model: Model to save
         all_link_table: Link table data
         toml_file: Path to the input/decoupled TOML file
+
+    Returns
+    -------
+        Path to the written coupled TOML file.
     """
     # Derive model path from input toml_file, adding -coupled to folder and file name
     root = toml_file.parents[1]
@@ -521,6 +532,19 @@ def save_model_and_outputs(model: Model, all_link_table: list[dict], toml_file: 
     links["to_node_id"] = links.to_node.apply(lambda x: x.node_id)
     links = links.drop(columns=["from_node", "to_node"])
     links.to_file(model_path / "link.gpkg")
+    return output_toml_file
+
+
+def run_configured_coupling_level_check(toml_file: Path) -> None:
+    run_coupling_level_check(
+        toml_file=toml_file,
+        upstream_supply_offset=COUPLING_LEVEL_UPSTREAM_SUPPLY_OFFSET,
+        rws_profile_offset=COUPLING_LEVEL_RWS_PROFILE_OFFSET,
+        apply_rws_inlet_min_upstream=COUPLING_LEVEL_APPLY_RWS_INLET_MIN_UPSTREAM,
+        apply_max_downstream_level=COUPLING_LEVEL_APPLY_MAX_DOWNSTREAM_LEVEL,
+        apply_direct_min_upstream_level=COUPLING_LEVEL_APPLY_DIRECT_MIN_UPSTREAM_LEVEL,
+        tolerance=COUPLING_LEVEL_TOLERANCE,
+    )
 
 
 def get_rws_link(
@@ -665,7 +689,8 @@ if couple_lhm:
     all_link_table = process_boundary_nodes(model, network, basin_areas_df)
     fix_basin_profiles(model)
     remove_invalid_topology_nodes(model)
-    save_model_and_outputs(model, all_link_table, toml_file)
+    coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)
+    run_configured_coupling_level_check(coupled_toml_file)
 
 if sub_models:
     # couple sub-models if any
@@ -688,4 +713,5 @@ if sub_models:
         all_link_table = process_boundary_nodes(model, network, basin_areas_df)
         fix_basin_profiles(model)
         remove_invalid_topology_nodes(model)
-        save_model_and_outputs(model, all_link_table, toml_file)
+        coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)
+        run_configured_coupling_level_check(coupled_toml_file)
