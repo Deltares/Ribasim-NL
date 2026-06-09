@@ -16,7 +16,7 @@ from ribasim_nl.parametrization.basin_tables import update_basin_static
 from ribasim_nl import CloudStorage, Model
 
 # execute model run
-MODEL_EXEC: bool = True
+MODEL_EXEC: bool = False
 
 # model settings
 AUTHORITY: str = "Vechtstromen"

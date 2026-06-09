@@ -25,7 +25,7 @@ from ribasim_nl import CloudStorage, Model
 # %%
 # Globale settings
 
-MODEL_EXEC: bool = True  # execute model run
+MODEL_EXEC: bool = False  # execute model run
 AUTHORITY: str = "AaenMaas"
 SHORT_NAME: str = "aam"
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
