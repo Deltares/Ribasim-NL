@@ -82,7 +82,7 @@ FIND_POST_FIXES = ["bergend_model"]
 SELECTION: set = {"BrabantseDelta"}  # , "Limburg", "DeDommel"}
 INCLUDE_RESULTS = False
 REBUILD = True
-RUN_MODEL = False
+RUN_MODEL = True
 
 
 def get_model_dir(authority, post_fix):
