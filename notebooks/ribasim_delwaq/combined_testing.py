@@ -19,7 +19,7 @@ from ribasim_nl.model import Model
 
 # %%
 # set path of Ribasim model
-model_name = "hws_2025_10_1"
+model_name = "hws_coupled_full"
 toml_name = "hws.toml"
 
 model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "Rijkswaterstaat" / "modellen" / model_name

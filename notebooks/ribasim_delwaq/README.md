@@ -30,7 +30,6 @@ The conversion script `ER_data_conversion_delwaq.py` is an adaptation of:
 
 - Modified to use spatial coupling with new LHM schematisation, called via function from Python script `ER_GAF_fractions_func.py`
 - GAF polygons sourced from `P:/11210327-lwkm2/01_data/Emissieregistratie/gaf_90.shp`
-- Script otherwise unchanged, processes dataframe 'Diffuse_emissions_OE' to generate Delwaq input
 
 ## Step-by-Step ER Coupling Process
 
