@@ -96,13 +96,16 @@ else:
 # %%
 
 # fix link geometries
+use_link_geometries_cache = False
 if link_geometries_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
+    use_link_geometries_cache = link_geometries_df.index.equals(model.link.df.index)
+
+if use_link_geometries_cache:
     model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
     model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
         "meta_profielid_waterbeheerder"
     ]
-
 else:
     fix_link_geometries(model, network, max_straight_line_ratio=3)
     add_link_profile_ids(model, profiles=profiles_df, id_col="profiel_id")

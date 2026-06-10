@@ -13,7 +13,7 @@ from ribasim_nl.parametrization.basin_tables import (
     update_basin_static,
 )
 
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import CloudStorage, Model, settings
 
 cloud = CloudStorage()
 authority = "AaenMaas"
@@ -88,7 +88,7 @@ model.write(ribasim_toml)
 
 # %%
 # run model
-run_ribasim(ribasim_toml)
+run_ribasim(ribasim_toml, ribasim_home=settings.ribasim_home)
 
 # %%
 controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
