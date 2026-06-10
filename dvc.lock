@@ -164,15 +164,20 @@ stages:
   rwzi:
     cmd: pixi run python notebooks/create_rwzi_model.py
     deps:
+    - path:
+        data/Basisgegevens/RWZI/aangeleverd/locaties/RWZI_coordinates.geojson
+      hash: md5
+      md5: 6ef299294c5e404e60575d4b91f0bf14
+      size: 160449
     - path: notebooks/create_rwzi_model.py
       hash: md5
-      md5: 0fad66d5ce3ffa195c94e44ec94f7c54
-      size: 19831
+      md5: 45742051d386742b4db42890ea9eafef
+      size: 20007
     outs:
     - path: data/Rijkswaterstaat/modellen/rwzi
       hash: md5
-      md5: bb4f19a6932feb77ded16685587187e3.dir
-      size: 22462618
+      md5: 11321a6b856e5c689520480ba54a928a.dir
+      size: 22466714
       nfiles: 2
   parameterized@aa_en_maas:
     cmd:
