@@ -8,6 +8,7 @@ from ribasim_nl.check_basin_level import add_check_basin_level
 
 # voeg deze imports toe
 from ribasim_nl.parametrization.basin_tables import (
+    sync_min_upstream_levels_with_profile_bottoms,
     update_basin_state,
     update_basin_static,
 )
@@ -17,6 +18,7 @@ from ribasim_nl import CloudStorage, Model
 cloud = CloudStorage()
 authority = "AaenMaas"
 short_name = "aam"
+run_model = False
 
 parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
@@ -36,6 +38,7 @@ start_time = time.time()
 
 # %%
 # parameterize
+manual_basin_level_node_ids = [1801]
 model.basin.area.df.loc[model.basin.area.df.node_id == 1801, "meta_streefpeil"] = -0.25
 model.parameterize(
     static_data_xlsx=static_data_xlsx,
@@ -75,6 +78,12 @@ basin_level_overrides = [
     ([1565], 23.5),
     ([1885], 23.5),
     ([1959], 23.5),
+    ([1849], 30.75),
+    ([1280], 30.75),
+    ([1961], 30.75),
+    ([1849], 30.75),
+    ([1462], 30.75),
+    ([2495], 30.75),
 ]
 
 for node_ids, meta_streefpeil in basin_level_overrides:
@@ -109,15 +118,15 @@ print(model.basin.profile.df.groupby("node_id")["area"].max().head())
 print(model.basin.static.df[["node_id", "precipitation", "potential_evaporation"]].head())
 
 # Write model
+sync_min_upstream_levels_with_profile_bottoms(model=model)
 add_check_basin_level(model=model)
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
 model.write(ribasim_toml)
 
 # %%
 # run model
-run_ribasim(ribasim_toml)
-
-# %%
-controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-indicators = controle_output.run_afvoer()
+if run_model:
+    run_ribasim(ribasim_toml)
+    controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
+    indicators = controle_output.run_afvoer()
 # %%

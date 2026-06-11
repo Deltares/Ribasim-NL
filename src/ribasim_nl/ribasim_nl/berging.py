@@ -19,9 +19,9 @@ from shapely.geometry import Point, Polygon
 
 from ribasim_nl.cloud import CloudStorage
 from ribasim_nl.model import Model
+from ribasim_nl.settings import settings
 
-cloud = CloudStorage()
-LHM_RASTER_FILE = cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_data.tif")
+LHM_RASTER_FILE = settings.ribasim_nl_data_dir / Path("Basisgegevens/LHM/4.3/input/LHM_data.tif")
 
 BANDEN = {
     "maaiveld": 1,
@@ -41,6 +41,7 @@ BANDEN = {
 
 def percentage_secundair_oppervlaktewater() -> None:
     """Single-use function to compute percentage secondary surface water per LHM cell and write as GTIFF LHM_oppervlaktewater_percentage.tif"""
+    cloud = CloudStorage()
     cloud.synchronize([LHM_RASTER_FILE], overwrite=False)
     out_file = LHM_RASTER_FILE.with_name("LHM_oppervlaktewater_percentage_secundair.tif")
     with rasterio.open(LHM_RASTER_FILE) as src:
@@ -76,6 +77,7 @@ def percentage_secundair_oppervlaktewater() -> None:
 
 def percentage_primair_oppervlaktewater() -> None:
     """Single-use function to compute percentage primary surface water per LHM cell and write as GTIFF LHM_oppervlaktewater_percentage.tif"""
+    cloud = CloudStorage()
     cloud.synchronize([LHM_RASTER_FILE], overwrite=False)
     out_file = LHM_RASTER_FILE.with_name("LHM_oppervlaktewater_percentage_primair.tif")
     with rasterio.open(LHM_RASTER_FILE) as src:
@@ -650,8 +652,8 @@ class VdGaastBerging:
             )
             assert basin_profile.df is not None
             oppervlaktewater_percentage = round(basin_profile.df.area.max() / basin_polygon.area * 100, 1)
-            ini_level = (
-                max((basin_profile.df.level.min(), basin_row["meta_streefpeil"])) + 0.01
+            ini_level = max(
+                (basin_profile.df.level.min() + 0.01, basin_row["meta_streefpeil"])
             )  # 1cm above target-level/bottom-level
             data = [
                 basin_profile,

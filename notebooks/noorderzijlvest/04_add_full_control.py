@@ -1,10 +1,9 @@
 # %%
 
 import geopandas as gpd
-import pandas as pd
 from peilbeheerst_model.controle_output import Control
-from ribasim.nodes import pid_control
 from ribasim_nl.control import add_controllers_to_supply_area, add_controllers_to_uncontrolled_connector_nodes
+from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 
 from ribasim_nl import CloudStorage, Model
@@ -12,11 +11,27 @@ from ribasim_nl import CloudStorage, Model
 # %%
 # Globale settings
 
-MODEL_EXEC: bool = True  # execute model run
+MODEL_EXEC: bool = False  # execute model run
 AUTHORITY: str = "Noorderzijlvest"  # authority
 SHORT_NAME: str = "nzv"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
+SCHUTVERLIES_FLOW_RATE_BY_NODE_ID = {
+    #    1756: 1.5,  # Oostersluis
+}
+INLAAT_FLOW_RATE_AANVOER_BY_NODE_ID = {
+    1741: 26.0,  # Gaarkeuken
+}
+OUTLET_FLOW_RATE_AFVOER_OVERRIDE_BY_NODE_ID = {
+    724: 400.0,
+    728: 9999.0,
+    732: 50.0,
+    # 1748: 0.0,Checken!
+    1753: 5.0,
+    # 1754: 0.0,Checken!
+    # 1755: 0.0,Checken!
+}
+
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 # 722: KSL001 Waterkering Westerwijtwerdermaar
@@ -44,6 +59,26 @@ cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
 # %%
 # Read data
 model = Model.read(ribasim_toml)
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 16, "level"] = -1.0
+
+outlet_flow_rate_afvoer_by_node_id = (
+    model.outlet.static.df.dropna(subset=["flow_rate"]).set_index("node_id")["flow_rate"].astype(float).to_dict()
+)
+outlet_flow_rate_afvoer_by_node_id = {
+    int(node_id): flow_rate for node_id, flow_rate in outlet_flow_rate_afvoer_by_node_id.items()
+}
+outlet_flow_rate_afvoer_by_node_id.update(OUTLET_FLOW_RATE_AFVOER_OVERRIDE_BY_NODE_ID)
+outlet_max_flow_rate_aanvoer_by_node_id = {}
+for outlet_static in model.outlet.static.df.itertuples():
+    max_flow_rate = outlet_static.max_flow_rate
+    if max_flow_rate != max_flow_rate:
+        max_flow_rate = outlet_static.flow_rate
+    outlet_max_flow_rate_aanvoer_by_node_id[int(outlet_static.node_id)] = (
+        0.0 if max_flow_rate != max_flow_rate else float(max_flow_rate)
+    )
+
+# Oostersluis maken we een pomp voor schutverlies als uitlaat, nog testen
+# model.update_node(node_id=1756)
 
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
@@ -60,13 +95,6 @@ for node_type in CONTROL_NODE_TYPES:
         | node_df["meta_code_waterbeheerder"].str.startswith("i")
         | node_df["meta_code_waterbeheerder"].str.endswith("i")
     ) & ~(node_df.node_type.isin(CONTROL_NODE_TYPES) & node_df["meta_code_waterbeheerder"].str.endswith("fictief"))
-
-    # force nan or 0 to 20 m3/s
-    node_df = model.node.df.loc[node_df.index]
-    node_ids = node_df[node_df[IS_SUPPLY_NODE_COLUMN]].index.values
-    static_df = model.get_component(node_type).static.df
-    mask = static_df.node_id.isin(node_ids) & (static_df.flow_rate == 0 | static_df.flow_rate.isna())
-    static_df.loc[mask, "flow_rate"] = 20.0
 
 # %% [markdown]
 # # Aanpak sturing per aanvoergebied
@@ -142,7 +170,7 @@ flushing_nodes = {41: 0.4, 412: 0.2}
 # 412: Marnerwaard
 # 442: Marnerwaard
 # 837: Spijksterpompen
-drain_nodes = [40, 442, 412, 837]
+drain_nodes = [40, 442, 387, 837]
 
 # handmatig opgegeven supply nodes (inlaten)
 # 136: Nieuwstad
@@ -167,6 +195,10 @@ add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     control_node_types=CONTROL_NODE_TYPES,
+    flow_rate_aanvoer=10.0,
+    max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
+    flow_rate_afvoer=100.0,
+    max_flow_rate_afvoer=outlet_flow_rate_afvoer_by_node_id,
 )
 
 # %%
@@ -208,6 +240,10 @@ add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     control_node_types=CONTROL_NODE_TYPES,
+    flow_rate_aanvoer=10.0,
+    max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
+    flow_rate_afvoer=100.0,
+    max_flow_rate_afvoer=outlet_flow_rate_afvoer_by_node_id,
 )
 
 # %%
@@ -222,8 +258,12 @@ ignore_intersecting_links: list[int] = []
 
 # doorspoeling (op uitlaten)
 # node_id: Naam
-# flushing_nodes = {419: 0.01, 391: 0.01}
-flushing_nodes = {419: {"winter": 0, "summer": 0.043 * 0.25}, 391: {"winter": 0.043, "summer": 0.043 * 0.75}}
+flushing_nodes = {}
+
+# Peizerdiep: geen doorspoelvraag, alleen verdeling over doorlaten.
+flow_control_nodes = [391, 419]
+supply_flow_rate = {391: 0.043 * 0.75, 419: 0.043 * 0.25}
+drain_flow_rate = {391: 100.0, 419: 0.0}
 
 # handmatig opgegeven drain nodes (uitlaten) definieren
 # node_id: Naam
@@ -240,8 +280,13 @@ add_controllers_to_supply_area(
     ignore_intersecting_links=ignore_intersecting_links,
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
+    flow_control_nodes=flow_control_nodes,
     supply_nodes=supply_nodes,
     control_node_types=CONTROL_NODE_TYPES,
+    flow_rate_aanvoer=supply_flow_rate,
+    max_flow_rate_aanvoer=supply_flow_rate,
+    flow_rate_afvoer=drain_flow_rate,
+    max_flow_rate_afvoer=drain_flow_rate,
 )
 
 # %%
@@ -251,79 +296,6 @@ model.outlet.static.df.loc[mask, "flow_rate"] = 0.0
 model.outlet.static.df.loc[mask, "min_flow_rate"] = 0.0
 model.outlet.static.df.loc[mask, "max_flow_rate"] = 0.0
 
-# %%
-# Gaarkeuken: PID control
-years = [2017, 2020]
-gaarkeuken_listen_node = 1186
-
-
-def make_year_times(y):
-    return [
-        pd.Timestamp(y, 3, 31),  # net vóór actieve periode -> P=0
-        pd.Timestamp(y, 4, 1),  # start actieve periode
-        pd.Timestamp(y, 9, 30),  # einde actieve periode
-        pd.Timestamp(y, 10, 1),  # na actieve periode -> P=0
-    ]
-
-
-pid_times_all = []
-for y in sorted(years):
-    pid_times_all.extend(make_year_times(y))
-
-# Als model.starttime eerder is dan de eerste tijd in pid_times_all, voeg een start-marker toe
-sim_start = pd.Timestamp(model.starttime)
-# alleen toevoegen als het nog niet exact bestaat
-if sim_start < min(pid_times_all) and sim_start != pid_times_all[0]:
-    pid_times_all.insert(0, sim_start)
-pid_times_all = sorted(dict.fromkeys(pid_times_all))
-pattern_proportional = [1e6, 1e6, 1e6, 1e6]
-pattern_integral = [0.0, 0.0, 0.0, 0.0]
-pattern_derivative = [0.0, 0.0, 0.0, 0.0]
-pattern_target = [-0.93, -0.93, -0.93, -0.93]
-
-proportional = []
-integral = []
-derivative = []
-targets = []
-listen_nodes = []
-
-# helper: maak mapping van year -> its 4 times for matching
-year_times_map = {y: make_year_times(y) for y in years}
-
-for t in pid_times_all:
-    assigned = False
-    for times in year_times_map.values():
-        if t in times:
-            idx = times.index(t)  # 0..3
-            proportional.append(pattern_proportional[idx])
-            integral.append(pattern_integral[idx])
-            derivative.append(pattern_derivative[idx])
-            targets.append(pattern_target[idx])
-            listen_nodes.append(gaarkeuken_listen_node)
-            assigned = True
-            break
-    if not assigned:
-        proportional.append(0.0)
-        integral.append(0.0)
-        derivative.append(0.0)
-        targets.append(-0.93)
-        listen_nodes.append(gaarkeuken_listen_node)
-
-model.add_control_node(
-    to_node_id=1741,
-    data=[
-        pid_control.Time(
-            time=pid_times_all,
-            listen_node_id=listen_nodes,
-            target=targets,
-            proportional=proportional,
-            integral=integral,
-            derivative=derivative,
-        )
-    ],
-    ctrl_type="PidControl",
-    node_offset=15,
-)
 
 # %% add all remaining inlets/outlets
 
@@ -337,13 +309,20 @@ flow_control_nodes = [728, 640, 641]
 # 165: Harssensbosch
 # 680: KST9970
 # 1753: Gemaal Dorkwerd
-supply_nodes = [39, 680, 165, 1753]
+supply_nodes = [39, 680, 165, 1741, 1753]
+
+drain_nodes = []
 
 add_controllers_to_uncontrolled_connector_nodes(
     model=model,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
+    drain_nodes=drain_nodes,
     exclude_nodes=list(EXCLUDE_NODES),
+    flow_rate_aanvoer=10.0,
+    max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
+    flow_rate_afvoer=100.0,
+    max_flow_rate_afvoer=outlet_flow_rate_afvoer_by_node_id,
 )
 
 # %%
@@ -354,7 +333,29 @@ ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_cont
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 16, "level"] = -1.0
+
+# Schutverliezen als vaste ondergrens; na EXCLUDE_NODES/defaultcapaciteiten zodat dit niet wordt overschreven.
+for node_id, flow_rate in SCHUTVERLIES_FLOW_RATE_BY_NODE_ID.items():
+    for static_df in (model.outlet.static.df, model.pump.static.df):
+        mask = static_df.node_id == node_id
+        if not mask.any():
+            continue
+        columns = [column for column in ["flow_rate", "min_flow_rate", "max_flow_rate"] if column in static_df.columns]
+        static_df.loc[mask, columns] = flow_rate
+
+# NZV: max_flow_rate in aanvoer blijft exact leidend vanuit de parameterized xlsx/static.
+aanvoer_outlet_mask = model.outlet.static.df.control_state == "aanvoer"
+aanvoer_max_flow_rate = model.outlet.static.df.loc[aanvoer_outlet_mask, "node_id"].map(
+    outlet_max_flow_rate_aanvoer_by_node_id
+)
+model.outlet.static.df.loc[aanvoer_outlet_mask, "max_flow_rate"] = aanvoer_max_flow_rate
+
+for node_id, flow_rate in INLAAT_FLOW_RATE_AANVOER_BY_NODE_ID.items():
+    mask = (model.outlet.static.df.node_id == node_id) & (model.outlet.static.df.control_state == "aanvoer")
+    model.outlet.static.df.loc[mask, ["flow_rate", "max_flow_rate"]] = flow_rate
+
+# %% Junctionify(!)
+junctionify(model)
 
 # hoofd run met verdamping
 update_basin_static(model=model, evaporation_mm_per_day=0.1)

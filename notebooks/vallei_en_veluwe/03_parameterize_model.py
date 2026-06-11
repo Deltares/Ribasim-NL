@@ -2,13 +2,14 @@
 import time
 
 from peilbeheerst_model.controle_output import Control
+from ribasim_nl.parametrization.basin_tables import sync_min_upstream_levels_with_profile_bottoms
 
 from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 authority = "ValleienVeluwe"
 short_name = "venv"
-run_model = True
+run_model = False
 
 parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
@@ -60,7 +61,7 @@ model.basin.state.df = model.basin.area.df[["node_id", "meta_streefpeil"]].renam
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 1, "level"] = 0.8
 
 
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.04
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 # Havensluis Elburg
 model.reverse_direction_at_node(477)
@@ -77,6 +78,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 232, "meta_name"] =
 # Write model
 model.basin.area.df.loc[:, "meta_area_m2"] = model.basin.area.df.area
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
+sync_min_upstream_levels_with_profile_bottoms(model=model)
 model.write(ribasim_toml)
 
 # %%

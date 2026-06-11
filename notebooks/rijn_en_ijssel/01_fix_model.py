@@ -7,6 +7,7 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
+from shapely.geometry import Point
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -314,7 +315,13 @@ model.remove_node(
     node_id=387, remove_links=True
 )  # rode bollen: 387 kan worden opgeheven, is een stuw in een kwelsloot met een hoger peil
 
+# Doesburg is overdadig geschematiseerd, inclusief vispassage
+for node_id in [444, 443, 230]:
+    model.remove_node(node_id=node_id, remove_links=True)
 
+# Verdeelwerk Koppelleiding:
+model.move_node(node_id=677, geometry=Point(248797.688, 445732.748))
+model.update_node(node_id=677, node_type="Outlet")
 sanitize_node_table(
     model,
     meta_columns=["meta_code_waterbeheerder", "meta_categorie", "meta_gestuwd"],

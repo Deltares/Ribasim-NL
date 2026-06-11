@@ -32,7 +32,7 @@ transboundary_data_path = cloud.joinpath("Basisgegevens/BuitenlandseAanvoer/aang
 cloud.synchronize(filepaths=[transboundary_data_path])
 
 # LHM4.3 mfma budgets to be assign to primary/secondary drainage/surface_runoff columns
-primary_budgets: set[str] = {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5"}
+primary_budgets: set[str] = {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5", "bdgpssw_m3d"}
 secondary_budgets: set[str] = {
     "bdgriv_sys2",
     "bdgriv_sys3",
@@ -40,7 +40,6 @@ secondary_budgets: set[str] = {
     "bdgdrn_sys1",
     "bdgdrn_sys2",
     "bdgdrn_sys3",
-    "bdgpssw_m3d",
 }
 surface_runoff_budgets: set[str] = {"bdgqrun_m3d"}
 
@@ -80,9 +79,10 @@ def add_forcing(model, cloud, starttime, endtime, assign_budget_fractions, fract
 FIND_POST_FIXES = ["bergend_model"]
 # FIND_POST_FIXES = ["full_control_model"]
 # pass authorities as arguments, or edit list here
-SELECTION: set = {"RijnenIJssel"}
+SELECTION: set = {"BrabantseDelta"}  # , "Limburg", "DeDommel"}
 INCLUDE_RESULTS = False
 REBUILD = True
+RUN_MODEL = True
 
 
 def get_model_dir(authority, post_fix):
@@ -181,17 +181,19 @@ for authority in authorities:
             if model.basin.time.df is not None:
                 model.basin.time.filepath = Path("basin_time.nc")
 
-            # run model
+            # write model and optionally run it
             model.write(dst_toml_file)
             if write_budgets:
                 budgets_df.to_feather(dst_toml_file.with_name("mfms_budgets.arrow"))  # for later reference
-            model.run()
-            model.update_state()
-            model.basin.state.write()
-            write_performance(model)
+
+            if RUN_MODEL:
+                model.run()
+                model.update_state()
+                model.basin.state.write()
+                write_performance(model)
 
             # DELWAQ(!)
-            if compute_fractions:
+            if compute_fractions and RUN_MODEL:
                 # generate DELWAQ model
                 delwaq_dir = model.toml_path.with_name("delwaq")
                 print(f"generate DELWAQ model in {delwaq_dir}")
