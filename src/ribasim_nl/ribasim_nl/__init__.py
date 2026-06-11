@@ -9,6 +9,7 @@ from ribasim_nl.network_validator import NetworkValidator
 from ribasim_nl.performance import write_performance
 from ribasim_nl.reset_index import prefix_index, reset_index
 from ribasim_nl.rwzi import merge_rwzi_model
+from ribasim_nl.set_forcing import SetDynamicForcing
 from ribasim_nl.settings import settings
 from ribasim_nl.transboundary_inflow import add_transboundary_inflow, import_transboundary_inflow
 
@@ -28,11 +29,3 @@ __all__ = [
     "settings",
     "write_performance",
 ]
-
-
-def __getattr__(name: str) -> object:
-    if name == "SetDynamicForcing":
-        from ribasim_nl.set_forcing import SetDynamicForcing
-
-        return SetDynamicForcing
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
