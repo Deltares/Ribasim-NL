@@ -1,9 +1,4 @@
-"""
-Generate representative profiles for the basins.
-
-Representative profiles are split between 'doorgaand' and 'bergend', resulting in two different A(h)-relations per
-basin, or only a 'bergend' A(h)-relation in case there are no 'doorgaand' routes within the basin.
-"""
+"""Set representative profile width based on BGT-data."""
 
 import itertools
 import logging

@@ -1,13 +1,17 @@
+# %%
 from pathlib import Path
+from typing import Any, cast
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import rasterio
 import tqdm
+from affine import Affine
 from geopandas import GeoDataFrame
 from rasterio.enums import Resampling
-from rasterio.windows import from_bounds
+from rasterio.features import geometry_mask
+from rasterio.windows import Window, from_bounds
 from rasterstats import zonal_stats
 from ribasim import Node
 from ribasim.nodes import basin, tabulated_rating_curve
@@ -15,6 +19,9 @@ from shapely.geometry import Point, Polygon
 
 from ribasim_nl.cloud import CloudStorage
 from ribasim_nl.model import Model
+
+cloud = CloudStorage()
+LHM_RASTER_FILE = cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_data.tif")
 
 BANDEN = {
     "maaiveld": 1,
@@ -32,12 +39,11 @@ BANDEN = {
 }
 
 
-def percentage_oppervlaktewater() -> None:
-    """Single-use function to compute percentage surface water per LHM cell and write as GTIFF LHM_oppervlaktewater_percentage.tif"""
-    cloud = CloudStorage()
-    lhm_raster_file = cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_data.tif")
-    out_file = lhm_raster_file.with_name("LHM_oppervlaktewater_percentage.tif")
-    with rasterio.open(lhm_raster_file) as src:
+def percentage_secundair_oppervlaktewater() -> None:
+    """Single-use function to compute percentage secondary surface water per LHM cell and write as GTIFF LHM_oppervlaktewater_percentage.tif"""
+    cloud.synchronize([LHM_RASTER_FILE], overwrite=False)
+    out_file = LHM_RASTER_FILE.with_name("LHM_oppervlaktewater_percentage_secundair.tif")
+    with rasterio.open(LHM_RASTER_FILE) as src:
         band11 = src.read(11).astype("float32")
         band12 = src.read(12).astype("float32")
         profile = src.profile.copy()
@@ -51,10 +57,7 @@ def percentage_oppervlaktewater() -> None:
         cell_area = cell_width * cell_height
 
         # geldige pixels bepalen
-        if nodata is not None:
-            valid = (band11 != nodata) & (band12 != nodata)
-        else:
-            valid = np.ones(band11.shape, dtype=bool)
+        valid = (band11 != nodata) & (band12 != nodata) if nodata is not None else np.ones(band11.shape, dtype=bool)
 
         # oppervlaktes optellen
         summed_area = np.full(band11.shape, np.nan, dtype="float32")
@@ -62,6 +65,40 @@ def percentage_oppervlaktewater() -> None:
 
         # delen door celoppervlak
         result = np.full(band11.shape, np.nan, dtype="float32")
+        result[valid] = summed_area[valid] / cell_area
+
+        # output profiel aanpassen naar 1 band
+        profile.update(dtype="float32", count=1, nodata=np.nan)
+
+        with rasterio.open(out_file, "w", **profile) as dst:
+            dst.write(result, 1)
+
+
+def percentage_primair_oppervlaktewater() -> None:
+    """Single-use function to compute percentage primary surface water per LHM cell and write as GTIFF LHM_oppervlaktewater_percentage.tif"""
+    cloud.synchronize([LHM_RASTER_FILE], overwrite=False)
+    out_file = LHM_RASTER_FILE.with_name("LHM_oppervlaktewater_percentage_primair.tif")
+    with rasterio.open(LHM_RASTER_FILE) as src:
+        band10 = src.read(11).astype("float32")
+        profile = src.profile.copy()
+
+        # nodata ophalen
+        nodata = src.nodata
+
+        # celoppervlak uit resolutie
+        cell_width = src.transform.a
+        cell_height = abs(src.transform.e)
+        cell_area = cell_width * cell_height
+
+        # geldige pixels bepalen
+        valid = band10 != nodata if nodata is not None else np.ones(band10.shape, dtype=bool)
+
+        # oppervlaktes optellen
+        summed_area = np.full(band10.shape, np.nan, dtype="float32")
+        summed_area[valid] = band10[valid]
+
+        # delen door celoppervlak
+        result = np.full(band10.shape, np.nan, dtype="float32")
         result[valid] = summed_area[valid] / cell_area
 
         # output profiel aanpassen naar 1 band
@@ -79,7 +116,7 @@ def sample_raster(
     all_touched: bool = False,
     stats: str = "mean",
     maaiveld_data: npt.ArrayLike | None = None,
-):
+) -> list[dict[str, Any]]:
     """Sample rasters over Polygons
 
     Args:
@@ -109,6 +146,209 @@ def sample_raster(
         affine = raster_src.transform
 
         return zonal_stats(df, data, affine=affine, stats=stats, nodata=raster_src.nodata, all_touched=all_touched)
+
+
+def get_resampled_window(src, polygon, sample_res) -> tuple[tuple[int, int], Window, Affine]:
+    window = from_bounds(*polygon.bounds, transform=src.transform)
+
+    if window.width < 1 or window.height < 1:
+        window = from_bounds(*polygon.centroid.buffer(125).bounds, transform=src.transform)
+
+    # Maak window netjes integer op pixelgrenzen
+    window = window.round_offsets().round_lengths()
+    window_transform = src.window_transform(window)
+
+    # original resolution
+    xres, yres = abs(src.res[0]), abs(src.res[1])
+
+    # shape to higher resolution so we follow the polygon a bit better
+    out_height = max(1, round(window.height * yres / sample_res))
+    out_width = max(1, round(window.width * xres / sample_res))
+
+    # new transform
+    new_transform = rasterio.Affine(sample_res, 0.0, window_transform.c, 0.0, -sample_res, window_transform.f)
+    return (out_height, out_width), window, new_transform
+
+
+# resampled helper
+def read_resampled(
+    src: rasterio.DatasetReader,
+    band: int,
+    window: rasterio.windows.Window,
+    out_shape: tuple[int, int],
+) -> npt.NDArray[np.float64]:
+    return src.read(band, window=window, out_shape=out_shape, resampling=Resampling.nearest).astype(float)
+
+
+def basin_link_buffer_area(model: Model, node_id, buffer_distance=2.5):
+    """
+    Berekent het oppervlak van een buffer rond alle links van/naar een basin.
+
+    Parameters
+    ----------
+    model : ribasim.Model
+    node_id : int
+        Basin node_id.
+    buffer_distance : float
+        Bufferafstand in CRS-eenheden, bijvoorbeeld meters bij EPSG:28992.
+
+    Returns
+    -------
+    float
+        Oppervlak van de unary-union buffer.
+    """
+    links = model.link.df
+
+    assert links is not None
+    mask = (links["from_node_id"] == node_id) | (links["to_node_id"] == node_id)
+
+    basin_links = links.loc[mask]
+
+    if basin_links.empty:
+        return 0.0
+
+    geom = basin_links.geometry.dropna()
+
+    if geom.empty:
+        return 0.0
+
+    buffered_union = geom.buffer(buffer_distance).union_all()
+
+    return buffered_union.area
+
+
+def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: float = 2.0, buffer_distance=2.5) -> None:
+    """Surface water area of primary basin based on primair_oppervalktewater in LHM4.3
+
+    The average of resampled surface water percentage raster is mulitplied by polygon.area
+
+    Parameters
+    ----------
+    polygon : Polygon
+        Polygon of the basin
+    sample_res : int, optional
+        Resolution in which LHM raster is read under the basin.polygon, by default 25
+    buffer_distance: float, optional
+        Buffer distance around connected links
+
+    Returns
+    -------
+    float
+        _description_
+    """
+
+    # ah_df to concat
+    def ah_df(
+        node_id: int,
+        polygon: Polygon,
+        target_level: float,
+        area_fraction: float,
+        min_fraction: float = 0.001,
+        min_area: float = 999.0,
+        buffer_distance: float = 2.5,
+    ) -> pd.DataFrame:
+        level = np.array([target_level - depth - 0.1, target_level - depth, target_level]).round(2)
+        profile_node_ids = [node_id] * 3
+
+        # if no fraction, we assume 2% of surface-water area (sq_area)
+        if pd.isna(area_fraction):
+            sw_area = 0.1 * polygon.area
+            comment = ["default: 0.1m2", "default: 1% oppervlak", "default: 1% oppervlak"]
+        else:
+            sw_area = area_fraction * polygon.area
+            comment = ["default: 0.1m2", "%LHM * oppervlak", "%LHM * oppervlak"]
+
+        # if smaller than min_area we set to min_area
+        min_area = max(
+            (min_area, basin_link_buffer_area(model=model, node_id=node_id, buffer_distance=buffer_distance))
+        )
+        if sw_area < min_area:
+            area = np.array([0.1, min_area, min_area]).round(1)
+            comment = [
+                "default: 0.1m2",
+                f"oppervlak >={int(min_area)}m2 gezet",
+                f"oppervlak >={int(min_area)}m2 gezet",
+            ]
+            df = basin.Profile(node_id=profile_node_ids, level=level, area=area, meta_comment=comment).df
+
+        # if smaller than min_fraction we assume min_fraction
+        elif area_fraction < min_fraction:
+            area_fraction = min_fraction
+            comment = [
+                "default: 0.1m2",
+                f"oppervlak >= {round(min_fraction * 100, 1)}% gezet",
+                f"oppervlak >= {round(min_fraction * 100, 1)}% gezet",
+            ]
+            area = np.array([0.1, area_fraction * polygon.area, area_fraction * polygon.area]).round(1)
+            df = basin.Profile(node_id=profile_node_ids, level=level, area=area, meta_comment=comment).df
+        else:
+            area = np.array([0.1, sw_area, sw_area]).round(1)
+            df = basin.Profile(node_id=profile_node_ids, level=level, area=area, meta_comment=comment).df
+        assert df is not None
+        return df
+
+    # generate raster_file if not existing
+    cloud = CloudStorage()
+    src_file = cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_oppervlaktewater_percentage_primair.tif")
+    if not src_file.exists():
+        percentage_primair_oppervlaktewater()
+
+    basin_node_df = cast(pd.DataFrame, model.basin.node.df)  # pyrefly: ignore[missing-attribute]
+    basin_area_df = cast(pd.DataFrame, model.basin.area.df)
+    basin_profile_df = cast(pd.DataFrame, model.basin.profile.df)
+
+    # read resampled raster average and multiply by polygon.area
+    basin_ids = basin_node_df[basin_node_df.meta_categorie.isin(["hoofdwater", "doorgaand"])].index.values
+    profiles: list[pd.DataFrame] = []
+    with rasterio.open(src_file) as src:
+        for basin_id in tqdm.tqdm(basin_ids, total=len(basin_ids), desc="profiles primary basins"):
+            # read basin-area table
+            polygon = cast(Polygon, cast(Any, basin_area_df.set_index("node_id").at[basin_id, "geometry"]))
+            target_level = float(cast(Any, basin_area_df.set_index("node_id").at[basin_id, "meta_streefpeil"]))
+            basin_fid = basin_area_df[basin_area_df.node_id == basin_id].index[0]
+
+            # read raster sampled
+            out_shape, window, transform = get_resampled_window(src=src, polygon=polygon, sample_res=sample_res)
+
+            data = read_resampled(
+                src,
+                band=1,
+                window=window,
+                out_shape=out_shape,
+            )
+
+            if src.nodata is not None:
+                data[data == src.nodata] = np.nan
+
+            mask = geometry_mask(
+                [polygon],
+                transform=transform,
+                invert=True,
+                out_shape=data.shape,
+            )
+
+            values = data[mask]
+
+            # get area_fraction and add oppervlaktewater_percentage to basin.area table
+            area_fraction = np.nan if values.size == 0 or np.all(np.isnan(values)) else float(np.nanmean(values))
+
+            basin_area_df.loc[basin_fid, "meta_oppervlaktewater_percentage"] = round(area_fraction * 100, 1)
+            profile = ah_df(
+                node_id=basin_id,
+                polygon=polygon,
+                target_level=target_level,
+                area_fraction=area_fraction,
+                buffer_distance=buffer_distance,
+            )
+            percentage = round(profile.area.max() / polygon.area * 100, 1)
+            basin_area_df.loc[basin_fid, "meta_oppervlaktewater_percentage"] = percentage
+            profiles += [profile]
+
+    # replace old profiles
+    df = pd.concat(profiles, ignore_index=True)
+    basin_profile_df = basin_profile_df[~basin_profile_df.node_id.isin(basin_ids)]
+    basin_profile_df = pd.concat([basin_profile_df, df], ignore_index=True)
+    model.basin.profile.df = cast(Any, basin_profile_df)
 
 
 def add_basin_statistics(df: GeoDataFrame, lhm_raster_file: Path, ma_raster_file: Path) -> GeoDataFrame:
@@ -182,10 +422,7 @@ def get_rating_curve(row, min_level: float, maaiveld: None | float = None) -> ta
     depth[depth < 0] = 0
 
     # level relative to maaiveld
-    if maaiveld is not None:
-        level = maaiveld - depth
-    else:
-        level = row.maaiveld - depth
+    level = maaiveld - depth if maaiveld is not None else row.maaiveld - depth
 
     # make sure level >= min_level
     level[level < min_level] = min_level
@@ -200,8 +437,69 @@ def get_rating_curve(row, min_level: float, maaiveld: None | float = None) -> ta
     return tabulated_rating_curve.Static(level=df.level, flow_rate=df.flow_rate)
 
 
+def simplify_area_level_df(
+    df: pd.DataFrame,
+    level_col: str = "level",
+    area_col: str = "area",
+    max_points: int = 5,
+) -> pd.DataFrame:
+    """Simplify an area-level curve while preserving endpoints, area extrema, and the most important bend points.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame with level and area columns.
+    level_col, area_col : str
+        Column names for level and area.
+    max_points : int
+        Maximum number of points to retain.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Simplified DataFrame with at most `max_points` rows.
+    """
+    if len(df) <= max_points:
+        return df.copy()
+
+    xy = df[[level_col, area_col]].to_numpy(float)
+
+    keep = {
+        0,
+        len(df) - 1,
+        int(np.argmin(xy[:, 1])),
+        int(np.argmax(xy[:, 1])),
+    }
+
+    while len(keep) < max_points:
+        best_i = None
+        best_d = -1.0
+
+        for i0, i1 in zip(sorted(keep)[:-1], sorted(keep)[1:], strict=False):
+            if i1 <= i0 + 1:
+                continue
+
+            a, b = xy[i0], xy[i1]
+            v = b - a
+            w = xy[i0 + 1 : i1] - a
+
+            denom = np.hypot(v[0], v[1])
+            d = np.linalg.norm(w, axis=1) if denom == 0 else np.abs(v[0] * w[:, 1] - v[1] * w[:, 0]) / denom
+            j = int(np.argmax(d))
+            if d[j] > best_d:
+                best_d = float(d[j])
+                best_i = i0 + 1 + j
+
+        if best_i is None:
+            break
+
+        keep.add(best_i)
+
+    return df.iloc[sorted(keep)].copy()
+
+
 def get_basin_profile(
-    basin_polygon: Polygon, max_level: float, min_level: float, lhm_raster_file: Path, sample_res=25
+    basin_polygon: Polygon, max_level: float, min_level: float, lhm_raster_file: Path, sample_res: int = 25
 ) -> basin.Profile:
     """Generate a basin.Static table for a Polygon using LHM rasters
 
@@ -216,30 +514,8 @@ def get_basin_profile(
         basin.Profile: basin-profile for basin-node
     """
     with rasterio.open(lhm_raster_file) as src:
-        window = from_bounds(*basin_polygon.bounds, transform=src.transform)
-
-        if window.width < 1 or window.height < 1:
-            window = from_bounds(*basin_polygon.centroid.buffer(125).bounds, transform=src.transform)
-
-        # Maak window netjes integer op pixelgrenzen
-        window = window.round_offsets().round_lengths()
-        window_transform = src.window_transform(window)
-
-        # original resolution
-        xres, yres = abs(src.res[0]), abs(src.res[1])
-
-        # shape to higher resolution so we follow the polygon a bit better
-        out_height = max(1, round(window.height * yres / sample_res))
-        out_width = max(1, round(window.width * xres / sample_res))
-
-        # new transform
-        new_transform = rasterio.Affine(sample_res, 0.0, window_transform.c, 0.0, -sample_res, window_transform.f)
-
-        # resampled helper
-        def read_resampled(band):
-            return src.read(
-                band, window=window, out_shape=(out_height, out_width), resampling=Resampling.nearest
-            ).astype(float)
+        # get resampled shape and transform
+        out_shape, window, new_transform = get_resampled_window(src=src, polygon=basin_polygon, sample_res=sample_res)
 
         # if no area 1% - 2% of basin-area
         def default_ah_df() -> pd.DataFrame:
@@ -255,14 +531,14 @@ def get_basin_profile(
             return df
 
         mask = rasterio.features.geometry_mask(
-            [basin_polygon], out_shape=(out_height, out_width), transform=new_transform, all_touched=True, invert=True
+            [basin_polygon], out_shape=out_shape, transform=new_transform, all_touched=True, invert=True
         )
 
         num_cells = np.sum(mask)
         if num_cells == 0:
             ah_df = default_ah_df()
         else:
-            scale = basin_polygon.area / (num_cells * sample_res**2 * (abs(xres) / sample_res) ** 2)
+            scale = basin_polygon.area / (num_cells * sample_res**2 * (abs(src.res[0]) / sample_res) ** 2)
 
             # 5) bandparen uitlezen
             band_pairs = [
@@ -273,8 +549,18 @@ def get_basin_profile(
             dfs = []
 
             for level_band, area_band in band_pairs:
-                level = read_resampled(level_band)
-                area = read_resampled(area_band)
+                level = read_resampled(
+                    src,
+                    band=level_band,
+                    window=window,
+                    out_shape=out_shape,
+                )
+                area = read_resampled(
+                    src,
+                    band=area_band,
+                    window=window,
+                    out_shape=out_shape,
+                )
 
                 valid = mask & np.isfinite(level) & np.isfinite(area)
 
@@ -301,6 +587,7 @@ def get_basin_profile(
                 mask = ah_df.area <= 1
                 ah_df.loc[mask, ["area"]] = 1
                 ah_df.loc[mask, ["comment"]] = "oppervlak >= 1m2 gezet"
+                ah_df = simplify_area_level_df(ah_df)
 
                 if ah_df.empty:
                     ah_df = default_ah_df()
@@ -311,7 +598,12 @@ def get_basin_profile(
 
 
 class VdGaastBerging:
-    def __init__(self, model: Model, cloud: CloudStorage, use_add_api: bool = True) -> None:
+    def __init__(
+        self,
+        model: Model,
+        cloud: CloudStorage,
+        use_add_api: bool = True,
+    ) -> None:
         self.model = model
         self.cloud = cloud
         self.use_add_api = use_add_api
@@ -341,9 +633,13 @@ class VdGaastBerging:
             basin_row = basin_area_df.loc[basin_id]
             basin_polygon = basin_row.geometry
 
+            if any(pd.isna(getattr(basin_row, i)) for i in ["ghg", "glg", "ma"]):
+                raise ValueError(f"No valid ghg, glg and/or ma for basin_id {basin_id}")
+
             # define storage basin data
             max_level = basin_area_df.at[basin_id, "maaiveld_max"]
             min_level = basin_area_df.at[basin_id, "maaiveld_min"]
+
             if min_level == max_level:
                 min_level -= 0.1
             basin_profile = get_basin_profile(
@@ -352,10 +648,14 @@ class VdGaastBerging:
                 min_level=min_level,
                 lhm_raster_file=self.lhm_raster_file,
             )
+            assert basin_profile.df is not None
             oppervlaktewater_percentage = round(basin_profile.df.area.max() / basin_polygon.area * 100, 1)
+            ini_level = (
+                max((basin_profile.df.level.min(), basin_row["meta_streefpeil"])) + 0.01
+            )  # 1cm above target-level/bottom-level
             data = [
                 basin_profile,
-                basin.State(level=[basin_profile.df.level.min() + 0.1]),
+                basin.State(level=[ini_level]),
                 basin.Area(geometry=[basin_polygon], meta_oppervlaktewater_percentage=[oppervlaktewater_percentage]),
             ]
 
@@ -368,19 +668,17 @@ class VdGaastBerging:
             basin_node = model.basin.add(node=node, tables=data)
 
             # add connector
-            if any(pd.isna(getattr(basin_row, i)) for i in ["ghg", "glg", "ma"]):
-                raise ValueError(f"No valid ghg, glg and/or ma for basin_id {basin_id}")
-            else:
-                # get tabulated rating curve data
-                data = [get_rating_curve(row=basin_row, min_level=basin_profile.df.level.min())]
 
-                # connect storage basin with basin with a tabulated rating curve
-                model.add_and_connect_node(
-                    basin_node.node_id,
-                    to_basin_id=basin_id,
-                    geometry=Point(row.geometry.x + 5, row.geometry.y),
-                    node_type="TabulatedRatingCurve",
-                    tables=data,
-                    use_add_api=self.use_add_api,
-                    meta_categorie="bergend",
-                )
+            # get data for TabulatedRatingCurve or Outlet
+            data = [get_rating_curve(row=basin_row, min_level=basin_profile.df.level.min())]
+
+            # connect storage basin with basin with a tabulated rating curve
+            model.add_and_connect_node(
+                basin_node.node_id,
+                to_basin_id=basin_id,
+                geometry=Point(row.geometry.x + 5, row.geometry.y),
+                node_type="TabulatedRatingCurve",
+                tables=data,
+                use_add_api=self.use_add_api,
+                meta_categorie="bergend",
+            )

@@ -22,7 +22,7 @@ repos:
           - post-checkout
         always_run: true
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+    rev: v5.0.0
     hooks:
       - id: check-added-large-files
         args: [--maxkb=700]
@@ -32,22 +32,37 @@ repos:
       - id: check-yaml
       - id: check-toml
       - id: check-merge-conflict
-      - id: check-vcs-permalinks
       - id: end-of-file-fixer
         exclude: .teamcity
       - id: trailing-whitespace
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.9
+  - repo: local
     hooks:
       - id: ruff-check
-        types_or: [python, pyi, jupyter]
+        name: ruff check
+        description: Lint Python code and auto-fix issues
+        entry: pixi run ruff check --force-exclude
         args: [--fix, --exit-non-zero-on-fix]
-      - id: ruff-format
+        language: system
         types_or: [python, pyi, jupyter]
-  - repo: https://github.com/kynan/nbstripout
-    rev: 0.9.1
-    hooks:
+        require_serial: true
+      - id: ruff-format
+        name: ruff format
+        description: Format Python code
+        entry: pixi run ruff format --force-exclude
+        language: system
+        types_or: [python, pyi, jupyter]
+        require_serial: true
       - id: nbstripout
+        name: nbstripout
+        description: Strip Jupyter notebook outputs
+        entry: pixi run nbstripout
+        language: system
+        types: [jupyter]
+      - id: pyrefly-check
+        name: Pyrefly (type checking)
+        entry: pixi run typecheck
+        pass_filenames: false
+        language: system
   - repo: https://github.com/google/yamlfmt
     rev: v0.21.0
     hooks:

@@ -1,21 +1,64 @@
 # %%
+import sys
 from datetime import datetime
+from pathlib import Path
 
+import xarray as xr
+from ribasim.delwaq import generate, parse, run_delwaq
+from ribasim_nl.aquo import waterbeheercode
+from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
+from ribasim_nl.set_forcing import SetDynamicForcing
 
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing
+from ribasim_nl import (
+    CloudStorage,
+    Model,
+    add_transboundary_inflow,
+    import_transboundary_inflow,
+    merge_rwzi_model,
+    settings,
+    write_performance,
+)
 
 cloud = CloudStorage()
 starttime = datetime(2017, 1, 1)
-endtime = datetime(2018, 1, 1)
-write_budgets: bool = False
+endtime = datetime(2020, 1, 1)
+write_budgets: bool = True  # write mfms_budgets.arrow for later verification
+assign_budget_fractions: bool = False  # compute (sub-) fractions from budgets-table
+add_lhm_fractions: bool = True
+compute_fractions: bool = False
+rwzi_model_path = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
+transboundary_data_path = cloud.joinpath("Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx")
+cloud.synchronize(filepaths=[transboundary_data_path])
+
+# LHM4.3 mfma budgets to be assign to primary/secondary drainage/surface_runoff columns
+primary_budgets: set[str] = {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5"}
+secondary_budgets: set[str] = {
+    "bdgriv_sys2",
+    "bdgriv_sys3",
+    "bdgriv_sys6",
+    "bdgdrn_sys1",
+    "bdgdrn_sys2",
+    "bdgdrn_sys3",
+    "bdgpssw_m3d",
+}
+surface_runoff_budgets: set[str] = {"bdgqrun_m3d"}
 
 
-def add_forcing(model, cloud, starttime, endtime):
-    # compute forcing
+def add_forcing(model, cloud, starttime, endtime, assign_budget_fractions, fraction_prefix):
+
+    # sync files so we're good to go!
+    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink")
+    cloud.synchronize(filepaths=[lhm_budget_path], overwrite=False)
+
+    # Open zarr budgets, select time range early to reduce data volume
+    budgets = xr.open_zarr(str(lhm_budget_path)).sel(time=slice(starttime, endtime))
+    offline_budgets = AssignOfflineBudgets(budgets)
+
+    # compute meteo forcing from zarr precipitation (and evaporation when available)
     forcing = SetDynamicForcing(
         model=model,
-        cloud=cloud,
+        budgets=budgets,
         startdate=starttime,
         enddate=endtime,
     )
@@ -23,14 +66,21 @@ def add_forcing(model, cloud, starttime, endtime):
     model = forcing.add()
 
     # Add dynamic groundwater
-    lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budget.zip")
-    offline_budgets = AssignOfflineBudgets(lhm_budget_path)
-    _, budgets_df = offline_budgets.compute_budgets(model)
+    _, budgets_df = offline_budgets.compute_budgets(
+        model,
+        primary_budgets=primary_budgets,
+        secondary_budgets=secondary_budgets,
+        surface_runoff_budgets=surface_runoff_budgets,
+        assign_fractions=assign_budget_fractions,
+        fraction_prefix=fraction_prefix,
+    )  # budgets_df is used to compute basin_fractions
     return budgets_df
 
 
 FIND_POST_FIXES = ["bergend_model"]
-SELECTION: list[str] = ["AaenMaas"]
+# FIND_POST_FIXES = ["full_control_model"]
+# pass authorities as arguments, or edit list here
+SELECTION: set = {"RijnenIJssel"}
 INCLUDE_RESULTS = False
 REBUILD = True
 
@@ -50,24 +100,33 @@ def check_build(toml_file):
     # we build if we don't have tabulated_rating_curves
     if not build:
         model = Model.read(toml_file)
+        # pyrefly: ignore[missing-attribute]
         build = model.tabulated_rating_curve.node.df is None
 
     # we build if tabulated rating curves don't have a meta_cateogrie colummn
     if not build:
+        # pyrefly: ignore[unbound-name, missing-attribute]
         build = "meta_categorie" not in model.tabulated_rating_curve.node.df.columns
 
     # we build if we don't have any bergend in meta_categorie
-
     if not build:
+        # pyrefly: ignore[missing-attribute]
         build = not (model.tabulated_rating_curve.node.df["meta_categorie"] == "bergend").any()
 
     return build
 
 
-if len(SELECTION) == 0:
-    authorities = cloud.water_authorities
-else:
-    authorities = SELECTION
+valid_authorities = set(cloud.water_authorities)
+
+# We make a list of authorities:
+# 1. provided as arguments
+authorities = set(sys.argv[1:]) & valid_authorities
+# 2. provided in global SELECTION
+if len(authorities) == 0:
+    authorities = SELECTION & valid_authorities
+# 3. all authorities
+if len(authorities) == 0:
+    authorities = valid_authorities
 # %%
 for authority in authorities:
     # find model directory
@@ -91,20 +150,60 @@ for authority in authorities:
 
         if check_build(dst_toml_file):
             model = Model.read(toml_file)
-            # update state so we start smooth/empty
-            model.update_state()
 
             # add categorie to basin / state
-            series = model.basin.node.df.loc[model.basin.state.df["node_id"].to_numpy()]["meta_categorie"]
-            assert series.notna().all()
-            model.basin.state.df["meta_categorie"] = series.to_numpy()
+            series = model.basin.node.df["meta_categorie"]  # type: ignore
+            uncategorized_basins = series[series.isna()].index.values
+            if len(uncategorized_basins) > 0:
+                print(f"uncategorized basins: {uncategorized_basins}, will be set to doorgaand")
+                # pyrefly: ignore[missing-attribute]
+                model.node.df.loc[uncategorized_basins, "meta_categorie"] = "doorgaand"
 
             # add forcing
-            budgets_df = add_forcing(model, cloud, starttime, endtime)
+            budgets_df = add_forcing(
+                model, cloud, starttime, endtime, assign_budget_fractions, fraction_prefix=waterbeheercode[authority]
+            )
+
+            # add transboundary inflow
+            dict_flow = import_transboundary_inflow(transboundary_data_path, starttime, endtime, model)
+            add_transboundary_inflow(model, dict_flow)
+
+            # merge RWZI model
+            model = merge_rwzi_model(model, rwzi_model_path)
+
+            # add LHM fractions
+            if add_lhm_fractions:
+                assign_lhm_fractions(model)
+
+            # Avoid large databases by writing some tables to NetCDF
+            # TODO add flow_boundary after we can run core versions with
+            # https://github.com/Deltares/Ribasim/pull/3033
+            if model.basin.time.df is not None:
+                model.basin.time.filepath = Path("basin_time.nc")
 
             # run model
             model.write(dst_toml_file)
             if write_budgets:
-                budgets_df.to_feather(dst_toml_file.with_name("budgets.arrow"))
-                budgets_df.to_csv(dst_toml_file.with_name("budgets.csv.zip"), compression="zip")
+                budgets_df.to_feather(dst_toml_file.with_name("mfms_budgets.arrow"))  # for later reference
             model.run()
+            model.update_state()
+            model.basin.state.write()
+            write_performance(model)
+
+            # DELWAQ(!)
+            if compute_fractions:
+                # generate DELWAQ model
+                delwaq_dir = model.toml_path.with_name("delwaq")
+                print(f"generate DELWAQ model in {delwaq_dir}")
+                graph, substances = generate(model, output_path=delwaq_dir)
+
+                # run DELWAQ model
+                print("run DELWAQ")
+                run_delwaq(
+                    model_dir=delwaq_dir,
+                    d3d_home=settings.d3d_home,
+                )
+
+                # parse DELWAQ results in model
+                print("parse DELWAQ results in Ribasim-model")
+                parse(model, graph, substances, output_folder=delwaq_dir, to_input=True)

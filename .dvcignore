@@ -26,3 +26,5 @@ tests/
 
 # Ribasim
 results/
+*.log
+*.xlsx

@@ -20,10 +20,7 @@ def concat(models: list[Model], keep_original_index: bool = False) -> Model:
         concatenated Model
     """
     # models will be concatenated to first model.
-    if not keep_original_index:
-        model = reset_index(models[0])
-    else:
-        model = models[0]
+    model = reset_index(models[0]) if not keep_original_index else models[0]
 
     # concat all other models into model
     for merge_model in models[1:]:
@@ -31,6 +28,10 @@ def concat(models: list[Model], keep_original_index: bool = False) -> Model:
             # reset index of mergemodel, node_start is max node_id
             node_start = model.node.df.index.max() + 1
             merge_model = reset_index(merge_model, node_start)
+
+        # concat node table
+        node_df = pd.concat([model.node.df, merge_model.node.df])
+        model.node.df = node_df
 
         # concat links
         link_df = pd.concat([model.link.df, merge_model.link.df], ignore_index=not keep_original_index)
@@ -43,7 +44,7 @@ def concat(models: list[Model], keep_original_index: bool = False) -> Model:
         for node_type in set(model.node.df.node_type.unique()).union(merge_model.node.df.node_type.unique()):
             model_node = model.get_component(node_type)
             merge_model_node = merge_model.get_component(node_type)
-            for attr in model_node.model_fields.keys():
+            for attr in model_node.model_fields:
                 model_node_table = getattr(model_node, attr)
                 model_df = model_node_table.df
                 merge_model_df = getattr(merge_model_node, attr).df
@@ -53,8 +54,6 @@ def concat(models: list[Model], keep_original_index: bool = False) -> Model:
                         if "node_id" in model_df.columns:
                             df = pd.concat([model_df, merge_model_df], ignore_index=True)
                             df.index.name = "fid"
-                        elif model_df.index.name == "node_id":
-                            df = pd.concat([model_df, merge_model_df], ignore_index=False)
                         else:
                             raise Exception(f"{node_type} / {attr} cannot be merged")
                     else:

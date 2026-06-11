@@ -1,22 +1,31 @@
 # %%
 
+import logging
 from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
 from networkx import NetworkXNoPath
+from ribasim_nl.aquo import waterbeheercode
+from ribasim_nl.settings import settings
 from shapely.geometry import LineString, Point
+from tqdm import tqdm
 
-from ribasim_nl import CloudStorage, Model, Network
+from ribasim_nl import Model, Network
+
+logger = logging.getLogger(__name__)
+
+# reverse lookup: prefix -> authority name
+_prefix_to_authority = {v: k for k, v in waterbeheercode.items()}
 
 # Constants
 SNAP_DISTANCE = 20
 MIN_LEVEL_DIFF = 0.04  # Minimum level difference for the control
 MIN_BASIN_OUTLET_DIFF = 0.5
-RUN_SELECTION = ["RDO-Noord"]
 # Configuration
-cloud: CloudStorage = CloudStorage()
-upload_model: bool = False
+data_dir = settings.ribasim_nl_data_dir
+couple_lhm: bool = True
+sub_models: bool = False
 
 remove_nodes = [
     3401752,  # Dokwerd NZV
@@ -33,23 +42,67 @@ remove_nodes = [
     203809,  # "Gaarkeuken" Fryslân
 ]
 
+# Pumps with min_upstream_level below upstream basin bottom; reset to NA
+reset_pump_min_upstream_level = [
+    5900602,  # min_upstream_level (2.61) below upstream Basin #4402052 bottom (3.3)
+]
+
+# Outlets with min_upstream_level below upstream basin bottom; reset to NA
+reset_outlet_min_upstream_level = [
+    3300727,  # min_upstream_level (14.76) below upstream Basin #4401600 bottom (16.3)
+]
+
 # force LevelBoundary node_id to Basin node_id, overriding the automatic coupling
 forced_coupling = {
     3400005: 5901608,
-    3400007: 200184,  # Gaarkeuken naar juiste kanaalpand
-    3400012: 200184,  # Gaarkeuken naar juiste kanaalpand
-    3400004: 200184,  # Gaarkeuken naar juiste kanaalpand
-    210884: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
-    213460: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
-    203848: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
-    203812: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
-    211639: 200184,  # interne fix Fryslân ivm ontbreken pand t/m Gaarkeuken
     203787: 200184,  # ivm ontbreken Grootegaster tocht bij NZV
     203804: 200184,  # ivm ontbreken Grootegaster tocht bij NZV
+    5900028: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900029: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900030: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900031: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900032: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900033: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900034: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900096: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    5900097: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    1500551: 4000298,  # verbind Winsemius met Brielse Meer ipv Hartelkanaal.
+    1500543: 8001616,  # verbind vdBurg met open zee ipv Nieuwe Waterweg
+    1301498: 1300169,  # LevelBoundary buiten de boezem van HDSR geplaatst
+    1301499: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
+    1301496: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
+    1301495: 1404817,  # LevelBoundary buiten de boezem van HDSR geplaatst
+    1301492: 1404817,  # LevelBoundary buiten de boezem van HDSR geplaatst
 }
 
 
 # %% Functions
+def replace_listen_node_id(model: Model, old_node_id: int, new_node_id: int | None) -> bool:
+    """Replace listen_node_id references in all control tables.
+
+    If new_node_id is None, removes the entries instead of replacing.
+    Returns True if any references were found.
+    """
+    has_control = False
+    tables = [
+        model.discrete_control.variable.df,
+        model.continuous_control.variable.df,
+        model.pid_control.static.df,
+        model.pid_control.time.df,
+    ]
+    for df in tables:
+        if df is None:
+            continue
+        mask = df.listen_node_id == old_node_id
+        if mask.any():
+            has_control = True
+            if new_node_id is not None:
+                df.loc[mask, "listen_node_id"] = new_node_id
+            else:
+                df.drop(df.index[mask], inplace=True)
+    return has_control
+
+
 def get_basin_link(
     model: Model,
     basin_id: int,
@@ -64,13 +117,11 @@ def get_basin_link(
     return LineString()
 
 
-def initialize_models(cloud: CloudStorage, toml_file: Path) -> tuple[Model, Network, pd.DataFrame]:
+def initialize_models(toml_file: Path) -> tuple[Model, Network, pd.DataFrame]:
     """Initialize and load the model and network data.
 
     Parameters
     ----------
-    cloud : CloudStorage
-        CloudStorage instance
     toml_file : Path
         Path to the TOML file
 
@@ -86,11 +137,11 @@ def initialize_models(cloud: CloudStorage, toml_file: Path) -> tuple[Model, Netw
     node_ids = model.node.df.index.to_numpy()
     for i in remove_nodes:
         if i in node_ids:
+            replace_listen_node_id(model, i, None)
             model.remove_node(node_id=i, remove_links=True)
 
     # Load the network
-    network_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg")
-    cloud.synchronize([network_gpkg])
+    network_gpkg = data_dir / "Rijkswaterstaat/verwerkt/netwerk.gpkg"
     network = Network.from_network_gpkg(network_gpkg)
 
     # Prepare basin areas dataframe
@@ -215,7 +266,7 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
 
     all_link_table = []
 
-    for boundary_node_id in boundary_node_ids:
+    for boundary_node_id in tqdm(boundary_node_ids, desc="Coupling boundary nodes"):
         # Check whether the boundary has been merged already
         if boundary_node_id not in model.level_boundary.node.df.index:
             continue
@@ -235,6 +286,25 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
         # we check if coupling is overruled
         if boundary_node_id in forced_coupling:
             couple_with_basin_id = forced_coupling[boundary_node_id]
+            if couple_with_basin_id not in model.node.df.index:
+                # determine the authority that owns the missing target node
+                target_prefix = couple_with_basin_id // 10**5
+                target_authority = _prefix_to_authority.get(target_prefix)
+                included_authorities = set(model.node.df["meta_waterbeheerder"].dropna().unique())
+                if target_authority and target_authority not in included_authorities:
+                    logger.warning(
+                        "Forced coupling target %d (%s) not in model (authority not included), skipping %s.",
+                        couple_with_basin_id,
+                        target_authority,
+                        boundary_node,
+                    )
+                else:
+                    raise KeyError(
+                        f"Forced coupling target {couple_with_basin_id} not found in model, "
+                        f"but its authority '{target_authority}' is included. "
+                        f"Check forced_coupling for boundary node {boundary_node_id}."
+                    )
+                continue
         else:
             # Check whether there are very close LB from the other authority
             lb_neighbors = model.level_boundary.node.df[
@@ -304,12 +374,8 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
                 for i in to_node_ids
             ]
 
-        # Replace boundary id in discrete and continuous control with basin id
-        has_control = False
-        for df in [model.discrete_control.variable.df, model.continuous_control.variable.df]:
-            if df is not None:
-                has_control = any(df.listen_node_id == boundary_node_id)
-                df.loc[df.listen_node_id == boundary_node_id, "listen_node_id"] = couple_with_basin_id
+        # Replace boundary id in all control tables with basin id
+        has_control = replace_listen_node_id(model, boundary_node_id, couple_with_basin_id)
 
         # Add control node for non RWS boundaries when no control node is yet present
         # Disabled since no data is supplied yet to the control node
@@ -334,7 +400,7 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
                 model.link.df.drop(cycles.index, inplace=True)
                 if kwargs["to_node"].node_type != "Basin":
                     print("Removing node", kwargs["to_node"])
-                    model.remove_node(kwargs["to_node"], remove_links=True)
+                    model.remove_node(kwargs["to_node"].node_id, remove_links=True)
                 else:
                     print("Removing node", kwargs["from_node"])
                     model.remove_node(kwargs["from_node"].node_id, remove_links=True)
@@ -353,6 +419,16 @@ def fix_basin_profiles(model: Model) -> None:
     Args:
         model: Model to fix profiles for
     """
+    for pump_id in reset_pump_min_upstream_level:
+        mask = model.pump.static.df.node_id == pump_id
+        if mask.any():
+            model.pump.static.df.loc[mask, "min_upstream_level"] = pd.NA
+
+    for outlet_id in reset_outlet_min_upstream_level:
+        mask = model.outlet.static.df.node_id == outlet_id
+        if mask.any():
+            model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
+
     for outlet in model.outlet.node.df.index:
         upstream_basin = model.upstream_node_id(outlet)
         if upstream_basin is None:
@@ -373,17 +449,31 @@ def fix_basin_profiles(model: Model) -> None:
                 model.basin.profile.df.loc[(mask[mask]).index[0], "level"] = min_level - MIN_BASIN_OUTLET_DIFF
 
 
-def save_model_and_outputs(
-    model: Model, all_link_table: list[dict], cloud: CloudStorage, toml_file: Path, upload_model: bool = False
-) -> None:
+def remove_invalid_topology_nodes(model: Model) -> None:
+    """Remove nodes with invalid flow/control topology and clean up their control references."""
+    for link_type in ["flow", "control"]:
+        invalid_topology = model.invalid_topology_at_node(link_type=link_type)
+        while not invalid_topology.empty:
+            for node_id, row in invalid_topology.iterrows():
+                logger.warning(
+                    "Invalid %s topology at node %d (%s): %s — removing node.",
+                    link_type,
+                    node_id,
+                    row["node_type"],
+                    row["exception"],
+                )
+                replace_listen_node_id(model, node_id, None)
+                model.remove_node(node_id, remove_links=True)
+            invalid_topology = model.invalid_topology_at_node(link_type=link_type)
+
+
+def save_model_and_outputs(model: Model, all_link_table: list[dict], toml_file: Path) -> None:
     """Save the model and create output files.
 
     Args:
         model: Model to save
         all_link_table: Link table data
-        cloud: CloudStorage instance
         toml_file: Path to the input/decoupled TOML file
-        upload_model: Whether to upload the model
     """
     # Derive model path from input toml_file, adding -coupled to folder and file name
     root = toml_file.parents[1]
@@ -399,15 +489,6 @@ def save_model_and_outputs(
     links["to_node_id"] = links.to_node.apply(lambda x: x.node_id)
     links = links.drop(columns=["from_node", "to_node"])
     links.to_file(model_path / "link.gpkg")
-
-    # Upload model if requested
-    if upload_model:
-        cloud.upload_model("Rijkswaterstaat", model=model_name)
-
-    # Generate control output (needs simulation)
-    # qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_202502.qlr")
-    # controle_output = Control(ribasim_toml=output_toml_file, qlr_path=qlr_path)
-    # controle_output.run_all()
 
 
 def get_rws_link(
@@ -508,6 +589,23 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
         )
         return
 
+    # only merge if both nodes are controlled
+    controlled_nodes = model.link.df[model.link.df["link_type"] == "control"].to_node_id.values
+    if (from_node_ids in controlled_nodes) != (to_node_ids in controlled_nodes):
+        print(f"Cannot merge {boundary_node} => {neighbor_node}: One of the two is controlled, the other is not")
+        return
+
+    # Update listen references for removed boundary nodes
+    upstream_basin_id = model.upstream_node_id(from_node_ids)
+    if isinstance(upstream_basin_id, pd.Series):
+        upstream_basin_id = upstream_basin_id.iloc[0]
+    downstream_basin_id = model.downstream_node_id(to_node_ids)
+    if isinstance(downstream_basin_id, pd.Series):
+        downstream_basin_id = downstream_basin_id.iloc[0]
+    replacement_basin = upstream_basin_id if upstream_basin_id is not None else downstream_basin_id
+    replace_listen_node_id(model, boundary_node_id, replacement_basin)
+    replace_listen_node_id(model, neighbor_id, replacement_basin)
+
     # Remove boundary node from model
     model.remove_node(boundary_node_id, remove_links=True)
     model.remove_node(neighbor_id, remove_links=True)
@@ -517,28 +615,37 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
     return merged_outlet
 
 
-# %% Individual execution blocks for notebook use
+def find_toml_path(model_dir: Path) -> Path:
+    tomls = list(model_dir.glob("*.toml"))
+    if len(tomls) == 0:
+        raise ValueError(f"No TOML file found at: {model_dir}")
+    elif len(tomls) > 1:
+        raise ValueError(f"User provided more than one toml-file: {len(tomls)}, remove one! {tomls}")
+    return tomls[0]
 
-sub_models_dir = cloud.joinpath("Rijkswaterstaat/modellen/lhm_sub_models")
-model_dirs = [i for i in sub_models_dir.glob("*") if i.is_dir() and ("coupled" not in i.name)]
-if RUN_SELECTION:
-    model_dirs = [i for i in model_dirs if i.name in RUN_SELECTION]
-for dir in model_dirs:
-    print(dir.name)
-    toml_file = dir.joinpath(f"{dir.stem}.toml")
-    model, network, basin_areas_df = initialize_models(cloud, toml_file)
+
+# %% Process lhm_parts model
+
+# couple LHM
+if couple_lhm:
+    toml_file = data_dir / "Rijkswaterstaat/modellen/lhm_parts/lhm.toml"
+    model, network, basin_areas_df = initialize_models(toml_file)
     all_link_table = process_boundary_nodes(model, network, basin_areas_df)
     fix_basin_profiles(model)
-    save_model_and_outputs(model, all_link_table, cloud, toml_file, upload_model)
+    remove_invalid_topology_nodes(model)
+    save_model_and_outputs(model, all_link_table, toml_file)
 
-
-# rdos = ["RDO-Gelderland", "RDO-Noord", "RDO-Twentekanalen", "RDO-West-Midden", "RDO-Zuid-Oost", "RDO-Zuid-West"]
-
-# for rdo in rdos:
-#     toml_file = cloud.joinpath(f"Rijkswaterstaat/modellen/{rdo}/{rdo}/{rdo}.toml")
-
-# toml_file = cloud.joinpath("Rijkswaterstaat/modellen/lhm/lhm_parts.toml")
-# model, network, basin_areas_df = initialize_models(cloud, toml_file)
-# all_link_table = process_boundary_nodes(model, network, basin_areas_df)
-# fix_basin_profiles(model)
-# save_model_and_outputs(model, all_link_table, cloud, toml_file, upload_model)
+if sub_models:
+    # couple sub-models if any
+    sub_models_dir = data_dir / "Rijkswaterstaat/modellen/lhm_sub_models"
+    for model_dir in [p for p in sub_models_dir.iterdir() if p.is_dir() and not p.name.endswith("coupled")]:
+        try:
+            toml_file = find_toml_path(model_dir)
+        except ValueError:
+            print(f"Not exactly one TOML in {model_dir}, skipping.")
+            continue
+        model, network, basin_areas_df = initialize_models(toml_file)
+        all_link_table = process_boundary_nodes(model, network, basin_areas_df)
+        fix_basin_profiles(model)
+        remove_invalid_topology_nodes(model)
+        save_model_and_outputs(model, all_link_table, toml_file)

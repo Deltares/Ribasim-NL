@@ -39,12 +39,12 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 # %%
 
 # fix link geometries
-use_link_geometries_cache = False
+use_cache = False
 if link_geometries_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
-    use_link_geometries_cache = link_geometries_df.index.equals(model.link.df.index)
+    use_cache = link_geometries_df.index.equals(model.link.df.index)
 
-if use_link_geometries_cache:
+if use_cache:
     model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
     if "meta_profielid_waterbeheerder" in link_geometries_df.columns:
         model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
@@ -284,7 +284,9 @@ ds_node_ids = pd.Series(ds_node_ids, index=ds_index, name="ds_node_id")
 
 # Keep only those that exist in min_upstream_level
 valid_ds = ds_node_ids[ds_node_ids.isin(min_upstream_level.index)]
-streefpeil = min_upstream_level.loc[valid_ds.values].rename(index=dict(zip(valid_ds.values, valid_ds.index)))
+streefpeil = min_upstream_level.loc[valid_ds.values].rename(
+    index=dict(zip(valid_ds.values, valid_ds.index, strict=True))
+)
 streefpeil = streefpeil.groupby(streefpeil.index).min()
 streefpeil.index.name = "node_id"
 streefpeil.name = "streefpeil"
@@ -332,8 +334,8 @@ flow_rate = pd.Series(
     {
         752: 56,
         755: 25,
-        252: 18,
-        757: 16,
+        252: 10,  # inlaat Vreeswijk (i.o. Epke)
+        757: 16,  # weertsluis (op basis van waterakkoord)
         756: 12,
         468: 12,
         481: 10,
@@ -344,6 +346,8 @@ flow_rate = pd.Series(
         761: 6,
         100: 3,
         758: 0,
+        186: 1.25,  # Westriool (waterakkoord)
+        919: 15,  # Werkhoven, de rest moet langs Caspargouw. I.o. Epke
     },
     name="flow_rate",
 )

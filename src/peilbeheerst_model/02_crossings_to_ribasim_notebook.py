@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 import pandas as pd
 from peilbeheerst_model.crossings_to_ribasim import CrossingsToRibasim, RibasimNetwork
@@ -817,12 +817,10 @@ model_characteristics = {
     "modelname": "2025",
     "modeltype": "boezemmodel",
     # define paths
-    "path_postprocessed_data": os.path.join(
-        base_path, authority, f"verwerkt/Delivered_data_processed/{authority}.gpkg"
-    ),  # add the base path
-    "path_crossings": os.path.join(base_path, authority, "verwerkt/Crossings/wetterskip_crossings_v06.gpkg"),
+    "path_postprocessed_data": Path(base_path) / authority / f"verwerkt/Delivered_data_processed/{authority}.gpkg",
+    "path_crossings": Path(base_path) / authority / "verwerkt/Crossings/wetterskip_crossings_v06.gpkg",
     "path_Pdrive": None,
-    "path_boezem": os.path.join(base_path, authority, "verwerkt/Data_shortest_path/Wetterskip_shortest_path.gpkg"),
+    "path_boezem": Path(base_path) / authority / "verwerkt/Data_shortest_path/Wetterskip_shortest_path.gpkg",
     # apply filters
     "crossings_layer": "crossings_hydroobject_filtered",
     "in_use": True,

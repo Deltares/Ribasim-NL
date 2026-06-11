@@ -1,4 +1,4 @@
-import pathlib
+from pathlib import Path
 from typing import Any
 
 import geopandas as gpd
@@ -25,7 +25,7 @@ for waterschap, waterschap_struct in waterschap_data.items():
     crossing_settings = waterschap_struct["find_crossings_with_peilgebieden"]
     init_settings = waterschap_struct["init"]
 
-    gpkg = pathlib.Path(str(init_settings["output_path"]))
+    gpkg = Path(str(init_settings["output_path"]))
     if not gpkg.exists():
         raise ValueError(gpkg)
 

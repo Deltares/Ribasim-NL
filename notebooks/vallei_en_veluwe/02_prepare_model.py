@@ -66,27 +66,22 @@ damo_profiles = DAMOProfiles(
     water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak", bbox=bbox),
     profile_line_id_col="code",
 )
-if not profiles_gpkg.exists():
-    profiles_df = damo_profiles.process_profiles()
-    profiles_df.to_file(profiles_gpkg)
-else:
-    profiles_df = gpd.read_file(profiles_gpkg)
-
-# %% fix link geometries
-
-# fix geometries
-use_link_geometries_cache = False
-if link_geometries_gpkg.exists():
+# fix link geometries and profiles
+use_cache = False
+if link_geometries_gpkg.exists() and profiles_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
-    use_link_geometries_cache = link_geometries_df.index.equals(model.link.df.index)
+    use_cache = link_geometries_df.index.equals(model.link.df.index)
 
-if use_link_geometries_cache:
+if use_cache:
     model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
     if "meta_profielid_waterbeheerder" in link_geometries_df.columns:
         model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
             "meta_profielid_waterbeheerder"
         ]
+    profiles_df = gpd.read_file(profiles_gpkg)
 else:
+    profiles_df = damo_profiles.process_profiles()
+    profiles_df.to_file(profiles_gpkg)
     add_link_profile_ids(model, profiles=damo_profiles, id_col="code")
     fix_link_geometries(model, network)
     model.link.df.reset_index().to_file(link_geometries_gpkg)
@@ -113,10 +108,7 @@ for node_id in node_ids:
     peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
-        if peilgebied["WS_MAX_PEI"] < 30:
-            level = peilgebied["WS_MAX_PEI"]
-        else:
-            level = None
+        level = peilgebied["WS_MAX_PEI"] if peilgebied["WS_MAX_PEI"] < 30 else None
     levels += [level]
 
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
@@ -145,10 +137,7 @@ for node_id in node_ids:
 
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
-        if peilgebied["WS_MAX_PEI"] < 30:  # 🔹 Drempelwaarde voor max peil
-            level = peilgebied["WS_MAX_PEI"]
-        else:
-            level = None
+        level = peilgebied["WS_MAX_PEI"] if peilgebied["WS_MAX_PEI"] < 30 else None  # Drempelwaarde voor max peil
     else:
         level = None
 
@@ -245,10 +234,7 @@ for node_id in node_ids:
     peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
-        if peilgebied["WS_MAX_PEI"] < 30:
-            level = peilgebied["WS_MAX_PEI"]
-        else:
-            level = None
+        level = peilgebied["WS_MAX_PEI"] if peilgebied["WS_MAX_PEI"] < 30 else None
     levels += [level]
 
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
@@ -273,7 +259,9 @@ ds_node_ids = pd.Series(ds_node_ids, index=ds_index, name="ds_node_id")
 
 # Keep only those that exist in min_upstream_level
 valid_ds = ds_node_ids[ds_node_ids.isin(min_upstream_level.index)]
-streefpeil = min_upstream_level.loc[valid_ds.values].rename(index=dict(zip(valid_ds.values, valid_ds.index)))
+streefpeil = min_upstream_level.loc[valid_ds.values].rename(
+    index=dict(zip(valid_ds.values, valid_ds.index, strict=True))
+)
 streefpeil = streefpeil.groupby(streefpeil.index).min()
 streefpeil.index.name = "node_id"
 streefpeil.name = "streefpeil"

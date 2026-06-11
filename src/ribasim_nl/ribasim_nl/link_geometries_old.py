@@ -60,7 +60,7 @@ def link_geometry_from_hydroobject(
         try:
             geometry = network.get_line(node_from, node_to)
         except NetworkXNoPath:
-            raise LinkGeometryError("No path", from_node_id, to_node_id)
+            raise LinkGeometryError("No path", from_node_id, to_node_id) from None
 
     if not isinstance(geometry, LineString):
         raise LinkGeometryError("No LineString found", from_node_id, to_node_id)

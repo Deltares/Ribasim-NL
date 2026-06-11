@@ -84,32 +84,29 @@ damo_profiles = DAMOProfiles(
 
 
 # %%
-if not profiles_gpkg.exists():
-    profiles_df = damo_profiles.process_profiles()
-    profiles_df = profiles_df[profiles_df.bottom_level != 0]
-    profiles_df = profiles_df[profiles_df.invert_level < 50]
-    profiles_df.to_file(profiles_gpkg)
-else:
-    profiles_df = gpd.read_file(profiles_gpkg)
 
-
-# %%
-
-# fix link geometries
-use_link_geometries_cache = False
-if link_geometries_gpkg.exists():
+# fix link geometries and profiles
+use_cache = False
+if link_geometries_gpkg.exists() and profiles_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
-    use_link_geometries_cache = link_geometries_df.index.equals(model.link.df.index)
+    use_cache = link_geometries_df.index.equals(model.link.df.index)
 
-if use_link_geometries_cache:
+if use_cache:
     model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
     model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
         "meta_profielid_waterbeheerder"
     ]
+    profiles_df = gpd.read_file(profiles_gpkg)
 else:
+    profiles_df = damo_profiles.process_profiles()
+    profiles_df = profiles_df[profiles_df.bottom_level != 0]
+    profiles_df = profiles_df[profiles_df.invert_level < 50]
+    profiles_df.to_file(profiles_gpkg)
+
     fix_link_geometries(model, network, max_straight_line_ratio=3)
     add_link_profile_ids(model, profiles=profiles_df, id_col="profiel_id")
     model.link.df.reset_index().to_file(link_geometries_gpkg)
+
 profiles_df.set_index("profiel_id", inplace=True)
 # %%
 
@@ -195,10 +192,7 @@ for node_id in node_ids:
     peilgebieden_select_df = peilgebieden_rd_df[peilgebieden_rd_df.contains(containing_point)]
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
-        if peilgebied["GPGZMRPL"] != 0 and peilgebied["GPGZMRPL"] < 30:
-            level = peilgebied["GPGZMRPL"]
-        else:
-            level = None
+        level = peilgebied["GPGZMRPL"] if peilgebied["GPGZMRPL"] != 0 and peilgebied["GPGZMRPL"] < 30 else None
     else:
         level = None
     levels += [level]
@@ -428,6 +422,10 @@ type_gemaal.name = "categorie"
 type_gemaal = type_gemaal.apply(lambda x: x.capitalize() if isinstance(x, str) else x)
 valid_values = type_gemaal.dropna()
 static_data.add_series(node_type="Pump", series=valid_values, fill_na=False)
+
+# Fallback voor pompen waarvoor de default-berekening geen flow_rate oplevert.
+static_data.pump.loc[static_data.pump.flow_rate.isna(), "flow_rate"] = 100.0
+
 # %% some customs
 model.remove_node(2297)
 

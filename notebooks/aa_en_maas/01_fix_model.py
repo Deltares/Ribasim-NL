@@ -5,12 +5,13 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 from ribasim import Node
-from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
+from ribasim.nodes import basin, level_boundary, outlet
 from ribasim_nl.geometry import split_line
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.model import default_tables
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
+from shapely.geometry import Point
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -48,7 +49,6 @@ network_validator = NetworkValidator(model)
 hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
 
 # %% some stuff we'll need again
-manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
 level_data = level_boundary.Static(level=[0])
 
 basin_data = [
@@ -433,19 +433,13 @@ if "fid" in missing_gdf.columns:
 
 # %% merge_basins
 for row in basin_node_edits_gdf[basin_node_edits_gdf["to_node_id"].notna()].itertuples():
-    if pd.isna(row.connected):
-        are_connected = True
-    else:
-        are_connected = row.connected
-    model.merge_basins(basin_id=row.node_id, to_basin_id=row.to_node_id, are_connected=are_connected)
+    are_connected = True if pd.isna(row.connected) else row.connected
+    model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=are_connected)
 
 mask = internal_basin_edits_gdf["to_node_id"].notna() & internal_basin_edits_gdf["add_object"].isna()
 for row in internal_basin_edits_gdf[mask].itertuples():
-    if pd.isna(row.connected):
-        are_connected = True
-    else:
-        are_connected = row.connected
-    model.merge_basins(basin_id=row.node_id, to_basin_id=row.to_node_id, are_connected=are_connected)
+    are_connected = True if pd.isna(row.connected) else row.connected
+    model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=are_connected)
 
 # %% add and connect nodes
 for row in internal_basin_edits_gdf[internal_basin_edits_gdf.add_object.notna()].itertuples():
@@ -614,8 +608,8 @@ merge_pairs = [
 
 for basin_id, to_basin_id in merge_pairs:
     model.merge_basins(
-        basin_id=basin_id,
-        to_basin_id=to_basin_id,
+        node_id=basin_id,
+        to_node_id=to_basin_id,
         are_connected=True,
     )
 
@@ -676,6 +670,7 @@ model.node.df.loc[model.outlet.node.df.index[model.outlet.node.df["meta_categori
     "hoofdwater"
 )
 
+
 # somehow Sluis Engelen (beheerregister AAM) has been named Henriettesluis
 model.node.df.loc[
     (model.node.df["node_type"] == "Outlet") & (model.node.df.name == "Henriëttesluis"),
@@ -686,6 +681,7 @@ model.node.df.loc[
 df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
 df.set_index("code", inplace=True)
 names = df["naam"]
+
 
 # set meta_gestuwd in basins
 model.node.df.loc[model.node.df["node_type"] == "Basin", "meta_gestuwd"] = False
@@ -703,6 +699,33 @@ df = gpd.read_file(hydamo_gpkg, layer="stuw")
 geometry = df.set_index("code").at["261HTE", "geometry"]
 
 model.connect_basins(from_basin_id=1280, to_basin_id=1126, node_type="Outlet", geometry=geometry, name="261HTE")
+# Fixes kleine basins
+# model traag door te kleine basins
+model.merge_basins(node_id=1866, to_node_id=1118, are_connected=True)  # Klein oppervlakte basin
+model.merge_basins(node_id=1687, to_node_id=1870, are_connected=True)
+model.merge_basins(node_id=1320, to_node_id=1870, are_connected=True)
+model.merge_basins(node_id=1901, to_node_id=1798, are_connected=True)
+model.merge_basins(node_id=1733, to_node_id=2011, are_connected=True)
+model.merge_basins(node_id=1550, to_node_id=2011, are_connected=True)
+model.merge_basins(node_id=1160, to_node_id=1944, are_connected=True)
+model.merge_basins(node_id=1405, to_node_id=1641, are_connected=True)
+model.merge_basins(node_id=1641, to_node_id=1394, are_connected=True)
+model.merge_basins(node_id=1453, to_node_id=1883, are_connected=True)
+model.merge_basins(node_id=1896, to_node_id=1311, are_connected=True)
+model.merge_basins(node_id=1126, to_node_id=1296, are_connected=True)
+model.merge_basins(node_id=1588, to_node_id=1815, are_connected=True)
+model.merge_basins(node_id=1950, to_node_id=1627, are_connected=True)
+model.merge_basins(node_id=1627, to_node_id=1394, are_connected=True)
+model.merge_basins(node_id=1914, to_node_id=1877, are_connected=True)
+model.merge_basins(node_id=1200, to_node_id=1877, are_connected=True)
+model.merge_basins(node_id=1887, to_node_id=1617, are_connected=True)
+model.merge_basins(node_id=1519, to_node_id=1857, are_connected=True)
+model.merge_basins(node_id=1949, to_node_id=1852, are_connected=True)
+
+# Drongelens kanaal
+model.merge_basins(node_id=1801, to_node_id=1879, are_connected=True)
+model.merge_basins(node_id=1879, to_node_id=1743, are_connected=True)
+model.merge_basins(node_id=1743, to_node_id=1275, are_connected=True)
 
 # set bovenstroomse basins als gestuwd
 node_df = model.node.df[model.node.df["meta_gestuwd"] & model.node.df["node_type"].isin(["Outlet", "Pump"])]
@@ -725,6 +748,7 @@ sanitize_node_table(
     ],
     names=names,
 )
+
 
 # %% set flow-boundaries to level-boundaries (plus outlet)
 for row in model.flow_boundary.node.df.itertuples():
@@ -749,9 +773,22 @@ for row in model.flow_boundary.node.df.itertuples():
     )
 
     # remove old links and add 2 new
-    left_link_geometry, right_link_geometry = split_line(link_geometry, outlet_node_geometry, as_multilinestring=False)
+    left_link_geometry, right_link_geometry = split_line(link_geometry, outlet_node_geometry)
     model.link.add(model.level_boundary[node_id], outlet_node, geometry=left_link_geometry)
     model.link.add(outlet_node, model.basin[basin_node_id], geometry=right_link_geometry)
+
+# basin Deurnsche Peel
+model.move_node(node_id=1961, geometry=Point(192066.2, 377928.7))
+model.move_node(node_id=552, geometry=Point(189926.3, 382222.4))
+model.redirect_link(link_id=2065, from_node_id=255, to_node_id=1961)
+model.redirect_link(link_id=2063, from_node_id=1093, to_node_id=1961)
+model.reverse_direction_at_node(node_id=3092)
+
+
+# Eindhovens kanaal
+model.move_node(node_id=1089, geometry=Point(170038.16, 384348.73))
+model.redirect_link(link_id=2073, from_node_id=1922, to_node_id=997)
+
 
 # %%
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")

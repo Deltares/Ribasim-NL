@@ -1,7 +1,7 @@
 # %%
 import json
 import logging
-import os
+from pathlib import Path
 from typing import Any
 
 import matplotlib.pyplot as plt
@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 
 from ribasim_nl import CloudStorage, Model
+
+logger = logging.getLogger(__name__)
 
 
 def setup_logging():
@@ -24,7 +26,7 @@ setup_logging()
 # %% Define folder locations and synchronize with the Good Cloud
 cloud = CloudStorage()
 upload_results = False
-logging.info("Synchronizing with file on the Good Cloud")
+logger.info("Synchronizing with file on the Good Cloud")
 delwaq_folder = cloud.joinpath("Basisgegevens/Delwaq")
 IM_metingen_excel_path = cloud.joinpath(delwaq_folder, "verwerkt/data/combined_IM_Metingen_2016_2022.xlsx")
 meetlocaties_IM_path = cloud.joinpath(delwaq_folder, "verwerkt/data/IM_ribasim_mapping_v1.geojson")
@@ -90,7 +92,7 @@ hardcoded_settings = {
     "Included parameters RWZIs": parameters_Zinfo,
 }
 
-logging.warning(
+logger.warning(
     "Hard coded parameter settings in use:\n" + "\n".join(f"  {k} = {v}" for k, v in hardcoded_settings.items())
 )
 
@@ -98,7 +100,7 @@ logging.warning(
 # %%
 def load_model_from_spec(model_spec):
     """Locate and load a model TOML file based on a specified model version."""
-    logging.info(
+    logger.info(
         f"Checking model: {model_spec['authority']} - {model_spec['model']} (version {model_spec['model_version']})"
     )
 
@@ -112,29 +114,29 @@ def load_model_from_spec(model_spec):
 
     tomls = list(model_path.glob("*.toml"))
     if not tomls:
-        logging.error(f"No TOML file found in: {model_path}")
+        logger.error(f"No TOML file found in: {model_path}")
         return None
     elif len(tomls) > 1:
-        logging.error(f"Multiple TOML files found in {model_path}. Please keep only one.")
+        logger.error(f"Multiple TOML files found in {model_path}. Please keep only one.")
         return None
 
     toml_file = tomls[0]
-    logging.info(f"Found TOML file: {toml_file}")
+    logger.info(f"Found TOML file: {toml_file}")
 
     model = Model.read(toml_file)
-    logging.info(f"Loaded model {toml_file}")
+    logger.info(f"Loaded model {toml_file}")
 
     return model
 
 
 model = load_model_from_spec(model_spec)
 
-logging.info("Ribasim model ingeladen")
+logger.info("Ribasim model ingeladen")
 df_model_nodes = model.flow_boundary.node.df
-logging.info(f"{len(df_model_nodes)} FlowBoundaries in het model")
+logger.info(f"{len(df_model_nodes)} FlowBoundaries in het model")
 
 if "meta_rwzi_codeist" not in df_model_nodes.columns:
-    logging.error("De RWZI's zijn niet gekoppeld aan dit model — kolom 'meta_rwzi_codeist' ontbreekt.")
+    logger.error("De RWZI's zijn niet gekoppeld aan dit model — kolom 'meta_rwzi_codeist' ontbreekt.")
 
 else:
     df_model_nodes_rwzi = df_model_nodes[df_model_nodes["meta_rwzi_codeist"].notna()]
@@ -144,14 +146,14 @@ else:
         .str.replace("NL.", "NL", regex=False)
         .str.replace(".", "_", regex=False)
     )
-    logging.info(f"Waarvan {len(df_rwzi_mapping_table)} RWZIs")
+    logger.info(f"Waarvan {len(df_rwzi_mapping_table)} RWZIs")
 
 
 # %% Meetlocaties IM-metingen inladen en linken aan de modeldata
 def load_geojson(meetlocaties_path):
-    with open(meetlocaties_path, encoding="utf-8") as geojson_file:
+    with meetlocaties_path.open(encoding="utf-8") as geojson_file:
         geojson_data = json.load(geojson_file)
-    logging.info(f"IM meetlocaties ingeladen: {meetlocaties_path}")
+    logger.info(f"IM meetlocaties ingeladen: {meetlocaties_path}")
     return geojson_data
 
 
@@ -164,7 +166,7 @@ def extract_and_add_node_ids(features_df: pd.DataFrame, df_model_nodes: pd.DataF
     missing_columns = [col for col in required_columns if col not in features_df.columns]
 
     if missing_columns:
-        logging.warning(
+        logger.warning(
             "De volgende vereiste kolommen ontbreken in de geojson file: %s",
             ", ".join(missing_columns),
         )
@@ -178,23 +180,23 @@ def extract_and_add_node_ids(features_df: pd.DataFrame, df_model_nodes: pd.DataF
     # Filter de grenspunten die in het model zitten
     filtered_df = features_df.loc[mask_valid, ["Meetobject.code", "ribasim_id"]].drop_duplicates().copy()
 
-    logging.info(
+    logger.info(
         "Aantal meetlocaties die gebruikt worden als randvoorwaarde: %d",
         len(filtered_df),
     )
     if not filtered_df.empty:
-        logging.info("Deze unieke locaties zijn:\n%s", filtered_df.to_string(index=False))
+        logger.info("Deze unieke locaties zijn:\n%s", filtered_df.to_string(index=False))
 
     # Check for missing ribasim_id
     mask_missing = (grenspunt_normalized == "true") & (~ribasim_valid)
     missing_ribasim = features_df.loc[mask_missing, "Meetobject.code"].unique()
     if len(missing_ribasim) > 0:
-        logging.warning(
+        logger.warning(
             "Voor de volgende meetobjecten is geen ribasim_id opgegeven:\n%s",
             ", ".join(missing_ribasim),
         )
     else:
-        logging.info("Alle grenspunten hebben een geldige ribasim_id.")
+        logger.info("Alle grenspunten hebben een geldige ribasim_id.")
 
     # Merge with node_id
     nodes_lookup = df_model_nodes.reset_index()[["node_id", "name"]]
@@ -205,13 +207,13 @@ def extract_and_add_node_ids(features_df: pd.DataFrame, df_model_nodes: pd.DataF
     # Log missing node_id matches
     missing_nodes = merged_df[merged_df["node_id"].isna()]
     if not missing_nodes.empty:
-        logging.warning(
+        logger.warning(
             "%d ribasim_id(s) konden niet worden gekoppeld aan een node_id: %s",
             len(missing_nodes),
             ", ".join(missing_nodes["ribasim_id"].astype(str).unique()),
         )
     else:
-        logging.info("Alle ribasim_id's zijn succesvol gekoppeld aan node_id's.")
+        logger.info("Alle ribasim_id's zijn succesvol gekoppeld aan node_id's.")
 
     return merged_df.reset_index(drop=True)
 
@@ -222,16 +224,16 @@ grenspunt_meetobject_df = extract_and_add_node_ids(df_IM_meetlocaties, df_model_
 # %% Lezen excel sheet IM-metingen (langzaam)
 def read_excel_file(file_path: str) -> pd.DataFrame:
     """Reads an Excel file and returns its contents as a pandas DataFrame."""
-    if not os.path.exists(file_path):
-        logging.error(f"Bestand bestaat niet: {file_path}")
+    if not Path(file_path).exists():
+        logger.error(f"Bestand bestaat niet: {file_path}")
         raise FileNotFoundError(f"Het Excel-bestand bestaat niet: {file_path}")
 
-    logging.info(f"Begin met inlezen van Excel-bestand met IM-metingen: {file_path}")
+    logger.info(f"Begin met inlezen van Excel-bestand met IM-metingen: {file_path}")
     return pd.read_excel(file_path, sheet_name=None)
 
 
 sheets_dict = read_excel_file(IM_metingen_excel_path)
-logging.info("Excel bestand met IM-metingen ingeladen.")
+logger.info("Excel bestand met IM-metingen ingeladen.")
 
 
 # %%
@@ -251,7 +253,7 @@ def filter_units(sheets_dict_mgpl: dict[str, pd.DataFrame]) -> dict[str, list[st
     Logs which units were deleted per parameter.
     """
     deleted_units = {}
-    for par in sheets_dict_mgpl.keys():
+    for par in sheets_dict_mgpl:
         before_filtering = set(sheets_dict_mgpl[par]["Eenheid.code"].unique())
         sheets_dict_mgpl[par] = sheets_dict_mgpl[par][sheets_dict_mgpl[par]["Eenheid.code"] == "mg/l"]
         after_filtering = set(sheets_dict_mgpl[par]["Eenheid.code"].unique())
@@ -268,24 +270,24 @@ def log_unique_codes(sheets_dict_mgpl: dict[str, pd.DataFrame]) -> None:
     """Logs all unique 'Eenheid.code' values for each parameter in the measurement sheets."""
     parameters = []
     unique_codes = []
-    for par in sheets_dict_mgpl.keys():
+    for par in sheets_dict_mgpl:
         parameters.append(par)
         unique_codes.append(list(sheets_dict_mgpl[par]["Eenheid.code"].unique()))
     df_unique_codes = pd.DataFrame({"Parameter": parameters, "Unique Eenheid.code": unique_codes})
-    logging.info(f"Geselecteerde parameters uit de IM-metingen: \n{df_unique_codes.to_string(index=False)}")
+    logger.info(f"Geselecteerde parameters uit de IM-metingen: \n{df_unique_codes.to_string(index=False)}")
 
 
 log_unique_codes(filtered_sheets_dict)
 
 for par, units in deleted_units.items():
-    logging.info(f'From parameter "{par}", deleted units: {units}')
+    logger.info(f'From parameter "{par}", deleted units: {units}')
 
 
 def combine_measurement_data(sheets_dict_mgpl: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, list[Any]]:
     """Combines all measurement data into a single DataFrame and extracts unique measurement locations."""
     combined_df = pd.concat(sheets_dict_mgpl.values(), ignore_index=True)
     locations = combined_df["Meetobject.code"].unique()
-    logging.info(f"Unieke meetlocaties uit de IM-metingen: {locations}")
+    logger.info(f"Unieke meetlocaties uit de IM-metingen: {locations}")
     return combined_df, locations
 
 
@@ -295,7 +297,7 @@ df_IM_metingen, locations_IM = combine_measurement_data(filtered_sheets_dict)
 # %% Read Zinfo data
 def read_zinfo_data(file_path: str) -> pd.DataFrame:
     """Reads Z-info measurement data from a CSV file."""
-    logging.info(f"Begin met inlezen van Excel-bestand met Z-info metingen: {file_path}")
+    logger.info(f"Begin met inlezen van Excel-bestand met Z-info metingen: {file_path}")
     df = pd.read_csv(file_path, sep=",")
     return df
 
@@ -327,7 +329,7 @@ def process_zinfo_data(zinfo_file_path: str) -> pd.DataFrame:
     df = read_zinfo_data(zinfo_file_path)
     combined_df = filter_zinfo_data(df)
     unique_values = combined_df["par"].unique()
-    logging.info(f"Unieke parameters beschikbaar in de Zinfo data zijn: : {unique_values}")
+    logger.info(f"Unieke parameters beschikbaar in de Zinfo data zijn: : {unique_values}")
 
     combined_df.rename(
         columns={
@@ -350,11 +352,11 @@ def process_zinfo_data(zinfo_file_path: str) -> pd.DataFrame:
 
 
 df_Zinfo_full = process_zinfo_data(zinfo_file_path)
-logging.info(f"Z-info data ingelezen. Aantal RWZIs in dataset: {len(df_Zinfo_full['Meetobject.code'].unique())}")
+logger.info(f"Z-info data ingelezen. Aantal RWZIs in dataset: {len(df_Zinfo_full['Meetobject.code'].unique())}")
 
 df_Zinfo = df_Zinfo_full[df_Zinfo_full["Meetobject.code"].isin(df_rwzi_mapping_table["meta_rwzi_codeist"])]
 locations_zinfo = df_Zinfo["Meetobject.code"].unique()
-logging.info(
+logger.info(
     f"Z-info data gefilterd op aanwezige RWZI's in Ribasim: {len(df_Zinfo_full['Meetobject.code'].unique()) - len(df_Zinfo['Meetobject.code'].unique())} RWZIs niet in het model"
 )
 
@@ -396,12 +398,12 @@ def process_measurement_data(
             values="Numeriekewaarde",
         ).reset_index()
 
-        df_pivot["NO3_0"] = df_pivot["NO3"] if "NO3" in df_pivot else -999
-        df_pivot["NO3_1"] = df_pivot["sNO3NO2"] if "sNO3NO2" in df_pivot else -999
-        df_pivot["NO3_2"] = df_pivot["NOx"] if "NOx" in df_pivot else -999
+        df_pivot["NO3_0"] = df_pivot.get("NO3", -999)
+        df_pivot["NO3_1"] = df_pivot.get("sNO3NO2", -999)
+        df_pivot["NO3_2"] = df_pivot.get("NOx", -999)
         df_pivot["NO3_3"] = (NO3_Ntot_fractie * df_pivot["Ntot"]) if "Ntot" in df_pivot else -999
 
-        df_pivot["NH4_0"] = df_pivot["NH4"] if "NH4" in df_pivot else -999
+        df_pivot["NH4_0"] = df_pivot.get("NH4", -999)
         df_pivot["NH4_1"] = (NH4_Nkj_fractie * df_pivot["NKj"]) if "NKj" in df_pivot else -999
         df_pivot["NH4_2"] = (NH4_Ntot_fractie * df_pivot["Ntot"]) if "Ntot" in df_pivot else -999
 
@@ -416,7 +418,7 @@ def process_measurement_data(
         # Now this part works only if NO3 is directly measured, do we want to include computed N03 values as well?
         # df_pivot['Ntot_1'] = (df_pivot['NO3'] + df_pivot['NH4'] + df_pivot['OON']) if all(col in df_pivot for col in ['NO3', 'NH4', 'OON']) else -999
 
-        df_pivot["PO4_0"] = df_pivot["PO4"] if "PO4" in df_pivot else -999
+        df_pivot["PO4_0"] = df_pivot.get("PO4", -999)
         df_pivot["PO4_1"] = (PO4_Ptot_fractie * df_pivot["Ptot"]) if all(col in df_pivot for col in ["Ptot"]) else -999
 
         df_pivot["AAP_0"] = (
@@ -521,10 +523,10 @@ dict_choosen_method_Zinfo, dict_delwaq_input_Zinfo_v0 = process_measurement_data
 parameter_delwaq_input_IM = next(iter(dict_delwaq_input_IM_v0.values())).columns[2:]
 parameter_delwaq_input_Zinfo = next(iter(dict_delwaq_input_Zinfo_v0.values())).columns[2:]
 
-logging.info(
+logger.info(
     f"Delwaq input parameters uit IM-metingen (buitenlandse aanvoeren): \n {list(parameter_delwaq_input_IM[:])} \n voor {len(dict_delwaq_input_IM_v0.keys())} locaties"
 )
-logging.info(
+logger.info(
     f"Delwaq input parameters uit Z-Info (rwzis): \n {list(parameter_delwaq_input_Zinfo[:])} \n voor {len(dict_delwaq_input_Zinfo_v0.keys())} locaties"
 )
 
@@ -601,6 +603,7 @@ loc_to_node = dict(
     zip(
         grenspunt_meetobject_df["Meetobject.code"],
         grenspunt_meetobject_df["node_id"],
+        strict=True,
     )
 )
 
@@ -633,6 +636,7 @@ loc_to_node_zinfo = dict(
     zip(
         df_rwzi_mapping_table["meta_rwzi_codeist"],
         df_rwzi_mapping_table["node_id"],
+        strict=True,
     )
 )
 
@@ -689,10 +693,12 @@ if make_plots:
         ),
     }
 
-    for group, parameter_keys in zip(["N Parameters", "P Parameters"], [["NO3", "NH4", "OON"], ["PO4", "AAP", "OOP"]]):
+    for group, parameter_keys in zip(
+        ["N Parameters", "P Parameters"], [["NO3", "NH4", "OON"], ["PO4", "AAP", "OOP"]], strict=True
+    ):
         fig, axes = plt.subplots(len(parameter_keys), 1, figsize=(20, 10), dpi=1000)
         print()
-        for parameter_key, ax in zip(parameter_keys, axes):
+        for parameter_key, ax in zip(parameter_keys, axes, strict=True):
             parsset, parslab = parameters[parameter_key]
             locations = dict_choosen_method_IM.keys()
             location_percentages = {loc: dict.fromkeys([*parsset, "-999"], 0) for loc in locations}
@@ -779,7 +785,9 @@ if make_plots:
         return chunks
 
     # Example for 4 subplots:
-    for group, parameter_keys in zip(["N Parameters", "P Parameters"], [["NO3", "NH4", "OON"], ["PO4", "AAP", "OOP"]]):
+    for _group, parameter_keys in zip(
+        ["N Parameters", "P Parameters"], [["NO3", "NH4", "OON"], ["PO4", "AAP", "OOP"]], strict=True
+    ):
         for parameter_key in parameter_keys:
             parsset, parslab = parameters[parameter_key]
             locations = list(dict_choosen_method_Zinfo.keys())  # Convert to a list to allow slicing
@@ -790,7 +798,7 @@ if make_plots:
             if num_subplots == 1:
                 axes = [axes]  # Ensure axes is always a list for consistent iteration
 
-            for idx, (loc_chunk, ax) in enumerate(zip(location_chunks, axes)):
+            for idx, (loc_chunk, ax) in enumerate(zip(location_chunks, axes, strict=True)):
                 location_percentages = {loc: dict.fromkeys([*parsset, "-999"], 0) for loc in loc_chunk}
 
                 # Calculate percentages for each parameter and location

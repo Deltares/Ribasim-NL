@@ -4,6 +4,7 @@
         "meta.pyrefly",
         "ms-python.python",
         "njpwerner.autodocstring",
-        "quarto.quarto"
+        "quarto.quarto",
+        "renan-r-santos.pixi-code"
     ]
 }

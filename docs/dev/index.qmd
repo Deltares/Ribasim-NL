@@ -12,8 +12,6 @@ In order to have the Ribasim-NL repository locally available, you can clone it w
 Git can be installed from [git-scm.com](https://git-scm.com/downloads).
 Once installed, run the following command at a directory of your choice:
 
-In order to have the Ribasim repository locally available, run the following command at a directory of your choice:
-
 ```sh
 git clone https://github.com/Deltares/Ribasim-NL.git
 ```
@@ -24,146 +22,104 @@ To continue with the following steps, make the root of the repository your worki
 cd Ribasim-NL
 ```
 
-## Setting up uv
+## Setting up Pixi
 
-First, set up uv as described in the [uv documentation](https://docs.astral.sh/uv/getting-started/installation/).
+First, install Pixi as described in the [Pixi documentation](https://pixi.sh/latest/#installation).
 
-We require at least uv version v0.9.3, but generally recommend the latest release.
-Check the version with `uv --version`, update with `uv self update`.
 
-Then set up the environment by running the following command.
 
-```sh
-uv sync
-```
-
-This command automatically installs all required Python packages for development.
-These will not conflict with any pre-installed applications, as uv creates an isolated virtual environment.
-You can run Python commands using `uv run python` or activate the environment with `source .venv/bin/activate` (Linux/macOS) or `.venv\Scripts\activate` (Windows).
-
-The first time you open the Ribasim-NL repo in Visual Studio Code you need to tell it where it can find the Python interpreter.
-Open the command box with {{< kbd Ctrl+Shift+P >}} ({{< kbd Cmd+Shift+P >}} on macOS) and run `Python: Select Interpreter`.
-Select the Python interpreter in the `.venv` folder that uv created.
-Unless the setting `python.terminal.activateEnvironment` is disabled, it will already activate the environment in your terminal.
-
-If you encounter issues related to uv dependencies, it might help to clean your uv environment with `uv clean`, followed by `uv sync`.
-
-## Install pre-commit git hook scripts
-
-Pre-commit is part of the uv environment, hence you can run:
+Then set up the full development environment by running:
 
 ```sh
-uv run pre-commit install
+pixi run install
 ```
 
-For more information see the [pre-commit documentation](https://pre-commit.com/#3-install-the-git-hook-scripts).
+This installs git hooks and pulls data.
+You can run Python scripts using `pixi run python path/to/script.py`.
+
+This step also downloads and installs Ribasim core from GitHub releases to RIBASIM_HOME='bin/ribasim'
+
+The first time you open the Ribasim-NL repo in Visual Studio Code, the [pixi-code](https://github.com/renan-r-santos/pixi-code) extension should automatically detect the Pixi environment and configure the Python interpreter.
+
+If you encounter issues, try running `pixi clean`and running `pixi install` again.
+
+## Git hooks
+
+We use [prek](https://prek.j178.dev/) instead of pre-commit for git hooks.
+It is installed as part of `pixi run install`, but you can also install hooks manually:
+
+```sh
+pixi run prek install -f
+```
+
+To run all hooks on all files manually:
+
+```sh
+pixi run check
+```
+
+To skip the slower DVC hooks and only run Python linting, formatting, and type checking:
+
+```sh
+pixi run pycheck
+```
 
 ## Co-development with Ribasim
 
-Ribasim-NL pins to a specific Ribasim version in the `pyproject.toml`.
+Ribasim-NL pins to a specific Ribasim version in `pixi.toml`.
 Generally this will be the latest release.
 During development sometimes you may want to test out the latest unreleased development version of Ribasim.
 
-To do so, open `pyproject.toml` in your editor.
-Find the `[tool.uv.sources]` section and uncomment or add the git source like below:
+To do so, open `pixi.toml` in your editor.
+Find the `[pypi-dependencies]` section and change the ribasim git source:
 
 ```toml
-[tool.uv.sources]
+[pypi-dependencies]
 ribasim = { git = "https://github.com/Deltares/Ribasim", branch = "main", subdirectory = "python/ribasim" }
 ```
 
-You can change the branch name if needed, or use a specific commit with for example `rev = "0075d4a"`.
+You can change the branch name if needed, or use a specific commit with `rev = "0075d4a"`.
 
 If you are making changes to the Ribasim repository yourself, it will be more convenient to point to a local clone rather than GitHub.
 This can be done using this syntax:
 
 ```toml
-[tool.uv.sources]
+[pypi-dependencies]
 ribasim = { path = "../Ribasim/python/ribasim", editable = true }
 ```
 
 This path will work if you clone Ribasim next to Ribasim-NL.
 
-After you are done modifying `pyproject.toml`, you can run `uv sync` to ensure the dependencies are installed.
+After you are done modifying `pixi.toml`, run `pixi install` to ensure the dependencies are installed.
 
 For Ribasim developer documentation see [ribasim.org/dev](https://ribasim.org/dev/).
 
 ## Environment variables {#sec-environment-variables}
 
-The Ribasim-NL code downloads from and uploads to [cloud storage](/cloudstorage.qmd).
-The password to access the cloud storage, and local directory it interacts with, both need to be configured.
-To be able to run the Ribasim core, point RIBASIM_HOME to a Ribasim-NL specific install, to avoid interaction with possible other Ribasim projects.
+Several settings need to be configured via environment variables, managed by [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/) in `src/ribasim_nl/ribasim_nl/settings.py`.
 
-In the root of the repository is a `.env.default` file that can serve as a template to copy to `.env`.
+| Setting | Environment variable | Description |
+|:--------|:---------------------|:------------|
+| `d3d_home` | `D3D_HOME` | Root of the Delft3D installation |
+| `ribasim_nl_cloud_pass` | `RIBASIM_NL_CLOUD_PASS` | Password for [cloud storage](/cloudstorage.qmd) access |
+| `ribasim_nl_data_dir` | `RIBASIM_NL_DATA_DIR` | Local directory for data files |
+| `overwrite_files_from_cloud` | `OVERWRITE_FILES_FROM_CLOUD` | Whether cloud downloads overwrite local files |
+| `minio_access_key` | `MINIO_ACCESS_KEY` | Access key for MinIO storage |
+| `minio_secret_key` | `MINIO_SECRET_KEY` | Secret key for MinIO storage |
+
+In the root of the repository is a `.env.default` file with the defaults that can serve as a template.
+Copy it to `.env` and fill in `RIBASIM_NL_CLOUD_PASS` with the actual password, and adjust the other paths as needed.
 The `.env` file is gitignored because it is different per developer, and to avoid leaking the password.
+Make sure to use single quotes around values.
+The defaults below come from `src/ribasim_nl/ribasim_nl/settings.py`:
 
-Here is an example for a filled in `.env` file:
-
-```ini
-RIBASIM_NL_CLOUD_PASS='your_password_here'
-RIBASIM_NL_DATA_DIR='data'
-RIBASIM_HOME='bin/ribasim'
-OVERWRITE_FILES_FROM_CLOUD='true'
+```{.ini include="../../.env.default"}
 ```
 
-These values will be applied using [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/).
-If you prefer to set these environment variables in your OS or terminal that will also work.
+Values from the `.env` file take precedence over environment variables, so you can override system-wide settings per project.
+If you prefer to set these environment variables in your OS or terminal instead, that will also work.
 
-`OVERWRITE_FILES_FROM_CLOUD` is optional, and true by default.
-When using `cloud.synchronize` or `cloud.download_content`, this will determine if local files will be overwritten if the `overwrite` keyword argument is not explicitly passed.
-Whilst updating datasets locally, you can set this to `false` to ensure your modifications can be tested and will not be lost.
-After these edits are done, you can upload the new dataset, and set it back to `true`.
-
-# Type checking
-
-We use [Pyrefly](https://pyrefly.org/) for static type checking.
-Pyrefly is configured in the `[tool.pyrefly]` section of `pyproject.toml`.
-
-## Running Pyrefly
-
-To check for type errors, run:
-
-```sh
-uv run pyrefly check
-```
-
-This is also run in CI via the `pyrefly` job in `.github/workflows/python_lint.yml`.
-
-## Baseline file
-
-Existing type errors are stored in a `baseline.json` file.
-Pyrefly's [baseline feature](https://pyrefly.org/en/docs/error-suppressions/#baseline-files-experimental) suppresses these known errors and only reports *new* errors.
-This way, `pyrefly check` passes cleanly without requiring ignore comments on every line.
-
-The baseline is configured in `pyproject.toml`:
-
-```toml
-[tool.pyrefly]
-baseline = "baseline.json"
-```
-
-### Updating the baseline
-
-After fixing existing type errors, regenerate the baseline to remove the fixed entries:
-
-```sh
-uv run pyrefly check --update-baseline
-```
-
-If you introduce code that triggers new errors (e.g. from incomplete stubs) that cannot be reasonably fixed, you can add them to the baseline by running the same command.
-Prefer fixing the error or adding a targeted `# pyrefly: ignore[error-code]` comment when possible.
-
-### Suppressing individual errors
-
-For specific lines where the type checker is wrong, use a targeted ignore comment:
-
-```python
-x = some_expression  # pyrefly: ignore[error-code]
-```
-
-For lines that would exceed 120 characters with the comment appended, place the comment on the line above:
-
-```python
-# pyrefly: ignore[error-code]
-x = some_very_long_expression_that_would_be_too_long_with_an_inline_comment
-```
+`OVERWRITE_FILES_FROM_CLOUD` is `true` by default.
+When using `cloud.synchronize` or `cloud.download_content`, this determines if local files will be overwritten when the `overwrite` keyword argument is not explicitly passed.
+Whilst updating datasets locally, you can set this to `false` to ensure your modifications are not lost.
+After uploading the new dataset, set it back to `true`.

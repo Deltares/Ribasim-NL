@@ -1,0 +1,32 @@
+name: Prek auto update
+on:
+  schedule:
+    # At 03:00 on day 3 of the month
+    - cron: "0 3 3 * *"
+  # on demand
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  auto-update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: prefix-dev/setup-pixi@5185adfbffb4bd703da3010310260805d89ebb11 # v0.9.6
+        with:
+          pixi-version: "latest"
+      - name: Update prek hooks
+        run: pixi run prek autoupdate
+      - name: Install prek hooks
+        run: pixi run prek install -f
+      - name: Run prek on all files
+        run: pixi run check
+        continue-on-error: true
+      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.CI_PR_PAT }}
+          branch: update/prek
+          title: Update prek hooks
+          commit-message: "Update prek hooks"
+          author: "GitHub <noreply@github.com>"
+          delete-branch: true

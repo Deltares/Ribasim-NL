@@ -4,7 +4,7 @@ import inspect
 import geopandas as gpd
 import pandas as pd
 from ribasim import Node
-from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
+from ribasim.nodes import basin, level_boundary, outlet
 from ribasim_nl.geometry import split_basin_multi_polygon, split_line
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.model import default_tables
@@ -48,7 +48,6 @@ model = Model.read(ribasim_toml)
 network_validator = NetworkValidator(model)
 
 # %% some stuff we'll need again
-manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
 level_data = level_boundary.Static(level=[0])
 
 basin_data = [
@@ -218,15 +217,15 @@ basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[19608, "geometry"]
 
 
 model.move_node(1686, hydroobject_gdf.at[19566, "geometry"].boundary.geoms[1])
-model.merge_basins(basin_id=2426, to_basin_id=1696, are_connected=True)
-model.merge_basins(basin_id=2460, to_basin_id=1696, are_connected=True)
-model.merge_basins(basin_id=1648, to_basin_id=1696, are_connected=True)
+model.merge_basins(node_id=2426, to_node_id=1696, are_connected=True)
+model.merge_basins(node_id=2460, to_node_id=1696, are_connected=True)
+model.merge_basins(node_id=1648, to_node_id=1696, are_connected=True)
 
-model.merge_basins(basin_id=1696, to_basin_id=2453, are_connected=True)
+model.merge_basins(node_id=1696, to_node_id=2453, are_connected=True)
 
-model.merge_basins(basin_id=2453, to_basin_id=1686, are_connected=True)
-model.merge_basins(basin_id=1719, to_basin_id=1686, are_connected=True)
-model.merge_basins(basin_id=1858, to_basin_id=1686, are_connected=True)
+model.merge_basins(node_id=2453, to_node_id=1686, are_connected=True)
+model.merge_basins(node_id=1719, to_node_id=1686, are_connected=True)
+model.merge_basins(node_id=1858, to_node_id=1686, are_connected=True)
 
 model.remove_node(1532, remove_links=True)
 model.remove_node(722, remove_links=True)
@@ -308,18 +307,16 @@ model.link.add(outlet_node, model.level_boundary[50])
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2399931763
 
 # Samenvoegen Westerveldse Aa
-model.merge_basins(basin_id=1592, to_basin_id=1645, are_connected=True)
-model.merge_basins(basin_id=1593, to_basin_id=1645, are_connected=True)
-
-model.merge_basins(basin_id=1645, to_basin_id=1585, are_connected=True)
-model.merge_basins(basin_id=2567, to_basin_id=1585, are_connected=True)
-model.merge_basins(basin_id=2303, to_basin_id=1585, are_connected=True)
-model.merge_basins(basin_id=2549, to_basin_id=1585, are_connected=True)
-model.merge_basins(basin_id=2568, to_basin_id=1585, are_connected=True)
-model.merge_basins(basin_id=2572, to_basin_id=1585, are_connected=True)
-model.merge_basins(basin_id=2374, to_basin_id=1585, are_connected=True)
-
-model.merge_basins(basin_id=2559, to_basin_id=2337, are_connected=False)
+model.merge_basins(node_id=1592, to_node_id=1645, are_connected=True)
+model.merge_basins(node_id=1593, to_node_id=1645, are_connected=True)
+model.merge_basins(node_id=1645, to_node_id=1585, are_connected=True)
+model.merge_basins(node_id=2567, to_node_id=1585, are_connected=True)
+model.merge_basins(node_id=2303, to_node_id=1585, are_connected=True)
+model.merge_basins(node_id=2549, to_node_id=1585, are_connected=True)
+model.merge_basins(node_id=2568, to_node_id=1585, are_connected=True)
+model.merge_basins(node_id=2572, to_node_id=1585, are_connected=True)
+model.merge_basins(node_id=2374, to_node_id=1585, are_connected=True)
+model.merge_basins(node_id=2559, to_node_id=2337, are_connected=False)
 
 
 # %%
@@ -347,10 +344,10 @@ actions = [
     "update_node",
     "add_basin_area",
     "update_basin_area",
-    "redirect_link",
-    "reverse_link",
     "deactivate_node",
     "move_node",
+    "redirect_link",
+    "reverse_link",
     "remove_node",
     "connect_basins",
 ]
@@ -358,22 +355,157 @@ actions = [
 actions = [i for i in actions if i in gpd.list_layers(model_edits_path).name.to_list()]
 for action in actions:
     print(action)
-    # get method and args
     method = getattr(model, action)
     keywords = inspect.getfullargspec(method).args
     df = gpd.read_file(model_edits_path, layer=action, fid_as_index=True)
+
     if "order" in df.columns:
         df.sort_values("order", inplace=True)
+
     for row in df.itertuples():
-        # filter kwargs by keywords
         kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
-        method(**kwargs)
+        try:
+            method(**kwargs)
+        except Exception:
+            print(f"Failed action: {action}")
+            print(kwargs)
+            print("NaN link index rows:")
+            print(model.link.df[model.link.df.index.isna()])
+            raise
+
+# fixes:
+# Gemaal Westerveld is een inlaat gemaal en een uitlaat ernaast, dus richting omdraaien evt takken toevoegen
+for link_id in [
+    938,
+    2963,
+    2962,
+    2144,
+]:
+    model.reverse_link(link_id=link_id)
+
+# De Heuvel # 617 verkeerde riching, dus omdraaien
+for link_id in [1003, 1516]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet Zedemuden moet kunnen inlaten, dus richting omdraaien evt takken toevoegen
+for link_id in [
+    3087,
+    3088,
+]:
+    model.reverse_link(link_id=link_id)
+
+# node #968 aanvoer
+for link_id in [1175, 2832]:
+    model.reverse_link(link_id=link_id)
+
+# node #832 aanvoer
+for link_id in [2407, 2831]:
+    model.reverse_link(link_id=link_id)
+
+# Reest gevoed door Ommerskanaal (Lutterhoofddiep 1m3/s)
+for link_id in [1865, 2854]:
+    model.reverse_link(link_id=link_id)
+
+# De Haar is aanvoer
+for link_id in [954, 2113]:
+    model.reverse_link(link_id=link_id)
+
+# Outlets richting omdraaien, zijn inlaten!
+for link_id in [512, 585, 747, 1916, 1260, 2111, 1347, 1941]:
+    model.reverse_link(link_id=link_id)
+
+# Blijdestein moet ook aanvoeren
+# Outlets richting omdraaien, zijn inlaten!
+for link_id in [897, 2063]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet 1011 is een inlaat
+# Outlet richting omdraaien, zijn inlaten!
+for link_id in [1212, 2195]:
+    model.reverse_link(link_id=link_id)
+
+# Duinersteeg aantal Slagen
+model.update_node(node_id=1402, node_type="Outlet")
+# Outlets richting omdraaien, zijn inlaten!
+for link_id in [1193, 2880]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet Tussen de Diepen node #1035 richting omdraaien, is inlaat
+for link_id in [2271, 2910]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet Lokbrug node #1081 richting omdraaien, is inlaat
+for link_id in [745, 2218]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet Haarsluis node #1338 richting omdraaien, is inlaat
+for link_id in [1201, 2591]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet O-36-16_A_2 node #1242 richting omdraaien, is inlaat
+for link_id in [1297, 1773]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet node #952 richting omdraaien, is inlaat
+for link_id in [1154, 1915]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet node #1242 richting omdraaien, is inlaat
+for link_id in [1773]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet node #1227 richting omdraaien, is inlaat
+for link_id in [822, 2076]:
+    model.reverse_link(link_id=link_id)
+
+# Outlet node #984 richting omdraaien, is inlaat
+for link_id in [634, 1846]:
+    model.reverse_link(link_id=link_id)
+
+# 't Vosje #571 is een inlaat
+for link_id in [2830, 1717]:
+    model.reverse_link(link_id=link_id)
+
+# 't Katje #562 is een inlaat
+for link_id in [1710, 3006]:
+    model.reverse_link(link_id=link_id)
+
+# 't Raasje #563 is een inlaat
+for link_id in [958, 1711]:
+    model.reverse_link(link_id=link_id)
+
+# make outlets from manning
+outlet_ids = [804]
+
+for node_id in dict.fromkeys(outlet_ids):
+    model.update_node(node_id=node_id, node_type="ManningResistance")
+
+# fixes vistrap eruit
+model.remove_node(1414, remove_links=True)
+model.remove_node(1441, remove_links=True)
+
+model.update_node(node_id=1401, node_type="Outlet")
+model.reverse_link(link_id=894)
+model.reverse_link(link_id=1983)
+
+model.merge_basins(node_id=1763, to_node_id=1764, are_connected=False)
+model.merge_basins(node_id=2474, to_node_id=2185, are_connected=False)
+model.merge_basins(node_id=2011, to_node_id=2008, are_connected=True)
+model.merge_basins(node_id=56, to_node_id=59, are_connected=True)
+model.merge_basins(node_id=1681, to_node_id=1717, are_connected=True)
+model.merge_basins(node_id=2348, to_node_id=1756, are_connected=False)
+model.merge_basins(node_id=2192, to_node_id=2194, are_connected=False)
+model.merge_basins(node_id=2574, to_node_id=2030, are_connected=True)
+model.merge_basins(node_id=2004, to_node_id=2377, are_connected=True)
+
+model.remove_link(from_node_id=281, to_node_id=2554)
 
 # remove unassigned basin area
 model.fix_unassigned_basin_area()
 model.remove_unassigned_basin_area()
 
 model = reset_static_tables(model)
+
 
 # %%
 
@@ -466,7 +598,7 @@ for row in model.flow_boundary.node.df.itertuples():
     )
 
     # remove old links and add 2 new
-    left_link_geometry, right_link_geometry = list(split_line(link_geometry, outlet_node_geometry).geoms)
+    left_link_geometry, right_link_geometry = split_line(link_geometry, outlet_node_geometry)
     model.link.add(model.level_boundary[node_id], outlet_node, geometry=left_link_geometry)
     model.link.add(outlet_node, model.basin[basin_node_id], geometry=right_link_geometry)
 
@@ -478,10 +610,9 @@ model.write(ribasim_toml)
 model.validate_link_source_destination()
 model.report_basin_area()
 model.report_internal_basins()
-# %%
 # %% Test run model
 
-# model = Model.read(ribasim_toml)
-# status_code = model.run()
+model = Model.read(ribasim_toml)
+status_code = model.run()
 
 # assert status_code == 0

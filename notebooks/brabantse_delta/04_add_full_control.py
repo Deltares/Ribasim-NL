@@ -11,7 +11,6 @@ from ribasim_nl import CloudStorage, Model
 # %%
 # Globale settings
 
-LEVEL_DIFFERENCE_THRESHOLD = 0.02  # sync model.solver.level_difference_threshold and control-settings
 MODEL_EXEC: bool = True  # execute model run
 AUTHORITY: str = "BrabantseDelta"  # authority
 SHORT_NAME: str = "wbd"  # short_name used in toml-file
@@ -82,7 +81,7 @@ supply_nodes = []
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -91,7 +90,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -124,7 +122,7 @@ supply_nodes = [732]
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -133,7 +131,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 # %%
@@ -165,7 +162,7 @@ supply_nodes = [432, 563, 574, 569, 604]
 flow_control_nodes = [570, 603]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -174,7 +171,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
     add_supply_nodes=True,
 )
@@ -208,7 +204,7 @@ supply_nodes = []
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -217,7 +213,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -250,7 +245,7 @@ supply_nodes = []
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -259,7 +254,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -292,7 +286,7 @@ supply_nodes = []
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -301,7 +295,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -334,7 +327,7 @@ supply_nodes = [627, 639]
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -343,7 +336,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -375,7 +367,7 @@ supply_nodes = [670]
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -384,7 +376,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -416,7 +407,7 @@ supply_nodes = []
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -425,7 +416,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -457,7 +447,7 @@ supply_nodes = []
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -466,7 +456,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -498,7 +487,7 @@ supply_nodes = []
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -507,7 +496,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -539,7 +527,7 @@ supply_nodes = [751, 818, 950]
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -548,7 +536,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -580,7 +567,7 @@ supply_nodes = []
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -589,7 +576,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 # %%
@@ -620,7 +606,7 @@ supply_nodes = []
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -629,7 +615,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 # %%
@@ -660,7 +645,7 @@ supply_nodes = []
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -669,7 +654,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -696,19 +680,17 @@ add_controllers_to_uncontrolled_connector_nodes(
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
     exclude_nodes=list(EXCLUDE_NODES),
-    us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD,
 )
 
 
 # %% Junctionfy(!)
-model = junctionify(model)
+junctionify(model)
 
 # Model run
 
 ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_wet", f"{SHORT_NAME}.toml")
 ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_dry", f"{SHORT_NAME}.toml")
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
-model.solver.level_difference_threshold = LEVEL_DIFFERENCE_THRESHOLD
 
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 
@@ -724,9 +706,8 @@ model.write(ribasim_toml_dry)
 
 # run hoofdmodel
 if MODEL_EXEC:
-    result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml_dry, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml_dry, qlr_path=qlr_path).run_all()
     model = Model.read(ribasim_toml_dry)
 
 # prerun om het model te initialiseren met neerslag
@@ -735,9 +716,8 @@ model.write(ribasim_toml_wet)
 
 # run prerun model
 if MODEL_EXEC:
-    prerun_result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml_wet, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml_wet, qlr_path=qlr_path).run_all()
     model = Model.read(ribasim_toml_wet)
 
 # hoofd run
@@ -745,8 +725,7 @@ update_basin_static(model=model, precipitation_mm_per_day=1.5)
 model.write(ribasim_toml)
 # run hoofdmodel
 if MODEL_EXEC:
-    result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path).run_all()
 
 # %%

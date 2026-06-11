@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Literal
 
 import geopandas as gpd
+import pandas as pd
 from peilbeheerst_model.controle_output import Control
 from ribasim.nodes import flow_demand, outlet
 from ribasim_nl.control import (
@@ -23,7 +24,6 @@ from ribasim_nl import CloudStorage, Model
 # %%
 # Globale settings
 
-LEVEL_DIFFERENCE_THRESHOLD = 0.02  # sync model.solver.level_difference_threshold and control-settings
 MODEL_EXEC: bool = True  # execute model run
 AUTHORITY: str = "AaenMaas"
 SHORT_NAME: str = "aam"
@@ -44,7 +44,7 @@ def add_discharge_supply_nodes(
 ):
     # get tables and nodes
     node_table_df = get_node_table_with_from_to_node_ids(model, node_ids=list(discharge_supply_nodes.keys()))
-    node_types = model.node_table().df["node_type"]
+    node_types = model.node.df["node_type"]
 
     # demand parameters
     summer_season_start: tuple[int, int] = (4, 1)
@@ -125,7 +125,7 @@ ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoergebieden_gpkg = cloud.joinpath(r"AaenMaas/verwerkt/sturing/aanvoergebieden.gpkg")
 aanvoerpunten_shp = cloud.joinpath(
-    r"AaenMaas\verwerkt\1_ontvangen_data\wateraanvoer_27-2-2026\wateraanvoersysteem_WAM.shp"
+    "AaenMaas/verwerkt/1_ontvangen_data/wateraanvoer_27-2-2026/wateraanvoersysteem_WAM.shp"
 )
 
 cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path, aanvoerpunten_shp])
@@ -146,23 +146,51 @@ model.pump.static.df.max_flow_rate = model.pump.static.df.flow_rate
 # Schabbert
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 161, "flow_rate"] = 12
 
+# Was manning, wordt outlet, duiker
+model.update_node(node_id=549, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=670, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=486, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=656, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=537, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=627, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=631, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=669, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=712, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=464, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=491, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=483, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=491, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=595, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=697, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=1043, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=720, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=610, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=450, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=706, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=529, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=539, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=652, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=675, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=676, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=511, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=655, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=558, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=1047, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=630, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=444, node_type="Outlet")  # wordt outlet, was Manning
+
+model.remove_node(820, remove_links=True)
+model.remove_node(1054, remove_links=True)
 
 # Mierlo wordt aanvoer als afvoer gemaal
 model.update_node(node_id=92, node_type="Pump")  # wordt outlet, was outlet
 model.pump.static.df.loc[model.pump.static.df.node_id == 92, "min_upstream_level"] = 16.56
 model.update_node(node_id=226, node_type="Pump")  # wordt outlet, was outlet
 
+
 # Teveel inlaten naar Oefeltse Raam
-model.remove_node(295, remove_links=True)
 model.remove_node(574, remove_links=True)
 
-# Gemaal Veluwe
-model.update_node(node_id=100, node_type="Pump")  # wordt outlet, was outlet
-model.pump.static.df.loc[model.pump.static.df.node_id == 100, "min_upstream_level"] = 10.82
-
-# Gemaal Kameren
-model.update_node(node_id=95, node_type="Pump")  # wordt outlet, was outlet
-model.pump.static.df.loc[model.pump.static.df.node_id == 95, "min_upstream_level"] = 5.17
 
 # %%
 # Toevoegen alle aanvoer-knopen met flow_demand
@@ -238,7 +266,7 @@ discharge_supply_df["summer"] = discharge_supply_df["summer"].str.replace(",", "
 discharge_supply_df["winter"] = discharge_supply_df["winter"].str.replace(",", ".").astype(float)
 
 # make code (and node type) table
-node_table_df = model.node_table().df
+node_table_df = model.node.df
 
 
 code_df = node_table_df[node_table_df["meta_code_waterbeheerder"].notna()][
@@ -252,7 +280,12 @@ discharge_supply_nodes = {
     int(row.node_id): {"summer": row.summer, "winter": row.winter} for row in discharge_supply_df.itertuples()
 }
 
-discharge_supply_df.to_file(cloud.joinpath(r"AaenMaas\verwerkt\sturing\aanvoerpunten.gpkg"))
+# checken in laatste file Aa en Maas; dit kúnnen geen inlaten zijn
+discharge_supply_nodes.pop(383, None)
+discharge_supply_nodes.pop(957, None)
+discharge_supply_nodes.pop(100, None)
+
+discharge_supply_df.to_file(cloud.joinpath("AaenMaas/verwerkt/sturing/aanvoerpunten.gpkg"))
 
 
 # add level supply nodes, no flow-demand-node, but discrete control on downstream basin level
@@ -267,15 +300,19 @@ level_supply_nodes = [
     183,
     186,
     203,
+    208,
     211,
     215,
     227,
+    231,
+    246,
     251,
     276,
     278,
     280,
     308,
     335,
+    355,
     369,
     375,
     379,
@@ -285,16 +322,22 @@ level_supply_nodes = [
     521,
     527,
     531,
+    566,
+    625,
+    630,
     640,
+    723,
+    731,
     734,
     753,
     850,
     985,
-    1054,
+    1067,
     2020,
+    3086,
 ]
 
-double_defined = [i for i in level_supply_nodes if i in discharge_supply_nodes.keys()]
+double_defined = [i for i in level_supply_nodes if i in discharge_supply_nodes]
 if double_defined:
     raise ValueError(f"these nodes are labelled as q-supply and level-supply {double_defined}")
 
@@ -303,6 +346,23 @@ supply_nodes_df = get_node_table_with_from_to_node_ids(model=model, node_ids=lev
 all_nodes = list(discharge_supply_nodes.keys()) + level_supply_nodes
 
 model.node.df[IS_SUPPLY_NODE_COLUMN] = model.node.df.index.isin(all_nodes)
+
+
+# Gemaal Veluwe
+model.update_node(node_id=100, node_type="Pump")  # wordt outlet, was outlet
+model.pump.static.df.loc[model.pump.static.df.node_id == 100, "min_upstream_level"] = 10.13
+model.pump.static.df.loc[model.pump.static.df.node_id == 100, "flow_rate"] = 5
+
+# Gemaal Kameren
+model.update_node(node_id=95, node_type="Pump")  # wordt outlet, was outlet
+model.pump.static.df.loc[model.pump.static.df.node_id == 95, "min_upstream_level"] = 5.17
+
+
+# Grote Wetering is een gemaal
+model.update_node(node_id=105, node_type="Pump")  # wordt pump was outlet
+model.pump.static.df.loc[model.pump.static.df.node_id == 105, "flow_rate"] = 1
+model.pump.static.df.loc[model.pump.static.df.node_id == 105, "min_upstream_level"] = 2
+
 
 # %%
 # Toevoegen Mierlo
@@ -352,13 +412,13 @@ drain_nodes = [85, 92, 312, 353, 400, 1089]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [226]
+supply_nodes = []
 # handmatig opgegeven supply nodes (inlaten)
 
 flow_control_nodes = [681, 774, 775, 776, 934, 974]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -367,7 +427,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
     add_supply_nodes=False,
 )
@@ -423,6 +482,9 @@ flushing_nodes = {}
 #
 
 drain_nodes = [
+    534,
+    558,
+    1047,
     106,
     130,
     153,
@@ -441,11 +503,12 @@ drain_nodes = [
     804,
     628,
     818,
+    1051,
 ]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [186, 251, 278, 379]
+supply_nodes = []
 
 # handmatig opgegeven supply nodes (inlaten)
 
@@ -473,12 +536,12 @@ flow_control_nodes = [
     819,
     821,
     948,
-    981,
+    957,
     1050,
 ]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -487,7 +550,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
     add_supply_nodes=False,
 )
@@ -539,18 +601,18 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [83, 107, 139, 150, 170, 210, 244, 256, 342, 421, 304, 487, 597, 982, 1051]
+drain_nodes = [83, 107, 139, 150, 170, 210, 244, 256, 342, 388, 421, 304, 487, 597, 982, 1051]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [183, 375, 521, 640, 1054]
+supply_nodes = []
 
 # handmatig opgegeven supply nodes (inlaten)
 
-flow_control_nodes = [155, 212, 332, 388, 823, 824, 1051, 1062]
+flow_control_nodes = [243, 155, 212, 332, 823, 824, 1051, 1062, 100]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -559,7 +621,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
     add_supply_nodes=False,
 )
@@ -606,18 +667,18 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [345, 795, 797, 1046]
+drain_nodes = [345, 486, 656, 670, 795, 797, 1046]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [166, 211]
+supply_nodes = []
 
 # handmatig opgegeven supply nodes (inlaten)
 
 flow_control_nodes = [205, 239, 413, 438, 526, 533, 790, 791, 952]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -626,7 +687,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
     add_supply_nodes=False,
 )
@@ -667,7 +727,7 @@ supply_nodes = []
 flow_control_nodes = [328, 361, 352, 708]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -676,7 +736,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
     add_supply_nodes=False,
 )
@@ -708,13 +767,13 @@ drain_nodes = [122, 843, 318]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [227]
+supply_nodes = []
 # handmatig opgegeven supply nodes (inlaten)
 
 flow_control_nodes = [154, 158, 177, 338, 538, 622, 710, 826, 828, 909, 954]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -723,7 +782,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
     add_supply_nodes=False,
 )
@@ -751,16 +809,16 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [324]
+drain_nodes = [324, 669, 676]
 
 # handmatig opgegeven supply nodes (inlaten)
-supply_nodes = [335]
+supply_nodes = []
 # handmatig opgegeven supply nodes (inlaten)
 
-flow_control_nodes = []
+flow_control_nodes = [383]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -769,7 +827,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
     add_supply_nodes=False,
 )
@@ -799,18 +856,18 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = []
+drain_nodes = [529, 539]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [246]
+supply_nodes = []
 
 # handmatig opgegeven supply nodes (inlaten)
 
 flow_control_nodes = [269, 886]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -819,7 +876,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
     add_supply_nodes=False,
 )
@@ -847,7 +903,7 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [217, 294, 668]
+drain_nodes = [217, 294, 668, 549]
 
 # handmatig opgegeven supply nodes (inlaten)
 supply_nodes = []
@@ -856,7 +912,7 @@ supply_nodes = []
 flow_control_nodes = [748]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -865,7 +921,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
     add_supply_nodes=False,
 )
@@ -899,14 +954,14 @@ drain_nodes = [288, 469, 479, 632]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [355, 510, 531]
+supply_nodes = []
 
 # handmatig opgegeven supply nodes (inlaten)
 
 flow_control_nodes = [218, 469]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -915,7 +970,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
     add_supply_nodes=False,
 )
@@ -980,7 +1034,7 @@ drain_nodes = [81, 919, 920, 366, 452, 615, 922, 194, 151, 182, 144, 509, 594, 6
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [203, 753, 850]
+supply_nodes = []
 
 # handmatig opgegeven supply nodes (inlaten)
 
@@ -1011,12 +1065,13 @@ flow_control_nodes = [
     1001,
     1014,
     1018,
+    1051,
     1058,
 ]
 
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -1025,7 +1080,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
     add_supply_nodes=False,
 )
@@ -1054,18 +1108,18 @@ flushing_nodes = {}
 # handmatig opgegeven drain nodes (uitlaten) definieren
 #
 
-drain_nodes = [370, 430, 459, 96, 221, 923, 924, 2017]
+drain_nodes = [272, 370, 409, 430, 459, 96, 221, 923, 924, 940, 941, 2017, 998, 937]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [734]
+supply_nodes = []
 
 # handmatig opgegeven supply nodes (inlaten)
 
-flow_control_nodes = [722, 723, 1067, 1070]
+flow_control_nodes = [370, 722, 1070]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -1074,7 +1128,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
     add_supply_nodes=False,
 )
@@ -1149,11 +1202,12 @@ drain_nodes = [
     341,
     398,
     872,
+    444,
 ]
 
 # handmatig opgegeven supply nodes (inlaten)
 
-supply_nodes = [80, 160, 308, 181, 985, 392, 215]
+supply_nodes = []
 
 # handmatig opgegeven supply nodes (inlaten)
 
@@ -1161,7 +1215,7 @@ flow_control_nodes = []
 
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -1170,7 +1224,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
     add_supply_nodes=False,
 )
@@ -1203,13 +1256,10 @@ add_controllers_to_supply_nodes(
 flow_control_nodes = [333, 701, 822, 917, 916]
 
 # handmatig opgegeven supply nodes (inlaten)
+supply_nodes = []
 #
 
-
-supply_nodes = [2020, 2022, 527, 1502, 3086]
-#
-
-drain_nodes = [120, 210, 267, 281, 292, 309, 360, 470, 613, 571, 577, 691, 747, 777, 748, 891, 971]
+drain_nodes = [120, 210, 267, 281, 292, 309, 360, 470, 613, 571, 577, 691, 747, 777, 748, 891, 971, 981]
 
 
 # Flushing nodes
@@ -1224,7 +1274,6 @@ add_controllers_to_uncontrolled_connector_nodes(
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
     exclude_nodes=list(EXCLUDE_NODES),
-    us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD,
 )
 
 
@@ -1261,11 +1310,12 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 247, "min_upstream_
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 960, "min_upstream_level"] = 18.97
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 980, "min_upstream_level"] = 11.85
 
+reverse_link_ids = [226, 1172]
 
-# Gemaal Veluwe
-model.update_node(node_id=100, node_type="Pump")  # wordt pump was outlet
-model.pump.static.df.loc[model.pump.static.df.node_id == 100, "flow_rate"] = 0
-model.pump.static.df.loc[model.pump.static.df.node_id == 100, "min_upstream_level"] = 10.78
+
+for link_id in reverse_link_ids:
+    model.reverse_link(link_id=link_id)
+
 
 # Inlaat Waranda pump
 model.update_node(node_id=3089, node_type="Pump")  # wordt pump was outlet
@@ -1281,6 +1331,11 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 124, "min_upstream_leve
 model.update_node(node_id=226, node_type="Pump")  # wordt pump, was outlet
 model.pump.static.df.loc[model.pump.static.df.node_id == 226, "flow_rate"] = 0
 model.pump.static.df.loc[model.pump.static.df.node_id == 226, "min_upstream_level"] = 14.3
+
+# Inlaten aan Drongelens kanaal krijgen pd.NA bij min_upstream_level
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 98, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[model.outlet.static.df.node_id == 103, "min_upstream_level"] = pd.NA
+
 
 # Alle inlaten met demand_nodes moeten min_upstream_level van streefpeil hebben zodat ze in afvoerstand staan (+0.04m)
 #
@@ -1319,14 +1374,13 @@ mask = model.level_boundary.static.df["node_id"].isin(boundary_ids)
 model.level_boundary.static.df.loc[mask, "level"] = model.level_boundary.static.df.loc[mask, "level"] + 0.04
 
 # %% Junctionfy(!)
-model = junctionify(model)
+junctionify(model)
 
 # Model run
 
 ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_wet", f"{SHORT_NAME}.toml")
 ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_dry", f"{SHORT_NAME}.toml")
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
-model.solver.level_difference_threshold = LEVEL_DIFFERENCE_THRESHOLD
 
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 
@@ -1334,7 +1388,6 @@ model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time
 # %%
 
 # hoofd run met verdamping
-model.starttime
 update_basin_static(model=model, evaporation_mm_per_day=0.1)
 model.starttime = datetime(2020, 5, 1)
 model.endtime = datetime(2020, 9, 1)
@@ -1342,9 +1395,8 @@ model.write(ribasim_toml_dry)
 
 # run hoofdmodel
 if MODEL_EXEC:
-    result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml_dry, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml_dry, qlr_path=qlr_path).run_all()
     model = Model.read(ribasim_toml_dry)
 
 # prerun om het model te initialiseren met neerslag
@@ -1355,9 +1407,8 @@ model.write(ribasim_toml_wet)
 
 # run prerun model
 if MODEL_EXEC:
-    prerun_result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml_wet, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml_wet, qlr_path=qlr_path).run_all()
     model = Model.read(ribasim_toml_wet)
 
 # hoofd run
@@ -1365,8 +1416,7 @@ update_basin_static(model=model, precipitation_mm_per_day=1.5)
 model.write(ribasim_toml)
 # run hoofdmodel
 if MODEL_EXEC:
-    result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path).run_all()
 
 # %%

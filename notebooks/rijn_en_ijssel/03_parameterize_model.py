@@ -21,8 +21,9 @@ ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model"
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
 # # you need the excel, but the model should be local-only by running 01_fix_model.py
-cloud.synchronize(filepaths=[static_data_xlsx])
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
+cloud.synchronize(filepaths=[static_data_xlsx, qlr_path])
+
 
 # %%
 
@@ -31,10 +32,17 @@ model = Model.read(ribasim_toml)
 
 start_time = time.time()
 # %%
+# %% wat basin-peilen zetten n.a.v. full control-checks
+model.basin.area.df.loc[model.basin.area.df.node_id == 1068, "meta_streefpeil"] = 8.55
+model.basin.area.df.loc[model.basin.area.df.node_id == 777, "meta_streefpeil"] = 26.406666666666666
+model.basin.area.df.loc[model.basin.area.df.node_id == 1085, "meta_streefpeil"] = 5.5
+model.basin.area.df.loc[model.basin.area.df.node_id == 793, "meta_streefpeil"] = 10.7
+model.basin.area.df.loc[model.basin.area.df.node_id == 857, "meta_streefpeil"] = 11.60
+
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5, profiles_gpkg=profiles_gpkg)
 print("Elapsed Time:", time.time() - start_time, "seconds")
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.001
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 # %% fixes
 
@@ -48,6 +56,7 @@ node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"]
 mask = model.outlet.static.df["node_id"].isin(node_ids)
 model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
 model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
+
 # %%
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
@@ -55,8 +64,6 @@ add_check_basin_level(model=model)
 model.write(ribasim_toml)
 
 # %%
-
-
 # run model
 if run_model:
     result = model.run()

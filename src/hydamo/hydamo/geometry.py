@@ -96,7 +96,7 @@ def find_nearest_branch(branches, geometries, method="overall", maxdist=5) -> No
                 crds = geometry.geometry.coords[:]
                 dist = (
                     selection["geometry"]
-                    .apply(lambda x: max(x.distance(Point(*crds[0])), x.distance(Point(*crds[-1]))))
+                    .apply(lambda x: max(x.distance(Point(*crds[0])), x.distance(Point(*crds[-1]))))  # noqa: B023
                     .astype(float)
                 )
             else:
@@ -106,10 +106,7 @@ def find_nearest_branch(branches, geometries, method="overall", maxdist=5) -> No
             if dist.min() < maxdist:
                 branchidxmin = dist.idxmin()
                 geometries.loc[geometry.Index, "branch_id"] = dist.idxmin()
-                if isinstance(geometry.geometry, Point):
-                    geo = geometry.geometry
-                else:
-                    geo = geometry.geometry.centroid
+                geo = geometry.geometry if isinstance(geometry.geometry, Point) else geometry.geometry.centroid
 
                 # Calculate offset
                 branchgeo = branches.loc[branchidxmin, "geometry"]

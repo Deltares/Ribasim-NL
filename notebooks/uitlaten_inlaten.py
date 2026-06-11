@@ -38,8 +38,8 @@ kunstwerken_gpkg = kunstwerken_xlsx.parent / f"{kunstwerken_xlsx.stem}.gpkg"
 
 
 def upload_file(url, path):
-    with open(path, "rb") as f:
-        r = requests.put(url, data=f, auth=(RIBASIM_NL_CLOUD_USER, RIBASIM_NL_CLOUD_PASS))
+    with Path(path).open("rb") as f:
+        r = requests.put(url, data=f, auth=(RIBASIM_NL_CLOUD_USER, RIBASIM_NL_CLOUD_PASS), timeout=300)
     r.raise_for_status()
 
 
@@ -59,7 +59,7 @@ data = {}
 
 for kwk_row in kunstwerken_df[~files_mask].itertuples():
     layer = kwk_row.hydamo_object
-    if layer not in data.keys():
+    if layer not in data:
         data[layer] = []
     name = kwk_row.dm_naam
     geometry = Point(kwk_row.x, kwk_row.y)
@@ -80,7 +80,7 @@ for kwk_row in kunstwerken_df[~files_mask].itertuples():
 
 # create data-dict for every layer
 for layer in kunstwerken_df["hydamo_object"].unique():
-    if layer not in data.keys():
+    if layer not in data:
         data[layer] = []
 
 # group by file and check if exists
@@ -155,7 +155,7 @@ for file, file_df in kunstwerken_df[files_mask].groupby("damo_bestand"):
 
 
 hydamo = HyDAMO("2.2.1")
-for layer in data.keys():
+for layer in data:
     if layer != "duikersifonhevel":
         gdf = gpd.GeoDataFrame(data[layer], crs=CRS)
         getattr(hydamo, layer).set_data(gdf, check_columns=False)

@@ -37,6 +37,7 @@ def populate_function_column(model: Model, node_type: Literal["Pump", "Outlet"],
 
         # add function to node via categorie
         defaults_df = pd.read_excel(static_data_xlsx, sheet_name="defaults", index_col=0)
+        static_data["meta_function"] = pd.NA
         for row in defaults_df.itertuples():
             category = row.Index
             function = row.function

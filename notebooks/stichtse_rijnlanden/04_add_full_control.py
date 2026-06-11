@@ -11,7 +11,6 @@ from ribasim_nl import CloudStorage, Model
 # %%
 # Globale settings
 
-LEVEL_DIFFERENCE_THRESHOLD = 0.02  # sync model.solver.level_difference_threshold and control-settings
 MODEL_EXEC: bool = True  # execute model run
 AUTHORITY: str = "StichtseRijnlanden"  # authority
 SHORT_NAME: str = "hdsr"  # short_name used in toml-file
@@ -161,7 +160,7 @@ supply_nodes = [554, 589, 624, 648, 649]
 flow_control_nodes = [1107]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -170,13 +169,12 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
 # %%
 # Toevoegen ARK/Lek
-polygon = aanvoergebieden_df.at["ARK/Lek", "geometry"]
+polygon = aanvoergebieden_df.at["EVS", "geometry"]
 # kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
 polygon = polygon.buffer(0).buffer(0)
 
@@ -212,7 +210,7 @@ supply_nodes = [627, 651, 840, 855, 976]
 flow_control_nodes = [977]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -221,7 +219,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -265,7 +262,7 @@ supply_nodes = [424, 630, 1007, 1156]
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -274,7 +271,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -320,7 +316,7 @@ supply_nodes = [553, 593, 797, 890, 911, 1082]
 flow_control_nodes = [207, 527]
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -329,7 +325,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -337,7 +332,7 @@ node_functions_df = add_controllers_to_supply_area(
 # %%
 # Toevoegen Hollandsche IJssel
 
-polygon = aanvoergebieden_df.at["Hollandsche IJssel", "geometry"]
+polygon = aanvoergebieden_df.at["Gek. Hollandsche IJssel", "geometry"]
 # kleine buffer om scheurtjes te dichten; kies schaal passend bij je CRS!
 polygon = polygon.buffer(0).buffer(0)
 
@@ -368,7 +363,7 @@ supply_nodes = [564, 754, 830, 1022]
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -377,7 +372,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -416,7 +410,7 @@ supply_nodes = [581, 650, 924]
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -425,7 +419,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -464,7 +457,7 @@ supply_nodes = [626, 654, 655]
 flow_control_nodes = []
 
 # toevoegen sturing
-node_functions_df = add_controllers_to_supply_area(
+add_controllers_to_supply_area(
     model=model,
     polygon=polygon,
     exclude_nodes=EXCLUDE_NODES,
@@ -473,7 +466,6 @@ node_functions_df = add_controllers_to_supply_area(
     flushing_nodes=flushing_nodes,
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
-    level_difference_threshold=LEVEL_DIFFERENCE_THRESHOLD,
     control_node_types=CONTROL_NODE_TYPES,
 )
 
@@ -576,6 +568,7 @@ supply_nodes = [
     536,
     542,
     543,
+    601,
     637,
     638,
     639,
@@ -601,7 +594,7 @@ drain_nodes = [173, 168, 139, 185, 198, 230, 411, 467, 545, 887]
 
 # Flushing nodes
 # 919: Werkhoven
-flushing_nodes = {919: 5}
+flushing_nodes = {919: 5, 186: 1.25, 757: 3.0}
 
 # %% Toevoegen waar nog geen sturing is toegevoegd
 
@@ -612,7 +605,6 @@ add_controllers_to_uncontrolled_connector_nodes(
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
     exclude_nodes=list(EXCLUDE_NODES),
-    us_threshold_offset=LEVEL_DIFFERENCE_THRESHOLD,
 )
 
 # %% Noordergemaal, node=536 slaat pas aan wanneer Wijk van Duurstede net genoeg kan leveren
@@ -629,14 +621,13 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 470, "max_downstrea
 model.pump.static.df.loc[model.pump.static.df.node_id == 601, "max_downstream_level"] -= 0.01
 
 # %% Junctionfy(!)
-model = junctionify(model)
+junctionify(model)
 
 # Model run
 
 ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_wet", f"{SHORT_NAME}.toml")
 ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_dry", f"{SHORT_NAME}.toml")
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
-model.solver.level_difference_threshold = LEVEL_DIFFERENCE_THRESHOLD
 
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 
@@ -649,9 +640,8 @@ model.write(ribasim_toml_dry)
 
 # run hoofdmodel
 if MODEL_EXEC:
-    result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml_dry, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml_dry, qlr_path=qlr_path).run_all()
     model = Model.read(ribasim_toml_dry)
 
 # prerun om het model te initialiseren met neerslag
@@ -660,9 +650,8 @@ model.write(ribasim_toml_wet)
 
 # run prerun model
 if MODEL_EXEC:
-    prerun_result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml_wet, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml_wet, qlr_path=qlr_path).run_all()
     model = Model.read(ribasim_toml_wet)
 
 # hoofd run
@@ -670,8 +659,7 @@ update_basin_static(model=model, precipitation_mm_per_day=1.5)
 model.write(ribasim_toml)
 # run hoofdmodel
 if MODEL_EXEC:
-    result = model.run()
-    controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_all()
+    model.run()
+    Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path).run_all()
 
 # %%

@@ -19,7 +19,10 @@ def get_network_node(network, point, max_distance: float = 5):
 
 
 def accept_length(geometry, point1, point2, max_straight_line_ratio: float = 5):
-    return geometry.length / point1.distance(point2) < 5
+    if geometry.length == 0:
+        return False
+    else:
+        return geometry.length / point1.distance(point2) < max_straight_line_ratio
 
 
 def get_link_geometry(network, source, target, forbidden_nodes):
@@ -39,7 +42,7 @@ def get_link_geometry(network, source, target, forbidden_nodes):
 
 
 def fix_link_geometries(
-    model: Model, network: Network, max_straight_line_ratio: float = 5, node_ids: list[int] | None = None
+    model: Model, network: Network, max_straight_line_ratio: float = 2, node_ids: list[int] | None = None
 ) -> None:
     """Fix model.link.geometry column by finding routes over network
 
@@ -48,7 +51,7 @@ def fix_link_geometries(
         network (Network): Ribasim_nl Network with hydroobject line geometries
         max_straight_line_ratio (float, optional): threshold to check line.
          If the new line is `max_straight_line_ratio` times longer than straight line distance we don't accept the geometry.
-         Defaults to 5.
+         Defaults to 2.
     """
     assert model.node.df is not None
     assert model.link.df is not None

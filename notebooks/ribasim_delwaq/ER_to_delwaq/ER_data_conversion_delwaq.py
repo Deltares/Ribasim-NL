@@ -23,7 +23,6 @@ bekend en wordt er tussen deze jaren geinterpoleerd.
 
 # -------------------------------Packages---------------------------------------
 
-import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -80,9 +79,9 @@ frac_bergend = 1 - frac_doorgaand  # deel ER op bergende basin node
 
 def makedir(path):
     """Make directory if not existing."""
-    if not os.path.exists(path):
+    if not Path(path).exists():
         print("path doesn't exist. trying to make")
-        os.makedirs(path)
+        Path(path).mkdir(parents=True)
 
 
 def write_dataframe(filename, df):
@@ -751,7 +750,9 @@ def write_inc_file(df, output_path):
     # Order of variables to print
     vars_order = ["NO3", "NH4", "OON", "PO4", "AAP", "OOP"]
 
-    with open(output_path / "B6_loads.inc", "w") as f:
+    output_file = output_path / "B6_loads.inc"
+
+    with output_file.open("w") as f:
         # Group by NodeId
         for node_id, group in df.groupby("NodeId"):
             f.write(f"ITEM '{node_id}'\n")
@@ -759,8 +760,7 @@ def write_inc_file(df, output_path):
             f.write("CONCENTRATIONS\n")
 
             # Variable declarations
-            for v in vars_order:
-                f.write(f" '{v}'\n")
+            f.writelines(f" '{v}'\n" for v in vars_order)
 
             # Header line with all variables
             f.write("BLOCK DATA\t\t\t")
@@ -776,7 +776,7 @@ def write_inc_file(df, output_path):
 
             f.write("\n")
 
-        print(f"B6_loads.inc written to {output_path / 'B6_loads.inc'}")
+        print(f"B6_loads.inc written to {output_file}")
 
 
 ER_df_wide.to_parquet(output_path / "ER.pq", index=False)

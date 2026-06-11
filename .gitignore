@@ -32,6 +32,7 @@ src/peilbeheerst_model/.vscode
 /src/peilbeheerst_model/Parametrize/ribasim
 /src/peilbeheerst_model/Parametrize/fix_FF_HHSK.ipynb
 /src/peilbeheerst_model/01_test_parse_crossings.ipynb
+docs/objects.json
 
 notebooks/rijkswaterstaat/plots/
 /src/peilbeheerst_model/peilbeheerst_model/Oud
@@ -51,16 +52,23 @@ bin/
 # Data
 *.arrow
 *.gpkg
+*.gpkg-shm
+*.gpkg-wal
 *.toml
+!pixi.toml
+!pyproject.toml
+*.qgz
 *.dbf
 *.xlsx
 *.shp*
 *.prj
 *.sbn
+*.accdb
 *.sbx
 *.shx
 *.cpg
 *.log
+*.geojson
 *.qlr
 *.png
 *.bat
@@ -76,13 +84,18 @@ bin/
 *.log
 *.lyr
 *.msg
+*.out
 *.cst
 *.zip
 *.txt
 *.gdb/
 *.pdf
 *.nc
+*.ps1
 results/
+runs/
+repro_jobs.txt
+delwaq/
 
 # Main scripts to run workflows per water authority
 notebooks/*/main.py

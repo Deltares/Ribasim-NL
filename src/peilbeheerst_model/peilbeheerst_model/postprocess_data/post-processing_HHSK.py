@@ -56,7 +56,7 @@ print(len(HHSK["duikersifonhevel"].globalid.unique()))
 print(len(HHSK["duikersifonhevel"].globalid))
 
 
-HHSK["peilgebied"].globalid.is_unique
+assert HHSK["peilgebied"].globalid.is_unique
 
 
 len(HHSK["hydroobject"])
@@ -228,6 +228,6 @@ if remove_cat_2:
 # ### Store post-processed data
 
 
-for key in HHSK.keys():
+for key in HHSK:
     print(key)
     HHSK[str(key)].to_file(f"{output_folder}/{waterschap}.gpkg", layer=str(key), driver="GPKG")
