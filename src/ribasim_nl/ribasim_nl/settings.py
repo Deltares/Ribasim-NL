@@ -28,7 +28,7 @@ class Settings(BaseSettings):
             file_secret_settings,
         )
 
-    model_config = SettingsConfigDict(env_file=(".env"))
+    model_config = SettingsConfigDict(env_file=(".env"), extra="ignore")
 
 
 settings = Settings()
