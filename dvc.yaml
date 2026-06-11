@@ -60,6 +60,8 @@ stages:
         - notebooks/${key}/04_add_full_control.py
         - notebooks/05_add_bergend.py
         - data/${item}/modellen/${item}_parameterized_model
+        - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
+        - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
       outs:
         - data/${item}/modellen/${item}_bergend_model
   dynamic:
