@@ -37,6 +37,7 @@ stages:
         - notebooks/${key}/01_fix_model.py
         - notebooks/${key}/02_prepare_model.py
         - notebooks/${key}/03_parameterize_model.py
+        - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       outs:
         - data/${item}/modellen/${item}_parameterized_model
   bergend:
