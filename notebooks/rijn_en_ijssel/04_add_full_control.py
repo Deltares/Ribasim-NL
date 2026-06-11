@@ -59,6 +59,7 @@ outlet_max_flow_rate_from_results = {
     587: 54,  # Voorst
     591: 20,  # ST96230089
     1194: 27,  # ST96210074
+    436: 0,  # Bredevoort richting Keizersbeek (doet niets in normale situaties)
 }
 outlet_max_flow_rate_coupled_by_node_id = {
     390: 2,  # gekoppeld max=0.96, huidige max=0.00, link=700040
@@ -71,7 +72,7 @@ pump_max_flow_rate_by_node_id = {
 }
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
-EXCLUDE_NODES = {}
+EXCLUDE_NODES = {436}
 
 # %%
 # Definieren paden en syncen met cloud
@@ -247,6 +248,11 @@ model.outlet.static.df.loc[mask, "max_flow_rate"] = 3.1
 # Controller 1330: ook bij truth_state FF naar aanvoer.
 mask = (model.discrete_control.logic.df.node_id == 1330) & (model.discrete_control.logic.df.truth_state == "FF")
 model.discrete_control.logic.df.loc[mask, "control_state"] = "aanvoer"
+
+
+# Verdeelwerk Hackfort limiteren tot 0.2 m3/s in aanvoerstand.
+mask = (model.outlet.static.df.node_id == 349) & (model.outlet.static.df.control_state == "aanvoer")
+model.outlet.static.df.loc[mask, "max_flow_rate"] = 0.2
 
 # Noodoverloop Twentekanaal pas bij onvoldoende door sifon (node_id 306)
 mask = model.outlet.static.df.node_id == 59
