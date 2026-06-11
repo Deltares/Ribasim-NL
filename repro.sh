@@ -57,7 +57,7 @@ for key in \
   wetterskip_fryslan \
   zuiderzeeland
 do
-  JID=$(submit "${key}" "${DEP}" ${TIME} "$(repro peilbeheerst@${key})")
+  JID=$(submit "${key}" "${DEP}" ${TIME} "$(repro feedback@${key} profiles@${key} forcing@${key})")
   JOBIDS="${JOBIDS}:${JID}"
 done
 
