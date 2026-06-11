@@ -125,6 +125,7 @@ stages:
         - src/peilbeheerst_model/profiles/prep_cross_sections.py
         - src/peilbeheerst_model/profiles/${item}.py
         - data/${item}/modellen/${item}_feedback
+        - data/Basisgegevens/profielen
       outs:
         - data/${item}/modellen/${item}_profiles
   forcing:
