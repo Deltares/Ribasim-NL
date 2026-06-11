@@ -14,17 +14,9 @@ from ribasim_nl import CloudStorage, Model
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = True
-ADD_LHM_FRACTIONS: bool = True
-ADD_RWZI: bool = True
-ADD_JUNCTIONS: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
-
-MIXED_CONDITIONS_DESIGN_P = 11
-MIXED_CONDITIONS_DESIGN_E = 2.6  # 0.3 L/s/ha
 
 # model settings
 waterschap = "WetterskipFryslan"
