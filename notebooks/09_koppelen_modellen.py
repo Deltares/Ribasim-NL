@@ -33,10 +33,7 @@ COUPLING_LEVEL_TOLERANCE = 1e-6
 # Configuration
 data_dir = settings.ribasim_nl_data_dir
 couple_lhm: bool = False
-sub_models: list[str] | bool = [
-    "AAM-Limburg-RWS",
-    # "DeDommel-RWS"
-]
+sub_models: list[str] = []
 
 remove_nodes = [
     3401752,  # Dokwerd NZV
