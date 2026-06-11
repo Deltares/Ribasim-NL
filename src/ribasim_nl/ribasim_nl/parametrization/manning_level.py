@@ -383,7 +383,7 @@ def _write_basin_updates_gpkg(
 
     node_geometry_df = _node_geometry_df(model=model)
     geometry_column = getattr(getattr(node_geometry_df, "geometry", None), "name", "geometry")
-    crs = getattr(model.node.df, "crs", None)
+    crs = model.crs
 
     basin_updates_df["basin_node_id"] = basin_updates_df["basin_node_id"].astype(int)
     basin_updates_gdf = basin_updates_df.merge(
