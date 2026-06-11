@@ -12,7 +12,7 @@ data_dir = settings.ribasim_nl_data_dir
 
 # Write intermediate models for debugging or scaling tests
 write_intermediate_models: bool = False
-build_lhm: bool = True
+build_lhm: bool = False
 
 # Remove any model from this list to skip it
 INCLUDE_MODELS: list[str] = [
@@ -41,9 +41,30 @@ INCLUDE_MODELS: list[str] = [
 ]
 
 sub_models: dict[str, list[str]] = {
-    # "DOD-Vechtstromen": ["DrentsOverijsselseDelta", "Vechtstromen"],
-    # "GR-DR-OV_Delta": ["Noorderzijlvest", "HunzeenAas", "DrentsOverijsselseDelta"],
-    # "RDO-Noord": ["Noorderzijlvest", "HunzeenAas", "WetterskipFryslan", "DrentsOverijsselseDelta"],
+    # "VrijAfwaterend_DOD_Vechtstromen": [
+    # "Rijkswaterstaat",
+    # "AaenMaas",
+    #  "BrabantseDelta",
+    #  "DeDommel",
+    # "DrentsOverijsselseDelta",
+    #  "HunzeenAas",
+    #  "Limburg",
+    #  "Noorderzijlvest",
+    #  "RijnenIJssel",
+    # "StichtseRijnlanden",
+    # "ValleienVeluwe",
+    # "Vechtstromen",
+    # ]
+    # "DOD-Vechtstromen": ["Rijkswaterstaat", "DrentsOverijsselseDelta", "Vechtstromen"],
+    # "AAM-Limburg-RWS": ["Rijkswaterstaat", "AaenMaas", "Limburg"],
+    # "AAM-Limburg-RWS": ["Rijkswaterstaat", "AaenMaas", "Limburg"],
+    # "Limburg-RWS": ["Rijkswaterstaat", "Limburg"],
+    # "AAM-RWS": ["Rijkswaterstaat", "AaenMaas"],
+    "DeDommel-RWS": ["DeDommel", "Rijkswaterstaat"]
+    # "Dommel-AAM-Limburg-RWS": ["Rijkswaterstaat", "DeDommel", "AaenMaas", "Limburg"],
+    #   "NZV_HenA": ["Noorderzijlvest", "HunzeenAas","Rijkswaterstaat"],
+    #   "GR-DR-OV_Delta": ["Noorderzijlvest", "HunzeenAas", "DrentsOverijsselseDelta","Rijkswaterstaat"],
+    #   "RDO-Noord": ["Noorderzijlvest", "HunzeenAas", "WetterskipFryslan", "DrentsOverijsselseDelta"],
 }
 
 

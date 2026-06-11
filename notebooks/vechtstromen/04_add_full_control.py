@@ -8,6 +8,7 @@ from ribasim.nodes import level_boundary
 from ribasim_nl.control import (
     add_controllers_to_supply_area,
     add_controllers_to_uncontrolled_connector_nodes,
+    mark_level_update_protected,
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
@@ -15,14 +16,13 @@ from ribasim_nl.parametrization.basin_tables import update_basin_static
 from ribasim_nl import CloudStorage, Model
 
 # execute model run
-MODEL_EXEC: bool = True
+MODEL_EXEC: bool = False
 
 # model settings
 AUTHORITY: str = "Vechtstromen"
 SHORT_NAME: str = "vechtstromen"
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
-
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 EXCLUDE_NODES = {38, 40, 996}
@@ -55,6 +55,10 @@ def add_supply_area_control(
         flushing_nodes={},
         control_node_types=CONTROL_NODE_TYPES,
         add_supply_nodes=True,
+        flow_rate_aanvoer=20.0,
+        max_flow_rate_aanvoer=max_flow_rate_aanvoer_by_node_id,
+        flow_rate_afvoer=100.0,
+        max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
     )
 
 
@@ -84,14 +88,6 @@ def run_model_and_control(model: Model, ribasim_toml, qlr_path):
         return Model.read(ribasim_toml)
 
     return model
-
-
-def set_default_flow_rate(static_df, flow_rate: float = 100.0) -> None:
-    if static_df is None:
-        return
-
-    static_df["max_flow_rate"] = flow_rate
-    static_df["flow_rate"] = flow_rate
 
 
 def set_max_flow_rate(static_df, max_flow_rate_by_node_id: dict[int, float]) -> None:
@@ -150,6 +146,7 @@ def lower_outlet_max_downstream_level(model: Model, node_id: int, offset: float 
             mask = aanvoer_mask
 
     model.outlet.static.df.loc[mask, "max_downstream_level"] = float(downstream_target_level.iloc[0]) - offset
+    mark_level_update_protected(model.outlet.static.df, mask, model=model)
 
 
 def duplicate_level_boundary_for_link(model: Model, source_node_id: int, link_id: int) -> int | None:
@@ -218,18 +215,17 @@ aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).diss
 # Splits de bestaande boundary bij node 15 zodat link 2822 een eigen boundary node krijgt.
 duplicate_level_boundary_for_link(model=model, source_node_id=15, link_id=2822)
 
-reverse_existing_links(model, [2682, 2823, 2822, 1337])
+reverse_existing_links(model, [2682, 2823, 2822, 1337, 27, 1891])
 
 # Gemaal Orveltersluis was opggedeeld
 model.remove_node(node_id=665, remove_links=True)
+model.remove_node(node_id=969, remove_links=True)
+
+model.redirect_link(link_id=53, to_node_id=1878)
+
 
 # %%
 # Topologie fixes
-
-
-# Alle uitlaten en inlaten op 100 m3/s, geen cap verdeling. Dit wordt de max flow in model.
-for static_df in [model.outlet.static.df, model.pump.static.df]:
-    set_default_flow_rate(static_df)
 
 
 # %%
@@ -267,6 +263,172 @@ outlet_max_flow_rate_by_node_id = {
     394: 8.98,  # aflaat punt 21 - Poelsbeek (doorlaat)
     2334: 7.84,  # aflaat punt 31 - Grote Waterleiding (doorlaat)
 }
+outlet_max_flow_rate_parameterized_zero_by_node_id = {
+    1269: 100.0,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
+    2324: 100.0,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
+}
+outlet_max_flow_rate_from_results = {
+    26: 2,  # naam onbekend
+    41: 2,  # SL00010
+    75: 2,  # Inlaat Kleine Rietplas
+    90: 11,  # Stuw Rompelman Linderbeek
+    128: 2,  # Inlaat Nijboer
+    207: 2,  # Inlaatschuif Witten Noord
+    211: 11,  # Overlaat Assenhoek
+    236: 2,  # Inlaatschuif Omvloed
+    237: 2,  # Drempel bypass Vispassage Melodiestraat
+    254: 5,  # Overlaat Groot Boerman
+    271: 6,  # Stuw RW 34
+    310: 11,  # Stuw Linderdijk
+    422: 2,  # Overlaat Esbeek-Vinkebeek
+    425: 2,  # Stuw Melodiestraat
+    435: 2,  # Stuw Zuivering Enschede West
+    450: 11,  # Stuw Het Bergje
+    472: 2,  # Overlaat Broeierdweg
+    476: 12,  # Stuw Pelmolen
+    478: 8,  # Stuw Dalerveense straat
+    500: 6,  # Stuw Galgaten
+    506: 2,  # Inlaatschuif Havenstraat
+    507: 30,  # Stuw Bremmer 1 bij Russendijk
+    519: 5,  # Overlaat Energiefabriek Hengelo
+    548: 3,  # Stuw Heemafstraat
+    676: 2,  # DK31294
+    686: 2,  # naam onbekend
+    700: 2,  # naam onbekend
+    707: 15,  # naam onbekend
+    717: 2,  # naam onbekend
+    718: 2,  # naam onbekend
+    721: 2,  # naam onbekend
+    722: 2,  # naam onbekend
+    724: 2,  # naam onbekend
+    731: 2,  # naam onbekend
+    739: 2,  # naam onbekend
+    740: 2,  # naam onbekend
+    745: 2,  # naam onbekend
+    746: 2,  # naam onbekend
+    747: 3,  # naam onbekend
+    754: 2,  # naam onbekend
+    758: 2,  # naam onbekend
+    759: 2,  # naam onbekend
+    763: 2,  # naam onbekend
+    768: 3,  # naam onbekend
+    770: 2,  # naam onbekend
+    774: 2,  # naam onbekend
+    775: 3,  # naam onbekend
+    779: 2,  # naam onbekend
+    782: 2,  # naam onbekend
+    788: 2,  # naam onbekend
+    798: 2,  # naam onbekend
+    800: 2,  # naam onbekend
+    803: 2,  # naam onbekend
+    806: 2,  # naam onbekend
+    808: 2,  # naam onbekend
+    810: 2,  # naam onbekend
+    811: 2,  # naam onbekend
+    814: 2,  # naam onbekend
+    815: 2,  # naam onbekend
+    819: 2,  # naam onbekend
+    824: 2,  # naam onbekend
+    825: 2,  # naam onbekend
+    826: 2,  # naam onbekend
+    827: 2,  # naam onbekend
+    832: 2,  # naam onbekend
+    843: 2,  # naam onbekend
+    848: 2,  # naam onbekend
+    851: 2,  # naam onbekend
+    861: 2,  # naam onbekend
+    865: 2,  # naam onbekend
+    874: 2,  # naam onbekend
+    878: 2,  # naam onbekend
+    882: 2,  # naam onbekend
+    894: 2,  # naam onbekend
+    895: 2,  # naam onbekend
+    900: 2,  # naam onbekend
+    905: 2,  # naam onbekend
+    910: 2,  # naam onbekend
+    912: 2,  # naam onbekend
+    917: 2,  # naam onbekend
+    919: 2,  # naam onbekend
+    922: 2,  # naam onbekend
+    924: 2,  # naam onbekend
+    935: 2,  # naam onbekend
+    936: 2,  # naam onbekend
+    937: 3,  # naam onbekend
+    938: 2,  # naam onbekend
+    941: 2,  # naam onbekend
+    953: 5,  # naam onbekend
+    963: 11,  # naam onbekend
+    965: 2,  # naam onbekend
+    974: 2,  # naam onbekend
+    987: 29,  # naam onbekend
+    992: 2,  # naam onbekend
+    1004: 2,  # naam onbekend
+    1008: 3,  # naam onbekend
+    1019: 2,  # naam onbekend
+    1020: 3,  # naam onbekend
+    1029: 5,  # naam onbekend
+    1034: 5,  # naam onbekend
+    1040: 3,  # DK21233
+    1053: 2,  # naam onbekend
+    1066: 6,  # naam onbekend
+    1082: 2,  # naam onbekend
+    1137: 27,  # naam onbekend
+    1140: 3,  # naam onbekend
+    1153: 5,  # naam onbekend
+    1156: 2,  # naam onbekend
+    1167: 2,  # naam onbekend
+    1168: 2,  # naam onbekend
+    1169: 2,  # naam onbekend
+    1177: 2,  # naam onbekend
+    1237: 2,  # naam onbekend
+    1238: 2,  # naam onbekend
+    1304: 2,  # naam onbekend
+    1329: 2,  # naam onbekend
+    1336: 2,  # naam onbekend
+    1337: 2,  # naam onbekend
+    1340: 3,  # naam onbekend
+    1353: 81,  # naam onbekend
+    1368: 2,  # naam onbekend
+    1369: 2,  # naam onbekend
+    2342: 3,  # Uitlaat Westerhaar
+}
+outlet_max_flow_rate_coupled_by_node_id = {
+    98: 6,  # Debietbegrenzer Duitslandweg; gekoppeld max=3.36, parameterized=0.91
+    211: 32,  # Overlaat Assenhoek; gekoppeld max=20.82, parameterized=3.27
+    279: 30,  # gekoppeld max=19.71, huidige max=0.00, link=4400599
+    323: 30,  # gekoppeld max=19.79, huidige max=4.05, link=4400650
+    310: 20,  # Stuw Linderdijk; gekoppeld max=12.70, parameterized=3.58
+    477: 12,  # gekoppeld max=7.28, huidige max=0.00, link=4400871
+    478: 11,  # Stuw Dalerveense straat; gekoppeld max=6.21, parameterized=2.01
+    500: 9,  # Stuw Galgaten; gekoppeld max=5.90, parameterized=1.51
+    554: 3,  # Inlaat Daarleschebeek; gekoppeld max=1.50, parameterized=0.40
+    734: 6,  # gekoppeld max=3.78, huidige max=0.00, link=4401061
+    839: 2,  # parameterized nul; gekoppeld max=0.15
+    963: 32,  # gekoppeld max=20.82, parameterized=0.06
+    992: 5,  # gekoppeld max=2.12, parameterized=0.35
+    1006: 12,  # gekoppeld max=7.11, huidige max=0.00, link=4400826
+    1018: 11,  # gekoppeld max=6.98, huidige max=0.00, link=4401176
+    1008: 147,  # gekoppeld max=97.96, parameterized=0.23
+    1080: 30,  # gekoppeld max=20.00, huidige max=0.00, link=8000941
+    1084: 3,  # gekoppeld max=1.81, parameterized=0.40
+    2318: 2,  # gekoppeld max=0.58, huidige max=0.00, link=8000976
+}
+outlet_max_flow_rate_afvoer_by_node_id = {}
+for max_flow_rates in (
+    outlet_max_flow_rate_from_results,
+    outlet_max_flow_rate_coupled_by_node_id,
+    outlet_max_flow_rate_parameterized_zero_by_node_id,
+):
+    for node_id, max_flow_rate in max_flow_rates.items():
+        outlet_max_flow_rate_afvoer_by_node_id[node_id] = max(
+            outlet_max_flow_rate_afvoer_by_node_id.get(node_id, 0.0),
+            max_flow_rate,
+        )
+outlet_max_flow_rate_afvoer_by_node_id.update(outlet_max_flow_rate_by_node_id)
+outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.node_id.astype(int), 10.0)
+
+# Handmatige inlaatcapaciteiten gelden ook in aanvoer; niet terugvallen op de default van 10 m3/s.
+outlet_max_flow_rate_aanvoer_by_node_id.update(outlet_max_flow_rate_by_node_id)
 
 pump_max_flow_rate_by_node_id = {
     629: 0.42,  # punt 53 - Stokkumerflier
@@ -285,10 +447,25 @@ pump_max_flow_rate_by_node_id = {
     664: 1.2,  # Orveltersluis
     606: 1.2,  # Oranjesluis
 }
+pump_max_flow_rate_from_results = {
+    564: 20,  # gekoppeld max=19.80, huidige max=0.00, link=4400277
+}
+max_flow_rate_aanvoer_by_node_id = {
+    **outlet_max_flow_rate_aanvoer_by_node_id,
+    **pump_max_flow_rate_by_node_id,
+}
 
 
 set_max_flow_rate(model.outlet.static.df, outlet_max_flow_rate_by_node_id)
 set_max_flow_rate(model.pump.static.df, pump_max_flow_rate_by_node_id)
+mask = (
+    model.pump.static.df.node_id.isin(pump_max_flow_rate_from_results)
+    & model.pump.static.df.flow_rate.notna()
+    & (model.pump.static.df.flow_rate > 0)
+)
+model.pump.static.df.loc[mask, "max_flow_rate"] = model.pump.static.df.loc[mask, "node_id"].map(
+    pump_max_flow_rate_from_results
+)
 
 # %%Duikers voor nu op 1m3/s
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_object_type"] == "duikersifonhevel"].index
@@ -394,6 +571,8 @@ def get_lhm_gemaal_supply_nodes(
 
 model.update_node(node_id=1367, node_type="Outlet")
 model.update_node(node_id=1316, node_type="Outlet")
+model.update_node(node_id=1295, node_type="Outlet")
+
 
 # %%
 #
@@ -403,24 +582,24 @@ model.update_node(node_id=1316, node_type="Outlet")
 # fmt: off
 flow_control_nodes = node_list(
     [42, 81, 89, 135, 156, 159, 198, 201, 231],
-    [271, 282, 312, 317, 331, 337, 349, 359, 361, 364],
+    [260, 271, 282, 286, 312, 317, 331, 337, 349, 359, 361, 364],
     [365, 373, 405, 428, 446, 464, 478, 500],
     [509, 513, 518, 522, 539, 632, 635, 672, 672],
-    [700, 765, 820, 840, 853, 908, 963, 971, 998],
+    [700, 765, 840, 853, 908, 963, 971, 998],
     [1004, 1041, 1074, 1083, 1088,1289,1290, 1314, 1316, 2334],
 )
 
 supply_nodes = node_list(
-    [26, 44, 53, 75, 102, 155, 193, 199, 200, 250],
-    [253, 260, 286, 297, 325, 362, 399, 403, 447],
+    [26, 44, 53, 75, 102, 155, 193, 199, 200, 221, 250],
+    [253, 297, 325, 362,363,389,399, 403, 447],
     [459, 465, 467, 468, 469, 477, 481, 492, 498, 501],
-    [547, 553, 554, 560, 564, 571, 584, 589, 595, 596],
+    [508, 547, 553, 554, 560, 564, 571, 580, 584, 589, 595, 596],
     [606, 611, 615, 621, 623, 625, 626, 629, 640, 648],
     [658, 664, 670, 676, 677, 680, 684, 690, 694, 695],
     [701, 709, 709, 720, 726, 730, 734, 734, 736, 760],
-    [762, 768, 768, 846, 914, 961, 964, 973, 976, 978],
+    [762, 846, 914, 961, 964, 973, 976, 978],
     [979, 983, 985, 986, 988, 989, 990, 991, 993, 997],
-    [1000, 1003, 1006, 1007, 1009, 1010, 1011, 1012, 1013, 1013],
+    [1000, 1001, 1003, 1006, 1007, 1009, 1010, 1011, 1012, 1013, 1013],
     [1016, 1017, 1018, 1020, 1025, 1025, 1026, 1027, 1032, 1037],
     [1057, 1065, 1069, 1080, 1087, 1301, 1307, 2318, 2337, 2339],
     [2340, 2341, 2343, 2344, 2346],
@@ -432,29 +611,29 @@ drain_nodes = node_list(
     [106, 106, 112, 113, 118, 124, 134, 136, 142, 144],
     [150, 154, 157, 160, 161, 162, 163, 169, 171, 174],
     [181, 185, 191, 195, 203, 208, 209, 210, 211, 212],
-    [215, 221, 222, 224, 225, 226, 228, 233, 240, 241],
+    [215, 222, 224, 225, 226, 228, 233, 240, 241],
     [243, 247, 249, 257, 258, 266, 273, 276, 281, 283],
     [284, 296, 302, 303, 303, 304, 306, 309, 333, 334],
     [334, 339, 342, 348, 350, 353, 354, 370, 376, 379],
     [384, 388, 398, 400, 401, 402, 408, 409, 412, 416],
     [423, 424, 429, 432, 433, 440, 443, 444, 445, 449],
     [450, 451, 452, 453, 455, 473, 475, 487, 490],
-    [491, 494, 504, 505, 510, 511, 512, 514],
+    [491, 494, 504, 505, 510, 511, 512, 514, 517],
     [519, 529, 530, 531, 533, 540, 548, 549, 550, 552],
     [556, 557, 558, 559, 565, 568, 577, 578, 582, 583],
-    [586, 592, 594, 597, 598, 600, 604, 605, 610],
-    [614, 617, 618, 620, 628, 637, 642, 645, 649],
-    [650, 653, 662, 666, 667, 674, 675, 686, 703],
+    [586, 592, 593, 594, 597, 598, 600, 604, 605, 610],
+    [614, 617, 618, 620, 628, 637, 642, 643, 645, 649],
+    [650, 653, 661, 662, 666, 667, 674, 675, 686, 703],
     [704, 707, 712, 713, 714, 715, 722, 723, 724, 729],
-    [733, 738, 740, 741, 743, 761, 763, 764],
+    [733, 738, 740, 741, 743, 761, 763, 764, 768],
     [772, 773, 776, 780, 781, 783, 790, 791, 792],
-    [792, 795, 798, 801, 805, 806, 807, 817, 822],
+    [792, 795, 798, 801, 805, 806, 807, 817, 820, 822],
     [829, 831, 845, 845, 850, 852, 855, 856, 860],
-    [864, 869, 873, 876, 880, 881, 882, 890, 891, 892],
+    [864, 869, 873, 876, 878, 880, 881, 882, 890, 891, 892],
     [895, 906, 907, 909, 913, 919, 921, 928, 930, 932],
-    [933, 935, 949, 952, 957, 958, 960, 965, 966, 968],
-    [975, 981, 1005, 1008, 1008, 1050, 1051, 1064, 1066],
-    [1071, 1089, 1095, 1102, 1132, 1269, 1353, 1367, 1367],
+    [933, 935, 947, 949, 950, 952, 957, 958, 960, 965, 966, 968],
+    [971, 975, 981, 1002, 1005, 1008, 1050, 1051, 1064, 1066, 1068,],
+    [1071, 1089, 1095, 1102, 1132,1245, 1269, 1295, 1316, 1353, 1367, 1367],
     [2324, 2335, 2336, 2338, 2342, 2345, 2918],
 )
 # fmt: on
@@ -541,8 +720,11 @@ add_controllers_to_uncontrolled_connector_nodes(
     drain_nodes=drain_nodes,
     flushing_nodes={},
     exclude_nodes=list(EXCLUDE_NODES),
+    flow_rate_aanvoer=20.0,
+    max_flow_rate_aanvoer=max_flow_rate_aanvoer_by_node_id,
+    flow_rate_afvoer=100.0,
+    max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
 )
-
 
 # %%
 # Inlaat 26 Noordseschutsluis stopt 1 cm onder het benedenstroomse streefpeil.
@@ -556,7 +738,6 @@ lower_outlet_max_downstream_level(model=model, node_id=26, offset=0.01)
 mask = model.outlet.static.df.node_id.isin(EXCLUDE_NODES)
 model.outlet.static.df.loc[mask, ["flow_rate", "min_flow_rate", "max_flow_rate"]] = 0.0
 
-
 # %%
 # Junctionify(!)
 
@@ -567,8 +748,66 @@ model = junctionify(model)
 # Laatste handmatige correcties
 
 # Gemaal Orveltersluis
-model.pump.static.df.loc[model.pump.static.df.node_id == 664, "min_upstream_level"] = 14.86
+mask = model.pump.static.df.node_id == 664
+model.pump.static.df.loc[mask, "min_upstream_level"] = 14.86
+mark_level_update_protected(model.pump.static.df, mask, model=model)
 
+aanvoer_only_node_ids = set(supply_nodes) - set(drain_nodes) - set(flow_control_nodes)
+
+# Aanvoer-cap: doorlaten/inlaten mogen in aanvoer niet de hoge afvoercapaciteit gebruiken.
+aanvoer_outlet_mask = model.outlet.static.df.control_state == "aanvoer"
+model.outlet.static.df.loc[aanvoer_outlet_mask, ["flow_rate", "max_flow_rate"]] = model.outlet.static.df.loc[
+    aanvoer_outlet_mask, ["flow_rate", "max_flow_rate"]
+].clip(upper=10.0)
+zero_aanvoer_node_ids = {
+    node_id for node_id, max_flow_rate in outlet_max_flow_rate_aanvoer_by_node_id.items() if max_flow_rate == 0
+}
+zero_aanvoer_mask = aanvoer_outlet_mask & model.outlet.static.df.node_id.isin(zero_aanvoer_node_ids)
+model.outlet.static.df.loc[zero_aanvoer_mask, ["flow_rate", "max_flow_rate"]] = 0.0
+
+for static_df, max_flow_rate_by_node_id in (
+    (model.outlet.static.df, outlet_max_flow_rate_by_node_id),
+    (model.pump.static.df, pump_max_flow_rate_by_node_id),
+):
+    max_flow_rate = static_df["node_id"].map(max_flow_rate_by_node_id)
+    aanvoer_mask = (
+        static_df["control_state"].eq("aanvoer")
+        & static_df["node_id"].isin(aanvoer_only_node_ids)
+        & max_flow_rate.notna()
+    )
+    static_df.loc[aanvoer_mask, "flow_rate"] = max_flow_rate[aanvoer_mask]
+    static_df.loc[aanvoer_mask, "max_flow_rate"] = max_flow_rate[aanvoer_mask]
+
+zero_pump_node_ids = {node_id for node_id, max_flow_rate in pump_max_flow_rate_by_node_id.items() if max_flow_rate == 0}
+zero_pump_mask = model.pump.static.df.node_id.isin(zero_pump_node_ids)
+model.pump.static.df.loc[zero_pump_mask, ["flow_rate", "max_flow_rate"]] = 0.0
+
+# Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
+node_type_by_id = model.node.df["node_type"].to_dict()
+flow_demand_controlled_node_ids = set(
+    model.link.df.loc[
+        model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),
+        "to_node_id",
+    ]
+    .dropna()
+    .astype(int)
+)
+manual_max_flow_rate_node_ids = set(outlet_max_flow_rate_by_node_id)
+manual_max_flow_rate_node_ids.update(pump_max_flow_rate_by_node_id)
+protected_max_flow_rate_node_ids = set(EXCLUDE_NODES) | flow_demand_controlled_node_ids | manual_max_flow_rate_node_ids
+for static_df in (model.outlet.static.df, model.pump.static.df):
+    afvoer_mask = (
+        static_df["control_state"].eq("afvoer")
+        & static_df["flow_rate"].fillna(0).gt(0)
+        & ~static_df["node_id"].isin(protected_max_flow_rate_node_ids)
+    )
+    static_df.loc[afvoer_mask, "max_flow_rate"] = (
+        static_df.loc[afvoer_mask, "max_flow_rate"].fillna(0.5).clip(lower=0.5)
+    )
+
+for static_df in (model.outlet.static.df, model.pump.static.df):
+    afvoer_mask = static_df["control_state"].eq("afvoer") & static_df["node_id"].isin(aanvoer_only_node_ids)
+    static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 0.0
 
 # %%
 # Model run

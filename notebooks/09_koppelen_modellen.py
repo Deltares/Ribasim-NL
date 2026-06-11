@@ -7,6 +7,8 @@ import geopandas as gpd
 import pandas as pd
 from networkx import NetworkXNoPath
 from ribasim_nl.aquo import waterbeheercode
+from ribasim_nl.coupling_level_apply import sync_static_controller_thresholds
+from ribasim_nl.coupling_levels import run_coupling_level_check
 from ribasim_nl.settings import settings
 from shapely.geometry import LineString, Point
 from tqdm import tqdm
@@ -22,10 +24,16 @@ _prefix_to_authority = {v: k for k, v in waterbeheercode.items()}
 SNAP_DISTANCE = 20
 MIN_LEVEL_DIFF = 0.04  # Minimum level difference for the control
 MIN_BASIN_OUTLET_DIFF = 0.5
+COUPLING_LEVEL_UPSTREAM_SUPPLY_OFFSET = -0.04
+COUPLING_LEVEL_RWS_PROFILE_OFFSET = 0.1
+COUPLING_LEVEL_APPLY_RWS_INLET_MIN_UPSTREAM = True
+COUPLING_LEVEL_APPLY_MAX_DOWNSTREAM_LEVEL = True
+COUPLING_LEVEL_APPLY_DIRECT_MIN_UPSTREAM_LEVEL = True
+COUPLING_LEVEL_TOLERANCE = 1e-6
 # Configuration
 data_dir = settings.ribasim_nl_data_dir
-couple_lhm: bool = True
-sub_models: bool = False
+couple_lhm: bool = False
+sub_models: list[str] = []
 
 remove_nodes = [
     3401752,  # Dokwerd NZV
@@ -40,6 +48,17 @@ remove_nodes = [
     203840,  # Inlaat hoort bij NZV
     202773,  # "Gaarkeuken" Fryslân
     203809,  # "Gaarkeuken" Fryslân
+    6002493,  # reparatie Helenavaart Limburg
+    6002497,  # parallel aan doorlaat 6002496 tussen hetzelfde Limburg/AaenMaas basin-paar
+    6002788,  # reparatie Helenavaart Limburg
+    6002788,  # reparatie Helenavaart Limburg
+    3800052,  # forceren koppeling kanaal van Deurne
+    3800447,  # forceren koppeling kanaal van Deurne
+    3803725,  # forceren koppeling kanaal van Deurne
+    3802017,  # verwijderen rand binnenstad
+    3800049,  # verwijderen rand binnenstad
+    3803092,  # verwijderen zijtak Helanvaart Limburg
+    3800036,  # verwijderen zijtak Helanvaart Limburg
 ]
 
 # Pumps with min_upstream_level below upstream basin bottom; reset to NA
@@ -51,6 +70,11 @@ reset_pump_min_upstream_level = [
 reset_outlet_min_upstream_level = [
     3300727,  # min_upstream_level (14.76) below upstream Basin #4401600 bottom (16.3)
 ]
+
+# Outlets with min_upstream_level below the effective upstream Basin bottom; clamp to validation-safe level
+minimum_outlet_min_upstream_level = {
+    3800291: 15.1,  # aanvoer min_upstream_level (9.36) below upstream Basin #3801452 bottom (15.1)
+}
 
 # force LevelBoundary node_id to Basin node_id, overriding the automatic coupling
 forced_coupling = {
@@ -73,6 +97,15 @@ forced_coupling = {
     1301496: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
     1301495: 1404817,  # LevelBoundary buiten de boezem van HDSR geplaatst
     1301492: 1404817,  # LevelBoundary buiten de boezem van HDSR geplaatst
+    4400015: 5903236,  # LB ligt op exact dezelfde locatie
+    4402348: 5900072,  # LB ligt op exact dezelfde locatie
+    6000124: 6002492,  # Reparatie Helenavaart
+    6000125: 3801280,  # Forceren Kanaal van Deurne
+    3800053: 3801280,  # Forceren Kanaal van Deurne
+    2700009: 3801394,  # Vuchterstuw naar Binnenstad
+    3800048: 3801394,  # Aansluiten Drongelens kanaal op Binnenstad
+    3300009: 4401377,  # Levelboundary takt niet aan op Verlengde Hoogeveense Vaart
+    6000003: 3801961,  # Forceren zijtak Helanvaart Limburg
 }
 
 
@@ -429,6 +462,19 @@ def fix_basin_profiles(model: Model) -> None:
         if mask.any():
             model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
 
+    for outlet_id, min_upstream_level in minimum_outlet_min_upstream_level.items():
+        mask = model.outlet.static.df.node_id == outlet_id
+        if mask.any():
+            current = pd.to_numeric(model.outlet.static.df.loc[mask, "min_upstream_level"], errors="coerce")
+            lower_than_minimum = current.lt(min_upstream_level).fillna(False)
+            model.outlet.static.df.loc[current.loc[lower_than_minimum].index, "min_upstream_level"] = min_upstream_level
+            if lower_than_minimum.any():
+                sync_static_controller_thresholds(
+                    model=model,
+                    target_node_ids={outlet_id},
+                    tolerance=COUPLING_LEVEL_TOLERANCE,
+                )
+
     for outlet in model.outlet.node.df.index:
         upstream_basin = model.upstream_node_id(outlet)
         if upstream_basin is None:
@@ -467,13 +513,17 @@ def remove_invalid_topology_nodes(model: Model) -> None:
             invalid_topology = model.invalid_topology_at_node(link_type=link_type)
 
 
-def save_model_and_outputs(model: Model, all_link_table: list[dict], toml_file: Path) -> None:
+def save_model_and_outputs(model: Model, all_link_table: list[dict], toml_file: Path) -> Path:
     """Save the model and create output files.
 
     Args:
         model: Model to save
         all_link_table: Link table data
         toml_file: Path to the input/decoupled TOML file
+
+    Returns
+    -------
+        Path to the written coupled TOML file.
     """
     # Derive model path from input toml_file, adding -coupled to folder and file name
     root = toml_file.parents[1]
@@ -489,6 +539,19 @@ def save_model_and_outputs(model: Model, all_link_table: list[dict], toml_file: 
     links["to_node_id"] = links.to_node.apply(lambda x: x.node_id)
     links = links.drop(columns=["from_node", "to_node"])
     links.to_file(model_path / "link.gpkg")
+    return output_toml_file
+
+
+def run_configured_coupling_level_check(toml_file: Path) -> None:
+    run_coupling_level_check(
+        toml_file=toml_file,
+        upstream_supply_offset=COUPLING_LEVEL_UPSTREAM_SUPPLY_OFFSET,
+        rws_profile_offset=COUPLING_LEVEL_RWS_PROFILE_OFFSET,
+        apply_rws_inlet_min_upstream=COUPLING_LEVEL_APPLY_RWS_INLET_MIN_UPSTREAM,
+        apply_max_downstream_level=COUPLING_LEVEL_APPLY_MAX_DOWNSTREAM_LEVEL,
+        apply_direct_min_upstream_level=COUPLING_LEVEL_APPLY_DIRECT_MIN_UPSTREAM_LEVEL,
+        tolerance=COUPLING_LEVEL_TOLERANCE,
+    )
 
 
 def get_rws_link(
@@ -633,12 +696,21 @@ if couple_lhm:
     all_link_table = process_boundary_nodes(model, network, basin_areas_df)
     fix_basin_profiles(model)
     remove_invalid_topology_nodes(model)
-    save_model_and_outputs(model, all_link_table, toml_file)
+    coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)
+    run_configured_coupling_level_check(coupled_toml_file)
 
 if sub_models:
     # couple sub-models if any
     sub_models_dir = data_dir / "Rijkswaterstaat/modellen/lhm_sub_models"
-    for model_dir in [p for p in sub_models_dir.iterdir() if p.is_dir() and not p.name.endswith("coupled")]:
+    if isinstance(sub_models, bool):
+        selected_model_dirs = [p for p in sub_models_dir.iterdir() if p.is_dir() and not p.name.endswith("coupled")]
+    else:
+        selected_model_dirs = [sub_models_dir / model_name for model_name in sub_models]
+
+    for model_dir in selected_model_dirs:
+        if not model_dir.exists() or not model_dir.is_dir():
+            print(f"Submodel directory does not exist, skipping: {model_dir}")
+            continue
         try:
             toml_file = find_toml_path(model_dir)
         except ValueError:
@@ -648,4 +720,5 @@ if sub_models:
         all_link_table = process_boundary_nodes(model, network, basin_areas_df)
         fix_basin_profiles(model)
         remove_invalid_topology_nodes(model)
-        save_model_and_outputs(model, all_link_table, toml_file)
+        coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)
+        run_configured_coupling_level_check(coupled_toml_file)

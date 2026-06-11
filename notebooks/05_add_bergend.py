@@ -12,6 +12,7 @@ FIND_POST_FIXES = ["full_control_model"]
 SELECTION: set = {"RijnenIJssel"}
 INCLUDE_RESULTS = False
 REBUILD = True
+RUN_MODEL: bool = False
 
 
 def get_model_dir(authority, post_fix):
@@ -57,5 +58,6 @@ for authority in authorities:
 
             # run model
             model.write(dst_toml_file)
-            result = model.run()
-            assert result.exit_code == 0
+            if RUN_MODEL:
+                result = model.run()
+                assert result.exit_code == 0

@@ -229,6 +229,7 @@ forced_levels = {
     1394: 2.2,
     2016: 2.2,
     1627: 2.2,
+    3096: 2.2,
 }
 
 mask = static_data.basin["node_id"].isin(forced_levels.keys())
@@ -254,7 +255,7 @@ assign = AssignAuthorities(
     waterschap=authority,
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
-    custom_nodes={9: "Rijkswaterstaat"},
+    custom_nodes={9: "Rijkswaterstaat", 46: "DeDommel", 45: "DeDommel", 40: "Limburg"},
 )
 model = assign.assign_authorities()
 
