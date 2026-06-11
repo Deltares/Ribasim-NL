@@ -20,7 +20,7 @@ set -euo pipefail
 
 PARTITION=4vcpu
 TIME=7-00:00:00
-RUNS_DIR=/p/11212758-ribasim-maas-2026/ribasim-nl-runs
+RUNS_DIR=/p/ribasim-nl/runs
 
 # Parse arguments
 NAME=$1; shift
