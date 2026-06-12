@@ -13,16 +13,16 @@ import os
 import subprocess
 from pathlib import Path
 
-import pandas as pd
 from ribasim.delwaq import generate, parse, plot_fraction
 from ribasim_nl.model import Model
 
 # %%
 # set path of Ribasim model
-model_name = "hws_coupled_full"
-toml_name = "hws.toml"
+model_name = "lhm_coupled_full"
+toml_name = "lhm_coupled.toml"
 
-model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "Rijkswaterstaat" / "modellen" / model_name
+# model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "Rijkswaterstaat" / "modellen" / model_name
+model_path = Path("../../data/Rijkswaterstaat/modellen") / model_name
 toml_path = model_path / toml_name
 assert toml_path.is_file()
 
@@ -90,41 +90,6 @@ output_path = model_path / output_folder
 graph, substances = generate(toml_path, output_path)
 
 # %%
-# manually edit `delwaq.inp`
-
-# %%
-# write loadswq.id for loads in delwaq (based on graph variable)
-# TODO: include in generate function
-node2node = pd.DataFrame(
-    [(k, v["id"], v["type"]) for k, v in graph.nodes(data=True)], columns=["delwaq_id", "ribasim_id", "type"]
-)
-
-basins = node2node[node2node["type"] == "Basin"]
-
-with open(output_path / "loadswq.id", "w") as f:
-    f.write(f"{len(basins)}; Number of loads\n")
-
-    for _, row in basins.iterrows():
-        line = f"{row['delwaq_id']} '{row['ribasim_id']}' ' ' '{row['type']}'\n"
-        f.write(line)
-
-"""
-format of loadswq.id (without indentation):
-
-    20494; Number of loads
-    1 '200001' ' ' 'Basin'
-    2 '200002' ' ' 'Basin'
-    ...
-
-<delwaq_segnr> '<ribasim_nodeid>' ' ' '<ribasim_nodetype>'
-
-"""
-# %%
-# pause here and proceed with steps in README.md
-
-# %%
-# manually add input timeseries (boundwq.dat & b6_loads.inc) to delwaq folder
-# %%
 ########## RUNNING DELWAQ SIMULATION ##########
 
 # Define path of Ribasim model again
@@ -155,7 +120,7 @@ substances.add("OOP")
 
 # %%
 # parse delwaq results
-nmodel = parse(toml_path, graph, substances, output_folder=output_path)
+nmodel = parse(toml_path, graph, substances, output_folder=output_path, to_input=True)
 
 # %% check added loads in specified Ribasim nodes
 plot_fraction(nmodel, 700970, ["NO3"])  # node downstream of BA 700008; see lhm.toml in QGIS
@@ -163,15 +128,15 @@ plot_fraction(nmodel, 700970, ["NO3"])  # node downstream of BA 700008; see lhm.
 
 # %% just to check if model can be read again
 model = Model.read(toml_path)
-model.basin.concentration  # should include new substances
-model.basin.concentration_external
+# model.basin.concentration  # should include new substances
+# model.basin.concentration_external
 
 # %%
-# save results for QGIS visualization
-nmodel.basin.concentration_external._write_arrow("concentration.arrow", nmodel.filepath.parent, nmodel.results_dir)
-nmodel.write(model_path / "lhm_test.toml")
+# save results for QGIS visualization #$ made redundant by parse(to_input=True)
+# nmodel.basin.concentration_external._write_arrow("concentration.arrow", nmodel.filepath.parent, nmodel.results_dir)
+# nmodel.write(model_path / "lhm_test.toml")
 
 # %%
 # additional inspection
-nmodel.basin.concentration_external.filepath = "results/concentration.arrow"
+# nmodel.basin.concentration_external.filepath = "results/concentration.arrow"
 # display(nmodel.basin.concentration_external)

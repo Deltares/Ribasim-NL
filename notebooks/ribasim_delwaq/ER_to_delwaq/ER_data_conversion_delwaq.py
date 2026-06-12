@@ -20,7 +20,7 @@ Deltares. Hierbij hoeft alleen de ruimtelijke verdeling van GAF90eenheden te wor
 geinterpoleerd. 3.emissieoorzaken zonder detail. Hierbij zijn alleen de ER steekjaren
 bekend en wordt er tussen deze jaren geinterpoleerd.
 """
-
+# %%
 # -------------------------------Packages---------------------------------------
 
 from pathlib import Path
@@ -39,6 +39,12 @@ current_dir = Path(__file__).resolve().parent
 print(f"Current directory: {current_dir}")
 print("Check if working directory is the script directory.")
 
+# auto-check
+root_dir = ""
+if current_dir.parts[-2:] == ("ribasim_delwaq", "ER_to_delwaq"):
+    print("match")
+    root_dir = "../../../"
+
 # -------------------------------Conversions------------------------------------
 
 conv_yr2sec = 60 * 60 * 24 * 365.25
@@ -49,22 +55,23 @@ conv_ton2g = 10**6
 # -------------------------------Directories------------------------------------
 cloud = CloudStorage()
 
-model_name = "hws_2025_10_1"
-toml_name = "hws.toml"
-model_path = cloud.joinpath("Rijkswaterstaat", "modellen", model_name)
-toml_path = cloud.joinpath(model_path, toml_name)
-cloud.synchronize(filepaths=[model_path], overwrite=False)
-basin_path = cloud.joinpath(model_path, "input/database.gpkg")
+model_name = "lhm_coupled_full"
+toml_name = "lhm_coupled.toml"
+model_path = Path(root_dir, "data/Rijkswaterstaat/modellen", model_name)
+# model_path = cloud.joinpath("Rijkswaterstaat", "modellen", model_name)
+toml_path = model_path / toml_name
+# cloud.synchronize(filepaths=[model_path], overwrite=False)
+basin_path = model_path / "input/database.gpkg"
 
 er_path = cloud.joinpath("Basisgegevens/Delwaq/aangeleverd/Emissieregistratie")
-emissies_buiten_ER_path = cloud.joinpath(er_path, "Emissies_per_jaar_buiten_ER.csv")
-ER_export_path = cloud.joinpath(er_path, "ER_DataExport-2024-01-29-142759.xlsx")
-OE_bedrijven_path = cloud.joinpath(er_path, "OverigeEmissies_bedrijven__2024_01_24.csv")
-gaf_path = cloud.joinpath(er_path, "gaf_90.shp")
+emissies_buiten_ER_path = er_path / "Emissies_per_jaar_buiten_ER.csv"
+ER_export_path = er_path / "ER_DataExport-2024-01-29-142759.xlsx"
+OE_bedrijven_path = er_path / "OverigeEmissies_bedrijven__2024_01_24.csv"
+gaf_path = er_path / "gaf_90.shp"
 
 cloud.synchronize(filepaths=[er_path], overwrite=False)
 
-
+# %%
 # -------------------------------Settings---------------------------------------
 d = {}
 d["run"] = "validatie"  # validatie, prognose
@@ -77,6 +84,7 @@ frac_bergend = 1 - frac_doorgaand  # deel ER op bergende basin node
 # -------------------------------Functions--------------------------------------
 
 
+# %%
 def makedir(path):
     """Make directory if not existing."""
     if not Path(path).exists():
@@ -209,14 +217,18 @@ def barplot_N_P(file, N, P, y_lim_min_n, y_lim_max_n, y_lim_min_p, y_lim_max_p, 
     plt.show()
 
 
+# %%
 # -------------------------------Import data------------------------------------
 
 # coupling based on GAF and basin polygons
-koppeling = compute_overlap_df(gaf_path, basin_path, hws=True)  # ONLY TRUE WHEN USING HWS MODEL, FALSE FOR THE FULL LHM
+koppeling = compute_overlap_df(
+    gaf_path, basin_path, hws=False
+)  # ONLY TRUE WHEN USING HWS MODEL, FALSE FOR THE FULL LHM
 koppeling["GAF-eenheid"] = koppeling["GAF-eenheid"].astype(int)
-# sort by nodeID
+# Some checks (function still works properly)
 koppeling.sort_values(by="NodeId")
-
+koppeling[koppeling["meta_categorie"].isna()].sort_values(by="fractie")
+koppeling[koppeling["NodeId"] == 207786]
 
 print("coupling GAF-emissions to LHM basin nodes completed")
 
@@ -234,7 +246,7 @@ koppeling["fractie"] = koppeling.apply(
     axis=1,
 )
 
-
+# %%
 # $ check voor nieuwe koppeling
 # sum_per_node = koppeling.groupby("NodeId")["fractie"].sum().reset_index().sort_values(by="fractie")
 sum_per_node = koppeling.groupby("GAF-eenheid")["fractie"].sum().reset_index().sort_values(by="fractie")
@@ -736,53 +748,6 @@ ER_df_wide["PO4"] = ER_df_wide["P"] * 0.5
 ER_df_wide["AAP"] = ER_df_wide["P"] * 0.4
 ER_df_wide["OOP"] = ER_df_wide["P"] * 0.1
 
-
-# %%
-
-
-# ---------------------------------Export B6_loads.inc ---------------------------------------
-
-output_path = model_path / "delwaq"
-output_path.mkdir(parents=True, exist_ok=True)
-
-
-def write_inc_file(df, output_path):
-    # Order of variables to print
-    vars_order = ["NO3", "NH4", "OON", "PO4", "AAP", "OOP"]
-
-    output_file = output_path / "B6_loads.inc"
-
-    with output_file.open("w") as f:
-        # Group by NodeId
-        for node_id, group in df.groupby("NodeId"):
-            f.write(f"ITEM '{node_id}'\n")
-            f.write("ABSOLUTE TIME\n")
-            f.write("CONCENTRATIONS\n")
-
-            # Variable declarations
-            f.writelines(f" '{v}'\n" for v in vars_order)
-
-            # Header line with all variables
-            f.write("BLOCK DATA\t\t\t")
-            f.write(" ".join([f"'{v}'".ljust(12) for v in vars_order]))
-            f.write("\n")
-
-            # Write each year
-            for _, row in group.iterrows():
-                year = int(row["Year"])
-                timestamp = f"'{year}/01/01-00:00:00'"
-                values = " ".join([f"{row[v]:.6f}" for v in vars_order])
-                f.write(f"{timestamp}    {values}\n")
-
-            f.write("\n")
-
-        print(f"B6_loads.inc written to {output_file}")
-
-
-ER_df_wide.to_parquet(output_path / "ER.pq", index=False)
-write_inc_file(ER_df_wide, output_path)
-
-ER_df_wide["Year"]
 # %%
 
 ER_df_wide["time"] = pd.to_datetime(ER_df_wide.Year, format="%Y")
@@ -807,8 +772,8 @@ model.basin.mass_load = loads_df
 # save model with added mass loads
 model.write(toml_path)
 
-# re-read saved model
-model = Model.read(toml_path)
+# #%%
+# # re-read saved model and check mass_load
+# model = Model.read(toml_path)
 
-
-# %%
+# model.basin.mass_load
