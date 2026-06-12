@@ -1,0 +1,5 @@
+outs:
+- md5: 6ef299294c5e404e60575d4b91f0bf14
+  size: 160449
+  hash: md5
+  path: RWZI_coordinates.geojson

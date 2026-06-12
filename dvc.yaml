@@ -10,6 +10,7 @@ stages:
     cmd: pixi run python notebooks/create_rwzi_model.py
     deps:
       - notebooks/create_rwzi_model.py
+      - data/Basisgegevens/RWZI/aangeleverd/locaties/RWZI_coordinates.geojson
     outs:
       - data/Rijkswaterstaat/modellen/rwzi
   parameterized:
