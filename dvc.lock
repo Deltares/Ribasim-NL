@@ -176,7 +176,7 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/modellen/rwzi
       hash: md5
-      md5: 11321a6b856e5c689520480ba54a928a.dir
+      md5: 9b6dfd102076f33a60300fe1ee951f56.dir
       size: 22466714
       nfiles: 2
   parameterized@aa_en_maas:
