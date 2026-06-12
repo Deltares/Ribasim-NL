@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 def create_rwzi_basin_coupling(rwzi_coupled_model: Model, max_distance=100):
     """
-    Match RWZI uitstroom locaties met de onderliggende basins. Wanneer geen match, probeer 20 m buffer.
+    Match RWZI outflow locations with the underlying basins. When there is no match, try a 20 m buffer.
 
     Args:
         rwzi_coupled_model: Object with attributes terminal.node.df and basin.area.df.
@@ -26,8 +26,8 @@ def create_rwzi_basin_coupling(rwzi_coupled_model: Model, max_distance=100):
 
     Returns
     -------
-        coupling_lookup (dict): Lookup table van RWZI codes en basin IDs.
-        unmatched_rwzi_df (GeoDataFrame): RWZI locaties die nog niet gematcht zijn met basins.
+        coupling_lookup (dict): Lookup table of RWZI codes and basin IDs.
+        unmatched_rwzi_df (GeoDataFrame): RWZI locations that have not yet been matched with basins.
     """
     terminals_all = rwzi_coupled_model.terminal.node.df  # pyrefly: ignore[missing-attribute]
     basins = rwzi_coupled_model.basin.area.df
@@ -100,10 +100,10 @@ def create_rwzi_basin_coupling(rwzi_coupled_model: Model, max_distance=100):
 
 def remove_unmatched_rwzi(rwzi_coupled_model: Model, unmatched_rwzi_df: GeoDataFrame, *, verbose=False):
     """
-    Verwijder RWZI-terminals.
+    Remove RWZI terminals.
 
-    Verwijder RWZI-terminals die buiten het model vallen én de daarbij horende
-    flow-boundary-knopen uit het LHM-model en geef het model terug.
+    Remove RWZI terminals that fall outside the model and their associated
+    flow-boundary nodes from the LHM model, and return the model.
     """
     #  1. RWZI-terminals verwijderen
     terminals_removed = 0
@@ -134,14 +134,39 @@ def remove_unmatched_rwzi(rwzi_coupled_model: Model, unmatched_rwzi_df: GeoDataF
 
 def terminal2junction(rwzi_coupled_model, coupling_lookup, *, verbose=False):
     """
-    Zet RWZI-Terminals om naar Junctions.
+    Convert RWZI Terminals into Junctions.
 
-    Verbind ze daarna met de juiste Basin knoop.
+    Afterwards connect them to the correct Basin node.
+
+    RWZI terminals without a coupling to a basin in this model (for example RWZIs of other
+    water authorities that were carried over from the national RWZI model) are removed entirely.
+    Converting them into a Junction would create an orphaned Junction (with an incoming but no
+    outgoing link), which Ribasim rejects with a minimum-neighbor validation error.
     """
-    # 1. terminal naar junction
+    # all RWZI terminals currently in the model
     terminals = rwzi_coupled_model.terminal.node.df[rwzi_coupled_model.terminal.node.df["meta_rwzi_code"].notna()]
 
-    for node_id, _row in terminals.iterrows():
+    # split into terminals that couple to a basin in this model and terminals that do not
+    coupled_mask = terminals["meta_rwzi_code"].map(lambda code: pd.notna(coupling_lookup.get(code)))
+    coupled_terminals = terminals[coupled_mask]
+    uncoupled_terminals = terminals[~coupled_mask]
+
+    # 0. remove uncoupled RWZI terminals and the flow boundaries that feed them
+    uncoupled_codes = set(uncoupled_terminals["meta_rwzi_code"])
+    for node_id in uncoupled_terminals.index:
+        if verbose:
+            print(f"Verwijder niet-gekoppelde RWZI-terminal {node_id}")
+        rwzi_coupled_model.remove_node(node_id, remove_links=True)
+    if uncoupled_codes:
+        fb_df = rwzi_coupled_model.flow_boundary.node.df
+        fb_to_remove = fb_df[fb_df["meta_rwzi_code"].isin(uncoupled_codes)]
+        for node_id in fb_to_remove.index:
+            if verbose:
+                print(f"Verwijder bijbehorende RWZI-flow-boundary {node_id}")
+            rwzi_coupled_model.remove_node(node_id, remove_links=True)
+
+    # 1. terminal naar junction (alleen voor gekoppelde terminals)
+    for node_id, _row in coupled_terminals.iterrows():
         if verbose:
             print(f"Converteer terminal {node_id} naar junction")
         rwzi_coupled_model.update_node(node_id, "Junction", data=[])
