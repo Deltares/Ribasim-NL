@@ -168,7 +168,9 @@ for authority in authorities:
             dict_flow = import_transboundary_inflow(transboundary_data_path, starttime, endtime, model)
             add_transboundary_inflow(model, dict_flow)
 
-            # merge RWZI model
+            # merge RWZI model, which requires meta_waterbeheerder
+            # pyrefly: ignore[missing-attribute]
+            model.node.df.loc[model.basin.node.df.index, "meta_waterbeheerder"] = authority
             model = merge_rwzi_model(model, rwzi_model_path)
 
             # add LHM fractions
