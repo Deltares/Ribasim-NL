@@ -3,7 +3,7 @@
 created: 01-2019 by: Wilfred Altena
 modified: 03-2019 by: Annelotte van der Linden
 modified: 02-2024 by: Steven Kelderman
-last modified: 08-2025 by: Jesse van Leeuwen
+last modified: 11-2025 by: Jesse van Leeuwen
 
 Aanpassing van conversie van ER data naar KRW-V input
 In 'Functions' en tussen code onder 'Overige emissies ER' en boven 'Export B6_loads'
@@ -20,8 +20,9 @@ Deltares. Hierbij hoeft alleen de ruimtelijke verdeling van GAF90eenheden te wor
 geinterpoleerd. 3.emissieoorzaken zonder detail. Hierbij zijn alleen de ER steekjaren
 bekend en wordt er tussen deze jaren geinterpoleerd.
 """
+# %%
+# -------------------------------Packages---------------------------------------
 
-import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -29,15 +30,61 @@ import pandas as pd
 import seaborn as sns
 from ER_GAF_fractions_func import compute_overlap_df
 
+# ------------------------ Import local module ----------------------------------
+from ribasim_nl.model import Model
+
+from ribasim_nl import CloudStorage
+
+current_dir = Path(__file__).resolve().parent
+print(f"Current directory: {current_dir}")
+print("Check if working directory is the script directory.")
+
+# auto-check
+root_dir = ""
+if current_dir.parts[-2:] == ("ribasim_delwaq", "ER_to_delwaq"):
+    print("match")
+    root_dir = "../../../"
+
+# -------------------------------Conversions------------------------------------
+
 conv_yr2sec = 60 * 60 * 24 * 365.25
 conv_kg2g = 1000
 conv_ton2g = 10**6
 
-# -------------------------------Packages---------------------------------------
+
+# -------------------------------Directories------------------------------------
+cloud = CloudStorage()
+
+model_name = "lhm_coupled_full"
+toml_name = "lhm_coupled.toml"
+model_path = Path(root_dir, "data/Rijkswaterstaat/modellen", model_name)
+# model_path = cloud.joinpath("Rijkswaterstaat", "modellen", model_name)
+toml_path = model_path / toml_name
+# cloud.synchronize(filepaths=[model_path], overwrite=False)
+basin_path = model_path / "input/database.gpkg"
+
+er_path = cloud.joinpath("Basisgegevens/Delwaq/aangeleverd/Emissieregistratie")
+emissies_buiten_ER_path = er_path / "Emissies_per_jaar_buiten_ER.csv"
+ER_export_path = er_path / "ER_DataExport-2024-01-29-142759.xlsx"
+OE_bedrijven_path = er_path / "OverigeEmissies_bedrijven__2024_01_24.csv"
+gaf_path = er_path / "gaf_90.shp"
+
+cloud.synchronize(filepaths=[er_path], overwrite=False)
+
+# %%
+# -------------------------------Settings---------------------------------------
+d = {}
+d["run"] = "validatie"  # validatie, prognose
+
+schematisatie = "Ribasim-NL"  # $ was 'LKM25', moet nieuwe bestandstructuur komen (doet verder niks)
+
+frac_doorgaand = 0.5  # deel ER op doorvoerende basin node
+frac_bergend = 1 - frac_doorgaand  # deel ER op bergende basin node
 
 # -------------------------------Functions--------------------------------------
 
 
+# %%
 def makedir(path):
     """Make directory if not existing."""
     if not Path(path).exists():
@@ -170,54 +217,66 @@ def barplot_N_P(file, N, P, y_lim_min_n, y_lim_max_n, y_lim_min_p, y_lim_max_p, 
     plt.show()
 
 
-# -------------------------------Settings---------------------------------------
-d = {}
-d["run"] = "validatie"  # validatie, prognose
-
-schematisatie = "Ribasim-NL"  # $ was 'LKM25', moet nieuwe bestandstructuur komen
-
-# # -------------------------------Directories------------------------------------
-
-inputdir = (
-    "P:/krw-verkenner/01_landsdekkende_schematisatie/LKM25 schematisatie/OverigeEmissies/KRW_Tussenevaluatie_2024/"
-)
-model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "DeDommel/modellen/DeDommel_2025_7_0"
-basin_node_path = model_path / "database.gpkg"
-
+# %%
 # -------------------------------Import data------------------------------------
 
+# coupling based on GAF and basin polygons
 koppeling = compute_overlap_df(
-    gaf_path="P:/11210327-lwkm2/01_data/Emissieregistratie/gaf_90.shp",
-    basin_path=basin_node_path,
+    gaf_path, basin_path, hws=False
+)  # ONLY TRUE WHEN USING HWS MODEL, FALSE FOR THE FULL LHM
+koppeling["GAF-eenheid"] = koppeling["GAF-eenheid"].astype(int)
+# Some checks (function still works properly)
+koppeling.sort_values(by="NodeId")
+koppeling[koppeling["meta_categorie"].isna()].sort_values(by="fractie")
+koppeling[koppeling["NodeId"] == 207786]
+
+print("coupling GAF-emissions to LHM basin nodes completed")
+
+# process fractions based on basin type, only splitting up doorgaand and bergend
+# there is also the category "hoofdwater" (within waterboards), but these do not have a duplicate node in the same location
+# the actual HWS does not not have a meta_categorie
+koppeling["fractie"] = koppeling.apply(
+    lambda row: (
+        row["fractie"] * frac_doorgaand
+        if row["meta_categorie"] == "doorgaand"
+        else row["fractie"] * frac_bergend
+        if row["meta_categorie"] == "bergend"
+        else row["fractie"]
+    ),
+    axis=1,
 )
 
-koppeling["GAF-eenheid"] = koppeling["GAF-eenheid"].astype(int)
-
+# %%
 # $ check voor nieuwe koppeling
-sum_per_node = koppeling.groupby("NodeId")["fractie"].sum().reset_index()
+# sum_per_node = koppeling.groupby("NodeId")["fractie"].sum().reset_index().sort_values(by="fractie")
 sum_per_node = koppeling.groupby("GAF-eenheid")["fractie"].sum().reset_index().sort_values(by="fractie")
 
-with pd.option_context("display.max_rows", None):
-    print(sum_per_node)
+_fig, ax = plt.subplots()
+ax.scatter(range(len(sum_per_node)), sum_per_node["fractie"], s=1)
+ax.set_title("Sum of fractions per GAF (should not exceed 1.0)")
+ax.set_xlabel("Index")
+ax.set_ylabel("Sum of fractions per GAF-unit")
+ax.grid(True)
+plt.show()
+
+# compute percentage of sum_per_node["fractie"] exceeding 1.05 (because many are close to 1.0)
+sum_exceeding_1 = len(sum_per_node[sum_per_node["fractie"] > 1.05]) / len(sum_per_node) * 100
+print(f"Percentage of GAF-units with sum of fractions exceeding 1 by more than 5%: {sum_exceeding_1:.2f}%")
 
 # $ eventueel kunnen de fracties per GAF met de emissies per GAF worden vermenigvuldigd om te checken of het matched met wat er uit dit script komt rollen als totale emissies
 
 # Manual file to fill in Deltares ER yearly loads #$ not using this rn
-Emissies_per_jaar_buiten_ER = pd.read_csv(
-    Path(inputdir) / "Emissies_per_jaar_buiten_ER.csv", delimiter=";", encoding="latin1"
-)
+Emissies_per_jaar_buiten_ER = pd.read_csv(emissies_buiten_ER_path, delimiter=";", encoding="latin1")
 
 # Direct download from the ER website at GAF90 level #$ MAKE SEARCH FOR MOST RECENT DATE INSTEAD OF MANUALLY WRITING
 ER_data_EMK_GAF90 = pd.read_excel(
-    Path(inputdir) / "ER_DataExport-2024-01-29-142759.xlsx",  # $ I have a recent import but need a match
+    ER_export_path,
     sheet_name="Emissies",
     usecols=["Stofcode", "Stof", "Code_gebied", "Sector", "Subsector", "Emissieoorzaak", "Jaar", "Emissie"],
 )
 
 # Manual file to import bedrijven without coastal waters #$ also not rn
-OverigeEmissies_bedrijven__2024_01_24 = pd.read_csv(
-    Path(inputdir) / "OverigeEmissies_bedrijven__2024_01_24.csv", delimiter=";", encoding="latin1"
-)
+OverigeEmissies_bedrijven__2024_01_24 = pd.read_csv(OE_bedrijven_path, delimiter=";", encoding="latin1")
 
 # -------------------------------Overige emissies ER----------------------------
 
@@ -259,6 +318,8 @@ ER_data_EMK_GAF90_fltr_sum_piv = pd.pivot_table(
     ER_data_EMK_GAF90_fltr_sum, index=["Code_gebied", "Emissieoorzaak", "Stof"], values="Emissie", columns="Jaar"
 ).reset_index()
 
+print("pivot table of ER data created")
+
 #####################################################################################
 
 # Transpose columns to long format
@@ -282,6 +343,8 @@ sum_per_EMK_base_short = pd.pivot(
 sum_per_Year_base_long = sum_per_GAF_base_long.groupby(["Stof", "Jaar"])["Emissie"].sum().reset_index()
 
 sum_per_Year_base_short = pd.pivot(sum_per_Year_base_long, index=["Stof"], columns="Jaar").reset_index()  # Check
+
+print("yearly totals per EMK and per year computed")
 
 ###
 
@@ -406,6 +469,7 @@ ER_data_EMK_GAF90_inter_long = pd.melt(
     value_name="Value",
 )
 
+print("interpolation of unknown years completed")
 
 # %%%######
 
@@ -443,6 +507,8 @@ barplot_N_P(
     title="GAF",
 )
 
+print("processing of other emissions without industry completed")
+
 ###
 
 # ---------------------------Overige emissies bedrijven-------------------------
@@ -457,6 +523,7 @@ OverigeEmissies_bedrijven_long = pd.melt(
 
 OverigeEmissies_bedrijven_long["Year"] = OverigeEmissies_bedrijven_long["Year"].astype(int)
 
+print("processing of other emissions from industry completed")
 
 # ---------------------------------Output---------------------------------------
 
@@ -541,6 +608,8 @@ barplot_N_P(
     kg=True,
     title="GAF",
 )
+
+print("created figures")
 
 # ---------------------------------Output--------------------------------------- #$ actual output
 
@@ -660,22 +729,51 @@ if d["run"] == "validatie":
 elif d["run"] == "prognose":
     pass
 
+# %% try to match the input format of BOUNDWQ.DAT
 
-# ---------------------------------Export B6_loads---------------------------------------
+ER_df = DifusseEmissions_OE.copy()
 
-# vanaf hier bevat DifusseEmissions_OE de juiste data voor export naar B6_loads.inc bestand
+ER_df_wide = (
+    ER_df.pivot_table(index=["NodeId", "Year"], columns="VariableId", values="Value")
+    .rename_axis(
+        columns=None  # removes 'VariableId' as the column name
+    )
+    .reset_index()
+)
 
-output_path = model_path / "delwaq"
+ER_df_wide["NO3"] = ER_df_wide["N"] * 0.8
+ER_df_wide["NH4"] = ER_df_wide["N"] * 0.1
+ER_df_wide["OON"] = ER_df_wide["N"] * 0.1
+ER_df_wide["PO4"] = ER_df_wide["P"] * 0.5
+ER_df_wide["AAP"] = ER_df_wide["P"] * 0.4
+ER_df_wide["OOP"] = ER_df_wide["P"] * 0.1
 
-grouped = DifusseEmissions_OE.groupby(["NodeId", "VariableId"])
+# %%
 
-with (output_path / "B6_loads.inc").open("w") as f:
-    for (node_id, variable_id), group in grouped:
-        f.write(f"ITEM 'Basin_{node_id}' CONCENTRATIONS '{variable_id}' LINEAR TIME LINEAR DATA '{variable_id}'\n")
+ER_df_wide["time"] = pd.to_datetime(ER_df_wide.Year, format="%Y")
+ER_df_wide.rename(columns={"NodeId": "node_id"}, inplace=True)
 
-        for _, row in group.iterrows():
-            year = row["Year"]
-            value = row["Value"]
-            f.write(f"'{year}/01/01-00:00:00' {value:.6f}\n")
+loads_df = ER_df_wide.melt(
+    id_vars=["node_id", "time"],
+    value_vars=["NO3", "NH4", "OON", "PO4", "AAP", "OOP"],
+    var_name="substance",
+    value_name="load",
+)
 
-        f.write("\n")
+# %%
+# Once a new LHM/release is made: add to ribasim datastructure
+
+# read model
+model = Model.read(toml_path)
+
+# add mass loads to model
+model.basin.mass_load = loads_df
+
+# save model with added mass loads
+model.write(toml_path)
+
+# #%%
+# # re-read saved model and check mass_load
+# model = Model.read(toml_path)
+
+# model.basin.mass_load

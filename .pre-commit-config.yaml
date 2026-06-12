@@ -21,7 +21,8 @@ repos:
         stages:
           - post-checkout
         always_run: true
-  - repo: builtin
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
     hooks:
       - id: check-added-large-files
         args: [--maxkb=700]
