@@ -113,6 +113,16 @@ processor = RibasimFeedbackProcessor(
 
 ribasim_model = Model.read(ribasim_work_dir_model_toml)
 
+# capture the zeesluis node-id by its geometry before snapping relocates it (see flushing step below)
+zeesluis_point = Point(133336, 482556)
+zeesluis_candidates = ribasim_model.node.df.loc[ribasim_model.node.df.geometry.distance(zeesluis_point) < 1]
+if len(zeesluis_candidates) != 1:
+    raise ValueError(
+        f"Expected exactly 1 node within 1 m of the zeesluis location {zeesluis_point.wkt}, "
+        f"but found {len(zeesluis_candidates)}: {zeesluis_candidates.index.tolist()}"
+    )
+zeesluis_node_id = zeesluis_candidates.index[0]
+
 # add junctions and network snapping
 if ADD_JUNCTIONS:
     ribasim_model = snap_model(ribasim_model, profiles_path)
@@ -289,9 +299,6 @@ add_controllers_to_connector_nodes(
 )
 
 # add increased flushing at the location of Zeesluis
-# zeesluis_node_id is defined during feedback stage; look it up from the model by geometry
-zeesluis_point = Point(133336, 482556)
-zeesluis_node_id = ribasim_model.node.df.loc[ribasim_model.node.df.geometry.distance(zeesluis_point) < 1].index[0]
 from_to_node_function_table.loc[from_to_node_function_table.index == zeesluis_node_id, "demand"] = 5  # 5 m3/s
 
 # replace the meta_data to the pump and outlet tables again, as the add_controllers_to_connector_nodes function might have changed/added node_id's
