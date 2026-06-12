@@ -48,8 +48,12 @@ chain() {
 py() { echo "pixi run python $*"; }
 
 # Step 0: fetch all DVC-tracked inputs once (serial, no lock contention).
+# Use `afterany` (not `afterok`): `dvc pull --force` exits non-zero when an out is declared in
+# dvc.yaml but not yet in the cache/remote (e.g. a newly added output on its first pipeline run).
+# The pull is best-effort -- it fetches whatever exists, and the stages regenerate the rest -- so a
+# non-zero pull must not block the whole pipeline.
 JOB_PULL=$(submit pull singleton ${TIME} "pixi run dvc pull --force")
-DEP_PULL="afterok:${JOB_PULL}"
+DEP_PULL="afterany:${JOB_PULL}"
 
 # Step 1: shared rwzi dependency (needs pulled inputs).
 JOB_RWZI=$(submit rwzi "${DEP_PULL}" ${TIME} "$(py notebooks/create_rwzi_model.py)")
