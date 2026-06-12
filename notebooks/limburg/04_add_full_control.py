@@ -24,7 +24,7 @@ from ribasim_nl import CloudStorage, Model
 
 # Globale settings
 
-MODEL_EXEC: bool = False  # execute model run
+MODEL_EXEC: bool = True  # execute model run
 AUTHORITY: str = "Limburg"
 SHORT_NAME: str = "limburg"
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
@@ -343,8 +343,8 @@ name_to_node = {
     "Inlaat Evertsoord": 604,
     "Klein Leukerbeek": 1119,
     "Roeven": 2501,
-    "Halte Grenssloot": 773,
-    "Halte Peelkanaal": 535,
+    "Halte Grenssloot": 2496,
+    # "Halte Peelkanaal": 535,
     "Peelkanaal naar Grenssloot": 821,
     "Molenakker": 2504,
     "Zwartwaterlossing": 230,
@@ -378,14 +378,17 @@ flow_demand_data_ls = {
     "Snepheiderbeek_1": {"summer": 40, "winter": 20},  # Bovenstrooms Snepheiderbeek is echte inlaat
     # Grote aanvoeren
     "Gemaal Beringe": {"summer": 550, "winter": 350},
-    "Zijtak Helenavaart": {"summer": 350, "winter": 350},  # winter in tabel: laatste 2 jaar
-    "Katsberg": {"summer": 3400, "winter": 3400},  # winter in tabel 1000-3400; hier bovengrens gekozen
+    "Zijtak Helenavaart": {"summer": 350, "winter": 150},  # winter in tabel: laatste 2 jaar
+    "Katsberg": {"summer": 3200, "winter": 800},  # gemiddelde aanvoertabelhenk08012021.xlsx
     "Eendlossing": {"summer": 20, "winter": 10},  # WATAK
     "Klein Leukerbeek": {"summer": 10, "winter": 10},  # GIHO kaart
     "Roeven": {"summer": 10, "winter": 10},  # WATAK
     # afgeleid uit relevante tabelregels
-    "Inlaat Evertsoord": {"summer": 350, "winter": 350},  # gekoppeld aan AVL Evertsoord / gemaal Helenaveen
-    "Halte Grenssloot": {"summer": 650, "winter": 600},
+    "Inlaat Evertsoord": {"summer": 0.075, "winter": 0.050},  # 230_030N in GIHO figuur??
+    "Halte Grenssloot": {
+        "summer": 800,
+        "winter": 300,
+    },  # aanvoertabelhenk08012021.xlsx
     "Halte Peelkanaal": {
         "summer": 1500,
         "winter": 500,
