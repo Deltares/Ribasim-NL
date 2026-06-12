@@ -28,3 +28,5 @@ tests/
 data/*/modellen/*/results
 *.log
 *.xlsx
+# ...except the transboundary inflow data, which is a DVC-tracked pipeline input
+!data/Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx
