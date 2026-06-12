@@ -130,6 +130,7 @@ stages:
         - data/Basisgegevens/profielen
       outs:
         - data/${item}/modellen/${item}_profiles
+        - data/${item}/verwerkt/profielen/network.gpkg
   forcing:
     foreach:
       delfland: Delfland
@@ -149,6 +150,7 @@ stages:
         - src/peilbeheerst_model/forcing/${item}.py
         - data/Rijkswaterstaat/modellen/rwzi
         - data/${item}/modellen/${item}_profiles
+        - data/${item}/verwerkt/profielen/network.gpkg
       outs:
         - data/${item}/modellen/${item}_forcing
   hws_demand:

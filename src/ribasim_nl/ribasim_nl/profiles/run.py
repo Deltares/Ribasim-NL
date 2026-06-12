@@ -48,6 +48,7 @@ def main(
     cloud: CloudStorage = CloudStorage(),  # noqa: B008
     col_ho_main_route: None = None,
     wd_intermediate_output: Path | None = None,
+    wd_output: Path | None = None,
     **kwargs,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]: ...
 
@@ -63,6 +64,7 @@ def main(
     cloud: CloudStorage = CloudStorage(),  # noqa: B008
     col_ho_main_route: str,
     wd_intermediate_output: Path | None = None,
+    wd_output: Path | None = None,
     **kwargs,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]: ...
 
@@ -73,6 +75,7 @@ def main(
     cloud: CloudStorage = CloudStorage(),  # noqa: B008
     col_ho_main_route: str | None = None,
     wd_intermediate_output: Path | None = None,
+    wd_output: Path | None = None,
     **kwargs,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """Full profile-generating workflow.
@@ -100,6 +103,11 @@ def main(
     :param col_ho_main_route: column-name containing the main route flag, defaults to None
     :param wd_intermediate_output: working directory for intermediate output files, defaults to None
         If None, no intermediate output is exported
+    :param wd_output: working directory for first-class profile outputs, defaults to None
+        If provided, the hydro-object network used to derive the profiles is exported here as
+        "network.gpkg" (layer "hydro_objects"). This file is a regular profile output (always
+        written, independent of `wd_intermediate_output`) and is consumed by the network-snapping
+        step (see `peilbeheerst_model.network_snapping.get_graph`).
 
     :key debug: flag for debug-mode, defaults to False
     :key epsg: EPSG to which all geospatial data is projected, defaults to 28992
@@ -185,6 +193,9 @@ def main(
     # > intermediate output
     if wd_intermediate_output is not None and create_wd_intermediate:
         wd_intermediate_output.mkdir(parents=True, exist_ok=True)
+    # > first-class output
+    if wd_output is not None:
+        wd_output.mkdir(parents=True, exist_ok=True)
     # > main routes from hydro-objects
     main_route_from_hydro_objects: bool = col_ho_main_route is not None
 
@@ -276,6 +287,13 @@ def main(
     # export depth-data [optional]
     if wd_intermediate_output is not None:
         hydro_objects.to_file(wd_intermediate_output / _fn_int_output, layer="hydro-objects")
+
+    # export the hydro-object network used to derive the profiles [first-class output]
+    # This is the network consumed by the network-snapping step (peilbeheerst_model.network_snapping
+    # .get_graph). It is written for both routing strategies (network-based and pre-flagged) and is
+    # independent of `wd_intermediate_output`, so the snapping step does not rely on debug output.
+    if wd_output is not None:
+        hydro_objects.to_file(wd_output / "network.gpkg", layer="hydro_objects")
 
     # basin profiles
     main_route = hydro_objects["main-route"].values
@@ -525,8 +543,8 @@ def _label_main_routing_from_network(
 
     # concatenate basin-groups of point- and line-data
     if wd is not None:
-        points = typing.cast(gpd.GeoDataFrame, pd.concat(point_collector, axis=0))
-        lines = typing.cast(gpd.GeoDataFrame, pd.concat(line_collector, axis=0))
+        points = pd.concat(point_collector, axis=0)
+        lines = pd.concat(line_collector, axis=0)
         points.to_file(wd / "graph.gpkg", layer="points")
         lines.to_file(wd / "graph.gpkg", layer="lines")
 

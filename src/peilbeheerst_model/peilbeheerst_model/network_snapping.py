@@ -35,12 +35,12 @@ class NetworkSnappingError(Exception):
 
 
 def get_graph(profiles_path: pathlib.Path) -> tuple[gpd.GeoDataFrame, nx.Graph]:
-    fn = profiles_path / "intermediate" / "graph.gpkg"
+    fn = profiles_path / "network.gpkg"
     if not fn.exists():
-        msg = f"File not found: {fn}\nRegenerate the profiles with `export_intermediate_output=True` to create {fn}"
+        msg = f"File not found: {fn}\nRegenerate the profiles to create {fn}"
         raise FileNotFoundError(msg)
 
-    hydro_objects = gpd.read_file(fn, layer="lines")
+    hydro_objects = gpd.read_file(fn, layer="hydro_objects")
     graph = path_finder.generate_graph(hydro_objects)
 
     return hydro_objects, graph
