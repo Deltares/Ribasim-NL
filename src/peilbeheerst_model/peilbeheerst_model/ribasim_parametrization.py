@@ -1063,6 +1063,60 @@ def validate_manning_basins(model) -> None:
         print(manning_nodes.loc[manning_nodes.downstream_streefpeil != manning_nodes.upstream_streefpeil])
 
 
+def _connectors_adjacent_over_junctions(
+    link_df: pd.DataFrame,
+    node_type: pd.Series,
+    source_ids: pd.Series,
+    *,
+    downstream: bool,
+) -> pd.Series:
+    """Find non-Junction nodes adjacent to `source_ids`, traversing over Junction nodes.
+
+    Junction nodes are layout-only and should be transparent to the meta_categorie classification. Starting from
+    `source_ids` (e.g. boezem basins), this follows the flow-links and skips through any Junction nodes until the
+    first non-Junction node (a connector) is reached.
+
+    Parameters
+    ----------
+    link_df : pd.DataFrame
+        Link table with `from_node_id` and `to_node_id`.
+    node_type : pd.Series
+        Series mapping node_id -> node_type.
+    source_ids : Iterable[int]
+        Node-ids to start the search from.
+    downstream : bool
+        If True, follow links in flow-direction (from->to); if False, against it (to->from).
+
+    Returns
+    -------
+    pd.Series
+        Non-Junction node_ids adjacent to `source_ids` over junctions (for use with `.isin`).
+    """
+    if downstream:
+        step = link_df.groupby("from_node_id")["to_node_id"].apply(list)
+    else:
+        step = link_df.groupby("to_node_id")["from_node_id"].apply(list)
+
+    result: set[int] = set()
+    seen: set[int] = set()
+    frontier = [int(n) for n in source_ids]
+    while frontier:
+        next_frontier: list[int] = []
+        for node in frontier:
+            for neighbor in step.get(node, []):
+                neighbor = int(neighbor)
+                if neighbor in seen:
+                    continue
+                seen.add(neighbor)
+                if str(node_type.get(neighbor)) == "Junction":
+                    next_frontier.append(neighbor)
+                else:
+                    result.add(neighbor)
+        frontier = next_frontier
+
+    return pd.Series(sorted(result), dtype="int64")
+
+
 def identify_node_meta_categorie(ribasim_model: Model, **kwargs) -> None:
     """
     Identify the meta_categorie of each Outlet, Pump and LevelBoundary.
@@ -1104,9 +1158,13 @@ def identify_node_meta_categorie(ribasim_model: Model, **kwargs) -> None:
     basin_nodes = ribasim_model.basin.state.df.copy()
     boezem_basins = basin_nodes.loc[basin_nodes.meta_categorie == "hoofdwater", "node_id"]
 
-    # select the nodes which originate from a boezem, and the ones which go to a boezem. Use the link table for this.
-    nodes_from_boezem = ribasim_model.link.df.loc[ribasim_model.link.df.from_node_id.isin(boezem_basins), "to_node_id"]
-    nodes_to_boezem = ribasim_model.link.df.loc[ribasim_model.link.df.to_node_id.isin(boezem_basins), "from_node_id"]
+    # select the nodes which originate from a boezem, and the ones which go to a boezem. Junction nodes are
+    # layout-only and must be transparent here, so traverse over them to reach the
+    # actual connector-nodes; otherwise an inserted junction would hide the boezem-adjacency and misclassify
+    # boezem inlets/outlets as regular peilgebied structures.
+    node_type_map = node_df.set_index("node_id")["node_type"]
+    nodes_from_boezem = _connectors_adjacent_over_junctions(link_df, node_type_map, boezem_basins, downstream=True)
+    nodes_to_boezem = _connectors_adjacent_over_junctions(link_df, node_type_map, boezem_basins, downstream=False)
 
     # select the nodes which originate from, and go to a boundary
     nodes_from_boundary = ribasim_model.link.df.loc[
@@ -2486,6 +2544,52 @@ def update_meta(ribasim_model: Model, waterschap: str) -> Model:
     return ribasim_model
 
 
+def _resolve_endpoint_over_junctions(ribasim_model: Model, node_ids: pd.Series, *, downstream: bool) -> pd.Series:
+    """Map each node-id to the first non-Junction node reachable over Junction nodes.
+
+    Junction nodes are layout-only and disappear from the equations, so they must be transparent when looking up the
+    upstream/downstream Basin (or LevelBoundary) of a connector. When `junctionify` inserts a Junction between a
+    connector and its Basin, the immediate link-neighbour becomes that Junction; this resolves through the Junction(s)
+    to the first real node. A node that is not a Junction is returned unchanged, so this is a no-op without junctions.
+
+    :param ribasim_model: Ribasim model
+    :param node_ids: node-ids to resolve (the immediate from/to neighbours of the connectors)
+    :param downstream: follow links in flow-direction (from->to) if True, against it (to->from) if False
+
+    :return: Series aligned with `node_ids`, with Junction node-ids replaced by their first non-Junction node
+    """
+    link_df = cast(pd.DataFrame, ribasim_model.link.df)
+    node_type_by_id = cast(pd.DataFrame, ribasim_model.node.df)["node_type"].to_dict()
+
+    if downstream:
+        step = link_df.groupby("from_node_id")["to_node_id"].apply(list).to_dict()
+    else:
+        step = link_df.groupby("to_node_id")["from_node_id"].apply(list).to_dict()
+
+    def resolve(start: float) -> float:
+        if pd.isna(start):
+            return start
+        current = int(start)
+        seen = {current}
+        for _ in range(50):
+            if str(node_type_by_id.get(current)) != "Junction":
+                return current
+            next_node = None
+            for neighbor in step.get(current, []):
+                neighbor = int(neighbor)
+                if neighbor not in seen:
+                    next_node = neighbor
+                    break
+            if next_node is None:
+                return current
+            seen.add(next_node)
+            current = next_node
+        return current
+
+    cache = {n: resolve(n) for n in node_ids.dropna().unique()}
+    return node_ids.map(lambda n: cache.get(n, n) if pd.notna(n) else n)
+
+
 def find_upstream_downstream_target_levels(ribasim_model: Model, node: str) -> None:
     """Find the target levels upstream and downstream from each outlet, and add it as meta data to the outlet.static table."""
     if node.lower() == "outlet":
@@ -2539,6 +2643,16 @@ def find_upstream_downstream_target_levels(ribasim_model: Model, node: str) -> N
     )
     structure_static = structure_static.drop(columns="from_node_id_remove")  # remove redundant column
 
+    # Junction nodes are layout-only and have no target level; resolve the immediate up-/downstream neighbour over any
+    # Junction(s) to the first real Basin/LevelBoundary so the target-level lookups (and thus the non-free-flowing
+    # outlet removal that depends on them) work identically for junctionified models. No-op without junctions.
+    structure_static["meta_res_from_node_id"] = _resolve_endpoint_over_junctions(
+        ribasim_model, structure_static["from_node_id"], downstream=False
+    )
+    structure_static["meta_res_to_node_id"] = _resolve_endpoint_over_junctions(
+        ribasim_model, structure_static["to_node_id"], downstream=True
+    )
+
     # filter the basin state table, in case basins have been converted to Level Boundaries in the FF
     basin_state = ribasim_model.basin.state.df[["node_id", "level"]].copy()
     basin_state = basin_state.loc[basin_state.node_id.isin(ribasim_model.basin.node.df.index.values)]
@@ -2546,7 +2660,7 @@ def find_upstream_downstream_target_levels(ribasim_model: Model, node: str) -> N
     # merge upstream target level to the outlet static table by using the Basins
     structure_static = structure_static.merge(
         right=basin_state,
-        left_on="to_node_id",
+        left_on="meta_res_to_node_id",
         right_on="node_id",
         how="left",
         suffixes=("", "_remove"),
@@ -2556,7 +2670,7 @@ def find_upstream_downstream_target_levels(ribasim_model: Model, node: str) -> N
 
     structure_static = structure_static.merge(
         right=ribasim_model.basin.state.df[["node_id", "level"]],
-        left_on="from_node_id",
+        left_on="meta_res_from_node_id",
         right_on="node_id",
         how="left",
         suffixes=("", "_remove"),
@@ -2567,7 +2681,7 @@ def find_upstream_downstream_target_levels(ribasim_model: Model, node: str) -> N
     # merge upstream target level to the outlet static table by using the LevelBoundaries
     structure_static = structure_static.merge(
         right=ribasim_model.level_boundary.static.df[["node_id", "level"]],
-        left_on="to_node_id",
+        left_on="meta_res_to_node_id",
         right_on="node_id",
         how="left",
         suffixes=("", "_remove"),
@@ -2577,7 +2691,7 @@ def find_upstream_downstream_target_levels(ribasim_model: Model, node: str) -> N
 
     structure_static = structure_static.merge(
         right=ribasim_model.level_boundary.static.df[["node_id", "level"]],
-        left_on="from_node_id",
+        left_on="meta_res_from_node_id",
         right_on="node_id",
         how="left",
         suffixes=("", "_remove"),
@@ -2593,7 +2707,14 @@ def find_upstream_downstream_target_levels(ribasim_model: Model, node: str) -> N
 
     # drop the redundant columns, and prepare column names for Ribasim
     structure_static = structure_static.drop(
-        columns=["to_basin_level", "from_basin_level", "to_LevelBoundary_level", "from_LevelBoundary_level"]
+        columns=[
+            "to_basin_level",
+            "from_basin_level",
+            "to_LevelBoundary_level",
+            "from_LevelBoundary_level",
+            "meta_res_from_node_id",
+            "meta_res_to_node_id",
+        ]
     )
     structure_static = structure_static.rename(
         columns={
@@ -2696,13 +2817,17 @@ def remove_non_free_flowing_outlets(
         "node_id",
     ]
 
-    level_boundary_node_ids = ribasim_model.level_boundary.node.df.index
-    us_level_boundary_outlets = ribasim_model.link.df.loc[
-        ribasim_model.link.df.to_node_id.isin(level_boundary_node_ids), "from_node_id"
-    ].to_list()
-    ds_level_boundary_outlets = ribasim_model.link.df.loc[
-        ribasim_model.link.df.from_node_id.isin(level_boundary_node_ids), "to_node_id"
-    ].to_list()
+    # Connectors adjacent to a LevelBoundary must be kept. Junction nodes are layout-only, so traverse over them to
+    # find the connectors that (possibly via Junctions) link to a LevelBoundary. No-op for models without junctions.
+    link_df = cast(pd.DataFrame, ribasim_model.link.df)
+    node_type = cast(pd.DataFrame, ribasim_model.node.df)["node_type"]
+    level_boundary_node_ids = pd.Series(ribasim_model.level_boundary.node.df.index)
+    us_level_boundary_outlets = _connectors_adjacent_over_junctions(
+        link_df, node_type, level_boundary_node_ids, downstream=False
+    ).to_list()
+    ds_level_boundary_outlets = _connectors_adjacent_over_junctions(
+        link_df, node_type, level_boundary_node_ids, downstream=True
+    ).to_list()
     level_boundary_outlets = set(us_level_boundary_outlets + ds_level_boundary_outlets)
     non_free_flowing_outlets_ids = non_free_flowing_outlets_ids[
         ~non_free_flowing_outlets_ids.isin(level_boundary_outlets)
@@ -2720,6 +2845,22 @@ def remove_non_free_flowing_outlets(
         | ribasim_model.link.df.to_node_id.isin(non_free_flowing_outlets_ids)
     ]
     ribasim_model.link.df = ribasim_model.link.df.loc[~ribasim_model.link.df.index.isin(links_to_remove.index)]
+
+    # Removing outlets may leave a layout-only Junction with no inflow or no outflow link, which Ribasim rejects.
+    # Iteratively drop such orphaned Junctions together with their remaining links. No-op without junctions.
+    node_df = cast(pd.DataFrame, ribasim_model.node.df)
+    junction_ids = set(node_df.index[node_df["node_type"] == "Junction"])
+    while junction_ids:
+        link_df = cast(pd.DataFrame, ribasim_model.link.df)
+        nodes_with_inflow = set(link_df["to_node_id"])
+        nodes_with_outflow = set(link_df["from_node_id"])
+        orphaned_junctions = {j for j in junction_ids if j not in nodes_with_inflow or j not in nodes_with_outflow}
+        if not orphaned_junctions:
+            break
+        keep_links = ~(link_df.from_node_id.isin(orphaned_junctions) | link_df.to_node_id.isin(orphaned_junctions))
+        ribasim_model.node.df = ribasim_model.node.df.drop(list(orphaned_junctions))
+        ribasim_model.link.df = ribasim_model.link.df.loc[keep_links]
+        junction_ids -= orphaned_junctions
 
     if printing:
         print(f"Following {len(non_free_flowing_outlets_ids)} non free flowing outlets were removed:")

@@ -89,6 +89,52 @@ def _dissolve_geometry(geometry: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return geometry.dissolve()[["geometry"]].reset_index(drop=True)
 
 
+def _resolve_endpoints_over_junctions(model: Model, node_ids: pd.Series, *, downstream: bool) -> dict[int, int]:
+    """Map each node-id to the first non-Junction node reachable by following flow-links over Junctions.
+
+    Junction nodes are layout-only: they merely connect upstream to downstream
+    nodes and disappear from the equations. They must therefore be transparent to the 'aanvoer'-labelling. When
+    `junctionify` inserts a Junction between a 'kunstwerk' and its (boezem/peilgebied) basin, the immediate
+    `meta_to_node_id`/`meta_from_node_id` becomes that Junction, which would otherwise hide the basin-adjacency.
+
+    A node-id that is not a Junction is returned unchanged, so this is a no-op for models without junctions.
+
+    :param model: Ribasim model
+    :param node_ids: node-ids to resolve (typically `meta_to_node_id` or `meta_from_node_id`)
+    :param downstream: follow links in flow-direction (from->to) if True, against it (to->from) if False
+
+    :return: mapping from each input node-id to its first non-Junction node over junctions
+    """
+    link_df = typing.cast(pd.DataFrame, model.link.df)
+    node_df = typing.cast(pd.DataFrame, model.node.df).reset_index()
+    node_type_by_id = dict(zip(node_df["node_id"], node_df["node_type"], strict=False))
+
+    if downstream:
+        step = link_df.groupby("from_node_id")["to_node_id"].apply(list).to_dict()
+    else:
+        step = link_df.groupby("to_node_id")["from_node_id"].apply(list).to_dict()
+
+    def resolve(start: int) -> int:
+        current = int(start)
+        seen = {current}
+        for _ in range(50):
+            if str(node_type_by_id.get(current)) != "Junction":
+                return current
+            next_node = None
+            for neighbor in step.get(current, []):
+                neighbor = int(neighbor)
+                if neighbor not in seen:
+                    next_node = neighbor
+                    break
+            if next_node is None:
+                return current
+            seen.add(next_node)
+            current = next_node
+        return current
+
+    return {int(n): resolve(int(n)) for n in pd.unique(node_ids.dropna())}
+
+
 class SupplyBasin:
     """Labelling of Ribasim's basin nodes as 'aanvoergebieden' based on geometry data."""
 
@@ -344,8 +390,18 @@ class SupplyWork(abc.ABC):
         statics = self.get_statics()
         boundaries = self.level_boundaries
 
-        # update statics based on 'meta_to_node_id'-label
-        statics["meta_aanvoer"] = statics["meta_to_node_id"].isin(basin_areas[basin_areas["meta_aanvoer"]].index)
+        # Resolve the immediate from/to endpoints over any Junction nodes to the first real (non-Junction) node, so
+        # junctions are transparent to the 'aanvoer'-labelling. For models without junctions this is a no-op, as the
+        # endpoints are already basins/boundaries.
+        resolved_to = statics["meta_to_node_id"].map(
+            _resolve_endpoints_over_junctions(self.model, statics["meta_to_node_id"], downstream=True)
+        )
+        resolved_from = statics["meta_from_node_id"].map(
+            _resolve_endpoints_over_junctions(self.model, statics["meta_from_node_id"], downstream=False)
+        )
+
+        # update statics based on the resolved downstream basin
+        statics["meta_aanvoer"] = resolved_to.isin(basin_areas[basin_areas["meta_aanvoer"]].index)
         self.set_statics(statics)
         # TODO: Add option to use links instead of meta_to_node_id?
 
@@ -366,7 +422,15 @@ class SupplyWork(abc.ABC):
                 )
             # only consider basins and works that are considered for the 'aanvoer'-situation
             basin_sel = basin_areas[basin_areas["meta_aanvoer"]].index
-            works_sel = statics.loc[statics["meta_aanvoer"], ["node_id", "meta_from_node_id", "meta_to_node_id"]]
+            # use the junction-resolved from/to endpoints so junctions are transparent here as well
+            mask = statics["meta_aanvoer"]
+            works_sel = pd.DataFrame(
+                {
+                    "node_id": statics.loc[mask, "node_id"].to_numpy(),
+                    "meta_from_node_id": resolved_from[mask].to_numpy(),
+                    "meta_to_node_id": resolved_to[mask].to_numpy(),
+                }
+            )
             # initiate working variables (bi: basin node-ID)
             basin_main: dict[object, list[object]] = {bi: [] for bi in basin_sel}
             basin_sub: dict[object, list[object]] = {bi: [] for bi in basin_sel}
