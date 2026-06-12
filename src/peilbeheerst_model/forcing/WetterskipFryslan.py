@@ -115,10 +115,24 @@ processor = RibasimFeedbackProcessor(
 
 ribasim_model = Model.read(ribasim_work_dir_model_toml)
 
-# add junctions and network snapping
+# Resolve geometry-based drain node lookups before snapping relocates these nodes, so the
+# hard-coded coordinates still match the original node locations (used much further below).
+_drain_points = [Point(206421, 592530), Point(206360, 592679)]
+to_drain_node_ids = []
+for _drain_point in _drain_points:
+    _drain_candidates = ribasim_model.node.df.loc[ribasim_model.node.df.geometry.distance(_drain_point) < 1]
+    if len(_drain_candidates) != 1:
+        raise ValueError(
+            f"Expected exactly 1 node within 1 m of drain location {_drain_point.wkt}, "
+            f"but found {len(_drain_candidates)}: {_drain_candidates.index.tolist()}"
+        )
+    to_drain_node_ids.append(_drain_candidates.index[0])
+to_drain_node_ids = tuple(to_drain_node_ids)
+
+# network snapping (junctions are added at the very end, just before writing, so they stay
+# transparent to all parametrization, classification and validation steps)
 if ADD_JUNCTIONS:
     ribasim_model = snap_model(ribasim_model, profiles_path)
-    ribasim_model = junctionify(ribasim_model)
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
@@ -255,11 +269,6 @@ to_supply = (
     3888,
 )
 to_flow_control = (2452, 3064, 3065, 3068)
-
-# look up dynamically-added drain node IDs by geometry
-_node_df = ribasim_model.node.df
-_drain_points = [Point(206421, 592530), Point(206360, 592679)]
-to_drain_node_ids = tuple(_node_df.loc[_node_df.geometry.distance(p) < 1].index[0] for p in _drain_points)
 
 to_drain = (2147, 2751, 2944, 3041, 3494, 3568, 3709, *to_drain_node_ids)
 
@@ -435,6 +444,11 @@ if missing_meta_categorie_node_ids:
 
 # set numerical settings
 # write model output
+# add junctions last: a layout-only transformation merging overlapping flow links into a
+# Junction. Done after all parametrization so junctions never break adjacency/validation.
+if ADD_JUNCTIONS:
+    ribasim_model = junctionify(ribasim_model)
+
 ribasim_model.use_validation = True
 ribasim_model.starttime = starttime
 ribasim_model.endtime = endtime

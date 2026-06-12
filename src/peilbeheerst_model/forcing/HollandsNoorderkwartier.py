@@ -116,10 +116,10 @@ processor = RibasimFeedbackProcessor(
 
 ribasim_model = Model.read(ribasim_work_dir_model_toml)
 
-# add junctions and network snapping
+# network snapping (junctions are added at the very end, just before writing, so they stay
+# transparent to all parametrization, classification and validation steps)
 if ADD_JUNCTIONS:
     ribasim_model = snap_model(ribasim_model, profiles_path)
-    ribasim_model = junctionify(ribasim_model)
 
 # add gemaal Kadoelen which is removed due to the merging
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -531,6 +531,11 @@ if missing_meta_categorie_node_ids:
 
 # set numerical settings
 # write model output
+# add junctions last: a layout-only transformation merging overlapping flow links into a
+# Junction. Done after all parametrization so junctions never break adjacency/validation.
+if ADD_JUNCTIONS:
+    ribasim_model = junctionify(ribasim_model)
+
 ribasim_model.use_validation = True
 ribasim_model.starttime = starttime
 ribasim_model.endtime = endtime

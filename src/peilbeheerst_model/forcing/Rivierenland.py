@@ -114,10 +114,24 @@ processor = RibasimFeedbackProcessor(
 
 ribasim_model = Model.read(ribasim_work_dir_model_toml)
 
-# add junctions and network snapping
+# Resolve geometry-based inlaat node lookups before snapping relocates these nodes, so the
+# hard-coded coordinates still match the original node locations (used much further below).
+_inlaat_points = [Point(174615, 440126), Point(103334, 433570), Point(103446, 433601), Point(198568, 434184)]
+inlaten = []
+for _inlaat_point in _inlaat_points:
+    _inlaat_candidates = ribasim_model.node.df.loc[ribasim_model.node.df.geometry.distance(_inlaat_point) < 1]
+    if len(_inlaat_candidates) != 1:
+        raise ValueError(
+            f"Expected exactly 1 node within 1 m of inlaat location {_inlaat_point.wkt}, "
+            f"but found {len(_inlaat_candidates)}: {_inlaat_candidates.index.tolist()}"
+        )
+    inlaten.append(_inlaat_candidates.index[0])
+inlaat_Kuijk = inlaten[0]
+
+# network snapping (junctions are added at the very end, just before writing, so they stay
+# transparent to all parametrization, classification and validation steps)
 if ADD_JUNCTIONS:
     ribasim_model = snap_model(ribasim_model, profiles_path)
-    ribasim_model = junctionify(ribasim_model)
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
@@ -232,14 +246,6 @@ to_flow_control = (
     879,
 )
 
-# look up dynamically-added inlaten node IDs by geometry
-_node_df = ribasim_model.node.df
-_inlaat_kuijk_point = Point(174615, 440126)
-_inlaat_points = [_inlaat_kuijk_point, Point(103334, 433570), Point(103446, 433601)]
-inlaten = [_node_df.loc[_node_df.geometry.distance(p) < 1].index[0] for p in _inlaat_points]
-_pannerlingen_point = Point(198568, 434184)
-inlaten.append(_node_df.loc[_node_df.geometry.distance(_pannerlingen_point) < 1].index[0])
-inlaat_Kuijk = inlaten[0]
 
 to_supply = (
     *inlaten,  # add all manually added inlaten
@@ -439,6 +445,11 @@ if missing_meta_categorie_node_ids:
 
 # set numerical settings
 # write model output
+# add junctions last: a layout-only transformation merging overlapping flow links into a
+# Junction. Done after all parametrization so junctions never break adjacency/validation.
+if ADD_JUNCTIONS:
+    ribasim_model = junctionify(ribasim_model)
+
 ribasim_model.use_validation = True
 ribasim_model.starttime = starttime
 ribasim_model.endtime = endtime
