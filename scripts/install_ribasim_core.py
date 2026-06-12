@@ -25,7 +25,7 @@ from ribasim_nl.settings import settings
 #       For minio, a folder name like "storage-formulation".
 # Make sure the version is compatible with the Ribasim Python version in pixi.toml.
 SOURCE = "minio"
-NAME = "storage-fable"
+NAME = "storage-continuous"
 # ───────────────────────────────────────────────────────────────────────────────
 
 GITHUB_RELEASE_URL = "https://github.com/Deltares/Ribasim/releases/download/{name}/{asset}"
