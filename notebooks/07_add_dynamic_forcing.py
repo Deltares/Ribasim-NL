@@ -48,7 +48,6 @@ def add_forcing(model, cloud, starttime, endtime, assign_budget_fractions, fract
 
     # sync files so we're good to go!
     lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink")
-    cloud.synchronize(filepaths=[lhm_budget_path], overwrite=False)
 
     # Open zarr budgets, select time range early to reduce data volume
     budgets = xr.open_zarr(str(lhm_budget_path)).sel(time=slice(starttime, endtime))

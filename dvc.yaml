@@ -84,6 +84,7 @@ stages:
         - notebooks/07_add_dynamic_forcing.py
         - data/${item}/modellen/${item}_bergend_model
         - data/Rijkswaterstaat/modellen/rwzi
+        - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       outs:
         - data/${item}/modellen/${item}_dynamic_model
   feedback:

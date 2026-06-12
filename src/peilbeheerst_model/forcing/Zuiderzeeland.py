@@ -121,7 +121,6 @@ if ADD_JUNCTIONS:
 if DYNAMIC_CONDITIONS:
     # Add dynamic meteo and groundwater from LHM zarr
     lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink")
-    cloud.synchronize(filepaths=[lhm_budget_path], overwrite=False)
     budgets = xr.open_zarr(str(lhm_budget_path)).sel(time=slice(starttime, endtime))
     offline_budgets = AssignOfflineBudgets(budgets)
 
