@@ -31,7 +31,9 @@ def create_rwzi_basin_coupling(rwzi_coupled_model: Model, max_distance=100):
     """
     terminals_all = rwzi_coupled_model.terminal.node.df  # pyrefly: ignore[missing-attribute]
     basins = rwzi_coupled_model.basin.area.df
-    unique_waterbeheerders = rwzi_coupled_model.node.df["meta_waterbeheerder"].dropna().unique()  # pyrefly: ignore[unsupported-operation]
+    nodes = rwzi_coupled_model.node.df
+
+    unique_waterbeheerders = nodes["meta_waterbeheerder"].dropna().unique()  # pyrefly: ignore[unsupported-operation]
 
     # RWZI codes
     rwzi_codes_df = terminals_all[["meta_rwzi_code"]].dropna().copy()
@@ -46,7 +48,8 @@ def create_rwzi_basin_coupling(rwzi_coupled_model: Model, max_distance=100):
     ]
 
     # Basins reset
-    basins_reset = basins.reset_index().rename(columns={"node_id": "couple_to_basin_id"})  # pyrefly: ignore[missing-attribute]
+    basins_join = basins.join(nodes[["meta_categorie", "meta_waterbeheerder"]], on="node_id")  # pyrefly: ignore[missing-attribute, unsupported-operation]
+    basins_reset = basins_join.reset_index().rename(columns={"node_id": "couple_to_basin_id"})
     # Filter basins on meta_categorie != 'bergend'
     basins_reset = basins_reset[~basins_reset["meta_categorie"].isin(["bergend"])]
 
