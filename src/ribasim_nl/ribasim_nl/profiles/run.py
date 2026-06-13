@@ -292,8 +292,12 @@ def main(
     # This is the network consumed by the network-snapping step (peilbeheerst_model.network_snapping
     # .get_graph). It is written for both routing strategies (network-based and pre-flagged) and is
     # independent of `wd_intermediate_output`, so the snapping step does not rely on debug output.
+    # Geometries are exploded to single-part LineStrings: `momepy.gdf_to_nx` (used to rebuild the
+    # graph from this file) does not support multi-part geometries, which may occur for pre-flagged
+    # hydro-objects that skip the network-patching step.
     if wd_output is not None:
-        hydro_objects.to_file(wd_output / "network.gpkg", layer="hydro_objects")
+        network = hydro_objects.explode(index_parts=False, ignore_index=True)
+        network.to_file(wd_output / "network.gpkg", layer="hydro_objects")
 
     # basin profiles
     main_route = hydro_objects["main-route"].values
