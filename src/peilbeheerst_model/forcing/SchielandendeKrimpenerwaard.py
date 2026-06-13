@@ -29,7 +29,7 @@ DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
 ADD_LHM_FRACTIONS: bool = True
 ADD_RWZI: bool = True
-ADD_JUNCTIONS: bool = False
+ADD_JUNCTIONS: bool = True
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -111,10 +111,10 @@ processor = RibasimFeedbackProcessor(
 
 ribasim_model = Model.read(ribasim_work_dir_model_toml)
 
-# add junctions and network snapping
+# network snapping (junctions are added at the very end, just before writing, so they stay
+# transparent to all parametrization, classification and validation steps)
 if ADD_JUNCTIONS:
     ribasim_model = snap_model(ribasim_model, profiles_path)
-    ribasim_model = junctionify(ribasim_model)
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
@@ -130,7 +130,6 @@ if missing_meta_categorie_node_ids:
 if DYNAMIC_CONDITIONS:
     # Add dynamic meteo and groundwater from LHM zarr
     lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink")
-    cloud.synchronize(filepaths=[lhm_budget_path], overwrite=False)
     budgets = xr.open_zarr(str(lhm_budget_path)).sel(time=slice(starttime, endtime))
     offline_budgets = AssignOfflineBudgets(budgets)
 
@@ -470,6 +469,11 @@ if missing_meta_categorie_node_ids:
 
 # set numerical settings
 # write model output
+
+# add junctions last: a layout-only transformation merging overlapping flow links into a
+# Junction. Done after all parametrization so junctions never break adjacency/validation.
+if ADD_JUNCTIONS:
+    ribasim_model = junctionify(ribasim_model)
 
 ribasim_model.use_validation = True
 ribasim_model.starttime = starttime

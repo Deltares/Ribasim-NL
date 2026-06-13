@@ -55,7 +55,6 @@ cloud.synchronize(
         hydamo_gpkg,
     ]
 )
-cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 
 # %% init things
 model = Model.read(ribasim_toml)

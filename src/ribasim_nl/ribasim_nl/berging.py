@@ -41,8 +41,6 @@ BANDEN = {
 
 def percentage_secundair_oppervlaktewater() -> None:
     """Single-use function to compute percentage secondary surface water per LHM cell and write as GTIFF LHM_oppervlaktewater_percentage.tif"""
-    cloud = CloudStorage()
-    cloud.synchronize([LHM_RASTER_FILE], overwrite=False)
     out_file = LHM_RASTER_FILE.with_name("LHM_oppervlaktewater_percentage_secundair.tif")
     with rasterio.open(LHM_RASTER_FILE) as src:
         band11 = src.read(11).astype("float32")
@@ -77,8 +75,6 @@ def percentage_secundair_oppervlaktewater() -> None:
 
 def percentage_primair_oppervlaktewater() -> None:
     """Single-use function to compute percentage primary surface water per LHM cell and write as GTIFF LHM_oppervlaktewater_percentage.tif"""
-    cloud = CloudStorage()
-    cloud.synchronize([LHM_RASTER_FILE], overwrite=False)
     out_file = LHM_RASTER_FILE.with_name("LHM_oppervlaktewater_percentage_primair.tif")
     with rasterio.open(LHM_RASTER_FILE) as src:
         band10 = src.read(11).astype("float32")
@@ -610,10 +606,8 @@ class VdGaastBerging:
         self.cloud = cloud
         self.use_add_api = use_add_api
 
-        # check and add rasters paths
         lhm_raster_file = self.cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_data.tif")
         ma_raster_file = self.cloud.joinpath("Basisgegevens/VanDerGaast_QH/spafvoer1.tif")
-        self.cloud.synchronize([lhm_raster_file, ma_raster_file])
         self.lhm_raster_file = lhm_raster_file
         self.ma_raster_file = ma_raster_file
 

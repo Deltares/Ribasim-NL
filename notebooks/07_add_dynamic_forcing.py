@@ -29,7 +29,6 @@ add_lhm_fractions: bool = True
 compute_fractions: bool = False
 rwzi_model_path = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
 transboundary_data_path = cloud.joinpath("Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx")
-cloud.synchronize(filepaths=[transboundary_data_path])
 
 # LHM4.3 mfma budgets to be assign to primary/secondary drainage/surface_runoff columns
 primary_budgets: set[str] = {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5", "bdgpssw_m3d"}
@@ -48,7 +47,6 @@ def add_forcing(model, cloud, starttime, endtime, assign_budget_fractions, fract
 
     # sync files so we're good to go!
     lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink")
-    cloud.synchronize(filepaths=[lhm_budget_path], overwrite=False)
 
     # Open zarr budgets, select time range early to reduce data volume
     budgets = xr.open_zarr(str(lhm_budget_path)).sel(time=slice(starttime, endtime))
@@ -168,7 +166,9 @@ for authority in authorities:
             dict_flow = import_transboundary_inflow(transboundary_data_path, starttime, endtime, model)
             add_transboundary_inflow(model, dict_flow)
 
-            # merge RWZI model
+            # merge RWZI model, which requires meta_waterbeheerder
+            # pyrefly: ignore[missing-attribute]
+            model.node.df.loc[model.basin.node.df.index, "meta_waterbeheerder"] = authority
             model = merge_rwzi_model(model, rwzi_model_path)
 
             # add LHM fractions

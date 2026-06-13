@@ -193,27 +193,17 @@ def export_to_cloud(
     cloud: CloudStorage = CloudStorage(),  # noqa: B008
     *,
     buffer: float = 0,
-    sync: bool = True,
-    overwrite: bool = False,
 ) -> None:
     """Export cross-sectional profiles to the GoodCloud.
 
     :param water_authority: name of water authority
     :param cloud: the GoodCloud-connection, defaults to CloudStorage()
     :param buffer: buffer-argument as used by some implementations, defaults to 0
-    :param sync: sync data with the GoodCloud ('Basisgegevens/profielen'), defaults to True
-    :param overwrite: overwrite data from the GoodCloud ('Basisgegevens/profielen'), defaults to False
 
     :type water_authority: str
     :type cloud: CloudStorage, optional
     :type buffer: float, optional
-    :type sync: bool, optional
-    :type overwrite: bool, optional
     """
-    # sync cloud: Basisgegevens - profielen
-    if sync:
-        cloud.download_basisgegevens(["profielen"], overwrite=overwrite)
-
     # working directories
     folders = water_authority, "verwerkt", "profielen", "intermediate"
     src = cloud.joinpath(*folders)
@@ -250,18 +240,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--buffer", "-b", type=float, default=0.05, help="Optional argument: Buffer when coupling points to lines"
     )
-    parser.add_argument(
-        "--sync",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="sync the GoodCloud ('Basisgegevens/profielen')",
-    )
-    parser.add_argument(
-        "--overwrite",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="overwrite the GoodCloud ('Basisgegevens/profielen')",
-    )
     parser.add_argument("--log", "-l", type=str, default="WARNING", help="Optional argument: Log-level.")
 
     # parse arguments
@@ -269,4 +247,4 @@ if __name__ == "__main__":
 
     # execute preprocessing
     logging.basicConfig(level=args.log.upper())
-    export_to_cloud(args.water_authority, buffer=args.buffer, sync=args.sync, overwrite=args.overwrite)
+    export_to_cloud(args.water_authority, buffer=args.buffer)

@@ -18,7 +18,7 @@ Submits the DVC pipeline as individual SLURM jobs. Each `foreach` stage gets its
 This submits jobs in three waves:
 
 1. `rwzi` (shared dependency)
-2. 22 parallel jobs: 11 `dynamic@*`, 10 `peilbeheerst@*`, 1 `hws_transient`
+2. 22 parallel jobs: 11 `dynamic@*`, 10 `forcing@*`, 1 `hws_transient`
 3. `samenvoegen` → `koppelen`
 
 On completion, job IDs are written to `repro_jobs.txt` for use with `run.sh`.
