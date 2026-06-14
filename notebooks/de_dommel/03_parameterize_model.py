@@ -37,6 +37,20 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # %%
 
+# Fix basin_levels
+basin_level_overrides = [
+    ([1718], 12.38),
+]
+
+for node_ids, meta_streefpeil in basin_level_overrides:
+    mask = model.basin.area.df.node_id.isin(node_ids)
+    model.basin.area.df.loc[mask, "meta_streefpeil"] = meta_streefpeil
+
+# Herbereken afgeleide tabellen na handmatige streefpeil-overrides.
+model.basin.state.df = model.basin.area.df[["node_id", "meta_streefpeil"]].rename(columns={"meta_streefpeil": "level"})
+
+# %%
+
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 # Write model

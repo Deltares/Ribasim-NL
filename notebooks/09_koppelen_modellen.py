@@ -7,7 +7,10 @@ import geopandas as gpd
 import pandas as pd
 from networkx import NetworkXNoPath
 from ribasim_nl.aquo import waterbeheercode
-from ribasim_nl.coupling_level_apply import sync_static_controller_thresholds
+from ribasim_nl.coupling_level_apply import (
+    ensure_doorlaat_afvoer_max_downstream_level,
+    sync_static_controller_thresholds,
+)
 from ribasim_nl.coupling_levels import run_coupling_level_check
 from ribasim_nl.settings import settings
 from shapely.geometry import LineString, Point
@@ -49,6 +52,10 @@ remove_nodes = [
     202773,  # "Gaarkeuken" Fryslân
     203809,  # "Gaarkeuken" Fryslân
     6002493,  # reparatie Helenavaart Limburg
+    6000004,  # losse Limburg-boundary zonder flow-link
+    6000120,  # losse Limburg-boundary zonder flow-link
+    6000109,  # parallel aan AaenMaas FlowDemand-inlaat 3800601
+    6000800,  # parallel aan AaenMaas FlowDemand-inlaat 3800601
     6002497,  # parallel aan doorlaat 6002496 tussen hetzelfde Limburg/AaenMaas basin-paar
     6002788,  # reparatie Helenavaart Limburg
     6002788,  # reparatie Helenavaart Limburg
@@ -59,6 +66,7 @@ remove_nodes = [
     3800049,  # verwijderen rand binnenstad
     3803092,  # verwijderen zijtak Helanvaart Limburg
     3800036,  # verwijderen zijtak Helanvaart Limburg
+    3800037,  # losse AaenMaas-boundary zonder flow-link
 ]
 
 # Pumps with min_upstream_level below upstream basin bottom; reset to NA
@@ -106,6 +114,8 @@ forced_coupling = {
     3800048: 3801394,  # Aansluiten Drongelens kanaal op Binnenstad
     3300009: 4401377,  # Levelboundary takt niet aan op Verlengde Hoogeveense Vaart
     6000003: 3801961,  # Forceren zijtak Helanvaart Limburg
+    3800029: 6002294,  # Defensiekanaal Limburg: voorkom koppeling via Junction 6003598
+    3801958: 6002408,  # AaenMaas FlowDemand-inlaat 3800601 koppelen aan Limburg-basin
 }
 
 
@@ -531,6 +541,7 @@ def save_model_and_outputs(model: Model, all_link_table: list[dict], toml_file: 
     model_name = f"{decoupled_model_name}_coupled"
     model_path = root / model_name
     output_toml_file = model_path / f"{model_name}.toml"
+    ensure_doorlaat_afvoer_max_downstream_level(model, tolerance=COUPLING_LEVEL_TOLERANCE)
     model.write(output_toml_file)
 
     # Save links
@@ -552,6 +563,9 @@ def run_configured_coupling_level_check(toml_file: Path) -> None:
         apply_direct_min_upstream_level=COUPLING_LEVEL_APPLY_DIRECT_MIN_UPSTREAM_LEVEL,
         tolerance=COUPLING_LEVEL_TOLERANCE,
     )
+    model = Model.read(toml_file)
+    if ensure_doorlaat_afvoer_max_downstream_level(model, tolerance=COUPLING_LEVEL_TOLERANCE):
+        model.write(toml_file)
 
 
 def get_rws_link(

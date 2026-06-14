@@ -90,6 +90,15 @@ for node_ids, meta_streefpeil in basin_level_overrides:
     mask = model.basin.area.df.node_id.isin(node_ids)
     model.basin.area.df.loc[mask, "meta_streefpeil"] = meta_streefpeil
 
+boundary_level_overrides = {
+    37: 31.0,
+    38: 31.0,
+}
+
+for node_id, level in boundary_level_overrides.items():
+    mask = model.level_boundary.static.df.node_id == node_id
+    model.level_boundary.static.df.loc[mask, "level"] = level
+
 # Herbereken afgeleide tabellen na handmatige streefpeil-overrides.
 model.basin.state.df = model.basin.area.df[["node_id", "meta_streefpeil"]].rename(columns={"meta_streefpeil": "level"})
 

@@ -60,7 +60,8 @@ def import_transboundary_inflow(
                 raise ValueError(f"Expected datetime64 'Datum' column from Excel, got dtype: {df['Datum'].dtype}")
             df = df.dropna(subset=["Datum"]).set_index("Datum")
             if not df.index.is_monotonic_increasing:
-                raise ValueError(f"Sheet '{sheet}': Datum column is not sorted by time")
+                logger.warning(f"Sheet '{sheet}': Datum column is not sorted by time; sorting before resampling.")
+                df = df.sort_index()
             df = df.loc[(df.index >= start_time) & (df.index <= stop_time), value_columns]
 
             if df.empty:

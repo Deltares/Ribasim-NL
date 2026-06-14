@@ -232,7 +232,7 @@ static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
 # Handmatige correcties streefpeilen:
 forced_levels = {
-    2495: 30.8,  # Benedenstrooms stuw Katsberg
+    2495: 31.0,  # Benedenstrooms stuw Katsberg
     1413: 30.13,  # Benedenstrooms Grenssloot op Moostdijk en AVL Dorperpeel
     1861: 30.75,  # Bovenstrooms gemaal Helenaveen
     1553: 30.75,

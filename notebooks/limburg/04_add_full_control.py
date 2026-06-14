@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Literal
 
 import geopandas as gpd
+import pandas as pd
 from peilbeheerst_model.controle_output import Control
 from ribasim.nodes import flow_demand, outlet, pump
 from ribasim_nl.control import (
@@ -12,8 +13,8 @@ from ribasim_nl.control import (
     add_controllers_to_supply_nodes,
     add_controllers_to_uncontrolled_connector_nodes,
     get_node_table_with_from_to_node_ids,
-    mark_level_update_protected,
 )
+from ribasim_nl.coupling_level_apply import sync_static_controller_thresholds
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from shapely.geometry import MultiPolygon, Point
@@ -24,7 +25,7 @@ from ribasim_nl import CloudStorage, Model
 
 # Globale settings
 
-MODEL_EXEC: bool = True  # execute model run
+MODEL_EXEC: bool = False  # execute model run
 AUTHORITY: str = "Limburg"
 SHORT_NAME: str = "limburg"
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
@@ -32,9 +33,9 @@ IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 # Node_id: #335, Millnermolen gaat nauwelijks water door alles via AR(Millen) node_id: #365
-EXCLUDE_NODES = {335, 651, 552}
+EXCLUDE_NODES = {335, 651}
 outlet_max_flow_rate_from_results = {
-    249: 2,  # S_98125
+    249: 5,  # S_98125
     595: 2,  # inlaat_haelensebeek_uffelsebeek
     596: 2,  # inlaat_tungelroysebeek
     663: 150,  # S_96267
@@ -51,6 +52,7 @@ outlet_max_flow_rate_coupled_by_node_id = {
     563: 150,  # Rijksweg; gekoppeld max=99.82, parameterized=7.62
     792: 150,  # S_96308; gekoppeld max=99.64, parameterized=7.63
     895: 144,  # W_244840_0; gekoppeld max=95.65, parameterized=13.10
+    535: 10,  # Peelkanaal was te laag
 }
 outlet_max_flow_rate_parameterized_zero_by_node_id = {
     2494: 100.0,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
@@ -68,6 +70,7 @@ for max_flow_rates in (
         )
 flushing_nodes: dict[int, float] = {}
 drain_nodes = [
+    158,
     160,
     163,
     165,
@@ -85,12 +88,14 @@ drain_nodes = [
     255,
     261,
     271,
+    283,
     354,
     408,
     447,
     463,
     494,
     586,
+    590,
     692,
     710,
     828,
@@ -100,7 +105,6 @@ drain_nodes = [
     856,
     857,
     902,
-    932,
     936,
     1054,
     1104,
@@ -126,11 +130,12 @@ flow_control_nodes = [
     480,
     496,
     523,
+    535,
+    773,
     536,
     541,
     545,
     579,
-    590,
     652,
     653,
     657,
@@ -141,10 +146,13 @@ flow_control_nodes = [
     751,
     827,
     839,
+    932,
     933,
+    1053,
     1055,
     1057,
     1133,
+    1214,
     1241,
     2493,
     2494,
@@ -198,9 +206,11 @@ model.update_node(node_id=583, node_type="Pump")
 
 # Overbodig
 model.remove_node(node_id=250, remove_links=True)
+model.remove_node(node_id=4, remove_links=True)
 model.remove_node(node_id=938, remove_links=True)
 model.remove_node(node_id=939, remove_links=True)
 model.remove_node(node_id=2497, remove_links=True)  # Parallel aan doorlaat 2496 tussen hetzelfde basin-paar.
+model.remove_node(node_id=120, remove_links=True)  # LevelBoundary van verwijderde parallelle doorlaat 2497.
 
 # Verplaats node 788, behoud bestaande verbindingen en update gekoppelde linkgeometrieen.
 model.move_node(node_id=788, geometry=Point(193403.3, 352653.3))
@@ -343,8 +353,8 @@ name_to_node = {
     "Inlaat Evertsoord": 604,
     "Klein Leukerbeek": 1119,
     "Roeven": 2501,
-    "Halte Grenssloot": 2496,
-    # "Halte Peelkanaal": 535,
+    #  "Halte Grenssloot": 2496,
+    #  "Halte Peelkanaal": 535,
     "Peelkanaal naar Grenssloot": 821,
     "Molenakker": 2504,
     "Zwartwaterlossing": 230,
@@ -379,15 +389,15 @@ flow_demand_data_ls = {
     # Grote aanvoeren
     "Gemaal Beringe": {"summer": 550, "winter": 350},
     "Zijtak Helenavaart": {"summer": 350, "winter": 150},  # winter in tabel: laatste 2 jaar
-    "Katsberg": {"summer": 3200, "winter": 800},  # gemiddelde aanvoertabelhenk08012021.xlsx
+    "Katsberg": {"summer": 4000, "winter": 1000},  # gemiddelde aanvoertabelhenk08012021.xlsx
     "Eendlossing": {"summer": 20, "winter": 10},  # WATAK
     "Klein Leukerbeek": {"summer": 10, "winter": 10},  # GIHO kaart
     "Roeven": {"summer": 10, "winter": 10},  # WATAK
     # afgeleid uit relevante tabelregels
-    "Inlaat Evertsoord": {"summer": 0.075, "winter": 0.050},  # 230_030N in GIHO figuur??
+    "Inlaat Evertsoord": {"summer": 75, "winter": 50},  # 230_030N in GIHO figuur??
     "Halte Grenssloot": {
-        "summer": 800,
-        "winter": 300,
+        "summer": 1600,
+        "winter": 400,
     },  # aanvoertabelhenk08012021.xlsx
     "Halte Peelkanaal": {
         "summer": 1500,
@@ -867,11 +877,31 @@ afvoer_mask_683 = (model.outlet.static.df.node_id == 683) & (model.outlet.static
 model.outlet.static.df.loc[afvoer_mask_683, "flow_rate"] = 0
 model.outlet.static.df.loc[afvoer_mask_683, "max_flow_rate"] = 0
 
-boundary_levels = {120: 30.75, 121: 30.75, 124: 30.75, 125: 30.75, 132: 31.545, 3: 31.545, 136: 32, 95: 30, 98: 30}
+boundary_levels = {99: 31, 120: 31, 121: 31, 124: 31, 125: 31, 132: 31.545, 3: 31.545, 136: 32, 95: 30, 98: 30}
 for node_id, level in boundary_levels.items():
     model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == node_id, "level"] = level
 
 # Gemaal Helenaveen blijft een uitlaat: min_upstream en bijbehorende threshold 4 cm omlaag.
+helenaveen_pump_id = 590
+helenaveen_upstream_node_id = model.upstream_node_id(helenaveen_pump_id)
+if isinstance(helenaveen_upstream_node_id, pd.Series):
+    helenaveen_upstream_node_id = int(helenaveen_upstream_node_id.iloc[0])
+helenaveen_upstream_level = _target_level(
+    model=model,
+    node_types=model.node.df["node_type"],
+    node_id=int(helenaveen_upstream_node_id),
+    target_level_column="meta_streefpeil",
+    allow_missing=False,
+)
+helenaveen_min_upstream_level = float(helenaveen_upstream_level) - 0.04
+mask = model.pump.static.df.node_id == helenaveen_pump_id
+model.pump.static.df.loc[mask, "min_upstream_level"] = helenaveen_min_upstream_level
+sync_static_controller_thresholds(
+    model=model,
+    target_node_ids={helenaveen_pump_id},
+    tolerance=1e-6,
+)
+
 # Pomp-capaciteiten op basis van hoogste berekende dynamic debiet, afgerond naar boven.
 pump_max_flow_rate_from_results = {
     590: 5,  # Gemaal Helenaveen; oude static flow_rate=0.0101
@@ -888,9 +918,6 @@ model.pump.static.df.loc[mask, "max_flow_rate"] = model.pump.static.df.loc[mask,
 # %% Junctionfy(!)
 junctionify(model)
 aanvoer_only_node_ids = set(supply_nodes) - set(drain_nodes) - set(flow_control_nodes)
-
-# Bescherm handmatig ingestelde doorlaat tussen Limburg en RWS tegen latere coupling-level updates.
-mark_level_update_protected(model.outlet.static.df, model.outlet.static.df["node_id"].isin([2496]), model=model)
 
 # Aanvoer-cap: doorlaten/inlaten mogen in aanvoer niet de hoge afvoercapaciteit gebruiken.
 aanvoer_outlet_mask = model.outlet.static.df.control_state == "aanvoer"
@@ -921,9 +948,7 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
         & static_df["flow_rate"].fillna(0).gt(0)
         & ~static_df["node_id"].isin(protected_max_flow_rate_node_ids)
     )
-    static_df.loc[afvoer_mask, "max_flow_rate"] = (
-        static_df.loc[afvoer_mask, "max_flow_rate"].fillna(0.5).clip(lower=0.5)
-    )
+    static_df.loc[afvoer_mask, "max_flow_rate"] = static_df.loc[afvoer_mask, "max_flow_rate"].fillna(10).clip(lower=10)
 
 for static_df in (model.outlet.static.df, model.pump.static.df):
     afvoer_mask = static_df["control_state"].eq("afvoer") & static_df["node_id"].isin(aanvoer_only_node_ids)

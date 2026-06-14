@@ -179,6 +179,71 @@ def sync_static_controller_thresholds(
     return apply_controller_threshold_updates(model, updates_df)
 
 
+def ensure_doorlaat_afvoer_max_downstream_level(
+    model: Model,
+    *,
+    max_downstream_level: float = 9999.0,
+    tolerance: float = 1e-6,
+) -> int:
+    """Keep afvoer states of doorlaat controls unconstrained downstream."""
+    node_df = model.node.df
+    link_df = model.link.df
+    if node_df is None or link_df is None:
+        return 0
+
+    doorlaat_control_node_ids = set(
+        node_df[
+            node_df["node_type"].eq("DiscreteControl")
+            & node_df["name"].fillna("").astype(str).str.lower().str.startswith("doorlaat:")
+        ].index.astype(int)
+    )
+    if not doorlaat_control_node_ids:
+        return 0
+
+    control_links = link_df[link_df["link_type"].eq("control")]
+    target_node_ids: set[int] = set()
+    for row in control_links.itertuples(index=False):
+        from_node_id = as_int(row.from_node_id)
+        to_node_id = as_int(row.to_node_id)
+        if from_node_id in doorlaat_control_node_ids:
+            target_node_ids.add(to_node_id)
+        elif to_node_id in doorlaat_control_node_ids:
+            target_node_ids.add(from_node_id)
+
+    update_count = 0
+    updated_node_ids: list[int] = []
+    for target_node_id in sorted(target_node_ids):
+        if target_node_id not in node_df.index:
+            continue
+        node_type = str(node_df.at[target_node_id, "node_type"])
+        if node_type not in STATIC_TABLE_BY_NODE_TYPE:
+            continue
+        static_df = model.get_component(node_type).static.df
+        if static_df is None or "max_downstream_level" not in static_df.columns:
+            continue
+
+        mask = static_df["node_id"].astype(int).eq(target_node_id) & static_df["control_state"].eq("afvoer")
+        if not mask.any():
+            continue
+
+        current = pd.to_numeric(static_df.loc[mask, "max_downstream_level"], errors="coerce")
+        needs_update = current.isna() | ~current.sub(max_downstream_level).abs().le(tolerance)
+        update_index = current.loc[needs_update].index
+        if update_index.empty:
+            continue
+
+        static_df.loc[update_index, "max_downstream_level"] = float(max_downstream_level)
+        update_count += len(update_index)
+        updated_node_ids.append(target_node_id)
+
+    if update_count:
+        print(
+            "Doorlaat afvoer max_downstream_level op "
+            f"{max_downstream_level:g} gezet voor {update_count} rijen: {updated_node_ids}"
+        )
+    return update_count
+
+
 def apply_level_updates(
     model: Model,
     toml_file: Path,

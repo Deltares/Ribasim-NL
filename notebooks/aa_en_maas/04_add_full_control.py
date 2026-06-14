@@ -54,7 +54,7 @@ outlet_max_flow_rate_from_results = {
     375: 2,  # 201BGS
     524: 8,  # 2530328
     538: 62,  # 2510112
-    552: 27,  # 3200005
+    552: 10,  # 3200005
     622: 21,  # 2110137
     668: 6,  # 201JAA
     710: 21,  # 2480021
@@ -69,7 +69,7 @@ outlet_max_flow_rate_from_results = {
     1056: 15,  # 2530128
     1115: 8,  # 1047240___3
     3092: 27,  # Zijtak Helenavaart Limburg
-    3093: 2,  # Helenavaart Limburg
+    3093: 5,  # Helenavaart Limburg
 }
 outlet_max_flow_rate_coupled_by_node_id = {
     198: 8,  # 104CU; gekoppeld max=4.21, parameterized=3.76
@@ -251,6 +251,7 @@ drain_nodes = [
 ]
 supply_nodes: list[int] = [2015, 307, 309]
 flow_control_nodes = [
+    203,
     3097,
     1093,
     681,
@@ -261,10 +262,12 @@ flow_control_nodes = [
     974,
     130,
     140,
+    #  283,
     347,
     377,
     481,
     496,
+    552,
     628,
     766,
     767,
@@ -324,7 +327,6 @@ flow_control_nodes = [
     127,
     249,
     697,
-    698,
     863,
     864,
     362,
@@ -447,11 +449,13 @@ ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_paramete
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoergebieden_gpkg = cloud.joinpath(r"AaenMaas/verwerkt/sturing/aanvoergebieden.gpkg")
-aanvoerpunten_shp = cloud.joinpath(
-    "AaenMaas/verwerkt/1_ontvangen_data/wateraanvoer_27-2-2026/wateraanvoersysteem_WAM.shp"
-)
+aanvoerpunten_path = cloud.joinpath("AaenMaas/verwerkt/1_ontvangen_data/wateraanvoer-10-4-2026/Inlaten_verdelen.gdb")
+aanvoerpunten_layer = "Wateraanvoersysteem"
 
-cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path, aanvoerpunten_shp])
+sync_filepaths = [aanvoergebieden_gpkg, qlr_path]
+if not aanvoerpunten_path.exists():
+    sync_filepaths.append(aanvoerpunten_path)
+cloud.synchronize(filepaths=sync_filepaths)
 
 # %%
 # Read data
@@ -506,7 +510,10 @@ model.update_node(node_id=444, node_type="Outlet")  # wordt outlet, was Manning
 
 model.remove_node(820, remove_links=True)
 model.remove_node(1054, remove_links=True)
-
+model.remove_node(156, remove_links=True)
+model.remove_node(698, remove_links=True)
+model.remove_node(3093, remove_links=True)  # Parallel De Halte
+model.remove_node(37, remove_links=True)  # Boundary Parallel De Halte
 # Mierlo wordt aanvoer als afvoer gemaal
 model.update_node(node_id=92, node_type="Pump")  # wordt outlet, was outlet
 model.update_node(node_id=226, node_type="Pump")  # wordt outlet, was outlet
@@ -532,7 +539,6 @@ meta_codes = {
     601: "261JS",
     905: "261CQA",
     761: "261JN",
-    156: "261JIA",
     # Peelsche Loop
     358: "261N",
     535: "253V",
@@ -540,7 +546,7 @@ meta_codes = {
     417: "253LG",
     829: "251LAA",
     # Maaskant-Oost
-    203: "114P18",
+    #   203: "114P18",
     850: "114FF",
     144: "108TDE",
     2022: "WSL_VBMB",
@@ -572,7 +578,7 @@ for node_id, code in meta_codes.items():
 summer_col = "ZOMER"
 winter_col = "WINTER"
 code_col = "CODE_1"
-discharge_supply_df = gpd.read_file(aanvoerpunten_shp).rename(
+discharge_supply_df = gpd.read_file(aanvoerpunten_path, layer=aanvoerpunten_layer).rename(
     columns={summer_col: "summer", winter_col: "winter", code_col: "code"}
 )[["code", "summer", "winter", "geometry"]]
 discharge_supply_df.index += 1
@@ -582,12 +588,19 @@ discharge_supply_df = discharge_supply_df[discharge_supply_df[["summer", "winter
 
 # drop %
 discharge_supply_df = discharge_supply_df[
-    ~(discharge_supply_df["summer"].str.endswith("%") | discharge_supply_df["winter"].str.endswith("%"))
+    ~(
+        discharge_supply_df["summer"].astype(str).str.endswith("%")
+        | discharge_supply_df["winter"].astype(str).str.endswith("%")
+    )
 ]
 
 # convert to numeric
-discharge_supply_df["summer"] = discharge_supply_df["summer"].str.replace(",", ".").astype(float)
-discharge_supply_df["winter"] = discharge_supply_df["winter"].str.replace(",", ".").astype(float)
+discharge_supply_df["summer"] = (
+    discharge_supply_df["summer"].astype(str).str.replace(",", ".", regex=False).astype(float)
+)
+discharge_supply_df["winter"] = (
+    discharge_supply_df["winter"].astype(str).str.replace(",", ".", regex=False).astype(float)
+)
 
 # make code (and node type) table
 node_table_df = model.node.df
@@ -605,6 +618,7 @@ discharge_supply_nodes = {
 }
 
 # checken in laatste file Aa en Maas; dit kúnnen geen inlaten zijn
+# discharge_supply_nodes.pop(283, None)
 discharge_supply_nodes.pop(383, None)
 discharge_supply_nodes.pop(957, None)
 discharge_supply_nodes.pop(100, None)
@@ -627,7 +641,7 @@ level_supply_nodes = [
     181,
     183,
     186,
-    203,
+    #  203,
     208,
     211,
     215,
@@ -1362,8 +1376,8 @@ model.level_boundary.static.df.loc[mask, "level"] = model.level_boundary.static.
 
 
 boundary_levels = {
-    37: 30.8,
-    38: 30.8,
+    37: 31,
+    38: 31,
 }
 
 for node_id, level in boundary_levels.items():
@@ -1441,9 +1455,7 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
         & static_df["flow_rate"].fillna(0).gt(0)
         & ~static_df["node_id"].isin(protected_max_flow_rate_node_ids)
     )
-    static_df.loc[afvoer_mask, "max_flow_rate"] = (
-        static_df.loc[afvoer_mask, "max_flow_rate"].fillna(0.5).clip(lower=0.5)
-    )
+    static_df.loc[afvoer_mask, "max_flow_rate"] = static_df.loc[afvoer_mask, "max_flow_rate"].fillna(10).clip(lower=10)
 
 for static_df in (model.outlet.static.df, model.pump.static.df):
     afvoer_mask = static_df["control_state"].eq("afvoer") & static_df["node_id"].isin(aanvoer_only_node_ids)
