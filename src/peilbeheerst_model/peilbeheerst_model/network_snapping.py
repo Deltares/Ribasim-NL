@@ -35,12 +35,12 @@ class NetworkSnappingError(Exception):
 
 
 def get_graph(profiles_path: pathlib.Path) -> tuple[gpd.GeoDataFrame, nx.Graph]:
-    fn = profiles_path / "intermediate" / "graph.gpkg"
+    fn = profiles_path / "network.gpkg"
     if not fn.exists():
-        msg = f"File not found: {fn}\nRegenerate the profiles with `export_intermediate_output=True` to create {fn}"
+        msg = f"File not found: {fn}\nRegenerate the profiles to create {fn}"
         raise FileNotFoundError(msg)
 
-    hydro_objects = gpd.read_file(fn, layer="lines")
+    hydro_objects = gpd.read_file(fn, layer="hydro_objects")
     graph = path_finder.generate_graph(hydro_objects)
 
     return hydro_objects, graph
@@ -82,7 +82,7 @@ def snap_basins(
     ho_merged = ho_basin.groupby("node_id")["geometry"].apply(unary_union).rename("hydro")
 
     # couple grouped hydro-objects to basin-nodes
-    out = typing.cast(gpd.GeoDataFrame, nodes.merge(ho_merged, how="left", left_index=True, right_index=True))
+    out = nodes.merge(ho_merged, how="left", left_index=True, right_index=True)
     out.set_crs(nodes.crs, inplace=True)  # pyrefly: ignore[no-matching-overload]
 
     # validity of hydro-objects
@@ -140,8 +140,8 @@ def snap_connectors(
     assert model.basin.area.df is not None
 
     # copy datasets
-    nodes = typing.cast(gpd.GeoDataFrame, model.node.df.copy(deep=True))
-    areas = typing.cast(gpd.GeoDataFrame, model.basin.area.df.copy(deep=True))
+    nodes = model.node.df.copy(deep=True)
+    areas = model.basin.area.df.copy(deep=True)
 
     # selection of connector-nodes
     nodes = nodes[nodes["node_type"].isin(CONNECTOR_NODE_TYPES)]
@@ -212,9 +212,9 @@ def snap_links(model: Model, graph: nx.Graph, tolerance: float = 10.0) -> Model:
     assert model.basin.area.df is not None
 
     # copy datasets
-    nodes = typing.cast(gpd.GeoDataFrame, model.node.df.copy(deep=True))
-    links = typing.cast(gpd.GeoDataFrame, model.link.df.copy(deep=True))
-    areas = typing.cast(gpd.GeoDataFrame, model.basin.area.df.copy(deep=True))
+    nodes = model.node.df.copy(deep=True)
+    links = model.link.df.copy(deep=True)
+    areas = model.basin.area.df.copy(deep=True)
 
     # filter Flow-links
     links = links[(links["link_type"] == "flow") & (links["meta_categorie"] != "bergend")]
@@ -272,16 +272,9 @@ def snap_links(model: Model, graph: nx.Graph, tolerance: float = 10.0) -> Model:
             if geom is not None:
                 segments.append(geom)
 
-        if not segments:
-            continue
-
-        # merge segments into single LineString
-        snapped_link = shapely.ops.linemerge(shapely.MultiLineString(segments))
-        if from_point.distance(shapely.Point(snapped_link.coords[0])) > from_point.distance(
-            shapely.Point(snapped_link.coords[-1])
-        ):
-            snapped_link = snapped_link.reverse()
-        snapped_links[i] = snapped_link  # pyrefly: ignore[unsupported-operation]
+        snapped_link = _assemble_link_geometry(segments, from_point)
+        if snapped_link is not None:
+            snapped_links[i] = snapped_link
 
     # update link-geometries
     links.loc[snapped_links.keys(), "geometry"] = gpd.GeoSeries(snapped_links)
@@ -292,6 +285,41 @@ def snap_links(model: Model, graph: nx.Graph, tolerance: float = 10.0) -> Model:
     model.link.df = tmp.copy()  # pyrefly: ignore[bad-assignment]
 
     return model
+
+
+def _assemble_link_geometry(
+    segments: list[shapely.LineString], from_point: shapely.Point, to_point: shapely.Point | None = None
+) -> shapely.LineString | None:
+    """Assemble a link geometry from path-segments.
+
+    Segments are oriented and concatenated in order, ensuring the resulting LineString runs from `from_point` to
+    `to_point`. Returns None if no valid geometry can be assembled.
+
+    :param segments: list of LineString segments along the path
+    :param from_point: expected start point of the link
+    :param to_point: expected end point of the link
+
+    :return: assembled LineString, or None if assembly fails
+    """
+    # check 1: no segments, no LineString
+    if not segments:
+        return None
+
+    # check 2: linemerge returning MultiLineString indicates badly connected segments
+    line = shapely.ops.linemerge(shapely.MultiLineString(segments))
+    if line.geom_type == "MultiLineString":
+        # LOG.warning("linemerge returned MultiLineString; segments are not properly connected")
+        # return None
+        line = shapely.ops.linemerge(shapely.MultiLineString([*reversed(segments)]))
+        if line.geom_type == "MultiLineString":
+            LOG.warning("linemerge returned MultiLineString; segments are not properly connected")
+            return None
+
+    # check 3: ensure direction from from_point to to_point
+    if from_point.distance(shapely.Point(line.coords[0])) > from_point.distance(shapely.Point(line.coords[-1])):
+        line = line.reverse()
+
+    return typing.cast(shapely.LineString, line)
 
 
 def relocate_link_endpoints(model: Model) -> Model:
@@ -310,8 +338,8 @@ def relocate_link_endpoints(model: Model) -> Model:
     assert model.link.df is not None
 
     # copy datasets
-    nodes = typing.cast(gpd.GeoDataFrame, model.node.df.copy(deep=True))
-    links = typing.cast(gpd.GeoDataFrame, model.link.df.copy(deep=True))
+    nodes = model.node.df.copy(deep=True)
+    links = model.link.df.copy(deep=True)
 
     # expected endpoints per link
     links["start"] = links["from_node_id"].map(nodes["geometry"])

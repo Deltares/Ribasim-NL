@@ -41,7 +41,6 @@ cloud.synchronize(
         network_gpkg,
     ]
 )
-cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 
 bbox = None
 # init classes

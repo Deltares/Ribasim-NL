@@ -13,17 +13,9 @@ from ribasim_nl import CloudStorage, Model
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = True
-ADD_LHM_FRACTIONS: bool = True
-ADD_RWZI: bool = True
-ADD_JUNCTIONS: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
-
-mixed_conditions_design_P = 12
-mixed_conditions_design_E = 1.5
 
 # model settings
 waterschap = "Delfland"

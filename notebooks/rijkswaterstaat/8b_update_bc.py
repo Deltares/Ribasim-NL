@@ -154,7 +154,9 @@ level_df = pd.concat(
 )
 model.level_boundary.time.df = level_df
 
-# merge RWZI model
+# merge RWZI model, which requires meta_waterbeheerder (the hws model is fully Rijkswaterstaat)
+# pyrefly: ignore[missing-attribute]
+model.node.df.loc[model.basin.node.df.index, "meta_waterbeheerder"] = "Rijkswaterstaat"
 model = merge_rwzi_model(model, rwzi_model_path)
 
 # %%

@@ -1,12 +1,10 @@
 from collections import defaultdict, deque
-from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
 import geopandas as gpd
 import pandas as pd
 
-from ribasim_nl import Model
 from ribasim_nl.coupling_level_common import (
     CONTROL_NODE_TYPES,
     LEVEL_UPDATE_PROTECTION_COLUMN,
@@ -14,6 +12,7 @@ from ribasim_nl.coupling_level_common import (
     as_int,
     reset_index_to_column,
 )
+from ribasim_nl.model import Model
 
 OPEN_NODE_TYPES = {"Basin", "ManningResistance", "Junction"}
 
@@ -60,7 +59,12 @@ def _undirected_open_adjacency(
     link_df: pd.DataFrame,
     node_type_by_id: dict[int, str],
 ) -> dict[int, list[int]]:
-    """Build an undirected graph over Basin/ManningResistance/Junction nodes."""
+    """Build an undirected graph over Basin/ManningResistance/Junction nodes.
+
+    In this module, these node types form the "open" part of the network: the
+    Manning-connected interior that is leveled as one component. Boundary
+    Outlet/Pump nodes are intentionally excluded.
+    """
     adjacency: dict[int, list[int]] = defaultdict(list)
     for row in link_df.itertuples(index=False):
         from_node_id = as_int(row.from_node_id)
@@ -77,7 +81,7 @@ def _undirected_open_adjacency(
 
 
 def _open_component(start_node_id: int, adjacency: dict[int, list[int]], max_iter: int) -> set[int]:
-    """Walk a connected open component from one Basin/Manning/Junction node."""
+    """Walk one Manning-connected component of Basin/Manning/Junction nodes."""
     component = {int(start_node_id)}
     queue: deque[int] = deque([int(start_node_id)])
 
@@ -100,7 +104,7 @@ def _component_boundary_control_node_ids(
     link_df: pd.DataFrame,
     node_type_by_id: dict[int, str],
 ) -> list[int]:
-    """Find Outlet/Pump nodes directly connected to an open component."""
+    """Find Outlet/Pump control nodes on the edge of a Manning component."""
     control_node_ids: set[int] = set()
     for row in link_df.itertuples(index=False):
         from_node_id = as_int(row.from_node_id)
@@ -117,7 +121,7 @@ def _terminal_manning_branch_basin_node_ids(
     link_df: pd.DataFrame,
     node_type_by_id: dict[int, str],
 ) -> set[int]:
-    """Return terminal basins that should not be leveled through a Manning route."""
+    """Return end basins (leaf basins) that should not be leveled through a Manning route."""
     protected_basin_node_ids: set[int] = set()
     component_node_ids = {int(node_id) for node_id in component_node_ids}
 
@@ -168,17 +172,6 @@ def _target_level_by_basin_id(model: Model, target_level_column: str) -> dict[in
     return {as_int(node_id): as_float(level) for node_id, level in level_by_basin_id.items()}
 
 
-def _truthy_series(series: pd.Series) -> pd.Series:
-    """Convert bool-like Series values to a boolean mask."""
-    if series.empty:
-        return pd.Series(dtype=bool)
-    if pd.api.types.is_bool_dtype(series):
-        return series.fillna(False)
-    if pd.api.types.is_numeric_dtype(series):
-        return pd.to_numeric(series, errors="coerce").fillna(0).ne(0)
-    return series.astype("string").str.lower().isin({"1", "true", "yes", "ja", "y"})
-
-
 def _node_ids_of_type_in_geometry(
     model: Model,
     *,
@@ -214,7 +207,7 @@ def _nearest_upstream_basin_ids_for_control(
     node_type_by_id: dict[int, str],
     max_iter: int,
 ) -> list[int]:
-    """Find the nearest upstream basins for a boundary control node."""
+    """Find the nearest upstream basins for a downstream control node."""
     incoming: dict[int, list[int]] = defaultdict(list)
     for row in link_df.itertuples(index=False):
         from_node_id = as_int(row.from_node_id)
@@ -266,7 +259,13 @@ def _dominant_downstream_parameterized_target_level(
     tolerance: float,
     max_iter: int,
 ) -> tuple[float | None, str, list[int], list[int]]:
-    """Choose the downstream control level that dominates a Manning component."""
+    """Choose the downstream control level that represents a Manning component.
+
+    Starting from all nodes in the component, downstream flow links are
+    followed until Outlet/Pump control nodes are reached. The dominant control
+    route is the one reached from the largest part of the component. Basin-route
+    count is used as a tie-breaker.
+    """
     outgoing: dict[int, list[int]] = defaultdict(list)
     for row in link_df.itertuples(index=False):
         outgoing[as_int(row.from_node_id)].append(as_int(row.to_node_id))
@@ -384,7 +383,7 @@ def _write_basin_updates_gpkg(
 
     node_geometry_df = _node_geometry_df(model=model)
     geometry_column = getattr(getattr(node_geometry_df, "geometry", None), "name", "geometry")
-    crs = getattr(model.node.df, "crs", None)
+    crs = model.crs
 
     basin_updates_df["basin_node_id"] = basin_updates_df["basin_node_id"].astype(int)
     basin_updates_gdf = basin_updates_df.merge(
@@ -401,12 +400,6 @@ def _write_basin_updates_gpkg(
 
     output_gpkg = Path(output_gpkg)
     output_gpkg.parent.mkdir(parents=True, exist_ok=True)
-    if output_gpkg.exists():
-        try:
-            output_gpkg.unlink()
-        except PermissionError:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_gpkg = output_gpkg.with_name(f"{output_gpkg.stem}_{timestamp}{output_gpkg.suffix}")
     basin_updates_gdf.to_file(output_gpkg, layer=layer, driver="GPKG")
     return output_gpkg
 
@@ -426,14 +419,26 @@ def sync_parameterized_manning_basin_levels(
     verbose: bool = True,
     max_iter: int = 500,
 ) -> pd.DataFrame:
-    """Synchroniseer basin-peilen in parameterisatie via gesloten Manning-componenten.
+    """Synchronize target levels for Manning-connected routes in supply areas.
 
-    Deze routine raakt alleen Basin / area, Basin / state en Basin / profile. Outlet,
-    Pump en DiscreteControl-tabellen worden niet aangepast. Alleen ManningResistance-nodes
-    binnen `aanvoergebieden_df` worden gebruikt als startpunt; het hele open component
-    rond zo'n Manning-node wordt daarna gesloten op het dominante benedenstroomse basinpeil.
-    Eindbasins met precies een ManningResistance als enige open buur en hooguit
-    TabulatedRatingCurve als overige directe verbinding worden beschermd.
+    This routine only updates Basin / area, Basin / state and Basin / profile.
+    It does not modify Outlet, Pump or DiscreteControl tables.
+
+    If a ManningResistance node lies inside `aanvoergebieden_df`, the connected
+    Manning route is treated as one hydraulic component. Within such a component
+    no internal level control is assumed, so all basins in that route receive
+    one shared target level.
+
+    That shared level is taken from the dominant downstream control route. In
+    practice, the routine follows downstream flow links from the component to
+    the connected Outlet/Pump control nodes and selects the route reached from
+    the largest part of the component. If multiple routes score equally,
+    basin-route count is used as a tie-breaker; if levels still differ, the
+    lowest downstream basin target level within `tolerance` is chosen.
+
+    End basins with exactly one ManningResistance neighbor inside
+    the component and at most TabulatedRatingCurve neighbors outside it are
+    protected and are not leveled through that Manning branch.
     """
     if aanvoergebieden_df is None:
         raise ValueError("aanvoergebieden_df is verplicht voor parameterisatie-Manning-sync.")
@@ -447,9 +452,37 @@ def sync_parameterized_manning_basin_levels(
 
     area_df = _basin_area_df(model)
     if LEVEL_UPDATE_PROTECTION_COLUMN in area_df.columns:
+        protection_series = area_df[LEVEL_UPDATE_PROTECTION_COLUMN]
+        if pd.api.types.is_bool_dtype(protection_series):
+            protected_mask = protection_series.fillna(False)
+        elif pd.api.types.is_numeric_dtype(protection_series):
+            numeric = pd.to_numeric(protection_series, errors="raise")
+            invalid = numeric.dropna()[~numeric.dropna().isin([0, 1])]
+            if not invalid.empty:
+                raise ValueError(
+                    f"{LEVEL_UPDATE_PROTECTION_COLUMN} must contain only boolean or 0/1 values; "
+                    f"found {sorted(set(invalid.astype(float).to_list()))!r}."
+                )
+            protected_mask = numeric.fillna(0).eq(1)
+        elif pd.api.types.is_string_dtype(protection_series) or pd.api.types.is_object_dtype(protection_series):
+            normalized = protection_series.astype("string").str.strip().str.lower()
+            valid_mask = normalized.isin(["true", "false", "1", "0"]) | normalized.isna()
+            invalid = protection_series[~valid_mask]
+            if not invalid.empty:
+                raise ValueError(
+                    f"{LEVEL_UPDATE_PROTECTION_COLUMN} must contain only boolean values or exact "
+                    f"roundtrip equivalents ('true'/'false'/'1'/'0'); found {sorted(set(map(str, invalid.dropna().tolist())))!r}."
+                )
+            protected_mask = normalized.fillna("false").isin(["true", "1"])
+        else:
+            raise TypeError(
+                f"{LEVEL_UPDATE_PROTECTION_COLUMN} must be a boolean, numeric 0/1, or exact "
+                f"string roundtrip equivalent, "
+                f"got dtype {protection_series.dtype!r}."
+            )
         protected_basin_node_ids.update(
             area_df.loc[
-                _truthy_series(area_df[LEVEL_UPDATE_PROTECTION_COLUMN]),
+                protected_mask,
                 "node_id",
             ]
             .dropna()

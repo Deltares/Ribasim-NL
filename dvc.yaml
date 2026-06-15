@@ -10,6 +10,7 @@ stages:
     cmd: pixi run python notebooks/create_rwzi_model.py
     deps:
       - notebooks/create_rwzi_model.py
+      - data/Basisgegevens/RWZI/aangeleverd/locaties/RWZI_coordinates.geojson
     outs:
       - data/Rijkswaterstaat/modellen/rwzi
   parameterized:
@@ -36,6 +37,7 @@ stages:
         - notebooks/${key}/01_fix_model.py
         - notebooks/${key}/02_prepare_model.py
         - notebooks/${key}/03_parameterize_model.py
+        - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       outs:
         - data/${item}/modellen/${item}_parameterized_model
   bergend:
@@ -59,6 +61,8 @@ stages:
         - notebooks/${key}/04_add_full_control.py
         - notebooks/05_add_bergend.py
         - data/${item}/modellen/${item}_parameterized_model
+        - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
+        - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
       outs:
         - data/${item}/modellen/${item}_bergend_model
   dynamic:
@@ -80,6 +84,8 @@ stages:
         - notebooks/07_add_dynamic_forcing.py
         - data/${item}/modellen/${item}_bergend_model
         - data/Rijkswaterstaat/modellen/rwzi
+        - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
+        - data/Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx
       outs:
         - data/${item}/modellen/${item}_dynamic_model
   feedback:
@@ -121,8 +127,10 @@ stages:
         - src/peilbeheerst_model/profiles/prep_cross_sections.py
         - src/peilbeheerst_model/profiles/${item}.py
         - data/${item}/modellen/${item}_feedback
+        - data/Basisgegevens/profielen
       outs:
         - data/${item}/modellen/${item}_profiles
+        - data/${item}/verwerkt/profielen/network.gpkg
   forcing:
     foreach:
       delfland: Delfland
@@ -142,6 +150,7 @@ stages:
         - src/peilbeheerst_model/forcing/${item}.py
         - data/Rijkswaterstaat/modellen/rwzi
         - data/${item}/modellen/${item}_profiles
+        - data/${item}/verwerkt/profielen/network.gpkg
       outs:
         - data/${item}/modellen/${item}_forcing
   hws_demand:

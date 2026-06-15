@@ -90,7 +90,8 @@ bin/
 *.pdf
 *.nc
 *.ps1
-results/
+**/results/**
+!**/results/**/*.dvc
 runs/
 repro_jobs.txt
 delwaq/
