@@ -46,6 +46,7 @@ class CouplingLevelContext:
     min_profile_by_basin_id: pd.Series
     outgoing_flow_links: dict[int, list[tuple[int, int]]]
     incoming_flow_links: dict[int, list[tuple[int, int]]]
+    coupled_flow_link_ids: set[int]
     static_df: pd.DataFrame
 
 
@@ -165,6 +166,22 @@ def direct_min_upstream_updates(level_df: pd.DataFrame) -> pd.DataFrame:
     return updates_df
 
 
+def coupled_flow_link_ids(link_df: pd.DataFrame) -> set[int]:
+    """Find flow links that explicitly connect two different authorities."""
+    required_columns = {"link_id", "link_type", "meta_from_authority", "meta_to_authority"}
+    if not required_columns.issubset(link_df.columns):
+        return set()
+
+    flow_link_df = link_df[link_df["link_type"].fillna("flow").eq("flow")].copy()
+    coupled_link_ids: set[int] = set()
+    for row in flow_link_df.itertuples(index=False):
+        from_authority = row.meta_from_authority
+        to_authority = row.meta_to_authority
+        if is_present(from_authority) and is_present(to_authority) and str(from_authority) != str(to_authority):
+            coupled_link_ids.add(as_int(row.link_id))
+    return coupled_link_ids
+
+
 def build_coupling_level_context(model: Model) -> CouplingLevelContext:
     """Prepare lookup tables used by the coupling-level checks."""
     assert model.node.df is not None
@@ -208,6 +225,7 @@ def build_coupling_level_context(model: Model) -> CouplingLevelContext:
         min_profile_by_basin_id=basin_profile_df.groupby("node_id")["level"].min(),
         outgoing_flow_links=outgoing_flow_links,
         incoming_flow_links=incoming_flow_links,
+        coupled_flow_link_ids=coupled_flow_link_ids(link_df),
         static_df=static_df,
     )
 
@@ -230,8 +248,12 @@ def connector_level_record(
     active_aanvoer_capacity = control_state == "aanvoer" and static_capacity
     inactive_flow_demand_aanvoer = control_state == "aanvoer" and flow_demand_inlaat and not static_capacity
 
-    upstream_id, _, _ = first_non_junction(node_id, context.incoming_flow_links, context.node_type_by_id)
-    downstream_id, _, _ = first_non_junction(node_id, context.outgoing_flow_links, context.node_type_by_id)
+    upstream_id, upstream_flow_link_id, _ = first_non_junction(
+        node_id, context.incoming_flow_links, context.node_type_by_id
+    )
+    downstream_id, downstream_flow_link_id, _ = first_non_junction(
+        node_id, context.outgoing_flow_links, context.node_type_by_id
+    )
     upstream_node_type = context.node_type_by_id.get(upstream_id) if upstream_id is not None else None
     downstream_node_type = context.node_type_by_id.get(downstream_id) if downstream_id is not None else None
     upstream_authority = context.basin_authority_by_id.get(upstream_id) if upstream_id is not None else None
@@ -241,12 +263,18 @@ def connector_level_record(
         and is_present(downstream_authority)
         and downstream_authority != RWS_AUTHORITY
     )
-    min_upstream_is_coupling_link = rws_to_model_link or (
-        is_present(row.meta_waterbeheerder)
-        and is_present(upstream_authority)
-        and row.meta_waterbeheerder != upstream_authority
+    min_upstream_has_coupled_flow_link = upstream_flow_link_id in context.coupled_flow_link_ids
+    max_downstream_has_coupled_flow_link = downstream_flow_link_id in context.coupled_flow_link_ids
+    min_upstream_is_coupling_link = (
+        min_upstream_has_coupled_flow_link
+        or rws_to_model_link
+        or (
+            is_present(row.meta_waterbeheerder)
+            and is_present(upstream_authority)
+            and row.meta_waterbeheerder != upstream_authority
+        )
     )
-    max_downstream_is_coupling_link = (
+    max_downstream_is_coupling_link = max_downstream_has_coupled_flow_link or (
         is_present(row.meta_waterbeheerder)
         and is_present(downstream_authority)
         and row.meta_waterbeheerder != downstream_authority
@@ -376,6 +404,7 @@ def connector_level_record(
         "node_id": node_id,
         "node_type": row.node_type,
         "static_table": row.static_table,
+        "meta_waterbeheerder": row.meta_waterbeheerder,
         "control_state": row.control_state,
         "functie": row.functie,
         "min_upstream_level": row.min_upstream_level,
@@ -384,11 +413,15 @@ def connector_level_record(
         "min_flow_rate": row_dict.get("min_flow_rate"),
         "max_flow_rate": row_dict.get("max_flow_rate"),
         "flow_demand_controlled": flow_demand_controlled,
+        "upstream_flow_link_id": upstream_flow_link_id,
         "upstream_node_id": upstream_id,
         "upstream_node_type": upstream_node_type,
         "upstream_basin_streefpeil": upstream_streefpeil,
+        "downstream_flow_link_id": downstream_flow_link_id,
         "downstream_node_id": downstream_id,
+        "min_upstream_has_coupled_flow_link": bool(min_upstream_has_coupled_flow_link),
         "min_upstream_is_coupling_link": bool(min_upstream_is_coupling_link),
+        "max_downstream_has_coupled_flow_link": bool(max_downstream_has_coupled_flow_link),
         "max_downstream_is_coupling_link": bool(max_downstream_is_coupling_link),
         "max_downstream_level_basin_id": max_basin_id,
         "gecheckte_max_downstream_level": expected_max_downstream,
@@ -451,6 +484,15 @@ def build_coupling_level_tables(
     return coupling_level_tables(records)
 
 
+def filter_updates_by_authority(df: pd.DataFrame, apply_authorities: set[str] | None) -> pd.DataFrame:
+    """Keep only updates for selected connector target authorities."""
+    if apply_authorities is None or df.empty:
+        return df
+    if "meta_waterbeheerder" not in df:
+        return df.iloc[0:0].copy()
+    return df[df["meta_waterbeheerder"].astype("string").isin(apply_authorities).fillna(False)].copy()
+
+
 def run_coupling_level_check(
     toml_file: Path,
     *,
@@ -460,6 +502,7 @@ def run_coupling_level_check(
     apply_max_downstream_level: bool,
     apply_direct_min_upstream_level: bool,
     tolerance: float = 1e-6,
+    apply_authorities: set[str] | None = None,
 ) -> None:
     """Apply configured coupling-level corrections to a TOML model."""
     model = Model.read(toml_file)
@@ -476,10 +519,16 @@ def run_coupling_level_check(
         level_df=tables["levels"],
         tolerance=tolerance,
     )
+    protected_controller_updates = filter_updates_by_authority(protected_controller_updates, apply_authorities)
 
     max_downstream_updates = tables["deviations"][
         tables["deviations"].get("max_downstream_level_update_allowed", pd.Series(dtype=bool)).fillna(False)
     ].copy()
+    rws_inlet_min_upstream_updates = filter_updates_by_authority(
+        tables["rws_inlet_min_upstream_updates"], apply_authorities
+    )
+    direct_min_upstream_updates = filter_updates_by_authority(tables["direct_min_upstream_updates"], apply_authorities)
+    max_downstream_updates = filter_updates_by_authority(max_downstream_updates, apply_authorities)
     apply_direct_min_upstream = apply_direct_min_upstream_level or apply_max_downstream_level
     apply_level_changes = apply_rws_inlet_min_upstream or apply_direct_min_upstream or apply_max_downstream_level
 
@@ -488,14 +537,12 @@ def run_coupling_level_check(
             model=model,
             toml_file=toml_file,
             min_upstream_updates_df=(
-                tables["rws_inlet_min_upstream_updates"]
+                rws_inlet_min_upstream_updates
                 if apply_rws_inlet_min_upstream
-                else tables["rws_inlet_min_upstream_updates"].iloc[0:0]
+                else rws_inlet_min_upstream_updates.iloc[0:0]
             ),
             direct_min_upstream_updates_df=(
-                tables["direct_min_upstream_updates"]
-                if apply_direct_min_upstream
-                else tables["direct_min_upstream_updates"].iloc[0:0]
+                direct_min_upstream_updates if apply_direct_min_upstream else direct_min_upstream_updates.iloc[0:0]
             ),
             max_downstream_updates_df=(
                 max_downstream_updates if apply_max_downstream_level else max_downstream_updates.iloc[0:0]

@@ -46,7 +46,7 @@ model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
 basin_level_overrides = [
     ([2408], 28.82),
     ([2309], 31.0),
-    ([2495], 30.8),
+    ([2495], 31.0),
     ([2418], 27.27),
     ([1873], 27.6),
     ([5434], 30.75),
@@ -61,6 +61,16 @@ basin_level_overrides = [
 for node_ids, meta_streefpeil in basin_level_overrides:
     mask = model.basin.area.df.node_id.isin(node_ids)
     model.basin.area.df.loc[mask, "meta_streefpeil"] = meta_streefpeil
+
+boundary_level_overrides = {
+    99: 31.0,
+    120: 31.0,
+    121: 31.0,
+}
+
+for node_id, level in boundary_level_overrides.items():
+    mask = model.level_boundary.static.df.node_id == node_id
+    model.level_boundary.static.df.loc[mask, "level"] = level
 
 if model.basin.profile.df is not None and not model.basin.profile.df.empty:
     profile_top = model.basin.profile.df.groupby("node_id")["level"].max()
