@@ -182,7 +182,7 @@ def sync_static_controller_thresholds(
 def ensure_doorlaat_afvoer_max_downstream_level(
     model: Model,
     *,
-    max_downstream_level: float = 9999.0,
+    max_downstream_level: float = float("inf"),
     tolerance: float = 1e-6,
     apply_authorities: set[str] | None = None,
 ) -> int:
