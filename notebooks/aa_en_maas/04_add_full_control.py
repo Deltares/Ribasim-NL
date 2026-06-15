@@ -452,9 +452,7 @@ aanvoergebieden_gpkg = cloud.joinpath(r"AaenMaas/verwerkt/sturing/aanvoergebiede
 aanvoerpunten_path = cloud.joinpath("AaenMaas/verwerkt/1_ontvangen_data/wateraanvoer-10-4-2026/Inlaten_verdelen.gdb")
 aanvoerpunten_layer = "Wateraanvoersysteem"
 
-sync_filepaths = [aanvoergebieden_gpkg, qlr_path]
-if not aanvoerpunten_path.exists():
-    sync_filepaths.append(aanvoerpunten_path)
+sync_filepaths = [aanvoergebieden_gpkg, qlr_path, aanvoerpunten_path]
 cloud.synchronize(filepaths=sync_filepaths)
 
 # %%
