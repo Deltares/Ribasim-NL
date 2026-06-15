@@ -69,9 +69,50 @@ outlet_max_flow_rate_coupled_by_node_id = {
 pump_max_flow_rate_by_node_id = {
     654: 1.4,  # Schipbeek
 }
+drain_nodes = [59]
+supply_nodes = [654, 479, 437, 438, 677, 409, 1190, 390, 428]
+flushing_nodes = {
+    320: 3,
+    337: 0.9,
+    161: 0.1,
+    349: 0.2,  # 0.1-0.3 m3/s volgens waterschap
+}
+flow_control_nodes = [306]
+
+outlet_max_flow_rate_by_node_id = {
+    120: 1.3,  # Lochem
+    90: 0.6,  # Herkel
+}
+outlet_max_flow_rate_from_results = {
+    65: 56,  # Stokkersbrug
+    68: 29,  # Buurserbeek Gaathuizenweg 52
+    169: 96,  # Het Klooster
+    322: 29,  # ST80160035
+    329: 26,  # Kuipersbrug
+    466: 17,  # DR09180001
+    471: 2,  # DR80740011
+    472: 2,  # AF80740003
+    493: 2,  # DR84620035
+    516: 26,  # St96110095
+    575: 26,  # ST80160105
+    584: 29,  # ST80180034
+    587: 54,  # Voorst
+    591: 20,  # ST96230089
+    1194: 27,  # ST96210074
+    436: 0,  # Bredevoort richting Keizersbeek (doet niets in normale situaties)
+}
+outlet_max_flow_rate_coupled_by_node_id = {
+    390: 2,  # gekoppeld max=0.96, huidige max=0.00, link=700040
+    409: 11,  # gekoppeld max=6.45, huidige max=0.00, link=700489
+    428: 3,  # gekoppeld max=1.48, huidige max=0.00, link=700214
+    1190: 12,  # gekoppeld max=7.13, huidige max=0.00, link=701396
+}
+pump_max_flow_rate_by_node_id = {
+    654: 1.4,  # Schipbeek
+}
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
-EXCLUDE_NODES = {}
+EXCLUDE_NODES = {436, 578}
 
 # %%
 # Definieren paden en syncen met cloud
@@ -86,6 +127,9 @@ cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
 # %%
 # Read data
 model = Model.read(ribasim_toml)
+
+# set flow_rate of excluded nodes to 0 m3/s
+model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0
 
 outlet_max_flow_rate_by_node_id = {
     654: 1.4,  # Schipbeek
@@ -247,6 +291,12 @@ model.outlet.static.df.loc[mask, "max_flow_rate"] = 3.1
 # Controller 1330: ook bij truth_state FF naar aanvoer.
 mask = (model.discrete_control.logic.df.node_id == 1330) & (model.discrete_control.logic.df.truth_state == "FF")
 model.discrete_control.logic.df.loc[mask, "control_state"] = "aanvoer"
+
+
+# Verdeelwerk Hackfort limiteren tot 0.2 m3/s in aanvoerstand.
+mask = model.outlet.static.df.node_id == 349
+model.outlet.static.df.loc[mask, "max_flow_rate"] = 0.2
+model.outlet.static.df.loc[mask, "flow_rate"] = 0.2
 
 # Noodoverloop Twentekanaal pas bij onvoldoende door sifon (node_id 306)
 mask = model.outlet.static.df.node_id == 59
