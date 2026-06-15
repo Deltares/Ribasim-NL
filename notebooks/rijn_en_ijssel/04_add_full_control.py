@@ -112,7 +112,7 @@ pump_max_flow_rate_by_node_id = {
 }
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
-EXCLUDE_NODES = {436}
+EXCLUDE_NODES = {436, 578}
 
 # %%
 # Definieren paden en syncen met cloud
@@ -127,6 +127,9 @@ cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
 # %%
 # Read data
 model = Model.read(ribasim_toml)
+
+# set flow_rate of excluded nodes to 0 m3/s
+model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0
 
 outlet_max_flow_rate_by_node_id = {
     654: 1.4,  # Schipbeek
@@ -291,8 +294,9 @@ model.discrete_control.logic.df.loc[mask, "control_state"] = "aanvoer"
 
 
 # Verdeelwerk Hackfort limiteren tot 0.2 m3/s in aanvoerstand.
-mask = (model.outlet.static.df.node_id == 349) & (model.outlet.static.df.control_state == "aanvoer")
+mask = model.outlet.static.df.node_id == 349
 model.outlet.static.df.loc[mask, "max_flow_rate"] = 0.2
+model.outlet.static.df.loc[mask, "flow_rate"] = 0.2
 
 # Noodoverloop Twentekanaal pas bij onvoldoende door sifon (node_id 306)
 mask = model.outlet.static.df.node_id == 59
