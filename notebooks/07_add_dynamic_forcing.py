@@ -79,10 +79,10 @@ def add_forcing(model, cloud, starttime, endtime, assign_budget_fractions, fract
 FIND_POST_FIXES = ["bergend_model"]
 # FIND_POST_FIXES = ["full_control_model"]
 # pass authorities as arguments, or edit list here
-SELECTION: set = {"Limburg"}  # , "Limburg", "DeDommel"}
+SELECTION: set = {"BrabantseDelta"}  # , "Limburg", "DeDommel"}
 INCLUDE_RESULTS = False
 REBUILD = True
-RUN_MODEL = False
+RUN_MODEL = True
 
 
 def get_model_dir(authority, post_fix):
