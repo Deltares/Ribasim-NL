@@ -184,6 +184,7 @@ def ensure_doorlaat_afvoer_max_downstream_level(
     *,
     max_downstream_level: float = 9999.0,
     tolerance: float = 1e-6,
+    apply_authorities: set[str] | None = None,
 ) -> int:
     """Keep afvoer states of doorlaat controls unconstrained downstream."""
     node_df = model.node.df
@@ -215,6 +216,12 @@ def ensure_doorlaat_afvoer_max_downstream_level(
     for target_node_id in sorted(target_node_ids):
         if target_node_id not in node_df.index:
             continue
+        if apply_authorities is not None:
+            target_authority = (
+                node_df.at[target_node_id, "meta_waterbeheerder"] if "meta_waterbeheerder" in node_df else None
+            )
+            if is_missing(target_authority) or str(target_authority) not in apply_authorities:
+                continue
         node_type = str(node_df.at[target_node_id, "node_type"])
         if node_type not in STATIC_TABLE_BY_NODE_TYPE:
             continue
