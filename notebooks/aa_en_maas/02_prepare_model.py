@@ -42,7 +42,6 @@ cloud.synchronize(
         rws_waterschap_grenzen,
     ]
 )
-cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 
 # %% init things
 model = Model.read(ribasim_toml)

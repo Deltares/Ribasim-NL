@@ -59,6 +59,7 @@ def main(
     # setting paths
     fn_bgt = _bgt_path(cloud, water_authority)
     wd_int = _int_output_path(cloud, water_authority, export_intermediate_output)
+    wd_out = _profiles_output_path(cloud, water_authority)
 
     # select datasets
     data = [gdf_basins, gdf_hydro_objects, gdf_crossings]
@@ -74,6 +75,7 @@ def main(
         cloud=cloud,
         fn_bgt=fn_bgt,
         wd_intermediate_output=wd_int,
+        wd_output=wd_out,
         water_bodies=gdf_water_bodies,
         **kwargs,
     )
@@ -137,6 +139,7 @@ def flagged_hydro_objects(
     # settings paths
     fn_bgt = _bgt_path(cloud, water_authority)
     wd_int = _int_output_path(cloud, water_authority, export_intermediate_output)
+    wd_out = _profiles_output_path(cloud, water_authority)
 
     # select datasets
     data = [gdf_basins, gdf_hydro_objects]
@@ -154,6 +157,7 @@ def flagged_hydro_objects(
         cloud=cloud,
         fn_bgt=fn_bgt,
         wd_intermediate_output=wd_int,
+        wd_output=wd_out,
         water_bodies=gdf_water_bodies,
         **kwargs,
     )
@@ -303,6 +307,21 @@ def _int_output_path(cloud: CloudStorage, water_authority: str, export: bool) ->
     if export:
         return cloud.joinpath(water_authority, "verwerkt", "profielen", "intermediate")
     return None
+
+
+def _profiles_output_path(cloud: CloudStorage, water_authority: str) -> Path:
+    """Absolute folder-path (GoodCloud) for first-class profile outputs.
+
+    Unlike the intermediate output, this directory is always used: it holds the regular profile
+    outputs (e.g. the profile tables and the hydro-object network consumed by the network-snapping
+    step).
+
+    :param cloud: the GoodCloud
+    :param water_authority: water authority
+
+    :return: working directory for profile outputs
+    """
+    return cloud.joinpath(water_authority, "verwerkt", "profielen")
 
 
 def _export_profiles(

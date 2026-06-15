@@ -29,7 +29,6 @@ profielen_gpkg = cloud.joinpath(authority, "verwerkt/profielen.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
 cloud.synchronize(filepaths=[stuwen_shp, hydamo_gpkg, profielen_gpkg])
-cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 
 # %% init things
 model = Model.read(ribasim_toml)

@@ -59,8 +59,10 @@ def import_transboundary_inflow(
             if not pd.api.types.is_datetime64_any_dtype(df["Datum"]):
                 raise ValueError(f"Expected datetime64 'Datum' column from Excel, got dtype: {df['Datum'].dtype}")
             df = df.dropna(subset=["Datum"]).set_index("Datum")
-            if not df.index.is_monotonic_increasing:
-                raise ValueError(f"Sheet '{sheet}': Datum column is not sorted by time")
+            # Data is in local (wall-clock) time; the autumn DST fall-back repeats the
+            # 02:00-03:00 hour once a year, which makes the index non-monotonic. Sort it
+            # so daily resampling below averages the doubled hour instead of erroring.
+            df = df.sort_index()
             df = df.loc[(df.index >= start_time) & (df.index <= stop_time), value_columns]
 
             if df.empty:
