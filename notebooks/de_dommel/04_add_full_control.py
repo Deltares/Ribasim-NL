@@ -66,12 +66,12 @@ flow_control_nodes = [203, 212, 216, 217, 227, 236, 375]
 
 supply_nodes = [369, 370, 405, 416, 417, 590, 923, 1067, 1912]
 
-drain_nodes = [210, 419, 506, 507, 509, 510, 602, 611, 705, 709, 710, 753, 754, 766, 926, 967]
+drain_nodes = [210, 419, 506, 507, 509, 510, 602, 611, 670, 705, 709, 710, 753, 754, 766, 926, 967]
 
 flushing_nodes = {}
 
 SUPPLY_AREA_IGNORE_LINKS = {
-    "Son en Breugel": [641, 649, 1089, 1392, 1875],
+    "Son en Breugel": [641, 649, 1088,1089, 1392, 1875],
     "Olen": [336, 349, 350, 381, 855, 856, 1548, 1700, 1854],
     "Beekloop": [794, 836, 1660, 1661, 1934, 1973],
 }
@@ -145,6 +145,11 @@ outlet_ids = [968, 754, 705, 709, 710, 923, 753, 649, 766, 926]
 
 for node_id in dict.fromkeys(outlet_ids):
     model.update_node(node_id=node_id, node_type="Outlet")
+
+model.update_node(node_id=670, node_type="Outlet")
+
+# Deze knoop is geen gestuurd kunstwerk maar open doorstroming.
+model.update_node(node_id=153, node_type="ManningResistance")
 
 # %%
 # Toevoegen aanvoergebieden
@@ -234,9 +239,7 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
         & static_df["flow_rate"].fillna(0).gt(0)
         & ~static_df["node_id"].isin(protected_max_flow_rate_node_ids)
     )
-    static_df.loc[afvoer_mask, "max_flow_rate"] = (
-        static_df.loc[afvoer_mask, "max_flow_rate"].fillna(0.5).clip(lower=0.5)
-    )
+    static_df.loc[afvoer_mask, "max_flow_rate"] = static_df.loc[afvoer_mask, "max_flow_rate"].fillna(10).clip(lower=10)
 
 for static_df in (model.outlet.static.df, model.pump.static.df):
     afvoer_mask = static_df["control_state"].eq("afvoer") & static_df["node_id"].isin(aanvoer_only_node_ids)

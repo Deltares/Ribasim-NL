@@ -378,9 +378,7 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
         & static_df["flow_rate"].fillna(0).gt(0)
         & ~static_df["node_id"].isin(protected_max_flow_rate_node_ids)
     )
-    static_df.loc[afvoer_mask, "max_flow_rate"] = (
-        static_df.loc[afvoer_mask, "max_flow_rate"].fillna(0.5).clip(lower=0.5)
-    )
+    static_df.loc[afvoer_mask, "max_flow_rate"] = static_df.loc[afvoer_mask, "max_flow_rate"].fillna(10).clip(lower=10)
 
 for static_df in (model.outlet.static.df, model.pump.static.df):
     afvoer_mask = static_df["control_state"].eq("afvoer") & static_df["node_id"].isin(aanvoer_only_node_ids)
