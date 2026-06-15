@@ -33,9 +33,22 @@ COUPLING_LEVEL_APPLY_RWS_INLET_MIN_UPSTREAM = True
 COUPLING_LEVEL_APPLY_MAX_DOWNSTREAM_LEVEL = True
 COUPLING_LEVEL_APPLY_DIRECT_MIN_UPSTREAM_LEVEL = True
 COUPLING_LEVEL_TOLERANCE = 1e-6
+COUPLING_LEVEL_APPLY_AUTHORITIES = {
+    "DrentsOverijsselseDelta",
+    "Noorderzijlvest",
+    "Vechtstromen",
+    "HunzeenAas",
+    "Limburg",
+    "DeDommel",
+    "AaenMaas",
+    "BrabantseDelta",
+    "ValleienVeluwe",
+    "StichtseRijnlanden",
+    "RijnenIJssel",
+}
 # Configuration
 data_dir = settings.ribasim_nl_data_dir
-couple_lhm: bool = False
+couple_lhm: bool = True
 sub_models: list[str] = []
 
 remove_nodes = [
@@ -103,8 +116,8 @@ forced_coupling = {
     1301498: 1300169,  # LevelBoundary buiten de boezem van HDSR geplaatst
     1301499: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
     1301496: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
-    1301495: 1404817,  # LevelBoundary buiten de boezem van HDSR geplaatst
-    1301492: 1404817,  # LevelBoundary buiten de boezem van HDSR geplaatst
+    1301495: 1404816,  # LevelBoundary buiten de boezem van HDSR geplaatst; inlaat vanaf bovenstroomse TRC-basin
+    1301492: 1402100,  # LevelBoundary buiten de boezem van HDSR geplaatst; pomp naar benedenstroomse TRC-basin
     4400015: 5903236,  # LB ligt op exact dezelfde locatie
     4402348: 5900072,  # LB ligt op exact dezelfde locatie
     6000124: 6002492,  # Reparatie Helenavaart
@@ -541,7 +554,11 @@ def save_model_and_outputs(model: Model, all_link_table: list[dict], toml_file: 
     model_name = f"{decoupled_model_name}_coupled"
     model_path = root / model_name
     output_toml_file = model_path / f"{model_name}.toml"
-    ensure_doorlaat_afvoer_max_downstream_level(model, tolerance=COUPLING_LEVEL_TOLERANCE)
+    ensure_doorlaat_afvoer_max_downstream_level(
+        model,
+        tolerance=COUPLING_LEVEL_TOLERANCE,
+        apply_authorities=COUPLING_LEVEL_APPLY_AUTHORITIES,
+    )
     model.write(output_toml_file)
 
     # Save links
@@ -562,9 +579,14 @@ def run_configured_coupling_level_check(toml_file: Path) -> None:
         apply_max_downstream_level=COUPLING_LEVEL_APPLY_MAX_DOWNSTREAM_LEVEL,
         apply_direct_min_upstream_level=COUPLING_LEVEL_APPLY_DIRECT_MIN_UPSTREAM_LEVEL,
         tolerance=COUPLING_LEVEL_TOLERANCE,
+        apply_authorities=COUPLING_LEVEL_APPLY_AUTHORITIES,
     )
     model = Model.read(toml_file)
-    if ensure_doorlaat_afvoer_max_downstream_level(model, tolerance=COUPLING_LEVEL_TOLERANCE):
+    if ensure_doorlaat_afvoer_max_downstream_level(
+        model,
+        tolerance=COUPLING_LEVEL_TOLERANCE,
+        apply_authorities=COUPLING_LEVEL_APPLY_AUTHORITIES,
+    ):
         model.write(toml_file)
 
 

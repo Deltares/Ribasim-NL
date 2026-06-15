@@ -404,6 +404,7 @@ def connector_level_record(
         "node_id": node_id,
         "node_type": row.node_type,
         "static_table": row.static_table,
+        "meta_waterbeheerder": row.meta_waterbeheerder,
         "control_state": row.control_state,
         "functie": row.functie,
         "min_upstream_level": row.min_upstream_level,
@@ -483,6 +484,15 @@ def build_coupling_level_tables(
     return coupling_level_tables(records)
 
 
+def filter_updates_by_authority(df: pd.DataFrame, apply_authorities: set[str] | None) -> pd.DataFrame:
+    """Keep only updates for selected connector target authorities."""
+    if apply_authorities is None or df.empty:
+        return df
+    if "meta_waterbeheerder" not in df:
+        return df.iloc[0:0].copy()
+    return df[df["meta_waterbeheerder"].astype("string").isin(apply_authorities).fillna(False)].copy()
+
+
 def run_coupling_level_check(
     toml_file: Path,
     *,
@@ -492,6 +502,7 @@ def run_coupling_level_check(
     apply_max_downstream_level: bool,
     apply_direct_min_upstream_level: bool,
     tolerance: float = 1e-6,
+    apply_authorities: set[str] | None = None,
 ) -> None:
     """Apply configured coupling-level corrections to a TOML model."""
     model = Model.read(toml_file)
@@ -508,10 +519,16 @@ def run_coupling_level_check(
         level_df=tables["levels"],
         tolerance=tolerance,
     )
+    protected_controller_updates = filter_updates_by_authority(protected_controller_updates, apply_authorities)
 
     max_downstream_updates = tables["deviations"][
         tables["deviations"].get("max_downstream_level_update_allowed", pd.Series(dtype=bool)).fillna(False)
     ].copy()
+    rws_inlet_min_upstream_updates = filter_updates_by_authority(
+        tables["rws_inlet_min_upstream_updates"], apply_authorities
+    )
+    direct_min_upstream_updates = filter_updates_by_authority(tables["direct_min_upstream_updates"], apply_authorities)
+    max_downstream_updates = filter_updates_by_authority(max_downstream_updates, apply_authorities)
     apply_direct_min_upstream = apply_direct_min_upstream_level or apply_max_downstream_level
     apply_level_changes = apply_rws_inlet_min_upstream or apply_direct_min_upstream or apply_max_downstream_level
 
@@ -520,14 +537,12 @@ def run_coupling_level_check(
             model=model,
             toml_file=toml_file,
             min_upstream_updates_df=(
-                tables["rws_inlet_min_upstream_updates"]
+                rws_inlet_min_upstream_updates
                 if apply_rws_inlet_min_upstream
-                else tables["rws_inlet_min_upstream_updates"].iloc[0:0]
+                else rws_inlet_min_upstream_updates.iloc[0:0]
             ),
             direct_min_upstream_updates_df=(
-                tables["direct_min_upstream_updates"]
-                if apply_direct_min_upstream
-                else tables["direct_min_upstream_updates"].iloc[0:0]
+                direct_min_upstream_updates if apply_direct_min_upstream else direct_min_upstream_updates.iloc[0:0]
             ),
             max_downstream_updates_df=(
                 max_downstream_updates if apply_max_downstream_level else max_downstream_updates.iloc[0:0]
