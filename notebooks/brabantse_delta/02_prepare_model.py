@@ -34,7 +34,6 @@ sturing_xlsx = cloud.joinpath(
 )
 
 cloud.synchronize(filepaths=[peilgebieden_path, damo_profiles_gpkg, sturing_xlsx])
-cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 
 # %% init things
 model = Model.read(ribasim_toml)

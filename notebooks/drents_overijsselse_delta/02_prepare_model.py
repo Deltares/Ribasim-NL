@@ -33,7 +33,6 @@ meppelerdiep_gpkg = cloud.joinpath(authority, "verwerkt/2_voorbewerking/meppeler
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
 cloud.synchronize(filepaths=[peilgebieden_path, hydamo_wm_gpkg, meppelerdiep_gpkg])
-cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 
 # %% init things
 model = Model.read(ribasim_toml)
