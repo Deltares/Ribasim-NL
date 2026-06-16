@@ -123,8 +123,8 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: 17af4ff77a7d3bf5f3fefdfcd5d12020.dir
-      size: 2234208454
+      md5: 4d62605d14765f9bb5234f119369bed6.dir
+      size: 2252951734
       nfiles: 2
   bathymetry:
     cmd: pixi run python notebooks/rijkswaterstaat/1_bathymetrie.py
@@ -144,8 +144,8 @@ stages:
     deps:
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: 17af4ff77a7d3bf5f3fefdfcd5d12020.dir
-      size: 2234208454
+      md5: 4d62605d14765f9bb5234f119369bed6.dir
+      size: 2252951734
       nfiles: 2
     - path: data/Rijkswaterstaat/verwerkt/netwerk.gpkg
       hash: md5
@@ -158,8 +158,8 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: 8ead76fda65cd9d96056b74ed1b1ce1b.dir
-      size: 1274762799
+      md5: a2b083ad64162ae08d4e4c2e6d8bbfe3.dir
+      size: 1283436455
       nfiles: 4
   rwzi:
     cmd: pixi run python notebooks/create_rwzi_model.py
