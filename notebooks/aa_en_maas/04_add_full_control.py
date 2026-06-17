@@ -509,7 +509,6 @@ model.update_node(node_id=444, node_type="Outlet")  # wordt outlet, was Manning
 model.remove_node(820, remove_links=True)
 model.remove_node(1054, remove_links=True)
 model.remove_node(156, remove_links=True)
-model.remove_node(698, remove_links=True)
 model.remove_node(3093, remove_links=True)  # Parallel De Halte
 model.remove_node(37, remove_links=True)  # Boundary Parallel De Halte
 # Mierlo wordt aanvoer als afvoer gemaal

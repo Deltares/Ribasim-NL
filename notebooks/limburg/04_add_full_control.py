@@ -158,6 +158,7 @@ flow_control_nodes = [
     2494,
     2496,
     2500,
+    2505,  # Eeuwselseloop is geen inlaat maar een doorlaat naar de benedenstroomse rand.
 ]
 
 # %%

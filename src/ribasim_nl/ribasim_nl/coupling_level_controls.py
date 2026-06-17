@@ -9,6 +9,7 @@ from ribasim_nl.coupling_level_common import (
     CONTROL_NODE_TYPES,
     LEVEL_UPDATE_PROTECTION_COLUMN,
     STATIC_TABLE_BY_NODE_TYPE,
+    THRESHOLD_UPDATE_PROTECTION_COLUMN,
     as_float,
     as_int,
     classify_functions,
@@ -435,6 +436,8 @@ def protected_controller_threshold_updates(
                 condition_df["node_id"].astype(int).eq(control_node_id)
                 & condition_df["compound_variable_id"].astype(int).eq(compound_variable_id)
             ].sort_values("condition_id")
+            if condition_rows.empty:
+                continue
             threshold_values = control_condition_thresholds(
                 layout_key=layout_key,
                 compound_variable_id=compound_variable_id,
@@ -449,6 +452,10 @@ def protected_controller_threshold_updates(
             for threshold_value, condition_row in zip(
                 threshold_values, condition_rows.itertuples(index=False), strict=True
             ):
+                if THRESHOLD_UPDATE_PROTECTION_COLUMN in condition_rows.columns and truthy(
+                    getattr(condition_row, THRESHOLD_UPDATE_PROTECTION_COLUMN)
+                ):
+                    continue
                 current_high = (
                     as_float(condition_row.threshold_high) if is_present(condition_row.threshold_high) else np.nan
                 )

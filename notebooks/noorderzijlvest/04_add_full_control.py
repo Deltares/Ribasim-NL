@@ -2,7 +2,11 @@
 
 import geopandas as gpd
 from peilbeheerst_model.controle_output import Control
-from ribasim_nl.control import add_controllers_to_supply_area, add_controllers_to_uncontrolled_connector_nodes
+from ribasim_nl.control import (
+    add_controllers_to_supply_area,
+    add_controllers_to_uncontrolled_connector_nodes,
+    mark_level_update_protected,
+)
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 
@@ -22,6 +26,8 @@ SCHUTVERLIES_FLOW_RATE_BY_NODE_ID = {
 INLAAT_FLOW_RATE_AANVOER_BY_NODE_ID = {
     1741: 26.0,  # Gaarkeuken
 }
+GAARKEUKEN_OUTLET_NODE_ID = 1741
+GAARKEUKEN_MIN_UPSTREAM_LEVEL = -0.93
 OUTLET_FLOW_RATE_AFVOER_OVERRIDE_BY_NODE_ID = {
     724: 400.0,
     728: 9999.0,
@@ -54,6 +60,16 @@ ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoergebieden_gpkg = cloud.joinpath(r"Noorderzijlvest/verwerkt/sturing/aanvoergebieden.gpkg")
 cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
+
+
+def configure_gaarkeuken_control(model: Model) -> None:
+    outlet_mask = model.outlet.static.df["node_id"].eq(GAARKEUKEN_OUTLET_NODE_ID) & model.outlet.static.df[
+        "control_state"
+    ].eq("aanvoer")
+    if outlet_mask.sum() != 1:
+        raise ValueError(f"Expected one aanvoer row for Gaarkeuken outlet {GAARKEUKEN_OUTLET_NODE_ID}")
+    model.outlet.static.df.loc[outlet_mask, "min_upstream_level"] = GAARKEUKEN_MIN_UPSTREAM_LEVEL
+    mark_level_update_protected(model.outlet.static.df, outlet_mask)
 
 
 # %%
@@ -353,6 +369,9 @@ model.outlet.static.df.loc[aanvoer_outlet_mask, "max_flow_rate"] = aanvoer_max_f
 for node_id, flow_rate in INLAAT_FLOW_RATE_AANVOER_BY_NODE_ID.items():
     mask = (model.outlet.static.df.node_id == node_id) & (model.outlet.static.df.control_state == "aanvoer")
     model.outlet.static.df.loc[mask, ["flow_rate", "max_flow_rate"]] = flow_rate
+
+# Gaarkeuken apart overrulen: alleen de bronvoorwaarde verruimen.
+configure_gaarkeuken_control(model)
 
 # %% Junctionify(!)
 junctionify(model)

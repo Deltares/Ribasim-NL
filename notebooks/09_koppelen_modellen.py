@@ -80,6 +80,7 @@ remove_nodes = [
     3803092,  # verwijderen zijtak Helanvaart Limburg
     3800036,  # verwijderen zijtak Helanvaart Limburg
     3800037,  # losse AaenMaas-boundary zonder flow-link
+    4402318,  # parallele node Purit Vschtromen
 ]
 
 # Pumps with min_upstream_level below upstream basin bottom; reset to NA

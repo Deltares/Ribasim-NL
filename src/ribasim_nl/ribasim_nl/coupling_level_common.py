@@ -19,6 +19,7 @@ LIMBURG_AUTHORITY = "Limburg"
 SKIP_LEVEL_UPDATE_AUTHORITIES = {"WetterskipFryslan"}
 SKIP_LEVEL_UPDATE_NODE_IDS: set[int] = set()
 LEVEL_UPDATE_PROTECTION_COLUMN = "meta_level_update_protected"
+THRESHOLD_UPDATE_PROTECTION_COLUMN = "meta_threshold_update_protected"
 
 
 def normalize_numeric(series: pd.Series) -> pd.Series:
