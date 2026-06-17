@@ -14,10 +14,85 @@ import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import pandas as pd
 import seaborn as sns
 from ribasim import Model
 from ribasim.delwaq import add_tracer
+
+current_dir = Path(__file__).resolve().parent
+print(f"Current directory: {current_dir}")
+print("Check if working directory is the script directory.")
+
+# auto-check
+root_dir = ""
+if current_dir.parts[-2:] == ("ribasim_delwaq", "postprocessing"):
+    print("match")
+    root_dir = "../../../"
+
+
+# %% Load functions
+def load_obs_data(path: str) -> pd.DataFrame:
+    """Load observation data from a CSV file.
+
+    Args:
+        path (str): Path to the CSV file.
+
+    Returns
+    -------
+        pd.DataFrame: DataFrame containing the observation data.
+    """
+    print(f"Loading observation data from: {path}")
+    val_data = pd.read_parquet(path)
+    return val_data
+
+
+# %% Import observation data
+data_filename = "KRWMeetwaarden_1990_2025_20260615_1432.parquet"
+obs_data = Path(root_dir, "data/Rijkswaterstaat/validatie/observations", data_filename)
+df = load_obs_data(obs_data)
+
+
+# %% Filter imported observation data
+# filter for specific parameters and locations
+parameters_of_interest = ["Ntot", "Ptot"]  # example parameters
+locations_of_interest = ["NL02_0003", "NL94_KEIZVR"]  # example locations
+filtered_df = df[
+    df["parameter"].isin(parameters_of_interest) & df["KRW_monitoringslocatie"].isin(locations_of_interest)
+]
+print(f"Filtered data shape: {filtered_df.shape}")
+print(f"Unique parameters in filtered data: {filtered_df['parameter'].unique()}")
+print(f"Unique locations in filtered data: {filtered_df['KRW_monitoringslocatie'].unique()}")
+
+# %% Plot filtered observation data
+
+unit = filtered_df["eenheid"].unique()[0]  # only one unit present, mg/L
+obs_locs = filtered_df["KRW_monitoringslocatie"].unique()
+substances = filtered_df["parameter"].unique()
+
+obs_summary = filtered_df.groupby(["KRW_monitoringslocatie", "parameter"])["meetwaarde"].mean().reset_index()
+obs_timeseries = filtered_df
+print(f"Observation summary shape: {obs_summary.shape}")
+
+ax = sns.barplot(data=obs_summary, x="KRW_monitoringslocatie", y="meetwaarde", hue="parameter")
+ax.tick_params(axis="x", rotation=90)
+ax.set_ylabel(f"concentration ({unit})")
+ax.set_title("Mean concentration of selected monitoring sites")
+plt.show()
+
+for loc in obs_locs:
+    for par in substances:
+        loc_data = obs_timeseries[obs_timeseries["KRW_monitoringslocatie"] == loc][obs_timeseries["parameter"] == par]
+        ax = sns.lineplot(data=loc_data, x="datum", y="meetwaarde", label=f"{par} {loc}")
+        max_xticks = 10
+        ax.xaxis.set_major_locator(ticker.MaxNLocator(max_xticks))
+        ax.tick_params(axis="x", rotation=90)
+        ax.set_ylabel(f"concentration ({unit})")
+        ax.set_title("Mean concentration of selected monitoring sites")
+        plt.show()
+
+
+########## CODE BELOW IS PREVIOUS VERSION BASED ON WATERINFO DATA AND FOR TESTING PURPOSES ONLY, DELETE LATER ############
 
 # %%
 
