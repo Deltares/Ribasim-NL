@@ -283,9 +283,22 @@ model.reverse_link(link_id=1685)
 model.reverse_link(link_id=2459)
 model.reverse_link(link_id=1687)
 
-## Volkerak vol 128.5m, tijdelijk pomp
-model.update_node(node_id=1056, node_type="Pump")
-model.pump.static.df.loc[model.pump.static.df.node_id == 1056, ["flow_rate", "max_flow_rate"]] = 100
+## Dintelsas Volkerak hoort hydraulisch een uitlaat naar RWS te zijn.
+## Tijdelijk als pomp modelleren, omdat afwatering anders vastloopt op hoge RWS-waterstanden.
+temporary_rws_pump_node_id = 1056
+model.update_node(node_id=temporary_rws_pump_node_id, node_type="Pump")
+model.node.df.loc[temporary_rws_pump_node_id, "name"] = (
+    "Dintelsas Volkerak tijdelijke pomp naar RWS (eigenlijk uitlaat)"
+)
+model.pump.static.df.loc[model.pump.static.df.node_id == temporary_rws_pump_node_id, ["flow_rate", "max_flow_rate"]] = (
+    100
+)
+
+## Uitlaat naar het Schelde-Rijnkanaal loopt in gekoppelde runs hydraulisch vast door negatieve delta h.
+## Tijdelijk als pomp modelleren; hydraulisch hoort dit een uitlaat naar RWS te zijn.
+temporary_zoommeer_pump_node_id = 509
+model.update_node(node_id=temporary_zoommeer_pump_node_id, node_type="Pump")
+model.node.df.loc[temporary_zoommeer_pump_node_id, "name"] = "Zoommeer tijdelijke pomp naar RWS (eigenlijk uitlaat)"
 
 # Flow_rate was te laag ingesteld
 model.pump.static.df.loc[model.pump.static.df.node_id == 376, ["flow_rate", "max_flow_rate"]] = 5
@@ -350,6 +363,7 @@ pump_max_flow_rate_from_results = {
     972: 1,  # naam onbekend; dynamic max=0.08, oude max=120
     984: 1,  # Gemaal bij Keersluis Leursche Haven; dynamic max=0.54, oude max=120
     985: 1,  # Gemaal bii Keersluis Laaksche Vaart; dynamic max=0.46, oude max=120
+    509: 24.1,  # Tijdelijke pomp naar Zoommeer; behoud de oude afvoercapaciteit van de uitlaat.
 }
 mask = (
     model.pump.static.df.node_id.isin(pump_max_flow_rate_from_results)
@@ -385,7 +399,7 @@ flow_demand_controlled_node_ids = set(
     .dropna()
     .astype(int)
 )
-manual_max_flow_rate_node_ids = {376, 446, 1056}
+manual_max_flow_rate_node_ids = {376, 446, 509, 1056}
 protected_max_flow_rate_node_ids = set(EXCLUDE_NODES) | flow_demand_controlled_node_ids | manual_max_flow_rate_node_ids
 for static_df in (model.outlet.static.df, model.pump.static.df):
     afvoer_mask = (

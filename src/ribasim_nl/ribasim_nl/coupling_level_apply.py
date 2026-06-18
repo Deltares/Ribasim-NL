@@ -8,6 +8,7 @@ from ribasim_nl import Model
 from ribasim_nl.control_layout import control_condition_thresholds, control_layout_key
 from ribasim_nl.coupling_level_common import (
     STATIC_TABLE_BY_NODE_TYPE,
+    THRESHOLD_UPDATE_PROTECTION_COLUMN,
     as_float,
     as_int,
     control_node_ids_by_target_node_id,
@@ -16,6 +17,7 @@ from ribasim_nl.coupling_level_common import (
     is_missing,
     is_present,
     model_level_difference_threshold,
+    truthy,
 )
 from ribasim_nl.coupling_level_controls import (
     has_intentional_named_layout_mismatch,
@@ -153,6 +155,10 @@ def apply_controller_threshold_updates(model: Model, updates_df: pd.DataFrame) -
         if bool(getattr(row, "flow_demand_controlled", False)):
             continue
         threshold = as_float(row.gecheckte_threshold)
+        if THRESHOLD_UPDATE_PROTECTION_COLUMN in condition_df.columns and truthy(
+            condition_df.loc[as_int(row.condition_fid), THRESHOLD_UPDATE_PROTECTION_COLUMN]
+        ):
+            continue
         condition_df.loc[as_int(row.condition_fid), "threshold_high"] = threshold
         condition_df.loc[as_int(row.condition_fid), "threshold_low"] = threshold
         update_count += 1

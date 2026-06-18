@@ -376,7 +376,7 @@ set_max_flow_rate(model.pump.static.df, pump_max_flow_rate_all_by_node_id)
 flow_control_nodes = [
     107, 119, 125, 133, 146, 148, 152, 153, 154, 173, 193, 198, 199, 226, 227, 241,
     242, 243, 244, 247, 248, 260, 285, 301, 317, 328, 331, 338, 344, 350, 361, 373, 374, 385,
-    401, 403, 408, 414, 421, 423, 426, 427, 439, 442, 451, 458, 517, 602, 605, 610, 937,
+    401, 403, 408, 414, 421, 423, 426, 427, 439, 442, 451, 458, 517, 602, 605, 610, 673, 913, 937,
     938, 1088, 1089, 1115, 1152, 1157, 1228, 1263, 1317, 1328, 1347, 1363, 1414, 2662, 2664, 2666,
     3130, 3136, 3229, 3234
 ]
@@ -791,6 +791,10 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
 for static_df in (model.outlet.static.df, model.pump.static.df):
     afvoer_mask = static_df["control_state"].eq("afvoer") & static_df["node_id"].isin(aanvoer_only_node_ids)
     static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 0.0
+
+# Vechterweerd moet in beide richtingen de volledige capaciteit behouden.
+vechterweerd_mask = model.outlet.static.df.node_id.isin([199, 2582])
+model.outlet.static.df.loc[vechterweerd_mask, ["flow_rate", "max_flow_rate"]] = 200.0
 
 # %%
 # Model run

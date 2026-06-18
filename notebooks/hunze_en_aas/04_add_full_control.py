@@ -5,6 +5,7 @@ from ribasim_nl.control import (
     add_controllers_to_supply_area,
     add_controllers_to_uncontrolled_connector_nodes,
     mark_level_update_protected,
+    mark_threshold_update_protected,
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
@@ -78,6 +79,12 @@ pump_max_flow_rate_by_node_id = {
 ALWAYS_ON_PUMP_MIN_FLOW_RATE_BY_NODE_ID: dict[int, float] = {}
 ALWAYS_ON_PUMP_MAX_DOWNSTREAM_LEVEL: float = 99999.0
 ALWAYS_ON_PUMP_MIN_UPSTREAM_LEVEL_OFFSET: float = -1.0
+DORKWERD_PUMP_NODE_ID = 20
+DORKWERD_LISTEN_NODE_ID = 1261
+DORKWERD_THRESHOLD_LOW = 0.533
+DORKWERD_THRESHOLD_HIGH = 0.533
+DORKWERD_MIN_UPSTREAM_LEVEL = -0.97
+DORKWERD_MAX_DOWNSTREAM_LEVEL = 0.58
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 EXCLUDE_NODES = {
@@ -138,6 +145,43 @@ def configure_always_on_pumps(model: Model) -> None:
         model.pump.static.df.loc[mask, "min_upstream_level"] = target_level + ALWAYS_ON_PUMP_MIN_UPSTREAM_LEVEL_OFFSET
         model.pump.static.df.loc[mask, "max_downstream_level"] = ALWAYS_ON_PUMP_MAX_DOWNSTREAM_LEVEL
         mark_level_update_protected(model.pump.static.df, mask, model=model)
+
+
+def configure_dorkwerd_control(model: Model) -> None:
+    control_links = model.link.df[
+        model.link.df["link_type"].eq("control") & model.link.df["to_node_id"].eq(DORKWERD_PUMP_NODE_ID)
+    ]
+    if len(control_links) != 1:
+        raise ValueError(
+            f"Expected exactly one control link for Dorkwerd pump {DORKWERD_PUMP_NODE_ID}, found {len(control_links)}"
+        )
+
+    control_node_id = int(control_links.iloc[0].from_node_id)
+    variable_mask = model.discrete_control.variable.df["node_id"].eq(control_node_id)
+    condition_mask = model.discrete_control.condition.df["node_id"].eq(control_node_id)
+    if variable_mask.sum() != 1:
+        raise ValueError(f"Expected one discrete control variable row for Dorkwerd control {control_node_id}")
+    if condition_mask.sum() != 1:
+        raise ValueError(f"Expected one discrete control condition row for Dorkwerd control {control_node_id}")
+
+    model.discrete_control.variable.df.loc[variable_mask, "listen_node_id"] = DORKWERD_LISTEN_NODE_ID
+    model.discrete_control.condition.df.loc[condition_mask, "threshold_low"] = DORKWERD_THRESHOLD_LOW
+    model.discrete_control.condition.df.loc[condition_mask, "threshold_high"] = DORKWERD_THRESHOLD_HIGH
+    mark_threshold_update_protected(model.discrete_control.condition.df, condition_mask)
+
+    pump_mask = model.pump.static.df["node_id"].eq(DORKWERD_PUMP_NODE_ID) & model.pump.static.df["control_state"].eq(
+        "aanvoer"
+    )
+    if pump_mask.sum() != 1:
+        raise ValueError(f"Expected one aanvoer row for Dorkwerd pump {DORKWERD_PUMP_NODE_ID}")
+    model.pump.static.df.loc[pump_mask, "min_upstream_level"] = DORKWERD_MIN_UPSTREAM_LEVEL
+    model.pump.static.df.loc[pump_mask, "max_downstream_level"] = DORKWERD_MAX_DOWNSTREAM_LEVEL
+    mark_level_update_protected(model.pump.static.df, pump_mask)
+
+    if DORKWERD_LISTEN_NODE_ID in model.node.df.index:
+        model.node.df.loc[control_node_id, "name"] = (
+            f"inlaat: {DORKWERD_THRESHOLD_HIGH:.3f}/{DORKWERD_MAX_DOWNSTREAM_LEVEL:.2f} via {DORKWERD_LISTEN_NODE_ID}"
+        )
 
 
 # %%
@@ -697,6 +741,10 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
 for static_df in (model.outlet.static.df, model.pump.static.df):
     afvoer_mask = static_df["control_state"].eq("afvoer") & static_df["node_id"].isin(aanvoer_only_node_ids)
     static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 0.0
+
+# %%
+# Dorkwerd apart overrulen: stuur op de Manning-keten, begrens lokaal op 0.57 m.
+configure_dorkwerd_control(model)
 
 # %%
 # Model run

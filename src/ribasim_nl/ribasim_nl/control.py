@@ -15,10 +15,21 @@ import ribasim_nl
 from ribasim_nl import Model
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.control_layout import control_condition_thresholds, control_logic
+from ribasim_nl.coupling_level_common import (
+    LEVEL_UPDATE_PROTECTION_COLUMN,
+    THRESHOLD_UPDATE_PROTECTION_COLUMN,
+    truthy,
+)
 from ribasim_nl.downstream import downstream_nodes
 
 LOG = logging.getLogger(__name__)
-LEVEL_UPDATE_PROTECTION_COLUMN = "meta_level_update_protected"
+
+
+def _normalize_protection_column(df: pd.DataFrame, column: str) -> None:
+    if column not in df.columns:
+        df[column] = False
+        return
+    df[column] = df[column].map(truthy)
 
 
 def mark_level_update_protected(static_df: pd.DataFrame, mask: pd.Series, model: Model | None = None) -> None:
@@ -27,10 +38,8 @@ def mark_level_update_protected(static_df: pd.DataFrame, mask: pd.Series, model:
     When a model is provided, the DiscreteControl thresholds of the selected nodes
     are synced with the current static levels.
     """
-    if LEVEL_UPDATE_PROTECTION_COLUMN not in static_df.columns:
-        static_df[LEVEL_UPDATE_PROTECTION_COLUMN] = False
-    protected_value = True if pd.api.types.is_bool_dtype(static_df[LEVEL_UPDATE_PROTECTION_COLUMN]) else 1
-    static_df.loc[mask, LEVEL_UPDATE_PROTECTION_COLUMN] = protected_value
+    _normalize_protection_column(static_df, LEVEL_UPDATE_PROTECTION_COLUMN)
+    static_df.loc[mask, LEVEL_UPDATE_PROTECTION_COLUMN] = True
     if model is not None:
         from ribasim_nl.coupling_level_apply import sync_static_controller_thresholds
 
@@ -39,6 +48,12 @@ def mark_level_update_protected(static_df: pd.DataFrame, mask: pd.Series, model:
             target_node_ids=set(static_df.loc[mask, "node_id"].dropna().astype(int)),
             tolerance=1e-6,
         )
+
+
+def mark_threshold_update_protected(condition_df: pd.DataFrame, mask: pd.Series) -> None:
+    """Protect DiscreteControl condition thresholds from later syncs."""
+    _normalize_protection_column(condition_df, THRESHOLD_UPDATE_PROTECTION_COLUMN)
+    condition_df.loc[mask, THRESHOLD_UPDATE_PROTECTION_COLUMN] = True
 
 
 def _node_flow_rate(flow_rate: float | dict[int, float] | None, node_id: int, default: float = 20.0) -> float:
@@ -797,6 +812,8 @@ def add_controllers_to_drain_nodes(
             afvoer_max_flow_rate = _node_max_flow_rate(
                 afvoer_max_flow_rate_source, node_id=node_id_int, default=original_max_flow_rate
             )
+        if not isinstance(afvoer_flow_rate_source, dict) and isinstance(afvoer_max_flow_rate_source, dict):
+            afvoer_flow_rate = max(afvoer_flow_rate, afvoer_max_flow_rate)
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
         model.update_node(
             node_id,
@@ -1107,6 +1124,8 @@ def add_controllers_to_flow_control_nodes(
             afvoer_max_flow_rate = _node_max_flow_rate(
                 afvoer_max_flow_rate_source, node_id=node_id_int, default=original_max_flow_rate
             )
+        if not isinstance(afvoer_flow_rate_source, dict) and isinstance(afvoer_max_flow_rate_source, dict):
+            afvoer_flow_rate = max(afvoer_flow_rate, afvoer_max_flow_rate)
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
         model.update_node(
             node_id,
