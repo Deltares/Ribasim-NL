@@ -9,6 +9,7 @@ from ribasim_nl.control import (
     add_controllers_to_supply_area,
     add_controllers_to_uncontrolled_connector_nodes,
     mark_level_update_protected,
+    mark_max_downstream_level_update_protected,
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
@@ -146,7 +147,7 @@ def lower_outlet_max_downstream_level(model: Model, node_id: int, offset: float 
             mask = aanvoer_mask
 
     model.outlet.static.df.loc[mask, "max_downstream_level"] = float(downstream_target_level.iloc[0]) - offset
-    mark_level_update_protected(model.outlet.static.df, mask, model=model)
+    mark_max_downstream_level_update_protected(model.outlet.static.df, mask, model=model)
 
 
 def duplicate_level_boundary_for_link(model: Model, source_node_id: int, link_id: int) -> int | None:

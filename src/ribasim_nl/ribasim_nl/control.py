@@ -17,6 +17,7 @@ from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.control_layout import control_condition_thresholds, control_logic
 from ribasim_nl.coupling_level_common import (
     LEVEL_UPDATE_PROTECTION_COLUMN,
+    MAX_DOWNSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN,
     THRESHOLD_UPDATE_PROTECTION_COLUMN,
     truthy,
 )
@@ -40,6 +41,22 @@ def mark_level_update_protected(static_df: pd.DataFrame, mask: pd.Series, model:
     """
     _normalize_protection_column(static_df, LEVEL_UPDATE_PROTECTION_COLUMN)
     static_df.loc[mask, LEVEL_UPDATE_PROTECTION_COLUMN] = True
+    if model is not None:
+        from ribasim_nl.coupling_level_apply import sync_static_controller_thresholds
+
+        sync_static_controller_thresholds(
+            model=model,
+            target_node_ids=set(static_df.loc[mask, "node_id"].dropna().astype(int)),
+            tolerance=1e-6,
+        )
+
+
+def mark_max_downstream_level_update_protected(
+    static_df: pd.DataFrame, mask: pd.Series, model: Model | None = None
+) -> None:
+    """Protect only max_downstream_level from coupling-level updates."""
+    _normalize_protection_column(static_df, MAX_DOWNSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN)
+    static_df.loc[mask, MAX_DOWNSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN] = True
     if model is not None:
         from ribasim_nl.coupling_level_apply import sync_static_controller_thresholds
 

@@ -19,6 +19,8 @@ LIMBURG_AUTHORITY = "Limburg"
 SKIP_LEVEL_UPDATE_AUTHORITIES = {"WetterskipFryslan"}
 SKIP_LEVEL_UPDATE_NODE_IDS: set[int] = set()
 LEVEL_UPDATE_PROTECTION_COLUMN = "meta_level_update_protected"
+MIN_UPSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN = "meta_min_upstream_level_update_protected"
+MAX_DOWNSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN = "meta_max_downstream_level_update_protected"
 THRESHOLD_UPDATE_PROTECTION_COLUMN = "meta_threshold_update_protected"
 
 

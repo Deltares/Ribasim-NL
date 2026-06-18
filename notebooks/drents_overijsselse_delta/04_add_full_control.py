@@ -7,6 +7,7 @@ from ribasim_nl.control import (
     add_controllers_to_supply_area,
     add_controllers_to_uncontrolled_connector_nodes,
     mark_level_update_protected,
+    mark_max_downstream_level_update_protected,
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
@@ -40,7 +41,9 @@ def set_static_values(static_df, node_values: dict[int, float], column: str) -> 
     for node_id, value in node_values.items():
         mask = static_df.node_id == node_id
         static_df.loc[mask, column] = value
-        if column in ["min_upstream_level", "max_downstream_level"]:
+        if column == "max_downstream_level":
+            mark_max_downstream_level_update_protected(static_df, mask, model=model)
+        elif column == "min_upstream_level":
             mark_level_update_protected(static_df, mask, model=model)
 
 
@@ -407,7 +410,7 @@ drain_nodes = [
     375, 377, 378, 381, 382, 384, 387, 394, 395, 398, 402, 405, 416, 418, 421, 422, 428,
     431, 436, 437, 438, 444, 445, 446, 447, 452, 454, 456, 461, 468, 469, 473, 475,
     476, 480, 481, 485, 486, 487, 488, 489, 490, 493, 501, 503, 505, 513, 515, 521,
-    525, 529, 534, 541, 557, 565, 580, 582, 583, 584, 586, 587, 588, 590, 591, 596,
+    525, 529, 534, 541, 557, 559, 565, 580, 582, 583, 584, 586, 587, 588, 590, 591, 596,
     599, 608, 609, 614, 616, 623, 624, 625, 627, 630, 640, 642, 643, 644, 646, 649,
     653, 654, 657, 658, 659, 664, 666, 671, 672, 674, 679, 680, 681, 688, 690, 697,
     698, 700, 701, 709, 716, 721, 725, 732, 738, 771, 774, 777, 780, 794, 802, 815,
@@ -636,7 +639,7 @@ add_controllers_to_uncontrolled_connector_nodes(
 # Holthe max_downstream iets lager gezet omdat deze pas aangaat als andere inlaten niet meer kunnen aanleveren.
 mask = model.pump.static.df.node_id == 648
 model.pump.static.df.loc[mask, "max_downstream_level"] -= 0.04
-mark_level_update_protected(model.pump.static.df, mask, model=model)
+mark_max_downstream_level_update_protected(model.pump.static.df, mask, model=model)
 
 # Noordscheschutsluis: basin 1920 is gemerged naar 1881; aanvoer stopt 1 cm onder benedenstrooms streefpeil.
 noordscheschutsluis_pump_node_id = 346
@@ -669,7 +672,7 @@ if "control_state" in model.pump.static.df.columns:
     if aanvoer_mask.any():
         mask = aanvoer_mask
 model.pump.static.df.loc[mask, "max_downstream_level"] = max_downstream_level
-mark_level_update_protected(model.pump.static.df, mask, model=model)
+mark_max_downstream_level_update_protected(model.pump.static.df, mask, model=model)
 
 set_static_values(
     model.level_boundary.static.df,
@@ -731,7 +734,7 @@ for static_df in [model.outlet.static.df, model.pump.static.df]:
     mark_level_update_protected(static_df, mask, model=model)
     mask = static_df.node_id == 3233
     static_df.loc[mask, "max_downstream_level"] = 12.94
-    mark_level_update_protected(static_df, mask, model=model)
+    mark_max_downstream_level_update_protected(static_df, mask, model=model)
 
 # Minimale afvoer naar buitenwater op specifieke kunstwerken, voor alle control_states.
 for node_id, min_flow_rate in MIN_FLOW_RATE_BY_NODE_ID.items():

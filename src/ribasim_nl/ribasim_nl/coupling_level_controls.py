@@ -8,6 +8,8 @@ from ribasim_nl.control_layout import control_condition_thresholds, control_layo
 from ribasim_nl.coupling_level_common import (
     CONTROL_NODE_TYPES,
     LEVEL_UPDATE_PROTECTION_COLUMN,
+    MAX_DOWNSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN,
+    MIN_UPSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN,
     STATIC_TABLE_BY_NODE_TYPE,
     THRESHOLD_UPDATE_PROTECTION_COLUMN,
     as_float,
@@ -20,6 +22,23 @@ from ribasim_nl.coupling_level_common import (
     static_row_has_capacity,
     truthy,
 )
+
+
+def static_level_protection_mask(rows: pd.DataFrame, level_column: str) -> pd.Series:
+    """Return row/column-specific static level protection for a level column."""
+    mask = pd.Series(False, index=rows.index)
+    for column in [LEVEL_UPDATE_PROTECTION_COLUMN, level_column_protection_column(level_column)]:
+        if column in rows.columns:
+            mask |= rows[column].map(truthy)
+    return mask
+
+
+def level_column_protection_column(level_column: str) -> str:
+    if level_column == "min_upstream_level":
+        return MIN_UPSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN
+    if level_column == "max_downstream_level":
+        return MAX_DOWNSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN
+    return LEVEL_UPDATE_PROTECTION_COLUMN
 
 
 def grouped_compound_counts(df: pd.DataFrame | None, control_node_id: int) -> dict[int, int]:
@@ -128,16 +147,11 @@ def static_level_for_condition(
     """Get the static level that should drive one control.py condition."""
     if static_rows.empty:
         return None, None
-    if protected_only and LEVEL_UPDATE_PROTECTION_COLUMN not in static_rows.columns:
-        return None, None
 
     rows = static_rows.copy()
     rows["control_state_lower"] = rows["control_state"].astype("string").str.lower()
     rows["has_capacity"] = rows.apply(static_row_has_capacity, axis=1)
     layout_key = str(layout_key).lower()
-    if protected_only:
-        rows["level_update_protected"] = rows[LEVEL_UPDATE_PROTECTION_COLUMN].map(truthy)
-        rows = rows[rows["level_update_protected"]].copy()
 
     if layout_key == "inlaat" and compound_variable_id == 1:
         candidates = rows[
@@ -167,6 +181,9 @@ def static_level_for_condition(
         basis = "protected_aanvoer_max_downstream_level" if protected_only else "static_aanvoer_max_downstream_level"
     else:
         return None, None
+
+    if protected_only:
+        candidates = candidates[static_level_protection_mask(candidates, column)].copy()
 
     values = pd.to_numeric(candidates[column], errors="coerce").dropna()
     if values.empty:
@@ -304,8 +321,13 @@ def protected_controller_threshold_updates(
         return pd.DataFrame()
 
     static_df = pd.concat(static_dfs, ignore_index=True)
-    if LEVEL_UPDATE_PROTECTION_COLUMN not in static_df.columns:
-        static_df[LEVEL_UPDATE_PROTECTION_COLUMN] = False
+    for column in (
+        LEVEL_UPDATE_PROTECTION_COLUMN,
+        MIN_UPSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN,
+        MAX_DOWNSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN,
+    ):
+        if column not in static_df.columns:
+            static_df[column] = False
 
     node_type_by_id = {
         as_int(node_id): str(node_type)
@@ -379,7 +401,11 @@ def protected_controller_threshold_updates(
             continue
 
         target_static_rows = static_df[static_df["node_id"].astype(int).eq(target_node_id)]
-        has_protected_static = target_static_rows[LEVEL_UPDATE_PROTECTION_COLUMN].map(truthy).any()
+        has_protected_static = (
+            target_static_rows[LEVEL_UPDATE_PROTECTION_COLUMN].map(truthy)
+            | target_static_rows[MIN_UPSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN].map(truthy)
+            | target_static_rows[MAX_DOWNSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN].map(truthy)
+        ).any()
         variable_rows = variable_df[variable_df["node_id"].astype(int).eq(control_node_id)].copy()
         for variable_row in variable_rows.itertuples(index=False):
             compound_variable_id = as_int(variable_row.compound_variable_id)

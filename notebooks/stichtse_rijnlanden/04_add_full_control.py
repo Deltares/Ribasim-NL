@@ -4,7 +4,7 @@ from peilbeheerst_model.controle_output import Control
 from ribasim_nl.control import (
     add_controllers_to_supply_area,
     add_controllers_to_uncontrolled_connector_nodes,
-    mark_level_update_protected,
+    mark_max_downstream_level_update_protected,
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
@@ -27,7 +27,7 @@ IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 # 753: Woerdenseverlaat SLuis
 # 751: Montfoort Sluis
 EXCLUDE_NODES = {486, 745, 746, 750, 753}
-EXCLUDE_SUPPLY_NODES = []
+EXCLUDE_SUPPLY_NODES = [80, 145, 354, 414, 928]
 outlet_max_flow_rate_from_results = {
     515: 48,  # ST0225
     758: 2,  # Zuidersluis
@@ -82,21 +82,21 @@ for max_flow_rates in (
 
 # fmt: off
 flow_control_nodes = [
-    134, 207, 405, 527, 636, 777, 778, 809, 814, 977, 1010, 1011, 1033, 1036,
+    134, 207, 306, 405, 527, 623, 636, 777, 778, 809, 814, 977, 1010, 1011, 1033, 1036,
     1038, 1039, 1050, 1059, 1063, 1107, 1153, 1154, 1155, 1279,
 ]
 
 supply_nodes = [
     103, 358, 424, 425, 476, 481, 486, 506, 536, 542, 543, 553, 554, 564, 581,
     589, 593, 601, 624, 626, 627, 630, 637, 638, 639, 640, 648, 649, 650, 651,
-    654, 655, 742, 747, 754, 761, 772, 797, 830, 840, 855, 890, 906, 911, 924,
+    654, 655, 742, 747, 754, 772, 797, 830, 840, 855, 890, 906, 911, 924,
     962, 976, 987, 1007, 1014, 1022, 1042, 1056, 1082, 1156, 2111,
 ]
 
 drain_nodes = [
-    139, 168, 173, 185, 198, 230, 298, 347, 411, 467, 477, 513, 545, 551, 554,
+    80, 139, 145, 168, 173, 185, 198, 230, 298, 347, 354, 411, 414, 467, 477, 513, 545, 551, 554,
     588, 591, 598, 612, 633, 634, 761, 799, 818, 844, 851, 864, 887, 893, 894,
-    920, 944, 956, 969, 971, 975, 978, 979, 980, 993, 1033, 1077, 1126, 1145, 1168, 1203, 1223,
+    920, 928, 944, 956, 969, 971, 975, 978, 979, 980, 993, 1033, 1077, 1126, 1145, 1168, 1203, 1223,
     2110,
 ]
 
@@ -171,6 +171,7 @@ cloud.synchronize(filepaths=[aanvoer_path, qlr_path, aanvoergebieden_gpkg])
 model = Model.read(ribasim_toml)
 
 outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.node_id.astype(int), 10.0)
+outlet_max_flow_rate_aanvoer_by_node_id[754] = 0.0  # Doorslag sluis
 
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
@@ -226,6 +227,9 @@ model.reverse_link(link_id=2005)
 model.reverse_link(link_id=2073)
 model.reverse_link(link_id=24)
 
+# 481: 1400481 is een gemaal, dus pump in full control
+model.update_node(node_id=481, node_type="Pump")
+
 model.update_node(node_id=730, node_type="ManningResistance")
 
 # %%
@@ -269,22 +273,22 @@ add_controllers_to_uncontrolled_connector_nodes(
 )
 
 # %% Noordergemaal, node=536 slaat pas aan wanneer Wijk van Duurstede net genoeg kan leveren
-mask = model.pump.static.df.node_id == 536
+mask = (model.pump.static.df.node_id == 536) & model.pump.static.df.max_downstream_level.notna()
 model.pump.static.df.loc[mask, "max_downstream_level"] -= 0.01
-mark_level_update_protected(model.pump.static.df, mask, model=model)
+mark_max_downstream_level_update_protected(model.pump.static.df, mask, model=model)
 mask = model.outlet.static.df.node_id.isin([1344, 1345])
 model.outlet.static.df.loc[mask, "max_downstream_level"] -= 0.01
-mark_level_update_protected(model.outlet.static.df, mask, model=model)
+mark_max_downstream_level_update_protected(model.outlet.static.df, mask, model=model)
 
 # 3 sifons, 468,469,470 onder Ark wordt later ingeschakeld dan inlaat Vreeswijk
 mask = model.outlet.static.df.node_id.isin([468, 469, 470])
 model.outlet.static.df.loc[mask, "max_downstream_level"] -= 0.01
-mark_level_update_protected(model.outlet.static.df, mask, model=model)
+mark_max_downstream_level_update_protected(model.outlet.static.df, mask, model=model)
 
 # Caspargauw gaat pas leveren als Wijk bij Duurstede aanvoer te laag is
 mask = model.pump.static.df.node_id == 601
 model.pump.static.df.loc[mask, "max_downstream_level"] -= 0.01
-mark_level_update_protected(model.pump.static.df, mask, model=model)
+mark_max_downstream_level_update_protected(model.pump.static.df, mask, model=model)
 
 # Pomp-capaciteiten op basis van hoogste berekende dynamic debiet, afgerond naar boven.
 pump_max_flow_rate_from_results = {

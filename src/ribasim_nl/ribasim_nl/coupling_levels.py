@@ -15,6 +15,8 @@ from ribasim_nl.coupling_level_common import (
     DEDOMMEL_AUTHORITY,
     LEVEL_UPDATE_PROTECTION_COLUMN,
     LIMBURG_AUTHORITY,
+    MAX_DOWNSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN,
+    MIN_UPSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN,
     RWS_AUTHORITY,
     SKIP_LEVEL_UPDATE_AUTHORITIES,
     SKIP_LEVEL_UPDATE_NODE_IDS,
@@ -115,9 +117,14 @@ def read_control_static_tables(
         return pd.DataFrame()
 
     static_df = pd.concat(static_parts, ignore_index=True)
-    if LEVEL_UPDATE_PROTECTION_COLUMN not in static_df.columns:
-        static_df[LEVEL_UPDATE_PROTECTION_COLUMN] = False
-    static_df[LEVEL_UPDATE_PROTECTION_COLUMN] = static_df[LEVEL_UPDATE_PROTECTION_COLUMN].map(truthy)
+    for column in (
+        LEVEL_UPDATE_PROTECTION_COLUMN,
+        MIN_UPSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN,
+        MAX_DOWNSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN,
+    ):
+        if column not in static_df.columns:
+            static_df[column] = False
+        static_df[column] = static_df[column].map(truthy)
 
     static_df = static_df.merge(
         node_df[
@@ -244,6 +251,8 @@ def connector_level_record(
     flow_demand_inlaat = bool(row.flow_demand_inlaat)
     flow_demand_controlled = bool(row.flow_demand_controlled)
     level_update_protected = bool(getattr(row, LEVEL_UPDATE_PROTECTION_COLUMN))
+    min_upstream_level_update_protected = bool(getattr(row, MIN_UPSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN, False))
+    max_downstream_level_update_protected = bool(getattr(row, MAX_DOWNSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN, False))
     static_capacity = static_row_has_capacity(row_dict)
     active_aanvoer_capacity = control_state == "aanvoer" and static_capacity
     inactive_flow_demand_aanvoer = control_state == "aanvoer" and flow_demand_inlaat and not static_capacity
@@ -279,8 +288,12 @@ def connector_level_record(
         and is_present(downstream_authority)
         and row.meta_waterbeheerder != downstream_authority
     )
-    min_upstream_protected_by_static = level_update_protected or node_id in SKIP_LEVEL_UPDATE_NODE_IDS
-    max_downstream_protected_by_static = level_update_protected or node_id in SKIP_LEVEL_UPDATE_NODE_IDS
+    min_upstream_protected_by_static = (
+        level_update_protected or min_upstream_level_update_protected or node_id in SKIP_LEVEL_UPDATE_NODE_IDS
+    )
+    max_downstream_protected_by_static = (
+        level_update_protected or max_downstream_level_update_protected or node_id in SKIP_LEVEL_UPDATE_NODE_IDS
+    )
 
     upstream_streefpeil = context.streefpeil_by_basin_id.get(upstream_id, np.nan)
     upstream_min_profile = context.min_profile_by_basin_id.get(upstream_id, np.nan)
@@ -432,6 +445,7 @@ def connector_level_record(
         "min_upstream_level_afwijking": bool(min_upstream_afwijking),
         "level_update_skipped_authority": bool(level_update_skipped_authority),
         "min_upstream_protected_by_static": bool(min_upstream_protected_by_static),
+        "max_downstream_protected_by_static": bool(max_downstream_protected_by_static),
         "rws_inlet_profile_update_allowed": bool(rws_inlet_profile_update_allowed),
         "rws_flow_demand_profile_min_upstream_allowed": bool(rws_flow_demand_profile_min_upstream_allowed),
         "limburg_rws_flow_demand_min_upstream": bool(rws_flow_demand_profile_min_upstream_allowed),
