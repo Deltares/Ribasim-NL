@@ -223,6 +223,8 @@ for model_name, authorities in sub_models.items():
     print(f"written {ribasim_toml}")
 
 if build_lhm:
+    # Start from an empty model; the previous loop may have built a submodel.
+    lhm_model = None
     lhm_model = process_model_spec(1, hws_spec, lhm_model)
     for idx, model_spec in enumerate(model_specs):
         write_toml = data_dir / f"Rijkswaterstaat/modellen/lhm-scaling/lhm-{idx + 2:02}/lhm-{idx + 2:02}.toml"
