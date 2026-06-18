@@ -48,8 +48,8 @@ COUPLING_LEVEL_APPLY_AUTHORITIES = {
 }
 # Configuration
 data_dir = settings.ribasim_nl_data_dir
-couple_lhm: bool = True
-sub_models: list[str] = []
+couple_lhm: bool = False
+sub_models: list[str] = ["maasgebied"]
 
 remove_nodes = [
     3401752,  # Dokwerd NZV

@@ -12,7 +12,7 @@ data_dir = settings.ribasim_nl_data_dir
 
 # Write intermediate models for debugging or scaling tests
 write_intermediate_models: bool = False
-build_lhm: bool = True
+build_lhm: bool = False
 
 # Remove any model from this list to skip it
 INCLUDE_MODELS: list[str] = [
@@ -41,6 +41,7 @@ INCLUDE_MODELS: list[str] = [
 ]
 
 sub_models: dict[str, list[str]] = {
+    "maasgebied": ["Rijkswaterstaat", "BrabantseDelta", "DeDommel", "AaenMaas", "Limburg", "Rivierenland"]
     # "VrijAfwaterend_DOD_Vechtstromen": [
     # "Rijkswaterstaat",
     # "AaenMaas",
