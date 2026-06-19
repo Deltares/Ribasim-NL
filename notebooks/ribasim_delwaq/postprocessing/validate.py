@@ -1,15 +1,19 @@
 """
 5-2-2026 Jesse van Leeuwen
 
-Goal of this script:
-- Visualize output
-- Load water quality data from Waterinfo API for specific stations and parameters or from local files
-- Compare to output of delwaq simulation
-- Plot results
+19-6-2026 Sibren Loos
 
+Goal of this script:
+- read observation data for water quality from Good Cloud (source: WKP data processed for KRW-NUTrend by Steven Kelderman)
+- Visualize example locations
+- Load water quality data from delwaq simulation for specific stations and parameters Ntot and Ptot
+- aggregate both datasets to equivalent time steps (e.g. monthly / quarterly)
+- Compare to output of delwaq simulation and calculate statistics (e.g. RMSE, NSE, bias)
+- Plot results
 """
 
 # %% Import necessary libraries
+import logging
 import os
 from pathlib import Path
 
@@ -17,8 +21,21 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import pandas as pd
 import seaborn as sns
-from ribasim import Model
-from ribasim.delwaq import add_tracer
+
+from ribasim_nl import CloudStorage
+
+logger = logging.getLogger(__name__)
+
+
+def setup_logging():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        force=True,
+    )
+
+
+setup_logging()
 
 current_dir = Path(__file__).resolve().parent
 print(f"Current directory: {current_dir}")
@@ -46,6 +63,18 @@ def load_obs_data(path: str) -> pd.DataFrame:
     val_data = pd.read_parquet(path)
     return val_data
 
+
+# %% Define folder locations and synchronize with the Good Cloud
+cloud = CloudStorage()
+upload_results = False
+logger.info("Synchronizing with file on the Good Cloud")
+validatie_folder = cloud.joinpath(Path(os.environ["RIBASIM_NL_DATA_DIR"]), "Basisgegevens/Validatie/Waterkwaliteit")
+WKP_metingen_path = cloud.joinpath(validatie_folder, "KRWMeetwaarden_1990_2025_20260615_1432.parquet")
+cloud.synchronize(
+    filepaths=[
+        WKP_metingen_path,
+    ]
+)
 
 # %% Import observation data
 data_filename = "KRWMeetwaarden_1990_2025_20260615_1432.parquet"
@@ -93,7 +122,7 @@ for loc in obs_locs:
 
 
 ########## CODE BELOW IS PREVIOUS VERSION BASED ON WATERINFO DATA AND FOR TESTING PURPOSES ONLY, DELETE LATER ############
-
+"""
 # %%
 
 val_data_path = "c:\\Users\\leeuw_je\\projects\\LWKM\\data\\obs\\20260205_018.csv"
@@ -152,3 +181,4 @@ add_tracer(model, 700970, "Foo")
 model.graph.nodes(data=True)
 
 # somehow try to extract the XY of all nodes, filter for RWS nodes or something.
+ """
