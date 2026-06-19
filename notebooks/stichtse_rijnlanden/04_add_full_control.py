@@ -16,7 +16,7 @@ from ribasim_nl import CloudStorage, Model
 # %%
 # Globale settings
 
-MODEL_EXEC: bool = True  # execute model run
+MODEL_EXEC: bool = False  # execute model run
 AUTHORITY: str = "StichtseRijnlanden"  # authority
 SHORT_NAME: str = "hdsr"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
