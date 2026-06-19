@@ -25,6 +25,8 @@ from ribasim_nl.downstream import downstream_nodes
 
 LOG = logging.getLogger(__name__)
 
+DEFAULT_US_TARGET_LEVEL_OFFSET_SUPPLY = -0.04
+
 
 def _normalize_protection_column(df: pd.DataFrame, column: str) -> None:
     if column not in df.columns:
@@ -863,7 +865,7 @@ def add_controllers_to_drain_nodes(
 def add_controllers_to_supply_nodes(
     model: Model,
     supply_nodes_df: gpd.GeoDataFrame,
-    us_target_level_offset_supply: float = -0.04,
+    us_target_level_offset_supply: float = DEFAULT_US_TARGET_LEVEL_OFFSET_SUPPLY,
     target_level_column: str = "meta_streefpeil",
     control_node_offset: float = 10,
     control_node_angle: int = 90,
@@ -1005,7 +1007,7 @@ def add_controllers_to_flow_control_nodes(
     model: Model,
     flow_control_nodes_df: gpd.GeoDataFrame,
     us_threshold_offset: float = 0.02,
-    us_target_level_offset_supply: float = -0.04,
+    us_target_level_offset_supply: float = DEFAULT_US_TARGET_LEVEL_OFFSET_SUPPLY,
     target_level_column: str = "meta_streefpeil",
     control_node_offset: float = 10,
     control_node_angle: int = 90,
@@ -1213,7 +1215,7 @@ def add_controllers_and_demand_to_flushing_nodes(
     flushing_nodes_df: gpd.GeoDataFrame,
     us_threshold_offset: float = 0.02,
     demand_threshold_offset: float = 0.001,
-    us_target_level_offset_supply: float = -0.04,
+    us_target_level_offset_supply: float = DEFAULT_US_TARGET_LEVEL_OFFSET_SUPPLY,
     target_level_column: str = "meta_streefpeil",
     summer_season_start: tuple[int, int] = (4, 1),
     winter_season_start: tuple[int, int] = (10, 1),
@@ -1416,7 +1418,7 @@ def add_controllers_to_connector_nodes(
     model: Model,
     node_functions_df: gpd.GeoDataFrame,
     level_difference_threshold: float = 0.02,
-    us_target_level_offset_supply: float = -0.04,
+    us_target_level_offset_supply: float = DEFAULT_US_TARGET_LEVEL_OFFSET_SUPPLY,
     target_level_column: str = "meta_streefpeil",
     drain_capacity: float = 100,
     add_supply_nodes: bool = True,
@@ -1548,7 +1550,7 @@ def add_controllers_to_supply_area(
     is_supply_node_column: str = "meta_supply_node",
     target_level_column: str = "meta_streefpeil",
     add_supply_nodes: bool = True,
-    us_target_level_offset_supply: float = -0.04,
+    us_target_level_offset_supply: float = DEFAULT_US_TARGET_LEVEL_OFFSET_SUPPLY,
     flow_rate_aanvoer: float | dict[int, float] | None = None,
     max_flow_rate_aanvoer: float | dict[int, float] | None = None,
     flow_rate_afvoer: float | dict[int, float] | None = None,
@@ -1681,7 +1683,7 @@ def add_controllers_to_uncontrolled_connector_nodes(
     flow_control_nodes: list[int] | None = None,
     flushing_nodes: dict[int, float] | None = None,
     control_node_types: list[Literal["Pump", "Outlet"]] | None = None,
-    us_target_level_offset_supply: float = -0.04,
+    us_target_level_offset_supply: float = DEFAULT_US_TARGET_LEVEL_OFFSET_SUPPLY,
     level_difference_threshold: float = 0.02,
     flow_rate_aanvoer: float | dict[int, float] | None = None,
     max_flow_rate_aanvoer: float | dict[int, float] | None = None,
@@ -1808,6 +1810,7 @@ def add_controllers_to_uncontrolled_connector_nodes(
             model=model,
             flushing_nodes_df=flushing_nodes_df,
             us_threshold_offset=level_difference_threshold,
+            us_target_level_offset_supply=us_target_level_offset_supply,
         )
 
     # Supply

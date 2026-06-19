@@ -4,7 +4,9 @@ from peilbeheerst_model.controle_output import Control
 from ribasim_nl.control import (
     add_controllers_to_supply_area,
     add_controllers_to_uncontrolled_connector_nodes,
+    mark_level_update_protected,
     mark_max_downstream_level_update_protected,
+    mark_threshold_update_protected,
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
@@ -15,7 +17,7 @@ from ribasim_nl import CloudStorage, Model
 # %%
 # Globale settings
 
-MODEL_EXEC: bool = False  # execute model run
+MODEL_EXEC: bool = True  # execute model run
 AUTHORITY: str = "StichtseRijnlanden"  # authority
 SHORT_NAME: str = "hdsr"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
@@ -26,7 +28,7 @@ IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 # 750: Oude Leidseweg Sluis
 # 753: Woerdenseverlaat SLuis
 # 751: Montfoort Sluis
-EXCLUDE_NODES = {486, 745, 746, 750, 753}
+EXCLUDE_NODES = {486, 745, 746, 750, 753, 754}
 EXCLUDE_SUPPLY_NODES = [80, 145, 354, 414, 928]
 outlet_max_flow_rate_from_results = {
     515: 48,  # ST0225
@@ -82,22 +84,22 @@ for max_flow_rates in (
 
 # fmt: off
 flow_control_nodes = [
-    134, 207, 306, 405, 527, 623, 636, 777, 778, 809, 814, 977, 1010, 1011, 1033, 1036,
-    1038, 1039, 1050, 1059, 1063, 1107, 1153, 1154, 1155, 1279,
+    134, 207, 233, 454,527, 534, 623, 636, 777, 778, 809, 814, 977, 1010, 1011, 1033, 1036,
+    1038, 1039, 1050, 1059, 1107, 1153, 1154, 1155, 1279,
 ]
 
 supply_nodes = [
-    103, 358, 424, 425, 476, 481, 486, 506, 536, 542, 543, 553, 554, 564, 581,
-    589, 593, 601, 624, 626, 627, 630, 637, 638, 639, 640, 648, 649, 650, 651,
+    100, 103, 358, 424, 425, 476, 481, 486, 506, 536, 542, 543, 553, 554, 564, 581,
+    589, 593, 601, 624, 626, 627, 630, 634, 637, 638, 639, 640, 648, 649, 650, 651,
     654, 655, 742, 747, 754, 772, 797, 830, 840, 855, 890, 906, 911, 924,
-    962, 976, 987, 1007, 1014, 1022, 1042, 1056, 1082, 1156, 2111,
+    962, 976, 987, 1014, 1022, 1042, 1056, 1082, 1156, 2111,
 ]
 
 drain_nodes = [
     80, 139, 145, 168, 173, 185, 198, 230, 298, 347, 354, 411, 414, 467, 477, 513, 545, 551, 554,
-    588, 591, 598, 612, 633, 634, 761, 799, 818, 844, 851, 864, 887, 893, 894,
-    920, 928, 944, 956, 969, 971, 975, 978, 979, 980, 993, 1033, 1077, 1126, 1145, 1168, 1203, 1223,
-    2110,
+    588, 591, 598, 612, 633, 678, 740, 761, 799, 810,818, 844, 851, 864, 887, 893, 894,
+    920, 928, 944, 956, 969, 971, 975, 978, 979, 980, 993, 1006,1007, 1033, 1077, 1126, 1145, 1168, 1203, 1223,
+    1063, 2104, 2110,
 ]
 
 flushing_nodes = {186: 1.25, 757: 3.0, 919: 5}
@@ -171,7 +173,6 @@ cloud.synchronize(filepaths=[aanvoer_path, qlr_path, aanvoergebieden_gpkg])
 model = Model.read(ribasim_toml)
 
 outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.node_id.astype(int), 10.0)
-outlet_max_flow_rate_aanvoer_by_node_id[754] = 0.0  # Doorslag sluis
 
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
@@ -230,7 +231,10 @@ model.reverse_link(link_id=24)
 # 481: 1400481 is een gemaal, dus pump in full control
 model.update_node(node_id=481, node_type="Pump")
 
+model.update_node(node_id=405, node_type="ManningResistance")
 model.update_node(node_id=730, node_type="ManningResistance")
+
+model.remove_node(node_id=1345, remove_links=True)
 
 # %%
 # Toevoegen aanvoergebieden
@@ -272,11 +276,70 @@ add_controllers_to_uncontrolled_connector_nodes(
     max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
 )
 
+node_type_by_id = model.node.df["node_type"].to_dict()
+
+
+def discrete_control_node_id(target_node_id: int) -> int:
+    control_node_ids = model.link.df.loc[
+        model.link.df["link_type"].eq("control")
+        & model.link.df["to_node_id"].eq(target_node_id)
+        & model.link.df["from_node_id"].map(node_type_by_id).eq("DiscreteControl"),
+        "from_node_id",
+    ].astype(int)
+    if len(control_node_ids) != 1:
+        raise ValueError(f"Expected one DiscreteControl for node {target_node_id}, found {control_node_ids.to_list()}")
+    return int(control_node_ids.iloc[0])
+
+
+# Keulevaart, node 623: in aanvoer sturen vanaf -2.3 m NAP.
+for static_df in (model.outlet.static.df, model.pump.static.df):
+    mask = static_df["node_id"].eq(623) & static_df["control_state"].eq("aanvoer")
+    static_df.loc[mask, "min_upstream_level"] = -2.3
+    mark_level_update_protected(static_df, mask, model=model)
+
+control_node_id = discrete_control_node_id(623)
+mask = model.discrete_control.condition.df["node_id"].eq(control_node_id) & model.discrete_control.condition.df[
+    "compound_variable_id"
+].eq(1)
+condition_index = model.discrete_control.condition.df.loc[mask].sort_values("condition_id").index
+thresholds = [-2.3, -2.3 + model.solver.level_difference_threshold]
+model.discrete_control.condition.df.loc[condition_index, "threshold_high"] = thresholds
+model.discrete_control.condition.df.loc[condition_index, "threshold_low"] = thresholds
+mark_threshold_update_protected(model.discrete_control.condition.df, mask)
+
+# Werkhoven stuw, node 919, in aanvoer 4 cm eerder open.
+for static_df in (model.outlet.static.df, model.pump.static.df):
+    mask = static_df["node_id"].eq(919) & static_df["control_state"].eq("aanvoer")
+    static_df.loc[mask, "min_upstream_level"] -= 0.04
+    mark_level_update_protected(static_df, mask, model=model)
+
+# Caspargauw inlaat, node 601, voert aan wanneer Wijk bij Duurstede pomp 481 meer dan 6 m3/s voert.
+control_node_id = discrete_control_node_id(601)
+mask = model.discrete_control.variable.df["node_id"].eq(control_node_id) & model.discrete_control.variable.df[
+    "compound_variable_id"
+].eq(1)
+model.discrete_control.variable.df.loc[mask, ["listen_node_id", "variable", "weight"]] = [481, "flow_rate", -1]
+mask = model.discrete_control.condition.df["node_id"].eq(control_node_id) & model.discrete_control.condition.df[
+    "compound_variable_id"
+].eq(1)
+model.discrete_control.condition.df.loc[mask, ["threshold_high", "threshold_low"]] = -6.0
+
+# Caspargauw uitlaat, node 761, voert af wanneer Werkhoven stuw 919 meer dan 6 m3/s voert.
+control_node_id = discrete_control_node_id(761)
+mask = model.discrete_control.variable.df["node_id"].eq(control_node_id) & model.discrete_control.variable.df[
+    "compound_variable_id"
+].eq(1)
+model.discrete_control.variable.df.loc[mask, ["listen_node_id", "variable", "weight"]] = [919, "flow_rate", 1]
+mask = model.discrete_control.condition.df["node_id"].eq(control_node_id) & model.discrete_control.condition.df[
+    "compound_variable_id"
+].eq(1)
+model.discrete_control.condition.df.loc[mask, ["threshold_high", "threshold_low"]] = 6.0
+
 # %% Noordergemaal, node=536 slaat pas aan wanneer Wijk van Duurstede net genoeg kan leveren
 mask = (model.pump.static.df.node_id == 536) & model.pump.static.df.max_downstream_level.notna()
 model.pump.static.df.loc[mask, "max_downstream_level"] -= 0.01
 mark_max_downstream_level_update_protected(model.pump.static.df, mask, model=model)
-mask = model.outlet.static.df.node_id.isin([1344, 1345])
+mask = model.outlet.static.df.node_id == 1344
 model.outlet.static.df.loc[mask, "max_downstream_level"] -= 0.01
 mark_max_downstream_level_update_protected(model.outlet.static.df, mask, model=model)
 
