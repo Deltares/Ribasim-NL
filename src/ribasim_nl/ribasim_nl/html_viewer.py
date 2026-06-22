@@ -637,7 +637,7 @@ var map = L.map('map', {zoomControl: true, layers: [basemaps.osm]}).setView([52.
 map.createPane('nettewerkPane').style.zIndex = 390;
 map.createPane('validatiePane').style.zIndex  = 420;
 
-var pdokLayer = L.tileLayer.wms('https://service.pdok.nl/hwh/waterschapsgrenzenimso/wms/v1_0', {
+var pdokLayer = L.tileLayer.wms('https://service.pdok.nl/hwh/waterschappen-waterschapsgrenzen-imso/wms/v2_0', {
     layers: 'waterschap', format: 'image/png', transparent: true, version: '1.3.0',
     attribution: 'PDOK - Waterschapsgrenzen'
 });

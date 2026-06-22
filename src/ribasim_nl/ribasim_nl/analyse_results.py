@@ -378,16 +378,15 @@ def _safe_eval_formula(formula: str, env: dict) -> pd.Series:
     return _eval(ast.parse(formula, mode="eval"))
 
 
-def ApplySpecificOperation(data: pd.DataFrame, link: list | int, spec_op: str):
+def ApplySpecificOperation(data_by_link: dict[int, pd.DataFrame], link: list | int, spec_op: str):
     """
     The function `ApplySpecificOperation`  performs specific operations on the input data.
 
     Parameters
     ----------
-    data : pd.DataFrame
-        The function `ApplySpecificOperation` takes in a pd.DataFrame `data`, a list of link IDs
-    `link`, and a specific operation `spec_op` to be applied on the data. The function then performs
-    different operations based on the value of `spec_op`.
+    data_by_link : dict[int, pd.DataFrame]
+        Pre-grouped model output keyed by link_id. Use ``{int(lid): df for lid, df in data.groupby("link_id")}``
+        to build this once before the loop so each call is an O(1) dict lookup instead of an O(n) scan.
     link : list | int
         The `link` parameter in the function `ApplySpecificOperation` is used to specify the link or links
     for which the specific operation will be applied. It can be either an integer or a list of integers
@@ -411,30 +410,30 @@ def ApplySpecificOperation(data: pd.DataFrame, link: list | int, spec_op: str):
     match spec_op:
         case "optellen":
             # Tel de links bij elkaar op wanneer de specifieke bewerking hierom vraagt
-            subset_links = data[data["link_id"].isin(link)]
+            subset_links = pd.concat([data_by_link[lid] for lid in link])
             # pyrefly: ignore[bad-assignment]
             subset_output: pd.DataFrame = subset_links.groupby("time", as_index=False)["flow_rate"].sum()
 
         case "negatief_maken":
             # Maak de meetreeks negatief
-            subset_output = data[data["link_id"].isin(link)].copy()
+            subset_output = pd.concat([data_by_link[lid] for lid in link]).copy()
             subset_output["flow_rate"] = subset_output["flow_rate"] * -1
 
         case "optellen_en_negatief_maken":
             # Tel op en maak de reeks negatief
-            subset_links = data[data["link_id"].isin(link)]
+            subset_links = pd.concat([data_by_link[lid] for lid in link])
             # pyrefly: ignore[bad-assignment]
             subset_output = subset_links.groupby("time", as_index=False)["flow_rate"].sum().copy()
             subset_output["flow_rate"] = subset_output["flow_rate"] * -1
 
         case _ if pd.isna(spec_op):
             # Als er geen specifieke bewerking nodig is, selecteer de link
-            subset_output = data[data["link_id"].isin(link)]
+            subset_output = pd.concat([data_by_link[lid] for lid in link])
 
         case _:
             # Handel de specifieke formule af
             link_mapping = {f"link{i + 1}": ID for i, ID in enumerate(link)}
-            subset_links = data[data["link_id"].isin(link)]
+            subset_links = pd.concat([data_by_link[lid] for lid in link])
             subset_pivot = subset_links.pivot(index="time", columns="link_id", values="flow_rate")
             env = {placeholder: subset_pivot[link_id] for placeholder, link_id in link_mapping.items()}
             subset_pivot["result"] = _safe_eval_formula(spec_op, env)
@@ -1077,7 +1076,7 @@ def ExportToExcel(
 
 def PlotAndSaveFractie(
     combined_df: pd.DataFrame,
-    concentration_path: Path | None,
+    concentration_df: pd.DataFrame | None,
     basin_node_id: int,
     basin_richting: str,
     tracers: list[str] | None,
@@ -1094,8 +1093,8 @@ def PlotAndSaveFractie(
     ----------
     combined_df
         DataFrame with columns 'time', 'flow_rate' and optionally 'sum'.
-    concentration_path
-        Path to the concentration.nc NetCDF file. Returns None immediately when None.
+    concentration_df
+        Pre-loaded concentration DataFrame (from concentration.nc). Returns None immediately when None.
     basin_node_id
         Node ID of the basin for which fractions are plotted.
     basin_richting
@@ -1115,13 +1114,10 @@ def PlotAndSaveFractie(
         HTML ``<img>`` tag string for use in a popup, or None when no fraction data
         is available for this basin.
     """
-    if concentration_path is None:
+    if concentration_df is None:
         return None
-    ds = xr.open_dataset(concentration_path)
-    table = ds.to_dataframe().reset_index()
-    ds.close()
 
-    table = table[table["node_id"] == basin_node_id]
+    table = concentration_df[concentration_df["node_id"] == basin_node_id]
     if tracers is not None:
         table = table[table["substance"].isin(tracers)]
 
@@ -1315,6 +1311,14 @@ def CompareOutputMeasurements(
             except Exception as exc:
                 print(f"get_lhm_fractions mislukt ({exc}). Standaard tracers worden gebruikt.")
 
+    _concentration_df: pd.DataFrame | None = None
+    if _frac_available and _concentration_path is not None:
+        print("Inlezen concentration.nc...")
+        ds = xr.open_dataset(_concentration_path)
+        _concentration_df = ds.to_dataframe().reset_index()
+        ds.close()
+        print(f"  concentration.nc ingelezen ({len(_concentration_df)} rijen).")
+
     results_measurements: dict[str, dict[str, list[object]]] = {}
     results_measurements_decade: dict[str, dict[str, list[object]]] = {}
     results_excel = {}  # voor het Excel-criteriabestand
@@ -1334,6 +1338,10 @@ def CompareOutputMeasurements(
         print("  Aan/Af wordt toegevoegd aan bestandsnaam; locaties worden 5 m verschoven in de geopackage.")
     # Tracks which (meetreeks, aanaf) combinations have been seen for assigning geometry offsets.
     _meetreeks_aanaf_idx: dict[tuple[str, str], int] = {}
+
+    # Pre-groepeer modeloutput op link_id zodat elke iteratie een O(1) dict-lookup is
+    # in plaats van een O(n) scan over het volledige data DataFrame.
+    data_by_link: dict[int, pd.DataFrame] = {int(lid): df for lid, df in data.groupby("link_id")}  # pyrefly: ignore[bad-argument-type]
 
     # AmstelGooienVecht: group by link_id_parsed so multiple measurement series per link are summed.
     # All other water authorities: each row is its own group so measurement series stay individual.
@@ -1433,7 +1441,9 @@ def CompareOutputMeasurements(
         subset_measurements = dagmetingen[["time", *existing_measurements]].copy()
 
         # If multiple measurements series refer to the same link, take the sum of the measurements
-        subset_measurements["sum"] = subset_measurements[existing_measurements].sum(axis=1, min_count=1)
+        subset_measurements["sum"] = subset_measurements[existing_measurements].sum(
+            axis=1, min_count=len(existing_measurements)
+        )
 
         # Get the specific operations for the measurements
         subset_specs = specifics[
@@ -1457,14 +1467,13 @@ def CompareOutputMeasurements(
 
         # Check whether all link IDs are present in the model output; skip if not
         links_as_list = [link] if isinstance(link, int) else link
-        available_link_ids = data["link_id"].unique()
-        missing_links = [lid for lid in links_as_list if lid not in available_link_ids]
+        missing_links = [lid for lid in links_as_list if lid not in data_by_link]
         if missing_links:
             print(f"Overgeslagen ({existing_measurements}): link_id(s) {missing_links} ontbreken in de modeloutput.")
             continue
 
         # Apply the special operation to get the subset of model output
-        subset_modeloutput = ApplySpecificOperation(data, link, spec_op)
+        subset_modeloutput = ApplySpecificOperation(data_by_link, link, spec_op)
 
         # Combine the measurements with the modeloutput in one dataframe
         combined_df = subset_modeloutput.merge(subset_measurements[["time", "sum"]], on=["time"], how="left")
@@ -1500,7 +1509,7 @@ def CompareOutputMeasurements(
 
         # --- Deal with the daily values ---
         full_title = " - ".join(existing_measurements)
-        fig_name = full_title.split(" - ")[0]
+        fig_name = existing_measurements[0]
         meetreeks_naam = fig_name  # kolomnaam in tijdsreeks-Excel
 
         # Duplicate MeetreeksC: append Aan/Af to prevent filename collisions.
@@ -1542,7 +1551,7 @@ def CompareOutputMeasurements(
                 fractie_basin_node_id, basin_richting = _fractie_result
                 pop_up_fractie = PlotAndSaveFractie(
                     combined_df=combined_df,
-                    concentration_path=_concentration_path,
+                    concentration_df=_concentration_df,
                     basin_node_id=fractie_basin_node_id,
                     basin_richting=basin_richting,
                     tracers=_tracers,
@@ -3013,21 +3022,20 @@ def AnalyseLHM41Vergelijking(
 
     for csv_naam, locs in groepen.items():
         datum_index = locs[0]["df_dec"]["Datum"].values
-        rib_som = np.zeros(len(datum_index))
-        met_som = np.zeros(len(datum_index))
-        has_meting = np.zeros(len(datum_index), dtype=bool)
-
-        for loc in locs:
-            df_i = loc["df_dec"].set_index("Datum").reindex(datum_index)
-            rib_som += df_i["Ribasim"].fillna(0).values
-            met_som += df_i["meting"].fillna(0).values
-            has_meting |= df_i["meting"].notna().values
-
+        n = len(locs)
+        rib_df = pd.concat(
+            [loc["df_dec"].set_index("Datum")["Ribasim"].reindex(datum_index) for loc in locs],
+            axis=1,
+        )
+        met_df = pd.concat(
+            [loc["df_dec"].set_index("Datum")["meting"].reindex(datum_index) for loc in locs],
+            axis=1,
+        )
         df_som = pd.DataFrame(
             {
                 "Datum": datum_index,
-                "Ribasim_som": rib_som,
-                "meting_som": np.where(has_meting, met_som, np.nan),
+                "Ribasim_som": rib_df.sum(axis=1, min_count=n).values,
+                "meting_som": met_df.sum(axis=1, min_count=n).values,
             }
         )
 
@@ -3221,7 +3229,6 @@ if __name__ == "__main__":
     # Implementatie lokaal voor testen
     cloud = CloudStorage()
     base_koppeltabel = cloud.joinpath("Basisgegevens/resultaatvergelijking/koppeltabel_2026")
-
     loc_koppeltabel = (
         base_koppeltabel / "Transformed_koppeltabel_versie_Samenwerkdag_26052026_Feedback_Verwerkt_HydroLogic.xlsx"
     )
