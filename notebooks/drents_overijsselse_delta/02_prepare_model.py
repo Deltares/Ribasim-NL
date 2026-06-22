@@ -33,7 +33,6 @@ meppelerdiep_gpkg = cloud.joinpath(authority, "verwerkt/2_voorbewerking/meppeler
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
 cloud.synchronize(filepaths=[peilgebieden_path, hydamo_wm_gpkg, meppelerdiep_gpkg])
-cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 
 # %% init things
 model = Model.read(ribasim_toml)
@@ -66,7 +65,7 @@ else:
     profiles_df = damo_profiles.process_profiles()
     profiles_df.to_file(profiles_gpkg)
     add_link_profile_ids(model, profiles=damo_profiles)
-    fix_link_geometries(model, network, max_straight_line_ratio=2)
+    fix_link_geometries(model, network, max_straight_line_ratio=1.5)
     model.link.df.reset_index().to_file(link_geometries_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)

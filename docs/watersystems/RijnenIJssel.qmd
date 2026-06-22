@@ -11,30 +11,32 @@ Water wordt aangevoerd naar een aantal beken vanuit het `Twentekanaal` in het no
 
 De afvoer vindt plaats via de `Twentekanalen`, de `IJssel` en de `Rijn`.
 
-Hieronder worden de belangrijkste systemen beknopt beschreven.
+Hieronder worden de belangrijkste systemen beknopt beschreven. De focus ligt hierbij op belangrijke verdeelwerken en aanvoer-condities.
 
 ---
 
-### Aanvoergebied Schipbeek
-- Aanvoer vanuit het `Twentekanaal` via `Inlaat Schipbeek`
-- Bovenstrooms van het Twentekanaal wordt via de `Schipbeek` een deel van het water doorgevoerd naar `Vechtstromen` (Boven-Regge, niet op de kaart)
-- De `Schipbeek` ontvangt daarnaast water vanuit Duitsland
-- Afvoer richting de `IJssel`, met een noodoverlaat op het `Twentekanaal` bij de inlaat
+### Schipbeek
+De `Schipbeek` ontvangt daarnaast water vanuit Duitsland via de Buurserbeek en Zoddebeek. Bovenstrooms van het Twentekanaal wordt via de `Schipbeek` een deel van het water doorgevoerd naar `Vechtstromen` (Boven-Regge, niet op de kaart). Bij het `Twentekanaal` kan water worden ingelaten via `Inlaat Schipbeek`, waar maximaal 1.4 m3/s wordt ingelaten. De Schipbeek voert af op de IJssel en via een noodoverloop op het Twentekanaal (max 8 m3/s).
 
-### Aanvoergebied Herkel
-- Aanvoer via `Inlaat Herkel` naar de `Eefse Beek`
-- Afvoer via de `Eefse Beek` naar het `Twentekanaal`, bovenstrooms van `Eefde`, deels onder vrij verval en deels via een gemaal
+### Aanvoergebied Eefse Beek
+De `Eefse Beek` voert af via het `Twentekanaal` via een uitlaatwerk, onder vrij verval, of via `Gemaal Oude Eefsebeek`. Via `Inlaat Herkel` kan maximaal 0.6 m3/s worden aangevoerd vanuit het Twentekanaal.
 
-### Aanvoergebied Lochem/Berkel/Slinge
-- Aanvoer via `Inlaat Lochem` naar de `Berkel` (benedenstrooms richting `Lochem` en `Zutphen`)
-- De `Berkel` en `Slinge` ontvangen tevens water vanuit Duitsland
-- Water wordt op meerdere locaties verdeeld en lokaal ingelaten
-- Afvoer via de `Berkel` richting het `Twentekanaal` en de `IJssel`
+### Veengoot/Baakse Beek
+De `Baakse Beek` en Veengoot ontspringen in Nederland. Bij `Verdeelwerk Hackfort` wordt 0.1-0.3 m3/s doorgelaten richting de `Baakse Beek` en de rest afgevoerd via het `Stroomkanaal van Hackfort`. Bij hoog water op de IJssel kan water ook worden uitgemalen via gemaal `Baakse Beek`.
+
+### Berkel & Slinge
+De `Berkel` ontvangt water uit Duitsland. Dit wordt verdeelt bij verdeelwerk `Haarlo`; 40-45% gaat richting de `Bolksbeek` en 55-60% richting de `Berkel`. In aanvoersituaties kan het water uit de `Bolksbeek` lokaal worden ingelaten. Het restant watert af op het Twentekanaal.
+
+Langs de `Berkel`, bedenstrooms `Haarlo` zijn twee verdeelwerken, `Honebrug` en `Beekvliet`, waar bovenstrooms ook water kan worden ingelaten. `Beekvliet` is ook het punt waar de `Slinge` in de Berkel stroomt.
+
+Bij `Verdeelwerk Lochem` wordt, wanneer beschikbaar, 3m/s doorgelaten over de Berkel richting Zutphen. Bij hogere afvoeren wordt tot 32 m3/s afgevoerd via het Twenteknaal via het aflaatwerk. Bij hogere afvoeren gaat de rest over de `Berkel` richting `Warken`. Tussen `Verdeelwerk Lochem` en `Warken` wordt ook water ingelaten bij `Inlaat Lochem`.
+
+Bij `Warken` wordt 0.9 m3/s doorgelaten via de `Berkel`. Ook wordt hier 0.1 m3/s doorgelaten richting de Brummeler Laak. Dit wordt uitgemalen bij gemaal Helbergen
 
 ### Oude-IJssel
-- De bovenlopen van de `Oude-IJssel` ontvangen water vanuit Duitsland
-- Dit water wordt op verschillende locaties verdeeld
-- Afvoer van de `Oude-IJssel` vindt plaats naar de `IJssel`
+De bovenlopen van de `Oude-IJssel` ontvangen water vanuit Duitsland; 70% van het totale oppervlak van het stroomgebied ligt in Duitsland. Bij `Verdeelwerk Bredevoort` watert de `Schaarsbeek` af op de `Keizersbeek` via een sifon. Hier kan overtollig water uit de `Schaarsbeek` worden afgelaten richting de `Boven-Slinge`. Ook kan water uit de `Boven-Slinge` worden ingelaten op de `Kiezersbeek`.
+
+Afvoer van de `Oude-IJssel` vindt plaats naar de `IJssel` bij sluis-stuwcomplex `Doesburg`. `Gemaal Doesburg` zorgt voor extra capaciteit met 1 m3/s.
 
 ## Capaciteiten
 Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
@@ -44,4 +46,4 @@ Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 geb
 
 - Documentatie Distributiemodel Deel C, hoofdstuk 20
 - Waterakkoord Twentekanalen (2025)
-- Schematic SWECO n.a.v samenwerkdag december 2023
+- Meerdere overleggen met het waterschap

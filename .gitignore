@@ -90,7 +90,8 @@ bin/
 *.pdf
 *.nc
 *.ps1
-results/
+**/results/**
+!**/results/**/*.dvc
 runs/
 repro_jobs.txt
 delwaq/
@@ -98,3 +99,4 @@ delwaq/
 # Main scripts to run workflows per water authority
 notebooks/*/main.py
 ribasim.env
+scripts/local_coupled_pipelines/

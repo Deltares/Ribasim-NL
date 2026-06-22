@@ -1,5 +1,6 @@
 /.quarto/
 /_site/
 /reference/
+/dev/_dvc-dag.mmd
 
 **/*.quarto_ipynb

@@ -29,7 +29,6 @@ profielen_gpkg = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/wrij_profi
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
 cloud.synchronize(filepaths=[profielen_gpkg, regelpeil_csv])
-cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 
 # %% init things
 model = Model.read(ribasim_toml)

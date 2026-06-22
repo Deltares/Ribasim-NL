@@ -73,6 +73,22 @@ def _load_geometry(geometry: str | gpd.GeoDataFrame, **kwargs) -> gpd.GeoDataFra
     raise TypeError(msg)
 
 
+def _dissolve_geometry(geometry: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Dissolve 'aanvoergebieden' into a single geometry.
+
+    Overlapping/adjacent 'aanvoergebieden' polygons would otherwise cause a basin node to match
+    multiple polygons in the spatial join, which is not meaningful for the boolean 'aanvoer'-label.
+    Dissolving merges all polygons into one (multi)polygon so each basin node matches at most once.
+
+    :param geometry: geometry data of 'aanvoergebieden'
+    :type geometry: geopandas.GeoDataFrame
+
+    :return: dissolved geometry data
+    :rtype: geopandas.GeoDataFrame
+    """
+    return geometry.dissolve()[["geometry"]].reset_index(drop=True)
+
+
 class SupplyBasin:
     """Labelling of Ribasim's basin nodes as 'aanvoergebieden' based on geometry data."""
 
@@ -89,7 +105,8 @@ class SupplyBasin:
         :type kwargs: optional
         """
         self._model = _load_model(model)
-        self._geometry = _load_geometry(geometry, **kwargs)
+        # overlapping/adjacent 'aanvoergebieden' are dissolved so each basin node matches at most once
+        self._geometry = _dissolve_geometry(_load_geometry(geometry, **kwargs))
 
     def __call__(self) -> pd.DataFrame:
         """Shortcut to execute labelling basins as 'aanvoergebied.'

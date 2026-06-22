@@ -1,0 +1,65 @@
+---
+title: "Running on SLURM"
+---
+
+The full pipeline can be reproduced on an HPC cluster using two scripts:
+
+- `repro.sh` — submits DVC pipeline stages as SLURM jobs with correct dependencies
+- `run.sh` — submits isolated Ribasim simulation runs
+
+## repro.sh: pipeline reproduction
+
+Submits the DVC pipeline as individual SLURM jobs. Each `foreach` stage gets its own job, and SLURM `--dependency=afterok` ensures correct ordering.
+
+```sh
+./repro.sh
+```
+
+This submits jobs in three waves:
+
+1. `rwzi` (shared dependency)
+2. 22 parallel jobs: 11 `dynamic@*`, 10 `forcing@*`, 1 `hws_transient`
+3. `samenvoegen` → `koppelen`
+
+On completion, job IDs are written to `repro_jobs.txt` for use with `run.sh`.
+
+## run.sh: isolated simulation runs
+
+Copies a model and the Ribasim binary to `runs/<name>/` and submits a SLURM job. This isolates runs from the DVC pipeline and from each other, preventing Bus errors from concurrent file access.
+
+```sh
+./run.sh <name> <model_dir> [--after=<jobid>] [key=value ...]
+```
+
+TOML overrides use dot notation for nested keys.
+
+### Examples
+
+Run `lhm_coupled` after koppelen finishes:
+
+```sh
+./run.sh lhm_coupled data/Rijkswaterstaat/modellen/lhm_coupled \
+  --after=$(grep koppelen repro_jobs.txt | cut -f2)
+```
+
+Run `lhm_parts` with a shorter simulation period:
+
+```sh
+./run.sh lhm_parts_1yr data/Rijkswaterstaat/modellen/lhm_parts \
+  --after=$(grep samenvoegen repro_jobs.txt | cut -f2) \
+  endtime="2018-01-01 00:00:00"
+```
+
+Compare solver settings:
+
+```sh
+./run.sh lhm_coupled_tight data/Rijkswaterstaat/modellen/lhm_coupled \
+  --after=$(grep koppelen repro_jobs.txt | cut -f2) \
+  solver.abstol=1e-6
+
+./run.sh lhm_coupled_qndf data/Rijkswaterstaat/modellen/lhm_coupled \
+  --after=$(grep koppelen repro_jobs.txt | cut -f2) \
+  solver.algorithm=QNDF solver.abstol=1e-5
+```
+
+All submissions are logged to `runs/jobs.txt`. Run directories and job logs are gitignored.

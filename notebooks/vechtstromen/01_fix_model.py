@@ -71,7 +71,7 @@ model = Model.read(ribasim_toml)
 network_validator = NetworkValidator(model)
 
 # %% some stuff we'll need again
-manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
+manning_data = manning_resistance.Static(length=[100], manning_n=[0.03], profile_width=[10], profile_slope=[1])
 level_data = level_boundary.Static(level=[0])
 pump_data = pump.Static(flow_rate=[1])
 

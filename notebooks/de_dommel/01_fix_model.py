@@ -157,7 +157,7 @@ gdf = gpd.read_file(
 
 geometry = gdf.loc[2751].geometry.interpolate(0.5, normalized=True)
 node_id = model.next_node_id
-manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
+manning_data = manning_resistance.Static(length=[100], manning_n=[0.03], profile_width=[10], profile_slope=[1])
 
 model.manning_resistance.add(Node(node_id=node_id, geometry=geometry), [manning_data])
 
@@ -366,6 +366,9 @@ model.link.add(outlet_node, model.basin[1609])
 
 # label flow-boundaries to buitenlandse-aanvoer
 model.node.df.loc[model.flow_boundary.node.df.index, "meta_categorie"] = "buitenlandse aanvoer"
+
+# fix Dommel en Aa
+model.merge_basins(node_id=1557, to_node_id=1140)
 
 # %%
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{short_name}.toml")

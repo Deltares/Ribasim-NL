@@ -16,21 +16,24 @@ from ribasim_nl.reset_index import reset_index
 logger = logging.getLogger(__name__)
 
 
-def create_rwzi_basin_coupling(rwzi_coupled_model: Model, buffer_distance):
+def create_rwzi_basin_coupling(rwzi_coupled_model: Model, max_distance=100):
     """
-    Match RWZI uitstroom locaties met de onderliggende basins. Wanneer geen match, probeer 20 m buffer.
+    Match RWZI outflow locations with the underlying basins. When there is no match, try a 20 m buffer.
 
     Args:
         rwzi_coupled_model: Object with attributes terminal.node.df and basin.area.df.
-        buffer_distance (float): bovenaan script gedefinieerd
+        max_distance (float): Maximum distance to search for matching basins.
 
     Returns
     -------
-        coupling_lookup (dict): Lookup table van RWZI codes en basin IDs.
-        unmatched_rwzi_df (GeoDataFrame): RWZI locaties die nog niet gematcht zijn met basins.
+        coupling_lookup (dict): Lookup table of RWZI codes and basin IDs.
+        unmatched_rwzi_df (GeoDataFrame): RWZI locations that have not yet been matched with basins.
     """
     terminals_all = rwzi_coupled_model.terminal.node.df  # pyrefly: ignore[missing-attribute]
     basins = rwzi_coupled_model.basin.area.df
+    nodes = rwzi_coupled_model.node.df
+
+    unique_waterbeheerders = nodes["meta_waterbeheerder"].dropna().unique()  # pyrefly: ignore[unsupported-operation]
 
     # RWZI codes
     rwzi_codes_df = terminals_all[["meta_rwzi_code"]].dropna().copy()
@@ -39,8 +42,16 @@ def create_rwzi_basin_coupling(rwzi_coupled_model: Model, buffer_distance):
     terminals_filtered = terminals_all[terminals_all.meta_rwzi_code.isin(rwzi_codes_df.meta_rwzi_code)].copy()
     terminals_filtered = terminals_filtered.to_crs(basins.crs)  # pyrefly: ignore[missing-attribute]
 
+    # Only keep terminals relevant to this model authorities
+    terminals_filtered = terminals_filtered[
+        terminals_filtered["meta_discharge_couple_authority"].isin(unique_waterbeheerders)
+    ]
+
     # Basins reset
-    basins_reset = basins.reset_index().rename(columns={"node_id": "couple_to_basin_id"})  # pyrefly: ignore[missing-attribute]
+    basins_join = basins.join(nodes[["meta_categorie", "meta_waterbeheerder"]], on="node_id")  # pyrefly: ignore[missing-attribute, unsupported-operation]
+    basins_reset = basins_join.reset_index().rename(columns={"node_id": "couple_to_basin_id"})
+    # Filter basins on meta_categorie != 'bergend'
+    basins_reset = basins_reset[~basins_reset["meta_categorie"].isin(["bergend"])]
 
     # 1. Koppel terminals aan onderliggende basins
     joined_within = gpd.sjoin(
@@ -50,32 +61,32 @@ def create_rwzi_basin_coupling(rwzi_coupled_model: Model, buffer_distance):
         predicate="within",
     )
 
-    # TODO: assign not the first match but the best match
-    joined_unique = joined_within.loc[~joined_within.index.duplicated(keep="first")]
+    duplicated = joined_within.index[joined_within.index.duplicated(keep="first")].unique()
+    if len(duplicated) > 0:
+        raise ValueError(f"RWZI terminals within multiple basins: {list(duplicated)}")
+    joined_unique = joined_within
 
     # matched_rwzis = terminals_filtered.loc[joined_unique["couple_to_basin_id"].notna()]
     unmatched_rwzis = terminals_filtered.loc[joined_unique["couple_to_basin_id"].isna()]
 
-    # 2. Koppel terminals aan gebufferde basins
-    basins_buffered = basins_reset.copy()
-    basins_buffered["geometry"] = basins_buffered.geometry.buffer(buffer_distance)
-
-    joined_buffer = gpd.sjoin(
+    # 2. Koppel terminals aan dichtstbijzijnde basins
+    joined_nearest = gpd.sjoin_nearest(
         unmatched_rwzis,
-        basins_buffered[["couple_to_basin_id", "geometry"]],
+        basins_reset[["couple_to_basin_id", "geometry"]],
         how="left",
-        predicate="within",
+        max_distance=max_distance,
     )
 
     rwzis_combined = joined_unique.copy()
-    matched_rwzis_buffered = joined_buffer[["couple_to_basin_id"]]
+    matched_rwzis_nearest = joined_nearest[["couple_to_basin_id"]]
 
     # TODO: assign not the first match but the best match
-    matched_rwzis_buffered_unique = matched_rwzis_buffered.loc[~matched_rwzis_buffered.index.duplicated(keep="first")]
+    duplicated = joined_nearest.index[joined_nearest.index.duplicated(keep="first")].unique()
+    if len(duplicated) > 0:
+        raise ValueError(f"RWZI terminals has multiple nearest basins: {list(duplicated)}")
+    matched_rwzis_nearest_unique = matched_rwzis_nearest.loc[~matched_rwzis_nearest.index.duplicated(keep="first")]
 
-    rwzis_combined.loc[unmatched_rwzis.index, "couple_to_basin_id"] = matched_rwzis_buffered_unique[
-        "couple_to_basin_id"
-    ]
+    rwzis_combined.loc[unmatched_rwzis.index, "couple_to_basin_id"] = matched_rwzis_nearest_unique["couple_to_basin_id"]
 
     # Build lookup table
     coupling_df = rwzis_combined[["meta_rwzi_code", "couple_to_basin_id"]].dropna()
@@ -89,10 +100,10 @@ def create_rwzi_basin_coupling(rwzi_coupled_model: Model, buffer_distance):
 
 def remove_unmatched_rwzi(rwzi_coupled_model: Model, unmatched_rwzi_df: GeoDataFrame, *, verbose=False):
     """
-    Verwijder RWZI-terminals.
+    Remove RWZI terminals.
 
-    Verwijder RWZI-terminals die buiten het model vallen én de daarbij horende
-    flow-boundary-knopen uit het LHM-model en geef het model terug.
+    Remove RWZI terminals that fall outside the model and their associated
+    flow-boundary nodes from the LHM model, and return the model.
     """
     #  1. RWZI-terminals verwijderen
     terminals_removed = 0
@@ -123,14 +134,39 @@ def remove_unmatched_rwzi(rwzi_coupled_model: Model, unmatched_rwzi_df: GeoDataF
 
 def terminal2junction(rwzi_coupled_model, coupling_lookup, *, verbose=False):
     """
-    Zet RWZI-Terminals om naar Junctions.
+    Convert RWZI Terminals into Junctions.
 
-    Verbind ze daarna met de juiste Basin knoop.
+    Afterwards connect them to the correct Basin node.
+
+    RWZI terminals without a coupling to a basin in this model (for example RWZIs of other
+    water authorities that were carried over from the national RWZI model) are removed entirely.
+    Converting them into a Junction would create an orphaned Junction (with an incoming but no
+    outgoing link), which Ribasim rejects with a minimum-neighbor validation error.
     """
-    # 1. terminal naar junction
+    # all RWZI terminals currently in the model
     terminals = rwzi_coupled_model.terminal.node.df[rwzi_coupled_model.terminal.node.df["meta_rwzi_code"].notna()]
 
-    for node_id, _row in terminals.iterrows():
+    # split into terminals that couple to a basin in this model and terminals that do not
+    coupled_mask = terminals["meta_rwzi_code"].map(lambda code: pd.notna(coupling_lookup.get(code)))
+    coupled_terminals = terminals[coupled_mask]
+    uncoupled_terminals = terminals[~coupled_mask]
+
+    # 0. remove uncoupled RWZI terminals and the flow boundaries that feed them
+    uncoupled_codes = set(uncoupled_terminals["meta_rwzi_code"])
+    for node_id in uncoupled_terminals.index:
+        if verbose:
+            print(f"Verwijder niet-gekoppelde RWZI-terminal {node_id}")
+        rwzi_coupled_model.remove_node(node_id, remove_links=True)
+    if uncoupled_codes:
+        fb_df = rwzi_coupled_model.flow_boundary.node.df
+        fb_to_remove = fb_df[fb_df["meta_rwzi_code"].isin(uncoupled_codes)]
+        for node_id in fb_to_remove.index:
+            if verbose:
+                print(f"Verwijder bijbehorende RWZI-flow-boundary {node_id}")
+            rwzi_coupled_model.remove_node(node_id, remove_links=True)
+
+    # 1. terminal naar junction (alleen voor gekoppelde terminals)
+    for node_id, _row in coupled_terminals.iterrows():
         if verbose:
             print(f"Converteer terminal {node_id} naar junction")
         rwzi_coupled_model.update_node(node_id, "Junction", data=[])
@@ -156,7 +192,7 @@ def terminal2junction(rwzi_coupled_model, coupling_lookup, *, verbose=False):
     return rwzi_coupled_model
 
 
-def merge_rwzi_model(base_model, rwzi_model_path, buffer_distance: int = 20, verbose: bool = False):
+def merge_rwzi_model(base_model, rwzi_model_path, max_distance: int = 100, verbose: bool = False):
     """
     Merge an RWZI model into a base model.
 
@@ -191,7 +227,7 @@ def merge_rwzi_model(base_model, rwzi_model_path, buffer_distance: int = 20, ver
     rwzi_model = reset_index(rwzi_model, node_start=node_start, link_start=link_start)
     rwzi_coupled_model = concat([base_model, rwzi_model], keep_original_index=True)
 
-    coupling_lookup, unmatched_rwzi_df = create_rwzi_basin_coupling(rwzi_coupled_model, buffer_distance)
+    coupling_lookup, unmatched_rwzi_df = create_rwzi_basin_coupling(rwzi_coupled_model, max_distance=max_distance)
     rwzi_coupled_model, _stats = remove_unmatched_rwzi(rwzi_coupled_model, unmatched_rwzi_df, verbose=verbose)
     rwzi_coupled_model = terminal2junction(rwzi_coupled_model, coupling_lookup, verbose=verbose)
 

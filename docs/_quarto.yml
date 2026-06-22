@@ -19,6 +19,12 @@ website:
         href: https://github.com/Deltares/Ribasim-NL
         aria-label: GitHub
   sidebar:
+    - title: "Contributing"
+      contents:
+        - dev/index.qmd
+        - dev/dvc.qmd
+        - dev/type-checking.qmd
+        - dev/slurm.qmd
     - title: "Workflows"
       contents:
         - workflow/main-watersystem.qmd

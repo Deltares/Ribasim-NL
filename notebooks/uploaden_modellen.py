@@ -45,21 +45,24 @@ for authority in authorities:
 
         # run DELWAQ
         if RUN_DELWAQ:
-            delwaq_dir = model.toml_path.with_name("delwaq")
-            print(f"generate DELWAQ model in {delwaq_dir}")
-            graph, substances = generate(model, output_path=delwaq_dir)
+            try:
+                delwaq_dir = model.toml_path.with_name("delwaq")
+                print(f"generate DELWAQ model in {delwaq_dir}")
+                graph, substances = generate(model, output_path=delwaq_dir)
 
-            # run DELWAQ model
-            print("run DELWAQ")
-            run_delwaq(
-                model_dir=delwaq_dir,
-                d3d_home=settings.d3d_home,
-            )
+                # run DELWAQ model
+                print("run DELWAQ")
+                run_delwaq(
+                    model_dir=delwaq_dir,
+                    d3d_home=settings.d3d_home,
+                )
 
-            # parse DELWAQ results in model
-            print("parse DELWAQ results in Ribasim-model")
-            parse(model, graph, substances, output_folder=delwaq_dir, to_input=True)
-
+                # parse DELWAQ results in model
+                print("parse DELWAQ results in Ribasim-model")
+                parse(model, graph, substances, output_folder=delwaq_dir, to_input=True)
+            except AssertionError as e:
+                print(f"DELWAQ overgeslagen voor {authority}: {e}")
+                pass
         # create version and upload
         print("uploading...")
         version = cloud.upload_model(authority=authority, model=authority, include_results=INCLUDE_RESULTS)

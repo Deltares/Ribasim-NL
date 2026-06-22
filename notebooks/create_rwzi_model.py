@@ -32,7 +32,12 @@ zinfo_influentdebieten_path = (
 db_belasting = root_path_local / "aangeleverd/RwziBase/Belasting.xlsx"
 rwzi_ligging_path = root_path_local / "aangeleverd/locaties/RWZI_coordinates.geojson"
 
-cloud.synchronize(filepaths=[zinfo_influentdebieten_path, db_belasting, rwzi_ligging_path])
+cloud.synchronize(
+    filepaths=[
+        zinfo_influentdebieten_path,
+        db_belasting,
+    ]
+)
 
 # %% create empty model
 starttime = "2017-01-01"
@@ -376,6 +381,7 @@ def create_terminal_nodes_from_gdf(rwzi_gdf, rwzi_flow_data_all, skipped_rwzis, 
         rwzi_organisatie = row["Beheerder"]
         x_outlet = row["LozingX_RD"]
         y_outlet = row["LozingY_RD"]
+        meta_discharge_couple_authority = row["meta_discharge_couple_authority"]
         terminal_node_name = f"{rwzi_name}_out"
 
         if rwzi_name in skipped_rwzis:
@@ -392,6 +398,7 @@ def create_terminal_nodes_from_gdf(rwzi_gdf, rwzi_flow_data_all, skipped_rwzis, 
                     meta_rwzi_code=rwzi_code,
                     meta_rwzi_beheerder_nr=rwzi_beheerder_nr,
                     meta_rwzi_organisatie=rwzi_organisatie,
+                    meta_discharge_couple_authority=meta_discharge_couple_authority,
                 )
             )
             terminal_nodes[terminal_node_name] = terminal_node

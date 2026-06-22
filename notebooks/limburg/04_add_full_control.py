@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Literal
 
 import geopandas as gpd
+import pandas as pd
 from peilbeheerst_model.controle_output import Control
 from ribasim.nodes import flow_demand, outlet, pump
 from ribasim_nl.control import (
@@ -13,9 +14,10 @@ from ribasim_nl.control import (
     add_controllers_to_uncontrolled_connector_nodes,
     get_node_table_with_from_to_node_ids,
 )
+from ribasim_nl.coupling_level_apply import sync_static_controller_thresholds
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
-from shapely.geometry import MultiPolygon
+from shapely.geometry import MultiPolygon, Point
 
 from ribasim_nl import CloudStorage, Model
 
@@ -23,14 +25,141 @@ from ribasim_nl import CloudStorage, Model
 
 # Globale settings
 
-MODEL_EXEC: bool = True  # execute model run
+MODEL_EXEC: bool = False  # execute model run
 AUTHORITY: str = "Limburg"
 SHORT_NAME: str = "limburg"
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
-EXCLUDE_NODES = {651}
+# Node_id: #335, Millnermolen gaat nauwelijks water door alles via AR(Millen) node_id: #365
+EXCLUDE_NODES = {335, 651}
+outlet_max_flow_rate_from_results = {
+    249: 5,  # S_98125
+    595: 2,  # inlaat_haelensebeek_uffelsebeek
+    596: 2,  # inlaat_tungelroysebeek
+    663: 150,  # S_96267
+    683: 5,  # S_97911
+    783: 150,  # S_96126
+    1240: 32,  # naam onbekend
+    1302: 150,  # W_261427_0___0
+    2483: 17,  # naam onbekend
+}
+outlet_max_flow_rate_coupled_by_node_id = {
+    208: 6,  # Onderbeek; gekoppeld max=3.82, parameterized=1.54
+    221: 144,  # Rijksweg A2,75; gekoppeld max=95.65, parameterized=13.10
+    426: 5,  # Wellse Molenbeek; gekoppeld max=2.35, parameterized=0.94
+    563: 150,  # Rijksweg; gekoppeld max=99.82, parameterized=7.62
+    792: 150,  # S_96308; gekoppeld max=99.64, parameterized=7.63
+    895: 144,  # W_244840_0; gekoppeld max=95.65, parameterized=13.10
+    535: 10,  # Peelkanaal was te laag
+}
+outlet_max_flow_rate_parameterized_zero_by_node_id = {
+    2494: 100.0,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
+}
+outlet_max_flow_rate_afvoer_by_node_id = {}
+for max_flow_rates in (
+    outlet_max_flow_rate_from_results,
+    outlet_max_flow_rate_coupled_by_node_id,
+    outlet_max_flow_rate_parameterized_zero_by_node_id,
+):
+    for node_id, max_flow_rate in max_flow_rates.items():
+        outlet_max_flow_rate_afvoer_by_node_id[node_id] = max(
+            outlet_max_flow_rate_afvoer_by_node_id.get(node_id, 0.0),
+            max_flow_rate,
+        )
+flushing_nodes: dict[int, float] = {}
+drain_nodes = [
+    158,
+    160,
+    163,
+    165,
+    166,
+    167,
+    180,
+    181,
+    183,
+    195,
+    196,
+    198,
+    200,
+    253,
+    254,
+    255,
+    261,
+    271,
+    283,
+    354,
+    408,
+    447,
+    463,
+    494,
+    586,
+    590,
+    692,
+    710,
+    828,
+    829,
+    834,
+    855,
+    856,
+    857,
+    902,
+    936,
+    1054,
+    1104,
+    1120,
+    1204,
+    1244,
+    2499,
+]
+supply_nodes: list[int] = [311, 595, 596, 683]
+flow_control_nodes = [
+    164,
+    176,
+    179,
+    188,
+    191,
+    192,
+    198,
+    220,
+    252,
+    262,
+    411,
+    471,
+    480,
+    496,
+    523,
+    535,
+    773,
+    536,
+    541,
+    545,
+    579,
+    652,
+    653,
+    657,
+    708,
+    710,
+    711,
+    725,
+    751,
+    827,
+    839,
+    932,
+    933,
+    1053,
+    1055,
+    1057,
+    1133,
+    1214,
+    1241,
+    2493,
+    2494,
+    2496,
+    2500,
+    2505,  # Eeuwselseloop is geen inlaat maar een doorlaat naar de benedenstroomse rand.
+]
 
 # %%
 
@@ -47,18 +176,18 @@ cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
 # Read data
 model = Model.read(ribasim_toml)
 
+outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.node_id.astype(int), 10.0)
+
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
 
-# alle uitlaten en inlaten op 20m3/s, geen cap verdeling. Dit wordt de max flow in model.
-# En als flow_rate niet bekend is de flow
-model.outlet.static.df.max_flow_rate = 100
-model.outlet.static.df.flow_rate = 100
-model.pump.static.df.max_flow_rate = model.pump.static.df.flow_rate
+model.pump.static.df.loc[model.pump.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0
 
 # Erg klein basin, numerieke problemen
 model.merge_basins(node_id=2394, to_node_id=1507, are_connected=True)
 model.merge_basins(node_id=1672, to_node_id=1556, are_connected=True)
+model.merge_basins(node_id=1416, to_node_id=2408, are_connected=True)
 # %%
 # Node 651 moet dicht zijn na overleg Limburg
 model.pump.static.df.loc[model.pump.static.df.node_id == 651, "max_flow_rate"] = 0
@@ -70,8 +199,26 @@ for link_id in [529, 1036]:
 # Gemaal Helenavaart
 model.update_node(node_id=590, node_type="Pump")
 
+# Rijskweg
+model.update_node(node_id=558, node_type="ManningResistance")
+
 # Gemaal Beringe
 model.update_node(node_id=583, node_type="Pump")
+
+# Overbodig
+model.remove_node(node_id=250, remove_links=True)
+model.remove_node(node_id=4, remove_links=True)
+model.remove_node(node_id=938, remove_links=True)
+model.remove_node(node_id=939, remove_links=True)
+model.remove_node(node_id=2497, remove_links=True)  # Parallel aan doorlaat 2496 tussen hetzelfde basin-paar.
+model.remove_node(node_id=120, remove_links=True)  # LevelBoundary van verwijderde parallelle doorlaat 2497.
+
+# Verplaats node 788, behoud bestaande verbindingen en update gekoppelde linkgeometrieen.
+model.move_node(node_id=788, geometry=Point(193403.3, 352653.3))
+
+# Redirect link 2208 naar node 1802.
+model.redirect_link(link_id=2208, to_node_id=1802)
+
 # %%
 # Note: when using a FlowDemand, the parallel node must be configured as a drain node.
 # The node with the FlowDemand is supplied first, because its min_upstream_level
@@ -186,7 +333,6 @@ def add_discharge_supply_nodes(
 # Handmatige koppeling naam -> node_id
 name_to_node = {
     "Gemaal Beringe": 583,
-    #  "Gemaal Helenaveen": 590,
     "Zijtak Helenavaart": 532,
     "Houtstraatlossing": 351,
     "Hushoverbeek": 2502,
@@ -208,8 +354,8 @@ name_to_node = {
     "Inlaat Evertsoord": 604,
     "Klein Leukerbeek": 1119,
     "Roeven": 2501,
-    "Halte Grenssloot": 773,
-    "Halte Peelkanaal": 535,
+    #  "Halte Grenssloot": 2496,
+    #  "Halte Peelkanaal": 535,
     "Peelkanaal naar Grenssloot": 821,
     "Molenakker": 2504,
     "Zwartwaterlossing": 230,
@@ -243,15 +389,17 @@ flow_demand_data_ls = {
     "Snepheiderbeek_1": {"summer": 40, "winter": 20},  # Bovenstrooms Snepheiderbeek is echte inlaat
     # Grote aanvoeren
     "Gemaal Beringe": {"summer": 550, "winter": 350},
-    #   "Gemaal Helenaveen": {"summer": 350, "winter": 350},  # winter in tabel: laatste 2 jaar 350, normaal 150
-    "Zijtak Helenavaart": {"summer": 350, "winter": 350},  # winter in tabel: laatste 2 jaar
-    "Katsberg": {"summer": 3400, "winter": 3400},  # winter in tabel 1000-3400; hier bovengrens gekozen
+    "Zijtak Helenavaart": {"summer": 350, "winter": 150},  # winter in tabel: laatste 2 jaar
+    "Katsberg": {"summer": 4000, "winter": 1000},  # gemiddelde aanvoertabelhenk08012021.xlsx
     "Eendlossing": {"summer": 20, "winter": 10},  # WATAK
     "Klein Leukerbeek": {"summer": 10, "winter": 10},  # GIHO kaart
     "Roeven": {"summer": 10, "winter": 10},  # WATAK
     # afgeleid uit relevante tabelregels
-    "Inlaat Evertsoord": {"summer": 350, "winter": 350},  # gekoppeld aan AVL Evertsoord / gemaal Helenaveen
-    "Halte Grenssloot": {"summer": 650, "winter": 600},
+    "Inlaat Evertsoord": {"summer": 75, "winter": 50},  # 230_030N in GIHO figuur??
+    "Halte Grenssloot": {
+        "summer": 1600,
+        "winter": 400,
+    },  # aanvoertabelhenk08012021.xlsx
     "Halte Peelkanaal": {
         "summer": 1500,
         "winter": 500,
@@ -295,6 +443,10 @@ for name, values in flow_demand_data_ls.items():
         f"winter={discharge_supply_nodes[node_id]['winter']} m3/s"
     )
 
+# FlowDemand-inlaten krijgen hun debiet uit FlowDemand, niet uit afvoer-capaciteit overrides.
+for node_id in discharge_supply_nodes:
+    outlet_max_flow_rate_afvoer_by_node_id.pop(node_id, None)
+
 # %%
 # add level supply nodes, no flow-demand-node, but discrete control on downstream basin level
 level_supply_nodes = [
@@ -326,18 +478,6 @@ if isinstance(polygon, MultiPolygon):
 # links die intersecten die we kunnen negeren
 ignore_intersecting_links: list[int] = [529]
 
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven flow control nodes (doorlaten)
-flow_control_nodes = [1241]
-
 # toevoegen sturing
 add_controllers_to_supply_area(
     model=model,
@@ -349,6 +489,10 @@ add_controllers_to_supply_area(
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
     control_node_types=CONTROL_NODE_TYPES,
+    flow_rate_aanvoer=20.0,
+    max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
+    flow_rate_afvoer=100.0,
+    max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
     add_supply_nodes=False,
 )
 
@@ -362,7 +506,6 @@ polygon = polygon.buffer(0).buffer(0)
 
 if isinstance(polygon, MultiPolygon):
     polygon = max(polygon.geoms, key=lambda g: g.area)
-
 
 # links die intersecten die we kunnen negeren
 ignore_intersecting_links: list[int] = [
@@ -391,18 +534,6 @@ ignore_intersecting_links: list[int] = [
     2023,
 ]
 
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = [160, 447]
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven flow control nodes (doorlaten)
-flow_control_nodes = []
-
 # toevoegen sturing
 add_controllers_to_supply_area(
     model=model,
@@ -414,6 +545,10 @@ add_controllers_to_supply_area(
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
     control_node_types=CONTROL_NODE_TYPES,
+    flow_rate_aanvoer=20.0,
+    max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
+    flow_rate_afvoer=100.0,
+    max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
     add_supply_nodes=False,
 )
 # %%
@@ -456,18 +591,6 @@ ignore_intersecting_links: list[int] = [
     2023,
 ]
 
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = [163, 165, 166, 167, 494, 183, 834, 828, 829, 932, 1054, 1104, 1120, 1204, 1244, 2499]
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven flow control nodes (doorlaten)
-flow_control_nodes = [164, 523, 652, 653, 711, 827, 2500]
-
 # toevoegen sturing
 add_controllers_to_supply_area(
     model=model,
@@ -479,6 +602,10 @@ add_controllers_to_supply_area(
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
     control_node_types=CONTROL_NODE_TYPES,
+    flow_rate_aanvoer=20.0,
+    max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
+    flow_rate_afvoer=100.0,
+    max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
     add_supply_nodes=False,
 )
 # %% Toevoegen Everlose beek
@@ -491,47 +618,9 @@ polygon = polygon.buffer(0).buffer(0)
 if isinstance(polygon, MultiPolygon):
     polygon = max(polygon.geoms, key=lambda g: g.area)
 
-
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
 ignore_intersecting_links: list[int] = [82, 89, 92, 782, 1740, 1741, 1755, 1840, 1939, 2003]
-
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = [180, 181, 195, 196, 198, 200, 253, 254, 255, 261, 354, 408, 586, 271, 710]
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven flow control nodes (doorlaten)
-flow_control_nodes = [
-    176,
-    179,
-    188,
-    191,
-    192,
-    198,
-    262,
-    471,
-    480,
-    496,
-    536,
-    541,
-    579,
-    657,
-    708,
-    710,
-    725,
-    751,
-    586,
-    839,
-    933,
-    1055,
-    1057,
-    1133,
-]
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -544,6 +633,10 @@ add_controllers_to_supply_area(
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
     control_node_types=CONTROL_NODE_TYPES,
+    flow_rate_aanvoer=20.0,
+    max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
+    flow_rate_afvoer=100.0,
+    max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
     add_supply_nodes=False,
 )
 
@@ -557,22 +650,9 @@ polygon = polygon.buffer(0).buffer(0)
 if isinstance(polygon, MultiPolygon):
     polygon = max(polygon.geoms, key=lambda g: g.area)
 
-
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
 ignore_intersecting_links: list[int] = [155, 157, 709, 710, 711, 1812, 1813]
-
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven flow control nodes (doorlaten)
-flow_control_nodes = []
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -585,6 +665,10 @@ add_controllers_to_supply_area(
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
     control_node_types=CONTROL_NODE_TYPES,
+    flow_rate_aanvoer=20.0,
+    max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
+    flow_rate_afvoer=100.0,
+    max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
     add_supply_nodes=False,
 )
 
@@ -597,7 +681,6 @@ polygon = polygon.buffer(0).buffer(0)
 
 if isinstance(polygon, MultiPolygon):
     polygon = max(polygon.geoms, key=lambda g: g.area)
-
 
 # links die intersecten die we kunnen negeren
 ignore_intersecting_links: list[int] = [
@@ -626,18 +709,6 @@ ignore_intersecting_links: list[int] = [
     2382,
 ]
 
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven flow control nodes (doorlaten)
-flow_control_nodes = []
-
 # toevoegen sturing
 add_controllers_to_supply_area(
     model=model,
@@ -649,6 +720,10 @@ add_controllers_to_supply_area(
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
     control_node_types=CONTROL_NODE_TYPES,
+    flow_rate_aanvoer=20.0,
+    max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
+    flow_rate_afvoer=100.0,
+    max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
     add_supply_nodes=False,
 )
 
@@ -662,21 +737,8 @@ polygon = polygon.buffer(0).buffer(0)
 if isinstance(polygon, MultiPolygon):
     polygon = max(polygon.geoms, key=lambda g: g.area)
 
-
 # links die intersecten die we kunnen negeren
 ignore_intersecting_links: list[int] = []
-
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven flow control nodes (doorlaten)
-flow_control_nodes = []
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -689,6 +751,10 @@ add_controllers_to_supply_area(
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
     control_node_types=CONTROL_NODE_TYPES,
+    flow_rate_aanvoer=20.0,
+    max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
+    flow_rate_afvoer=100.0,
+    max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
     add_supply_nodes=False,
 )
 
@@ -702,22 +768,9 @@ polygon = polygon.buffer(0).buffer(0)
 if isinstance(polygon, MultiPolygon):
     polygon = max(polygon.geoms, key=lambda g: g.area)
 
-
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
 ignore_intersecting_links: list[int] = [822, 823, 824, 961, 962, 2009, 2010]
-
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven flow control nodes (doorlaten)
-flow_control_nodes = []
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -730,6 +783,10 @@ add_controllers_to_supply_area(
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
     control_node_types=CONTROL_NODE_TYPES,
+    flow_rate_aanvoer=20.0,
+    max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
+    flow_rate_afvoer=100.0,
+    max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
     add_supply_nodes=False,
 )
 
@@ -743,22 +800,9 @@ polygon = polygon.buffer(0).buffer(0)
 if isinstance(polygon, MultiPolygon):
     polygon = max(polygon.geoms, key=lambda g: g.area)
 
-
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
 ignore_intersecting_links: list[int] = [2011]
-
-# doorspoeling (op uitlaten)
-flushing_nodes = {}
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = []
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven flow control nodes (doorlaten)
-flow_control_nodes = []
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -771,6 +815,10 @@ add_controllers_to_supply_area(
     supply_nodes=supply_nodes,
     flow_control_nodes=flow_control_nodes,
     control_node_types=CONTROL_NODE_TYPES,
+    flow_rate_aanvoer=20.0,
+    max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
+    flow_rate_afvoer=100.0,
+    max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
     add_supply_nodes=False,
 )
 
@@ -784,27 +832,12 @@ add_controllers_to_supply_nodes(
     model=model,
     us_target_level_offset_supply=-0.04,
     supply_nodes_df=supply_nodes_df,
+    flow_rate_aanvoer=20.0,
+    max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
 )
 
 
 # %% add all remaining inlets/outlets
-# add all remaing outlets
-# handmatig opgegeven flow control nodes definieren
-
-
-flow_control_nodes = [220, 252, 411, 545, 471, 711, 2493, 2494, 2496, 2497]
-
-# handmatig opgegeven supply nodes (inlaten)
-supply_nodes = []
-
-# handmatig opgegeven drain nodes (uitlaten) definieren
-drain_nodes = [463, 692, 902, 936, 855, 856, 857]
-
-
-# Flushing nodes
-flushing_nodes = {}
-
-
 add_controllers_to_uncontrolled_connector_nodes(
     model=model,
     supply_nodes=supply_nodes,
@@ -812,62 +845,115 @@ add_controllers_to_uncontrolled_connector_nodes(
     drain_nodes=drain_nodes,
     flushing_nodes=flushing_nodes,
     exclude_nodes=list(EXCLUDE_NODES),
+    flow_rate_aanvoer=20.0,
+    max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
+    flow_rate_afvoer=100.0,
+    max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
 )
 
-
-boundary_levels = {
-    32: 31.65,  # Noordervaart
-    33: 31.65,
-    133: 31.65,
-    93: 31.65,
-    112: 31.65,
-    94: 31.65,
-    95: 31.65,
-    96: 31.65,
-    97: 31.65,
-    98: 31.65,
-    99: 31.65,
-    100: 31.65,
-    101: 31.65,
-    124: 31.65,
-    125: 31.65,
-    150: 31.65,
-    136: 31.65,
-    122: 31.65,
-    123: 31.65,
-    118: 28.65,  # Zuid-Willemsvaart
-    119: 28.65,
-    3: 31.4,
-}
-
-for node_id, level in boundary_levels.items():
-    model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == node_id, "level"] = level
 
 # %% fixes
 
 # %%
-fixed_levels = {
-    535: 31.12,  # Helenavaart-Grenssloot
-    773: 31.12,
-    2493: 31.4,
-    750: 31,
-    411: 31,
-    604: 31.12,
-    932: 31.685,
+
+# Procentuele Verdeling 90/10 Heide: alleen afvoer-capaciteit begrenzen.
+afvoer_mask_616 = (model.outlet.static.df.node_id == 616) & (model.outlet.static.df.control_state == "afvoer")
+model.outlet.static.df.loc[afvoer_mask_616, "flow_rate"] = 5
+model.outlet.static.df.loc[afvoer_mask_616, "max_flow_rate"] = 100
+
+afvoer_mask_639 = (model.outlet.static.df.node_id == 639) & (model.outlet.static.df.control_state == "afvoer")
+model.outlet.static.df.loc[afvoer_mask_639, "flow_rate"] = 50
+model.outlet.static.df.loc[afvoer_mask_639, "max_flow_rate"] = 100
+
+# Bijna alles gaat via Boabel: alleen afvoer-capaciteit laag zetten.
+afvoer_mask_177 = (model.outlet.static.df.node_id == 177) & (model.outlet.static.df.control_state == "afvoer")
+model.outlet.static.df.loc[afvoer_mask_177, "flow_rate"] = 1
+model.outlet.static.df.loc[afvoer_mask_177, "max_flow_rate"] = 100
+
+# S_97911 is een RWS-inlaat naar Limburg, geen afvoer richting Limburg.
+aanvoer_mask_683 = (model.outlet.static.df.node_id == 683) & (model.outlet.static.df.control_state == "aanvoer")
+model.outlet.static.df.loc[aanvoer_mask_683, "flow_rate"] = 100
+model.outlet.static.df.loc[aanvoer_mask_683, "max_flow_rate"] = 100
+afvoer_mask_683 = (model.outlet.static.df.node_id == 683) & (model.outlet.static.df.control_state == "afvoer")
+model.outlet.static.df.loc[afvoer_mask_683, "flow_rate"] = 0
+model.outlet.static.df.loc[afvoer_mask_683, "max_flow_rate"] = 0
+
+boundary_levels = {99: 31, 120: 31, 121: 31, 124: 31, 125: 31, 132: 31.545, 3: 31.545, 136: 32, 95: 30, 98: 30}
+for node_id, level in boundary_levels.items():
+    model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == node_id, "level"] = level
+
+# Gemaal Helenaveen blijft een uitlaat: min_upstream en bijbehorende threshold 4 cm omlaag.
+helenaveen_pump_id = 590
+helenaveen_upstream_node_id = model.upstream_node_id(helenaveen_pump_id)
+if isinstance(helenaveen_upstream_node_id, pd.Series):
+    helenaveen_upstream_node_id = int(helenaveen_upstream_node_id.iloc[0])
+helenaveen_upstream_level = _target_level(
+    model=model,
+    node_types=model.node.df["node_type"],
+    node_id=int(helenaveen_upstream_node_id),
+    target_level_column="meta_streefpeil",
+    allow_missing=False,
+)
+helenaveen_min_upstream_level = float(helenaveen_upstream_level) - 0.04
+mask = model.pump.static.df.node_id == helenaveen_pump_id
+model.pump.static.df.loc[mask, "min_upstream_level"] = helenaveen_min_upstream_level
+sync_static_controller_thresholds(
+    model=model,
+    target_node_ids={helenaveen_pump_id},
+    tolerance=1e-6,
+)
+
+# Pomp-capaciteiten op basis van hoogste berekende dynamic debiet, afgerond naar boven.
+pump_max_flow_rate_from_results = {
+    590: 5,  # Gemaal Helenaveen; oude static flow_rate=0.0101
 }
-
-df = model.outlet.static.df
-df["min_upstream_level"] = df["node_id"].map(fixed_levels).fillna(df["min_upstream_level"])
-
-# Procentuele Verdeling 90/10 Heide
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 616, "flow_rate"] = 5
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 639, "flow_rate"] = 50
-
-# Bijna alles gaat via Boabel, afvoer laag zetten
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 177, "flow_rate"] = 1
+mask = (
+    model.pump.static.df.node_id.isin(pump_max_flow_rate_from_results)
+    & model.pump.static.df.flow_rate.notna()
+    & (model.pump.static.df.flow_rate > 0)
+)
+model.pump.static.df.loc[mask, "max_flow_rate"] = model.pump.static.df.loc[mask, "node_id"].map(
+    pump_max_flow_rate_from_results
+)
 
 # %% Junctionfy(!)
 junctionify(model)
+aanvoer_only_node_ids = set(supply_nodes) - set(drain_nodes) - set(flow_control_nodes)
+
+# Aanvoer-cap: doorlaten/inlaten mogen in aanvoer niet de hoge afvoercapaciteit gebruiken.
+aanvoer_outlet_mask = model.outlet.static.df.control_state == "aanvoer"
+model.outlet.static.df.loc[aanvoer_outlet_mask, ["flow_rate", "max_flow_rate"]] = model.outlet.static.df.loc[
+    aanvoer_outlet_mask, ["flow_rate", "max_flow_rate"]
+].clip(upper=10.0)
+zero_aanvoer_node_ids = {
+    node_id for node_id, max_flow_rate in outlet_max_flow_rate_aanvoer_by_node_id.items() if max_flow_rate == 0
+}
+zero_aanvoer_mask = aanvoer_outlet_mask & model.outlet.static.df.node_id.isin(zero_aanvoer_node_ids)
+model.outlet.static.df.loc[zero_aanvoer_mask, ["flow_rate", "max_flow_rate"]] = 0.0
+
+# Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
+node_type_by_id = model.node.df["node_type"].to_dict()
+flow_demand_controlled_node_ids = set(
+    model.link.df.loc[
+        model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),
+        "to_node_id",
+    ]
+    .dropna()
+    .astype(int)
+)
+manual_max_flow_rate_node_ids = {177, 616, 639, 683}
+protected_max_flow_rate_node_ids = set(EXCLUDE_NODES) | flow_demand_controlled_node_ids | manual_max_flow_rate_node_ids
+for static_df in (model.outlet.static.df, model.pump.static.df):
+    afvoer_mask = (
+        static_df["control_state"].eq("afvoer")
+        & static_df["flow_rate"].fillna(0).gt(0)
+        & ~static_df["node_id"].isin(protected_max_flow_rate_node_ids)
+    )
+    static_df.loc[afvoer_mask, "max_flow_rate"] = static_df.loc[afvoer_mask, "max_flow_rate"].fillna(10).clip(lower=10)
+
+for static_df in (model.outlet.static.df, model.pump.static.df):
+    afvoer_mask = static_df["control_state"].eq("afvoer") & static_df["node_id"].isin(aanvoer_only_node_ids)
+    static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 0.0
 
 # Model run
 
@@ -876,6 +962,7 @@ ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_cont
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
+
 # %%
 
 # hoofd run met verdamping

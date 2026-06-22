@@ -34,7 +34,6 @@ sturing_xlsx = cloud.joinpath(
 )
 
 cloud.synchronize(filepaths=[peilgebieden_path, damo_profiles_gpkg, sturing_xlsx])
-cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
 
 # %% init things
 model = Model.read(ribasim_toml)
@@ -358,7 +357,7 @@ assign = AssignAuthorities(
     waterschap=authority,
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
-    custom_nodes={2030: "Buitenland", 2073: "Buitenland", 2093: "Buitenland"},
+    custom_nodes={2030: "Buitenland", 2073: "Buitenland", 2093: "Buitenland", 34: "AaenMaas"},
 )
 model = assign.assign_authorities()
 

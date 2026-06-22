@@ -10,6 +10,7 @@ stages:
     cmd: pixi run python notebooks/create_rwzi_model.py
     deps:
       - notebooks/create_rwzi_model.py
+      - data/Basisgegevens/RWZI/aangeleverd/locaties/RWZI_coordinates.geojson
     outs:
       - data/Rijkswaterstaat/modellen/rwzi
   parameterized:
@@ -36,6 +37,7 @@ stages:
         - notebooks/${key}/01_fix_model.py
         - notebooks/${key}/02_prepare_model.py
         - notebooks/${key}/03_parameterize_model.py
+        - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       outs:
         - data/${item}/modellen/${item}_parameterized_model
   bergend:
@@ -59,6 +61,8 @@ stages:
         - notebooks/${key}/04_add_full_control.py
         - notebooks/05_add_bergend.py
         - data/${item}/modellen/${item}_parameterized_model
+        - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
+        - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
       outs:
         - data/${item}/modellen/${item}_bergend_model
   dynamic:
@@ -80,9 +84,11 @@ stages:
         - notebooks/07_add_dynamic_forcing.py
         - data/${item}/modellen/${item}_bergend_model
         - data/Rijkswaterstaat/modellen/rwzi
+        - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
+        - data/Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx
       outs:
         - data/${item}/modellen/${item}_dynamic_model
-  peilbeheerst:
+  feedback:
     foreach:
       delfland: Delfland
       amstel_gooi_en_vecht: AmstelGooienVecht
@@ -96,12 +102,57 @@ stages:
       zuiderzeeland: Zuiderzeeland
     do:
       cmd:
-        - pixi run python src/peilbeheerst_model/Parametrize/${item}_parametrize.py
+        - pixi run python src/peilbeheerst_model/feedback/${item}.py
       deps:
-        - src/peilbeheerst_model/Parametrize/${item}_parametrize.py
-        - data/Rijkswaterstaat/modellen/rwzi
+        - src/peilbeheerst_model/feedback/${item}.py
       outs:
-        - data/${item}/modellen/${item}_parameterized
+        - data/${item}/modellen/${item}_feedback
+  profiles:
+    foreach:
+      delfland: Delfland
+      amstel_gooi_en_vecht: AmstelGooienVecht
+      hollands_noorderkwartier: HollandsNoorderkwartier
+      hollandse_delta: HollandseDelta
+      rijnland: Rijnland
+      rivierenland: Rivierenland
+      scheldestromen: Scheldestromen
+      schieland_en_de_krimpenerwaard: SchielandendeKrimpenerwaard
+      wetterskip_fryslan: WetterskipFryslan
+      zuiderzeeland: Zuiderzeeland
+    do:
+      cmd:
+        - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py ${item}
+        - pixi run python src/peilbeheerst_model/profiles/${item}.py
+      deps:
+        - src/peilbeheerst_model/profiles/prep_cross_sections.py
+        - src/peilbeheerst_model/profiles/${item}.py
+        - data/${item}/modellen/${item}_feedback
+        - data/Basisgegevens/profielen
+      outs:
+        - data/${item}/modellen/${item}_profiles
+        - data/${item}/verwerkt/profielen/network.gpkg
+  forcing:
+    foreach:
+      delfland: Delfland
+      amstel_gooi_en_vecht: AmstelGooienVecht
+      hollands_noorderkwartier: HollandsNoorderkwartier
+      hollandse_delta: HollandseDelta
+      rijnland: Rijnland
+      rivierenland: Rivierenland
+      scheldestromen: Scheldestromen
+      schieland_en_de_krimpenerwaard: SchielandendeKrimpenerwaard
+      wetterskip_fryslan: WetterskipFryslan
+      zuiderzeeland: Zuiderzeeland
+    do:
+      cmd:
+        - pixi run python src/peilbeheerst_model/forcing/${item}.py
+      deps:
+        - src/peilbeheerst_model/forcing/${item}.py
+        - data/Rijkswaterstaat/modellen/rwzi
+        - data/${item}/modellen/${item}_profiles
+        - data/${item}/verwerkt/profielen/network.gpkg
+      outs:
+        - data/${item}/modellen/${item}_forcing
   hws_demand:
     cmd:
       - pixi run python notebooks/rijkswaterstaat/2_basins.py
@@ -128,20 +179,20 @@ stages:
     outs:
       - data/Rijkswaterstaat/modellen/hws_transient
   samenvoegen:
-    cmd: pixi run python notebooks/samenvoegen_modellen.py
+    cmd: pixi run python notebooks/08_samenvoegen_modellen.py
     deps:
-      - notebooks/samenvoegen_modellen.py
+      - notebooks/08_samenvoegen_modellen.py
       - data/Rijkswaterstaat/modellen/hws_transient
-      - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_parameterized
-      - data/AmstelGooienVecht/modellen/AmstelGooienVecht_parameterized
-      - data/Delfland/modellen/Delfland_parameterized
-      - data/Rijnland/modellen/Rijnland_parameterized
-      - data/Rivierenland/modellen/Rivierenland_parameterized
-      - data/Scheldestromen/modellen/Scheldestromen_parameterized
-      - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_parameterized
-      - data/WetterskipFryslan/modellen/WetterskipFryslan_parameterized
-      - data/Zuiderzeeland/modellen/Zuiderzeeland_parameterized
-      - data/HollandseDelta/modellen/HollandseDelta_parameterized
+      - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_forcing
+      - data/AmstelGooienVecht/modellen/AmstelGooienVecht_forcing
+      - data/Delfland/modellen/Delfland_forcing
+      - data/Rijnland/modellen/Rijnland_forcing
+      - data/Rivierenland/modellen/Rivierenland_forcing
+      - data/Scheldestromen/modellen/Scheldestromen_forcing
+      - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_forcing
+      - data/WetterskipFryslan/modellen/WetterskipFryslan_forcing
+      - data/Zuiderzeeland/modellen/Zuiderzeeland_forcing
+      - data/HollandseDelta/modellen/HollandseDelta_forcing
       - data/AaenMaas/modellen/AaenMaas_dynamic_model
       - data/BrabantseDelta/modellen/BrabantseDelta_dynamic_model
       - data/DeDommel/modellen/DeDommel_dynamic_model
@@ -156,9 +207,9 @@ stages:
     outs:
       - data/Rijkswaterstaat/modellen/lhm_parts
   koppelen:
-    cmd: pixi run python notebooks/koppelen_modellen.py
+    cmd: pixi run python notebooks/09_koppelen_modellen.py
     deps:
-      - notebooks/koppelen_modellen.py
+      - notebooks/09_koppelen_modellen.py
       - data/Rijkswaterstaat/modellen/lhm_parts
       - data/Rijkswaterstaat/verwerkt/netwerk.gpkg
     outs:
