@@ -1,28 +1,216 @@
 stages:
-  samenvoegen:
-    cmd: "uv run python notebooks/samenvoegen_modellen.py"
+  bathymetry:
+    cmd: pixi run python notebooks/rijkswaterstaat/1_bathymetrie.py
     deps:
-      - data/Rijkswaterstaat/modellen/hws_2025_10_0
-      - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_parameterized_2025_9_11
-      - data/AmstelGooienVecht/modellen/AmstelGooienVecht_parameterized_2025_9_0
-      - data/Delfland/modellen/Delfland_parameterized_2025_9_1
-      - data/Rijnland/modellen/Rijnland_parameterized_2025_9_0
-      - data/Rivierenland/modellen/Rivierenland_parameterized_2025_9_1
-      - data/Scheldestromen/modellen/Scheldestromen_parameterized_2025_9_0
-      - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_parameterized_2025_9_0
-      - data/WetterskipFryslan/modellen/WetterskipFryslan_parameterized_2025_9_1
-      - data/Zuiderzeeland/modellen/Zuiderzeeland_parameterized_2025_9_0
-      - data/AaenMaas/modellen/AaenMaas_2025_9_0
-      - data/BrabantseDelta/modellen/BrabantseDelta_2025_9_0
-      - data/DeDommel/modellen/DeDommel_2025_9_0
-      - data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_2025_9_0
-      - data/HunzeenAas/modellen/HunzeenAas_2025_10_1
-      - data/Limburg/modellen/Limburg_2025_9_0
-      - data/Noorderzijlvest/modellen/Noorderzijlvest_2025_10_3
-      - data/RijnenIJssel/modellen/RijnenIJssel_2025_9_0
-      - data/StichtseRijnlanden/modellen/StichtseRijnlanden_2025_9_0
-      - data/ValleienVeluwe/modellen/ValleienVeluwe_2025_9_0
-      - data/Vechtstromen/modellen/Vechtstromen_2025_9_0
-      - data/HollandseDelta/modellen/HollandseDelta_parameterized_2025_9_0
+      - notebooks/rijkswaterstaat/1_bathymetrie.py
+    outs:
+      - data/Rijkswaterstaat/verwerkt/bathymetrie
+    frozen: true
+  rwzi:
+    cmd: pixi run python notebooks/create_rwzi_model.py
+    deps:
+      - notebooks/create_rwzi_model.py
+      - data/Basisgegevens/RWZI/aangeleverd/locaties/RWZI_coordinates.geojson
+    outs:
+      - data/Rijkswaterstaat/modellen/rwzi
+  parameterized:
+    foreach:
+      aa_en_maas: AaenMaas
+      brabantse_delta: BrabantseDelta
+      de_dommel: DeDommel
+      drents_overijsselse_delta: DrentsOverijsselseDelta
+      hunze_en_aas: HunzeenAas
+      limburg: Limburg
+      noorderzijlvest: Noorderzijlvest
+      rijn_en_ijssel: RijnenIJssel
+      stichtse_rijnlanden: StichtseRijnlanden
+      vallei_en_veluwe: ValleienVeluwe
+      vechtstromen: Vechtstromen
+    do:
+      cmd:
+        - pixi run python notebooks/${key}/_preprocess_profielen.py
+        - pixi run python notebooks/${key}/01_fix_model.py
+        - pixi run python notebooks/${key}/02_prepare_model.py
+        - pixi run python notebooks/${key}/03_parameterize_model.py
+      deps:
+        - notebooks/${key}/_preprocess_profielen.py
+        - notebooks/${key}/01_fix_model.py
+        - notebooks/${key}/02_prepare_model.py
+        - notebooks/${key}/03_parameterize_model.py
+        - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      outs:
+        - data/${item}/modellen/${item}_parameterized_model
+  bergend:
+    foreach:
+      aa_en_maas: AaenMaas
+      brabantse_delta: BrabantseDelta
+      de_dommel: DeDommel
+      drents_overijsselse_delta: DrentsOverijsselseDelta
+      hunze_en_aas: HunzeenAas
+      limburg: Limburg
+      noorderzijlvest: Noorderzijlvest
+      rijn_en_ijssel: RijnenIJssel
+      stichtse_rijnlanden: StichtseRijnlanden
+      vallei_en_veluwe: ValleienVeluwe
+      vechtstromen: Vechtstromen
+    do:
+      cmd:
+        - pixi run python notebooks/${key}/04_add_full_control.py
+        - pixi run python notebooks/05_add_bergend.py ${item}
+      deps:
+        - notebooks/${key}/04_add_full_control.py
+        - notebooks/05_add_bergend.py
+        - data/${item}/modellen/${item}_parameterized_model
+        - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
+        - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
+      outs:
+        - data/${item}/modellen/${item}_bergend_model
+  dynamic:
+    foreach:
+      aa_en_maas: AaenMaas
+      brabantse_delta: BrabantseDelta
+      de_dommel: DeDommel
+      drents_overijsselse_delta: DrentsOverijsselseDelta
+      hunze_en_aas: HunzeenAas
+      limburg: Limburg
+      noorderzijlvest: Noorderzijlvest
+      rijn_en_ijssel: RijnenIJssel
+      stichtse_rijnlanden: StichtseRijnlanden
+      vallei_en_veluwe: ValleienVeluwe
+      vechtstromen: Vechtstromen
+    do:
+      cmd: pixi run python notebooks/07_add_dynamic_forcing.py ${item}
+      deps:
+        - notebooks/07_add_dynamic_forcing.py
+        - data/${item}/modellen/${item}_bergend_model
+        - data/Rijkswaterstaat/modellen/rwzi
+        - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
+        - data/Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx
+      outs:
+        - data/${item}/modellen/${item}_dynamic_model
+  feedback:
+    foreach:
+      delfland: Delfland
+      amstel_gooi_en_vecht: AmstelGooienVecht
+      hollands_noorderkwartier: HollandsNoorderkwartier
+      hollandse_delta: HollandseDelta
+      rijnland: Rijnland
+      rivierenland: Rivierenland
+      scheldestromen: Scheldestromen
+      schieland_en_de_krimpenerwaard: SchielandendeKrimpenerwaard
+      wetterskip_fryslan: WetterskipFryslan
+      zuiderzeeland: Zuiderzeeland
+    do:
+      cmd:
+        - pixi run python src/peilbeheerst_model/feedback/${item}.py
+      deps:
+        - src/peilbeheerst_model/feedback/${item}.py
+      outs:
+        - data/${item}/modellen/${item}_feedback
+  profiles:
+    foreach:
+      delfland: Delfland
+      amstel_gooi_en_vecht: AmstelGooienVecht
+      hollands_noorderkwartier: HollandsNoorderkwartier
+      hollandse_delta: HollandseDelta
+      rijnland: Rijnland
+      rivierenland: Rivierenland
+      scheldestromen: Scheldestromen
+      schieland_en_de_krimpenerwaard: SchielandendeKrimpenerwaard
+      wetterskip_fryslan: WetterskipFryslan
+      zuiderzeeland: Zuiderzeeland
+    do:
+      cmd:
+        - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py ${item}
+        - pixi run python src/peilbeheerst_model/profiles/${item}.py
+      deps:
+        - src/peilbeheerst_model/profiles/prep_cross_sections.py
+        - src/peilbeheerst_model/profiles/${item}.py
+        - data/${item}/modellen/${item}_feedback
+        - data/Basisgegevens/profielen
+      outs:
+        - data/${item}/modellen/${item}_profiles
+        - data/${item}/verwerkt/profielen/network.gpkg
+  forcing:
+    foreach:
+      delfland: Delfland
+      amstel_gooi_en_vecht: AmstelGooienVecht
+      hollands_noorderkwartier: HollandsNoorderkwartier
+      hollandse_delta: HollandseDelta
+      rijnland: Rijnland
+      rivierenland: Rivierenland
+      scheldestromen: Scheldestromen
+      schieland_en_de_krimpenerwaard: SchielandendeKrimpenerwaard
+      wetterskip_fryslan: WetterskipFryslan
+      zuiderzeeland: Zuiderzeeland
+    do:
+      cmd:
+        - pixi run python src/peilbeheerst_model/forcing/${item}.py
+      deps:
+        - src/peilbeheerst_model/forcing/${item}.py
+        - data/Rijkswaterstaat/modellen/rwzi
+        - data/${item}/modellen/${item}_profiles
+        - data/${item}/verwerkt/profielen/network.gpkg
+      outs:
+        - data/${item}/modellen/${item}_forcing
+  hws_demand:
+    cmd:
+      - pixi run python notebooks/rijkswaterstaat/2_basins.py
+      - pixi run python notebooks/rijkswaterstaat/3_netwerk.py
+      - pixi run python notebooks/rijkswaterstaat/4_kunstwerken.py
+      - pixi run python notebooks/rijkswaterstaat/5_model_netwerk.py
+      - pixi run python notebooks/rijkswaterstaat/6_model_sturing.py
+      - pixi run python notebooks/rijkswaterstaat/7_model_onttrekkingen.py
+      - pixi run python notebooks/rijkswaterstaat/8a_update_state.py
+    deps:
+      - data/Basisgegevens/Baseline/baseline-nl_land-j23_6-v1/baseline.gdb
+      - data/Rijkswaterstaat/verwerkt/bathymetrie
+      - data/Rijkswaterstaat/modellen/rwzi
+      - notebooks/rijkswaterstaat
+    outs:
+      - data/Rijkswaterstaat/modellen/hws_demand
+      - data/Rijkswaterstaat/verwerkt/netwerk.gpkg
+  hws_transient:
+    cmd:
+      - pixi run python notebooks/rijkswaterstaat/8b_update_bc.py
+    deps:
+      - data/Rijkswaterstaat/modellen/hws_demand
+      - notebooks/rijkswaterstaat/8b_update_bc.py
+    outs:
+      - data/Rijkswaterstaat/modellen/hws_transient
+  samenvoegen:
+    cmd: pixi run python notebooks/08_samenvoegen_modellen.py
+    deps:
+      - notebooks/08_samenvoegen_modellen.py
+      - data/Rijkswaterstaat/modellen/hws_transient
+      - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_forcing
+      - data/AmstelGooienVecht/modellen/AmstelGooienVecht_forcing
+      - data/Delfland/modellen/Delfland_forcing
+      - data/Rijnland/modellen/Rijnland_forcing
+      - data/Rivierenland/modellen/Rivierenland_forcing
+      - data/Scheldestromen/modellen/Scheldestromen_forcing
+      - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_forcing
+      - data/WetterskipFryslan/modellen/WetterskipFryslan_forcing
+      - data/Zuiderzeeland/modellen/Zuiderzeeland_forcing
+      - data/HollandseDelta/modellen/HollandseDelta_forcing
+      - data/AaenMaas/modellen/AaenMaas_dynamic_model
+      - data/BrabantseDelta/modellen/BrabantseDelta_dynamic_model
+      - data/DeDommel/modellen/DeDommel_dynamic_model
+      - data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_dynamic_model
+      - data/HunzeenAas/modellen/HunzeenAas_dynamic_model
+      - data/Limburg/modellen/Limburg_dynamic_model
+      - data/Noorderzijlvest/modellen/Noorderzijlvest_dynamic_model
+      - data/RijnenIJssel/modellen/RijnenIJssel_dynamic_model
+      - data/StichtseRijnlanden/modellen/StichtseRijnlanden_dynamic_model
+      - data/ValleienVeluwe/modellen/ValleienVeluwe_dynamic_model
+      - data/Vechtstromen/modellen/Vechtstromen_dynamic_model
     outs:
       - data/Rijkswaterstaat/modellen/lhm_parts
+  koppelen:
+    cmd: pixi run python notebooks/09_koppelen_modellen.py
+    deps:
+      - notebooks/09_koppelen_modellen.py
+      - data/Rijkswaterstaat/modellen/lhm_parts
+      - data/Rijkswaterstaat/verwerkt/netwerk.gpkg
+    outs:
+      - data/Rijkswaterstaat/modellen/lhm_coupled

@@ -18,12 +18,14 @@ def upstream_target_levels(
         pd.Series: float-type series with target-levels
     """
     # get upstream node_id from link_table
+    assert model.link.df is not None
     df = model.link.df[model.link.df["to_node_id"].isin(node_ids)][["to_node_id", "from_node_id"]]
     df.set_index("to_node_id", inplace=True)
     df.index.name = "node_id"
     df.columns = ["upstream_node_id"]
 
     # get in_basin_mask; we can only get target_levels if upstream_node_id is present as node_id in model.basin.area.df
+    assert model.basin.area.df is not None
     df = df.reset_index().set_index("upstream_node_id")
     in_basin_mask = df.index.isin(model.basin.area.df.node_id)
 
@@ -53,12 +55,14 @@ def downstream_target_levels(
         pd.Series: float-type series with target-levels
     """
     # get downstream node_id from link_table
+    assert model.link.df is not None
     df = model.link.df[model.link.df["from_node_id"].isin(node_ids)][["from_node_id", "to_node_id"]]
     df.set_index("from_node_id", inplace=True)
     df.index.name = "node_id"
     df.columns = ["downstream_node_id"]
 
     # get in_basin_mask; we can only get target_levels if downstream_node_id is present as node_id in model.basin.area.df
+    assert model.basin.area.df is not None
     df = df.reset_index().set_index("downstream_node_id")
     in_basin_mask = df.index.isin(model.basin.area.df.node_id)
 

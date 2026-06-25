@@ -8,6 +8,8 @@ import geopandas as gpd
 import pandas as pd
 from shapely.geometry import LineString, Point
 
+logger = logging.getLogger(__name__)
+
 # %% Monitoring
 
 
@@ -116,12 +118,11 @@ def split_linestring_by_indices(linestring: LineString, split_indices: list) -> 
     -------
         list: list of resulting linestrings
     """
-    split_linestrings = []
     split_indices = sorted({0, *split_indices, len(linestring.coords) - 1})
-    for i in range(len(split_indices) - 1):
-        split_linestrings.append(LineString(linestring.coords[split_indices[i] : split_indices[i + 1] + 1]))
-
-    return split_linestrings
+    return [
+        LineString(linestring.coords[split_indices[i] : split_indices[i + 1] + 1])
+        for i in range(len(split_indices) - 1)
+    ]
 
 
 def remove_duplicate_split_lines(lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -190,13 +191,14 @@ def connect_lines_by_endpoints(split_endpoints: gpd.GeoDataFrame, lines: gpd.Geo
         for node in split_action["split_points"]:
             (modified_linestring, index_nearest_neighbour) = add_point_to_linestring(Point(node), linestring)
 
-            if index_nearest_neighbour == 0 and linestring.coords[0] in list(
-                connections_to_create.loc[connections_to_create["inserted"], "point"].values
-            ):
-                continue
-
-            elif index_nearest_neighbour == len(linestring.coords) - 1 and linestring.coords[-1] in list(
-                connections_to_create.loc[connections_to_create["inserted"], "point"].values
+            if (
+                index_nearest_neighbour == 0
+                and linestring.coords[0]
+                in list(connections_to_create.loc[connections_to_create["inserted"], "point"].values)
+            ) or (
+                index_nearest_neighbour == len(linestring.coords) - 1
+                and linestring.coords[-1]
+                in list(connections_to_create.loc[connections_to_create["inserted"], "point"].values)
             ):
                 continue
 
@@ -248,7 +250,7 @@ def connect_endpoints_by_buffer(lines: gpd.GeoDataFrame, buffer_distance: float 
     unconnected_endpoints_count = 0
     finished = False
 
-    logging.info(f"Detect unconnected endpoints nearby linestrings, buffer distance: {buffer_distance}m")
+    logger.info(f"Detect unconnected endpoints nearby linestrings, buffer distance: {buffer_distance}m")
 
     while not finished:
         endpoints = get_endpoints_from_lines(lines)
@@ -262,19 +264,23 @@ def connect_endpoints_by_buffer(lines: gpd.GeoDataFrame, buffer_distance: float 
             lines[lines.buffer_geometry.contains(x)].code.tolist() for x in boundary_endpoints.geometry
         ]
         boundary_endpoints["startpoint_overlaying_line_buffers"] = boundary_endpoints.apply(
-            lambda x: [
-                x["coordinates"] in list(lines[lines.code == y].endpoint.values) for y in x["overlaying_line_buffers"]
+            lambda x, _lines=lines: [
+                x["coordinates"] in list(_lines[_lines.code == y].endpoint.values) for y in x["overlaying_line_buffers"]
             ],
             axis=1,
         )
         boundary_endpoints["endpoint_overlaying_line_buffers"] = boundary_endpoints.apply(
-            lambda x: [
-                x["coordinates"] in list(lines[lines.code == y].startpoint.values) for y in x["overlaying_line_buffers"]
+            lambda x, _lines=lines: [
+                x["coordinates"] in list(_lines[_lines.code == y].startpoint.values)
+                for y in x["overlaying_line_buffers"]
             ],
             axis=1,
         )
         boundary_endpoints["start_or_endpoint_overlaying_line_buffers"] = boundary_endpoints.apply(
-            lambda x: list(zip(x["startpoint_overlaying_line_buffers"], x["endpoint_overlaying_line_buffers"])), axis=1
+            lambda x: list(
+                zip(x["startpoint_overlaying_line_buffers"], x["endpoint_overlaying_line_buffers"], strict=True)
+            ),
+            axis=1,
         )
         boundary_endpoints["crossed_by_unconnected_lines"] = boundary_endpoints.apply(
             lambda x: True in [True not in y for y in x["start_or_endpoint_overlaying_line_buffers"]], axis=1
@@ -297,26 +303,26 @@ def connect_endpoints_by_buffer(lines: gpd.GeoDataFrame, buffer_distance: float 
         unconnected_endpoints_count = len(unconnected_endpoints)
         if iterations == 0:
             unconnected_endpoints_count_total = unconnected_endpoints_count
-        logging.info(f"{unconnected_endpoints_count} unconnected endpoints detected nearby intersecting lines")
+        logger.info(f"{unconnected_endpoints_count} unconnected endpoints detected nearby intersecting lines")
         if unconnected_endpoints_count != 0 and unconnected_endpoints_count != previous_unconnected_endpoints_count:
-            logging.info("Connecting linestrings...")
+            logger.info("Connecting linestrings...")
             lines = connect_lines_by_endpoints(unconnected_endpoints, lines)
             iterations += 1
-            logging.info("Linestrings connected, starting new iteration...")
+            logger.info("Linestrings connected, starting new iteration...")
         else:
             lines = lines.drop(["startpoint", "endpoint", "buffer_geometry"], axis=1)
             finished = True
 
     end_time = time.time()
     passed_time = report_time_interval(start_time, end_time)
-    logging.info(
+    logger.info(
         f"Summary:\n\n\
           Detected unconnected endpoints nearby intersecting lines: {unconnected_endpoints_count_total} \n\
           Connected endpoints: {unconnected_endpoints_count_total - unconnected_endpoints_count} \n\
           Remaining unconnected endpoints: {unconnected_endpoints_count}\n\
           Iterations: {iterations}"
     )
-    logging.info(f"Finished within {passed_time}")
+    logger.info(f"Finished within {passed_time}")
     return lines
 
 
@@ -433,20 +439,24 @@ def get_most_overlapping_polygon(
     left_geodataframe["overlapping_areas"] = left_geodataframe["overlapping_areas"].apply(lambda x: pd.DataFrame(x))
 
     left_geodataframe["most_overlapping_polygon_id"] = left_geodataframe.apply(
-        lambda x: x["overlapping_areas"][
-            x["overlapping_areas"]["overlapping_area"] == x["overlapping_areas"]["overlapping_area"].max()
-        ]["id"].values[0]
-        if len(x["overlapping_areas"]) != 0
-        else None,
+        lambda x: (
+            x["overlapping_areas"][
+                x["overlapping_areas"]["overlapping_area"] == x["overlapping_areas"]["overlapping_area"].max()
+            ]["id"].values[0]
+            if len(x["overlapping_areas"]) != 0
+            else None
+        ),
         axis=1,
     )
 
     left_geodataframe["most_overlapping_polygon_area"] = left_geodataframe.apply(
-        lambda x: x["overlapping_areas"][
-            x["overlapping_areas"]["overlapping_area"] == x["overlapping_areas"]["overlapping_area"].max()
-        ]["overlapping_area"].values[0]
-        if len(x["overlapping_areas"]) != 0
-        else None,
+        lambda x: (
+            x["overlapping_areas"][
+                x["overlapping_areas"]["overlapping_area"] == x["overlapping_areas"]["overlapping_area"].max()
+            ]["overlapping_area"].values[0]
+            if len(x["overlapping_areas"]) != 0
+            else None
+        ),
         axis=1,
     )
 
@@ -517,9 +527,11 @@ def get_most_adjacent_polygon_within_gdf(left_gdf, left_id, right_gdf=None, righ
     left_gdf["touching_polygons"] = left_gdf["touching_polygons"].apply(lambda x: x[x["basin"].notna()])
     if isinstance(right_gdf, gpd.GeoDataFrame):
         left_gdf["touching_polygons"] = left_gdf.apply(
-            lambda x: x["touching_polygons"][x["touching_polygons"]["right_id"] == x["right_id"]]
-            if x["right_id"] is not None
-            else x["touching_polygons"],
+            lambda x: (
+                x["touching_polygons"][x["touching_polygons"]["right_id"] == x["right_id"]]
+                if x["right_id"] is not None
+                else x["touching_polygons"]
+            ),
             axis=1,
         )
     left_gdf["most_adjacent_polygon"] = left_gdf.apply(

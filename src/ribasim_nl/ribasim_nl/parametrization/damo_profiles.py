@@ -1,3 +1,4 @@
+# %%
 import geopandas as gpd
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
@@ -18,7 +19,7 @@ class DAMOProfiles(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def model_post_init(self, __context):
+    def model_post_init(self, __context) -> None:
         if self.network is None:
             self.network = Network(lines_gdf=self.model.link.df)
 
@@ -70,16 +71,6 @@ class DAMOProfiles(BaseModel):
 
         return getattr(pd.Series(z_values), statistic)()
 
-    # def get_profile_id(self, node_id, statistic="max"):
-    #     node_type = self.model.get_node_type(node_id)
-    #     if node_type == "Basin":
-    #         profile_ids = self.model.link.df[
-    #             (self.model.link.df.from_node_id == node_id) | (self.model.link.df.to_node_id == node_id)
-    #         ][self.profile_id_col].to_numpy()
-    #         levels = [self.get_profile_level(profile_id, statistic) for profile_id in profile_ids]
-    #         return pd.Series(levels, index=profile_ids).idxmin()  # use pandas to get the profileid with min level
-    #     else:
-    #         return self.model.link.df[self.model.link.df.to_node_id == node_id].iloc[0][self.profile_id_col]
     def get_profile_id(self, node_id, statistic="max"):
         try:
             node_type = self.model.get_node_type(node_id)
@@ -112,15 +103,16 @@ class DAMOProfiles(BaseModel):
         default_profile_slope: float = 0.5,
         min_profile_width: float = 1,
         min_profile_depth: float = 0.5,
-    ):
+    ) -> gpd.GeoDataFrame:
         data = []
+        profile_line_geometry = self.profile_line_df.set_index(self.profile_line_id_col)["geometry"]
         for profiel_id, df in tqdm(self.profile_point_df.groupby("profiellijnid"), desc="process_profiles"):
             if elevation_col is None:
                 df.loc[:, "elevation"] = df.geometry.z
             else:
                 df.loc[:, "elevation"] = df[elevation_col]
 
-            geometry = self.profile_line_df.set_index(self.profile_line_id_col).at[profiel_id, "geometry"]
+            geometry = profile_line_geometry.at[profiel_id]
 
             # compute stuff from points
             bottom_level = df["elevation"].min()

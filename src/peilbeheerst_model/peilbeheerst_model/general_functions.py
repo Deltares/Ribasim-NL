@@ -1,4 +1,6 @@
 # import packages and functions
+from pathlib import Path
+
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -31,7 +33,7 @@ def read_gpkg_layers(gpkg_path, engine="pyogrio", print_var=False):
     return data
 
 
-def show_layers_and_columns(waterschap):
+def show_layers_and_columns(waterschap) -> None:
     """
     Display Information About Layers and Columns in a Geospatial Dataset.
 
@@ -47,7 +49,7 @@ def show_layers_and_columns(waterschap):
     in a dictionary.
 
     """
-    for key in waterschap.keys():
+    for key in waterschap:
         print(key)
         print(waterschap[str(key)].columns.values)
         print("type = ", type(waterschap[str(key)]))
@@ -55,7 +57,7 @@ def show_layers_and_columns(waterschap):
         print()
 
 
-def store_data(waterschap, output_gpkg_path):
+def store_data(waterschap, output_gpkg_path) -> None:
     """
     Store Geospatial Data to a GeoPackage (GPKG) File.
 
@@ -75,11 +77,11 @@ def store_data(waterschap, output_gpkg_path):
     - waterschap: A dictionary where the keys represent layer names, and the values are GeoDataFrames.
     - output_gpkg_path: The file path for the output GPKG file. The '.gpkg' extension is added automatically.
     """
-    for key in waterschap.keys():
-        waterschap[str(key)].to_file(output_gpkg_path + ".gpkg", layer=str(key), driver="GPKG")
+    for key in waterschap:
+        waterschap[str(key)].to_file(Path(output_gpkg_path).with_suffix(".gpkg"), layer=str(key), driver="GPKG")
 
 
-def overlapping_peilgebieden(waterschap_peilgebieden):
+def overlapping_peilgebieden(waterschap_peilgebieden) -> pd.DataFrame | gpd.GeoDataFrame:
     """
     Identify and calculate the percentage of overlapping peilgebieden.
 
@@ -107,7 +109,7 @@ def overlapping_peilgebieden(waterschap_peilgebieden):
     overlapping_polygons = gpd.GeoDataFrame(columns=peilgebied.columns)
 
     # Iterate through each polygon in peilgebied
-    for index, row in peilgebied.iterrows():
+    for index, _row in peilgebied.iterrows():
         current_polygon = peilgebied.iloc[[index]]  # select the current polygon
         other_polygons = peilgebied.drop(index)  # create a GeoDataFrame without the current polygon
         overlaps = other_polygons[
@@ -138,13 +140,13 @@ def overlapping_peilgebieden(waterschap_peilgebieden):
     return overlapping_polygons
 
 
-def plot_histogram_overlap(overlapping_polygons):
+def plot_histogram_overlap(overlapping_polygons) -> None:
     """
-    Plots a histogram of the overlapping polygons in a DataFrame.
+    Plots a histogram of the overlapping polygons in a pd.DataFrame.
 
     Parameters
     ----------
-        overlapping_polygons (pd.DataFrame): A DataFrame containing information about overlapping polygons.
+        overlapping_polygons (pd.DataFrame): A pd.DataFrame containing information about overlapping polygons.
             It should have a 'overlap_percentage' column to represent the percentage of overlap between polygons.
 
     Returns
@@ -174,7 +176,7 @@ def plot_histogram_overlap(overlapping_polygons):
     plt.show()
 
 
-def plot_overlapping_peilgebieden(peilgebied, overlapping_polygons, minimum_percentage):
+def plot_overlapping_peilgebieden(peilgebied, overlapping_polygons, minimum_percentage) -> None:
     """
     Plot Overlapping Peilgebieden on a map, including a Minimum Percentage of Overlap to show.
 
@@ -272,7 +274,7 @@ def plot_overlapping_peilgebieden(peilgebied, overlapping_polygons, minimum_perc
 #     return peilgebied
 
 
-def burn_in_peilgebieden(base_layer, overlay_layer, plot=True):
+def burn_in_peilgebieden(base_layer, overlay_layer, plot=True) -> pd.DataFrame:
     # remove the overlapping parts from the base_layer
     base_layer_without_overlapping = gpd.overlay(
         base_layer, overlay_layer, how="symmetric_difference", keep_geom_type=False
@@ -285,7 +287,7 @@ def burn_in_peilgebieden(base_layer, overlay_layer, plot=True):
     # base_layer_without_overlapping.waterhoogte_1.fillna(value = base_layer_without_overlapping.waterhoogte, inplace=True)
 
     if (
-        "waterhoogte_1" in base_layer_without_overlapping.keys()
+        "waterhoogte_1" in base_layer_without_overlapping
     ):  # sometimes a waterhoogte is present in the peilgebieden. Manage this.
         base_layer_without_overlapping.rename(
             columns={

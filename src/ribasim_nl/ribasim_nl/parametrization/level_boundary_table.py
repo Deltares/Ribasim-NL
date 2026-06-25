@@ -12,12 +12,12 @@ def update_level_boundary_static(
     model: Model,
     static_data_xlsx: Path | None = None,
     code_column: str = "meta_code_waterbeheerder",
-):
+) -> None:
     """Update LevelBoundary table
 
     Args:
         model (Model): Ribasim model
-        static_data_xlsx (Path): Excel spreadsheet with node_types
+        static_data_xlsx (Path | None): Excel spreadsheet with node_types. Defaults to None.
         code_column: (str) column in node_table corresponding with code column in static_data_xlsx
 
     Returns
@@ -52,6 +52,7 @@ def update_level_boundary_static(
 
     # make sure inlets/outlets work
     mask = static_df.level.isna()
+    assert model.basin.area.df is not None
     if mask.any():
         for row in static_df[mask].itertuples():
             node_id = row.node_id
@@ -62,7 +63,7 @@ def update_level_boundary_static(
                 ds_basins = model.get_downstream_basins(node_id, stop_at_node_type="Basin").node_id.to_list()
                 if len(ds_basins) == 0:
                     raise ValueError(f"node_id {node_id} does not have an upstream or downstream basin")
-                level = model.basin.area.df.set_index("node_id").loc[ds_basins]["meta_streefpeil"].min()
+                level = model.basin.area.df.set_index("node_id").loc[ds_basins]["meta_streefpeil"].max()
             static_df.loc[row.Index, "level"] = level
 
-    model.level_boundary.static.df = static_df
+    model.level_boundary.static.df = static_df  # pyrefly: ignore[bad-assignment]

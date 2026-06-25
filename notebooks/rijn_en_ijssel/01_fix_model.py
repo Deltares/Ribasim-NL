@@ -4,9 +4,10 @@ import inspect
 import geopandas as gpd
 import pandas as pd
 from ribasim import Node
-from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
+from ribasim.nodes import basin, level_boundary, outlet
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
+from shapely.geometry import Point
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -14,7 +15,7 @@ cloud = CloudStorage()
 
 authority = "RijnenIJssel"
 name = "wrij"
-run_model = False
+run_model = True
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
@@ -33,7 +34,6 @@ hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=T
 duiker_gdf = gpd.read_file(hydamo_gpkg, layer="duikersifonhevel", fid_as_index=True)
 
 # %% some stuff we'll need again
-manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
 level_data = level_boundary.Static(level=[0])
 
 basin_data = [
@@ -104,7 +104,7 @@ outlet_node = model.outlet.add(
     Node(name=kdu.code, geometry=kdu.geometry.interpolate(0.5, normalized=True), meta_object_type="duikersifonhevel"),
     tables=[outlet_data],
 )
-basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[9528, "geometry"].boundary.geoms[0]))
+basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[9528, "geometry"].boundary.geoms[0]), tables=basin_data)
 model.link.add(model.tabulated_rating_curve[265], basin_node)
 model.link.add(basin_node, outlet_node)
 model.link.add(outlet_node, model.level_boundary[43])
@@ -223,8 +223,8 @@ model.fix_unassigned_basin_area()
 
 
 # %% merge basins
-model.merge_basins(basin_id=944, to_basin_id=1028)
-model.merge_basins(basin_id=788, to_basin_id=1150)
+model.merge_basins(node_id=944, to_node_id=1028)
+model.merge_basins(node_id=788, to_node_id=1150)
 # %%
 # Sanitize node_table
 for node_id in model.tabulated_rating_curve.node.df.index:
@@ -237,9 +237,22 @@ for node_id in model.manning_resistance.node.df[
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # basins and outlets we've added do not have category, we fill with hoofdwater
-model.basin.node.df.loc[model.basin.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
-model.outlet.node.df.loc[model.outlet.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
-model.pump.node.df.loc[model.pump.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+model.node.df.loc[model.basin.node.df.index[model.basin.node.df["meta_categorie"].isna()], "meta_categorie"] = (
+    "hoofdwater"
+)
+model.node.df.loc[model.outlet.node.df.index[model.outlet.node.df["meta_categorie"].isna()], "meta_categorie"] = (
+    "hoofdwater"
+)
+model.node.df.loc[model.pump.node.df.index[model.pump.node.df["meta_categorie"].isna()], "meta_categorie"] = (
+    "hoofdwater"
+)
+
+# opruimen rondom inlaat schipbeek
+for node_id in [305, 307, 308, 309]:  # we hebben echt maar 1 sifon nodig
+    model.remove_node(node_id, remove_links=True)
+
+model.reverse_direction_at_node(node_id=654)  # inlaat schipbeek is verkeerd-om getekend
+model.merge_basins(node_id=1090, to_node_id=797)  # zandvang weg, zodat we gemakkelijker kunnen inlaten bij Boven-Regge
 
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = pd.concat(
@@ -254,28 +267,61 @@ df.set_index("code", inplace=True)
 names = df["naam"]
 
 # set meta_gestuwd in basins
-model.basin.node.df["meta_gestuwd"] = False
-model.outlet.node.df["meta_gestuwd"] = False
-model.pump.node.df["meta_gestuwd"] = True
+model.node.df.loc[model.node.df["node_type"] == "Basin", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Outlet", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Pump", "meta_gestuwd"] = True
 
 # set stuwen als gestuwd
 
-model.outlet.node.df.loc[model.outlet.node.df["meta_object_type"].isin(["stuw"]), "meta_gestuwd"] = True
+model.node.df.loc[
+    (model.node.df["node_type"] == "Outlet") & model.node.df["meta_object_type"].isin(["stuw"]),
+    "meta_gestuwd",
+] = True
 
 # set bovenstroomse basins als gestuwd
-node_df = model.node_table().df
-node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
+node_df = model.node.df[model.node.df["meta_gestuwd"] & model.node.df["node_type"].isin(["Outlet", "Pump"])]
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
-basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
-model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+basin_node_ids = model.basin.node.df.index.intersection(upstream_node_ids)
+model.node.df.loc[basin_node_ids, "meta_gestuwd"] = True
 
 # set álle benedenstroomse outlets van gestuwde basins als gestuwd (dus ook duikers en andere objecten)
-downstream_node_ids = (
-    pd.Series([model.downstream_node_id(i) for i in model.basin.node.df[basin_mask].index]).explode().to_numpy()
-)
-model.outlet.node.df.loc[model.outlet.node.df.index.isin(downstream_node_ids), "meta_gestuwd"] = True
+downstream_node_ids = pd.Series([model.downstream_node_id(i) for i in basin_node_ids]).explode().to_numpy()
+model.node.df.loc[model.outlet.node.df.index.intersection(downstream_node_ids), "meta_gestuwd"] = True
 
+# edits n.a.v. review control (script 4)
+model.reverse_direction_at_node(node_id=609)  # gebied Schipbeek: dit moet een uitlaat zijn
+model.remove_node(node_id=319, remove_links=True)  # gebied Lochem: vistrap naast verdeelwerk
+model.remove_node(node_id=199, remove_links=True)  # rest: Afvoer deelgebied (zonnepanelen?)
+model.remove_node(
+    node_id=543, remove_links=True
+)  # rest: Extra afvoer (verkeerd-om getekend), maar hoofdafvoer gaat via Kievekampsbrug (388)
+model.remove_node(node_id=526, remove_links=True)  # rest: Direct aan secundair gebied, hoofdafvoer loopt via 423
+model.remove_node(node_id=559, remove_links=True)  # rest: Secundair gebied, hoofdtak loopt over 564 (Erfkamerlingschap)
+model.remove_node(node_id=569, remove_links=True)  # rest: Secundair gebied, hoofdtak loopt over 121 (eefde aflaatwerk)
+model.remove_node(node_id=637, remove_links=True)  # rest: Gemaal Dunoweg voor nu eruit
+model.remove_node(
+    node_id=541, remove_links=True
+)  # rode bollen: zorgt voor lek, secundaire manning waterloop in gestuwd gebied
+model.merge_basins(node_id=791, to_node_id=786)  # rode bollen: juist streefpeil bij aflaatwerk nabij inlaat
+model.remove_node(node_id=1290, remove_links=True)  # rode bollen: deze is voor secundair gebied van basin 786
+model.remove_node(
+    node_id=541, remove_links=True
+)  # rode bollen: Knoop 541 verwijdered, dit lijkt een lek te zijn via een secundaire waterloop
+model.remove_node(
+    node_id=323, remove_links=True
+)  # rode bollen: 323 kan worden opgeheven, zodat afwatering via 1679 loopt
+model.remove_node(
+    node_id=387, remove_links=True
+)  # rode bollen: 387 kan worden opgeheven, is een stuw in een kwelsloot met een hoger peil
+
+# Doesburg is overdadig geschematiseerd, inclusief vispassage
+for node_id in [444, 443, 230]:
+    model.remove_node(node_id=node_id, remove_links=True)
+
+# Verdeelwerk Koppelleiding:
+model.move_node(node_id=677, geometry=Point(248797.688, 445732.748))
+model.update_node(node_id=677, node_type="Outlet")
 sanitize_node_table(
     model,
     meta_columns=["meta_code_waterbeheerder", "meta_categorie", "meta_gestuwd"],
@@ -288,7 +334,7 @@ sanitize_node_table(
 )
 
 # %%
-model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
+model.node.df.loc[model.flow_boundary.node.df.index, "meta_categorie"] = "buitenlandse aanvoer"
 
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
 model.write(ribasim_toml)

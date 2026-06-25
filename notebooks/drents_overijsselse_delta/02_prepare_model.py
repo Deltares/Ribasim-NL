@@ -1,5 +1,4 @@
 # %%
-import inspect
 
 import geopandas as gpd
 import pandas as pd
@@ -20,7 +19,10 @@ short_name = "dod"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
+
+
+parameters_dir.mkdir(parents=True, exist_ok=True)
 static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
@@ -29,9 +31,8 @@ peilgebieden_path = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/extra d
 hydamo_wm_gpkg = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/HyDAMO_WM_20230720.gpkg")
 meppelerdiep_gpkg = cloud.joinpath(authority, "verwerkt/2_voorbewerking/meppelerdiep.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
-model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt/model_edits_aanvoer.gpkg")
 
-cloud.synchronize(filepaths=[peilgebieden_path, top10NL_gpkg])
+cloud.synchronize(filepaths=[peilgebieden_path, hydamo_wm_gpkg, meppelerdiep_gpkg])
 
 # %% init things
 model = Model.read(ribasim_toml)
@@ -48,61 +49,28 @@ damo_profiles = DAMOProfiles(
     water_area_df=gpd.read_file(top10NL_gpkg, layer="top10nl_waterdeel_vlak"),
 )
 
-if not profiles_gpkg.exists():
-    profiles_df = damo_profiles.process_profiles()
-    profiles_df.to_file(profiles_gpkg)
-else:
-    profiles_df = gpd.read_file(profiles_gpkg)
-
-profiles_df.set_index("profiel_id", inplace=True)
-static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
-
-
-# %%
-
-# fix link geometries
-if link_geometries_gpkg.exists():
+# fix link geometries and profiles
+use_cache = False
+if link_geometries_gpkg.exists() and profiles_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
+    use_cache = link_geometries_df.index.equals(model.link.df.index)
+
+if use_cache:
     model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
     model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
         "meta_profielid_waterbeheerder"
     ]
+    profiles_df = gpd.read_file(profiles_gpkg)
 else:
+    profiles_df = damo_profiles.process_profiles()
+    profiles_df.to_file(profiles_gpkg)
     add_link_profile_ids(model, profiles=damo_profiles)
-    fix_link_geometries(model, network, max_straight_line_ratio=5)
+    fix_link_geometries(model, network, max_straight_line_ratio=1.5)
     model.link.df.reset_index().to_file(link_geometries_gpkg)
+profiles_df.set_index("profiel_id", inplace=True)
+static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
-# %%
 # %% Quick fix basins
-
-actions = [
-    "remove_basin_area",
-    #    "remove_node",
-    #    "remove_link",
-    "add_basin",
-    "add_basin_area",
-    # "update_basin_area",
-    # "merge_basins",
-    # "reverse_link",
-    # "move_node",
-    "connect_basins",
-    #   "update_node",
-    "redirect_link",
-]
-actions = [i for i in actions if i in gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()]
-for action in actions:
-    print(action)
-    # get method and args
-    method = getattr(model, action)
-    keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_aanvoer_gpkg, layer=action, fid_as_index=True)
-    if "order" in df.columns:
-        df.sort_values("order", inplace=True)
-    for row in df.itertuples():
-        # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
-        method(**kwargs)
-
 
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1389, "flow_rate"] = 0.1
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 2609, "flow_rate"] = 0.1
@@ -140,10 +108,7 @@ for node_id in node_ids:
     peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
-        if peilgebied["GPGZMRPL"] < 30:
-            level = peilgebied["GPGZMRPL"]
-        else:
-            level = None
+        level = peilgebied["GPGZMRPL"] if peilgebied["GPGZMRPL"] < 30 else None
     levels += [level]
 
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
@@ -175,10 +140,7 @@ for node_id in node_ids:
 
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
-        if peilgebied["GPGZMRPL"] < 30:  # 🔹 Drempelwaarde voor max peil
-            level = peilgebied["GPGZMRPL"]
-        else:
-            level = None
+        level = peilgebied["GPGZMRPL"] if peilgebied["GPGZMRPL"] < 30 else None  # Drempelwaarde voor max peil
     else:
         level = None
 
@@ -240,6 +202,9 @@ streefpeil = non_kdu_first.combine_first(all_first)
 streefpeil = streefpeil["min_upstream_level"]
 streefpeil.index.name = "node_id"
 streefpeil.name = "streefpeil"
+
+# manual fix to avoid exception
+streefpeil.loc[2608] = 9.35
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
 # %% Bepaal min_upstream_level at Manning locations`en vul de nodata basins met deze streefpeilen
@@ -263,10 +228,7 @@ for node_id in node_ids:
     peilgebieden_select_df = peilgebieden_df[peilgebieden_df.contains(containing_point)]
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
-        if peilgebied["GPGZMRPL"] < 30:
-            level = peilgebied["GPGZMRPL"]
-        else:
-            level = None
+        level = peilgebied["GPGZMRPL"] if peilgebied["GPGZMRPL"] < 30 else None
     levels += [level]
 
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
@@ -291,7 +253,9 @@ ds_node_ids = pd.Series(ds_node_ids, index=ds_index, name="ds_node_id")
 
 # Keep only those that exist in min_upstream_level
 valid_ds = ds_node_ids[ds_node_ids.isin(min_upstream_level.index)]
-streefpeil = min_upstream_level.loc[valid_ds.values].rename(index=dict(zip(valid_ds.values, valid_ds.index)))
+streefpeil = min_upstream_level.loc[valid_ds.values].rename(
+    index=dict(zip(valid_ds.values, valid_ds.index, strict=True))
+)
 streefpeil = streefpeil.groupby(streefpeil.index).min()
 streefpeil.index.name = "node_id"
 streefpeil.name = "streefpeil"
@@ -325,8 +289,6 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 1612, "meta_streefpeil"] 
 ).at[1769, "meta_streefpeil"]
 
 model.basin.area.df.loc[model.basin.area.df.node_id == 2190, "meta_streefpeil"] = -0.19
-
-
 # %%
 
 # get all nodata streefpeilen with their profile_ids and levels
@@ -373,43 +335,3 @@ static_data.write()
 
 # write model
 model.write(ribasim_toml)
-
-
-# %%
-# OUTLET
-
-# OUTLET.min_upstream_level
-# # from basin streefpeil
-# static_data.reset_data_frame(node_type="Outlet")
-# min_upstream_level = upstream_target_levels(model=model, node_ids=static_data.outlet.node_id)
-# min_upstream_level = min_upstream_level[min_upstream_level.notna()]
-# min_upstream_level.name = "min_upstream_level"
-# static_data.add_series(node_type="Outlet", series=min_upstream_level)
-
-
-# # %%
-
-# # PUMP
-
-# # PUMP.min_upstream_level
-# # from basin streefpeil
-# static_data.reset_data_frame(node_type="Pump")
-# min_upstream_level = upstream_target_levels(model=model, node_ids=static_data.pump.node_id)
-# min_upstream_level = min_upstream_level[min_upstream_level.notna()]
-# min_upstream_level.name = "min_upstream_level"
-# static_data.add_series(node_type="Pump", series=min_upstream_level)
-
-
-# # %%
-
-# # # BASIN
-# static_data.reset_data_frame(node_type="Basin")
-
-# # %%
-
-# # write
-# static_data.write()
-
-# model.write(ribasim_toml)
-
-# %%

@@ -17,18 +17,18 @@ short_name = "limburg"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir.mkdir(parents=True, exist_ok=True)
 static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
+
 stuwen_shp = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/20250613/stuwWL_fase3.shp")
-
-
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 profielen_gpkg = cloud.joinpath(authority, "verwerkt/profielen.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
-cloud.synchronize(filepaths=[top10NL_gpkg])
+cloud.synchronize(filepaths=[stuwen_shp, hydamo_gpkg, profielen_gpkg])
 
 # %% init things
 model = Model.read(ribasim_toml)
@@ -52,9 +52,13 @@ damo_profiles = DAMOProfiles(
 )
 
 
-# fix link geometries
-if link_geometries_gpkg.exists():
+# fix link geometries and profiles
+use_cache = False
+if link_geometries_gpkg.exists() and profiles_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
+    use_cache = link_geometries_df.index.equals(model.link.df.index)
+
+if use_cache:
     model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
     model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
         "meta_profielid_waterbeheerder"
@@ -198,15 +202,15 @@ ds_node_ids = (model.downstream_node_id(i) for i in node_ids)
 ds_node_ids = [i.to_list() if isinstance(i, pd.Series) else [i] for i in ds_node_ids]
 ds_node_ids = pd.Series(ds_node_ids, index=node_ids).explode()
 
-ds_levels = pd.concat([static_data.basin, static_data.outlet], ignore_index=True).set_index("node_id")[
-    "min_upstream_level"
-]
-ds_levels.dropna(inplace=True)
-ds_levels = ds_levels[ds_levels.index.isin(ds_node_ids)]
-ds_node_ids = ds_node_ids[ds_node_ids.isin(ds_levels.index)]
+ds_levels = (
+    pd.concat([static_data.basin, static_data.outlet], ignore_index=True)
+    .set_index("node_id")["min_upstream_level"]
+    .dropna()
+    .groupby(level=0)
+    .min()
+)
 
-levels = ds_node_ids.apply(lambda x: ds_levels[x])
-streefpeil = levels.groupby(levels.index).min()
+streefpeil = ds_node_ids.map(ds_levels).dropna().groupby(level=0).min()
 streefpeil.name = "streefpeil"
 streefpeil.index.name = "node_id"
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
@@ -224,6 +228,19 @@ profielid = pd.Series(profile_ids, index=pd.Index(node_ids, name="node_id"), nam
 static_data.add_series(node_type="Basin", series=profielid, fill_na=True)
 streefpeil = pd.Series(levels, index=pd.Index(node_ids, name="node_id"), name="streefpeil")
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
+
+# Handmatige correcties streefpeilen:
+forced_levels = {
+    2495: 31.0,  # Benedenstrooms stuw Katsberg
+    1413: 30.13,  # Benedenstrooms Grenssloot op Moostdijk en AVL Dorperpeel
+    1861: 30.75,  # Bovenstrooms gemaal Helenaveen
+    1553: 30.75,
+    1995: 30.75,
+    2492: 30.75,
+}
+
+mask = static_data.basin["node_id"].isin(forced_levels.keys())
+static_data.basin.loc[mask, "streefpeil"] = static_data.basin.loc[mask, "node_id"].map(forced_levels)
 
 # # update model basin-data
 model.basin.area.df.set_index("node_id", inplace=True)
@@ -255,6 +272,7 @@ assign = AssignAuthorities(
         111: "Buitenland",
         131: "Buitenland",
         132: "AaenMaas",
+        1652: "DeDommel",
     },
 )
 model = assign.assign_authorities()

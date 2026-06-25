@@ -2,7 +2,6 @@ project:
   type: website
   resources:
     - CNAME
-
 website:
   title: "Ribasim-NL"
   navbar:
@@ -11,6 +10,8 @@ website:
       - cloudstorage.qmd
       - text: "Workflows"
         file: workflow/main-watersystem.qmd
+      - text: "Watersystems"
+        file: watersystems/main.qmd
     right:
       - text: "Contributing"
         file: dev/index.qmd
@@ -18,20 +19,45 @@ website:
         href: https://github.com/Deltares/Ribasim-NL
         aria-label: GitHub
   sidebar:
+    - title: "Contributing"
+      contents:
+        - dev/index.qmd
+        - dev/dvc.qmd
+        - dev/type-checking.qmd
+        - dev/slurm.qmd
     - title: "Workflows"
       contents:
         - workflow/main-watersystem.qmd
-        - workflow/watersystem.qmd
         - workflow/level-controlled.qmd
         - workflow/gravity-controlled.qmd
+        - workflow/scale-outlets-pumps.qmd
+        - workflow/split-basins.qmd
         - workflow/couple.qmd
-
+        - workflow/profile-generation.qmd
+    - title: "Watersystems"
+      contents:
+        - watersystems/main.qmd
+        - watersystems/AaenMaas.qmd
+        - watersystems/BrabantseDelta.qmd
+        - watersystems/DeDommel.qmd
+        - watersystems/DrentsOverijsselseDelta.qmd
+        - watersystems/HunzeenAas.qmd
+        - watersystems/Limburg.qmd
+        - watersystems/Noorderzijlvest.qmd
+        - watersystems/RijnenIJssel.qmd
+        - watersystems/StichtseRijnlanden.qmd
+        - watersystems/ValleienVeluwe.qmd
+        - watersystems/Vechtstromen.qmd
 format:
   html:
     theme: cosmo
     css: styles.css
     toc: true
-
+lightbox:
+  match: auto
+  effect: zoom
+  desc-position: bottom
+  css-class: "fullscreen-lightbox"
 quartodoc:
   style: pkgdown
   dir: reference

@@ -1,6 +1,7 @@
 import logging
 import re
 import shutil
+import time
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -15,6 +16,12 @@ logger = logging.getLogger(__name__)
 RIBASIM_NL_CLOUD_USER = "nhi_api"
 WEBDAV_URL = "https://deltares.thegood.cloud/remote.php/dav"
 BASE_URL = rf"{WEBDAV_URL}/files/{RIBASIM_NL_CLOUD_USER}/Ribasim modeldata"
+
+# Download robustness: WebDAV server drops large/concurrent transfers
+# (ChunkedEncodingError / IncompleteRead / 503). Retry with backoff.
+DOWNLOAD_MAX_RETRIES = 5
+DOWNLOAD_BACKOFF_SECONDS = 5
+DOWNLOAD_CHUNK_SIZE = 8 * 1024 * 1024  # 8 MiB
 
 WATER_AUTHORITIES = [
     "AaenMaas",
@@ -42,11 +49,6 @@ WATER_AUTHORITIES = [
 ]
 
 HIDDEN_DIRS = ["D-HYDRO modeldata"]  # somehow this dir-name still exists :-(
-
-
-def is_dir(item: str) -> bool:
-    """Check if path suggests a directory (even if it doesn't exist yet)"""
-    return Path(item).suffix == ""
 
 
 @dataclass
@@ -85,7 +87,7 @@ class CloudStorage:
         if self.password is None:
             raise ValueError("""'password' is None. Provide it or set environment variable RIBASIM_NL_CLOUD_PASS.""")
         # check if we have correct credentials
-        response = requests.get(self.url, auth=self.auth)
+        response = requests.get(self.url, auth=self.auth, timeout=300)
         if response.ok:
             logger.info("valid credentials")
         else:
@@ -138,37 +140,59 @@ class CloudStorage:
         return Path(file_path).relative_to(self.data_dir)
 
     def joinurl(self, *args: str) -> str:
-        if args:
-            return f"{self.url}/{'/'.join(args)}"
-        else:
-            return self.url
+        return "/".join((self.url, *args))
 
     def joinpath(self, *args: str) -> Path:
         return self.data_dir.joinpath(*args)
 
-    def upload_file(self, file_path: Path) -> None:
+    def upload_file(self, file_path: str | Path) -> None:
         # get url
         url = self.file_url(file_path)
 
         # read file and upload
-        with open(file_path, "rb") as f:
-            r = requests.put(url, data=f, auth=self.auth)
+        with Path(file_path).open("rb") as f:
+            r = requests.put(url, data=f, auth=self.auth, timeout=300)
         r.raise_for_status()
 
     def download_file(self, file_url: str) -> None:
         # get local file-path
         file_path = self.file_path(file_url)
 
-        # download file
-        r = requests.get(file_url, auth=self.auth)
-        r.raise_for_status()
-
         # make directory
         file_path.parent.mkdir(exist_ok=True, parents=True)
 
-        # write file
-        with open(file_path, "wb") as f:
-            f.write(r.content)
+        # download to a temp file and stream to disk; retry on transient errors
+        # (connection drops, IncompleteRead, 5xx) which the WebDAV server emits
+        # under concurrent/large transfers.
+        tmp_path = file_path.with_name(file_path.name + ".part")
+        last_exc: Exception | None = None
+        for attempt in range(1, DOWNLOAD_MAX_RETRIES + 1):
+            try:
+                with requests.get(file_url, auth=self.auth, timeout=300, stream=True) as r:
+                    r.raise_for_status()
+                    with tmp_path.open("wb") as f:
+                        for chunk in r.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
+                            if chunk:
+                                f.write(chunk)
+                # atomically move completed download into place
+                tmp_path.replace(file_path)
+                return
+            except (requests.exceptions.RequestException, OSError) as e:
+                last_exc = e
+                tmp_path.unlink(missing_ok=True)
+                if attempt < DOWNLOAD_MAX_RETRIES:
+                    wait = DOWNLOAD_BACKOFF_SECONDS * 2 ** (attempt - 1)
+                    logger.warning(
+                        "download_file failed (attempt %d/%d) for %s: %s; retrying in %ds",
+                        attempt,
+                        DOWNLOAD_MAX_RETRIES,
+                        file_url,
+                        e,
+                        wait,
+                    )
+                    time.sleep(wait)
+
+        raise RuntimeError(f"download_file failed after {DOWNLOAD_MAX_RETRIES} attempts for {file_url}") from last_exc
 
     def content(self, url: str) -> list[str]:
         """List all content in a directory
@@ -188,31 +212,52 @@ class CloudStorage:
         list[str]
             List of all content directories in a specified path
         """
+        items, _ = self._propfind(url)
+        return items
+
+    def _propfind(self, url: str) -> tuple[list[str], set[str]]:
+        """PROPFIND on a WebDAV URL, returning all item names and the subset that are directories.
+
+        Returns
+        -------
+        tuple[list[str], set[str]]
+            (all item names, set of names that are directories/collections)
+        """
         headers = {"Depth": "1", "Content-Type": "application/xml"}
 
         xml_data = """
         <D:propfind xmlns:D="DAV:">
         <D:prop>
             <D:displayname />
+            <D:resourcetype />
         </D:prop>
         </D:propfind>
         """
 
-        response = requests.request("PROPFIND", url, headers=headers, auth=self.auth, data=xml_data)
+        response = requests.request("PROPFIND", url, headers=headers, auth=self.auth, data=xml_data, timeout=300)
 
         if response.status_code != 207:
             response.raise_for_status()
 
-        xml_tree = ElementTree.fromstring(response.text)
+        xml_tree = ElementTree.fromstring(response.text)  # noqa: S314
         namespaces = {"D": "DAV:"}
         excluded_content = ["..", Path(url).name, *HIDDEN_DIRS]
-        content = [
-            elem.text
-            for elem in xml_tree.findall(".//D:displayname", namespaces=namespaces)
-            if elem.text is not None and elem.text not in excluded_content  # Exclude the parent directory
-        ]
 
-        return content
+        items: list[str] = []
+        dir_names: set[str] = set()
+
+        for resp in xml_tree.findall(".//D:response", namespaces):
+            name_elem = resp.find(".//D:displayname", namespaces)
+            if name_elem is None or name_elem.text is None or name_elem.text in excluded_content:
+                continue
+            name = name_elem.text
+            items.append(name)
+            # A <D:collection/> child inside <D:resourcetype> means it's a directory
+            resourcetype = resp.find(".//D:resourcetype", namespaces)
+            if resourcetype is not None and resourcetype.find("D:collection", namespaces) is not None:
+                dir_names.add(name)
+
+        return items, dir_names
 
     def dirs(self, *args: str) -> list[str]:
         """List sub-directories in a directory
@@ -232,9 +277,9 @@ class CloudStorage:
         list[str]
             List of directories in a specified path
         """
-        content = self.content(self.joinurl(*args))
+        _, dir_names = self._propfind(self.joinurl(*args))
 
-        return [item for item in content if is_dir(item)]
+        return list(dir_names)
 
     def create_dir(self, *args: str) -> None:
         if args:
@@ -246,12 +291,13 @@ class CloudStorage:
                     "Depth": "0",
                 },
                 auth=self.auth,
+                timeout=300,
             )
 
-    def download_content(self, url: str, overwrite: bool = False) -> None:
+    def download_content(self, url: str, overwrite: bool = settings.overwrite_files_from_cloud) -> None:
         """Download content of a directory recursively."""
         # get all content (files and directories from url)
-        content = self.content(url)
+        content, dir_names = self._propfind(url)
 
         # iterate over content
         for item in content:
@@ -259,7 +305,7 @@ class CloudStorage:
             relative_url = self.relative_url(item_url)
             path = self.data_dir.joinpath(relative_url)
             # if it is a directory we (re)create it (if it doesn't exist)
-            if is_dir(item):
+            if item in dir_names:
                 if overwrite and path.exists():  # remove if we want to overwrite
                     shutil.rmtree(path)
                 logger.info(f"making dir {path}")
@@ -308,8 +354,10 @@ class CloudStorage:
         url = self.joinurl(authority, "verwerkt")
         self.download_content(url, overwrite=overwrite)
 
-    def download_basisgegevens(self, bronnen: list[str] = [], overwrite: bool = True) -> None:
+    def download_basisgegevens(self, bronnen: list[str] | None = None, overwrite: bool = True) -> None:
         """Download sources in the folder 'Basisgegevens'"""
+        if bronnen is None:
+            bronnen = []
         source_data = self.source_data
         if not bronnen:
             bronnen = source_data
@@ -397,10 +445,7 @@ class CloudStorage:
             if (i.model == model) and (i.year == today.year) and (i.month == today.month)
         ]
 
-        if monthly_revisions:
-            revision = max(monthly_revisions) + 1
-        else:
-            revision = 0
+        revision = max(monthly_revisions) + 1 if monthly_revisions else 0
 
         # create local version_directory
         model_version_dir = model_dir.parent.joinpath(f"{model}_{today.year}_{today.month}_{revision}")
@@ -450,24 +495,29 @@ class CloudStorage:
 
         return ModelVersion(model, today.year, today.month, revision)
 
-    def synchronize(self, filepaths: list[Path], check_on_remote: bool = True) -> None:
+    def synchronize(self, filepaths: list[Path], overwrite: bool = settings.overwrite_files_from_cloud) -> None:
         for path in filepaths:
             path = Path(path)
             url = self.joinurl(*path.relative_to(self.data_dir).parts)
             # check if file exists on remote, if not raise for status
-            if check_on_remote:
-                r = requests.head(url, auth=self.auth)
-                r.raise_for_status()
+            r = requests.head(url, auth=self.auth, timeout=300)
+            r.raise_for_status()
 
-            # check if file exists local, if not download
-            if not path.exists():
+            # check if file exists local, if not download (or force overwrite)
+            if overwrite or not path.exists():
                 print(f"download data for {path}")
 
-                if path.suffix == ".shp":  # with shapes we are to download the parent
-                    path = path.parent
-                    url = self.joinurl(*path.relative_to(self.data_dir).parts)
-
-                if self.content(url):
-                    self.download_content(url)
+                if path.suffix == ".shp":  # with shapes we download all files with the same stem
+                    stem = path.stem
+                    parent_url = self.joinurl(*path.parent.relative_to(self.data_dir).parts)
+                    siblings, _ = self._propfind(parent_url)
+                    for item in siblings:
+                        if Path(item).stem == stem:
+                            item_url = f"{parent_url}/{item}"
+                            item_path = path.parent / item
+                            if overwrite or not item_path.exists():
+                                self.download_file(item_url)
+                elif self.content(url):
+                    self.download_content(url, overwrite=overwrite)
                 else:
                     self.download_file(url)

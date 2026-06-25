@@ -3,6 +3,7 @@ import time
 
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl.check_basin_level import add_check_basin_level
+from ribasim_nl.parametrization.basin_tables import sync_min_upstream_levels_with_profile_bottoms
 
 from ribasim_nl import CloudStorage, Model
 
@@ -12,7 +13,7 @@ short_name = "dommel"
 
 run_model = False
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
 static_data_xlsx = parameters_dir / "static_data.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
@@ -20,9 +21,7 @@ qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
-# # you need the excel, but the model should be local-only by running 01_fix_model.py
-# cloud.synchronize(filepaths=[static_data_xlsx, profiles_gpkg], check_on_remote=False)
-# cloud.synchronize(filepaths=[ribasim_dir], check_on_remote=False)
+cloud.synchronize(filepaths=[static_data_xlsx, qlr_path])
 
 # %%
 
@@ -38,13 +37,27 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # %%
 
+# Fix basin_levels
+basin_level_overrides = [
+    ([1718], 12.38),
+]
+
+for node_ids, meta_streefpeil in basin_level_overrides:
+    mask = model.basin.area.df.node_id.isin(node_ids)
+    model.basin.area.df.loc[mask, "meta_streefpeil"] = meta_streefpeil
+
+# Herbereken afgeleide tabellen na handmatige streefpeil-overrides.
+model.basin.state.df = model.basin.area.df[["node_id", "meta_streefpeil"]].rename(columns={"meta_streefpeil": "level"})
+
 # %%
-model.manning_resistance.static.df.loc[:, "manning_n"] = 0.025
+
+model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
-model.write(ribasim_toml)
+sync_min_upstream_levels_with_profile_bottoms(model=model)
 add_check_basin_level(model=model)
+model.write(ribasim_toml)
 
 # %%
 

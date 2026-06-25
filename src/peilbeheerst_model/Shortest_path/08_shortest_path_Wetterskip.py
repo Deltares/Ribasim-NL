@@ -5,7 +5,6 @@
 # Code is based on: https://github.com/Deltares/Ribasim-NL/blob/1ad35931f49280fe223cbd9409e321953932a3a4/notebooks/ijsselmeermodel/netwerk.py#L55
 
 
-import os
 from pathlib import Path
 
 import fiona
@@ -16,11 +15,10 @@ import numpy as np
 import pandas as pd
 import shapely
 import tqdm.auto as tqdm
-from shapely.geometry import LineString, MultiLineString, Point
-from shapely.ops import split
+from shapely.geometry import LineString, Point
 from shapely.wkt import dumps
 
-from ribasim_nl import CloudStorage, settings
+from ribasim_nl import CloudStorage, geometry, settings
 
 cloud = CloudStorage()
 # ### Load Data
@@ -32,7 +30,7 @@ waterschap = "WetterskipFryslan"
 data_path = cloud.joinpath(waterschap, "verwerkt/Crossings/wetterskip_crossings_v06.gpkg")
 base_path = settings.ribasim_nl_data_dir
 output_path = f"{waterschap}/verwerkt/Data_shortest_path/Wetterskip_shortest_path.gpkg"
-output_path = os.path.join(base_path, output_path)  # add the base path
+output_path = Path(base_path) / output_path  # add the base path
 
 # Load crossings file
 DATA = {L: gpd.read_file(data_path, layer=L) for L in fiona.listlayers(data_path)}
@@ -53,18 +51,6 @@ gdf_cross = (
 # 3. explode nodes functions
 
 
-def split_line_at_point(line, point):
-    buff = point.buffer(1e-4)  # Small buffer around the point
-    split_result = split(line, buff)
-    if len(split_result.geoms) in [2, 3]:
-        # Assume first and last segments are the result, ignore tiny middle segment if exists
-        result = MultiLineString([split_result.geoms[0], split_result.geoms[-1]])
-    else:
-        # Return the original line as a MultiLineString for consistency if no split occurred
-        result = MultiLineString([line])
-    return result
-
-
 def split_lines_at_intersections(gdf_object):
     split_lines = []
     gdf_object.drop(columns=["geometry"])  # Preserve non-geometry attributes
@@ -77,14 +63,14 @@ def split_lines_at_intersections(gdf_object):
         possible_matches = gdf_object.iloc[possible_matches_index].drop(idx)  # Exclude self
         precise_matches = possible_matches[possible_matches.intersects(row.geometry)]
 
-        for match_idx, match in precise_matches.iterrows():
+        for _match_idx, match in precise_matches.iterrows():
             if row.geometry.intersects(match.geometry):
                 intersection = row.geometry.intersection(match.geometry)
                 if isinstance(intersection, Point):
                     # Split the current line at the intersection point
                     try:
-                        split_result = split_line_at_point(row.geometry, intersection)
-                        for geom in split_result.geoms:
+                        split_result = geometry.split_line(row.geometry, intersection, tolerance=1e-4)
+                        for geom in split_result:
                             new_row = row.copy()
                             new_row.geometry = geom
                             split_lines.append(new_row)
@@ -204,7 +190,7 @@ def connect_linestrings_within_distance(gdf, max_distance=4):
 
 # # Shortest Path
 
-gdf_crossings_out = []
+gdf_crossings_out: list[gpd.GeoDataFrame] = []
 gdf_rhws = gdf_rhws.reset_index(drop=True)
 
 # Loop RHWS polygons
@@ -262,7 +248,7 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
         # Use the unique points as nodes in networkx
         nodes_gdf.insert(0, "node_id", -1)
         node_id = 1
-        for geom, group in nodes_gdf.groupby("geometry"):
+        for _geom, group in nodes_gdf.groupby("geometry"):
             nodes_gdf.loc[group.index, "node_id"] = node_id
             node_id += 1
 
@@ -345,9 +331,10 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
                 shortest_path = nx.shortest_path(
                     graph, source=startpoint, target=endpoint, weight="length", method="dijkstra"
                 )
-                links = []
-                for i in range(0, len(shortest_path) - 1):
-                    links.append(graph.get_link_data(shortest_path[i], shortest_path[i + 1])["geometry"])
+                links = [
+                    graph.get_link_data(shortest_path[i], shortest_path[i + 1])["geometry"]
+                    for i in range(len(shortest_path) - 1)
+                ]
                 gdf_cross_single.loc[gdf_cross_single.node_id == startpoint, "shortest_path"] = shapely.ops.linemerge(
                     links
                 )
@@ -416,9 +403,9 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
         gdf_cross_single.plot(ax=ax, color="orange", label="crossings")
         plt_paths.plot(ax=ax, color="purple", label="shortest paths")
         ax.legend()
-        path_figs = os.path.join(
-            settings.ribasim_nl_data_dir,
-            "WetterskipFryslan/verwerkt/Data_shortest_path/Figures/shortest_path_{waterschap}_RHWS_{index}_new",
+        path_figs = (
+            settings.ribasim_nl_data_dir
+            / "WetterskipFryslan/verwerkt/Data_shortest_path/Figures/shortest_path_{waterschap}_RHWS_{index}_new"
         )
         plt.savefig(
             path_figs,
@@ -448,9 +435,9 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
 
         for key, value in objects.items():
             # For each GeoDataFrame, save it to a layer in the GeoPackage
-            path_gpkg = os.path.join(
-                settings.ribasim_nl_data_dir,
-                "WetterskipFryslan/Data_shortest_path/Geopackages/{waterschap}_unconnected_{index}.gpkg",
+            path_gpkg = (
+                settings.ribasim_nl_data_dir
+                / "WetterskipFryslan/Data_shortest_path/Geopackages/{waterschap}_unconnected_{index}.gpkg"
             )
             value.to_file(
                 # f"./shortest_path/Geopackages/{waterschap}_unconnected_{index}.gpkg", layer=key, driver="GPKG"

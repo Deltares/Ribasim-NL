@@ -51,7 +51,7 @@ gdf_buffer = gpd.read_file(buffer_path)
 
 
 # check primary key
-WSRL["peilgebied"]["globalid"].is_unique
+assert WSRL["peilgebied"]["globalid"].is_unique
 
 
 # ## Select waterschap boundaries and clip hws layer
@@ -86,7 +86,7 @@ print(f"Number of overlapping shapes with filter: {len(overlap_ids)}")
 # Add occurence to geodataframe
 peilgebieden_cat = []
 
-for index, row in WSRL["peilgebied"].iterrows():
+for _index, row in WSRL["peilgebied"].iterrows():
     if row.CODE == "LNG014-P":
         print("yes")
         peilgebieden_cat.append(1)
@@ -132,7 +132,7 @@ codes = []
 globalids = []
 nen3610ids = []
 
-for index, row in WSRL["peilgebied"].iterrows():
+for _index, row in WSRL["peilgebied"].iterrows():
     codes.append(f"dummy_code_peilgebied_{row.globalid}")
     globalids.append(f"dummy_globalid_peilgebied_{row.globalid}")
     nen3610ids.append(f"dummy_nen3610id_peilgebied_{row.globalid}")
@@ -144,7 +144,7 @@ WSRL["peilgebied"]["nen3610id"] = nen3610ids
 WSRL["streefpeil"]["globalid"] = globalids
 
 
-WSRL["peilgebied"]["globalid"].is_unique
+assert WSRL["peilgebied"]["globalid"].is_unique  # pyrefly: ignore[missing-attribute]
 
 
 # ## Add nhws to ['peilgebied','streefpeil']
@@ -171,7 +171,7 @@ WSRL["streefpeil"] = pd.concat([streefpeil_hws, WSRL["streefpeil"]])
 WSRL["streefpeil"] = gpd.GeoDataFrame(WSRL["streefpeil"])
 
 
-WSRL["peilgebied"]["globalid"].is_unique
+assert WSRL["peilgebied"]["globalid"].is_unique
 
 
 # ### Create buffer layer that ensures spatial match between peilgebied and hws layers based on the buffer layer
@@ -214,6 +214,6 @@ WSRL["peilgebied"]["peilgebied_cat"].unique()
 # ## Store output
 
 
-for key in WSRL.keys():
+for key in WSRL:
     print(key)
     WSRL[str(key)].to_file(f"{output_folder}/{waterschap}.gpkg", layer=str(key), driver="GPKG")

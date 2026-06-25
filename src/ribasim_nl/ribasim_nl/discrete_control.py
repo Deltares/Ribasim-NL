@@ -16,6 +16,7 @@ def condition(
     df.loc[:, ["node_id"]] = node_id
     df.loc[:, ["listen_feature_id"]] = listen_feature_id
     df.loc[:, ["variable"]] = variable
+    assert name is not None
     df.loc[:, ["meta_beschrijving"]] = control_state(name, len(df))
     return df
 
@@ -27,6 +28,7 @@ def logic(
 ) -> DataFrame:
     df = DataFrame({"truth_state": ["".join(["T"] * i + ["F"] * length)[0:length] for i in range(1, length + 1)]})
     df.loc[:, ["node_id"]] = node_id
+    assert name is not None
     df.loc[:, ["control_state"]] = control_state(name, len(df))
     return df
 

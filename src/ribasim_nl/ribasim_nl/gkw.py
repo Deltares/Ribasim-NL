@@ -18,7 +18,7 @@ NAMESPACES = {"atom": "http://www.w3.org/2005/Atom", "georss": "http://www.geors
 GKW_ROOT_PATH = cloud.joinpath("Basisgegevens/GKW")
 
 
-def download_geopackage(url: str, save_dir: Path):
+def download_geopackage(url: str, save_dir: Path) -> None:
     """Download a geopackage from an url to a save_dir
 
     Args:
@@ -31,7 +31,7 @@ def download_geopackage(url: str, save_dir: Path):
             filepath = save_dir / Path(url).name
 
             # Make the GET request
-            response = requests.get(url, headers={"Accept": "application/geopackage+sqlite3"}, stream=True)
+            response = requests.get(url, headers={"Accept": "application/geopackage+sqlite3"}, stream=True, timeout=300)
 
             # Check if the response is successful
             if response.status_code == 200:
@@ -40,7 +40,7 @@ def download_geopackage(url: str, save_dir: Path):
                 # Check if the response is a Geopackage file
                 if "application/geopackage+sqlite3" in content_type:
                     # Save the file locally
-                    with open(filepath, "wb") as file:
+                    with filepath.open("wb") as file:
                         for chunk in response.iter_content(chunk_size=8192):
                             file.write(chunk)
                     print(f"Downloaded: {filepath}")
@@ -64,12 +64,15 @@ def download_from_pdok(force_update: bool = False, upload_to_cloud_storage: bool
     """
     # get atom-feed
     print(f"Downloading GKW-data from {PDOK_URL}")
-    response = requests.get(PDOK_URL)
+    response = requests.get(PDOK_URL, timeout=300)
     response.raise_for_status()
 
     # updated datetime and define gkw_source_dir
-    root = ET.fromstring(response.text)
-    updated = datetime.fromisoformat(root.find(".//atom:entry/atom:updated", NAMESPACES).text)
+    root = ET.fromstring(response.text)  # noqa: S314
+    updated_element = root.find(".//atom:entry/atom:updated", NAMESPACES)
+    assert updated_element is not None
+    assert updated_element.text is not None
+    updated = datetime.fromisoformat(updated_element.text)
     folder = updated.strftime("%Y%m%d")
     gkw_source_dir = GKW_ROOT_PATH / folder
 
@@ -100,9 +103,9 @@ def download_from_pdok(force_update: bool = False, upload_to_cloud_storage: bool
 
 def get_gkw_source_dir() -> Path | None:
     """Get latest gkw_source_data path if exists."""
-    dirs = [i for i in GKW_ROOT_PATH.glob("*") if i.is_dir]
+    dirs = [i for i in GKW_ROOT_PATH.glob("*") if i.is_dir()]
     if dirs:
-        return [i for i in GKW_ROOT_PATH.glob("*") if i.is_dir][-1]
+        return [i for i in GKW_ROOT_PATH.glob("*") if i.is_dir()][-1]
     else:
         print("No GKW-data local, download latest using 'download_from_cloud()' or 'download_from_pdok()'")
         return None
@@ -139,6 +142,7 @@ def get_data_from_gkw(layers: list[str], authority: str | None = None):
 
     # reader for geopackages
     dfs = []
+    assert authority is not None
     nen3610id = f"NL.WBHCODE.{waterbeheercode[authority]}"
     for layer in layers:
         filepath = gkw_source_dir / f"{layer}.gpkg"

@@ -12,5 +12,9 @@
             "notebook.source.organizeImports": "explicit"
         }
     },
+    "python.analysis.typeCheckingMode": "off",
+    "autoDocstring.docstringFormat": "numpy",
+    "python-envs.defaultEnvManager": "renan-r-santos.pixi-code:pixi",
+    "python-envs.defaultPackageManager": "renan-r-santos.pixi-code:pixi",
     "python-envs.pythonProjects": []
 }

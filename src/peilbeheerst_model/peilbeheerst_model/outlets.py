@@ -1,12 +1,15 @@
-import os
 import subprocess
 import warnings
+from pathlib import Path
 
 import pandas as pd
+import xarray as xr
 import yaml
-from ribasim import Model, Node
+from ribasim import Node
 from ribasim.nodes import basin, discrete_control, level_boundary, outlet, pump
 from shapely.geometry import Point
+
+from ribasim_nl import Model
 
 warnings.filterwarnings("ignore")
 
@@ -19,11 +22,11 @@ class case1:
     after which the water is pumped through a Pump node to the boezem again.
     """
 
-    def __init__(self, case_example_name):
+    def __init__(self, case_example_name) -> None:
         """Initialize the class. Convert the forcing from mm/day to m/s."""
-        case_example_path = os.path.join("../../../../Outlet_tests/json", case_example_name + ".json")
+        case_example_path = Path("../../../../Outlet_tests/json") / (case_example_name + ".json")
 
-        with open(case_example_path) as file:
+        with case_example_path.open() as file:
             characteristics = yaml.safe_load(file)
 
         self.characteristics = characteristics
@@ -41,7 +44,7 @@ class case1:
             self.characteristics["precipitation"] / 1000 / 3600 / 24
         )  # convert from mm/day to m/s
 
-    def create_empty_model(self):
+    def create_empty_model(self) -> Model:
         """Create an empty Ribasim model."""
         model = Model(
             starttime=self.characteristics["starttime"],
@@ -224,7 +227,7 @@ class case1:
 
         return model
 
-    def store_model(self, model):
+    def store_model(self, model) -> None:
         """Plot and store the model."""
         # apply the settings for the solver
         model.solver.saveat = self.characteristics["saveat"]
@@ -237,32 +240,32 @@ class case1:
         #     self.characteristics["results_dir"], self.characteristics["case"], self.characteristics["example"]
         # )
         # create the directory where the model should be stored
-        if not os.path.exists(os.path.join(self.characteristics["results_dir"], self.characteristics["case"])):
-            os.makedirs(os.path.join(self.characteristics["results_dir"], self.characteristics["case"]))
+        results_case_dir = Path(self.characteristics["results_dir"]) / self.characteristics["case"]
+        if not results_case_dir.exists():
+            results_case_dir.mkdir(parents=True)
 
         # store the model
         model.write(
-            filepath=os.path.join(
-                self.characteristics["results_dir"],
-                self.characteristics["case"],
-                self.characteristics["example"],
-                "ribasim.toml",
-            )
+            filepath=Path(self.characteristics["results_dir"])
+            / self.characteristics["case"]
+            / self.characteristics["example"]
+            / "ribasim.toml",
         )
 
-    def run_model(self, model):
+    def run_model(self, model) -> None:
         """Run the created Ribasim model."""
+        toml_path = str(
+            Path(self.characteristics["results_dir"])
+            / self.characteristics["case"]
+            / self.characteristics["example"]
+            / "ribasim.toml"
+        )
         if self.characteristics["show_progress"]:
             # show progress of the Ribasim model
             subprocess.run(
                 [
                     "ribasim",
-                    os.path.join(
-                        self.characteristics["results_dir"],
-                        self.characteristics["case"],
-                        self.characteristics["example"],
-                        "ribasim.toml",
-                    ),
+                    toml_path,
                 ],
                 check=False,
             )
@@ -270,30 +273,27 @@ class case1:
             subprocess.run(
                 [
                     "ribasim",
-                    os.path.join(
-                        self.characteristics["results_dir"],
-                        self.characteristics["case"],
-                        self.characteristics["example"],
-                        "ribasim.toml",
-                    ),
+                    toml_path,
                 ],
                 check=False,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
 
-    def show_results(self, model):
+    def show_results(self, model) -> None:
         """Load and plot some results."""
         if self.characteristics["show_results"]:
             # load in the data
-            df_basin = pd.read_feather(
-                os.path.join(
-                    self.characteristics["results_dir"],
-                    self.characteristics["case"],
-                    self.characteristics["example"],
-                    "results",
-                    "basin.arrow",
+            df_basin = (
+                xr.open_dataset(
+                    Path(self.characteristics["results_dir"])
+                    / self.characteristics["case"]
+                    / self.characteristics["example"]
+                    / "results"
+                    / "basin.nc"
                 )
+                .to_dataframe()
+                .reset_index()
             )
 
             # plot the levels
@@ -329,11 +329,11 @@ class case2:
     In this case, a third peilgebied is added with logical flow direction from and to the boezem and other peilgebieden.
     """
 
-    def __init__(self, case_example_name, model):
+    def __init__(self, case_example_name, model) -> None:
         """Initialize the class. Convert the forcing from mm/day to m/s."""
-        case_example_path = os.path.join("../../../../Outlet_tests/json", case_example_name + ".json")
+        case_example_path = Path("../../../../Outlet_tests/json") / (case_example_name + ".json")
 
-        with open(case_example_path) as file:
+        with case_example_path.open() as file:
             characteristics = yaml.safe_load(file)
 
         # define the characteristics and the base model
@@ -509,7 +509,7 @@ class case2:
 
         return model
 
-    def store_model(self, model):
+    def store_model(self, model) -> None:
         """Plot and store the model."""
         # apply the settings for the solver
         model.solver.saveat = self.characteristics["saveat"]
@@ -522,32 +522,32 @@ class case2:
         #     self.characteristics["results_dir"], self.characteristics["case"], self.characteristics["example"]
         # )
         # create the directory where the model should be stored
-        if not os.path.exists(os.path.join(self.characteristics["results_dir"], self.characteristics["case"])):
-            os.makedirs(os.path.join(self.characteristics["results_dir"], self.characteristics["case"]))
+        results_case_dir = Path(self.characteristics["results_dir"]) / self.characteristics["case"]
+        if not results_case_dir.exists():
+            results_case_dir.mkdir(parents=True)
 
         # store the model
         model.write(
-            filepath=os.path.join(
-                self.characteristics["results_dir"],
-                self.characteristics["case"],
-                self.characteristics["example"],
-                "ribasim.toml",
-            )
+            filepath=Path(self.characteristics["results_dir"])
+            / self.characteristics["case"]
+            / self.characteristics["example"]
+            / "ribasim.toml",
         )
 
-    def run_model(self, model):
+    def run_model(self, model) -> None:
         """Run the created Ribasim model."""
+        toml_path = str(
+            Path(self.characteristics["results_dir"])
+            / self.characteristics["case"]
+            / self.characteristics["example"]
+            / "ribasim.toml"
+        )
         if self.characteristics["show_progress"]:
             # show progress of the Ribasim model
             subprocess.run(
                 [
                     "ribasim",
-                    os.path.join(
-                        self.characteristics["results_dir"],
-                        self.characteristics["case"],
-                        self.characteristics["example"],
-                        "ribasim.toml",
-                    ),
+                    toml_path,
                 ],
                 check=False,
             )
@@ -555,30 +555,27 @@ class case2:
             subprocess.run(
                 [
                     "ribasim",
-                    os.path.join(
-                        self.characteristics["results_dir"],
-                        self.characteristics["case"],
-                        self.characteristics["example"],
-                        "ribasim.toml",
-                    ),
+                    toml_path,
                 ],
                 check=False,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
 
-    def show_results(self, model):
+    def show_results(self, model) -> None:
         """Load and plot some results."""
         if self.characteristics["show_results"]:
             # load in the data
-            df_basin = pd.read_feather(
-                os.path.join(
-                    self.characteristics["results_dir"],
-                    self.characteristics["case"],
-                    self.characteristics["example"],
-                    "results",
-                    "basin.arrow",
+            df_basin = (
+                xr.open_dataset(
+                    Path(self.characteristics["results_dir"])
+                    / self.characteristics["case"]
+                    / self.characteristics["example"]
+                    / "results"
+                    / "basin.nc"
                 )
+                .to_dataframe()
+                .reset_index()
             )
 
             # plot the levels

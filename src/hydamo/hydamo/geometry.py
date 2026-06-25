@@ -26,7 +26,7 @@ def possibly_intersecting(dataframebounds, geometry, buffer=0):
     return idx
 
 
-def find_nearest_branch(branches, geometries, method="overall", maxdist=5):
+def find_nearest_branch(branches, geometries, method="overall", maxdist=5) -> None:
     """
     Determine nearest branch for each geometry.
 
@@ -96,22 +96,17 @@ def find_nearest_branch(branches, geometries, method="overall", maxdist=5):
                 crds = geometry.geometry.coords[:]
                 dist = (
                     selection["geometry"]
-                    .apply(lambda x: max(x.distance(Point(*crds[0])), x.distance(Point(*crds[-1]))))
+                    .apply(lambda x: max(x.distance(Point(*crds[0])), x.distance(Point(*crds[-1]))))  # noqa: B023
                     .astype(float)
                 )
-                # dist = (
-                #     selection.distance(Point(*crds[0]))
-                #     + selection.distance(Point(*crds[-1]))
-                # ) * 0.5
+            else:
+                raise NotImplementedError(f'Method "{method}" not implemented.')
 
             # Determine nearest
             if dist.min() < maxdist:
                 branchidxmin = dist.idxmin()
                 geometries.loc[geometry.Index, "branch_id"] = dist.idxmin()
-                if isinstance(geometry.geometry, Point):
-                    geo = geometry.geometry
-                else:
-                    geo = geometry.geometry.centroid
+                geo = geometry.geometry if isinstance(geometry.geometry, Point) else geometry.geometry.centroid
 
                 # Calculate offset
                 branchgeo = branches.loc[branchidxmin, "geometry"]

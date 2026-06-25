@@ -3,10 +3,10 @@
 import geopandas as gpd
 import pandas as pd
 from ribasim import Node
-from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
-from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim.nodes import basin, level_boundary, outlet
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
+from shapely.geometry import Point
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -16,7 +16,7 @@ cloud = CloudStorage()
 
 authority = "Limburg"
 name = "limburg"
-run_model = False
+run_model = True
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
@@ -37,15 +37,14 @@ basin_node_edits_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer=
 rename_basin_area_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="rename_basin_area")
 add_basin_area_gdf = gpd.read_file(model_edits_gpkg, layer="add_basin_area")
 connect_basins_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="connect_basins")
-reverse_link_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="reverse_edge")
+reverse_link_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="reverse_link")
 add_basin_outlet_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="add_basin_outlet")
 remove_node_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="remove_node")
-update_node_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="update_node")
-merge_basins_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="merge_basins")
+# update_node_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="update_node")
+# merge_basins_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="merge_basins")
 
 
 # %% some stuff we'll need again
-manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
 level_data = level_boundary.Static(level=[0])
 
 basin_data = [
@@ -68,7 +67,7 @@ outlet_data = outlet.Static(flow_rate=[100])
 # Verwijderen link met 0m lengte
 model.remove_node(2434, remove_links=True)
 model.remove_node(1308, remove_links=True)
-model.merge_basins(basin_id=2396, to_basin_id=1669, are_connected=False)
+model.merge_basins(node_id=2396, to_node_id=1669, are_connected=False)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426151899
 
@@ -80,7 +79,7 @@ outlet_node = model.outlet.add(Node(geometry=geometry.interpolate(271)), tables=
 model.redirect_link(link_id=2202, from_node_id=outlet_node.node_id)
 model.link.add(basin_node, outlet_node)
 
-for fid, link_id, boundary_node_id in ((2054, 2244, 63), (9794, 2295, 103), (9260, 2297, 105), (3307, 2305, 113)):
+for fid, link_id, _boundary_node_id in ((2054, 2244, 63), (9794, 2295, 103), (9260, 2297, 105), (3307, 2305, 113)):
     kdu = duiker_gdf.loc[fid]
     basin_node = model.basin.add(
         Node(geometry=model.link.df.loc[link_id, "geometry"].boundary.geoms[0]), tables=basin_data
@@ -100,7 +99,7 @@ for fid, link_id, boundary_node_id in ((2054, 2244, 63), (9794, 2295, 103), (926
 for node_id in [276, 2003, 990, 2395, 989]:
     model.remove_node(node_id, remove_links=True)
 
-basin_node = model.basin.add(Node(geometry=model.link.df.at[2257, "geometry"].boundary.geoms[1]))
+basin_node = model.basin.add(Node(geometry=model.link.df.at[2257, "geometry"].boundary.geoms[1]), tables=basin_data)
 outlet_node = model.outlet.add(
     Node(geometry=hydroobject_gdf.at[2099, "geometry"].interpolate(0.9, normalized=True)), tables=[outlet_data]
 )
@@ -122,7 +121,7 @@ model.link.add(outlet_node, model.basin[1452])
 # Corrigeren Panheelsebeek
 model.remove_node(node_id=940, remove_links=True)
 model.reverse_link(link_id=211)
-model.merge_basins(basin_id=2465, to_basin_id=1340, are_connected=False)
+model.merge_basins(node_id=2465, to_node_id=1340, are_connected=False)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426443778
 
@@ -266,11 +265,8 @@ for row in add_basin_area_gdf.itertuples():
 # merge basins
 selection_df = basin_node_edits_gdf[basin_node_edits_gdf["to_node_id"].notna()]
 for row in selection_df.itertuples():
-    if pd.isna(row.connected):
-        are_connected = True
-    else:
-        are_connected = row.connected
-    model.merge_basins(basin_id=row.node_id, to_basin_id=row.to_node_id, are_connected=are_connected)
+    are_connected = True if pd.isna(row.connected) else row.connected
+    model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=are_connected)
 
 # %% reverse links
 
@@ -285,16 +281,16 @@ for row in remove_node_gdf.itertuples():
 
 
 # %% update nodes
-for row in update_node_gdf.itertuples():
-    model.update_node(
-        node_id=row.node_id,
-        node_type=row.node_type,
-        node_properties={"meta_code_waterbeheerder": row.meta_code_waterbeheerder},
-    )
+# for row in update_node_gdf.itertuples():
+#     model.update_node(
+#         node_id=row.node_id,
+#         node_type=row.node_type,
+#         node_properties={"meta_code_waterbeheerder": row.meta_code_waterbeheerder},
+#     )
 
 # %% merge_basins
-for row in merge_basins_gdf.itertuples():
-    model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=row.are_connected)
+# for row in merge_basins_gdf.itertuples():
+#     model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=row.are_connected)
 
 # %% change node_type
 
@@ -303,6 +299,127 @@ selection_df = basin_node_edits_gdf[basin_node_edits_gdf["change_node_type"].not
 for row in basin_node_edits_gdf[basin_node_edits_gdf["change_node_type"].notna()].itertuples():
     if row.change_node_type:
         model.update_node(node_id=row.node_id, node_type=row.change_node_type)
+# %% extrad fixes
+outlet_ids = [
+    456,
+    577,
+    1194,
+    905,
+    906,
+    1155,
+    1186,
+    852,
+    1056,
+    839,
+    1055,
+    1054,
+    842,
+    855,
+    857,
+    856,
+    1134,
+    936,
+    1133,
+    1057,
+    933,
+    899,
+    1139,
+    1140,
+    1141,
+    897,
+    898,
+    901,
+    902,
+    1138,
+    1195,
+    1207,
+    1107,
+    845,
+    1157,
+    1104,
+    1052,
+    823,
+    1154,
+    826,
+    1145,
+    829,
+    828,
+    830,
+    1053,
+    1204,
+    932,
+    834,
+    832,
+    1120,
+    1201,
+    1203,
+    1146,
+    817,
+    821,
+    1165,
+    217,
+    1166,
+    813,
+    818,
+    825,
+    1213,
+    1217,
+    1216,
+    1066,
+    1102,
+    1143,
+    1158,
+    1159,
+    1205,
+    1206,
+    1208,
+    1209,
+    1210,
+    1211,
+    1214,
+    1215,
+    805,
+    806,
+    819,
+    820,
+    827,
+    1243,
+    1244,
+    1179,
+    904,
+    1193,
+]
+
+for node_id in dict.fromkeys(outlet_ids):
+    model.update_node(node_id=node_id, node_type="Outlet")
+
+merge_pairs = [
+    (2334, 1763),
+    (2461, 2070),
+    (2070, 2360),
+    (1885, 2360),
+    (2205, 2144),
+    (1387, 1941),
+    (1983, 2053),
+    (2181, 1582),
+    (1575, 1809),
+    (1481, 2316),
+    (1972, 1697),
+    (2163, 1658),
+]
+
+for basin_id, to_basin_id in merge_pairs:
+    model.merge_basins(
+        node_id=basin_id,
+        to_node_id=to_basin_id,
+        are_connected=True,
+    )
+
+model.remove_node(1314, remove_links=True)
+model.remove_node(611, remove_links=True)
+model.remove_node(1118, remove_links=True)
+model.remove_node(1173, remove_links=True)
+model.remove_node(127, remove_links=True)  # remove FlowBoundary connected to LevelBoundary at Tungelroyse beek
 
 # %% remove nodes
 
@@ -352,6 +469,9 @@ for row in network_validator.link_incorrect_type_connectivity(
 
 model.remove_unassigned_basin_area()
 
+# %% verwijderen i.v.m koppelen met Aa en Maas
+model.remove_node(node_id=144, remove_links=True)
+model.remove_node(node_id=2484, remove_links=True)
 
 # %%
 # Sanitize node_table
@@ -365,9 +485,7 @@ for node_id in model.manning_resistance.node.df[
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # nodes we've added do not have category, we fill with hoofdwater
-for node_type in model.node_table().df.node_type.unique():
-    table = getattr(model, pascal_to_snake_case(node_type)).node
-    table.df.loc[table.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+model.node.df.loc[model.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
 
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = pd.concat(
@@ -395,33 +513,49 @@ sanitize_node_table(
 # %%
 
 # set buitenlandse aanvoer
-model.flow_boundary.node.df["meta_categorie"] = "buitenlandse aanvoer"
+model.node.df.loc[model.flow_boundary.node.df.index, "meta_categorie"] = "buitenlandse aanvoer"
 
 # %%
 
 # set meta_gestuwd in basins
-model.basin.node.df["meta_gestuwd"] = False
-model.outlet.node.df["meta_gestuwd"] = False
-model.pump.node.df["meta_gestuwd"] = True
+model.node.df.loc[model.node.df["node_type"] == "Basin", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Outlet", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Pump", "meta_gestuwd"] = True
 
-node_ids = (
-    model.node_table()
-    .df[
-        model.node_table().df["meta_code_waterbeheerder"].str.startswith("S_")
-        | model.node_table().df["meta_code_waterbeheerder"].str.startswith("P_")
-    ]
-    .index
-)
+node_ids = model.node.df[
+    model.node.df["meta_code_waterbeheerder"].str.startswith("S_")
+    | model.node.df["meta_code_waterbeheerder"].str.startswith("P_")
+].index
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_ids]
 
-basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
-model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+basin_node_ids = model.basin.node.df.index[model.basin.node.df.index.isin(upstream_node_ids)]
+model.node.df.loc[model.node.df.index.isin(basin_node_ids), "meta_gestuwd"] = True
 
-downstream_node_ids = (
-    pd.Series([model.downstream_node_id(i) for i in model.basin.node.df[basin_mask].index]).explode().to_numpy()
-)
-model.outlet.node.df.loc[model.outlet.node.df.index.isin(downstream_node_ids), "meta_gestuwd"] = True
+downstream_node_ids = pd.Series([model.downstream_node_id(i) for i in basin_node_ids]).explode().to_numpy()
+model.node.df.loc[
+    (model.node.df["node_type"] == "Outlet") & model.node.df.index.isin(downstream_node_ids),
+    "meta_gestuwd",
+] = True
+
+
+# %% merge issues
+model.move_node(node_id=1926, geometry=Point(196405.5, 396944.8))
+model.move_node(node_id=807, geometry=Point(196895.8, 397237.0))
+model.redirect_link(link_id=2165, from_node_id=810, to_node_id=1926)
+model.redirect_link(link_id=2164, from_node_id=809, to_node_id=1926)
+
+# %% performance bottlenecks
+model.merge_basins(node_id=1841, to_node_id=1406)
+model.remove_node(node_id=4516, remove_links=True)
+model.remove_node(node_id=4517, remove_links=True)
+
+# Zijtak sluit niet aan op Vlootbeek, verlegd en redirect
+model.move_node(node_id=1162, geometry=Point(193403.3, 352653.3))
+model.redirect_link(link_id=2208, to_node_id=1802)
+
+# Merge bij Niers
+model.merge_basins(node_id=2375, to_node_id=1917)
 
 
 #  %% write model

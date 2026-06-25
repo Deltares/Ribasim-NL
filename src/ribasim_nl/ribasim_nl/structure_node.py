@@ -3,7 +3,7 @@ from math import pi
 from ribasim.nodes import outlet, tabulated_rating_curve
 
 
-def calculate_area(width: float, shape: str, height: float | None = None):
+def calculate_area(width: float, shape: str, height: float | None = None) -> float:
     """Calculate flow-area of a cross-section"""
     # shapes that only use width
     if shape == "round":
@@ -12,9 +12,9 @@ def calculate_area(width: float, shape: str, height: float | None = None):
     # shapes that need height
     elif height is None:
         raise ValueError(f"for shape {shape} height cannot be None")
-    elif shape in ["rectangle"]:
+    elif shape == "rectangle":
         return width * height
-    elif shape in ["ellipse"]:
+    elif shape == "ellipse":
         return pi * (width / 2) * (height / 2)
 
     # shapes not implemented
@@ -40,7 +40,7 @@ def calculate_flow_rate(
     height: float | None = None,
     loss_coefficient: float = 0.63,
     shape: str = "rectangle",
-):
+) -> float:
     velocity = calculate_velocity(level=level, crest_level=crest_level)
     area = width * ((2 / 3) * (level - crest_level))
     if height is not None:
@@ -65,9 +65,11 @@ def get_tabulated_rating_curve(
     loss_coefficient: float = 0.63,
     height: float | None = None,
     shape: str = "rectangle",
-    levels: list[float] = [0, 0.05, 0.1, 0.25, 0.5],
+    levels: list[float] | None = None,
 ) -> tabulated_rating_curve.Static:
     """Return a tabulated-rating curve from structure-data"""
+    if levels is None:
+        levels = [0, 0.05, 0.1, 0.25, 0.5]
     level = [round(crest_level, 2) + i for i in levels]
     flow_rate = [
         calculate_flow_rate(

@@ -1,5 +1,5 @@
-import pathlib
 import warnings
+from pathlib import Path
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
@@ -320,7 +320,7 @@ nofilter["volgorde groep 4"] = {
 }
 
 
-testdir = pathlib.Path("tests/data")
+testdir = Path("tests/data")
 if not testdir.exists():
     testdir.mkdir()
 

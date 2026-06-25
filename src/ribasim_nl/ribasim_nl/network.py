@@ -76,10 +76,10 @@ class Network:
     _graph: DiGraph | None = field(default=None, repr=False)
     _graph_undirected: Graph | None = field(default=None, repr=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.validate_inputs()
 
-    def validate_inputs(self):
+    def validate_inputs(self) -> None:
         """Validate if inputs are good-to-go for generating a graph"""
         # check if name_col and id_col are valid values
         for col in [self.name_col, self.id_col]:
@@ -106,10 +106,7 @@ class Network:
 
         # snap line_boundaries
         if self.snap_line_boundaries:
-            if self.tolerance is not None:
-                tolerance = self.tolerance
-            else:
-                tolerance = 0.25
+            tolerance = self.tolerance if self.tolerance is not None else 0.25
             self.lines_gdf = snap_line_boundaries(self.lines_gdf, tolerance=tolerance)
 
     @classmethod
@@ -132,7 +129,7 @@ class Network:
         return result
 
     @property
-    def snap_tolerance(self):
+    def snap_tolerance(self) -> float:
         """Snap tolerance for shapely.ops.snap"""
         if self.tolerance:
             return self.tolerance
@@ -192,10 +189,7 @@ class Network:
                     link_def["name"] = getattr(row, self.name_col)
 
                 # select nodes of interest
-                if self.tolerance:
-                    bounds = box(*geometry.bounds).buffer(self.tolerance).bounds
-                else:
-                    bounds = row.geometry.bounds
+                bounds = box(*geometry.bounds).buffer(self.tolerance).bounds if self.tolerance else row.geometry.bounds  # pyrefly: ignore[missing-attribute]
                 nodes_select = nodes_gdf.iloc[nodes_gdf.sindex.intersection(bounds)]
                 if self.tolerance is None:
                     nodes_select = nodes_select[nodes_select.distance(geometry) == 0]
@@ -207,7 +201,7 @@ class Network:
                     continue
 
                 # More than one node. We order selected nodes by distance from start_node
-                nodes_select["distance"] = nodes_select.geometry.apply(lambda x: geometry.project(x))
+                nodes_select["distance"] = nodes_select.geometry.apply(lambda x: geometry.project(x))  # noqa: B023
                 nodes_select.sort_values("distance", inplace=True)
 
                 # More than one node. We select start_node and point-geometry
@@ -253,7 +247,7 @@ class Network:
         point_to=None,
         id=None,
         name=None,
-    ):
+    ) -> None:
         """Add a link (link) to the network"""
         if not ((point_from is None) | (point_to is None)):
             geometry = LineString([(point_from.x, point_from.y), *geometry.coords[1:-1], (point_to.x, point_to.y)])
@@ -268,7 +262,7 @@ class Network:
             geometry=geometry,
         )
 
-    def overlay(self, gdf):
+    def overlay(self, gdf) -> None:
         cols = ["node_id"] + [i for i in gdf.columns if i != "geometry"]
         gdf_overlay = gpd.overlay(self.nodes.reset_index(), gdf, how="intersection")[cols]
         gdf_overlay = gdf_overlay[~gdf_overlay.duplicated(subset="node_id")]
@@ -286,10 +280,10 @@ class Network:
     def downstream_nodes(self, node_id):
         return [n for n in traversal.bfs_tree(self._graph, node_id) if n != node_id]
 
-    def has_upstream_nodes(self, node_id):
+    def has_upstream_nodes(self, node_id) -> bool:
         return len(self.upstream_nodes(node_id)) > 0
 
-    def has_downstream_nodes(self, node_id):
+    def has_downstream_nodes(self, node_id) -> bool:
         return len(self.downstream_nodes(node_id)) > 0
 
     def find_upstream(self, node_id, attribute, max_iters=10, include_node_id=False):
@@ -298,10 +292,9 @@ class Network:
         value = None
         for idx in range(max_iters):
             node = self._graph.nodes[upstream_nodes[idx]]
-            if attribute in node.keys():
-                if pd.notna(node[attribute]):
-                    value = node[attribute]
-                    break
+            if attribute in node and pd.notna(node[attribute]):
+                value = node[attribute]
+                break
         if include_node_id:
             return value, upstream_nodes[idx]
         else:
@@ -313,10 +306,9 @@ class Network:
         value = None
         for idx in range(max_iters):
             node = self._graph.nodes[downstream_nodes[idx]]
-            if attribute in node.keys():
-                if pd.notna(node[attribute]):
-                    value = node[attribute]
-                    break
+            if attribute in node and pd.notna(node[attribute]):
+                value = node[attribute]
+                break
         if include_node_id:
             return value, downstream_nodes[idx]
         else:
@@ -338,13 +330,13 @@ class Network:
             first_node = self._graph.nodes[downstream_nodes[idx]]
             second_node = self._graph.nodes[downstream_nodes[idx + 1]]
 
-            if attribute in first_node.keys():
+            if attribute in first_node:
                 if pd.notna(first_node[attribute]):
                     first_value = first_node[attribute]
                 if stop_iter(first_value, second_value):
                     break
 
-            if attribute in second_node.keys():
+            if attribute in second_node:
                 if pd.notna(pd.notna(second_node[attribute])):
                     second_value = second_node[attribute]
                 if stop_iter(first_value, second_value):
@@ -376,13 +368,13 @@ class Network:
             us_node = self._graph.nodes[upstream_nodes[idx]]
             ds_node = self._graph.nodes[downstream_nodes[idx]]
 
-            if attribute in us_node.keys():
+            if attribute in us_node:
                 if pd.notna(us_node[attribute]):
                     upstream_value = us_node[attribute]
                 if stop_iter(upstream_value, downstream_value):
                     break
 
-            if attribute in ds_node.keys():
+            if attribute in ds_node:
                 if pd.notna(pd.notna(ds_node[attribute])):
                     downstream_value = ds_node[attribute]
                 if stop_iter(upstream_value, downstream_value):
@@ -398,7 +390,7 @@ class Network:
         point: Point,
         max_distance: float,
         align_distance: float,
-        node_types=["connection", "upstream_boundary", "downstream_boundary"],
+        node_types=None,
     ):
         """Move network nodes and links to new location
 
@@ -412,6 +404,8 @@ class Network:
             Distance over link, from node, where vertices will be removed to align adjacent links with Point
         """
         # take links and nodes as gdf
+        if node_types is None:
+            node_types = ["connection", "upstream_boundary", "downstream_boundary"]
         nodes_gdf = self.nodes
         links_gdf = self.links
 
@@ -492,11 +486,11 @@ class Network:
             # add links
             self.graph.remove_edge(node_from, node_to)
             split_result = split_line(link_geometry, node_geometry)
-            if isinstance(split_result, LineString):
+            if len(split_result) == 1:
                 if self.verbose:
                     logger.warning(f"Splitting link: {link_id} resulted in a single LineString)")
                 return None
-            us_geometry, ds_geometry = split_result.geoms
+            us_geometry, ds_geometry = split_result
             self.add_link(node_from, node_id, us_geometry)
             self.add_link(node_id, node_to, ds_geometry)
 
@@ -508,10 +502,10 @@ class Network:
                 )
             return None
 
-    def reset(self):
+    def reset(self) -> None:
         self._graph = None
 
-    def set_graph(self, graph: DiGraph):
+    def set_graph(self, graph: DiGraph) -> None:
         """Set graph directly"""
         self._graph = graph
 
@@ -525,7 +519,7 @@ class Network:
         else:
             return shortest_path(self.graph_undirected, node_from, node_to, weight=weight)
 
-    def get_links(self, node_from, node_to, directed=True, weight="length"):
+    def get_links(self, node_from, node_to, directed=True, weight="length") -> GeoDataFrame:
         # get path and links on path
         path = self.get_path(node_from, node_to, directed=directed, weight=weight)
         links_on_path = list(pairwise(path))
@@ -537,7 +531,7 @@ class Network:
             links_on_path = [i if i in idx else (i[1], i[0]) for i in links_on_path]
             return self.links.set_index(["node_from", "node_to"]).loc[links_on_path]
 
-    def subset_links(self, nodes_from, nodes_to):
+    def subset_links(self, nodes_from, nodes_to) -> pd.DataFrame:
         gdf = pd.concat([self.get_links(node_from, node_to) for node_from, node_to in product(nodes_from, nodes_to)])
         gdf = gdf.reset_index().drop_duplicates(["node_from", "node_to"]).reset_index()
         return gdf
@@ -550,8 +544,11 @@ class Network:
         directed=True,
         duplicated_nodes=True,
         weight="length",
-        ignore_links=[],
-    ):
+        ignore_links=None,
+    ) -> GeoDataFrame:
+        if ignore_links is None:
+            ignore_links = []
+
         def find_duplicates(lst, counts):
             counter = Counter(lst)
             duplicates = [item for item, count in counter.items() if count == counts]
@@ -564,10 +561,7 @@ class Network:
         ]
 
         node_ids = list(chain(*paths))
-        if duplicated_nodes:
-            node_ids = find_duplicates(node_ids, len(paths))
-        else:
-            node_ids = list(set(chain(*paths)))
+        node_ids = find_duplicates(node_ids, len(paths)) if duplicated_nodes else list(set(chain(*paths)))
         if not inclusive:
             exclude_nodes = nodes_from + nodes_to
             node_ids = [i for i in node_ids if i not in exclude_nodes]
@@ -592,7 +586,7 @@ class Network:
         if len(geometries) > 1:
             idx = geometries.length.sort_values(ascending=False).index[0]
             geometry = geometries.loc[idx].geometry
-        elif len(geometries) == 1:
+        else:
             geometry = geometries.iloc[0].geometry
 
         # invert geometry
@@ -601,13 +595,13 @@ class Network:
 
         return list(geometry.coords)
 
-    def path_to_line(self, path):
+    def path_to_line(self, path) -> LineString:
         coords = []
         for node_from, node_to in pairwise(path):
             coords += self._get_coordinates(node_from, node_to)
         return LineString(coords)
 
-    def add_weight(self, attribute, value, weight_value=1000000):
+    def add_weight(self, attribute, value, weight_value=1000000) -> None:
         nodes = self.nodes[self.nodes[attribute] == value].index
         links = self.links.set_index(["node_from", "node_to"], drop=False)[["node_from", "node_to", "length"]]
         mask = ~(links.node_from.isin(nodes) & links.node_to.isin(nodes))
@@ -618,7 +612,7 @@ class Network:
 
         self._graph_undirected = None
 
-    def get_line(self, node_from, node_to, directed=True, weight="length"):
+    def get_line(self, node_from, node_to, directed=True, weight="length") -> LineString:
         path = self.get_path(node_from, node_to, directed, weight)
 
         line = self.path_to_line(path)
@@ -657,7 +651,7 @@ class Network:
         nodes_gdf.index.name = "node_id"
         return nodes_gdf
 
-    def set_node_types(self):
+    def set_node_types(self) -> None:
         """Node types to seperate boundaries from connections"""
         from_nodes = {i[0] for i in self.graph.edges}
         to_nodes = {i[1] for i in self.graph.edges}
@@ -671,7 +665,7 @@ class Network:
             else:
                 self._graph.nodes[node_id]["type"] = "connection"
 
-    def to_file(self, path: str | Path):
+    def to_file(self, path: str | Path) -> None:
         """Write output to geopackage"""
         path = Path(path)
         if path.suffix.lower() != ".gpkg":

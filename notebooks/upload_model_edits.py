@@ -55,10 +55,7 @@ def get_model_dir(authority, post_fix):
     return cloud.joinpath(authority, "modellen", f"{authority}_{post_fix}")
 
 
-if len(SELECTION) == 0:
-    authorities = cloud.water_authorities
-else:
-    authorities = SELECTION
+authorities = cloud.water_authorities if len(SELECTION) == 0 else SELECTION
 
 for authority in authorities:
     model_edits_gpkg = cloud.joinpath(f"{authority}/verwerkt/model_edits.gpkg")

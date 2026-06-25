@@ -35,7 +35,7 @@ def add_demand(
         outlet_basin_node = inlet_basin_node
 
     # define demand_node
-    demand_node_id = model.node_table().df.index.max() + 1
+    demand_node_id = model.node.df.index.max() + 1
     demand_node = Node(demand_node_id, geometry=geometry, name=name, **kwargs)
     if min_level is None:
         min_level = model.basin.profile[inlet_basin_node.node_id].level.min() + 0.1
@@ -67,16 +67,16 @@ def add_demand(
     line = network.get_line(network_from_id, network_to_id)
 
     # Extend to demand_node
-    if not line.coords[-1] == inlet_geometry.coords:
+    if line.coords[-1] != inlet_geometry.coords:
         line = LineString(list(line.coords) + list(inlet_geometry.coords))
-    if not line.coords[-1] == geometry.coords:
+    if line.coords[-1] != geometry.coords:
         line = LineString(list(line.coords) + list(geometry.coords))
 
     # Link from inlet_basin to demand_node
     model.link.add(inlet_basin_node, model.user_demand[demand_node_id], geometry=line, name=name)
 
     if outlet_as_terminal:
-        terminal_node_id = model.node_table().df.index.max() + 1
+        terminal_node_id = model.node.df.index.max() + 1
         model.terminal.add(Node(terminal_node_id, outlet_geometry))
         terminal_node = model.terminal[terminal_node_id]
 
@@ -101,9 +101,9 @@ def add_demand(
         line = network.get_line(network_from_id, network_to_id)
 
         # Extend to demand_node
-        if not line.coords[0] == outlet_geometry.coords:
+        if line.coords[0] != outlet_geometry.coords:
             line = LineString(list(outlet_geometry.coords) + list(line.coords))
-        if not line.coords[0] == geometry.coords:
+        if line.coords[0] != geometry.coords:
             line = LineString(list(geometry.coords) + list(line.coords))
 
         # Link from demand_node to outlet_basin
@@ -288,7 +288,7 @@ for row in industrie_inlet_gdf[mask].itertuples():
 
 
 # %% add junction nodes
-model = junctionify(model)
+junctionify(model)
 
 # %% wegschrijven model
 ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_demand/hws.toml")

@@ -10,29 +10,31 @@ Author: Gijs G. Hendrickx
 import abc
 import os
 import typing
+from pathlib import Path
+from typing import Any
 
 import geopandas as gpd
 import pandas as pd
-import ribasim
-from mypy.types_utils import AnyType
+
+from ribasim_nl import Model
 
 
-def _load_model(model: str | ribasim.Model) -> ribasim.Model:
+def _load_model(model: str | Model) -> Model:
     """Load Ribasim model.
 
     :param model: file/path to Ribasim model
     :type model: str
 
     :return: Ribasim model
-    :rtype: ribasim.model.Model
+    :rtype: ribasim_nl.Model
     """
-    if isinstance(model, ribasim.Model):
+    if isinstance(model, Model):
         return model
 
     if not model.endswith(".toml"):
         model += f"{os.sep}ribasim.toml"
 
-    return ribasim.Model(filepath=model)
+    return Model.read(model)
 
 
 # TODO: Add the `special_load_geometry()`-function as a built-in feature via `kwargs`?
@@ -54,13 +56,13 @@ def _load_geometry(geometry: str | gpd.GeoDataFrame, **kwargs) -> gpd.GeoDataFra
     :rtype: geopandas.GeoDataFrame
     """
     if isinstance(geometry, gpd.GeoDataFrame):
-        return geometry.copy(deep=True)  # type: ignore
+        return geometry.copy(deep=True)
 
     if isinstance(geometry, str):
         if geometry.endswith(".shp"):
             data = gpd.read_file(geometry)
         elif geometry.endswith(".gpkg") or geometry.endswith(".gdb"):
-            layer: str = kwargs.get("layer")
+            layer: str | None = kwargs.get("layer")
             data = gpd.read_file(geometry, layer=layer)
         else:
             msg = f"File-type not implemented: {geometry}"
@@ -71,10 +73,26 @@ def _load_geometry(geometry: str | gpd.GeoDataFrame, **kwargs) -> gpd.GeoDataFra
     raise TypeError(msg)
 
 
+def _dissolve_geometry(geometry: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Dissolve 'aanvoergebieden' into a single geometry.
+
+    Overlapping/adjacent 'aanvoergebieden' polygons would otherwise cause a basin node to match
+    multiple polygons in the spatial join, which is not meaningful for the boolean 'aanvoer'-label.
+    Dissolving merges all polygons into one (multi)polygon so each basin node matches at most once.
+
+    :param geometry: geometry data of 'aanvoergebieden'
+    :type geometry: geopandas.GeoDataFrame
+
+    :return: dissolved geometry data
+    :rtype: geopandas.GeoDataFrame
+    """
+    return geometry.dissolve()[["geometry"]].reset_index(drop=True)
+
+
 class SupplyBasin:
     """Labelling of Ribasim's basin nodes as 'aanvoergebieden' based on geometry data."""
 
-    def __init__(self, model: str | ribasim.Model, geometry: str | gpd.GeoDataFrame, **kwargs):
+    def __init__(self, model: str | Model, geometry: str | gpd.GeoDataFrame, **kwargs) -> None:
         """Initiate object.
 
         :param model: Ribasim model, or file/path to a Ribasim model
@@ -82,12 +100,13 @@ class SupplyBasin:
         :param kwargs: optional arguments, potentially required to load/read geometry data
             see `._load_geometry()`
 
-        :type model: str, ribasim.Model
+        :type model: str, Model
         :type geometry: str, geopandas.GeoDataFrame
         :type kwargs: optional
         """
         self._model = _load_model(model)
-        self._geometry = _load_geometry(geometry, **kwargs)  # type: ignore
+        # overlapping/adjacent 'aanvoergebieden' are dissolved so each basin node matches at most once
+        self._geometry = _dissolve_geometry(_load_geometry(geometry, **kwargs))
 
     def __call__(self) -> pd.DataFrame:
         """Shortcut to execute labelling basins as 'aanvoergebied.'
@@ -127,7 +146,7 @@ class SupplyBasin:
         return basin_areas
 
     @property
-    def model(self) -> ribasim.Model:
+    def model(self) -> Model:
         """Ribasim model."""
         return self._model
 
@@ -232,11 +251,11 @@ class SupplyWork(abc.ABC):
 
     _node_type: str
 
-    def __init__(self, model: str | ribasim.Model):
+    def __init__(self, model: str | Model) -> None:
         """Initiate object.
 
         :param model: Ribasim model, or file/path to a Ribasim model
-        :type model: str, ribasim.Model
+        :type model: str, Model
         """
         self._model = self._load_model(model)
 
@@ -248,16 +267,16 @@ class SupplyWork(abc.ABC):
         :return: 'kunstwerk'-statics
         :rtype: pandas.DataFrame
         """
-        return self.exec(**kwargs)  # type: ignore
+        return self.exec(**kwargs)
 
-    def _load_model(self, model: str | ribasim.Model) -> ribasim.Model:
+    def _load_model(self, model: str | Model) -> Model:
         """Load and check Ribasim model.
 
         :param model: file/path to Ribasim model
         :type model: str
 
         :return: Ribasim model
-        :rtype: ribasim.model.Model
+        :rtype: ribasim_nl.Model
         """
         _model = _load_model(model)
 
@@ -271,7 +290,7 @@ class SupplyWork(abc.ABC):
         return _model
 
     @property
-    def model(self) -> ribasim.Model:
+    def model(self) -> Model:
         """Ribasim model."""
         return self._model
 
@@ -349,8 +368,8 @@ class SupplyWork(abc.ABC):
             basin_sel = basin_areas[basin_areas["meta_aanvoer"]].index
             works_sel = statics.loc[statics["meta_aanvoer"], ["node_id", "meta_from_node_id", "meta_to_node_id"]]
             # initiate working variables (bi: basin node-ID)
-            basin_main = {bi: [] for bi in basin_sel}
-            basin_sub = {bi: [] for bi in basin_sel}
+            basin_main: dict[object, list[object]] = {bi: [] for bi in basin_sel}
+            basin_sub: dict[object, list[object]] = {bi: [] for bi in basin_sel}
             # if 'meta_from_node_id' is labelled as part of the 'hoofdwatersysteem', add the 'kunstwerk'-ID to the basin
             # the water is going to, i.e., 'meta_to_node_id'
             for _, *row in works_sel.iterrows():
@@ -532,13 +551,13 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
     """
     # optional arguments
     export_modified_geo_data: bool = kwargs.get("export", False)
-    export_directory: str = kwargs.get("export_directory")
+    export_directory: str | Path | None = kwargs.get("export_directory")
     export_filename: str = kwargs.get("export_filename", "aanvoer_mod.shp")
-    kw_extra_files: typing.Sequence[str] = kwargs.get("extra_files")
-    kw_key: str = kwargs.get("key")
-    kw_layer: str = kwargs.get("layer")
-    kw_layers: typing.Sequence[str] = kwargs.get("layers")
-    kw_value: AnyType = kwargs.get("value", True)
+    kw_extra_files: typing.Sequence[str] | None = kwargs.get("extra_files")
+    kw_key: str | None = kwargs.get("key")
+    kw_layer: str | None = kwargs.get("layer")
+    kw_layers: typing.Sequence[str] | None = kwargs.get("layers")
+    kw_value: Any = kwargs.get("value", True)
 
     def _load_multiple_geometries(
         file: str,
@@ -636,7 +655,7 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
         out = gpd.GeoDataFrame(pd.concat(geometry, ignore_index=True))
         return out
 
-    def _extract_geometry(file: str, key: str, value: AnyType = True, layer: str | None = None) -> gpd.GeoDataFrame:
+    def _extract_geometry(file: str, key: str, value: Any = True, layer: str | None = None) -> gpd.GeoDataFrame:
         """Extract 'aanvoergebieden' as labelled within the geopandas.GeoDataFrame.
 
         :param file: geometry-file
@@ -659,10 +678,7 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
             raise ValueError(msg)
 
         gdf = _load_geometry(file, layer=layer)
-        if isinstance(value, bool):
-            out = gdf[gdf[key]]
-        else:
-            out = gdf[gdf[key] == value]
+        out = gdf[gdf[key]] if isinstance(value, bool) else gdf[gdf[key] == value]
         return out
 
     # execute special load-method
@@ -678,6 +694,7 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
                 *_load_multiple_geometries(file=str(f_geometry), extra_files=kw_extra_files, layers=kw_layers)
             )
         case "extract":
+            assert kw_key is not None
             geometry = _extract_geometry(str(f_geometry), kw_key, value=kw_value, layer=kw_layer)
         case _:
             msg = f"Unknown special method: {method}"
@@ -685,8 +702,8 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
 
     # export 'aanvoer'-geometry
     if export_modified_geo_data:
-        export_directory = export_directory or os.path.dirname(f_geometry)
-        _file = os.path.join(export_directory, export_filename)
+        export_directory = Path(export_directory) if export_directory else Path(f_geometry).parent
+        _file = export_directory / export_filename
         geometry.to_file(_file)
         print(f"Modified 'aanvoer'-geometry exported as {_file}")
 

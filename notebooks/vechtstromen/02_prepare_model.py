@@ -18,11 +18,13 @@ short_name = "vechtstromen"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
-parameters_dir = static_data_xlsx = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir = cloud.joinpath(authority, "verwerkt/parameters")
+parameters_dir.mkdir(parents=True, exist_ok=True)
 static_data_xlsx = parameters_dir / "static_data_template.xlsx"
 profiles_gpkg = parameters_dir / "profiles.gpkg"
 link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
 
+# paths that should be synced
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 profielpunt_shp = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/nalevering_20240920/Meting_profielpunt_wvs.shp")
 profiellijn_shp = cloud.joinpath(
@@ -39,9 +41,20 @@ peilregister_xlsx = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/nalever
 feedback_xlsx = cloud.joinpath(
     authority, "verwerkt/1_ontvangen_data/Feedbackform_20250428/20250428_Feedback Formulier.xlsx"
 )
-cloud.synchronize(filepaths=[top10NL_gpkg])
+waterinlaten = cloud.joinpath(authority, r"verwerkt/1_ontvangen_data/aanvulling feb 24/Waterinlaten.shp")
 
-waterinlaten = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/aanvulling feb 24/Waterinlaten.shp")
+cloud.synchronize(
+    filepaths=[
+        profielpunt_shp,
+        profiellijn_shp,
+        peilgebieden_RD,
+        peilgebieden_path,
+        peilregister_xlsx,
+        feedback_xlsx,
+        waterinlaten,
+        hydamo_gpkg,
+    ]
+)
 
 # %% init things
 model = Model.read(ribasim_toml)
@@ -70,29 +83,29 @@ damo_profiles = DAMOProfiles(
 
 
 # %%
-if not profiles_gpkg.exists():
-    profiles_df = damo_profiles.process_profiles()
-    profiles_df = profiles_df[profiles_df.bottom_level != 0]
-    profiles_df = profiles_df[profiles_df.invert_level < 50]
-    profiles_df.to_file(profiles_gpkg)
-else:
-    profiles_df = gpd.read_file(profiles_gpkg)
 
-
-# %%
-
-# fix link geometries
-if link_geometries_gpkg.exists():
+# fix link geometries and profiles
+use_cache = False
+if link_geometries_gpkg.exists() and profiles_gpkg.exists():
     link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
+    use_cache = link_geometries_df.index.equals(model.link.df.index)
+
+if use_cache:
     model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
     model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
         "meta_profielid_waterbeheerder"
     ]
-
+    profiles_df = gpd.read_file(profiles_gpkg)
 else:
+    profiles_df = damo_profiles.process_profiles()
+    profiles_df = profiles_df[profiles_df.bottom_level != 0]
+    profiles_df = profiles_df[profiles_df.invert_level < 50]
+    profiles_df.to_file(profiles_gpkg)
+
     fix_link_geometries(model, network, max_straight_line_ratio=3)
     add_link_profile_ids(model, profiles=profiles_df, id_col="profiel_id")
     model.link.df.reset_index().to_file(link_geometries_gpkg)
+
 profiles_df.set_index("profiel_id", inplace=True)
 # %%
 
@@ -178,10 +191,7 @@ for node_id in node_ids:
     peilgebieden_select_df = peilgebieden_rd_df[peilgebieden_rd_df.contains(containing_point)]
     if not peilgebieden_select_df.empty:
         peilgebied = peilgebieden_select_df.iloc[0]
-        if peilgebied["GPGZMRPL"] != 0 and peilgebied["GPGZMRPL"] < 30:
-            level = peilgebied["GPGZMRPL"]
-        else:
-            level = None
+        level = peilgebied["GPGZMRPL"] if peilgebied["GPGZMRPL"] != 0 and peilgebied["GPGZMRPL"] < 30 else None
     else:
         level = None
     levels += [level]
@@ -336,15 +346,15 @@ ds_node_ids = (model.downstream_node_id(i) for i in node_ids)
 ds_node_ids = [i.to_list() if isinstance(i, pd.Series) else [i] for i in ds_node_ids]
 ds_node_ids = pd.Series(ds_node_ids, index=node_ids).explode()
 
-ds_levels = pd.concat([static_data.basin, static_data.outlet, static_data.pump], ignore_index=True).set_index(
-    "node_id"
-)["min_upstream_level"]
-ds_levels.dropna(inplace=True)
-ds_levels = ds_levels[ds_levels.index.isin(ds_node_ids)]
-ds_node_ids = ds_node_ids[ds_node_ids.isin(ds_levels.index)]
+ds_levels = (
+    pd.concat([static_data.basin, static_data.outlet, static_data.pump], ignore_index=True)
+    .set_index("node_id")["min_upstream_level"]
+    .dropna()
+    .groupby(level=0)
+    .min()
+)
 
-levels = ds_node_ids.apply(lambda x: ds_levels[x])
-streefpeil = levels.groupby(levels.index).min()
+streefpeil = ds_node_ids.map(ds_levels).dropna().groupby(level=0).min()
 streefpeil.name = "streefpeil"
 streefpeil.index.name = "node_id"
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=False)
@@ -384,7 +394,6 @@ model.basin.area.df.index.name = "fid"
 
 # %% Set waterinlaten
 # --- Load Shapefile ---
-waterinlaten = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/aanvulling feb 24/Waterinlaten.shp")
 waterinlaten_gdf = gpd.read_file(waterinlaten)
 
 # --- Load Waterinlaten data ---
@@ -412,6 +421,10 @@ type_gemaal.name = "categorie"
 type_gemaal = type_gemaal.apply(lambda x: x.capitalize() if isinstance(x, str) else x)
 valid_values = type_gemaal.dropna()
 static_data.add_series(node_type="Pump", series=valid_values, fill_na=False)
+
+# Fallback voor pompen waarvoor de default-berekening geen flow_rate oplevert.
+static_data.pump.loc[static_data.pump.flow_rate.isna(), "flow_rate"] = 100.0
+
 # %% some customs
 model.remove_node(2297)
 

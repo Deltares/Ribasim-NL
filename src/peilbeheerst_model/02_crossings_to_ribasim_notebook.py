@@ -1,9 +1,9 @@
-import os
+from pathlib import Path
 
+import pandas as pd
 from peilbeheerst_model.crossings_to_ribasim import CrossingsToRibasim, RibasimNetwork
-from ribasim import Model
 
-from ribasim_nl import settings
+from ribasim_nl import Model, settings
 
 base_path = settings.ribasim_nl_data_dir
 
@@ -69,28 +69,31 @@ model = Model(starttime=model_characteristics["starttime"], endtime=model_charac
 
 model.link.df = link
 
-model.basin.node.df = basin_node
+model.node.df = pd.concat(
+    [
+        basin_node,
+        pump_node,
+        tabulated_rating_curve_node,
+        manning_resistance_node,
+        level_boundary_node,
+        flow_boundary_node,
+        terminal_node,
+    ]
+)
 model.basin.profile = basin_profile
 model.basin.static = basin_static
 model.basin.state = basin_state
 model.basin.area = basin_area
 
-model.pump.node.df = pump_node
 model.pump.static = pump_static
 
-model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
 model.tabulated_rating_curve.static = tabulated_rating_curve_static
 
-model.manning_resistance.node.df = manning_resistance_node
 model.manning_resistance.static = manning_resistance_static
 
-model.level_boundary.node.df = level_boundary_node
 model.level_boundary.static = level_boundary_static
 
-model.flow_boundary.node.df = flow_boundary_node
 model.flow_boundary.static = flow_boundary_static
-
-model.terminal.node.df = terminal_node
 
 # add checks and metadata
 checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
@@ -165,28 +168,31 @@ model = Model(starttime=model_characteristics["starttime"], endtime=model_charac
 
 model.link.df = link
 
-model.basin.node.df = basin_node
+model.node.df = pd.concat(
+    [
+        basin_node,
+        pump_node,
+        tabulated_rating_curve_node,
+        manning_resistance_node,
+        level_boundary_node,
+        flow_boundary_node,
+        terminal_node,
+    ]
+)
 model.basin.profile = basin_profile
 model.basin.static = basin_static
 model.basin.state = basin_state
 model.basin.area = basin_area
 
-model.pump.node.df = pump_node
 model.pump.static = pump_static
 
-model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
 model.tabulated_rating_curve.static = tabulated_rating_curve_static
 
-model.manning_resistance.node.df = manning_resistance_node
 model.manning_resistance.static = manning_resistance_static
 
-model.level_boundary.node.df = level_boundary_node
 model.level_boundary.static = level_boundary_static
 
-model.flow_boundary.node.df = flow_boundary_node
 model.flow_boundary.static = flow_boundary_static
-
-model.terminal.node.df = terminal_node
 
 # add checks and metadata
 checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
@@ -262,28 +268,31 @@ model = Model(starttime=model_characteristics["starttime"], endtime=model_charac
 
 model.link.df = link
 
-model.basin.node.df = basin_node
+model.node.df = pd.concat(
+    [
+        basin_node,
+        pump_node,
+        tabulated_rating_curve_node,
+        manning_resistance_node,
+        level_boundary_node,
+        flow_boundary_node,
+        terminal_node,
+    ]
+)
 model.basin.profile = basin_profile
 model.basin.static = basin_static
 model.basin.state = basin_state
 model.basin.area = basin_area
 
-model.pump.node.df = pump_node
 model.pump.static = pump_static
 
-model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
 model.tabulated_rating_curve.static = tabulated_rating_curve_static
 
-model.manning_resistance.node.df = manning_resistance_node
 model.manning_resistance.static = manning_resistance_static
 
-model.level_boundary.node.df = level_boundary_node
 model.level_boundary.static = level_boundary_static
 
-model.flow_boundary.node.df = flow_boundary_node
 model.flow_boundary.static = flow_boundary_static
-
-model.terminal.node.df = terminal_node
 
 # add checks and metadata
 checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
@@ -360,28 +369,31 @@ model = Model(starttime=model_characteristics["starttime"], endtime=model_charac
 
 model.link.df = link
 
-model.basin.node.df = basin_node
+model.node.df = pd.concat(
+    [
+        basin_node,
+        pump_node,
+        tabulated_rating_curve_node,
+        manning_resistance_node,
+        level_boundary_node,
+        flow_boundary_node,
+        terminal_node,
+    ]
+)
 model.basin.profile = basin_profile
 model.basin.static = basin_static
 model.basin.state = basin_state
 model.basin.area = basin_area
 
-model.pump.node.df = pump_node
 model.pump.static = pump_static
 
-model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
 model.tabulated_rating_curve.static = tabulated_rating_curve_static
 
-model.manning_resistance.node.df = manning_resistance_node
 model.manning_resistance.static = manning_resistance_static
 
-model.level_boundary.node.df = level_boundary_node
 model.level_boundary.static = level_boundary_static
 
-model.flow_boundary.node.df = flow_boundary_node
 model.flow_boundary.static = flow_boundary_static
-
-model.terminal.node.df = terminal_node
 
 # add checks and metadata
 checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
@@ -458,28 +470,31 @@ model = Model(starttime=model_characteristics["starttime"], endtime=model_charac
 
 model.link.df = link
 
-model.basin.node.df = basin_node
+model.node.df = pd.concat(
+    [
+        basin_node,
+        pump_node,
+        tabulated_rating_curve_node,
+        manning_resistance_node,
+        level_boundary_node,
+        flow_boundary_node,
+        terminal_node,
+    ]
+)
 model.basin.profile = basin_profile
 model.basin.static = basin_static
 model.basin.state = basin_state
 model.basin.area = basin_area
 
-model.pump.node.df = pump_node
 model.pump.static = pump_static
 
-model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
 model.tabulated_rating_curve.static = tabulated_rating_curve_static
 
-model.manning_resistance.node.df = manning_resistance_node
 model.manning_resistance.static = manning_resistance_static
 
-model.level_boundary.node.df = level_boundary_node
 model.level_boundary.static = level_boundary_static
 
-model.flow_boundary.node.df = flow_boundary_node
 model.flow_boundary.static = flow_boundary_static
-
-model.terminal.node.df = terminal_node
 
 # add checks and metadata
 checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
@@ -555,28 +570,31 @@ model = Model(starttime=model_characteristics["starttime"], endtime=model_charac
 
 model.link.df = link
 
-model.basin.node.df = basin_node
+model.node.df = pd.concat(
+    [
+        basin_node,
+        pump_node,
+        tabulated_rating_curve_node,
+        manning_resistance_node,
+        level_boundary_node,
+        flow_boundary_node,
+        terminal_node,
+    ]
+)
 model.basin.profile = basin_profile
 model.basin.static = basin_static
 model.basin.state = basin_state
 model.basin.area = basin_area
 
-model.pump.node.df = pump_node
 model.pump.static = pump_static
 
-model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
 model.tabulated_rating_curve.static = tabulated_rating_curve_static
 
-model.manning_resistance.node.df = manning_resistance_node
 model.manning_resistance.static = manning_resistance_static
 
-model.level_boundary.node.df = level_boundary_node
 model.level_boundary.static = level_boundary_static
 
-model.flow_boundary.node.df = flow_boundary_node
 model.flow_boundary.static = flow_boundary_static
-
-model.terminal.node.df = terminal_node
 
 # add checks and metadata
 checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
@@ -653,28 +671,31 @@ model = Model(starttime=model_characteristics["starttime"], endtime=model_charac
 
 model.link.df = link
 
-model.basin.node.df = basin_node
+model.node.df = pd.concat(
+    [
+        basin_node,
+        pump_node,
+        tabulated_rating_curve_node,
+        manning_resistance_node,
+        level_boundary_node,
+        flow_boundary_node,
+        terminal_node,
+    ]
+)
 model.basin.profile = basin_profile
 model.basin.static = basin_static
 model.basin.state = basin_state
 model.basin.area = basin_area
 
-model.pump.node.df = pump_node
 model.pump.static = pump_static
 
-model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
 model.tabulated_rating_curve.static = tabulated_rating_curve_static
 
-model.manning_resistance.node.df = manning_resistance_node
 model.manning_resistance.static = manning_resistance_static
 
-model.level_boundary.node.df = level_boundary_node
 model.level_boundary.static = level_boundary_static
 
-model.flow_boundary.node.df = flow_boundary_node
 model.flow_boundary.static = flow_boundary_static
-
-model.terminal.node.df = terminal_node
 
 # add checks and metadata
 checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
@@ -750,28 +771,31 @@ model = Model(starttime=model_characteristics["starttime"], endtime=model_charac
 
 model.link.df = link
 
-model.basin.node.df = basin_node
+model.node.df = pd.concat(
+    [
+        basin_node,
+        pump_node,
+        tabulated_rating_curve_node,
+        manning_resistance_node,
+        level_boundary_node,
+        flow_boundary_node,
+        terminal_node,
+    ]
+)
 model.basin.profile = basin_profile
 model.basin.static = basin_static
 model.basin.state = basin_state
 model.basin.area = basin_area
 
-model.pump.node.df = pump_node
 model.pump.static = pump_static
 
-model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
 model.tabulated_rating_curve.static = tabulated_rating_curve_static
 
-model.manning_resistance.node.df = manning_resistance_node
 model.manning_resistance.static = manning_resistance_static
 
-model.level_boundary.node.df = level_boundary_node
 model.level_boundary.static = level_boundary_static
 
-model.flow_boundary.node.df = flow_boundary_node
 model.flow_boundary.static = flow_boundary_static
-
-model.terminal.node.df = terminal_node
 
 # add checks and metadata
 checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
@@ -793,12 +817,10 @@ model_characteristics = {
     "modelname": "2025",
     "modeltype": "boezemmodel",
     # define paths
-    "path_postprocessed_data": os.path.join(
-        base_path, authority, f"verwerkt/Delivered_data_processed/{authority}.gpkg"
-    ),  # add the base path
-    "path_crossings": os.path.join(base_path, authority, "verwerkt/Crossings/wetterskip_crossings_v06.gpkg"),
+    "path_postprocessed_data": Path(base_path) / authority / f"verwerkt/Delivered_data_processed/{authority}.gpkg",
+    "path_crossings": Path(base_path) / authority / "verwerkt/Crossings/wetterskip_crossings_v06.gpkg",
     "path_Pdrive": None,
-    "path_boezem": os.path.join(base_path, authority, "verwerkt/Data_shortest_path/Wetterskip_shortest_path.gpkg"),
+    "path_boezem": Path(base_path) / authority / "verwerkt/Data_shortest_path/Wetterskip_shortest_path.gpkg",
     # apply filters
     "crossings_layer": "crossings_hydroobject_filtered",
     "in_use": True,
@@ -844,28 +866,31 @@ model = Model(starttime=model_characteristics["starttime"], endtime=model_charac
 
 model.link.df = link
 
-model.basin.node.df = basin_node
+model.node.df = pd.concat(
+    [
+        basin_node,
+        pump_node,
+        tabulated_rating_curve_node,
+        manning_resistance_node,
+        level_boundary_node,
+        flow_boundary_node,
+        terminal_node,
+    ]
+)
 model.basin.profile = basin_profile
 model.basin.static = basin_static
 model.basin.state = basin_state
 model.basin.area = basin_area
 
-model.pump.node.df = pump_node
 model.pump.static = pump_static
 
-model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
 model.tabulated_rating_curve.static = tabulated_rating_curve_static
 
-model.manning_resistance.node.df = manning_resistance_node
 model.manning_resistance.static = manning_resistance_static
 
-model.level_boundary.node.df = level_boundary_node
 model.level_boundary.static = level_boundary_static
 
-model.flow_boundary.node.df = flow_boundary_node
 model.flow_boundary.static = flow_boundary_static
-
-model.terminal.node.df = terminal_node
 
 # add checks and metadata
 checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
@@ -942,28 +967,31 @@ model = Model(starttime=model_characteristics["starttime"], endtime=model_charac
 
 model.link.df = link
 
-model.basin.node.df = basin_node
+model.node.df = pd.concat(
+    [
+        basin_node,
+        pump_node,
+        tabulated_rating_curve_node,
+        manning_resistance_node,
+        level_boundary_node,
+        flow_boundary_node,
+        terminal_node,
+    ]
+)
 model.basin.profile = basin_profile
 model.basin.static = basin_static
 model.basin.state = basin_state
 model.basin.area = basin_area
 
-model.pump.node.df = pump_node
 model.pump.static = pump_static
 
-model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
 model.tabulated_rating_curve.static = tabulated_rating_curve_static
 
-model.manning_resistance.node.df = manning_resistance_node
 model.manning_resistance.static = manning_resistance_static
 
-model.level_boundary.node.df = level_boundary_node
 model.level_boundary.static = level_boundary_static
 
-model.flow_boundary.node.df = flow_boundary_node
 model.flow_boundary.static = flow_boundary_static
-
-model.terminal.node.df = terminal_node
 
 # add checks and metadata
 checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)
@@ -1038,28 +1066,31 @@ model = Model(starttime=model_characteristics["starttime"], endtime=model_charac
 
 model.link.df = link
 
-model.basin.node.df = basin_node
+model.node.df = pd.concat(
+    [
+        basin_node,
+        pump_node,
+        tabulated_rating_curve_node,
+        manning_resistance_node,
+        level_boundary_node,
+        flow_boundary_node,
+        terminal_node,
+    ]
+)
 model.basin.profile = basin_profile
 model.basin.static = basin_static
 model.basin.state = basin_state
 model.basin.area = basin_area
 
-model.pump.node.df = pump_node
 model.pump.static = pump_static
 
-model.tabulated_rating_curve.node.df = tabulated_rating_curve_node
 model.tabulated_rating_curve.static = tabulated_rating_curve_static
 
-model.manning_resistance.node.df = manning_resistance_node
 model.manning_resistance.static = manning_resistance_static
 
-model.level_boundary.node.df = level_boundary_node
 model.level_boundary.static = level_boundary_static
 
-model.flow_boundary.node.df = flow_boundary_node
 model.flow_boundary.static = flow_boundary_static
-
-model.terminal.node.df = terminal_node
 
 # add checks and metadata
 checks = network.check(model, post_processed_data=post_processed_data, crossings=crossings)

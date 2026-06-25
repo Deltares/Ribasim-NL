@@ -1,0 +1,480 @@
+"""Parameterisation of water board: Fryslan."""
+
+import warnings
+
+import geopandas as gpd
+import peilbeheerst_model.ribasim_parametrization as ribasim_param
+from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
+from ribasim import Node
+from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
+from ribasim_nl.split_basins import NodeMetaCache, SplitBasins
+from shapely import Point
+
+from ribasim_nl import CloudStorage, Model
+
+AANVOER_CONDITIONS: bool = True
+MIXED_CONDITIONS: bool = True
+
+if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
+    AANVOER_CONDITIONS = True
+
+# model settings
+waterschap = "WetterskipFryslan"
+base_model_versie = "2025_5_1"
+
+# connect with the GoodCloud
+cloud = CloudStorage()
+
+# collect data from the base model, feedback form, waterauthority & RWS border
+ribasim_base_model_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_boezemmodel_{base_model_versie}")
+FeedbackFormulier_path = cloud.joinpath(
+    waterschap, "verwerkt/Feedback Formulier", f"feedback_formulier_{waterschap}.xlsx"
+)
+FeedbackFormulier_LOG_path = cloud.joinpath(
+    waterschap, "verwerkt/Feedback Formulier", f"feedback_formulier_{waterschap}_LOG.xlsx"
+)
+gaarkeuken_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/gaarkeuken.gpkg")
+
+splitted_basin_6_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_6.gpkg")
+splitted_basin_16_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_16.gpkg")
+splitted_basin_21_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_21.gpkg")
+
+cloud.synchronize(
+    filepaths=[
+        ribasim_base_model_dir,
+        FeedbackFormulier_path,
+        gaarkeuken_path,
+        splitted_basin_6_path,
+        splitted_basin_16_path,
+        splitted_basin_21_path,
+    ]
+)
+
+# # refresh only the feedback form from cloud
+# cloud.download_file(cloud.file_url(FeedbackFormulier_path))
+
+work_dir = cloud.joinpath(waterschap, "modellen", f"{waterschap}_feedback")
+work_dir.mkdir(parents=True, exist_ok=True)
+
+ribasim_work_dir_model_toml = work_dir.joinpath("ribasim.toml")
+
+# set path to base model toml
+ribasim_base_model_toml = ribasim_base_model_dir.joinpath("ribasim.toml")
+
+unknown_streefpeil = (
+    0.00012345  # we need a streefpeil to create the profiles, Q(h)-relations, and af- and aanslag peil for pumps
+)
+
+# forcing settings
+delta_crest_level = 0.1  # delta waterlevel of boezem compared to streefpeil till no water can flow through an outlet
+
+default_level = 10 if AANVOER_CONDITIONS else -2.3456  # default LevelBoundary level
+
+# process the feedback form
+name = "HKV"
+processor = RibasimFeedbackProcessor(
+    name,
+    waterschap,
+    base_model_versie,
+    FeedbackFormulier_path,
+    ribasim_base_model_toml,
+    work_dir,
+    FeedbackFormulier_LOG_path,
+    use_validation=True,
+)
+processor.run()
+
+# load model
+with warnings.catch_warnings():
+    warnings.simplefilter(action="ignore", category=FutureWarning)
+    ribasim_model = Model.read(ribasim_work_dir_model_toml)
+    ribasim_model.set_crs("EPSG:28992")
+
+# Uitlaat toevoegen at Ter Schelling
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(155665, 601591)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(155658, 601976)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(ribasim_model.basin[993], tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
+
+# Uitlaat toevoegen at Vlieland
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(128115, 586097)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(127144, 585944)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(ribasim_model.basin[1016], tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
+
+# Uitlaat toevoegen at Vlieland
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(129831, 587677)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(129804, 587869)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(ribasim_model.basin[1021], tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
+
+# remove node which causes error in feedback form
+ribasim_model.remove_node(2004, True)
+
+# numerical stability
+ribasim_model.merge_basins(node_id=388, to_node_id=238)  # 569 m2
+ribasim_model.merge_basins(node_id=321, to_node_id=121)  # 1737 m2
+ribasim_model.merge_basins(node_id=912, to_node_id=36)  # 1933 m2
+ribasim_model.merge_basins(node_id=941, to_node_id=322)  # 1939 m2
+ribasim_model.merge_basins(node_id=807, to_node_id=6)  # 2044 m2
+ribasim_model.merge_basins(node_id=936, to_node_id=464)
+ribasim_model.merge_basins(node_id=464, to_node_id=467)  # 2617 m2
+ribasim_model.merge_basins(node_id=909, to_node_id=16)  # 2637 m2
+ribasim_model.merge_basins(node_id=529, to_node_id=635)  # 2880 m2
+ribasim_model.merge_basins(node_id=572, to_node_id=176)  # 2883 m2
+ribasim_model.merge_basins(node_id=730, to_node_id=329)  # 3012 m2
+ribasim_model.merge_basins(node_id=481, to_node_id=6)  # 3878 m2
+ribasim_model.merge_basins(node_id=944, to_node_id=19)  # 4407 m2
+ribasim_model.merge_basins(node_id=908, to_node_id=6)  # 5274 m2
+ribasim_model.merge_basins(node_id=950, to_node_id=16)  # 5863 m2
+ribasim_model.merge_basins(node_id=965, to_node_id=195)  # 7283 m2
+ribasim_model.merge_basins(node_id=296, to_node_id=16)  # 7709 m2
+ribasim_model.merge_basins(node_id=957, to_node_id=527)  # 7920 m2
+ribasim_model.merge_basins(node_id=887, to_node_id=195)  # 8514 m2
+ribasim_model.merge_basins(node_id=141, to_node_id=6)  # 10273 m2
+ribasim_model.merge_basins(node_id=577, to_node_id=527)  # 10299 m2
+ribasim_model.merge_basins(node_id=507, to_node_id=613)  # 11880 m2
+ribasim_model.merge_basins(node_id=669, to_node_id=547)  # 10299 m2
+ribasim_model.merge_basins(node_id=802, to_node_id=80)  # 13571 m2
+ribasim_model.merge_basins(node_id=894, to_node_id=729)  # 13853 m2
+ribasim_model.merge_basins(node_id=739, to_node_id=951)  # 14022 m2
+ribasim_model.merge_basins(node_id=573, to_node_id=159)  # 14121 m2
+ribasim_model.merge_basins(node_id=762, to_node_id=29)  # 14121 m2
+ribasim_model.merge_basins(node_id=748, to_node_id=185)  # 15085 m2
+
+ribasim_model.merge_basins(node_id=964, to_node_id=982)  # small area + MR
+ribasim_model.merge_basins(node_id=982, to_node_id=864)  # small area + MR
+ribasim_model.merge_basins(node_id=741, to_node_id=864)  # small area + MR
+
+ribasim_model.merge_basins(node_id=320, to_node_id=75)  # 15138 m2
+ribasim_model.merge_basins(node_id=758, to_node_id=6)  # 15486 m2
+ribasim_model.merge_basins(node_id=851, to_node_id=64)  # 16396 m2
+ribasim_model.merge_basins(node_id=847, to_node_id=519, are_connected=False)  # 17464 m2
+# basins below 20.000 m2 have been merged, whenever hydrologically possible
+
+# upon request
+ribasim_model.merge_basins(node_id=178, to_node_id=237)  # limiting node for coupling
+ribasim_model.merge_basins(node_id=517, to_node_id=39)  # limiting node for coupling
+ribasim_model.merge_basins(node_id=985, to_node_id=825)  # limiting node for coupling
+ribasim_model.merge_basins(node_id=420, to_node_id=145)  # limiting node for coupling
+
+# water supply
+ribasim_model.merge_basins(node_id=927, to_node_id=16)  # boezem stukje
+ribasim_model.merge_basins(node_id=200, to_node_id=253)  # boezem stuk
+ribasim_model.merge_basins(node_id=249, to_node_id=787)  # boezem stukje
+ribasim_model.merge_basins(node_id=838, to_node_id=330, are_connected=False)  # boezem stukje
+ribasim_model.merge_basins(node_id=989, to_node_id=330)  # boezem stukje
+ribasim_model.merge_basins(node_id=1015, to_node_id=799)  # boezem stukje
+ribasim_model.merge_basins(node_id=721, to_node_id=7)  # basin bij boezem
+ribasim_model.merge_basins(node_id=1014, to_node_id=799)  # basin bij boezem
+ribasim_model.merge_basins(node_id=1012, to_node_id=727)  # basin omringt door boezem
+ribasim_model.merge_basins(node_id=901, to_node_id=16, are_connected=False)  # basin bij boezem
+ribasim_model.merge_basins(node_id=1005, to_node_id=16)  # basin bij boezem
+ribasim_model.merge_basins(node_id=999, to_node_id=206)  # klein gebied
+
+ribasim_model.merge_basins(node_id=777, to_node_id=80)  # veel Manning knopen bij boezem, ook zelfde streefpeil
+ribasim_model.merge_basins(node_id=559, to_node_id=80)  # veel Manning knopen bij boezem, ook zelfde streefpeil
+ribasim_model.merge_basins(node_id=175, to_node_id=21)  # veel Manning knopen bij boezem, ook zelfde streefpeil
+ribasim_model.merge_basins(node_id=299, to_node_id=21)  # veel Manning knopen bij boezem, ook zelfde streefpeil
+ribasim_model.merge_basins(node_id=530, to_node_id=21)  # veel Manning knopen bij boezem, ook zelfde streefpeil
+
+ribasim_model.merge_basins(node_id=1007, to_node_id=253)  # klein gebied in de buurt van de boezem
+ribasim_model.merge_basins(node_id=1008, to_node_id=558)  # klein gebied aan de rand van model
+ribasim_model.merge_basins(node_id=1029, to_node_id=366, are_connected=False)  # klein gebied midden in groter gebied
+ribasim_model.merge_basins(node_id=934, to_node_id=977)  # klein gebied naast groter gebied
+ribasim_model.merge_basins(node_id=383, to_node_id=22)  # klein gebied
+ribasim_model.merge_basins(node_id=963, to_node_id=252)  # klein gebied naast boezem
+ribasim_model.merge_basins(node_id=1028, to_node_id=252)  # klein gebied naast boezem
+ribasim_model.merge_basins(node_id=801, to_node_id=64)  # klein gebied naast boezem
+ribasim_model.merge_basins(node_id=1020, to_node_id=6)  # klein gebied naast boezem
+ribasim_model.merge_basins(node_id=746, to_node_id=5)  # klein gebied in groter gebied
+ribasim_model.merge_basins(node_id=821, to_node_id=21, are_connected=False)  # klein gebied in groter gebied
+ribasim_model.merge_basins(node_id=1017, to_node_id=21)  # klein gebied in groter gebied
+
+ribasim_model.merge_basins(node_id=1025, to_node_id=158, are_connected=False)  # havenachtig gebied
+ribasim_model.merge_basins(node_id=955, to_node_id=158)  # havenachtig gebied
+ribasim_model.merge_basins(node_id=574, to_node_id=21)  # havenachtig gebied
+ribasim_model.merge_basins(node_id=1009, to_node_id=21)  # havenachtig gebied
+
+ribasim_model.merge_basins(node_id=125, to_node_id=21)  # boezemland met veel MR
+ribasim_model.merge_basins(node_id=986, to_node_id=21)  # boezemland met veel MR
+ribasim_model.merge_basins(node_id=877, to_node_id=21)  # boezemland met veel MR
+ribasim_model.merge_basins(node_id=540, to_node_id=16, are_connected=False)  # boezem
+
+ribasim_model.merge_basins(node_id=991, to_node_id=519)  # ontbreekt gemaal / foutieve streefpeil
+ribasim_model.merge_basins(
+    node_id=497, to_node_id=930, are_connected=False
+)  # boezem via duiker verbonden aan andere boezem
+
+ribasim_model.merge_basins(node_id=922, to_node_id=431)  # vrijafstromend
+ribasim_model.merge_basins(node_id=923, to_node_id=431)  # vrijafstromend
+ribasim_model.merge_basins(node_id=520, to_node_id=431)  # vrijafstromend
+ribasim_model.merge_basins(node_id=240, to_node_id=431)  # vrijafstromend
+ribasim_model.merge_basins(node_id=474, to_node_id=242)  # vrijafstromend
+
+ribasim_model.merge_basins(node_id=570, to_node_id=428)  # vrijafstromend
+ribasim_model.merge_basins(node_id=427, to_node_id=428)  # vrijafstromend
+ribasim_model.merge_basins(node_id=243, to_node_id=428)  # vrijafstromend
+ribasim_model.merge_basins(node_id=304, to_node_id=428)  # vrijafstromend
+ribasim_model.merge_basins(node_id=305, to_node_id=428)  # vrijafstromend
+
+ribasim_model.merge_basins(node_id=1023, to_node_id=891)  # vrijafstromend
+
+ribasim_model.merge_basins(node_id=872, to_node_id=632)  # vrijafstromend
+ribasim_model.merge_basins(node_id=352, to_node_id=252)  # vrijafstromend
+ribasim_model.merge_basins(node_id=933, to_node_id=252)  # vrijafstromend
+
+# small basin area
+ribasim_model.merge_basins(node_id=146, to_node_id=145)
+ribasim_model.merge_basins(node_id=155, to_node_id=21)
+ribasim_model.merge_basins(node_id=211, to_node_id=248)
+ribasim_model.merge_basins(node_id=236, to_node_id=319)
+ribasim_model.merge_basins(node_id=333, to_node_id=48)
+ribasim_model.merge_basins(node_id=344, to_node_id=346)
+ribasim_model.merge_basins(node_id=406, to_node_id=164)
+ribasim_model.merge_basins(node_id=451, to_node_id=928)
+ribasim_model.merge_basins(node_id=462, to_node_id=165)
+ribasim_model.merge_basins(node_id=491, to_node_id=562)
+ribasim_model.merge_basins(node_id=521, to_node_id=508)
+ribasim_model.merge_basins(node_id=627, to_node_id=356)
+ribasim_model.merge_basins(node_id=635, to_node_id=519)
+ribasim_model.merge_basins(node_id=693, to_node_id=694)
+ribasim_model.merge_basins(node_id=708, to_node_id=16)
+ribasim_model.merge_basins(node_id=716, to_node_id=717)
+ribasim_model.merge_basins(node_id=723, to_node_id=528)
+ribasim_model.merge_basins(node_id=729, to_node_id=330)
+ribasim_model.merge_basins(node_id=784, to_node_id=16)
+ribasim_model.merge_basins(node_id=797, to_node_id=268)
+ribasim_model.merge_basins(node_id=859, to_node_id=268)
+ribasim_model.merge_basins(node_id=974, to_node_id=268)
+ribasim_model.merge_basins(node_id=817, to_node_id=16)
+ribasim_model.merge_basins(node_id=879, to_node_id=184)
+ribasim_model.merge_basins(node_id=910, to_node_id=6)
+ribasim_model.merge_basins(node_id=918, to_node_id=562)
+ribasim_model.merge_basins(node_id=942, to_node_id=404)
+ribasim_model.merge_basins(node_id=952, to_node_id=38)
+ribasim_model.merge_basins(node_id=953, to_node_id=16)
+ribasim_model.merge_basins(node_id=814, to_node_id=282)
+ribasim_model.merge_basins(node_id=976, to_node_id=722)
+ribasim_model.merge_basins(node_id=995, to_node_id=316)
+
+# fix water supply
+ribasim_model.merge_basins(node_id=747, to_node_id=13)
+ribasim_model.merge_basins(node_id=744, to_node_id=13)
+ribasim_model.merge_basins(node_id=811, to_node_id=13)
+ribasim_model.merge_basins(node_id=621, to_node_id=13)
+ribasim_model.merge_basins(node_id=620, to_node_id=13)
+
+# water supply
+ribasim_model.merge_basins(node_id=869, to_node_id=444)  # klein gebied
+ribasim_model.merge_basins(node_id=972, to_node_id=199)  # klein gebied
+ribasim_model.merge_basins(node_id=984, to_node_id=366)  # klein gebied
+ribasim_model.merge_basins(node_id=726, to_node_id=961)  # klein gebied
+ribasim_model.merge_basins(node_id=966, to_node_id=595)  # klein gebied
+ribasim_model.merge_basins(node_id=873, to_node_id=917, are_connected=False)  # klein gebied
+
+ribasim_model.merge_basins(node_id=743, to_node_id=997)  # samenvoegen voor wateraanvoer
+ribasim_model.merge_basins(node_id=997, to_node_id=861)  # samenvoegen voor wateraanvoer
+ribasim_model.merge_basins(node_id=979, to_node_id=16)  # samenvoegen voor wateraanvoer
+
+ribasim_model.merge_basins(node_id=182, to_node_id=16)  # part of the boezem
+ribasim_model.merge_basins(node_id=426, to_node_id=17)  # part of the boezem
+ribasim_model.merge_basins(node_id=585, to_node_id=592)  #
+
+# add gaarkeuken to basin 184
+# Add Gaarkeuken to basin 184
+basin_184 = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 184]
+gaarkeuken = gpd.read_file(gaarkeuken_path)
+merged_geom = basin_184.geometry.iloc[0].union(gaarkeuken.geometry.union_all())
+ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 184, "geometry"] = merged_geom
+
+inlaat_pump = []  # pumps
+inlaat_structures = []  # weirs / outlets
+to_drain_node_ids = []
+
+# add gemaal in middle of beheergebied. Dont use FF as it is an aanvoergemaal
+pump_node = ribasim_model.pump.add(Node(geometry=Point(207500, 587902)), [pump.Static(flow_rate=[1.8])])
+ribasim_model.link.add(ribasim_model.basin[322], pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[917])
+inlaat_pump.append(pump_node.node_id)
+
+# add gemaal where basins were added twice
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(206469, 592738)), [level_boundary.Static(level=[default_level])]
+)
+pump_node = ribasim_model.pump.add(Node(geometry=Point(206449, 592819)), [pump.Static(flow_rate=[0.1])])
+ribasim_model.link.add(ribasim_model.basin[938], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
+
+# Inlaat toevoegen
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(206516, 592761)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(206508, 592803)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[938])
+inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
+
+# Inlaat toevoegen
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(155919, 563047)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(156038, 563082)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[295])
+inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
+
+# Ropta-pumps as 'aanvoer'
+inlaat_pump += [3709, 2751]
+# Inlaat toevoegen at validation location
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(174976, 539741)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(174961, 539814)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[116])
+inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
+
+# add gemaal at validation location
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(153292, 543364)), [level_boundary.Static(level=[default_level])]
+)
+pump_node = ribasim_model.pump.add(Node(geometry=Point(153456, 543428)), [pump.Static(flow_rate=[0.1])])
+ribasim_model.link.add(ribasim_model.basin[6], pump_node)
+ribasim_model.link.add(pump_node, level_boundary_node)
+
+# add gemaal at Mieden Tjonger, Oost
+pump_node = ribasim_model.pump.add(
+    Node(geometry=Point(209035, 555696), name="Midden Tjonger Oost, De"), [pump.Static(flow_rate=[0.2])]
+)
+ribasim_model.link.add(ribasim_model.basin[962], pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[85])
+
+# Inlaat toevoegen at validation location
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(153296, 543488)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(153406, 543502)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[6])
+inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
+
+# Uitlaat toevoegen at validation location
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(206572, 592599)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(206421, 592530)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(ribasim_model.basin[57], tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
+to_drain_node_ids.append(tabulated_rating_curve_node.node_id)
+
+# Uitlaat toevoegen at validation location
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(206437, 592726)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(206360, 592679)),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(ribasim_model.basin[57], tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
+to_drain_node_ids.append(tabulated_rating_curve_node.node_id)
+
+# move node for improved representation
+ribasim_model.move_node(geometry=Point(220029, 561890), node_id=1608)
+ribasim_model.move_node(geometry=Point(216800, 585120), node_id=2773)
+ribasim_model.move_node(geometry=Point(216818, 585123), node_id=3809)
+
+# embed inlaat information
+for n in inlaat_pump:
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_aanvoer"] = 1
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_afvoer"] = 0
+
+ribasim_param.change_pump_func(ribasim_model, 3008, "afvoer", 1)
+ribasim_param.change_pump_func(ribasim_model, 3008, "aanvoer", 0)
+
+# check basin area
+ribasim_param.validate_basin_area(ribasim_model)
+
+# check streefpeilen at manning nodes
+ribasim_param.validate_manning_basins(ribasim_model)
+
+# model specific tweaks
+# change unknown streefpeilen to a default streefpeil
+ribasim_model.basin.area.df.loc[
+    ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"
+] = str(unknown_streefpeil)
+ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] == -9.999, "meta_streefpeil"] = str(
+    unknown_streefpeil
+)
+
+# change high initial states to 0
+ribasim_model.basin.state.df.loc[ribasim_model.basin.state.df["level"] == 9.999, "level"] = 0.0
+ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] == 9.999, "meta_streefpeil"] = str(
+    unknown_streefpeil
+)
+
+# (re)set 'meta_node_id'-values
+for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
+    mask = ribasim_model.node.df["node_type"] == node_type
+    ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
+
+# convert all boundary nodes to LevelBoundaries
+ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
+ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
+
+# add outlet
+ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
+
+for node in inlaat_structures:
+    ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_aanvoer"] = 1
+
+# add some more outlets (created due to FB, hence not in FF)
+ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == 3685, "meta_func_aanvoer"] = 1
+
+ribasim_param.clean_tables(ribasim_model, waterschap)
+
+# loop through all splitted basins
+node_cache = NodeMetaCache(ribasim_model)
+for splitted_basin_path, basin_id in zip(
+    [splitted_basin_6_path, splitted_basin_16_path, splitted_basin_21_path], [6, 16, 21], strict=True
+):
+    # split basins to improve model convergence
+    splitter = SplitBasins(
+        model=ribasim_model, splitted_basin_path=splitted_basin_path, basin_node_id_to_split=basin_id
+    )
+    ribasim_model = splitter.run()
+
+node_cache.set_meta_category(ribasim_model)
+ribasim_model.write(ribasim_work_dir_model_toml)
+del node_cache

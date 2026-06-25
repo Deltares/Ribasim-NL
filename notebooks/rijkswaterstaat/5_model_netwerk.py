@@ -72,7 +72,7 @@ def read_qhq(verdeling_df):
 def read_kwk_properties(kwk_df):
     properties = kwk_df[0:12][["Eigenschap", "Waarde"]].dropna().set_index("Eigenschap")["Waarde"]
 
-    if "Kunstwerkcode" in properties.keys():
+    if "Kunstwerkcode" in properties:
         properties["Kunstwerkcode"] = str(properties["Kunstwerkcode"])
     return properties
 
@@ -86,7 +86,7 @@ def read_flow_kwargs(kwk_properties, include_crest_level=True):
     }
 
     kwargs = kwk_properties.rename(mapper).to_dict()
-    if "flow_rate" in kwargs.keys():
+    if "flow_rate" in kwargs:
         kwargs["max_flow_rate"] = kwargs["flow_rate"]
     kwargs = {
         k: [v]
@@ -226,7 +226,7 @@ basin_poly_gdf["outlet_data"] = None
 
 
 # %% init model
-model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+model = Model(starttime="2017-01-01", endtime="2020-01-01", crs="EPSG:28992")
 
 
 # %% boundaries bouwen
@@ -254,10 +254,7 @@ for row in boundary_gdf.itertuples():
     point = nodes_gdf.at[node_id, "geometry"]
 
     # uitlezen naam als beschikbaar
-    if pd.isna(row.naam):
-        name = ""
-    else:
-        name = row.naam
+    name = "" if pd.isna(row.naam) else row.naam
 
     # toevoegen knoop per type: FlowBoundary, LevelBoundary of Terminal
     if row.type == "FlowBoundary":
@@ -347,7 +344,7 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
             raise ValueError(f"node-type {node_type} not yet implemented")
 
         # toevoegen van de knoop aan het netwerk
-        node_table = getattr(model, pascal_to_snake_case(node_type))
+        node_table = model.get_component(node_type)
         node_table.add(node, data)
 
         # zoeken naar aangrenzende basins
@@ -373,7 +370,7 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
             link_geom = network.get_line(node_id, boundary_node_id)
             model.link.add(
                 node_table[node_id],
-                getattr(model, pascal_to_snake_case(boundary.node_type))[boundary_node_id],
+                model.get_component(boundary.node_type)[boundary_node_id],
                 geometry=link_geom,
             )
         else:
@@ -421,7 +418,7 @@ for verdeelsleutel in VERDEELSLEUTELS:
     # ]
 
     # listen_node_id = (
-    #     model.node_table()
+    #     model.node
     #     .df.reset_index()
     #     .set_index("meta_meetlocatie_code")
     #     .at[verdeelsleutel_properties["Meetlocatiecode"], "node_id"]
@@ -451,12 +448,14 @@ for verdeelsleutel in VERDEELSLEUTELS:
 
     # add all verdelingen as Outlets
     for verdeling in [
-        verdeelsleutel_properties[i] for i in verdeelsleutel_properties.keys() if i.startswith("Verdeling")
+        verdeelsleutel_properties[i]
+        for i in verdeelsleutel_properties.keys()  # noqa: SIM118
+        if i.startswith("Verdeling")
     ]:
         print(f"verdeling: {verdeling}")
         verdeling_df = pd.read_excel(verdeelsleutels_xlsx, sheet_name=verdeling)
         verdeling_properties = read_kwk_properties(verdeling_df)
-        waterlichamen = [i for i in verdeling_properties.keys() if i.startswith("waterlichaam")]
+        waterlichamen = [i for i in verdeling_properties.keys() if i.startswith("waterlichaam")]  # noqa: SIM118
         qhq_df = verdeling_df.loc[verdeling_df.Eigenschap.to_list().index("QHQ relatie") + 2 :].iloc[
             :, : len(waterlichamen) + 2
         ]
@@ -466,12 +465,12 @@ for verdeelsleutel in VERDEELSLEUTELS:
 
         for waterlichaam in waterlichamen:
             index = waterlichaam[-1]
-            if f"kunstwerk {index}" in verdeling_properties.keys():
+            if f"kunstwerk {index}" in verdeling_properties:
                 name = verdeling_properties[f"kunstwerk {index}"]
                 kwk = kwks_df.set_index("naam").loc[name]
                 code_waterbeheerder = kwk.code
                 point = kwks_gdf.set_index("code").at[kwk.code, "geometry"]
-            elif f"outlet_naam {index}" in verdeling_properties.keys():
+            elif f"outlet_naam {index}" in verdeling_properties:
                 name = verdeling_properties[f"outlet_naam {index}"]
                 point = outlets_gdf.set_index("kunstwerkcode").at[name, "geometry"]
                 code_waterbeheerder = None
@@ -541,7 +540,7 @@ for verdeelsleutel in VERDEELSLEUTELS:
                 link_geom = network.get_line(node_id, boundary_node_id)
                 model.link.add(
                     node,
-                    getattr(model, pascal_to_snake_case(boundary.node_type))[boundary_node_id],
+                    model.get_component(boundary.node_type)[boundary_node_id],
                     geometry=link_geom,
                 )
             else:
@@ -683,7 +682,7 @@ for row in basin_poly_gdf.itertuples():
 
     model.basin.add(basin_node, data)
 
-    nodes_series = model.node_table().df["node_type"].apply(pascal_to_snake_case)
+    nodes_series = model.node.df["node_type"].apply(pascal_to_snake_case)
 
     # connect all nodes_from to basin
     for node_id in nodes_from:

@@ -1,0 +1,112 @@
+[workspace]
+name = "ribasim-nl"
+version = "0.1.0"
+description = "Ribasim water resources modeling in the Netherlands"
+channels = ["conda-forge"]
+platforms = ["win-64", "linux-64", "osx-arm64"]
+readme = "README.md"
+license = "MIT"
+license-file = "LICENSE"
+homepage = "https://ribasim.nl/"
+documentation = "https://ribasim.nl/"
+repository = "https://github.com/Deltares/Ribasim-NL"
+
+[dependencies]
+bokeh = ">=3.8"
+contextily = ">=1.6"
+dvc = ">=3.66"
+dvc-s3 = "*"
+dvc-webdav = ">=3"
+fiona = ">=1.10"
+geocube = ">=0.7"
+geopandas = ">=1.1"
+griffe = "1.*"
+imod = ">=1"
+ipykernel = ">=6.30"
+jupyterlab = ">=4.4"
+matplotlib = ">=3.10"
+minio = ">=7.2"
+momepy = ">=0.11"
+nbstripout = ">=0.8"
+netcdf4 = ">=1.7"
+networkx = ">=3.5"
+openpyxl = ">=3.1"
+pandas = ">=3"
+pip = ">=25"
+plotly = ">=6.3"
+prek = ">=0.3.9"
+pyarrow = ">=21"
+pydantic = ">=2"
+pydantic-settings = ">=2.11"
+pyogrio = ">=0.11"
+pyrefly = ">=0.60"
+pytest = ">=8.4"
+pytest-cov = ">=7"
+pytest-xdist = ">=3.8"
+python = "3.13.*"
+quarto = ">=1.9"
+quartodoc = ">=0.11.1"
+rasterstats = ">=0.20"
+requests = ">=2.32"
+ruff = ">=0.14"
+seaborn = ">=0.13"
+shapely = ">=2.1"
+tomli = ">=2.2"
+tomli-w = ">=1.2"
+tqdm = ">=4.67"
+xarray = ">=2026.2"
+xugrid = ">=0.14"
+zarr = ">=2.17"
+
+[pypi-dependencies]
+bokeh_helpers = { path = "src/bokeh_helpers", editable = true }
+hydamo = { path = "src/hydamo", editable = true }
+peilbeheerst_model = { path = "src/peilbeheerst_model", editable = true }
+ribasim_nl = { path = "src/ribasim_nl", editable = true }
+# sync with config in install_ribasim_core.py
+ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "49e0008a168747bf1e30ec4987c768339a95855f", subdirectory = "python/ribasim" }
+types-geopandas = ">=1.1"
+types-networkx = ">=3.6"
+types-pycurl = ">=7.45"
+types-python-dateutil = ">=2.9"
+types-pyyaml = ">=6"
+types-requests = ">=2.32"
+pandas-stubs = ">=3"
+xlwings = ">=0.33"
+
+[tasks]
+typecheck = "pyrefly check"
+install-prek = "prek install -f"
+install-dvc = "dvc pull"
+install = { depends-on = ["install-core", "install-prek", "install-dvc"] }
+repro = "dvc repro --keep-going && prek run"
+check = "prek run --all-files"
+pycheck = "prek run --all-files --skip dvc-pre-commit --skip dvc-pre-push --skip dvc-post-checkout"
+dvc-dag = { cmd = "python scripts/dvc_dag.py > docs/dev/_dvc-dag.mmd", inputs = ["dvc.yaml"], outputs = ["docs/dev/_dvc-dag.mmd"] }
+docs = { cmd = "quartodoc build && quarto preview", cwd = "docs", depends-on = ["dvc-dag"] }
+docs-render = { cmd = "quartodoc build && rm -f objects.json && quarto render --to html --execute", cwd = "docs", depends-on = ["dvc-dag"] }
+ribasim = { cmd = "bin/ribasim/bin/ribasim", depends-on = ["install-core"] }
+edit-toml = "python scripts/edit_toml.py"
+
+[target.win-64.tasks]
+install-core = { cmd = "python scripts/install_ribasim_core.py", inputs = ["scripts/install_ribasim_core.py"], outputs = ["bin/ribasim/README.md"] }
+
+[target.linux-64.tasks]
+install-core = { cmd = "python scripts/install_ribasim_core.py", inputs = ["scripts/install_ribasim_core.py"], outputs = ["bin/ribasim/README.md"] }
+
+# RIBASIM_HOME points to the Ribasim core installation directory.
+# Beware: the install-core task removes and recreates this directory.
+[target.win-64.activation.env]
+RIBASIM_HOME = "%PIXI_PROJECT_ROOT%\\bin\\ribasim"
+
+[target.linux-64.activation.env]
+RIBASIM_HOME = "$PIXI_PROJECT_ROOT/bin/ribasim"
+
+[target.osx-arm64.activation.env]
+RIBASIM_HOME = "$PIXI_PROJECT_ROOT/bin/ribasim"
+
+[target.osx-arm64.tasks]
+install-core = "echo 'Ribasim core binary not available for macOS; skipping install'"
+
+[system-requirements]
+linux = "3.10.0"

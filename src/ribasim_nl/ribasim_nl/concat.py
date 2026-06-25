@@ -1,7 +1,6 @@
 import pandas as pd
-from ribasim import Model
 
-from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.model import Model
 from ribasim_nl.reset_index import reset_index
 
 
@@ -11,27 +10,28 @@ def concat(models: list[Model], keep_original_index: bool = False) -> Model:
     Parameters
     ----------
     models : list[Model]
-        List with ribasim.Model
+        List with Model instances
     keep_original_index: bool
         Boolean for keeping original index. If not indices will be reset to avoid duplicate indices
 
     Returns
     -------
     Model
-        concatenated ribasim.Model
+        concatenated Model
     """
     # models will be concatenated to first model.
-    if not keep_original_index:
-        model = reset_index(models[0])
-    else:
-        model = models[0]
+    model = reset_index(models[0]) if not keep_original_index else models[0]
 
     # concat all other models into model
     for merge_model in models[1:]:
         if not keep_original_index:
             # reset index of mergemodel, node_start is max node_id
-            node_start = model.node_table().df.index.max() + 1
+            node_start = model.node.df.index.max() + 1
             merge_model = reset_index(merge_model, node_start)
+
+        # concat node table
+        node_df = pd.concat([model.node.df, merge_model.node.df])
+        model.node.df = node_df
 
         # concat links
         link_df = pd.concat([model.link.df, merge_model.link.df], ignore_index=not keep_original_index)
@@ -39,12 +39,12 @@ def concat(models: list[Model], keep_original_index: bool = False) -> Model:
         model.link.df = link_df
 
         # merge tables
-        for node_type in set(model.node_table().df.node_type.unique()).union(
-            merge_model.node_table().df.node_type.unique()
-        ):
-            model_node = getattr(model, pascal_to_snake_case(node_type))
-            merge_model_node = getattr(merge_model, pascal_to_snake_case(node_type))
-            for attr in model_node.model_fields.keys():
+        assert model.node.df is not None
+        assert merge_model.node.df is not None
+        for node_type in set(model.node.df.node_type.unique()).union(merge_model.node.df.node_type.unique()):
+            model_node = model.get_component(node_type)
+            merge_model_node = merge_model.get_component(node_type)
+            for attr in model_node.model_fields:
                 model_node_table = getattr(model_node, attr)
                 model_df = model_node_table.df
                 merge_model_df = getattr(merge_model_node, attr).df
@@ -54,8 +54,6 @@ def concat(models: list[Model], keep_original_index: bool = False) -> Model:
                         if "node_id" in model_df.columns:
                             df = pd.concat([model_df, merge_model_df], ignore_index=True)
                             df.index.name = "fid"
-                        elif model_df.index.name == "node_id":
-                            df = pd.concat([model_df, merge_model_df], ignore_index=False)
                         else:
                             raise Exception(f"{node_type} / {attr} cannot be merged")
                     else:

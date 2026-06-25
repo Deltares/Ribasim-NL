@@ -11,6 +11,8 @@ from .general import (
     report_time_interval,
 )
 
+logger = logging.getLogger(__name__)
+
 # %% wfd
 
 
@@ -48,7 +50,7 @@ def add_wfd_id_to_hydroobjects(
     warnings.filterwarnings("ignore")
     start_time = time.time()
 
-    logging.info("Assigning wfd ids to corresponding hydroobjects...")
+    logger.info("Assigning wfd ids to corresponding hydroobjects...")
 
     # 1. Buffer lines and merge with polygons
     hydroobjects["left_polygon_geometry"] = hydroobjects.geometry.buffer(buffer_distance, join_style="round")
@@ -77,9 +79,11 @@ def add_wfd_id_to_hydroobjects(
 
     # 5. Remove overlapping polygons with less than 90 % overlap
     hydroobjects[wfd_id_column] = hydroobjects.apply(
-        lambda x: x["most_overlapping_polygon_id"]
-        if x["most_overlapping_polygon_area"] > overlap_ratio * x["left_area"]
-        else None,
+        lambda x: (
+            x["most_overlapping_polygon_id"]
+            if x["most_overlapping_polygon_area"] > overlap_ratio * x["left_area"]
+            else None
+        ),
         axis=1,
     )
 
@@ -103,13 +107,13 @@ def add_wfd_id_to_hydroobjects(
         ]
     )  #'overlapping_area' 'left_area'
 
-    logging.info(
+    logger.info(
         f"Summary:\n\n\
           Number of hydroobjects that received a wfd id: {nr_hydroobjects_wfd} \n\
           Number of unique wfd ids within hydroobjects: {nr_unique_wfd_ids}\n"
     )
 
-    logging.info(f"Finished within {passed_time}")
+    logger.info(f"Finished within {passed_time}")
 
     return hydroobjects
 

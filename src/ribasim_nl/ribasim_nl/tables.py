@@ -57,7 +57,7 @@ def cumulative_area(df: pd.DataFrame) -> pd.Series:
     dx = df["level"] - df["level"].shift(fill_value=0)
     dy = df["width"] - df["width"].shift(fill_value=0)
     area = (df["width"].shift(fill_value=0) * dx) + (dy * dx) / 2
-    area.loc[0] = 0
+    area.iloc[0] = 0
     return area.cumsum()
 
 

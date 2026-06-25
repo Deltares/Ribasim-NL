@@ -45,7 +45,7 @@ agv_model = Model.read(toml_file)
 
 # fix manning issue
 agv_model.manning_resistance.static.df = agv_model.manning_resistance.static.df[
-    agv_model.manning_resistance.static.df.node_id.isin(agv_model.node_table().df.index)
+    agv_model.manning_resistance.static.df.node_id.isin(agv_model.node.df.index)
 ]
 
 # fix boundary-node issue
@@ -102,11 +102,11 @@ boundary_node_ids = coupled_model.level_boundary.static.df[
     | (coupled_model.level_boundary.static.df.meta_from_authority == "Rijkswaterstaat")
 ].node_id.to_list()
 
-mask = (coupled_model.node_table().df.meta_authority == "Rijkswaterstaat") & (
-    coupled_model.node_table().df.meta_categorie == "hoofdwater"
+mask = (coupled_model.node.df.meta_authority == "Rijkswaterstaat") & (
+    coupled_model.node.df.meta_categorie == "hoofdwater"
 )
 
-basin_ids = coupled_model.node_table().df[mask].index.to_list()
+basin_ids = coupled_model.node.df[mask].index.to_list()
 basin_areas_df = coupled_model.basin.area.df[coupled_model.basin.area.df.node_id.isin(basin_ids)].set_index("node_id")
 
 for boundary_node_id in boundary_node_ids:
@@ -124,7 +124,7 @@ for boundary_node_id in boundary_node_ids:
 
         # get node to couple from
         from_node_id = coupled_model.upstream_node_id(boundary_node_id)
-        from_node_type = coupled_model.node_table().df.at[from_node_id, "node_type"]
+        from_node_type = coupled_model.node.df.at[from_node_id, "node_type"]
         from_node = getattr(coupled_model, pascal_to_snake_case(from_node_type))[from_node_id]
 
         # get from network node
@@ -156,7 +156,7 @@ for boundary_node_id in boundary_node_ids:
 
         # get node to couple to
         to_node_id = coupled_model.downstream_node_id(boundary_node_id)
-        to_node_type = coupled_model.node_table().df.at[to_node_id, "node_type"]
+        to_node_type = coupled_model.node.df.at[to_node_id, "node_type"]
         to_node = getattr(coupled_model, pascal_to_snake_case(to_node_type))[to_node_id]
 
         # get link geometry

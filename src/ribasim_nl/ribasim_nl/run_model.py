@@ -1,5 +1,4 @@
 # %%
-import os
 import re
 import shutil
 import subprocess
@@ -8,9 +7,7 @@ from collections import namedtuple
 from datetime import timedelta
 from pathlib import Path
 
-# TODO: check if ribasim is in path, stop if not and ribasim_exe is not provided
-# TODO: raise FileNotFoundError if toml_path does not exist. User
-from ribasim_nl.settings import settings
+from ribasim.cli import _find_cli
 
 RunSpecs = namedtuple("RunSpecs", ["exit_code", "simulation_time"])
 
@@ -40,41 +37,23 @@ def parse_computation_time(line: str) -> timedelta | None:
 
 def run(
     toml_path: Path,
-    ribasim_exe: Path | None = settings.ribasim_exe,
-):
+) -> RunSpecs:
     """To run a Ribasim model
 
     Args:
         toml_path (Path): path to your ribasim toml-file
-        ribasim_exe (Path): path to ribasim exe-file
 
     """
-    env = os.environ.copy()
     toml_path = Path(toml_path)
 
     if not toml_path.exists():
         raise FileNotFoundError(f"{toml_path} does not exist!")
 
-    if ribasim_exe is not None:
-        ribasim_exe = Path(ribasim_exe)
-        # Check if ribasim_exe exists, or if it's in PATH by running '--version'
-        if not ribasim_exe.exists():
-            try:
-                subprocess.run(
-                    [ribasim_exe.as_posix(), "--version"],
-                    capture_output=True,
-                    check=True,
-                )
-            except Exception:
-                raise FileNotFoundError(f"{ribasim_exe} does not exist and is not found in PATH!")
-        args = [ribasim_exe.as_posix(), toml_path.absolute().as_posix()]
-    else:
-        args = ["ribasim", toml_path.absolute().as_posix()]
+    cli = _find_cli()
+    args = [cli.as_posix(), toml_path.absolute().as_posix()]
 
     proc = subprocess.Popen(
         args,
-        cwd=toml_path.parent.as_posix(),
-        env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         bufsize=1,
@@ -83,12 +62,16 @@ def run(
     )
 
     with proc:
+        assert proc.stdout is not None
+        # Reconfigure stdout to replace unencodable characters (e.g. cp1252 on Windows)
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(errors="replace")
         was_simulating = False
         computation_time = None
         term_width = shutil.get_terminal_size((80, 20)).columns
         for line in proc.stdout:
             if "Simulating" in line:
-                print("", end="\r")
+                print(end="\r")
                 print("\r" + " " * term_width, end="\r")  # Clear current line
                 print(line.rstrip(), end="\r")  # Allow progress bar to stay on one line
                 was_simulating = True

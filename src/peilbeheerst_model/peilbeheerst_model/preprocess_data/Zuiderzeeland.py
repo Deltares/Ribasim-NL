@@ -1,5 +1,5 @@
 # import packages and functions
-import os
+from pathlib import Path
 
 import fiona
 import geopandas as gpd
@@ -40,7 +40,7 @@ with fiona.open(path_zzl + "/zzl_watergangen_nalevering/zzl_Watergangen.shp", "r
 Zuiderzeeland["hydroobject"] = Zuiderzeeland["hydroobject"].set_crs(crs="WGS84", allow_override=True)
 Zuiderzeeland["hydroobject"] = Zuiderzeeland["hydroobject"].to_crs(crs="EPSG:28992")
 
-ZZL: stuwen in KWKSOORT in overigekunstwerken.gpkg
+# ZZL: stuwen in KWKSOORT in overigekunstwerken.gpkg
 
 
 KWKSOORT_stuw = ["Constructie", "inlaat", "uitlaat", "keerwand"]  # gebasseerd op de geleverde data van Zuiderzeeland
@@ -168,7 +168,6 @@ show_layers_and_columns(waterschap=Zuiderzeeland)
 
 # Check if the directory exists. If it doesn't exist, create it
 
-if not os.path.exists(output_gpkg_path):
-    os.makedirs(output_gpkg_path)
+Path(output_gpkg_path).mkdir(parents=True, exist_ok=True)
 
 store_data(waterschap=Zuiderzeeland, output_gpkg_path=output_gpkg_path + "/Zuiderzeeland")

@@ -1,14 +1,34 @@
 from pathlib import Path
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    ribasim_exe: Path = Path("ribasim")
-    ribasim_nl_cloud_pass: str = ""
+    d3d_home: Path = Path("c:/Program Files/Deltares/D-HYDRO Suite 2026.01 1D2D/plugins/DeltaShell.Dimr/kernels/x64")
     ribasim_nl_data_dir: Path = Path("data")
+    ribasim_nl_cloud_pass: str = ""
+    overwrite_files_from_cloud: bool = True
+    minio_access_key: str = ""
+    minio_secret_key: str = ""
 
-    model_config = SettingsConfigDict(env_file=(".env"))
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        # Let .env file override environment variables.
+        return (
+            init_settings,
+            dotenv_settings,
+            env_settings,
+            file_secret_settings,
+        )
+
+    model_config = SettingsConfigDict(env_file=(".env"), extra="ignore")
 
 
 settings = Settings()

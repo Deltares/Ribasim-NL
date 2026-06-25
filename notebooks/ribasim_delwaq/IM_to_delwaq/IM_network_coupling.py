@@ -71,7 +71,7 @@ with OUTPUT_PATH.open("w", encoding="utf-8") as out, MAPPING_CSV.open(newline=""
         # Reuse the same pattern but limit to one substitution in the block
         def repl(mh):
             q = mh.group("q")
-            return f"ITEM {q}{first}{q} ; {q}{second}{q}"
+            return f"ITEM {q}{first}{q} ; {q}{second}{q}"  # noqa: B023
 
         block_edited, nsubs = pat.subn(repl, block, count=1)
         headers_rewritten += nsubs

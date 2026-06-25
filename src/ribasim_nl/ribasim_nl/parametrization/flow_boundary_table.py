@@ -5,9 +5,9 @@ from ribasim_nl.parametrization.empty_table import empty_table_df
 def update_flow_boundary_static(
     model: Model,
     code_column: str = "meta_code_waterbeheerder",
-    meta_values: dict[str] = {"meta_categorie": "buitenlandse aanvoer"},
-    default_values: dict = {"flow_rate": 0.0},
-):
+    meta_values: dict[str, str] | None = None,
+    default_values: dict[str, object] | None = None,
+) -> None:
     """Update FlowBoundary table
 
     Args:
@@ -19,14 +19,18 @@ def update_flow_boundary_static(
         pd.DataFrame DataFrame in format of static table (ignoring NoData)
     """
     # start with an empty static_df with the correct columns and meta_code_waterbeheerder
+    if default_values is None:
+        default_values = {"flow_rate": 0.0}
+    if meta_values is None:
+        meta_values = {"meta_categorie": "buitenlandse aanvoer"}
     static_df = empty_table_df(model=model, node_type="FlowBoundary", table_type="Static", meta_columns=[code_column])
 
     # add default values
     for k, v in default_values.items():
-        static_df.loc[:, [k]] = v
+        static_df[k] = v
 
     # add meta_columns
     for k, v in meta_values.items():
         static_df[k] = v
 
-    model.flow_boundary.static.df = static_df
+    model.flow_boundary.static.df = static_df  # pyrefly: ignore[bad-assignment]

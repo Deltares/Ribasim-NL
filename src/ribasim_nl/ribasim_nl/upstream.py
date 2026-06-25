@@ -4,7 +4,9 @@ from collections import deque
 import networkx as nx
 
 
-def upstream_nodes(graph: nx.DiGraph, node_id: int, stop_at_inlet: bool = False, stop_at_node_type: str | None = None):
+def upstream_nodes(
+    graph: nx.DiGraph, node_id: int, stop_at_inlet: bool = False, stop_at_node_type: str | None = None
+) -> set[int]:
     """Efficiently find all upstream nodes in a directed graph starting from a given node,
     stopping traversal at nodes stopping at the next inlet.
 
@@ -39,12 +41,12 @@ def upstream_nodes(graph: nx.DiGraph, node_id: int, stop_at_inlet: bool = False,
                 node_ids.add(predecessor)
 
             # Stop traversal if 'node_type is 'level boundary' or '
-            if not graph.nodes[predecessor].get("node_type") == "LevelBoundary":
-                # Stop traversal if `function` is inlet (and we check on it)
-                if not (stop_at_inlet and (graph.nodes[predecessor].get("function") == "inlet")):
-                    if stop_at_node_type is None:
-                        queue.append(predecessor)
-                    elif graph.nodes[predecessor].get("node_type") != stop_at_node_type:
-                        queue.append(predecessor)
+            # Stop traversal if `function` is inlet (and we check on it)
+            if (
+                graph.nodes[predecessor].get("node_type") != "LevelBoundary"
+                and not (stop_at_inlet and (graph.nodes[predecessor].get("function") == "inlet"))
+                and (stop_at_node_type is None or graph.nodes[predecessor].get("node_type") != stop_at_node_type)
+            ):
+                queue.append(predecessor)
 
     return node_ids

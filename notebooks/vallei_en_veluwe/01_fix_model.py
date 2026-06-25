@@ -4,7 +4,7 @@ import inspect
 import geopandas as gpd
 import pandas as pd
 from ribasim import Node
-from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
+from ribasim.nodes import basin, level_boundary, outlet
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
@@ -25,7 +25,7 @@ fix_user_data_gpkg = cloud.joinpath(authority, "verwerkt/fix_user_data.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt/model_edits_aanvoer.gpkg")
 
-cloud.synchronize(filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg])
+cloud.synchronize(filepaths=[ribasim_dir, fix_user_data_gpkg, model_edits_gpkg, model_edits_aanvoer_gpkg])
 
 # %% read model
 model = Model.read(ribasim_toml)
@@ -33,7 +33,6 @@ network_validator = NetworkValidator(model)
 split_line_gdf = gpd.read_file(fix_user_data_gpkg, layer="split_basins", fid_as_index=True)
 
 # %% some stuff we'll need again
-manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
 level_data = level_boundary.Static(level=[0])
 
 basin_data = [
@@ -104,50 +103,50 @@ model.fix_unassigned_basin_area()
 model.split_basin(line=split_line_gdf.at[1, "geometry"])
 model.split_basin(line=split_line_gdf.at[2, "geometry"])
 model.split_basin(line=split_line_gdf.at[3, "geometry"])
-model.merge_basins(basin_id=1150, to_basin_id=1101)
-model.merge_basins(basin_id=1196, to_basin_id=1192)
-model.merge_basins(basin_id=1202, to_basin_id=1049)
-model.merge_basins(basin_id=1207, to_basin_id=837)
-model.merge_basins(basin_id=1208, to_basin_id=851, are_connected=False)
-model.merge_basins(basin_id=1210, to_basin_id=1090)
-model.merge_basins(basin_id=1212, to_basin_id=823)
-model.merge_basins(basin_id=1216, to_basin_id=751, are_connected=False)
-model.merge_basins(basin_id=1217, to_basin_id=752)
-model.merge_basins(basin_id=1219, to_basin_id=814)
-model.merge_basins(basin_id=1220, to_basin_id=1118)
-model.merge_basins(basin_id=1221, to_basin_id=1170)
+model.merge_basins(node_id=1150, to_node_id=1101)
+model.merge_basins(node_id=1196, to_node_id=1192)
+model.merge_basins(node_id=1202, to_node_id=1049)
+model.merge_basins(node_id=1207, to_node_id=837)
+model.merge_basins(node_id=1208, to_node_id=851, are_connected=False)
+model.merge_basins(node_id=1210, to_node_id=1090)
+model.merge_basins(node_id=1212, to_node_id=823)
+model.merge_basins(node_id=1216, to_node_id=751, are_connected=False)
+model.merge_basins(node_id=1217, to_node_id=752)
+model.merge_basins(node_id=1219, to_node_id=814)
+model.merge_basins(node_id=1220, to_node_id=1118)
+model.merge_basins(node_id=1221, to_node_id=1170)
 model.update_node(1229, "LevelBoundary", data=[level_data])
-model.merge_basins(basin_id=1254, to_basin_id=1091, are_connected=False)
-model.merge_basins(basin_id=1260, to_basin_id=1125, are_connected=False)
-model.merge_basins(basin_id=1263, to_basin_id=863)
-model.merge_basins(basin_id=1265, to_basin_id=974)
+model.merge_basins(node_id=1254, to_node_id=1091, are_connected=False)
+model.merge_basins(node_id=1260, to_node_id=1125, are_connected=False)
+model.merge_basins(node_id=1263, to_node_id=863)
+model.merge_basins(node_id=1265, to_node_id=974)
 model.remove_node(node_id=539, remove_links=True)
-model.merge_basins(basin_id=1267, to_basin_id=1177, are_connected=False)
+model.merge_basins(node_id=1267, to_node_id=1177, are_connected=False)
 model.remove_node(1268, remove_links=True)
 model.remove_node(360, remove_links=True)
 model.remove_node(394, remove_links=True)
-model.merge_basins(basin_id=1269, to_basin_id=1087)
-model.merge_basins(basin_id=1149, to_basin_id=1270, are_connected=False)
-model.merge_basins(basin_id=1187, to_node_id=1028)
-model.merge_basins(basin_id=759, to_node_id=990)
-model.merge_basins(basin_id=992, to_node_id=990)
-model.merge_basins(basin_id=1024, to_node_id=990)
-model.merge_basins(basin_id=1064, to_node_id=990)
-model.merge_basins(basin_id=826, to_node_id=1140)
-model.merge_basins(basin_id=789, to_node_id=1137)
-model.merge_basins(basin_id=1077, to_node_id=1137)
-model.merge_basins(basin_id=938, to_node_id=1137)
-model.merge_basins(basin_id=1147, to_node_id=1103)
-model.merge_basins(basin_id=828, to_node_id=1103)
-model.merge_basins(basin_id=1142, to_node_id=1066)
-model.merge_basins(basin_id=900, to_node_id=959)
-model.merge_basins(basin_id=1099, to_node_id=811)
-model.merge_basins(basin_id=1033, to_node_id=811)
+model.merge_basins(node_id=1269, to_node_id=1087)
+model.merge_basins(node_id=1149, to_node_id=1270, are_connected=False)
+model.merge_basins(node_id=1187, to_node_id=1028)
+model.merge_basins(node_id=759, to_node_id=990)
+model.merge_basins(node_id=992, to_node_id=990)
+model.merge_basins(node_id=1024, to_node_id=990)
+model.merge_basins(node_id=1064, to_node_id=990)
+model.merge_basins(node_id=826, to_node_id=1140)
+model.merge_basins(node_id=789, to_node_id=1137)
+model.merge_basins(node_id=1077, to_node_id=1137)
+model.merge_basins(node_id=938, to_node_id=1137)
+model.merge_basins(node_id=1147, to_node_id=1103)
+model.merge_basins(node_id=828, to_node_id=1103)
+model.merge_basins(node_id=1142, to_node_id=1066)
+model.merge_basins(node_id=900, to_node_id=959)
+model.merge_basins(node_id=1099, to_node_id=811)
+model.merge_basins(node_id=1033, to_node_id=811)
 model.remove_node(740, remove_links=True)
 model.remove_node(644, remove_links=True)
 model.remove_node(736, remove_links=True)
-model.merge_basins(basin_id=1139, to_node_id=959, are_connected=False)
-model.merge_basins(basin_id=1086, to_node_id=1137, are_connected=True)
+model.merge_basins(node_id=1139, to_node_id=959, are_connected=False)
+model.merge_basins(node_id=1086, to_node_id=1137, are_connected=True)
 
 model.fix_unassigned_basin_area()
 model.basin.area.df = model.basin.area.df[~model.basin.area.df.index.isin(model.unassigned_basin_area.index)]
@@ -231,13 +230,14 @@ model.reverse_direction_at_node(302)  #
 model.reverse_direction_at_node(479)  # Laakse Duiker
 
 
-actions = gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()
-for action in actions:
+layers = gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()
+for layer in layers:
+    action = layer.replace("_edge", "_link")
     print(action)
     # get method and args
     method = getattr(model, action)
     keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_aanvoer_gpkg, layer=action, fid_as_index=True)
+    df = gpd.read_file(model_edits_aanvoer_gpkg, layer=layer, fid_as_index=True)
     if "order" in df.columns:
         df.sort_values("order", inplace=True)
     for row in df.itertuples():
@@ -274,30 +274,30 @@ model.remove_node(651, remove_links=True)
 model.remove_node(677, remove_links=True)
 model.remove_node(652, remove_links=True)
 # merge basins
-# model.merge_basins(basin_id=1044, to_basin_id=1103)
+# model.merge_basins(node_id=1044, to_node_id=1103)
 
-model.merge_basins(basin_id=910, to_basin_id=988)
-model.merge_basins(basin_id=1078, to_basin_id=1193)
-model.merge_basins(basin_id=1193, to_basin_id=1170)
-model.merge_basins(basin_id=1170, to_basin_id=1123)
-model.merge_basins(basin_id=1115, to_basin_id=1123)
-model.merge_basins(basin_id=883, to_basin_id=989)
-model.merge_basins(basin_id=1145, to_basin_id=1088)
-model.merge_basins(basin_id=927, to_basin_id=1117)
-model.merge_basins(basin_id=1036, to_basin_id=848)
-model.merge_basins(basin_id=804, to_basin_id=928)
-model.merge_basins(basin_id=928, to_basin_id=977)
-model.merge_basins(basin_id=806, to_basin_id=1185)
-model.merge_basins(basin_id=1177, to_basin_id=1111)
-model.merge_basins(basin_id=834, to_basin_id=904)
-model.merge_basins(basin_id=904, to_basin_id=862)
-model.merge_basins(basin_id=1051, to_basin_id=895)
-model.merge_basins(basin_id=1044, to_basin_id=1103)
-model.merge_basins(basin_id=1120, to_basin_id=862)
-model.merge_basins(basin_id=1218, to_basin_id=984)
-model.merge_basins(basin_id=1159, to_basin_id=1058, are_connected=False)
+model.merge_basins(node_id=910, to_node_id=988)
+model.merge_basins(node_id=1078, to_node_id=1193)
+model.merge_basins(node_id=1193, to_node_id=1170)
+model.merge_basins(node_id=1170, to_node_id=1123)
+model.merge_basins(node_id=1115, to_node_id=1123)
+model.merge_basins(node_id=883, to_node_id=989)
+model.merge_basins(node_id=1145, to_node_id=1088)
+model.merge_basins(node_id=927, to_node_id=1117)
+model.merge_basins(node_id=1036, to_node_id=848)
+model.merge_basins(node_id=804, to_node_id=928)
+model.merge_basins(node_id=928, to_node_id=977)
+model.merge_basins(node_id=806, to_node_id=1185)
+model.merge_basins(node_id=1177, to_node_id=1111)
+model.merge_basins(node_id=834, to_node_id=904)
+model.merge_basins(node_id=904, to_node_id=862)
+model.merge_basins(node_id=1051, to_node_id=895)
+model.merge_basins(node_id=1044, to_node_id=1103)
+model.merge_basins(node_id=1120, to_node_id=862)
+model.merge_basins(node_id=1218, to_node_id=984)
+model.merge_basins(node_id=1159, to_node_id=1058, are_connected=False)
 
-
+model.remove_node(232, remove_links=True)
 # %% corrigeren knoop-topologie
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
 for row in network_validator.link_incorrect_type_connectivity().itertuples():
@@ -312,16 +312,19 @@ for row in network_validator.link_incorrect_type_connectivity(
 
 # %% sanitize node-table
 # TabulatedRatingCurve to Outlet
-for row in model.node_table().df[model.node_table().df.node_type == "TabulatedRatingCurve"].itertuples():
+for row in model.node.df[model.node.df.node_type == "TabulatedRatingCurve"].itertuples():
     node_id = row.Index
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # basins and outlets we've added do not have category, we fill with hoofdwater
-# model.basin.node.df.loc[model.basin.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
-# model.outlet.node.df.loc[model.outlet.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+# model.node.df.loc[model.basin.node.df.index[model.basin.node.df["meta_categorie"].isna()], "meta_categorie"] = "hoofdwater"
+# model.node.df.loc[model.outlet.node.df.index[model.outlet.node.df["meta_categorie"].isna()], "meta_categorie"] = "hoofdwater"
 
 # somehow Sluis Engelen (beheerregister AAM) has been named Henriettesluis
-# model.outlet.node.df.loc[model.outlet.node.df.name == "Henriëttesluis", "name"] = "AKW855"
+# model.node.df.loc[
+#     (model.node.df["node_type"] == "Outlet") & (model.node.df.name == "Henriëttesluis"),
+#     "name",
+# ] = "AKW855"
 
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
@@ -329,27 +332,27 @@ df.set_index("code", inplace=True)
 names = df["naam"]
 
 # set meta_gestuwd in basins
-model.basin.node.df["meta_gestuwd"] = False
-model.outlet.node.df["meta_gestuwd"] = False
-model.pump.node.df["meta_gestuwd"] = True
+model.node.df.loc[model.node.df["node_type"] == "Basin", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Outlet", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Pump", "meta_gestuwd"] = True
 
 # set stuwen als gestuwd
 
-model.outlet.node.df.loc[model.outlet.node.df["meta_object_type"].isin(["stuw"]), "meta_gestuwd"] = True
+model.node.df.loc[
+    (model.node.df["node_type"] == "Outlet") & model.node.df["meta_object_type"].isin(["stuw"]),
+    "meta_gestuwd",
+] = True
 
 # set bovenstroomse basins als gestuwd
-node_df = model.node_table().df
-node_df = node_df[(node_df["meta_gestuwd"] == True) & node_df["node_type"].isin(["Outlet", "Pump"])]  # noqa: E712
+node_df = model.node.df[model.node.df["meta_gestuwd"] & model.node.df["node_type"].isin(["Outlet", "Pump"])]
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
-basin_mask = model.basin.node.df.index.isin(upstream_node_ids)
-model.basin.node.df.loc[basin_mask, "meta_gestuwd"] = True
+basin_node_ids = model.basin.node.df.index.intersection(upstream_node_ids)
+model.node.df.loc[basin_node_ids, "meta_gestuwd"] = True
 
 # set álle benedenstroomse outlets van gestuwde basins als gestuwd (dus ook duikers en andere objecten)
-downstream_node_ids = (
-    pd.Series([model.downstream_node_id(i) for i in model.basin.node.df[basin_mask].index]).explode().to_numpy()
-)
-model.outlet.node.df.loc[model.outlet.node.df.index.isin(downstream_node_ids), "meta_gestuwd"] = True
+downstream_node_ids = pd.Series([model.downstream_node_id(i) for i in basin_node_ids]).explode().to_numpy()
+model.node.df.loc[model.outlet.node.df.index.intersection(downstream_node_ids), "meta_gestuwd"] = True
 
 sanitize_node_table(
     model,
