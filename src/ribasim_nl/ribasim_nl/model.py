@@ -1,7 +1,7 @@
 # %%
 from datetime import timedelta
 from pathlib import Path
-from typing import ClassVar, Literal
+from typing import Any, ClassVar, Literal, cast
 
 import geopandas as gpd
 import networkx as nx
@@ -557,7 +557,7 @@ class Model(ribasim.Model):
                 df = self.link.df.copy()
                 df.loc[:, ["link_id"]] = df.index
                 df = df.set_index(["from_node_id", "to_node_id"], drop=False)
-                link_data = dict(df.loc[from_node_id, to_node_id])
+                link_data: dict[str, Any] = dict(cast(Any, df).loc[from_node_id, to_node_id])
                 link_id = link_data["link_id"]
             else:
                 link_data = dict(self.link.df.loc[link_id])

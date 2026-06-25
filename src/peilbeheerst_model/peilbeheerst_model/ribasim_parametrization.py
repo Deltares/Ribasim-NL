@@ -1135,7 +1135,9 @@ def identify_node_meta_categorie(ribasim_model: Model, **kwargs) -> None:
     ribasim_model.pump.static.df.fillna({"meta_func_circulatie": 0}, inplace=True)
 
     # Convert the column to string type
-    ribasim_model.outlet.static.df["meta_categorie"] = ribasim_model.outlet.static.df["meta_categorie"].astype("string")
+    ribasim_model.outlet.static.df["meta_categorie"] = cast(pd.DataFrame, ribasim_model.outlet.static.df)[
+        "meta_categorie"
+    ].astype("string")
     ribasim_model.pump.static.df["meta_categorie"] = ribasim_model.outlet.static.df["meta_categorie"].astype("string")
 
     # Identify the INlaten from the boezem, both stuwen (outlets) and gemalen (pumps)
