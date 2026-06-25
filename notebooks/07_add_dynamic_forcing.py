@@ -4,10 +4,10 @@ from datetime import datetime
 from pathlib import Path
 
 import xarray as xr
-from ribasim.delwaq import generate, parse, run_delwaq
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
+from ribasim_nl.delwaq import compute_delwaq
 from ribasim_nl.set_forcing import SetDynamicForcing
 
 from ribasim_nl import (
@@ -16,7 +16,6 @@ from ribasim_nl import (
     add_transboundary_inflow,
     import_transboundary_inflow,
     merge_rwzi_model,
-    settings,
     write_performance,
 )
 
@@ -194,18 +193,5 @@ for authority in authorities:
 
             # DELWAQ(!)
             if compute_fractions and RUN_MODEL:
-                # generate DELWAQ model
-                delwaq_dir = model.toml_path.with_name("delwaq")
-                print(f"generate DELWAQ model in {delwaq_dir}")
-                graph, substances = generate(model, output_path=delwaq_dir)
-
-                # run DELWAQ model
-                print("run DELWAQ")
-                run_delwaq(
-                    model_dir=delwaq_dir,
-                    d3d_home=settings.d3d_home,
-                )
-
-                # parse DELWAQ results in model
-                print("parse DELWAQ results in Ribasim-model")
-                parse(model, graph, substances, output_folder=delwaq_dir, to_input=True)
+                print("compute DELWAQ fractions")
+                compute_delwaq(model)

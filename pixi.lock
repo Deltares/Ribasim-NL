@@ -601,7 +601,7 @@ environments:
       - pypi: ./src/hydamo
       - pypi: ./src/peilbeheerst_model
       - pypi: ./src/ribasim_nl
-      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=49e0008a168747bf1e30ec4987c768339a95855f#49e0008a168747bf1e30ec4987c768339a95855f
+      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=eae77424a4078497d40d8197237cb83e3aba6a83#eae77424a4078497d40d8197237cb83e3aba6a83
       - pypi: https://files.pythonhosted.org/packages/06/a2/c01db32be2ae7d6a1689972f3c492b149ee4e164b12fdfd9f64b50888215/types_pyyaml-6.0.12.20260518-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0a/ec/8782c4f982d5c05a20287ab7df4af2255f663f5878c5b0becbf28538b981/xlwings-0.36.6-cp313-cp313-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/0b/e0/99ec5b02203c4e9ce878bc63d8caa06ac1f891e4d63bded9a5ced70fcb4f/pandas_stubs-3.0.3.260530-py3-none-any.whl
@@ -1256,7 +1256,7 @@ environments:
       - pypi: ./src/hydamo
       - pypi: ./src/peilbeheerst_model
       - pypi: ./src/ribasim_nl
-      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=49e0008a168747bf1e30ec4987c768339a95855f#49e0008a168747bf1e30ec4987c768339a95855f
+      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=eae77424a4078497d40d8197237cb83e3aba6a83#eae77424a4078497d40d8197237cb83e3aba6a83
       - pypi: https://files.pythonhosted.org/packages/06/a2/c01db32be2ae7d6a1689972f3c492b149ee4e164b12fdfd9f64b50888215/types_pyyaml-6.0.12.20260518-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0b/e0/99ec5b02203c4e9ce878bc63d8caa06ac1f891e4d63bded9a5ced70fcb4f/pandas_stubs-3.0.3.260530-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/10/e8/dfb9d2f832260d64d3b0b603ac6382ccc9b1a332535e434e9d5f97f7aed3/types_shapely-2.1.0.20260603-py3-none-any.whl
@@ -1816,7 +1816,7 @@ environments:
       - pypi: ./src/hydamo
       - pypi: ./src/peilbeheerst_model
       - pypi: ./src/ribasim_nl
-      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=49e0008a168747bf1e30ec4987c768339a95855f#49e0008a168747bf1e30ec4987c768339a95855f
+      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=eae77424a4078497d40d8197237cb83e3aba6a83#eae77424a4078497d40d8197237cb83e3aba6a83
       - pypi: https://files.pythonhosted.org/packages/06/a2/c01db32be2ae7d6a1689972f3c492b149ee4e164b12fdfd9f64b50888215/types_pyyaml-6.0.12.20260518-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0b/e0/99ec5b02203c4e9ce878bc63d8caa06ac1f891e4d63bded9a5ced70fcb4f/pandas_stubs-3.0.3.260530-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/10/e8/dfb9d2f832260d64d3b0b603ac6382ccc9b1a332535e434e9d5f97f7aed3/types_shapely-2.1.0.20260603-py3-none-any.whl
@@ -19859,9 +19859,9 @@ packages:
   - geopandas
   - pytest ; extra == 'tests'
   requires_python: '>=3.13'
-- pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=49e0008a168747bf1e30ec4987c768339a95855f#49e0008a168747bf1e30ec4987c768339a95855f
+- pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=eae77424a4078497d40d8197237cb83e3aba6a83#eae77424a4078497d40d8197237cb83e3aba6a83
   name: ribasim
-  version: 2026.1.1
+  version: 2026.1.2
   requires_dist:
   - geopandas>=1.0
   - matplotlib>=3.9
