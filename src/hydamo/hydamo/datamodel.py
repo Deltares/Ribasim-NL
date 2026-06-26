@@ -5,7 +5,7 @@ import logging
 import re
 import warnings
 from pathlib import Path
-from typing import Any, ClassVar, Literal, Self
+from typing import Any, ClassVar, Literal, Self, cast
 
 import fiona
 import geopandas as gpd
@@ -327,7 +327,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
         if hasattr(self, "crs") and self.crs is not None:
             result.crs = self.crs
 
-        return result
+        return cast(Self, result)
 
 
 class HyDAMO:

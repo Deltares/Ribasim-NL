@@ -78,7 +78,7 @@ import ast
 import operator
 from collections import defaultdict
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import geopandas as gpd
 import matplotlib.patheffects as pe
@@ -233,7 +233,7 @@ def _resample_to_daily(data: pd.DataFrame) -> pd.DataFrame:
     if len(unique_times) < 2:
         return data
 
-    median_step = (unique_times.diff().dropna()).median()
+    median_step = cast(pd.Timedelta, (unique_times.diff().dropna()).median())
     one_day = pd.Timedelta(days=1)
 
     if median_step >= one_day:
