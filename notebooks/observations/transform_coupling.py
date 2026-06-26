@@ -22,7 +22,7 @@ cloud = CloudStorage()
 base = cloud.joinpath("Basisgegevens/resultaatvergelijking/koppeltabel_2026")
 
 loc_ref_koppeltabel = cloud.joinpath(
-    base, "Transformed_koppeltabel_versie_lhm_coupled_tmin3_Feedback_Verwerkt_HydroLogic.xlsx"
+    base, "Transformed_koppeltabel_versie_Samenwerkdag_26052026_Feedback_Verwerkt_HydroLogic.xlsx"
 )
 
 # waterboard = "RijnenIJssel"
@@ -34,7 +34,7 @@ loc_ref_koppeltabel = cloud.joinpath(
 
 # model_folder = cloud.joinpath(f"{waterboard}/modellen", latest_model_version.path_string)
 
-model_folder = Path(r"C:\Users\micha.veenendaal\Data\HL-P26004\Modellen\lhm_coupled_v20052026")
+model_folder = Path(r"C:\Users\micha.veenendaal\Data\HL-P26004\Modellen\lhm_val_3yr")
 
 
 # Filteren of gebruiken we een gekoppeld model:
@@ -61,7 +61,7 @@ nieuwe_suggestie_als_oude_geometry_ontbreekt = True
 eerste_tabel = False
 
 # versie = f"{latest_model_version.path_string}"
-versie = "Samenwerkdag_26052026"
+versie = "rapportage_26062026"
 
 wegschrijven_nieuwe_tabel = cloud.joinpath(base, f"Transformed_koppeltabel_versie_{versie}.xlsx")
 

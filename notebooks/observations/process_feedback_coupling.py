@@ -41,8 +41,8 @@ locatie_koppeltabellen = cloud.joinpath("Basisgegevens/resultaatvergelijking/kop
 # filter_waterschappen = True
 # waterschapsnaam = ["RijnenIJssel"]
 
-versie = "Samenwerkdag_26052026"
-model_folder = Path(r"C:\Users\micha.veenendaal\Data\HL-P26004\Modellen\lhm_coupled_v20052026")
+versie = "rapportage_26062026"
+model_folder = Path(r"C:\Users\micha.veenendaal\Data\HL-P26004\Modellen\lhm_val_3yr")
 # toml_naam = "lhm-coupled.toml"
 # toml_naam = "wrij.toml"
 toml_naam = "lhm_coupled.toml"
@@ -83,28 +83,24 @@ partij = "HydroLogic"
 
 # synchronize paths
 # cloud.synchronize([loc_ref_koppeltabel, model_folder])
+
 # %%
-
-# # Script met de orginele getransformeerde koppeltabel
-# input_koppeltabel_path = cloud.joinpath(locatie_koppeltabellen, "Transformed_koppeltabel_versie1.xlsx")
-
-# # Script waarin de feedback is verwerkt
-# feedback_koppeltabel_path = cloud.joinpath(locatie_koppeltabellen, "Transformed_koppeltabel_versie1_Feedback.xlsx")
 
 # Script met de orginele getransformeerde koppeltabel
 input_koppeltabel_path = cloud.joinpath(
-    locatie_koppeltabellen, "Transformed_koppeltabel_versie_Samenwerkdag_26052026.xlsx"
+    locatie_koppeltabellen, "Transformed_koppeltabel_versie_rapportage_26062026.xlsx"
 )
 
 # Script waarin de feedback is verwerkt
 feedback_koppeltabel_path = cloud.joinpath(
-    locatie_koppeltabellen, "Transformed_koppeltabel_versie_Samenwerkdag_26052026_check.xlsx"
+    locatie_koppeltabellen, "Transformed_koppeltabel_versie_rapportage_26062026_check.xlsx"
 )
 
 
 output_path = locatie_koppeltabellen
 
-# # Reeksen die of niet goed gekoppeld kunnen worden of waarvan de meetreeks onrealistisch lijkt
+#Onderstaande meetreeksen zijn in eerdere validaties al uit de dataset gehaald:
+# # Reeksen die of niet goed gekoppeld kunnen worden of waarvan de meetreeks onrealistisch lijkt:
 # remove_meetreeksc = [
 #     "Polder Oldebroek ValleiEnVeluwe",
 #     "Hoogland wetterskip",
@@ -119,6 +115,7 @@ output_path = locatie_koppeltabellen
 #     "De Wenden (Noordermerkkanaal)",
 # ]
 
+#validatie voor alleen 2017 in september 2025:
 # remove_meetreeksc_specifiek_2017 = [
 #     "Eijsden grens",  # geen goeie reeks voor 2017
 #     "Borgharen dorp",  # Borgharen dorp
@@ -137,20 +134,7 @@ output_path = locatie_koppeltabellen
 
 # remove_meetreeksc = remove_meetreeksc + remove_meetreeksc_specifiek_2017
 
-# updated_koppeltabel = update_koppeltabel_with_feedback(
-#     input_koppeltabel_path,
-#     feedback_koppeltabel_path,
-#     lhm_model,
-#     output_path,
-#     versie = versie,
-#     cloud_sync=cloud,
-#     keep_all_columns=False,
-#     columns_to_keep=columns_to_keep,
-#     remove_meetreeksc=None,
-#     partij="HydroLogic",
-#     add_new_data=False,
-# )
-
+#Validatie 2026 voor samenwerkdag 26 mei en rapportage:
 remove_meetreeksc_specifiek = [
     "AANVOERDERGEMAAL_aanvoer HDSR",  # meer recente meetreeks beschikbaar, oude verwijderen
     "KEULEVAART_afvoer HDSR",  # meer recente meetreeks beschikbaar, oude verwijderen
@@ -198,11 +182,6 @@ updated_koppeltabel = update_koppeltabel_with_feedback(
 
 
 # %%
-####################
-# AAN HET EINDE VAN HET VERWERKEN EVENTUEEL NOG SORTEN OP WATERSCHAP
-# EN DUS WEGSCHRIJVEN ALS VOLLEDIGE NIEUWE .GPKG OM GECOMBINEERDE
-# DEFINITIEVE SET, RUIMTELIJK IN TE ZIEN.
-####################
 
 # path
 output_path = locatie_koppeltabellen

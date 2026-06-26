@@ -1131,7 +1131,7 @@ def PlotAndSaveFractie(
     frac_time = groups.get_group(key)["time"]
 
     font = "Arial"
-    _halo = [pe.withStroke(linewidth=5, foreground="black")]
+    _halo = [pe.withStroke(linewidth=3, foreground="black")]
     fig, ax = plt.subplots(figsize=(11, 6))
 
     # Gestapelde fracties op linker y-as
@@ -1155,7 +1155,7 @@ def PlotAndSaveFractie(
         combined_df["flow_rate"],
         label="Ribasim",
         color="tab:blue",
-        linewidth=2.5,
+        linewidth=1.6,
         zorder=5,
         path_effects=_halo,
     )
@@ -1165,7 +1165,8 @@ def PlotAndSaveFractie(
             combined_df["sum"],
             label="Meting",
             color="tab:orange",
-            linewidth=2.8,
+            linewidth=1.6,
+            linestyle="--",
             zorder=5,
             path_effects=_halo,
         )
@@ -1197,6 +1198,39 @@ def PlotAndSaveFractie(
     plt.close(fig)
 
     return f'<img src="../figures_fracties/{waterschap}/{fname}" width=400 height=300>'
+
+
+def _patch_meting(combined_df: pd.DataFrame, meetreeks_namen: list[str]) -> pd.DataFrame:
+    """Pas hardcoded correcties toe op de meting-kolom (sum) van combined_df.
+
+    Patches worden geïdentificeerd op basis van de MeetreeksC-naam.
+    Geeft True terug als de coverage-check overgeslagen moet worden.
+    """
+    df = combined_df.copy()
+    times = pd.to_datetime(df["time"])
+
+    for naam in meetreeks_namen:
+        if naam in ("KGM16", "KGM92"):
+            # 2017 meting Scheldestromen onrealistisch — alleen 2018/2019 gebruiken
+            df.loc[times.dt.year == 2017, "sum"] = np.nan
+            print(f"  Patch: {naam} — meting 2017 op NaN gezet (onrealistisch Scheldestromen)")
+
+        elif naam == "Dorpse Beek Oenerweg":
+            # Alleen 2017 realistisch voor validatie
+            df.loc[times.dt.year != 2017, "sum"] = np.nan
+            print(f"  Patch: {naam} — alleen meting 2017 behouden")
+
+        elif naam == "Schalsum, WF afvoer":
+            # Laatste waarde (30-12-2019) onrealistisch — alles vanaf die datum verwijderen
+            df.loc[times >= pd.Timestamp("2019-12-30"), "sum"] = np.nan
+            print(f"  Patch: {naam} — meting vanaf 2019-12-30 op NaN gezet")
+
+    return df
+
+
+def _bypass_coverage(meetreeks_namen: list[str]) -> bool:
+    """Geeft True terug als de coverage-drempel overgeslagen moet worden voor deze locatie."""
+    return any("Ericasluis" in naam for naam in meetreeks_namen)
 
 
 def CompareOutputMeasurements(
@@ -1478,6 +1512,9 @@ def CompareOutputMeasurements(
         # Combine the measurements with the modeloutput in one dataframe
         combined_df = subset_modeloutput.merge(subset_measurements[["time", "sum"]], on=["time"], how="left")
 
+        # Hardcoded patches voor specifieke meetreeksen (onrealistische periodes verwijderen)
+        combined_df = _patch_meting(combined_df, existing_measurements)
+
         # Check whether there are any measurements at all during the period
         if combined_df["sum"].isna().all().all():
             print(
@@ -1487,7 +1524,7 @@ def CompareOutputMeasurements(
 
         # Coverage: fraction of simulated timesteps that have a non-NaN measurement
         coverage_pct = round(combined_df["sum"].notna().sum() / len(combined_df) * 100, 1)
-        if min_coverage is not None and coverage_pct < min_coverage:
+        if min_coverage is not None and coverage_pct < min_coverage and not _bypass_coverage(existing_measurements):
             print(
                 f"Overgeslagen ({existing_measurements[0]}): dekking {coverage_pct:.1f}% < minimum {min_coverage:.1f}%"
             )
@@ -3334,6 +3371,7 @@ if __name__ == "__main__":
         "Districts aanvoer de BaanBreker_LHM_reeks.csv": -1.0,
         "Districts aanvoer Bloemers en Quarles van Ufford_LHM_reeks.csv": -1.0,
         "Aanvoer Doornenburg_LHM_reeks.csv": -1.0,
+        "Aanvoer Gemaal Dolk_LHM_reeks.csv": -1.0,
     }
 
     RUN_COMPARE = True
@@ -3352,7 +3390,30 @@ if __name__ == "__main__":
 
     RUN_UPLOAD = False
 
-    EXCLUDE_MEETREEKS = [""]
+    # Dubbele locaties niet meenemen in de validatie anders ga je locaties
+    # dubbel mee nemen in de beoordeling
+    EXCLUDE_MEETREEKS = ["Dorkwerd HenA", # Zelfde meting beschikbaar als Dorkwerd Noorderzijlvest
+                         "Inlaatwerk Blokzijl. totaal debiet", # Zelfde meting beschikbaar als Inlaatwerk Blokzijl. debiet (schuif 1 + schuif 2)
+                         "Gaarkeuken wetterskip", # Zelfde meting beschikbaar als Gaarkeuken Noorderzijlvest,
+                         # gemaal dolk als MeetreeksC: "gem Dolk" en "Dolk HRR". Beschikbare meetreeksen
+                         # Verschillen dus we behouden beide.
+                         "Beuningen, H.A. van", #reeks lijkt niet te kloppen volgens WSRL
+                         "Jongh, H.C. de", #meetreeks is onjuist, de gemaaldebieten ontbreken in de som van de kanalen. Alleen de vrije uitlaten zitten in de reeks.
+                         "HD Louwes Noorderzijlvest", #Voor validatieperiode onrealistische reeks
+                         "Volenbeek",   #Voor validatieperiode onrealistische reeks
+                         "Barneveldse Beek", #Voor validatieperiode onrealistische reeks
+                         "Hierdense Beek ValleiEnVeluwe", #Voor wat betreft de Hierdense Beek is het systeem een aantal jaar geleden flink op de schop gegaan.
+                                                        # Hierdoor is de afvoer uit het gebied wezenlijk veranderd, dus het zou goed zijn om een
+                                                        #  recentere periode door te rekenen om daar een vergelijking van te kunnen maken.
+                        "Linde, WF afvoer/aanvoer", #Niet gebruiken omdat niet specifiek aan een punt in het model is te koppelen (feedback formulier Wetterskip)
+                         "KGM00597_P001", #ligt over validatie periode continue op 0
+                         "KGM00597_P002", #ligt over validatie periode continue op 0
+                        "Zandkes", #ligt over validatie periode continue op 0
+                        "",
+                        ]
+    # Over de validatieperiode willen we dat er minimaal 80% coverage is van de meetreeksC anders beoordeel
+    # je een locatie foutief terwijl er gewoon weinig meetdata is
+    MIN_COVERAGE = 80
 
     # ── Verwerk meetreeksen, bereken statistieken, schrijf figuren/geopackages/Excel ──
     if RUN_COMPARE:
@@ -3367,6 +3428,7 @@ if __name__ == "__main__":
             beoor_kleuren=BEOOR_KLEUREN,
             abs_drempel=ABS_DREMPEL_M3S,
             exclude_meetreeks=EXCLUDE_MEETREEKS,
+            min_coverage=MIN_COVERAGE,
             save_results_combined=True,
             output_is_feather=False,
             output_is_nc=True,
