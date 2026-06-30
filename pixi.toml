@@ -44,6 +44,7 @@ pytest = ">=8.4"
 pytest-cov = ">=7"
 pytest-xdist = ">=3.8"
 python = "3.13.*"
+python-dotenv = ">=1"
 quarto = ">=1.9"
 quartodoc = ">=0.11.1"
 rasterstats = ">=0.20"
@@ -64,7 +65,7 @@ hydamo = { path = "src/hydamo", editable = true }
 peilbeheerst_model = { path = "src/peilbeheerst_model", editable = true }
 ribasim_nl = { path = "src/ribasim_nl", editable = true }
 # sync with config in install_ribasim_core.py
-ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "49e0008a168747bf1e30ec4987c768339a95855f", subdirectory = "python/ribasim" }
+ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "eae77424a4078497d40d8197237cb83e3aba6a83", subdirectory = "python/ribasim" }
 types-geopandas = ">=1.1"
 types-networkx = ">=3.6"
 types-pycurl = ">=7.45"
@@ -87,6 +88,7 @@ docs = { cmd = "quartodoc build && quarto preview", cwd = "docs", depends-on = [
 docs-render = { cmd = "quartodoc build && rm -f objects.json && quarto render --to html --execute", cwd = "docs", depends-on = ["dvc-dag"] }
 ribasim = { cmd = "bin/ribasim/bin/ribasim", depends-on = ["install-core"] }
 edit-toml = "python scripts/edit_toml.py"
+delwaq = "python -m ribasim_nl.delwaq"
 
 [target.win-64.tasks]
 install-core = { cmd = "python scripts/install_ribasim_core.py", inputs = ["scripts/install_ribasim_core.py"], outputs = ["bin/ribasim/README.md"] }
