@@ -120,6 +120,16 @@ for loc in obs_locs:
         ax.set_title("Mean concentration of selected monitoring sites")
         plt.show()
 
+# %%
+# from datapackage import DataPackage
+# dp = DataPackage(nmodel.node.meta_categorie) # select doorgaand and hoofdwater
+# add attributes to nodes in nmodel.node.df: WKP_monitoring_code
+# use table to plot for node_id + WKP_monitoring_code the timeseries of concentration for a specific substance
+# the modelled concentration should be read from def parse with xr.open_dataset(output_folder / "delwaq_map.nc"); using the ribasim_nNodes + mapping (see parse function in ribasim/delwaq/parse.py)
+# the coupling of WKP_monitoring_code to node_id should make use of observations/spatial_coupling.py
+# coupling should be done using Basin / area layer in database.gpkg (monitoring location should fall within basin shape) from which node_id can be obtained, and via Node layer in database.gpkg meta_categorie can be obtained (doorgaand, hoofdwater, etc.)
+# finaly use stats to calculate statistics of modelled vs measured concentration for each WKP_monitoring_code
+
 
 ########## CODE BELOW IS PREVIOUS VERSION BASED ON WATERINFO DATA AND FOR TESTING PURPOSES ONLY, DELETE LATER ############
 """
