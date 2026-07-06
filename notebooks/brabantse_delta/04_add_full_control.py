@@ -256,6 +256,7 @@ cloud.synchronize(filepaths=[qlr_path, aanvoergebieden_gpkg])
 model = Model.read(ribasim_toml)
 
 outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.node_id.astype(int), 10.0)
+outlet_max_flow_rate_aanvoer_by_node_id[884] = 0.0  # aanvoer uitzetten vanwege rondpompen via pomp 616
 
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 

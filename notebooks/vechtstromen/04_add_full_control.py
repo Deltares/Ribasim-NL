@@ -430,6 +430,7 @@ outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.n
 
 # Handmatige inlaatcapaciteiten gelden ook in aanvoer; niet terugvallen op de default van 10 m3/s.
 outlet_max_flow_rate_aanvoer_by_node_id.update(outlet_max_flow_rate_by_node_id)
+outlet_max_flow_rate_aanvoer_by_node_id[690] = 0.0  # aanvoer uitzetten vanwege rondpompen via pomp 632
 
 pump_max_flow_rate_by_node_id = {
     629: 0.42,  # punt 53 - Stokkumerflier
@@ -621,10 +622,10 @@ drain_nodes = node_list(
     [450, 451, 452, 453, 455, 473, 475, 487, 490],
     [491, 494, 504, 505, 510, 511, 512, 514, 517],
     [519, 529, 530, 531, 533, 540, 548, 549, 550, 552],
-    [556, 557, 558, 559, 565, 568, 577, 578, 582, 583],
+    [556, 557, 558, 559, 565, 568, 576, 577, 578, 582, 583],
     [586, 592, 593, 594, 597, 598, 600, 604, 605, 610],
     [614, 617, 618, 620, 628, 637, 642, 643, 645, 649],
-    [650, 653, 661, 662, 666, 667, 674, 675, 686, 703],
+    [650, 653, 661, 662, 666, 667, 674, 675, 686, 687, 703],
     [704, 707, 712, 713, 714, 715, 722, 723, 724, 729],
     [733, 738, 740, 741, 743, 761, 763, 764, 768],
     [772, 773, 776, 780, 781, 783, 790, 791, 792],
