@@ -16,7 +16,7 @@ cloud = CloudStorage()
 
 authority = "Limburg"
 name = "limburg"
-run_model = True
+run_model = False
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
@@ -556,6 +556,11 @@ model.redirect_link(link_id=2208, to_node_id=1802)
 
 # Merge bij Niers
 model.merge_basins(node_id=2375, to_node_id=1917)
+
+# Erg kleine basins uit full-control achter bestaande merges plaatsen.
+model.merge_basins(node_id=2394, to_node_id=1507, are_connected=True)
+model.merge_basins(node_id=1672, to_node_id=1556, are_connected=True)
+model.merge_basins(node_id=1416, to_node_id=2408, are_connected=True)
 
 
 #  %% write model

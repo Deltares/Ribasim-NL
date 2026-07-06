@@ -22,6 +22,7 @@ from ribasim_nl.model import Model
 from ribasim_nl.settings import settings
 
 LHM_RASTER_FILE = settings.ribasim_nl_data_dir / Path("Basisgegevens/LHM/4.3/input/LHM_data.tif")
+MIN_STORAGE_PROFILE_AREA = 999.0
 
 BANDEN = {
     "maaiveld": 1,
@@ -497,7 +498,12 @@ def simplify_area_level_df(
 
 
 def get_basin_profile(
-    basin_polygon: Polygon, max_level: float, min_level: float, lhm_raster_file: Path, sample_res: int = 25
+    basin_polygon: Polygon,
+    max_level: float,
+    min_level: float,
+    lhm_raster_file: Path,
+    sample_res: int = 25,
+    min_area: float = MIN_STORAGE_PROFILE_AREA,
 ) -> basin.Profile:
     """Generate a basin.Static table for a Polygon using LHM rasters
 
@@ -515,6 +521,20 @@ def get_basin_profile(
         # get resampled shape and transform
         out_shape, window, new_transform = get_resampled_window(src=src, polygon=basin_polygon, sample_res=sample_res)
 
+        def enforce_min_area(df: pd.DataFrame) -> pd.DataFrame:
+            if df.empty:
+                return df
+
+            df = df.sort_values("level").reset_index(drop=True).copy()
+            df.loc[0, "area"] = 0.1
+            df.loc[0, "comment"] = "default: 0.1m2"
+
+            mask = (df.index > 0) & (df["area"] < min_area)
+            if mask.any():
+                df.loc[mask, "area"] = min_area
+                df.loc[mask, "comment"] = f"oppervlak >= {int(min_area)}m2 gezet"
+            return df
+
         # if no area 1% - 2% of basin-area
         def default_ah_df() -> pd.DataFrame:
             df = pd.DataFrame(
@@ -526,7 +546,7 @@ def get_basin_profile(
             )
             df["level"] = df["level"].round(2)
             df["area"] = df["area"].round(1)
-            return df
+            return enforce_min_area(df)
 
         mask = rasterio.features.geometry_mask(
             [basin_polygon], out_shape=out_shape, transform=new_transform, all_touched=True, invert=True
@@ -581,10 +601,7 @@ def get_basin_profile(
                 ah_df["area"] = ah_df["area"].cumsum().round(1)
                 ah_df["comment"] = pd.Series(dtype=str)
 
-                # 0 m2 is not allowed we make it 1
-                mask = ah_df.area <= 1
-                ah_df.loc[mask, ["area"]] = 1
-                ah_df.loc[mask, ["comment"]] = "oppervlak >= 1m2 gezet"
+                ah_df = enforce_min_area(ah_df)
                 ah_df = simplify_area_level_df(ah_df)
 
                 if ah_df.empty:

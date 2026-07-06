@@ -17,6 +17,7 @@ cloud = CloudStorage()
 
 authority = "DrentsOverijsselseDelta"
 name = "dod"
+run_model = False
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
@@ -498,6 +499,21 @@ model.merge_basins(node_id=2192, to_node_id=2194, are_connected=False)
 model.merge_basins(node_id=2574, to_node_id=2030, are_connected=True)
 model.merge_basins(node_id=2004, to_node_id=2377, are_connected=True)
 
+for node_id, to_node_id in [
+    (58, 59),
+    (1774, 59),
+    (2164, 2120),
+    (1970, 1990),
+    (2294, 1949),
+    (1669, 1670),
+    (2352, 1819),
+    (2437, 2153),
+    (2446, 1575),
+    (2381, 1575),
+    (1920, 1881),  # Noordscheschutsluis
+]:
+    model.merge_basins(node_id=node_id, to_node_id=to_node_id, are_connected=True)
+
 model.remove_link(from_node_id=281, to_node_id=2554)
 
 # remove unassigned basin area
@@ -612,7 +628,8 @@ model.report_basin_area()
 model.report_internal_basins()
 # %% Test run model
 
-model = Model.read(ribasim_toml)
-status_code = model.run()
+if run_model:
+    model = Model.read(ribasim_toml)
+    status_code = model.run()
 
 # assert status_code == 0

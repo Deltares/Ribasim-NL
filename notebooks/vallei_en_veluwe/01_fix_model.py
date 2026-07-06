@@ -296,6 +296,7 @@ model.merge_basins(node_id=1044, to_node_id=1103)
 model.merge_basins(node_id=1120, to_node_id=862)
 model.merge_basins(node_id=1218, to_node_id=984)
 model.merge_basins(node_id=1159, to_node_id=1058, are_connected=False)
+model.merge_basins(node_id=1108, to_node_id=813, are_connected=True)
 
 model.remove_node(232, remove_links=True)
 # %% corrigeren knoop-topologie

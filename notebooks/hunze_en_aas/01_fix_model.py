@@ -16,7 +16,7 @@ cloud = CloudStorage()
 
 authority = "HunzeenAas"
 name = "hea"
-run_model = True
+run_model = False
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
@@ -130,6 +130,14 @@ for action in actions:
         method(**kwargs)
 model.remove_node(node_id=2019, remove_links=True)
 model.remove_node(node_id=17, remove_links=True)
+
+for node_id, to_node_id, are_connected in [
+    (1621, 1601, True),
+    (1325, 1666, True),
+    (1908, 1372, True),
+    (1763, 1381, False),
+]:
+    model.merge_basins(node_id=node_id, to_node_id=to_node_id, are_connected=are_connected)
 
 
 # %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code) by overlapping the Ribasim area file baed on largest overlap

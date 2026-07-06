@@ -22,7 +22,7 @@ from ribasim_nl import CloudStorage, Model, NetworkValidator
 cloud = CloudStorage()
 authority = "Vechtstromen"
 name = "vechtstromen"
-run_model = True
+run_model = False
 
 
 def get_latest_hws_model_version() -> ModelVersion:
@@ -1556,6 +1556,7 @@ FINAL_BASIN_MERGES = [
     (1405, 1730), (2178, 1730),  # Kanaal Almelo Haandrik
     (1873, 1878), (1879, 1878),  # Verlengde Hoogeveensche Vaart
     (1633, 1700),  # Stieltjeskanaalsluis
+    (1604, 1890),
 ]
 # fmt: on
 

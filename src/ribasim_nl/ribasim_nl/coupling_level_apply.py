@@ -336,7 +336,7 @@ def apply_level_updates(
                 condition_rows = condition_df.loc[condition_mask].copy()
                 if condition_rows.empty:
                     continue
-                condition_rows = condition_rows.sort_values("condition_id")
+                condition_rows = condition_rows.sort_values(["condition_id", "time"])
 
                 threshold_values = control_condition_thresholds(
                     layout_key=layout_key,
@@ -346,17 +346,24 @@ def apply_level_updates(
                     weight=as_float(variable_row.weight),
                     level_difference_threshold=model_level_difference_threshold(model),
                 )
-                if len(threshold_values) != len(condition_rows):
+                condition_groups = list(condition_rows.groupby("condition_id", sort=True))
+                if len(threshold_values) != len(condition_groups):
                     raise ValueError(
                         f"{layout_key} #{target_node_id} met DiscreteControl #{control_node_id} heeft "
-                        f"{len(condition_rows)} conditions voor compound_variable_id {compound_variable_id}, "
+                        f"{len(condition_groups)} conditions voor compound_variable_id {compound_variable_id}, "
                         f"verwacht {len(threshold_values)}."
                     )
 
-                for threshold_value, condition_index in zip(threshold_values, condition_rows.index, strict=True):
-                    condition_df.loc[condition_index, "threshold_high"] = as_float(threshold_value)
-                    condition_df.loc[condition_index, "threshold_low"] = as_float(threshold_value)
-                    update_count += 1
+                for threshold_value, (_, condition_group) in zip(threshold_values, condition_groups, strict=True):
+                    update_mask = pd.Series(True, index=condition_group.index)
+                    if THRESHOLD_UPDATE_PROTECTION_COLUMN in condition_group.columns:
+                        update_mask &= ~condition_group[THRESHOLD_UPDATE_PROTECTION_COLUMN].map(truthy)
+                    update_indices = condition_group.index[update_mask]
+                    if len(update_indices) == 0:
+                        continue
+                    condition_df.loc[update_indices, "threshold_high"] = as_float(threshold_value)
+                    condition_df.loc[update_indices, "threshold_low"] = as_float(threshold_value)
+                    update_count += len(update_indices)
 
         return update_count
 

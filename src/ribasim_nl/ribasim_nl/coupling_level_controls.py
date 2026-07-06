@@ -49,7 +49,12 @@ def grouped_compound_counts(df: pd.DataFrame | None, control_node_id: int) -> di
     if rows.empty:
         return {}
     counts: dict[int, int] = {}
-    for compound_variable_id, count in rows.groupby("compound_variable_id").size().items():
+    grouped = rows.groupby("compound_variable_id")
+    if "condition_id" in rows.columns:
+        iterable = grouped["condition_id"].nunique(dropna=True).items()
+    else:
+        iterable = grouped.size().items()
+    for compound_variable_id, count in iterable:
         if is_missing(compound_variable_id):
             continue
         counts[as_int(compound_variable_id)] = as_int(count)

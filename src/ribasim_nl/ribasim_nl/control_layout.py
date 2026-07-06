@@ -27,7 +27,7 @@ def control_layout_key(function: str, flow_demand_controlled: bool = False, cont
 
     if control_name is not None and ":" in control_name:
         control_name_function = control_name.split(":", 1)[0].strip().lower()
-        if control_name_function in {"inlaat", "uitlaat", "doorlaat"}:
+        if control_name_function in control_layouts():
             return control_name_function
 
     return str(function).lower()

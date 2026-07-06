@@ -1,11 +1,17 @@
 # %%
+from datetime import datetime
+
 import geopandas as gpd
+import pandas as pd
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl.control import (
     add_controllers_to_supply_area,
     add_controllers_to_uncontrolled_connector_nodes,
     mark_level_update_protected,
+    mark_max_downstream_level_update_protected,
+    mark_threshold_update_protected,
 )
+from ribasim_nl.downstream import downstream_nodes
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 
@@ -21,6 +27,171 @@ def set_flow_rate(static_df, max_flow_rate_by_node_id: dict[int, float], flow_ra
         static_df.loc[mask, flow_rate] = max_flow_rate[mask]
 
 
+def replace_node_rows(df: pd.DataFrame, node_id: int, rows: list[dict]) -> pd.DataFrame:
+    rows_df = pd.DataFrame(rows).reindex(columns=df.columns)
+    return pd.concat([df.loc[~df["node_id"].eq(node_id)], rows_df], ignore_index=True)
+
+
+def lower_aanvoer_max_downstream_level(static_df: pd.DataFrame, margin: float) -> pd.Series:
+    mask = static_df["control_state"].eq("aanvoer") & static_df["max_downstream_level"].notna()
+    static_df.loc[mask, "max_downstream_level"] -= margin
+    return mask
+
+
+def set_run_period(
+    model: Model, start_month_day: tuple[int, int], end_month_day: tuple[int, int], base_year: int
+) -> None:
+    start = datetime(base_year, *start_month_day)
+    end_year = base_year if end_month_day > start_month_day else base_year + 1
+    end = datetime(end_year, *end_month_day)
+    current_start = model.starttime
+    current_end = model.endtime
+    if start < current_end:
+        model.starttime = start
+        model.endtime = end
+    elif current_start < end:
+        model.endtime = end
+        model.starttime = start
+    else:
+        raise ValueError(f"Kan runperiode niet veilig zetten van {current_start}..{current_end} naar {start}..{end}")
+
+
+def discrete_control_node_id(model: Model, target_node_id: int, required: bool = True) -> int | None:
+    node_type_by_id = model.node.df["node_type"]
+    control_node_ids = model.link.df.loc[
+        model.link.df["link_type"].eq("control")
+        & model.link.df["to_node_id"].eq(target_node_id)
+        & model.link.df["from_node_id"].map(node_type_by_id).eq("DiscreteControl"),
+        "from_node_id",
+    ].astype(int)
+    if len(control_node_ids) == 1:
+        return int(control_node_ids.iloc[0])
+    if len(control_node_ids) == 0 and not required:
+        return None
+    raise ValueError(f"Expected one DiscreteControl for node {target_node_id}, found {control_node_ids.to_list()}")
+
+
+def inlet_control_target_node_ids(model: Model) -> set[int]:
+    control_links = model.link.df[model.link.df["link_type"].eq("control")]
+    control_names = model.node.df["name"].fillna("").astype(str).str.lower()
+    mask = control_links["from_node_id"].map(control_names).str.startswith("inlaat")
+    return set(control_links.loc[mask, "to_node_id"].dropna().astype(int))
+
+
+def base_discrete_control_condition_rows(model: Model, control_node_id: int) -> pd.DataFrame:
+    condition_rows = model.discrete_control.condition.df.loc[
+        model.discrete_control.condition.df["node_id"].eq(control_node_id)
+    ].copy()
+    if condition_rows.empty:
+        raise ValueError(f"Expected condition rows for control node {control_node_id}, found none")
+
+    timed_rows = condition_rows.loc[condition_rows["time"].notna()].sort_values(["condition_id", "time"])
+    if timed_rows.empty:
+        return condition_rows.sort_values(["condition_id", "compound_variable_id"]).drop_duplicates(
+            subset=["condition_id", "compound_variable_id"],
+            keep="first",
+        )
+    return timed_rows.drop_duplicates(subset=["condition_id", "compound_variable_id"], keep="first")
+
+
+def year_round_flow_demand_target_node_ids(model: Model) -> set[int]:
+    year_round_flow_demand_node_ids = set()
+
+    if model.flow_demand.static.df is not None:
+        mask = model.flow_demand.static.df["demand"].fillna(0).gt(0)
+        year_round_flow_demand_node_ids.update(model.flow_demand.static.df.loc[mask, "node_id"].astype(int))
+
+    if model.flow_demand.time.df is not None and not model.flow_demand.time.df.empty:
+        min_demand_by_node_id = model.flow_demand.time.df.groupby("node_id")["demand"].min()
+        year_round_flow_demand_node_ids.update(min_demand_by_node_id[min_demand_by_node_id.gt(0)].index.astype(int))
+
+    if not year_round_flow_demand_node_ids:
+        return set()
+
+    return set(
+        model.link.df.loc[
+            model.link.df["from_node_id"].isin(year_round_flow_demand_node_ids),
+            "to_node_id",
+        ]
+        .dropna()
+        .astype(int)
+    )
+
+
+def winter_open_supply_route_node_ids(
+    model: Model,
+    supply_nodes: list[int],
+    flow_control_nodes: list[int],
+    drain_nodes: list[int],
+    target_node_ids: set[int],
+) -> set[int]:
+    if not target_node_ids:
+        return set()
+
+    flow_control_node_ids = set(flow_control_nodes)
+    winter_open_node_ids = set()
+    for supply_node_id in supply_nodes:
+        downstream_node_ids = downstream_nodes(
+            graph=model.graph,
+            node_id=supply_node_id,
+            stop_at_node_ids=drain_nodes,
+        )
+        if target_node_ids & downstream_node_ids:
+            winter_open_node_ids.add(supply_node_id)
+            winter_open_node_ids.update(flow_control_node_ids & downstream_node_ids)
+    return winter_open_node_ids
+
+
+def close_supply_controls_in_winter(model: Model, node_ids: set[int]) -> None:
+    base_year = model.starttime.year
+    times = [
+        datetime(base_year, *SUMMER_INLET_START),
+        datetime(base_year, *WINTER_INLET_START),
+        datetime(base_year + 1, *SUMMER_INLET_START),
+    ]
+
+    for node_id in sorted(node_ids):
+        control_node_id = discrete_control_node_id(model=model, target_node_id=node_id, required=False)
+        if control_node_id is None:
+            continue
+
+        seasonal_rows = []
+        for condition_row in base_discrete_control_condition_rows(
+            model=model, control_node_id=control_node_id
+        ).itertuples(index=False):
+            row_dict = condition_row._asdict()
+            summer_threshold_high = float(row_dict["threshold_high"])
+            summer_threshold_low = (
+                float(row_dict["threshold_low"]) if pd.notna(row_dict["threshold_low"]) else summer_threshold_high
+            )
+            for time, threshold_low, threshold_high in [
+                (times[0], summer_threshold_low, summer_threshold_high),
+                (times[1], WINTER_SUPPLY_DISABLED_THRESHOLD, WINTER_SUPPLY_DISABLED_THRESHOLD),
+                (times[2], summer_threshold_low, summer_threshold_high),
+            ]:
+                row = row_dict.copy()
+                row["time"] = time
+                row["threshold_low"] = threshold_low
+                row["threshold_high"] = threshold_high
+                seasonal_rows.append(row)
+
+        model.discrete_control.condition.df = replace_node_rows(
+            model.discrete_control.condition.df,
+            control_node_id,
+            seasonal_rows,
+        )
+        model.node.df.loc[control_node_id, "cyclic_time"] = True
+        threshold_protection_column = "meta_threshold_update_protected"
+        if threshold_protection_column not in model.discrete_control.condition.df.columns:
+            model.discrete_control.condition.df[threshold_protection_column] = False
+        node_mask = model.discrete_control.condition.df["node_id"].eq(control_node_id)
+        model.discrete_control.condition.df.loc[node_mask, threshold_protection_column] = False
+        mark_threshold_update_protected(
+            model.discrete_control.condition.df,
+            node_mask & model.discrete_control.condition.df["time"].eq(times[1]),
+        )
+
+
 # %%
 # Globale settings
 
@@ -29,6 +200,11 @@ AUTHORITY: str = "RijnenIJssel"  # authority
 SHORT_NAME: str = "wrij"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
+SUMMER_INLET_START = (4, 1)
+WINTER_INLET_START = (11, 1)
+WINTER_SUPPLY_DISABLED_THRESHOLD = float("-inf")
+AANVOER_MAX_DOWNSTREAM_MARGIN = 0.01
+ENABLE_SEASONAL_INLET_CONTROL = False
 drain_nodes = [59]
 supply_nodes = [654, 479, 437, 438, 677, 409, 1190, 390, 428]
 flushing_nodes = {
@@ -280,6 +456,10 @@ add_controllers_to_uncontrolled_connector_nodes(
 
 # %%
 
+for static_df in (model.outlet.static.df, model.pump.static.df):
+    mask = lower_aanvoer_max_downstream_level(static_df, margin=AANVOER_MAX_DOWNSTREAM_MARGIN)
+    mark_max_downstream_level_update_protected(static_df, mask, model=model)
+
 # Lochem aflaatwerk limiteren tot 32 m3/s
 mask = (model.outlet.static.df.node_id == 117) & (model.outlet.static.df.control_state == "afvoer")
 model.outlet.static.df.loc[mask, "max_flow_rate"] = 32
@@ -291,7 +471,6 @@ model.outlet.static.df.loc[mask, "max_flow_rate"] = 3.1
 # Controller 1330: ook bij truth_state FF naar aanvoer.
 mask = (model.discrete_control.logic.df.node_id == 1330) & (model.discrete_control.logic.df.truth_state == "FF")
 model.discrete_control.logic.df.loc[mask, "control_state"] = "aanvoer"
-
 
 # Verdeelwerk Hackfort limiteren tot 0.2 m3/s in aanvoerstand.
 mask = model.outlet.static.df.node_id == 349
@@ -342,15 +521,7 @@ for static_df, max_flow_rate_by_node_id in (
     static_df.loc[aanvoer_mask, "max_flow_rate"] = max_flow_rate[aanvoer_mask]
 
 # Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
-node_type_by_id = model.node.df["node_type"].to_dict()
-flow_demand_controlled_node_ids = set(
-    model.link.df.loc[
-        model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),
-        "to_node_id",
-    ]
-    .dropna()
-    .astype(int)
-)
+flow_demand_controlled_node_ids = year_round_flow_demand_target_node_ids(model=model)
 manual_max_flow_rate_node_ids = set(outlet_max_flow_rate_by_node_id)
 manual_max_flow_rate_node_ids.update(pump_max_flow_rate_by_node_id)
 protected_max_flow_rate_node_ids = set(EXCLUDE_NODES) | flow_demand_controlled_node_ids | manual_max_flow_rate_node_ids
@@ -366,16 +537,33 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
     afvoer_mask = static_df["control_state"].eq("afvoer") & static_df["node_id"].isin(aanvoer_only_node_ids)
     static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 0.0
 
+winter_supply_exempt_node_ids = winter_open_supply_route_node_ids(
+    model=model,
+    supply_nodes=supply_nodes,
+    flow_control_nodes=flow_control_nodes,
+    drain_nodes=drain_nodes,
+    target_node_ids=flow_demand_controlled_node_ids,
+)
+if ENABLE_SEASONAL_INLET_CONTROL:
+    close_supply_controls_in_winter(
+        model=model,
+        node_ids=inlet_control_target_node_ids(model=model) - winter_supply_exempt_node_ids,
+    )
+
 # %%
 # Model run
 
 ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_wet", f"{SHORT_NAME}.toml")
 ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_dry", f"{SHORT_NAME}.toml")
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
+base_run_year = model.starttime.year
 
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 
 # hoofd run met verdamping
+set_run_period(
+    model=model, start_month_day=SUMMER_INLET_START, end_month_day=WINTER_INLET_START, base_year=base_run_year
+)
 update_basin_static(model=model, evaporation_mm_per_day=0.1)
 model.write(ribasim_toml_dry)
 
@@ -386,6 +574,9 @@ if MODEL_EXEC:
     model = Model.read(ribasim_toml_dry)
 
 # prerun om het model te initialiseren met neerslag
+set_run_period(
+    model=model, start_month_day=WINTER_INLET_START, end_month_day=SUMMER_INLET_START, base_year=base_run_year
+)
 update_basin_static(model=model, precipitation_mm_per_day=2)
 model.write(ribasim_toml_wet)
 
@@ -396,6 +587,9 @@ if MODEL_EXEC:
     model = Model.read(ribasim_toml_wet)
 
 # hoofd run
+set_run_period(
+    model=model, start_month_day=WINTER_INLET_START, end_month_day=SUMMER_INLET_START, base_year=base_run_year
+)
 update_basin_static(model=model, precipitation_mm_per_day=1.5)
 model.write(ribasim_toml)
 # run hoofdmodel

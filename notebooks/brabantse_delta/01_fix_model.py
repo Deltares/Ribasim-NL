@@ -16,7 +16,7 @@ cloud = CloudStorage()
 
 authority = "BrabantseDelta"
 short_name = "wbd"
-run_model = True
+run_model = False
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")

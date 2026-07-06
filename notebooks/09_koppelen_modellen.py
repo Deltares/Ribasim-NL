@@ -69,12 +69,20 @@ remove_nodes = [
     6000120,  # losse Limburg-boundary zonder flow-link
     6000109,  # parallel aan AaenMaas FlowDemand-inlaat 3800601
     6000800,  # parallel aan AaenMaas FlowDemand-inlaat 3800601
+    3800041,  # overzijde van Limburg-uitlaat 6000692; koppeling wordt geforceerd via 6000001 -> 3801265
+    3800246,  # AaenMaas-inlaat bij dezelfde rand; voorkom dubbele koppeling en behoud Limburg-control
+    3803624,  # controller van verwijderde AaenMaas-inlaat 3800246
+    3800040,  # overzijde van Limburg-uitlaat 6002507; koppeling wordt geforceerd via 6002508 -> 3801715
+    3800309,  # AaenMaas-inlaat bij dezelfde rand; voorkom dubbele koppeling en behoud Limburg-control
+    3803653,  # controller van verwijderde AaenMaas-inlaat 3800309
+    3800042,  # overzijde van DeDommel-uitlaat 2701909; koppeling wordt geforceerd via 2700008 -> 3801322
+    3803094,  # AaenMaas FlowDemand-inlaat bij dezelfde rand; voorkom dubbele koppeling en behoud DeDommel-control
+    3803606,  # FlowDemand van verwijderde AaenMaas-inlaat 3803094
     6002497,  # parallel aan doorlaat 6002496 tussen hetzelfde Limburg/AaenMaas basin-paar
     6002788,  # reparatie Helenavaart Limburg
     6002788,  # reparatie Helenavaart Limburg
     3800052,  # forceren koppeling kanaal van Deurne
     3800447,  # forceren koppeling kanaal van Deurne
-    3803725,  # forceren koppeling kanaal van Deurne
     3802017,  # verwijderen rand binnenstad
     3800049,  # verwijderen rand binnenstad
     3803092,  # verwijderen zijtak Helanvaart Limburg
@@ -94,8 +102,12 @@ reset_outlet_min_upstream_level = [
 ]
 
 # Outlets with min_upstream_level below the effective upstream Basin bottom; clamp to validation-safe level
-minimum_outlet_min_upstream_level = {
-    3800291: 15.1,  # aanvoer min_upstream_level (9.36) below upstream Basin #3801452 bottom (15.1)
+minimum_outlet_min_upstream_level = {}
+
+# Aanvoer expliciet uitzetten in gekoppelde modellen; lokale HDSR nodes 453 en 2104 krijgen prefix 14.
+zero_aanvoer_flow_rate_node_ids = {
+    1400453,
+    1402104,
 }
 
 # force LevelBoundary node_id to Basin node_id, overriding the automatic coupling
@@ -125,8 +137,11 @@ forced_coupling = {
     6000125: 3801280,  # Forceren Kanaal van Deurne
     3800053: 3801280,  # Forceren Kanaal van Deurne
     2700009: 3801394,  # Vuchterstuw naar Binnenstad
+    2700008: 3801322,  # Behoud DeDommel-uitlaat 1909; voorkom AaenMaas FlowDemand-inlaat 3094.
     3800048: 3801394,  # Aansluiten Drongelens kanaal op Binnenstad
     3300009: 4401377,  # Levelboundary takt niet aan op Verlengde Hoogeveense Vaart
+    6000001: 3801265,  # Behoud Limburg-uitlaat 692; voorkom merge met AaenMaas-inlaat 246.
+    6002508: 3801715,  # Behoud Limburg-uitlaat 2507; voorkom merge met AaenMaas-inlaat 309.
     6000003: 3801961,  # Forceren zijtak Helanvaart Limburg
     3800029: 6002294,  # Defensiekanaal Limburg: voorkom koppeling via Junction 6003598
     3801958: 6002408,  # AaenMaas FlowDemand-inlaat 3800601 koppelen aan Limburg-basin
@@ -537,6 +552,16 @@ def remove_invalid_topology_nodes(model: Model) -> None:
             invalid_topology = model.invalid_topology_at_node(link_type=link_type)
 
 
+def force_zero_aanvoer_flow_rate(model: Model) -> None:
+    """Force selected aanvoer states to zero after coupling."""
+    for static_df in (model.outlet.static.df, model.pump.static.df):
+        mask = static_df["node_id"].isin(zero_aanvoer_flow_rate_node_ids)
+        if "control_state" in static_df.columns:
+            mask &= static_df["control_state"].eq("aanvoer")
+        columns = [column for column in ["flow_rate", "max_flow_rate"] if column in static_df.columns]
+        static_df.loc[mask, columns] = 0.0
+
+
 def save_model_and_outputs(model: Model, all_link_table: list[dict], toml_file: Path) -> Path:
     """Save the model and create output files.
 
@@ -560,6 +585,7 @@ def save_model_and_outputs(model: Model, all_link_table: list[dict], toml_file: 
         tolerance=COUPLING_LEVEL_TOLERANCE,
         apply_authorities=COUPLING_LEVEL_APPLY_AUTHORITIES,
     )
+    force_zero_aanvoer_flow_rate(model)
     model.write(output_toml_file)
 
     # Save links

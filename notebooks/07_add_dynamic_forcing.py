@@ -77,14 +77,54 @@ def add_forcing(model, cloud, starttime, endtime, assign_budget_fractions, fract
 FIND_POST_FIXES = ["bergend_model"]
 # FIND_POST_FIXES = ["full_control_model"]
 # pass authorities as arguments, or edit list here
-SELECTION: set = {"BrabantseDelta"}  # , "Limburg", "DeDommel"}
+SELECTION: set = {"DrentsOverijsselseDelta"}  # , "Limburg", "DeDommel"}
 INCLUDE_RESULTS = False
 REBUILD = True
-RUN_MODEL = True
+RUN_MODEL = False
+USE_PREVIOUS_DYNAMIC_STATE = True
 
 
 def get_model_dir(authority, post_fix):
     return cloud.joinpath(authority, "modellen", f"{authority}_{post_fix}")
+
+
+def read_previous_dynamic_state(toml_file):
+    if not USE_PREVIOUS_DYNAMIC_STATE or not toml_file.exists():
+        return None
+
+    try:
+        previous_model = Model.read(toml_file)
+    except Exception as error:
+        print(f"Previous dynamic state not read from {toml_file}: {error}")
+        return None
+
+    if previous_model.basin.state.df is None:
+        return None
+
+    return previous_model.basin.state.df.copy()
+
+
+def use_previous_dynamic_state(model, previous_state, authority):
+    if previous_state is None:
+        return
+
+    basin_node_ids = list(model.basin.node.df.index)  # type: ignore[union-attr]
+    previous_state = previous_state.copy().set_index("node_id", drop=False)
+    missing_node_ids = set(basin_node_ids) - set(previous_state.index)
+    extra_node_ids = set(previous_state.index) - set(basin_node_ids)
+
+    if missing_node_ids or extra_node_ids:
+        print(
+            f"Previous dynamic state not used for {authority}: "
+            f"{len(missing_node_ids)} missing and {len(extra_node_ids)} extra basin IDs."
+        )
+        return
+
+    state_df = previous_state.loc[basin_node_ids].reset_index(drop=True)
+    state_df.index += 1
+    state_df.index.name = "fid"
+    model.basin.state.df = state_df
+    print(f"Previous dynamic state used for {authority}.")
 
 
 def check_build(toml_file):
@@ -147,6 +187,7 @@ for authority in authorities:
         dst_toml_file = dst_model_dir / toml_file.name
 
         if check_build(dst_toml_file):
+            previous_dynamic_state = read_previous_dynamic_state(dst_toml_file)
             model = Model.read(toml_file)
 
             # add categorie to basin / state
@@ -180,6 +221,8 @@ for authority in authorities:
             # https://github.com/Deltares/Ribasim/pull/3033
             if model.basin.time.df is not None:
                 model.basin.time.filepath = Path("basin_time.nc")
+
+            use_previous_dynamic_state(model, previous_dynamic_state, authority)
 
             # write model and optionally run it
             model.write(dst_toml_file)

@@ -278,11 +278,6 @@ set_static_values(
     "min_upstream_level",
 )
 
-for node_id, to_node_id in [
-    (1108, 813),
-]:
-    model.merge_basins(node_id=node_id, to_node_id=to_node_id, are_connected=True)
-
 # %%
 # Max-capaciteiten pompen en sluizen
 GEMALEN_URL = "https://www.gemalen.nl/gemaal_detail.asp?gem_id={gem_id}"

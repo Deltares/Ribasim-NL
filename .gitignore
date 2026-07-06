@@ -100,3 +100,6 @@ delwaq/
 notebooks/*/main.py
 ribasim.env
 scripts/local_coupled_pipelines/
+
+# Local temp files and one-off helper scripts
+/tmp*

@@ -5,8 +5,9 @@ from peilbeheerst_model.controle_output import Control
 from ribasim_nl.control import (
     add_controllers_to_supply_area,
     add_controllers_to_uncontrolled_connector_nodes,
-    mark_level_update_protected,
+    mark_max_downstream_level_update_protected,
 )
+from ribasim_nl.coupling_level_common import MIN_UPSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 
@@ -20,6 +21,7 @@ AUTHORITY: str = "Noorderzijlvest"  # authority
 SHORT_NAME: str = "nzv"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
+AANVOER_MAX_DOWNSTREAM_MARGIN = 0.01
 SCHUTVERLIES_FLOW_RATE_BY_NODE_ID = {
     #    1756: 1.5,  # Oostersluis
 }
@@ -27,7 +29,9 @@ INLAAT_FLOW_RATE_AANVOER_BY_NODE_ID = {
     1741: 26.0,  # Gaarkeuken
 }
 GAARKEUKEN_OUTLET_NODE_ID = 1741
-GAARKEUKEN_MIN_UPSTREAM_LEVEL = -0.93
+GAARKEUKEN_BOUNDARY_NODE_ID = 4
+GAARKEUKEN_BOUNDARY_LEVEL = -0.52
+GAARKEUKEN_AANVOER_MIN_UPSTREAM_LEVEL = -0.97
 OUTLET_FLOW_RATE_AFVOER_OVERRIDE_BY_NODE_ID = {
     724: 400.0,
     728: 9999.0,
@@ -62,14 +66,21 @@ aanvoergebieden_gpkg = cloud.joinpath(r"Noorderzijlvest/verwerkt/sturing/aanvoer
 cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
 
 
-def configure_gaarkeuken_control(model: Model) -> None:
+def configure_gaarkeuken_outlet(model: Model) -> None:
+    boundary_mask = model.level_boundary.static.df["node_id"].eq(GAARKEUKEN_BOUNDARY_NODE_ID)
+    if boundary_mask.sum() != 1:
+        raise ValueError(f"Expected one LevelBoundary row for Gaarkeuken boundary {GAARKEUKEN_BOUNDARY_NODE_ID}")
+    model.level_boundary.static.df.loc[boundary_mask, "level"] = GAARKEUKEN_BOUNDARY_LEVEL
+
     outlet_mask = model.outlet.static.df["node_id"].eq(GAARKEUKEN_OUTLET_NODE_ID) & model.outlet.static.df[
         "control_state"
     ].eq("aanvoer")
     if outlet_mask.sum() != 1:
         raise ValueError(f"Expected one aanvoer row for Gaarkeuken outlet {GAARKEUKEN_OUTLET_NODE_ID}")
-    model.outlet.static.df.loc[outlet_mask, "min_upstream_level"] = GAARKEUKEN_MIN_UPSTREAM_LEVEL
-    mark_level_update_protected(model.outlet.static.df, outlet_mask)
+    model.outlet.static.df.loc[outlet_mask, "min_upstream_level"] = GAARKEUKEN_AANVOER_MIN_UPSTREAM_LEVEL
+    if MIN_UPSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN not in model.outlet.static.df.columns:
+        model.outlet.static.df[MIN_UPSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN] = False
+    model.outlet.static.df.loc[outlet_mask, MIN_UPSTREAM_LEVEL_UPDATE_PROTECTION_COLUMN] = True
 
 
 # %%
@@ -341,6 +352,13 @@ add_controllers_to_uncontrolled_connector_nodes(
     max_flow_rate_afvoer=outlet_flow_rate_afvoer_by_node_id,
 )
 
+# Laat aanvoer overal 1 cm onder benedenstrooms streefpeil dichtlopen om overlap tussen aanvoer en afvoer te beperken.
+for static_df in (model.outlet.static.df, model.pump.static.df):
+    mask = static_df["control_state"].eq("aanvoer") & static_df["max_downstream_level"].notna()
+    if mask.any():
+        static_df.loc[mask, "max_downstream_level"] -= AANVOER_MAX_DOWNSTREAM_MARGIN
+        mark_max_downstream_level_update_protected(static_df, mask, model=model)
+
 # %%
 # Model run
 
@@ -370,8 +388,8 @@ for node_id, flow_rate in INLAAT_FLOW_RATE_AANVOER_BY_NODE_ID.items():
     mask = (model.outlet.static.df.node_id == node_id) & (model.outlet.static.df.control_state == "aanvoer")
     model.outlet.static.df.loc[mask, ["flow_rate", "max_flow_rate"]] = flow_rate
 
-# Gaarkeuken apart overrulen: alleen de bronvoorwaarde verruimen.
-configure_gaarkeuken_control(model)
+# Gaarkeuken apart overrulen: aanvoer min_upstream_level expliciet verlagen.
+configure_gaarkeuken_outlet(model)
 
 # %% Junctionify(!)
 junctionify(model)

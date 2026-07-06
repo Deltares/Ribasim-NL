@@ -1,10 +1,14 @@
 # %%
+from datetime import datetime
+
 import geopandas as gpd
+import pandas as pd
 from peilbeheerst_model.controle_output import Control
 from ribasim_nl.control import (
     add_controllers_to_supply_area,
     add_controllers_to_uncontrolled_connector_nodes,
     mark_level_update_protected,
+    mark_max_downstream_level_update_protected,
     mark_threshold_update_protected,
 )
 from ribasim_nl.junctions import junctionify
@@ -20,6 +24,11 @@ AUTHORITY: str = "HunzeenAas"  # authority
 SHORT_NAME: str = "hea"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
+AANVOER_MAX_DOWNSTREAM_MARGIN = 0.01
+SUMMER_INLET_START = (4, 1)
+WINTER_INLET_START = (11, 1)
+WINTER_INLET_DISABLED_THRESHOLD = float("-inf")
+ENABLE_SEASONAL_INLET_CONTROL = False
 MIN_FLOW_RATE_BY_NODE_ID = {}
 outlet_max_flow_rate_by_node_id = {
     330: 7.5,  # De Bult
@@ -60,7 +69,7 @@ outlet_max_flow_rate_coupled_by_node_id = {
     1122: 6,  # gekoppeld max=3.11, huidige max=0.00, link=3300566
     2008: 2,  # parameterized nul; gekoppeld max=0.32
     2010: 9,  # gekoppeld max=5.73, parameterized=4.37
-    2015: 3,  # gekoppeld max=1.34, parameterized=0.10
+    2015: 3,  # gekoppeld max=1.34, parameterized=0.1
 }
 outlet_max_flow_rate_afvoer_by_node_id = {}
 for max_flow_rates in (outlet_max_flow_rate_coupled_by_node_id,):
@@ -80,9 +89,7 @@ ALWAYS_ON_PUMP_MIN_FLOW_RATE_BY_NODE_ID: dict[int, float] = {}
 ALWAYS_ON_PUMP_MAX_DOWNSTREAM_LEVEL: float = 99999.0
 ALWAYS_ON_PUMP_MIN_UPSTREAM_LEVEL_OFFSET: float = -1.0
 DORKWERD_PUMP_NODE_ID = 20
-DORKWERD_LISTEN_NODE_ID = 1261
-DORKWERD_THRESHOLD_LOW = 0.533
-DORKWERD_THRESHOLD_HIGH = 0.533
+DORKWERD_LISTEN_NODE_ID = 1971
 DORKWERD_MIN_UPSTREAM_LEVEL = -0.97
 DORKWERD_MAX_DOWNSTREAM_LEVEL = 0.58
 
@@ -96,7 +103,6 @@ EXCLUDE_NODES = {
     167,  # Koppelsluis Pekelerhoofddiep
     174,  # Koppelsluis (Scheepvaart)
     183,  # Haansluis (scheepvaart)
-    188,
     736,  # Springersverlaat 1e verlaat
     776,
     832,
@@ -120,6 +126,113 @@ def upstream_basin_target_level(model: Model, node_id: int) -> float | None:
     if target_levels.empty:
         return None
     return float(target_levels.iloc[0])
+
+
+def basin_target_level(model: Model, node_id: int) -> float:
+    target_levels = model.basin.area.df.loc[model.basin.area.df.node_id == node_id, "meta_streefpeil"].dropna().unique()
+    if len(target_levels) != 1:
+        raise ValueError(f"Expected one streefpeil for basin {node_id}, found {target_levels}")
+    return float(target_levels[0])
+
+
+def replace_node_rows(df: pd.DataFrame, node_id: int, rows: list[dict]) -> pd.DataFrame:
+    rows_df = pd.DataFrame(rows).reindex(columns=df.columns)
+    return pd.concat([df.loc[~df["node_id"].eq(node_id)], rows_df], ignore_index=True)
+
+
+def inlet_control_target_node_ids(model: Model) -> set[int]:
+    control_links = model.link.df[model.link.df["link_type"].eq("control")]
+    control_names = model.node.df["name"].fillna("").astype(str).str.lower()
+    mask = control_links["from_node_id"].map(control_names).str.startswith("inlaat")
+    return set(control_links.loc[mask, "to_node_id"].dropna().astype(int))
+
+
+def set_run_period(
+    model: Model, start_month_day: tuple[int, int], end_month_day: tuple[int, int], base_year: int
+) -> None:
+    start = datetime(base_year, *start_month_day)
+    end_year = base_year if end_month_day > start_month_day else base_year + 1
+    end = datetime(end_year, *end_month_day)
+    current_start = model.starttime
+    current_end = model.endtime
+    if start < current_end:
+        model.starttime = start
+        model.endtime = end
+    elif current_start < end:
+        model.endtime = end
+        model.starttime = start
+    else:
+        raise ValueError(f"Kan runperiode niet veilig zetten van {current_start}..{current_end} naar {start}..{end}")
+
+
+def close_inlets_in_winter(model: Model, node_ids: list[int] | set[int] | None = None) -> None:
+    base_year = model.starttime.year
+    times = [
+        datetime(base_year, *SUMMER_INLET_START),
+        datetime(base_year, *WINTER_INLET_START),
+        datetime(base_year + 1, *SUMMER_INLET_START),
+    ]
+    node_type_by_id = model.node.df["node_type"]
+    node_ids = inlet_control_target_node_ids(model=model) if node_ids is None else set(node_ids)
+
+    for node_id in sorted(node_ids):
+        control_link_mask = model.link.df["link_type"].eq("control") & model.link.df["to_node_id"].eq(node_id)
+        control_node_ids = (
+            model.link.df.loc[control_link_mask, "from_node_id"].map(node_type_by_id).eq("DiscreteControl")
+        )
+        control_node_ids = (
+            model.link.df.loc[control_link_mask].loc[control_node_ids, "from_node_id"].drop_duplicates().astype(int)
+        )
+        if len(control_node_ids) == 0:
+            continue
+        if len(control_node_ids) != 1:
+            raise ValueError(
+                f"Expected one DiscreteControl for inlet node {node_id}, found {control_node_ids.to_list()}"
+            )
+
+        control_node_id = int(control_node_ids.iloc[0])
+        condition_mask = model.discrete_control.condition.df["node_id"].eq(control_node_id)
+        condition_rows = model.discrete_control.condition.df.loc[condition_mask]
+        if condition_rows.empty:
+            raise ValueError(
+                f"Expected condition rows for inlet control {control_node_id} -> node {node_id}, found none"
+            )
+
+        timed_rows = condition_rows.loc[condition_rows["time"].notna()].sort_values("time")
+        condition_row = timed_rows.iloc[0] if not timed_rows.empty else condition_rows.iloc[0]
+        summer_threshold_high = float(condition_row.threshold_high)
+        summer_threshold_low = (
+            float(condition_row.threshold_low) if pd.notna(condition_row.threshold_low) else summer_threshold_high
+        )
+
+        seasonal_rows = []
+        for time, threshold_low, threshold_high in [
+            (times[0], summer_threshold_low, summer_threshold_high),
+            (times[1], WINTER_INLET_DISABLED_THRESHOLD, WINTER_INLET_DISABLED_THRESHOLD),
+            (times[2], summer_threshold_low, summer_threshold_high),
+        ]:
+            row = condition_row.to_dict()
+            row["time"] = time
+            row["threshold_low"] = threshold_low
+            row["threshold_high"] = threshold_high
+            seasonal_rows.append(row)
+
+        model.discrete_control.condition.df = replace_node_rows(
+            model.discrete_control.condition.df,
+            control_node_id,
+            seasonal_rows,
+        )
+        model.node.df.loc[control_node_id, "cyclic_time"] = True
+        threshold_protection_column = "meta_threshold_update_protected"
+        if threshold_protection_column not in model.discrete_control.condition.df.columns:
+            model.discrete_control.condition.df[threshold_protection_column] = False
+        node_mask = model.discrete_control.condition.df["node_id"].eq(control_node_id)
+        model.discrete_control.condition.df.loc[node_mask, threshold_protection_column] = False
+        mark_threshold_update_protected(
+            model.discrete_control.condition.df,
+            model.discrete_control.condition.df["node_id"].eq(control_node_id)
+            & model.discrete_control.condition.df["time"].eq(times[1]),
+        )
 
 
 def configure_always_on_pumps(model: Model) -> None:
@@ -164,9 +277,10 @@ def configure_dorkwerd_control(model: Model) -> None:
     if condition_mask.sum() != 1:
         raise ValueError(f"Expected one discrete control condition row for Dorkwerd control {control_node_id}")
 
+    threshold = basin_target_level(model=model, node_id=DORKWERD_LISTEN_NODE_ID)
     model.discrete_control.variable.df.loc[variable_mask, "listen_node_id"] = DORKWERD_LISTEN_NODE_ID
-    model.discrete_control.condition.df.loc[condition_mask, "threshold_low"] = DORKWERD_THRESHOLD_LOW
-    model.discrete_control.condition.df.loc[condition_mask, "threshold_high"] = DORKWERD_THRESHOLD_HIGH
+    model.discrete_control.condition.df.loc[condition_mask, "threshold_low"] = threshold
+    model.discrete_control.condition.df.loc[condition_mask, "threshold_high"] = threshold
     mark_threshold_update_protected(model.discrete_control.condition.df, condition_mask)
 
     pump_mask = model.pump.static.df["node_id"].eq(DORKWERD_PUMP_NODE_ID) & model.pump.static.df["control_state"].eq(
@@ -180,7 +294,7 @@ def configure_dorkwerd_control(model: Model) -> None:
 
     if DORKWERD_LISTEN_NODE_ID in model.node.df.index:
         model.node.df.loc[control_node_id, "name"] = (
-            f"inlaat: {DORKWERD_THRESHOLD_HIGH:.3f}/{DORKWERD_MAX_DOWNSTREAM_LEVEL:.2f} via {DORKWERD_LISTEN_NODE_ID}"
+            f"inlaat: {threshold:.3f}/{DORKWERD_MAX_DOWNSTREAM_LEVEL:.2f} via {DORKWERD_LISTEN_NODE_ID}"
         )
 
 
@@ -204,12 +318,9 @@ model.redirect_link(link_id=2853, to_node_id=1987)
 for node_id in remove_nodes:
     model.remove_node(node_id=node_id, remove_links=True)
 
-model.merge_basins(node_id=1621, to_node_id=1601, are_connected=True)
-model.merge_basins(node_id=1325, to_node_id=1666, are_connected=True)
-model.merge_basins(node_id=1908, to_node_id=1372, are_connected=True)
-model.merge_basins(node_id=1763, to_node_id=1381, are_connected=False)
 model.reverse_direction_at_node(node_id=871)  # inlaat stond verkeerde kant op
 model.reverse_direction_at_node(node_id=691)  # inlaat stond verkeerde kant op
+model.reverse_direction_at_node(node_id=337)  # inlaat stond verkeerde kant op
 model.update_node(
     node_id=166, node_type="ManningResistance"
 )  # Grote Slapersluis; hier wordt ook water ingelaten; hopelijk lukt dit met ManningResistance
@@ -217,7 +328,7 @@ model.update_node(node_id=632, node_type="Pump")  # Inlaat Vestdijklaan lijkt ee
 model.update_node(node_id=1111, node_type="Outlet")  # Manning tussen basins met verschillende streefpeilen gaat niet
 model.update_node(node_id=1122, node_type="Outlet")  # Manning tussen basins met verschillende streefpeilen gaat niet
 model.update_node(node_id=854, node_type="Pump")  # Inlaat Vestdijklaan lijkt een pomp(je) te zijn
-model.update_node(node_id=854, node_type="Outlet")  # Uitlaat Nijlandsloop naar Anreperdiep
+# model.update_node(node_id=854, node_type="Outlet")  # Uitlaat Nijlandsloop naar Anreperdiep
 for node_id in [147, 192]:
     model.update_node(node_id=node_id, node_type="Outlet")
 for node_id in ALWAYS_ON_PUMP_MIN_FLOW_RATE_BY_NODE_ID:
@@ -246,10 +357,16 @@ model.node.df.loc[mask, IS_SUPPLY_NODE_COLUMN] = True
 
 # user-defined drain_nodes
 drain_nodes = [
+    24,
+    28,
+    31,
     39,
+    46,
     50,
+    55,
     59,
     62,
+    63,
     71,
     80,
     88,
@@ -257,11 +374,13 @@ drain_nodes = [
     103,
     105,
     112,
+    125,
     133,
     135,
     179,
     196,
     206,
+    227,
     231,
     233,
     250,
@@ -269,14 +388,17 @@ drain_nodes = [
     256,
     257,
     285,
+    308,
     316,
     321,
     325,
     345,
     352,
     369,
+    371,
     425,
     431,
+    458,
     507,
     514,
     523,
@@ -285,12 +407,15 @@ drain_nodes = [
     558,
     603,
     628,
+    681,
     792,
     801,
     870,
     892,
+    896,
     966,
     988,
+    1017,
     1043,
     1046,
     1109,
@@ -300,7 +425,7 @@ drain_nodes = [
     447,
 ]
 # user-defined supply_nodes
-supply_nodes = [20, 62, 70, 107, 179, 573, 891, 972, 1122]
+supply_nodes = [20, 62, 70, 107, 179, 188, 573, 891, 972, 1122]
 # user-defined flow_control_nodes
 flow_control_nodes = [182, 330, 571, 573, 634, 679, 165, 505, 1017, 1111]
 # user-defined flushing_nodes voor de overige connectoren
@@ -652,6 +777,19 @@ add_controllers_to_uncontrolled_connector_nodes(
     max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
 )
 
+# Laat aanvoer overal onder het benedenstrooms streefpeil dichtlopen met de ingestelde marge.
+if AANVOER_MAX_DOWNSTREAM_MARGIN > 0:
+    for static_df in (model.outlet.static.df, model.pump.static.df):
+        mask = static_df["control_state"].eq("aanvoer") & static_df["max_downstream_level"].notna()
+        if mask.any():
+            static_df.loc[mask, "max_downstream_level"] -= AANVOER_MAX_DOWNSTREAM_MARGIN
+            mark_max_downstream_level_update_protected(static_df, mask, model=model)
+
+# De Bult: aanvoer langer laten doorlopen om voldoende te kunnen aanvoeren.
+mask = (model.outlet.static.df.node_id == 330) & (model.outlet.static.df.control_state == "aanvoer")
+model.outlet.static.df.loc[mask, "max_downstream_level"] = 0.22
+mark_max_downstream_level_update_protected(model.outlet.static.df, mask, model=model)
+
 # Pomp-capaciteiten op basis van hoogste berekende dynamic debiet, afgerond naar boven.
 # Bestaande handmatige pompwaarden blijven leidend.
 pump_max_flow_rate_from_results = {
@@ -745,6 +883,8 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
 # %%
 # Dorkwerd apart overrulen: stuur op de Manning-keten, begrens lokaal op 0.57 m.
 configure_dorkwerd_control(model)
+if ENABLE_SEASONAL_INLET_CONTROL:
+    close_inlets_in_winter(model=model)
 
 # %%
 # Model run
@@ -752,7 +892,11 @@ configure_dorkwerd_control(model)
 ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_wet", f"{SHORT_NAME}.toml")
 ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_dry", f"{SHORT_NAME}.toml")
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
+base_run_year = model.starttime.year
 
+set_run_period(
+    model=model, start_month_day=SUMMER_INLET_START, end_month_day=WINTER_INLET_START, base_year=base_run_year
+)
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 
 # hoofd run met verdamping
@@ -766,6 +910,9 @@ if MODEL_EXEC:
     model = Model.read(ribasim_toml_dry)
 
 # prerun om het model te initialiseren met neerslag
+set_run_period(
+    model=model, start_month_day=WINTER_INLET_START, end_month_day=SUMMER_INLET_START, base_year=base_run_year
+)
 update_basin_static(model=model, precipitation_mm_per_day=2)
 model.write(ribasim_toml_wet)
 
@@ -776,6 +923,9 @@ if MODEL_EXEC:
     model = Model.read(ribasim_toml_wet)
 
 # hoofd run
+set_run_period(
+    model=model, start_month_day=WINTER_INLET_START, end_month_day=SUMMER_INLET_START, base_year=base_run_year
+)
 update_basin_static(model=model, precipitation_mm_per_day=1.5)
 model.write(ribasim_toml)
 # run hoofdmodel

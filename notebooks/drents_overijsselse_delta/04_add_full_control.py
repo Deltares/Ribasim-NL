@@ -1,5 +1,8 @@
 # %%
+from datetime import datetime
+
 import geopandas as gpd
+import pandas as pd
 from peilbeheerst_model.controle_output import Control
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump
@@ -8,6 +11,7 @@ from ribasim_nl.control import (
     add_controllers_to_uncontrolled_connector_nodes,
     mark_level_update_protected,
     mark_max_downstream_level_update_protected,
+    mark_threshold_update_protected,
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
@@ -23,6 +27,12 @@ AUTHORITY: str = "DrentsOverijsselseDelta"
 SHORT_NAME: str = "dod"
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
+DOD_AANVOER_MAX_DOWNSTREAM_MARGIN = 0.01
+DOD_US_TARGET_LEVEL_OFFSET_SUPPLY = -0.05
+SUMMER_INLET_START = (4, 1)
+WINTER_INLET_START = (11, 1)
+WINTER_INLET_DISABLED_THRESHOLD = float("-inf")
+ENABLE_SEASONAL_INLET_CONTROL = True
 MIN_FLOW_RATE_BY_NODE_ID = {
     # 378: 1.0,  # Rogatsluis # model wordt hier heel traag van
     # 541: 0.5,  # Paradijssluis # model wordt hier heel traag van
@@ -30,7 +40,10 @@ MIN_FLOW_RATE_BY_NODE_ID = {
 
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
-EXCLUDE_NODES = {522, 527, 528, 538, 544}
+EXCLUDE_NODES = {519, 522, 527, 528, 538, 544}
+
+# Kunstwerken verwijderen om de aanvoer-rondpomproute rond 1304/1305/1306 te doorbreken.
+REMOVE_NODES = {1131, 1304, 1305}
 
 
 # %%
@@ -55,9 +68,145 @@ def set_max_flow_rate(static_df, max_flow_rate_by_node_id: dict[int, float]) -> 
     static_df.loc[mask, "flow_rate"] = max_flow_rate[mask]
 
 
+def get_existing_capacity_by_node_id(static_df: pd.DataFrame) -> dict[int, float]:
+    capacity = static_df["flow_rate"].astype(float)
+    if "max_flow_rate" in static_df.columns:
+        max_flow_rate = pd.to_numeric(static_df["max_flow_rate"], errors="coerce")
+        capacity = max_flow_rate.where(max_flow_rate.notna(), capacity)
+
+    return (
+        pd.DataFrame({"node_id": static_df["node_id"].astype(int), "capacity": capacity.fillna(0.0).astype(float)})
+        .groupby("node_id")["capacity"]
+        .max()
+        .to_dict()
+    )
+
+
 def update_nodes(model: Model, node_ids: list[int], node_type: str) -> None:
     for node_id in dict.fromkeys(node_ids):
         model.update_node(node_id=node_id, node_type=node_type)
+
+
+def remove_nodes(model: Model, node_ids: list[int]) -> None:
+    for node_id in dict.fromkeys(node_ids):
+        model.remove_node(node_id, remove_links=True)
+
+
+def without_removed_nodes(node_ids: list[int]) -> list[int]:
+    return [node_id for node_id in node_ids if node_id not in REMOVE_NODES]
+
+
+def replace_node_rows(df: pd.DataFrame, node_id: int, rows: list[dict]) -> pd.DataFrame:
+    rows_df = pd.DataFrame(rows).reindex(columns=df.columns)
+    return pd.concat([df.loc[~df["node_id"].eq(node_id)], rows_df], ignore_index=True)
+
+
+def inlet_control_target_node_ids(model: Model) -> set[int]:
+    control_links = model.link.df[model.link.df["link_type"].eq("control")]
+    control_names = model.node.df["name"].fillna("").astype(str).str.lower()
+    mask = control_links["from_node_id"].map(control_names).str.startswith("inlaat")
+    return set(control_links.loc[mask, "to_node_id"].dropna().astype(int))
+
+
+def set_run_period(
+    model: Model, start_month_day: tuple[int, int], end_month_day: tuple[int, int], base_year: int
+) -> None:
+    start = datetime(base_year, *start_month_day)
+    end_year = base_year if end_month_day > start_month_day else base_year + 1
+    end = datetime(end_year, *end_month_day)
+    current_start = model.starttime
+    current_end = model.endtime
+    if start < current_end:
+        model.starttime = start
+        model.endtime = end
+    elif current_start < end:
+        model.endtime = end
+        model.starttime = start
+    else:
+        raise ValueError(f"Kan runperiode niet veilig zetten van {current_start}..{current_end} naar {start}..{end}")
+
+
+def close_inlets_in_winter(model: Model, node_ids: list[int] | set[int] | None = None) -> None:
+    base_year = model.starttime.year
+    times = [
+        datetime(base_year, *SUMMER_INLET_START),
+        datetime(base_year, *WINTER_INLET_START),
+        datetime(base_year + 1, *SUMMER_INLET_START),
+    ]
+    node_type_by_id = model.node.df["node_type"]
+    node_ids = inlet_control_target_node_ids(model=model) if node_ids is None else set(node_ids)
+
+    for node_id in sorted(node_ids):
+        control_link_mask = model.link.df["link_type"].eq("control") & model.link.df["to_node_id"].eq(node_id)
+        control_node_ids = (
+            model.link.df.loc[control_link_mask, "from_node_id"].map(node_type_by_id).eq("DiscreteControl")
+        )
+        control_node_ids = (
+            model.link.df.loc[control_link_mask].loc[control_node_ids, "from_node_id"].drop_duplicates().astype(int)
+        )
+        if len(control_node_ids) == 0:
+            continue
+        if len(control_node_ids) != 1:
+            raise ValueError(
+                f"Expected one DiscreteControl for inlet node {node_id}, found {control_node_ids.to_list()}"
+            )
+
+        control_node_id = int(control_node_ids.iloc[0])
+        condition_mask = model.discrete_control.condition.df["node_id"].eq(control_node_id)
+        condition_rows = model.discrete_control.condition.df.loc[condition_mask]
+        if condition_rows.empty:
+            raise ValueError(
+                f"Expected condition rows for inlet control {control_node_id} -> node {node_id}, found none"
+            )
+
+        timed_rows = condition_rows.loc[condition_rows["time"].notna()].sort_values("time")
+        condition_row = timed_rows.iloc[0] if not timed_rows.empty else condition_rows.iloc[0]
+        summer_threshold_high = float(condition_row.threshold_high)
+        summer_threshold_low = (
+            float(condition_row.threshold_low) if pd.notna(condition_row.threshold_low) else summer_threshold_high
+        )
+
+        seasonal_rows = []
+        for time, threshold_low, threshold_high in [
+            (times[0], summer_threshold_low, summer_threshold_high),
+            (times[1], WINTER_INLET_DISABLED_THRESHOLD, WINTER_INLET_DISABLED_THRESHOLD),
+            (times[2], summer_threshold_low, summer_threshold_high),
+        ]:
+            row = condition_row.to_dict()
+            row["time"] = time
+            row["threshold_low"] = threshold_low
+            row["threshold_high"] = threshold_high
+            seasonal_rows.append(row)
+
+        model.discrete_control.condition.df = replace_node_rows(
+            model.discrete_control.condition.df,
+            control_node_id,
+            seasonal_rows,
+        )
+        model.node.df.loc[control_node_id, "cyclic_time"] = True
+        threshold_protection_column = "meta_threshold_update_protected"
+        if threshold_protection_column not in model.discrete_control.condition.df.columns:
+            model.discrete_control.condition.df[threshold_protection_column] = False
+        node_mask = model.discrete_control.condition.df["node_id"].eq(control_node_id)
+        model.discrete_control.condition.df.loc[node_mask, threshold_protection_column] = False
+        mark_threshold_update_protected(
+            model.discrete_control.condition.df,
+            model.discrete_control.condition.df["node_id"].eq(control_node_id)
+            & model.discrete_control.condition.df["time"].eq(times[1]),
+        )
+
+
+def lower_aanvoer_max_downstream_level(static_df, margin: float) -> None:
+    margin = float(margin)
+    if margin <= 0 or "control_state" not in static_df.columns:
+        return
+
+    mask = static_df["control_state"].eq("aanvoer") & static_df["max_downstream_level"].notna()
+    if not mask.any():
+        return
+
+    static_df.loc[mask, "max_downstream_level"] = static_df.loc[mask, "max_downstream_level"] - margin
+    mark_max_downstream_level_update_protected(static_df, mask, model=model)
 
 
 def add_supply_area_control(
@@ -72,6 +221,7 @@ def add_supply_area_control(
     max_flow_rate_aanvoer: float | None = None,
     flow_rate_afvoer: float | None = None,
     max_flow_rate_afvoer: float | None = None,
+    us_target_level_offset_supply: float = DOD_US_TARGET_LEVEL_OFFSET_SUPPLY,
 ) -> None:
     polygon = aanvoergebieden_df.loc[[area_name], "geometry"].union_all()
 
@@ -87,6 +237,7 @@ def add_supply_area_control(
         flow_control_nodes=flow_control_nodes,
         control_node_types=CONTROL_NODE_TYPES,
         add_supply_nodes=True,
+        us_target_level_offset_supply=us_target_level_offset_supply,
         flow_rate_aanvoer=flow_rate_aanvoer,
         max_flow_rate_aanvoer=max_flow_rate_aanvoer,
         flow_rate_afvoer=flow_rate_afvoer,
@@ -139,6 +290,8 @@ dod_extra_supply_pump = model.pump.add(
 model.link.add(dod_extra_boundary, dod_extra_supply_pump)
 model.link.add(dod_extra_supply_pump, model.get_node(1901))
 
+remove_nodes(model, REMOVE_NODES)
+
 # %%
 # Linkrichting fixes
 # Houd deze lange data-lijsten compact; formatters klappen ze anders uit naar een node-id per regel.
@@ -150,7 +303,7 @@ reverse_link_ids = [
     1350, 1561, 1581, 1604, 1618, 1619, 1635, 1787, 1797, 1874, 1916, 1971, 2009,
     2050, 2071, 2082, 2093, 2110, 2111, 2122, 2166, 2273, 2280, 2361, 2369, 2402,
     2415, 2445, 2456, 2526, 2610, 2652, 2669, 2893, 2940, 2944, 2956, 2958, 2992,
-    2993, 3051, 3073,3163,3164,3165,3166,3171,3172
+    2993, 3051, 3073,3163,3164,3165,3166,3171,3172,898,2240,2513,1167,20,2491
 ]
 # fmt: on
 
@@ -179,16 +332,6 @@ set_static_values(
     },
     "min_upstream_level",
 )
-
-for node_id, to_node_id in [
-    (2164, 2120),
-    (1970, 1990),
-    (2294, 1949),
-    (1669, 1670),
-    (2352, 1819),
-    (1920, 1881),  # Noordscheschutsluis
-]:
-    model.merge_basins(node_id=node_id, to_node_id=to_node_id, are_connected=True)
 
 # Manning moet outlet zijn
 model.update_node(node_id=1468, node_type="Outlet")
@@ -245,13 +388,13 @@ outlet_max_flow_rate_from_results = {
 }
 outlet_max_flow_rate_coupled_by_node_id = {
     198: 170,  # gekoppeld max=112.50, huidige max=83.20, link=5900281
-    501: 5,  # duikersifonhevel.599665; gekoppeld max=2.21, parameterized=0.10
-    519: 8,  # gekoppeld max=4.73, huidige max=0.00, link=5900891
-    738: 3,  # duikersifonhevel.285812; gekoppeld max=1.74, parameterized=0.10
-    756: 2,  # gekoppeld max=0.77, huidige max=0.10, link=5900486
-    1064: 8,  # duikersifonhevel.134864; gekoppeld max=4.90, parameterized=0.10
-    1074: 2,  # gekoppeld max=0.66, huidige max=0.00, link=5901233
-    1077: 2,  # gekoppeld max=0.66, huidige max=0.00, link=5901239
+    501: 3,  # duikersifonhevel.599665; gekoppeld max=2.21, parameterized=0.10
+    519: 0.1,  # gekoppeld max=4.73, huidige max=0.00, link=5900891
+    738: 1.74,  # duikersifonhevel.285812; gekoppeld max=1.74, parameterized=0.10
+    756: 0.2,  # gekoppeld max=0.77, huidige max=0.10, link=5900486
+    1064: 1,  # duikersifonhevel.134864; gekoppeld max=4.90, parameterized=0.10
+    1074: 0.1,  # gekoppeld max=0.66, huidige max=0.00, link=5901233
+    1077: 0.1,  # gekoppeld max=0.66, huidige max=0.00, link=5901239
     1171: 3,  # gekoppeld max=1.27, huidige max=0.10, link=5900197
     1297: 3,  # duikersifonhevel.586543; gekoppeld max=1.88, parameterized=0.10
     1298: 3,  # duikersifonhevel.586544; gekoppeld max=1.88, parameterized=0.10
@@ -276,10 +419,6 @@ for max_flow_rates in (
             max_flow_rate,
         )
 outlet_max_flow_rate_afvoer_by_node_id.update(outlet_max_flow_rate_by_node_id)
-outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.node_id.astype(int), 10.0)
-
-# Handmatige inlaatcapaciteiten gelden ook in aanvoer; niet terugvallen op de default van 10 m3/s.
-outlet_max_flow_rate_aanvoer_by_node_id.update(outlet_max_flow_rate_by_node_id)
 
 pump_max_flow_rate_by_node_id = {
     704: 6.7,  # Paradijssluis
@@ -362,13 +501,16 @@ pump_max_flow_rate_all_by_node_id = {
     **pump_max_flow_rate_parameterized_zero_by_node_id,
     **pump_max_flow_rate_by_node_id,
 }
+
+set_max_flow_rate(model.outlet.static.df, outlet_max_flow_rate_by_node_id)
+set_max_flow_rate(model.pump.static.df, pump_max_flow_rate_all_by_node_id)
+
+# Gebruik voor aanvoer de actuele full-control-capaciteit na handmatige overschrijvingen, niet een vaste default.
+outlet_max_flow_rate_aanvoer_by_node_id = get_existing_capacity_by_node_id(model.outlet.static.df)
 max_flow_rate_aanvoer_by_node_id = {
     **outlet_max_flow_rate_aanvoer_by_node_id,
     **pump_max_flow_rate_all_by_node_id,
 }
-
-set_max_flow_rate(model.outlet.static.df, outlet_max_flow_rate_by_node_id)
-set_max_flow_rate(model.pump.static.df, pump_max_flow_rate_all_by_node_id)
 
 
 # %%
@@ -377,50 +519,50 @@ set_max_flow_rate(model.pump.static.df, pump_max_flow_rate_all_by_node_id)
 
 # fmt: off
 flow_control_nodes = [
-    107, 119, 125, 133, 146, 148, 152, 153, 154, 173, 193, 198, 199, 226, 227, 241,
+    107, 119, 125, 133, 146, 148, 153, 154, 173, 193, 198, 199, 226, 241,
     242, 243, 244, 247, 248, 260, 285, 301, 317, 328, 338, 344, 350, 361, 373, 374, 385,
-    401, 403, 408, 414, 421, 423, 426, 427, 439, 442, 451, 458, 517, 602, 605, 610, 673, 913, 937,
-    938, 1088, 1089, 1115, 1152, 1157, 1228, 1263, 1317, 1328, 1347, 1363, 1414, 2662, 2664, 2666,
+    401, 403, 408, 414, 421, 423, 426, 427, 439, 442, 451, 458, 462, 517, 602, 605, 610, 673, 913, 937,
+    938, 1088, 1089, 1115, 1131, 1157, 1228, 1253, 1263, 1328, 1347, 1363, 1414, 2664, 2666,
     3130, 3136, 3229, 3234
 ]
 
 supply_nodes = [
-    152, 182, 192, 195, 196, 206, 212, 213, 216, 219, 233, 282, 284, 287, 288, 332,
-    334, 346, 370,372, 440, 464, 503, 508, 511, 517, 526, 545, 549, 552, 562, 563, 564,
+    182, 192, 195, 196, 206, 212, 213, 215, 216, 217, 219, 233, 282, 284, 287, 288, 332,
+    334, 346, 370,372, 428, 440, 464, 508, 511, 526, 545, 549, 552, 562, 563, 564,
     570, 571, 579, 597, 604, 607, 615, 617, 631, 633, 634, 636, 637, 638, 645, 647,
-    648, 651, 652, 660,665, 669, 676, 693, 694, 699, 704, 708, 712, 713, 715, 723,
+    648, 651, 652, 660,662,665, 669, 676, 693, 694, 699, 704, 708, 712, 713, 715, 723,
     726, 741, 748, 753, 758, 759, 760, 774, 775, 783, 785, 786, 787, 800, 801, 813,
     816, 821, 823, 829, 831, 832, 846, 861, 863, 868, 878, 894, 896, 898, 902, 906,
-    914, 918, 920, 933, 936, 949, 951, 954, 965, 968, 969, 972, 976, 977, 983, 984,
-    987, 1002, 1009, 1012, 1024, 1025, 1034, 1035, 1045, 1047, 1050, 1054, 1056, 1058, 1059, 1068,
-    1074, 1077, 1078, 1086, 1103, 1109, 1132, 1141, 1142, 1152, 1182, 1187, 1188, 1190, 1196, 1199,
+    914, 918, 919, 920, 933, 936, 951, 954, 965, 968, 969, 972, 976, 977, 983, 984,
+    987, 1009, 1012, 1019, 1024, 1025, 1034, 1035, 1045, 1047, 1050, 1051, 1054, 1056, 1058, 1059, 1068,
+    1074, 1077, 1078, 1086, 1103, 1109, 1112, 1132, 1141, 1142, 1173, 1178, 1182, 1187, 1188, 1190, 1196, 1199,
     1202, 1203, 1207, 1209, 1211, 1213, 1214, 1216, 1217, 1221, 1231, 1238, 1243, 1246, 1247, 1255,
-    1260, 1261, 1262, 1278, 1279, 1283, 1289, 1291, 1294, 1302, 1303, 1307, 1311, 1312, 1325, 1326,
-    1332, 1336, 1344, 1391, 1401, 1418, 1423, 1444, 1452, 1473, 2650, 2652, 2653, 2657, 2658, 2659,
-    2662, 2665, 2667, 3110, 3116, 3118, 3119, 3122, 3124, 3125, 3126, 3190, 3193, 3196, 3199, 3202,
-    3203, 3224, 3232, 3233,3237
+    1260, 1261, 1262, 1278, 1283, 1284, 1285, 1287, 1288, 1289, 1291, 1294, 1302, 1303, 1306, 1307, 1311, 1312, 1317,1325, 1326,
+    1332,1335, 1336, 1344, 1381, 1391, 1401, 1402, 1418, 1423, 1444, 1452, 1473, 2650, 2652, 2653, 2657, 2658, 2659,
+    2665, 2667, 3110, 3116, 3118, 3119, 3122, 3124, 3125, 3126, 3190, 3193, 3196, 3199, 3202,
+    3203, 3224, 3232, 3233,3237,3847
 ]
 
 drain_nodes = [
     106, 111, 113, 116, 122, 137, 143, 144, 145, 150, 152, 157, 159, 161, 165, 168,
-    169, 170, 171, 173, 174, 177, 181, 183, 186, 190, 197, 200, 201, 202, 205, 208, 210,
-    211, 218, 221, 230, 232, 234, 239, 246, 251, 252, 262, 263, 265, 267, 271, 274,
+    169, 170, 171, 174, 177, 181, 183, 186, 190, 191, 197, 200, 201, 202, 205, 208, 210,
+    211, 218, 221, 227, 230, 232, 234, 239, 246, 251, 252, 262, 263, 265, 267, 271, 274,
     276, 293, 295, 296, 297, 300, 304, 305, 307, 309, 311, 315, 322, 323, 324, 325,
-    326, 330, 331, 333, 335, 337, 347, 349, 351, 352, 359, 362, 363, 366, 368, 369, 373,
-    375, 377, 378, 381, 382, 384, 387, 394, 395, 398, 402, 405, 416, 418, 421, 422, 428,
+    326, 330, 331, 333, 335, 337, 347, 349, 351, 352, 359, 362, 363, 366, 368, 369,
+    375, 377, 378, 381, 382, 384, 387, 394, 395, 398, 402, 405, 413, 416, 418, 422,
     431, 436, 437, 438, 444, 445, 446, 447, 452, 454, 456, 461, 468, 469, 473, 475,
     476, 480, 481, 485, 486, 487, 488, 489, 490, 493, 501, 503, 505, 513, 515, 521,
-    525, 529, 534, 541, 557, 559, 565, 580, 582, 583, 584, 586, 587, 588, 590, 591, 596,
+    525, 529, 534, 541, 555, 557, 559, 565, 580, 582, 583, 584, 586, 587, 588, 590, 591, 596,
     599, 608, 609, 614, 616, 623, 624, 625, 627, 630, 640, 642, 643, 644, 646, 649,
     653, 654, 657, 658, 659, 661, 664, 666, 671, 672, 674, 679, 680, 681, 688, 690, 697,
-    698, 700, 701, 709, 716, 721, 725, 732, 738, 771, 774, 777, 780, 794, 802, 815,
-    816, 841, 849, 851, 852, 854, 859, 873, 884, 886, 893, 900, 909, 919, 922, 932,
-    942, 953, 950,955, 957, 958, 963, 971, 975, 983, 986, 999, 1007, 1017, 1018, 1028, 1032, 1033,1039,
-    1049, 1051, 1052, 1060, 1064, 1066, 1091, 1094, 1096, 1098, 1100, 1101, 1113, 1125, 1129, 1140, 1148,
-    1150, 1154, 1155, 1156, 1159, 1169, 1173, 1175, 1186, 1189, 1193, 1205, 1210, 1215, 1219, 1225,
+    698, 700, 701, 709, 716, 721, 725, 732, 738, 747, 771, 777, 780, 794, 802, 815,
+    841, 849, 851, 852, 854, 859, 862, 865, 873, 884, 886, 893, 900, 909, 922, 932,
+    942, 949, 953, 950,955, 957, 958, 963, 971, 975, 986, 995, 999, 1002, 1007, 1017, 1018, 1028, 1032, 1033,1039,
+    1049, 1052, 1060, 1064, 1066, 1091, 1094, 1096, 1098, 1100, 1101, 1113, 1125, 1129, 1133, 1140, 1148,
+    1150, 1154, 1155, 1156, 1159, 1169, 1175, 1186, 1189, 1193, 1205, 1210, 1215, 1219, 1225,
     1226, 1233, 1234, 1248, 1257, 1259, 1264, 1268, 1269, 1271, 1273, 1279, 1318, 1320, 1323, 1337,
-    1346, 1350, 1360, 1366, 1368, 1369, 1372, 1373, 1376, 1379, 1380, 1381, 1382, 1386, 1394, 1395,
-    1406, 1409, 1410, 1428, 1433, 1448, 1459, 1460, 1462, 1466, 1482,1512, 3106, 3112, 3128, 3192, 3194,
+    1346, 1350, 1360, 1366, 1368, 1369, 1372, 1373, 1376, 1379, 1380, 1382, 1386, 1389,1394, 1395,
+    1406, 1409, 1410, 1428, 1433, 1437, 1448, 1459, 1460, 1462, 1466, 1482,1512, 3106, 3112, 3128, 3192, 3194,
     3195, 3198, 3221,3235
 ]
 # fmt: on
@@ -436,9 +578,9 @@ kunstwerk_uit_path = cloud.joinpath(AUTHORITY, "verwerkt", "sturing", "kunstwerk
 
 cloud.synchronize(filepaths=[kunstwerk_in_path, kunstwerk_uit_path])
 
-manual_flow_control_nodes = list(flow_control_nodes)
-manual_supply_nodes = list(supply_nodes)
-manual_drain_nodes = list(drain_nodes)
+manual_flow_control_nodes = without_removed_nodes(flow_control_nodes)
+manual_supply_nodes = without_removed_nodes(supply_nodes)
+manual_drain_nodes = without_removed_nodes(drain_nodes)
 
 
 def get_nearest_control_nodes(
@@ -613,7 +755,7 @@ for area_name, ignore_intersecting_links in supply_area_ignore_links.items():
         supply_nodes=supply_nodes,
         drain_nodes=drain_nodes,
         flow_control_nodes=flow_control_nodes,
-        flow_rate_aanvoer=20.0,
+        flow_rate_aanvoer=10.0,
         max_flow_rate_aanvoer=max_flow_rate_aanvoer_by_node_id,
         flow_rate_afvoer=100.0,
         max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
@@ -630,18 +772,23 @@ add_controllers_to_uncontrolled_connector_nodes(
     drain_nodes=drain_nodes,
     flushing_nodes={},
     exclude_nodes=list(EXCLUDE_NODES),
-    flow_rate_aanvoer=20.0,
+    us_target_level_offset_supply=DOD_US_TARGET_LEVEL_OFFSET_SUPPLY,
+    flow_rate_aanvoer=10.0,
     max_flow_rate_aanvoer=max_flow_rate_aanvoer_by_node_id,
     flow_rate_afvoer=100.0,
     max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
 )
 
+# Laat aanvoer overal op benedenstrooms streefpeil dichtlopen.
+for static_df in (model.outlet.static.df, model.pump.static.df):
+    lower_aanvoer_max_downstream_level(static_df, DOD_AANVOER_MAX_DOWNSTREAM_MARGIN)
+
 # Holthe max_downstream iets lager gezet omdat deze pas aangaat als andere inlaten niet meer kunnen aanleveren.
 mask = model.pump.static.df.node_id == 648
-model.pump.static.df.loc[mask, "max_downstream_level"] -= 0.04
+model.pump.static.df.loc[mask, "max_downstream_level"] -= 0.01
 mark_max_downstream_level_update_protected(model.pump.static.df, mask, model=model)
 
-# Noordscheschutsluis: basin 1920 is gemerged naar 1881; aanvoer stopt 1 cm onder benedenstrooms streefpeil.
+# Noordscheschutsluis: basin 1920 is gemerged naar 1881; aanvoer stopt op benedenstrooms streefpeil.
 noordscheschutsluis_pump_node_id = 346
 downstream_basin_ids = model.link.df.loc[
     (model.link.df.from_node_id == noordscheschutsluis_pump_node_id)
@@ -665,7 +812,7 @@ if downstream_target_level.empty:
         f"geen streefpeil gevonden voor benedenstrooms basin {downstream_basin_id}"
     )
 
-max_downstream_level = float(downstream_target_level.iloc[0]) - 0.01
+max_downstream_level = float(downstream_target_level.iloc[0]) - DOD_AANVOER_MAX_DOWNSTREAM_MARGIN
 mask = model.pump.static.df.node_id == noordscheschutsluis_pump_node_id
 if "control_state" in model.pump.static.df.columns:
     aanvoer_mask = mask & (model.pump.static.df.control_state == "aanvoer")
@@ -674,12 +821,31 @@ if "control_state" in model.pump.static.df.columns:
 model.pump.static.df.loc[mask, "max_downstream_level"] = max_downstream_level
 mark_max_downstream_level_update_protected(model.pump.static.df, mask, model=model)
 
+# Zedemuden-koppeling: laat inlaat 3193 2 cm langer doorleveren en uitlaat 3192 2 cm later afvoeren.
+mask = (model.outlet.static.df.node_id == 3193) & (model.outlet.static.df.control_state == "aanvoer")
+model.outlet.static.df.loc[mask, "max_downstream_level"] += 0.02
+mark_max_downstream_level_update_protected(model.outlet.static.df, mask, model=model)
+
+mask = model.pump.static.df.node_id == 3192
+model.pump.static.df.loc[mask, "min_upstream_level"] += 0.02
+mark_level_update_protected(model.pump.static.df, mask, model=model)
+
+# Ankersmit-koppeling: laat inlaat 1190 2 cm langer doorleveren en uitlaat 590 2 cm later afvoeren.
+mask = (model.pump.static.df.node_id == 1190) & (model.pump.static.df.control_state == "aanvoer")
+model.pump.static.df.loc[mask, "max_downstream_level"] += 0.02
+mark_max_downstream_level_update_protected(model.pump.static.df, mask, model=model)
+
+mask = model.pump.static.df.node_id == 590
+model.pump.static.df.loc[mask, "min_upstream_level"] += 0.02
+mark_level_update_protected(model.pump.static.df, mask, model=model)
+
 set_static_values(
     model.level_boundary.static.df,
     {
         100: -0.2,
         47: -0.2,
         90: -0.2,
+        2586: -0.1,
     },
     "level",
 )
@@ -747,9 +913,13 @@ aanvoer_only_node_ids = set(supply_nodes) - set(drain_nodes) - set(flow_control_
 
 # Aanvoer-cap: doorlaten/inlaten mogen in aanvoer niet de hoge afvoercapaciteit gebruiken.
 aanvoer_outlet_mask = model.outlet.static.df.control_state == "aanvoer"
-model.outlet.static.df.loc[aanvoer_outlet_mask, ["flow_rate", "max_flow_rate"]] = model.outlet.static.df.loc[
-    aanvoer_outlet_mask, ["flow_rate", "max_flow_rate"]
-].clip(upper=10.0)
+aanvoer_outlet_cap = model.outlet.static.df.loc[aanvoer_outlet_mask, "node_id"].map(
+    outlet_max_flow_rate_aanvoer_by_node_id
+)
+for column in ["flow_rate", "max_flow_rate"]:
+    model.outlet.static.df.loc[aanvoer_outlet_mask, column] = model.outlet.static.df.loc[
+        aanvoer_outlet_mask, column
+    ].clip(upper=aanvoer_outlet_cap, axis=0)
 zero_aanvoer_node_ids = {
     node_id for node_id, max_flow_rate in outlet_max_flow_rate_aanvoer_by_node_id.items() if max_flow_rate == 0
 }
@@ -799,21 +969,35 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
 vechterweerd_mask = model.outlet.static.df.node_id.isin([199, 2582])
 model.outlet.static.df.loc[vechterweerd_mask, ["flow_rate", "max_flow_rate"]] = 200.0
 
+# Sluit pure inlaten 's winters (1 nov - 1 apr) met dezelfde DiscreteControl en zomerthresholds.
+if ENABLE_SEASONAL_INLET_CONTROL:
+    close_inlets_in_winter(model=model)
+
 # %%
 # Model run
 
 ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_wet", f"{SHORT_NAME}.toml")
 ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_dry", f"{SHORT_NAME}.toml")
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
+base_run_year = model.starttime.year
 
 # hoofd run met verdamping
+set_run_period(
+    model=model, start_month_day=SUMMER_INLET_START, end_month_day=WINTER_INLET_START, base_year=base_run_year
+)
 update_basin_static(model=model, evaporation_mm_per_day=1)
 model = run_model_and_control(model, ribasim_toml_dry, qlr_path)
 
 # prerun om het model te initialiseren met neerslag
+set_run_period(
+    model=model, start_month_day=WINTER_INLET_START, end_month_day=SUMMER_INLET_START, base_year=base_run_year
+)
 update_basin_static(model=model, precipitation_mm_per_day=2)
 model = run_model_and_control(model, ribasim_toml_wet, qlr_path)
 
 # hoofd run
+set_run_period(
+    model=model, start_month_day=WINTER_INLET_START, end_month_day=SUMMER_INLET_START, base_year=base_run_year
+)
 update_basin_static(model=model, precipitation_mm_per_day=1.5)
 model = run_model_and_control(model, ribasim_toml, qlr_path)

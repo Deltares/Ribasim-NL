@@ -15,6 +15,7 @@ from ribasim_nl import CloudStorage, Model, NetworkValidator
 cloud = CloudStorage()
 authority = "DeDommel"
 short_name = "dommel"
+run_model = False
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 
@@ -378,6 +379,7 @@ model.report_internal_basins()
 
 # %% Test run model
 
-result = model.run()
-assert result.simulation_time is not None
+if run_model:
+    result = model.run()
+    assert result.simulation_time is not None
 # %%

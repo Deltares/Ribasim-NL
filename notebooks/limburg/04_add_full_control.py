@@ -96,7 +96,6 @@ drain_nodes = [
     494,
     586,
     590,
-    692,
     710,
     828,
     829,
@@ -112,6 +111,7 @@ drain_nodes = [
     1204,
     1244,
     2499,
+    2507,
 ]
 supply_nodes: list[int] = [311, 595, 596, 683]
 flow_control_nodes = [
@@ -139,6 +139,7 @@ flow_control_nodes = [
     652,
     653,
     657,
+    692,
     708,
     710,
     711,
@@ -184,10 +185,6 @@ aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).diss
 model.pump.static.df.loc[model.pump.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0
 model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0
 
-# Erg klein basin, numerieke problemen
-model.merge_basins(node_id=2394, to_node_id=1507, are_connected=True)
-model.merge_basins(node_id=1672, to_node_id=1556, are_connected=True)
-model.merge_basins(node_id=1416, to_node_id=2408, are_connected=True)
 # %%
 # Node 651 moet dicht zijn na overleg Limburg
 model.pump.static.df.loc[model.pump.static.df.node_id == 651, "max_flow_rate"] = 0

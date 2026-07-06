@@ -1,7 +1,9 @@
 # %%
+from datetime import datetime
 from pathlib import Path
 
 import geopandas as gpd
+import pandas as pd
 from peilbeheerst_model.controle_output import Control
 from ribasim import Node
 from ribasim.nodes import level_boundary
@@ -10,6 +12,7 @@ from ribasim_nl.control import (
     add_controllers_to_uncontrolled_connector_nodes,
     mark_level_update_protected,
     mark_max_downstream_level_update_protected,
+    mark_threshold_update_protected,
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
@@ -24,6 +27,11 @@ AUTHORITY: str = "Vechtstromen"
 SHORT_NAME: str = "vechtstromen"
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
+AANVOER_MAX_DOWNSTREAM_MARGIN = 0.01
+SUMMER_INLET_START = (4, 1)
+WINTER_INLET_START = (11, 1)
+WINTER_SUPPLY_DISABLED_THRESHOLD = float("-inf")
+ENABLE_SEASONAL_INLET_CONTROL = False
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 EXCLUDE_NODES = {38, 40, 996}
@@ -122,6 +130,122 @@ def validate_file_gdb(gdb_path: Path) -> None:
 def fill_missing_level_boundary_static_levels(model: Model, default_level: float = 0.0) -> None:
     missing_level_mask = model.level_boundary.static.df["level"].isna()
     model.level_boundary.static.df.loc[missing_level_mask, "level"] = default_level
+
+
+def replace_node_rows(df: pd.DataFrame, node_id: int, rows: list[dict]) -> pd.DataFrame:
+    rows_df = pd.DataFrame(rows).reindex(columns=df.columns)
+    return pd.concat([df.loc[~df["node_id"].eq(node_id)], rows_df], ignore_index=True)
+
+
+def discrete_control_node_id(model: Model, target_node_id: int, required: bool = True) -> int | None:
+    node_type_by_id = model.node.df["node_type"]
+    control_link_mask = model.link.df["link_type"].eq("control") & model.link.df["to_node_id"].eq(target_node_id)
+    control_node_ids = (
+        model.link.df.loc[control_link_mask]
+        .loc[
+            model.link.df.loc[control_link_mask, "from_node_id"].map(node_type_by_id).eq("DiscreteControl"),
+            "from_node_id",
+        ]
+        .drop_duplicates()
+        .astype(int)
+    )
+    if len(control_node_ids) == 1:
+        return int(control_node_ids.iloc[0])
+    if len(control_node_ids) == 0 and not required:
+        return None
+    raise ValueError(f"Expected one DiscreteControl for node {target_node_id}, found {control_node_ids.to_list()}")
+
+
+def inlet_control_target_node_ids(model: Model) -> set[int]:
+    control_links = model.link.df[model.link.df["link_type"].eq("control")]
+    control_names = model.node.df["name"].fillna("").astype(str).str.lower()
+    mask = control_links["from_node_id"].map(control_names).str.startswith("inlaat")
+    return set(control_links.loc[mask, "to_node_id"].dropna().astype(int))
+
+
+def set_run_period(
+    model: Model, start_month_day: tuple[int, int], end_month_day: tuple[int, int], base_year: int
+) -> None:
+    start = datetime(base_year, *start_month_day)
+    end_year = base_year if end_month_day > start_month_day else base_year + 1
+    end = datetime(end_year, *end_month_day)
+    current_start = model.starttime
+    current_end = model.endtime
+    if start < current_end:
+        model.starttime = start
+        model.endtime = end
+    elif current_start < end:
+        model.endtime = end
+        model.starttime = start
+    else:
+        raise ValueError(f"Kan runperiode niet veilig zetten van {current_start}..{current_end} naar {start}..{end}")
+
+
+def base_discrete_control_condition_rows(model: Model, control_node_id: int) -> pd.DataFrame:
+    condition_rows = model.discrete_control.condition.df.loc[
+        model.discrete_control.condition.df["node_id"].eq(control_node_id)
+    ].copy()
+    if condition_rows.empty:
+        raise ValueError(f"Expected condition rows for control node {control_node_id}, found none")
+
+    timed_rows = condition_rows.loc[condition_rows["time"].notna()].sort_values(["condition_id", "time"])
+    if timed_rows.empty:
+        return condition_rows.sort_values(["condition_id", "compound_variable_id"]).drop_duplicates(
+            subset=["condition_id", "compound_variable_id"],
+            keep="first",
+        )
+    return timed_rows.drop_duplicates(subset=["condition_id", "compound_variable_id"], keep="first")
+
+
+def close_supply_controls_in_winter(model: Model, node_ids: set[int]) -> None:
+    base_year = model.starttime.year
+    times = [
+        datetime(base_year, *SUMMER_INLET_START),
+        datetime(base_year, *WINTER_INLET_START),
+        datetime(base_year + 1, *SUMMER_INLET_START),
+    ]
+
+    for node_id in sorted(node_ids):
+        control_node_id = discrete_control_node_id(model=model, target_node_id=node_id, required=False)
+        if control_node_id is None:
+            continue
+
+        seasonal_rows = []
+        for condition_row in base_discrete_control_condition_rows(
+            model=model, control_node_id=control_node_id
+        ).itertuples(index=False):
+            row_dict = condition_row._asdict()
+            summer_threshold_high = float(row_dict["threshold_high"])
+            summer_threshold_low = (
+                float(row_dict["threshold_low"]) if pd.notna(row_dict["threshold_low"]) else summer_threshold_high
+            )
+            for time, threshold_low, threshold_high in [
+                (times[0], summer_threshold_low, summer_threshold_high),
+                (times[1], WINTER_SUPPLY_DISABLED_THRESHOLD, WINTER_SUPPLY_DISABLED_THRESHOLD),
+                (times[2], summer_threshold_low, summer_threshold_high),
+            ]:
+                row = row_dict.copy()
+                row["time"] = time
+                row["threshold_low"] = threshold_low
+                row["threshold_high"] = threshold_high
+                seasonal_rows.append(row)
+
+        model.discrete_control.condition.df = replace_node_rows(
+            model.discrete_control.condition.df,
+            control_node_id,
+            seasonal_rows,
+        )
+        model.node.df.loc[control_node_id, "cyclic_time"] = True
+        threshold_protection_column = "meta_threshold_update_protected"
+        if threshold_protection_column not in model.discrete_control.condition.df.columns:
+            model.discrete_control.condition.df[threshold_protection_column] = False
+        node_mask = model.discrete_control.condition.df["node_id"].eq(control_node_id)
+        model.discrete_control.condition.df.loc[node_mask, threshold_protection_column] = False
+        mark_threshold_update_protected(
+            model.discrete_control.condition.df,
+            model.discrete_control.condition.df["node_id"].eq(control_node_id)
+            & model.discrete_control.condition.df["time"].eq(times[1]),
+        )
 
 
 def lower_outlet_max_downstream_level(model: Model, node_id: int, offset: float = 0.01) -> None:
@@ -223,11 +347,6 @@ model.remove_node(node_id=665, remove_links=True)
 model.remove_node(node_id=969, remove_links=True)
 
 model.redirect_link(link_id=53, to_node_id=1878)
-
-
-# %%
-# Topologie fixes
-
 
 # %%
 # Max-capaciteiten inlaten
@@ -574,6 +693,7 @@ def get_lhm_gemaal_supply_nodes(
 model.update_node(node_id=1367, node_type="Outlet")
 model.update_node(node_id=1316, node_type="Outlet")
 model.update_node(node_id=1295, node_type="Outlet")
+model.update_node(node_id=1145, node_type="Outlet")
 
 
 # %%
@@ -593,7 +713,7 @@ flow_control_nodes = node_list(
 
 supply_nodes = node_list(
     [26, 44, 53, 75, 102, 155, 193, 199, 200, 221, 250],
-    [253, 297, 325, 362,363,389,399, 403, 447],
+    [253, 297, 325, 363,389,399, 403, 447],
     [459, 465, 467, 468, 469, 477, 481, 492, 498, 501],
     [508, 547, 553, 554, 560, 564, 571, 580, 584, 589, 595, 596],
     [606, 611, 615, 621, 623, 625, 626, 629, 640, 648],
@@ -616,7 +736,7 @@ drain_nodes = node_list(
     [215, 222, 224, 225, 226, 228, 233, 240, 241],
     [243, 247, 249, 257, 258, 266, 273, 276, 281, 283],
     [284, 296, 302, 303, 303, 304, 306, 309, 333, 334],
-    [334, 339, 342, 348, 350, 353, 354, 370, 376, 379],
+    [334, 339, 342, 348, 350, 353, 354, 362, 370, 376, 379],
     [384, 388, 398, 400, 401, 402, 408, 409, 412, 416],
     [423, 424, 429, 432, 433, 440, 443, 444, 445, 449],
     [450, 451, 452, 453, 455, 473, 475, 487, 490],
@@ -635,7 +755,7 @@ drain_nodes = node_list(
     [895, 906, 907, 909, 913, 919, 921, 928, 930, 932],
     [933, 935, 947, 949, 950, 952, 957, 958, 960, 965, 966, 968],
     [971, 975, 981, 1002, 1005, 1008, 1050, 1051, 1064, 1066, 1068,],
-    [1071, 1089, 1095, 1102, 1132,1245, 1269, 1295, 1316, 1353, 1367, 1367],
+    [1071, 1089, 1095, 1102, 1132,1145,1245, 1269, 1295, 1316, 1353, 1367, 1367],
     [2324, 2335, 2336, 2338, 2342, 2345, 2918],
 )
 # fmt: on
@@ -728,10 +848,18 @@ add_controllers_to_uncontrolled_connector_nodes(
     max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
 )
 
-# %%
-# Inlaat 26 Noordseschutsluis stopt 1 cm onder het benedenstroomse streefpeil.
+# Laat aanvoer overal onder benedenstrooms streefpeil dichtlopen met de ingestelde marge.
+if AANVOER_MAX_DOWNSTREAM_MARGIN > 0:
+    for static_df in (model.outlet.static.df, model.pump.static.df):
+        mask = static_df["control_state"].eq("aanvoer") & static_df["max_downstream_level"].notna()
+        if mask.any():
+            static_df.loc[mask, "max_downstream_level"] -= AANVOER_MAX_DOWNSTREAM_MARGIN
+            mark_max_downstream_level_update_protected(static_df, mask, model=model)
 
-lower_outlet_max_downstream_level(model=model, node_id=26, offset=0.01)
+# %%
+# Inlaat 26 Noordseschutsluis stopt op het benedenstroomse streefpeil plus ingestelde marge.
+
+lower_outlet_max_downstream_level(model=model, node_id=26, offset=AANVOER_MAX_DOWNSTREAM_MARGIN)
 
 
 # %%
@@ -805,9 +933,12 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
     )
     static_df.loc[afvoer_mask, "max_flow_rate"] = static_df.loc[afvoer_mask, "max_flow_rate"].fillna(10).clip(lower=10)
 
-for static_df in (model.outlet.static.df, model.pump.static.df):
-    afvoer_mask = static_df["control_state"].eq("afvoer") & static_df["node_id"].isin(aanvoer_only_node_ids)
-    static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 0.0
+# Sluit pure inlaten 's winters (1 nov - 1 apr): aanvoer staat dan uit.
+if ENABLE_SEASONAL_INLET_CONTROL:
+    close_supply_controls_in_winter(
+        model=model,
+        node_ids=inlet_control_target_node_ids(model=model),
+    )
 
 # %%
 # Model run
@@ -815,16 +946,26 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
 ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_wet", f"{SHORT_NAME}.toml")
 ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_dry", f"{SHORT_NAME}.toml")
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
+base_run_year = model.starttime.year
 
 # hoofd run met verdamping
+set_run_period(
+    model=model, start_month_day=SUMMER_INLET_START, end_month_day=WINTER_INLET_START, base_year=base_run_year
+)
 update_basin_static(model=model, evaporation_mm_per_day=0.5)
 model = run_model_and_control(model, ribasim_toml_dry, qlr_path)
 
 # prerun om het model te initialiseren met neerslag
+set_run_period(
+    model=model, start_month_day=WINTER_INLET_START, end_month_day=SUMMER_INLET_START, base_year=base_run_year
+)
 update_basin_static(model=model, precipitation_mm_per_day=2)
 model = run_model_and_control(model, ribasim_toml_wet, qlr_path)
 
 # hoofd run
+set_run_period(
+    model=model, start_month_day=WINTER_INLET_START, end_month_day=SUMMER_INLET_START, base_year=base_run_year
+)
 update_basin_static(model=model, precipitation_mm_per_day=1.5)
 model = run_model_and_control(model, ribasim_toml, qlr_path)
 

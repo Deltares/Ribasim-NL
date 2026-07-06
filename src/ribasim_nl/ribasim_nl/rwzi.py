@@ -14,6 +14,35 @@ from ribasim_nl import Model, concat
 from ribasim_nl.reset_index import reset_index
 
 logger = logging.getLogger(__name__)
+DISCHARGE_AUTHORITY_COLUMN = "meta_discharge_couple_authority"
+
+
+def filter_rwzi_terminals_by_discharge_authority(
+    terminals: GeoDataFrame, unique_waterbeheerders: pd.Index | pd.Series | list[str] | tuple[str, ...]
+) -> GeoDataFrame:
+    """Keep only RWZI terminals relevant to the active model authorities.
+
+    Older RWZI model exports do not contain discharge-authority metadata yet.
+    In that case we fall back to pure spatial matching instead of failing.
+    """
+    if DISCHARGE_AUTHORITY_COLUMN not in terminals.columns:
+        logger.warning(
+            "RWZI terminals missen %s; val terug op ruimtelijke koppeling zonder autoriteitsfilter.",
+            DISCHARGE_AUTHORITY_COLUMN,
+        )
+        return terminals
+
+    authority_series = terminals[DISCHARGE_AUTHORITY_COLUMN]
+    known_mask = authority_series.notna()
+    if not known_mask.any():
+        logger.warning(
+            "RWZI terminals hebben geen waarden in %s; val terug op ruimtelijke koppeling zonder autoriteitsfilter.",
+            DISCHARGE_AUTHORITY_COLUMN,
+        )
+        return terminals
+
+    keep_mask = ~known_mask | authority_series.isin(unique_waterbeheerders)
+    return terminals.loc[keep_mask].copy()
 
 
 def create_rwzi_basin_coupling(rwzi_coupled_model: Model, max_distance=100):
@@ -33,7 +62,9 @@ def create_rwzi_basin_coupling(rwzi_coupled_model: Model, max_distance=100):
     basins = rwzi_coupled_model.basin.area.df
     nodes = rwzi_coupled_model.node.df
 
-    unique_waterbeheerders = nodes["meta_waterbeheerder"].dropna().unique()  # pyrefly: ignore[unsupported-operation]
+    unique_waterbeheerders = list(
+        map(str, nodes["meta_waterbeheerder"].dropna().unique())  # pyrefly: ignore[unsupported-operation]
+    )
 
     # RWZI codes
     rwzi_codes_df = terminals_all[["meta_rwzi_code"]].dropna().copy()
@@ -43,9 +74,7 @@ def create_rwzi_basin_coupling(rwzi_coupled_model: Model, max_distance=100):
     terminals_filtered = terminals_filtered.to_crs(basins.crs)  # pyrefly: ignore[missing-attribute]
 
     # Only keep terminals relevant to this model authorities
-    terminals_filtered = terminals_filtered[
-        terminals_filtered["meta_discharge_couple_authority"].isin(unique_waterbeheerders)
-    ]
+    terminals_filtered = filter_rwzi_terminals_by_discharge_authority(terminals_filtered, unique_waterbeheerders)
 
     # Basins reset
     basins_join = basins.join(nodes[["meta_categorie", "meta_waterbeheerder"]], on="node_id")  # pyrefly: ignore[missing-attribute, unsupported-operation]
