@@ -26,61 +26,6 @@ model_path = Path("../../data/Rijkswaterstaat/modellen") / model_name
 toml_path = model_path / toml_name
 assert toml_path.is_file()
 
-# %%
-"""
-
-Pseudo-code of envisioned workflow to set up a delwaq simulation automatically
-
-# configuration of LWKM run:
-# substance or tracer (mode 1 or 2 as done in ANIMO2Delwaq.py)
-# which substances to include (e.g. only N and P or also OON, AAP, OOP)
-# which emission sources to include (ER, ANIMO, RWZI, BA)
-# LHM model version (name)
-# reuse existing WQ input (parquet files) or generate (write) new ones from raw data (necessary for new LHM version)
-
-# specify postprocessing preferences:
-    # aggregation to WFD waterbodies
-    # visualization (geopandas)
-    # comparison to monitoring / validation
-
-** Add emission sources to Ribasim data structure #$ new, not yet tested **
-
-# download Ribasim model
-
-cloud.synchronize(lhm)
-
-model = Model.read(toml_path)
-
-# either run coupling scripts and save parquet files or use existing parquet files (write or read, specify per emission source)
-
-if write:
-
-    cloud.synchronize(raw data for ER, ANIMO, RWZI, BA)
-
-    export to cloud (or just save locally): true / false
-
-    run ER2delwaq (model_name, optional args: frac_bergend, specific emissions) --> save parquet
-    run ANIMO2delwaq (model_name, optional args: animo version no., mode 1(substance) or mode 2(tracer)) --> save parquet
-    run BoundWQ2delwaq (model_name, args=?) --> save parquet
-
-else continue
-
-cloud.synchronize(parquet files)
-
-ER_loads_df = pd.read_parquet(model_path / "ER_loads.pq")
-ANIMO_loads_df = pd.read_parquet(model_path / "ANIMO_loads.pq")
-RWZI_loads_df = pd.read_parquet(model_path / "RWZI_loads.pq")
-BA_loads_df = pd.read_parquet(model_path / "BA_loads.pq")
-
-# process into long format: <nodeid> <time> <substance> <value>
-# optional: select which substances to keep (these will be used in delwaq simulation)
-
-model.basin.loads = pd.concat([ER_loads_long_df, ANIMO_loads_long_df], ignore_index=True)
-model.flow_boundary.concentration = pd.concat([RWZI_loads_long_df, BA_loads_long_df], ignore_index=True)
-
-model.write(toml_path)  # write Ribasim model with WQ data added
-
-"""
 # %% read model
 # model = Model.read(toml_path)
 
