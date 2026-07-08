@@ -1,29 +1,75 @@
 # Ribasim-Delwaq Integration Guide
 
-The main script used in this workflow is `delwaq_tests/combined_testing.py`, which does the following:
+The main script used in this workflow is `delwaq_tests/combined_testing.py`. This script runs as a jupyter notebook. It requires the pixi environment of Ribasim-NL to be active. This script does the following:
 
-- loads a Ribasim model
-- sets up the delwaq simulation
-- runs the delwaq simulation
-- parses the results
-- writes the results for visualization in QGIS
+1. Couple emission data to Ribasim model
+2. Set up DELWAQ simulation automatically using generate.py
+3. Run DELWAQ simulation
+4. Parse and save simulation results
 
-The final two steps are still a work in progress, providing some handles for a more robust analysis that will be performed in the near future. In its testing phase, this script has only been run as a jupyter notebook, using the interactive python extension in VSCode.
+### Ribasim model (hydrology)
 
-## DIMR_PATH Environment Variable
+This script requires a Ribasim model with results, located under ``model_path``. This model may be obtained by downloading it from TheGoodCloud or by running `notebooks/rwzi/add_rwzi_model.py`. **check if these are currently still the main methods**
 
-To execute the conversion from ER (Emission Registry) to Delwaq, ensure that the
-environment variable `DIMR_PATH` is set to the path of the DIMR executable.
-This is required to run the conversion scripts.
+Results may already be included in a downloaded Ribasim model, otherwise, in a CLI:
+```
+<path_to_ribasim.exe> <path_to_lhm.toml>
+```
+
+The simulation period can be adjusted in the model's `.toml` file
+
+For each step a detailed description is provided below.
+
+## Couple emission data to Ribasim model
+
+The following four emission data sources are coupled to the LHM:
+
+- Z-info: Measured concentration in WWTP effluent (assigned to water flux)
+- IM: Measured concentration in transboundary inflows into the water system (assigned to water flux)
+- ANIMO: Diffuse emission estimates from agriculture (dry waste load)
+- EmissieRegistratie (ER): Diffuse emission estimates of other origins (dry waste load)
+
+For each data source, a separate folder containing raw data and a coupling script was created. Each script creates a dataframe that follows the ribasim data structure (node_id, datetime, substance, value). This dataframe is saved to a parquet file in the folder specific to each data source. Each parquet file containing the emissions from each data source is loaded into combined_testing.py and coupled to the Ribasim model.
+
+**For each data source, a detailed description of the raw data, the conversion scripts, and the decisions/assumptions is provided in a separate tab**
+**Each script should contain a config section with variables that can also be defined through combined_testing.py**
+**An unresolved issue is how we combine loads and concentrations from two sources with (possibly) different temporal resolutions to the same ribasim nodes**
+
+## Set up DELWAQ simulation automatically using generate.py
+
+The ``generate`` function takes a ribasim model, along with emissions that were coupled in the previous step, to create all input files that are necessary to run a delwaq simulation. ``generate`` also creates two variables, `graph` (ribasim and associated delwaq network) and `substances` (list of substances that are simulated), which are necessary to run the ``parse`` function later. Right now, ``generate`` can take around 30 minutes to run.
+
+## Run DELWAQ simulation
+
+The delwaq simulation is run from python using the ``subprocess`` package, which takes a delwaq dimrset (which points to the right executable) and the input files that were created with ``generate.py``
+
+### DIMR_PATH Environment Variable
+
+To run delwaq from the notebook, ensure that the environment variable `DIMR_PATH` is set to the path of the DIMR executable (in .env).
 
 Example:
 ```
 DIMR_PATH=c:\Program Files\Deltares\Delft3D FM Suite 2025.02 HMWQ\plugins\DeltaShell.Dimr\kernels\x64\bin\run_dimr.bat
 ```
 
-## Data Sources
+### Running the simulation
 
-File locations in Python scripts need to be adjusted.
+The delwaq simulation is run for the period spanned by the LHM results, but can be adjusted. Keep in mind that any adjustments are overturned when running ``generate`` with the same output_path
+
+## Parse results and save simulation results
+
+The ``parse`` function takes the delwaq output, the concentration of each substance over time per delwaq segment, in netCDF format and assigns it to ribasim basin nodes. By specifying `to_input=True`, the results are also written per basin node.
+
+Using ``plot_fraction``, the concentration for a specific basin node is plotted.
+
+
+# Documentation of each emission source
+
+## ER
+
+### Data Sources
+
+File locations in Python scripts need to be adjusted, corresponding to cloud storage or DVC
 
 The conversion script `ER_data_conversion_delwaq.py` is an adaptation of:
 `p:/krw-verkenner/01_landsdekkende_schematisatie/LKM25 schematisatie/OverigeEmissies/KRW_Tussenevaluatie_2024/Convert_ER_Emissions_To_KRW_input_tusseneval.py`
@@ -31,80 +77,8 @@ The conversion script `ER_data_conversion_delwaq.py` is an adaptation of:
 - Modified to use spatial coupling with new LHM schematisation, called via function from Python script `ER_GAF_fractions_func.py`
 - GAF polygons sourced from `P:/11210327-lwkm2/01_data/Emissieregistratie/gaf_90.shp`
 
-## Step-by-Step ER Coupling Process
+### settings
 
-1. **Download Ribasim model**
+- frac_bergend: fraction of emissions in a basin that is assigned to its **bergende node**, where the remainder (1 - frac_bergend) is assigned to the **doorgaande node**.
 
-   Directly via good cloud or by running `notebooks/rwzi/add_rwzi_model.py`
-
-   Ensure that the environment variable `RIBASIM_NL_DATA_DIR` is used as the location
-
-2. **Run Ribasim model** for the desired period (can be short for tests)
-
-   Results may already be included in a downloaded Ribasim model, otherwise:
-
-   In a CLI: <path_to_ribasim.exe> <path_to_lhm.toml>
-
-   Simulation period can be adjusted in the model's `.toml` file
-
-3. **Run** `delwaq_tests/combined_testing.py`
-
-   Only the part until the comment: 'pause here and proceed with steps in README.md'
-
-   Requires Ribasim-NL uv environment to be active
-
-   This provides most input files for Delwaq via `generate.py`, which live in the output_folder specified in this `combined_testing.py`
-
-   Generates separate `delwaq_bndlist.inc`
-
-4. **Run** `ER_data_conversion_delwaq.py`
-
-   This produces `B6_loads.inc`
-
-5. **Run** `ANIMO2Delwaq.py`
-
-   This produces `include_ANIMO.inc`
-
-6. **Obtain concentration data for FlowBoundary nodes**
-
-   These are obtained by running scripts from a separate commit, producing BOUNDWQ_rwzi.DAT and BOUNDWQ_ba.dat. So far these were manually moved into the delwaq folder. **could skip this step until commit is merged**
-
-   (While saving them in the right location automatically would be an improvement, I suggest skipping this step for now and moving straight to including the dataframes in the ribasim model structure)
-
-7. **Manually adjust** `delwaq.inp`:
-
-   **Block 1:**
-      - Add substances NO3, NH4, OON, PO4, AAP, OOP to the list of substances
-      - Change number of substances accordingly (adding 6 to the number that is there for six substances)
-
-   **Block 5:**
-      - keep: INCLUDE 'B5_bounddata.inc'    (already present, existing substances/tracers)
-      - add:  INCLUDE 'BOUNDWQ_rwzi.DAT'    (timeseries for new substances on FlowBoundary nodes)
-      - add:  INCLUDE 'BOUNDWQ_ba.DAT'      (timeseries for new substances on FlowBoundary nodes)
-
-   **Block 6:**
-      - add:  INCLUDE 'loadswq.id'           (links ribasim basins to delwaq segments)
-      - add:  INCLUDE 'B6_loads.inc'         (timeseries loads for new substances on Basin nodes)
-      - add:  INCLUDE 'include_ANIMO.inc'    (load Agriculture and Nature, from conversion ANIMO model results)
-
-   **Block 8:**
-      - Change contents to (without indentation):
-               INITIALS Continuity Drainage FlowBoundary Initial LevelBoundary Precipitation SurfaceRunoff UserDemand NO3 NH4 OON PO4 AAP OOP
-               DEFAULTS 1.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
-
-      (instead of specifying the initials for every node separately)
-
-
-8. **Run Delwaq** via `delwaq_tests/combined_testing.py` (or optionally via cmd)
-
-      Within the python script, the output folder is specified again before running the model
-
-      This enables the user to specify a folder where all manual adjustments to delwaq.inp have already been made
-
-      Otherwise, the user would have to make the manual adjustments to delwaq.inp in the specified output_folder each time the script is run
-
-      This step will not be necessary once generate.py does not require manual changes to delwaq.inp anymore
-
-9. **Inspect results** via `delwaq_tests/combined_testing.py`
-
-   By running the remainder of this script, some results can be seen. This section is still a work in progress and forms the starting point of a visualization and validation workflow that is to be setup.
+- make_plots: tells the script whether to create plots (currently not saved)
