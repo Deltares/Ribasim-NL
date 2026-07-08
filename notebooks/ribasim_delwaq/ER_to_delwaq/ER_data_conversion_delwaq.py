@@ -27,21 +27,23 @@ bekend en wordt er tussen deze jaren geinterpoleerd.
 24/6/2026 - grote aanpassingen:
 
 - optie validate/prognose verwijderd (doel onduidelijk)
-- plotting scripts opgeschoond
+- plotting functies opgeschoond
 
-
-
-
-
-
-
-
+- data pipeline moet nog worden herzien en gedocumenteerd!!!
 
 
 """
+
+# %%
+# import os
+# import sys
+
+# print(sys.executable)
+# print(os.environ.get("GDAL_DATA"))
 # %%
 # -------------------------------Packages---------------------------------------
 
+import logging
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -50,19 +52,20 @@ import seaborn as sns
 from ER_GAF_fractions_func import compute_overlap_df
 
 # ------------------------ Import local module ----------------------------------
-from ribasim_nl.model import Model
-
 from ribasim_nl import CloudStorage
 
-current_dir = Path(__file__).resolve().parent
-print(f"Current directory: {current_dir}")
-print("Check if working directory is the script directory.")
+logger = logging.getLogger(__name__)
+if not logging.getLogger().handlers:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        force=True,
+    )
 
-# auto-check
-root_dir = ""
-if current_dir.parts[-2:] == ("ribasim_delwaq", "ER_to_delwaq"):
-    print("match")
-    root_dir = "../../../"
+logger.info("Starting ER data conversion script")
+
+current_dir = Path(__file__).resolve().parent
+root_dir = current_dir.parents[2]
 
 # -------------------------------Conversions------------------------------------
 
@@ -81,6 +84,7 @@ toml_path = model_path / toml_name
 # cloud.synchronize(filepaths=[model_path], overwrite=False)
 basin_path = model_path / "input/database.gpkg"
 
+# TODO: define permanent location for these files in repo: either within this folder or within the main data folder of this repo
 er_path = cloud.joinpath("Basisgegevens/Delwaq/aangeleverd/Emissieregistratie")
 emissies_buiten_ER_path = er_path / "Emissies_per_jaar_buiten_ER.csv"
 ER_export_path = er_path / "ER_DataExport-2024-01-29-142759.xlsx"
@@ -89,10 +93,14 @@ gaf_path = er_path / "gaf_90.shp"
 
 cloud.synchronize(filepaths=[er_path], overwrite=False)
 
+output_dir = current_dir / "output"
+output_dir.mkdir(parents=True, exist_ok=True)
+
 # %%
 # -------------------------------Settings---------------------------------------
 frac_doorgaand = 0.5  # deel ER op doorvoerende basin node
 frac_bergend = 1 - frac_doorgaand  # deel ER op bergende basin node
+make_plots = False
 
 # -------------------------------Functions--------------------------------------
 
@@ -107,6 +115,9 @@ def validate_df(
 
 def lineplot_N_P(df, N, P, kg=True, set_log=False, title=None):
     """Generate lineplots for the different EMK per Sub."""
+    if not make_plots:
+        return
+
     validate_df(df)
 
     df_n = df[df["VariableId"] == N]
@@ -162,7 +173,10 @@ def lineplot_N_P(df, N, P, kg=True, set_log=False, title=None):
 
 def barplot_N_P(df, N, P, y_lim_min_n, y_lim_max_n, y_lim_min_p, y_lim_max_p, kg=True, title=None):
     """Generate barplots per year for N and P."""
-    validate_df(df)
+    if not make_plots:
+        return
+
+    validate_df(df, required_columns=("Year", "Value", "VariableId"))
 
     df_n = df[df["VariableId"] == N]
     df_p = df[df["VariableId"] == P]
@@ -195,6 +209,7 @@ koppeling["GAF-eenheid"] = koppeling["GAF-eenheid"].astype(int)
 
 
 print("coupling GAF-emissions to LHM basin nodes completed")
+logger.info("Coupling GAF emissions to LHM basin nodes completed")
 
 # process fractions based on basin type, only splitting up doorgaand and bergend
 # there is also the category "hoofdwater" (within waterboards), but these do not have a duplicate node in the same location
@@ -299,7 +314,8 @@ sum_per_Year_base_long = sum_per_GAF_base_long.groupby(["Stof", "Jaar"])["Emissi
 
 sum_per_Year_base_short = pd.pivot(sum_per_Year_base_long, index=["Stof"], columns="Jaar").reset_index()  # Check
 
-print("yearly totals per EMK and per year computed")
+print("yearly totals per EMK (emissieoorzaak) and per year computed")
+logger.info("Yearly totals per EMK (emissieoorzaak) and per year computed")
 
 ###
 
@@ -425,6 +441,7 @@ ER_data_EMK_GAF90_inter_long = pd.melt(
 )
 
 print("interpolation of unknown years completed")
+logger.info("Interpolation of unknown years completed")
 
 # %%%######
 
@@ -463,6 +480,7 @@ barplot_N_P(
 )
 
 print("processing of other emissions without industry completed")
+logger.info("Processing of other emissions without industry completed")
 
 ###
 
@@ -479,6 +497,7 @@ OverigeEmissies_bedrijven_long = pd.melt(
 OverigeEmissies_bedrijven_long["Year"] = OverigeEmissies_bedrijven_long["Year"].astype(int)
 
 print("processing of other emissions from industry completed")
+logger.info("Processing of other emissions from industry completed")
 
 # ---------------------------------Output---------------------------------------
 
@@ -565,6 +584,7 @@ barplot_N_P(
 )
 
 print("created figures")
+logger.info("Created summary figures")
 
 # ---------------------------------Output--------------------------------------- #$ actual output
 
@@ -704,12 +724,21 @@ loads_df = ER_df_wide.melt(
     value_name="load",
 )
 
+output_path = output_dir / "ER_loads_df.parquet"
+
+try:
+    loads_df.to_parquet(output_path, index=False)
+    logger.info("Saved loads_df to %s", output_path)
+except Exception:
+    logger.exception("ER data conversion failed")
+    raise
+
 # %%
 # -------------------------- Couple loads to LHM datastructure ----------------------------
 
-model = Model.read(toml_path)
-model.basin.mass_load = loads_df
-model.write(toml_path)
+# model = Model.read(toml_path)
+# model.basin.mass_load = loads_df
+# model.write(toml_path)
 
 # #%%
 # # re-read saved model and check mass_load
