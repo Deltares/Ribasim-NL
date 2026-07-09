@@ -206,4 +206,4 @@ for authority in authorities:
 
                 # parse DELWAQ results in model
                 print("parse DELWAQ results in Ribasim-model")
-                parse(model, graph, substances, output_folder=delwaq_dir, to_input=True)
+                parse(model, output_folder=delwaq_dir, to_input=True)
