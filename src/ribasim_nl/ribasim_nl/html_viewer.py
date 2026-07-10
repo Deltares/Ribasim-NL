@@ -589,9 +589,17 @@ def CreateHTMLViewer(
                 </div>
             </div>
 
-            <!-- NSE Legenda -->
+            <!-- Beoordeling Legenda -->
             <div class="sectie">
-                <div class="sectie-titel">Legenda NSE</div>
+                <div class="sectie-titel">Legenda beoordeling (dag- &amp; decadelaag)</div>
+                <div class="leg-rij"><span class="leg-bol" style="background:rgba(26,150,65,0.9)"></span>Voldoet (✓)</div>
+                <div class="leg-rij"><span class="leg-bol" style="background:rgba(215,25,28,0.9)"></span>Voldoet niet (✗)</div>
+                <div class="leg-rij"><span class="leg-bol" style="background:#808080"></span>n.v.t.</div>
+            </div>
+
+            <!-- NSE Legenda LHM 4.1 -->
+            <div class="sectie">
+                <div class="sectie-titel">Legenda NSE (LHM 4.1 vergelijking)</div>
                 <div class="leg-rij"><span class="leg-bol" style="background:rgba(26,150,65,0.9)"></span>0,75 - 1,0</div>
                 <div class="leg-rij"><span class="leg-bol" style="background:rgba(166,217,106,0.9)"></span>0,50 - 0,75</div>
                 <div class="leg-rij"><span class="leg-bol" style="background:rgba(255,255,192,0.9)"></span>0,25 - 0,50</div>
@@ -643,7 +651,7 @@ var pdokLayer = L.tileLayer.wms('https://service.pdok.nl/hwh/waterschappen-water
 });
 pdokLayer.addTo(map);
 
-// ── NSE kleur ─────────────────────────────────────────────────────────────────
+// ── NSE kleur (daglaag) ───────────────────────────────────────────────────────
 function nseColor(nse) {
     if (nse === null || nse === undefined || isNaN(nse)) return '#808080';
     if (nse <  0.00) return 'rgba(215,25,28,0.9)';
@@ -651,6 +659,22 @@ function nseColor(nse) {
     if (nse <  0.50) return 'rgba(255,255,192,0.9)';
     if (nse <  0.75) return 'rgba(166,217,106,0.9)';
     return 'rgba(26,150,65,0.9)';
+}
+
+// ── Voldoet kleur en symbool ──────────────────────────────────────────────────
+function voldoetColor(voldoet) {
+    if (voldoet === 'Ja')  return 'rgba(26,150,65,0.9)';
+    if (voldoet === 'Nee') return 'rgba(215,25,28,0.9)';
+    return '#808080';
+}
+function voldoetIcon(voldoet) {
+    var kleur = voldoetColor(voldoet);
+    var sym = voldoet === 'Ja' ? '✓' : (voldoet === 'Nee' ? '✗' : '');
+    var html = '<div style="background:' + kleur + ';border-radius:50%;width:16px;height:16px;'
+             + 'display:flex;align-items:center;justify-content:center;'
+             + 'color:#fff;font-size:11px;font-weight:bold;line-height:1;'
+             + 'box-shadow:0 0 2px rgba(0,0,0,0.4);">' + sym + '</div>';
+    return L.divIcon({ html: html, className: '', iconSize: [16,16], iconAnchor: [8,8] });
 }
 
 // ── Node kleur (Ribasim knoptypen) ────────────────────────────────────────────
@@ -679,7 +703,12 @@ function imgFromTag(tag, label) {
 // Popup: statistieken altijd van decadewaarden; dag-plot boven, dec-plot onder.
 function makePopup(p) {
     var linkTxt = p.link_id != null ? 'link_id: ' + p.link_id : '';
-    var stats = '<div class="pop-stats-lbl">Statistieken (decadewaarden)</div>'
+    var voldoet = p.Voldoet_dec || p.Voldoet_dag || 'n.v.t.';
+    var voldoetKleur = voldoetColor(voldoet);
+    var voldoetBadge = '<span style="display:inline-block;padding:2px 8px;border-radius:3px;'
+        + 'background:' + voldoetKleur + ';color:#fff;font-weight:600;font-size:11px;">'
+        + voldoet + '</span>';
+    var stats = '<div class="pop-stats-lbl">Beoordeling (decadewaarden): ' + voldoetBadge + '</div>'
         + '<div class="pop-stats">'
         + '<div class="pop-stat"><b>NSE</b>'      + fmt(p.NSE_dec, 2)        + '</div>'
         + '<div class="pop-stat"><b>KGE</b>'      + fmt(p.KGE_dec, 2)        + '</div>'
@@ -771,14 +800,12 @@ if (typeof geojsonNodes !== 'undefined' && geojsonNodes) {
 }
 
 // ── Validatie lagen ───────────────────────────────────────────────────────────
-function maakLaag(geojson) {
+// voldoetVeld: 'Voldoet_dag' voor daglaag, 'Voldoet_dec' voor decadelaag
+function maakLaag(geojson, voldoetVeld) {
     return L.geoJSON(geojson, {
         pointToLayer: function(feat, ll) {
-            return L.circleMarker(ll, {
-                radius: 7, fillColor: nseColor(feat.properties.NSE),
-                color: '#333', weight: 0.8, opacity: 1, fillOpacity: 0.9,
-                pane: 'validatiePane'
-            });
+            var v = feat.properties[voldoetVeld];
+            return L.marker(ll, { icon: voldoetIcon(v), pane: 'validatiePane' });
         },
         onEachFeature: function(feat, layer) {
             layer.bindPopup(makePopup(feat.properties), {maxWidth: 480});
@@ -786,8 +813,8 @@ function maakLaag(geojson) {
     });
 }
 
-var layerDag = maakLaag(geojsonDag);
-var layerDec = maakLaag(geojsonDec);
+var layerDag = maakLaag(geojsonDag, 'Voldoet_dag');
+var layerDec = maakLaag(geojsonDec, 'Voldoet_dec');
 layerDag.addTo(map);
 
 // ── LHM 4.1 vergelijkingslaag ─────────────────────────────────────────────
@@ -975,8 +1002,7 @@ function updateFilter() {
                    && (gesAanAf  === null || gesAanAf.has(p.aan_af || ''))
                    && (gesFractie === null || gesFractie.has(p.has_fractieplot || 'Nee'))
                    && gesKraan.has(p.kraan_waterverdeling_nl || 'Nee');
-            marker.setStyle({opacity: ok ? 1 : 0, fillOpacity: ok ? 0.9 : 0});
-            marker.setRadius(ok ? 7 : 0);
+            marker.setOpacity(ok ? 1 : 0);
         });
     });
     if (typeof layerLhm41 !== 'undefined' && layerLhm41) {
