@@ -20,14 +20,23 @@ The module is split into two main blocks:
     AddCumulative               Add cumulative columns to a combined daily/decade DataFrame.
     GetStatisticsComparison     NSE, RMSE, MAE, RelBias, KGE, P10/P25/P75/P90.
     GetStatisticsPerPeriod      Statistics per year + total period.
-    BeoordeelCriteria           WFD assessment per criterion ('Goed'/'Matig'/'Onvoldoende').
+    BeoordeelCriteria           Assessment per criterion ('Goed'/'Onvoldoende'/'n.v.t.');
+                                supports abs_drempel_min_dynamica gate so the absolute
+                                deviation floor only activates when NSE or KGE is
+                                sufficiently high (prevents flat-zero series from passing).
     PlotAndSave                 Time series + cumulative + statistics panel figure.
     PlotAndSaveFractie          Stacked LHM fraction figure combined with discharge.
     SaveTimeseries              Write daily + decade time series to Excel (two sheets).
     ExportToExcel               Write per-water-authority statistics sheet to Excel.
-    BerekenModelEindbeoordeling Read Validatie_criteria.xlsx and compute final model score.
+    BerekenModelEindbeoordeling Read Validatie_criteria.xlsx and compute final model score;
+                                groups where ALL criteria are 'n.v.t.' are excluded from
+                                the denominator; min_groepen_fractie (default 0.5) controls
+                                what fraction of evaluable groups must be 'Goed'.
     ExtraInfoToevoegenAllData   Add P95/P05 discharge-magnitude classification to GeoPackages.
-    CompareOutputMeasurements   Main entry point for the standard validation workflow.
+    CompareOutputMeasurements   Main entry point for the standard validation workflow;
+                                accepts abs_drempel_min_dynamica, criteria_groepen, and
+                                min_groepen_fractie; writes Voldoet_dag / Voldoet_dec
+                                pass/fail columns to the output GeoPackages.
 
   Key private helpers:
     _sanitize_filename          Strip/replace characters invalid in filenames.
@@ -207,7 +216,17 @@ def ReadOutputFile(
         data = pd.read_feather(Path(results_folder, filetype.lower() + ".arrow"))
     else:
         ds = xr.open_dataset(Path(results_folder, filetype.lower() + ".nc"))
-        data = ds.to_dataframe().reset_index()
+        # to_dataframe() builds a full Cartesian MultiIndex (time x links) which fails
+        # for large models (63k links x 1095 timesteps = 69M rows). Instead convert
+        # only the highest-dimensional variable (flow_rate) to avoid the allocation.
+        # from_node_id / to_node_id are 1-D and not used downstream.
+        all_vars = list(ds.data_vars)
+        if not all_vars:
+            raise ValueError(f"Geen data-variabelen gevonden in {filetype.lower()}.nc")
+        primary_dims = max((set(ds[v].dims) for v in all_vars), key=len)
+        frames = [ds[var].to_series().rename(cast(str, var)) for var in all_vars if set(ds[var].dims) == primary_dims]
+        data = pd.concat(frames, axis=1).reset_index()
+        ds.close()
 
     # Optional: fix timing if needed
     # data['time'] = data['time'] - pd.DateOffset(years=12)
@@ -378,16 +397,15 @@ def _safe_eval_formula(formula: str, env: dict) -> pd.Series:
     return _eval(ast.parse(formula, mode="eval"))
 
 
-def ApplySpecificOperation(data: pd.DataFrame, link: list | int, spec_op: str):
+def ApplySpecificOperation(data_by_link: dict[int, pd.DataFrame], link: list | int, spec_op: str):
     """
     The function `ApplySpecificOperation`  performs specific operations on the input data.
 
     Parameters
     ----------
-    data : pd.DataFrame
-        The function `ApplySpecificOperation` takes in a pd.DataFrame `data`, a list of link IDs
-    `link`, and a specific operation `spec_op` to be applied on the data. The function then performs
-    different operations based on the value of `spec_op`.
+    data_by_link : dict[int, pd.DataFrame]
+        Pre-grouped model output keyed by link_id. Use ``{int(lid): df for lid, df in data.groupby("link_id")}``
+        to build this once before the loop so each call is an O(1) dict lookup instead of an O(n) scan.
     link : list | int
         The `link` parameter in the function `ApplySpecificOperation` is used to specify the link or links
     for which the specific operation will be applied. It can be either an integer or a list of integers
@@ -411,30 +429,30 @@ def ApplySpecificOperation(data: pd.DataFrame, link: list | int, spec_op: str):
     match spec_op:
         case "optellen":
             # Tel de links bij elkaar op wanneer de specifieke bewerking hierom vraagt
-            subset_links = data[data["link_id"].isin(link)]
+            subset_links = pd.concat([data_by_link[lid] for lid in link])
             # pyrefly: ignore[bad-assignment]
             subset_output: pd.DataFrame = subset_links.groupby("time", as_index=False)["flow_rate"].sum()
 
         case "negatief_maken":
             # Maak de meetreeks negatief
-            subset_output = data[data["link_id"].isin(link)].copy()
+            subset_output = pd.concat([data_by_link[lid] for lid in link]).copy()
             subset_output["flow_rate"] = subset_output["flow_rate"] * -1
 
         case "optellen_en_negatief_maken":
             # Tel op en maak de reeks negatief
-            subset_links = data[data["link_id"].isin(link)]
+            subset_links = pd.concat([data_by_link[lid] for lid in link])
             # pyrefly: ignore[bad-assignment]
             subset_output = subset_links.groupby("time", as_index=False)["flow_rate"].sum().copy()
             subset_output["flow_rate"] = subset_output["flow_rate"] * -1
 
         case _ if pd.isna(spec_op):
             # Als er geen specifieke bewerking nodig is, selecteer de link
-            subset_output = data[data["link_id"].isin(link)]
+            subset_output = pd.concat([data_by_link[lid] for lid in link])
 
         case _:
             # Handel de specifieke formule af
             link_mapping = {f"link{i + 1}": ID for i, ID in enumerate(link)}
-            subset_links = data[data["link_id"].isin(link)]
+            subset_links = pd.concat([data_by_link[lid] for lid in link])
             subset_pivot = subset_links.pivot(index="time", columns="link_id", values="flow_rate")
             env = {placeholder: subset_pivot[link_id] for placeholder, link_id in link_mapping.items()}
             subset_pivot["result"] = _safe_eval_formula(spec_op, env)
@@ -576,6 +594,7 @@ def BeoordeelCriteria(
     stats: dict,
     criteria_grenzen: dict | None = None,
     abs_drempel: float | None = None,
+    abs_drempel_min_dynamica: float | None = None,
 ) -> dict:
     """Evaluate statistics against WFD (KRW) assessment criteria.
 
@@ -590,6 +609,12 @@ def BeoordeelCriteria(
         deviation (sim - obs) is smaller than this value the criterion is always 'Goed'
         regardless of the relative deviation. Use this to handle near-zero discharges.
         Default None (no absolute check).
+    abs_drempel_min_dynamica
+        Minimum NSE or KGE required before abs_drempel is allowed. When set, the absolute
+        floor is only applied when the model reproduces the measurement dynamics reasonably
+        well (NSE >= threshold OR KGE >= threshold). This prevents flat-zero model outputs
+        from being classified as 'Goed' purely because the absolute deviation is small.
+        Default None (abs_drempel always applied when set).
 
     Returns
     -------
@@ -616,16 +641,25 @@ def BeoordeelCriteria(
             return None
         return abs(float(s) - float(o))
 
+    # Determine whether the absolute floor may be applied: only when the model
+    # reproduces the measurement dynamics well enough (NSE or KGE above threshold).
+    if abs_drempel is not None and abs_drempel_min_dynamica is not None:
+        nse = stats.get("NSE")
+        kge = stats.get("KGE")
+        nse_ok = nse is not None and not np.isnan(float(nse)) and float(nse) >= abs_drempel_min_dynamica
+        kge_ok = kge is not None and not np.isnan(float(kge)) and float(kge) >= abs_drempel_min_dynamica
+        _eff_abs_drempel = abs_drempel if (nse_ok or kge_ok) else None
+    else:
+        _eff_abs_drempel = abs_drempel
+
     def _beoordeel(waarde, criterium, hoger_is_beter=False, abs_dev=None):
         if waarde is None or np.isnan(waarde):
             return "n.v.t."
         grenzen = criteria_grenzen[criterium]
         if hoger_is_beter:
             return "Goed" if waarde > grenzen["Goed"] else "Onvoldoende"
-        # Absolute vloer: als absolute afwijking in m³/s <= abs_drempel → altijd Goed
-        #!!!TODO: let op kleiner en gelijk aan abs drempel toegestaan
-
-        if abs_drempel is not None and abs_dev is not None and abs_dev <= abs_drempel:
+        # Absolute vloer: als absolute afwijking in m³/s <= _eff_abs_drempel → altijd Goed
+        if _eff_abs_drempel is not None and abs_dev is not None and abs_dev <= _eff_abs_drempel:
             return "Goed"
         abs_val = abs(waarde)
         if "Matig" in grenzen:
@@ -746,7 +780,7 @@ def BerekenModelEindbeoordeling(
     output_xlsx: str | Path | None = None,
     periode: str = "totaal",
     criteria_groepen: dict | None = None,
-    min_groepen_voldoen: int = 2,
+    min_groepen_fractie: float = 0.5,
     drempel_hws: float = 75.0,
     drempel_regionaal: float = 50.0,
     hws_waterschap: str = "Rijkswaterstaat",
@@ -755,14 +789,16 @@ def BerekenModelEindbeoordeling(
     """Read the saved Validatie_criteria.xlsx and compute the final model assessment.
 
     Operates on the decade assessment columns (Beoor_*_dec) present in each water
-    authority sheet. Criteria are grouped into three overarching groups
-    (``criteria_groepen``):
+    authority sheet. Criteria are grouped into overarching groups (``criteria_groepen``).
 
-    - Bias         : RelBias_dec
-    - NSE/KGE      : NSE_dec and/or KGE_dec  (Good when ≥ 1 is Good)
-    - Percentiles  : P10, P25, P75, P90       (Good when ≥ 2 of 4 are Good)
+    A group is 'Goed' when the required minimum number of its criteria are 'Goed'.
+    A group is 'n.v.t.' when ALL of its criteria are 'n.v.t.' (e.g. low-flow percentiles
+    that cannot be evaluated). These n.v.t. groups are excluded from the denominator.
 
-    A location 'passes' when ``min_groepen_voldoen`` (default 2) of the 3 groups are Good.
+    A location 'passes' when at least ``min_groepen_fractie`` (default 0.5 = 50%) of the
+    evaluable groups are 'Goed'. This means the required count adapts dynamically: if 2 out
+    of 6 groups are n.v.t., only 4 remain evaluable and 2 of those must be 'Goed'.
+
     The model is 'Geschikt' (suitable) when the percentage of passing locations meets the threshold:
     - ``drempel_hws`` for the sheet named ``hws_waterschap`` (main water system)
     - ``drempel_regionaal`` for all other sheets
@@ -777,8 +813,10 @@ def BerekenModelEindbeoordeling(
         Row filter on the 'Periode' column; default 'totaal'.
     criteria_groepen
         Group definitions with column names and min_goed per group.
-    min_groepen_voldoen
-        Minimum number of groups that must be 'Goed' for a location to pass.
+    min_groepen_fractie
+        Fraction of evaluable groups that must be 'Goed' for a location to pass.
+        Default 0.5 (50%). Groups where all criteria are 'n.v.t.' are excluded from
+        the denominator so the threshold adapts to what can actually be evaluated.
     drempel_hws
         Minimum percentage of passing locations for the main water system.
     drempel_regionaal
@@ -850,13 +888,17 @@ def BerekenModelEindbeoordeling(
             for groep, cfg in criteria_groepen.items():
                 # Alleen kolommen meenemen die ook echt in de sheet aanwezig zijn
                 aanwezig = [k for k in cfg["kolommen"] if k in df_p.columns]
+                # Groep is n.v.t. als alle aanwezige criteria n.v.t. zijn
+                if not aanwezig or all(rij.get(k, "n.v.t.") == "n.v.t." for k in aanwezig):
+                    groep_beoor[groep] = "n.v.t."
+                    continue
                 n_goed = sum(rij.get(k, "n.v.t.") == "Goed" for k in aanwezig)
-                # Groep is "Goed" als het minimum aantal "Goed"-kolommen is gehaald
-                groep_beoor[groep] = "Goed" if (aanwezig and n_goed >= cfg["min_goed"]) else "Onvoldoende"
+                groep_beoor[groep] = "Goed" if n_goed >= cfg["min_goed"] else "Onvoldoende"
 
-            # Locatie voldoet als minimaal min_groepen_voldoen van de 3 groepen "Goed" zijn
+            # Groepen die n.v.t. zijn tellen niet mee in de noemer (dynamische drempel)
+            n_evalueerbaar = sum(v != "n.v.t." for v in groep_beoor.values())
             n_groepen_goed = sum(v == "Goed" for v in groep_beoor.values())
-            voldoet = n_groepen_goed >= min_groepen_voldoen
+            voldoet = False if n_evalueerbaar == 0 else (n_groepen_goed / n_evalueerbaar) >= min_groepen_fractie
             if voldoet:
                 n_voldoet += 1
 
@@ -867,6 +909,7 @@ def BerekenModelEindbeoordeling(
                     "Locatie": rij.get("Locatie", "onbekend"),
                     **{f"Groep_{g}": v for g, v in groep_beoor.items()},
                     "N_groepen_Goed": n_groepen_goed,
+                    "N_groepen_Evalueerbaar": n_evalueerbaar,
                     "Voldoet": "Ja" if voldoet else "Nee",
                 }
             )
@@ -938,7 +981,7 @@ def BerekenModelEindbeoordeling(
             # Notitieregel met de gebruikte instellingen voor reproduceerbaarheid
             ws.cell(row=ws.max_row + 2, column=1).value = (
                 f"Instellingen: periode={periode}  |  tijdreeks=decade  |  "
-                f"min. groepen voldoen={min_groepen_voldoen}/3  |  "
+                f"min. groepen voldoen={min_groepen_fractie * 100:.0f}% van evalueerbare groepen  |  "
                 f"drempel HWS={drempel_hws}%  |  drempel regionaal={drempel_regionaal}%"
             )
 
@@ -965,6 +1008,7 @@ def ExportToExcel(
     criteria_grenzen: dict | None,
     beoor_kleuren: dict | None = None,
     abs_drempel: float | None = None,
+    abs_drempel_min_dynamica: float | None = None,
 ) -> None:
     """Write one sheet per water authority to an Excel file.
 
@@ -990,6 +1034,9 @@ def ExportToExcel(
         Absolute deviation threshold in m³/s passed to BeoordeelCriteria.
         Locations with an absolute deviation below this value are always 'Goed'.
         Default None (no absolute check).
+    abs_drempel_min_dynamica
+        Minimum NSE or KGE required before abs_drempel is applied. Passed to BeoordeelCriteria.
+        Default None (abs_drempel always applied when set).
     """
     with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
         for waterschap, records in results_excel.items():
@@ -1008,12 +1055,12 @@ def ExportToExcel(
                         return round(float(val), 3) if not np.isnan(val) else np.nan
 
                     beoor_d = (
-                        BeoordeelCriteria(stats_d, criteria_grenzen, abs_drempel)
+                        BeoordeelCriteria(stats_d, criteria_grenzen, abs_drempel, abs_drempel_min_dynamica)
                         if stats_d is not None
                         else dict.fromkeys(["NSE", "KGE", "Bias", "P10", "P25", "P75", "P90"], "n.v.t.")
                     )
                     beoor_dc = (
-                        BeoordeelCriteria(stats_dc, criteria_grenzen, abs_drempel)
+                        BeoordeelCriteria(stats_dc, criteria_grenzen, abs_drempel, abs_drempel_min_dynamica)
                         if stats_dc is not None
                         else dict.fromkeys(["NSE", "KGE", "Bias", "P10", "P25", "P75", "P90"], "n.v.t.")
                     )
@@ -1055,6 +1102,17 @@ def ExportToExcel(
                         "Beoor_P25_dec": beoor_dc["P25"],
                         "Beoor_P75_dec": beoor_dc["P75"],
                         "Beoor_P90_dec": beoor_dc["P90"],
+                        # --- Decadewaarden: absolute waarden voor narekenen ---
+                        "mean_obs_dec_m3s": _fmt(stats_dc, "mean_obs"),
+                        "mean_model_dec_m3s": _fmt(stats_dc, "mean_sim"),
+                        "P10_obs_dec_m3s": _fmt(stats_dc, "P10_obs"),
+                        "P10_model_dec_m3s": _fmt(stats_dc, "P10_sim"),
+                        "P25_obs_dec_m3s": _fmt(stats_dc, "P25_obs"),
+                        "P25_model_dec_m3s": _fmt(stats_dc, "P25_sim"),
+                        "P75_obs_dec_m3s": _fmt(stats_dc, "P75_obs"),
+                        "P75_model_dec_m3s": _fmt(stats_dc, "P75_sim"),
+                        "P90_obs_dec_m3s": _fmt(stats_dc, "P90_obs"),
+                        "P90_model_dec_m3s": _fmt(stats_dc, "P90_sim"),
                     }
                     rijen.append(rij)
 
@@ -1077,7 +1135,7 @@ def ExportToExcel(
 
 def PlotAndSaveFractie(
     combined_df: pd.DataFrame,
-    concentration_path: Path | None,
+    concentration_df: pd.DataFrame | None,
     basin_node_id: int,
     basin_richting: str,
     tracers: list[str] | None,
@@ -1094,8 +1152,8 @@ def PlotAndSaveFractie(
     ----------
     combined_df
         DataFrame with columns 'time', 'flow_rate' and optionally 'sum'.
-    concentration_path
-        Path to the concentration.nc NetCDF file. Returns None immediately when None.
+    concentration_df
+        Pre-loaded concentration DataFrame (from concentration.nc). Returns None immediately when None.
     basin_node_id
         Node ID of the basin for which fractions are plotted.
     basin_richting
@@ -1115,13 +1173,10 @@ def PlotAndSaveFractie(
         HTML ``<img>`` tag string for use in a popup, or None when no fraction data
         is available for this basin.
     """
-    if concentration_path is None:
+    if concentration_df is None:
         return None
-    ds = xr.open_dataset(concentration_path)
-    table = ds.to_dataframe().reset_index()
-    ds.close()
 
-    table = table[table["node_id"] == basin_node_id]
+    table = concentration_df[concentration_df["node_id"] == basin_node_id]
     if tracers is not None:
         table = table[table["substance"].isin(tracers)]
 
@@ -1135,7 +1190,7 @@ def PlotAndSaveFractie(
     frac_time = groups.get_group(key)["time"]
 
     font = "Arial"
-    _halo = [pe.withStroke(linewidth=5, foreground="black")]
+    _halo = [pe.withStroke(linewidth=3, foreground="black")]
     fig, ax = plt.subplots(figsize=(11, 6))
 
     # Gestapelde fracties op linker y-as
@@ -1159,7 +1214,7 @@ def PlotAndSaveFractie(
         combined_df["flow_rate"],
         label="Ribasim",
         color="tab:blue",
-        linewidth=2.5,
+        linewidth=1.6,
         zorder=5,
         path_effects=_halo,
     )
@@ -1169,7 +1224,8 @@ def PlotAndSaveFractie(
             combined_df["sum"],
             label="Meting",
             color="tab:orange",
-            linewidth=2.8,
+            linewidth=1.6,
+            linestyle="--",
             zorder=5,
             path_effects=_halo,
         )
@@ -1203,6 +1259,50 @@ def PlotAndSaveFractie(
     return f'<img src="../figures_fracties/{waterschap}/{fname}" width=400 height=300>'
 
 
+def _patch_meting(combined_df: pd.DataFrame, meetreeks_namen: list[str]) -> pd.DataFrame:
+    """Pas hardcoded correcties toe op de meting-kolom (sum) van combined_df.
+
+    Patches worden geïdentificeerd op basis van de MeetreeksC-naam.
+    Geeft True terug als de coverage-check overgeslagen moet worden.
+    """
+    df = combined_df.copy()
+    times = pd.to_datetime(df["time"])
+
+    for naam in meetreeks_namen:
+        if naam in ("KGM16 Scheldestromen", "KGM92 Scheldestromen", "C Mantel_uit"):
+            # 2017 meting onrealistisch (nul of onjuist) — alleen 2018/2019 gebruiken
+            df.loc[times.dt.year == 2017, "sum"] = np.nan
+            print(f"  Patch: {naam} — meting 2017 op NaN gezet (onrealistisch)")
+
+        elif naam == "Dorpse Beek Oenerweg":
+            # Alleen 2017 realistisch voor validatie
+            df.loc[times.dt.year != 2017, "sum"] = np.nan
+            print(f"  Patch: {naam} — alleen meting 2017 behouden")
+
+        elif naam == "Schalsum, WF afvoer":
+            # Laatste waarde (30-12-2019) onrealistisch — alles vanaf die datum verwijderen
+            df.loc[times >= pd.Timestamp("2019-12-30"), "sum"] = np.nan
+            print(f"  Patch: {naam} — meting vanaf 2019-12-30 op NaN gezet")
+
+        elif naam == "Schaalsmeer":
+            # Uitbijter op 21-08-2019 onrealistisch hoog
+            df.loc[times == pd.Timestamp("2019-08-21"), "sum"] = np.nan
+            print(f"  Patch: {naam} — meting 2019-08-21 op NaN gezet (uitbijter)")
+
+        elif naam == "Westerkogge (hoog peil)":
+            # 2019 volledig 0 (station offline); ook vanaf 2020 geen geldige data
+            df.loc[times.dt.year >= 2019, "sum"] = np.nan
+            df.loc[times.isin([pd.Timestamp("2018-01-03"), pd.Timestamp("2018-01-04")]), "sum"] = np.nan
+            print(f"  Patch: {naam} — meting vanaf 2019 op NaN, uitschieters 03/04-01-2018 verwijderd")
+
+    return df
+
+
+def _bypass_coverage(meetreeks_namen: list[str]) -> bool:
+    """Geeft True terug als de coverage-drempel overgeslagen moet worden voor deze locatie."""
+    return any("Ericasluis" in naam for naam in meetreeks_namen)
+
+
 def CompareOutputMeasurements(
     loc_koppeltabel,
     loc_specifics,
@@ -1213,6 +1313,9 @@ def CompareOutputMeasurements(
     criteria_grenzen: dict | None = None,
     beoor_kleuren: dict | None = None,
     abs_drempel: float | None = None,
+    abs_drempel_min_dynamica: float | None = None,
+    criteria_groepen: dict | None = None,
+    min_groepen_fractie: float = 0.5,
     apply_for_water_authority: str | list[str] | None = None,
     exclude_meetreeks: list[str] | None = None,
     min_coverage: float | None = None,
@@ -1249,6 +1352,13 @@ def CompareOutputMeasurements(
     abs_drempel
         Absolute deviation threshold in m³/s; locations below this value are always 'Goed'.
         Default None.
+    criteria_groepen
+        Group definitions used to compute Voldoet_dec for the GeoPackage and HTML viewer.
+        Same structure as passed to BerekenModelEindbeoordeling. Default None (uses the
+        same internal default: Bias, NSE_KGE, P10, P25, P75, P90 as separate groups).
+    min_groepen_fractie
+        Fraction of evaluable groups that must be 'Goed' for Voldoet_dec to be 'Ja'.
+        Default 0.5.
     apply_for_water_authority
         Restrict the koppeltabel to one or more water authorities (str or list of str). Default None (all authorities).
     exclude_meetreeks
@@ -1315,6 +1425,14 @@ def CompareOutputMeasurements(
             except Exception as exc:
                 print(f"get_lhm_fractions mislukt ({exc}). Standaard tracers worden gebruikt.")
 
+    _concentration_df: pd.DataFrame | None = None
+    if _frac_available and _concentration_path is not None:
+        print("Inlezen concentration.nc...")
+        ds = xr.open_dataset(_concentration_path)
+        _concentration_df = ds.to_dataframe().reset_index()
+        ds.close()
+        print(f"  concentration.nc ingelezen ({len(_concentration_df)} rijen).")
+
     results_measurements: dict[str, dict[str, list[object]]] = {}
     results_measurements_decade: dict[str, dict[str, list[object]]] = {}
     results_excel = {}  # voor het Excel-criteriabestand
@@ -1334,6 +1452,10 @@ def CompareOutputMeasurements(
         print("  Aan/Af wordt toegevoegd aan bestandsnaam; locaties worden 5 m verschoven in de geopackage.")
     # Tracks which (meetreeks, aanaf) combinations have been seen for assigning geometry offsets.
     _meetreeks_aanaf_idx: dict[tuple[str, str], int] = {}
+
+    # Pre-groepeer modeloutput op link_id zodat elke iteratie een O(1) dict-lookup is
+    # in plaats van een O(n) scan over het volledige data DataFrame.
+    data_by_link: dict[int, pd.DataFrame] = {int(lid): df for lid, df in data.groupby("link_id")}  # pyrefly: ignore[bad-argument-type]
 
     # AmstelGooienVecht: group by link_id_parsed so multiple measurement series per link are summed.
     # All other water authorities: each row is its own group so measurement series stay individual.
@@ -1382,7 +1504,9 @@ def CompareOutputMeasurements(
                 }
 
             results_measurements[waterschap] = _leeg_results()
+            results_measurements[waterschap]["Voldoet_dag"] = []
             results_measurements_decade[waterschap] = _leeg_results()
+            results_measurements_decade[waterschap]["Voldoet_dec"] = []
             results_excel[waterschap] = []
 
         # Loop over the locations in case two need to be summed
@@ -1433,7 +1557,9 @@ def CompareOutputMeasurements(
         subset_measurements = dagmetingen[["time", *existing_measurements]].copy()
 
         # If multiple measurements series refer to the same link, take the sum of the measurements
-        subset_measurements["sum"] = subset_measurements[existing_measurements].sum(axis=1, min_count=1)
+        subset_measurements["sum"] = subset_measurements[existing_measurements].sum(
+            axis=1, min_count=len(existing_measurements)
+        )
 
         # Get the specific operations for the measurements
         subset_specs = specifics[
@@ -1457,14 +1583,13 @@ def CompareOutputMeasurements(
 
         # Check whether all link IDs are present in the model output; skip if not
         links_as_list = [link] if isinstance(link, int) else link
-        available_link_ids = data["link_id"].unique()
-        missing_links = [lid for lid in links_as_list if lid not in available_link_ids]
+        missing_links = [lid for lid in links_as_list if lid not in data_by_link]
         if missing_links:
             print(f"Overgeslagen ({existing_measurements}): link_id(s) {missing_links} ontbreken in de modeloutput.")
             continue
 
         # Apply the special operation to get the subset of model output
-        subset_modeloutput = ApplySpecificOperation(data, link, spec_op)
+        subset_modeloutput = ApplySpecificOperation(data_by_link, link, spec_op)
 
         # Combine the measurements with the modeloutput in one dataframe
         combined_df = subset_modeloutput.merge(subset_measurements[["time", "sum"]], on=["time"], how="left")
@@ -1478,11 +1603,15 @@ def CompareOutputMeasurements(
 
         # Coverage: fraction of simulated timesteps that have a non-NaN measurement
         coverage_pct = round(combined_df["sum"].notna().sum() / len(combined_df) * 100, 1)
-        if min_coverage is not None and coverage_pct < min_coverage:
+        if min_coverage is not None and coverage_pct < min_coverage and not _bypass_coverage(existing_measurements):
             print(
                 f"Overgeslagen ({existing_measurements[0]}): dekking {coverage_pct:.1f}% < minimum {min_coverage:.1f}%"
             )
             continue
+
+        # Hardcoded patches voor specifieke meetreeksen (onrealistische periodes verwijderen).
+        # Na de coverage check zodat het op NaN zetten van periodes de drempel niet beïnvloedt.
+        combined_df = _patch_meting(combined_df, existing_measurements)
 
         combined_df_decade = ConvertToDecade(combined_df)
 
@@ -1500,7 +1629,7 @@ def CompareOutputMeasurements(
 
         # --- Deal with the daily values ---
         full_title = " - ".join(existing_measurements)
-        fig_name = full_title.split(" - ")[0]
+        fig_name = existing_measurements[0]
         meetreeks_naam = fig_name  # kolomnaam in tijdsreeks-Excel
 
         # Duplicate MeetreeksC: append Aan/Af to prevent filename collisions.
@@ -1531,6 +1660,7 @@ def CompareOutputMeasurements(
             output_folder=Path(model_folder, "results", "figures"),
             criteria_grenzen=criteria_grenzen,
             abs_drempel=abs_drempel,
+            abs_drempel_min_dynamica=abs_drempel_min_dynamica,
         )
         fig_name_clean = _sanitize_filename(fig_name)
         pop_up_figure = f'<img src="../figures/{waterschap}/{fig_name_clean}.png" width=400 height=300>'
@@ -1542,7 +1672,7 @@ def CompareOutputMeasurements(
                 fractie_basin_node_id, basin_richting = _fractie_result
                 pop_up_fractie = PlotAndSaveFractie(
                     combined_df=combined_df,
-                    concentration_path=_concentration_path,
+                    concentration_df=_concentration_df,
                     basin_node_id=fractie_basin_node_id,
                     basin_richting=basin_richting,
                     tracers=_tracers,
@@ -1566,6 +1696,45 @@ def CompareOutputMeasurements(
             else:
                 print(f"    Geen Basin bereikbaar voor link {link} — fractieplot overgeslagen")
 
+        # Compute Voldoet_dag using the same group logic as BerekenModelEindbeoordeling.
+        # criteria_groepen uses Excel column names (e.g. "Beoor_Bias_dec"); strip prefix/suffix
+        # to get the plain BeoordeelCriteria keys (e.g. "Bias", "NSE", "KGE").
+        def _to_beoor_key(col: str) -> str:
+            col = col.removeprefix("Beoor_")
+            col = col.removesuffix("_dec")
+            col = col.removesuffix("_dag")
+            return col
+
+        _beoor_dag = BeoordeelCriteria(stats, criteria_grenzen, abs_drempel, abs_drempel_min_dynamica)
+        _cg_dag: dict[str, dict[str, Any]] = (
+            {
+                g: {"kolommen": [_to_beoor_key(c) for c in cfg["kolommen"]], "min_goed": cfg["min_goed"]}
+                for g, cfg in criteria_groepen.items()
+            }
+            if criteria_groepen
+            else {
+                "Bias": {"kolommen": ["Bias"], "min_goed": 1},
+                "NSE_KGE": {"kolommen": ["NSE", "KGE"], "min_goed": 1},
+                "P10": {"kolommen": ["P10"], "min_goed": 1},
+                "P25": {"kolommen": ["P25"], "min_goed": 1},
+                "P75": {"kolommen": ["P75"], "min_goed": 1},
+                "P90": {"kolommen": ["P90"], "min_goed": 1},
+            }
+        )
+        _groep_beoor_dag: dict[str, str] = {}
+        for _groep, _cfg in _cg_dag.items():
+            _cols = _cfg["kolommen"]
+            if all(_beoor_dag.get(c, "n.v.t.") == "n.v.t." for c in _cols):
+                _groep_beoor_dag[_groep] = "n.v.t."
+            else:
+                _n_g = sum(_beoor_dag.get(c, "n.v.t.") == "Goed" for c in _cols)
+                _groep_beoor_dag[_groep] = "Goed" if _n_g >= _cfg["min_goed"] else "Onvoldoende"
+        _n_eval_dag = sum(v != "n.v.t." for v in _groep_beoor_dag.values())
+        _n_goed_dag = sum(v == "Goed" for v in _groep_beoor_dag.values())
+        _voldoet_dag = (
+            "n.v.t." if _n_eval_dag == 0 else ("Ja" if _n_goed_dag / _n_eval_dag >= min_groepen_fractie else "Nee")
+        )
+
         # Save the resulting statistics per measurement
         for key, val in [
             ("koppelinfo", fig_name_clean),
@@ -1582,6 +1751,7 @@ def CompareOutputMeasurements(
             ("P75_reldev", stats["P75_reldev"]),
             ("P90_reldev", stats["P90_reldev"]),
             ("coverage_pct", coverage_pct),
+            ("Voldoet_dag", _voldoet_dag),
             ("geometry", _geom),
             ("waterschap", waterschap),
             ("figure_path", pop_up_figure),
@@ -1600,9 +1770,39 @@ def CompareOutputMeasurements(
             output_folder=Path(model_folder) / "results" / "figures",
             criteria_grenzen=criteria_grenzen,
             abs_drempel=abs_drempel,
+            abs_drempel_min_dynamica=abs_drempel_min_dynamica,
         )
         fig_name_dec_clean = _sanitize_filename(fig_name) + "_decade"
         pop_up_figure_dec = f'<img src="../figures/{waterschap}/{fig_name_dec_clean}.png" width=400 height=300>'
+
+        # Compute Voldoet_dec using the same group logic as BerekenModelEindbeoordeling
+        _beoor_dec = BeoordeelCriteria(stats_dec, criteria_grenzen, abs_drempel, abs_drempel_min_dynamica)
+        _cg: dict[str, dict[str, Any]] = (
+            {
+                g: {"kolommen": [_to_beoor_key(c) for c in cfg["kolommen"]], "min_goed": cfg["min_goed"]}
+                for g, cfg in criteria_groepen.items()
+            }
+            if criteria_groepen
+            else {
+                "Bias": {"kolommen": ["Bias"], "min_goed": 1},
+                "NSE_KGE": {"kolommen": ["NSE", "KGE"], "min_goed": 1},
+                "P10": {"kolommen": ["P10"], "min_goed": 1},
+                "P25": {"kolommen": ["P25"], "min_goed": 1},
+                "P75": {"kolommen": ["P75"], "min_goed": 1},
+                "P90": {"kolommen": ["P90"], "min_goed": 1},
+            }
+        )
+        _groep_beoor: dict[str, str] = {}
+        for _groep, _cfg in _cg.items():
+            _cols = _cfg["kolommen"]
+            if all(_beoor_dec.get(c, "n.v.t.") == "n.v.t." for c in _cols):
+                _groep_beoor[_groep] = "n.v.t."
+            else:
+                _n_g = sum(_beoor_dec.get(c, "n.v.t.") == "Goed" for c in _cols)
+                _groep_beoor[_groep] = "Goed" if _n_g >= _cfg["min_goed"] else "Onvoldoende"
+        _n_eval = sum(v != "n.v.t." for v in _groep_beoor.values())
+        _n_goed = sum(v == "Goed" for v in _groep_beoor.values())
+        _voldoet_dec = "n.v.t." if _n_eval == 0 else ("Ja" if _n_goed / _n_eval >= min_groepen_fractie else "Nee")
 
         for key, val in [
             ("koppelinfo", fig_name_dec_clean),
@@ -1619,6 +1819,7 @@ def CompareOutputMeasurements(
             ("P75_reldev", stats_dec["P75_reldev"]),
             ("P90_reldev", stats_dec["P90_reldev"]),
             ("coverage_pct", coverage_pct),
+            ("Voldoet_dec", _voldoet_dec),
             ("geometry", _geom),
             ("waterschap", waterschap),
             ("figure_path", pop_up_figure_dec),
@@ -1677,6 +1878,7 @@ def CompareOutputMeasurements(
         criteria_grenzen=criteria_grenzen,
         beoor_kleuren=beoor_kleuren,
         abs_drempel=abs_drempel,
+        abs_drempel_min_dynamica=abs_drempel_min_dynamica,
     )
     print(f"Criteria Excel opgeslagen: {excel_path}")
 
@@ -1794,6 +1996,7 @@ def PlotAndSave(
     output_folder,
     criteria_grenzen,
     abs_drempel: float | None = None,
+    abs_drempel_min_dynamica: float | None = None,
 ):
     """Plot model output and measurements and save the figure as a PNG.
 
@@ -1820,6 +2023,9 @@ def PlotAndSave(
         Threshold values per criterion passed to BeoordeelCriteria. Uses WFD defaults when None.
     abs_drempel
         Absolute deviation threshold in m³/s passed to BeoordeelCriteria. Default None.
+    abs_drempel_min_dynamica
+        Minimum NSE or KGE required before abs_drempel is applied. Passed to BeoordeelCriteria.
+        Default None (abs_drempel always applied when set).
     """
     if bron_meting is None:
         Path(output_folder).mkdir(parents=True, exist_ok=True)
@@ -1838,7 +2044,7 @@ def PlotAndSave(
     def _fmt(val, decimals=3):
         return f"{round(val, decimals)}" if val is not None and not np.isnan(val) else "n.v.t."
 
-    beoordeling = BeoordeelCriteria(stats, criteria_grenzen, abs_drempel)
+    beoordeling = BeoordeelCriteria(stats, criteria_grenzen, abs_drempel, abs_drempel_min_dynamica)
 
     fig = plt.figure(figsize=(11, 5))
     gs = fig.add_gridspec(1, 2, width_ratios=[4, 1.1], wspace=0.20)
@@ -2443,7 +2649,16 @@ def _lhm41_cum_afwijking_jaarlijks(
             'gemiddeld' - mean deviation over all years [%]
             'totaal'    - deviation over the full period [%]
     """
-    leeg = {"per_jaar": {}, "gemiddeld": np.nan, "totaal": np.nan}
+    _MM3 = 864000 / 1e6  # m3/s per decade -> Mm3 (10 dagen x 86400 s/dag / 1e6)
+    leeg = {
+        "per_jaar": {},
+        "gemiddeld": np.nan,
+        "totaal": np.nan,
+        "obs_per_jaar_Mm3": {},
+        "mod_per_jaar_Mm3": {},
+        "obs_gem_Mm3": np.nan,
+        "mod_gem_Mm3": np.nan,
+    }
 
     d = df.copy()
     if zomer:
@@ -2453,6 +2668,8 @@ def _lhm41_cum_afwijking_jaarlijks(
 
     d["jaar"] = d["Datum"].dt.year
     afwijkingen_per_jaar = {}
+    obs_per_jaar_Mm3: dict[int, float] = {}
+    mod_per_jaar_Mm3: dict[int, float] = {}
 
     for jaar, grp in d.groupby("jaar"):
         grp_geldig = grp.dropna(subset=[col_obs])
@@ -2464,11 +2681,16 @@ def _lhm41_cum_afwijking_jaarlijks(
         cum_obs = grp_tot_einde[col_obs].fillna(0).sum()
         cum_mod = grp_tot_einde[col_model].fillna(0).sum()
 
+        obs_per_jaar_Mm3[int(str(jaar))] = round(cum_obs * _MM3, 3)
+        mod_per_jaar_Mm3[int(str(jaar))] = round(cum_mod * _MM3, 3)
+
         if abs(cum_obs) > 0:
             afwijkingen_per_jaar[int(str(jaar))] = round(abs(1 - cum_mod / cum_obs) * 100, 1)
 
     waarden = list(afwijkingen_per_jaar.values())
     gemiddeld = float(np.nanmean(waarden)) if waarden else np.nan
+    obs_gem_Mm3 = float(np.nanmean(list(obs_per_jaar_Mm3.values()))) if obs_per_jaar_Mm3 else np.nan
+    mod_gem_Mm3 = float(np.nanmean(list(mod_per_jaar_Mm3.values()))) if mod_per_jaar_Mm3 else np.nan
 
     d_geldig = d.dropna(subset=[col_obs])
     if not d_geldig.empty:
@@ -2480,7 +2702,15 @@ def _lhm41_cum_afwijking_jaarlijks(
     else:
         totaal = np.nan
 
-    return {"per_jaar": afwijkingen_per_jaar, "gemiddeld": gemiddeld, "totaal": totaal}
+    return {
+        "per_jaar": afwijkingen_per_jaar,
+        "gemiddeld": gemiddeld,
+        "totaal": totaal,
+        "obs_per_jaar_Mm3": obs_per_jaar_Mm3,
+        "mod_per_jaar_Mm3": mod_per_jaar_Mm3,
+        "obs_gem_Mm3": round(obs_gem_Mm3, 3) if not np.isnan(obs_gem_Mm3) else np.nan,
+        "mod_gem_Mm3": round(mod_gem_Mm3, 3) if not np.isnan(mod_gem_Mm3) else np.nan,
+    }
 
 
 def _lhm41_bereken_statistieken(
@@ -2535,6 +2765,29 @@ def _lhm41_bereken_statistieken(
     stats["CumZomer"] = cum_zomer["gemiddeld"]
     stats["CumZomer_totaal"] = cum_zomer["totaal"]
     stats["CumZomer_per_jaar"] = cum_zomer["per_jaar"]
+
+    # Absolute volumes voor narekenen [Mm³]
+    stats["CumJaar_obs_gem_Mm3"] = cum_jaar["obs_gem_Mm3"]
+    stats["CumJaar_mod_gem_Mm3"] = cum_jaar["mod_gem_Mm3"]
+    stats["CumZomer_obs_gem_Mm3"] = cum_zomer["obs_gem_Mm3"]
+    stats["CumZomer_mod_gem_Mm3"] = cum_zomer["mod_gem_Mm3"]
+
+    # Worst-case jaar
+    if cum_jaar["per_jaar"]:
+        worst_jaar = max(cum_jaar["per_jaar"], key=cum_jaar["per_jaar"].get)
+        stats["CumJaar_max_pct"] = cum_jaar["per_jaar"][worst_jaar]
+        stats["CumJaar_max_jaar"] = worst_jaar
+    else:
+        stats["CumJaar_max_pct"] = np.nan
+        stats["CumJaar_max_jaar"] = np.nan
+
+    if cum_zomer["per_jaar"]:
+        worst_zomer = max(cum_zomer["per_jaar"], key=cum_zomer["per_jaar"].get)
+        stats["CumZomer_max_pct"] = cum_zomer["per_jaar"][worst_zomer]
+        stats["CumZomer_max_jaar"] = worst_zomer
+    else:
+        stats["CumZomer_max_pct"] = np.nan
+        stats["CumZomer_max_jaar"] = np.nan
 
     return stats
 
@@ -3011,23 +3264,39 @@ def AnalyseLHM41Vergelijking(
         if csv_naam and csv_naam.lower() != "nan":
             groepen[csv_naam].append(loc)
 
+    # Meetreeksen waarvoor NaN in de meting "geen stroming in deze richting" betekent
+    # (aanvoer/afvoer gesplitst) en dus als 0 mag worden meegeteld in de som.
+    _FILLNA_ZERO_MEETREEKSEN = {"Ericasluis_vechtstromen_Aanvoer", "Ericasluis_vechtstromen_Afvoer"}
+
     for csv_naam, locs in groepen.items():
         datum_index = locs[0]["df_dec"]["Datum"].values
-        rib_som = np.zeros(len(datum_index))
-        met_som = np.zeros(len(datum_index))
-        has_meting = np.zeros(len(datum_index), dtype=bool)
+        n = len(locs)
+        rib_df = pd.concat(
+            [loc["df_dec"].set_index("Datum")["Ribasim"].reindex(datum_index) for loc in locs],
+            axis=1,
+        )
+        met_df = pd.concat(
+            [loc["df_dec"].set_index("Datum")["meting"].reindex(datum_index) for loc in locs],
+            axis=1,
+        )
 
-        for loc in locs:
-            df_i = loc["df_dec"].set_index("Datum").reindex(datum_index)
-            rib_som += df_i["Ribasim"].fillna(0).values
-            met_som += df_i["meting"].fillna(0).values
-            has_meting |= df_i["meting"].notna().values
+        meetreeksen_in_groep = {loc["MeetreeksC"] for loc in locs}
+        fillna_zero = bool(meetreeksen_in_groep & _FILLNA_ZERO_MEETREEKSEN)
+
+        if fillna_zero:
+            # NaN = geen stroming in deze richting → behandel als 0
+            ribasim_som = rib_df.fillna(0).sum(axis=1, min_count=1).values
+            meting_som = met_df.fillna(0).sum(axis=1, min_count=1).values
+        else:
+            # NaN = ontbrekende data → som alleen als alle locaties data hebben
+            ribasim_som = rib_df.sum(axis=1, min_count=n).values
+            meting_som = met_df.sum(axis=1, min_count=n).values
 
         df_som = pd.DataFrame(
             {
                 "Datum": datum_index,
-                "Ribasim_som": rib_som,
-                "meting_som": np.where(has_meting, met_som, np.nan),
+                "Ribasim_som": ribasim_som,
+                "meting_som": meting_som,
             }
         )
 
@@ -3104,10 +3373,20 @@ def AnalyseLHM41Vergelijking(
         rij = {
             f"{prefix}_NSE": round(s.get("NSE", np.nan), 3),
             f"{prefix}_RelBias": round(s.get("RelBias", np.nan), 1),
+            f"{prefix}_mean_obs_m3s": round(s.get("mean_obs", np.nan), 4),
+            f"{prefix}_mean_mod_m3s": round(s.get("mean_sim", np.nan), 4),
             f"{prefix}_CumJaar_gem": round(s.get("CumJaar", np.nan), 1),
             f"{prefix}_CumJaar_totaal": round(s.get("CumJaar_totaal", np.nan), 1),
+            f"{prefix}_CumJaar_obs_gem_Mm3": round(s.get("CumJaar_obs_gem_Mm3", np.nan), 3),
+            f"{prefix}_CumJaar_mod_gem_Mm3": round(s.get("CumJaar_mod_gem_Mm3", np.nan), 3),
+            f"{prefix}_CumJaar_max_pct": round(s.get("CumJaar_max_pct", np.nan), 1),
+            f"{prefix}_CumJaar_max_jaar": s.get("CumJaar_max_jaar", np.nan),
             f"{prefix}_CumZomer_gem": round(s.get("CumZomer", np.nan), 1),
             f"{prefix}_CumZomer_totaal": round(s.get("CumZomer_totaal", np.nan), 1),
+            f"{prefix}_CumZomer_obs_gem_Mm3": round(s.get("CumZomer_obs_gem_Mm3", np.nan), 3),
+            f"{prefix}_CumZomer_mod_gem_Mm3": round(s.get("CumZomer_mod_gem_Mm3", np.nan), 3),
+            f"{prefix}_CumZomer_max_pct": round(s.get("CumZomer_max_pct", np.nan), 1),
+            f"{prefix}_CumZomer_max_jaar": s.get("CumZomer_max_jaar", np.nan),
         }
         for jaar, nse in sorted(s.get("NSE_per_jaar", {}).items()):
             rij[f"{prefix}_NSE_{jaar}"] = round(nse, 3)
@@ -3221,11 +3500,10 @@ if __name__ == "__main__":
     # Implementatie lokaal voor testen
     cloud = CloudStorage()
     base_koppeltabel = cloud.joinpath("Basisgegevens/resultaatvergelijking/koppeltabel_2026")
-
     loc_koppeltabel = (
-        base_koppeltabel / "Transformed_koppeltabel_versie_Samenwerkdag_26052026_Feedback_Verwerkt_HydroLogic.xlsx"
+        base_koppeltabel / "Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx"
     )
-    loc_specifieke_bewerking = base_koppeltabel / "Specifiek_bewerking_versieSamenwerkdag_26052026.xlsx"
+    loc_specifieke_bewerking = base_koppeltabel / "Specifiek_bewerking_versierapportage_26062026.xlsx"
 
     # waterboard = "RijnenIJssel"
     # waterboard_model_versions = cloud.uploaded_models(authority=waterboard)
@@ -3240,7 +3518,7 @@ if __name__ == "__main__":
 
     meas_folder = cloud.joinpath("Basisgegevens/resultaatvergelijking/meetreeksen_2026")
 
-    model_folder = Path(r"C:\Users\micha.veenendaal\Data\HL-P26004\Modellen\lhm_coupled_2017")
+    model_folder = Path(r"C:\Users\micha.veenendaal\Data\HL-P26004\Modellen\lhm_val_3yr")
     toml_naam = "lhm_coupled.toml"
 
     # synchronize paths
@@ -3267,7 +3545,9 @@ if __name__ == "__main__":
         "Onvoldoende": PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid"),
         "n.v.t.": PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid"),
     }
-    # 6 kwantitatieve criteria; model voldoet als ≥ MIN_GROEPEN_VOLDOEN ervan "Goed" zijn.
+    # 6 kwantitatieve criteria; model voldoet als ≥ MIN_GROEPEN_FRACTIE van de evalueerbare
+    # groepen "Goed" is. Groepen waarbij alle criteria "n.v.t." zijn (bijv. lage percentielen
+    # bij nul-meting) tellen niet mee in de noemer — de drempel past zich dynamisch aan.
     # NSE én KGE tellen samen als één criterium (tenminste één moet voldoen).
     CRITERIA_GROEPEN = {
         "Bias": {"kolommen": ["Beoor_Bias_dec"], "min_goed": 1},
@@ -3277,12 +3557,26 @@ if __name__ == "__main__":
         "P75": {"kolommen": ["Beoor_P75_dec"], "min_goed": 1},
         "P90": {"kolommen": ["Beoor_P90_dec"], "min_goed": 1},
     }
-    MIN_GROEPEN_VOLDOEN = 3  # ≥ 3 van de 6 criteria Goed
+
+    # Dit is dynamische, metingen die P10 of P25 van 0 m3/s hebben kun je geen
+    # relatieve afwijking voor bereken, deze critaria worden niet gebruikt maar dan
+    # in de beoordeling wil je ook werken met 50% van de te toetsen criteria moet voldoen
+    # ipv altijd 3/6 moet voldoen.
+    MIN_GROEPEN_FRACTIE = 0.5  # ≥ 50% van de evalueerbare groepen moet Goed zijn
+
     DREMPEL_HWS = 75.0  # HWS: 75% van locaties moet voldoen
+
     DREMPEL_REGIONAAL = 50.0  # Regionaal: 50% van locaties moet voldoen
+
     HWS_WATERSCHAP = "Rijkswaterstaat"
-    # Absolute vloer voor Bias en percentielen: bij |sim - obs| < drempel altijd Goed
+
+    # Absolute toegestane afwijking voor Bias en percentielen: bij |sim - obs| < drempel altijd Goed
     ABS_DREMPEL_M3S = 0.15
+
+    # Minimale NSE of KGE voordat een toegestane absolute afwijking wordt gehanteerd.
+    #  Voorkomt dat locaties met een volledig verkeerde dynamiek (bijv. vlakke nul-meting) toch als Goed worden
+    # beoordeeld op basis van een kleine toegestane absolute afwijking.
+    ABS_DREMPEL_MIN_DYNAMICA = 0.1
 
     # ── LHM 4.1-toetsingscriteria ────────────────────────────────────────────
     CRITERIA_LHM41 = {
@@ -3327,6 +3621,7 @@ if __name__ == "__main__":
         "Districts aanvoer de BaanBreker_LHM_reeks.csv": -1.0,
         "Districts aanvoer Bloemers en Quarles van Ufford_LHM_reeks.csv": -1.0,
         "Aanvoer Doornenburg_LHM_reeks.csv": -1.0,
+        "Aanvoer Gemaal Dolk_LHM_reeks.csv": -1.0,
     }
 
     RUN_COMPARE = True
@@ -3341,11 +3636,40 @@ if __name__ == "__main__":
     #!!!TODO: Draai hiervoor eerst notebooks/observations/analyse_lhm41_vergelijking
     include_lhm41_html = RUN_LHM41
     # Als we ook fracties kunnen plotten en tonen in html viewer
-    include_fractie_html = False
+    include_fractie_html = True
 
     RUN_UPLOAD = False
 
-    EXCLUDE_MEETREEKS = [""]
+    # Dubbele locaties niet meenemen in de validatie anders ga je locaties
+    # dubbel mee nemen in de beoordeling
+    EXCLUDE_MEETREEKS = [
+        "Dorkwerd HenA",  # Zelfde meting beschikbaar als Dorkwerd Noorderzijlvest
+        "Inlaatwerk Blokzijl. totaal debiet",  # Zelfde meting beschikbaar als Inlaatwerk Blokzijl. debiet (schuif 1 + schuif 2)
+        "Gaarkeuken wetterskip",  # Zelfde meting beschikbaar als Gaarkeuken Noorderzijlvest,
+        # gemaal dolk als MeetreeksC: "gem Dolk" en "Dolk HRR". Beschikbare meetreeksen
+        # Verschillen dus we behouden beide.
+        "Beuningen, H.A. van",  # reeks lijkt niet te kloppen volgens WSRL
+        "Jongh, H.C. de",  # meetreeks is onjuist, de gemaaldebieten ontbreken in de som van de kanalen. Alleen de vrije uitlaten zitten in de reeks.
+        "HD Louwes Noorderzijlvest",  # Voor validatieperiode onrealistische reeks
+        "Volenbeek",  # Voor validatieperiode onrealistische reeks
+        "Barneveldse Beek",  # Voor validatieperiode onrealistische reeks
+        "Hierdense Beek ValleiEnVeluwe",  # Voor wat betreft de Hierdense Beek is het systeem een aantal jaar geleden flink op de schop gegaan.
+        # Hierdoor is de afvoer uit het gebied wezenlijk veranderd, dus het zou goed zijn om een
+        #  recentere periode door te rekenen om daar een vergelijking van te kunnen maken.
+        "Linde, WF afvoer/aanvoer",  # Niet gebruiken omdat niet specifiek aan een punt in het model is te koppelen (feedback formulier Wetterskip)
+        "KGM00597_P001",  # ligt over validatie periode continue op 0
+        "KGM00597_P002",  # ligt over validatie periode continue op 0
+        "Zandkes",  # ligt over validatie periode continue op 0
+        "KW1043_stuw",  # Meting kent over validatieperiode meerdere uitschieters, niet beschouwen
+        "Vliegveld Bergen",  # Meting ligt vrijwel over hele validatie periode op 0
+        "Hevel Kadoelen. totaal debiet",  # ligt over validatie periode continue op 0 kan geen NSE worden berekend
+    ]
+
+    # Over de validatieperiode willen we dat er minimaal 50% coverage is van de meetreeksC
+    # In de criteria wordt wel rekening gehouden met dat de criteria worden bereken alleen op niet nan waarden
+    # alleen metingen waarvoor heel veel data mist willen we liever niet beschouwen. In de post-processing
+    # worden uitegesloten metingen geprint dus er kan gecontroleert worden welke worden uitgesloten.
+    MIN_COVERAGE = 50
 
     # ── Verwerk meetreeksen, bereken statistieken, schrijf figuren/geopackages/Excel ──
     if RUN_COMPARE:
@@ -3359,7 +3683,11 @@ if __name__ == "__main__":
             criteria_grenzen=CRITERIA_GRENZEN,
             beoor_kleuren=BEOOR_KLEUREN,
             abs_drempel=ABS_DREMPEL_M3S,
+            abs_drempel_min_dynamica=ABS_DREMPEL_MIN_DYNAMICA,
+            criteria_groepen=CRITERIA_GROEPEN,
+            min_groepen_fractie=MIN_GROEPEN_FRACTIE,
             exclude_meetreeks=EXCLUDE_MEETREEKS,
+            min_coverage=MIN_COVERAGE,
             save_results_combined=True,
             output_is_feather=False,
             output_is_nc=True,
@@ -3393,7 +3721,7 @@ if __name__ == "__main__":
             validatie_xlsx=validatie_xlsx,
             output_xlsx=eindbeoordeling_xlsx,
             criteria_groepen=CRITERIA_GROEPEN,
-            min_groepen_voldoen=MIN_GROEPEN_VOLDOEN,
+            min_groepen_fractie=MIN_GROEPEN_FRACTIE,
             drempel_hws=DREMPEL_HWS,
             drempel_regionaal=DREMPEL_REGIONAAL,
             hws_waterschap=HWS_WATERSCHAP,
