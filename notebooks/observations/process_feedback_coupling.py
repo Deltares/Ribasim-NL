@@ -99,7 +99,7 @@ feedback_koppeltabel_path = cloud.joinpath(
 
 output_path = locatie_koppeltabellen
 
-#Onderstaande meetreeksen zijn in eerdere validaties al uit de dataset gehaald:
+# Onderstaande meetreeksen zijn in eerdere validaties al uit de dataset gehaald:
 # # Reeksen die of niet goed gekoppeld kunnen worden of waarvan de meetreeks onrealistisch lijkt:
 # remove_meetreeksc = [
 #     "Polder Oldebroek ValleiEnVeluwe",
@@ -115,7 +115,7 @@ output_path = locatie_koppeltabellen
 #     "De Wenden (Noordermerkkanaal)",
 # ]
 
-#validatie voor alleen 2017 in september 2025:
+# validatie voor alleen 2017 in september 2025:
 # remove_meetreeksc_specifiek_2017 = [
 #     "Eijsden grens",  # geen goeie reeks voor 2017
 #     "Borgharen dorp",  # Borgharen dorp
@@ -134,7 +134,7 @@ output_path = locatie_koppeltabellen
 
 # remove_meetreeksc = remove_meetreeksc + remove_meetreeksc_specifiek_2017
 
-#Validatie 2026 voor samenwerkdag 26 mei en rapportage:
+# Validatie 2026 voor samenwerkdag 26 mei en rapportage:
 remove_meetreeksc_specifiek = [
     "AANVOERDERGEMAAL_aanvoer HDSR",  # meer recente meetreeks beschikbaar, oude verwijderen
     "KEULEVAART_afvoer HDSR",  # meer recente meetreeks beschikbaar, oude verwijderen

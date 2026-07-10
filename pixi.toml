@@ -109,6 +109,3 @@ RIBASIM_HOME = "$PIXI_PROJECT_ROOT/bin/ribasim"
 
 [target.osx-arm64.tasks]
 install-core = "echo 'Ribasim core binary not available for macOS; skipping install'"
-
-[system-requirements]
-linux = "3.10.0"

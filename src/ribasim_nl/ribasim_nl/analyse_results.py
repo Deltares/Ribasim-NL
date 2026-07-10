@@ -224,7 +224,7 @@ def ReadOutputFile(
         if not all_vars:
             raise ValueError(f"Geen data-variabelen gevonden in {filetype.lower()}.nc")
         primary_dims = max((set(ds[v].dims) for v in all_vars), key=len)
-        frames = [ds[var].to_series().rename(var) for var in all_vars if set(ds[var].dims) == primary_dims]
+        frames = [ds[var].to_series().rename(cast(str, var)) for var in all_vars if set(ds[var].dims) == primary_dims]
         data = pd.concat(frames, axis=1).reset_index()
         ds.close()
 
@@ -1706,7 +1706,7 @@ def CompareOutputMeasurements(
             return col
 
         _beoor_dag = BeoordeelCriteria(stats, criteria_grenzen, abs_drempel, abs_drempel_min_dynamica)
-        _cg_dag = (
+        _cg_dag: dict[str, dict[str, Any]] = (
             {
                 g: {"kolommen": [_to_beoor_key(c) for c in cfg["kolommen"]], "min_goed": cfg["min_goed"]}
                 for g, cfg in criteria_groepen.items()
@@ -1777,7 +1777,7 @@ def CompareOutputMeasurements(
 
         # Compute Voldoet_dec using the same group logic as BerekenModelEindbeoordeling
         _beoor_dec = BeoordeelCriteria(stats_dec, criteria_grenzen, abs_drempel, abs_drempel_min_dynamica)
-        _cg = (
+        _cg: dict[str, dict[str, Any]] = (
             {
                 g: {"kolommen": [_to_beoor_key(c) for c in cfg["kolommen"]], "min_goed": cfg["min_goed"]}
                 for g, cfg in criteria_groepen.items()
