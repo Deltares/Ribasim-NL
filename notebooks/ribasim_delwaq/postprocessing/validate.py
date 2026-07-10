@@ -23,7 +23,7 @@ import matplotlib.ticker as ticker
 import pandas as pd
 import seaborn as sns
 from ribasim import Model
-from ribasim.delwaq import generate, parse
+from ribasim.delwaq import parse
 from shapely.geometry import Point
 
 from ribasim_nl import CloudStorage
@@ -68,6 +68,24 @@ def load_obs_data(path: str) -> pd.DataFrame:
     print(f"Loading observation data from: {path}")
     val_data = pd.read_parquet(path)
     return val_data
+
+
+def mask(df, key, value):
+    return df[df[key] == value]
+
+
+pd.DataFrame.mask = mask
+
+
+def sjoin_within(df_points, df_polygons):
+    joined_within = gpd.sjoin(
+        df_points,
+        df_polygons,
+        how="left",
+        predicate="within",
+    )
+    # joined_unique = joined_within.loc[~joined_within.index.duplicated(keep="first")]
+    return joined_within
 
 
 # %% Define folder locations and synchronize with the Good Cloud
@@ -147,6 +165,8 @@ for loc in obs_locs:
         plt.show()
 
 # %% GENERATE DELWAQ MODEL ON TOP OF RIBASIM MODEL
+"""
+
 model_name = "lhm_coupled_full"
 model_path = Path("../../../data/Rijkswaterstaat/modellen") / model_name
 output_folder = "delwaq"
@@ -156,7 +176,7 @@ toml_path = model_path / toml_name
 
 nmodel = generate(toml_path, output_path)
 
-"""
+
 substances.add("NO3")
 substances.add("NH4")
 substances.add("OON")
@@ -175,13 +195,13 @@ dmodel = Model.read(toml_path)
 output_folder = "delwaq"
 output_path = model_path / output_folder
 
-nmodel_nc = parse(dmodel, output_path, to_input=False)
+# nmodel_nc = parse(dmodel, output_path, to_input=False)
 
-concentration_nc = toml_path.parent / "results" / "concentration.nc"
+# concentration_nc = toml_path.parent / "results" / "concentration.nc"
 
-mask_bergend = nmodel_nc.node.df.meta_categorie == "bergend"
-mask_hoofdwater = nmodel_nc.node.df.meta_categorie == "hoofdwater"
-mask_doorgaand = nmodel_nc.node.df.meta_categorie == "doorgaand"
+# mask_bergend = nmodel_nc.node.df.meta_categorie == "bergend"
+# mask_hoofdwater = nmodel_nc.node.df.meta_categorie == "hoofdwater"
+# mask_doorgaand = nmodel_nc.node.df.meta_categorie == "doorgaand"
 
 # %% https://ribasim.org/guide/delwaq
 # Parse Delwaq results and also populate Basin / concentration_external for plotting
@@ -196,94 +216,28 @@ t[t.time == t.time.unique()[0]]
 
 
 # %% map the monitoring locations with the Ribasim model nodes
-def mask(df, key, value):
-    return df[df[key] == value]
-
-
-pd.DataFrame.mask = mask
 
 basins = nmodel.basin.area.df
 
 # select nodes with meta_categorie == "doorgaand"
-nodes_doorgaand = nmodel.node.df.mask("meta_categorie", "doorgaand")
-nodes_doorgaand_selectedcols = nodes_doorgaand[["node_type", "meta_categorie", "geometry"]]
-basins_doorgaand = basins.merge(nodes_doorgaand_selectedcols, on="node_id", how="right")
+nodes_doorgaand = nmodel.node.df.mask("meta_categorie", "doorgaand")  # | "hoofdwater"
+nodes_hoofdwater = nmodel.node.df.mask("meta_categorie", "hoofdwater")
+nodes_combined = pd.concat([nodes_doorgaand, nodes_hoofdwater], ignore_index=False)
+nodes_combined_selectedcols = nodes_combined[["node_type", "meta_categorie", "geometry"]]
+basins_doorgaand = basins.merge(nodes_combined_selectedcols, on="node_id", how="right")
 
 basins_doorgaand.rename(columns={"geometry_x": "geometry"}, inplace=True)
 basins_doorgaand.set_geometry("geometry", inplace=True)
 # add attributes to nodes in nmodel.node.df: WKP_monitoring_code
-joined_within = gpd.sjoin(
-    df_monitoringlocaties,
-    basins_doorgaand[["node_id", "geometry"]],
-    how="left",
-    predicate="within",
-)
-joined_unique = joined_within.loc[~joined_within.index.duplicated(keep="first")]
+basins_doorgaand_joined_monlocs = sjoin_within(df_monitoringlocaties, basins_doorgaand[["node_id", "geometry"]])
 
+basins_doorgaand_joined_monlocs.to_file(
+    Path(root_dir, "data/Basisgegevens/Validatie/Waterkwaliteit", "basins_doorgaand_joined_monlocs.shp"),
+    driver="ESRI Shapefile",
+)
 # use table to plot for node_id + WKP_monitoring_code the timeseries of concentration for a specific substance
 # the coupling of WKP_monitoring_code to node_id should make use of observations/spatial_coupling.py
 # coupling should be done using Basin / area layer in database.gpkg (monitoring location should fall within basin shape) from which node_id can be obtained, and via Node layer in database.gpkg meta_categorie can be obtained (doorgaand, hoofdwater, etc.)
 # finaly use stats to calculate statistics of modelled vs measured concentration for each WKP_monitoring_code
 
-
-########## CODE BELOW IS PREVIOUS VERSION BASED ON WATERINFO DATA AND FOR TESTING PURPOSES ONLY, DELETE LATER ############
-"""
 # %%
-
-val_data_path = "c:\\Users\\leeuw_je\\projects\\LWKM\\data\\obs\\20260205_018.csv"
-
-val_data = pd.read_csv(
-    val_data_path, sep=";", decimal=",", usecols=[1, 2, 8, 10, 21, 24, 41, 42], parse_dates=[4], dayfirst=True
-)
-
-val_data.rename(columns={"PARAMETER_ CODE": "PARAMETER_CODE"}, inplace=True)
-
-val_data = val_data[~(val_data["NUMERIEKEWAARDE"] > 1e6)]  # delete rows with no data (9999999999 as value)
-
-# %% inspect validation data
-
-# in val data numeriekwaarde column display the rows where numwaar exceeds a value
-
-unit = val_data["EENHEID_CODE"].unique()[0]  # only one unit present, ml/L
-obs_locs = val_data["LOCATIE_CODE"].unique()
-substances = val_data["PARAMETER_CODE"].unique()
-
-obs_summary = val_data.groupby(["LOCATIE_CODE", "PARAMETER_CODE"])["NUMERIEKEWAARDE"].mean().reset_index()
-
-ax = sns.barplot(data=obs_summary, x="LOCATIE_CODE", y="NUMERIEKEWAARDE", hue="PARAMETER_CODE")
-ax.set_yscale("log")
-ax.tick_params(axis="x", rotation=90)
-ax.set_ylabel(f"concentration ({unit})")
-ax.set_title("Mean concentration of monitoring sites in the Hoofdwatersysteem")
-plt.show()
-
-
-# coupling logic - find the closest node with meta_waterbeheerder == "Rijkswaterstaat"
-
-# for each station, plot timeseries together with delwaq output for this location
-# then also calculate the rmse
-# for cumulative flux, we may need the discharge, or extract mass flux directly from delwaq output
-# for now, just plot concentration timeseries
-
-# %%
-# set path of Ribasim model
-model_name = "lhm_coupled_2025_9_0"
-
-model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / model_name
-toml_path = model_path / "lhm.toml"
-assert toml_path.is_file()
-
-# %%
-model = Model.read(toml_path)
-# display(model.basin.concentration_external)
-# %%
-
-concentration_df = pd.DataFrame(model.basin.concentration_external)
-concentration_df.loc[concentration_df["substance"] == "NO3"]
-add_tracer(model, 700970, "Foo")
-
-
-model.graph.nodes(data=True)
-
-# somehow try to extract the XY of all nodes, filter for RWS nodes or something.
- """
