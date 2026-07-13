@@ -300,10 +300,16 @@ def log_rwzi_coverage_report(
     -------
         GeoDataFrame if write_coverage is True, else None.
     """
-    fb_df = rwzi_coupled_model.flow_boundary.node.df
+    flow_boundary_node = rwzi_coupled_model.flow_boundary.node
+    if flow_boundary_node is None or flow_boundary_node.df is None:
+        raise ValueError("FlowBoundary node table is missing in rwzi_coupled_model")
+    fb_df = flow_boundary_node.df
     rwzi_flow_boundaries = fb_df[fb_df["meta_rwzi_code"].notna()]
 
-    junction_df = rwzi_coupled_model.junction.node.df
+    junction_node = rwzi_coupled_model.junction.node
+    if junction_node is None or junction_node.df is None:
+        raise ValueError("Junction node table is missing in rwzi_coupled_model")
+    junction_df = junction_node.df
     rwzi_junctions = junction_df[junction_df["meta_rwzi_code"].notna()]
 
     total_rwzi = len(rwzi_flow_boundaries)

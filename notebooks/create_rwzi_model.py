@@ -56,7 +56,7 @@ stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(formatter)
 logger.addHandler(stream_handler)
 
-logging.info(f"Logging to: {log_file}")
+logger.info(f"Logging to: {log_file}")
 
 # %% create empty model
 starttime = "2017-01-01"
@@ -563,16 +563,16 @@ all_rwzi_names = set(rwzi_gdf["Naam rwzi"])
 modelled_rwzi_names = set(flow_boundary_nodes.keys())
 missing_rwzi_names = all_rwzi_names - modelled_rwzi_names
 
-logging.info(f"\n{'=' * 60}")
-logging.info("RWZI COVERAGE REPORT")
-logging.info(f"  Total RWZIs in GeoJSON:     {len(all_rwzi_names)}")
-logging.info(f"  RWZIs written to model:     {len(modelled_rwzi_names)}")
-logging.info(f"  RWZIs missing from model:   {len(missing_rwzi_names)}")
-logging.info(f"{'=' * 60}")
-logging.info("Missing RWZIs:")
+logger.info(f"\n{'=' * 60}")
+logger.info("RWZI COVERAGE REPORT")
+logger.info(f"  Total RWZIs in GeoJSON:     {len(all_rwzi_names)}")
+logger.info(f"  RWZIs written to model:     {len(modelled_rwzi_names)}")
+logger.info(f"  RWZIs missing from model:   {len(missing_rwzi_names)}")
+logger.info(f"{'=' * 60}")
+logger.info("Missing RWZIs:")
 for name in sorted(missing_rwzi_names):
-    logging.info(f"  - {name}")
-logging.info(f"{'=' * 60}\n")
+    logger.info(f"  - {name}")
+logger.info(f"{'=' * 60}\n")
 
 model.write(ribasim_toml)
 
@@ -583,7 +583,7 @@ rwzi_gdf_copy["in_rwzi_model"] = rwzi_gdf_copy["Naam rwzi"].isin(modelled_rwzi_n
 output_geojson = cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/RWZI_coordinates_model_coverage.geojson")
 rwzi_gdf_copy.to_file(output_geojson, driver="GeoJSON")
 
-logging.info(f"GeoJSON with model coverage written to: {output_geojson}")
+logger.info(f"GeoJSON with model coverage written to: {output_geojson}")
 
 upload_model = False
 if upload_model:
