@@ -49,7 +49,7 @@ link_plot = list(mapping_selected.itertuples(index=False, name=None))
 # --- Load flow results ---
 ds_flow = xr.open_dataset(datadir / "results/flow.nc")
 df_flow = ds_flow.to_dataframe().reset_index()
-df_flow["link"] = list(zip(df_flow.from_node_id, df_flow.to_node_id))
+df_flow["link"] = list(zip(df_flow.from_node_id, df_flow.to_node_id, strict=True))
 df_flow["flow_m3d"] = df_flow.flow_rate * 86400
 
 link_to_name = {(f, t): name for f, t, name in link_plot}
@@ -73,7 +73,7 @@ names_plot = ["Monsin", "Lobith"]  # Maas en Rijn
 fb_ba_df = fb_ba_df[fb_ba_df["name"].isin(names_plot)]
 
 # mapping from node_id -> name for these flow boundaries
-fb_ba_name_map = dict(zip(fb_ba_df["node_id"], fb_ba_df["name"]))
+fb_ba_name_map = dict(zip(fb_ba_df["node_id"], fb_ba_df["name"], strict=True))
 
 # --- Load flow results ---
 ds_flow = xr.open_dataset(datadir / "results/flow.nc")
