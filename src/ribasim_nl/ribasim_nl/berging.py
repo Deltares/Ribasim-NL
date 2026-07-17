@@ -251,6 +251,9 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
         if pd.isna(area_fraction):
             sw_area = 0.02 * polygon.area
             comment = "default: 2% oppervlak"
+        elif area_fraction < 0.001:
+            sw_area = 0.001 * polygon.area
+            comment = "oppervlak >= 0.1% gezet"
         else:
             sw_area = area_fraction * polygon.area
             comment = "%LHM * oppervlak"
