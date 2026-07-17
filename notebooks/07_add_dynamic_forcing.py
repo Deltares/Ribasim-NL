@@ -182,6 +182,8 @@ for authority in authorities:
 
             # write model and optionally run it
             model.write(dst_toml_file)
+            model.validate_ribasim_nl()
+
             if write_budgets:
                 budgets_df.to_feather(dst_toml_file.with_name("mfms_budgets.arrow"))  # for later reference
 
