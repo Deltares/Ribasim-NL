@@ -7,10 +7,13 @@ import typing
 import pandas as pd
 import pydantic
 import shapely
+from pandera.typing import pandas as pdt
+from ribasim.schemas import BasinProfileSchema
 
 from ribasim_nl import CloudStorage, Model
 
 LOG = logging.getLogger(__name__)
+MIN_PROFILE_AREA = 10.0
 
 
 def get_tables(water_authority: str, cloud: CloudStorage = CloudStorage()) -> tuple[pd.DataFrame, pd.DataFrame]:  # noqa: B008
@@ -45,22 +48,22 @@ def get_tables(water_authority: str, cloud: CloudStorage = CloudStorage()) -> tu
     return df_flowing, df_storing
 
 
-def minimum_surface_area(table: pd.DataFrame, min_area: float) -> pd.DataFrame:
-    """Filter profiles based on a minimum surface area.
-
-    :param table: table with profiles
-    :param min_area: minimum surface area [m2]
-
-    :type table: pandas.DataFrame
-    :type min_area: float
-
-    :return: filtered table with profiles
-    :rtype: pandas.DataFrame
-    """
+def clamp_profile_area(table: pd.DataFrame) -> pd.DataFrame:
+    """Set all profile areas to at least the solver-safe minimum."""
     assert all(c in table.columns for c in ["node_id", "level", "area"])
-    surface_area = table.loc[table.groupby("node_id")["level"].idxmax(), ["node_id", "area"]]
-    valid_ids = surface_area.loc[surface_area["area"] > min_area, "node_id"].values
-    return table.loc[table["node_id"].isin(valid_ids)]
+    return table.assign(area=table["area"].clip(lower=MIN_PROFILE_AREA))
+
+
+def standard_profiles(basin_area: pd.DataFrame) -> pd.DataFrame:
+    """Create stable profiles for basins without a valid generated profile."""
+    profile = basin_area[["node_id", "meta_streefpeil", "geometry"]].copy()
+    profile["level"] = profile.pop("meta_streefpeil").astype(float)
+    profile["area"] = (profile.pop("geometry").area * 0.1).clip(lower=MIN_PROFILE_AREA)
+
+    profile_bottom = profile.copy()
+    profile_bottom["level"] -= 1.0
+
+    return pd.concat([profile_bottom, profile], ignore_index=True).assign(storage=None)
 
 
 def profile_merging(
@@ -95,7 +98,7 @@ def profile_merging(
 
 
 def single_profile_nodes(
-    flowing_table: pd.DataFrame, storing_table: pd.DataFrame, *, min_area: float = 1e-3
+    flowing_table: pd.DataFrame, storing_table: pd.DataFrame
 ) -> tuple[list[int], pd.DataFrame, pd.DataFrame]:
     """Determine which basin node-IDs consist of only flowing profiles, or only storing profiles.
 
@@ -108,18 +111,14 @@ def single_profile_nodes(
 
     :param flowing_table: table of flowing profiles ('doorgaand')
     :param storing_table: table of storing profiles ('bergend')
-    :param min_area: minimum area for profile to be considered valid [m2], defaults to 1e-3
-
     :type flowing_table: pandas.DataFrame
     :type storing_table: pandas.DataFrame
-    :type min_area: float, optional
 
     :return: no-storing basin node-IDs ('doorgaand'-only) and modified profile tables
     :rtype: tuple[list[int], pandas.DataFrame, pandas.DataFrame]
     """
-    # remove profiles with too small surface area
-    df_flowing = minimum_surface_area(flowing_table, min_area)
-    df_storing = minimum_surface_area(storing_table, min_area)
+    df_flowing = clamp_profile_area(flowing_table)
+    df_storing = clamp_profile_area(storing_table)
 
     # merge tables
     df = profile_merging(df_flowing, df_storing, suffixes=("_flowing", "_storing"))
@@ -189,17 +188,14 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     :key cloud: the GoodCloud storage, defaults to CloudStorage()
     :key dx: horizontal distance between flowing and storing basins, defaults to 10 [m]
     :key dy: vertical distance between flowing and storing basins, defaults to 0 [m]
-    :key min_area: minimum are in profile table to be considered valid (removed otherwise), defaults to 1e-3 [m2]
     """
     # optional arguments
     cloud: CloudStorage = kwargs.get("cloud", CloudStorage())
     dx: float = kwargs.get("dx", 10.0)
     dy: float = kwargs.get("dy", 0.0)
-    min_area: float = kwargs.get("min_area", 1e-3)
-
     # get profile data
     tables = get_tables(water_authority, cloud=cloud)
-    storing_ids, df_flowing, df_storing = single_profile_nodes(*tables, min_area=min_area)
+    storing_ids, df_flowing, df_storing = single_profile_nodes(*tables)
 
     if (
         ribasim_model.node.df is None
@@ -214,14 +210,23 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
         msg = "Required model tables are missing."
         raise ValueError(msg)
 
-    # modify existing basins ('doorgaand')
+    # Modify existing basins ('doorgaand'). Use a standard profile where no
+    # generated profile is available.
     ribasim_model.node.df = ribasim_model.node.df.assign(meta_node_id=ribasim_model.node.df.index)
     _basin_profile = ribasim_model.basin.profile.df.copy()
-    _profiles = profile_merging(df_flowing, _basin_profile[["node_id"]], suffixes=("", "_"))
-    ribasim_model.basin.profile.df = _profiles.sort_values(["node_id", "level"], ignore_index=True).combine_first(  # pyrefly: ignore[bad-assignment]
-        _basin_profile.sort_values(["node_id", "level"], ignore_index=True)
-    )[_basin_profile.columns]
-    del _basin_profile, _profiles
+    missing_profile_ids = _basin_profile.loc[~_basin_profile["node_id"].isin(df_flowing["node_id"]), "node_id"].unique()
+    df_flowing = pd.concat(
+        [
+            df_flowing,
+            standard_profiles(
+                ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"].isin(missing_profile_ids)]
+            ),
+        ],
+        ignore_index=True,
+    )
+    basin_profile = df_flowing.sort_values(["node_id", "level"], ignore_index=True)[_basin_profile.columns]
+    ribasim_model.basin.profile.df = typing.cast(pdt.DataFrame[BasinProfileSchema], basin_profile)
+    del _basin_profile
 
     # duplicate all basin-tables
     basin_node = ribasim_model.basin.node.df

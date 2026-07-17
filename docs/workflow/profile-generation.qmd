@@ -38,6 +38,10 @@ Subsequently, the following steps are executed on a per-basin basis:
 10. Correct the $A(h)$-relation of _bergend_ by including non-intersecting BGT-polygons' surface areas (as preluded to in 5.);
 11. Write two basin profile tables with $A(h)$-relations: one for _doorgaand_, and one for _bergend_.
 
+During model implementation, every profile area is clamped to at least $10\,\mathrm{m^2}$.
+When a basin has no generated profile, the model receives a two-point fallback profile with an area of $10\%$ of its basin polygon, subject to that minimum, at both $1\ \mathrm{m}$ below its target level and at its target level.
+This prevents dummy profiles from reaching the solver while keeping all available generated $A(h)$-information.
+
 # Profile generation code
 
 The profile generation is coded as standalone and intended to be executed prior to model generation, ideally once.
