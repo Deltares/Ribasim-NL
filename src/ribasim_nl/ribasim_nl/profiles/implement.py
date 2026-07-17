@@ -11,9 +11,9 @@ from pandera.typing import pandas as pdt
 from ribasim.schemas import BasinProfileSchema
 
 from ribasim_nl import CloudStorage, Model
+from ribasim_nl.profiles import MIN_PROFILE_AREA
 
 LOG = logging.getLogger(__name__)
-MIN_PROFILE_AREA = 10.0
 
 
 def get_tables(water_authority: str, cloud: CloudStorage = CloudStorage()) -> tuple[pd.DataFrame, pd.DataFrame]:  # noqa: B008
@@ -61,7 +61,7 @@ def standard_profiles(basin_area: pd.DataFrame) -> pd.DataFrame:
     profile["area"] = (profile.pop("geometry").area * 0.1).clip(lower=MIN_PROFILE_AREA)
 
     profile_bottom = profile.copy()
-    profile_bottom["level"] -= 1.0
+    profile_bottom["level"] -= 2.0
 
     return pd.concat([profile_bottom, profile], ignore_index=True).assign(storage=None)
 
