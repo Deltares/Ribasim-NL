@@ -119,28 +119,29 @@ def apply_basin_level_overrides(
     """Apply manual Basin target levels and keep derived Basin tables consistent."""
     assert model.basin.area.df is not None
 
-    protected_basin_node_ids = [int(node_id) for node_ids, _ in basin_level_overrides for node_id in node_ids]
+    target_level_by_node = {
+        int(node_id): float(target_level) for node_ids, target_level in basin_level_overrides for node_id in node_ids
+    }
+    protected_basin_node_ids = list(target_level_by_node)
 
     if update_profile and model.basin.profile.df is not None and not model.basin.profile.df.empty:
         profile_top = model.basin.profile.df.groupby("node_id")["level"].max()
-        for node_ids, target_level in basin_level_overrides:
-            for node_id in node_ids:
-                node_id = int(node_id)
-                if node_id not in profile_top.index:
-                    continue
+        for node_id, target_level in target_level_by_node.items():
+            if node_id not in profile_top.index:
+                continue
 
-                level_shift = float(target_level) - as_float(profile_top.at[node_id])
-                if level_shift == 0:
-                    continue
+            level_shift = target_level - as_float(profile_top.at[node_id])
+            if level_shift == 0:
+                continue
 
-                mask = model.basin.profile.df["node_id"].eq(node_id)
-                model.basin.profile.df.loc[mask, "level"] = (
-                    model.basin.profile.df.loc[mask, "level"].astype(float) + level_shift
-                )
+            mask = model.basin.profile.df["node_id"].eq(node_id)
+            model.basin.profile.df.loc[mask, "level"] = (
+                model.basin.profile.df.loc[mask, "level"].astype(float) + level_shift
+            )
 
-    for node_ids, target_level in basin_level_overrides:
-        mask = model.basin.area.df["node_id"].isin(node_ids)
-        model.basin.area.df.loc[mask, target_level_column] = float(target_level)
+    for node_id, target_level in target_level_by_node.items():
+        mask = model.basin.area.df["node_id"].eq(node_id)
+        model.basin.area.df.loc[mask, target_level_column] = target_level
 
     if update_state:
         # pyrefly: ignore[bad-assignment]

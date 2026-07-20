@@ -128,6 +128,7 @@ stages:
         - src/peilbeheerst_model/profiles/${item}.py
         - data/${item}/modellen/${item}_feedback
         - data/Basisgegevens/profielen
+        - data/Basisgegevens/Hydrotypen
       outs:
         - data/${item}/modellen/${item}_profiles
         - data/${item}/verwerkt/profielen/network.gpkg

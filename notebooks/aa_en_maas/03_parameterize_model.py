@@ -8,6 +8,7 @@ from ribasim_nl.check_basin_level import add_check_basin_level
 
 # voeg deze imports toe
 from ribasim_nl.parametrization.basin_tables import (
+    apply_basin_level_overrides,
     sync_min_upstream_levels_with_profile_bottoms,
     update_basin_state,
     update_basin_static,
@@ -78,7 +79,6 @@ basin_level_overrides = [
     ([1565], 23.5),
     ([1885], 23.5),
     ([1959], 23.5),
-    ([1849], 30.75),
     ([1280], 30.75),
     ([1961], 30.75),
     ([1849], 30.75),
@@ -86,9 +86,7 @@ basin_level_overrides = [
     ([2495], 30.75),
 ]
 
-for node_ids, meta_streefpeil in basin_level_overrides:
-    mask = model.basin.area.df.node_id.isin(node_ids)
-    model.basin.area.df.loc[mask, "meta_streefpeil"] = meta_streefpeil
+apply_basin_level_overrides(model=model, basin_level_overrides=basin_level_overrides)
 
 boundary_level_overrides = {
     37: 31.0,
@@ -98,9 +96,6 @@ boundary_level_overrides = {
 for node_id, level in boundary_level_overrides.items():
     mask = model.level_boundary.static.df.node_id == node_id
     model.level_boundary.static.df.loc[mask, "level"] = level
-
-# Herbereken afgeleide tabellen na handmatige streefpeil-overrides.
-model.basin.state.df = model.basin.area.df[["node_id", "meta_streefpeil"]].rename(columns={"meta_streefpeil": "level"})
 
 
 # Fixes

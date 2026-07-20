@@ -272,7 +272,7 @@ def main(
         bgt.save_bgt_coupling(hydro_objects, bgt_data, wd_intermediate_output)
 
     # depth from hydrotopes
-    hydrotope_map = ht.get_hydrotopes_map(cloud=cloud)
+    hydrotope_map = gpd.read_file(cloud.joinpath("Basisgegevens/Hydrotypen/hydrotype.shp"))
     hydro_objects = depth.depth_from_hydrotopes(hydro_objects, hydrotope_map, hydrotope_table, drop_na=True)
 
     # depth from measurements
