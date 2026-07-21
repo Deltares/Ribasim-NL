@@ -480,6 +480,7 @@ ribasim_model.starttime = starttime
 ribasim_model.endtime = endtime
 ribasim_model.solver.saveat = saveat
 ribasim_model.write(output_dir_model_toml)
+ribasim_model.validate_ribasim_nl()
 
 # run model
 run_ribasim(output_dir_model_toml)

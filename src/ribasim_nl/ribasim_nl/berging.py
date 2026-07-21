@@ -19,6 +19,7 @@ from shapely.geometry import Point, Polygon
 
 from ribasim_nl.cloud import CloudStorage
 from ribasim_nl.model import Model
+from ribasim_nl.profiles import MIN_PROFILE_AREA
 from ribasim_nl.settings import settings
 
 LHM_RASTER_FILE = settings.ribasim_nl_data_dir / Path("Basisgegevens/LHM/4.3/input/LHM_data.tif")
@@ -216,7 +217,7 @@ def basin_link_buffer_area(model: Model, node_id, buffer_distance=2.5):
 
 
 def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: float = 2.0, buffer_distance=2.5) -> None:
-    """Surface water area of primary basin based on primair_oppervalktewater in LHM4.3
+    """Surface water area of primary basin based on primair_oppervlaktewater in LHM4.3
 
     The average of resampled surface water percentage raster is mulitplied by polygon.area
 
@@ -241,47 +242,32 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
         polygon: Polygon,
         target_level: float,
         area_fraction: float,
-        min_fraction: float = 0.001,
-        min_area: float = 999.0,
         buffer_distance: float = 2.5,
     ) -> pd.DataFrame:
-        level = np.array([target_level - depth - 0.1, target_level - depth, target_level]).round(2)
-        profile_node_ids = [node_id] * 3
+        level = np.array([target_level - depth, target_level]).round(2)
+        profile_node_ids = [node_id] * 2
 
-        # if no fraction, we assume 2% of surface-water area (sq_area)
+        # If no fraction is available, assume 2% of the basin area.
         if pd.isna(area_fraction):
-            sw_area = 0.1 * polygon.area
-            comment = ["default: 0.1m2", "default: 1% oppervlak", "default: 1% oppervlak"]
+            sw_area = 0.02 * polygon.area
+            comment = "default: 2% oppervlak"
+        elif area_fraction < 0.001:
+            sw_area = 0.001 * polygon.area
+            comment = "oppervlak >= 0.1% gezet"
         else:
             sw_area = area_fraction * polygon.area
-            comment = ["default: 0.1m2", "%LHM * oppervlak", "%LHM * oppervlak"]
+            comment = "%LHM * oppervlak"
 
-        # if smaller than min_area we set to min_area
-        min_area = max(
-            (min_area, basin_link_buffer_area(model=model, node_id=node_id, buffer_distance=buffer_distance))
+        minimum_area = max(
+            MIN_PROFILE_AREA,
+            basin_link_buffer_area(model=model, node_id=node_id, buffer_distance=buffer_distance),
         )
-        if sw_area < min_area:
-            area = np.array([0.1, min_area, min_area]).round(1)
-            comment = [
-                "default: 0.1m2",
-                f"oppervlak >={int(min_area)}m2 gezet",
-                f"oppervlak >={int(min_area)}m2 gezet",
-            ]
-            df = basin.Profile(node_id=profile_node_ids, level=level, area=area, meta_comment=comment).df
+        if sw_area < minimum_area:
+            sw_area = minimum_area
+            comment = f"oppervlak >= {round(minimum_area, 1)}m2 gezet"
 
-        # if smaller than min_fraction we assume min_fraction
-        elif area_fraction < min_fraction:
-            area_fraction = min_fraction
-            comment = [
-                "default: 0.1m2",
-                f"oppervlak >= {round(min_fraction * 100, 1)}% gezet",
-                f"oppervlak >= {round(min_fraction * 100, 1)}% gezet",
-            ]
-            area = np.array([0.1, area_fraction * polygon.area, area_fraction * polygon.area]).round(1)
-            df = basin.Profile(node_id=profile_node_ids, level=level, area=area, meta_comment=comment).df
-        else:
-            area = np.array([0.1, sw_area, sw_area]).round(1)
-            df = basin.Profile(node_id=profile_node_ids, level=level, area=area, meta_comment=comment).df
+        area = np.full(2, sw_area).round(1)
+        df = basin.Profile(node_id=profile_node_ids, level=level, area=area, meta_comment=[comment] * 2).df
         assert df is not None
         return df
 
@@ -585,10 +571,9 @@ def get_basin_profile(
                 ah_df["area"] = ah_df["area"].cumsum().round(1)
                 ah_df["comment"] = pd.Series(dtype=str)
 
-                # 0 m2 is not allowed we make it 1
-                mask = ah_df.area <= 1
-                ah_df.loc[mask, ["area"]] = 1
-                ah_df.loc[mask, ["comment"]] = "oppervlak >= 1m2 gezet"
+                mask = ah_df.area < MIN_PROFILE_AREA
+                ah_df.loc[mask, ["area"]] = MIN_PROFILE_AREA
+                ah_df.loc[mask, ["comment"]] = "oppervlak >= 10m2 gezet"
                 ah_df = simplify_area_level_df(ah_df)
 
                 if ah_df.empty:
@@ -596,6 +581,9 @@ def get_basin_profile(
             else:
                 ah_df = default_ah_df()
     # Return profile
+    mask = ah_df.area < MIN_PROFILE_AREA
+    ah_df.loc[mask, ["area"]] = MIN_PROFILE_AREA
+    ah_df.loc[mask, ["comment"]] = "oppervlak >= 10m2 gezet"
     return basin.Profile(area=ah_df.area, level=ah_df.level, meta_comment=ah_df.comment)
 
 

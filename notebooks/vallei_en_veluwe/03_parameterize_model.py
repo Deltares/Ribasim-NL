@@ -2,7 +2,10 @@
 import time
 
 from peilbeheerst_model.controle_output import Control
-from ribasim_nl.parametrization.basin_tables import sync_min_upstream_levels_with_profile_bottoms
+from ribasim_nl.parametrization.basin_tables import (
+    apply_basin_level_overrides,
+    sync_min_upstream_levels_with_profile_bottoms,
+)
 
 from ribasim_nl import CloudStorage, Model
 
@@ -50,12 +53,7 @@ basin_level_overrides = [
     ([751], 3.35),
 ]
 
-for node_ids, meta_streefpeil in basin_level_overrides:
-    mask = model.basin.area.df.node_id.isin(node_ids)
-    model.basin.area.df.loc[mask, "meta_streefpeil"] = meta_streefpeil
-
-# Herbereken afgeleide tabellen na handmatige streefpeil-overrides.
-model.basin.state.df = model.basin.area.df[["node_id", "meta_streefpeil"]].rename(columns={"meta_streefpeil": "level"})
+apply_basin_level_overrides(model=model, basin_level_overrides=basin_level_overrides)
 
 # Inlaat de Wenden
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 1, "level"] = 0.8

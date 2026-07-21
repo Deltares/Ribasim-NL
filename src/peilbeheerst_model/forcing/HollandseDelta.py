@@ -495,6 +495,7 @@ ribasim_model.starttime = starttime
 ribasim_model.endtime = endtime
 ribasim_model.solver.saveat = saveat
 ribasim_model.write(output_dir_model_toml)
+ribasim_model.validate_ribasim_nl()
 
 if not ribasim_model.use_validation:
     raise ValueError(f"Abort execution of Ribasim: {ribasim_model.use_validation=}")
