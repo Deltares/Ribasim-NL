@@ -77,7 +77,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-a585631caaf8dceca076a51019091dde.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-57463eb9aa071cbbc1868f9301cc6741.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -308,6 +308,7 @@ window.Quarto = {
 <li>Correct the <span class="math inline">\(A(h)\)</span>-relation of <em>bergend</em> by including non-intersecting BGT-polygons’ surface areas (as preluded to in 5.);</li>
 <li>Write two basin profile tables with <span class="math inline">\(A(h)\)</span>-relations: one for <em>doorgaand</em>, and one for <em>bergend</em>.</li>
 </ol>
+<p>During model implementation, every profile area is clamped to at least <span class="math inline">\(10\,\mathrm{m^2}\)</span>. When a basin has no generated profile, the model receives a two-point fallback profile with an area of <span class="math inline">\(10\%\)</span> of its basin polygon, subject to that minimum, at both <span class="math inline">\(2\ \mathrm{m}\)</span> below its target level and at its target level. This prevents dummy profiles from reaching the solver while keeping all available generated <span class="math inline">\(A(h)\)</span>-information.</p>
 </section>
 <section id="profile-generation-code" class="level1">
 <h1>Profile generation code</h1>
