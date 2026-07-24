@@ -1,41 +1,35 @@
 import numbers
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from typing import Any
 
 from bokeh.models import Slider
 
-# pyrefly: ignore[missing-import]
-from bokeh_helpers.widgets.shared_functions import get_formatter, round_seconds
+from bokeh_helpers.widgets.shared_functions import get_formatter, round_seconds  # ty: ignore[unresolved-import]
 
 
 @dataclass
 class DatetimeSlider:
-    start: datetime | int
-    end: datetime | int
-    value: datetime | int
-    step: datetime | int
+    start: datetime | float | int
+    end: datetime | float | int
+    value: datetime | float | int
+    step: timedelta | float | int
     format: str = "%Y-%m-%d %H:%M:%S"
-    kwargs: dict[str, object] = field(default_factory=dict)
-    widget: Slider | None = None
+    kwargs: dict[str, Any] = field(default_factory=dict)
+    widget: Slider = field(init=False)
 
     def __post_init__(self) -> None:
-        # validate values
-        if self.start >= self.end:
-            raise ValueError(f"{self.start} >= {self.end}")
-
-        if self.value < self.start:
-            raise ValueError(f"{self.value} < {self.start}")
-
-        if self.value > self.end:
-            raise ValueError(f"{self.value} > {self.end}")
-
         start = self.start.timestamp() * 1000 if isinstance(self.start, datetime) else self.start
-
         end = self.end.timestamp() * 1000 if isinstance(self.end, datetime) else self.end
-
         value = self.value.timestamp() * 1000 if isinstance(self.value, datetime) else self.value
-
         step = self.step.total_seconds() * 1000 if isinstance(self.step, timedelta) else self.step
+
+        if start >= end:
+            raise ValueError(f"{self.start} >= {self.end}")
+        if value < start:
+            raise ValueError(f"{self.value} < {self.start}")
+        if value > end:
+            raise ValueError(f"{self.value} > {self.end}")
 
         self.widget = Slider(
             start=round_seconds(start, step, "floor"),

@@ -259,9 +259,9 @@ def main(
         if not main_route_from_hydro_objects:
             assert crossings is not None
             if internal_crossings:
-                _temp = shapely.MultiPolygon(basins.explode().geometry.values).buffer(selection_buffer)  # pyrefly: ignore[bad-argument-type]
+                _temp = shapely.MultiPolygon(basins.explode().geometry.values).buffer(selection_buffer)
             else:
-                _temp = shapely.MultiPolygon(basins.explode().exterior.buffer(selection_buffer))  # pyrefly: ignore[bad-argument-type]
+                _temp = shapely.MultiPolygon(basins.explode().exterior.buffer(selection_buffer))
             crossings[crossings.intersects(_temp)].to_file(wd_intermediate_output / _fn_int_output, layer="endpoints")
             del _temp
 
@@ -451,7 +451,7 @@ def _get_bgt_data(fn_bgt: Path | str | None, basins: gpd.GeoDataFrame) -> gpd.Ge
     :param fn_bgt: filename of BGT-data
     :param basins: geospatial dataset of basins (polygons)
     """
-    geo_filter = typing.cast(shapely.Polygon, shapely.MultiPolygon(basins.convex_hull.values).convex_hull)  # pyrefly: ignore[bad-argument-type]
+    geo_filter = typing.cast(shapely.Polygon, shapely.MultiPolygon(basins.convex_hull.values).convex_hull)
     if fn_bgt is None:
         return bgt.download_bgt_water(geo_filter=geo_filter)
     fn_bgt = Path(fn_bgt)

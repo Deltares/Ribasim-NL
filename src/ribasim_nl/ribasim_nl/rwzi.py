@@ -29,18 +29,18 @@ def create_rwzi_basin_coupling(rwzi_coupled_model: Model, max_distance=100):
         coupling_lookup (dict): Lookup table of RWZI codes and basin IDs.
         unmatched_rwzi_df (GeoDataFrame): RWZI locations that have not yet been matched with basins.
     """
-    terminals_all = rwzi_coupled_model.terminal.node.df  # pyrefly: ignore[missing-attribute]
+    terminals_all = rwzi_coupled_model.terminal.node.df
     basins = rwzi_coupled_model.basin.area.df
     nodes = rwzi_coupled_model.node.df
 
-    unique_waterbeheerders = nodes["meta_waterbeheerder"].dropna().unique()  # pyrefly: ignore[unsupported-operation]
+    unique_waterbeheerders = nodes["meta_waterbeheerder"].dropna().unique()
 
     # RWZI codes
     rwzi_codes_df = terminals_all[["meta_rwzi_code"]].dropna().copy()
 
     # Filter terminals met RWZI code
     terminals_filtered = terminals_all[terminals_all.meta_rwzi_code.isin(rwzi_codes_df.meta_rwzi_code)].copy()
-    terminals_filtered = terminals_filtered.to_crs(basins.crs)  # pyrefly: ignore[missing-attribute]
+    terminals_filtered = terminals_filtered.to_crs(basins.crs)
 
     # Only keep terminals relevant to this model authorities
     terminals_filtered = terminals_filtered[
@@ -48,7 +48,7 @@ def create_rwzi_basin_coupling(rwzi_coupled_model: Model, max_distance=100):
     ]
 
     # Basins reset
-    basins_join = basins.join(nodes[["meta_categorie", "meta_waterbeheerder"]], on="node_id")  # pyrefly: ignore[missing-attribute, unsupported-operation]
+    basins_join = basins.join(nodes[["meta_categorie", "meta_waterbeheerder"]], on="node_id")
     basins_reset = basins_join.reset_index().rename(columns={"node_id": "couple_to_basin_id"})
     # Filter basins on meta_categorie != 'bergend'
     basins_reset = basins_reset[~basins_reset["meta_categorie"].isin(["bergend"])]
@@ -112,7 +112,7 @@ def remove_unmatched_rwzi(rwzi_coupled_model: Model, unmatched_rwzi_df: GeoDataF
         terminals_removed += 1
 
     #  2. bijbehorende flow boundaries verwijderen
-    fb_df = rwzi_coupled_model.flow_boundary.node.df  # pyrefly: ignore[missing-attribute]
+    fb_df = rwzi_coupled_model.flow_boundary.node.df
     flow_boundary_to_remove = fb_df[fb_df["meta_rwzi_code"].isin(unmatched_rwzi_df["meta_rwzi_code"])]
 
     flow_boundaries_removed = 0

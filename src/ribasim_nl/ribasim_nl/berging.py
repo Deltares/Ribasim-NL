@@ -277,7 +277,7 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
     if not src_file.exists():
         percentage_primair_oppervlaktewater()
 
-    basin_node_df = cast(pd.DataFrame, model.basin.node.df)  # pyrefly: ignore[missing-attribute]
+    basin_node_df = cast(pd.DataFrame, model.basin.node.df)
     basin_area_df = cast(pd.DataFrame, model.basin.area.df)
     basin_profile_df = cast(pd.DataFrame, model.basin.profile.df)
 

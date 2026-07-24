@@ -200,7 +200,7 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     if (
         ribasim_model.node.df is None
         or ribasim_model.basin.profile.df is None
-        or ribasim_model.basin.node.df is None  # pyrefly: ignore[missing-attribute]
+        or ribasim_model.basin.node.df is None
         or ribasim_model.basin.static.df is None
         or ribasim_model.basin.state.df is None
         or ribasim_model.basin.area.df is None
@@ -236,7 +236,7 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     basin_profile = df_storing.copy(deep=True)
 
     # ID-selection: add storing basins
-    basin_node = basin_node[basin_node.index.isin(storing_ids)].copy(deep=True)  # pyrefly: ignore[bad-index,missing-attribute]
+    basin_node = basin_node[basin_node.index.isin(storing_ids)].copy(deep=True)
     basin_static = basin_static[basin_static["node_id"].isin(storing_ids)].copy(deep=True)
     basin_state = basin_state[basin_state["node_id"].isin(storing_ids)].copy(deep=True)
     basin_area = basin_area[basin_area["node_id"].isin(storing_ids)].copy(deep=True)
@@ -314,16 +314,16 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
 
     # concatenate all newly generated tables to Ribasim model
     # > Node-table
-    ribasim_model.node.df = pd.concat([ribasim_model.node.df, basin_node, manning_node], ignore_index=False)  # pyrefly: ignore[bad-assignment]
+    ribasim_model.node.df = pd.concat([ribasim_model.node.df, basin_node, manning_node], ignore_index=False)
     # > Link-table
-    ribasim_model.link.df = pd.concat([ribasim_model.link.df, link], ignore_index=False)  # pyrefly: ignore[bad-assignment]
+    ribasim_model.link.df = pd.concat([ribasim_model.link.df, link], ignore_index=False)
     # > Basin-tables
     ribasim_model.basin.static.df = pd.concat([ribasim_model.basin.static.df, basin_static], ignore_index=True)
     ribasim_model.basin.state.df = pd.concat([ribasim_model.basin.state.df, basin_state], ignore_index=True)
-    ribasim_model.basin.profile.df = pd.concat([ribasim_model.basin.profile.df, basin_profile], ignore_index=True)  # pyrefly: ignore[bad-assignment]
-    ribasim_model.basin.area.df = pd.concat([ribasim_model.basin.area.df, basin_area], ignore_index=True)  # pyrefly: ignore[bad-assignment]
+    ribasim_model.basin.profile.df = pd.concat([ribasim_model.basin.profile.df, basin_profile], ignore_index=True)
+    ribasim_model.basin.area.df = pd.concat([ribasim_model.basin.area.df, basin_area], ignore_index=True)
     # > ManningResistance-tables
-    ribasim_model.manning_resistance.static.df = pd.concat(  # pyrefly: ignore[bad-assignment]
+    ribasim_model.manning_resistance.static.df = pd.concat(
         [ribasim_model.manning_resistance.static.df, manning_static], ignore_index=True
     )
 

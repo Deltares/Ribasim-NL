@@ -52,7 +52,7 @@ class Control:
                 self.path_ribasim_toml = ribasim_toml
                 self.work_dir = Path(ribasim_toml).parent
             else:
-                self.path_ribasim_toml = Path(work_dir) / "ribasim.toml"  # pyrefly: ignore[bad-argument-type]
+                self.path_ribasim_toml = Path(work_dir) / "ribasim.toml"
                 self.work_dir = work_dir
 
         if qlr_path is None:
@@ -446,13 +446,11 @@ class Control:
 
         # water level differences
         min_difference_level = (
-            # pyrefly: ignore[missing-attribute]
             (min_basin_level.set_index("node_id")["level"] - initial_basin_level.set_index("node_id")["level"])
             .reset_index(drop=False)
             .rename(columns={"level": "level_difference"})
         )
         max_difference_level = (
-            # pyrefly: ignore[missing-attribute]
             (max_basin_level.set_index("node_id")["level"] - initial_basin_level.set_index("node_id")["level"])
             .reset_index(drop=False)
             .rename(columns={"level": "level_difference"})

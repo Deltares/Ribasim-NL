@@ -155,9 +155,8 @@ def intersect_using_spatial_index(peilgebied_praktijk, peilgebied_afwijking, che
     overlapping_updated = gpd.overlay(
         peilgebied_praktijk, intersection, how="symmetric_difference"
     )  # check of het difference of symmetrical difference moet zijn!#remove the difference between pg_praktijk and pg_afwijking
-    peilgebied = overlapping_updated.append(
-        intersection, ignore_index=True
-    )  # add the removed difference, but now only the intersected part of pg_afwijking
+    # Add the removed difference, but now only the intersected part of pg_afwijking.
+    peilgebied = pd.concat([overlapping_updated, intersection], ignore_index=True)
 
     if check:
         peilgebied_praktijk.to_file("Checks/Rivierenland/peilgebied_praktijk.gpkg", driver="GPKG")

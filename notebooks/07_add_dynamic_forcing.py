@@ -97,17 +97,14 @@ def check_build(toml_file):
     # we build if we don't have tabulated_rating_curves
     if not build:
         model = Model.read(toml_file)
-        # pyrefly: ignore[missing-attribute]
         build = model.tabulated_rating_curve.node.df is None
 
     # we build if tabulated rating curves don't have a meta_cateogrie colummn
     if not build:
-        # pyrefly: ignore[unbound-name, missing-attribute]
         build = "meta_categorie" not in model.tabulated_rating_curve.node.df.columns
 
     # we build if we don't have any bergend in meta_categorie
     if not build:
-        # pyrefly: ignore[missing-attribute]
         build = not (model.tabulated_rating_curve.node.df["meta_categorie"] == "bergend").any()
 
     return build
@@ -153,7 +150,6 @@ for authority in authorities:
             uncategorized_basins = series[series.isna()].index.values
             if len(uncategorized_basins) > 0:
                 print(f"uncategorized basins: {uncategorized_basins}, will be set to doorgaand")
-                # pyrefly: ignore[missing-attribute]
                 model.node.df.loc[uncategorized_basins, "meta_categorie"] = "doorgaand"
 
             # add forcing
@@ -166,7 +162,6 @@ for authority in authorities:
             add_transboundary_inflow(model, dict_flow)
 
             # merge RWZI model, which requires meta_waterbeheerder
-            # pyrefly: ignore[missing-attribute]
             model.node.df.loc[model.basin.node.df.index, "meta_waterbeheerder"] = authority
             model = merge_rwzi_model(model, rwzi_model_path)
 

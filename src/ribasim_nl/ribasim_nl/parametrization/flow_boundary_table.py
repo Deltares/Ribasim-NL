@@ -33,4 +33,4 @@ def update_flow_boundary_static(
     for k, v in meta_values.items():
         static_df[k] = v
 
-    model.flow_boundary.static.df = static_df  # pyrefly: ignore[bad-assignment]
+    model.flow_boundary.static.df = static_df
