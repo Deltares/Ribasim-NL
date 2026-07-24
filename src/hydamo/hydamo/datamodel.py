@@ -288,7 +288,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
         """
         geometry.find_nearest_branch(branches=branches, geometries=self, method=snap_method, maxdist=maxdist)
 
-    def copy(self, deep: bool = True) -> Self:
+    def copy(self, deep: bool = True) -> Self:  # ty: ignore[override-of-final-method]
         """
         Make a copy of this ExtendedGeoDataFrame object's indices and data.
 

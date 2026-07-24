@@ -53,8 +53,8 @@ def duplicate_level_boundary_for_link(
             raise KeyError(f"Link {link_id} bestaat niet in dit model.")
         return None
 
-    from_node_id = int(cast(Any, link_df.at[link_id, "from_node_id"]))
-    to_node_id = int(cast(Any, link_df.at[link_id, "to_node_id"]))
+    from_node_id = int(link_df.at[link_id, "from_node_id"])
+    to_node_id = int(link_df.at[link_id, "to_node_id"])
     link_node_ids = {from_node_id, to_node_id}
 
     if source_node_id not in link_node_ids:

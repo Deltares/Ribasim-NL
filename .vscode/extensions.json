@@ -1,7 +1,7 @@
 {
     "recommendations": [
         "charliermarsh.ruff",
-        "meta.pyrefly",
+        "astral-sh.ty",
         "ms-python.python",
         "njpwerner.autodocstring",
         "quarto.quarto",

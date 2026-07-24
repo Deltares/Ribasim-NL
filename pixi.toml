@@ -39,7 +39,6 @@ pyarrow = ">=21"
 pydantic = ">=2"
 pydantic-settings = ">=2.11"
 pyogrio = ">=0.11"
-pyrefly = ">=0.60"
 pytest = ">=8.4"
 pytest-cov = ">=7"
 pytest-xdist = ">=3.8"
@@ -55,6 +54,7 @@ shapely = ">=2.1"
 tomli = ">=2.2"
 tomli-w = ">=1.2"
 tqdm = ">=4.67"
+ty = ">=0.0.63"
 xarray = ">=2026.2"
 xugrid = ">=0.14"
 zarr = ">=2.17"
@@ -65,7 +65,7 @@ hydamo = { path = "src/hydamo", editable = true }
 peilbeheerst_model = { path = "src/peilbeheerst_model", editable = true }
 ribasim_nl = { path = "src/ribasim_nl", editable = true }
 # sync with config in install_ribasim_core.py
-ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "eae77424a4078497d40d8197237cb83e3aba6a83", subdirectory = "python/ribasim" }
+ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "83ee6f7a56ff9a5356bdbd1d9a078c5307a4a4bb", subdirectory = "python/ribasim" }
 types-geopandas = ">=1.1"
 types-networkx = ">=3.6"
 types-pycurl = ">=7.45"
@@ -76,7 +76,7 @@ pandas-stubs = ">=3"
 xlwings = ">=0.33"
 
 [tasks]
-typecheck = "pyrefly check"
+typecheck = "ty check"
 install-prek = "prek install -f"
 install-dvc = "dvc pull"
 install = { depends-on = ["install-core", "install-prek", "install-dvc"] }

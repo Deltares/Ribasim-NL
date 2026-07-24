@@ -35,7 +35,6 @@ series = model.basin.node.df["meta_categorie"]
 uncategorized_basins = series[series.isna()].index.values
 if len(uncategorized_basins) > 0:
     print(f"uncategorized basins: {uncategorized_basins}, will be set to doorgaand")
-    # pyrefly: ignore[missing-attribute]
     model.node.df.loc[uncategorized_basins, "meta_categorie"] = "doorgaand"
 
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5, profiles_gpkg=profiles_gpkg)

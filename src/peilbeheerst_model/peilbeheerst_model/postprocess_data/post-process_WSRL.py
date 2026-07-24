@@ -144,7 +144,7 @@ WSRL["peilgebied"]["nen3610id"] = nen3610ids
 WSRL["streefpeil"]["globalid"] = globalids
 
 
-assert WSRL["peilgebied"]["globalid"].is_unique  # pyrefly: ignore[missing-attribute]
+assert WSRL["peilgebied"]["globalid"].is_unique
 
 
 # ## Add nhws to ['peilgebied','streefpeil']

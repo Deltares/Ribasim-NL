@@ -189,7 +189,7 @@ class Network:
                     link_def["name"] = getattr(row, self.name_col)
 
                 # select nodes of interest
-                bounds = box(*geometry.bounds).buffer(self.tolerance).bounds if self.tolerance else row.geometry.bounds  # pyrefly: ignore[missing-attribute]
+                bounds = box(*geometry.bounds).buffer(self.tolerance).bounds if self.tolerance else row.geometry.bounds
                 nodes_select = nodes_gdf.iloc[nodes_gdf.sindex.intersection(bounds)]
                 if self.tolerance is None:
                     nodes_select = nodes_select[nodes_select.distance(geometry) == 0]

@@ -199,8 +199,8 @@ class SetDynamicForcing:
                 meteo_means["drainage"] = 0
                 meteo_means["infiltration"] = 0
                 final_time_df = meteo_means.copy()
-            model.basin.time.df = final_time_df  # pyrefly: ignore[bad-assignment]
-            model.basin.time.df.fillna(0, inplace=True)  # pyrefly: ignore[missing-attribute]
+            model.basin.time.df = final_time_df
+            model.basin.time.df.fillna(0, inplace=True)
         else:
             current_df = model.basin.time.df
             current_df["conv_time"] = pd.to_datetime(current_df["time"])
@@ -230,7 +230,7 @@ class SetDynamicForcing:
         model.basin.static.df = None
 
         # Set the start and end date of the model
-        model.starttime = self.startdate  # pyrefly: ignore[bad-assignment]
-        model.endtime = self.enddate  # pyrefly: ignore[bad-assignment]
+        model.starttime = self.startdate
+        model.endtime = self.enddate
         print("Dynamic meteo added to model")
         return model

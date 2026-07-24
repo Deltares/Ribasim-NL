@@ -172,7 +172,7 @@ class SplitBasins:
             return [
                 line_geometry
                 for sub_geometry in geometry.geoms
-                for line_geometry in self._line_geometries(typing.cast(BaseGeometry, sub_geometry))
+                for line_geometry in self._line_geometries(sub_geometry)
             ]
 
         return []
@@ -194,7 +194,7 @@ class SplitBasins:
                 connector_node_id = int(connector_node_id)
                 connector_node_geometry = typing.cast(
                     BaseGeometry, self.model.node.df.at[connector_node_id, "geometry"]
-                )  # pyrefly
+                )
 
                 closest_basin_node_id = None
                 closest_distance = float("inf")
@@ -205,7 +205,7 @@ class SplitBasins:
                         self.model.basin.area.df.node_id == new_basin_node_id,
                         "geometry",
                     ].iloc[0]
-                    new_basin_geometry = typing.cast(BaseGeometry, new_basin_geometry)  # pyrefly
+                    new_basin_geometry = typing.cast(BaseGeometry, new_basin_geometry)
 
                     distance = connector_node_geometry.distance(new_basin_geometry)
 
@@ -227,12 +227,8 @@ class SplitBasins:
 
                 # redirect the connector node spatially to the closest new basin by changing the geometry of the connector node to the representative point of the closest new basin
                 # retrieve the point geomeries to create a straight line between them
-                geometry_connector_node = typing.cast(
-                    Point, self.model.node.df.at[connector_node_id, "geometry"]
-                )  # pyrefly
-                geometry_basin_node = typing.cast(
-                    Point, self.model.node.df.at[closest_basin_node_id, "geometry"]
-                )  # pyrefly
+                geometry_connector_node = typing.cast(Point, self.model.node.df.at[connector_node_id, "geometry"])
+                geometry_basin_node = typing.cast(Point, self.model.node.df.at[closest_basin_node_id, "geometry"])
 
                 # create a straight line between the connector node and the closest new basin
                 line_points = (
@@ -241,7 +237,7 @@ class SplitBasins:
                     else [geometry_connector_node, geometry_basin_node]
                 )
                 new_geometry = LineString(line_points)
-                self.model.link.df.loc[mask, "geometry"] = new_geometry  # pyrefly: ignore[unsupported-operation]
+                self.model.link.df.loc[mask, "geometry"] = new_geometry
         return self.model
 
     def create_new_basins(self):
@@ -251,7 +247,7 @@ class SplitBasins:
 
         # loop through the splitted basin gdf and create new basins in the model for each geometry (which has been splitted)
         for new_basin in self.splitted_basin_gdf.itertuples():
-            geometry = typing.cast(BaseGeometry, new_basin.geometry)  # avoid pyrefly error
+            geometry = typing.cast(BaseGeometry, new_basin.geometry)
             new_node_id = self.model.next_node_id
             self.model.basin.add(
                 Node(node_id=new_node_id, geometry=geometry.representative_point()),
@@ -265,8 +261,8 @@ class SplitBasins:
             )
 
             # replace the new basin geometry in the area table
-            assert self.model.basin.area.df is not None  # pyrefly
-            self.model.basin.area.df.loc[self.model.basin.area.df.node_id == new_node_id, "geometry"] = geometry  # pyrefly: ignore[unsupported-operation]
+            assert self.model.basin.area.df is not None
+            self.model.basin.area.df.loc[self.model.basin.area.df.node_id == new_node_id, "geometry"] = geometry
 
             newly_created_basins.append(new_node_id)
             if self.printing:
@@ -293,7 +289,7 @@ class SplitBasins:
 
             rows = table.df.loc[table.df.node_id == original_node_id].copy()
             rows["node_id"] = new_node_id
-            table.df = pd.concat([table.df, rows], ignore_index=True)  # pyrefly: ignore[bad-assignment]
+            table.df = pd.concat([table.df, rows], ignore_index=True)
 
 
 class NodeMetaCache:
@@ -322,5 +318,5 @@ class NodeMetaCache:
             nodes.loc[nodes["node_type"] == "Basin", "meta_categorie"] = nodes.loc[
                 nodes["node_type"] == "Basin", "meta_categorie"
             ].fillna("hoofdwater")
-        model.node.df = nodes.copy()  # pyrefly: ignore[bad-assignment]
+        model.node.df = nodes.copy()
         return model

@@ -3,7 +3,6 @@ repos:
     hooks:
       - id: check-added-large-files
         args: [--maxkb=700]
-        exclude: baseline\.json
       - id: check-case-conflict
       - id: check-json
       - id: check-yaml
@@ -35,8 +34,8 @@ repos:
         entry: pixi run nbstripout
         language: system
         types: [jupyter]
-      - id: pyrefly-check
-        name: Pyrefly (type checking)
+      - id: typecheck
+        name: typecheck
         entry: pixi run typecheck
         pass_filenames: false
         language: system

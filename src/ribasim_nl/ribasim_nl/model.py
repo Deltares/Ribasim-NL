@@ -421,9 +421,7 @@ class Model(ribasim.Model):
 
         # remove from sub-tables (static, time, area, subgrid, etc)
         sub = (
-            next((i for i in self._nodes() if i.__repr_name__() == node_type), None)  # pyrefly: ignore
-            if node_type is not None
-            else None
+            next((i for i in self._nodes() if i.__repr_name__() == node_type), None) if node_type is not None else None
         )
         if sub is not None:
             for table in sub._tables():
@@ -575,8 +573,9 @@ class Model(ribasim.Model):
             # revert geometry
             self.link.df.loc[link_id, ["geometry"]] = link_data["geometry"].reverse()
 
-    # pyrefly: ignore[bad-override]
-    def remove_link(self, from_node_id: int, to_node_id: int, remove_disconnected_nodes=True) -> None:
+    def remove_link(  # ty: ignore[invalid-method-override]
+        self, from_node_id: int, to_node_id: int, remove_disconnected_nodes=True
+    ) -> None:
         """Remove an link and disconnected nodes"""
         if self.link.df is not None:
             # get original link-data
@@ -1131,7 +1130,7 @@ class Model(ribasim.Model):
             (self.link.df.to_node_id == outlet_a_id) & (self.link.df.link_type == "control")
         ]
         for ctrl_link_id in upstream_ctrl_links.index:
-            ctrl_node_id: int = self.link.df.at[ctrl_link_id, "from_node_id"]  # pyrefly: ignore[bad-assignment]
+            ctrl_node_id: int = self.link.df.at[ctrl_link_id, "from_node_id"]
             self.remove_node(ctrl_node_id, remove_links=True)
 
         # correct link from and to attributes (collect all links connected to either outlet for geometry reset)
