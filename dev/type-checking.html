@@ -77,7 +77,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-57463eb9aa071cbbc1868f9301cc6741.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-6ac2aec46ad7f46b16024ee4409aa65c.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -211,10 +211,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#running-pyrefly" id="toc-running-pyrefly" class="nav-link active" data-scroll-target="#running-pyrefly">Running Pyrefly</a></li>
-  <li><a href="#baseline-file" id="toc-baseline-file" class="nav-link" data-scroll-target="#baseline-file">Baseline file</a>
+  <li><a href="#running-ty" id="toc-running-ty" class="nav-link active" data-scroll-target="#running-ty">Running ty</a></li>
+  <li><a href="#rule-overrides" id="toc-rule-overrides" class="nav-link" data-scroll-target="#rule-overrides">Rule overrides</a>
   <ul class="collapse">
-  <li><a href="#updating-the-baseline" id="toc-updating-the-baseline" class="nav-link" data-scroll-target="#updating-the-baseline">Updating the baseline</a></li>
   <li><a href="#suppressing-individual-errors" id="toc-suppressing-individual-errors" class="nav-link" data-scroll-target="#suppressing-individual-errors">Suppressing individual errors</a></li>
   </ul></li>
   </ul>
@@ -242,32 +241,23 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>We use <a href="https://pyrefly.org/">Pyrefly</a> for static type checking. Pyrefly is configured in the <code>[tool.pyrefly]</code> section of <code>pyproject.toml</code>.</p>
-<section id="running-pyrefly" class="level2">
-<h2 class="anchored" data-anchor-id="running-pyrefly">Running Pyrefly</h2>
+<p>We use <a href="https://docs.astral.sh/ty/">ty</a> for static type checking. ty is configured in the <code>[tool.ty]</code> section of <code>pyproject.toml</code>.</p>
+<section id="running-ty" class="level2">
+<h2 class="anchored" data-anchor-id="running-ty">Running ty</h2>
 <p>To check for type errors, run:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">just</span> pycheck</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This runs all hooks except DVC, including Pyrefly type checking. This is also run in CI via the <code>pyrefly</code> job in <code>.github/workflows/python_lint.yml</code>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run typecheck</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The same task is run by the <code>typecheck</code> pre-commit hook.</p>
 </section>
-<section id="baseline-file" class="level2">
-<h2 class="anchored" data-anchor-id="baseline-file">Baseline file</h2>
-<p>Existing type errors are stored in a <code>baseline.json</code> file. Pyrefly’s <a href="https://pyrefly.org/en/docs/error-suppressions/#baseline-files-experimental">baseline feature</a> suppresses these known errors and only reports <em>new</em> errors. This way, <code>pyrefly check</code> passes cleanly without requiring ignore comments on every line.</p>
-<p>The baseline is configured in <code>pyproject.toml</code>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode toml code-with-copy"><code class="sourceCode toml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.pyrefly]</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dt">baseline</span> <span class="op">=</span> <span class="st">"baseline.json"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<section id="updating-the-baseline" class="level3">
-<h3 class="anchored" data-anchor-id="updating-the-baseline">Updating the baseline</h3>
-<p>After fixing existing type errors, regenerate the baseline to remove the fixed entries:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run pyrefly check <span class="at">--update-baseline</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>If you introduce code that triggers new errors (e.g.&nbsp;from incomplete stubs) that cannot be reasonably fixed, you can add them to the baseline by running the same command. Prefer fixing the error or adding a targeted <code># pyrefly: ignore[error-code]</code> comment when possible.</p>
-</section>
+<section id="rule-overrides" class="level2">
+<h2 class="anchored" data-anchor-id="rule-overrides">Rule overrides</h2>
+<p>Rule-specific, per-file exceptions are configured with <code>[[tool.ty.overrides]]</code> entries. Default rules remain enabled everywhere else. Prefer fixing typing issues, and remove files or rules from these overrides when they are no longer needed. Do not add global rule suppressions.</p>
 <section id="suppressing-individual-errors" class="level3">
 <h3 class="anchored" data-anchor-id="suppressing-individual-errors">Suppressing individual errors</h3>
 <p>For specific lines where the type checker is wrong, use a targeted ignore comment:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> some_expression  <span class="co"># pyrefly: ignore[error-code]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> some_expression  <span class="co"># ty: ignore[error-code]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>For lines that would exceed 120 characters with the comment appended, place the comment on the line above:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># pyrefly: ignore[error-code]</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> some_very_long_expression_that_would_be_too_long_with_an_inline_comment</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ty: ignore[error-code]</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> some_very_long_expression_that_would_be_too_long_with_an_inline_comment</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>
