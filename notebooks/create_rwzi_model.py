@@ -39,6 +39,25 @@ cloud.synchronize(
     ]
 )
 
+# log_file = model_dir / "create_rwzi_model.log"
+log_file = cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/create_rwzi_model.log")
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+logger.handlers.clear()
+
+formatter = logging.Formatter("%(asctime)s - %(levelname)s: %(message)s")
+
+file_handler = logging.FileHandler(log_file, mode="w")
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
+
+logger.info(f"Logging to: {log_file}")
+
 # %% create empty model
 starttime = "2017-01-01"
 endtime = "2020-01-01"
@@ -273,6 +292,7 @@ def create_flow_boundary_nodes(rwzi_gdf, rwzi_flow_data_all, model, starttime, e
         tuple: (flow_boundary_nodes_dict, skipped_rwzis, removed_timesteps)
     """
     flow_boundary_nodes = {}  # Dictionary to track flow boundary nodes by RWZI name
+    # TODO: write to csv file the list of skipped rwzi's
     skipped_rwzis = []  # List to track skipped RWZIs
     removed_timesteps = []  # List to track removed timesteps due to NaN values
 
@@ -323,12 +343,12 @@ def create_flow_boundary_nodes(rwzi_gdf, rwzi_flow_data_all, model, starttime, e
                 Node(
                     index + 1,
                     Point(x_coord, y_coord),
-                    # TODO: besluit welke metadata er in het model relevant is (rwzi_code wordt gebruikt in merge)
                     name=rwzi_name,
                     meta_rwzi_codeist=rwzi_codeist,
                     meta_rwzi_code=rwzi_code,
                     meta_rwzi_beheerder_nr=rwzi_beheerder_nr,
                     meta_rwzi_organisatie=rwzi_organisatie,
+                    meta_bnd_type="rwzi",
                 ),
                 [
                     flow_boundary.Time(
@@ -537,8 +557,36 @@ connect_flow_boundaries_to_terminal_nodes(flow_boundary_nodes, terminal_nodes, m
 
 # %% Run and Results
 print("write rwzi model")
+
+# Logging
+all_rwzi_names = set(rwzi_gdf["Naam rwzi"])
+modelled_rwzi_names = set(flow_boundary_nodes.keys())
+missing_rwzi_names = all_rwzi_names - modelled_rwzi_names
+
+logger.info(f"\n{'=' * 60}")
+logger.info("RWZI COVERAGE REPORT")
+logger.info(f"  Total RWZIs in GeoJSON:     {len(all_rwzi_names)}")
+logger.info(f"  RWZIs written to model:     {len(modelled_rwzi_names)}")
+logger.info(f"  RWZIs missing from model:   {len(missing_rwzi_names)}")
+logger.info(f"{'=' * 60}")
+logger.info("Missing RWZIs:")
+for name in sorted(missing_rwzi_names):
+    logger.info(f"  - {name}")
+logger.info(f"{'=' * 60}\n")
+
 model.write(ribasim_toml)
+
+# %% Export GeoJSON with model inclusion flag
+rwzi_gdf_copy = rwzi_gdf.copy()
+rwzi_gdf_copy["in_rwzi_model"] = rwzi_gdf_copy["Naam rwzi"].isin(modelled_rwzi_names)
+
+output_geojson = cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/RWZI_coordinates_model_coverage.geojson")
+rwzi_gdf_copy.to_file(output_geojson, driver="GeoJSON")
+
+logger.info(f"GeoJSON with model coverage written to: {output_geojson}")
 
 upload_model = False
 if upload_model:
     cloud.upload_model("Basisgegevens/RWZI", model="rwzi")
+
+print("Done.")
