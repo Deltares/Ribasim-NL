@@ -167,10 +167,9 @@ for waterschap, cfg in WATERSCHAP_CONFIG.items():
     loc_specifieke_bewerking = base_koppeltabel / cfg["specifiek"]
 
     waterboard_model_versions = cloud.uploaded_models(authority=waterschap)
-    latest_model_version = sorted(
-        [i for i in waterboard_model_versions if i.model == waterschap],
-        key=lambda x: getattr(x, "sorter", ""),
-    )[-1]
+    latest_model_version = max(
+        [i for i in waterboard_model_versions if i.model == waterschap], key=lambda x: getattr(x, "sorter", "")
+    )
     model_folder = cloud.joinpath(f"{waterschap}/modellen", latest_model_version.path_string)
 
     # cloud.synchronize([loc_koppeltabel, loc_specifieke_bewerking, model_folder])

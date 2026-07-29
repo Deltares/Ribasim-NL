@@ -387,7 +387,7 @@ def add_basin_statistics(df: GeoDataFrame, lhm_raster_file: Path, ma_raster_file
     return df
 
 
-def get_rating_curve(row, min_level: float, maaiveld: None | float = None) -> tabulated_rating_curve.Static:
+def get_rating_curve(row, min_level: float, maaiveld: float | None = None) -> tabulated_rating_curve.Static:
     """Generate a tabulated_rating_curve.Static object from basin_statistics
 
     Args:
