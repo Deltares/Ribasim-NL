@@ -10,7 +10,7 @@ from shapely.ops import polygonize, polylabel
 from ribasim_nl.generic import _validate_inputs
 
 
-def basin_to_point(basin_polygon: Polygon | MultiPolygon, tolerance: None | float = None) -> Point:
+def basin_to_point(basin_polygon: Polygon | MultiPolygon, tolerance: float | None = None) -> Point:
     """Return a representative point for the basin; centroid if it is within (Multi)Polygon or polylabel if not.
 
     Parameters

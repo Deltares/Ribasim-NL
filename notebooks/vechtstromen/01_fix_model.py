@@ -30,7 +30,7 @@ def get_latest_hws_model_version() -> ModelVersion:
         i for i in cloud.uploaded_models("Rijkswaterstaat") if i is not None and getattr(i, "model", None) == "hws"
     ]
     if model_versions:
-        return sorted(model_versions, key=lambda x: getattr(x, "sorter", ""))[-1]
+        return max(model_versions, key=lambda x: getattr(x, "sorter", ""))
     raise ValueError("No Rijkswatersdtaat/modellen/hws models found")
 
 
