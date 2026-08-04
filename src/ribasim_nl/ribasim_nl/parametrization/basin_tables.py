@@ -5,7 +5,6 @@ import pandas as pd
 
 from ribasim_nl.coupling_level_common import as_float, as_int
 from ribasim_nl.model import Model
-from ribasim_nl.parametrization.conversions import round_to_precision
 from ribasim_nl.parametrization.empty_table import empty_table_df
 
 
@@ -49,53 +48,6 @@ def update_basin_static(
 
     # add to static df
     model.basin.static.df = static_df
-
-
-def update_basin_profile(
-    model: Model,
-    percentages_map: dict[str, int] | None = None,
-    default_percentage: int = 10,
-    profile_depth: int = 3,
-) -> None:
-    # read profile from basin-table
-    if percentages_map is None:
-        percentages_map = {"hoofdwater": 25, "doorgaand": 5, "bergend": 2}
-    assert model.basin.area.df is not None
-    profile = model.basin.area.df.copy()
-
-    # determine the profile area, which is also used for the profile
-    # profile["area"] = profile["geometry"].area * (default_percentage / 100)
-    profile = profile[["node_id", "meta_streefpeil", "geometry"]]
-    profile = profile.rename(columns={"meta_streefpeil": "level"})
-
-    # get open-water percentages per category
-    profile["percentage"] = default_percentage
-    assert model.basin.node is not None
-    assert model.basin.node.df is not None
-    for category, percentage in percentages_map.items():
-        node_ids = model.basin.node.df.loc[model.basin.node.df.meta_categorie == category].index.to_numpy()
-        profile.loc[profile.node_id.isin(node_ids), "percentage"] = percentage
-        print(percentage)
-
-    # calculate area at invert from percentage
-    profile["area"] = profile["geometry"].area * profile["percentage"] / 100
-    profile.drop(columns=["geometry", "percentage"], inplace=True)
-
-    # define the profile-bottom
-    profile_bottom = profile.copy()
-    profile_bottom["area"] = 0.1
-    profile_bottom["level"] -= profile_depth
-
-    # define the profile slightly above the bottom of the bakje
-    profile_slightly_above_bottom = profile.copy()
-    profile_slightly_above_bottom["level"] -= profile_depth - 0.01  # remain one centimeter above the bottom
-
-    # combine all profiles by concatenating them, and sort on node_id, level and area.
-    profile_df = pd.concat([profile_bottom, profile_slightly_above_bottom, profile])
-    profile_df = profile_df.sort_values(by=["node_id", "level", "area"], ascending=True).reset_index(drop=True)
-    profile_df.loc[:, "area"] = profile_df["area"].apply(round_to_precision, args=(0.1,))
-
-    model.basin.profile.df = profile_df
 
 
 def update_basin_state(model: Model) -> None:

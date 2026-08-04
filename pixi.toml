@@ -60,7 +60,6 @@ xugrid = ">=0.14"
 zarr = ">=2.17"
 
 [pypi-dependencies]
-bokeh_helpers = { path = "src/bokeh_helpers", editable = true }
 hydamo = { path = "src/hydamo", editable = true }
 peilbeheerst_model = { path = "src/peilbeheerst_model", editable = true }
 ribasim_nl = { path = "src/ribasim_nl", editable = true }

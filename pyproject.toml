@@ -55,7 +55,6 @@ include = [
     "notebooks/06_add_synthetic_forcing.py",
     "notebooks/07_add_dynamic_forcing.py",
     "scripts/repro.py",
-    "src/bokeh_helpers/bokeh_helpers",
     "src/hydamo/hydamo",
     "src/peilbeheerst_model/peilbeheerst_model",
     "src/ribasim_nl/ribasim_nl",
@@ -64,7 +63,6 @@ include = [
 [tool.ty.environment]
 python-version = "3.13"
 root = [
-    "src/bokeh_helpers",
     "src/hydamo",
     "src/peilbeheerst_model",
     "src/ribasim_nl",
@@ -89,7 +87,6 @@ call-non-callable = "ignore"
 
 [[tool.ty.overrides]]
 include = [
-    "src/bokeh_helpers/bokeh_helpers/widgets/map_figure_widget.py",
     "src/peilbeheerst_model/peilbeheerst_model/assign_flushing.py",
     "src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py",
     "src/peilbeheerst_model/peilbeheerst_model/controle_output.py",
@@ -106,7 +103,6 @@ include = [
     "src/ribasim_nl/ribasim_nl/geodataframe.py",
     "src/ribasim_nl/ribasim_nl/geometry.py",
     "src/ribasim_nl/ribasim_nl/junctions.py",
-    "src/ribasim_nl/ribasim_nl/link_geometries_old.py",
     "src/ribasim_nl/ribasim_nl/link_profiles.py",
     "src/ribasim_nl/ribasim_nl/model.py",
     "src/ribasim_nl/ribasim_nl/network.py",
@@ -145,7 +141,6 @@ include = [
     "src/ribasim_nl/ribasim_nl/link_geometries.py",
     "src/ribasim_nl/ribasim_nl/model.py",
     "src/ribasim_nl/ribasim_nl/parametrization/basin_tables.py",
-    "src/ribasim_nl/ribasim_nl/parametrization/flow_boundary_table.py",
     "src/ribasim_nl/ribasim_nl/parametrization/level_boundary_table.py",
     "src/ribasim_nl/ribasim_nl/parametrization/manning_resistance_table.py",
     "src/ribasim_nl/ribasim_nl/parametrization/static_data_xlsx.py",
@@ -184,7 +179,6 @@ include = [
     "src/peilbeheerst_model/peilbeheerst_model/ribasim_feedback_processor.py",
     "src/peilbeheerst_model/peilbeheerst_model/ribasim_parametrization.py",
     "src/ribasim_nl/ribasim_nl/analyse_results.py",
-    "src/ribasim_nl/ribasim_nl/geoseries.py",
     "src/ribasim_nl/ribasim_nl/model.py",
     "src/ribasim_nl/ribasim_nl/network.py",
     "src/ribasim_nl/ribasim_nl/profiles/cross_section.py",
