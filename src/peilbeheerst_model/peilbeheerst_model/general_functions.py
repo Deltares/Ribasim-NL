@@ -1,34 +1,33 @@
 # import packages and functions
 from pathlib import Path
+from typing import Any
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import pandas as pd
 
 
-def read_gpkg_layers(gpkg_path, engine="pyogrio", print_var=False):
+def read_gpkg_layers(gpkg_path: str | Path, print_var: bool = False) -> Any:
     """
-    Read specified layers from a GeoPackage (GPKG) file and return them as a dictionary.
+    Read all layers from a GeoPackage and return them by layer name.
 
     Parameters
     ----------
-        gpkg_path (str): The file path to the GeoPackage (GPKG) file to read from.
-        print_var (bool, optional): If True, print the name of each variable as it is read. Default is False.
+    gpkg_path : str | Path
+        Path to the GeoPackage.
+    print_var : bool, optional
+        Print each layer name as it is read.
 
     Returns
     -------
-        dict: A dictionary containing the GeoDataFrames, with layer names as keys.
-
-    This function reads specified layers from a GeoPackage (GPKG) file and returns them as a dictionary. You can
-    choose to print the names of variables as they are read by setting `print_var` to True.
+    dict[str, Any]
+        Mutable layer data keyed by layer name.
     """
-    data = {}
-    layers = gpd.list_layers(gpkg_path)
-    for layer in layers.name:
+    data: dict[str, Any] = {}
+    for layer in gpd.list_layers(gpkg_path)["name"]:
         if print_var:
             print(layer)
-        data_temp = gpd.read_file(gpkg_path, layer=layer, engine=engine)
-        data[layer] = data_temp
+        data[layer] = gpd.read_file(gpkg_path, layer=layer)
 
     return data
 
