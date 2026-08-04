@@ -15,7 +15,7 @@ path_HHSK = "..\..\Data_preprocessed\Waterschappen\HHSK\HyDamo_metWasverzachter_
 output_gpkg_path = "../../Data_postprocessed/Waterschappen/HHSK"
 
 
-HHSK = read_gpkg_layers(gpkg_path=path_HHSK, engine="pyogrio")
+HHSK = read_gpkg_layers(gpkg_path=path_HHSK)
 
 
 HHSK_nalevering = read_gpkg_layers(

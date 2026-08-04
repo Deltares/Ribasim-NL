@@ -5,7 +5,6 @@ from collections.abc import Hashable
 from pathlib import Path
 from typing import Any
 
-import fiona
 import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
@@ -15,6 +14,7 @@ import shapely.ops
 import tqdm.auto as tqdm
 from shapely.geometry import LineString, MultiLineString, MultiPoint, Point, Polygon
 
+from peilbeheerst_model.general_functions import read_gpkg_layers
 from ribasim_nl import CloudStorage, settings
 
 
@@ -127,7 +127,7 @@ class ParseCrossings:
         # read all layers of geopackage
         base_path = settings.ribasim_nl_data_dir
         gpkg_path = Path(base_path) / gpkg_path  # add the base path
-        self.df_gpkg = {L: gpd.read_file(gpkg_path, layer=L) for L in fiona.listlayers(gpkg_path)}
+        self.df_gpkg = read_gpkg_layers(gpkg_path)
 
         # Validate globalids
         for layername, df_layer in self.df_gpkg.items():
@@ -391,7 +391,7 @@ class ParseCrossings:
             # Determine all krw polygons
             bbox = shapely.geometry.box(*dfp.geometry.total_bounds)
             df_krw = []
-            for layername in fiona.listlayers(krw_path):
+            for layername in gpd.list_layers(krw_path)["name"]:
                 df = gpd.read_file(krw_path, layer=layername)
                 df = ParseCrossings._make_valid_2dgeom(df)
                 df = df.explode(ignore_index=True)
