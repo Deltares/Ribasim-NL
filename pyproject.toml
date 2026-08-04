@@ -106,7 +106,6 @@ include = [
     "src/ribasim_nl/ribasim_nl/geodataframe.py",
     "src/ribasim_nl/ribasim_nl/geometry.py",
     "src/ribasim_nl/ribasim_nl/junctions.py",
-    "src/ribasim_nl/ribasim_nl/link_geometries_old.py",
     "src/ribasim_nl/ribasim_nl/link_profiles.py",
     "src/ribasim_nl/ribasim_nl/model.py",
     "src/ribasim_nl/ribasim_nl/network.py",
