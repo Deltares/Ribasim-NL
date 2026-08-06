@@ -172,7 +172,7 @@ class SplitBasins:
             return [
                 line_geometry
                 for sub_geometry in geometry.geoms
-                for line_geometry in self._line_geometries(sub_geometry)
+                for line_geometry in self._line_geometries(typing.cast(BaseGeometry, sub_geometry))
             ]
 
         return []
