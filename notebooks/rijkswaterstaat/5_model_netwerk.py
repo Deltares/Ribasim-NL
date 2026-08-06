@@ -156,9 +156,7 @@ basins_path = cloud.joinpath("Rijkswaterstaat/verwerkt/basins.gpkg")
 basin_profile_path = cloud.joinpath("Rijkswaterstaat/verwerkt/basins_level_area.csv")
 hydamo_path = cloud.joinpath("Rijkswaterstaat/verwerkt/hydamo.gpkg")
 
-cloud.synchronize(
-    filepaths=[model_user_data_gpkg, kwk_xlsx, verdeelsleutels_xlsx, ijsselmeer_markermeer_path, outlets_path]
-)
+cloud.synchronize(filepaths=[model_user_data_gpkg, kwk_dir, outlets_path])
 
 # output
 ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_netwerk/hws.toml")
