@@ -1,17 +1,20 @@
-"""Download and install the Ribasim core binary into ``bin/ribasim``.
+"""Download, install, and archive the Ribasim core binary.
 
 The release zip is fetched from either GitHub releases or a MinIO S3 bucket,
-depending on the SOURCE setting below. The zip is extracted into ``bin/``
-(which contains a top-level ``ribasim`` folder).
+depending on the SOURCE setting below. By default it is installed into
+``RIBASIM_HOME``; ``--archive`` copies that installation to
+``/p/ribasim-nl/bin/<NAME>``.
 """
 
 from __future__ import annotations
 
+import argparse
 import os
 import platform
 import shutil
 import subprocess
 import sys
+import tempfile
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -32,6 +35,7 @@ GITHUB_RELEASE_URL = "https://github.com/Deltares/Ribasim/releases/download/{nam
 MINIO_SERVER = "s3.deltares.nl"
 MINIO_BUCKET = "ribasim-nl"
 MINIO_FOLDER = "bin"
+HPC_BIN_DIR = Path("/p/ribasim-nl/bin")
 
 
 def _ribasim_home() -> Path:
@@ -81,17 +85,12 @@ def _extract(zip_path: Path, dest: Path) -> None:
             zf.extractall(dest)
 
 
-def main() -> int:
-    ribasim_home = _ribasim_home()
-    bin_dir = ribasim_home.parent
-    bin_dir.mkdir(parents=True, exist_ok=True)
-
-    if ribasim_home.exists():
-        shutil.rmtree(ribasim_home)
-
+def _install(ribasim_home: Path) -> None:
+    ribasim_home.parent.mkdir(parents=True, exist_ok=True)
     asset = _asset_name()
-    zip_path = bin_dir / asset
-    try:
+    with tempfile.TemporaryDirectory(dir=ribasim_home.parent) as temp_dir:
+        temp_path = Path(temp_dir)
+        zip_path = temp_path / asset
         if SOURCE == "github":
             _download_github(zip_path)
         elif SOURCE == "minio":
@@ -99,9 +98,45 @@ def main() -> int:
         else:
             raise RuntimeError(f"Unknown SOURCE: {SOURCE!r}. Use 'github' or 'minio'.")
 
-        _extract(zip_path, bin_dir)
-    finally:
-        zip_path.unlink(missing_ok=True)
+        _extract(zip_path, temp_path)
+        extracted_home = temp_path / "ribasim"
+        if not extracted_home.is_dir():
+            raise RuntimeError(f"Archive does not contain the expected 'ribasim' directory: {asset}")
+
+        if ribasim_home.exists():
+            shutil.rmtree(ribasim_home)
+        shutil.move(str(extracted_home), ribasim_home)
+
+
+def _archive(ribasim_home: Path) -> Path:
+    if not ribasim_home.is_dir():
+        raise RuntimeError(f"Ribasim core is not installed at {ribasim_home}")
+
+    archived_home = HPC_BIN_DIR / NAME
+    archived_home.parent.mkdir(parents=True, exist_ok=True)
+    if archived_home.exists():
+        return archived_home
+    shutil.copytree(ribasim_home, archived_home, symlinks=True)
+    return archived_home
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--archive", action="store_true", help="copy RIBASIM_HOME to /p/ribasim-nl/bin/<NAME>")
+    parser.add_argument("--print-name", action="store_true", help="print NAME and exit")
+    args = parser.parse_args()
+
+    if args.print_name:
+        print(NAME)
+        return 0
+
+    ribasim_home = _ribasim_home()
+    if args.archive:
+        archived_home = _archive(ribasim_home)
+        print(f"Archived Ribasim core ({SOURCE}: {NAME}) at {archived_home}")
+        return 0
+
+    _install(ribasim_home)
 
     print(f"Installed Ribasim core ({SOURCE}: {NAME}) to {ribasim_home}")
     return 0
