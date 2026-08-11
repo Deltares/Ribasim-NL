@@ -47,6 +47,7 @@ quarto = ">=1.9"
 quartodoc = ">=0.11.1"
 requests = ">=2.32"
 ruff = ">=0.14"
+scipy = ">=1.18"
 seaborn = ">=0.13"
 shapely = ">=2.1"
 tomli = ">=2.2"
@@ -94,7 +95,6 @@ install-core = { cmd = "python scripts/install_ribasim_core.py", inputs = ["scri
 
 [target.linux-64.tasks]
 install-core = { cmd = "python scripts/install_ribasim_core.py", inputs = ["scripts/install_ribasim_core.py"], outputs = ["bin/ribasim/README.md"] }
-archive-core = { cmd = "python scripts/install_ribasim_core.py --archive", depends-on = ["install-core"], inputs = ["scripts/install_ribasim_core.py", "bin/ribasim"] }
 
 # RIBASIM_HOME points to the Ribasim core installation directory.
 # Beware: the install-core task removes and recreates this directory.
