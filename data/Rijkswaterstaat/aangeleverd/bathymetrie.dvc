@@ -1,0 +1,6 @@
+outs:
+- md5: 3a46b8bd78a114ce17602cc52c219eb4.dir
+  size: 4568056906
+  nfiles: 14
+  hash: md5
+  path: bathymetrie

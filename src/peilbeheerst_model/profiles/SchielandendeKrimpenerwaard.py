@@ -12,6 +12,7 @@ if __name__ == "__main__":
         "hhsk_crossings_voor_profielen_met_OG_hydroobjecten.gpkg",
         export_profile_tables=True,
         export_intermediate_output=True,
+        sync=False,
     )
     src_toml = f"data/{waterschap}/modellen/{waterschap}_feedback/ribasim.toml"
     dst_toml = f"data/{waterschap}/modellen/{waterschap}_profiles/ribasim.toml"

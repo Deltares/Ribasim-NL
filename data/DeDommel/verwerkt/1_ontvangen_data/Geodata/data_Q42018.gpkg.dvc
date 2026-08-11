@@ -1,0 +1,5 @@
+outs:
+- md5: 8389f20a8fc94ca4897b27fb3fb360f0
+  size: 95318016
+  hash: md5
+  path: data_Q42018.gpkg

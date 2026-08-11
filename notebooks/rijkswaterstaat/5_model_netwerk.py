@@ -156,8 +156,6 @@ basins_path = cloud.joinpath("Rijkswaterstaat/verwerkt/basins.gpkg")
 basin_profile_path = cloud.joinpath("Rijkswaterstaat/verwerkt/basins_level_area.csv")
 hydamo_path = cloud.joinpath("Rijkswaterstaat/verwerkt/hydamo.gpkg")
 
-cloud.synchronize(filepaths=[model_user_data_gpkg, kwk_dir, outlets_path])
-
 # output
 ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_netwerk/hws.toml")
 database_gpkg = ribasim_toml.parent / "input/database.gpkg"
@@ -288,7 +286,6 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
     print(f"{gebied}")
     # get sheet-names
     file_name = kwk_dir / f"{gebied}.xlsx"
-    cloud.synchronize(filepaths=[file_name])
     workbook = openpyxl.open(file_name)
     sheet_names = workbook.sheetnames
     workbook.close()

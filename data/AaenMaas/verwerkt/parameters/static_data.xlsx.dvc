@@ -1,0 +1,5 @@
+outs:
+- md5: e61b4ea807994d3c440c2de392488130
+  size: 59581
+  hash: md5
+  path: static_data.xlsx

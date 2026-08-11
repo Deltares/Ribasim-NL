@@ -64,17 +64,6 @@ aanvoer_path = cloud.joinpath(
 )
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
 
-cloud.synchronize(
-    filepaths=[
-        ribasim_base_model_dir,
-        FeedbackFormulier_path,
-        ws_grenzen_path,
-        RWS_grenzen_path,
-        qlr_path,
-        aanvoer_path,
-    ]
-)
-
 # refresh only the feedback form from cloud (instead of all "verwerkt" files)
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 
@@ -406,6 +395,7 @@ assign_metadata = AssignMetaData(
     authority=waterschap,
     model_name=ribasim_model,
     param_name="Noorderkwartier.gpkg",
+    sync=False,
 )
 assign_metadata.add_meta_to_pumps(
     layer="gemaal",

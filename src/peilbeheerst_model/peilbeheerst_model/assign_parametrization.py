@@ -14,9 +14,12 @@ class AssignMetaData:
         authority: str,
         model_name: Model | Path | str,
         param_name: str,
+        *,
+        sync: bool = True,
     ) -> None:
         # Initialize cloudstorage
         self.cloud = CloudStorage()
+        self.sync = sync
 
         # Model
         if isinstance(model_name, Model):
@@ -30,7 +33,8 @@ class AssignMetaData:
         self.param_file = self.cloud.joinpath(authority, "verwerkt/Parametrisatie_data", param_name)
 
     def _get_model_from_cloud(self) -> Model:
-        self.cloud.synchronize(filepaths=[self.model_dir])
+        if self.sync:
+            self.cloud.synchronize(filepaths=[self.model_dir])
         model = Model.read(self.model_dir / "ribasim.toml")
 
         return model
@@ -40,7 +44,8 @@ class AssignMetaData:
         layer: str,
     ) -> gpd.GeoDataFrame:
         # Load the paramfile
-        self.cloud.synchronize(filepaths=[self.param_file])
+        if self.sync:
+            self.cloud.synchronize(filepaths=[self.param_file])
         df_object = gpd.read_file(self.param_file, layer=layer)
         if not df_object.index.is_unique:
             raise IndexError(f"The index of {layer=} is not unique")

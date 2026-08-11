@@ -3,6 +3,10 @@ stages:
     cmd: pixi run python notebooks/rijkswaterstaat/1_bathymetrie.py
     deps:
       - notebooks/rijkswaterstaat/1_bathymetrie.py
+      - data/Basisgegevens/Baseline/baseline-nl_land-j23_6-v1/baseline.gdb
+      - data/Basisgegevens/KRW/krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg
+      - data/Rijkswaterstaat/aangeleverd/bathymetrie
+      - data/Rijkswaterstaat/aangeleverd/bathymetrie-mask/water-mask.gpkg
     outs:
       - data/Rijkswaterstaat/verwerkt/bathymetrie
     frozen: true
@@ -10,61 +14,465 @@ stages:
     cmd: pixi run python notebooks/create_rwzi_model.py
     deps:
       - notebooks/create_rwzi_model.py
+      - data/Basisgegevens/RWZI/aangeleverd/RwziBase/Belasting.xlsx
+      - data/Basisgegevens/RWZI/aangeleverd/Z-info/metingen/zinfo_20160101_20231231_influentdebieten.csv
       - data/Basisgegevens/RWZI/aangeleverd/locaties/RWZI_coordinates.geojson
     outs:
       - data/Rijkswaterstaat/modellen/rwzi
-  parameterized:
-    foreach:
-      aa_en_maas: AaenMaas
-      brabantse_delta: BrabantseDelta
-      de_dommel: DeDommel
-      drents_overijsselse_delta: DrentsOverijsselseDelta
-      hunze_en_aas: HunzeenAas
-      limburg: Limburg
-      noorderzijlvest: Noorderzijlvest
-      rijn_en_ijssel: RijnenIJssel
-      stichtse_rijnlanden: StichtseRijnlanden
-      vallei_en_veluwe: ValleienVeluwe
-      vechtstromen: Vechtstromen
-    do:
-      cmd:
-        - pixi run python notebooks/${key}/_preprocess_profielen.py
-        - pixi run python notebooks/${key}/01_fix_model.py
-        - pixi run python notebooks/${key}/02_prepare_model.py
-        - pixi run python notebooks/${key}/03_parameterize_model.py
-      deps:
-        - notebooks/${key}/_preprocess_profielen.py
-        - notebooks/${key}/01_fix_model.py
-        - notebooks/${key}/02_prepare_model.py
-        - notebooks/${key}/03_parameterize_model.py
-        - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
-      outs:
-        - data/${item}/modellen/${item}_parameterized_model
-  bergend:
-    foreach:
-      aa_en_maas: AaenMaas
-      brabantse_delta: BrabantseDelta
-      de_dommel: DeDommel
-      drents_overijsselse_delta: DrentsOverijsselseDelta
-      hunze_en_aas: HunzeenAas
-      limburg: Limburg
-      noorderzijlvest: Noorderzijlvest
-      rijn_en_ijssel: RijnenIJssel
-      stichtse_rijnlanden: StichtseRijnlanden
-      vallei_en_veluwe: ValleienVeluwe
-      vechtstromen: Vechtstromen
-    do:
-      cmd:
-        - pixi run python notebooks/${key}/04_add_full_control.py
-        - pixi run python notebooks/05_add_bergend.py ${item}
-      deps:
-        - notebooks/${key}/04_add_full_control.py
-        - notebooks/05_add_bergend.py
-        - data/${item}/modellen/${item}_parameterized_model
-        - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
-        - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
-      outs:
-        - data/${item}/modellen/${item}_bergend_model
+  parameterized_aa_en_maas:
+    cmd:
+      - pixi run python notebooks/aa_en_maas/_preprocess_profielen.py
+      - pixi run python notebooks/aa_en_maas/01_fix_model.py
+      - pixi run python notebooks/aa_en_maas/02_prepare_model.py
+      - pixi run python notebooks/aa_en_maas/03_parameterize_model.py
+    deps:
+      - notebooks/aa_en_maas/_preprocess_profielen.py
+      - notebooks/aa_en_maas/01_fix_model.py
+      - notebooks/aa_en_maas/02_prepare_model.py
+      - notebooks/aa_en_maas/03_parameterize_model.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/AaenMaas/modellen/AaenMaas_2024_6_3
+      - data/AaenMaas/verwerkt/4_ribasim/hydamo.gpkg
+      - data/AaenMaas/verwerkt/4_ribasim/areas.gpkg
+      - data/AaenMaas/verwerkt/model_edits.gpkg
+      - data/AaenMaas/verwerkt/1_ontvangen_data/Na_levering_202404/afwateringseenheden_WAM
+      - data/AaenMaas/aangeleverd/Eerste_levering
+      - data/AaenMaas/verwerkt/downloads
+      - data/AaenMaas/verwerkt/1_ontvangen_data/Na_levering_20240418
+      - data/AaenMaas/verwerkt/2_voorbewerking/AanpassinghWh/20230530AaEnMaasData.gpkg
+      - data/AaenMaas/verwerkt/parameters/static_data.xlsx
+    outs:
+      - data/AaenMaas/modellen/AaenMaas_parameterized_model
+  parameterized_brabantse_delta:
+    cmd:
+      - pixi run python notebooks/brabantse_delta/_preprocess_profielen.py
+      - pixi run python notebooks/brabantse_delta/01_fix_model.py
+      - pixi run python notebooks/brabantse_delta/02_prepare_model.py
+      - pixi run python notebooks/brabantse_delta/03_parameterize_model.py
+    deps:
+      - notebooks/brabantse_delta/_preprocess_profielen.py
+      - notebooks/brabantse_delta/01_fix_model.py
+      - notebooks/brabantse_delta/02_prepare_model.py
+      - notebooks/brabantse_delta/03_parameterize_model.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/BrabantseDelta/modellen/BrabantseDelta_2024_6_3
+      - data/BrabantseDelta/verwerkt/4_ribasim/hydamo.gpkg
+      - data/BrabantseDelta/verwerkt/4_ribasim/areas.gpkg
+      - data/BrabantseDelta/verwerkt/model_edits.gpkg
+      - data/BrabantseDelta/verwerkt/1_ontvangen_data/GML/dwarsprofiel.gml
+      - data/BrabantseDelta/verwerkt/1_ontvangen_data/sturing_gemalen_stuwen_22-5-2022/sturingGemalenStuwen_v2.xlsx
+      - data/BrabantseDelta/verwerkt/parameters/static_data.xlsx
+      - data/BrabantseDelta/verwerkt/sturing/aanvoergebieden.gpkg
+    outs:
+      - data/BrabantseDelta/modellen/BrabantseDelta_parameterized_model
+  parameterized_de_dommel:
+    cmd:
+      - pixi run python notebooks/de_dommel/_preprocess_profielen.py
+      - pixi run python notebooks/de_dommel/01_fix_model.py
+      - pixi run python notebooks/de_dommel/02_prepare_model.py
+      - pixi run python notebooks/de_dommel/03_parameterize_model.py
+    deps:
+      - notebooks/de_dommel/_preprocess_profielen.py
+      - notebooks/de_dommel/01_fix_model.py
+      - notebooks/de_dommel/02_prepare_model.py
+      - notebooks/de_dommel/03_parameterize_model.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/DeDommel/modellen/DeDommel_2024_6_3
+      - data/DeDommel/verwerkt/4_ribasim/areas.gpkg
+      - data/DeDommel/verwerkt/4_ribasim/hydamo.gpkg
+      - data/DeDommel/verwerkt/1_ontvangen_data/Geodata/data_Q42018.gpkg
+      - data/DeDommel/verwerkt/model_edits.gpkg
+      - data/DeDommel/verwerkt/parameters/static_data.xlsx
+    outs:
+      - data/DeDommel/modellen/DeDommel_parameterized_model
+  parameterized_drents_overijsselse_delta:
+    cmd:
+      - pixi run python notebooks/drents_overijsselse_delta/_preprocess_profielen.py
+      - pixi run python notebooks/drents_overijsselse_delta/01_fix_model.py
+      - pixi run python notebooks/drents_overijsselse_delta/02_prepare_model.py
+      - pixi run python notebooks/drents_overijsselse_delta/03_parameterize_model.py
+    deps:
+      - notebooks/drents_overijsselse_delta/_preprocess_profielen.py
+      - notebooks/drents_overijsselse_delta/01_fix_model.py
+      - notebooks/drents_overijsselse_delta/02_prepare_model.py
+      - notebooks/drents_overijsselse_delta/03_parameterize_model.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_2024_6_3
+      - data/DrentsOverijsselseDelta/verwerkt/4_ribasim/hydamo.gpkg
+      - data/DrentsOverijsselseDelta/aangeleverd/Aanlevering_202311/HyDAMO_WM_20231117.gpkg
+      - data/DrentsOverijsselseDelta/verwerkt/model_edits.gpkg
+      - data/DrentsOverijsselseDelta/verwerkt/fix_user_data.gpkg
+      - data/DrentsOverijsselseDelta/verwerkt/1_ontvangen_data/extra data/Peilgebieden
+      - data/DrentsOverijsselseDelta/verwerkt/1_ontvangen_data/HyDAMO_WM_20230720.gpkg
+      - data/DrentsOverijsselseDelta/verwerkt/2_voorbewerking/meppelerdiep.gpkg
+      - data/DrentsOverijsselseDelta/verwerkt/1_ontvangen_data/extra data/Duiker_inlaat_lijn
+      - data/DrentsOverijsselseDelta/verwerkt/sturing/aanvoergebieden.gpkg
+      - data/DrentsOverijsselseDelta/verwerkt/parameters/static_data.xlsx
+    outs:
+      - data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_parameterized_model
+  parameterized_hunze_en_aas:
+    cmd:
+      - pixi run python notebooks/hunze_en_aas/_preprocess_profielen.py
+      - pixi run python notebooks/hunze_en_aas/01_fix_model.py
+      - pixi run python notebooks/hunze_en_aas/02_prepare_model.py
+      - pixi run python notebooks/hunze_en_aas/03_parameterize_model.py
+    deps:
+      - notebooks/hunze_en_aas/_preprocess_profielen.py
+      - notebooks/hunze_en_aas/01_fix_model.py
+      - notebooks/hunze_en_aas/02_prepare_model.py
+      - notebooks/hunze_en_aas/03_parameterize_model.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/ribasim_nl/ribasim_nl/assign_neighbors_at_boundaries.py
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/noordzee.gpkg
+      - data/HunzeenAas/modellen/HunzeenAas_2024_6_3
+      - data/HunzeenAas/verwerkt/4_ribasim/areas.gpkg
+      - data/HunzeenAas/verwerkt/model_edits.gpkg
+      - data/HunzeenAas/verwerkt/4_ribasim/hydamo.gpkg
+      - data/HunzeenAas/verwerkt/1_ontvangen_data/20230606_HyDAMO_Onze-PROF-Tabs-Definitief.gpkg
+      - data/HunzeenAas/verwerkt/1_ontvangen_data/peilgebieden.gpkg
+      - data/HunzeenAas/verwerkt/sturing/aanvoergebieden.gpkg
+      - data/HunzeenAas/verwerkt/parameters/static_data.xlsx
+    outs:
+      - data/HunzeenAas/modellen/HunzeenAas_parameterized_model
+  parameterized_limburg:
+    cmd:
+      - pixi run python notebooks/limburg/_preprocess_profielen.py
+      - pixi run python notebooks/limburg/01_fix_model.py
+      - pixi run python notebooks/limburg/02_prepare_model.py
+      - pixi run python notebooks/limburg/03_parameterize_model.py
+    deps:
+      - notebooks/limburg/_preprocess_profielen.py
+      - notebooks/limburg/01_fix_model.py
+      - notebooks/limburg/02_prepare_model.py
+      - notebooks/limburg/03_parameterize_model.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/Limburg/modellen/Limburg_2024_6_3
+      - data/Limburg/verwerkt/1_ontvangen_data/HyDAMO_2_2_Limburg_met_wasmachine_levering20230406.gpkg
+      - data/Limburg/verwerkt/4_ribasim/hydamo.gpkg
+      - data/Limburg/verwerkt/model_edits.gpkg
+      - data/Limburg/verwerkt/1_ontvangen_data/20250613
+      - data/Limburg/verwerkt/parameters/static_data.xlsx
+    outs:
+      - data/Limburg/modellen/Limburg_parameterized_model
+  parameterized_noorderzijlvest:
+    cmd:
+      - pixi run python notebooks/noorderzijlvest/_preprocess_profielen.py
+      - pixi run python notebooks/noorderzijlvest/01_fix_model.py
+      - pixi run python notebooks/noorderzijlvest/02_prepare_model.py
+      - pixi run python notebooks/noorderzijlvest/03_parameterize_model.py
+    deps:
+      - notebooks/noorderzijlvest/_preprocess_profielen.py
+      - notebooks/noorderzijlvest/01_fix_model.py
+      - notebooks/noorderzijlvest/02_prepare_model.py
+      - notebooks/noorderzijlvest/03_parameterize_model.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/ribasim_nl/ribasim_nl/assign_neighbors_at_boundaries.py
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/noordzee.gpkg
+      - data/Noorderzijlvest/modellen/Noorderzijlvest_2024_6_3
+      - data/Noorderzijlvest/verwerkt/1_ontvangen_data/20241113
+      - data/Noorderzijlvest/verwerkt/5_D_HYDRO_export/hydroobjecten
+      - data/Noorderzijlvest/verwerkt/model_edits.gpkg
+      - data/Noorderzijlvest/verwerkt/parameters/static_data.xlsx
+    outs:
+      - data/Noorderzijlvest/modellen/Noorderzijlvest_parameterized_model
+  parameterized_rijn_en_ijssel:
+    cmd:
+      - pixi run python notebooks/rijn_en_ijssel/_preprocess_profielen.py
+      - pixi run python notebooks/rijn_en_ijssel/01_fix_model.py
+      - pixi run python notebooks/rijn_en_ijssel/02_prepare_model.py
+      - pixi run python notebooks/rijn_en_ijssel/03_parameterize_model.py
+    deps:
+      - notebooks/rijn_en_ijssel/_preprocess_profielen.py
+      - notebooks/rijn_en_ijssel/01_fix_model.py
+      - notebooks/rijn_en_ijssel/02_prepare_model.py
+      - notebooks/rijn_en_ijssel/03_parameterize_model.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/RijnenIJssel/modellen/RijnenIJssel_2024_6_3
+      - data/RijnenIJssel/verwerkt/4_ribasim/hydamo.gpkg
+      - data/RijnenIJssel/verwerkt/4_ribasim/areas.gpkg
+      - data/RijnenIJssel/verwerkt/model_edits.gpkg
+      - data/RijnenIJssel/verwerkt/1_ontvangen_data/RegelmiddelZpWp.csv
+      - data/RijnenIJssel/verwerkt/1_ontvangen_data/wrij_profielen.gpkg
+      - data/RijnenIJssel/verwerkt/sturing/aanvoergebieden.gpkg
+      - data/RijnenIJssel/verwerkt/parameters/static_data.xlsx
+    outs:
+      - data/RijnenIJssel/modellen/RijnenIJssel_parameterized_model
+  parameterized_stichtse_rijnlanden:
+    cmd:
+      - pixi run python notebooks/stichtse_rijnlanden/_preprocess_profielen.py
+      - pixi run python notebooks/stichtse_rijnlanden/01_fix_model.py
+      - pixi run python notebooks/stichtse_rijnlanden/02_prepare_model.py
+      - pixi run python notebooks/stichtse_rijnlanden/03_parameterize_model.py
+    deps:
+      - notebooks/stichtse_rijnlanden/_preprocess_profielen.py
+      - notebooks/stichtse_rijnlanden/01_fix_model.py
+      - notebooks/stichtse_rijnlanden/02_prepare_model.py
+      - notebooks/stichtse_rijnlanden/03_parameterize_model.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/StichtseRijnlanden/modellen/StichtseRijnlanden_2024_6_3
+      - data/StichtseRijnlanden/verwerkt/model_edits.gpkg
+      - data/StichtseRijnlanden/verwerkt/4_ribasim/hydamo.gpkg
+      - data/StichtseRijnlanden/verwerkt/modelfouten_met_verbeter_acties_BD_311024.gpkg
+      - data/StichtseRijnlanden/verwerkt/4_ribasim/hydroobject.gpkg
+      - data/StichtseRijnlanden/verwerkt/4_ribasim/peilgebieden.gpkg
+      - data/StichtseRijnlanden/verwerkt/4_ribasim/peilgebieden_vigerend.gpkg
+      - data/StichtseRijnlanden/verwerkt/sturing/aanvoergebieden.gpkg
+      - data/StichtseRijnlanden/verwerkt/parameters/static_data.xlsx
+    outs:
+      - data/StichtseRijnlanden/modellen/StichtseRijnlanden_parameterized_model
+      - data/StichtseRijnlanden/verwerkt/4_ribasim/peilgebieden_bewerkt.gpkg
+  parameterized_vallei_en_veluwe:
+    cmd:
+      - pixi run python notebooks/vallei_en_veluwe/_preprocess_profielen.py
+      - pixi run python notebooks/vallei_en_veluwe/01_fix_model.py
+      - pixi run python notebooks/vallei_en_veluwe/02_prepare_model.py
+      - pixi run python notebooks/vallei_en_veluwe/03_parameterize_model.py
+    deps:
+      - notebooks/vallei_en_veluwe/_preprocess_profielen.py
+      - notebooks/vallei_en_veluwe/01_fix_model.py
+      - notebooks/vallei_en_veluwe/02_prepare_model.py
+      - notebooks/vallei_en_veluwe/03_parameterize_model.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/ValleienVeluwe/modellen/ValleienVeluwe_2024_6_3
+      - data/ValleienVeluwe/verwerkt/fix_user_data.gpkg
+      - data/ValleienVeluwe/verwerkt/model_edits.gpkg
+      - data/ValleienVeluwe/verwerkt/model_edits_aanvoer.gpkg
+      - data/ValleienVeluwe/verwerkt/1_ontvangen_data/20250428
+      - data/ValleienVeluwe/verwerkt/2_voorbewerking/hydamo.gpkg
+      - data/ValleienVeluwe/verwerkt/parameters/static_data.xlsx
+    outs:
+      - data/ValleienVeluwe/modellen/ValleienVeluwe_parameterized_model
+  parameterized_vechtstromen:
+    cmd:
+      - pixi run python notebooks/vechtstromen/_preprocess_profielen.py
+      - pixi run python notebooks/vechtstromen/01_fix_model.py
+      - pixi run python notebooks/vechtstromen/02_prepare_model.py
+      - pixi run python notebooks/vechtstromen/03_parameterize_model.py
+    deps:
+      - notebooks/vechtstromen/_preprocess_profielen.py
+      - notebooks/vechtstromen/01_fix_model.py
+      - notebooks/vechtstromen/02_prepare_model.py
+      - notebooks/vechtstromen/03_parameterize_model.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/Vechtstromen/modellen/Vechtstromen_2024_6_3
+      - data/Vechtstromen/verwerkt/model_edits.gpkg
+      - data/Vechtstromen/verwerkt/fix_user_data.gpkg
+      - data/Vechtstromen/verwerkt/4_ribasim/hydamo.gpkg
+      - data/Vechtstromen/verwerkt/4_ribasim/areas.gpkg
+      - data/Vechtstromen/verwerkt/1_ontvangen_data/wateraanvoergebieden_20250416
+      - data/Rijkswaterstaat/modellen/hws_2025_10_1
+      - data/Vechtstromen/verwerkt/1_ontvangen_data/nalevering_20240920
+      - data/Vechtstromen/verwerkt/1_ontvangen_data/aanvulling feb 24
+      - data/Vechtstromen/verwerkt/1_ontvangen_data/downloads/peilgebieden_voormalig_velt_en_vecht.gpkg
+      - data/Vechtstromen/verwerkt/1_ontvangen_data/Feedbackform_20250428/20250428_Feedback Formulier.xlsx
+      - data/Vechtstromen/verwerkt/sturing/aanvoergebieden.gpkg
+      - data/Vechtstromen/verwerkt/parameters/static_data.xlsx
+    outs:
+      - data/Vechtstromen/modellen/Vechtstromen_parameterized_model
+  bergend_aa_en_maas:
+    cmd:
+      - pixi run python notebooks/aa_en_maas/04_add_full_control.py
+      - pixi run python notebooks/05_add_bergend.py AaenMaas
+    deps:
+      - notebooks/aa_en_maas/04_add_full_control.py
+      - notebooks/05_add_bergend.py
+      - data/AaenMaas/modellen/AaenMaas_parameterized_model
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
+      - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr
+      - data/AaenMaas/verwerkt/sturing/aanvoergebieden.gpkg
+      - data/AaenMaas/verwerkt/1_ontvangen_data/wateraanvoer-10-4-2026/Inlaten_verdelen.gdb
+    outs:
+      - data/AaenMaas/modellen/AaenMaas_bergend_model
+  bergend_brabantse_delta:
+    cmd:
+      - pixi run python notebooks/brabantse_delta/04_add_full_control.py
+      - pixi run python notebooks/05_add_bergend.py BrabantseDelta
+    deps:
+      - notebooks/brabantse_delta/04_add_full_control.py
+      - notebooks/05_add_bergend.py
+      - data/BrabantseDelta/modellen/BrabantseDelta_parameterized_model
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
+      - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr
+      - data/BrabantseDelta/verwerkt/sturing/aanvoergebieden.gpkg
+    outs:
+      - data/BrabantseDelta/modellen/BrabantseDelta_bergend_model
+  bergend_de_dommel:
+    cmd:
+      - pixi run python notebooks/de_dommel/04_add_full_control.py
+      - pixi run python notebooks/05_add_bergend.py DeDommel
+    deps:
+      - notebooks/de_dommel/04_add_full_control.py
+      - notebooks/05_add_bergend.py
+      - data/DeDommel/modellen/DeDommel_parameterized_model
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
+      - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr
+      - data/DeDommel/verwerkt/sturing/aanvoergebieden.gpkg
+    outs:
+      - data/DeDommel/modellen/DeDommel_bergend_model
+  bergend_drents_overijsselse_delta:
+    cmd:
+      - pixi run python notebooks/drents_overijsselse_delta/04_add_full_control.py
+      - pixi run python notebooks/05_add_bergend.py DrentsOverijsselseDelta
+    deps:
+      - notebooks/drents_overijsselse_delta/04_add_full_control.py
+      - notebooks/05_add_bergend.py
+      - data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_parameterized_model
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
+      - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr
+      - data/DrentsOverijsselseDelta/verwerkt/sturing/aanvoergebieden.gpkg
+      - data/DrentsOverijsselseDelta/verwerkt/sturing/kunstwerk_in.gpkg
+      - data/DrentsOverijsselseDelta/verwerkt/sturing/kunstwerk_uit.gpkg
+    outs:
+      - data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_bergend_model
+  bergend_hunze_en_aas:
+    cmd:
+      - pixi run python notebooks/hunze_en_aas/04_add_full_control.py
+      - pixi run python notebooks/05_add_bergend.py HunzeenAas
+    deps:
+      - notebooks/hunze_en_aas/04_add_full_control.py
+      - notebooks/05_add_bergend.py
+      - data/HunzeenAas/modellen/HunzeenAas_parameterized_model
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
+      - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr
+      - data/HunzeenAas/verwerkt/sturing/aanvoergebieden.gpkg
+    outs:
+      - data/HunzeenAas/modellen/HunzeenAas_bergend_model
+  bergend_limburg:
+    cmd:
+      - pixi run python notebooks/limburg/04_add_full_control.py
+      - pixi run python notebooks/05_add_bergend.py Limburg
+    deps:
+      - notebooks/limburg/04_add_full_control.py
+      - notebooks/05_add_bergend.py
+      - data/Limburg/modellen/Limburg_parameterized_model
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
+      - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr
+      - data/Limburg/verwerkt/sturing/aanvoergebieden.gpkg
+    outs:
+      - data/Limburg/modellen/Limburg_bergend_model
+  bergend_noorderzijlvest:
+    cmd:
+      - pixi run python notebooks/noorderzijlvest/04_add_full_control.py
+      - pixi run python notebooks/05_add_bergend.py Noorderzijlvest
+    deps:
+      - notebooks/noorderzijlvest/04_add_full_control.py
+      - notebooks/05_add_bergend.py
+      - data/Noorderzijlvest/modellen/Noorderzijlvest_parameterized_model
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
+      - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr
+      - data/Noorderzijlvest/verwerkt/sturing/aanvoergebieden.gpkg
+    outs:
+      - data/Noorderzijlvest/modellen/Noorderzijlvest_bergend_model
+  bergend_rijn_en_ijssel:
+    cmd:
+      - pixi run python notebooks/rijn_en_ijssel/04_add_full_control.py
+      - pixi run python notebooks/05_add_bergend.py RijnenIJssel
+    deps:
+      - notebooks/rijn_en_ijssel/04_add_full_control.py
+      - notebooks/05_add_bergend.py
+      - data/RijnenIJssel/modellen/RijnenIJssel_parameterized_model
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
+      - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr
+      - data/RijnenIJssel/verwerkt/sturing/aanvoergebieden.gpkg
+    outs:
+      - data/RijnenIJssel/modellen/RijnenIJssel_bergend_model
+  bergend_stichtse_rijnlanden:
+    cmd:
+      - pixi run python notebooks/stichtse_rijnlanden/04_add_full_control.py
+      - pixi run python notebooks/05_add_bergend.py StichtseRijnlanden
+    deps:
+      - notebooks/stichtse_rijnlanden/04_add_full_control.py
+      - notebooks/05_add_bergend.py
+      - data/StichtseRijnlanden/modellen/StichtseRijnlanden_parameterized_model
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
+      - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr
+      - data/StichtseRijnlanden/verwerkt/4_ribasim/peilgebieden_bewerkt.gpkg
+      - data/StichtseRijnlanden/verwerkt/sturing/aanvoergebieden.gpkg
+    outs:
+      - data/StichtseRijnlanden/modellen/StichtseRijnlanden_bergend_model
+  bergend_vallei_en_veluwe:
+    cmd:
+      - pixi run python notebooks/vallei_en_veluwe/04_add_full_control.py
+      - pixi run python notebooks/05_add_bergend.py ValleienVeluwe
+    deps:
+      - notebooks/vallei_en_veluwe/04_add_full_control.py
+      - notebooks/05_add_bergend.py
+      - data/ValleienVeluwe/modellen/ValleienVeluwe_parameterized_model
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
+      - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr
+      - data/ValleienVeluwe/verwerkt/sturing/aanvoergebieden.gpkg
+      - data/ValleienVeluwe/verwerkt/1_ontvangen_data/20250425_HarmenVandeWerfhorst/Inlaatwerken en gebieden.gdb
+    outs:
+      - data/ValleienVeluwe/modellen/ValleienVeluwe_bergend_model
+  bergend_vechtstromen:
+    cmd:
+      - pixi run python notebooks/vechtstromen/04_add_full_control.py
+      - pixi run python notebooks/05_add_bergend.py Vechtstromen
+    deps:
+      - notebooks/vechtstromen/04_add_full_control.py
+      - notebooks/05_add_bergend.py
+      - data/Vechtstromen/modellen/Vechtstromen_parameterized_model
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
+      - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
+      - data/Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr
+      - data/Vechtstromen/verwerkt/sturing/aanvoergebieden.gpkg
+      - data/Vechtstromen/verwerkt/1_ontvangen_data/LHM20230418.gdb
+    outs:
+      - data/Vechtstromen/modellen/Vechtstromen_bergend_model
   dynamic:
     foreach:
       aa_en_maas: AaenMaas
@@ -88,72 +496,444 @@ stages:
         - data/Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx
       outs:
         - data/${item}/modellen/${item}_dynamic_model
-  feedback:
-    foreach:
-      delfland: Delfland
-      amstel_gooi_en_vecht: AmstelGooienVecht
-      hollands_noorderkwartier: HollandsNoorderkwartier
-      hollandse_delta: HollandseDelta
-      rijnland: Rijnland
-      rivierenland: Rivierenland
-      scheldestromen: Scheldestromen
-      schieland_en_de_krimpenerwaard: SchielandendeKrimpenerwaard
-      wetterskip_fryslan: WetterskipFryslan
-      zuiderzeeland: Zuiderzeeland
-    do:
-      cmd:
-        - pixi run python src/peilbeheerst_model/feedback/${item}.py
-      deps:
-        - src/peilbeheerst_model/feedback/${item}.py
-      outs:
-        - data/${item}/modellen/${item}_feedback
-  profiles:
-    foreach:
-      delfland: Delfland
-      amstel_gooi_en_vecht: AmstelGooienVecht
-      hollands_noorderkwartier: HollandsNoorderkwartier
-      hollandse_delta: HollandseDelta
-      rijnland: Rijnland
-      rivierenland: Rivierenland
-      scheldestromen: Scheldestromen
-      schieland_en_de_krimpenerwaard: SchielandendeKrimpenerwaard
-      wetterskip_fryslan: WetterskipFryslan
-      zuiderzeeland: Zuiderzeeland
-    do:
-      cmd:
-        - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py ${item}
-        - pixi run python src/peilbeheerst_model/profiles/${item}.py
-      deps:
-        - src/peilbeheerst_model/profiles/prep_cross_sections.py
-        - src/peilbeheerst_model/profiles/${item}.py
-        - data/${item}/modellen/${item}_feedback
-        - data/Basisgegevens/profielen
-        - data/Basisgegevens/Hydrotypen
-      outs:
-        - data/${item}/modellen/${item}_profiles
-        - data/${item}/verwerkt/profielen/network.gpkg
-  forcing:
-    foreach:
-      delfland: Delfland
-      amstel_gooi_en_vecht: AmstelGooienVecht
-      hollands_noorderkwartier: HollandsNoorderkwartier
-      hollandse_delta: HollandseDelta
-      rijnland: Rijnland
-      rivierenland: Rivierenland
-      scheldestromen: Scheldestromen
-      schieland_en_de_krimpenerwaard: SchielandendeKrimpenerwaard
-      wetterskip_fryslan: WetterskipFryslan
-      zuiderzeeland: Zuiderzeeland
-    do:
-      cmd:
-        - pixi run python src/peilbeheerst_model/forcing/${item}.py
-      deps:
-        - src/peilbeheerst_model/forcing/${item}.py
-        - data/Rijkswaterstaat/modellen/rwzi
-        - data/${item}/modellen/${item}_profiles
-        - data/${item}/verwerkt/profielen/network.gpkg
-      outs:
-        - data/${item}/modellen/${item}_forcing
+  feedback_delfland:
+    cmd: pixi run python src/peilbeheerst_model/feedback/Delfland.py
+    deps:
+      - src/peilbeheerst_model/feedback/Delfland.py
+      - data/Delfland/modellen/Delfland_boezemmodel_2024_12_0
+      - data/Delfland/verwerkt/Feedback Formulier/feedback_formulier_Delfland.xlsx
+      - data/Delfland/verwerkt/Splitting_basins/Opgeknipte_basin_2.gpkg
+      - data/Delfland/verwerkt/Splitting_basins/Opgeknipte_basin_9.gpkg
+      - data/Delfland/verwerkt/Splitting_basins/Opgeknipte_basin_10.gpkg
+    outs:
+      - data/Delfland/modellen/Delfland_feedback
+  feedback_amstel_gooi_en_vecht:
+    cmd: pixi run python src/peilbeheerst_model/feedback/AmstelGooienVecht.py
+    deps:
+      - src/peilbeheerst_model/feedback/AmstelGooienVecht.py
+      - data/AmstelGooienVecht/modellen/AmstelGooienVecht_boezemmodel_2024_12_0
+      - data/AmstelGooienVecht/verwerkt/Feedback Formulier/feedback_formulier_AmstelGooienVecht.xlsx
+    outs:
+      - data/AmstelGooienVecht/modellen/AmstelGooienVecht_feedback
+  feedback_hollands_noorderkwartier:
+    cmd: pixi run python src/peilbeheerst_model/feedback/HollandsNoorderkwartier.py
+    deps:
+      - src/peilbeheerst_model/feedback/HollandsNoorderkwartier.py
+      - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_boezemmodel_2024_12_0
+      - data/HollandsNoorderkwartier/verwerkt/Feedback Formulier/feedback_formulier_HollandsNoorderkwartier.xlsx
+      - data/HollandsNoorderkwartier/verwerkt/Splitting_basins/Opgeknipte_basin_3.gpkg
+    outs:
+      - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_feedback
+  feedback_hollandse_delta:
+    cmd: pixi run python src/peilbeheerst_model/feedback/HollandseDelta.py
+    deps:
+      - src/peilbeheerst_model/feedback/HollandseDelta.py
+      - data/HollandseDelta/modellen/HollandseDelta_boezemmodel_2024_12_3
+      - data/HollandseDelta/verwerkt/Feedback Formulier/feedback_formulier_HollandseDelta.xlsx
+    outs:
+      - data/HollandseDelta/modellen/HollandseDelta_feedback
+  feedback_rijnland:
+    cmd: pixi run python src/peilbeheerst_model/feedback/Rijnland.py
+    deps:
+      - src/peilbeheerst_model/feedback/Rijnland.py
+      - data/Rijnland/modellen/Rijnland_boezemmodel_2024_12_3
+      - data/Rijnland/verwerkt/Feedback Formulier/feedback_formulier_Rijnland.xlsx
+      - data/Rijnland/verwerkt/Splitting_basins/Opgeknipte_basin_1.gpkg
+      - data/Rijnland/verwerkt/Splitting_basins/Opgeknipte_basin_15.gpkg
+      - data/Rijnland/verwerkt/Splitting_basins/Opgeknipte_basin_22.gpkg
+    outs:
+      - data/Rijnland/modellen/Rijnland_feedback
+  feedback_rivierenland:
+    cmd: pixi run python src/peilbeheerst_model/feedback/Rivierenland.py
+    deps:
+      - src/peilbeheerst_model/feedback/Rivierenland.py
+      - data/Rivierenland/modellen/Rivierenland_boezemmodel_2024_12_0
+      - data/Rivierenland/verwerkt/Feedback Formulier/feedback_formulier_Rivierenland.xlsx
+      - data/Rivierenland/aangeleverd/Na_levering/gaten.gpkg
+    outs:
+      - data/Rivierenland/modellen/Rivierenland_feedback
+  feedback_scheldestromen:
+    cmd: pixi run python src/peilbeheerst_model/feedback/Scheldestromen.py
+    deps:
+      - src/peilbeheerst_model/feedback/Scheldestromen.py
+      - data/Scheldestromen/modellen/Scheldestromen_boezemmodel_2024_12_0
+      - data/Scheldestromen/verwerkt/Feedback Formulier/feedback_formulier_Scheldestromen.xlsx
+    outs:
+      - data/Scheldestromen/modellen/Scheldestromen_feedback
+  feedback_schieland_en_de_krimpenerwaard:
+    cmd: pixi run python src/peilbeheerst_model/feedback/SchielandendeKrimpenerwaard.py
+    deps:
+      - src/peilbeheerst_model/feedback/SchielandendeKrimpenerwaard.py
+      - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_boezemmodel_2024_12_1
+      - data/SchielandendeKrimpenerwaard/verwerkt/Feedback Formulier/feedback_formulier_SchielandendeKrimpenerwaard.xlsx
+    outs:
+      - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_feedback
+  feedback_wetterskip_fryslan:
+    cmd: pixi run python src/peilbeheerst_model/feedback/WetterskipFryslan.py
+    deps:
+      - src/peilbeheerst_model/feedback/WetterskipFryslan.py
+      - data/WetterskipFryslan/modellen/WetterskipFryslan_boezemmodel_2025_5_1
+      - data/WetterskipFryslan/verwerkt/Feedback Formulier/feedback_formulier_WetterskipFryslan.xlsx
+      - data/WetterskipFryslan/aangeleverd/Na_levering/gaarkeuken.gpkg
+      - data/WetterskipFryslan/verwerkt/Splitting_basins/Opgeknipte_basin_6.gpkg
+      - data/WetterskipFryslan/verwerkt/Splitting_basins/Opgeknipte_basin_16.gpkg
+      - data/WetterskipFryslan/verwerkt/Splitting_basins/Opgeknipte_basin_21.gpkg
+    outs:
+      - data/WetterskipFryslan/modellen/WetterskipFryslan_feedback
+  feedback_zuiderzeeland:
+    cmd: pixi run python src/peilbeheerst_model/feedback/Zuiderzeeland.py
+    deps:
+      - src/peilbeheerst_model/feedback/Zuiderzeeland.py
+      - data/Zuiderzeeland/modellen/Zuiderzeeland_boezemmodel_2024_12_0
+      - data/Zuiderzeeland/verwerkt/Feedback Formulier/feedback_formulier_Zuiderzeeland.xlsx
+      - data/Zuiderzeeland/verwerkt/Splitting_basins/Opgeknipte_basin_16.gpkg
+      - data/Zuiderzeeland/verwerkt/Splitting_basins/Opgeknipte_basin_31.gpkg
+      - data/Zuiderzeeland/verwerkt/Splitting_basins/Opgeknipte_basin_73.gpkg
+    outs:
+      - data/Zuiderzeeland/modellen/Zuiderzeeland_feedback
+  profiles_delfland:
+    cmd:
+      - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py Delfland
+      - pixi run python src/peilbeheerst_model/profiles/Delfland.py
+    deps:
+      - src/peilbeheerst_model/profiles/prep_cross_sections.py
+      - src/peilbeheerst_model/profiles/gen_profiles.py
+      - src/peilbeheerst_model/profiles/Delfland.py
+      - data/Delfland/modellen/Delfland_feedback
+      - data/Delfland/verwerkt/Crossings/delfland_crossings_v08.gpkg
+      - data/Delfland/verwerkt/BGT/bgt_Delfland_water.gpkg
+      - data/Basisgegevens/profielen/Delfland/Profielen_Delfland.gpkg
+      - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
+    outs:
+      - data/Delfland/modellen/Delfland_profiles
+      - data/Delfland/verwerkt/profielen/network.gpkg
+  profiles_amstel_gooi_en_vecht:
+    cmd:
+      - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py AmstelGooienVecht
+      - pixi run python src/peilbeheerst_model/profiles/AmstelGooienVecht.py
+    deps:
+      - src/peilbeheerst_model/profiles/prep_cross_sections.py
+      - src/peilbeheerst_model/profiles/gen_profiles.py
+      - src/peilbeheerst_model/profiles/AmstelGooienVecht.py
+      - data/AmstelGooienVecht/modellen/AmstelGooienVecht_feedback
+      - data/AmstelGooienVecht/verwerkt/Crossings/agv_crossings_v05.gpkg
+      - data/AmstelGooienVecht/verwerkt/BGT/bgt_AmstelGooienVecht_water.gpkg
+      - data/Basisgegevens/profielen/AGV/metingprofielpunt.gml
+      - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
+    outs:
+      - data/AmstelGooienVecht/modellen/AmstelGooienVecht_profiles
+      - data/AmstelGooienVecht/verwerkt/profielen/network.gpkg
+  profiles_hollands_noorderkwartier:
+    cmd:
+      - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py HollandsNoorderkwartier
+      - pixi run python src/peilbeheerst_model/profiles/HollandsNoorderkwartier.py
+    deps:
+      - src/peilbeheerst_model/profiles/prep_cross_sections.py
+      - src/peilbeheerst_model/profiles/gen_profiles.py
+      - src/peilbeheerst_model/profiles/HollandsNoorderkwartier.py
+      - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_feedback
+      - data/HollandsNoorderkwartier/verwerkt/Crossings/hhnk_crossings_v26.gpkg
+      - data/HollandsNoorderkwartier/verwerkt/BGT/bgt_HollandsNoorderkwartier_water.gpkg
+      - data/Basisgegevens/profielen/Profielen_NL.gpkg
+      - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
+    outs:
+      - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_profiles
+      - data/HollandsNoorderkwartier/verwerkt/profielen/network.gpkg
+  profiles_hollandse_delta:
+    cmd:
+      - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py HollandseDelta
+      - pixi run python src/peilbeheerst_model/profiles/HollandseDelta.py
+    deps:
+      - src/peilbeheerst_model/profiles/prep_cross_sections.py
+      - src/peilbeheerst_model/profiles/gen_profiles.py
+      - src/peilbeheerst_model/profiles/HollandseDelta.py
+      - data/HollandseDelta/modellen/HollandseDelta_feedback
+      - data/HollandseDelta/verwerkt/Crossings/hd_crossings_v06.gpkg
+      - data/HollandseDelta/verwerkt/BGT/bgt_HollandseDelta_water.gpkg
+      - data/HollandseDelta/aangeleverd/Eerste_levering/watergangen
+      - data/Basisgegevens/profielen/Profielen_NL.gpkg
+      - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
+    outs:
+      - data/HollandseDelta/modellen/HollandseDelta_profiles
+      - data/HollandseDelta/verwerkt/profielen/network.gpkg
+  profiles_rijnland:
+    cmd:
+      - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py Rijnland
+      - pixi run python src/peilbeheerst_model/profiles/Rijnland.py
+    deps:
+      - src/peilbeheerst_model/profiles/prep_cross_sections.py
+      - src/peilbeheerst_model/profiles/gen_profiles.py
+      - src/peilbeheerst_model/profiles/Rijnland.py
+      - data/Rijnland/modellen/Rijnland_feedback
+      - data/Rijnland/verwerkt/Crossings/rijnland_crossings_v05.gpkg
+      - data/Rijnland/verwerkt/BGT/bgt_Rijnland_water.gpkg
+      - data/Rijnland/aangeleverd/Na_levering/20260422_MerenPlassen/Rijnland_meren_plassen_diepte.geojson
+      - data/Basisgegevens/profielen/Profielen_NL.gpkg
+      - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
+    outs:
+      - data/Rijnland/modellen/Rijnland_profiles
+      - data/Rijnland/verwerkt/profielen/network.gpkg
+  profiles_rivierenland:
+    cmd:
+      - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py Rivierenland
+      - pixi run python src/peilbeheerst_model/profiles/Rivierenland.py
+    deps:
+      - src/peilbeheerst_model/profiles/prep_cross_sections.py
+      - src/peilbeheerst_model/profiles/gen_profiles.py
+      - src/peilbeheerst_model/profiles/Rivierenland.py
+      - data/Rivierenland/modellen/Rivierenland_feedback
+      - data/Rivierenland/verwerkt/Crossings/wsrl_crossings_v06.gpkg
+      - data/Rivierenland/verwerkt/BGT/bgt_Rivierenland_water.gpkg
+      - data/Basisgegevens/profielen/Rivierenland/Profielen_Rivierenland.gpkg
+      - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
+    outs:
+      - data/Rivierenland/modellen/Rivierenland_profiles
+      - data/Rivierenland/verwerkt/profielen/network.gpkg
+  profiles_scheldestromen:
+    cmd:
+      - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py Scheldestromen
+      - pixi run python src/peilbeheerst_model/profiles/Scheldestromen.py
+    deps:
+      - src/peilbeheerst_model/profiles/prep_cross_sections.py
+      - src/peilbeheerst_model/profiles/gen_profiles.py
+      - src/peilbeheerst_model/profiles/Scheldestromen.py
+      - data/Scheldestromen/modellen/Scheldestromen_feedback
+      - data/Scheldestromen/verwerkt/Crossings/scheldestromen_crossings_v02.gpkg
+      - data/Scheldestromen/verwerkt/BGT/bgt_Scheldestromen_water.gpkg
+      - data/Scheldestromen/aangeleverd/Na_levering/Oplevering_Scheldestromen_20240328/Oplevering_20240328.gpkg
+      - data/Basisgegevens/profielen/Scheldestromen/Profielen_Scheldestromen.gpkg
+      - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
+    outs:
+      - data/Scheldestromen/modellen/Scheldestromen_profiles
+      - data/Scheldestromen/verwerkt/profielen/network.gpkg
+  profiles_schieland_en_de_krimpenerwaard:
+    cmd:
+      - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py SchielandendeKrimpenerwaard
+      - pixi run python src/peilbeheerst_model/profiles/SchielandendeKrimpenerwaard.py
+    deps:
+      - src/peilbeheerst_model/profiles/prep_cross_sections.py
+      - src/peilbeheerst_model/profiles/gen_profiles.py
+      - src/peilbeheerst_model/profiles/SchielandendeKrimpenerwaard.py
+      - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_feedback
+      - data/SchielandendeKrimpenerwaard/verwerkt/Crossings/hhsk_crossings_voor_profielen_met_OG_hydroobjecten.gpkg
+      - data/SchielandendeKrimpenerwaard/verwerkt/BGT/bgt_SchielandendeKrimpenerwaard_water.gpkg
+      - data/Basisgegevens/profielen/Profielen_NL.gpkg
+      - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
+    outs:
+      - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_profiles
+      - data/SchielandendeKrimpenerwaard/verwerkt/profielen/network.gpkg
+  profiles_wetterskip_fryslan:
+    cmd:
+      - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py WetterskipFryslan
+      - pixi run python src/peilbeheerst_model/profiles/WetterskipFryslan.py
+    deps:
+      - src/peilbeheerst_model/profiles/prep_cross_sections.py
+      - src/peilbeheerst_model/profiles/gen_profiles.py
+      - src/peilbeheerst_model/profiles/WetterskipFryslan.py
+      - data/WetterskipFryslan/modellen/WetterskipFryslan_feedback
+      - data/WetterskipFryslan/verwerkt/Crossings/wetterskip_crossings_v06.gpkg
+      - data/WetterskipFryslan/verwerkt/BGT/bgt_WetterskipFryslan_water.gpkg
+      - data/Basisgegevens/profielen/Profielen_NL.gpkg
+      - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
+    outs:
+      - data/WetterskipFryslan/modellen/WetterskipFryslan_profiles
+      - data/WetterskipFryslan/verwerkt/profielen/network.gpkg
+  profiles_zuiderzeeland:
+    cmd:
+      - pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py Zuiderzeeland
+      - pixi run python src/peilbeheerst_model/profiles/Zuiderzeeland.py
+    deps:
+      - src/peilbeheerst_model/profiles/prep_cross_sections.py
+      - src/peilbeheerst_model/profiles/gen_profiles.py
+      - src/peilbeheerst_model/profiles/Zuiderzeeland.py
+      - data/Zuiderzeeland/modellen/Zuiderzeeland_feedback
+      - data/Zuiderzeeland/verwerkt/Crossings/zzl_crossings_v05.gpkg
+      - data/Zuiderzeeland/verwerkt/BGT/bgt_Zuiderzeeland_water.gpkg
+      - data/Basisgegevens/profielen/ZZL/Profielen_ZZL_DHYDRO.gpkg
+      - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
+    outs:
+      - data/Zuiderzeeland/modellen/Zuiderzeeland_profiles
+      - data/Zuiderzeeland/verwerkt/profielen/network.gpkg
+  forcing_delfland:
+    cmd: pixi run python src/peilbeheerst_model/forcing/Delfland.py
+    deps:
+      - src/peilbeheerst_model/forcing/Delfland.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
+      - data/Delfland/modellen/Delfland_profiles
+      - data/Delfland/modellen/Delfland_boezemmodel_2024_12_0
+      - data/Delfland/verwerkt/Feedback Formulier/feedback_formulier_Delfland.xlsx
+      - data/Delfland/aangeleverd/Na_levering/Wateraanvoer/Aanvoergebied_Afvoergebied_polders.gpkg
+      - data/Delfland/verwerkt/Parametrisatie_data/Delfland.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
+      - data/Rijkswaterstaat/modellen/rwzi
+    outs:
+      - data/Delfland/modellen/Delfland_forcing
+  forcing_amstel_gooi_en_vecht:
+    cmd: pixi run python src/peilbeheerst_model/forcing/AmstelGooienVecht.py
+    deps:
+      - src/peilbeheerst_model/forcing/AmstelGooienVecht.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
+      - data/AmstelGooienVecht/modellen/AmstelGooienVecht_profiles
+      - data/AmstelGooienVecht/modellen/AmstelGooienVecht_boezemmodel_2024_12_0
+      - data/AmstelGooienVecht/verwerkt/Feedback Formulier/feedback_formulier_AmstelGooienVecht.xlsx
+      - data/AmstelGooienVecht/aangeleverd/Na_levering/Wateraanvoer/afvoergebiedaanvoergebied.gpkg
+      - data/AmstelGooienVecht/verwerkt/Parametrisatie_data/AmstelGooienVecht.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
+      - data/Rijkswaterstaat/modellen/rwzi
+    outs:
+      - data/AmstelGooienVecht/modellen/AmstelGooienVecht_forcing
+  forcing_hollands_noorderkwartier:
+    cmd: pixi run python src/peilbeheerst_model/forcing/HollandsNoorderkwartier.py
+    deps:
+      - src/peilbeheerst_model/forcing/HollandsNoorderkwartier.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
+      - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_profiles
+      - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_boezemmodel_2024_12_0
+      - data/HollandsNoorderkwartier/verwerkt/Feedback Formulier/feedback_formulier_HollandsNoorderkwartier.xlsx
+      - data/HollandsNoorderkwartier/aangeleverd/Na_levering/20240618_peilgebieden_en_polders
+      - data/HollandsNoorderkwartier/verwerkt/Parametrisatie_data/Noorderkwartier.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
+      - data/Rijkswaterstaat/modellen/rwzi
+    outs:
+      - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_forcing
+  forcing_hollandse_delta:
+    cmd: pixi run python src/peilbeheerst_model/forcing/HollandseDelta.py
+    deps:
+      - src/peilbeheerst_model/forcing/HollandseDelta.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
+      - data/HollandseDelta/modellen/HollandseDelta_profiles
+      - data/HollandseDelta/modellen/HollandseDelta_boezemmodel_2024_12_3
+      - data/HollandseDelta/verwerkt/Feedback Formulier/feedback_formulier_HollandseDelta.xlsx
+      - data/HollandseDelta/aangeleverd/Na_levering/Wateraanvoer
+      - data/HollandseDelta/verwerkt/Parametrisatie_data/HollandseDelta.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
+      - data/Rijkswaterstaat/modellen/rwzi
+    outs:
+      - data/HollandseDelta/modellen/HollandseDelta_forcing
+  forcing_rijnland:
+    cmd: pixi run python src/peilbeheerst_model/forcing/Rijnland.py
+    deps:
+      - src/peilbeheerst_model/forcing/Rijnland.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
+      - data/Rijnland/modellen/Rijnland_profiles
+      - data/Rijnland/modellen/Rijnland_boezemmodel_2024_12_3
+      - data/Rijnland/verwerkt/Feedback Formulier/feedback_formulier_Rijnland.xlsx
+      - data/Rijnland/aangeleverd/Na_levering/Wateraanvoer
+      - data/Rijnland/verwerkt/Parametrisatie_data/Rijnland.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
+      - data/Rijkswaterstaat/modellen/rwzi
+    outs:
+      - data/Rijnland/modellen/Rijnland_forcing
+  forcing_rivierenland:
+    cmd: pixi run python src/peilbeheerst_model/forcing/Rivierenland.py
+    deps:
+      - src/peilbeheerst_model/forcing/Rivierenland.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
+      - data/Rivierenland/modellen/Rivierenland_profiles
+      - data/Rivierenland/modellen/Rivierenland_boezemmodel_2024_12_0
+      - data/Rivierenland/verwerkt/Feedback Formulier/feedback_formulier_Rivierenland.xlsx
+      - data/Rivierenland/aangeleverd/Na_levering/Wateraanvoer
+      - data/Rivierenland/verwerkt/Parametrisatie_data/Rivierenland.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
+      - data/Rijkswaterstaat/modellen/rwzi
+    outs:
+      - data/Rivierenland/modellen/Rivierenland_forcing
+  forcing_scheldestromen:
+    cmd: pixi run python src/peilbeheerst_model/forcing/Scheldestromen.py
+    deps:
+      - src/peilbeheerst_model/forcing/Scheldestromen.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
+      - data/Scheldestromen/modellen/Scheldestromen_profiles
+      - data/Scheldestromen/modellen/Scheldestromen_boezemmodel_2024_12_0
+      - data/Scheldestromen/verwerkt/Feedback Formulier/feedback_formulier_Scheldestromen.xlsx
+      - data/Scheldestromen/aangeleverd/Na_levering/Wateraanvoer
+      - data/Scheldestromen/verwerkt/Parametrisatie_data/Scheldestromen.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
+      - data/Rijkswaterstaat/modellen/rwzi
+    outs:
+      - data/Scheldestromen/modellen/Scheldestromen_forcing
+  forcing_schieland_en_de_krimpenerwaard:
+    cmd: pixi run python src/peilbeheerst_model/forcing/SchielandendeKrimpenerwaard.py
+    deps:
+      - src/peilbeheerst_model/forcing/SchielandendeKrimpenerwaard.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
+      - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_profiles
+      - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_boezemmodel_2024_12_1
+      - data/SchielandendeKrimpenerwaard/verwerkt/Feedback Formulier/feedback_formulier_SchielandendeKrimpenerwaard.xlsx
+      - data/SchielandendeKrimpenerwaard/aangeleverd/Na_levering/Wateraanvoer/HyDamo_metWasverzachter_20230905.gpkg
+      - data/SchielandendeKrimpenerwaard/verwerkt/Parametrisatie_data/HHSK.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
+      - data/Rijkswaterstaat/modellen/rwzi
+    outs:
+      - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_forcing
+  forcing_wetterskip_fryslan:
+    cmd: pixi run python src/peilbeheerst_model/forcing/WetterskipFryslan.py
+    deps:
+      - src/peilbeheerst_model/forcing/WetterskipFryslan.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
+      - data/WetterskipFryslan/modellen/WetterskipFryslan_profiles
+      - data/WetterskipFryslan/modellen/WetterskipFryslan_boezemmodel_2025_5_1
+      - data/WetterskipFryslan/verwerkt/Feedback Formulier/feedback_formulier_WetterskipFryslan.xlsx
+      - data/WetterskipFryslan/aangeleverd/Na_levering/Wateraanvoer/aanvoer.gpkg
+      - data/WetterskipFryslan/verwerkt/Parametrisatie_data/WetterskipFryslan.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
+      - data/Rijkswaterstaat/modellen/rwzi
+    outs:
+      - data/WetterskipFryslan/modellen/WetterskipFryslan_forcing
+  forcing_zuiderzeeland:
+    cmd: pixi run python src/peilbeheerst_model/forcing/Zuiderzeeland.py
+    deps:
+      - src/peilbeheerst_model/forcing/Zuiderzeeland.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
+      - data/Zuiderzeeland/modellen/Zuiderzeeland_profiles
+      - data/Zuiderzeeland/modellen/Zuiderzeeland_boezemmodel_2024_12_0
+      - data/Zuiderzeeland/verwerkt/Feedback Formulier/feedback_formulier_Zuiderzeeland.xlsx
+      - data/Zuiderzeeland/aangeleverd/Na_levering/peilgebieden.gpkg
+      - data/Zuiderzeeland/verwerkt/Parametrisatie_data/Zuiderzeeland.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
+      - data/Rijkswaterstaat/modellen/rwzi
+    outs:
+      - data/Zuiderzeeland/modellen/Zuiderzeeland_forcing
   hws_demand:
     cmd:
       - pixi run python notebooks/rijkswaterstaat/2_basins.py
@@ -164,10 +944,33 @@ stages:
       - pixi run python notebooks/rijkswaterstaat/7_model_onttrekkingen.py
       - pixi run python notebooks/rijkswaterstaat/8a_update_state.py
     deps:
+      - notebooks/rijkswaterstaat/2_basins.py
+      - notebooks/rijkswaterstaat/3_netwerk.py
+      - notebooks/rijkswaterstaat/4_kunstwerken.py
+      - notebooks/rijkswaterstaat/5_model_netwerk.py
+      - notebooks/rijkswaterstaat/6_model_sturing.py
+      - notebooks/rijkswaterstaat/7_model_onttrekkingen.py
+      - notebooks/rijkswaterstaat/8a_update_state.py
       - data/Basisgegevens/Baseline/baseline-nl_land-j23_6-v1/baseline.gdb
+      - data/Basisgegevens/KRW/krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg
+      - data/Basisgegevens/OSM/lock_belgium.gpkg
+      - data/Basisgegevens/OSM/osm_scheeresluis.gpkg
+      - data/Basisgegevens/OSM/waterway_canal.gpkg
+      - data/Basisgegevens/OSM/waterway_fairway.gpkg
+      - data/Basisgegevens/OSM/waterway_river.gpkg
+      - data/Basisgegevens/OSM/waterway_weir_belgium.gpkg
+      - data/Basisgegevens/Onttrekkingen/onttrekkingen.gpkg
       - data/Rijkswaterstaat/verwerkt/bathymetrie
-      - data/Rijkswaterstaat/modellen/rwzi
-      - notebooks/rijkswaterstaat
+      - data/Rijkswaterstaat/aangeleverd/NIS/nis_all_kunstwerken_hws_2019.gpkg
+      - data/Rijkswaterstaat/aangeleverd/NIS/nis_alle_kunstwerken_hwvn_2019.gpkg
+      - data/Rijkswaterstaat/aangeleverd/kunstwerken_primaire_waterkeringen.gpkg
+      - data/Rijkswaterstaat/verwerkt/basins_user_data.gpkg
+      - data/Rijkswaterstaat/verwerkt/categorie_oppervlaktewater.gpkg
+      - data/Rijkswaterstaat/verwerkt/kunstwerken
+      - data/Rijkswaterstaat/verwerkt/kwk_media.csv
+      - data/Rijkswaterstaat/verwerkt/model_user_data.gpkg
+      - data/Rijkswaterstaat/verwerkt/oppervlaktewater_belgie.gpkg
+      - data/Rijkswaterstaat/verwerkt/outlets.gpkg
     outs:
       - data/Rijkswaterstaat/modellen/hws_demand
       - data/Rijkswaterstaat/verwerkt/netwerk.gpkg
@@ -176,6 +979,8 @@ stages:
       - pixi run python notebooks/rijkswaterstaat/8b_update_bc.py
     deps:
       - data/Rijkswaterstaat/modellen/hws_demand
+      - data/Rijkswaterstaat/modellen/rwzi
+      - data/Rijkswaterstaat/aangeleverd/Matroos_debieten_2017_2022_Lobith_Monsin.xlsx
       - notebooks/rijkswaterstaat/8b_update_bc.py
     outs:
       - data/Rijkswaterstaat/modellen/hws_transient

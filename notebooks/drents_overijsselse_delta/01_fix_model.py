@@ -28,10 +28,6 @@ duikersifonhevel_gpkg = cloud.joinpath(authority, "aangeleverd/Aanlevering_20231
 model_edits_path = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 fix_user_data_path = cloud.joinpath(authority, "verwerkt/fix_user_data.gpkg")
 
-cloud.synchronize(
-    filepaths=[ribasim_dir, hydroobject_gpkg, duikersifonhevel_gpkg, model_edits_path, fix_user_data_path]
-)
-
 duikersifonhevel_gdf = gpd.read_file(
     duikersifonhevel_gpkg,
     fid_as_index=True,

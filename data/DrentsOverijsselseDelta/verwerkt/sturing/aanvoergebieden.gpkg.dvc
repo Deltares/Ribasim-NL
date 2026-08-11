@@ -1,0 +1,5 @@
+outs:
+- md5: 8f6a92594c8c885ecb8ad9e3c7efab0b
+  size: 8286208
+  hash: md5
+  path: aanvoergebieden.gpkg

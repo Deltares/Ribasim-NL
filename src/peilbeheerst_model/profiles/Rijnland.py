@@ -15,6 +15,7 @@ if __name__ == "__main__":
         export_intermediate_output=True,
         fn_water_bodies=fn_water_bodies,
         col_wb_depth="DIEPTE",
+        sync=False,
     )
     src_toml = f"data/{waterschap}/modellen/{waterschap}_feedback/ribasim.toml"
     dst_toml = f"data/{waterschap}/modellen/{waterschap}_profiles/ribasim.toml"

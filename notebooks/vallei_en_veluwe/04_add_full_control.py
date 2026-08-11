@@ -207,8 +207,6 @@ inlaatwerken_gdb = cloud.joinpath(
     "Inlaatwerken en gebieden.gdb",
 )
 
-cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path, inlaatwerken_gdb])
-
 
 # %%
 # Read data

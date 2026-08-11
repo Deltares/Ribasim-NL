@@ -1,0 +1,5 @@
+outs:
+- md5: 2817608d1382719025d234a2d2d20ef2
+  size: 2822144
+  hash: md5
+  path: peilgebieden.gpkg

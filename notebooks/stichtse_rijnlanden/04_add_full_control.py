@@ -163,7 +163,6 @@ qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.ql
 aanvoer_path = aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt/4_ribasim/peilgebieden_bewerkt.gpkg")
 
 aanvoergebieden_gpkg = cloud.joinpath(r"StichtseRijnlanden/verwerkt/sturing/aanvoergebieden.gpkg")
-cloud.synchronize(filepaths=[aanvoer_path, qlr_path, aanvoergebieden_gpkg])
 
 
 # %%

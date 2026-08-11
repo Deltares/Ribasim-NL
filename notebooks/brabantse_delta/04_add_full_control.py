@@ -248,7 +248,6 @@ ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 
 aanvoergebieden_gpkg = cloud.joinpath(r"BrabantseDelta/verwerkt/sturing/aanvoergebieden.gpkg")
-cloud.synchronize(filepaths=[qlr_path, aanvoergebieden_gpkg])
 
 
 # %%

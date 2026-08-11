@@ -12,8 +12,6 @@ hydamo_gpkg = cloud.joinpath(
 )
 dwarsprofielen_gpkg = cloud.joinpath(authority, "verwerkt/profielen.gpkg")
 
-cloud.synchronize([hydamo_gpkg])
-
 profielpunt_df = gpd.read_file(hydamo_gpkg, layer="Profielpunt")
 
 

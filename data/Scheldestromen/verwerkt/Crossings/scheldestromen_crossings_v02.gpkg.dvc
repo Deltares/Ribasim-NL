@@ -1,0 +1,5 @@
+outs:
+- md5: 8305af0ca045b4533cc772f0b5186b61
+  size: 52375552
+  hash: md5
+  path: scheldestromen_crossings_v02.gpkg

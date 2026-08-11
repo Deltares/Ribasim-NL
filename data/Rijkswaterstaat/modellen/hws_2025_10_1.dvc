@@ -1,0 +1,6 @@
+outs:
+- md5: 34803b1559752b82fe087e20642db641.dir
+  size: 42664090
+  nfiles: 2
+  hash: md5
+  path: hws_2025_10_1

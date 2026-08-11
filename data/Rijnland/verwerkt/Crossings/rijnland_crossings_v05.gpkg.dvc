@@ -1,0 +1,5 @@
+outs:
+- md5: c7a1e3d3d4c3514a7fc3e47f6a11a7dd
+  size: 144224256
+  hash: md5
+  path: rijnland_crossings_v05.gpkg

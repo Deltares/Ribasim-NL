@@ -1,0 +1,5 @@
+outs:
+- md5: 1fd02c11a8d97a8a46eccbc0809e6d73
+  size: 720896
+  hash: md5
+  path: kunstwerken_primaire_waterkeringen.gpkg
