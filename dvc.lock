@@ -623,3 +623,274 @@ stages:
       md5: e00d7ba0c51298fdb40b3aa05a20faee.dir
       size: 48324762
       nfiles: 2
+  parameterized_rijn_en_ijssel:
+    cmd:
+    - pixi run python notebooks/rijn_en_ijssel/_preprocess_profielen.py
+    - pixi run python notebooks/rijn_en_ijssel/01_fix_model.py
+    - pixi run python notebooks/rijn_en_ijssel/02_prepare_model.py
+    - pixi run python notebooks/rijn_en_ijssel/03_parameterize_model.py
+    deps:
+    - path: data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
+      hash: md5
+      md5: b79410c909cb80baa7b14a27fe5318a8
+      size: 262296
+    - path: data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      hash: md5
+      md5: 0436d7e1c46e961288968c41fff10a11
+      size: 41406464
+    - path: data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      hash: md5
+      md5: 85c6e35e295d25ca9f7a139174077d40
+      size: 4665344
+    - path: data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      hash: md5
+      md5: 1ea9a1ba765f3ce90884c4308fa2c215
+      size: 11001376768
+    - path: data/RijnenIJssel/modellen/RijnenIJssel_2024_6_3
+      hash: md5
+      md5: 76025fceaba9824bc5776cd80f043f65.dir
+      size: 3514513
+      nfiles: 2
+    - path: data/RijnenIJssel/verwerkt/1_ontvangen_data/RegelmiddelZpWp.csv
+      hash: md5
+      md5: 29b4c14b43c040abfee7c3677275b221
+      size: 17729
+    - path: data/RijnenIJssel/verwerkt/1_ontvangen_data/wrij_profielen.gpkg
+      hash: md5
+      md5: 3353880b00c09dd4c053fc648846dd55
+      size: 389754880
+    - path: data/RijnenIJssel/verwerkt/4_ribasim/areas.gpkg
+      hash: md5
+      md5: d16e2e04b5bf5a03c3d2d34d1923fd14
+      size: 13430784
+    - path: data/RijnenIJssel/verwerkt/4_ribasim/hydamo.gpkg
+      hash: md5
+      md5: 9dec955a2c6566b18c38fa03a3ea719b
+      size: 14934016
+    - path: data/RijnenIJssel/verwerkt/model_edits.gpkg
+      hash: md5
+      md5: 40932417e5c9ae7b6f233918ff5ba35b
+      size: 581632
+    - path: data/RijnenIJssel/verwerkt/parameters/static_data.xlsx
+      hash: md5
+      md5: 809a4153f094bf15ba9d5b4094e0fdd5
+      size: 45961
+    - path: data/RijnenIJssel/verwerkt/sturing/aanvoergebieden.gpkg
+      hash: md5
+      md5: 5221be6ee5f6bdc020e60d3024dbb6c0
+      size: 8286208
+    - path: notebooks/rijn_en_ijssel/01_fix_model.py
+      hash: md5
+      md5: 1712d42553520e8acf929d35ab86a85c
+      size: 13723
+    - path: notebooks/rijn_en_ijssel/02_prepare_model.py
+      hash: md5
+      md5: 96eaf0c4cc54c7051f6703b2632c5ef7
+      size: 7425
+    - path: notebooks/rijn_en_ijssel/03_parameterize_model.py
+      hash: md5
+      md5: 13ef541aece46fde171f9e1eed12d1ff
+      size: 3518
+    - path: notebooks/rijn_en_ijssel/_preprocess_profielen.py
+      hash: md5
+      md5: d091ad9f37ee2c5ddddd1b652cd9c9f9
+      size: 61
+    - path: src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      hash: md5
+      md5: f0d6f439622edd3af25c557802bcb2ec
+      size: 8714
+    outs:
+    - path: data/RijnenIJssel/modellen/RijnenIJssel_parameterized_model
+      hash: md5
+      md5: 806edb6d8dc8a96fe95fb5a3db6defce.dir
+      size: 4706453
+      nfiles: 3
+  parameterized_vallei_en_veluwe:
+    cmd:
+    - pixi run python notebooks/vallei_en_veluwe/_preprocess_profielen.py
+    - pixi run python notebooks/vallei_en_veluwe/01_fix_model.py
+    - pixi run python notebooks/vallei_en_veluwe/02_prepare_model.py
+    - pixi run python notebooks/vallei_en_veluwe/03_parameterize_model.py
+    deps:
+    - path: data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
+      hash: md5
+      md5: b79410c909cb80baa7b14a27fe5318a8
+      size: 262296
+    - path: data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      hash: md5
+      md5: 0436d7e1c46e961288968c41fff10a11
+      size: 41406464
+    - path: data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      hash: md5
+      md5: 85c6e35e295d25ca9f7a139174077d40
+      size: 4665344
+    - path: data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      hash: md5
+      md5: 1ea9a1ba765f3ce90884c4308fa2c215
+      size: 11001376768
+    - path: data/ValleienVeluwe/modellen/ValleienVeluwe_2024_6_3
+      hash: md5
+      md5: cf08c5657021d918b76a19d11e880f87.dir
+      size: 3834001
+      nfiles: 2
+    - path: data/ValleienVeluwe/verwerkt/1_ontvangen_data/20250428
+      hash: md5
+      md5: 8d8b9ad370491ee4262955eb8480dc6c.dir
+      size: 6522736
+      nfiles: 6
+    - path: data/ValleienVeluwe/verwerkt/2_voorbewerking/hydamo.gpkg
+      hash: md5
+      md5: 35e6961ac07d7188e1648069eb72bbfc
+      size: 345202688
+    - path: data/ValleienVeluwe/verwerkt/fix_user_data.gpkg
+      hash: md5
+      md5: f383246378eb3db1770acf14c7f49b31
+      size: 106496
+    - path: data/ValleienVeluwe/verwerkt/model_edits.gpkg
+      hash: md5
+      md5: 1f64c2cab62e23a315418414b05e9025
+      size: 565248
+    - path: data/ValleienVeluwe/verwerkt/model_edits_aanvoer.gpkg
+      hash: md5
+      md5: f70e91d9e6db585f08edbe7f6a6071a2
+      size: 7954432
+    - path: data/ValleienVeluwe/verwerkt/parameters/static_data.xlsx
+      hash: md5
+      md5: 1d2c453ad2fc8fbb3797e9ab2ae52151
+      size: 39038
+    - path: notebooks/vallei_en_veluwe/01_fix_model.py
+      hash: md5
+      md5: bb9b72d524730995037c44b2d08e610b
+      size: 14772
+    - path: notebooks/vallei_en_veluwe/02_prepare_model.py
+      hash: md5
+      md5: fd5199b631f16df311680bbf4f137e9c
+      size: 16191
+    - path: notebooks/vallei_en_veluwe/03_parameterize_model.py
+      hash: md5
+      md5: 4be09e57ce172c6ba3b21d6b3a1fc1c7
+      size: 2796
+    - path: notebooks/vallei_en_veluwe/_preprocess_profielen.py
+      hash: md5
+      md5: 0902e32583ea04eed4c997277c788fe2
+      size: 63
+    - path: src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      hash: md5
+      md5: f0d6f439622edd3af25c557802bcb2ec
+      size: 8714
+    outs:
+    - path: data/ValleienVeluwe/modellen/ValleienVeluwe_parameterized_model
+      hash: md5
+      md5: 131484d969f65c154d14de82b101f203.dir
+      size: 19902613
+      nfiles: 2
+  parameterized_vechtstromen:
+    cmd:
+    - pixi run python notebooks/vechtstromen/_preprocess_profielen.py
+    - pixi run python notebooks/vechtstromen/01_fix_model.py
+    - pixi run python notebooks/vechtstromen/02_prepare_model.py
+    - pixi run python notebooks/vechtstromen/03_parameterize_model.py
+    deps:
+    - path: data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
+      hash: md5
+      md5: b79410c909cb80baa7b14a27fe5318a8
+      size: 262296
+    - path: data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
+      hash: md5
+      md5: 0436d7e1c46e961288968c41fff10a11
+      size: 41406464
+    - path: data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      hash: md5
+      md5: 85c6e35e295d25ca9f7a139174077d40
+      size: 4665344
+    - path: data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      hash: md5
+      md5: 1ea9a1ba765f3ce90884c4308fa2c215
+      size: 11001376768
+    - path: data/Rijkswaterstaat/modellen/hws_2025_10_1
+      hash: md5
+      md5: 34803b1559752b82fe087e20642db641.dir
+      size: 42664090
+      nfiles: 2
+    - path: data/Vechtstromen/modellen/Vechtstromen_2024_6_3
+      hash: md5
+      md5: 9d305bd4ad97f4c0d506810273db7f42.dir
+      size: 6578321
+      nfiles: 2
+    - path:
+        data/Vechtstromen/verwerkt/1_ontvangen_data/Feedbackform_20250428/20250428_Feedback
+        Formulier.xlsx
+      hash: md5
+      md5: 72604a4b1772bf68fedebfafded345dd
+      size: 215459
+    - path: data/Vechtstromen/verwerkt/1_ontvangen_data/aanvulling feb 24
+      hash: md5
+      md5: 71795d94b23c6ec2eaa88a9d055e2b35.dir
+      size: 129503226
+      nfiles: 60
+    - path:
+        data/Vechtstromen/verwerkt/1_ontvangen_data/downloads/peilgebieden_voormalig_velt_en_vecht.gpkg
+      hash: md5
+      md5: fcae58b2b8920dd484daa939b55ef027
+      size: 1617920
+    - path: data/Vechtstromen/verwerkt/1_ontvangen_data/nalevering_20240920
+      hash: md5
+      md5: bd8753ea9d54a32deba870ea841a6c31.dir
+      size: 991120275
+      nfiles: 84
+    - path:
+        data/Vechtstromen/verwerkt/1_ontvangen_data/wateraanvoergebieden_20250416
+      hash: md5
+      md5: e5f9e7d2cda1c187df36d63f882904a6.dir
+      size: 5024541
+      nfiles: 10
+    - path: data/Vechtstromen/verwerkt/4_ribasim/areas.gpkg
+      hash: md5
+      md5: f1d24608a7b87927e1b7d16bb3506ebc
+      size: 24612864
+    - path: data/Vechtstromen/verwerkt/4_ribasim/hydamo.gpkg
+      hash: md5
+      md5: 5f66b52380d09d9c5a2ef988db70ca67
+      size: 18677760
+    - path: data/Vechtstromen/verwerkt/fix_user_data.gpkg
+      hash: md5
+      md5: e0daf7f35c46842c91c9f68d35503967
+      size: 126976
+    - path: data/Vechtstromen/verwerkt/model_edits.gpkg
+      hash: md5
+      md5: ba78ea6ae1bf47297f4b4211485617cd
+      size: 339968
+    - path: data/Vechtstromen/verwerkt/parameters/static_data.xlsx
+      hash: md5
+      md5: 4430143dcfec01d74d4280bfd1aac3ff
+      size: 70376
+    - path: data/Vechtstromen/verwerkt/sturing/aanvoergebieden.gpkg
+      hash: md5
+      md5: f94ad131d5966174d5f78e46829c31cd
+      size: 4960256
+    - path: notebooks/vechtstromen/01_fix_model.py
+      hash: md5
+      md5: c50f35da56899003c359c1cf04155ddd
+      size: 63371
+    - path: notebooks/vechtstromen/02_prepare_model.py
+      hash: md5
+      md5: 1e569597624ae978806f4945f2500b87
+      size: 18810
+    - path: notebooks/vechtstromen/03_parameterize_model.py
+      hash: md5
+      md5: 2ae03d84cf31fd488bf1997d1d3e2a2e
+      size: 4024
+    - path: notebooks/vechtstromen/_preprocess_profielen.py
+      hash: md5
+      md5: 397fd876a8690cc3b4159b89a39f2e34
+      size: 61
+    - path: src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      hash: md5
+      md5: f0d6f439622edd3af25c557802bcb2ec
+      size: 8714
+    outs:
+    - path: data/Vechtstromen/modellen/Vechtstromen_parameterized_model
+      hash: md5
+      md5: 76947fc43dfc3648f3835104fc2a9d93.dir
+      size: 18800789
+      nfiles: 3
