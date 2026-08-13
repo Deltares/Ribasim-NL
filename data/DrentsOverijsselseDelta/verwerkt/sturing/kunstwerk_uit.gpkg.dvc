@@ -1,0 +1,5 @@
+outs:
+- md5: 6fd20061ca0c07bb18862065bfe6c829
+  size: 151552
+  hash: md5
+  path: kunstwerk_uit.gpkg

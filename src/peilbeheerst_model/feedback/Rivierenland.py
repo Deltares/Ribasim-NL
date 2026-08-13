@@ -35,14 +35,6 @@ FeedbackFormulier_LOG_path = cloud.joinpath(
 )
 gaten_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/gaten.gpkg")
 
-cloud.synchronize(
-    filepaths=[
-        ribasim_base_model_dir,
-        FeedbackFormulier_path,
-        gaten_path,
-    ]
-)
-
 # refresh only the feedback form from cloud
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 

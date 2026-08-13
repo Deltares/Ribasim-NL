@@ -12,7 +12,6 @@ model = Model.read(ribasim_toml)
 
 rwzi_model_path = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
 debieten_xlsx = cloud.joinpath("Rijkswaterstaat/aangeleverd/Matroos_debieten_2017_2022_Lobith_Monsin.xlsx")
-cloud.synchronize([debieten_xlsx])
 
 time_colname = " Timeseries retrieved from the MATROOS series database"
 

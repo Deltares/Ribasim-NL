@@ -33,16 +33,6 @@ af_aanvoergebied_shp = cloud.joinpath(authority, "aangeleverd/Eerste_levering/Af
 ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
-cloud.synchronize(
-    filepaths=[
-        ribasim_dir,
-        ribasim_areas_gpkg,
-        afwateringseenheden_shp,
-        hydamo_gpkg,
-        af_aanvoergebied_shp,
-        model_edits_gpkg,
-    ]
-)
 # %%
 model = Model.read(ribasim_toml)
 network_validator = NetworkValidator(model)

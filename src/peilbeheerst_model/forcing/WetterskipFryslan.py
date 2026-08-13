@@ -60,19 +60,6 @@ qlr_name = "output_controle_cc.qlr" if MIXED_CONDITIONS else "output_controle_20
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr", qlr_name)
 aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/aanvoer.gpkg")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
-gaarkeuken_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/gaarkeuken.gpkg")
-
-cloud.synchronize(
-    filepaths=[
-        ribasim_base_model_dir,
-        FeedbackFormulier_path,
-        ws_grenzen_path,
-        RWS_grenzen_path,
-        qlr_path,
-        aanvoer_path,
-        gaarkeuken_path,
-    ]
-)
 
 # refresh only the feedback form from cloud (instead of all "verwerkt" files)
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
@@ -339,6 +326,7 @@ assign_metadata = AssignMetaData(
     authority=waterschap,
     model_name=ribasim_model,
     param_name=f"{waterschap}.gpkg",
+    sync=False,
 )
 assign_metadata.add_meta_to_pumps(
     layer="gemaal",

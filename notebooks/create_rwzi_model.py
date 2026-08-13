@@ -32,13 +32,6 @@ zinfo_influentdebieten_path = (
 db_belasting = root_path_local / "aangeleverd/RwziBase/Belasting.xlsx"
 rwzi_ligging_path = root_path_local / "aangeleverd/locaties/RWZI_coordinates.geojson"
 
-cloud.synchronize(
-    filepaths=[
-        zinfo_influentdebieten_path,
-        db_belasting,
-    ]
-)
-
 # %% create empty model
 starttime = "2017-01-01"
 endtime = "2020-01-01"

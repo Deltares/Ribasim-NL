@@ -14,8 +14,6 @@ river_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_river.gpkg")
 canal_osm_path = cloud.joinpath("Basisgegevens/OSM/waterway_canal.gpkg")
 model_user_data_path = cloud.joinpath("Rijkswaterstaat/verwerkt/model_user_data.gpkg")
 
-cloud.synchronize(filepaths=[fairway_osm_path, river_osm_path, canal_osm_path, model_user_data_path])
-
 # input from previous step
 basins_path = cloud.joinpath("Rijkswaterstaat/verwerkt/basins.gpkg")
 

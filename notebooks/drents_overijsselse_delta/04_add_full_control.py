@@ -112,8 +112,6 @@ ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
 aanvoergebieden_gpkg = cloud.joinpath(AUTHORITY, "verwerkt", "sturing", "aanvoergebieden.gpkg")
 
-cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
-
 
 # %%
 # Read data
@@ -431,7 +429,6 @@ supply_nodes.append(dod_extra_supply_pump.node_id)
 kunstwerk_in_path = cloud.joinpath(AUTHORITY, "verwerkt", "sturing", "kunstwerk_in.gpkg")
 kunstwerk_uit_path = cloud.joinpath(AUTHORITY, "verwerkt", "sturing", "kunstwerk_uit.gpkg")
 
-cloud.synchronize(filepaths=[kunstwerk_in_path, kunstwerk_uit_path])
 
 manual_flow_control_nodes = list(flow_control_nodes)
 manual_supply_nodes = list(supply_nodes)

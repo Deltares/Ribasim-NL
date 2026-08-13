@@ -1,0 +1,5 @@
+outs:
+- md5: 1b72d72aeab96ee53a10e49ebed016bb
+  size: 388886528
+  hash: md5
+  path: bgt_AmstelGooienVecht_water.gpkg

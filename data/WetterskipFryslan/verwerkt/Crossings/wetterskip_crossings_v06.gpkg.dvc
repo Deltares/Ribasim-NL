@@ -1,0 +1,5 @@
+outs:
+- md5: 30eead937b432994cd2f7e7a4c536c9e
+  size: 154771456
+  hash: md5
+  path: wetterskip_crossings_v06.gpkg

@@ -1,0 +1,5 @@
+outs:
+- md5: c4b3b1ac3cd6bcaacdc8fba00e45f3c9
+  size: 588484608
+  hash: md5
+  path: bgt_HollandsNoorderkwartier_water.gpkg

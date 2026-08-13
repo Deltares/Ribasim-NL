@@ -1,0 +1,5 @@
+outs:
+- md5: d8b2e2b9862831cd1a8f32ed1c0f4b0c
+  size: 679936
+  hash: md5
+  path: model_user_data.gpkg

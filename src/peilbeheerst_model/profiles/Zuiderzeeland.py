@@ -18,6 +18,7 @@ if __name__ == "__main__":
         "zzl_crossings_v05.gpkg",
         export_profile_tables=True,
         export_intermediate_output=True,
+        sync=False,
     )
     src_toml = f"data/{waterschap}/modellen/{waterschap}_feedback/ribasim.toml"
     dst_toml = f"data/{waterschap}/modellen/{waterschap}_profiles/ribasim.toml"

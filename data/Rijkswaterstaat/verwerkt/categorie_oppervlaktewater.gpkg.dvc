@@ -1,0 +1,5 @@
+outs:
+- md5: 9a9a20501f514fa03981f3f1a2c8b2d9
+  size: 289366016
+  hash: md5
+  path: categorie_oppervlaktewater.gpkg

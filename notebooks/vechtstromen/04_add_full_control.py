@@ -202,9 +202,6 @@ qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.ql
 aanvoergebieden_gpkg = cloud.joinpath(AUTHORITY, "verwerkt", "sturing", "aanvoergebieden.gpkg")
 lhm_gemaal_gdb = cloud.joinpath(AUTHORITY, "verwerkt", "1_ontvangen_data", "LHM20230418.gdb")
 
-cloud.synchronize(filepaths=[aanvoergebieden_gpkg, qlr_path])
-cloud.synchronize(filepaths=[lhm_gemaal_gdb], overwrite=not lhm_gemaal_gdb.is_dir())
-
 
 # %%
 # Read data
