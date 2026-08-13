@@ -88,7 +88,7 @@ def _extract(zip_path: Path, dest: Path) -> None:
 def _install(ribasim_home: Path) -> None:
     ribasim_home.parent.mkdir(parents=True, exist_ok=True)
     asset = _asset_name()
-    with tempfile.TemporaryDirectory(dir=ribasim_home.parent) as temp_dir:
+    with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
         zip_path = temp_path / asset
         if SOURCE == "github":
