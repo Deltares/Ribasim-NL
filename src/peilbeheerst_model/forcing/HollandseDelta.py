@@ -485,6 +485,13 @@ ribasim_model.starttime = starttime
 ribasim_model.endtime = endtime
 ribasim_model.solver.saveat = saveat
 ribasim_model.write(output_dir_model_toml)
+ribasim_param.write_steady_state_regression_models(
+    output_dir_model_toml,
+    {
+        scenario: output_dir.parent / f"{waterschap}_steady_state_{scenario}" / "ribasim.toml"
+        for scenario in ("dry", "wet")
+    },
+)
 ribasim_model.validate_ribasim_nl()
 
 if not ribasim_model.use_validation:

@@ -112,6 +112,49 @@ def set_static_forcing(
     ribasim_model.endtime = time_range[-1].to_pydatetime()
 
 
+def write_steady_state_regression_models(
+    model_path: Path,
+    output_paths: dict[str, Path],
+    *,
+    dry_evaporation_mm_per_day: float = 1.0,
+    wet_precipitation_mm_per_day: float = 2.0,
+) -> None:
+    """Write constant dry and wet forcing variants of an existing model.
+
+    The source model is read separately for each variant so that the dynamic
+    production model remains unchanged. Its simulation period, controls, and
+    level boundaries are retained; only Basin meteo forcing is replaced.
+    """
+    required_scenarios = {"dry", "wet"}
+    if set(output_paths) != required_scenarios:
+        msg = f"Expected output paths for {sorted(required_scenarios)}, got {sorted(output_paths)}."
+        raise ValueError(msg)
+
+    for scenario, forcing in {
+        "dry": {"precipitation": 0.0, "potential_evaporation": dry_evaporation_mm_per_day},
+        "wet": {"precipitation": wet_precipitation_mm_per_day, "potential_evaporation": 0.0},
+    }.items():
+        scenario_model = Model.read(model_path)
+        starttime = scenario_model.starttime
+        endtime = scenario_model.endtime
+        scenario_model.basin.time.df = None
+        set_static_forcing(
+            timesteps=2,
+            timestep_size="d",
+            start_time=starttime,
+            forcing_dict={
+                key: convert_mm_day_to_m_sec(value)
+                for key, value in {**forcing, "drainage": 0.0, "infiltration": 0.0}.items()
+            },
+            ribasim_model=scenario_model,
+        )
+        scenario_model.starttime = starttime
+        scenario_model.endtime = endtime
+        output_path = output_paths[scenario]
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        scenario_model.write(output_path)
+
+
 def set_dynamic_forcing(
     ribasim_model: Model, time: typing.Sequence[datetime.datetime], forcing: dict[str, Any]
 ) -> None:
