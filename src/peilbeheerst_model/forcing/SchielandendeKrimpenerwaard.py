@@ -427,6 +427,11 @@ ribasim_model.pump.static.df.loc[
     ("max_flow_rate", "meta_known_flow_rate"),
 ] = 10, True  # actually not known, but its otherwise too low
 
+ribasim_model.outlet.static.df.loc[
+    ribasim_model.outlet.static.df.node_id == 685,
+    ("max_flow_rate", "meta_known_flow_rate"),
+] = 2.0, True  # actually not known, but its otherwise too low
+
 # rescaling of outlets (and pumps)
 if RESCALE_FLOW_CAPACITIES:
     ribasim_model, from_to_node_function_table = scale_outlets_pumps(
