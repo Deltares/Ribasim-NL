@@ -1,6 +1,5 @@
 # %%
 import geopandas as gpd
-from peilbeheerst_model.controle_output import Control
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump
 from ribasim_nl.control import (
@@ -10,6 +9,7 @@ from ribasim_nl.control import (
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
+from ribasim_nl.run_model import run_model_and_control
 from shapely import Point
 
 from ribasim_nl import CloudStorage, Model
@@ -89,17 +89,6 @@ def add_supply_area_control(
         flow_rate_afvoer=flow_rate_afvoer,
         max_flow_rate_afvoer=max_flow_rate_afvoer,
     )
-
-
-def run_model_and_control(model: Model, ribasim_toml, qlr_path):
-    model.write(ribasim_toml)
-
-    if MODEL_EXEC:
-        model.run()
-        Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path).run_all()
-        return Model.read(ribasim_toml)
-
-    return model
 
 
 # %%
@@ -796,18 +785,24 @@ model.outlet.static.df.loc[vechterweerd_mask, ["flow_rate", "max_flow_rate"]] = 
 # %%
 # Model run
 
-ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_wet", f"{SHORT_NAME}.toml")
-ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_dry", f"{SHORT_NAME}.toml")
+ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_steady_state_wet", f"{SHORT_NAME}.toml")
+ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_steady_state_dry", f"{SHORT_NAME}.toml")
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 
 # hoofd run met verdamping
 update_basin_static(model=model, evaporation_mm_per_day=1)
-model = run_model_and_control(model, ribasim_toml_dry, qlr_path)
+model = run_model_and_control(
+    model, ribasim_toml_dry, model_exec=MODEL_EXEC, qlr_path=qlr_path, authority=AUTHORITY, scenario="dry"
+)
 
 # prerun om het model te initialiseren met neerslag
 update_basin_static(model=model, precipitation_mm_per_day=2)
-model = run_model_and_control(model, ribasim_toml_wet, qlr_path)
+model = run_model_and_control(
+    model, ribasim_toml_wet, model_exec=MODEL_EXEC, qlr_path=qlr_path, authority=AUTHORITY, scenario="wet"
+)
 
 # hoofd run
 update_basin_static(model=model, precipitation_mm_per_day=1.5)
-model = run_model_and_control(model, ribasim_toml, qlr_path)
+model = run_model_and_control(
+    model, ribasim_toml, model_exec=MODEL_EXEC, qlr_path=qlr_path, authority=AUTHORITY, scenario=None
+)

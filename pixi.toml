@@ -82,7 +82,6 @@ install-dvc = "dvc pull"
 install = { depends-on = ["install-core", "install-prek", "install-dvc"] }
 repro = "dvc repro --keep-going && prek run"
 check = "prek run --all-files"
-pycheck = "prek run --all-files --skip dvc-pre-commit --skip dvc-pre-push --skip dvc-post-checkout"
 dvc-dag = { cmd = "python scripts/dvc_dag.py > docs/dev/_dvc-dag.mmd", inputs = ["dvc.yaml"], outputs = ["docs/dev/_dvc-dag.mmd"] }
 docs = { cmd = "quartodoc build && quarto preview", cwd = "docs", depends-on = ["dvc-dag"] }
 docs-render = { cmd = "quartodoc build && rm -f objects.json && quarto render --to html --execute", cwd = "docs", depends-on = ["dvc-dag"] }

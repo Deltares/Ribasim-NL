@@ -6,10 +6,42 @@ import sys
 from collections import namedtuple
 from datetime import timedelta
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ribasim.cli import _find_cli
 
+if TYPE_CHECKING:
+    from ribasim_nl.model import Model
+
 RunSpecs = namedtuple("RunSpecs", ["exit_code", "simulation_time"])
+
+
+def run_model_and_control(
+    model: "Model",
+    ribasim_toml: Path,
+    *,
+    model_exec: bool,
+    qlr_path: Path,
+    authority: str | None = None,
+    scenario: str | None = None,
+) -> "Model":
+    """Write a model and optionally run, export, and validate its result metrics."""
+    model.write(ribasim_toml)
+    if not model_exec:
+        return model
+
+    from peilbeheerst_model.controle_output import STATIC_FORCING_METRICS, Control
+    from peilbeheerst_model.steady_state_regression import allowed_non_steady_state_node_ids
+
+    from ribasim_nl.model import Model
+
+    model.run()
+    control = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
+    control.run(metrics=STATIC_FORCING_METRICS)
+    control.validate_result_conditions(
+        allowed_non_steady_state_node_ids=allowed_non_steady_state_node_ids(authority, scenario)
+    )
+    return Model.read(ribasim_toml)
 
 
 def parse_computation_time(line: str) -> timedelta | None:

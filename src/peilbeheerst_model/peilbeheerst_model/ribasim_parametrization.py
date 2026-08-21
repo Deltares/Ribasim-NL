@@ -116,10 +116,12 @@ def write_steady_state_regression_models(
     model_path: Path,
     output_paths: dict[str, Path],
     *,
+    authority: str,
+    qlr_path: Path,
     dry_evaporation_mm_per_day: float = 1.0,
     wet_precipitation_mm_per_day: float = 2.0,
 ) -> None:
-    """Write constant dry and wet forcing variants of an existing model.
+    """Write, run, export, and validate constant dry and wet forcing variants.
 
     The source model is read separately for each variant so that the dynamic
     production model remains unchanged. Its simulation period, controls, and
@@ -137,7 +139,7 @@ def write_steady_state_regression_models(
         scenario_model = Model.read(model_path)
         starttime = scenario_model.starttime
         endtime = scenario_model.endtime
-        scenario_model.basin.time.df = None
+        scenario_model.basin.time = None
         set_static_forcing(
             timesteps=2,
             timestep_size="d",
@@ -153,6 +155,16 @@ def write_steady_state_regression_models(
         output_path = output_paths[scenario]
         output_path.parent.mkdir(parents=True, exist_ok=True)
         scenario_model.write(output_path)
+
+        from peilbeheerst_model.controle_output import STATIC_FORCING_METRICS, Control
+        from peilbeheerst_model.steady_state_regression import allowed_non_steady_state_node_ids
+
+        scenario_model.run()
+        control = Control(ribasim_toml=output_path, qlr_path=qlr_path)
+        control.run(metrics=STATIC_FORCING_METRICS)
+        control.validate_result_conditions(
+            allowed_non_steady_state_node_ids=allowed_non_steady_state_node_ids(authority, scenario)
+        )
 
 
 def set_dynamic_forcing(

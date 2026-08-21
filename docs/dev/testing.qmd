@@ -1,0 +1,33 @@
+---
+title: "Testing"
+---
+
+Run the repository checks before submitting changes:
+
+```sh
+pixi run check
+```
+
+This also runs on CI.
+
+## Model input validation
+
+`Model.validate_ribasim_nl()` runs extensible checks on model input and supplements Ribasim schema validation. Add project-wide input rules to `ribasim_nl.validation.validate_model`.
+
+## Result regression testing
+
+The dry and wet steady-state scenarios guard against a Basin losing its ability to maintain its water level. During the existing `bergend_*` and `forcing_*` DVC stages, and in `repro.sh`, the dry and wet models are run and checked. A Basin is steady-state when its final water level differs by at most 0.01 m from the mean of the final 24 hours and its storage remains positive throughout the simulation.
+
+Known level-instability exceptions are kept as explicit scenario-specific Basin node IDs in `peilbeheerst_model.steady_state_regression`. Exceptions do not bypass the positive-storage check, and an exception for a missing Basin ID fails the run.
+
+Scenario results are available for inspection in each model's `results` directory, including `output_controle.gpkg` and `output_controle.qlr`.
+
+## Completed-model result checks
+
+`Control.run()` exports selected result metrics to `results/output_controle.gpkg`. It defaults to `DYNAMIC_FORCING_METRICS`; use `STATIC_FORCING_METRICS` or `AFVOER_METRICS` for the other established workflows, or pass a custom metric set. Call `Control.validate_result_conditions()` after export to enforce conditions. It logs every violation with its Basin node ID before raising one error, so all failures can be addressed together.
+
+New completed-model checks belong on `Control` and can be called after future dynamic model exports without changing the dry/wet scenario runner.
+
+### Allowing a known exception
+
+Only after reviewing an intentional model change, add the Basin node ID to `ALLOWED_NON_STEADY_STATE_NODE_IDS` for its authority and scenario. Remove an exception once the Basin becomes steady-state again.

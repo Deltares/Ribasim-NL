@@ -2,7 +2,6 @@
 from pathlib import Path
 
 import geopandas as gpd
-from peilbeheerst_model.controle_output import Control
 from ribasim import Node
 from ribasim.nodes import level_boundary
 from ribasim_nl.control import (
@@ -12,6 +11,7 @@ from ribasim_nl.control import (
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
+from ribasim_nl.run_model import run_model_and_control
 
 from ribasim_nl import CloudStorage, Model
 
@@ -60,34 +60,6 @@ def add_supply_area_control(
         flow_rate_afvoer=100.0,
         max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
     )
-
-
-def clean_database_sidecars(input_dir: Path) -> None:
-    for suffix in ["-wal", "-shm"]:
-        try:
-            input_dir.joinpath(f"database.gpkg{suffix}").unlink(missing_ok=True)
-        except PermissionError as error:
-            raise PermissionError(
-                f"Kan database sidecars niet opschonen in {input_dir}. "
-                "Sluit QGIS of andere programma's die de database gebruiken."
-            ) from error
-
-
-def run_model_and_control(model: Model, ribasim_toml, qlr_path):
-    ribasim_toml = Path(ribasim_toml)
-    input_dir = ribasim_toml.parent / model.input_dir
-
-    clean_database_sidecars(input_dir)
-    fill_missing_level_boundary_static_levels(model)
-    model.write(ribasim_toml)
-    clean_database_sidecars(input_dir)
-
-    if MODEL_EXEC:
-        model.run()
-        Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path).run_all()
-        return Model.read(ribasim_toml)
-
-    return model
 
 
 def set_max_flow_rate(static_df, max_flow_rate_by_node_id: dict[int, float]) -> None:
@@ -807,20 +779,29 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
 # %%
 # Model run
 
-ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_wet", f"{SHORT_NAME}.toml")
-ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_dry", f"{SHORT_NAME}.toml")
+ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_steady_state_wet", f"{SHORT_NAME}.toml")
+ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_steady_state_dry", f"{SHORT_NAME}.toml")
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 
 # hoofd run met verdamping
 update_basin_static(model=model, evaporation_mm_per_day=0.5)
-model = run_model_and_control(model, ribasim_toml_dry, qlr_path)
+fill_missing_level_boundary_static_levels(model)
+model = run_model_and_control(
+    model, ribasim_toml_dry, model_exec=MODEL_EXEC, qlr_path=qlr_path, authority=AUTHORITY, scenario="dry"
+)
 
 # prerun om het model te initialiseren met neerslag
 update_basin_static(model=model, precipitation_mm_per_day=2)
-model = run_model_and_control(model, ribasim_toml_wet, qlr_path)
+fill_missing_level_boundary_static_levels(model)
+model = run_model_and_control(
+    model, ribasim_toml_wet, model_exec=MODEL_EXEC, qlr_path=qlr_path, authority=AUTHORITY, scenario="wet"
+)
 
 # hoofd run
 update_basin_static(model=model, precipitation_mm_per_day=1.5)
-model = run_model_and_control(model, ribasim_toml, qlr_path)
+fill_missing_level_boundary_static_levels(model)
+model = run_model_and_control(
+    model, ribasim_toml, model_exec=MODEL_EXEC, qlr_path=qlr_path, authority=AUTHORITY, scenario=None
+)
 
 # %%
