@@ -140,6 +140,7 @@ def write_steady_state_regression_models(
         starttime = scenario_model.starttime
         endtime = scenario_model.endtime
         scenario_model.basin.time.df = None
+        scenario_model.basin.time.filepath = None  # not needed from ribasim v2026.1.3
         set_static_forcing(
             timesteps=2,
             timestep_size="d",

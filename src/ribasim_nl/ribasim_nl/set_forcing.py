@@ -106,6 +106,7 @@ class SetDynamicForcing:
             Updated Ribasim model with dynamic meteo forcing in ``basin.time``.
         """
         self.model.basin.time.df = None
+        self.model.basin.time.filepath = None  # not needed from ribasim v2026.1.3
 
         basins = self.model.basin.area.df
         assert basins is not None
