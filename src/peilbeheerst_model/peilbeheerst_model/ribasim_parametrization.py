@@ -139,7 +139,7 @@ def write_steady_state_regression_models(
         scenario_model = Model.read(model_path)
         starttime = scenario_model.starttime
         endtime = scenario_model.endtime
-        scenario_model.basin.time = None
+        scenario_model.basin.time.df = None
         set_static_forcing(
             timesteps=2,
             timestep_size="d",
