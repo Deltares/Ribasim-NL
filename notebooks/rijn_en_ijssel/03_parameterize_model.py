@@ -3,7 +3,7 @@ import time
 
 import geopandas as gpd
 import pandas as pd
-from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.controle_output import AFVOER_METRICS, Control
 from ribasim_nl.check_basin_level import add_check_basin_level
 from ribasim_nl.parametrization.basin_tables import sync_min_upstream_levels_with_profile_bottoms
 from ribasim_nl.parametrization.manning_level import sync_parameterized_manning_basin_levels
@@ -90,5 +90,5 @@ if run_model:
 
     # # %%
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_afvoer()
+    indicators = controle_output.run(metrics=AFVOER_METRICS)
 # %%

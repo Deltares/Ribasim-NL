@@ -58,12 +58,6 @@ To run all hooks on all files manually:
 pixi run check
 ```
 
-To skip the slower DVC hooks and only run Python linting, formatting, and type checking:
-
-```sh
-pixi run pycheck
-```
-
 ## Co-development with Ribasim
 
 Ribasim-NL pins to a specific Ribasim version in `pixi.toml`.

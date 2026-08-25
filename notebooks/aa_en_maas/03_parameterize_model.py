@@ -2,7 +2,7 @@
 import time
 
 import pandas as pd
-from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.controle_output import AFVOER_METRICS, Control
 from ribasim import run_ribasim
 from ribasim_nl.check_basin_level import add_check_basin_level
 
@@ -131,5 +131,5 @@ model.write(ribasim_toml)
 if run_model:
     run_ribasim(ribasim_toml)
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_afvoer()
+    indicators = controle_output.run(metrics=AFVOER_METRICS)
 # %%
