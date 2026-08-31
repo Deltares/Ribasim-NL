@@ -53,8 +53,8 @@ def duplicate_level_boundary_for_link(
             raise KeyError(f"Link {link_id} bestaat niet in dit model.")
         return None
 
-    from_node_id = int(cast(Any, link_df.at[link_id, "from_node_id"]))
-    to_node_id = int(cast(Any, link_df.at[link_id, "to_node_id"]))
+    from_node_id = int(link_df.at[link_id, "from_node_id"])
+    to_node_id = int(link_df.at[link_id, "to_node_id"])
     link_node_ids = {from_node_id, to_node_id}
 
     if source_node_id not in link_node_ids:
@@ -96,24 +96,3 @@ def duplicate_level_boundary_for_link(
         model.redirect_link(link_id=link_id, to_node_id=new_node_id)
 
     return new_node_id
-
-
-def duplicate_level_boundaries_for_links(
-    model: Model,
-    node_link_pairs: Iterable[tuple[int, int]],
-    default_level: float = 0.0,
-    name_suffix: str = "extra boundary",
-    strict: bool = False,
-) -> list[int | None]:
-    """Duplicate LevelBoundary nodes for multiple ``(source_node_id, link_id)`` pairs."""
-    return [
-        duplicate_level_boundary_for_link(
-            model=model,
-            source_node_id=source_node_id,
-            link_id=link_id,
-            default_level=default_level,
-            name_suffix=name_suffix,
-            strict=strict,
-        )
-        for source_node_id, link_id in node_link_pairs
-    ]

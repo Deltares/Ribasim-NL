@@ -3,9 +3,9 @@ import itertools
 import math
 from functools import partial
 
-import fiona
 import geopandas as gpd
 import numpy as np
+import pyogrio
 import rasterio
 from geocube.api.core import make_geocube
 from geocube.rasterize import rasterize_points_griddata
@@ -32,11 +32,7 @@ krw_poly_gpkg = cloud.joinpath("Basisgegevens/KRW/krw_oppervlaktewaterlichamen_n
 
 bathymetrie_nl = cloud.joinpath("Rijkswaterstaat/aangeleverd/bathymetrie")
 
-water_mask_path = out_dir / "water-mask.gpkg"
-
-
-cloud.synchronize(filepaths=[krw_poly_gpkg, water_mask_path])
-cloud.synchronize(filepaths=[bathymetrie_nl], overwrite=False)
+water_mask_path = cloud.joinpath("Rijkswaterstaat/aangeleverd/bathymetrie-mask/water-mask.gpkg")
 
 res = 5
 tile_size = 10000
@@ -75,16 +71,15 @@ with rasterio.open(out_dir / "bathymetrie-nl.tif", mode="w", **profile) as dst:
 # %%
 print("read mask")
 water_geometries = gpd.read_file(water_mask_path)
-with fiona.open(baseline_file, layer=layer) as src:
-    xmin, ymin, xmax, ymax = src.bounds
-    xmin = math.floor(xmin / tile_size) * tile_size
-    ymin = math.floor(ymin / tile_size) * tile_size
-    xmax = math.ceil(xmax / tile_size) * tile_size
-    ymax = math.ceil(ymax / tile_size) * tile_size
-    xmins = list(range(xmin, xmax, tile_size))
-    ymins = list(range(ymin, ymax, tile_size))
-    xymins = itertools.product(xmins, ymins)
-    transform = from_origin(xmin, ymax, res, res)
+xmin, ymin, xmax, ymax = pyogrio.read_info(baseline_file, layer=layer, force_total_bounds=True)["total_bounds"]
+xmin = math.floor(xmin / tile_size) * tile_size
+ymin = math.floor(ymin / tile_size) * tile_size
+xmax = math.ceil(xmax / tile_size) * tile_size
+ymax = math.ceil(ymax / tile_size) * tile_size
+xmins = list(range(xmin, xmax, tile_size))
+ymins = list(range(ymin, ymax, tile_size))
+xymins = itertools.product(xmins, ymins)
+transform = from_origin(xmin, ymax, res, res)
 
 # %%
 with rasterio.open(

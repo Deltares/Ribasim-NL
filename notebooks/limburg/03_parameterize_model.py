@@ -2,8 +2,11 @@
 import time
 
 import pandas as pd
-from peilbeheerst_model.controle_output import Control
-from ribasim_nl.parametrization.basin_tables import sync_min_upstream_levels_with_profile_bottoms
+from peilbeheerst_model.controle_output import AFVOER_METRICS, Control
+from ribasim_nl.parametrization.basin_tables import (
+    apply_basin_level_overrides,
+    sync_min_upstream_levels_with_profile_bottoms,
+)
 
 from ribasim_nl import CloudStorage, Model
 
@@ -21,7 +24,6 @@ ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model"
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
 # # you need the excel, but the model should be local-only by running 01_fix_model.py
-cloud.synchronize(filepaths=[static_data_xlsx])
 
 # %%
 
@@ -58,9 +60,7 @@ basin_level_overrides = [
     ([1606], 28.6),
 ]
 
-for node_ids, meta_streefpeil in basin_level_overrides:
-    mask = model.basin.area.df.node_id.isin(node_ids)
-    model.basin.area.df.loc[mask, "meta_streefpeil"] = meta_streefpeil
+apply_basin_level_overrides(model=model, basin_level_overrides=basin_level_overrides)
 
 boundary_level_overrides = {
     99: 31.0,
@@ -71,21 +71,6 @@ boundary_level_overrides = {
 for node_id, level in boundary_level_overrides.items():
     mask = model.level_boundary.static.df.node_id == node_id
     model.level_boundary.static.df.loc[mask, "level"] = level
-
-if model.basin.profile.df is not None and not model.basin.profile.df.empty:
-    profile_top = model.basin.profile.df.groupby("node_id")["level"].max()
-    for node_ids, meta_streefpeil in basin_level_overrides:
-        for node_id in node_ids:
-            if node_id not in profile_top.index:
-                continue
-            level_shift = float(meta_streefpeil) - float(profile_top.at[node_id])
-            mask = model.basin.profile.df.node_id.eq(node_id)
-            model.basin.profile.df.loc[mask, "level"] = (
-                model.basin.profile.df.loc[mask, "level"].astype(float) + level_shift
-            )
-
-# Herbereken afgeleide tabellen na handmatige streefpeil-/profiel-overrides.
-model.basin.state.df = model.basin.area.df[["node_id", "meta_streefpeil"]].rename(columns={"meta_streefpeil": "level"})
 
 # %%
 # Write model
@@ -101,5 +86,5 @@ if run_model:
     result = model.run()
 
     controle_output = Control(ribasim_toml=ribasim_toml)
-    indicators = controle_output.run_afvoer()
+    indicators = controle_output.run(metrics=AFVOER_METRICS)
 # %%

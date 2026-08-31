@@ -1,0 +1,5 @@
+outs:
+- md5: 3a29302a365be31c177f446563f8967c
+  size: 39096320
+  hash: md5
+  path: water-mask.gpkg

@@ -6,7 +6,7 @@ import peilbeheerst_model.ribasim_parametrization as ribasim_param
 import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
-from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.controle_output import DYNAMIC_FORCING_METRICS, STATIC_FORCING_METRICS, Control
 from peilbeheerst_model.network_snapping import snap_model
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
@@ -63,17 +63,6 @@ aanvoer_path = cloud.joinpath(
     waterschap, "aangeleverd/Na_levering/20240618_peilgebieden_en_polders/Polders_export_2024-06-18.shp"
 )
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
-
-cloud.synchronize(
-    filepaths=[
-        ribasim_base_model_dir,
-        FeedbackFormulier_path,
-        ws_grenzen_path,
-        RWS_grenzen_path,
-        qlr_path,
-        aanvoer_path,
-    ]
-)
 
 # refresh only the feedback form from cloud (instead of all "verwerkt" files)
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
@@ -406,6 +395,7 @@ assign_metadata = AssignMetaData(
     authority=waterschap,
     model_name=ribasim_model,
     param_name="Noorderkwartier.gpkg",
+    sync=False,
 )
 assign_metadata.add_meta_to_pumps(
     layer="gemaal",
@@ -540,6 +530,16 @@ ribasim_model.starttime = starttime
 ribasim_model.endtime = endtime
 ribasim_model.solver.saveat = saveat
 ribasim_model.write(output_dir_model_toml)
+ribasim_param.write_steady_state_regression_models(
+    output_dir_model_toml,
+    {
+        scenario: output_dir.parent / f"{waterschap}_steady_state_{scenario}" / "ribasim.toml"
+        for scenario in ("dry", "wet")
+    },
+    authority=waterschap,
+    qlr_path=qlr_path,
+)
+ribasim_model.validate_ribasim_nl()
 
 # run model
 run_ribasim(output_dir_model_toml)
@@ -548,4 +548,5 @@ ribasim_model.basin.state.write()
 
 # model performance
 controle_output = Control(work_dir=output_dir, qlr_path=qlr_path)
-indicators = controle_output.run_dynamic_forcing() if MIXED_CONDITIONS else controle_output.run_all()
+metrics = DYNAMIC_FORCING_METRICS if MIXED_CONDITIONS else STATIC_FORCING_METRICS
+indicators = controle_output.run(metrics=metrics)

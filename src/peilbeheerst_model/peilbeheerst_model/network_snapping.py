@@ -51,7 +51,7 @@ def relocate_nodes(model: Model, nodes: gpd.GeoDataFrame) -> Model:
 
     tmp = model.node.df.copy()
     tmp.loc[nodes.index, "geometry"] = nodes["geometry"]
-    model.node.df = tmp.copy()  # pyrefly: ignore[bad-assignment]
+    model.node.df = tmp.copy()
     return model
 
 
@@ -59,7 +59,7 @@ def snap_basins(
     model: Model, hydro_objects: gpd.GeoDataFrame, max_distance: float | None = None, main_route_only: bool = False
 ) -> Model:
     # model initiation check
-    assert model.basin.node.df is not None  # pyrefly: ignore[missing-attribute]
+    assert model.basin.node.df is not None
     assert model.basin.area.df is not None
 
     # copy datasets
@@ -69,7 +69,7 @@ def snap_basins(
     # selection of non-storing basins only
     nodes = nodes[nodes["meta_categorie"] != "bergend"]
     areas = areas[areas["node_id"].isin(nodes.index)]
-    areas.set_crs(nodes.crs, inplace=True)  # pyrefly: ignore[no-matching-overload]
+    areas.set_crs(nodes.crs, inplace=True)
 
     # selection and grouping of hydro-objects (per basin)
     if main_route_only:
@@ -83,7 +83,7 @@ def snap_basins(
 
     # couple grouped hydro-objects to basin-nodes
     out = nodes.merge(ho_merged, how="left", left_index=True, right_index=True)
-    out.set_crs(nodes.crs, inplace=True)  # pyrefly: ignore[no-matching-overload]
+    out.set_crs(nodes.crs, inplace=True)
 
     # validity of hydro-objects
     valid = out["hydro"].notna()
@@ -282,7 +282,7 @@ def snap_links(model: Model, graph: nx.Graph, tolerance: float = 10.0) -> Model:
     # update Ribasim model
     tmp = model.link.df.copy()
     tmp.loc[links.index, "geometry"] = links["geometry"]
-    model.link.df = tmp.copy()  # pyrefly: ignore[bad-assignment]
+    model.link.df = tmp.copy()
 
     return model
 
@@ -354,7 +354,7 @@ def relocate_link_endpoints(model: Model) -> Model:
     # update Ribasim model
     tmp = model.link.df.copy()
     tmp["geometry"] = links["geometry"]
-    model.link.df = tmp.copy()  # pyrefly: ignore[bad-assignment]
+    model.link.df = tmp.copy()
 
     return model
 

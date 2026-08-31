@@ -1,0 +1,5 @@
+outs:
+- md5: 4ea00716e254a580da1801cc95951a7c
+  size: 26714112
+  hash: md5
+  path: delfland_crossings_v08.gpkg

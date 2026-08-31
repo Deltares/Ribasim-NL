@@ -1,0 +1,5 @@
+outs:
+- md5: c896579b09cb440e754539dcf1d5ac5f
+  size: 108216320
+  hash: md5
+  path: wsrl_crossings_v06.gpkg

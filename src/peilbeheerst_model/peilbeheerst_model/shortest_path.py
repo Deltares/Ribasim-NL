@@ -2,7 +2,6 @@
 #
 # Code is based on: https://github.com/Deltares/Ribasim-NL/blob/1ad35931f49280fe223cbd9409e321953932a3a4/notebooks/ijsselmeermodel/netwerk.py#L55
 
-import fiona
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -13,6 +12,7 @@ import tqdm.auto as tqdm
 from shapely.geometry import LineString, Point
 from shapely.wkt import dumps
 
+from peilbeheerst_model.general_functions import read_gpkg_layers
 from peilbeheerst_model.waterschappen import waterschap_data
 from ribasim_nl import geometry
 
@@ -415,7 +415,7 @@ def shortest_path_waterschap(waterschap) -> gpd.GeoDataFrame:
     data_path = f"/DATAFOLDER/projects/4750_30/{data_path_str.split('../')[-1]}"
 
     # Load crossings file
-    DATA = {L: gpd.read_file(data_path, layer=L) for L in fiona.listlayers(data_path)}
+    DATA = read_gpkg_layers(data_path)
 
     # ### Select rhws
 

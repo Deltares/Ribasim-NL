@@ -10,7 +10,7 @@ from shapely.ops import polygonize, polylabel
 from ribasim_nl.generic import _validate_inputs
 
 
-def basin_to_point(basin_polygon: Polygon | MultiPolygon, tolerance: None | float = None) -> Point:
+def basin_to_point(basin_polygon: Polygon | MultiPolygon, tolerance: float | None = None) -> Point:
     """Return a representative point for the basin; centroid if it is within (Multi)Polygon or polylabel if not.
 
     Parameters
@@ -200,23 +200,6 @@ def link(point_from: Point, point_to: Point) -> LineString:
     if point_to.has_z:
         point_to = Point(point_to.x, point_to.y)
     return LineString((point_from, point_to))
-
-
-def project_point(line: LineString, point: Point, tolerance: float = 1) -> Point:
-    """Projects a point to a LineString
-
-    Args:
-        line (LineString): LineString to project point on
-        point (Point): Point to project on LineString
-        tolerance (float): Tolerance of point to line
-
-    Returns
-    -------
-        Point: Projected Point
-    """
-    if point.distance(line) > tolerance:
-        raise ValueError(f"point > {tolerance} from line ({point.distance(line)})")
-    return line.interpolate(line.project(point))
 
 
 def split_line(

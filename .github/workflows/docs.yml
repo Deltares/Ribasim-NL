@@ -21,7 +21,7 @@ jobs:
         run: |
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Propagate git credentials for v6
         run: |
           # Propagate git credentials to worktrees (required for actions/checkout@v6)
@@ -31,7 +31,7 @@ jobs:
             CRED_PATH=$(git config get --path includeIf.gitdir:"${GIT_DIR}".path)
             git config set --path includeIf.gitdir:"${GIT_DIR}/worktrees/*".path "${CRED_PATH}"
           fi
-      - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
+      - uses: prefix-dev/setup-pixi@f00437f565399d418b0acc85936d12c1fb668347 # v0.10.1
         with:
           pixi-version: "latest"
       - name: Check Quarto installation and all engines

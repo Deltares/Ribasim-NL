@@ -17,10 +17,9 @@ cloud = CloudStorage()
 
 waterboard = "RijnenIJssel"
 waterboard_model_versions = cloud.uploaded_models(authority=waterboard)
-latest_model_version = sorted(
-    [i for i in waterboard_model_versions if i.model == waterboard],
-    key=lambda x: getattr(x, "sorter", ""),
-)[-1]
+latest_model_version = max(
+    [i for i in waterboard_model_versions if i.model == waterboard], key=lambda x: getattr(x, "sorter", "")
+)
 
 model_folder = cloud.joinpath(f"{waterboard}/modellen", latest_model_version.path_string)
 meas_folder = cloud.joinpath("Basisgegevens/resultaatvergelijking/meetreeksen_2026")

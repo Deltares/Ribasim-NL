@@ -22,7 +22,6 @@ dependencies = [
     "shapely",
     "tqdm",
     "matplotlib",
-    "fiona",
     "networkx",
 ]
 dynamic = ["version"]

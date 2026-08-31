@@ -1,0 +1,5 @@
+outs:
+- md5: 5c946033d4921a6e47a299d580e7e413
+  size: 9879552
+  hash: md5
+  path: peilgebieden_vigerend.gpkg

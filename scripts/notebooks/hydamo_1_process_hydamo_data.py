@@ -8,7 +8,6 @@
 import warnings
 from pathlib import Path
 
-import fiona
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -27,8 +26,12 @@ def process_hydamo_changes(
     path_hydamo_gpkg_remove = Path(dir_hydamo_changes, "hydamo_verwijderen.gpkg")
     path_hydamo_gpkg_add = Path(dir_hydamo_changes, "hydamo_toevoegen.gpkg")
 
+    preprocess_layers = gpd.list_layers(path_hydamo_gpkg_preprocess)["name"].tolist()
+    remove_layers = gpd.list_layers(path_hydamo_gpkg_remove)["name"].tolist()
+    add_layers = gpd.list_layers(path_hydamo_gpkg_add)["name"].tolist()
+
     if sel_layers is None or sel_layers == []:
-        sel_layers = fiona.listlayers(path_hydamo_gpkg_preprocess)
+        sel_layers = preprocess_layers
     print(sel_layers)
     for layer in sel_layers:
         if layer == "layer_styles":
@@ -38,14 +41,14 @@ def process_hydamo_changes(
         gdf = gpd.read_file(str(path_hydamo_gpkg_preprocess), layer=layer, crs=28992)
 
         # remove objects
-        if layer in fiona.listlayers(path_hydamo_gpkg_remove):
+        if layer in remove_layers:
             gdf_remove = gpd.read_file(path_hydamo_gpkg_remove, layer=layer, crs=28992)
             try:
                 gdf = gdf.loc[~np.isin(gdf["code"], gdf_remove["code"])]
             except KeyError:
                 gdf = gdf.loc[~np.isin(gdf["globalid"], gdf_remove["globalid"])]
         # add new objects
-        if layer in fiona.listlayers(path_hydamo_gpkg_add):
+        if layer in add_layers:
             gdf_add = gpd.read_file(path_hydamo_gpkg_add, layer=layer, crs=28992)
             gdf_add = gdf_add.to_crs(28992)
             gdf = gdf.to_crs(28992)

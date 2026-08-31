@@ -127,7 +127,7 @@ def _junctionify(model: Model, links: gpd.GeoDataFrame, converging: bool = True)
         )
         # Introduce Junction for each overlapping part
         # And change the to_node_id of the lines to that junction
-        group.geometry = stripped_linestrings  # pyrefly: ignore[missing-attribute]
+        group.geometry = stripped_linestrings
         for i, common_linestring in enumerate(common_linestrings):
             idx = 0 if converging else -1
             junction = model.junction.add(Node(geometry=shapely.Point(common_linestring.coords[idx])))
@@ -136,13 +136,11 @@ def _junctionify(model: Model, links: gpd.GeoDataFrame, converging: bool = True)
             if converging:
                 model.link.add(
                     from_node=junction,
-                    # pyrefly: ignore[bad-argument-type]
                     to_node=Node(node_id, shapely.Point(0, 0), node_type="Junction"),
                     geometry=common_linestring,
                 )
             else:
                 model.link.add(
-                    # pyrefly: ignore[bad-argument-type]
                     from_node=Node(node_id, shapely.Point(0, 0), node_type="Junction"),
                     to_node=junction,
                     geometry=common_linestring,
@@ -154,7 +152,6 @@ def _junctionify(model: Model, links: gpd.GeoDataFrame, converging: bool = True)
                 if mapping == i:
                     print(f"    Updating link #{group.index[idx]} to new {field} Junction #{junction.node_id}")
                     model.link.df.loc[group.index[idx], field] = junction.node_id
-                    # pyrefly: ignore[unsupported-operation]
                     model.link.df.loc[group.index[idx], "geometry"] = stripped_linestrings[idx]
 
     return junction_ids

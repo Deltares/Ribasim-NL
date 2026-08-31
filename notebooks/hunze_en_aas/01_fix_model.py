@@ -24,8 +24,6 @@ database_gpkg = ribasim_toml.with_name("database.gpkg")
 ribasim_areas_path = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
 model_edits_path = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
-cloud.synchronize(filepaths=[ribasim_dir, ribasim_areas_path, model_edits_path])
-
 # %% read model
 model = Model.read(ribasim_toml)
 network_validator = NetworkValidator(model)

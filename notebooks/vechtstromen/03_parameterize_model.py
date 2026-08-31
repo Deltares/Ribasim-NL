@@ -3,7 +3,7 @@ import time
 
 import geopandas as gpd
 import pandas as pd
-from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.controle_output import AFVOER_METRICS, Control
 from ribasim_nl.check_basin_level import add_check_basin_level
 from ribasim_nl.parametrization.basin_tables import (
     apply_basin_level_overrides,
@@ -27,7 +27,6 @@ parameterized_model_dir = cloud.joinpath(authority, "modellen", f"{authority}_pa
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
 
-cloud.synchronize(filepaths=[static_data_xlsx, qlr_path, aanvoergebieden_gpkg])
 
 # %%
 # read
@@ -116,5 +115,5 @@ if run_model:
     assert result.exit_code == 0
 
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_afvoer()
+    indicators = controle_output.run(metrics=AFVOER_METRICS)
 # %%

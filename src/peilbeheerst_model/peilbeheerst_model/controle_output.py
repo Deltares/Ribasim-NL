@@ -7,9 +7,20 @@ import geopandas as gpd
 import pandas as pd
 import xarray as xr
 
+from peilbeheerst_model.steady_state_regression import (
+    steady_state_results,
+)
 from ribasim_nl import Model
 
 logger = logging.getLogger(__name__)
+
+LEVEL_METRICS = frozenset({"initial_final_level", "min_max_level", "error", "steady_state"})
+SUPPLY_METRICS = frozenset({"aanvoer_areas", "aanvoer_afvoer_basin_nodes", "aanvoer_afvoer_pumps", "aanvoer_outlets"})
+FLOW_METRICS = frozenset({"mean_flow"})
+
+STATIC_FORCING_METRICS = LEVEL_METRICS | SUPPLY_METRICS | FLOW_METRICS | {"afvoer_mask"}
+AFVOER_METRICS = LEVEL_METRICS | FLOW_METRICS | {"afvoer_mask", "flow_rate"}
+DYNAMIC_FORCING_METRICS = SUPPLY_METRICS | FLOW_METRICS | {"water_level_bounds", "error_bounds"}
 
 
 def model_loaded(func: Callable[..., dict[str, object]]) -> Callable[..., dict[str, object]]:
@@ -40,11 +51,19 @@ def model_loaded(func: Callable[..., dict[str, object]]) -> Callable[..., dict[s
 
 
 class Control:
+    """Export model-result metrics for QGIS and validate computed conditions.
+
+    Use :meth:`run` with one of the metric sets defined in this module, or a
+    custom set of metric names, to write selected metrics to
+    ``results/output_controle.gpkg``.
+    """
+
     ds_basin: xr.Dataset | None = None
     ds_link: xr.Dataset | None = None
     model: Model | None = None
 
     def __init__(self, qlr_path=None, work_dir=None, ribasim_toml=None) -> None:
+        """Configure paths to a model's results and optional QGIS layer definition."""
         if (work_dir is None) and (ribasim_toml is None):
             raise ValueError("provide either work_dir or ribasim_toml")
         else:
@@ -52,7 +71,7 @@ class Control:
                 self.path_ribasim_toml = ribasim_toml
                 self.work_dir = Path(ribasim_toml).parent
             else:
-                self.path_ribasim_toml = Path(work_dir) / "ribasim.toml"  # pyrefly: ignore[bad-argument-type]
+                self.path_ribasim_toml = Path(work_dir) / "ribasim.toml"
                 self.work_dir = work_dir
 
         if qlr_path is None:
@@ -64,6 +83,7 @@ class Control:
         self.path_control_dict_path = Path(self.work_dir) / "results" / "output_controle"
 
     def read_model_output(self):
+        """Load Basin and flow output together with the corresponding model."""
         ds_basin = xr.open_dataset(self.path_basin_output)
         ds_link = xr.open_dataset(self.path_link_output)
         model = Model.read(self.path_ribasim_toml)
@@ -167,25 +187,50 @@ class Control:
         return control_dict
 
     @model_loaded
-    def stationary(self, control_dict):
-        time_index = pd.DatetimeIndex(self.ds_basin["time"].values)
-        last_time = time_index[-1]
-        time_window_start = last_time - pd.Timedelta(hours=24)
-
-        level = self.ds_basin["level"]
-        average_last_values = level.sel(time=slice(time_window_start, last_time)).mean(dim="time")
-        actual_last_value = level.sel(time=last_time)
-        stationary = (abs(actual_last_value - average_last_values) <= 0.01).to_series().rename("stationary")
-        stationary_gdf = stationary.reset_index().dropna()
+    def steady_state(self, control_dict):
+        assert self.ds_basin is not None
+        steady_state_gdf = steady_state_results(self.ds_basin["level"], self.ds_basin["storage"])
 
         # Retrieve the geometries
-        stationary_gdf["geometry"] = stationary_gdf.merge(
+        steady_state_gdf["geometry"] = steady_state_gdf.merge(
             self.model.basin.node.df, on="node_id", suffixes=("", "model_")
         )["geometry"]
 
-        control_dict["stationary"] = gpd.GeoDataFrame(stationary_gdf, geometry="geometry")
+        control_dict["steady_state"] = gpd.GeoDataFrame(steady_state_gdf, geometry="geometry")
 
         return control_dict
+
+    @model_loaded
+    def validate_result_conditions(self, *, allowed_non_steady_state_node_ids: set[int] | None = None) -> None:
+        """Validate Basin result conditions after exporting output-control data.
+
+        All detected violations are logged with their Basin node IDs before one
+        exception is raised, so a single run reports every condition to fix.
+        """
+        assert self.ds_basin is not None
+        result = steady_state_results(self.ds_basin["level"], self.ds_basin["storage"]).set_index("node_id")
+        allowed_non_steady_state_node_ids = allowed_non_steady_state_node_ids or set()
+        issues: list[str] = []
+
+        missing_allowed_node_ids = allowed_non_steady_state_node_ids.difference(result.index)
+        issues.extend(
+            f"allowed non-steady-state Basin node_id={node_id} is missing from output"
+            for node_id in sorted(missing_allowed_node_ids)
+        )
+        issues.extend(
+            f"Basin node_id={node_id} reached zero storage" for node_id in result.index[~result["has_positive_storage"]]
+        )
+
+        non_steady_state = result.loc[
+            ~result["level_steady_state"] & ~result.index.isin(list(allowed_non_steady_state_node_ids))
+        ]
+        for node_id, row in non_steady_state.iterrows():
+            issues.append(f"Basin node_id={node_id} is not in steady state (deviation={row.level_deviation:.6g} m)")
+
+        for issue in issues:
+            logger.error(issue)
+        if issues:
+            raise AssertionError(f"Model result conditions failed for {len(issues)} Basin(s); see logged issues.")
 
     @model_loaded
     def find_mean_flow(self, control_dict):
@@ -327,35 +372,60 @@ class Control:
 
         return
 
-    def run_all(self) -> dict[str, object]:
+    def run(
+        self,
+        *,
+        metrics: set[str] | frozenset[str] = DYNAMIC_FORCING_METRICS,
+        skip_time_steps: int = 0,
+        autofill_missing_data: bool = False,
+    ) -> dict[str, object]:
+        """Compute selected metrics, export QGIS data, and return the collected results.
+
+        Parameters
+        ----------
+        metrics
+            Metric names to compute. Use ``STATIC_FORCING_METRICS``,
+            ``AFVOER_METRICS``, or ``DYNAMIC_FORCING_METRICS`` for the
+            established workflows.
+        skip_time_steps
+            Dynamic-forcing spin-up time steps excluded from level bounds.
+        autofill_missing_data
+            Permit ``error_bounds`` to calculate missing water-level bounds.
+        """
+        unknown_metrics = metrics.difference(STATIC_FORCING_METRICS | AFVOER_METRICS | DYNAMIC_FORCING_METRICS)
+        if unknown_metrics:
+            msg = f"Unknown output-control metrics: {sorted(unknown_metrics)}."
+            raise ValueError(msg)
+
         control_dict = self.read_model_output()
-        control_dict = self.initial_final_level(control_dict)
-        control_dict = self.min_max_level(control_dict)
-        control_dict = self.error(control_dict)
-        control_dict = self.stationary(control_dict)
-        control_dict = self.find_mean_flow(control_dict)
-        control_dict = self.water_aanvoer_areas(control_dict)
-        control_dict = self.water_aanvoer_afvoer_basin_nodes(control_dict)
-        control_dict = self.water_aanvoer_afvoer_pumps(control_dict)
-        control_dict = self.water_aanvoer_outlets(control_dict)
-        control_dict = self.mask_basins(control_dict)
+        if "initial_final_level" in metrics:
+            control_dict = self.initial_final_level(control_dict)
+        if "min_max_level" in metrics:
+            control_dict = self.min_max_level(control_dict)
+        if "error" in metrics:
+            control_dict = self.error(control_dict)
+        if "steady_state" in metrics:
+            control_dict = self.steady_state(control_dict)
+        if "water_level_bounds" in metrics:
+            control_dict = self.water_level_bounds(control_dict, skip_time_steps=skip_time_steps)
+        if "error_bounds" in metrics:
+            control_dict = self.error_bounds(control_dict, autofill_missing_data=autofill_missing_data)
+        if "mean_flow" in metrics:
+            control_dict = self.find_mean_flow(control_dict)
+        if "aanvoer_areas" in metrics:
+            control_dict = self.water_aanvoer_areas(control_dict)
+        if "aanvoer_afvoer_basin_nodes" in metrics:
+            control_dict = self.water_aanvoer_afvoer_basin_nodes(control_dict)
+        if "aanvoer_afvoer_pumps" in metrics:
+            control_dict = self.water_aanvoer_afvoer_pumps(control_dict)
+        if "aanvoer_outlets" in metrics:
+            control_dict = self.water_aanvoer_outlets(control_dict)
+        if "afvoer_mask" in metrics:
+            control_dict = self.mask_basins(control_dict)
+        if "flow_rate" in metrics:
+            control_dict = self.flow_rate(control_dict)
 
         self.store_data(data=control_dict, output_path=self.path_control_dict_path)
-
-        return control_dict
-
-    def run_afvoer(self) -> dict[str, object]:
-        control_dict = self.read_model_output()
-        control_dict = self.initial_final_level(control_dict)
-        control_dict = self.min_max_level(control_dict)
-        control_dict = self.error(control_dict)
-        control_dict = self.stationary(control_dict)
-        control_dict = self.find_mean_flow(control_dict)
-        control_dict = self.mask_basins(control_dict)
-        control_dict = self.flow_rate(control_dict)
-
-        self.store_data(data=control_dict, output_path=self.path_control_dict_path)
-
         return control_dict
 
     @model_loaded
@@ -446,13 +516,11 @@ class Control:
 
         # water level differences
         min_difference_level = (
-            # pyrefly: ignore[missing-attribute]
             (min_basin_level.set_index("node_id")["level"] - initial_basin_level.set_index("node_id")["level"])
             .reset_index(drop=False)
             .rename(columns={"level": "level_difference"})
         )
         max_difference_level = (
-            # pyrefly: ignore[missing-attribute]
             (max_basin_level.set_index("node_id")["level"] - initial_basin_level.set_index("node_id")["level"])
             .reset_index(drop=False)
             .rename(columns={"level": "level_difference"})
@@ -473,44 +541,4 @@ class Control:
         )
 
         # return updated analysed data collector
-        return control_dict
-
-    def run_dynamic_forcing(self, **kwargs) -> dict[str, object]:
-        """Run the output control formatting for varying forcing conditions.
-
-        :param kwargs: optional arguments, which are passed on to the various method-calls within this collective data
-            analysis call
-
-        :key autofill_missing_data: autofill water level bounds if missing, defaults to False
-        :key skip_time_steps: number of time-steps considered as spin-up time and so skipped in analysis, defaults to 0
-        :key suppress_file_warning: suppress warning for potentially incompatible *.qlr-file, defaults to False
-
-        :return: analysed data collector
-        :rtype: dict
-        """
-        # optional arguments
-        autofill_missing_data: bool = kwargs.get("autofill_missing_data", False)
-        skip_time_steps: int = kwargs.get("skip_time_steps", 0)
-        suppress_file_warning: bool = kwargs.get("suppress_file_warning", False)
-
-        # analyse output data
-        control_dict = self.read_model_output()
-        control_dict = self.water_level_bounds(control_dict, skip_time_steps=skip_time_steps)
-        control_dict = self.error_bounds(control_dict, autofill_missing_data=autofill_missing_data)
-        control_dict = self.water_aanvoer_areas(control_dict)
-        control_dict = self.water_aanvoer_afvoer_basin_nodes(control_dict)
-        control_dict = self.water_aanvoer_afvoer_pumps(control_dict)
-        control_dict = self.water_aanvoer_outlets(control_dict)
-        control_dict = self.find_mean_flow(control_dict)
-
-        # check for dynamic forcing specific *.qlr
-        filename_cc_qlr = "output_controle_cc.qlr"
-        if not suppress_file_warning and not str(self.qlr_path).endswith(filename_cc_qlr):
-            logger.warning(f"*.qlr-file is different from default for dynamic forcing: {filename_cc_qlr}")
-            logger.warning(f"*.qlr-file may not be compatible with dynamic forcing: {self.qlr_path}")
-
-        # export analysed data
-        self.store_data(control_dict, self.path_control_dict_path)
-
-        # return analysed data collector
         return control_dict

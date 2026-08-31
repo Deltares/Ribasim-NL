@@ -1,0 +1,5 @@
+outs:
+- md5: 6b24a180e9126c07d687b99ad19c01fc
+  size: 167936
+  hash: md5
+  path: oppervlaktewater_belgie.gpkg

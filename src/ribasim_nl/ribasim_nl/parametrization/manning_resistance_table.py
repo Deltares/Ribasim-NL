@@ -56,7 +56,7 @@ def update_manning_resistance_static(
     # manning_n
     static_df.loc[:, "manning_n"] = manning_n
 
-    model.manning_resistance.static.df = static_df  # pyrefly: ignore[bad-assignment]
+    model.manning_resistance.static.df = static_df
 
 
 def calculate_flow_rate(
@@ -123,17 +123,12 @@ def manning_flow_rate(model: Model, manning_node_id: int, at_timestamp: Timestam
     q = calculate_flow_rate(
         depth=depth,
         profile_width=float(
-            # pyrefly: ignore[bad-argument-type]
             model.manning_resistance.static.df.set_index("node_id").at[manning_node_id, "profile_width"]
         ),
         profile_slope=float(
-            # pyrefly: ignore[bad-argument-type]
             model.manning_resistance.static.df.set_index("node_id").at[manning_node_id, "profile_slope"]
         ),
-        manning_n=float(
-            # pyrefly: ignore[bad-argument-type]
-            model.manning_resistance.static.df.set_index("node_id").at[manning_node_id, "manning_n"]
-        ),
+        manning_n=float(model.manning_resistance.static.df.set_index("node_id").at[manning_node_id, "manning_n"]),
         slope=slope,
     )
 

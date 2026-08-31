@@ -82,11 +82,11 @@ def find_codes(
         df = codes_df.loc[codes_df.name.apply(lambda x: organization.lower() in x.lower())]
     if to_dict:
         if isinstance(df, DataFrame):  # noqa: SIM108
-            codes = df.to_dict(orient="records")  # pyrefly: ignore[bad-assignment]
+            codes = df.to_dict(orient="records")
         else:
-            codes = df.to_dict()  # pyrefly: ignore[bad-assignment]
+            codes = df.to_dict()
 
-    return codes  # pyrefly: ignore[bad-return]
+    return codes
 
 
 def code_from_geometry(geometry: Point) -> str:

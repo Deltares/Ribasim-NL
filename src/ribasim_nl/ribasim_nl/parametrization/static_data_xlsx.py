@@ -143,7 +143,7 @@ class StaticData(BaseModel):
             # sanitize
             df.rename(columns={"meta_categorie": "categorie"}, inplace=True)
             df = df.reset_index(drop=False)[["node_id", "categorie", "code_peilgebied", "profielid", "streefpeil"]]
-        setattr(self, pascal_to_snake_case(node_type), df)  # pyrefly: ignore[unbound-name]
+        setattr(self, pascal_to_snake_case(node_type), df)
         return getattr(self, pascal_to_snake_case(node_type))
 
     def add_series(self, node_type, series, fill_na: bool = False) -> None:

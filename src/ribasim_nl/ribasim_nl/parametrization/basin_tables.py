@@ -5,7 +5,6 @@ import pandas as pd
 
 from ribasim_nl.coupling_level_common import as_float, as_int
 from ribasim_nl.model import Model
-from ribasim_nl.parametrization.conversions import round_to_precision
 from ribasim_nl.parametrization.empty_table import empty_table_df
 
 
@@ -51,60 +50,12 @@ def update_basin_static(
     model.basin.static.df = static_df
 
 
-def update_basin_profile(
-    model: Model,
-    percentages_map: dict[str, int] | None = None,
-    default_percentage: int = 10,
-    profile_depth: int = 3,
-) -> None:
-    # read profile from basin-table
-    if percentages_map is None:
-        percentages_map = {"hoofdwater": 25, "doorgaand": 5, "bergend": 2}
-    assert model.basin.area.df is not None
-    profile = model.basin.area.df.copy()
-
-    # determine the profile area, which is also used for the profile
-    # profile["area"] = profile["geometry"].area * (default_percentage / 100)
-    profile = profile[["node_id", "meta_streefpeil", "geometry"]]
-    profile = profile.rename(columns={"meta_streefpeil": "level"})
-
-    # get open-water percentages per category
-    profile["percentage"] = default_percentage
-    assert model.basin.node is not None
-    assert model.basin.node.df is not None
-    for category, percentage in percentages_map.items():
-        node_ids = model.basin.node.df.loc[model.basin.node.df.meta_categorie == category].index.to_numpy()
-        profile.loc[profile.node_id.isin(node_ids), "percentage"] = percentage
-        print(percentage)
-
-    # calculate area at invert from percentage
-    profile["area"] = profile["geometry"].area * profile["percentage"] / 100
-    profile.drop(columns=["geometry", "percentage"], inplace=True)
-
-    # define the profile-bottom
-    profile_bottom = profile.copy()
-    profile_bottom["area"] = 0.1
-    profile_bottom["level"] -= profile_depth
-
-    # define the profile slightly above the bottom of the bakje
-    profile_slightly_above_bottom = profile.copy()
-    profile_slightly_above_bottom["level"] -= profile_depth - 0.01  # remain one centimeter above the bottom
-
-    # combine all profiles by concatenating them, and sort on node_id, level and area.
-    profile_df = pd.concat([profile_bottom, profile_slightly_above_bottom, profile])
-    profile_df = profile_df.sort_values(by=["node_id", "level", "area"], ascending=True).reset_index(drop=True)
-    profile_df.loc[:, "area"] = profile_df["area"].apply(round_to_precision, args=(0.1,))
-
-    model.basin.profile.df = profile_df
-
-
 def update_basin_state(model: Model) -> None:
     """Update basin state by max profile-level
 
     Args:
         model (Model): Ribasim Model
     """
-    # pyrefly: ignore[missing-attribute]
     model.basin.state.df = model.basin.profile.df.groupby("node_id").max().reset_index()[["node_id", "level"]]
 
 
@@ -119,31 +70,31 @@ def apply_basin_level_overrides(
     """Apply manual Basin target levels and keep derived Basin tables consistent."""
     assert model.basin.area.df is not None
 
-    protected_basin_node_ids = [int(node_id) for node_ids, _ in basin_level_overrides for node_id in node_ids]
+    target_level_by_node = {
+        int(node_id): float(target_level) for node_ids, target_level in basin_level_overrides for node_id in node_ids
+    }
+    protected_basin_node_ids = list(target_level_by_node)
 
     if update_profile and model.basin.profile.df is not None and not model.basin.profile.df.empty:
         profile_top = model.basin.profile.df.groupby("node_id")["level"].max()
-        for node_ids, target_level in basin_level_overrides:
-            for node_id in node_ids:
-                node_id = int(node_id)
-                if node_id not in profile_top.index:
-                    continue
+        for node_id, target_level in target_level_by_node.items():
+            if node_id not in profile_top.index:
+                continue
 
-                level_shift = float(target_level) - as_float(profile_top.at[node_id])
-                if level_shift == 0:
-                    continue
+            level_shift = target_level - as_float(profile_top.at[node_id])
+            if level_shift == 0:
+                continue
 
-                mask = model.basin.profile.df["node_id"].eq(node_id)
-                model.basin.profile.df.loc[mask, "level"] = (
-                    model.basin.profile.df.loc[mask, "level"].astype(float) + level_shift
-                )
+            mask = model.basin.profile.df["node_id"].eq(node_id)
+            model.basin.profile.df.loc[mask, "level"] = (
+                model.basin.profile.df.loc[mask, "level"].astype(float) + level_shift
+            )
 
-    for node_ids, target_level in basin_level_overrides:
-        mask = model.basin.area.df["node_id"].isin(node_ids)
-        model.basin.area.df.loc[mask, target_level_column] = float(target_level)
+    for node_id, target_level in target_level_by_node.items():
+        mask = model.basin.area.df["node_id"].eq(node_id)
+        model.basin.area.df.loc[mask, target_level_column] = target_level
 
     if update_state:
-        # pyrefly: ignore[bad-assignment]
         model.basin.state.df = model.basin.area.df[["node_id", target_level_column]].rename(
             columns={target_level_column: "level"}
         )
@@ -280,6 +231,6 @@ def add_basin_time_synthetic(
     time_df.loc[time_df["time"] == end_time, "potential_evaporation"] = static_df["potential_evaporation"].to_numpy()
 
     model.basin.static.df = None
-    model.basin.time.df = time_df.reset_index()  # pyrefly: ignore[bad-assignment]
+    model.basin.time.df = time_df.reset_index()
     model.starttime = start_time
     model.endtime = end_time

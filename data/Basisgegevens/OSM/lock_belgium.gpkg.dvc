@@ -1,0 +1,5 @@
+outs:
+- md5: 0d5b2783451b58ec3e6c37f2c577ff4d
+  size: 196608
+  hash: md5
+  path: lock_belgium.gpkg

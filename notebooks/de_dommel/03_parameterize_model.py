@@ -1,9 +1,12 @@
 # %%
 import time
 
-from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.controle_output import AFVOER_METRICS, Control
 from ribasim_nl.check_basin_level import add_check_basin_level
-from ribasim_nl.parametrization.basin_tables import sync_min_upstream_levels_with_profile_bottoms
+from ribasim_nl.parametrization.basin_tables import (
+    apply_basin_level_overrides,
+    sync_min_upstream_levels_with_profile_bottoms,
+)
 
 from ribasim_nl import CloudStorage, Model
 
@@ -21,7 +24,6 @@ qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
-cloud.synchronize(filepaths=[static_data_xlsx, qlr_path])
 
 # %%
 
@@ -42,12 +44,7 @@ basin_level_overrides = [
     ([1718], 12.38),
 ]
 
-for node_ids, meta_streefpeil in basin_level_overrides:
-    mask = model.basin.area.df.node_id.isin(node_ids)
-    model.basin.area.df.loc[mask, "meta_streefpeil"] = meta_streefpeil
-
-# Herbereken afgeleide tabellen na handmatige streefpeil-overrides.
-model.basin.state.df = model.basin.area.df[["node_id", "meta_streefpeil"]].rename(columns={"meta_streefpeil": "level"})
+apply_basin_level_overrides(model=model, basin_level_overrides=basin_level_overrides)
 
 # %%
 
@@ -68,5 +65,5 @@ if run_model:
 
     # # %%
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_afvoer()
+    indicators = controle_output.run(metrics=AFVOER_METRICS)
 # %%

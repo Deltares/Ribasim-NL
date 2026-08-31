@@ -33,8 +33,6 @@ sturing_xlsx = cloud.joinpath(
     authority, "verwerkt/1_ontvangen_data/sturing_gemalen_stuwen_22-5-2022/sturingGemalenStuwen_v2.xlsx"
 )
 
-cloud.synchronize(filepaths=[peilgebieden_path, damo_profiles_gpkg, sturing_xlsx])
-
 # %% init things
 model = Model.read(ribasim_toml)
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
@@ -45,11 +43,8 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 # prepare DAMO profiles and network
 lines_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject")
 
-if not network_gpkg.exists():
-    network = Network(lines_gdf=lines_gdf, tolerance=0.2)
-    network.to_file(network_gpkg)
-else:
-    network = Network.from_network_gpkg(network_gpkg)
+network = Network(lines_gdf=lines_gdf, tolerance=0.2)
+network.to_file(network_gpkg)
 
 damo_profiles = DAMOProfiles(
     model=model,
@@ -63,25 +58,12 @@ damo_profiles = DAMOProfiles(
 # %%
 
 # fix link geometries and profiles
-use_cache = False
-if link_geometries_gpkg.exists() and profiles_gpkg.exists():
-    link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
-    use_cache = link_geometries_df.index.equals(model.link.df.index)
-
-if use_cache:
-    model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
-    if "meta_profielid_waterbeheerder" in link_geometries_df.columns:
-        model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
-            "meta_profielid_waterbeheerder"
-        ]
-    profiles_df = gpd.read_file(profiles_gpkg).set_index("profiel_id")
-else:
-    profiles_df = damo_profiles.process_profiles()
-    profiles_df.to_file(profiles_gpkg)
-    profiles_df.set_index("profiel_id", inplace=True)
-    add_link_profile_ids(model, profiles=damo_profiles, id_col="code")
-    fix_link_geometries(model, network)
-    model.link.df.reset_index().to_file(link_geometries_gpkg)
+profiles_df = damo_profiles.process_profiles()
+profiles_df.to_file(profiles_gpkg)
+profiles_df.set_index("profiel_id", inplace=True)
+add_link_profile_ids(model, profiles=damo_profiles, id_col="code")
+fix_link_geometries(model, network)
+model.link.df.reset_index().to_file(link_geometries_gpkg)
 
 
 # %%
