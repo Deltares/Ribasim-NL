@@ -12,17 +12,9 @@ from ribasim_nl import CloudStorage, Model
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = True
-ADD_LHM_FRACTIONS: bool = True
-ADD_RWZI: bool = True
-ADD_JUNCTIONS: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
-
-mixed_conditions_design_P = 12
-mixed_conditions_design_E = 2
 
 # model settings
 waterschap = "AmstelGooienVecht"
@@ -38,14 +30,6 @@ FeedbackFormulier_path = cloud.joinpath(
 )
 FeedbackFormulier_LOG_path = cloud.joinpath(
     waterschap, "verwerkt/Feedback Formulier", f"feedback_formulier_{waterschap}_LOG.xlsx"
-)
-
-
-cloud.synchronize(
-    filepaths=[
-        ribasim_base_model_dir,
-        FeedbackFormulier_path,
-    ]
 )
 
 # # download the Feedback Formulieren, overwrite the old ones

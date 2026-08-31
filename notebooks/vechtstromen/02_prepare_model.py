@@ -43,20 +43,6 @@ feedback_xlsx = cloud.joinpath(
 )
 waterinlaten = cloud.joinpath(authority, r"verwerkt/1_ontvangen_data/aanvulling feb 24/Waterinlaten.shp")
 
-cloud.synchronize(
-    filepaths=[
-        profielpunt_shp,
-        profiellijn_shp,
-        peilgebieden_RD,
-        peilgebieden_path,
-        peilregister_xlsx,
-        feedback_xlsx,
-        waterinlaten,
-        hydamo_gpkg,
-    ]
-)
-cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
-
 # %% init things
 model = Model.read(ribasim_toml)
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
@@ -86,26 +72,14 @@ damo_profiles = DAMOProfiles(
 # %%
 
 # fix link geometries and profiles
-use_cache = False
-if link_geometries_gpkg.exists() and profiles_gpkg.exists():
-    link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
-    use_cache = link_geometries_df.index.equals(model.link.df.index)
+profiles_df = damo_profiles.process_profiles()
+profiles_df = profiles_df[profiles_df.bottom_level != 0]
+profiles_df = profiles_df[profiles_df.invert_level < 50]
+profiles_df.to_file(profiles_gpkg)
 
-if use_cache:
-    model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
-    model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
-        "meta_profielid_waterbeheerder"
-    ]
-    profiles_df = gpd.read_file(profiles_gpkg)
-else:
-    profiles_df = damo_profiles.process_profiles()
-    profiles_df = profiles_df[profiles_df.bottom_level != 0]
-    profiles_df = profiles_df[profiles_df.invert_level < 50]
-    profiles_df.to_file(profiles_gpkg)
-
-    fix_link_geometries(model, network, max_straight_line_ratio=3)
-    add_link_profile_ids(model, profiles=profiles_df, id_col="profiel_id")
-    model.link.df.reset_index().to_file(link_geometries_gpkg)
+fix_link_geometries(model, network, max_straight_line_ratio=3)
+add_link_profile_ids(model, profiles=profiles_df, id_col="profiel_id")
+model.link.df.reset_index().to_file(link_geometries_gpkg)
 
 profiles_df.set_index("profiel_id", inplace=True)
 # %%

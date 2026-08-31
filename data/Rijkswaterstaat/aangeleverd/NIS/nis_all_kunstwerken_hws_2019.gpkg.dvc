@@ -1,0 +1,5 @@
+outs:
+- md5: bea7d6385a4ef964d7b1038f05004203
+  size: 225280
+  hash: md5
+  path: nis_all_kunstwerken_hws_2019.gpkg

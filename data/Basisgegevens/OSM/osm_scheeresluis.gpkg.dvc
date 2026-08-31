@@ -1,0 +1,5 @@
+outs:
+- md5: 7ac0201db83a7cd70fa7eed2d1e29de0
+  size: 110592
+  hash: md5
+  path: osm_scheeresluis.gpkg

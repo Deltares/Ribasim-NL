@@ -1,7 +1,6 @@
 # import packages and functions
 from pathlib import Path
 
-import fiona
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -27,14 +26,8 @@ Zuiderzeeland["hevels"] = gpd.read_file(path_zzl + "\overigekunstwerken.gpkg")
 Zuiderzeeland["peilgebied"] = gpd.read_file(path_zzl + "\peilvakken_nalevering.gpkg")
 
 
-# use fiona for the duikersifonhevels and watergangen due to unexpted geometry types
-with fiona.open(path_zzl + "/Duikers.gpkg", "r") as file:
-    # Read the contents and store them in the GeoDataFrame
-    Zuiderzeeland["duikersifonhevel"] = gpd.GeoDataFrame.from_features(file, crs="EPSG:28992")
-
-with fiona.open(path_zzl + "/zzl_watergangen_nalevering/zzl_Watergangen.shp", "r") as file:
-    # Read the contents and store them in the GeoDataFrame
-    Zuiderzeeland["hydroobject"] = gpd.GeoDataFrame.from_features(file)
+Zuiderzeeland["duikersifonhevel"] = gpd.read_file(path_zzl + "/Duikers.gpkg").set_crs("EPSG:28992")
+Zuiderzeeland["hydroobject"] = gpd.read_file(path_zzl + "/zzl_watergangen_nalevering/zzl_Watergangen.shp")
 
 
 Zuiderzeeland["hydroobject"] = Zuiderzeeland["hydroobject"].set_crs(crs="WGS84", allow_override=True)

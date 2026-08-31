@@ -6,7 +6,7 @@ import peilbeheerst_model.ribasim_parametrization as ribasim_param
 import xarray as xr
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
-from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.controle_output import DYNAMIC_FORCING_METRICS, STATIC_FORCING_METRICS, Control
 from peilbeheerst_model.network_snapping import snap_model
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
@@ -59,19 +59,6 @@ qlr_name = "output_controle_cc.qlr" if MIXED_CONDITIONS else "output_controle_20
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr", qlr_name)
 aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/Aanvoergebieden_detail.shp")
 profiles_path = cloud.joinpath(waterschap, "verwerkt/profielen")
-gaten_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/gaten.gpkg")
-
-cloud.synchronize(
-    filepaths=[
-        ribasim_base_model_dir,
-        FeedbackFormulier_path,
-        ws_grenzen_path,
-        RWS_grenzen_path,
-        qlr_path,
-        aanvoer_path,
-        gaten_path,
-    ]
-)
 
 # refresh only the feedback form from cloud (instead of all "verwerkt" files)
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
@@ -114,10 +101,24 @@ processor = RibasimFeedbackProcessor(
 
 ribasim_model = Model.read(ribasim_work_dir_model_toml)
 
-# add junctions and network snapping
+# Resolve geometry-based inlaat node lookups before snapping relocates these nodes, so the
+# hard-coded coordinates still match the original node locations (used much further below).
+_inlaat_points = [Point(174615, 440126), Point(103334, 433570), Point(103446, 433601), Point(198568, 434184)]
+inlaten = []
+for _inlaat_point in _inlaat_points:
+    _inlaat_candidates = ribasim_model.node.df.loc[ribasim_model.node.df.geometry.distance(_inlaat_point) < 1]
+    if len(_inlaat_candidates) != 1:
+        raise ValueError(
+            f"Expected exactly 1 node within 1 m of inlaat location {_inlaat_point.wkt}, "
+            f"but found {len(_inlaat_candidates)}: {_inlaat_candidates.index.tolist()}"
+        )
+    inlaten.append(_inlaat_candidates.index[0])
+inlaat_Kuijk = inlaten[0]
+
+# network snapping (junctions are added at the very end, just before writing, so they stay
+# transparent to all parametrization, classification and validation steps)
 if ADD_JUNCTIONS:
     ribasim_model = snap_model(ribasim_model, profiles_path)
-    ribasim_model = junctionify(ribasim_model)
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[
@@ -133,7 +134,6 @@ if missing_meta_categorie_node_ids:
 if DYNAMIC_CONDITIONS:
     # Add dynamic meteo and groundwater from LHM zarr
     lhm_budget_path = cloud.joinpath("Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink")
-    cloud.synchronize(filepaths=[lhm_budget_path], overwrite=False)
     budgets = xr.open_zarr(str(lhm_budget_path)).sel(time=slice(starttime, endtime))
     offline_budgets = AssignOfflineBudgets(budgets)
 
@@ -232,14 +232,6 @@ to_flow_control = (
     879,
 )
 
-# look up dynamically-added inlaten node IDs by geometry
-_node_df = ribasim_model.node.df
-_inlaat_kuijk_point = Point(174615, 440126)
-_inlaat_points = [_inlaat_kuijk_point, Point(103334, 433570), Point(103446, 433601)]
-inlaten = [_node_df.loc[_node_df.geometry.distance(p) < 1].index[0] for p in _inlaat_points]
-_pannerlingen_point = Point(198568, 434184)
-inlaten.append(_node_df.loc[_node_df.geometry.distance(_pannerlingen_point) < 1].index[0])
-inlaat_Kuijk = inlaten[0]
 
 to_supply = (
     *inlaten,  # add all manually added inlaten
@@ -329,6 +321,7 @@ assign_metadata = AssignMetaData(
     authority=waterschap,
     model_name=ribasim_model,
     param_name=f"{waterschap}.gpkg",
+    sync=False,
 )
 assign_metadata.add_meta_to_pumps(
     layer="gemaal",
@@ -439,11 +432,26 @@ if missing_meta_categorie_node_ids:
 
 # set numerical settings
 # write model output
+# add junctions last: a layout-only transformation merging overlapping flow links into a
+# Junction. Done after all parametrization so junctions never break adjacency/validation.
+if ADD_JUNCTIONS:
+    ribasim_model = junctionify(ribasim_model)
+
 ribasim_model.use_validation = True
 ribasim_model.starttime = starttime
 ribasim_model.endtime = endtime
 ribasim_model.solver.saveat = saveat
 ribasim_model.write(output_dir_model_toml)
+ribasim_param.write_steady_state_regression_models(
+    output_dir_model_toml,
+    {
+        scenario: output_dir.parent / f"{waterschap}_steady_state_{scenario}" / "ribasim.toml"
+        for scenario in ("dry", "wet")
+    },
+    authority=waterschap,
+    qlr_path=qlr_path,
+)
+ribasim_model.validate_ribasim_nl()
 
 # run model
 run_ribasim(output_dir_model_toml)
@@ -452,4 +460,5 @@ ribasim_model.basin.state.write()
 
 # model performance
 controle_output = Control(work_dir=output_dir, qlr_path=qlr_path)
-indicators = controle_output.run_dynamic_forcing() if MIXED_CONDITIONS else controle_output.run_all()
+metrics = DYNAMIC_FORCING_METRICS if MIXED_CONDITIONS else STATIC_FORCING_METRICS
+indicators = controle_output.run(metrics=metrics)

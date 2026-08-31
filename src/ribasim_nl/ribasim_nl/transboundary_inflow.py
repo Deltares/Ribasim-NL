@@ -36,7 +36,7 @@ def import_transboundary_inflow(
     dict[str, pd.DataFrame]
         Per-location DataFrames with columns 'time', 'flow_rate' and 'node_id'.
     """
-    flow_boundary_df = model.flow_boundary.node.df.reset_index(drop=False)  # pyrefly: ignore[missing-attribute]
+    flow_boundary_df = model.flow_boundary.node.df.reset_index(drop=False)
     node_ids_by_name = flow_boundary_df.set_index("name")["node_id"]
     relevant_locations = set(node_ids_by_name.index)
 
@@ -59,8 +59,10 @@ def import_transboundary_inflow(
             if not pd.api.types.is_datetime64_any_dtype(df["Datum"]):
                 raise ValueError(f"Expected datetime64 'Datum' column from Excel, got dtype: {df['Datum'].dtype}")
             df = df.dropna(subset=["Datum"]).set_index("Datum")
-            if not df.index.is_monotonic_increasing:
-                raise ValueError(f"Sheet '{sheet}': Datum column is not sorted by time")
+            # Data is in local (wall-clock) time; the autumn DST fall-back repeats the
+            # 02:00-03:00 hour once a year, which makes the index non-monotonic. Sort it
+            # so daily resampling below averages the doubled hour instead of erroring.
+            df = df.sort_index()
             df = df.loc[(df.index >= start_time) & (df.index <= stop_time), value_columns]
 
             if df.empty:
@@ -140,7 +142,7 @@ def add_transboundary_inflow(model: Model, dict_flow: dict[str, pd.DataFrame]) -
         logger.info("No transboundary inflow data matched for this model; skipping.")
         return
 
-    flowboundaries = model.flow_boundary.node.df.name  # pyrefly: ignore[missing-attribute]
+    flowboundaries = model.flow_boundary.node.df.name
     df_flowboundaries_time = pd.concat(dict_flow.values(), axis=0)
 
     included_node_ids = df_flowboundaries_time.node_id.unique()
@@ -159,6 +161,6 @@ def add_transboundary_inflow(model: Model, dict_flow: dict[str, pd.DataFrame]) -
         ]
     # add the rows of df_flowboundaries_time to the existing df
     if model.flow_boundary.time.df is None:
-        model.flow_boundary.time.df = df_flowboundaries_time  # pyrefly: ignore[bad-assignment]
+        model.flow_boundary.time.df = df_flowboundaries_time
     else:
-        model.flow_boundary.time.df = pd.concat([model.flow_boundary.time.df, df_flowboundaries_time])  # pyrefly: ignore[bad-assignment]
+        model.flow_boundary.time.df = pd.concat([model.flow_boundary.time.df, df_flowboundaries_time])

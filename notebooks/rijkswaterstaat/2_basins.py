@@ -24,8 +24,6 @@ watervlak_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/categorie_oppervlaktew
 basins_user_data_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/basins_user_data.gpkg")
 osm_basins_path = cloud.joinpath("Rijkswaterstaat/verwerkt/oppervlaktewater_belgie.gpkg")
 
-cloud.synchronize(filepaths=[raster_path, watervlak_gpkg, basins_user_data_gpkg, osm_basins_path])
-
 # output
 basins_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/basins.gpkg")
 basin_profile_path = cloud.joinpath("Rijkswaterstaat/verwerkt/basins_level_area.csv")

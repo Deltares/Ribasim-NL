@@ -15,7 +15,7 @@ path_HHSK = "..\..\Data_preprocessed\Waterschappen\HHSK\HyDamo_metWasverzachter_
 output_gpkg_path = "../../Data_postprocessed/Waterschappen/HHSK"
 
 
-HHSK = read_gpkg_layers(gpkg_path=path_HHSK, engine="pyogrio")
+HHSK = read_gpkg_layers(gpkg_path=path_HHSK)
 
 
 HHSK_nalevering = read_gpkg_layers(
@@ -196,8 +196,11 @@ pgv_diff.plot()
 # streefpeilen_PG_a.to_file('afwijking.shp')
 
 
-# pyrefly: ignore[unknown-name]
-peilgebied = burn_in_peilgebieden(base_layer=streefpeilen_PG_v, overlay_layer=streefpeilen_PG_a, plot=True)
+peilgebied = burn_in_peilgebieden(
+    base_layer=streefpeilen_PG_v,  # ty: ignore[unresolved-reference]
+    overlay_layer=streefpeilen_PG_a,  # ty: ignore[unresolved-reference]
+    plot=True,
+)
 
 
 streefpeil = gpd.GeoDataFrame()

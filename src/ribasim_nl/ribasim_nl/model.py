@@ -1,7 +1,7 @@
 # %%
 from datetime import timedelta
 from pathlib import Path
-from typing import ClassVar, Literal
+from typing import Any, ClassVar, Literal, cast
 
 import geopandas as gpd
 import networkx as nx
@@ -97,6 +97,12 @@ class Model(ribasim.Model):
 
     def parameterize(self, **kwargs) -> None:
         self._parameterize.run(**kwargs)
+
+    def validate_ribasim_nl(self) -> None:
+        """Validate Ribasim-NL-specific model conventions."""
+        from ribasim_nl.validation import validate_model
+
+        validate_model(self)
 
     @property
     def basin_results(self) -> Results:
@@ -415,9 +421,7 @@ class Model(ribasim.Model):
 
         # remove from sub-tables (static, time, area, subgrid, etc)
         sub = (
-            next((i for i in self._nodes() if i.__repr_name__() == node_type), None)  # pyrefly: ignore
-            if node_type is not None
-            else None
+            next((i for i in self._nodes() if i.__repr_name__() == node_type), None) if node_type is not None else None
         )
         if sub is not None:
             for table in sub._tables():
@@ -557,7 +561,7 @@ class Model(ribasim.Model):
                 df = self.link.df.copy()
                 df.loc[:, ["link_id"]] = df.index
                 df = df.set_index(["from_node_id", "to_node_id"], drop=False)
-                link_data = dict(df.loc[from_node_id, to_node_id])
+                link_data: dict[str, Any] = dict(cast(Any, df).loc[from_node_id, to_node_id])
                 link_id = link_data["link_id"]
             else:
                 link_data = dict(self.link.df.loc[link_id])
@@ -569,8 +573,9 @@ class Model(ribasim.Model):
             # revert geometry
             self.link.df.loc[link_id, ["geometry"]] = link_data["geometry"].reverse()
 
-    # pyrefly: ignore[bad-override]
-    def remove_link(self, from_node_id: int, to_node_id: int, remove_disconnected_nodes=True) -> None:
+    def remove_link(  # ty: ignore[invalid-method-override]
+        self, from_node_id: int, to_node_id: int, remove_disconnected_nodes=True
+    ) -> None:
         """Remove an link and disconnected nodes"""
         if self.link.df is not None:
             # get original link-data
@@ -1125,7 +1130,7 @@ class Model(ribasim.Model):
             (self.link.df.to_node_id == outlet_a_id) & (self.link.df.link_type == "control")
         ]
         for ctrl_link_id in upstream_ctrl_links.index:
-            ctrl_node_id: int = self.link.df.at[ctrl_link_id, "from_node_id"]  # pyrefly: ignore[bad-assignment]
+            ctrl_node_id: int = self.link.df.at[ctrl_link_id, "from_node_id"]
             self.remove_node(ctrl_node_id, remove_links=True)
 
         # correct link from and to attributes (collect all links connected to either outlet for geometry reset)
@@ -1263,6 +1268,8 @@ class Model(ribasim.Model):
         # "input" is the default, but we read models with the old default ".",
         # causing it to stay there unless we change it here.
         self.input_dir = Path("input")
+        # self.solver.abstol = 1e-6
+        # self.solver.reltol = 1e-6
         # Avoid large databases by writing some tables to NetCDF
         if self.basin.time.df is not None:
             self.basin.time.filepath = Path("basin_time.nc")

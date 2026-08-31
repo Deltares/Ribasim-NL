@@ -1,6 +1,7 @@
 import logging
 import re
 import shutil
+import time
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -15,6 +16,12 @@ logger = logging.getLogger(__name__)
 RIBASIM_NL_CLOUD_USER = "nhi_api"
 WEBDAV_URL = "https://deltares.thegood.cloud/remote.php/dav"
 BASE_URL = rf"{WEBDAV_URL}/files/{RIBASIM_NL_CLOUD_USER}/Ribasim modeldata"
+
+# Download robustness: WebDAV server drops large/concurrent transfers
+# (ChunkedEncodingError / IncompleteRead / 503). Retry with backoff.
+DOWNLOAD_MAX_RETRIES = 5
+DOWNLOAD_BACKOFF_SECONDS = 5
+DOWNLOAD_CHUNK_SIZE = 8 * 1024 * 1024  # 8 MiB
 
 WATER_AUTHORITIES = [
     "AaenMaas",
@@ -151,16 +158,41 @@ class CloudStorage:
         # get local file-path
         file_path = self.file_path(file_url)
 
-        # download file
-        r = requests.get(file_url, auth=self.auth, timeout=300)
-        r.raise_for_status()
-
         # make directory
         file_path.parent.mkdir(exist_ok=True, parents=True)
 
-        # write file
-        with file_path.open("wb") as f:
-            f.write(r.content)
+        # download to a temp file and stream to disk; retry on transient errors
+        # (connection drops, IncompleteRead, 5xx) which the WebDAV server emits
+        # under concurrent/large transfers.
+        tmp_path = file_path.with_name(file_path.name + ".part")
+        last_exc: Exception | None = None
+        for attempt in range(1, DOWNLOAD_MAX_RETRIES + 1):
+            try:
+                with requests.get(file_url, auth=self.auth, timeout=300, stream=True) as r:
+                    r.raise_for_status()
+                    with tmp_path.open("wb") as f:
+                        for chunk in r.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
+                            if chunk:
+                                f.write(chunk)
+                # atomically move completed download into place
+                tmp_path.replace(file_path)
+                return
+            except (requests.exceptions.RequestException, OSError) as e:
+                last_exc = e
+                tmp_path.unlink(missing_ok=True)
+                if attempt < DOWNLOAD_MAX_RETRIES:
+                    wait = DOWNLOAD_BACKOFF_SECONDS * 2 ** (attempt - 1)
+                    logger.warning(
+                        "download_file failed (attempt %d/%d) for %s: %s; retrying in %ds",
+                        attempt,
+                        DOWNLOAD_MAX_RETRIES,
+                        file_url,
+                        e,
+                        wait,
+                    )
+                    time.sleep(wait)
+
+        raise RuntimeError(f"download_file failed after {DOWNLOAD_MAX_RETRIES} attempts for {file_url}") from last_exc
 
     def content(self, url: str) -> list[str]:
         """List all content in a directory

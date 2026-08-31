@@ -1,0 +1,5 @@
+outs:
+- md5: c8ff1082ffd566621b6d6b0c6af97272
+  size: 143360
+  hash: md5
+  path: kunstwerk_in.gpkg

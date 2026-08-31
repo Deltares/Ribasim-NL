@@ -1,0 +1,5 @@
+outs:
+- md5: 048742f2afe5327d3c612f4f13969499
+  size: 178876416
+  hash: md5
+  path: bgt_Zuiderzeeland_water.gpkg

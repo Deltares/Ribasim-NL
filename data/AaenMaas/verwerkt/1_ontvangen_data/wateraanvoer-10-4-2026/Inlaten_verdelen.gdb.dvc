@@ -1,0 +1,6 @@
+outs:
+- md5: e6eaf687610bf99329b15d77d16c9c8d.dir
+  size: 2395312
+  nfiles: 76
+  hash: md5
+  path: Inlaten_verdelen.gdb

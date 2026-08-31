@@ -25,6 +25,5 @@ coverage.xml
 tests/
 
 # Ribasim
-results/
+data/*/modellen/*/results
 *.log
-*.xlsx

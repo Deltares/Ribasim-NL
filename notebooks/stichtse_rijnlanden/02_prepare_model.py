@@ -27,9 +27,6 @@ peilgebieden_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/peilgebieden.g
 peilgebieden_vig_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/peilgebieden_vigerend.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
-cloud.synchronize(filepaths=[peilgebieden_gpkg, peilgebieden_vig_gpkg, hydroobject_gpkg])
-cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
-
 # %% init things
 model = Model.read(ribasim_toml)
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
@@ -39,70 +36,57 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 # %%
 
 # fix link geometries
-use_cache = False
-if link_geometries_gpkg.exists():
-    link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
-    use_cache = link_geometries_df.index.equals(model.link.df.index)
-
-if use_cache:
-    model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
-    if "meta_profielid_waterbeheerder" in link_geometries_df.columns:
-        model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
-            "meta_profielid_waterbeheerder"
-        ]
-else:
-    fix_link_geometries(model, network, max_straight_line_ratio=5)
-    model.link.df.reset_index().to_file(link_geometries_gpkg)
+fix_link_geometries(model, network, max_straight_line_ratio=5)
+model.link.df.reset_index().to_file(link_geometries_gpkg)
 
 
 # %%
 # add streefpeilen
 peilgebieden_gpkg_editted = peilgebieden_gpkg.with_name(f"{peilgebieden_gpkg.stem}_bewerkt.gpkg")
 
-if not peilgebieden_gpkg_editted.exists():
-    df = gpd.read_file(peilgebieden_gpkg)
-    df_extra = gpd.read_file(peilgebieden_vig_gpkg)
+df = gpd.read_file(peilgebieden_gpkg)
+df_extra = gpd.read_file(peilgebieden_vig_gpkg)
 
-    # Kolomnamen gelijk maken
-    df_extra = df_extra.rename(
-        columns={
-            "ZOMERPEIL": "WS_ZP",
-            "WINTERPEIL": "WS_WP",
-            "ONDERPEIL": "WS_OP",
-            "BOVENPEIL": "WS_BP",
-            "VASTPEIL": "WS_VP",
-        }
-    )
+# Kolomnamen gelijk maken
+df_extra = df_extra.rename(
+    columns={
+        "ZOMERPEIL": "WS_ZP",
+        "WINTERPEIL": "WS_WP",
+        "ONDERPEIL": "WS_OP",
+        "BOVENPEIL": "WS_BP",
+        "VASTPEIL": "WS_VP",
+    }
+)
 
-    if df.crs != df_extra.crs:
-        df_extra = df_extra.to_crs(df.crs)
+if df.crs != df_extra.crs:
+    df_extra = df_extra.to_crs(df.crs)
 
-    # Overlay: Opvullen ontbrekende peilen
-    df_extra_only = gpd.overlay(df_extra, df, how="difference", keep_geom_type=True)
+# Overlay: Opvullen ontbrekende peilen
+df_extra_only = gpd.overlay(df_extra, df, how="difference", keep_geom_type=True)
 
-    # Kolommen gelijk maken
-    for col in set(df.columns) - set(df_extra_only.columns):
-        df_extra_only[col] = pd.NA
-    for col in set(df_extra_only.columns) - set(df.columns):
-        df[col] = pd.NA
+# Kolommen gelijk maken
+for col in set(df.columns) - set(df_extra_only.columns):
+    df_extra_only[col] = pd.NA
+for col in set(df_extra_only.columns) - set(df.columns):
+    df[col] = pd.NA
 
-    df_extra_only = df_extra_only[df.columns]
-    df_combined = pd.concat([df, df_extra_only], ignore_index=True)
+df_extra_only = df_extra_only[df.columns]
+df_combined = pd.concat([df, df_extra_only], ignore_index=True)
 
-    # Gebruik df_combined voor verdere bewerkingen
-    mask = df_combined["WS_BP"] == 999
-    df_combined.loc[mask, "WS_BP"] = pd.NA
+# Gebruik df_combined voor verdere bewerkingen
+mask = df_combined["WS_BP"] == 999
+df_combined.loc[mask, "WS_BP"] = pd.NA
 
-    df_combined["streefpeil"] = df_combined["WS_ZP"]
-    mask = df_combined["streefpeil"].isna()
-    df_combined.loc[mask, "streefpeil"] = df_combined.loc[mask, "WS_VP"]
-    mask = df_combined["streefpeil"].isna()
-    df_combined.loc[mask, "streefpeil"] = df_combined.loc[mask, "WS_BP"]
-    mask = df_combined["streefpeil"].isna()
-    df_combined.loc[mask, "streefpeil"] = df_combined.loc[mask, "WS_OP"]
+df_combined["streefpeil"] = df_combined["WS_ZP"]
+mask = df_combined["streefpeil"].isna()
+df_combined.loc[mask, "streefpeil"] = df_combined.loc[mask, "WS_VP"]
+mask = df_combined["streefpeil"].isna()
+df_combined.loc[mask, "streefpeil"] = df_combined.loc[mask, "WS_BP"]
+mask = df_combined["streefpeil"].isna()
+df_combined.loc[mask, "streefpeil"] = df_combined.loc[mask, "WS_OP"]
 
-    # Wegschrijven
-    df_combined.to_file(peilgebieden_gpkg_editted, driver="GPKG")
+# Wegschrijven
+df_combined.to_file(peilgebieden_gpkg_editted, driver="GPKG")
 
 # Inlezen
 peilgebieden_df = gpd.read_file(peilgebieden_gpkg_editted)

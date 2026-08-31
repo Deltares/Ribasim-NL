@@ -1,0 +1,5 @@
+outs:
+- md5: cc013d937db74dc4c97ef3b26df84d8e
+  size: 21176320
+  hash: md5
+  path: zzl_crossings_v05.gpkg

@@ -24,8 +24,6 @@ database_gpkg = ribasim_toml.with_name("database.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
-cloud.synchronize(filepaths=[ribasim_dir, ribasim_toml, database_gpkg, hydamo_gpkg, model_edits_gpkg])
-
 # %% read model
 
 model = Model.read(ribasim_toml)
@@ -549,6 +547,13 @@ model.redirect_link(link_id=2164, from_node_id=809, to_node_id=1926)
 model.merge_basins(node_id=1841, to_node_id=1406)
 model.remove_node(node_id=4516, remove_links=True)
 model.remove_node(node_id=4517, remove_links=True)
+
+# Zijtak sluit niet aan op Vlootbeek, verlegd en redirect
+model.move_node(node_id=1162, geometry=Point(193403.3, 352653.3))
+model.redirect_link(link_id=2208, to_node_id=1802)
+
+# Merge bij Niers
+model.merge_basins(node_id=2375, to_node_id=1917)
 
 
 #  %% write model

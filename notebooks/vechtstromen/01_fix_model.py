@@ -8,7 +8,6 @@ import shapely
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump
 from ribasim.validation import can_connect
-from ribasim_nl.cloud import ModelVersion
 from ribasim_nl.geometry import drop_z, link, split_basin, split_basin_multi_polygon
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
@@ -24,17 +23,6 @@ authority = "Vechtstromen"
 name = "vechtstromen"
 run_model = True
 
-
-def get_latest_hws_model_version() -> ModelVersion:
-    model_versions = [
-        i for i in cloud.uploaded_models("Rijkswaterstaat") if i is not None and getattr(i, "model", None) == "hws"
-    ]
-    if model_versions:
-        return sorted(model_versions, key=lambda x: getattr(x, "sorter", ""))[-1]
-    raise ValueError("No Rijkswatersdtaat/modellen/hws models found")
-
-
-# paths that should be synced
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
@@ -44,21 +32,8 @@ hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
 lhm_gemaal_gdb = cloud.joinpath(authority, "verwerkt", "1_ontvangen_data", "LHM20230418.gdb")
 wateraanvoer_shp = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/wateraanvoergebieden_20250416/Wateraanvoer.shp")
-hws_model = get_latest_hws_model_version().path_string
-hws_model_dir = cloud.joinpath(f"Rijkswaterstaat/modellen/{hws_model}")
+hws_model_dir = cloud.joinpath("Rijkswaterstaat/modellen/hws_2025_10_1")
 hws_model_toml = hws_model_dir / "hws.toml"
-
-cloud.synchronize(
-    filepaths=[
-        ribasim_dir,
-        fix_user_data_gpkg,
-        model_edits_gpkg,
-        hydamo_gpkg,
-        ribasim_areas_gpkg,
-        hws_model_dir,
-        wateraanvoer_shp,
-    ]
-)
 
 # %%
 hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
@@ -71,7 +46,7 @@ model = Model.read(ribasim_toml)
 network_validator = NetworkValidator(model)
 
 # %% some stuff we'll need again
-manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
+manning_data = manning_resistance.Static(length=[100], manning_n=[0.03], profile_width=[10], profile_slope=[1])
 level_data = level_boundary.Static(level=[0])
 pump_data = pump.Static(flow_rate=[1])
 

@@ -4,11 +4,8 @@ import dataclasses
 import typing
 from pathlib import Path
 
-import geopandas as gpd
 import numpy as np
 import pandas as pd
-
-from ribasim_nl import CloudStorage
 
 
 class HydrotopeTable:
@@ -216,33 +213,3 @@ class Hydrotope:
         :rtype: float
         """
         return self.depths[np.searchsorted(self.thresholds, width)]
-
-
-def get_hydrotopes_map(
-    cloud: CloudStorage = CloudStorage(),  # noqa: B008
-    *,
-    sync: bool = True,
-    crs: str = "epsg:28992",
-) -> gpd.GeoDataFrame:
-    """Get map with hydrotope data from the GoodCloud.
-
-    :param cloud: the GoodCloud, defaults to CloudStorage
-    :param sync: sync the GoodCloud prior to reading the map, defaults to True
-    :param crs: set CRS of hydrotope map (missing), defaults to 'epsg:28992'
-
-    :type cloud: CloudStorage
-    :type sync: bool, optional
-    :type crs: str, optional
-
-    :return: hydrotope map
-    :rtype: geopandas.GeoDataFrame
-    """
-    # sync with the GoodCloud
-    if sync:
-        cloud.download_basisgegevens(["Hydrotypen"])
-
-    # get hydrotope map
-    fn = cloud.joinpath("Basisgegevens", "Hydrotypen", "hydrotype.shp")
-    gdf = gpd.read_file(fn)
-    gdf.crs = crs
-    return gdf

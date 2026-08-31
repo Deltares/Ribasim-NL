@@ -80,8 +80,9 @@ def read_kwk_properties(kwk_df):
 def read_flow_kwargs(kwk_properties, include_crest_level=True):
     mapper = {
         "Capaciteit (m3/s)": "flow_rate",
-        "minimale capaciteit (m3/s)": "min_flow_rate",
-        "Streefpeil (m +NAP)": "min_upstream_level",
+        "Minimale capaciteit (m3/s)": "min_flow_rate",
+        "Maximale capaciteit (m3/s)": "max_flow_rate",
+        "Streefpeil bovenstrooms (m +NAP)": "min_upstream_level",
         "Streefpeil benedenstrooms (m +NAP)": "max_downstream_level",
     }
 
@@ -130,7 +131,7 @@ def read_pid(control_properties, control_basin_id):
     return [
         pid_control.Static(
             listen_node_id=[control_basin_id],
-            target=[control_properties["Streefpeil (m+NAP)"]],
+            target=[control_properties["Streefpeil bovenstrooms (m +NAP)"]],
             proportional=[p],
             integral=[i],
             derivative=[0.0],
@@ -154,10 +155,6 @@ network_path = cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg")
 basins_path = cloud.joinpath("Rijkswaterstaat/verwerkt/basins.gpkg")
 basin_profile_path = cloud.joinpath("Rijkswaterstaat/verwerkt/basins_level_area.csv")
 hydamo_path = cloud.joinpath("Rijkswaterstaat/verwerkt/hydamo.gpkg")
-
-cloud.synchronize(
-    filepaths=[model_user_data_gpkg, kwk_xlsx, verdeelsleutels_xlsx, ijsselmeer_markermeer_path, outlets_path]
-)
 
 # output
 ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_netwerk/hws.toml")
@@ -289,7 +286,6 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
     print(f"{gebied}")
     # get sheet-names
     file_name = kwk_dir / f"{gebied}.xlsx"
-    cloud.synchronize(filepaths=[file_name])
     workbook = openpyxl.open(file_name)
     sheet_names = workbook.sheetnames
     workbook.close()

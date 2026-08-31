@@ -1,34 +1,33 @@
 # import packages and functions
 from pathlib import Path
+from typing import Any
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import pandas as pd
 
 
-def read_gpkg_layers(gpkg_path, engine="pyogrio", print_var=False):
+def read_gpkg_layers(gpkg_path: str | Path, print_var: bool = False) -> Any:
     """
-    Read specified layers from a GeoPackage (GPKG) file and return them as a dictionary.
+    Read all layers from a GeoPackage and return them by layer name.
 
     Parameters
     ----------
-        gpkg_path (str): The file path to the GeoPackage (GPKG) file to read from.
-        print_var (bool, optional): If True, print the name of each variable as it is read. Default is False.
+    gpkg_path : str | Path
+        Path to the GeoPackage.
+    print_var : bool, optional
+        Print each layer name as it is read.
 
     Returns
     -------
-        dict: A dictionary containing the GeoDataFrames, with layer names as keys.
-
-    This function reads specified layers from a GeoPackage (GPKG) file and returns them as a dictionary. You can
-    choose to print the names of variables as they are read by setting `print_var` to True.
+    dict[str, Any]
+        Mutable layer data keyed by layer name.
     """
-    data = {}
-    layers = gpd.list_layers(gpkg_path)
-    for layer in layers.name:
+    data: dict[str, Any] = {}
+    for layer in gpd.list_layers(gpkg_path)["name"]:
         if print_var:
             print(layer)
-        data_temp = gpd.read_file(gpkg_path, layer=layer, engine=engine)
-        data[layer] = data_temp
+        data[layer] = gpd.read_file(gpkg_path, layer=layer)
 
     return data
 
@@ -138,79 +137,6 @@ def overlapping_peilgebieden(waterschap_peilgebieden) -> pd.DataFrame | gpd.GeoD
             overlapping_polygons = pd.concat([overlapping_polygons, overlaps])
 
     return overlapping_polygons
-
-
-def plot_histogram_overlap(overlapping_polygons) -> None:
-    """
-    Plots a histogram of the overlapping polygons in a pd.DataFrame.
-
-    Parameters
-    ----------
-        overlapping_polygons (pd.DataFrame): A pd.DataFrame containing information about overlapping polygons.
-            It should have a 'overlap_percentage' column to represent the percentage of overlap between polygons.
-
-    Returns
-    -------
-        None
-
-    The function calculates a histogram of overlapping percentages, providing insights into the distribution of overlaps
-    between polygons. It handles potential NaN values in the 'overlap_percentage' column and creates bins ranging
-    from 0% to 100% in 10% increments for the histogram. The number of overlapping polygons is displayed in the title.
-
-    """
-    overlapping_polygons["overlap_percentage"] = overlapping_polygons["overlap_percentage"].fillna(
-        0
-    )  # Handle potential NaN values
-    bins = range(0, 101, 10)  # Create bins from 0% to 100% in 10% increments
-
-    # Create the histogram
-    plt.hist(overlapping_polygons["overlap_percentage"], bins=bins, color="cornflowerblue", linkcolor="k")
-
-    # Set labels and title
-    plt.xlabel("Overlap [%]")
-    plt.ylabel("Frequency [#]")  # Update the y-axis label
-    # plt.yscale('log')  # Set the y-axis scale to 'log'
-    plt.ylim(0, 15)
-    plt.suptitle("Histogram of overlapping percentages")
-    plt.title(f"Number of overlapping polygons = {len(overlapping_polygons)}", fontsize=8)
-    plt.show()
-
-
-def plot_overlapping_peilgebieden(peilgebied, overlapping_polygons, minimum_percentage) -> None:
-    """
-    Plot Overlapping Peilgebieden on a map, including a Minimum Percentage of Overlap to show.
-
-    Parameters
-    ----------
-        peilgebied (geopandas.GeoDataFrame): A GeoDataFrame representing the peilgebied polygons.
-        overlapping_polygons (geopandas.GeoDataFrame): A GeoDataFrame containing information about overlapping polygons/peilgebieden.
-        minimum_percentage (float or int): The minimum overlap percentage required for polygons to be displayed.
-
-    Returns
-    -------
-        None
-
-    This function creates a plot to visualize overlapping peilgebieden based on a specified minimum overlap percentage.
-    It displays a subset of overlapping polygons with a percentage greater than the specified minimum.
-
-    Parameters
-    ----------
-    - peilgebied: The entire peilgebieden GeoDataFrame serving as the background.
-    - overlapping_polygons: GeoDataFrame containing information about overlapping polygons.
-    - minimum_percentage: The minimum overlap percentage required for polygons to be displayed.
-
-    """
-    # make a subsect of overlapping polygons, based on a percentage
-    overlap_subset = overlapping_polygons.loc[overlapping_polygons["overlap_percentage"] > minimum_percentage]
-
-    # plot
-    _fig, ax = plt.subplots()
-    peilgebied.plot(ax=ax, color="lightgray")  # background
-    overlap_subset.plot(
-        ax=ax, cmap="coolwarm", column=overlap_subset.overlap_percentage, label="Percentage of overlap", legend=True
-    )
-
-    plt.show()
 
 
 # def intersect_using_spatial_index(peilgebied_praktijk, peilgebied_afwijking, check):

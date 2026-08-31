@@ -365,7 +365,7 @@ def find_flow_routes(
         for c1, c2 in tqdm.tqdm(itertools.combinations(set_crossings, 2), f"{desc} (F)", n_combinations):
             try:
                 # noinspection PyTypeChecker
-                path = paths[point_to_graph_node(mp_graph, c1)][point_to_graph_node(mp_graph, c2)]  # pyrefly: ignore[bad-index]
+                path = paths[point_to_graph_node(mp_graph, c1)][point_to_graph_node(mp_graph, c2)]
             except KeyError:
                 LOG.debug(f"No path between {c1} and {c2}")
             else:

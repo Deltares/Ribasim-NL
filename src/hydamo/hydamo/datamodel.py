@@ -5,11 +5,11 @@ import logging
 import re
 import warnings
 from pathlib import Path
-from typing import Any, ClassVar, Literal, Self
+from typing import Any, ClassVar, Literal, Self, cast
 
-import fiona
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
 
 from hydamo import geometry
@@ -19,8 +19,6 @@ warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-FIELD_TYPES_MAP_REV = fiona.schema.FIELD_TYPES_MAP_REV
-FIELD_TYPES_MAP = fiona.schema.FIELD_TYPES_MAP
 MODEL_CRS = "epsg:28992"
 SCHEMAS_DIR = Path(__file__).parent.joinpath("data", "schemas")
 
@@ -45,6 +43,11 @@ default_properties: dict[str, Any] = {
     "dtype": "str",
     "required": False,
     "unique": False,
+}
+PANDAS_DTYPE_MAPPING = {
+    "str": "string",
+    "int64": "Int64",
+    "float": "Float64",
 }
 
 
@@ -186,7 +189,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
             )
 
     def _get_schema(self):
-        """Return fiona schema dict from validation_schema."""
+        """Return the GeoPackage schema derived from the validation schema."""
         properties = {i["id"]: i["dtype"] for i in self.validation_schema if i["id"] != "geometry"}
         # properties = {k: (v if v != "datetime" else "str") for k, v in properties}
         geometry = next(
@@ -288,7 +291,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
         """
         geometry.find_nearest_branch(branches=branches, geometries=self, method=snap_method, maxdist=maxdist)
 
-    def copy(self, deep: bool = True) -> Self:
+    def copy(self, deep: bool = True) -> Self:  # ty: ignore[override-of-final-method]
         """
         Make a copy of this ExtendedGeoDataFrame object's indices and data.
 
@@ -327,7 +330,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
         if hasattr(self, "crs") and self.crs is not None:
             result.crs = self.crs
 
-        return result
+        return cast(Self, result)
 
 
 class HyDAMO:
@@ -470,23 +473,24 @@ class HyDAMO:
             gdf = getattr(self, layer).copy()
             if not gdf.empty:
                 if use_schema:
-                    # match fiona layer schema keys with gdf.columns
+                    # Match schema keys with GeoDataFrame columns.
                     schema = getattr(self, layer)._get_schema()
                     schema_cols = [*list(schema["properties"].keys()), "geometry"]
                     drop_cols = [i for i in gdf.columns if i not in schema_cols]
                     gdf.drop(columns=drop_cols, inplace=True)
 
-                    schema["properties"] = {k: v for k, v in schema["properties"].items() if k in gdf.columns}
+                    for column, dtype in schema["properties"].items():
+                        if column not in gdf.columns:
+                            continue
+                        if dtype == "datetime":
+                            gdf[column] = pd.to_datetime(gdf[column])
+                        else:
+                            gdf[column] = gdf[column].astype(PANDAS_DTYPE_MAPPING[dtype])
 
-                    # write gdf to geopackage, including schema
+                    # Write the normalized GeoDataFrame to the GeoPackage.
                     if gdf.index.name in gdf.columns:
                         gdf.reset_index(drop=True, inplace=True)
-                    gdf.to_file(
-                        file_path,
-                        layer=layer,
-                        driver="GPKG",
-                        schema=schema,
-                    )
+                    gdf.to_file(file_path, layer=layer, driver="GPKG")
                 else:
                     # write gdf to geopackage as is
                     if gdf.index.name in gdf.columns:
@@ -517,7 +521,7 @@ class HyDAMO:
 
         """
         hydamo = cls(version=version)
-        for layer in fiona.listlayers(file_path):
+        for layer in gpd.list_layers(file_path)["name"]:
             if layer in hydamo.layers:
                 hydamo_layer = getattr(hydamo, layer)
                 hydamo_layer.set_data(

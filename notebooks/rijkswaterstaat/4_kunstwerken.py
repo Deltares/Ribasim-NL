@@ -122,20 +122,6 @@ onttrekkingen = cloud.joinpath("Basisgegevens/Onttrekkingen/onttrekkingen.gpkg")
 
 kwk_media_path = cloud.joinpath("Rijkswaterstaat/verwerkt/kwk_media.csv")
 
-cloud.synchronize(
-    filepaths=[
-        krw_lichaam,
-        kwk_media_path,
-        nis_hws,
-        nis_hwvn,
-        onttrekkingen,
-        osm_scheeresluis,
-        osm_sluizen_belgie,
-        osm_stuwen_belgie,
-        primaire_kunstwerken,
-    ]
-)
-
 # output
 hydamo_path = cloud.joinpath("Rijkswaterstaat/verwerkt/hydamo.gpkg")
 

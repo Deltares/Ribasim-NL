@@ -121,7 +121,7 @@ class RibasimFeedbackProcessor:
 
         try:
             for index, row in self.df.iterrows():
-                logger.info(f"Processing row: {index + 7}")  # pyrefly: ignore[unsupported-operation]
+                logger.info(f"Processing row: {index + 7}")
                 try:
                     if row["Actie"] == "Verwijderen":
                         self.remove_node(row)
@@ -254,7 +254,7 @@ class RibasimFeedbackProcessor:
 
                     if pd.notna(row["Node ID A"]):
                         node_type_a = self.df_node_types.loc[int(row["Node ID A"])].node_type
-                        node_type_a = mapping[node_type_a]
+                        node_type_a = mapping[str(node_type_a)]
                         node_a = getattr(self.model, node_type_a, None)[int(row["Node ID A"])]
                         self.model.link.add(new_node, node_a)
                     else:
@@ -266,8 +266,8 @@ class RibasimFeedbackProcessor:
                     new_node = getattr(self.model, key, None)[node_id]
                     node_type_a = self.df_node_types.loc[int(row["Node ID A"])].node_type
                     node_type_b = self.df_node_types.loc[int(row["Node ID B"])].node_type
-                    node_type_a = mapping[node_type_a]
-                    node_type_b = mapping[node_type_b]
+                    node_type_a = mapping[str(node_type_a)]
+                    node_type_b = mapping[str(node_type_b)]
                     node_a = getattr(self.model, node_type_a, None)[int(row["Node ID A"])]
                     node_b = getattr(self.model, node_type_b, None)[int(row["Node ID B"])]
                     self.model.link.add(node_a, new_node)
@@ -296,7 +296,7 @@ class RibasimFeedbackProcessor:
         try:
             # Get the old node type and id
             key = self.df_node_types.loc[int(row["Node ID.2"])].node_type
-            key = mapping[key]
+            key = mapping[str(key)]
             node_id = int(row["Node ID.2"])
             logger.info(f"Node ID: {node_id}")
             # node_id_old = node_id
@@ -333,7 +333,6 @@ class RibasimFeedbackProcessor:
                 template_row = df_node.iloc[-1:].copy()
                 template_row.index = pd.Index([node_id], name="node_id")
                 template_row["node_type"] = new_node_type_name
-                # pyrefly: ignore[unbound-name]
                 template_row["geometry"] = [geometry_old if "geometry_old" in locals() else None]
                 for col in template_row.columns:
                     if col.startswith("meta_"):

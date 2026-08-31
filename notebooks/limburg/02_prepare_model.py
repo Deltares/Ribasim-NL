@@ -28,9 +28,6 @@ hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 profielen_gpkg = cloud.joinpath(authority, "verwerkt/profielen.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
-cloud.synchronize(filepaths=[stuwen_shp, hydamo_gpkg, profielen_gpkg])
-cloud.synchronize(filepaths=[top10NL_gpkg], overwrite=False)
-
 # %% init things
 model = Model.read(ribasim_toml)
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
@@ -54,23 +51,11 @@ damo_profiles = DAMOProfiles(
 
 
 # fix link geometries and profiles
-use_cache = False
-if link_geometries_gpkg.exists() and profiles_gpkg.exists():
-    link_geometries_df = gpd.read_file(link_geometries_gpkg).set_index("link_id")
-    use_cache = link_geometries_df.index.equals(model.link.df.index)
-
-if use_cache:
-    model.link.df.loc[link_geometries_df.index, "geometry"] = link_geometries_df["geometry"]
-    model.link.df.loc[link_geometries_df.index, "meta_profielid_waterbeheerder"] = link_geometries_df[
-        "meta_profielid_waterbeheerder"
-    ]
-    profiles_df = gpd.read_file(profiles_gpkg)
-else:
-    profiles_df = damo_profiles.process_profiles()
-    profiles_df.to_file(profiles_gpkg)
-    fix_link_geometries(model, network)
-    add_link_profile_ids(model, profiles=damo_profiles)
-    model.link.df.reset_index().to_file(link_geometries_gpkg)
+profiles_df = damo_profiles.process_profiles()
+profiles_df.to_file(profiles_gpkg)
+fix_link_geometries(model, network)
+add_link_profile_ids(model, profiles=damo_profiles)
+model.link.df.reset_index().to_file(link_geometries_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
 
 # %%OUTLET
@@ -232,9 +217,12 @@ static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
 # Handmatige correcties streefpeilen:
 forced_levels = {
-    2495: 31.4,  # Benedenstrooms stuw Katsberg
+    2495: 31.0,  # Benedenstrooms stuw Katsberg
     1413: 30.13,  # Benedenstrooms Grenssloot op Moostdijk en AVL Dorperpeel
-    1861: 31.12,  # Bovenstrooms gemaal Helenaveen
+    1861: 30.75,  # Bovenstrooms gemaal Helenaveen
+    1553: 30.75,
+    1995: 30.75,
+    2492: 30.75,
 }
 
 mask = static_data.basin["node_id"].isin(forced_levels.keys())
@@ -270,6 +258,7 @@ assign = AssignAuthorities(
         111: "Buitenland",
         131: "Buitenland",
         132: "AaenMaas",
+        1652: "DeDommel",
     },
 )
 model = assign.assign_authorities()

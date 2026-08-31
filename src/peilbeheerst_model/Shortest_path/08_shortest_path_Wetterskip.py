@@ -7,7 +7,6 @@
 
 from pathlib import Path
 
-import fiona
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -15,6 +14,7 @@ import numpy as np
 import pandas as pd
 import shapely
 import tqdm.auto as tqdm
+from peilbeheerst_model.general_functions import read_gpkg_layers
 from shapely.geometry import LineString, Point
 from shapely.wkt import dumps
 
@@ -33,7 +33,7 @@ output_path = f"{waterschap}/verwerkt/Data_shortest_path/Wetterskip_shortest_pat
 output_path = Path(base_path) / output_path  # add the base path
 
 # Load crossings file
-DATA = {L: gpd.read_file(data_path, layer=L) for L in fiona.listlayers(data_path)}
+DATA = read_gpkg_layers(data_path)
 DATA["hydroobject"] = DATA["hydroobject"].to_crs(crs="EPSG:28992")
 
 # Select RHWS peilgebeied & calculate representative point

@@ -13,17 +13,9 @@ from ribasim_nl import CloudStorage, Model
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
-DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = True
-ADD_LHM_FRACTIONS: bool = True
-ADD_RWZI: bool = True
-ADD_JUNCTIONS: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
-
-mixed_conditions_design_P = 12
-mixed_conditions_design_E = 1.5
 
 # model settings
 waterschap = "Delfland"
@@ -44,16 +36,6 @@ FeedbackFormulier_LOG_path = cloud.joinpath(
 splitted_basin_2_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_2.gpkg")
 splitted_basin_9_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_9.gpkg")
 splitted_basin_10_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_10.gpkg")
-
-cloud.synchronize(
-    filepaths=[
-        ribasim_base_model_dir,
-        FeedbackFormulier_path,
-        splitted_basin_2_path,
-        splitted_basin_9_path,
-        splitted_basin_10_path,
-    ]
-)
 
 # refresh only the feedback form from cloud (instead of all "verwerkt" files)
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))

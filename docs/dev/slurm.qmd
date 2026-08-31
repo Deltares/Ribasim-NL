@@ -18,14 +18,20 @@ Submits the DVC pipeline as individual SLURM jobs. Each `foreach` stage gets its
 This submits jobs in three waves:
 
 1. `rwzi` (shared dependency)
-2. 22 parallel jobs: 11 `dynamic@*`, 10 `peilbeheerst@*`, 1 `hws_transient`
+2. 22 parallel jobs: 11 `dynamic@*`, 10 `forcing@*`, 1 `hws_transient`
 3. `samenvoegen` → `koppelen`
 
 On completion, job IDs are written to `repro_jobs.txt` for use with `run.sh`.
 
 ## run.sh: isolated simulation runs
 
-Copies a model and the Ribasim binary to `runs/<name>/` and submits a SLURM job. This isolates runs from the DVC pipeline and from each other, preventing Bus errors from concurrent file access.
+Copies a model to `runs/<name>/` and submits a SLURM job using the named Ribasim core configured in `scripts/install_ribasim_core.py`.
+
+As an immediate preparation step, `run.sh` runs the `archive-core` Pixi task. This task depends on `install-core`, then archives `bin/ribasim` at `/p/ribasim-nl/bin/<NAME>`. Pixi skips the copy when the input directory and installer configuration are unchanged.
+
+Named archives are immutable: `archive-core` does not replace an existing `/p/ribasim-nl/bin/<NAME>` directory. Change `NAME` when archiving a different core.
+
+The submitted SLURM job runs this archived executable, not `bin/ribasim` in the repository. The repository and its installed core can therefore change while simulations are queued or running without changing the executable used by those simulations. The exact Ribasim version is written to each SLURM log before the model starts.
 
 ```sh
 ./run.sh <name> <model_dir> [--after=<jobid>] [key=value ...]
@@ -42,11 +48,11 @@ Run `lhm_coupled` after koppelen finishes:
   --after=$(grep koppelen repro_jobs.txt | cut -f2)
 ```
 
-Run `lhm_parts` with a shorter simulation period:
+Run `lhm_coupled` with a shorter simulation period:
 
 ```sh
-./run.sh lhm_parts_1yr data/Rijkswaterstaat/modellen/lhm_parts \
-  --after=$(grep samenvoegen repro_jobs.txt | cut -f2) \
+./run.sh lhm_coupled_1yr data/Rijkswaterstaat/modellen/lhm_coupled \
+  --after=$(grep koppelen repro_jobs.txt | cut -f2) \
   endtime="2018-01-01 00:00:00"
 ```
 
