@@ -298,7 +298,6 @@ def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | list[str] 
             [apply_for_water_authority] if isinstance(apply_for_water_authority, str) else apply_for_water_authority
         )
         koppeltabel = koppeltabel[koppeltabel["Waterschap"].isin(authorities)]
-        # pyrefly: ignore[no-matching-overload]
         koppeltabel["link_id_parsed"] = koppeltabel.apply(
             lambda row: ParseList(row["new_link_id"], waterbeheercode[row["Waterschap"]]),
             axis=1,
@@ -383,12 +382,12 @@ def _safe_eval_formula(formula: str, env: dict) -> pd.Series:
                 raise ValueError(f"Unknown variable: {node.id}")
             return env[node.id]
         if isinstance(node, ast.BinOp):
-            op = _bin_ops.get(type(node.op))  # pyrefly: ignore[bad-argument-type]
+            op = _bin_ops.get(type(node.op))
             if op is None:
                 raise ValueError(f"Unsupported operator: {type(node.op)}")
             return op(_eval(node.left), _eval(node.right))
         if isinstance(node, ast.UnaryOp):
-            op = _unary_ops.get(type(node.op))  # pyrefly: ignore[bad-argument-type]
+            op = _unary_ops.get(type(node.op))
             if op is None:
                 raise ValueError(f"Unsupported operator: {type(node.op)}")
             return op(_eval(node.operand))
@@ -430,7 +429,6 @@ def ApplySpecificOperation(data_by_link: dict[int, pd.DataFrame], link: list | i
         case "optellen":
             # Tel de links bij elkaar op wanneer de specifieke bewerking hierom vraagt
             subset_links = pd.concat([data_by_link[lid] for lid in link])
-            # pyrefly: ignore[bad-assignment]
             subset_output: pd.DataFrame = subset_links.groupby("time", as_index=False)["flow_rate"].sum()
 
         case "negatief_maken":
@@ -441,7 +439,6 @@ def ApplySpecificOperation(data_by_link: dict[int, pd.DataFrame], link: list | i
         case "optellen_en_negatief_maken":
             # Tel op en maak de reeks negatief
             subset_links = pd.concat([data_by_link[lid] for lid in link])
-            # pyrefly: ignore[bad-assignment]
             subset_output = subset_links.groupby("time", as_index=False)["flow_rate"].sum().copy()
             subset_output["flow_rate"] = subset_output["flow_rate"] * -1
 
@@ -1455,7 +1452,7 @@ def CompareOutputMeasurements(
 
     # Pre-groepeer modeloutput op link_id zodat elke iteratie een O(1) dict-lookup is
     # in plaats van een O(n) scan over het volledige data DataFrame.
-    data_by_link: dict[int, pd.DataFrame] = {int(lid): df for lid, df in data.groupby("link_id")}  # pyrefly: ignore[bad-argument-type]
+    data_by_link: dict[int, pd.DataFrame] = {int(lid): df for lid, df in data.groupby("link_id")}
 
     # AmstelGooienVecht: group by link_id_parsed so multiple measurement series per link are summed.
     # All other water authorities: each row is its own group so measurement series stay individual.

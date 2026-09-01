@@ -1,0 +1,5 @@
+outs:
+- md5: 6784d5a0954e9a157f10687d43799e5d
+  size: 315392
+  hash: md5
+  path: basins_user_data.gpkg

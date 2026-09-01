@@ -1,7 +1,6 @@
 import warnings
 from pathlib import Path
 
-import fiona
 import geopandas as gpd
 import pandas as pd
 import requests
@@ -90,13 +89,13 @@ for file, file_df in kunstwerken_df[files_mask].groupby("damo_bestand"):
 
     # open per layer, and check if specified layer xists
     for layer, layer_df in file_df.groupby("damo_laag"):
-        file_layers = fiona.listlayers(file)
+        file_layers = gpd.list_layers(file)["name"].tolist()
         if (
             len(file_layers) == 1
         ):  # in case single-layer files, users don't understand a `layer-property` and make mistakes
             layer = file_layers[0]
-        if layer not in fiona.listlayers(file):
-            raise ValueError(f"layer '{layer}' not a layer in '{file}'. Specify one of {fiona.listlayers(file)}")
+        if layer not in file_layers:
+            raise ValueError(f"layer '{layer}' not a layer in '{file}'. Specify one of {file_layers}")
         print(f"reading {file.name}, layer {layer}")
         gdf = gpd.read_file(file, layer=layer)
         gdf.columns = [i.lower() for i in gdf.columns]

@@ -32,32 +32,6 @@ zinfo_influentdebieten_path = (
 db_belasting = root_path_local / "aangeleverd/RwziBase/Belasting.xlsx"
 rwzi_ligging_path = root_path_local / "aangeleverd/locaties/RWZI_coordinates.geojson"
 
-cloud.synchronize(
-    filepaths=[
-        zinfo_influentdebieten_path,
-        db_belasting,
-    ]
-)
-
-# log_file = model_dir / "create_rwzi_model.log"
-log_file = cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/create_rwzi_model.log")
-
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-logger.handlers.clear()
-
-formatter = logging.Formatter("%(asctime)s - %(levelname)s: %(message)s")
-
-file_handler = logging.FileHandler(log_file, mode="w")
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-
-stream_handler = logging.StreamHandler()
-stream_handler.setFormatter(formatter)
-logger.addHandler(stream_handler)
-
-logger.info(f"Logging to: {log_file}")
-
 # %% create empty model
 starttime = "2017-01-01"
 endtime = "2020-01-01"

@@ -34,14 +34,6 @@ FeedbackFormulier_LOG_path = cloud.joinpath(
 )
 splitted_basin_3_path = cloud.joinpath(waterschap, "verwerkt/Splitting_basins/Opgeknipte_basin_3.gpkg")
 
-cloud.synchronize(
-    filepaths=[
-        ribasim_base_model_dir,
-        FeedbackFormulier_path,
-        splitted_basin_3_path,
-    ]
-)
-
 # refresh only the feedback form from cloud
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 

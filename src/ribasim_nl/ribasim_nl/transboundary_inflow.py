@@ -36,7 +36,7 @@ def import_transboundary_inflow(
     dict[str, pd.DataFrame]
         Per-location DataFrames with columns 'time', 'flow_rate' and 'node_id'.
     """
-    flow_boundary_df = model.flow_boundary.node.df.reset_index(drop=False)  # pyrefly: ignore[missing-attribute]
+    flow_boundary_df = model.flow_boundary.node.df.reset_index(drop=False)
     node_ids_by_name = flow_boundary_df.set_index("name")["node_id"]
     relevant_locations = set(node_ids_by_name.index)
 
@@ -142,7 +142,7 @@ def add_transboundary_inflow(model: Model, dict_flow: dict[str, pd.DataFrame]) -
         logger.info("No transboundary inflow data matched for this model; skipping.")
         return
 
-    flowboundaries = model.flow_boundary.node.df.name  # pyrefly: ignore[missing-attribute]
+    flowboundaries = model.flow_boundary.node.df.name
     df_flowboundaries_time = pd.concat(dict_flow.values(), axis=0)
 
     included_node_ids = df_flowboundaries_time.node_id.unique()
@@ -161,6 +161,6 @@ def add_transboundary_inflow(model: Model, dict_flow: dict[str, pd.DataFrame]) -
         ]
     # add the rows of df_flowboundaries_time to the existing df
     if model.flow_boundary.time.df is None:
-        model.flow_boundary.time.df = df_flowboundaries_time  # pyrefly: ignore[bad-assignment]
+        model.flow_boundary.time.df = df_flowboundaries_time
     else:
-        model.flow_boundary.time.df = pd.concat([model.flow_boundary.time.df, df_flowboundaries_time])  # pyrefly: ignore[bad-assignment]
+        model.flow_boundary.time.df = pd.concat([model.flow_boundary.time.df, df_flowboundaries_time])

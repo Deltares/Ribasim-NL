@@ -22,6 +22,7 @@ website:
     - title: "Contributing"
       contents:
         - dev/index.qmd
+        - dev/testing.qmd
         - dev/dvc.qmd
         - dev/type-checking.qmd
         - dev/slurm.qmd

@@ -10,6 +10,7 @@ from bokeh.palettes import Category10
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.wkt import loads
 
+from peilbeheerst_model.general_functions import read_gpkg_layers
 from ribasim_nl import CloudStorage, Model, settings
 
 
@@ -66,13 +67,7 @@ class CrossingsToRibasim:
         if data is None:
             data = {}
         gpkg_path = self.model_characteristics["path_postprocessed_data"]
-        layers = gpd.list_layers(gpkg_path)
-        for layer in layers.name:
-            if print_var:
-                print(layer)
-            data_temp = gpd.read_file(gpkg_path, layer=layer)
-            data[layer] = data_temp
-
+        data.update(read_gpkg_layers(gpkg_path, print_var=print_var))
         return data
 
     def read_files(self):

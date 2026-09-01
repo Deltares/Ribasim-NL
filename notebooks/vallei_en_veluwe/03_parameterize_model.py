@@ -1,8 +1,11 @@
 # %%
 import time
 
-from peilbeheerst_model.controle_output import Control
-from ribasim_nl.parametrization.basin_tables import sync_min_upstream_levels_with_profile_bottoms
+from peilbeheerst_model.controle_output import AFVOER_METRICS, Control
+from ribasim_nl.parametrization.basin_tables import (
+    apply_basin_level_overrides,
+    sync_min_upstream_levels_with_profile_bottoms,
+)
 
 from ribasim_nl import CloudStorage, Model
 
@@ -19,7 +22,6 @@ ribasim_toml = ribasim_dir / f"{short_name}.toml"
 qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr")
 
 # you need the excel, but the model should be local-only by running 01_fix_model.py
-cloud.synchronize(filepaths=[static_data_xlsx, qlr_path])
 
 # %%
 
@@ -32,7 +34,6 @@ series = model.basin.node.df["meta_categorie"]
 uncategorized_basins = series[series.isna()].index.values
 if len(uncategorized_basins) > 0:
     print(f"uncategorized basins: {uncategorized_basins}, will be set to doorgaand")
-    # pyrefly: ignore[missing-attribute]
     model.node.df.loc[uncategorized_basins, "meta_categorie"] = "doorgaand"
 
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5, profiles_gpkg=profiles_gpkg)
@@ -50,12 +51,7 @@ basin_level_overrides = [
     ([751], 3.35),
 ]
 
-for node_ids, meta_streefpeil in basin_level_overrides:
-    mask = model.basin.area.df.node_id.isin(node_ids)
-    model.basin.area.df.loc[mask, "meta_streefpeil"] = meta_streefpeil
-
-# Herbereken afgeleide tabellen na handmatige streefpeil-overrides.
-model.basin.state.df = model.basin.area.df[["node_id", "meta_streefpeil"]].rename(columns={"meta_streefpeil": "level"})
+apply_basin_level_overrides(model=model, basin_level_overrides=basin_level_overrides)
 
 # Inlaat de Wenden
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 1, "level"] = 0.8
@@ -89,6 +85,6 @@ if run_model:
     assert result.exit_code == 0
 
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_afvoer()
+    indicators = controle_output.run(metrics=AFVOER_METRICS)
 
 # %%

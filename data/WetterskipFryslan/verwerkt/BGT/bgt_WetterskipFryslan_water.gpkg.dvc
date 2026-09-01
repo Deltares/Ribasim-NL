@@ -1,0 +1,5 @@
+outs:
+- md5: d6268952b949ed8b2bcc9368cdcc5705
+  size: 893132800
+  hash: md5
+  path: bgt_WetterskipFryslan_water.gpkg

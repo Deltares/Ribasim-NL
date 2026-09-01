@@ -1,0 +1,6 @@
+outs:
+- md5: fceccc7bd15bd715754fdd9bcd4354d4.dir
+  size: 46430310
+  nfiles: 97
+  hash: md5
+  path: LHM20230418.gdb

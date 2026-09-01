@@ -15,10 +15,7 @@ path_Scheldestromen = "..\..\Data_preprocessed\Waterschappen\Scheldestromen\Sche
 output_gpkg_path = "../../Data_postprocessed/Waterschappen/Scheldestromen"
 
 
-Scheldestromen = read_gpkg_layers(
-    gpkg_path=path_Scheldestromen,
-    engine="pyogrio",
-)
+Scheldestromen = read_gpkg_layers(gpkg_path=path_Scheldestromen)
 
 # the peilgebieden and streefpeilen do not contain overlapping values. Scheldestromen has delivered additional files as shapes
 Scheldestromen["peilgebied"] = gpd.read_file(

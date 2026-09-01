@@ -1,0 +1,5 @@
+outs:
+- md5: 99f85641737666be29587686666b2ff1
+  size: 755634176
+  hash: md5
+  path: bgt_Rijnland_water.gpkg

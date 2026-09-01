@@ -184,7 +184,6 @@ def _sync(
     filepaths = [
         cloud.joinpath(water_authority, "verwerkt", "Crossings", fn_crossings),
         cloud.joinpath(water_authority, "verwerkt", "BGT", f"bgt_{water_authority}_water.gpkg"),
-        cloud.joinpath("Basisgegevens", "Hydrotypen", "vdGaast_water_depth.csv"),
     ]
     for f in extra_files:
         if f is not None:

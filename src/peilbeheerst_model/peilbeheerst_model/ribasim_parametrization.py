@@ -1,7 +1,6 @@
 import datetime
 import json
 import logging
-import shutil
 import subprocess
 import sys
 import typing
@@ -15,14 +14,13 @@ import pandas as pd
 import ribasim
 import shapely
 import tqdm.auto as tqdm
-import xarray as xr
 from ribasim.nodes import continuous_control
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from shapely.geometry import LineString, Point
 
 from peilbeheerst_model import supply
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import CloudStorage, Model, settings
+from ribasim_nl import Model
 
 logger = logging.getLogger(__name__)
 
@@ -37,102 +35,6 @@ def get_current_max_node_id(ribasim_model: Model) -> int:
     max_id = 1 if len(df_all_nodes) == 0 else int(df_all_nodes.meta_node_id.max())
 
     return max_id
-
-
-def set_initial_basin_state(ribasim_model) -> None:
-    if "meta_peilgebied_cat" in list(ribasim_model.basin.node.df.keys()):
-        basin_state_df = ribasim_model.basin.node.df[["node_id", "meta_peilgebied_cat"]]
-        basin_state_df["meta_categorie"] = basin_state_df["meta_peilgebied_cat"]
-    else:
-        basin_state_df = ribasim_model.basin.node.df[["node_id", "meta_categorie"]]
-
-    basin_state_df["level"] = ribasim_model.basin.area.df["meta_streefpeil"].to_numpy()
-    ribasim_model.basin.state.df = basin_state_df
-    return
-
-
-def insert_standard_profile(
-    ribasim_model, unknown_streefpeil, regular_percentage=10, boezem_percentage=90, depth_profile=2
-) -> None:
-    profile = ribasim_model.basin.area.df.copy()
-    profile.node_id, profile.meta_streefpeil = (
-        profile.meta_node_id.astype(int),
-        profile.meta_streefpeil.astype(float),
-    )  # convert to numbers
-
-    # determine the profile area, which is also used for the profile
-    profile["area"] = profile["geometry"].area * (regular_percentage / 100)
-    profile = profile[["node_id", "meta_streefpeil", "area"]]
-    profile = profile.rename(columns={"meta_streefpeil": "level"})
-
-    # now overwrite the area for the nodes which are the boezem, as these peilgebieden consist mainly out of water
-    node_id_boezem = ribasim_model.basin.state.df.loc[
-        ribasim_model.basin.state.df.meta_categorie == "hoofdwater", "node_id"
-    ].to_numpy()
-    profile.loc[profile.node_id.isin(node_id_boezem), "area"] *= (
-        boezem_percentage / regular_percentage
-    )  # increase the size of the area
-
-    # define the profile at the bottom of the bakje
-    profile_bottom = profile.copy()
-    profile_bottom["area"] = 0.1
-    profile_bottom["level"] -= depth_profile
-
-    # define the profile slightly above the bottom of the bakje
-    profile_slightly_above_bottom = profile.copy()
-    profile_slightly_above_bottom["level"] -= depth_profile - 0.01  # remain one centimeter above the bottom
-
-    # define the profile at the top of the bakje.
-    profile_top = profile.copy()  # it seems that the profile stops at the streefpeil. Ribasim will extrapolate this however. By keeping it this way, it remains clear what the streefpeil of the particular node_id is.
-
-    # combine all profiles by concatenating them, and sort on node_id, level and area.
-    profile_total = pd.concat([profile_bottom, profile_slightly_above_bottom, profile_top])
-    profile_total = profile_total.sort_values(by=["node_id", "level", "area"], ascending=True).reset_index(drop=True)
-
-    # the profiles of the bergende basins are not the same as the doorgaande basins. Fix this.
-    profile_total["meta_categorie"] = profile_total.merge(right=ribasim_model.basin.state.df, on="node_id")[
-        "meta_categorie"
-    ]
-
-    # find the node_id of the bergende nodes with the doorgaande nodes
-    bergende_nodes = profile_total.loc[profile_total.meta_categorie == "bergend"][["node_id"]].reset_index(drop=True)
-    bergende_nodes["from_MR_node"] = bergende_nodes.merge(
-        right=ribasim_model.link.df, left_on="node_id", right_on="from_node_id", how="left"
-    )["to_node_id"]
-
-    bergende_nodes["doorgaande_node"] = bergende_nodes.merge(
-        right=ribasim_model.link.df, left_on="from_MR_node", right_on="from_node_id", how="left"
-    )["to_node_id"]
-
-    # find the profiles
-    bergende_nodes = bergende_nodes.drop_duplicates(subset="node_id")
-    bergende_nodes = bergende_nodes.merge(
-        right=ribasim_model.basin.profile.df,
-        left_on="doorgaande_node",
-        right_on="node_id",
-        how="inner",
-        suffixes=("", "doorgaand"),
-    )
-    bergende_nodes["meta_categorie"] = "bergend"
-
-    # add the found profiles in the table
-    profile_total = profile_total.loc[profile_total.meta_categorie != "bergend"].reset_index(drop=True)
-    bergende_nodes[["node_id", "level", "area", "meta_categorie"]]
-
-    # drop unused columns to avoid a warning
-    profile_total = profile_total.dropna(axis=1, how="all")
-    bergende_nodes = bergende_nodes.dropna(axis=1, how="all")
-
-    # remove bergende profiles, as they will be added here below
-    profile_total = pd.concat([profile_total, bergende_nodes])
-    profile_total = profile_total.sort_values(by=["node_id", "level"]).reset_index(drop=True)
-
-    # insert the new tables in the model
-    ribasim_model.basin.profile = profile_total
-
-    # due to the bergende basin, the surface area has been doubled. Correct this.
-    ribasim_model.basin.profile.df.area /= 2
-    return
 
 
 def convert_mm_day_to_m_sec(mm_per_day: float) -> float:
@@ -208,6 +110,62 @@ def set_static_forcing(
     ribasim_model.basin.static = all_node_forcing_data.reset_index()
     ribasim_model.starttime = time_range[0].to_pydatetime()
     ribasim_model.endtime = time_range[-1].to_pydatetime()
+
+
+def write_steady_state_regression_models(
+    model_path: Path,
+    output_paths: dict[str, Path],
+    *,
+    authority: str,
+    qlr_path: Path,
+    dry_evaporation_mm_per_day: float = 1.0,
+    wet_precipitation_mm_per_day: float = 2.0,
+) -> None:
+    """Write, run, export, and validate constant dry and wet forcing variants.
+
+    The source model is read separately for each variant so that the dynamic
+    production model remains unchanged. Its simulation period, controls, and
+    level boundaries are retained; only Basin meteo forcing is replaced.
+    """
+    required_scenarios = {"dry", "wet"}
+    if set(output_paths) != required_scenarios:
+        msg = f"Expected output paths for {sorted(required_scenarios)}, got {sorted(output_paths)}."
+        raise ValueError(msg)
+
+    for scenario, forcing in {
+        "dry": {"precipitation": 0.0, "potential_evaporation": dry_evaporation_mm_per_day},
+        "wet": {"precipitation": wet_precipitation_mm_per_day, "potential_evaporation": 0.0},
+    }.items():
+        scenario_model = Model.read(model_path)
+        starttime = scenario_model.starttime
+        endtime = scenario_model.endtime
+        scenario_model.basin.time.df = None
+        scenario_model.basin.time.filepath = None  # not needed from ribasim v2026.1.3
+        set_static_forcing(
+            timesteps=2,
+            timestep_size="d",
+            start_time=starttime,
+            forcing_dict={
+                key: convert_mm_day_to_m_sec(value)
+                for key, value in {**forcing, "drainage": 0.0, "infiltration": 0.0}.items()
+            },
+            ribasim_model=scenario_model,
+        )
+        scenario_model.starttime = starttime
+        scenario_model.endtime = endtime
+        output_path = output_paths[scenario]
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        scenario_model.write(output_path)
+
+        from peilbeheerst_model.controle_output import STATIC_FORCING_METRICS, Control
+        from peilbeheerst_model.steady_state_regression import allowed_non_steady_state_node_ids
+
+        scenario_model.run()
+        control = Control(ribasim_toml=output_path, qlr_path=qlr_path)
+        control.run(metrics=STATIC_FORCING_METRICS)
+        control.validate_result_conditions(
+            allowed_non_steady_state_node_ids=allowed_non_steady_state_node_ids(authority, scenario)
+        )
 
 
 def set_dynamic_forcing(
@@ -610,255 +568,12 @@ def add_outlets(ribasim_model, delta_crest_level=0.10) -> None:
     return
 
 
-def add_discrete_control_nodes(ribasim_model) -> None:
-    if len(ribasim_model.discrete_control.node.df) != 0:
-        print("Model bevat al discrete controls! Dan voegen we geen extra controls toe...")
-        return
-
-    control_states = ["off", "on"]
-    dfs_pump = ribasim_model.pump.static.df
-    if "control_state" not in dfs_pump.columns.tolist() or pd.isna(dfs_pump.control_state).all():
-        dfs_pump = []
-        for control_state in control_states:
-            df_pump = ribasim_model.pump.static.df.copy()
-            df_pump["control_state"] = control_state
-            if control_state == "off":
-                df_pump["flow_rate"] = 0.0
-            dfs_pump.append(df_pump)
-        dfs_pump = pd.concat(dfs_pump, ignore_index=True)
-        ribasim_model.pump.static.df = dfs_pump
-
-    for _i, row in enumerate(ribasim_model.pump.node.df.itertuples()):
-        # Get max nodeid and iterate
-        cur_max_node_id = get_current_max_node_id(ribasim_model)
-        new_nodeid = 90000 + cur_max_node_id + 1 if cur_max_node_id < 90000 else cur_max_node_id + 1
-        # print(new_nodeid, end="\r")
-
-        # @TODO Ron aangeven in geval van meerdere matches welke basin gepakt moet worden
-        # basin is niet de beste variable name
-        # Kan ook level boundary of terminal, dus na & weghalen
-        # ["Basin", "LevelBoundary", "Terminal"]
-        basin = ribasim_model.link.df[
-            ((ribasim_model.link.df.to_node_id == row.node_id) | (ribasim_model.link.df.from_node_id == row.node_id))
-            & ((ribasim_model.link.df.from_node_type == "Basin") | (ribasim_model.link.df.to_node_type == "Basin"))
-        ]
-        assert len(basin) >= 1  # In principe altijd 2 (check)
-        # Hier wordt hardcoded de eerste gepakt (aanpassen adhv meta_aanvoerafvoer kolom)
-        basin = basin.iloc[0, :].copy()
-        if basin.from_node_type == "Basin":
-            compound_variable_id = basin.from_node_id
-            listen_node_id = basin.from_node_id
-        else:
-            compound_variable_id = basin.to_node_id
-            listen_node_id = basin.to_node_id
-
-        df_streefpeilen = ribasim_model.basin.state.df.set_index("node_id")
-        assert df_streefpeilen.index.is_unique
-
-        ribasim_model.discrete_control.add(
-            ribasim.Node(new_nodeid, row.geometry),
-            [
-                ribasim.nodes.discrete_control.Variable(
-                    compound_variable_id=compound_variable_id,
-                    listen_node_type=["Basin"],
-                    listen_node_id=listen_node_id,
-                    variable=["level"],
-                ),
-                ribasim.nodes.discrete_control.Condition(
-                    compound_variable_id=compound_variable_id,
-                    threshold_high=[df_streefpeilen.at[listen_node_id, "level"]],  # streefpeil
-                ),
-                ribasim.nodes.discrete_control.Logic(
-                    truth_state=["F", "T"],  # aan uit wanneer groter dan streefpeil
-                    control_state=control_states,  # Werkt nu nog niet!
-                ),
-            ],
-        )
-
-        ribasim_model.link.add(ribasim_model.discrete_control[new_nodeid], ribasim_model.pump[row.node_id])
-
-    return
-
-
-def set_tabulated_rating_curves(ribasim_model, level_increase=1.0, flow_rate=4, LevelBoundary_level=0) -> None:
-    """Create the Q(h)-relations for each TRC. It starts passing water from target level onwards."""
-    # find the originating basin of each TRC
-    target_level = ribasim_model.link.df.loc[
-        ribasim_model.link.df.to_node_type == "TabulatedRatingCurve"
-    ]  # select all TRC's. Do this from the link table, so we can look the basins easily up afterwards
-
-    # find the target level
-    target_level = pd.merge(
-        left=target_level,
-        right=ribasim_model.basin.state.df[["node_id", "level"]],
-        left_on="from_node_id",
-        right_on="node_id",
-        how="left",
-    )
-
-    target_level.level.fillna(value=LevelBoundary_level, inplace=True)
-
-    # zero flow rate on target level
-    Qh_table0 = target_level[["to_node_id", "level"]]
-    Qh_table0 = Qh_table0.rename(columns={"to_node_id": "node_id"})
-    Qh_table0["flow_rate"] = 0.0
-
-    # pre defined flow rate on target level + level increase
-    Qh_table1 = Qh_table0.copy()
-    Qh_table1["level"] += level_increase
-    Qh_table1["flow_rate"] = flow_rate
-
-    # combine tables, sort, reset index
-    Qh_table = pd.concat([Qh_table0, Qh_table1])
-    Qh_table.sort_values(by=["node_id", "level", "flow_rate"], inplace=True)
-    Qh_table.reset_index(drop=True, inplace=True)
-
-    ribasim_model.tabulated_rating_curve.static.df = Qh_table
-
-    # remove all redundant TRC nodes
-    trc_ids = ribasim_model.tabulated_rating_curve.node.df.index
-    keep_ids = trc_ids[trc_ids.isin(Qh_table.node_id)]
-    ribasim_model.node.df = ribasim_model.node.df.drop(trc_ids.difference(keep_ids))
-
-    return
-
-
-def set_tabulated_rating_curves_boundaries(ribasim_model, level_increase=0.1, flow_rate=40) -> None:
-    # select the TRC which flow to a Terminal
-    TRC_ter = ribasim_model.link.df.copy()
-    TRC_ter = TRC_ter.loc[
-        (TRC_ter.from_node_type == "TabulatedRatingCurve") & (TRC_ter.to_node_type == "Terminal")
-    ]  # select the correct nodes
-
-    # not all TRC_ter's should be changed, as not all these nodes are in a boezem. Some are just regular peilgebieden. Filter these nodes for numerical stability
-    # first, check where they originate from
-    basins_to_TRC_ter = ribasim_model.link.df.loc[ribasim_model.link.df.to_node_id.isin(TRC_ter.from_node_id)]
-    basins_to_TRC_ter = basins_to_TRC_ter.loc[
-        basins_to_TRC_ter.from_node_type == "Basin"
-    ]  # just to be sure its a basin
-
-    # check which basins are the boezem
-    node_id_boezem = ribasim_model.basin.state.df.loc[
-        ribasim_model.basin.state.df.meta_categorie == "hoofdwater", "node_id"
-    ].to_numpy()
-
-    # now, only select the basins_to_TRC_ter which are a boezem
-    boezem_basins_to_TRC_ter = basins_to_TRC_ter.loc[basins_to_TRC_ter.from_node_id.isin(node_id_boezem)]
-
-    # plug these values in TRC_ter again to obtain the selection
-    TRC_ter = TRC_ter.loc[TRC_ter.from_node_id.isin(boezem_basins_to_TRC_ter.to_node_id)]
-
-    for i in range(len(TRC_ter)):
-        node_id = TRC_ter.from_node_id.iloc[i]  # retrieve node_id of the boundary TRC's
-
-        # adjust the Q(h)-relation in the ribasim_model.tabulated_rating_curve.static.df
-        original_h = ribasim_model.tabulated_rating_curve.static.df.loc[
-            ribasim_model.tabulated_rating_curve.static.df.node_id == node_id, "level"
-        ].iloc[0]
-        last_index = ribasim_model.tabulated_rating_curve.static.df.loc[
-            ribasim_model.tabulated_rating_curve.static.df.node_id == node_id
-        ].index[-1]  # this is the row with the highest Qh value, which should be changed
-
-        # change the Qh relation on the location of the last index, for each node_id in TRC_ter
-        ribasim_model.tabulated_rating_curve.static.df.loc[
-            ribasim_model.tabulated_rating_curve.static.df.index == last_index, "level"
-        ] = original_h + level_increase
-        ribasim_model.tabulated_rating_curve.static.df.loc[
-            ribasim_model.tabulated_rating_curve.static.df.index == last_index, "flow_rate"
-        ] = flow_rate
-
-    return
-
-
-def create_sufficient_Qh_relation_points(ribasim_model) -> None:
-    """There are more TRC nodes than defined in the static table. Identify the nodes which occur less than twice in the table, and create a (for now) dummy relation. Also delete the TRC in the static table if it doesnt occur in the node table"""
-    # get rid of all TRC's static rows which do not occur in the node table (assuming the node table is the groundtruth)
-    TRC_nodes = ribasim_model.tabulated_rating_curve.node.df.node_id.values
-    ribasim_model.tabulated_rating_curve.static.df = ribasim_model.tabulated_rating_curve.static.df.loc[
-        ribasim_model.tabulated_rating_curve.static.df.node_id.isin(TRC_nodes)
-    ]
-
-    # each node_id should occur at least three times in the pile (once because of the node, twice because of the Qh relation)
-    node_id_counts = ribasim_model.tabulated_rating_curve.static.df["node_id"].value_counts()
-
-    # select all nodes which occur less than 3 times
-    unique_node_ids = node_id_counts[node_id_counts < 3].index
-
-    # create new Qh relations
-    zero_flow = ribasim_model.tabulated_rating_curve.static.df[
-        ribasim_model.tabulated_rating_curve.static.df["node_id"].isin(unique_node_ids)
-    ]
-    one_flow = zero_flow.copy()
-    zero_flow.flow_rate = 0.0  # set flow rate to 0 if on target level
-    one_flow.level += 1  # set level 1 meter higher where it discharges 1 m3/s
-
-    # remove old Qh points
-    ribasim_model.tabulated_rating_curve.static.df = ribasim_model.tabulated_rating_curve.static.df.loc[
-        ~ribasim_model.tabulated_rating_curve.static.df["node_id"].isin(unique_node_ids)
-    ]
-
-    # add the new Qh points back in the df
-    ribasim_model.tabulated_rating_curve.static.df = pd.concat(
-        [ribasim_model.tabulated_rating_curve.static.df, zero_flow, one_flow]
-    )
-    # drop duplicates, sort and reset index
-    ribasim_model.tabulated_rating_curve.static.df.drop_duplicates(subset=["node_id", "level"], inplace=True)
-    ribasim_model.tabulated_rating_curve.static.df.sort_values(by=["node_id", "level", "flow_rate"], inplace=True)
-    ribasim_model.tabulated_rating_curve.node.df.sort_values(by=["node_id"], inplace=True)
-    ribasim_model.tabulated_rating_curve.static.df.reset_index(drop=True, inplace=True)
-
-    print(len(TRC_nodes))
-    print(len(ribasim_model.tabulated_rating_curve.static.df.node_id.unique()))
-
-    return
-
-
 def write_ribasim_model_Zdrive(ribasim_model, path_ribasim_toml) -> None:
     # Write Ribasim model to the Z drive
     if not Path(path_ribasim_toml).exists():
         Path(path_ribasim_toml).mkdir(parents=True)
 
     ribasim_model.write(path_ribasim_toml)
-
-
-def write_ribasim_model_GoodCloud(ribasim_model, work_dir, waterschap, include_results=True) -> None:
-    """Write Ribasim model locally and to the GoodCloud.
-
-    Copy the work_dir to the "modellen" dir, as it is required to maintain the same folder structure locally as well as the GoodCloud.
-    Also clear the directory of modellen/parametereized, as there may be old results in it.
-    The log file of the feedback form is not included to avoid cluttering.'
-    """
-    destination_path = settings.ribasim_nl_data_dir / waterschap / "modellen" / f"{waterschap}_parameterized/"
-
-    # clear the modellen/parameterized dir
-    if destination_path.exists():
-        shutil.rmtree(destination_path)  # Remove the entire directory
-    destination_path.mkdir(parents=True)  # Recreate the empty folder
-
-    # copy the work_dir to the "modellen" dir to maintain the same folder structure locally as well as on the 'GoodCloud'
-    shutil.copytree(work_dir, destination_path, dirs_exist_ok=True)
-
-    # it is not necessary to inlcude the log file of the feedback forms. Delete it
-    for file in destination_path.iterdir():
-        if file.suffix == ".log" and file.is_file():
-            file.unlink()
-
-    cloud_storage = CloudStorage()
-
-    # Upload to waterschap/modellen/model_name instead of waterschap/verwerkt
-    cloud_storage.upload_model(
-        authority=waterschap, model=waterschap + "_parameterized", include_results=include_results
-    )
-
-    print(f"The model of waterboard {waterschap} has been uploaded to the goodcloud!")
-    return
-
-
-def index_reset(ribasim_model) -> None:
-    ribasim_model.node.df = ribasim_model.node.df.reset_index(drop=True)
-    ribasim_model.node.df.index += 1
-
-    return
 
 
 def tqdm_subprocess(cmd, suffix=None, print_other=True, leave=True) -> None:
@@ -882,108 +597,6 @@ def tqdm_subprocess(cmd, suffix=None, print_other=True, leave=True) -> None:
         return_code = process.wait()
         if return_code != 0:
             raise subprocess.CalledProcessError(return_code, cmd)
-
-
-def iterate_TRC(
-    ribasim_param, allowed_tolerance, max_iter, expected_difference, max_adjustment, cmd, output_dir, path_ribasim_toml
-) -> None:
-    # Do initial calculation
-    ribasim_param.tqdm_subprocess(cmd, print_other=False, suffix="init")
-
-    # Read results of initial calculation
-    df_basin = xr.open_dataset(output_dir.joinpath("basin.nc")).to_dataframe().reset_index()
-    df_basin = df_basin.set_index("time")
-
-    stored_trc = {}
-    converged = False
-    iteration = 0
-    debug_data = {"iteration": [], "basin_nodeid": [], "trc_nodeid": [], "basin_diff": [], "trc_adjustment": []}
-    with tqdm.tqdm(total=max_iter) as pbar:
-        while not converged:
-            iteration += 1
-
-            # Read model
-            with warnings.catch_warnings():
-                warnings.simplefilter(action="ignore", category=FutureWarning)
-                ribasim_model = Model.read(path_ribasim_toml)
-
-            # assert that all upstream nodes of a tabulated_rating_curve are basins.
-            df_trc = ribasim_model.link.df[ribasim_model.link.df.to_node_type == "TabulatedRatingCurve"]
-            assert (df_trc.from_node_type == "Basin").all()
-
-            df_trc_static = ribasim_model.tabulated_rating_curve.static.df
-            basins_converged = []
-            for basin_node, trc_group in df_trc.groupby("from_node_id"):
-                # Check for a single streefpeil for all connected tabulated rating curves
-                trc_streefpeilen = [
-                    df_trc_static.loc[df_trc_static.node_id == row.to_node_id, "level"].min()
-                    for row in trc_group.itertuples()
-                ]
-                assert len(set(trc_streefpeilen)) == 1
-
-                # Assert that we have a single unique basin
-                basin = ribasim_model.basin.node.df[ribasim_model.basin.node.df.node_id == basin_node]
-                assert len(basin) == 1
-
-                # Find streefpeil
-                fid = ribasim_model.basin.node.df[ribasim_model.basin.node.df.node_id == basin_node].index[0]
-                streefpeil = float(ribasim_model.basin.area.df.meta_streefpeil.at[fid])
-
-                # Find water levels for this basin.
-                df_basin = xr.open_dataset(output_dir.joinpath("basin.nc")).to_dataframe().reset_index()
-                df_basin = df_basin.set_index("time")
-                basin_result = df_basin[df_basin.node_id == basin_node]
-                last_wl = basin_result.sort_index().level.iat[-1]
-                basin_diff = last_wl - streefpeil
-
-                # Determine if the rating curves have resulted in convergence
-                if abs(basin_diff) < allowed_tolerance:
-                    basins_converged.append(True)
-                else:
-                    # Adjust tabulated_rating_curve(s). Divide the total adjustment equally
-                    # over multiple rating curves.Also limit the adjustment to a maximum
-                    # adjustment.
-                    adjustment = -basin_diff / float(len(trc_group))
-                    adjustment = np.sign(adjustment) * min(max_adjustment, abs(adjustment))
-                    for row in trc_group.itertuples():
-                        # Get index of first and last point in tabulated rating curve
-                        idx_firstpoint = df_trc_static.loc[df_trc_static.node_id == row.to_node_id, "level"].index[0]
-                        idx_lastpoint = df_trc_static.loc[df_trc_static.node_id == row.to_node_id, "level"].index[-1]
-
-                        # Enforce a positive tabulated rating curve
-                        trc_adjust = adjustment
-                        if (df_trc_static.at[idx_lastpoint, "level"] + trc_adjust) < df_trc_static.at[
-                            idx_firstpoint, "level"
-                        ]:
-                            trc_adjust = (
-                                df_trc_static.at[idx_lastpoint, "level"]
-                                - df_trc_static.at[idx_firstpoint, "level"]
-                                - 1e-2
-                            )
-
-                        # Adjust last point of tabulated rating curve
-                        df_trc_static.at[idx_lastpoint, "level"] += trc_adjust
-
-                        # Save debug data
-                        debug_data["iteration"].append(iteration)
-                        debug_data["basin_nodeid"].append(basin_node)
-                        debug_data["trc_nodeid"].append(row.to_node_id)
-                        debug_data["basin_diff"].append(basin_diff)
-                        debug_data["trc_adjustment"].append(trc_adjust)
-                    basins_converged.append(False)
-
-            converged = all(basins_converged)
-
-            # Store the tabulated rating curve in the dictionary
-            stored_trc[str(iteration)] = ribasim_model.tabulated_rating_curve.static.df
-            if iteration == max_iter or converged:
-                pbar.update(max_iter - pbar.n)
-                break
-            else:
-                # Do new calculation
-                ribasim_param.write_ribasim_model_Zdrive(ribasim_model, path_ribasim_toml)
-                tqdm_subprocess(cmd, print_other=False, leave=False, suffix=str(iteration).rjust(2))
-                pbar.update(1)
 
 
 def validate_basin_area(model, threshold_area=45000) -> None:
@@ -2650,22 +2263,6 @@ def change_pump_func(ribasim_model: Model, node_id: int, func: str, value: int) 
     :type value: int
     """
     change_func(ribasim_model, node_id, "pump", func, value)
-
-
-def change_outlet_func(ribasim_model: Model, node_id: int, func: str, value: int) -> None:
-    """Change the 'meta_func_{func}' of a `Outlet`-node.
-
-    :param ribasim_model: Ribasim model
-    :param node_id: outlet node ID
-    :param func: function to change, options are {'aanvoer', 'afvoer'}
-    :param value: value to set the function to, options are {0, 1}
-
-    :type ribasim_model: Model
-    :type node_id: int
-    :type func: str
-    :type value: int
-    """
-    change_func(ribasim_model, node_id, "outlet", func, value)
 
 
 def remove_non_free_flowing_outlets(

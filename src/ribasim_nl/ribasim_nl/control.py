@@ -324,7 +324,7 @@ def add_and_connect_discrete_control_node(
     connector_node = model.get_node(node_id)
     control_node = model.discrete_control.add(
         _offset_new_node(connector_node, offset=offset, angle=angle, **kwargs),
-        tables,  # pyrefly: ignore[bad-argument-type]
+        tables,
     )
     model.link.add(control_node, connector_node)
 

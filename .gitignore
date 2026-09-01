@@ -91,7 +91,9 @@ bin/
 *.nc
 *.ps1
 **/results/**
-!**/results/**/*.dvc
+!data/Basisgegevens/LHM/4.3/results/
+data/Basisgegevens/LHM/4.3/results/*/
+!data/Basisgegevens/LHM/4.3/results/*.dvc
 runs/
 repro_jobs.txt
 delwaq/

@@ -1,0 +1,5 @@
+outs:
+- md5: 1cafc53fd49a2c645bb92eb13f193cb6
+  size: 307200
+  hash: md5
+  path: Opgeknipte_basin_16.gpkg

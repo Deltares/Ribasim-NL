@@ -1,0 +1,5 @@
+outs:
+- md5: 17856e1acb6b30050c9d88851e175b12
+  size: 26439680
+  hash: md5
+  path: hd_crossings_v06.gpkg

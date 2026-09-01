@@ -32,14 +32,6 @@ FeedbackFormulier_LOG_path = cloud.joinpath(
     waterschap, "verwerkt/Feedback Formulier", f"feedback_formulier_{waterschap}_LOG.xlsx"
 )
 
-
-cloud.synchronize(
-    filepaths=[
-        ribasim_base_model_dir,
-        FeedbackFormulier_path,
-    ]
-)
-
 # # download the Feedback Formulieren, overwrite the old ones
 # cloud.download_file(cloud.file_url(FeedbackFormulier_path))
 

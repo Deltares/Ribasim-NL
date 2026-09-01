@@ -2,6 +2,7 @@ from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
+from peilbeheerst_model.general_functions import read_gpkg_layers
 
 from ribasim_nl import CloudStorage
 
@@ -20,18 +21,6 @@ data_delivery = cloud.joinpath(
 )
 
 cloud.synchronize(filepaths=[data_delivery])
-
-
-def read_gpkg_layers(gpkg_path, engine="pyogrio", print_var=False):
-    data = {}
-    layers = gpd.list_layers(gpkg_path)
-    for layer in layers.name:
-        if print_var:
-            print(layer)
-        data_temp = gpd.read_file(gpkg_path, layer=layer, engine=engine)
-        data[layer] = data_temp
-
-    return data
 
 
 def store_data(waterschap, output_gpkg_path):

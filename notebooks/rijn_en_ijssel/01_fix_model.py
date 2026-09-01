@@ -23,7 +23,6 @@ hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
-cloud.synchronize(filepaths=[ribasim_dir, ribasim_areas_gpkg, hydamo_gpkg, model_edits_gpkg])
 # %% read model
 model = Model.read(ribasim_toml)
 

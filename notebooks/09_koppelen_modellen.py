@@ -561,6 +561,7 @@ def save_model_and_outputs(model: Model, all_link_table: list[dict], toml_file: 
         apply_authorities=COUPLING_LEVEL_APPLY_AUTHORITIES,
     )
     model.write(output_toml_file)
+    model.validate_ribasim_nl()
 
     # Save links
     links = gpd.GeoDataFrame(all_link_table)
@@ -589,6 +590,7 @@ def run_configured_coupling_level_check(toml_file: Path) -> None:
         apply_authorities=COUPLING_LEVEL_APPLY_AUTHORITIES,
     ):
         model.write(toml_file)
+        model.validate_ribasim_nl()
 
 
 def get_rws_link(

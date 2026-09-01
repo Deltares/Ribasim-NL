@@ -1,0 +1,5 @@
+outs:
+- md5: f2c4f52e346415fb7b2c650b97ac66ab
+  size: 148172800
+  hash: md5
+  path: 20230530AaEnMaasData.gpkg

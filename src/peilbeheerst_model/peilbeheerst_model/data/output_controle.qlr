@@ -13,7 +13,7 @@
           <Option/>
         </customproperties>
       </layer-tree-layer>
-      <layer-tree-layer source="./output_controle.gpkg|layername=stationary" providerKey="ogr" checked="Qt::Unchecked" legend_split_behavior="0" expanded="0" patch_size="-1,-1" name="stationary" legend_exp="" id="stationary_e9c6d7bb_fac1_481a_a1c7_4212b203e851">
+      <layer-tree-layer source="./output_controle.gpkg|layername=steady_state" providerKey="ogr" checked="Qt::Unchecked" legend_split_behavior="0" expanded="0" patch_size="-1,-1" name="steady_state" legend_exp="" id="steady_state_e9c6d7bb_fac1_481a_a1c7_4212b203e851">
         <customproperties>
           <Option/>
         </customproperties>
@@ -859,12 +859,12 @@ def my_form_open(dialog, layer, feature):
       <mapTip enabled="1"></mapTip>
     </maplayer>
     <maplayer readOnly="0" simplifyLocal="1" legendPlaceholderImage="" symbologyReferenceScale="-1" autoRefreshMode="Disabled" simplifyAlgorithm="0" maxScale="0" simplifyMaxScale="1" simplifyDrawingHints="0" geometry="Point" autoRefreshTime="0" labelsEnabled="0" type="vector" minScale="100000000" hasScaleBasedVisibilityFlag="0" simplifyDrawingTol="1" wkbType="Point" refreshOnNotifyMessage="" refreshOnNotifyEnabled="0" styleCategories="AllStyleCategories">
-      <id>stationary_e9c6d7bb_fac1_481a_a1c7_4212b203e851</id>
-      <datasource>./output_controle.gpkg|layername=stationary</datasource>
+      <id>steady_state_e9c6d7bb_fac1_481a_a1c7_4212b203e851</id>
+      <datasource>./output_controle.gpkg|layername=steady_state</datasource>
       <keywordList>
         <value></value>
       </keywordList>
-      <layername>stationary</layername>
+      <layername>steady_state</layername>
       <srs>
         <spatialrefsys nativeFormat="Wkt">
           <wkt></wkt>
@@ -1058,7 +1058,7 @@ def my_form_open(dialog, layer, feature):
           </symbol>
         </profileMarkerSymbol>
       </elevation>
-      <renderer-v2 forceraster="0" type="categorizedSymbol" symbollevels="0" referencescale="-1" attr="stationary" enableorderby="0">
+      <renderer-v2 forceraster="0" type="categorizedSymbol" symbollevels="0" referencescale="-1" attr="steady_state" enableorderby="0">
         <categories>
           <category type="string" uuid="0" render="true" value="False" label="False" symbol="0"/>
           <category type="string" uuid="1" render="true" value="True" label="True" symbol="1"/>
@@ -1193,7 +1193,7 @@ def my_form_open(dialog, layer, feature):
       <customproperties>
         <Option type="Map">
           <Option type="List" name="dualview/previewExpressions">
-            <Option type="QString" value="&quot;stationary&quot;"/>
+            <Option type="QString" value="&quot;steady_state&quot;"/>
           </Option>
           <Option type="int" value="0" name="embeddedWidgets/count"/>
           <Option type="invalid" name="variableNames"/>
@@ -1288,7 +1288,7 @@ def my_form_open(dialog, layer, feature):
             </config>
           </editWidget>
         </field>
-        <field configurationFlags="NoFlag" name="stationary">
+        <field configurationFlags="NoFlag" name="steady_state">
           <editWidget type="TextEdit">
             <config>
               <Option/>
@@ -1299,37 +1299,37 @@ def my_form_open(dialog, layer, feature):
       <aliases>
         <alias index="0" field="fid" name=""/>
         <alias index="1" field="node_id" name=""/>
-        <alias index="2" field="stationary" name=""/>
+        <alias index="2" field="steady_state" name=""/>
       </aliases>
       <splitPolicies>
         <policy field="fid" policy="Duplicate"/>
         <policy field="node_id" policy="Duplicate"/>
-        <policy field="stationary" policy="Duplicate"/>
+        <policy field="steady_state" policy="Duplicate"/>
       </splitPolicies>
       <defaults>
         <default field="fid" expression="" applyOnUpdate="0"/>
         <default field="node_id" expression="" applyOnUpdate="0"/>
-        <default field="stationary" expression="" applyOnUpdate="0"/>
+        <default field="steady_state" expression="" applyOnUpdate="0"/>
       </defaults>
       <constraints>
         <constraint field="fid" constraints="3" exp_strength="0" unique_strength="1" notnull_strength="1"/>
         <constraint field="node_id" constraints="0" exp_strength="0" unique_strength="0" notnull_strength="0"/>
-        <constraint field="stationary" constraints="0" exp_strength="0" unique_strength="0" notnull_strength="0"/>
+        <constraint field="steady_state" constraints="0" exp_strength="0" unique_strength="0" notnull_strength="0"/>
       </constraints>
       <constraintExpressions>
         <constraint field="fid" exp="" desc=""/>
         <constraint field="node_id" exp="" desc=""/>
-        <constraint field="stationary" exp="" desc=""/>
+        <constraint field="steady_state" exp="" desc=""/>
       </constraintExpressions>
       <expressionfields/>
       <attributeactions>
         <defaultAction key="Canvas" value="{00000000-0000-0000-0000-000000000000}"/>
       </attributeactions>
-      <attributetableconfig sortExpression="&quot;stationary&quot;" sortOrder="1" actionWidgetStyle="dropDown">
+      <attributetableconfig sortExpression="&quot;steady_state&quot;" sortOrder="1" actionWidgetStyle="dropDown">
         <columns>
           <column type="field" width="-1" name="fid" hidden="0"/>
           <column type="field" width="-1" name="node_id" hidden="0"/>
-          <column type="field" width="-1" name="stationary" hidden="0"/>
+          <column type="field" width="-1" name="steady_state" hidden="0"/>
           <column type="actions" width="-1" hidden="1"/>
         </columns>
       </attributetableconfig>
@@ -1364,21 +1364,21 @@ def my_form_open(dialog, layer, feature):
       <editable>
         <field editable="1" name="fid"/>
         <field editable="1" name="node_id"/>
-        <field editable="1" name="stationary"/>
+        <field editable="1" name="steady_state"/>
       </editable>
       <labelOnTop>
         <field labelOnTop="0" name="fid"/>
         <field labelOnTop="0" name="node_id"/>
-        <field labelOnTop="0" name="stationary"/>
+        <field labelOnTop="0" name="steady_state"/>
       </labelOnTop>
       <reuseLastValue>
         <field reuseLastValue="0" name="fid"/>
         <field reuseLastValue="0" name="node_id"/>
-        <field reuseLastValue="0" name="stationary"/>
+        <field reuseLastValue="0" name="steady_state"/>
       </reuseLastValue>
       <dataDefinedFieldProperties/>
       <widgets/>
-      <previewExpression>"stationary"</previewExpression>
+      <previewExpression>"steady_state"</previewExpression>
       <mapTip enabled="1"></mapTip>
     </maplayer>
     <maplayer readOnly="0" simplifyLocal="1" legendPlaceholderImage="" symbologyReferenceScale="-1" autoRefreshMode="Disabled" simplifyAlgorithm="0" maxScale="0" simplifyMaxScale="1" simplifyDrawingHints="0" geometry="Point" autoRefreshTime="0" labelsEnabled="0" type="vector" minScale="100000000" hasScaleBasedVisibilityFlag="0" simplifyDrawingTol="1" wkbType="Point" refreshOnNotifyMessage="" refreshOnNotifyEnabled="0" styleCategories="AllStyleCategories">

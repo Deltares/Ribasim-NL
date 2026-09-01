@@ -3,7 +3,7 @@ import time
 
 import geopandas as gpd
 import pandas as pd
-from peilbeheerst_model.controle_output import Control
+from peilbeheerst_model.controle_output import AFVOER_METRICS, Control
 from ribasim_nl.check_basin_level import add_check_basin_level
 from ribasim_nl.parametrization.basin_tables import (
     apply_basin_level_overrides,
@@ -44,7 +44,6 @@ ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_prepare_model"
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
 # # you need the excel, but the model should be local-only by running 01_fix_model.py
-cloud.synchronize(filepaths=[static_data_xlsx, qlr_path, inlaten, aanvoergebieden_gpkg])
 
 # read
 inlaten_gdf = gpd.read_file(inlaten)
@@ -196,6 +195,6 @@ if run_model:
     assert result.exit_code == 0
 
     controle_output = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
-    indicators = controle_output.run_afvoer()
+    indicators = controle_output.run(metrics=AFVOER_METRICS)
 
 # %%

@@ -1,0 +1,5 @@
+outs:
+- md5: aad09115f8c5817bb38d7b94652ab5a0
+  size: 25350144
+  hash: md5
+  path: agv_crossings_v05.gpkg

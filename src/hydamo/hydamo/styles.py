@@ -3,7 +3,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-import fiona
+import geopandas as gpd
 
 STYLES_DIR = Path(__file__).parent.joinpath("data", "styles")
 
@@ -103,7 +103,7 @@ def add_styles_to_geopackage(gpkg_path: Path) -> None:
         conn.execute(CREATE_TABLE_SQL)
 
         # add style per layer
-        for layer in fiona.listlayers(gpkg_path):
+        for layer in gpd.list_layers(gpkg_path)["name"]:
             style_qml = STYLES_DIR / f"{layer}.qml"
             style_sld = STYLES_DIR / f"{layer}.sld"
 

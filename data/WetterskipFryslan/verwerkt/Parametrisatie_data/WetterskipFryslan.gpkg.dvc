@@ -1,0 +1,5 @@
+outs:
+- md5: 8387660f33a618ad1d61c51537414528
+  size: 87060480
+  hash: md5
+  path: WetterskipFryslan.gpkg

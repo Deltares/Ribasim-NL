@@ -1,0 +1,5 @@
+outs:
+- md5: 1b3ef6ce802fd0e2c084f4f598e2d77e
+  size: 28146680
+  hash: md5
+  path: zinfo_20160101_20231231_influentdebieten.csv
