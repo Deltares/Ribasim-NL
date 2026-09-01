@@ -32,32 +32,6 @@ zinfo_influentdebieten_path = (
 db_belasting = root_path_local / "aangeleverd/RwziBase/Belasting.xlsx"
 rwzi_ligging_path = root_path_local / "aangeleverd/locaties/RWZI_coordinates.geojson"
 
-cloud.synchronize(
-    filepaths=[
-        zinfo_influentdebieten_path,
-        db_belasting,
-    ]
-)
-
-# log_file = model_dir / "create_rwzi_model.log"
-log_file = cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/create_rwzi_model.log")
-
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-logger.handlers.clear()
-
-formatter = logging.Formatter("%(asctime)s - %(levelname)s: %(message)s")
-
-file_handler = logging.FileHandler(log_file, mode="w")
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-
-stream_handler = logging.StreamHandler()
-stream_handler.setFormatter(formatter)
-logger.addHandler(stream_handler)
-
-logger.info(f"Logging to: {log_file}")
-
 # %% create empty model
 starttime = "2017-01-01"
 endtime = "2020-01-01"
@@ -292,7 +266,6 @@ def create_flow_boundary_nodes(rwzi_gdf, rwzi_flow_data_all, model, starttime, e
         tuple: (flow_boundary_nodes_dict, skipped_rwzis, removed_timesteps)
     """
     flow_boundary_nodes = {}  # Dictionary to track flow boundary nodes by RWZI name
-    # TODO: write to csv file the list of skipped rwzi's
     skipped_rwzis = []  # List to track skipped RWZIs
     removed_timesteps = []  # List to track removed timesteps due to NaN values
 
@@ -328,7 +301,6 @@ def create_flow_boundary_nodes(rwzi_gdf, rwzi_flow_data_all, model, starttime, e
         valid_flow_rates = flow_rates[valid_mask]
 
         # Skip RWZIs with no valid data after removing NaNs
-        # TODO should we create the FlowBoundary but with static 0.0 flow_rate?
         if valid_flow_rates.empty:
             skipped_rwzis.append(rwzi_name)
             logger.info(f"No valid data remaining for RWZI '{rwzi_name}'. Skipping.")
@@ -549,7 +521,7 @@ terminal_nodes, node_id_counter = create_terminal_nodes_from_gdf(
     rwzi_flow_data_all=rwzi_flow_data_all,
     skipped_rwzis=skipped_rwzis,
     model=model,
-    start_node_id=999,  # TODO: choose logical value
+    start_node_id=999,
 )
 
 
