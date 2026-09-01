@@ -294,7 +294,7 @@ def log_rwzi_coverage_report(
     Summarizes total RWZIs, coupled RWZIs, and those outside the LHM extent.
     Lists the RWZIs not incorporated into the model.
 
-    Parametersf
+    Parameters
     ----------
         rwzi_coupled_model (Model): The merged Ribasim model with RWZI nodes coupled to basins.
         max_distance (float): Maximum distance for coupling lookup (same as used in create_rwzi_basin_coupling).
