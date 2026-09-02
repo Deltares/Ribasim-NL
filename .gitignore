@@ -104,3 +104,9 @@ delwaq/
 notebooks/*/main.py
 ribasim.env
 scripts/local_coupled_pipelines/
+
+/data/Rijkswaterstaat/modellen/lhm_coupled_full/delwaq_sep
+/notebooks/ribasim_delwaq/ANIMO_to_delwaq/data
+/notebooks/ribasim_delwaq/ANIMO_to_delwaq/output
+/notebooks/ribasim_delwaq/ER_to_delwaq/data
+/notebooks/ribasim_delwaq/ER_to_delwaq/output
