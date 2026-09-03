@@ -54,33 +54,32 @@ else:
 
 # %% run ANIMO data conversion script
 
-# ANIMO_loads_df_script = Path(__file__).resolve().parent / "ER_to_delwaq" / "ANIMO_data_conversion_delwaq.py"
-# ANIMO_loads_df_path = ER_loads_df_script.parent / "output" / "ANIMO_loads_df.parquet"
+ANIMO_loads_df_script = Path(__file__).resolve().parent / "ANIMO_to_delwaq" / "ANIMO_to_clean_csv.py"
+ANIMO_loads_df_path = ANIMO_loads_df_script.parent / "output" / "ANIMO_loads_df.parquet"
+
 
 # ANIMO_loads_df_script = r"p:\11212767-lwkm2\Koppeling_ANIMO_Delwaq\scripts\1-prepare\ANIMO2Delwaq.py"
 
-# result = subprocess.run(
-#     [sys.executable, str(ANIMO_loads_df_script)],
-#     check=False,
-#     capture_output=True,
-#     text=True,
-# )
+result = subprocess.run(
+    [sys.executable, str(ANIMO_loads_df_script)],
+    check=False,
+    capture_output=True,
+    text=True,
+)
 
-# if result.stdout:
-#     print(result.stdout)
+if result.stdout:
+    print(result.stdout)
 
-# if result.stderr:
-#     print(result.stderr)
+if result.stderr:
+    print(result.stderr)
 
-# if result.returncode != 0:
-#     raise RuntimeError(f"ANIMO data coupling script failed with exit code {result.returncode}")
+if result.returncode != 0:
+    raise RuntimeError(f"ANIMO data coupling script failed with exit code {result.returncode}")
 
-# if ANIMO_loads_df_path.exists():
-#     ANIMO_loads_df = pd.read_parquet(ANIMO_loads_df_path)
-# else:
-#     raise FileNotFoundError(f"Expected ANIMO loads file not found: {ANIMO_loads_df_path}")
-
-# TODO: combine ER and ANIMO loads into one df (how, when the time resolution is not equal? convert ER to daily values or let delwaq handle this?)
+if ANIMO_loads_df_path.exists():
+    ANIMO_loads_df = pd.read_parquet(ANIMO_loads_df_path)
+else:
+    raise FileNotFoundError(f"Expected ANIMO loads file not found: {ANIMO_loads_df_path}")
 
 # %%
 # set path of Ribasim model
@@ -97,13 +96,13 @@ model = Model.read(toml_path)
 
 # %% add emission data to model
 model = Model.read(toml_path)
-model.basin.mass_load = ER_loads_df  # either the sum of ER and ANIMO or two separate dataframes (or another column specifying the data source, depending on what generate.py can handle easiest)
+model.basin.mass_load = ANIMO_loads_df  # either the sum of ER and ANIMO or two separate dataframes (or another column specifying the data source, depending on what generate.py can handle easiest)
 model.write(toml_path)
 
 # %%
 # 2. Set up DELWAQ simulation automatically using generate.py
 
-output_folder = "delwaq_sep"
+output_folder = "delwaq_animo"
 
 output_path = model_path / output_folder
 generate(toml_path, output_path)
