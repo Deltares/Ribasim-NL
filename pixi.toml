@@ -63,7 +63,7 @@ hydamo = { path = "src/hydamo", editable = true }
 peilbeheerst_model = { path = "src/peilbeheerst_model", editable = true }
 ribasim_nl = { path = "src/ribasim_nl", editable = true }
 # sync with config in install_ribasim_core.py
-ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "83ee6f7a56ff9a5356bdbd1d9a078c5307a4a4bb", subdirectory = "python/ribasim" }
+ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "c934deac5d48606ef37a4e62c9070d660f694b0b", subdirectory = "python/ribasim" }
 # in pypi fiona is optional, and fiona held back gdal 3.13
 rasterstats = ">=0.21"
 types-geopandas = ">=1.1"
