@@ -3,25 +3,47 @@
 created: 01-2019 by: Wilfred Altena
 modified: 03-2019 by: Annelotte van der Linden
 modified: 02-2024 by: Steven Kelderman
-last modified: 08-2025 by: Jesse van Leeuwen
+last modified: 11-2025 by: Jesse van Leeuwen
 
 Aanpassing van conversie van ER data naar KRW-V input
 In 'Functions' en tussen code onder 'Overige emissies ER' en boven 'Export B6_loads'
 is de code van 02-2024 onveranderd gebleven. Hieronder de toelichting van deze versie:
 
-
 Script om emissieoorzaken vanuit de ER in de laden en om te zetten naar KRW-verkenner
 invoerbestanden. Hierbij wordt onderscheid gemaakt in emissieoorzaak en de daarbij
 behorende berekeningswijze. Hier zijn drieverschillende berekeningswijzen bepaald.
+
 1. industrie: Deze emissies zijn per jaar per bedrijf bekend voor N en P. Soms
 zelfs met meerdere lozingspunten. De bedrijven file wordt apart handmatig ingeladen
-in dit script. 2. emissieoorzaken met gedetailleerde jaarlijkse totalen vanuit
+in dit script.
+
+2. emissieoorzaken met gedetailleerde jaarlijkse totalen vanuit
 Deltares. Hierbij hoeft alleen de ruimtelijke verdeling van GAF90eenheden te worden
-geinterpoleerd. 3.emissieoorzaken zonder detail. Hierbij zijn alleen de ER steekjaren
+geinterpoleerd.
+
+3.emissieoorzaken zonder detail. Hierbij zijn alleen de ER steekjaren
 bekend en wordt er tussen deze jaren geinterpoleerd.
+
+24/6/2026 - grote aanpassingen:
+
+- optie validate/prognose verwijderd (doel onduidelijk)
+- plotting functies opgeschoond
+
+- data pipeline moet nog worden herzien en gedocumenteerd!!!
+
+
 """
 
-import os
+# %%
+# import os
+# import sys
+
+# print(sys.executable)
+# print(os.environ.get("GDAL_DATA"))
+# %%
+# -------------------------------Packages---------------------------------------
+
+import logging
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -29,212 +51,223 @@ import pandas as pd
 import seaborn as sns
 from ER_GAF_fractions_func import compute_overlap_df
 
+# ------------------------ Import local module ----------------------------------
+from ribasim_nl import CloudStorage
+
+logger = logging.getLogger(__name__)
+if not logging.getLogger().handlers:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        force=True,
+    )
+
+logger.info("Starting ER data conversion script")
+
+current_dir = Path(__file__).resolve().parent
+root_dir = current_dir.parents[2]
+
+# -------------------------------Conversions------------------------------------
+
 conv_yr2sec = 60 * 60 * 24 * 365.25
 conv_kg2g = 1000
 conv_ton2g = 10**6
 
-# -------------------------------Packages---------------------------------------
+# -------------------------------Directories------------------------------------
+cloud = CloudStorage()
+
+model_name = "lhm_coupled_full"
+toml_name = "lhm_coupled.toml"
+model_path = Path(root_dir, "data/Rijkswaterstaat/modellen", model_name)
+# model_path = cloud.joinpath("Rijkswaterstaat", "modellen", model_name)
+toml_path = model_path / toml_name
+# cloud.synchronize(filepaths=[model_path], overwrite=False)
+basin_path = model_path / "input/database.gpkg"
+
+# TODO: define permanent location for these files in repo: either within this folder or within the main data folder of this repo
+er_path = cloud.joinpath("Basisgegevens/Delwaq/aangeleverd/Emissieregistratie")
+emissies_buiten_ER_path = er_path / "Emissies_per_jaar_buiten_ER.csv"
+ER_export_path = er_path / "ER_DataExport-2024-01-29-142759.xlsx"
+OE_bedrijven_path = er_path / "OverigeEmissies_bedrijven__2024_01_24.csv"
+gaf_path = er_path / "gaf_90.shp"
+
+cloud.synchronize(filepaths=[er_path], overwrite=False)
+
+output_dir = current_dir / "output"
+output_dir.mkdir(parents=True, exist_ok=True)
+
+# %%
+# -------------------------------Settings---------------------------------------
+frac_doorgaand = 0.5  # deel ER op doorvoerende basin node
+frac_bergend = 1 - frac_doorgaand  # deel ER op bergende basin node
+make_plots = False
 
 # -------------------------------Functions--------------------------------------
 
 
-def makedir(path):
-    """Make directory if not existing."""
-    if not Path(path).exists():
-        print("path doesn't exist. trying to make")
-        Path(path).mkdir(parents=True)
+def validate_df(
+    df, required_columns=("Year", "Value", "EmissionTypeId", "VariableId")
+):  # $ specifically made for plotting functions
+    missing = [c for c in required_columns if c not in df.columns]
+    if missing:
+        raise ValueError(f"DataFrame missing required columns: {missing}")
 
 
-def write_dataframe(filename, df):
-    """Write a dataframe to csv."""
-    # Write dataframe to csv-file
-    df.to_csv(filename, header=True, index=False, sep=";")  # , header=False)
-
-
-def lineplot_N_P(file, N, P, kg=True, set_log=False, title=None):
+def lineplot_N_P(df, N, P, kg=True, set_log=False, title=None):
     """Generate lineplots for the different EMK per Sub."""
-    # Filter the DataFrame for 'N - totaal' 'P - Totaal'
-    filtered_df_n = file[file["VariableId"] == N]
-    filtered_df_p = file[file["VariableId"] == P]
+    if not make_plots:
+        return
 
-    # Set up the subplots
+    validate_df(df)
+
+    df_n = df[df["VariableId"] == N]
+    df_p = df[df["VariableId"] == P]
+
     _fig, axes = plt.subplots(1, 2, figsize=(15, 6), sharey=False)
 
-    # Define manual colormap
-    category_colors = {
-        "Atmosferische depositie": "blue",
-        "Meemesten sloten": "green",
-        "Glastuinbouw": "red",
-        "Erfafspoeling": "yellow",
-        "Regenwaterriolen": "aqua",
-        "OverigeEmissies": "black",
-        "Emissiesbedrijven": "purple",
-        "Industrie": "purple",
-    }
-
-    # Plot for 'N - totaal'
     sns.lineplot(
+        data=df_n,
         x="Year",
         y="Value",
         hue="EmissionTypeId",
-        data=filtered_df_n,
-        palette=category_colors,
         errorbar=None,
         ax=axes[0],
     )
     axes[0].set_title(f"Sum of Emissions of {title} per EMK for N - totaal")
     axes[0].set_xlabel("Year")
-    if kg:
-        axes[0].set_ylabel("Sum of Emissions (kg/year)")
-    else:
-        axes[0].set_ylabel("Sum of Emissions (g/s)")
-    axes[0].legend().remove()
+    axes[0].set_ylabel("Sum of Emissions (kg/year)" if kg else "Sum of Emissions (g/s)")
     axes[0].grid(True)
-    axes[0].set_ylim(0)
+    axes[0].set_ylim(bottom=0)
     if set_log:
         axes[0].set_yscale("log")
-    else:
-        pass
 
-    # Plot for 'P - totaal'
     sns.lineplot(
+        data=df_p,
         x="Year",
         y="Value",
         hue="EmissionTypeId",
-        data=filtered_df_p,
-        palette=category_colors,
         errorbar=None,
         ax=axes[1],
     )
     axes[1].set_title(f"Sum of Emissions of {title} per EMK for P - totaal")
     axes[1].set_xlabel("Year")
-    if kg:
-        axes[1].set_ylabel("Sum of Emissions (kg/year)")
-    else:
-        axes[1].set_ylabel("Sum of Emissions (g/s)")
+    axes[1].set_ylabel("Sum of Emissions (kg/year)" if kg else "Sum of Emissions (g/s)")
     axes[1].grid(True)
-    axes[0].set_ylim(0)
+    axes[1].set_ylim(bottom=0)
     if set_log:
-        axes[0].set_yscale("log")
-    else:
-        pass
+        axes[1].set_yscale("log")
 
-    # Get handles and labels from the first plot
-    handles, labels = axes[0].get_legend_handles_labels()
-    # Create legend using handles and labels from axes[0] plot
-    plt.legend(
-        handles=handles,
-        labels=labels,
+    if axes[1].legend_ is not None:
+        axes[1].legend_.remove()
+
+    axes[0].legend(
         title="EmissionTypeId",
-        bbox_to_anchor=(-0.1, -0.1),
+        bbox_to_anchor=(0.5, -0.15),
         loc="upper center",
-        ncol=len(category_colors) // 2,
+        ncol=2,
     )
 
+    plt.tight_layout()
     plt.show()
 
 
-def barplot_N_P(file, N, P, y_lim_min_n, y_lim_max_n, y_lim_min_p, y_lim_max_p, kg=True, title=None):
-    """Generate Barplot per Year per sub."""
-    # Filter the DataFrame for 'N - totaal' and 'P - Totaal'
-    filtered_df_n = file[file["VariableId"] == N]
-    filtered_df_p = file[file["VariableId"] == P]
+def barplot_N_P(df, N, P, y_lim_min_n, y_lim_max_n, y_lim_min_p, y_lim_max_p, kg=True, title=None):
+    """Generate barplots per year for N and P."""
+    if not make_plots:
+        return
 
-    # Set up the subplots
+    validate_df(df, required_columns=("Year", "Value", "VariableId"))
+
+    df_n = df[df["VariableId"] == N]
+    df_p = df[df["VariableId"] == P]
+
     _fig, axes = plt.subplots(1, 2, figsize=(15, 6), sharey=False)
 
-    # Plot for 'N - totaal'
-    sns.barplot(x="Year", y="Value", data=filtered_df_n, errorbar=None, ax=axes[0])
+    sns.barplot(data=df_n, x="Year", y="Value", errorbar=None, ax=axes[0])
     axes[0].set_title(f"Sum of Emissions of {title} for N - totaal")
     axes[0].set_xlabel("Year")
-    if kg:
-        axes[0].set_ylabel("Sum of Emissions (kg/year)")
-    else:
-        axes[0].set_ylabel("Sum of Emissions (g/s)")
+    axes[0].set_ylabel("Sum of Emissions (kg/year)" if kg else "Sum of Emissions (g/s)")
     axes[0].set_ylim(y_lim_min_n, y_lim_max_n)
     axes[0].grid(True)
-    # axes[0].set_ylim(450, 525)
 
-    # Plot for 'P - totaal'
-    sns.barplot(x="Year", y="Value", data=filtered_df_p, errorbar=None, ax=axes[1])
+    sns.barplot(data=df_p, x="Year", y="Value", errorbar=None, ax=axes[1])
     axes[1].set_title(f"Sum of Emissions of {title} for P - totaal")
     axes[1].set_xlabel("Year")
-    if kg:
-        axes[1].set_ylabel("Sum of Emissions (kg/year)")
-    else:
-        axes[1].set_ylabel("Sum of Emissions (g/s)")
+    axes[1].set_ylabel("Sum of Emissions (kg/year)" if kg else "Sum of Emissions (g/s)")
     axes[1].set_ylim(y_lim_min_p, y_lim_max_p)
-    # axes[1].set_ylim(27.5, 37.5)
     axes[1].grid(True)
 
+    plt.tight_layout()
     plt.show()
 
 
-# -------------------------------Settings---------------------------------------
-d = {}
-d["run"] = "validatie"  # validatie, prognose
-
-schematisatie = "Ribasim-NL"  # $ was 'LKM25', moet nieuwe bestandstructuur komen
-
-# # -------------------------------Directories------------------------------------
-
-inputdir = (
-    "P:/krw-verkenner/01_landsdekkende_schematisatie/LKM25 schematisatie/OverigeEmissies/KRW_Tussenevaluatie_2024/"
-)
-model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "DeDommel/modellen/DeDommel_2025_7_0"
-basin_node_path = model_path / "database.gpkg"
-
-# -------------------------------Import data------------------------------------
-
-koppeling = compute_overlap_df(
-    gaf_path="P:/11210327-lwkm2/01_data/Emissieregistratie/gaf_90.shp",
-    basin_path=basin_node_path,
-)
-
+# %%
+# -------------------------------Couple emissions to LHM------------------------------------
+# coupling based on GAF and basin polygons
+koppeling = compute_overlap_df(gaf_path, basin_path, hws=False)
 koppeling["GAF-eenheid"] = koppeling["GAF-eenheid"].astype(int)
 
-# $ check voor nieuwe koppeling
-sum_per_node = koppeling.groupby("NodeId")["fractie"].sum().reset_index()
-sum_per_node = koppeling.groupby("GAF-eenheid")["fractie"].sum().reset_index().sort_values(by="fractie")
 
-with pd.option_context("display.max_rows", None):
-    print(sum_per_node)
+print("coupling GAF-emissions to LHM basin nodes completed")
+logger.info("Coupling GAF emissions to LHM basin nodes completed")
 
-# $ eventueel kunnen de fracties per GAF met de emissies per GAF worden vermenigvuldigd om te checken of het matched met wat er uit dit script komt rollen als totale emissies
-
-# Manual file to fill in Deltares ER yearly loads #$ not using this rn
-Emissies_per_jaar_buiten_ER = pd.read_csv(
-    Path(inputdir) / "Emissies_per_jaar_buiten_ER.csv", delimiter=";", encoding="latin1"
+# process fractions based on basin type, only splitting up doorgaand and bergend
+# there is also the category "hoofdwater" (within waterboards), but these do not have a duplicate node in the same location
+# the actual HWS does not not have a meta_categorie
+koppeling["fractie"] = koppeling.apply(
+    lambda row: (
+        row["fractie"] * frac_doorgaand
+        if row["meta_categorie"] == "doorgaand"
+        else row["fractie"] * frac_bergend
+        if row["meta_categorie"] == "bergend"
+        else row["fractie"]
+    ),
+    axis=1,
 )
+
+sum_per_node = koppeling.groupby("GAF-eenheid")["fractie"].sum().reset_index().sort_values(by="fractie")
+sum_exceeding_1 = len(sum_per_node[sum_per_node["fractie"] > 1.05]) / len(sum_per_node) * 100
+print(f"Percentage of GAF-units with sum of fractions exceeding 1 by more than 5%: {sum_exceeding_1:.2f}%")
+
+# $ hashed code below causes kernel crash, fix later if we want this plot as diagnositc. However, we already checked and it shows that not all emissions in GAF-polygons are assigned to basins due to lack of overlap. However this is only the case for a minority of GAF polygons, so no immediate cause of concern
+
+# _fig, ax = plt.subplots()
+# ax.scatter(sum_per_node.index.to_numpy(), sum_per_node["fractie"].to_numpy(), s=1)
+# ax.set_title("Sum of fractions per GAF (should not exceed 1.0)")
+# ax.set_xlabel("Index")
+# ax.set_ylabel("Sum of fractions per GAF-unit")
+# ax.grid(True)
+# _fig.savefig("sum_per_node.png", dpi=150, bbox_inches="tight")
+# plt.close(_fig)
+
+# $ check: eventueel kunnen de fracties per GAF met de emissies per GAF worden vermenigvuldigd om te checken of het matched met wat er uit dit script komt rollen als totale emissies
+
+# %%
+# -------------------------------Import data------------------------------------
 
 # Direct download from the ER website at GAF90 level #$ MAKE SEARCH FOR MOST RECENT DATE INSTEAD OF MANUALLY WRITING
 ER_data_EMK_GAF90 = pd.read_excel(
-    Path(inputdir) / "ER_DataExport-2024-01-29-142759.xlsx",  # $ I have a recent import but need a match
+    ER_export_path,
     sheet_name="Emissies",
     usecols=["Stofcode", "Stof", "Code_gebied", "Sector", "Subsector", "Emissieoorzaak", "Jaar", "Emissie"],
 )
 
+# Manual file to fill in Deltares ER yearly loads #$ not using this rn
+Emissies_per_jaar_buiten_ER = pd.read_csv(emissies_buiten_ER_path, delimiter=";", encoding="latin1")
+
 # Manual file to import bedrijven without coastal waters #$ also not rn
-OverigeEmissies_bedrijven__2024_01_24 = pd.read_csv(
-    Path(inputdir) / "OverigeEmissies_bedrijven__2024_01_24.csv", delimiter=";", encoding="latin1"
-)
+OverigeEmissies_bedrijven__2024_01_24 = pd.read_csv(OE_bedrijven_path, delimiter=";", encoding="latin1")
 
-# -------------------------------Overige emissies ER----------------------------
 
-# Make selection of available EMKs
+# %%
+# -------------------------------Data processing------------------------------------
+
+# filter out unnecessary emissieoorzaken #$ done in previous version, but why?
 EMISSIEOORZAKEN = ER_data_EMK_GAF90["Emissieoorzaak"].unique().tolist()
-
-# List of EMKs not to use in this script or part
 remove_EMK = ["SBI", "spoeling nutri", "Effluenten RWZI", "Depositie NCP"]
-
-# Generate filter of right EMKs
 EMISSIEOORZAKEN_FILTER = [EMK for EMK in EMISSIEOORZAKEN if not any(rem in EMK for rem in remove_EMK)]
-print(EMISSIEOORZAKEN_FILTER)
-
-
-# Filter for the right emissieoorzaken
 ER_data_EMK_GAF90_fltr = ER_data_EMK_GAF90.loc[ER_data_EMK_GAF90["Emissieoorzaak"].isin(EMISSIEOORZAKEN_FILTER)].copy()
-print(ER_data_EMK_GAF90_fltr["Emissieoorzaak"].unique().tolist())
+print("Catagories considered:", ER_data_EMK_GAF90_fltr["Emissieoorzaak"].unique().tolist())
 
 
 EMISSION_TYPES = ["Depositie Nederland", "Glastuinbouw", "Erfafspoeling", "Regenwaterriolen", "Meemesten sloten"]
@@ -259,8 +292,6 @@ ER_data_EMK_GAF90_fltr_sum_piv = pd.pivot_table(
     ER_data_EMK_GAF90_fltr_sum, index=["Code_gebied", "Emissieoorzaak", "Stof"], values="Emissie", columns="Jaar"
 ).reset_index()
 
-#####################################################################################
-
 # Transpose columns to long format
 sum_per_GAF_base_long = pd.melt(
     ER_data_EMK_GAF90_fltr_sum_piv,
@@ -282,6 +313,9 @@ sum_per_EMK_base_short = pd.pivot(
 sum_per_Year_base_long = sum_per_GAF_base_long.groupby(["Stof", "Jaar"])["Emissie"].sum().reset_index()
 
 sum_per_Year_base_short = pd.pivot(sum_per_Year_base_long, index=["Stof"], columns="Jaar").reset_index()  # Check
+
+print("yearly totals per EMK (emissieoorzaak) and per year computed")
+logger.info("Yearly totals per EMK (emissieoorzaak) and per year computed")
 
 ###
 
@@ -406,6 +440,8 @@ ER_data_EMK_GAF90_inter_long = pd.melt(
     value_name="Value",
 )
 
+print("interpolation of unknown years completed")
+logger.info("Interpolation of unknown years completed")
 
 # %%%######
 
@@ -443,6 +479,9 @@ barplot_N_P(
     title="GAF",
 )
 
+print("processing of other emissions without industry completed")
+logger.info("Processing of other emissions without industry completed")
+
 ###
 
 # ---------------------------Overige emissies bedrijven-------------------------
@@ -457,6 +496,8 @@ OverigeEmissies_bedrijven_long = pd.melt(
 
 OverigeEmissies_bedrijven_long["Year"] = OverigeEmissies_bedrijven_long["Year"].astype(int)
 
+print("processing of other emissions from industry completed")
+logger.info("Processing of other emissions from industry completed")
 
 # ---------------------------------Output---------------------------------------
 
@@ -541,6 +582,9 @@ barplot_N_P(
     kg=True,
     title="GAF",
 )
+
+print("created figures")
+logger.info("Created summary figures")
 
 # ---------------------------------Output--------------------------------------- #$ actual output
 
@@ -648,34 +692,58 @@ lineplot_N_P(DifusseEmissions_OE_per_EMK_long, "N", "P", kg=False, set_log=False
 # Generate barplot
 barplot_N_P(DifusseEmissions_OE_per_Year_long, "N", "P", 0, 525, 0, 37.5, kg=False, title="Node")
 
-# Generate output
 
-if d["run"] == "validatie":
-    DifusseEmissions_OE["EmissionTypeId"] = "OverigeEmissies"
+# %%
 
-    DifusseEmissions_OE = DifusseEmissions_OE.groupby(
-        ["NodeId", "EmissionTypeId", "Year", "VariableId"], as_index=False
-    ).sum()
+# convert N and P total to actual fractions
 
-elif d["run"] == "prognose":
-    pass
+ER_df = DifusseEmissions_OE.copy()
 
+ER_df_wide = (
+    ER_df.pivot_table(index=["NodeId", "Year"], columns="VariableId", values="Value")
+    .rename_axis(
+        columns=None  # removes 'VariableId' as the column name
+    )
+    .reset_index()
+)
 
-# ---------------------------------Export B6_loads---------------------------------------
+ER_df_wide["NO3"] = ER_df_wide["N"] * 0.8
+ER_df_wide["NH4"] = ER_df_wide["N"] * 0.1
+ER_df_wide["OON"] = ER_df_wide["N"] * 0.1
+ER_df_wide["PO4"] = ER_df_wide["P"] * 0.5
+ER_df_wide["AAP"] = ER_df_wide["P"] * 0.4
+ER_df_wide["OOP"] = ER_df_wide["P"] * 0.1
 
-# vanaf hier bevat DifusseEmissions_OE de juiste data voor export naar B6_loads.inc bestand
+ER_df_wide["time"] = pd.to_datetime(ER_df_wide.Year, format="%Y")
+ER_df_wide.rename(columns={"NodeId": "node_id"}, inplace=True)
 
-output_path = model_path / "delwaq"
+loads_df = ER_df_wide.melt(
+    id_vars=["node_id", "time"],
+    value_vars=["NO3", "NH4", "OON", "PO4", "AAP", "OOP"],
+    var_name="substance",
+    value_name="load",
+)
 
-grouped = DifusseEmissions_OE.groupby(["NodeId", "VariableId"])
+output_path = output_dir / "ER_loads_df.parquet"
 
-with (output_path / "B6_loads.inc").open("w") as f:
-    for (node_id, variable_id), group in grouped:
-        f.write(f"ITEM 'Basin_{node_id}' CONCENTRATIONS '{variable_id}' LINEAR TIME LINEAR DATA '{variable_id}'\n")
+try:
+    loads_df.to_parquet(output_path, index=False)
+    logger.info("Saved loads_df to %s", output_path)
+except Exception:
+    logger.exception("ER data conversion failed")
+    raise
 
-        for _, row in group.iterrows():
-            year = row["Year"]
-            value = row["Value"]
-            f.write(f"'{year}/01/01-00:00:00' {value:.6f}\n")
+# %%
+# -------------------------- Couple loads to LHM datastructure ----------------------------
 
-        f.write("\n")
+# model = Model.read(toml_path)
+# model.basin.mass_load = loads_df
+# model.write(toml_path)
+
+# #%%
+# # re-read saved model and check mass_load
+
+# model = Model.read(toml_path)
+# model.basin.mass_load
+
+# %%

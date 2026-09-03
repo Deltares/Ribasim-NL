@@ -129,7 +129,20 @@ def load_model_from_spec(model_spec):
     return model
 
 
-model = load_model_from_spec(model_spec)
+# model = load_model_from_spec(model_spec)
+
+# %%
+# hardcoded model paths
+model_name = "lhm_coupled_full"
+toml_name = "lhm_coupled.toml"
+model_path = Path("../../data/Rijkswaterstaat/modellen") / model_name
+toml_path = model_path / toml_name
+assert toml_path.is_file()
+logger.info(f"reading model from hard-coded path: {toml_path}")
+
+model = Model.read(toml_path)
+
+# %%
 
 logger.info("Ribasim model ingeladen")
 df_model_nodes = model.flow_boundary.node.df

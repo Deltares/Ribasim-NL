@@ -38,6 +38,8 @@ notebooks/rijkswaterstaat/plots/
 /src/peilbeheerst_model/peilbeheerst_model/Oud
 /src/peilbeheerst_model/ribasim
 
+/notebooks/ribasim_delwaq/postprocessing/get_WQdata_waterinfo.py
+
 .env
 venv/
 .venv/
@@ -103,3 +105,9 @@ delwaq/
 notebooks/*/main.py
 ribasim.env
 scripts/local_coupled_pipelines/
+
+/data/Rijkswaterstaat/modellen/lhm_coupled_full/delwaq_sep
+/notebooks/ribasim_delwaq/ANIMO_to_delwaq/data
+/notebooks/ribasim_delwaq/ANIMO_to_delwaq/output
+/notebooks/ribasim_delwaq/ER_to_delwaq/data
+/notebooks/ribasim_delwaq/ER_to_delwaq/output
