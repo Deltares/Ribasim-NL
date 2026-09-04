@@ -334,6 +334,8 @@ def log_rwzi_coverage_report(
     logger.info(f"{'=' * 60}\n")
 
     if write_coverage:
-        rwzi_coverage_path = rwzi_coupled_model.results_dir / "RWZI_coordinates_model_coverage.geojson"
+        results_path = rwzi_coupled_model.toml_path.parent / rwzi_coupled_model.results_dir
+        results_path.mkdir(parents=True, exist_ok=True)
+        rwzi_coverage_path = results_path / "RWZI_coordinates_model_coverage.geojson"
         return export_rwzi_coverage_geojson(rwzi_coupled_model, rwzi_coverage_path, verbose=True)
     return None
