@@ -13,9 +13,11 @@ from geopandas.geodataframe import GeoDataFrame
 from ribasim_nl import Model, concat
 from ribasim_nl.reset_index import reset_index
 
+# %%
 logger = logging.getLogger(__name__)
 
 
+# %%
 def create_rwzi_basin_coupling(rwzi_coupled_model: Model, max_distance=100):
     """
     Match RWZI outflow locations with the underlying basins. When there is no match, try a 20 m buffer.
@@ -192,7 +194,7 @@ def terminal2junction(rwzi_coupled_model, coupling_lookup, *, verbose=False):
     return rwzi_coupled_model
 
 
-def merge_rwzi_model(base_model, rwzi_model_path, max_distance: int = 100, verbose: bool = False):
+def merge_rwzi_model(base_model, rwzi_model_path, max_distance: int = 100, write_coverage=True, verbose: bool = False):
     """
     Merge an RWZI model into a base model.
 
@@ -230,7 +232,108 @@ def merge_rwzi_model(base_model, rwzi_model_path, max_distance: int = 100, verbo
     coupling_lookup, unmatched_rwzi_df = create_rwzi_basin_coupling(rwzi_coupled_model, max_distance=max_distance)
     rwzi_coupled_model, _stats = remove_unmatched_rwzi(rwzi_coupled_model, unmatched_rwzi_df, verbose=verbose)
     rwzi_coupled_model = terminal2junction(rwzi_coupled_model, coupling_lookup, verbose=verbose)
+    log_rwzi_coverage_report(rwzi_coupled_model, max_distance=max_distance, write_coverage=write_coverage)
 
     logger.info(f"There are {len(unmatched_rwzi_df)} RWZI's not incorporated in this model")
 
     return rwzi_coupled_model
+
+
+# %% Set-up geojson for rwzi coupling checks
+def export_rwzi_coverage_geojson(rwzi_coupled_model, rwzi_coverage_path, verbose: bool = False):
+    """
+    Export RWZI coverage GeoJSON with LHM model inclusion flag.
+
+    1. Reads the RWZI coordinates model coverage GeoJSON.
+    2. Extracts RWZI names present in the merged model's junctions.
+    3. Flags each RWZI as included in the LHM model or not (if no underlying basin, they are left out).
+    4. Flags RWZI names that occur more than once in the model.
+    5. Writes the updated GeoJSON to the output path.
+
+    Parameters
+    ----------
+        rwzi_coupled_model (Model): The merged Ribasim model with RWZI nodes coupled to basins.
+        verbose (bool): Whether to print progress info.
+
+    Returns
+    -------
+        GeoDataFrame: The RWZI coverage GeoDataFrame with the added coverage flags.
+    """
+    rwzi_gdf = gpd.read_file(rwzi_coverage_path)
+
+    assert rwzi_coupled_model.junction.node.df is not None
+    junction_df = rwzi_coupled_model.junction.node.df
+    rwzi_junction_names = junction_df[junction_df["meta_rwzi_code"].notna()]["name"].str.replace("_out", "")
+    duplicate_rwzi_names = set(rwzi_junction_names[rwzi_junction_names.duplicated(keep=False)])
+
+    rwzi_lhm_coverage = rwzi_gdf.copy()
+    rwzi_lhm_coverage["in_lhm_model"] = rwzi_lhm_coverage["Naam rwzi"].isin(rwzi_junction_names)
+    rwzi_lhm_coverage["duplicate_rwzi_name_in_model"] = rwzi_lhm_coverage["Naam rwzi"].isin(duplicate_rwzi_names)
+
+    rwzi_lhm_coverage.to_file(rwzi_coverage_path, driver="GeoJSON")
+
+    if duplicate_rwzi_names:
+        logger.warning("RWZI names occurring multiple times in the model:")
+        for rwzi_name in sorted(duplicate_rwzi_names):
+            logger.warning("  - %s", rwzi_name)
+
+    if verbose:
+        rwzi_coverage_path = rwzi_coupled_model.results_dir / "RWZI_coordinates_lhm_coverage.geojson"
+        logger.info(f"GeoJSON with LHM model coverage written to: {rwzi_coverage_path}")
+    logger.info(f"GeoJSON with LHM model coverage written to: {rwzi_coverage_path}")
+    return rwzi_lhm_coverage
+
+
+# %% Export GeoJSON with LHM model inclusion flag
+def log_rwzi_coverage_report(
+    rwzi_coupled_model: Model, max_distance: float = 100, write_coverage: bool = True
+) -> GeoDataFrame | None:
+    """
+    Log a coverage report for RWZIs in the coupled model.
+
+    Summarizes total RWZIs, coupled RWZIs, and those outside the LHM extent.
+    Lists the RWZIs not incorporated into the model.
+
+    Parameters
+    ----------
+        rwzi_coupled_model (Model): The merged Ribasim model with RWZI nodes coupled to basins.
+        max_distance (float): Maximum distance for coupling lookup (same as used in create_rwzi_basin_coupling).
+        write_coverage (bool): If True, also export the RWZI coverage GeoJSON.
+
+    Returns
+    -------
+        GeoDataFrame if write_coverage is True, else None.
+    """
+    flow_boundary_node = rwzi_coupled_model.flow_boundary.node
+    if flow_boundary_node is None or flow_boundary_node.df is None:
+        raise ValueError("FlowBoundary node table is missing in rwzi_coupled_model")
+    fb_df = flow_boundary_node.df
+    rwzi_flow_boundaries = fb_df[fb_df["meta_rwzi_code"].notna()]
+
+    junction_node = rwzi_coupled_model.junction.node
+    if junction_node is None or junction_node.df is None:
+        raise ValueError("Junction node table is missing in rwzi_coupled_model")
+    junction_df = junction_node.df
+    rwzi_junctions = junction_df[junction_df["meta_rwzi_code"].notna()]
+
+    total_rwzi = len(rwzi_flow_boundaries)
+    coupled_rwzi = len(rwzi_junctions)
+    _coupling_lookup, unmatched_rwzi_df = create_rwzi_basin_coupling(rwzi_coupled_model, max_distance=max_distance)
+    uncoupled_rwzi = len(unmatched_rwzi_df)
+
+    logger.info(f"\n{'=' * 60}")
+    logger.info("RWZI COVERAGE REPORT")
+    logger.info(f"  Total RWZIs in coupled model:       {total_rwzi}")
+    logger.info(f"  RWZIs coupled to basin (junction):  {coupled_rwzi}")
+    logger.info(f"  RWZIs outside LHM (removed):        {uncoupled_rwzi}")
+    logger.info(f"{'=' * 60}")
+    logger.info("RWZIs not incorporated (outside LHM extent):")
+    for _, row in unmatched_rwzi_df.iterrows():
+        rwzi_name = row["name"].replace("_out", "")
+        logger.info(f"  - {rwzi_name} (RWZI code: {row['meta_rwzi_code']})")
+    logger.info(f"{'=' * 60}\n")
+
+    if write_coverage:
+        rwzi_coverage_path = rwzi_coupled_model.results_dir / "RWZI_coordinates_model_coverage.geojson"
+        return export_rwzi_coverage_geojson(rwzi_coupled_model, rwzi_coverage_path, verbose=True)
+    return None
