@@ -129,7 +129,20 @@ def load_model_from_spec(model_spec):
     return model
 
 
-model = load_model_from_spec(model_spec)
+# model = load_model_from_spec(model_spec)
+
+# %%
+# hardcoded model paths
+model_name = "lhm_coupled_full"
+toml_name = "lhm_coupled.toml"
+model_path = Path("../../data/Rijkswaterstaat/modellen") / model_name
+toml_path = model_path / toml_name
+assert toml_path.is_file()
+logger.info(f"reading model from hard-coded path: {toml_path}")
+
+model = Model.read(toml_path)
+
+# %%
 
 logger.info("Ribasim model ingeladen")
 df_model_nodes = model.flow_boundary.node.df
@@ -663,6 +676,14 @@ df_long_delwaq_input_Zinfo = df_long_delwaq_input_Zinfo[["node_id", "time", "sub
     {"substance": "string", "concentration": "Float64"}
 )
 
+# %% write parquet files
+# hardcoded path of delwaq data:
+boundwq_path = Path(__file__).parent / "output"
+boundwq_path.mkdir(parents=True, exist_ok=True)
+
+df_long_delwaq_input_IM.to_parquet(boundwq_path / "IM_boundaries_mg_L_df.parquet")
+
+df_long_delwaq_input_Zinfo.to_parquet(boundwq_path / "Zinfo_boundaries_mg_L_df.parquet")
 # %% Keuze voor parameter methode IM metingen
 # The rest of the code consists of analyzing how often certain methods are chosen to determine a parameter.
 
