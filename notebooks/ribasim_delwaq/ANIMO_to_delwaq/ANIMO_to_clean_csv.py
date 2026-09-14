@@ -11,7 +11,7 @@ import pandas as pd
 script_dir = Path(__file__).resolve().parent
 
 input_file = script_dir / "data" / "dry_weight_loads_per_basin_kg_day.parquet"
-output_file = script_dir / "output" / "ANIMO_loads_df.parquet"
+output_file = script_dir / "output" / "ANIMO_loads_g_s_df.parquet"
 
 output_file.parent.mkdir(exist_ok=True)
 
@@ -46,6 +46,8 @@ loads_df = df.melt(
     var_name="substance",
     value_name="load",
 )  # kg d-1, based on input filename (which is equal to the variable name in the script that converts WEnR ANIMO data)
+
+loads_df["load"] = loads_df["load"] * 1000 / 86400  # kg/d --> g/s
 
 # -----------------------------------------------------------------------------
 # Save

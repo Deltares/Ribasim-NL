@@ -724,7 +724,7 @@ loads_df = ER_df_wide.melt(
     value_name="load",
 )
 
-output_path = output_dir / "ER_loads_df.parquet"
+output_path = output_dir / "ER_loads_g_s_df.parquet"
 
 try:
     loads_df.to_parquet(output_path, index=False)

@@ -16,19 +16,25 @@ import pandas as pd
 from ribasim.delwaq import generate, parse
 from ribasim_nl.model import Model
 
-# # %% configure GDAL/PROJ for this session (might be necessary to produce figures with emission sub-scripts, which inherit these variables thru subprocess)
-# # The clean solution is to make the environment/kernel start with the activation layer already applied, so GDAL/PROJ are set by the env itself rather than by the script.
-# env_root = Path(sys.executable).resolve().parent
-# os.environ.setdefault("CONDA_PREFIX", str(env_root))
-# os.environ.setdefault("GDAL_DATA", str
-# (env_root / "Library" / "share" / "gdal"))
-# os.environ.setdefault("PROJ_DATA", str(env_root / "Library" / "share" / "proj"))
-# os.environ.setdefault("PROJ_LIB", os.environ["PROJ_DATA"])
+# %%
+# set path of Ribasim model
+model_name = "lhm_coupled_full"
+toml_name = "lhm_coupled.toml"
+
+# model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "Rijkswaterstaat" / "modellen" / model_name
+model_path = Path("../../data/Rijkswaterstaat/modellen") / model_name
+toml_path = model_path / toml_name
+assert toml_path.is_file()
+
+model = Model.read(toml_path)
+
+### READ & PROCESS MASS LOAD EMISSIONS ###
 
 # %% run ER data conversion script
+# units: g/s
 # 1. Couple emission data to Ribasim model
 ER_loads_df_script = Path(__file__).resolve().parent / "ER_to_delwaq" / "ER_data_conversion_delwaq.py"
-ER_loads_df_path = ER_loads_df_script.parent / "output" / "ER_loads_df.parquet"
+ER_loads_df_path = ER_loads_df_script.parent / "output" / "ER_loads_g_s_df.parquet"
 
 result = subprocess.run(
     [sys.executable, str(ER_loads_df_script)],
@@ -53,9 +59,10 @@ else:
 
 
 # %% run ANIMO data conversion script
+# units: g/s
 
 ANIMO_loads_df_script = Path(__file__).resolve().parent / "ANIMO_to_delwaq" / "ANIMO_to_clean_csv.py"
-ANIMO_loads_df_path = ANIMO_loads_df_script.parent / "output" / "ANIMO_loads_df.parquet"
+ANIMO_loads_df_path = ANIMO_loads_df_script.parent / "output" / "ANIMO_loads_g_s_df.parquet"
 
 
 # ANIMO_loads_df_script = r"p:\11212767-lwkm2\Koppeling_ANIMO_Delwaq\scripts\1-prepare\ANIMO2Delwaq.py"
@@ -81,22 +88,36 @@ if ANIMO_loads_df_path.exists():
 else:
     raise FileNotFoundError(f"Expected ANIMO loads file not found: {ANIMO_loads_df_path}")
 
+ANIMO_loads_df.head()
+
+### COMBINE LOADS AND COUPLE TO RIBASIM ###
+
 # %%
-# set path of Ribasim model
-model_name = "lhm_coupled_full"
-toml_name = "lhm_coupled.toml"
 
-# model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "Rijkswaterstaat" / "modellen" / model_name
-model_path = Path("../../data/Rijkswaterstaat/modellen") / model_name
-toml_path = model_path / toml_name
-assert toml_path.is_file()
+# for every ANIMO load in a specific time, add the ER load that is defined for that year
+# this assumes that the ER load, defined for the first day of that year, is representative for that whole year
+# if we end up using more detailed ER values, we might use merge_asof + direction = backward
+# --> this would take for every ANIMO load the most recent ER load defined either on that day or before that day
+# but it is more likely that we change generate.py to handle multiple emission sources together
 
-# %% read model
-model = Model.read(toml_path)
+ER_loads_df["year"] = ER_loads_df["time"].dt.year
+ANIMO_loads_df["year"] = ANIMO_loads_df["time"].dt.year
+
+result = ANIMO_loads_df.merge(
+    ER_loads_df[["node_id", "substance", "year", "load"]],
+    on=["node_id", "substance", "year"],
+    how="left",
+    suffixes=("_animo", "_er"),
+)
+
+result["load"] = result["load_animo"] + result["load_er"]
+
+ANIMO_and_ER_loads_df = result[["node_id", "time", "substance", "load"]]
 
 # %% add emission data to model
-model = Model.read(toml_path)
-model.basin.mass_load = ANIMO_loads_df  # either the sum of ER and ANIMO or two separate dataframes (or another column specifying the data source, depending on what generate.py can handle easiest)
+mass_loads = ANIMO_and_ER_loads_df  # or ER_loads_df or ANIMO_loads_df
+model.basin.mass_load = ANIMO_and_ER_loads_df  # either the sum of ER and ANIMO or two separate dataframes (or another column specifying the data source, depending on what generate.py can handle easiest)
+# we might just define mass_loads = ANIMO_and_ER loads
 model.write(toml_path)
 
 # %%
