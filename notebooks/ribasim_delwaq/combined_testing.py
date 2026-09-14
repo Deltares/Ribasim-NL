@@ -224,7 +224,7 @@ dimr_config_path = output_path / "dimr_config.xml"
 
 cmd = f'"{dimr_path}" "{dimr_config_path}"'
 
-proc = subprocess.Popen(
+proc = subprocess.Popen(  # noqa: S602
     cmd,
     cwd=output_path,
     stdout=subprocess.PIPE,
