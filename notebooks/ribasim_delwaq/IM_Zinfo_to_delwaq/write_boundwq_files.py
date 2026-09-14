@@ -676,6 +676,14 @@ df_long_delwaq_input_Zinfo = df_long_delwaq_input_Zinfo[["node_id", "time", "sub
     {"substance": "string", "concentration": "Float64"}
 )
 
+# %% write parquet files
+# hardcoded path of delwaq data:
+boundwq_path = Path(__file__).parent / "output"
+boundwq_path.mkdir(parents=True, exist_ok=True)
+
+df_long_delwaq_input_IM.to_parquet(boundwq_path / "IM_boundaries_mg_L_df.parquet")
+
+df_long_delwaq_input_Zinfo.to_parquet(boundwq_path / "Zinfo_boundaries_mg_L_df.parquet")
 # %% Keuze voor parameter methode IM metingen
 # The rest of the code consists of analyzing how often certain methods are chosen to determine a parameter.
 
