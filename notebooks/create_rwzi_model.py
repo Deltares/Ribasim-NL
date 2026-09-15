@@ -16,10 +16,11 @@ from shapely.geometry import Point
 from ribasim_nl import CloudStorage, Model
 
 logger = logging.getLogger(__name__)
+upload_model = False
 
 # %% get input data
 cloud = CloudStorage()
-ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
+ribasim_toml = cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/rwzi.toml")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 # datafiles
@@ -546,18 +547,18 @@ for name in sorted(missing_rwzi_names):
     logger.info(f"  - {name}")
 logger.info(f"{'=' * 60}\n")
 
+ribasim_toml.parent.mkdir(parents=True, exist_ok=True)
 model.write(ribasim_toml)
 
 # %% Export GeoJSON with model inclusion flag
 rwzi_gdf_copy = rwzi_gdf.copy()
 rwzi_gdf_copy["in_rwzi_model"] = rwzi_gdf_copy["Naam rwzi"].isin(modelled_rwzi_names)
 
-output_geojson = cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/RWZI_coordinates_model_coverage.geojson")
+output_geojson = ribasim_toml.parent / "RWZI_coordinates_model_coverage.geojson"
 rwzi_gdf_copy.to_file(output_geojson, driver="GeoJSON")
 
 logger.info(f"GeoJSON with model coverage written to: {output_geojson}")
 
-upload_model = False
 if upload_model:
     cloud.upload_model("Basisgegevens/RWZI", model="rwzi")
 
