@@ -144,8 +144,12 @@ def _create_histogram_grid(factors_by_year: dict[int, list[float]], parameter: s
 def _plot_histogram(axis: plt.Axes, values: np.ndarray, label: str) -> None:
     """Plot one validation-factor histogram with the KRW summary statistics."""
     rmse = float(np.sqrt(np.mean((values - 1) ** 2)))
+    bin_width = 0.5
+    bin_start = max(float(values.min()), np.floor(values.min() / bin_width) * bin_width)
+    bin_end = np.ceil(values.max() / bin_width) * bin_width
+    bins = np.arange(bin_start, bin_end + bin_width, bin_width)
 
-    axis.hist(values, bins="auto", color="#4c93bd", edgecolor="white")
+    axis.hist(values, bins=bins, color="#4c93bd", edgecolor="white")
     axis.axvline(1, color="#2e8b57", linewidth=1.5)
     for threshold, color in [(0.25, "#3366cc"), (0.50, "#dc3545")]:
         axis.axvline(1 - threshold, color=color, linestyle="--", linewidth=1.2)
@@ -154,5 +158,6 @@ def _plot_histogram(axis: plt.Axes, values: np.ndarray, label: str) -> None:
         title=(f"Histogram of {label}\nRMSE: {rmse:.4f}"),
         xlabel="Cobserved / Cmodelled",
         ylabel="Frequency",
+        xlim=(0, 10),
     )
     axis.grid(axis="y", alpha=0.25)

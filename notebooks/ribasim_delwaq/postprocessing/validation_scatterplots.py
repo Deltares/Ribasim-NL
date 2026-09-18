@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xarray as xr
-from matplotlib.ticker import FuncFormatter
+from matplotlib.ticker import FuncFormatter, LogLocator, NullFormatter
 from ribasim import Model
 
 PARAMETER_COMPONENTS = {
@@ -28,7 +28,7 @@ def create_validation_scatterplots(
     if location_limit != "all" and (not isinstance(location_limit, int) or location_limit < 1):
         raise ValueError('location_limit must be a positive integer or "all".')
 
-    delwaq_map_path = model_path / "delwaq_all_sources" / "delwaq_map.nc"
+    delwaq_map_path = model_path / "delwaq" / "delwaq_map.nc"
     toml_path = model_path / "lhm_coupled.toml"
     mapping_path = validation_path / "output_validate" / "basins_doorgaand_joined_monlocs.shp"
     observations_path = validation_path / "KRWMeetwaarden_1990_2025_20260615_1432.parquet"
@@ -146,7 +146,7 @@ def _create_scatter_grid(values_by_year: dict[int, list[tuple[float, float]]], p
     panels = [(str(year), values) for year, values in sorted(values_by_year.items())]
     n_rows = ceil(len(panels) / N_COLUMNS)
     figure, axes = plt.subplots(n_rows, N_COLUMNS, figsize=(5.2 * N_COLUMNS, 4.5 * n_rows), squeeze=False)
-    figure.suptitle(f"Validation scatter plots ({parameter})", fontweight="bold", x=0.01, ha="left")
+    figure.suptitle(f"Validation scatter plots ({parameter})", fontweight="bold")
     for axis, (label, values) in zip(axes.flat, panels, strict=False):
         _plot_scatter(axis, np.asarray(values), label)
     for axis in axes.flat[len(panels) :]:
@@ -171,7 +171,7 @@ def _plot_scatter(axis: plt.Axes, values: np.ndarray, label: str) -> None:
     axis.plot(line_values, lower_limit * line_values, color="black", linestyle="--", linewidth=1.5)
     axis.plot(line_values, agreement_factor * line_values, color="black", linestyle="--", linewidth=1.5)
     axis.set(
-        title=f"Validation scatter plot {label}\n95% agreement limits: / {agreement_factor:.2f}",
+        title=f"Validation scatter plot {label}",
         xlabel="Measured concentration",
         ylabel="Modelled concentration",
         xscale="log",
@@ -181,8 +181,12 @@ def _plot_scatter(axis: plt.Axes, values: np.ndarray, label: str) -> None:
         aspect="equal",
     )
     decimal_formatter = FuncFormatter(lambda value, _: f"{value:g}")
+    major_locator = LogLocator(base=10, subs=(1.0,))
+    axis.xaxis.set_major_locator(major_locator)
     axis.xaxis.set_major_formatter(decimal_formatter)
-    axis.xaxis.set_minor_formatter(decimal_formatter)
+    axis.xaxis.set_minor_formatter(NullFormatter())
+    axis.yaxis.set_major_locator(major_locator)
     axis.yaxis.set_major_formatter(decimal_formatter)
-    axis.yaxis.set_minor_formatter(decimal_formatter)
+    axis.yaxis.set_minor_formatter(NullFormatter())
+    axis.tick_params(axis="x", labelrotation=45)
     axis.grid(which="both", alpha=0.25)
