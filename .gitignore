@@ -92,7 +92,6 @@ bin/
 *.pdf
 *.nc
 *.ps1
-*.tmp
 **/results/**
 !data/Basisgegevens/LHM/4.3/results/
 data/Basisgegevens/LHM/4.3/results/*/
