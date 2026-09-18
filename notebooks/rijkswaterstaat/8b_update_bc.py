@@ -11,6 +11,7 @@ ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_demand/hws.toml")
 model = Model.read(ribasim_toml)
 
 rwzi_model_path = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
+rwzi_coverage_path = rwzi_model_path.parent / "meta/RWZI_coordinates_model_coverage.geojson"
 debieten_xlsx = cloud.joinpath("Rijkswaterstaat/aangeleverd/Matroos_debieten_2017_2022_Lobith_Monsin.xlsx")
 
 time_colname = " Timeseries retrieved from the MATROOS series database"
@@ -155,7 +156,12 @@ model.level_boundary.time.df = level_df
 
 # merge RWZI model, which requires meta_waterbeheerder (the hws model is fully Rijkswaterstaat)
 model.node.df.loc[model.basin.node.df.index, "meta_waterbeheerder"] = "Rijkswaterstaat"
-model = merge_rwzi_model(model, rwzi_model_path)
+model = merge_rwzi_model(
+    model,
+    rwzi_model_path,
+    rwzi_coverage_path,
+    cloud.joinpath("Rijkswaterstaat/modellen/hws_transient/meta/RWZI_coordinates_lhm_coverage.geojson"),
+)
 
 # %%
 ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_transient/hws.toml")

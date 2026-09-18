@@ -27,6 +27,7 @@ assign_budget_fractions: bool = False  # compute (sub-) fractions from budgets-t
 add_lhm_fractions: bool = True
 compute_fractions: bool = False
 rwzi_model_path = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
+rwzi_coverage_path = rwzi_model_path.parent / "meta/RWZI_coordinates_model_coverage.geojson"
 transboundary_data_path = cloud.joinpath("Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx")
 
 # LHM4.3 mfma budgets to be assign to primary/secondary drainage/surface_runoff columns
@@ -163,7 +164,12 @@ for authority in authorities:
 
             # merge RWZI model, which requires meta_waterbeheerder
             model.node.df.loc[model.basin.node.df.index, "meta_waterbeheerder"] = authority
-            model = merge_rwzi_model(model, rwzi_model_path)
+            model = merge_rwzi_model(
+                model,
+                rwzi_model_path,
+                rwzi_coverage_path,
+                dst_model_dir / "meta/RWZI_coordinates_lhm_coverage.geojson",
+            )
 
             # add LHM fractions
             if add_lhm_fractions:

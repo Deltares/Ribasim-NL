@@ -20,11 +20,11 @@ upload_model = False
 
 # %% get input data
 cloud = CloudStorage()
-ribasim_toml = cloud.joinpath("Basisgegevens/RWZI/modellen/rwzi/rwzi.toml")
+model_dir = cloud.joinpath("Rijkswaterstaat/modellen/rwzi")
+ribasim_toml = model_dir / "rwzi.toml"
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 # datafiles
-model_dir = cloud.joinpath("Basisgegevens/RWZI/modellen")
 root_path_local = cloud.joinpath("Basisgegevens/RWZI")
 
 zinfo_influentdebieten_path = (
@@ -554,7 +554,8 @@ model.write(ribasim_toml)
 rwzi_gdf_copy = rwzi_gdf.copy()
 rwzi_gdf_copy["in_rwzi_model"] = rwzi_gdf_copy["Naam rwzi"].isin(modelled_rwzi_names)
 
-output_geojson = ribasim_toml.parent / "RWZI_coordinates_model_coverage.geojson"
+output_geojson = model_dir / "meta/RWZI_coordinates_model_coverage.geojson"
+output_geojson.parent.mkdir(parents=True, exist_ok=True)
 rwzi_gdf_copy.to_file(output_geojson, driver="GeoJSON")
 
 logger.info(f"GeoJSON with model coverage written to: {output_geojson}")
