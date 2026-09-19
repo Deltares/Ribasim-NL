@@ -386,7 +386,12 @@ ribasim_model = assign.assign_authorities()
 
 # merge RWZI model
 if ADD_RWZI:
-    ribasim_model = merge_rwzi_model(ribasim_model, cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml"))
+    ribasim_model = merge_rwzi_model(
+        ribasim_model,
+        cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml"),
+        cloud.joinpath("Rijkswaterstaat/modellen/rwzi/meta/RWZI_coordinates_model_coverage.geojson"),
+        output_dir / "meta/RWZI_coordinates_lhm_coverage.geojson",
+    )
 
 # add LHM fractions
 if ADD_LHM_FRACTIONS:

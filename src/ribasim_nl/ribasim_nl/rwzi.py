@@ -5,6 +5,7 @@ Replaces the Terminals with Junctions and connects them to the underlying Basin.
 """
 
 import logging
+from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
@@ -13,9 +14,11 @@ from geopandas.geodataframe import GeoDataFrame
 from ribasim_nl import Model, concat
 from ribasim_nl.reset_index import reset_index
 
+# %%
 logger = logging.getLogger(__name__)
 
 
+# %%
 def create_rwzi_basin_coupling(rwzi_coupled_model: Model, max_distance=100):
     """
     Match RWZI outflow locations with the underlying basins. When there is no match, try a 20 m buffer.
@@ -192,7 +195,14 @@ def terminal2junction(rwzi_coupled_model, coupling_lookup, *, verbose=False):
     return rwzi_coupled_model
 
 
-def merge_rwzi_model(base_model, rwzi_model_path, max_distance: int = 100, verbose: bool = False):
+def merge_rwzi_model(
+    base_model: Model,
+    rwzi_model_path: Path,
+    rwzi_coverage_path: Path,
+    coverage_output_path: Path,
+    max_distance: int = 100,
+    verbose: bool = False,
+) -> Model:
     """
     Merge an RWZI model into a base model.
 
@@ -206,7 +216,9 @@ def merge_rwzi_model(base_model, rwzi_model_path, max_distance: int = 100, verbo
     ----------
         base_model (Model): The base Ribasim model to merge into.
         rwzi_model_path (Path): Path to the RWZI model toml file.
-        buffer_distance (float): Buffer distance in meters for spatial coupling.
+        rwzi_coverage_path (Path): Path to the coverage GeoJSON produced with the RWZI model.
+        coverage_output_path (Path): Path for the coverage GeoJSON of the coupled model.
+        max_distance (float): Maximum distance in meters for spatial coupling.
         verbose (bool): Whether to print progress info.
 
     Returns
@@ -230,7 +242,125 @@ def merge_rwzi_model(base_model, rwzi_model_path, max_distance: int = 100, verbo
     coupling_lookup, unmatched_rwzi_df = create_rwzi_basin_coupling(rwzi_coupled_model, max_distance=max_distance)
     rwzi_coupled_model, _stats = remove_unmatched_rwzi(rwzi_coupled_model, unmatched_rwzi_df, verbose=verbose)
     rwzi_coupled_model = terminal2junction(rwzi_coupled_model, coupling_lookup, verbose=verbose)
+    log_rwzi_coverage_report(
+        rwzi_coupled_model,
+        rwzi_coverage_path=rwzi_coverage_path,
+        coverage_output_path=coverage_output_path,
+        max_distance=max_distance,
+    )
 
     logger.info(f"There are {len(unmatched_rwzi_df)} RWZI's not incorporated in this model")
 
     return rwzi_coupled_model
+
+
+# %% Set-up geojson for rwzi coupling checks
+def export_rwzi_coverage_geojson(
+    rwzi_coupled_model: Model,
+    rwzi_coverage_path: Path,
+    coverage_output_path: Path,
+    verbose: bool = False,
+) -> GeoDataFrame:
+    """
+    Export RWZI coverage GeoJSON with LHM model inclusion flag.
+
+    1. Reads the RWZI coordinates model coverage GeoJSON.
+    2. Extracts RWZI names present in the merged model's junctions.
+    3. Flags each RWZI as included in the LHM model or not (if no underlying basin, they are left out).
+    4. Flags RWZI names that occur more than once in the model.
+    5. Writes the updated GeoJSON to the coupled model's results directory.
+
+    Parameters
+    ----------
+        rwzi_coupled_model (Model): The merged Ribasim model with RWZI nodes coupled to basins.
+        rwzi_coverage_path (Path): Coverage GeoJSON produced with the RWZI model.
+        coverage_output_path (Path): Output path for the coupled-model coverage GeoJSON.
+        verbose (bool): Whether to print progress info.
+
+    Returns
+    -------
+        GeoDataFrame: The RWZI coverage GeoDataFrame with the added coverage flags.
+    """
+    rwzi_gdf = gpd.read_file(rwzi_coverage_path)
+
+    assert rwzi_coupled_model.junction.node.df is not None
+    junction_df = rwzi_coupled_model.junction.node.df
+    rwzi_junction_names = junction_df[junction_df["meta_rwzi_code"].notna()]["name"].str.replace("_out", "")
+    duplicate_rwzi_names = set(rwzi_junction_names[rwzi_junction_names.duplicated(keep=False)])
+
+    rwzi_lhm_coverage = rwzi_gdf.copy()
+    rwzi_lhm_coverage["in_lhm_model"] = rwzi_lhm_coverage["Naam rwzi"].isin(rwzi_junction_names)
+    rwzi_lhm_coverage["duplicate_rwzi_name_in_model"] = rwzi_lhm_coverage["Naam rwzi"].isin(duplicate_rwzi_names)
+
+    coverage_output_path.parent.mkdir(parents=True, exist_ok=True)
+    rwzi_lhm_coverage.to_file(coverage_output_path, driver="GeoJSON")
+
+    if duplicate_rwzi_names:
+        logger.warning("RWZI names occurring multiple times in the model:")
+        for rwzi_name in sorted(duplicate_rwzi_names):
+            logger.warning("  - %s", rwzi_name)
+
+    if verbose:
+        logger.info("GeoJSON with LHM model coverage written to: %s", coverage_output_path)
+    return rwzi_lhm_coverage
+
+
+# %% Export GeoJSON with LHM model inclusion flag
+def log_rwzi_coverage_report(
+    rwzi_coupled_model: Model,
+    rwzi_coverage_path: Path,
+    coverage_output_path: Path,
+    max_distance: float = 100,
+) -> GeoDataFrame:
+    """
+    Log a coverage report for RWZIs in the coupled model.
+
+    Summarizes total RWZIs, coupled RWZIs, and those outside the LHM extent.
+    Lists the RWZIs not incorporated into the model.
+
+    Parameters
+    ----------
+        rwzi_coupled_model (Model): The merged Ribasim model with RWZI nodes coupled to basins.
+        rwzi_coverage_path (Path): Coverage GeoJSON produced with the RWZI model.
+        coverage_output_path (Path): Output path for the coupled-model coverage GeoJSON.
+        max_distance (float): Maximum distance for coupling lookup (same as used in create_rwzi_basin_coupling).
+
+    Returns
+    -------
+        GeoDataFrame with coverage flags for the coupled model.
+    """
+    flow_boundary_node = rwzi_coupled_model.flow_boundary.node
+    if flow_boundary_node is None or flow_boundary_node.df is None:
+        raise ValueError("FlowBoundary node table is missing in rwzi_coupled_model")
+    fb_df = flow_boundary_node.df
+    rwzi_flow_boundaries = fb_df[fb_df["meta_rwzi_code"].notna()]
+
+    junction_node = rwzi_coupled_model.junction.node
+    if junction_node is None or junction_node.df is None:
+        raise ValueError("Junction node table is missing in rwzi_coupled_model")
+    junction_df = junction_node.df
+    rwzi_junctions = junction_df[junction_df["meta_rwzi_code"].notna()]
+
+    total_rwzi = len(rwzi_flow_boundaries)
+    coupled_rwzi = len(rwzi_junctions)
+    _coupling_lookup, unmatched_rwzi_df = create_rwzi_basin_coupling(rwzi_coupled_model, max_distance=max_distance)
+    uncoupled_rwzi = len(unmatched_rwzi_df)
+
+    logger.info(f"\n{'=' * 60}")
+    logger.info("RWZI COVERAGE REPORT")
+    logger.info(f"  Total RWZIs in coupled model:       {total_rwzi}")
+    logger.info(f"  RWZIs coupled to basin (junction):  {coupled_rwzi}")
+    logger.info(f"  RWZIs outside LHM (removed):        {uncoupled_rwzi}")
+    logger.info(f"{'=' * 60}")
+    logger.info("RWZIs not incorporated (outside LHM extent):")
+    for _, row in unmatched_rwzi_df.iterrows():
+        rwzi_name = row["name"].replace("_out", "")
+        logger.info(f"  - {rwzi_name} (RWZI code: {row['meta_rwzi_code']})")
+    logger.info(f"{'=' * 60}\n")
+
+    return export_rwzi_coverage_geojson(
+        rwzi_coupled_model,
+        rwzi_coverage_path,
+        coverage_output_path,
+        verbose=True,
+    )

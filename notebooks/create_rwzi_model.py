@@ -16,14 +16,15 @@ from shapely.geometry import Point
 from ribasim_nl import CloudStorage, Model
 
 logger = logging.getLogger(__name__)
+upload_model = False
 
 # %% get input data
 cloud = CloudStorage()
-ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
+model_dir = cloud.joinpath("Rijkswaterstaat/modellen/rwzi")
+ribasim_toml = model_dir / "rwzi.toml"
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 # datafiles
-model_dir = cloud.joinpath("Basisgegevens/RWZI/modellen")
 root_path_local = cloud.joinpath("Basisgegevens/RWZI")
 
 zinfo_influentdebieten_path = (
@@ -301,7 +302,6 @@ def create_flow_boundary_nodes(rwzi_gdf, rwzi_flow_data_all, model, starttime, e
         valid_flow_rates = flow_rates[valid_mask]
 
         # Skip RWZIs with no valid data after removing NaNs
-        # TODO should we create the FlowBoundary but with static 0.0 flow_rate?
         if valid_flow_rates.empty:
             skipped_rwzis.append(rwzi_name)
             logger.info(f"No valid data remaining for RWZI '{rwzi_name}'. Skipping.")
@@ -316,12 +316,12 @@ def create_flow_boundary_nodes(rwzi_gdf, rwzi_flow_data_all, model, starttime, e
                 Node(
                     index + 1,
                     Point(x_coord, y_coord),
-                    # TODO: besluit welke metadata er in het model relevant is (rwzi_code wordt gebruikt in merge)
                     name=rwzi_name,
                     meta_rwzi_codeist=rwzi_codeist,
                     meta_rwzi_code=rwzi_code,
                     meta_rwzi_beheerder_nr=rwzi_beheerder_nr,
                     meta_rwzi_organisatie=rwzi_organisatie,
+                    meta_bnd_type="rwzi",
                 ),
                 [
                     flow_boundary.Time(
@@ -522,7 +522,7 @@ terminal_nodes, node_id_counter = create_terminal_nodes_from_gdf(
     rwzi_flow_data_all=rwzi_flow_data_all,
     skipped_rwzis=skipped_rwzis,
     model=model,
-    start_node_id=999,  # TODO: choose logical value
+    start_node_id=999,
 )
 
 
@@ -530,8 +530,37 @@ connect_flow_boundaries_to_terminal_nodes(flow_boundary_nodes, terminal_nodes, m
 
 # %% Run and Results
 print("write rwzi model")
+
+# Logging
+all_rwzi_names = set(rwzi_gdf["Naam rwzi"])
+modelled_rwzi_names = set(flow_boundary_nodes.keys())
+missing_rwzi_names = all_rwzi_names - modelled_rwzi_names
+
+logger.info(f"\n{'=' * 60}")
+logger.info("RWZI COVERAGE REPORT")
+logger.info(f"  Total RWZIs in GeoJSON:     {len(all_rwzi_names)}")
+logger.info(f"  RWZIs written to model:     {len(modelled_rwzi_names)}")
+logger.info(f"  RWZIs missing from model:   {len(missing_rwzi_names)}")
+logger.info(f"{'=' * 60}")
+logger.info("Missing RWZIs:")
+for name in sorted(missing_rwzi_names):
+    logger.info(f"  - {name}")
+logger.info(f"{'=' * 60}\n")
+
+ribasim_toml.parent.mkdir(parents=True, exist_ok=True)
 model.write(ribasim_toml)
 
-upload_model = False
+# %% Export GeoJSON with model inclusion flag
+rwzi_gdf_copy = rwzi_gdf.copy()
+rwzi_gdf_copy["in_rwzi_model"] = rwzi_gdf_copy["Naam rwzi"].isin(modelled_rwzi_names)
+
+output_geojson = model_dir / "meta/RWZI_coordinates_model_coverage.geojson"
+output_geojson.parent.mkdir(parents=True, exist_ok=True)
+rwzi_gdf_copy.to_file(output_geojson, driver="GeoJSON")
+
+logger.info(f"GeoJSON with model coverage written to: {output_geojson}")
+
 if upload_model:
     cloud.upload_model("Basisgegevens/RWZI", model="rwzi")
+
+print("Done.")
