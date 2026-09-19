@@ -1,6 +1,9 @@
 """Shared DiscreteControl layouts used by full-control setup and level syncs."""
 
 DEFAULT_CONTROL_THRESHOLD_OFFSET = 0.02
+DEFAULT_LEVEL_THRESHOLD_RANGE = 0.05
+DEFAULT_FLOW_RATE_THRESHOLD_FRACTION = 0.1
+DEFAULT_FLOW_RATE_THRESHOLD_MARGIN = 0.001
 ControlLayout = tuple[dict[int, int], dict[int, int], set[tuple[str, str]]]
 
 SINGLE_BASIN_LOGIC = (("F", "aanvoer"), ("T", "afvoer"))
@@ -18,6 +21,37 @@ FLOW_DEMAND_LOGIC = (
     ("TF", "afvoer"),
     ("TT", "afvoer"),
 )
+
+
+def level_threshold_pair(
+    threshold_high: float,
+    threshold_low: float | None = None,
+    threshold_range: float = DEFAULT_LEVEL_THRESHOLD_RANGE,
+) -> tuple[float, float]:
+    """Return low and high thresholds, preserving an explicitly provided pair."""
+    threshold_high = float(threshold_high)
+    if threshold_low is not None:
+        threshold_low = float(threshold_low)
+        if threshold_low > threshold_high:
+            raise ValueError("threshold_low must not exceed threshold_high")
+        return threshold_low, threshold_high
+    if threshold_range < 0:
+        raise ValueError("threshold_range must be non-negative")
+    half_range = float(threshold_range) / 2
+    return threshold_high - half_range, threshold_high + half_range
+
+
+def flow_rate_threshold_pair(
+    threshold: float,
+    threshold_fraction: float = DEFAULT_FLOW_RATE_THRESHOLD_FRACTION,
+    minimum_margin: float = DEFAULT_FLOW_RATE_THRESHOLD_MARGIN,
+) -> tuple[float, float]:
+    """Return thresholds using the larger of a relative or absolute margin."""
+    threshold = float(threshold)
+    if threshold_fraction < 0 or minimum_margin < 0:
+        raise ValueError("Flow-rate threshold margins must be non-negative")
+    margin = max(abs(threshold) * float(threshold_fraction), float(minimum_margin))
+    return threshold - margin, threshold + margin
 
 
 def control_layout_key(function: str, flow_demand_controlled: bool = False, control_name: str | None = None) -> str:

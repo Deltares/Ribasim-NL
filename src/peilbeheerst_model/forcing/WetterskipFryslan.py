@@ -357,10 +357,10 @@ ribasim_model.pump.static.df.loc[
 ] = -0.48  # 5 cm higher than streefpeil
 ribasim_model.discrete_control.condition.df.loc[
     ribasim_model.discrete_control.condition.df.node_id == 14970, "threshold_high"
-] = -0.48
+] = -0.48 + 0.025
 ribasim_model.discrete_control.condition.df.loc[
     ribasim_model.discrete_control.condition.df.node_id == 14970, "threshold_low"
-] = -0.48
+] = -0.48 - 0.025
 
 # last formatting of the tables
 # only retain node_id's which are present in the .node table

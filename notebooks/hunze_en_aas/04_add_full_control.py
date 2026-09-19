@@ -20,6 +20,7 @@ AUTHORITY: str = "HunzeenAas"  # authority
 SHORT_NAME: str = "hea"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
+LEVEL_THRESHOLD_RANGE: float = 0.05
 MIN_FLOW_RATE_BY_NODE_ID = {}
 outlet_max_flow_rate_by_node_id = {
     330: 7.5,  # De Bult
@@ -81,8 +82,8 @@ ALWAYS_ON_PUMP_MAX_DOWNSTREAM_LEVEL: float = 99999.0
 ALWAYS_ON_PUMP_MIN_UPSTREAM_LEVEL_OFFSET: float = -1.0
 DORKWERD_PUMP_NODE_ID = 20
 DORKWERD_LISTEN_NODE_ID = 1261
-DORKWERD_THRESHOLD_LOW = 0.533
-DORKWERD_THRESHOLD_HIGH = 0.533
+DORKWERD_THRESHOLD_LOW = 0.533 - LEVEL_THRESHOLD_RANGE / 2
+DORKWERD_THRESHOLD_HIGH = 0.533 + LEVEL_THRESHOLD_RANGE / 2
 DORKWERD_MIN_UPSTREAM_LEVEL = -0.97
 DORKWERD_MAX_DOWNSTREAM_LEVEL = 0.58
 
@@ -351,6 +352,7 @@ node_functions_df = add_controllers_to_supply_area(
     max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
     flow_rate_afvoer=100.0,
     max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
+    level_threshold_range=LEVEL_THRESHOLD_RANGE,
 )
 
 
@@ -382,6 +384,7 @@ node_functions_df = add_controllers_to_supply_area(
     max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
     flow_rate_afvoer=100.0,
     max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
+    level_threshold_range=LEVEL_THRESHOLD_RANGE,
 )
 
 
@@ -413,6 +416,7 @@ node_functions_df = add_controllers_to_supply_area(
     max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
     flow_rate_afvoer=100.0,
     max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
+    level_threshold_range=LEVEL_THRESHOLD_RANGE,
 )
 
 # %%
@@ -443,6 +447,7 @@ node_functions_df = add_controllers_to_supply_area(
     max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
     flow_rate_afvoer=100.0,
     max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
+    level_threshold_range=LEVEL_THRESHOLD_RANGE,
 )
 
 # %%
@@ -473,6 +478,7 @@ node_functions_df = add_controllers_to_supply_area(
     max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
     flow_rate_afvoer=100.0,
     max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
+    level_threshold_range=LEVEL_THRESHOLD_RANGE,
 )
 
 
@@ -506,6 +512,7 @@ node_functions_df = add_controllers_to_supply_area(
     max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
     flow_rate_afvoer=100.0,
     max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
+    level_threshold_range=LEVEL_THRESHOLD_RANGE,
 )
 
 # %%
@@ -536,6 +543,7 @@ node_functions_df = add_controllers_to_supply_area(
     max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
     flow_rate_afvoer=100.0,
     max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
+    level_threshold_range=LEVEL_THRESHOLD_RANGE,
 )
 
 # %%
@@ -566,6 +574,7 @@ node_functions_df = add_controllers_to_supply_area(
     max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
     flow_rate_afvoer=100.0,
     max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
+    level_threshold_range=LEVEL_THRESHOLD_RANGE,
 )
 
 # %%
@@ -598,6 +607,7 @@ node_functions_df = add_controllers_to_supply_area(
     max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
     flow_rate_afvoer=100.0,
     max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
+    level_threshold_range=LEVEL_THRESHOLD_RANGE,
 )
 
 # %%
@@ -633,6 +643,7 @@ node_functions_df = add_controllers_to_supply_area(
     max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
     flow_rate_afvoer=100.0,
     max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
+    level_threshold_range=LEVEL_THRESHOLD_RANGE,
 )
 
 
@@ -649,6 +660,7 @@ add_controllers_to_uncontrolled_connector_nodes(
     max_flow_rate_aanvoer=outlet_max_flow_rate_aanvoer_by_node_id,
     flow_rate_afvoer=100.0,
     max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
+    level_threshold_range=LEVEL_THRESHOLD_RANGE,
 )
 
 # Pomp-capaciteiten op basis van hoogste berekende dynamic debiet, afgerond naar boven.

@@ -16,6 +16,7 @@ import shapely
 import tqdm.auto as tqdm
 from ribasim.nodes import continuous_control
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.control_layout import DEFAULT_LEVEL_THRESHOLD_RANGE
 from shapely.geometry import LineString, Point
 
 from peilbeheerst_model import supply
@@ -1613,6 +1614,9 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
 
     # every basin should have a target level by this part of the code. However, LevelBoundaries may not. Implement it
     DC_condition.threshold_high.fillna(value=default_level, inplace=True)
+    half_threshold_range = DEFAULT_LEVEL_THRESHOLD_RANGE / 2
+    DC_condition["threshold_low"] = DC_condition["threshold_high"] - half_threshold_range
+    DC_condition["threshold_high"] += half_threshold_range
 
     # concat the entire DC_condition to the ribasim model
     ribasim_model.discrete_control.condition.df = pd.concat([ribasim_model.discrete_control.condition.df, DC_condition])

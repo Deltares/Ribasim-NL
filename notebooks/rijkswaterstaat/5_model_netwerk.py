@@ -386,7 +386,6 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
 # %% verdeelsleutels toevoegen
 
 outlets_gdf = gpd.read_file(outlets_path)
-verdeelsleutel_node_id = 1000001
 # itereren per verdelsleutel
 for verdeelsleutel in VERDEELSLEUTELS:
     print(f"verdeelsleutel: {verdeelsleutel}")
@@ -394,53 +393,6 @@ for verdeelsleutel in VERDEELSLEUTELS:
     verdeelsleutel_df = pd.read_excel(verdeelsleutels_xlsx, sheet_name=f"Verdeelsleutel {verdeelsleutel}")
 
     verdeelsleutel_properties = read_kwk_properties(verdeelsleutel_df)
-
-    # add control node
-    # control_node = Node(
-    #     verdeelsleutel_node_id,
-    #     verdeelsleutel_gdf.at[verdeelsleutel, "geometry"],
-    #     name=f"Verdeelsleutel {verdeelsleutel}",
-    # )
-
-    # control_flow_rate = verdeelsleutel_df.loc[verdeelsleutel_df.Eigenschap.to_list().index("Q") + 2 :][
-    #     "Eigenschap"
-    # ].to_list()
-
-    # control_state = [f"{verdeelsleutel}_{idx + 1:03d}" for idx in range(len(control_flow_rate))]
-
-    # truth_state = [
-    #     "".join(["T"] * i + ["F"] * len(control_flow_rate))[0 : len(control_flow_rate)]
-    #     for i in range(len(control_flow_rate))
-    # ]
-
-    # listen_node_id = (
-    #     model.node
-    #     .df.reset_index()
-    #     .set_index("meta_meetlocatie_code")
-    #     .at[verdeelsleutel_properties["Meetlocatiecode"], "node_id"]
-    # )
-    # data = [
-    #     discrete_control.Variable(
-    #         compound_variable_id=1,
-    #         listen_node_id=[listen_node_id],
-    #         variable=["flow_rate"],
-    #     ),
-    #     discrete_control.Condition(
-    #         compound_variable_id=1,
-    #         threshold_high=control_flow_rate,
-    #         condition_id=list(range(1, len(control_flow_rate) + 1)),
-    #         meta_control_state=control_state,
-    #     ),
-    #     discrete_control.Logic(
-    #         truth_state=truth_state,
-    #         control_state=control_state,
-    #     ),
-    # ]
-
-    # model.discrete_control.add(control_node, data)
-
-    # verdeelsleutel_node = model.discrete_control[verdeelsleutel_node_id]
-    # verdeelsleutel_node_id += 1
 
     # add all verdelingen as Outlets
     for verdeling in [
