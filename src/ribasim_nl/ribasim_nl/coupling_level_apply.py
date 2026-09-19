@@ -5,7 +5,12 @@ from pathlib import Path
 import pandas as pd
 
 from ribasim_nl import Model
-from ribasim_nl.control_layout import control_condition_thresholds, control_layout_key
+from ribasim_nl.control_layout import (
+    DEFAULT_LEVEL_THRESHOLD_RANGE,
+    control_condition_thresholds,
+    control_layout_key,
+    level_threshold_pair,
+)
 from ribasim_nl.coupling_level_common import (
     STATIC_TABLE_BY_NODE_TYPE,
     THRESHOLD_UPDATE_PROTECTION_COLUMN,
@@ -24,6 +29,19 @@ from ribasim_nl.coupling_level_controls import (
     protected_controller_threshold_updates,
     validate_control_layout_for_sync,
 )
+
+
+def _recenter_level_threshold_pair(
+    condition_df: pd.DataFrame, condition_index: int, threshold: float
+) -> tuple[float, float]:
+    threshold_range = DEFAULT_LEVEL_THRESHOLD_RANGE
+    current_low = condition_df.loc[condition_index, "threshold_low"]
+    current_high = condition_df.loc[condition_index, "threshold_high"]
+    if is_present(current_low) and is_present(current_high):
+        current_range = as_float(current_high) - as_float(current_low)
+        if current_range > 0:
+            threshold_range = current_range
+    return level_threshold_pair(threshold, threshold_range=threshold_range)
 
 
 def protected_table_copy(
@@ -159,8 +177,10 @@ def apply_controller_threshold_updates(model: Model, updates_df: pd.DataFrame) -
             condition_df.loc[as_int(row.condition_fid), THRESHOLD_UPDATE_PROTECTION_COLUMN]
         ):
             continue
-        condition_df.loc[as_int(row.condition_fid), "threshold_high"] = threshold
-        condition_df.loc[as_int(row.condition_fid), "threshold_low"] = threshold
+        condition_index = as_int(row.condition_fid)
+        threshold_low, threshold_high = _recenter_level_threshold_pair(condition_df, condition_index, threshold)
+        condition_df.loc[condition_index, "threshold_high"] = threshold_high
+        condition_df.loc[condition_index, "threshold_low"] = threshold_low
         update_count += 1
     return update_count
 
@@ -354,8 +374,11 @@ def apply_level_updates(
                     )
 
                 for threshold_value, condition_index in zip(threshold_values, condition_rows.index, strict=True):
-                    condition_df.loc[condition_index, "threshold_high"] = as_float(threshold_value)
-                    condition_df.loc[condition_index, "threshold_low"] = as_float(threshold_value)
+                    threshold_low, threshold_high = _recenter_level_threshold_pair(
+                        condition_df, as_int(condition_index), as_float(threshold_value)
+                    )
+                    condition_df.loc[condition_index, "threshold_high"] = threshold_high
+                    condition_df.loc[condition_index, "threshold_low"] = threshold_low
                     update_count += 1
 
         return update_count

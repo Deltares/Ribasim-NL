@@ -5,22 +5,6 @@ def control_state(name: str, length: int) -> list[str]:
     return [f"{name}_{i + 1:03d}" for i in range(length)]
 
 
-def condition(
-    values: list[float],
-    node_id: int,
-    listen_feature_id: int,
-    variable: str = "flow_rate",
-    name: str | None = None,
-) -> DataFrame:
-    df = DataFrame({"threshold_high": values})
-    df.loc[:, ["node_id"]] = node_id
-    df.loc[:, ["listen_feature_id"]] = listen_feature_id
-    df.loc[:, ["variable"]] = variable
-    assert name is not None
-    df.loc[:, ["meta_beschrijving"]] = control_state(name, len(df))
-    return df
-
-
 def logic(
     node_id: int,
     length: int,

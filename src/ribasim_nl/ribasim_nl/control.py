@@ -14,7 +14,13 @@ from shapely.ops import unary_union
 import ribasim_nl
 from ribasim_nl import Model
 from ribasim_nl.case_conversions import pascal_to_snake_case
-from ribasim_nl.control_layout import control_condition_thresholds, control_logic
+from ribasim_nl.control_layout import (
+    DEFAULT_LEVEL_THRESHOLD_RANGE,
+    control_condition_thresholds,
+    control_logic,
+    flow_rate_threshold_pair,
+    level_threshold_pair,
+)
 from ribasim_nl.coupling_level_common import (
     LEVEL_UPDATE_PROTECTION_COLUMN,
     THRESHOLD_UPDATE_PROTECTION_COLUMN,
@@ -258,7 +264,11 @@ def validate_nodes_on_reversed_direction(
 
 
 def discrete_control_tables_single_basin(
-    listen_node_id: int, control_state: list[str], threshold: float
+    listen_node_id: int,
+    control_state: list[str],
+    threshold_high: float,
+    threshold_low: float | None = None,
+    level_threshold_range: float = DEFAULT_LEVEL_THRESHOLD_RANGE,
 ) -> list[object]:
     """Create discrete_control tables for a single-basin (upstream or downstream) control-node: drain and supply.
 
@@ -268,8 +278,12 @@ def discrete_control_tables_single_basin(
         listen_node_id voor discrete_control.Variable
     control_state : list[str]
         control_state voor discrete_control.Logic
-    threshold : float
-        Threshold for discrete_control.Condition
+    threshold_high : float
+        Required nominal high threshold. It is centered in the default range when threshold_low is omitted.
+    threshold_low : float, optional
+        Explicit low threshold. Providing it preserves the exact low/high pair.
+    level_threshold_range : float, optional
+        Total range around the nominal threshold, defaults to DEFAULT_LEVEL_THRESHOLD_RANGE.
 
     Returns
     -------
@@ -280,8 +294,13 @@ def discrete_control_tables_single_basin(
         layout_key="inlaat",
         compound_variable_id=1,
         variable_name="level",
-        level_value=float(threshold),
+        level_value=float(threshold_high),
         weight=1.0,
+    )
+    threshold_low, threshold_high = level_threshold_pair(
+        thresholds[0],
+        threshold_low=threshold_low,
+        threshold_range=level_threshold_range,
     )
     truth_state, logic_control_state = zip(*control_logic("inlaat"), strict=True)
     return [
@@ -294,8 +313,8 @@ def discrete_control_tables_single_basin(
         discrete_control.Condition(
             compound_variable_id=[1],
             condition_id=[1],
-            threshold_high=thresholds,
-            threshold_low=thresholds,
+            threshold_high=[threshold_high],
+            threshold_low=[threshold_low],
         ),
         discrete_control.Logic(truth_state=list(truth_state), control_state=control_state or list(logic_control_state)),
     ]
@@ -720,6 +739,7 @@ def add_controllers_to_drain_nodes(
     flow_rate_afvoer: float | dict[int, float] | None = None,
     max_flow_rate_afvoer: float | dict[int, float] | None = None,
     drain_flow_rate: float | dict[int, float] | None = None,
+    level_threshold_range: float = DEFAULT_LEVEL_THRESHOLD_RANGE,
 ) -> None:
     """Add control nodes to connector nodes draining a system/supply-area
 
@@ -830,7 +850,10 @@ def add_controllers_to_drain_nodes(
 
         # add control_node
         tables = discrete_control_tables_single_basin(
-            listen_node_id=us_node_id, control_state=control_state, threshold=us_target_level
+            listen_node_id=us_node_id,
+            control_state=control_state,
+            threshold_high=us_target_level,
+            level_threshold_range=level_threshold_range,
         )
 
         add_and_connect_discrete_control_node(
@@ -855,6 +878,7 @@ def add_controllers_to_supply_nodes(
     flow_rate_aanvoer: float | dict[int, float] | None = None,
     max_flow_rate_aanvoer: float | dict[int, float] | None = None,
     supply_flow_rate: float | dict[int, float] | None = None,
+    level_threshold_range: float = DEFAULT_LEVEL_THRESHOLD_RANGE,
 ) -> None:
     """Add control nodes to connector nodes supplying a system/supply-area
 
@@ -968,7 +992,10 @@ def add_controllers_to_supply_nodes(
         # add control_node
         assert ds_target_level is not None
         tables = discrete_control_tables_single_basin(
-            listen_node_id=ds_node_id, control_state=control_state, threshold=ds_target_level
+            listen_node_id=ds_node_id,
+            control_state=control_state,
+            threshold_high=ds_target_level,
+            level_threshold_range=level_threshold_range,
         )
         if us_target_level is None:
             label = f"{name}: {ds_target_level:.2f} [m+NAP]"
@@ -1000,6 +1027,7 @@ def add_controllers_to_flow_control_nodes(
     max_flow_rate_afvoer: float | dict[int, float] | None = None,
     supply_flow_rate: float | dict[int, float] | None = None,
     drain_flow_rate: float | dict[int, float] | None = None,
+    level_threshold_range: float = DEFAULT_LEVEL_THRESHOLD_RANGE,
 ) -> None:
     """Add control nodes to connector nodes controlling flows and water-levels in a system/supply-area
 
@@ -1162,6 +1190,10 @@ def add_controllers_to_flow_control_nodes(
             ),
         ]
         truth_state, logic_control_state = zip(*control_logic("doorlaat"), strict=True)
+        threshold_pairs = [
+            level_threshold_pair(threshold, threshold_range=level_threshold_range) for threshold in thresholds
+        ]
+        threshold_low, threshold_high = zip(*threshold_pairs, strict=True)
         tables = [
             discrete_control.Variable(
                 compound_variable_id=[1, 2],
@@ -1172,8 +1204,8 @@ def add_controllers_to_flow_control_nodes(
             discrete_control.Condition(
                 compound_variable_id=[1, 1, 2],
                 condition_id=[1, 2, 3],
-                threshold_high=thresholds,
-                threshold_low=thresholds,
+                threshold_high=list(threshold_high),
+                threshold_low=list(threshold_low),
             ),
             discrete_control.Logic(
                 truth_state=list(truth_state),
@@ -1203,6 +1235,7 @@ def add_controllers_and_demand_to_flushing_nodes(
     new_nodes_offset: float = 10,
     control_node_angle: int = 90,
     demand_node_angle: int = 45,
+    level_threshold_range: float = DEFAULT_LEVEL_THRESHOLD_RANGE,
     name: str = "uitlaat",
     demand_name_prefix: str = "doorspoeling",
 ) -> None:
@@ -1218,6 +1251,8 @@ def add_controllers_and_demand_to_flushing_nodes(
     us_threshold_offset : float
         Level offset of discrete-control to trigger flow. Should be => model.solver.level_difference_threshold.
         Default is 0.02.
+    level_threshold_range : float
+        Total range around level thresholds, by default DEFAULT_LEVEL_THRESHOLD_RANGE.
     demand_threshold_offset : float, optional
         Flow offset of discrete-control to trigger flow., by default 0.001
     us_target_level_offset_supply : float, optional
@@ -1327,6 +1362,10 @@ def add_controllers_and_demand_to_flushing_nodes(
             ),
         ]
         truth_state, logic_control_state = zip(*control_logic("flow_demand"), strict=True)
+        level_threshold_low, level_threshold_high = level_threshold_pair(
+            thresholds[0], threshold_range=level_threshold_range
+        )
+        flow_rate_threshold_low, flow_rate_threshold_high = flow_rate_threshold_pair(thresholds[1])
 
         tables = [
             discrete_control.Variable(
@@ -1338,8 +1377,8 @@ def add_controllers_and_demand_to_flushing_nodes(
             discrete_control.Condition(
                 compound_variable_id=[1, 2],
                 condition_id=[1, 2],
-                threshold_high=thresholds,
-                threshold_low=thresholds,
+                threshold_high=[level_threshold_high, flow_rate_threshold_high],
+                threshold_low=[level_threshold_low, flow_rate_threshold_low],
             ),
             discrete_control.Logic(
                 truth_state=list(truth_state),
@@ -1409,6 +1448,7 @@ def add_controllers_to_connector_nodes(
     max_flow_rate_afvoer: float | dict[int, float] | None = None,
     supply_flow_rate: float | dict[int, float] | None = None,
     drain_flow_rate: float | dict[int, float] | None = None,
+    level_threshold_range: float = DEFAULT_LEVEL_THRESHOLD_RANGE,
 ) -> None:
     """Add controllers to connector nodes per function
 
@@ -1476,6 +1516,7 @@ def add_controllers_to_connector_nodes(
             flow_rate_aanvoer=flow_rate_aanvoer,
             max_flow_rate_aanvoer=max_flow_rate_aanvoer,
             supply_flow_rate=supply_flow_rate,
+            level_threshold_range=level_threshold_range,
         )
 
     # add drain nodes
@@ -1488,6 +1529,7 @@ def add_controllers_to_connector_nodes(
             flow_rate_afvoer=flow_rate_afvoer,
             max_flow_rate_afvoer=max_flow_rate_afvoer,
             drain_flow_rate=drain_flow_rate,
+            level_threshold_range=level_threshold_range,
         )
 
     # add flow control nodes
@@ -1504,6 +1546,7 @@ def add_controllers_to_connector_nodes(
             max_flow_rate_afvoer=max_flow_rate_afvoer,
             supply_flow_rate=supply_flow_rate,
             drain_flow_rate=drain_flow_rate,
+            level_threshold_range=level_threshold_range,
         )
 
     # add flusing_nodes_df
@@ -1514,6 +1557,7 @@ def add_controllers_to_connector_nodes(
             flushing_nodes_df=flushing_nodes_df,
             us_threshold_offset=level_difference_threshold,
             target_level_column=target_level_column,
+            level_threshold_range=level_threshold_range,
         )
 
 
@@ -1538,6 +1582,7 @@ def add_controllers_to_supply_area(
     max_flow_rate_afvoer: float | dict[int, float] | None = None,
     supply_flow_rate: float | dict[int, float] | None = None,
     drain_flow_rate: float | dict[int, float] | None = None,
+    level_threshold_range: float = DEFAULT_LEVEL_THRESHOLD_RANGE,
 ) -> gpd.GeoDataFrame:
     """Add all controllers to supply area
 
@@ -1650,6 +1695,7 @@ def add_controllers_to_supply_area(
         max_flow_rate_afvoer=max_flow_rate_afvoer,
         supply_flow_rate=supply_flow_rate,
         drain_flow_rate=drain_flow_rate,
+        level_threshold_range=level_threshold_range,
     )
 
     return node_functions_df
@@ -1672,6 +1718,7 @@ def add_controllers_to_uncontrolled_connector_nodes(
     max_flow_rate_afvoer: float | dict[int, float] | None = None,
     supply_flow_rate: float | dict[int, float] | None = None,
     drain_flow_rate: float | dict[int, float] | None = None,
+    level_threshold_range: float = DEFAULT_LEVEL_THRESHOLD_RANGE,
 ) -> None:
     """
     Voeg controllers toe aan ALLE connector nodes (Pump/Outlet) die nog géén control-link hebben.
@@ -1791,6 +1838,7 @@ def add_controllers_to_uncontrolled_connector_nodes(
             model=model,
             flushing_nodes_df=flushing_nodes_df,
             us_threshold_offset=level_difference_threshold,
+            level_threshold_range=level_threshold_range,
         )
 
     # Supply
@@ -1803,6 +1851,7 @@ def add_controllers_to_uncontrolled_connector_nodes(
             flow_rate_aanvoer=flow_rate_aanvoer,
             max_flow_rate_aanvoer=max_flow_rate_aanvoer,
             supply_flow_rate=supply_flow_rate,
+            level_threshold_range=level_threshold_range,
         )
 
     # Flow control
@@ -1819,6 +1868,7 @@ def add_controllers_to_uncontrolled_connector_nodes(
             max_flow_rate_afvoer=max_flow_rate_afvoer,
             supply_flow_rate=supply_flow_rate,
             drain_flow_rate=drain_flow_rate,
+            level_threshold_range=level_threshold_range,
         )
 
     # Drain
@@ -1830,6 +1880,7 @@ def add_controllers_to_uncontrolled_connector_nodes(
             flow_rate_afvoer=flow_rate_afvoer,
             max_flow_rate_afvoer=max_flow_rate_afvoer,
             drain_flow_rate=drain_flow_rate,
+            level_threshold_range=level_threshold_range,
         )
 
 

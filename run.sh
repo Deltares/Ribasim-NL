@@ -47,10 +47,34 @@ for arg in "$@"; do
   esac
 done
 
-# Build dependency flag
-DEP_FLAG=""
+# Build dependency arguments. SLURM may reject dependencies on jobs that have
+# already left the active job table, so completed jobs need no dependency.
+DEP_ARGS=()
 if [[ -n "${AFTER}" ]]; then
-  DEP_FLAG="--dependency=afterok:${AFTER}"
+  if [[ ! "${AFTER}" =~ ^[0-9]+$ ]]; then
+    echo "Error: --after must be a numeric SLURM job ID, got '${AFTER}'." >&2
+    exit 1
+  fi
+
+  AFTER_STATE=$(sacct --noheader --jobs="${AFTER}" --starttime=1970-01-01 \
+    --allocations --format=State --parsable2 | head -1 | cut -d'|' -f1)
+  AFTER_STATE="${AFTER_STATE%%+*}"
+  case "${AFTER_STATE}" in
+    COMPLETED)
+      echo "Dependency job ${AFTER} already completed; submitting without a dependency."
+      ;;
+    PENDING|RUNNING|SUSPENDED|COMPLETING|CONFIGURING|REQUEUED|RESIZING|SIGNALING|STAGE_OUT)
+      DEP_ARGS+=("--dependency=afterok:${AFTER}")
+      ;;
+    "")
+      echo "Error: SLURM job ${AFTER} was not found in accounting." >&2
+      exit 1
+      ;;
+    *)
+      echo "Error: dependency job ${AFTER} has state ${AFTER_STATE}, not COMPLETED." >&2
+      exit 1
+      ;;
+  esac
 fi
 
 RUN_DIR="${RUNS_DIR}/${NAME}"
@@ -69,7 +93,7 @@ fi
 mkdir -p "${RUN_DIR}"
 
 # Submit
-JOB_ID=$(sbatch --parsable ${DEP_FLAG} \
+JOB_ID=$(sbatch --parsable "${DEP_ARGS[@]}" \
   --job-name="${NAME}" --partition=${PARTITION} --time=${TIME} \
   --output="${RUN_DIR}/slurm-%j.out" \
   <<EOF
