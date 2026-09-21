@@ -44,7 +44,7 @@ class default_tables:
         ),
         basin.State(level=[0]),
     ]
-    outlet: ClassVar = [outlet.Static(flow_rate=[100])]
+    outlet: ClassVar = [outlet.Static(flow_rate=[5.0])]
     pump: ClassVar = [pump.Static(flow_rate=[1])]
     manning_resistance: ClassVar = [
         manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
