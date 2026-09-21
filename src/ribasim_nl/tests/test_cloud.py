@@ -136,6 +136,10 @@ def test_settings():
     assert isinstance(settings, Settings)
 
     os.environ["RIBASIM_NL_CLOUD_PASS"] = "test"  # noqa: S105
+    os.environ["AWS_ACCESS_KEY_ID"] = "test-access-key"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "test-secret-key"  # noqa: S105
     nsettings = Settings(_env_file="foo.env")
     assert nsettings.ribasim_nl_data_dir == Path("data")
     assert nsettings.ribasim_nl_cloud_pass == "test"  # noqa: S105
+    assert nsettings.aws_access_key_id == "test-access-key"
+    assert nsettings.aws_secret_access_key == "test-secret-key"  # noqa: S105

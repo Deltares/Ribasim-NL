@@ -72,6 +72,7 @@ bin/
 *.qlr
 *.png
 *.bat
+!scripts/load-env.bat
 *.pdf
 *.svg
 *.tif

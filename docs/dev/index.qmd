@@ -34,10 +34,11 @@ Then set up the full development environment by running:
 pixi run install
 ```
 
-This installs git hooks and pulls data.
+This installs Git hooks and the Ribasim core binaries, but does not download project data.
+Data can be pulled automatically for the DVC stage you are working on; see the [DVC page](/dev/dvc.qmd#pulling-data).
 You can run Python scripts using `pixi run python path/to/script.py`.
 
-This step also downloads and installs Ribasim core from GitHub releases to RIBASIM_HOME='bin/ribasim'
+The install task downloads and installs the right Ribasim core version to `RIBASIM_HOME='bin/ribasim'`.
 
 The first time you open the Ribasim-NL repo in Visual Studio Code, the [pixi-code](https://github.com/renan-r-santos/pixi-code) extension should automatically detect the Pixi environment and configure the Python interpreter.
 
@@ -95,15 +96,16 @@ Several settings need to be configured via environment variables, managed by [py
 | Setting | Environment variable | Description |
 |:--------|:---------------------|:------------|
 | `d3d_home` | `D3D_HOME` | Root of the Delft3D installation |
-| `ribasim_nl_cloud_pass` | `RIBASIM_NL_CLOUD_PASS` | Password for [cloud storage](/cloudstorage.qmd) access |
+| `ribasim_nl_cloud_pass` | `RIBASIM_NL_CLOUD_PASS` | Password retained for legacy [CloudStorage](/cloudstorage.qmd) code |
 | `ribasim_nl_data_dir` | `RIBASIM_NL_DATA_DIR` | Local directory for data files |
 | `overwrite_files_from_cloud` | `OVERWRITE_FILES_FROM_CLOUD` | Whether cloud downloads overwrite local files |
-| `minio_access_key` | `MINIO_ACCESS_KEY` | Access key for MinIO storage |
-| `minio_secret_key` | `MINIO_SECRET_KEY` | Secret key for MinIO storage |
+| `aws_access_key_id` | `AWS_ACCESS_KEY_ID` | Required access key for MinIO storage and DVC workflows |
+| `aws_secret_access_key` | `AWS_SECRET_ACCESS_KEY` | Required secret key for MinIO storage and DVC workflows |
 
 In the root of the repository is a `.env.default` file with the defaults that can serve as a template.
-Copy it to `.env` and fill in `RIBASIM_NL_CLOUD_PASS` with the actual password, and adjust the other paths as needed.
-The `.env` file is gitignored because it is different per developer, and to avoid leaking the password.
+Copy it to `.env` and fill in `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`; these credentials are required to pull DVC data and run workflows that access MinIO.
+`RIBASIM_NL_CLOUD_PASS` is only needed by legacy code that still accesses The Good Cloud directly and can otherwise remain empty.
+The `.env` file is gitignored because it is different per developer and contains secrets.
 Make sure to use single quotes around values.
 The defaults below come from `src/ribasim_nl/ribasim_nl/settings.py`:
 

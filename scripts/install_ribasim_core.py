@@ -66,13 +66,13 @@ def _download_github(dest: Path) -> None:
 
 
 def _download_minio(dest: Path) -> None:
-    if not settings.minio_access_key or not settings.minio_secret_key:
-        raise RuntimeError("MINIO_ACCESS_KEY and MINIO_SECRET_KEY must be set in .env")
+    if not settings.aws_access_key_id or not settings.aws_secret_access_key:
+        raise RuntimeError("AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set in .env")
 
     asset = _asset_name()
     object_name = f"{MINIO_FOLDER}/{NAME}/{asset}"
     print(f"Downloading s3://{MINIO_BUCKET}/{object_name}")
-    client = Minio(MINIO_SERVER, access_key=settings.minio_access_key, secret_key=settings.minio_secret_key)
+    client = Minio(MINIO_SERVER, access_key=settings.aws_access_key_id, secret_key=settings.aws_secret_access_key)
     client.fget_object(MINIO_BUCKET, object_name, str(dest))
 
 

@@ -7,32 +7,32 @@ DVC tracks file hashes in `.dvc` files committed to Git, while the actual data l
 
 ## Authentication
 
-Create a file `.dvc/config.local` (already gitignored) with credentials for the remotes:
+DVC uses the standard AWS credentials from the root `.env` file:
 
 ```ini
-['remote "goodcloud"']
-    user = nhi_api
-    password = <RIBASIM_NL_CLOUD_PASS>
-['remote "modeldata"']
-    user = nhi_api
-    password = <RIBASIM_NL_CLOUD_PASS>
-['remote "minio"']
-    region = eu-west-1
-    endpointurl = https://s3.deltares.nl
-    access_key_id = <MINIO_ACCESS_KEY>
-    secret_access_key = <MINIO_SECRET_KEY>
+AWS_ACCESS_KEY_ID='<MinIO access key>'
+AWS_SECRET_ACCESS_KEY='<MinIO secret key>'
 ```
 
-The password is the same as `RIBASIM_NL_CLOUD_PASS` in your `.env` file.
-The MinIO keys correspond to `MINIO_ACCESS_KEY` and `MINIO_SECRET_KEY` in `.env`.
+Pixi activation scripts use python-dotenv to load `.env` before running any task. The MinIO endpoint and region are non-secret and are committed in `.dvc/config`, so new contributors do not need to create `.dvc/config.local` for authentication. Run DVC through Pixi so the credentials are available:
+
+```sh
+pixi run dvc <command>
+```
 
 ::: {.callout-note}
-Since `pixi run install` runs `dvc pull`, this configuration is needed **before** that step.
+Existing clones may still have remote credentials in `.dvc/config.local`. Remove those credential fields after migrating `.env` from `MINIO_ACCESS_KEY` and `MINIO_SECRET_KEY` to `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
 :::
 
-## Pulling data
+## Pull data
 
-After authentication is set up, pull all tracked data:
+Prefer pulling only the data needed for the stage you are working on. To fetch a stage and its dependencies without reproducing it, use [`dvc pull`](https://doc.dvc.org/command-reference/pull):
+
+```sh
+pixi run dvc pull rwzi --with-deps
+```
+
+Only pull all tracked data when you have enough disk space (currently ~100GB), time, and just want all data local:
 
 ```sh
 pixi run dvc pull
@@ -42,17 +42,15 @@ If you have local changes that you want to overwrite, add `--force`.
 
 ## Remotes
 
-Three remotes are configured in `.dvc/config`:
+The MinIO remote is configured in `.dvc/config`:
 
 | Remote | URL | Purpose |
 |:-------|:----|:--------|
 | `minio` (default) | `s3://ribasim-nl/dvc` | Primary DVC cache on MinIO |
-| `goodcloud` | The Good Cloud `/dvc` | Legacy DVC storage |
-| `modeldata` | The Good Cloud `/Ribasim modeldata` | Source data not under DVC control |
 
 ## Pipeline
 
-The DVC pipeline is defined in [`dvc.yaml`](https://github.com/Deltares/Ribasim-NL/blob/main/dvc.yaml). Stages run sequentially with dependencies:
+The DVC pipeline is defined in [`dvc.yaml`](https://github.com/Deltares/Ribasim-NL/blob/main/dvc.yaml). Dependencies determine the order in which stages run:
 
 ```{mermaid}
 %%| label: fig-dvc-pipeline
@@ -79,26 +77,19 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 ```
 
-Reproduce the full pipeline:
+## Reproduce stages
+
+During development, reproduce only the stage you are working on. The `--pull` option asks DVC to fetch missing dependencies before running the stage with [`dvc repro`](https://doc.dvc.org/command-reference/repro):
 
 ```sh
-pixi run dvc repro
+pixi run dvc repro --pull rwzi
 ```
 
-Reproduce a single stage:
+Without `--pull`, `dvc repro` only uses data already present in the workspace or local DVC cache. Other useful options are [`--force`](https://doc.dvc.org/command-reference/repro#-f) to run a stage even when DVC considers it unchanged and [`--single-item`](https://doc.dvc.org/command-reference/repro#-s) to run only the named stage without reproducing its upstream dependencies.
 
-```sh
-pixi run dvc repro dynamic@aa_en_maas
-```
-
-## Importing data from remote storage
-
-Use `dvc import-url` to download a file from a remote URL and take it under DVC control.
-The `remote://modeldata` alias refers to The Good Cloud storage that holds source data:
-
-```sh
-pixi run dvc import-url -f remote://modeldata/Zuiderzeeland/modellen/Zuiderzeeland_parameterized_2025_9_0 data/Zuiderzeeland/modellen/
-```
+::: {.callout-warning}
+A full `pixi run dvc repro` currently takes several days. We only run full reproductions in parallel on the SLURM cluster using `repro.sh`; see [Running on SLURM](slurm.qmd).
+:::
 
 ## Pushing changes
 
@@ -108,4 +99,8 @@ After producing new outputs (running pipeline stages or adding new data), push t
 pixi run dvc push
 ```
 
-Do this before pushing the updated `dvc.lock` file to git, so the data hashes referenced therein are avaiable for everyone.
+Do this before pushing the updated `dvc.lock` file to Git, so the data hashes referenced therein are available to everyone.
+
+Most MinIO access keys handed out are read-only.
+Reach out if you need help uploading data.
+In general we update all results after a full cluster run.

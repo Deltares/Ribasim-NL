@@ -4,8 +4,9 @@ Get the system diagrams from the CloudStorage to s3.deltares.nl for use in the d
 Relies on the CloudStorage being up-to-date, see `scripts/upload_sturing_svg.py`.
 
 This needs the following environment variables to be set in `.env` (Deltares only):
-MINIO_ACCESS_KEY
-MINIO_SECRET_KEY
+AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY
+They need to have write permission.
 """
 
 from pathlib import Path
@@ -17,8 +18,8 @@ from ribasim_nl.settings import settings
 
 from ribasim_nl import CloudStorage
 
-if not settings.minio_access_key or not settings.minio_secret_key:
-    raise OSError("MINIO_ACCESS_KEY and MINIO_SECRET_KEY must be set in the environment or .env file.")
+if not settings.aws_access_key_id or not settings.aws_secret_access_key:
+    raise OSError("AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set in the environment or .env file.")
 
 MINIO_SERVER = "s3.deltares.nl"
 BUCKET_NAME = "ribasim-nl"
@@ -56,6 +57,6 @@ for authority in cloud.water_authorities:
     upload_file(
         source,
         destination + source.name,
-        access_key=settings.minio_access_key,
-        secret_key=settings.minio_secret_key,
+        access_key=settings.aws_access_key_id,
+        secret_key=settings.aws_secret_access_key,
     )
