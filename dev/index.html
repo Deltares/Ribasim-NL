@@ -265,8 +265,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>First, install Pixi as described in the <a href="https://pixi.sh/latest/#installation">Pixi documentation</a>.</p>
 <p>Then set up the full development environment by running:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run install</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This installs git hooks and pulls data. You can run Python scripts using <code>pixi run python path/to/script.py</code>.</p>
-<p>This step also downloads and installs Ribasim core from GitHub releases to RIBASIM_HOME=‘bin/ribasim’</p>
+<p>This installs Git hooks and the Ribasim core binaries, but does not download project data. Data can be pulled automatically for the DVC stage you are working on; see the <a href="../dev/dvc.html#pulling-data">DVC page</a>. You can run Python scripts using <code>pixi run python path/to/script.py</code>.</p>
+<p>The install task downloads and installs the right Ribasim core version to <code>RIBASIM_HOME='bin/ribasim'</code>.</p>
 <p>The first time you open the Ribasim-NL repo in Visual Studio Code, the <a href="https://github.com/renan-r-santos/pixi-code">pixi-code</a> extension should automatically detect the Pixi environment and configure the Python interpreter.</p>
 <p>If you encounter issues, try running <code>pixi clean</code>and running <code>pixi install</code> again.</p>
 </section>
@@ -311,7 +311,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="even">
 <td style="text-align: left;"><code>ribasim_nl_cloud_pass</code></td>
 <td style="text-align: left;"><code>RIBASIM_NL_CLOUD_PASS</code></td>
-<td style="text-align: left;">Password for <a href="../cloudstorage.html">cloud storage</a> access</td>
+<td style="text-align: left;">Password retained for legacy <a href="../cloudstorage.html">CloudStorage</a> code</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><code>ribasim_nl_data_dir</code></td>
@@ -324,18 +324,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td style="text-align: left;">Whether cloud downloads overwrite local files</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;"><code>minio_access_key</code></td>
-<td style="text-align: left;"><code>MINIO_ACCESS_KEY</code></td>
-<td style="text-align: left;">Access key for MinIO storage</td>
+<td style="text-align: left;"><code>aws_access_key_id</code></td>
+<td style="text-align: left;"><code>AWS_ACCESS_KEY_ID</code></td>
+<td style="text-align: left;">Required access key for MinIO storage and DVC workflows</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"><code>minio_secret_key</code></td>
-<td style="text-align: left;"><code>MINIO_SECRET_KEY</code></td>
-<td style="text-align: left;">Secret key for MinIO storage</td>
+<td style="text-align: left;"><code>aws_secret_access_key</code></td>
+<td style="text-align: left;"><code>AWS_SECRET_ACCESS_KEY</code></td>
+<td style="text-align: left;">Required secret key for MinIO storage and DVC workflows</td>
 </tr>
 </tbody>
 </table>
-<p>In the root of the repository is a <code>.env.default</code> file with the defaults that can serve as a template. Copy it to <code>.env</code> and fill in <code>RIBASIM_NL_CLOUD_PASS</code> with the actual password, and adjust the other paths as needed. The <code>.env</code> file is gitignored because it is different per developer, and to avoid leaking the password. Make sure to use single quotes around values. The defaults below come from <code>src/ribasim_nl/ribasim_nl/settings.py</code>:</p>
+<p>In the root of the repository is a <code>.env.default</code> file with the defaults that can serve as a template. Copy it to <code>.env</code> and fill in <code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code>; these credentials are required to pull DVC data and run workflows that access MinIO. <code>RIBASIM_NL_CLOUD_PASS</code> is only needed by legacy code that still accesses The Good Cloud directly and can otherwise remain empty. The <code>.env</code> file is gitignored because it is different per developer and contains secrets. Make sure to use single quotes around values. The defaults below come from <code>src/ribasim_nl/ribasim_nl/settings.py</code>:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8" data-include="../../.env.default"><pre class="sourceCode ini code-with-copy"><code class="sourceCode ini"></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Values from the <code>.env</code> file take precedence over environment variables, so you can override system-wide settings per project. If you prefer to set these environment variables in your OS or terminal instead, that will also work.</p>
 <p><code>OVERWRITE_FILES_FROM_CLOUD</code> is <code>true</code> by default. When using <code>cloud.synchronize</code> or <code>cloud.download_content</code>, this determines if local files will be overwritten when the <code>overwrite</code> keyword argument is not explicitly passed. Whilst updating datasets locally, you can set this to <code>false</code> to ensure your modifications are not lost. After uploading the new dataset, set it back to <code>true</code>.</p>

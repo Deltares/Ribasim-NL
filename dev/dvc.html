@@ -221,10 +221,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#authentication" id="toc-authentication" class="nav-link active" data-scroll-target="#authentication">Authentication</a></li>
-  <li><a href="#pulling-data" id="toc-pulling-data" class="nav-link" data-scroll-target="#pulling-data">Pulling data</a></li>
+  <li><a href="#pull-data" id="toc-pull-data" class="nav-link" data-scroll-target="#pull-data">Pull data</a></li>
   <li><a href="#remotes" id="toc-remotes" class="nav-link" data-scroll-target="#remotes">Remotes</a></li>
   <li><a href="#pipeline" id="toc-pipeline" class="nav-link" data-scroll-target="#pipeline">Pipeline</a></li>
-  <li><a href="#importing-data-from-remote-storage" id="toc-importing-data-from-remote-storage" class="nav-link" data-scroll-target="#importing-data-from-remote-storage">Importing data from remote storage</a></li>
+  <li><a href="#reproduce-stages" id="toc-reproduce-stages" class="nav-link" data-scroll-target="#reproduce-stages">Reproduce stages</a></li>
   <li><a href="#pushing-changes" id="toc-pushing-changes" class="nav-link" data-scroll-target="#pushing-changes">Pushing changes</a></li>
   </ul>
 </nav>
@@ -254,19 +254,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>We use <a href="https://dvc.org/">DVC</a> to version-control large data files (models, input datasets) without storing them in Git. DVC tracks file hashes in <code>.dvc</code> files committed to Git, while the actual data lives on remote storage.</p>
 <section id="authentication" class="level2">
 <h2 class="anchored" data-anchor-id="authentication">Authentication</h2>
-<p>Create a file <code>.dvc/config.local</code> (already gitignored) with credentials for the remotes:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode ini code-with-copy"><code class="sourceCode ini"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">['remote "goodcloud"']</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="dt">    user </span><span class="ot">=</span><span class="st"> nhi_api</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="dt">    password </span><span class="ot">=</span><span class="st"> &lt;RIBASIM_NL_CLOUD_PASS&gt;</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">['remote "modeldata"']</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="dt">    user </span><span class="ot">=</span><span class="st"> nhi_api</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="dt">    password </span><span class="ot">=</span><span class="st"> &lt;RIBASIM_NL_CLOUD_PASS&gt;</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">['remote "minio"']</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="dt">    region </span><span class="ot">=</span><span class="st"> eu-west-1</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="dt">    endpointurl </span><span class="ot">=</span><span class="st"> https://s3.deltares.nl</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="dt">    access_key_id </span><span class="ot">=</span><span class="st"> &lt;MINIO_ACCESS_KEY&gt;</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="dt">    secret_access_key </span><span class="ot">=</span><span class="st"> &lt;MINIO_SECRET_KEY&gt;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>The password is the same as <code>RIBASIM_NL_CLOUD_PASS</code> in your <code>.env</code> file. The MinIO keys correspond to <code>MINIO_ACCESS_KEY</code> and <code>MINIO_SECRET_KEY</code> in <code>.env</code>.</p>
+<p>DVC uses the standard AWS credentials from the root <code>.env</code> file:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode ini code-with-copy"><code class="sourceCode ini"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="dt">AWS_ACCESS_KEY_ID</span><span class="ot">=</span><span class="st">'&lt;MinIO access key&gt;'</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="dt">AWS_SECRET_ACCESS_KEY</span><span class="ot">=</span><span class="st">'&lt;MinIO secret key&gt;'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Pixi activation scripts use python-dotenv to load <code>.env</code> before running any task. The MinIO endpoint and region are non-secret and are committed in <code>.dvc/config</code>, so new contributors do not need to create <code>.dvc/config.local</code> for authentication. Run DVC through Pixi so the credentials are available:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc <span class="op">&lt;</span>command<span class="op">&gt;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -277,19 +269,21 @@ Note
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>Since <code>pixi run install</code> runs <code>dvc pull</code>, this configuration is needed <strong>before</strong> that step.</p>
+<p>Existing clones may still have remote credentials in <code>.dvc/config.local</code>. Remove those credential fields after migrating <code>.env</code> from <code>MINIO_ACCESS_KEY</code> and <code>MINIO_SECRET_KEY</code> to <code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code>.</p>
 </div>
 </div>
 </section>
-<section id="pulling-data" class="level2">
-<h2 class="anchored" data-anchor-id="pulling-data">Pulling data</h2>
-<p>After authentication is set up, pull all tracked data:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="pull-data" class="level2">
+<h2 class="anchored" data-anchor-id="pull-data">Pull data</h2>
+<p>Prefer pulling only the data needed for the stage you are working on. To fetch a stage and its dependencies without reproducing it, use <a href="https://doc.dvc.org/command-reference/pull"><code>dvc pull</code></a>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull rwzi <span class="at">--with-deps</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Only pull all tracked data when you have enough disk space (currently ~100GB), time, and just want all data local:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>If you have local changes that you want to overwrite, add <code>--force</code>.</p>
 </section>
 <section id="remotes" class="level2">
 <h2 class="anchored" data-anchor-id="remotes">Remotes</h2>
-<p>Three remotes are configured in <code>.dvc/config</code>:</p>
+<p>The MinIO remote is configured in <code>.dvc/config</code>:</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 36%">
@@ -309,22 +303,12 @@ Note
 <td style="text-align: left;"><code>s3://ribasim-nl/dvc</code></td>
 <td style="text-align: left;">Primary DVC cache on MinIO</td>
 </tr>
-<tr class="even">
-<td style="text-align: left;"><code>goodcloud</code></td>
-<td style="text-align: left;">The Good Cloud <code>/dvc</code></td>
-<td style="text-align: left;">Legacy DVC storage</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;"><code>modeldata</code></td>
-<td style="text-align: left;">The Good Cloud <code>/Ribasim modeldata</code></td>
-<td style="text-align: left;">Source data not under DVC control</td>
-</tr>
 </tbody>
 </table>
 </section>
 <section id="pipeline" class="level2">
 <h2 class="anchored" data-anchor-id="pipeline">Pipeline</h2>
-<p>The DVC pipeline is defined in <a href="https://github.com/Deltares/Ribasim-NL/blob/main/dvc.yaml"><code>dvc.yaml</code></a>. Stages run sequentially with dependencies:</p>
+<p>The DVC pipeline is defined in <a href="https://github.com/Deltares/Ribasim-NL/blob/main/dvc.yaml"><code>dvc.yaml</code></a>. Dependencies determine the order in which stages run:</p>
 <div class="cell" data-file="_dvc-dag.mmd" data-layout-align="default">
 <div class="cell-output-display">
 <div id="fig-dvc-pipeline" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -1127,21 +1111,32 @@ document.addEventListener("DOMContentLoaded", () => {
   if (fig) fig.addEventListener("click", () => fig.classList.toggle("fullscreen"));
 });
 </script>
-<p>Reproduce the full pipeline:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc repro</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Reproduce a single stage:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc repro dynamic@aa_en_maas</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="importing-data-from-remote-storage" class="level2">
-<h2 class="anchored" data-anchor-id="importing-data-from-remote-storage">Importing data from remote storage</h2>
-<p>Use <code>dvc import-url</code> to download a file from a remote URL and take it under DVC control. The <code>remote://modeldata</code> alias refers to The Good Cloud storage that holds source data:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc import-url <span class="at">-f</span> remote://modeldata/Zuiderzeeland/modellen/Zuiderzeeland_parameterized_2025_9_0 data/Zuiderzeeland/modellen/</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="reproduce-stages" class="level2">
+<h2 class="anchored" data-anchor-id="reproduce-stages">Reproduce stages</h2>
+<p>During development, reproduce only the stage you are working on. The <code>--pull</code> option asks DVC to fetch missing dependencies before running the stage with <a href="https://doc.dvc.org/command-reference/repro"><code>dvc repro</code></a>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc repro <span class="at">--pull</span> rwzi</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Without <code>--pull</code>, <code>dvc repro</code> only uses data already present in the workspace or local DVC cache. Other useful options are <a href="https://doc.dvc.org/command-reference/repro#-f"><code>--force</code></a> to run a stage even when DVC considers it unchanged and <a href="https://doc.dvc.org/command-reference/repro#-s"><code>--single-item</code></a> to run only the named stage without reproducing its upstream dependencies.</p>
+<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Warning
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>A full <code>pixi run dvc repro</code> currently takes several days. We only run full reproductions in parallel on the SLURM cluster using <code>repro.sh</code>; see <a href="../dev/slurm.html">Running on SLURM</a>.</p>
+</div>
+</div>
 </section>
 <section id="pushing-changes" class="level2">
 <h2 class="anchored" data-anchor-id="pushing-changes">Pushing changes</h2>
 <p>After producing new outputs (running pipeline stages or adding new data), push to the remote:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc push</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Do this before pushing the updated <code>dvc.lock</code> file to git, so the data hashes referenced therein are avaiable for everyone.</p>
+<p>Do this before pushing the updated <code>dvc.lock</code> file to Git, so the data hashes referenced therein are available to everyone.</p>
+<p>Most MinIO access keys handed out are read-only. Reach out if you need help uploading data. In general we update all results after a full cluster run.</p>
 
 
 </section>
