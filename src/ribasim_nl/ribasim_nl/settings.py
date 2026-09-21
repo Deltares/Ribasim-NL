@@ -8,8 +8,8 @@ class Settings(BaseSettings):
     ribasim_nl_data_dir: Path = Path("data")
     ribasim_nl_cloud_pass: str = ""
     overwrite_files_from_cloud: bool = True
-    minio_access_key: str = ""
-    minio_secret_key: str = ""
+    aws_access_key_id: str = ""
+    aws_secret_access_key: str = ""
 
     @classmethod
     def settings_customise_sources(

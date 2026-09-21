@@ -2,9 +2,7 @@
     analytics = false
     remote = minio
     autostage = true
-['remote "goodcloud"']
-    url = webdavs://deltares.thegood.cloud/remote.php/dav/files/nhi_api/dvc
-['remote "modeldata"']
-    url = webdavs://deltares.thegood.cloud/remote.php/dav/files/nhi_api/Ribasim modeldata
 ['remote "minio"']
     url = s3://ribasim-nl/dvc
+    region = eu-west-1
+    endpointurl = https://s3.deltares.nl
