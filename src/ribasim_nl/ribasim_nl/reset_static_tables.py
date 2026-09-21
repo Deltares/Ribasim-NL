@@ -2,6 +2,8 @@
 import numpy as np
 import pandas as pd
 
+from ribasim_nl.profiles import MIN_PROFILE_AREA
+
 
 def reset_static_tables(model):
     # basin / profile
@@ -10,7 +12,7 @@ def reset_static_tables(model):
             {
                 "node_id": np.repeat(model.basin.node.df.index.to_numpy(), 2),
                 "level": [0.0, 1.0] * len(model.basin.node.df),
-                "area": [0.01, 1000.0] * len(model.basin.node.df),
+                "area": [MIN_PROFILE_AREA, 1000.0] * len(model.basin.node.df),
             }
         )
         df.index.name = "fid"

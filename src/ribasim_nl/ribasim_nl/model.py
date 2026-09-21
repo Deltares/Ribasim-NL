@@ -25,6 +25,7 @@ from shapely.geometry.base import BaseGeometry
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.downstream import downstream_nodes
 from ribasim_nl.geometry import split_basin
+from ribasim_nl.profiles import MIN_PROFILE_AREA
 from ribasim_nl.run_model import RunSpecs, parse_computation_time, run
 from ribasim_nl.upstream import upstream_nodes
 
@@ -34,7 +35,7 @@ level_data = level_boundary.Static(level=[0])
 
 class default_tables:
     basin: ClassVar = [
-        basin.Profile(level=[0.0, 1.0], area=[0.01, 1000.0]),
+        basin.Profile(level=[0.0, 1.0], area=[MIN_PROFILE_AREA, 1000.0]),
         basin.Static(
             drainage=[0.0],
             potential_evaporation=[0.001 / 86400],
