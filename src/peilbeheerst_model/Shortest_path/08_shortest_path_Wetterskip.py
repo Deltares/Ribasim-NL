@@ -332,7 +332,7 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
                     graph, source=startpoint, target=endpoint, weight="length", method="dijkstra"
                 )
                 links = [
-                    graph.get_link_data(shortest_path[i], shortest_path[i + 1])["geometry"]
+                    graph.get_edge_data(shortest_path[i], shortest_path[i + 1])["geometry"]
                     for i in range(len(shortest_path) - 1)
                 ]
                 gdf_cross_single.loc[gdf_cross_single.node_id == startpoint, "shortest_path"] = shapely.ops.linemerge(
@@ -377,7 +377,7 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
                     )
                     links = []
                     for i in range(0, len(shortest_path) - 1):
-                        links.append(graph.get_link_data(shortest_path[i], shortest_path[i + 1])["geometry"])
+                        links.append(graph.get_edge_data(shortest_path[i], shortest_path[i + 1])["geometry"])
                     gdf_cross_single.loc[gdf_cross_single.node_id == startpoint, "shortest_path"] = (
                         shapely.ops.linemerge(links)
                     )
@@ -405,8 +405,9 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
         ax.legend()
         path_figs = (
             settings.ribasim_nl_data_dir
-            / "WetterskipFryslan/verwerkt/Data_shortest_path/Figures/shortest_path_{waterschap}_RHWS_{index}_new"
+            / f"WetterskipFryslan/verwerkt/Data_shortest_path/Figures/shortest_path_{waterschap}_RHWS_{index}_new"
         )
+        path_figs.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(
             path_figs,
             dpi=300,
@@ -437,8 +438,9 @@ for index, rhws in tqdm.tqdm(gdf_rhws.iterrows(), total=len(gdf_rhws), colour="b
             # For each GeoDataFrame, save it to a layer in the GeoPackage
             path_gpkg = (
                 settings.ribasim_nl_data_dir
-                / "WetterskipFryslan/Data_shortest_path/Geopackages/{waterschap}_unconnected_{index}.gpkg"
+                / f"WetterskipFryslan/verwerkt/Data_shortest_path/Geopackages/{waterschap}_unconnected_{index}.gpkg"
             )
+            path_gpkg.parent.mkdir(parents=True, exist_ok=True)
             value.to_file(
                 # f"./shortest_path/Geopackages/{waterschap}_unconnected_{index}.gpkg", layer=key, driver="GPKG"
                 path_gpkg,
@@ -453,8 +455,3 @@ gdf_out = gpd.GeoDataFrame(pd.concat(gdf_crossings_out))
 gdf_out["shortest_path"] = gdf_out["shortest_path"].apply(lambda geom: dumps(geom) if geom is not None else None)
 
 gdf_out.to_file(output_path, driver="GPKG")
-
-# Write the shortest path to the GoodCloud
-cloud = CloudStorage()
-shortest_path_cloud_parent = Path(output_path).parent  # Use the parent directory of the output path
-cloud.upload_content(dir_path=shortest_path_cloud_parent, overwrite=True)

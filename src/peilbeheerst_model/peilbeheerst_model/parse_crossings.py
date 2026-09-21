@@ -15,7 +15,7 @@ import tqdm.auto as tqdm
 from shapely.geometry import LineString, MultiLineString, MultiPoint, Point, Polygon
 
 from peilbeheerst_model.general_functions import read_gpkg_layers
-from ribasim_nl import CloudStorage, settings
+from ribasim_nl import settings
 
 
 class ParseCrossings:
@@ -618,11 +618,6 @@ class ParseCrossings:
             df_filter.to_file(output_path, layer=f"crossings_{filterlayer}")
         if df_hydro_filter is not None:
             df_hydro_filter.to_file(output_path, layer="crossings_hydroobject_filtered")
-
-        # Write the crossings to the GoodCloud
-        cloud = CloudStorage()
-        crossings_path_cloud_parent = output_path.parent  # Use the parent directory of the output path
-        cloud.upload_content(dir_path=crossings_path_cloud_parent, overwrite=True)
 
     @pydantic.validate_call(config={"strict": True})
     def _classify_from_to_peilgebieden(self, pfrom: str | None, pto: str | None) -> tuple[str, str]:
