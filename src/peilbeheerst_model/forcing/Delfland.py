@@ -103,6 +103,7 @@ processor = RibasimFeedbackProcessor(
 )
 
 ribasim_model = Model.read(ribasim_work_dir_model_toml)
+ribasim_model.solver.algorithm = "FBDF"
 
 # network snapping (junctions are added at the very end, just before writing, so they stay
 # transparent to all parametrization, classification and validation steps)

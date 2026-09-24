@@ -28,6 +28,7 @@ model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
 # %% read model and hydroobject
 model = Model.read(ribasim_toml)
+model.solver.algorithm = "FBDF"
 network_validator = NetworkValidator(model)
 
 hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
