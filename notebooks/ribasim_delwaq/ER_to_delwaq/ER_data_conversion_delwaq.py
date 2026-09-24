@@ -63,8 +63,7 @@ if not logging.getLogger().handlers:
 
 logger.info("Starting ER data conversion script")
 
-current_dir = Path(__file__).resolve().parent
-root_dir = current_dir.parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 
 # -------------------------------Conversions------------------------------------
 
@@ -75,18 +74,18 @@ conv_ton2g = 10**6
 # -------------------------------Directories------------------------------------
 model_name = "lhm_coupled_full"
 toml_name = "lhm_coupled.toml"
-model_path = Path(root_dir, "data/Rijkswaterstaat/modellen", model_name)
+model_path = ROOT / "data" / "Rijkswaterstaat" / "modellen" / model_name
 toml_path = model_path / toml_name
 basin_path = model_path / "input/database.gpkg"
 
-delwaq_data_path = root_dir / "data/Basisgegevens/Delwaq"
-er_path = delwaq_data_path / "aangeleverd/Emissieregistratie"
-emissies_buiten_ER_path = er_path / "Emissies_per_jaar_buiten_ER.csv"
-ER_export_path = er_path / "ER_DataExport-2026-09-16-103931.xlsx"
-OE_bedrijven_path = er_path / "OverigeEmissies_bedrijven__2024_01_24.csv"
-gaf_path = er_path / "gaf_90.shp"
+er_data_path = ROOT / "data" / "Basisgegevens" / "Delwaq" / "Emissieregistratie"
+er_input_path = er_data_path / "aangeleverd"
+emissies_buiten_ER_path = er_input_path / "Emissies_per_jaar_buiten_ER.csv"
+ER_export_path = er_input_path / "ER_DataExport-2026-09-16-103931.xlsx"
+OE_bedrijven_path = er_input_path / "OverigeEmissies_bedrijven__2024_01_24.csv"
+gaf_path = er_input_path / "gaf_90.shp"
 
-output_dir = delwaq_data_path / "output"
+output_dir = er_data_path / "output"
 output_dir.mkdir(parents=True, exist_ok=True)
 # %%
 # -------------------------------Settings---------------------------------------

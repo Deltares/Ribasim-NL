@@ -8,10 +8,12 @@ import pandas as pd
 # Paths
 # -----------------------------------------------------------------------------
 
-script_dir = Path(__file__).resolve().parent
 
-input_file = script_dir / "data" / "dry_weight_loads_per_basin_kg_day.parquet"
-output_file = script_dir / "output" / "ANIMO_loads_g_s_df.parquet"
+ROOT = Path(__file__).resolve().parents[3]
+ANIMO_DATA_DIR = ROOT / "data" / "Basisgegevens" / "Delwaq" / "ANIMO"
+
+input_file = ANIMO_DATA_DIR / "output" / "dry_weight_loads_per_basin_kg_day.parquet"
+output_file = ANIMO_DATA_DIR / "ANIMO_loads_g_s_df.parquet"
 
 output_file.parent.mkdir(exist_ok=True)
 

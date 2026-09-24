@@ -168,7 +168,7 @@ def build_year_decade_lookup(df, zone_col, value_cols):
 
 ROOT = Path(__file__).resolve().parents[3]
 
-ANIMO_DATA_DIR = ROOT / "Basisgegevens" / "Delwaq" / "ANIMO"
+ANIMO_DATA_DIR = ROOT / "data" / "Basisgegevens" / "Delwaq" / "ANIMO"
 
 ANIMO_INPUT_DIR = ANIMO_DATA_DIR / "aangeleverd"  # vervangt "data\1-external" of /
 ANIMO_INTERIM_DIR = ANIMO_DATA_DIR / "interim"  # vervangt "data\2-interim" of /
@@ -439,13 +439,13 @@ for year in range(2017, 2020):
 
                 da_correction = da_deep_seepage_correction_lhm_m3_day.isel(time=timestep)
                 da_afvoer_lhm_m3_day_t = da_afvoer_lhm_m3_day_t - da_correction
-            da_afvoer_lhm_m3_day_t = da_afvoer_lhm_m3_day_t.where(da_lgn.notna())
+            da_afvoer_lhm_m3_day_t = da_afvoer_lhm_m3_day_t.where(~da_lgn.isnull())
             da_afvoer_lhm_m3_day_t = da_afvoer_lhm_m3_day_t.load()
             # For visualization later:
             da_afvoer_lhm_grid_mm_day = 1000.0 * (da_afvoer_lhm_m3_day_t / (250 * 250))
 
             # Calculate total discharge per basin (LHM)
-            valid = da_afvoer_lhm_m3_day_t.notna()
+            valid = ~da_afvoer_lhm_m3_day_t.isnull()
             da_afvoer_lhm_per_basin_m3_day = da_afvoer_lhm_m3_day_t.where(valid).groupby(da_basin).sum()
 
             # Create a DataArray of basin areas
@@ -460,7 +460,7 @@ for year in range(2017, 2020):
             df = da_afvoer_lhm_per_basin_mm_day.to_dataframe(name="Discharge").reset_index()
 
             # For visualization, project onto grid
-            valid = da_basin.notna()
+            valid = ~da_basin.isnull()
             da_afvoer_lhm_per_basin_on_grid_mm_day = da_afvoer_lhm_per_basin_mm_day.sel(
                 basin_id=da_basin.where(valid, other=da_afvoer_lhm_per_basin_m3_day.basin_id.values[0])
             ).where(valid)
@@ -540,11 +540,11 @@ for year in range(2017, 2020):
             da_afvoer_hru_m3_day = da_afvoer_hru_m3_day.load()
 
             # Calculate total discharge per basin (HRU)
-            valid = da_afvoer_hru_m3_day.notna()
+            valid = ~da_afvoer_hru_m3_day.isnull()
             da_afvoer_hru_per_basin_m3_day = da_afvoer_hru_m3_day.where(valid).groupby(da_basin).sum()
 
             # Project onto grid
-            valid = da_basin.notna()
+            valid = ~da_basin.isnull()
             da_afvoer_hru_per_basin_on_grid_m3_day = da_afvoer_hru_per_basin_m3_day.sel(
                 basin_id=da_basin.where(valid, other=da_afvoer_hru_per_basin_m3_day.basin_id.values[0])
             ).where(valid)
@@ -619,7 +619,7 @@ for year in range(2017, 2020):
             ds_concs = ds_concs.load()
             for var in species:
                 print("Calculating flux-averaged concentrations over the basins for " + var)
-                valid = ds_concs[var].notna() & da_afvoer_hru_m3_day.notna()
+                valid = ~ds_concs[var].isnull() & ~da_afvoer_hru_m3_day.isnull()
 
                 num = (ds_concs[var] * da_afvoer_hru_m3_day).where(valid).groupby(da_basin).sum()
                 den = da_afvoer_hru_m3_day.where(valid).groupby(da_basin).sum()
@@ -627,7 +627,7 @@ for year in range(2017, 2020):
                 ds_concs_per_basin[var] = num / den
 
             # Project onto grid <DO NOT DELETE>
-            valid = da_basin.notna()
+            valid = ~da_basin.isnull()
             ds_concs_per_basin_on_grid = ds_concs_per_basin.sel(
                 basin_id=da_basin.where(valid, other=ds_concs_per_basin.basin_id.values[0])
             ).where(valid)
