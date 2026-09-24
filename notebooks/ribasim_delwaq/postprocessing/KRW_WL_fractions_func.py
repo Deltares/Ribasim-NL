@@ -97,6 +97,9 @@ def compute_overlap_df(krw_wl_path, basin_path):
     intersected_polygons = gpd.overlay(krw_wl_polygons, basin, how="intersection")
     intersected_lines = gpd.overlay(krw_wl_lines, basin, how="intersection")
 
+    print(f"Columns in intersected_polygons: {intersected_polygons.columns}")
+    print(f"Columns in intersected_lines: {intersected_lines.columns}")
+
     # Compute overlap area and fraction
     intersected_polygons["overlap_area"] = intersected_polygons.geometry.area
     intersected_polygons["frac"] = intersected_polygons["overlap_area"] / intersected_polygons["SHAPE_AREA"]
@@ -113,10 +116,12 @@ def compute_overlap_df(krw_wl_path, basin_path):
         logger.info("Check for overlapping basin polygons or duplicate geometries.")
 
     # Retain desired fields
-    df_polygons = intersected_polygons[["localId", "text", "CharacterString", "overlap_area", "frac"]].copy()
-    df_polygons.columns = ["WL_Id", "WL_Name", "Waterschap", "overlap_area", "fractie"]  # Rename
-    df_lines = intersected_lines[["localId", "text", "CharacterString", "overlap_length", "frac"]].copy()
-    df_lines.columns = ["WL_Id", "WL_Name", "Waterschap", "overlap_length", "fractie"]  # Rename
+    df_polygons = intersected_polygons[["localId", "text", "CharacterString", "overlap_area", "node_id", "frac"]].copy()
+    df_polygons.columns = ["WL_Id", "WL_Name", "Waterschap", "overlap_area", "basin_id", "fractie"]  # Rename
+    df_polygons["type"] = "polygon"
+    df_lines = intersected_lines[["localId", "text", "CharacterString", "overlap_length", "node_id", "frac"]].copy()
+    df_lines.columns = ["WL_Id", "WL_Name", "Waterschap", "overlap_length", "basin_id", "fractie"]  # Rename
+    df_lines["type"] = "line"
     df = pd.concat([df_polygons, df_lines], ignore_index=True)
     print(f"dimension of resulting dataframe: {len(df)}")
 
@@ -125,6 +130,10 @@ def compute_overlap_df(krw_wl_path, basin_path):
     print(fraction_sum.describe())
 
     return df
+
+
+# TODO: move "overlap_length" column to middle of dataframe, after "overlap_area" column, for better readability
+# TODO: filter basins for only those that are relevant for the KRW waterbody, e.g. by using the "meta_categorie" column in the Node layer, to prevent duplicate fractions for basins that are not relevant for the KRW waterbody, e.g. by filtering for "meta_categorie" in ["waterloop", "watergang", "kanaal", "beek", "rivier", "meer", "plas", "vijver", "reservoir"]
 
 
 # %%
