@@ -60,6 +60,9 @@ def compute_overlap_df(krw_wl_path, basin_path):
     krw_wl_polygons = krw_wl_polygons[krw_wl_polygons.is_valid]
     krw_wl_lines = krw_wl_lines[krw_wl_lines.is_valid]
     basin = basin[basin.is_valid]
+    # select basins with meta_categorie "doorgaand" or "hoofdwater"
+    # basin_unique = basin
+    basin_unique = basin[basin["meta_categorie"].isin(["doorgaand", "hoofdwater"])]
 
     # Ensure same CRS
     if krw_wl_polygons.crs != basin.crs:
@@ -77,25 +80,15 @@ def compute_overlap_df(krw_wl_path, basin_path):
     # Check imported gml file
     print(f"KRW waterbody polygons: {len(krw_wl_polygons)}")
     print(f"KRW waterbody line elements: {len(krw_wl_lines)}")
-    print(f"Basin areas: {len(basin)}")
-    # print(f"CRS of KRW waterbody polygons: {krw_wl_polygons.crs}")
-    # print(f"CRS of Basin areas: {basin.crs}")
+    print(f"Basin areas: {len(basin_unique)}")
     # print(f"Columns in KRW waterbody polygons: {krw_wl_polygons.columns}")
-    # print(f"Columns in Basin areas: {basin.columns}")
+    # print(f"Columns in Basin areas: {basin_unique.columns}")
     # print(f"First few rows of KRW waterbody polygons:\n{krw_wl_polygons.head()}")
-    # print(f"First few rows of Basin areas:\n{basin.head()}")
-    # print(f"First few rows of Node layer:\n{nodes.head()}")
-    # print(f"First few rows of merged Basin areas:\n{basin.head()}")
-    # print(f"First few rows of KRW waterbody polygons with SHAPE_AREA:\n{krw_wl_polygons.head()}")
-    # print(f"First few rows of Basin areas with meta_categorie:\n{basin.head()}")
-    # print(f"First few rows of intersected areas:\n{gpd.overlay(krw_wl_polygons, basin, how='intersection').head()}")
-    # print(
-    #    f"First few rows of intersected areas with overlap_area and frac:\n{gpd.overlay(krw_wl_polygons, basin, how='intersection').assign(overlap_area=lambda x: x.geometry.area).assign(frac=lambda x: x['overlap_area'] / x['SHAPE_AREA']).head()}"
-    # )
+    # print(f"First few rows of Basin areas:\n{basin_unique.head()}")
 
     # Intersection
-    intersected_polygons = gpd.overlay(krw_wl_polygons, basin, how="intersection")
-    intersected_lines = gpd.overlay(krw_wl_lines, basin, how="intersection")
+    intersected_polygons = gpd.overlay(krw_wl_polygons, basin_unique, how="intersection")
+    intersected_lines = gpd.overlay(krw_wl_lines, basin_unique, how="intersection")
 
     print(f"Columns in intersected_polygons: {intersected_polygons.columns}")
     print(f"Columns in intersected_lines: {intersected_lines.columns}")
@@ -116,13 +109,47 @@ def compute_overlap_df(krw_wl_path, basin_path):
         logger.info("Check for overlapping basin polygons or duplicate geometries.")
 
     # Retain desired fields
-    df_polygons = intersected_polygons[["localId", "text", "CharacterString", "overlap_area", "node_id", "frac"]].copy()
-    df_polygons.columns = ["WL_Id", "WL_Name", "Waterschap", "overlap_area", "basin_id", "fractie"]  # Rename
+    df_polygons = intersected_polygons[
+        ["localId", "text", "CharacterString", "overlap_area", "node_id", "meta_categorie", "frac"]
+    ].copy()
+    df_polygons.columns = [
+        "WL_Id",
+        "WL_Name",
+        "Waterschap",
+        "overlap_area",
+        "basin_id",
+        "basin_type",
+        "fractie",
+    ]  # Rename
     df_polygons["type"] = "polygon"
-    df_lines = intersected_lines[["localId", "text", "CharacterString", "overlap_length", "node_id", "frac"]].copy()
-    df_lines.columns = ["WL_Id", "WL_Name", "Waterschap", "overlap_length", "basin_id", "fractie"]  # Rename
+    df_lines = intersected_lines[
+        ["localId", "text", "CharacterString", "overlap_length", "node_id", "meta_categorie", "frac"]
+    ].copy()
+    df_lines.columns = [
+        "WL_Id",
+        "WL_Name",
+        "Waterschap",
+        "overlap_length",
+        "basin_id",
+        "basin_type",
+        "fractie",
+    ]  # Rename
     df_lines["type"] = "line"
     df = pd.concat([df_polygons, df_lines], ignore_index=True)
+    # move "overlap_length" column to middle of dataframe, after "overlap_area" column, for better readability
+    df = df.reindex(
+        columns=[
+            "WL_Id",
+            "WL_Name",
+            "Waterschap",
+            "overlap_area",
+            "overlap_length",
+            "basin_id",
+            "basin_type",
+            "fractie",
+        ]
+    )
+
     print(f"dimension of resulting dataframe: {len(df)}")
 
     # check summed fraction
