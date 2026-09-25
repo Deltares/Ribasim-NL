@@ -51,7 +51,7 @@ basin_data = [
     ),
     basin.State(level=[0]),
 ]
-outlet_data = outlet.Static(flow_rate=[100])
+outlet_data = outlet.Static(flow_rate=[5.0])
 
 
 # HIER KOMEN ISSUES
@@ -635,7 +635,7 @@ for action in actions:
 
 
 # %% corrigeren knoop-topologie
-outlet_data = outlet.Static(flow_rate=[100])
+outlet_data = outlet.Static(flow_rate=[5.0])
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
 for row in network_validator.link_incorrect_type_connectivity().itertuples():
     model.update_node(row.from_node_id, "Outlet", data=[outlet_data])

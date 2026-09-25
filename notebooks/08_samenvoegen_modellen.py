@@ -235,4 +235,6 @@ if build_lhm:
     if lhm_model is not None:
         # Models this large benefit from specialization
         lhm_model.solver.specialize = True
+        lhm_model.solver.abstol = 1e-2
+        lhm_model.solver.reltol = 1e-4
         lhm_model.write(ribasim_toml)

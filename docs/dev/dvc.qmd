@@ -32,6 +32,19 @@ Prefer pulling only the data needed for the stage you are working on. To fetch a
 pixi run dvc pull rwzi --with-deps
 ```
 
+To fetch the cached output of the coupled LHM model without pulling its dependencies:
+
+```sh
+pixi run dvc pull data/Rijkswaterstaat/modellen/lhm_coupled/
+```
+
+The final cached outputs for (for example) Aa en Maas and Amstel, Gooi en Vecht can likewise be pulled directly:
+
+```sh
+pixi run dvc pull data/AaenMaas/modellen/AaenMaas_dynamic_model/
+pixi run dvc pull data/AmstelGooienVecht/modellen/AmstelGooienVecht_forcing/
+```
+
 Only pull all tracked data when you have enough disk space (currently ~100GB), time, and just want all data local:
 
 ```sh

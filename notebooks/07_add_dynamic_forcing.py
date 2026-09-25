@@ -189,7 +189,9 @@ for authority in authorities:
                 budgets_df.to_feather(dst_toml_file.with_name("mfms_budgets.arrow"))  # for later reference
 
             if RUN_MODEL:
-                model.run()
+                result = model.run()
+                if result.exit_code != 0:
+                    raise RuntimeError(f"Ribasim run failed for {dst_toml_file} with exit code {result.exit_code}")
                 model.update_state()
                 model.basin.state.write()
                 write_performance(model)
