@@ -1268,6 +1268,7 @@ class Model(ribasim.Model):
         # "input" is the default, but we read models with the old default ".",
         # causing it to stay there unless we change it here.
         self.input_dir = Path("input")
+        self.solver.depth_threshold = 0.2
         # Avoid large databases by writing some tables to NetCDF
         if self.basin.time.df is not None:
             self.basin.time.filepath = Path("basin_time.nc")
