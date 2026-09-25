@@ -100,7 +100,6 @@ processor = RibasimFeedbackProcessor(
 )
 
 ribasim_model = Model.read(ribasim_work_dir_model_toml)
-ribasim_model.solver.algorithm = "FBDF"
 
 # Resolve geometry-based inlaat node lookups before snapping relocates these nodes, so the
 # hard-coded coordinates still match the original node locations (used much further below).
