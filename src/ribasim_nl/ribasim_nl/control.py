@@ -16,6 +16,7 @@ from ribasim_nl import Model
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.control_layout import (
     DEFAULT_LEVEL_THRESHOLD_RANGE,
+    MAALSTOP_LEVEL_OFFSET,
     control_condition_thresholds,
     control_logic,
     flow_rate_threshold_pair,
@@ -196,6 +197,28 @@ def _target_level(
             raise ValueError(msg)
     else:
         return target_level
+
+
+def _maalstop_level(
+    model: Model, node_types: pd.Series, node_type: str, ds_node_id: int, target_level_column: str
+) -> float:
+    """Return the max_downstream_level of a state that drains without a downstream target.
+
+    Pumps stop pumping into a Basin above its target level plus MAALSTOP_LEVEL_OFFSET. Outlets are
+    limited by gravity, and a LevelBoundary cannot overflow, so these are not limited.
+    """
+    if node_type != "Pump" or node_types[ds_node_id] != "Basin":
+        return math.inf
+    ds_target_level = _target_level(
+        model=model,
+        node_types=node_types,
+        node_id=ds_node_id,
+        target_level_column=target_level_column,
+        allow_missing=True,
+    )
+    if ds_target_level is None:
+        return math.inf
+    return ds_target_level + MAALSTOP_LEVEL_OFFSET
 
 
 def _update_meta_info(model: Model, nodes_df: gpd.GeoDataFrame, supply: bool = True, drain: bool = True) -> None:
@@ -834,6 +857,10 @@ def add_controllers_to_drain_nodes(
             )
         if not isinstance(afvoer_flow_rate_source, dict) and isinstance(afvoer_max_flow_rate_source, dict):
             afvoer_flow_rate = max(afvoer_flow_rate, afvoer_max_flow_rate)
+        max_downstream_level = [
+            math.inf,
+            _maalstop_level(model, node_types, node_type, connector_node.to_node_id, target_level_column),
+        ]
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
         model.update_node(
             node_id,
@@ -841,6 +868,7 @@ def add_controllers_to_drain_nodes(
             [
                 static_table(
                     min_upstream_level=min_upstream_level,
+                    max_downstream_level=max_downstream_level,
                     flow_rate=[0, afvoer_flow_rate],
                     max_flow_rate=[0, afvoer_max_flow_rate],
                     control_state=control_state,
@@ -929,7 +957,7 @@ def add_controllers_to_supply_nodes(
             allow_missing=False,
         )
 
-        max_downstream_level = [ds_target_level, float("nan")]
+        max_downstream_level = [ds_target_level, math.inf]
 
         # get upstream target_level and define min_upstream_level;
         us_node_id = connector_node.from_node_id
@@ -941,7 +969,9 @@ def add_controllers_to_supply_nodes(
             allow_missing=True,
         )
         min_upstream_level = (
-            None if us_target_level is None else [us_target_level + us_target_level_offset_supply, us_target_level]
+            [-math.inf, -math.inf]
+            if us_target_level is None
+            else [us_target_level + us_target_level_offset_supply, us_target_level]
         )
 
         # Print so we can see what happens
@@ -1095,7 +1125,10 @@ def add_controllers_to_flow_control_nodes(
             target_level_column=target_level_column,
             allow_missing=False,
         )
-        max_downstream_level = [ds_target_level, 9999]
+        max_downstream_level = [
+            ds_target_level,
+            _maalstop_level(model, node_types, node_type, ds_node_id, target_level_column),
+        ]
 
         # get upstream target_level and define min_upstream_level;
         # None if LevelBoundary, else [us_target_level + target_level_offset_supply, us_target_level]
@@ -1334,8 +1367,12 @@ def add_controllers_and_demand_to_flushing_nodes(
             [
                 static_table(
                     min_upstream_level=min_upstream_level,
+                    max_downstream_level=[
+                        _maalstop_level(model, node_types, node_type, connector_node.to_node_id, target_level_column)
+                    ]
+                    * 2,
                     flow_rate=[0, 20],
-                    max_flow_rate=[float("nan"), original_max_flow_rate],
+                    max_flow_rate=[original_max_flow_rate, original_max_flow_rate],
                     control_state=control_state,
                 )
             ],

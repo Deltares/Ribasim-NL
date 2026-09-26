@@ -1,9 +1,9 @@
 # %%
 
+import math
 from pathlib import Path
 
 import geopandas as gpd
-import pandas as pd
 from ribasim import Node
 from ribasim.nodes import level_boundary
 from ribasim_nl.control import (
@@ -559,7 +559,7 @@ outlet_max_flow_rate_aanvoer_by_node_id.update(outlet_max_flow_rate_by_node_id)
 boundary_supply_node_ids = set(basin_1134_boundary_connector_node_ids) & set(supply_nodes)
 for static_df in [model.outlet.static.df, model.pump.static.df]:
     mask = static_df.node_id.isin(boundary_supply_node_ids)
-    static_df.loc[mask, "min_upstream_level"] = pd.NA
+    static_df.loc[mask, "min_upstream_level"] = -math.inf
     mark_level_update_protected(static_df, mask, model=model)
 
 print_node_list_diff("supply_nodes", manual_supply_nodes, supply_nodes)

@@ -27,6 +27,20 @@ def normalize_numeric(series: pd.Series) -> pd.Series:
     return pd.to_numeric(series, errors="coerce")
 
 
+def finite_levels(series: pd.Series) -> pd.Series:
+    """Convert levels to numeric values; missing values and infinite limits (no limit) become NaN."""
+    levels = normalize_numeric(series)
+    return levels.where(levels.abs().lt(math.inf))
+
+
+def finite_level(value: object) -> float:
+    """Return a level as float; missing values and infinite limits (no limit) become NaN."""
+    if is_missing(value):
+        return math.nan
+    level = as_float(value)
+    return level if math.isfinite(level) else math.nan
+
+
 def as_int(value: object) -> int:
     """Cast a table value to int."""
     return int(cast(Any, value))

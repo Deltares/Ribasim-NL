@@ -1,6 +1,7 @@
 # %%
 
 import logging
+import math
 from pathlib import Path
 
 import geopandas as gpd
@@ -11,6 +12,7 @@ from ribasim_nl.coupling_level_apply import (
     ensure_doorlaat_afvoer_max_downstream_level,
     sync_static_controller_thresholds,
 )
+from ribasim_nl.coupling_level_common import finite_levels
 from ribasim_nl.coupling_levels import run_coupling_level_check
 from ribasim_nl.settings import settings
 from shapely.geometry import LineString, Point
@@ -479,17 +481,17 @@ def fix_basin_profiles(model: Model) -> None:
     for pump_id in reset_pump_min_upstream_level:
         mask = model.pump.static.df.node_id == pump_id
         if mask.any():
-            model.pump.static.df.loc[mask, "min_upstream_level"] = pd.NA
+            model.pump.static.df.loc[mask, "min_upstream_level"] = -math.inf
 
     for outlet_id in reset_outlet_min_upstream_level:
         mask = model.outlet.static.df.node_id == outlet_id
         if mask.any():
-            model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
+            model.outlet.static.df.loc[mask, "min_upstream_level"] = -math.inf
 
     for outlet_id, min_upstream_level in minimum_outlet_min_upstream_level.items():
         mask = model.outlet.static.df.node_id == outlet_id
         if mask.any():
-            current = pd.to_numeric(model.outlet.static.df.loc[mask, "min_upstream_level"], errors="coerce")
+            current = finite_levels(model.outlet.static.df.loc[mask, "min_upstream_level"])
             lower_than_minimum = current.lt(min_upstream_level).fillna(False)
             model.outlet.static.df.loc[current.loc[lower_than_minimum].index, "min_upstream_level"] = min_upstream_level
             if lower_than_minimum.any():
@@ -557,7 +559,6 @@ def save_model_and_outputs(model: Model, all_link_table: list[dict], toml_file: 
     output_toml_file = model_path / f"{model_name}.toml"
     ensure_doorlaat_afvoer_max_downstream_level(
         model,
-        tolerance=COUPLING_LEVEL_TOLERANCE,
         apply_authorities=COUPLING_LEVEL_APPLY_AUTHORITIES,
     )
     model.write(output_toml_file)
@@ -586,7 +587,6 @@ def run_configured_coupling_level_check(toml_file: Path) -> None:
     model = Model.read(toml_file)
     if ensure_doorlaat_afvoer_max_downstream_level(
         model,
-        tolerance=COUPLING_LEVEL_TOLERANCE,
         apply_authorities=COUPLING_LEVEL_APPLY_AUTHORITIES,
     ):
         model.write(toml_file)

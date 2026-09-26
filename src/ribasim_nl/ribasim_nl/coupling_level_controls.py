@@ -13,6 +13,7 @@ from ribasim_nl.coupling_level_common import (
     as_float,
     as_int,
     classify_functions,
+    finite_levels,
     is_missing,
     is_present,
     model_level_difference_threshold,
@@ -143,7 +144,7 @@ def static_level_for_condition(
         candidates = rows[
             rows["control_state_lower"].eq("aanvoer")
             & rows["has_capacity"]
-            & pd.to_numeric(rows["max_downstream_level"], errors="coerce").notna()
+            & finite_levels(rows["max_downstream_level"]).notna()
         ]
         column = "max_downstream_level"
         basis = "protected_aanvoer_max_downstream_level" if protected_only else "static_aanvoer_max_downstream_level"
@@ -153,7 +154,7 @@ def static_level_for_condition(
         candidates = rows[
             rows["control_state_lower"].eq("afvoer")
             & rows["has_capacity"]
-            & pd.to_numeric(rows["min_upstream_level"], errors="coerce").notna()
+            & finite_levels(rows["min_upstream_level"]).notna()
         ]
         column = "min_upstream_level"
         basis = "protected_afvoer_min_upstream_level" if protected_only else "static_afvoer_min_upstream_level"
@@ -161,14 +162,14 @@ def static_level_for_condition(
         candidates = rows[
             rows["control_state_lower"].eq("aanvoer")
             & rows["has_capacity"]
-            & pd.to_numeric(rows["max_downstream_level"], errors="coerce").notna()
+            & finite_levels(rows["max_downstream_level"]).notna()
         ]
         column = "max_downstream_level"
         basis = "protected_aanvoer_max_downstream_level" if protected_only else "static_aanvoer_max_downstream_level"
     else:
         return None, None
 
-    values = pd.to_numeric(candidates[column], errors="coerce").dropna()
+    values = finite_levels(candidates[column]).dropna()
     if values.empty:
         return None, None
     return as_float(values.iloc[0]), basis
@@ -226,7 +227,7 @@ def checked_level_for_condition(
             rows["control_state_lower"].eq("aanvoer")
             & rows["has_capacity"]
             & rows["max_downstream_is_coupling_link"].fillna(False)
-            & pd.to_numeric(rows["gecheckte_max_downstream_level"], errors="coerce").notna()
+            & finite_levels(rows["gecheckte_max_downstream_level"]).notna()
         ]
         candidates = prefer_matching_listen_node(
             candidates,
@@ -242,7 +243,7 @@ def checked_level_for_condition(
             rows["control_state_lower"].eq("afvoer")
             & rows["has_capacity"]
             & rows["min_upstream_is_coupling_link"].fillna(False)
-            & pd.to_numeric(rows["gecheckte_min_upstream_level"], errors="coerce").notna()
+            & finite_levels(rows["gecheckte_min_upstream_level"]).notna()
         ]
         candidates = prefer_matching_listen_node(candidates, listen_node_id, ["upstream_node_id"])
         column = "gecheckte_min_upstream_level"
@@ -252,7 +253,7 @@ def checked_level_for_condition(
             rows["control_state_lower"].eq("aanvoer")
             & rows["has_capacity"]
             & rows["max_downstream_is_coupling_link"].fillna(False)
-            & pd.to_numeric(rows["gecheckte_max_downstream_level"], errors="coerce").notna()
+            & finite_levels(rows["gecheckte_max_downstream_level"]).notna()
         ]
         candidates = prefer_matching_listen_node(
             candidates,
@@ -264,7 +265,7 @@ def checked_level_for_condition(
     else:
         return None, None
 
-    values = pd.to_numeric(candidates[column], errors="coerce").dropna()
+    values = finite_levels(candidates[column]).dropna()
     if values.empty:
         return None, None
     return as_float(values.iloc[0]), basis

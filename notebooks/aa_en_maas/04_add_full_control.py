@@ -1,10 +1,10 @@
 # %%
 
+import math
 from datetime import datetime
 from typing import Literal
 
 import geopandas as gpd
-import pandas as pd
 from ribasim.nodes import flow_demand, outlet
 from ribasim_nl.control import (
     _offset_new_node,
@@ -1362,7 +1362,7 @@ model.pump.static.df.loc[model.pump.static.df.node_id == 226, "flow_rate"] = 0
 
 # Inlaten aan Drongelens kanaal krijgen pd.NA bij min_upstream_level
 mask = model.outlet.static.df.node_id.isin([98, 103])
-model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
+model.outlet.static.df.loc[mask, "min_upstream_level"] = -math.inf
 mark_level_update_protected(model.outlet.static.df, mask, model=model)
 
 boundary_ids = [9, 13, 39, 38, 53, 1958, 1568, 3085, 33, 32, 31, 59, 54, 44, 42, 64, 63]

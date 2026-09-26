@@ -4,6 +4,10 @@ DEFAULT_CONTROL_THRESHOLD_OFFSET = 0.02
 DEFAULT_LEVEL_THRESHOLD_RANGE = 0.05
 DEFAULT_FLOW_RATE_THRESHOLD_FRACTION = 0.1
 DEFAULT_FLOW_RATE_THRESHOLD_MARGIN = 0.001
+# Pumps stop pumping into a Basin whose level exceeds its target level by this offset (maalstop).
+# It must be well above the hysteresis band, so it only acts when a Basin cannot drain its inflow.
+MAALSTOP_LEVEL_OFFSET = 0.2
+assert MAALSTOP_LEVEL_OFFSET > 2 * DEFAULT_LEVEL_THRESHOLD_RANGE
 ControlLayout = tuple[dict[int, int], dict[int, int], set[tuple[str, str]]]
 
 SINGLE_BASIN_LOGIC = (("F", "aanvoer"), ("T", "afvoer"))

@@ -566,6 +566,25 @@ def update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_
     return ribasim_model
 
 
+def off_state_mask(static_df: pd.DataFrame) -> pd.Series:
+    """Return the rows of control states that switch their node off.
+
+    DiscreteControl switches supply and drain nodes off with a `flow_rate` of 0 in one
+    control state. A row is an off state if its `flow_rate` is 0 while another row of the
+    same node has a positive `flow_rate`.
+    """
+    flow_rate = static_df["flow_rate"].fillna(0.0)
+    assert (flow_rate >= 0.0).all(), "flow_rate must be non-negative"
+    node_flows = flow_rate.gt(0.0).groupby(static_df["node_id"]).transform("any")
+    return flow_rate.eq(0.0) & node_flows
+
+
+def set_flow_rate_to_max_flow_rate(static_df: pd.DataFrame, off: pd.Series) -> None:
+    """Set `flow_rate` to `max_flow_rate`, keeping the off states from `off_state_mask` at 0."""
+    assert off.index.equals(static_df.index), "off-state mask does not match the static table"
+    static_df["flow_rate"] = static_df["max_flow_rate"].where(~off, 0.0)
+
+
 def upload_from_to_node_function_table(from_to_node_function_table, waterschap, upload_to_cloud=True) -> None:
     """Write the scaled connector table locally and upload the CSV to GoodCloud.
 
@@ -622,6 +641,9 @@ class _OutletPumpScaler:
         # if max_flow_rate is 0.0, change to initial value
         pump_static_df = cast(pd.DataFrame, ribasim_model.pump.static.df)
         outlet_static_df = cast(pd.DataFrame, ribasim_model.outlet.static.df)
+        # control states that switch a node off must stay off while scaling the capacities
+        pump_off = off_state_mask(pump_static_df)
+        outlet_off = off_state_mask(outlet_static_df)
         pump_static_df.loc[pump_static_df.max_flow_rate == 0.0, "max_flow_rate"] = config.initial_guess_flow_rate_pump
         outlet_static_df.loc[outlet_static_df.max_flow_rate == 0.0, "max_flow_rate"] = (
             config.initial_guess_flow_rate_outlet
@@ -713,8 +735,8 @@ class _OutletPumpScaler:
             ribasim_model.level_boundary.static.df = None
 
             # if capacity has a flow rate lower than 0, place back to 0.001
-            outlet_static_df.loc[outlet_static_df.max_flow_rate < 0.001, "max_flow_rate"] = min_scaled_flow_rate
-            pump_static_df.loc[pump_static_df.max_flow_rate < 0.001, "max_flow_rate"] = min_scaled_flow_rate
+            for static_df in (ribasim_model.outlet.static.df, ribasim_model.pump.static.df):
+                static_df.loc[static_df.max_flow_rate < 0.001, "max_flow_rate"] = min_scaled_flow_rate
 
             # loop through each iteration
             for iteration in range(max_iterations):
@@ -741,14 +763,9 @@ class _OutletPumpScaler:
                         ~ribasim_model.pump.static.df["meta_known_flow_rate"], "max_flow_rate"
                     ] = initial_guess_flow_rate_pump
 
-                    # if flow rate exceeds max flow rate, set equal to max flow rate
-                    ribasim_model.outlet.static.df.loc[
-                        ribasim_model.outlet.static.df.flow_rate > ribasim_model.outlet.static.df.max_flow_rate,
-                        "flow_rate",
-                    ] = ribasim_model.outlet.static.df.max_flow_rate
-                    ribasim_model.pump.static.df.loc[
-                        ribasim_model.pump.static.df.flow_rate > ribasim_model.pump.static.df.max_flow_rate, "flow_rate"
-                    ] = ribasim_model.pump.static.df.max_flow_rate
+                    # set flow rate equal to max flow rate, so flow rates of a previous situation are not reused
+                    set_flow_rate_to_max_flow_rate(ribasim_model.outlet.static.df, outlet_off)
+                    set_flow_rate_to_max_flow_rate(ribasim_model.pump.static.df, pump_off)
 
                     # write model
                     if printing:
@@ -758,6 +775,7 @@ class _OutletPumpScaler:
                             "\n - (temporarily) changed vertical fluxes"
                             "\n - initial guessed flow rates."
                         )
+                    ribasim_model.validate_ribasim_nl()
                     ribasim_model.write(config.ribasim_model_path)
                     first_iteration = (
                         False  # avoid resetting initial water levels and initial guess flow rates in next iterations
@@ -866,10 +884,11 @@ class _OutletPumpScaler:
                 ribasim_model = update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_table)
 
                 # set flow rate equal to max flow rate
-                ribasim_model.outlet.static.df["flow_rate"] = ribasim_model.outlet.static.df["max_flow_rate"]
-                ribasim_model.pump.static.df["flow_rate"] = ribasim_model.pump.static.df["max_flow_rate"]
+                set_flow_rate_to_max_flow_rate(ribasim_model.outlet.static.df, outlet_off)
+                set_flow_rate_to_max_flow_rate(ribasim_model.pump.static.df, pump_off)
 
                 # store model
+                ribasim_model.validate_ribasim_nl()
                 ribasim_model.write(config.ribasim_model_path)
 
                 # write from_to_node_table locally (push to cloud after everything has run)
