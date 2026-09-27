@@ -4,7 +4,7 @@ from typing import Any
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from ribasim_nl.control import off_state_mask
+from ribasim_nl.control import is_off_state, off_states
 
 from ribasim_nl import CloudStorage, Model
 
@@ -149,7 +149,7 @@ class AssignMetaData:
         df_gemaal = self.get_paramfile_from_cloud(layer)
 
         # control states that switch a pump off keep their flow_rate of 0
-        pump_off = off_state_mask(self.model.pump.static.df).to_numpy()
+        pump_off = off_states(self.model.pump.static.df)
 
         # Add columns which do not exist yet
         restore_cols = self._add_unassigned_columns("pump", mapper)
@@ -198,8 +198,7 @@ class AssignMetaData:
                             if not param_val > 0:  # unknown capacity, keep the original values
                                 continue
                             if ribasim_attr == "static" and ribasim_col == "flow_rate":
-                                assert len(pump_off) == len(mrows), "pump static table changed during assignment"
-                                col_rows = mrows & ~pump_off
+                                col_rows = mrows & ~is_off_state(df_ribasim, pump_off).to_numpy()
                         df_ribasim.loc[col_rows, ribasim_col] = param_val
 
         # Restore original values for those that are still NA

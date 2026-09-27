@@ -54,6 +54,20 @@ def clamp_profile_area(table: pd.DataFrame) -> pd.DataFrame:
     return table.assign(area=table["area"].clip(lower=MIN_PROFILE_AREA))
 
 
+def drop_degenerate_profiles(table: pd.DataFrame) -> pd.DataFrame:
+    """Drop the profiles of basins whose area never exceeds the minimum profile area.
+
+    Such a basin barely stores water, so its level changes too fast for its structures and control.
+    Without the profile, the basin gets its other (flowing or storing) profile or a standard profile.
+    """
+    assert all(c in table.columns for c in ["node_id", "level", "area"])
+    max_area = table.groupby("node_id")["area"].transform("max")
+    degenerate = max_area <= MIN_PROFILE_AREA
+    if degenerate.any():
+        LOG.warning(f"Dropping degenerate profiles of basins: {sorted(table.loc[degenerate, 'node_id'].unique())}")
+    return table.loc[~degenerate]
+
+
 def standard_profiles(basin_area: pd.DataFrame) -> pd.DataFrame:
     """Create stable profiles for basins without a valid generated profile."""
     profile = basin_area[["node_id", "meta_streefpeil", "geometry"]].copy()
@@ -195,7 +209,7 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     dy: float = kwargs.get("dy", 0.0)
     # get profile data
     tables = get_tables(water_authority, cloud=cloud)
-    storing_ids, df_flowing, df_storing = single_profile_nodes(*tables)
+    storing_ids, df_flowing, df_storing = single_profile_nodes(*map(drop_degenerate_profiles, tables))
 
     if (
         ribasim_model.node.df is None

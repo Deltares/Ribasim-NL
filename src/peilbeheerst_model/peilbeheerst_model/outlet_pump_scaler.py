@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from ribasim import run_ribasim
-from ribasim_nl.control import off_state_mask
+from ribasim_nl.control import is_off_state, off_states
 
 from ribasim_nl import CloudStorage, Model
 
@@ -567,10 +567,9 @@ def update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_
     return ribasim_model
 
 
-def set_flow_rate_to_max_flow_rate(static_df: pd.DataFrame, off: pd.Series) -> None:
-    """Set `flow_rate` to `max_flow_rate`, keeping the off states from `off_state_mask` at 0."""
-    assert off.index.equals(static_df.index), "off-state mask does not match the static table"
-    static_df["flow_rate"] = static_df["max_flow_rate"].where(~off, 0.0)
+def set_flow_rate_to_max_flow_rate(static_df: pd.DataFrame, off: pd.MultiIndex) -> None:
+    """Set `flow_rate` to `max_flow_rate`, keeping the `off_states` at 0."""
+    static_df["flow_rate"] = static_df["max_flow_rate"].where(~is_off_state(static_df, off), 0.0)
 
 
 def upload_from_to_node_function_table(from_to_node_function_table, waterschap, upload_to_cloud=True) -> None:
@@ -630,8 +629,8 @@ class _OutletPumpScaler:
         pump_static_df = cast(pd.DataFrame, ribasim_model.pump.static.df)
         outlet_static_df = cast(pd.DataFrame, ribasim_model.outlet.static.df)
         # control states that switch a node off must stay off while scaling the capacities
-        pump_off = off_state_mask(pump_static_df)
-        outlet_off = off_state_mask(outlet_static_df)
+        pump_off = off_states(pump_static_df)
+        outlet_off = off_states(outlet_static_df)
         pump_static_df.loc[pump_static_df.max_flow_rate == 0.0, "max_flow_rate"] = config.initial_guess_flow_rate_pump
         outlet_static_df.loc[outlet_static_df.max_flow_rate == 0.0, "max_flow_rate"] = (
             config.initial_guess_flow_rate_outlet

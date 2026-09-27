@@ -408,7 +408,7 @@ ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 664,
 
 ribasim_model, from_to_node_table = scale_outlets_pumps(
     OutletPumpScalingConfig(
-        ribasim_model_path=ribasim_work_dir_model_toml,
+        ribasim_model_path=output_dir / "scaler" / "ribasim.toml",  # keep the profiles model unchanged
         ribasim_model=ribasim_model,
         from_to_node_function_table=from_to_node_function_table,
         waterschap=waterschap,

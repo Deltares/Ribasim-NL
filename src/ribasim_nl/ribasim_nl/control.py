@@ -76,6 +76,22 @@ def off_state_mask(static_df: pd.DataFrame) -> pd.Series:
     return flow_rate.eq(0.0) & node_flows
 
 
+def off_states(static_df: pd.DataFrame) -> pd.MultiIndex:
+    """Return the (node_id, control_state) pairs of control states that switch their node off.
+
+    Unlike the row mask of `off_state_mask`, these keys stay valid when the table is reordered or re-indexed,
+    for instance by writing the model.
+    """
+    off = static_df.loc[off_state_mask(static_df), ["node_id", "control_state"]]
+    return pd.MultiIndex.from_frame(off)
+
+
+def is_off_state(static_df: pd.DataFrame, keys: pd.MultiIndex) -> pd.Series:
+    """Return the rows of `static_df` whose (node_id, control_state) is in `keys` from `off_states`."""
+    rows = pd.MultiIndex.from_frame(static_df[["node_id", "control_state"]])
+    return pd.Series(rows.isin(keys), index=static_df.index)
+
+
 def set_flow_rate(static_df: pd.DataFrame, node_ids: list[int], flow_rate: float) -> None:
     """Set the flow_rate of nodes, except in control states that switch them off (see `off_state_mask`)."""
     mask = static_df["node_id"].isin(node_ids)
