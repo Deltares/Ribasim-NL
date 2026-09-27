@@ -19,6 +19,7 @@ from ribasim_nl.control import (
     add_function_to_peilbeheerst_node_table,
     get_node_table_with_from_to_node_ids,
     remove_duplicate_controls,
+    set_flow_rate,
     set_node_functions,
 )
 from shapely.geometry import Point
@@ -413,13 +414,12 @@ assign_metadata.add_meta_to_basins(
 )
 
 # presumably wrong conversion of flow capacity in the data
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 452, "flow_rate"] = 0.4
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"].isin([895, 1144]), "flow_rate"] = 1.17
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"].isin([895, 1144]), "flow_rate"] = 1.17
+set_flow_rate(ribasim_model.pump.static.df, [452], 0.4)
+set_flow_rate(ribasim_model.pump.static.df, [895, 1144], 1.17)
 
 # according data flow_rate of 0
 zero_flow_pumps = [1293, 677]
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"].isin(zero_flow_pumps), "flow_rate"] = 25.0
+set_flow_rate(ribasim_model.pump.static.df, zero_flow_pumps, 25.0)
 
 increase_flow_rate_pumps = [1183, 827, 1108, 300, 735, 1010, 611, 1042, 392, 424, 626, 1144, 895, 536, 1048, 1132]
 ribasim_model.pump.static.df.loc[

@@ -63,6 +63,26 @@ def mark_threshold_update_protected(condition_df: pd.DataFrame, mask: pd.Series)
     condition_df.loc[mask, THRESHOLD_UPDATE_PROTECTION_COLUMN] = True
 
 
+def off_state_mask(static_df: pd.DataFrame) -> pd.Series:
+    """Return the rows of control states that switch their node off.
+
+    DiscreteControl switches supply and drain nodes off with a `flow_rate` of 0 in one
+    control state. A row is an off state if its `flow_rate` is 0 while another row of the
+    same node has a positive `flow_rate`.
+    """
+    flow_rate = static_df["flow_rate"].fillna(0.0)
+    assert (flow_rate >= 0.0).all(), "flow_rate must be non-negative"
+    node_flows = flow_rate.gt(0.0).groupby(static_df["node_id"]).transform("any")
+    return flow_rate.eq(0.0) & node_flows
+
+
+def set_flow_rate(static_df: pd.DataFrame, node_ids: list[int], flow_rate: float) -> None:
+    """Set the flow_rate of nodes, except in control states that switch them off (see `off_state_mask`)."""
+    mask = static_df["node_id"].isin(node_ids)
+    assert mask.any(), f"None of the node IDs {node_ids} are in the static table"
+    static_df.loc[mask & ~off_state_mask(static_df), "flow_rate"] = flow_rate
+
+
 def _node_flow_rate(flow_rate: float | dict[int, float] | None, node_id: int, default: float = 20.0) -> float:
     if flow_rate is None:
         return default

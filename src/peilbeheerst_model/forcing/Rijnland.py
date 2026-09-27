@@ -18,6 +18,7 @@ from ribasim_nl.control import (
     add_function_to_peilbeheerst_node_table,
     get_node_table_with_from_to_node_ids,
     remove_duplicate_controls,
+    set_flow_rate,
     set_node_functions,
 )
 
@@ -317,7 +318,7 @@ assign_metadata.add_meta_to_basins(
 
 # according data flow_rate of 0
 zero_flow_pumps = [460, 736, 1282, 1435, 1436, 1471, 1472]
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"].isin(zero_flow_pumps), "flow_rate"] = 25.0
+set_flow_rate(ribasim_model.pump.static.df, zero_flow_pumps, 25.0)
 
 # presumably wrong conversion of flow capacity in the data
 increase_flow_rate_pumps = [354, 463, 496, 754, 781, 793, 987, 1179]

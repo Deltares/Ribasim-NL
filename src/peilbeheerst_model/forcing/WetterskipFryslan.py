@@ -18,6 +18,7 @@ from ribasim_nl.control import (
     add_function_to_peilbeheerst_node_table,
     get_node_table_with_from_to_node_ids,
     remove_duplicate_controls,
+    set_flow_rate,
     set_node_functions,
 )
 from shapely.geometry import Point
@@ -408,7 +409,7 @@ ribasim_model.pump.static.df.loc[
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 3863, "meta_known_flow_rate"] = (
     False  # unknown capacity, set temp value
 )
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 3863, "flow_rate"] = 0.1
+set_flow_rate(ribasim_model.pump.static.df, [3863], 0.1)
 
 # rescaling of outlets (and pumps)
 ribasim_model, from_to_node_function_table = scale_outlets_pumps(

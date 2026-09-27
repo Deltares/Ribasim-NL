@@ -17,6 +17,7 @@ from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
     add_function_to_peilbeheerst_node_table,
     get_node_table_with_from_to_node_ids,
+    set_flow_rate,
     set_node_functions,
 )
 from shapely.geometry import Point
@@ -421,9 +422,7 @@ ribasim_model, from_to_node_table = scale_outlets_pumps(
     )
 )
 
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 664, "flow_rate"] = (
-    8.0  # average flow rate in the winter
-)
+set_flow_rate(ribasim_model.pump.static.df, [664], 8.0)  # average flow rate in the winter
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[

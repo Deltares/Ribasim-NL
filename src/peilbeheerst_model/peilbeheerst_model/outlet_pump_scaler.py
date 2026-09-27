@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from ribasim import run_ribasim
+from ribasim_nl.control import off_state_mask
 
 from ribasim_nl import CloudStorage, Model
 
@@ -564,19 +565,6 @@ def update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_
     ribasim_model.outlet.static.df = outlet_df
 
     return ribasim_model
-
-
-def off_state_mask(static_df: pd.DataFrame) -> pd.Series:
-    """Return the rows of control states that switch their node off.
-
-    DiscreteControl switches supply and drain nodes off with a `flow_rate` of 0 in one
-    control state. A row is an off state if its `flow_rate` is 0 while another row of the
-    same node has a positive `flow_rate`.
-    """
-    flow_rate = static_df["flow_rate"].fillna(0.0)
-    assert (flow_rate >= 0.0).all(), "flow_rate must be non-negative"
-    node_flows = flow_rate.gt(0.0).groupby(static_df["node_id"]).transform("any")
-    return flow_rate.eq(0.0) & node_flows
 
 
 def set_flow_rate_to_max_flow_rate(static_df: pd.DataFrame, off: pd.Series) -> None:
