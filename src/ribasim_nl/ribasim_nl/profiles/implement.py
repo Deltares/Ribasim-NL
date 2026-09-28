@@ -11,7 +11,7 @@ from pandera.typing import pandas as pdt
 from ribasim.schemas import BasinProfileSchema
 
 from ribasim_nl import CloudStorage, Model
-from ribasim_nl.profiles import MIN_PROFILE_AREA
+from ribasim_nl.profiles import MIN_GENERATED_PROFILE_AREA, MIN_PROFILE_AREA
 
 LOG = logging.getLogger(__name__)
 
@@ -55,16 +55,18 @@ def clamp_profile_area(table: pd.DataFrame) -> pd.DataFrame:
 
 
 def drop_degenerate_profiles(table: pd.DataFrame) -> pd.DataFrame:
-    """Drop the profiles of basins whose area never exceeds the minimum profile area.
+    """Drop the profiles of basins whose area never exceeds MIN_GENERATED_PROFILE_AREA.
 
     Such a basin barely stores water, so its level changes too fast for its structures and control.
     Without the profile, the basin gets its other (flowing or storing) profile or a standard profile.
     """
     assert all(c in table.columns for c in ["node_id", "level", "area"])
     max_area = table.groupby("node_id")["area"].transform("max")
-    degenerate = max_area <= MIN_PROFILE_AREA
+    degenerate = max_area < MIN_GENERATED_PROFILE_AREA
     if degenerate.any():
-        LOG.warning(f"Dropping degenerate profiles of basins: {sorted(table.loc[degenerate, 'node_id'].unique())}")
+        LOG.warning(
+            f"Dropping degenerate profiles of basins: {sorted(map(int, table.loc[degenerate, 'node_id'].unique()))}"
+        )
     return table.loc[~degenerate]
 
 

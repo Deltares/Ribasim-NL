@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
@@ -772,7 +773,18 @@ class _OutletPumpScaler:
                 if printing:
                     print(f"Running Ribasim simulation: {iteration + 1}/{max_iterations} for situation: {situation}")
 
-                run_ribasim(toml_path=config.ribasim_model_path)
+                # A run can crash when too small capacities let basin levels run away. Ribasim writes the results up
+                # to the crash, which show the basins that need larger capacities, so only the last iteration must finish.
+                results_path.unlink(missing_ok=True)
+                try:
+                    run_ribasim(toml_path=config.ribasim_model_path)
+                except subprocess.CalledProcessError:
+                    if iteration == max_iterations - 1 or not results_path.exists():
+                        raise
+                    LOG.warning(
+                        f"Ribasim run {iteration + 1} for {situation} crashed, scaling with its partial results"
+                    )
+                    print(f"Ribasim run {iteration + 1} for {situation} crashed, scaling with its partial results")
 
                 # extract results, only select relevant columns, merge streefpeil to node_id
                 # ribasim_water_levels = pd.read_feather(results_path)
