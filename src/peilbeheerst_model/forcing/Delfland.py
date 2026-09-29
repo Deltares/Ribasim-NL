@@ -282,11 +282,8 @@ assign_metadata.add_meta_to_basins(
 # presumably wrong conversion of flow capacity in the data
 increase_flow_rate_pumps = [474, 298]
 ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df["node_id"].isin(increase_flow_rate_pumps), "flow_rate"
+    ribasim_model.pump.static.df["node_id"].isin(increase_flow_rate_pumps), ["flow_rate", "max_flow_rate"]
 ] *= 60
-
-# set the flow_rate to the max_flow_rate
-ribasim_model.pump.static.df["max_flow_rate"] = ribasim_model.pump.static.df["flow_rate"].copy()
 
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 559, "max_flow_rate"] = (
     1.5  # TODO: Guessed value, ask Delfland

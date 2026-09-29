@@ -196,6 +196,7 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
 
     Based on the profile generation, trapezoidal profiles are set to the flowing basins. In case there are storing basin
     profiles generated, a storing basin is added to the flowing basin via a ManningResistance-node.
+    If no storing profiles survive filtering, only the existing basins' profiles are updated.
 
     :param ribasim_model: Ribasim model
     :param water_authority: water authority
@@ -243,6 +244,9 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     basin_profile = df_flowing.sort_values(["node_id", "level"], ignore_index=True)[_basin_profile.columns]
     ribasim_model.basin.profile.df = typing.cast(pdt.DataFrame[BasinProfileSchema], basin_profile)
     del _basin_profile
+
+    if not storing_ids:
+        return ribasim_model
 
     # duplicate all basin-tables
     basin_node = ribasim_model.basin.node.df

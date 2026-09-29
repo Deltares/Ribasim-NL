@@ -323,11 +323,8 @@ set_flow_rate(ribasim_model.pump.static.df, zero_flow_pumps, 25.0)
 # presumably wrong conversion of flow capacity in the data
 increase_flow_rate_pumps = [354, 463, 496, 754, 781, 793, 987, 1179]
 ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df["node_id"].isin(increase_flow_rate_pumps), "flow_rate"
+    ribasim_model.pump.static.df["node_id"].isin(increase_flow_rate_pumps), ["flow_rate", "max_flow_rate"]
 ] *= 60
-
-# set the flow_rate to the max_flow_rate
-ribasim_model.pump.static.df["max_flow_rate"] = ribasim_model.pump.static.df["flow_rate"].copy()
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason

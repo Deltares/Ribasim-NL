@@ -59,6 +59,8 @@ A node is marked as not scalable when:
 - `meta_known_flow_rate` is `True` (which should be set in the outlet/pump .static table).
 
 The current `max_flow_rate` values are then added to the table so each iteration has a baseline.
+Capacity is independent of the current control-state flow: a closed state with `flow_rate = 0` must not erase a measured pump capacity.
+If any state has a known capacity, the node is protected from scaling.
 
 ### 3. Define the design situations
 
@@ -89,6 +91,11 @@ The direction is stored per iteration as one of:
 - `higher`
 - `lower`
 - `equal`
+
+If Ribasim fails but produces readable partial results, the scaler can retry.
+An exceedance in an incomplete run calls for a higher capacity; otherwise the capacity is held constant.
+Partial results never justify a lower capacity, because the run may have stopped before the allowed exceedance duration could be observed.
+The final model run must still succeed; its failure is propagated rather than treated as a calibrated result.
 
 ### 5. Update guessed flow rates
 

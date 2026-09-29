@@ -145,6 +145,11 @@ class AssignMetaData:
         max_distance: float = 100,
         factor_flowrate: float = 1.0,
     ) -> None:
+        """Assign pump metadata, keeping off-state flow zero independently of the measured capacity.
+
+        Map capacity to both ``flow_rate`` and ``max_flow_rate``: only the former
+        represents the control command and must stay zero in off states.
+        """
         # get gemaal information
         df_gemaal = self.get_paramfile_from_cloud(layer)
 

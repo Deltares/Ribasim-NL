@@ -1,7 +1,5 @@
 """Iteratively scale pump and outlet max_flow_rate values for design precipitation and evaporation events."""
 
-from __future__ import annotations
-
 import logging
 import subprocess
 from dataclasses import dataclass, field
@@ -522,7 +520,7 @@ def cap_guessed_flow_rates_at_minimum_and_maximum(
 
 
 def update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_table):
-    """Copy the latest guessed connector flow rates into the Ribasim model.
+    """Apply guessed node capacities without changing known capacities or control-state ratios.
 
     Parameters
     ----------
@@ -546,26 +544,33 @@ def update_max_flow_rates_in_ribasim_model(ribasim_model, from_to_node_function_
         flow_rate_column = new_flow_rate_columns[-1]
 
     # select only the relevant columns from from_to_node_function_table
-    flow_rate_updates = from_to_node_function_table[["node_id", flow_rate_column]]
+    scalable = from_to_node_function_table
+    if "allowed_to_scale" in scalable:
+        scalable = scalable.loc[scalable["allowed_to_scale"]]
+    flow_rate_updates = scalable[["node_id", flow_rate_column]]
     flow_rate_updates = flow_rate_updates.rename(columns={flow_rate_column: "max_flow_rate"})
     flow_rate_updates = flow_rate_updates.dropna(subset=["max_flow_rate"])
     flow_rate_updates = flow_rate_updates.drop_duplicates(subset=["node_id"], keep="last")
     flow_rate_updates = flow_rate_updates.set_index("node_id")["max_flow_rate"].astype(float)
 
-    # update the max_flow_rate in the ribasim_model for the pump and outlet nodes.
-    pump_df = ribasim_model.pump.static.df.copy()
-    pump_flow_rate_updates = pump_df["node_id"].map(flow_rate_updates).astype(float)
-    pump_update_mask = pump_flow_rate_updates.notna()
-    pump_df.loc[pump_update_mask, "max_flow_rate"] = pump_flow_rate_updates.loc[pump_update_mask]
-    ribasim_model.pump.static.df = pump_df
-
-    outlet_df = ribasim_model.outlet.static.df.copy()
-    outlet_flow_rate_updates = outlet_df["node_id"].map(flow_rate_updates).astype(float)
-    outlet_update_mask = outlet_flow_rate_updates.notna()
-    outlet_df.loc[outlet_update_mask, "max_flow_rate"] = outlet_flow_rate_updates.loc[outlet_update_mask]
-    ribasim_model.outlet.static.df = outlet_df
+    for component in (ribasim_model.pump, ribasim_model.outlet):
+        static_df = component.static.df.copy()
+        _set_unknown_node_capacities(static_df, flow_rate_updates)
+        component.static.df = static_df
 
     return ribasim_model
+
+
+def _set_unknown_node_capacities(static_df: pd.DataFrame, capacities: pd.Series) -> None:
+    """Scale unknown node capacities proportionally, preserving closed states and known nodes."""
+    node_capacity = static_df.groupby("node_id")["max_flow_rate"].transform("max")
+    known = static_df.groupby("node_id")["meta_known_flow_rate"].transform("any")
+    updates = static_df["node_id"].map(capacities)
+    mask = ~known & updates.notna()
+    # A zero limit on a node with a positive capacity is an intentional state-specific closure.
+    fraction = (static_df["max_flow_rate"] / node_capacity.where(node_capacity > 0)).fillna(1.0)
+    fraction.loc[is_off_state(static_df, off_states(static_df)) & static_df["max_flow_rate"].eq(0)] = 0.0
+    static_df.loc[mask, "max_flow_rate"] = (updates * fraction).loc[mask]
 
 
 def set_flow_rate_to_max_flow_rate(static_df: pd.DataFrame, off: pd.MultiIndex) -> None:
@@ -605,6 +610,11 @@ class _OutletPumpScaler:
     def run(self):
         """Scale connector capacities by iteratively running demand and drainage scenarios.
 
+        Known node capacities and control-state capacity ratios are retained. Failed
+        intermediate runs may recover using partial results: any observed exceedance
+        requests an increase, otherwise capacity is held. Lowering requires a successful
+        run with basin results reaching the configured end time. The final run must succeed.
+
         Returns
         -------
         tuple[Model, pd.DataFrame]
@@ -626,16 +636,12 @@ class _OutletPumpScaler:
         original_basin_time = ribasim_model.basin.time.df.copy()
         original_endtime = ribasim_model.endtime
 
-        # if max_flow_rate is 0.0, change to initial value
         pump_static_df = cast(pd.DataFrame, ribasim_model.pump.static.df)
         outlet_static_df = cast(pd.DataFrame, ribasim_model.outlet.static.df)
         # control states that switch a node off must stay off while scaling the capacities
         pump_off = off_states(pump_static_df)
         outlet_off = off_states(outlet_static_df)
-        pump_static_df.loc[pump_static_df.max_flow_rate == 0.0, "max_flow_rate"] = config.initial_guess_flow_rate_pump
-        outlet_static_df.loc[outlet_static_df.max_flow_rate == 0.0, "max_flow_rate"] = (
-            config.initial_guess_flow_rate_outlet
-        )
+        check_known_flow_rate_columns(ribasim_model)
 
         ###########################
 
@@ -663,14 +669,14 @@ class _OutletPumpScaler:
         # Set initial conditions equal to the target levels
         initial_water_level, basin_information = set_initial_water_levels(ribasim_model)
 
-        # determine two df's for the downstream + upstream connector nodes which should be used in the scaling
-        outlet_nodes = ribasim_model.outlet.static.df[["node_id", "meta_known_flow_rate"]].copy()
-        pump_nodes = ribasim_model.pump.static.df[["node_id", "meta_known_flow_rate"]].copy()
-
-        # concat the pump and outlet nodes into one dataframe, and merge with the from_to_node_function_table to add the meta_known_flow_rate information to the from_to_node_function_table
-        connector_nodes_to_scale = pd.concat([pump_nodes, outlet_nodes], ignore_index=True)
+        # Capacity and its provenance belong to the node, not to the first control-state row.
+        connector_nodes_to_scale = (
+            pd.concat([pump_static_df, outlet_static_df], ignore_index=True)
+            .groupby("node_id", as_index=False)
+            .agg(meta_known_flow_rate=("meta_known_flow_rate", "any"), max_flow_rate=("max_flow_rate", "max"))
+        )
         from_to_node_function_table = from_to_node_function_table.merge(
-            connector_nodes_to_scale, on="node_id", how="left"
+            connector_nodes_to_scale, on="node_id", how="left", validate="one_to_one"
         )
 
         # determine which nodes are allowed to be scaled
@@ -702,16 +708,6 @@ class _OutletPumpScaler:
             from_to_node_function_table.function.isin(["supply"]), "allowed_to_scale_water_drainage"
         ] = False
 
-        # add max_flow_rate of pump and outlet nodes to from_to_node_function_table
-        max_flow_rate_df = pd.concat(
-            [
-                ribasim_model.pump.static.df[["node_id", "max_flow_rate"]].drop_duplicates(subset=["node_id"]),
-                ribasim_model.outlet.static.df[["node_id", "max_flow_rate"]].drop_duplicates(subset=["node_id"]),
-            ],
-            ignore_index=True,
-        )
-        from_to_node_function_table = from_to_node_function_table.merge(max_flow_rate_df, on="node_id", how="left")
-
         for situation in situations:  # loop through drainage (afvoer) and demand (aanvoer) situation
             first_iteration = True
 
@@ -721,10 +717,6 @@ class _OutletPumpScaler:
             elif situation == "water_demand":
                 ribasim_model.level_boundary.time.df["level"] = level_boundary_waterlevel_demand_situation
             ribasim_model.level_boundary.static.df = None
-
-            # if capacity has a flow rate lower than 0, place back to 0.001
-            for static_df in (ribasim_model.outlet.static.df, ribasim_model.pump.static.df):
-                static_df.loc[static_df.max_flow_rate < 0.001, "max_flow_rate"] = min_scaled_flow_rate
 
             # loop through each iteration
             for iteration in range(max_iterations):
@@ -744,12 +736,14 @@ class _OutletPumpScaler:
                     if printing:
                         print("Replacing initial guess flow rates for outlets and pumps with unknown flow rates.")
 
-                    ribasim_model.outlet.static.df.loc[
-                        ~ribasim_model.outlet.static.df["meta_known_flow_rate"], "max_flow_rate"
-                    ] = initial_guess_flow_rate_outlet
-                    ribasim_model.pump.static.df.loc[
-                        ~ribasim_model.pump.static.df["meta_known_flow_rate"], "max_flow_rate"
-                    ] = initial_guess_flow_rate_pump
+                    for static_df, initial_guess in (
+                        (ribasim_model.outlet.static.df, initial_guess_flow_rate_outlet),
+                        (ribasim_model.pump.static.df, initial_guess_flow_rate_pump),
+                    ):
+                        node_ids = from_to_node_function_table.loc[
+                            from_to_node_function_table["allowed_to_scale"], "node_id"
+                        ]
+                        _set_unknown_node_capacities(static_df, pd.Series(initial_guess, index=node_ids))
 
                     # set flow rate equal to max flow rate, so flow rates of a previous situation are not reused
                     set_flow_rate_to_max_flow_rate(ribasim_model.outlet.static.df, outlet_off)
@@ -776,11 +770,13 @@ class _OutletPumpScaler:
                 # A run can crash when too small capacities let basin levels run away. Ribasim writes the results up
                 # to the crash, which show the basins that need larger capacities, so only the last iteration must finish.
                 results_path.unlink(missing_ok=True)
+                run_completed = True
                 try:
                     run_ribasim(toml_path=config.ribasim_model_path)
                 except subprocess.CalledProcessError:
                     if iteration == max_iterations - 1 or not results_path.exists():
                         raise
+                    run_completed = False
                     LOG.warning(
                         f"Ribasim run {iteration + 1} for {situation} crashed, scaling with its partial results"
                     )
@@ -817,13 +813,20 @@ class _OutletPumpScaler:
 
                 # determine which basins needs to be scaled higher or lower based on the exceeds_deviation_duration_iteration
                 column_name_direction = f"scale_direction_iteration_{iteration}_{situation}"
-                basin_exceedance[column_name_direction] = None
+                # Partial runs cannot establish that a capacity is sufficient. Increase it on any
+                # observed exceedance; otherwise hold it until a complete run justifies lowering it.
+                result_endtimes = ribasim_water_levels.groupby("node_id")["time"].max()
+                complete = run_completed & basin_exceedance["node_id"].map(result_endtimes).ge(ribasim_model.endtime)
+                basin_exceedance[column_name_direction] = "equal"
                 basin_exceedance.loc[
-                    basin_exceedance[column_name_iteration] > max_exceedance_days, column_name_direction
-                ] = "higher"  # if the deviation is exceeded for more than max_exceedance_days, the flow rate should be scaled higher
+                    (basin_exceedance[column_name_iteration] > max_exceedance_days)
+                    | (~complete & (basin_exceedance[column_name_iteration] > 0)),
+                    column_name_direction,
+                ] = "higher"
                 basin_exceedance.loc[
-                    basin_exceedance[column_name_iteration] <= max_exceedance_days, column_name_direction
-                ] = "lower"  # if lower, then the flow rate can be set lower
+                    complete & (basin_exceedance[column_name_iteration] <= max_exceedance_days),
+                    column_name_direction,
+                ] = "lower"
 
                 ### bridge basin --> connector nodes ###
                 # add the information to the from_to_node_function_table, based on the situation (drainage: checking downstream nodes, demand: checking upstream nodes)
