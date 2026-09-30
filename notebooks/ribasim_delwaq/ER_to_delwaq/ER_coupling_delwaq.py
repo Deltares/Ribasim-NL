@@ -98,7 +98,7 @@ basin_path = model_path / "input/database.gpkg"
 
 # %%
 # -------------------------------Settings---------------------------------------
-frac_doorgaand = 0.5  # deel ER op doorvoerende basin node
+frac_doorgaand = 0  # deel ER op doorvoerende basin node
 frac_bergend = 1 - frac_doorgaand  # deel ER op bergende basin node
 make_plots = False
 
