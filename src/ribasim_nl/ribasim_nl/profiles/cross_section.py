@@ -125,8 +125,12 @@ def assign_basin_profiles(
     # weighted average of profile dimensions
     gdf_joined["length"] = hydro_objects.geometry.loc[gdf_joined["index_ho"]].length.values
     grouped = gdf_joined.groupby("node_id")
-    width = grouped.apply(lambda row: weighted_average(row["width"], row["length"]), include_groups=False)
-    depth = grouped.apply(lambda row: weighted_average(row["depth"], row["length"]), include_groups=False)
+    width = grouped.apply(
+        lambda row: weighted_average(row["width"].to_numpy(), row["length"].to_numpy()), include_groups=False
+    )
+    depth = grouped.apply(
+        lambda row: weighted_average(row["depth"].to_numpy(), row["length"].to_numpy()), include_groups=False
+    )
     length = grouped["length"].agg("sum")
 
     # concatenate profile-data
