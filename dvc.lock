@@ -172,13 +172,13 @@ stages:
       size: 3731456
     - path: notebooks/09_koppelen_modellen.py
       hash: md5
-      md5: 80b200dbbb8171a166cec729643a00cd
-      size: 32337
+      md5: e2e1fffaddbf58e41bf1ab0d5296b300
+      size: 32469
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: ff6c12f768487825a1fa3eee6f3097b6.dir
-      size: 1293639549
+      md5: 136f123e2e5d47377982784ea617f279.dir
+      size: 1293631357
       nfiles: 4
   rwzi:
     cmd: pixi run python notebooks/create_rwzi_model.py

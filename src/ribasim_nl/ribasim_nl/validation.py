@@ -3,6 +3,8 @@
 from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 from ribasim_nl.profiles import MIN_PROFILE_AREA
 
 if TYPE_CHECKING:
@@ -12,17 +14,22 @@ if TYPE_CHECKING:
 
 
 def _basin_profile_issues(model: "Model") -> list[str]:
-    """Return issues with basin profile areas."""
+    """Return issues with basin profile levels and areas."""
     basin_profile = model.basin.profile.df
     if basin_profile is None:
         return []
 
-    invalid_profiles = basin_profile.loc[basin_profile["area"] < MIN_PROFILE_AREA]
-    if invalid_profiles.empty:
-        return []
+    issues = []
+    invalid_levels = basin_profile.loc[~np.isfinite(basin_profile["level"].astype(float))]
+    if not invalid_levels.empty:
+        node_ids = sorted(map(int, invalid_levels["node_id"].unique()))
+        issues.append(f"Basin profile levels must be finite; invalid node IDs: {node_ids}")
 
-    node_ids = sorted(map(int, invalid_profiles["node_id"].unique()))
-    return [f"Basin profile areas must be at least {MIN_PROFILE_AREA} m2; invalid node IDs: {node_ids}"]
+    invalid_areas = basin_profile.loc[basin_profile["area"] < MIN_PROFILE_AREA]
+    if not invalid_areas.empty:
+        node_ids = sorted(map(int, invalid_areas["node_id"].unique()))
+        issues.append(f"Basin profile areas must be at least {MIN_PROFILE_AREA} m2; invalid node IDs: {node_ids}")
+    return issues
 
 
 def _discrete_control_condition_issues(model: "Model") -> list[str]:

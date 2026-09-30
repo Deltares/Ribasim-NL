@@ -12,7 +12,7 @@ from ribasim_nl.coupling_level_apply import (
     ensure_doorlaat_afvoer_max_downstream_level,
     sync_static_controller_thresholds,
 )
-from ribasim_nl.coupling_level_common import finite_levels
+from ribasim_nl.coupling_level_common import finite_level, finite_levels
 from ribasim_nl.coupling_levels import run_coupling_level_check
 from ribasim_nl.settings import settings
 from shapely.geometry import LineString, Point
@@ -514,6 +514,8 @@ def fix_basin_profiles(model: Model) -> None:
             min_level = model.outlet.static.df.set_index("node_id").at[outlet, "min_upstream_level"]
             if isinstance(min_level, pd.Series):
                 min_level = min_level.iloc[0]
+            # a missing or infinite min_upstream_level means no limit
+            min_level = finite_level(min_level)
             if len(basin.level) == 0 or pd.isna(min_level):
                 continue
             if min_level < basin.level.iloc[0]:
