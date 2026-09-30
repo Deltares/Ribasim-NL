@@ -237,4 +237,5 @@ if build_lhm:
         lhm_model.solver.specialize = True
         lhm_model.solver.abstol = 1e-2
         lhm_model.solver.reltol = 1e-4
+        lhm_model.solver.min_discrete_control_interval = float("inf")
         lhm_model.write(ribasim_toml)

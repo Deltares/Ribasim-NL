@@ -737,7 +737,6 @@ if couple_lhm:
     all_link_table = process_boundary_nodes(model, network, basin_areas_df)
     fix_basin_profiles(model)
     remove_invalid_topology_nodes(model)
-    model.solver.min_discrete_control_interval = math.inf
     coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)
     run_configured_coupling_level_check(coupled_toml_file)
 
