@@ -17,6 +17,7 @@ from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
     add_function_to_peilbeheerst_node_table,
     get_node_table_with_from_to_node_ids,
+    set_flow_rate,
     set_node_functions,
 )
 
@@ -398,7 +399,7 @@ ribasim_model.pump.static.df.loc[
 if RESCALE_FLOW_CAPACITIES:
     ribasim_model, from_to_node_function_table = scale_outlets_pumps(
         OutletPumpScalingConfig(
-            ribasim_model_path=ribasim_work_dir_model_toml,
+            ribasim_model_path=output_dir / "scaler" / "ribasim.toml",  # keep the profiles model unchanged
             ribasim_model=ribasim_model,
             from_to_node_function_table=from_to_node_function_table,
             waterschap=waterschap,
@@ -412,11 +413,12 @@ else:
     print(f"No scaling of outlets/pumps: {RESCALE_FLOW_CAPACITIES=}")
 
 # increase max flow rate of some specific outlets which have high drainage rates
-ribasim_model.outlet.static.df.loc[
-    ribasim_model.outlet.static.df.node_id.isin([337, 371, 416, 474]), ("flow_rate", "max_flow_rate")
-] = 1.0
-
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id.isin([914]), ("flow_rate", "max_flow_rate")] = 1.0
+for static_df, node_ids in (
+    (ribasim_model.outlet.static.df, [337, 371, 416, 474]),
+    (ribasim_model.pump.static.df, [914]),
+):
+    set_flow_rate(static_df, node_ids, 1.0)
+    static_df.loc[static_df.node_id.isin(node_ids), "max_flow_rate"] = 1.0
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[

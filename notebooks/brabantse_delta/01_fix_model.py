@@ -48,7 +48,7 @@ basin_data = [
     ),
     basin.State(level=[0]),
 ]
-outlet_data = outlet.Static(flow_rate=[100])
+outlet_data = outlet.Static(flow_rate=[5.0])
 
 # HIER KOMEN ISSUES
 # %% https://github.com/Deltares/Ribasim-NL/issues/152#issuecomment-2427492528

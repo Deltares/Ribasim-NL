@@ -16,6 +16,7 @@ from ribasim_nl import Model
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.control_layout import (
     DEFAULT_LEVEL_THRESHOLD_RANGE,
+    MAALSTOP_LEVEL_OFFSET,
     control_condition_thresholds,
     control_logic,
     flow_rate_threshold_pair,
@@ -60,6 +61,42 @@ def mark_threshold_update_protected(condition_df: pd.DataFrame, mask: pd.Series)
     """Protect DiscreteControl condition thresholds from later syncs."""
     _normalize_protection_column(condition_df, THRESHOLD_UPDATE_PROTECTION_COLUMN)
     condition_df.loc[mask, THRESHOLD_UPDATE_PROTECTION_COLUMN] = True
+
+
+def off_state_mask(static_df: pd.DataFrame) -> pd.Series:
+    """Return the rows of control states that switch their node off.
+
+    DiscreteControl switches supply and drain nodes off with a `flow_rate` of 0 in one
+    control state. A row is an off state if its `flow_rate` is 0 while another row of the
+    same node has a positive `flow_rate`.
+    """
+    flow_rate = static_df["flow_rate"].fillna(0.0)
+    assert (flow_rate >= 0.0).all(), "flow_rate must be non-negative"
+    node_flows = flow_rate.gt(0.0).groupby(static_df["node_id"]).transform("any")
+    return flow_rate.eq(0.0) & node_flows
+
+
+def off_states(static_df: pd.DataFrame) -> pd.MultiIndex:
+    """Return the (node_id, control_state) pairs of control states that switch their node off.
+
+    Unlike the row mask of `off_state_mask`, these keys stay valid when the table is reordered or re-indexed,
+    for instance by writing the model.
+    """
+    off = static_df.loc[off_state_mask(static_df), ["node_id", "control_state"]]
+    return pd.MultiIndex.from_frame(off)
+
+
+def is_off_state(static_df: pd.DataFrame, keys: pd.MultiIndex) -> pd.Series:
+    """Return the rows of `static_df` whose (node_id, control_state) is in `keys` from `off_states`."""
+    rows = pd.MultiIndex.from_frame(static_df[["node_id", "control_state"]])
+    return pd.Series(rows.isin(keys), index=static_df.index)
+
+
+def set_flow_rate(static_df: pd.DataFrame, node_ids: list[int], flow_rate: float) -> None:
+    """Set the flow_rate of nodes, except in control states that switch them off (see `off_state_mask`)."""
+    mask = static_df["node_id"].isin(node_ids)
+    assert mask.any(), f"None of the node IDs {node_ids} are in the static table"
+    static_df.loc[mask & ~off_state_mask(static_df), "flow_rate"] = flow_rate
 
 
 def _node_flow_rate(flow_rate: float | dict[int, float] | None, node_id: int, default: float = 20.0) -> float:
@@ -196,6 +233,28 @@ def _target_level(
             raise ValueError(msg)
     else:
         return target_level
+
+
+def _maalstop_level(
+    model: Model, node_types: pd.Series, node_type: str, ds_node_id: int, target_level_column: str
+) -> float:
+    """Return the max_downstream_level of a state that drains without a downstream target.
+
+    Pumps stop pumping into a Basin above its target level plus MAALSTOP_LEVEL_OFFSET. Outlets are
+    limited by gravity, and a LevelBoundary cannot overflow, so these are not limited.
+    """
+    if node_type != "Pump" or node_types[ds_node_id] != "Basin":
+        return math.inf
+    ds_target_level = _target_level(
+        model=model,
+        node_types=node_types,
+        node_id=ds_node_id,
+        target_level_column=target_level_column,
+        allow_missing=True,
+    )
+    if ds_target_level is None:
+        return math.inf
+    return ds_target_level + MAALSTOP_LEVEL_OFFSET
 
 
 def _update_meta_info(model: Model, nodes_df: gpd.GeoDataFrame, supply: bool = True, drain: bool = True) -> None:
@@ -834,6 +893,10 @@ def add_controllers_to_drain_nodes(
             )
         if not isinstance(afvoer_flow_rate_source, dict) and isinstance(afvoer_max_flow_rate_source, dict):
             afvoer_flow_rate = max(afvoer_flow_rate, afvoer_max_flow_rate)
+        max_downstream_level = [
+            math.inf,
+            _maalstop_level(model, node_types, node_type, connector_node.to_node_id, target_level_column),
+        ]
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
         model.update_node(
             node_id,
@@ -841,6 +904,7 @@ def add_controllers_to_drain_nodes(
             [
                 static_table(
                     min_upstream_level=min_upstream_level,
+                    max_downstream_level=max_downstream_level,
                     flow_rate=[0, afvoer_flow_rate],
                     max_flow_rate=[0, afvoer_max_flow_rate],
                     control_state=control_state,
@@ -929,7 +993,7 @@ def add_controllers_to_supply_nodes(
             allow_missing=False,
         )
 
-        max_downstream_level = [ds_target_level, float("nan")]
+        max_downstream_level = [ds_target_level, math.inf]
 
         # get upstream target_level and define min_upstream_level;
         us_node_id = connector_node.from_node_id
@@ -941,7 +1005,9 @@ def add_controllers_to_supply_nodes(
             allow_missing=True,
         )
         min_upstream_level = (
-            None if us_target_level is None else [us_target_level + us_target_level_offset_supply, us_target_level]
+            [-math.inf, -math.inf]
+            if us_target_level is None
+            else [us_target_level + us_target_level_offset_supply, us_target_level]
         )
 
         # Print so we can see what happens
@@ -1095,7 +1161,10 @@ def add_controllers_to_flow_control_nodes(
             target_level_column=target_level_column,
             allow_missing=False,
         )
-        max_downstream_level = [ds_target_level, 9999]
+        max_downstream_level = [
+            ds_target_level,
+            _maalstop_level(model, node_types, node_type, ds_node_id, target_level_column),
+        ]
 
         # get upstream target_level and define min_upstream_level;
         # None if LevelBoundary, else [us_target_level + target_level_offset_supply, us_target_level]
@@ -1334,8 +1403,12 @@ def add_controllers_and_demand_to_flushing_nodes(
             [
                 static_table(
                     min_upstream_level=min_upstream_level,
+                    max_downstream_level=[
+                        _maalstop_level(model, node_types, node_type, connector_node.to_node_id, target_level_column)
+                    ]
+                    * 2,
                     flow_rate=[0, 20],
-                    max_flow_rate=[float("nan"), original_max_flow_rate],
+                    max_flow_rate=[original_max_flow_rate, original_max_flow_rate],
                     control_state=control_state,
                 )
             ],

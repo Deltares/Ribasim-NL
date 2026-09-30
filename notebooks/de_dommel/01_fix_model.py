@@ -91,7 +91,7 @@ for row in network_validator.link_incorrect_connectivity().itertuples():
 
     # add manning-node
     outlet_node_id = model.next_node_id
-    outlet_data = outlet.Static(flow_rate=[100])
+    outlet_data = outlet.Static(flow_rate=[5.0])
     model.outlet.add(
         Node(node_id=outlet_node_id, geometry=geometry, name=name, meta_object_type=meta_object_type),
         [outlet_data],
@@ -214,7 +214,7 @@ df = network_validator.link_incorrect_type_connectivity(
 )
 
 for node_id in df.from_node_id:
-    model.update_node(node_id, "Outlet", [outlet.Static(flow_rate=[100])])
+    model.update_node(node_id, "Outlet", [outlet.Static(flow_rate=[5.0])])
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/132
 model.basin.area.df.loc[model.basin.area.df.duplicated("node_id"), ["node_id"]] = -1

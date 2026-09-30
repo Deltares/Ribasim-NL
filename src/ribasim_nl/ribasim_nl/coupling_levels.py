@@ -21,6 +21,7 @@ from ribasim_nl.coupling_level_common import (
     STATIC_TABLE_BY_NODE_TYPE,
     as_int,
     classify_functions,
+    finite_level,
     is_missing,
     is_present,
     normalize_numeric,
@@ -282,6 +283,9 @@ def connector_level_record(
     min_upstream_protected_by_static = level_update_protected or node_id in SKIP_LEVEL_UPDATE_NODE_IDS
     max_downstream_protected_by_static = level_update_protected or node_id in SKIP_LEVEL_UPDATE_NODE_IDS
 
+    # infinite limits mean no limit, like missing values
+    min_upstream_level = finite_level(row.min_upstream_level)
+    max_downstream_level = finite_level(row.max_downstream_level)
     upstream_streefpeil = context.streefpeil_by_basin_id.get(upstream_id, np.nan)
     upstream_min_profile = context.min_profile_by_basin_id.get(upstream_id, np.nan)
     level_update_skipped_authority = row.meta_waterbeheerder in SKIP_LEVEL_UPDATE_AUTHORITIES
@@ -359,16 +363,16 @@ def connector_level_record(
     )
     if flow_demand_controlled:
         if not (rws_inlet_profile_update_allowed or flow_demand_direct_min_upstream_update_allowed):
-            expected_min_upstream = row.min_upstream_level
-        expected_max_downstream = row.max_downstream_level
+            expected_min_upstream = min_upstream_level
+        expected_max_downstream = max_downstream_level
     if min_upstream_protected_by_static:
-        expected_min_upstream = row.min_upstream_level
+        expected_min_upstream = min_upstream_level
     if max_downstream_protected_by_static:
-        expected_max_downstream = row.max_downstream_level
+        expected_max_downstream = max_downstream_level
     if flow_demand_direct_min_upstream_update_allowed and is_present(upstream_streefpeil):
         expected_min_upstream = upstream_streefpeil + upstream_supply_offset
-    if pd.isna(expected_min_upstream) and pd.notna(row.min_upstream_level):
-        expected_min_upstream = row.min_upstream_level
+    if pd.isna(expected_min_upstream) and pd.notna(min_upstream_level):
+        expected_min_upstream = min_upstream_level
 
     max_update_candidate = (
         active_aanvoer_capacity
@@ -384,19 +388,19 @@ def connector_level_record(
         and not flow_demand_controlled
         and pd.notna(expected_max_downstream)
         and (
-            pd.isna(row.max_downstream_level)
-            or not np.isclose(float(row.max_downstream_level), float(expected_max_downstream), atol=tolerance)
+            pd.isna(max_downstream_level)
+            or not np.isclose(float(max_downstream_level), float(expected_max_downstream), atol=tolerance)
         )
     )
     min_upstream_afwijking = (
         upstream_node_type == "Basin"
         and min_upstream_is_coupling_link
         and pd.notna(expected_min_upstream)
-        and not np.isclose(float(row.min_upstream_level), float(expected_min_upstream), atol=tolerance)
+        and not np.isclose(float(min_upstream_level), float(expected_min_upstream), atol=tolerance)
     )
     rws_inlet_profile_min_upstream_afwijking = rws_inlet_profile_update_allowed and (
-        pd.isna(row.min_upstream_level)
-        or not np.isclose(float(row.min_upstream_level), float(rws_inlet_profile_min_upstream), atol=tolerance)
+        pd.isna(min_upstream_level)
+        or not np.isclose(float(min_upstream_level), float(rws_inlet_profile_min_upstream), atol=tolerance)
     )
 
     return {

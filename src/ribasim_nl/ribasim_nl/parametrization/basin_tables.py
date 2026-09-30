@@ -3,7 +3,7 @@ from datetime import datetime
 
 import pandas as pd
 
-from ribasim_nl.coupling_level_common import as_float, as_int
+from ribasim_nl.coupling_level_common import as_float, as_int, finite_levels
 from ribasim_nl.model import Model
 from ribasim_nl.parametrization.empty_table import empty_table_df
 
@@ -176,7 +176,7 @@ def sync_min_upstream_levels_with_profile_bottoms(
             continue
 
         for node_id, required_level in node_requirements.items():
-            mask = static_df["node_id"].eq(int(node_id)) & static_df["min_upstream_level"].notna()
+            mask = static_df["node_id"].eq(int(node_id)) & finite_levels(static_df["min_upstream_level"]).notna()
             if not mask.any():
                 continue
 

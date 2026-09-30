@@ -782,6 +782,15 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
 vechterweerd_mask = model.outlet.static.df.node_id.isin([199, 2582])
 model.outlet.static.df.loc[vechterweerd_mask, ["flow_rate", "max_flow_rate"]] = 200.0
 
+# Outlet 2582 is then the same in both control states, so we remove its DiscreteControl and aanvoer state
+control_links = model.link.df[(model.link.df.link_type == "control") & (model.link.df.to_node_id == 2582)]
+assert len(control_links) == 1, "expected one DiscreteControl for Vechterweerd outlet 2582"
+model.remove_node(int(control_links.from_node_id.iloc[0]), remove_links=True)
+static_df = model.outlet.static.df
+static_df = static_df[~((static_df.node_id == 2582) & (static_df.control_state == "aanvoer"))].copy()
+static_df.loc[static_df.node_id == 2582, "control_state"] = None
+model.outlet.static.df = static_df
+
 # %%
 # Model run
 

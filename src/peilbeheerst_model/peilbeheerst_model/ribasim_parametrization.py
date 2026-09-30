@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import math
 import subprocess
 import sys
 import typing
@@ -1187,12 +1188,12 @@ def determine_min_upstream_max_downstream_levels(ribasim_model: Model, waterscha
 
 
 def set_dynamic_min_upstream_max_downstream(ribasim_model: Model) -> None:
-    """Set the upstream/downstream bounding levels to `None` if they are based on dynamic `LevelBoundary`-nodes.
+    """Set the upstream/downstream bounding levels to no limit (infinity) if they are based on dynamic `LevelBoundary`-nodes.
 
     With dynamic `LevelBoundary`-nodes, the `min_upstream_level` and `max_downstream_level` of both `Outlet`- and
     `Pump`-nodes are no longer valid, as they are static while the `LevelBoundary`-nodes are dynamic. To remove this
     constrain, the values of `min_upstream_level` and `max_downstream_level` that are based on `LevelBoundary`-nodes are
-    set to `None` to prevent incorrect flows to and from `LevelBoundary`-nodes.
+    set to no limit (infinity) to prevent incorrect flows to and from `LevelBoundary`-nodes.
 
     :param ribasim_model: ribasim model
     :type ribasim_model: Model
@@ -1202,8 +1203,8 @@ def set_dynamic_min_upstream_max_downstream(ribasim_model: Model) -> None:
     for structure in ("outlet", "pump"):
         data = getattr(ribasim_model, structure)
         df = data.static.df
-        df.loc[df["meta_from_node_id"].isin(level_boundary_node_ids), "min_upstream_level"] = None
-        df.loc[df["meta_to_node_id"].isin(level_boundary_node_ids), "max_downstream_level"] = None
+        df.loc[df["meta_from_node_id"].isin(level_boundary_node_ids), "min_upstream_level"] = -math.inf
+        df.loc[df["meta_to_node_id"].isin(level_boundary_node_ids), "max_downstream_level"] = math.inf
         setattr(ribasim_model, structure, data)
 
 
@@ -1811,8 +1812,8 @@ def add_continuous_control_node(
 
     # update connection node
     static_table = getattr(ribasim_model, connection_node.node_type.lower()).static.df
-    static_table.loc[static_table["node_id"] == connection_node.node_id, "min_upstream_level"] = np.nan
-    static_table.loc[static_table["node_id"] == connection_node.node_id, "max_downstream_level"] = np.nan
+    static_table.loc[static_table["node_id"] == connection_node.node_id, "min_upstream_level"] = -math.inf
+    static_table.loc[static_table["node_id"] == connection_node.node_id, "max_downstream_level"] = math.inf
 
     # add control link
     ribasim_model.link.add(continuous_control_node, connection_node)

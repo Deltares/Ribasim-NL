@@ -47,7 +47,7 @@ basin_data = [
     ),
     basin.State(level=[0]),
 ]
-outlet_data = outlet.Static(flow_rate=[100])
+outlet_data = outlet.Static(flow_rate=[5.0])
 
 tabulated_rating_curve_data = tabulated_rating_curve.Static(level=[0.0, 5], flow_rate=[0, 0.1])
 

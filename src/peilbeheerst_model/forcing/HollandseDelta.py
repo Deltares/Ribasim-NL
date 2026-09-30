@@ -443,7 +443,7 @@ ribasim_model.pump.static.df["meta_known_flow_rate"] = False
 
 ribasim_model, from_to_node_table = scale_outlets_pumps(
     OutletPumpScalingConfig(
-        ribasim_model_path=ribasim_work_dir_model_toml,
+        ribasim_model_path=output_dir / "scaler" / "ribasim.toml",  # keep the profiles model unchanged
         ribasim_model=ribasim_model,
         from_to_node_function_table=from_to_node_function_table,
         waterschap=waterschap,
@@ -456,17 +456,6 @@ ribasim_model, from_to_node_table = scale_outlets_pumps(
 )
 
 ribasim_model.pump.static.df.max_flow_rate *= 1.25  # safety factor
-
-# TODO: find out why the flow rate is 0 at WSHD but not at other water boards. Temp fix for validation session.
-ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df["flow_rate"] == 0,
-    "flow_rate",
-] = ribasim_model.pump.static.df["max_flow_rate"]
-
-ribasim_model.outlet.static.df.loc[
-    ribasim_model.outlet.static.df["flow_rate"] == 0,
-    "flow_rate",
-] = ribasim_model.outlet.static.df["max_flow_rate"]
 
 # check if meta_categorie in the basin.node.df is completely filled
 missing_meta_categorie_node_ids = ribasim_model.basin.node.df.loc[

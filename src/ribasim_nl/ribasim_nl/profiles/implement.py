@@ -11,7 +11,7 @@ from pandera.typing import pandas as pdt
 from ribasim.schemas import BasinProfileSchema
 
 from ribasim_nl import CloudStorage, Model
-from ribasim_nl.profiles import MIN_PROFILE_AREA
+from ribasim_nl.profiles import MIN_GENERATED_PROFILE_AREA, MIN_PROFILE_AREA
 
 LOG = logging.getLogger(__name__)
 
@@ -52,6 +52,22 @@ def clamp_profile_area(table: pd.DataFrame) -> pd.DataFrame:
     """Set all profile areas to at least the solver-safe minimum."""
     assert all(c in table.columns for c in ["node_id", "level", "area"])
     return table.assign(area=table["area"].clip(lower=MIN_PROFILE_AREA))
+
+
+def drop_degenerate_profiles(table: pd.DataFrame) -> pd.DataFrame:
+    """Drop the profiles of basins whose area never exceeds MIN_GENERATED_PROFILE_AREA.
+
+    Such a basin barely stores water, so its level changes too fast for its structures and control.
+    Without the profile, the basin gets its other (flowing or storing) profile or a standard profile.
+    """
+    assert all(c in table.columns for c in ["node_id", "level", "area"])
+    max_area = table.groupby("node_id")["area"].transform("max")
+    degenerate = max_area < MIN_GENERATED_PROFILE_AREA
+    if degenerate.any():
+        LOG.warning(
+            f"Dropping degenerate profiles of basins: {sorted(map(int, table.loc[degenerate, 'node_id'].unique()))}"
+        )
+    return table.loc[~degenerate]
 
 
 def standard_profiles(basin_area: pd.DataFrame) -> pd.DataFrame:
@@ -180,6 +196,7 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
 
     Based on the profile generation, trapezoidal profiles are set to the flowing basins. In case there are storing basin
     profiles generated, a storing basin is added to the flowing basin via a ManningResistance-node.
+    If no storing profiles survive filtering, only the existing basins' profiles are updated.
 
     :param ribasim_model: Ribasim model
     :param water_authority: water authority
@@ -195,7 +212,7 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     dy: float = kwargs.get("dy", 0.0)
     # get profile data
     tables = get_tables(water_authority, cloud=cloud)
-    storing_ids, df_flowing, df_storing = single_profile_nodes(*tables)
+    storing_ids, df_flowing, df_storing = single_profile_nodes(*map(drop_degenerate_profiles, tables))
 
     if (
         ribasim_model.node.df is None
@@ -227,6 +244,9 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     basin_profile = df_flowing.sort_values(["node_id", "level"], ignore_index=True)[_basin_profile.columns]
     ribasim_model.basin.profile.df = typing.cast(pdt.DataFrame[BasinProfileSchema], basin_profile)
     del _basin_profile
+
+    if not storing_ids:
+        return ribasim_model
 
     # duplicate all basin-tables
     basin_node = ribasim_model.basin.node.df

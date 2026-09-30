@@ -134,7 +134,7 @@ if DYNAMIC_CONDITIONS:
     )
     ribasim_model = forcing.add()
     offline_budgets.compute_budgets(ribasim_model)
-    assign_validation_path = work_dir / "results" / "assign_validation.png"
+    assign_validation_path = output_dir / "results" / "assign_validation.png"
     assign_validation_path.parent.mkdir(parents=True, exist_ok=True)
     offline_budgets.plot_assign_validation(ribasim_model, path=assign_validation_path)
 
@@ -282,11 +282,8 @@ assign_metadata.add_meta_to_basins(
 # presumably wrong conversion of flow capacity in the data
 increase_flow_rate_pumps = [474, 298]
 ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df["node_id"].isin(increase_flow_rate_pumps), "flow_rate"
+    ribasim_model.pump.static.df["node_id"].isin(increase_flow_rate_pumps), ["flow_rate", "max_flow_rate"]
 ] *= 60
-
-# set the flow_rate to the max_flow_rate
-ribasim_model.pump.static.df["max_flow_rate"] = ribasim_model.pump.static.df["flow_rate"].copy()
 
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 559, "max_flow_rate"] = (
     1.5  # TODO: Guessed value, ask Delfland
@@ -364,7 +361,7 @@ ribasim_model.pump.static.df.loc[
 # If RESCALE_FLOW_CAPACITIES: scale max_flow_rates of the connector nodes which have no predefined max_flow_rates. If not, load the from_to_node_function_table with the scaled max flow rates from GoodCloud.
 ribasim_model, from_to_node_function_table = scale_outlets_pumps(
     OutletPumpScalingConfig(
-        ribasim_model_path=ribasim_work_dir_model_toml,
+        ribasim_model_path=output_dir / "scaler" / "ribasim.toml",  # keep the profiles model unchanged
         ribasim_model=ribasim_model,
         from_to_node_function_table=from_to_node_function_table,
         waterschap=waterschap,

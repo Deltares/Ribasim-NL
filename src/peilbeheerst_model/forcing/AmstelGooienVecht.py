@@ -17,6 +17,7 @@ from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
     add_function_to_peilbeheerst_node_table,
     get_node_table_with_from_to_node_ids,
+    set_flow_rate,
     set_node_functions,
 )
 from shapely.geometry import Point
@@ -372,9 +373,7 @@ increase_flow_rate_pumps = [412, 146]
 # presumably wrong conversion of flow capacity in the data
 for pump_id in increase_flow_rate_pumps:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_id, "flow_rate"] *= 60
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 475, "flow_rate"] = (
-    0.60  # increase flow_rate of specific pump
-)
+set_flow_rate(ribasim_model.pump.static.df, [475], 0.60)  # increase flow_rate of specific pump
 
 # lower the difference in waterlevel for each manning node
 ribasim_model.manning_resistance.static.df["length"] = 100.0
@@ -434,7 +433,7 @@ ribasim_model.pump.static.df.loc[
 # If RESCALE_FLOW_CAPACITIES: scale max_flow_rates of the connector nodes which have no predefined max_flow_rates. If not, load the from_to_node_function_table with the scaled max flow rates from GoodCloud.
 ribasim_model, from_to_node_function_table = scale_outlets_pumps(
     OutletPumpScalingConfig(
-        ribasim_model_path=ribasim_work_dir_model_toml,
+        ribasim_model_path=output_dir / "scaler" / "ribasim.toml",  # keep the profiles model unchanged
         ribasim_model=ribasim_model,
         from_to_node_function_table=from_to_node_function_table,
         waterschap=waterschap,

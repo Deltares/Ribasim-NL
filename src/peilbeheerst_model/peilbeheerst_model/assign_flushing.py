@@ -1,3 +1,4 @@
+import math
 from pathlib import Path
 from typing import Any
 
@@ -224,7 +225,7 @@ class Flushing:
 
                 # Release min_upstream_level
                 if self.create_nodes and target_type == "Pump":
-                    subpart.static.df.loc[subpart.static.df.node_id == target_nid, "min_upstream_level"] = pd.NA
+                    subpart.static.df.loc[subpart.static.df.node_id == target_nid, "min_upstream_level"] = -math.inf
 
         df_demand_df = pd.DataFrame(df_demand)
 

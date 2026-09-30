@@ -374,9 +374,6 @@ assign_metadata.add_meta_to_basins(
 # only retain node_id's which are present in the .node table
 ribasim_param.clean_tables(ribasim_model, waterschap)
 
-# set the max_flow_rate to the flow_rate
-ribasim_model.pump.static.df["max_flow_rate"] = ribasim_model.pump.static.df["flow_rate"].copy()
-
 # Manning resistance
 # there is a MR without geometry and without links for some reason
 ribasim_model.manning_resistance.node.df.dropna(subset="geometry", inplace=True)
@@ -441,7 +438,7 @@ ribasim_model.outlet.static.df.loc[
 if RESCALE_FLOW_CAPACITIES:
     ribasim_model, from_to_node_function_table = scale_outlets_pumps(
         OutletPumpScalingConfig(
-            ribasim_model_path=ribasim_work_dir_model_toml,
+            ribasim_model_path=output_dir / "scaler" / "ribasim.toml",  # keep the profiles model unchanged
             ribasim_model=ribasim_model,
             from_to_node_function_table=from_to_node_function_table,
             waterschap=waterschap,

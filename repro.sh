@@ -33,6 +33,7 @@ submit() {
   local name=$1 dep=$2 time=$3; shift 3
   sbatch --parsable --dependency="${dep}" --begin="${BEGIN:-now}" \
     --job-name="${name}" --partition=${PARTITION} --time="${time}" \
+    --output="slurm-%j-%x.out" \
     --wrap="${PIXI}; srun bash -c $(printf '%q' "$*")"
 }
 

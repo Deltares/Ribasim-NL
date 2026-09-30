@@ -34,7 +34,7 @@ level_data = level_boundary.Static(level=[0])
 
 class default_tables:
     basin: ClassVar = [
-        basin.Profile(level=[0.0, 1.0], area=[0.01, 1000.0]),
+        basin.Profile(level=[0.0, 1.0], area=[100.0, 1000.0]),
         basin.Static(
             drainage=[0.0],
             potential_evaporation=[0.001 / 86400],
@@ -43,7 +43,7 @@ class default_tables:
         ),
         basin.State(level=[0]),
     ]
-    outlet: ClassVar = [outlet.Static(flow_rate=[100])]
+    outlet: ClassVar = [outlet.Static(flow_rate=[5.0])]
     pump: ClassVar = [pump.Static(flow_rate=[1])]
     manning_resistance: ClassVar = [
         manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
@@ -1268,8 +1268,6 @@ class Model(ribasim.Model):
         # "input" is the default, but we read models with the old default ".",
         # causing it to stay there unless we change it here.
         self.input_dir = Path("input")
-        # self.solver.abstol = 1e-6
-        # self.solver.reltol = 1e-6
         # Avoid large databases by writing some tables to NetCDF
         if self.basin.time.df is not None:
             self.basin.time.filepath = Path("basin_time.nc")
