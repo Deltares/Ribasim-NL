@@ -42,7 +42,7 @@ ul.task-list li input[type="checkbox"] {
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-1a244954d5b0f38d497e8f737258600d.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-c4c5be523477798eee25f778810fffa4.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -285,7 +285,7 @@ ul.task-list li input[type="checkbox"] {
 <li>it is present in <code>node_id_exclusion_list</code>, or</li>
 <li><code>meta_known_flow_rate</code> is <code>True</code> (which should be set in the outlet/pump .static table).</li>
 </ul>
-<p>The current <code>max_flow_rate</code> values are then added to the table so each iteration has a baseline.</p>
+<p>The current <code>max_flow_rate</code> values are then added to the table so each iteration has a baseline. Capacity is independent of the current control-state flow: a closed state with <code>flow_rate = 0</code> must not erase a measured pump capacity. If any state has a known capacity, the node is protected from scaling.</p>
 </section>
 <section id="define-the-design-situations" class="level3">
 <h3 class="anchored" data-anchor-id="define-the-design-situations">3. Define the design situations</h3>
@@ -318,6 +318,7 @@ ul.task-list li input[type="checkbox"] {
 <li><code>lower</code></li>
 <li><code>equal</code></li>
 </ul>
+<p>If Ribasim fails but produces readable partial results, the scaler can retry. An exceedance in an incomplete run calls for a higher capacity; otherwise the capacity is held constant. Partial results never justify a lower capacity, because the run may have stopped before the allowed exceedance duration could be observed. The final model run must still succeed; its failure is propagated rather than treated as a calibrated result.</p>
 </section>
 <section id="update-guessed-flow-rates" class="level3">
 <h3 class="anchored" data-anchor-id="update-guessed-flow-rates">5. Update guessed flow rates</h3>

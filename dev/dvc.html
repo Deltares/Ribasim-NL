@@ -77,7 +77,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-1a244954d5b0f38d497e8f737258600d.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-c4c5be523477798eee25f778810fffa4.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -277,8 +277,13 @@ Note
 <h2 class="anchored" data-anchor-id="pull-data">Pull data</h2>
 <p>Prefer pulling only the data needed for the stage you are working on. To fetch a stage and its dependencies without reproducing it, use <a href="https://doc.dvc.org/command-reference/pull"><code>dvc pull</code></a>:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull rwzi <span class="at">--with-deps</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To fetch the cached output of the coupled LHM model without pulling its dependencies:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull data/Rijkswaterstaat/modellen/lhm_coupled/</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The final cached outputs for (for example) Aa en Maas and Amstel, Gooi en Vecht can likewise be pulled directly:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull data/AaenMaas/modellen/AaenMaas_dynamic_model/</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull data/AmstelGooienVecht/modellen/AmstelGooienVecht_forcing/</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Only pull all tracked data when you have enough disk space (currently ~100GB), time, and just want all data local:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>If you have local changes that you want to overwrite, add <code>--force</code>.</p>
 </section>
 <section id="remotes" class="level2">
@@ -1115,7 +1120,7 @@ document.addEventListener("DOMContentLoaded", () => {
 <section id="reproduce-stages" class="level2">
 <h2 class="anchored" data-anchor-id="reproduce-stages">Reproduce stages</h2>
 <p>During development, reproduce only the stage you are working on. The <code>--pull</code> option asks DVC to fetch missing dependencies before running the stage with <a href="https://doc.dvc.org/command-reference/repro"><code>dvc repro</code></a>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc repro <span class="at">--pull</span> rwzi</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc repro <span class="at">--pull</span> rwzi</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Without <code>--pull</code>, <code>dvc repro</code> only uses data already present in the workspace or local DVC cache. Other useful options are <a href="https://doc.dvc.org/command-reference/repro#-f"><code>--force</code></a> to run a stage even when DVC considers it unchanged and <a href="https://doc.dvc.org/command-reference/repro#-s"><code>--single-item</code></a> to run only the named stage without reproducing its upstream dependencies.</p>
 <div class="callout callout-style-default callout-warning callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -1134,7 +1139,7 @@ Warning
 <section id="pushing-changes" class="level2">
 <h2 class="anchored" data-anchor-id="pushing-changes">Pushing changes</h2>
 <p>After producing new outputs (running pipeline stages or adding new data), push to the remote:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc push</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc push</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Do this before pushing the updated <code>dvc.lock</code> file to Git, so the data hashes referenced therein are available to everyone.</p>
 <p>Most MinIO access keys handed out are read-only. Reach out if you need help uploading data. In general we update all results after a full cluster run.</p>
 
