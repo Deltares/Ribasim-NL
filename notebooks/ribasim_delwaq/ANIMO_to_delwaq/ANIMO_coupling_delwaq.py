@@ -809,27 +809,39 @@ ds_dry_weight_cum_loads_hru_kg = xr.concat(ds_dry_weight_cum_loads_hru_kg, dim="
 df_dry_weight_cum_loads_hru_kg = ds_dry_weight_cum_loads_hru_kg.to_dataframe().reset_index()
 df_dry_weight_cum_loads_hru_kg[species_list] = df_dry_weight_cum_loads_hru_kg[species_list].clip(lower=0)
 
-# ------------------------------------------------------------------
-# Write parquet files
-# ------------------------------------------------------------------
-output_parquet_dir = ANIMO_OUTPUT_DIR
+# ------------------------------------------------------------------------------
+# Convert ANIMO loads to Ribasim loads format (g/s)
+# ------------------------------------------------------------------------------
 
-df_dry_weight_loads_per_basin_kg_day.to_parquet(
-    output_parquet_dir / "dry_weight_loads_per_basin_kg_day.parquet",
+loads_df = df_dry_weight_loads_per_basin_kg_day.copy()
+
+loads_df.rename(columns={"basin_id": "node_id"}, inplace=True)
+loads_df["node_id"] = loads_df["node_id"].astype(int)
+
+loads_df["NO3"] = loads_df["cNO3N"]
+loads_df["NH4"] = loads_df["cNH4N"]
+loads_df["OON"] = loads_df["cNorg"]
+loads_df["PO4"] = loads_df["cPort"]
+loads_df["AAP"] = 0.0
+loads_df["OOP"] = loads_df["cPorg"]
+
+loads_df = loads_df.melt(
+    id_vars=["node_id", "time"],
+    value_vars=["NO3", "NH4", "OON", "PO4", "AAP", "OOP"],
+    var_name="substance",
+    value_name="load",
+)
+
+# kg/day -> g/s
+loads_df["load"] = loads_df["load"] * 1000 / 86400
+
+loads_df.to_parquet(
+    ANIMO_OUTPUT_DIR / "ANIMO_loads_g_s_df.parquet",
     index=False,
 )
 
-df_dry_weight_cum_loads_delwaq_kg.to_parquet(
-    output_parquet_dir / "dry_weight_cumulative_loads_delwaq_kg.parquet",
-    index=False,
-)
+print("Output parquet file written.")
 
-df_dry_weight_cum_loads_hru_kg.to_parquet(
-    output_parquet_dir / "dry_weight_cumulative_loads_hru_kg.parquet",
-    index=False,
-)
-
-print("Parquet files written.")
 # %%
 # For checking purpose, create:
 
