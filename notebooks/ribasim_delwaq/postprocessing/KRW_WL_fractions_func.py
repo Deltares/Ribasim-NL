@@ -54,7 +54,7 @@ def compute_overlap_df(krw_wl_path, basin_path):
     nodes = gpd.read_file(basin_path, layer="Node", fid_as_index=True)
     nodes.index.rename("node_id", inplace=True)
     nodes = nodes.reset_index()
-    basin = basin.merge(nodes[["node_id", "meta_categorie"]], on="node_id", how="left")
+    basin = basin.merge(nodes[["node_id", "meta_categorie", "meta_waterbeheerder"]], on="node_id", how="left")
 
     # Filter invalid geometries
     krw_wl_polygons = krw_wl_polygons[krw_wl_polygons.is_valid]
@@ -62,7 +62,10 @@ def compute_overlap_df(krw_wl_path, basin_path):
     basin = basin[basin.is_valid]
     # select basins with meta_categorie "doorgaand" or "hoofdwater"
     # basin_unique = basin
-    basin_unique = basin[basin["meta_categorie"].isin(["doorgaand", "hoofdwater"])]
+    basin_unique = basin[
+        basin["meta_categorie"].isin(["doorgaand", "hoofdwater"])
+        | basin["meta_waterbeheerder"].isin(["Rijkswaterstaat"])
+    ]
 
     # Ensure same CRS
     if krw_wl_polygons.crs != basin.crs:
