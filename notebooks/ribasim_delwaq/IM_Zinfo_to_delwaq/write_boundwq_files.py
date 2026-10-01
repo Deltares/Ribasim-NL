@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import Model
 
 logger = logging.getLogger(__name__)
 
@@ -23,25 +23,29 @@ def setup_logging():
 
 setup_logging()
 
-# %% Define folder locations and synchronize with the Good Cloud
-cloud = CloudStorage()
-upload_results = False
-logger.info("Synchronizing with file on the Good Cloud")
-delwaq_folder = cloud.joinpath("Basisgegevens/Delwaq")
-IM_metingen_excel_path = cloud.joinpath(delwaq_folder, "verwerkt/data/combined_IM_Metingen_2016_2022.xlsx")
-meetlocaties_IM_path = cloud.joinpath(delwaq_folder, "verwerkt/data/IM_ribasim_mapping_v1.geojson")
-zinfo_file_path = cloud.joinpath(delwaq_folder, "aangeleverd/Zinfo/zinfo_20160101_20231231_waterkwaliteit.csv")
-boundwq_path = cloud.joinpath(delwaq_folder, "verwerkt/delwaq_input")
-figures_path = cloud.joinpath(delwaq_folder, "verwerkt/figures")
-cloud.synchronize(
-    filepaths=[
-        IM_metingen_excel_path,
-        meetlocaties_IM_path,
-        zinfo_file_path,
-        boundwq_path,
-        figures_path,
-    ]
-)
+# %% Set directories
+ROOT = Path(__file__).resolve().parents[3]
+
+DELWAQ_DATA_DIR = ROOT / "data" / "Basisgegevens" / "Delwaq"
+
+IM_DATA_DIR = DELWAQ_DATA_DIR / "IM"
+IM_INPUT_DIR = IM_DATA_DIR / "aangeleverd"
+# IM_INTERIM_DIR = IM_DATA_DIR / "interim" # currently not used
+IM_FIGURES_DIR = IM_DATA_DIR / "figures"  # replaces figures_path for IM derived boundaries
+IM_OUTPUT_DIR = IM_DATA_DIR / "output"  # replaces boundwq_path for IM derived boundaries
+
+ZINFO_DATA_DIR = DELWAQ_DATA_DIR / "Zinfo"
+ZINFO_INPUT_DIR = ZINFO_DATA_DIR / "aangeleverd"
+# ZINFO_INTERIM_DIR = ZINFO_DATA_DIR / "interim" # currently not used
+ZINFO_FIGURES_DIR = ZINFO_DATA_DIR / "figures"  # replaces figures_path for Zinfo derived boundaries
+ZINFO_OUTPUT_DIR = ZINFO_DATA_DIR / "output"  # replaces boundwq_path for IM derived boundaries
+
+# %% define file paths
+
+IM_metingen_excel_path = IM_INPUT_DIR / "combined_IM_Metingen_2016_2022.xlsx"
+meetlocaties_IM_path = IM_INPUT_DIR / "IM_ribasim_mapping_v1.geojson"
+
+zinfo_file_path = ZINFO_INPUT_DIR / "zinfo_20160101_20231231_waterkwaliteit.csv"
 
 
 # %% Hard coded parameter settings
@@ -105,12 +109,9 @@ def load_model_from_spec(model_spec):
     )
 
     # Build full model path
-    model_path = cloud.joinpath(
-        model_spec["authority"],
-        "modellen",
-        model_spec["model"] + "_" + model_spec["model_version"],
+    model_path = (
+        ROOT / "data" / model_spec["authority"] / "modellen" / (model_spec["model"] + "_" + model_spec["model_version"])
     )
-    cloud.synchronize([model_path])
 
     tomls = list(model_path.glob("*.toml"))
     if not tomls:
@@ -135,7 +136,7 @@ def load_model_from_spec(model_spec):
 # hardcoded model paths
 model_name = "lhm_coupled_full"
 toml_name = "lhm_coupled.toml"
-model_path = Path("../../data/Rijkswaterstaat/modellen") / model_name
+model_path = ROOT / "data" / "Rijkswaterstaat" / "modellen" / model_name
 toml_path = model_path / toml_name
 assert toml_path.is_file()
 logger.info(f"reading model from hard-coded path: {toml_path}")
@@ -603,11 +604,14 @@ else:
     dict_delwaq_input_Zinfo = dict_delwaq_input_Zinfo_v0
 
 # %% Sla de geinterpoleerde dataset op voor check in het model
-with pd.ExcelWriter(cloud.joinpath(boundwq_path, "delwaq_input_IM.xlsx")) as writer:
+IM_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+ZINFO_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+with pd.ExcelWriter(IM_OUTPUT_DIR / "delwaq_input_IM.xlsx") as writer:
     for name, df in dict_delwaq_input_IM.items():
         df.to_excel(writer, sheet_name=name, index=False)
 
-with pd.ExcelWriter(cloud.joinpath(boundwq_path, "delwaq_input_Zinfo.xlsx")) as writer:
+with pd.ExcelWriter(ZINFO_OUTPUT_DIR / "delwaq_input_Zinfo.xlsx") as writer:
     for name, df in dict_delwaq_input_Zinfo.items():
         df.to_excel(writer, sheet_name=name, index=False)
 
@@ -677,13 +681,9 @@ df_long_delwaq_input_Zinfo = df_long_delwaq_input_Zinfo[["node_id", "time", "sub
 )
 
 # %% write parquet files
-# hardcoded path of delwaq data:
-boundwq_path = Path(__file__).parent / "output"
-boundwq_path.mkdir(parents=True, exist_ok=True)
+df_long_delwaq_input_IM.to_parquet(IM_OUTPUT_DIR / "IM_boundaries_mg_L_df.parquet")
 
-df_long_delwaq_input_IM.to_parquet(boundwq_path / "IM_boundaries_mg_L_df.parquet")
-
-df_long_delwaq_input_Zinfo.to_parquet(boundwq_path / "Zinfo_boundaries_mg_L_df.parquet")
+df_long_delwaq_input_Zinfo.to_parquet(ZINFO_OUTPUT_DIR / "Zinfo_boundaries_mg_L_df.parquet")
 # %% Keuze voor parameter methode IM metingen
 # The rest of the code consists of analyzing how often certain methods are chosen to determine a parameter.
 
@@ -782,11 +782,10 @@ if make_plots:
         )
 
         file_name = "gecombineerde_plot_percentages.png"
-        file_path = cloud.joinpath(figures_path, file_name)
+        IM_FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+        file_path = IM_FIGURES_DIR / file_name
 
         plt.savefig(file_path, dpi=500, bbox_inches="tight")
-        if upload_results:
-            cloud.upload_file(file_path)
         plt.show()
 
 
@@ -878,11 +877,10 @@ if make_plots:
                 y=1.02,
             )  # Add parameter key as a group title
             file_name = f"procentuele_verdeling_gebruikte_methode_{parameter_key}.png"
-            file_path = cloud.joinpath(figures_path, file_name)
+            ZINFO_FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+            file_path = ZINFO_FIGURES_DIR / file_name
 
             plt.savefig(file_path, dpi=500, bbox_inches="tight")
-            if upload_results:
-                cloud.upload_file(file_path)
             plt.show()
 
 
@@ -1006,11 +1004,10 @@ if make_plots:
     # Adjust layout to make sure labels and titles fit
     plt.tight_layout()
     file_name = "percentage_locaties_eerste_methode.png"
-    file_path = cloud.joinpath(figures_path, file_name)
+    IM_FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    file_path = IM_FIGURES_DIR / file_name
 
     plt.savefig(file_path, dpi=500, bbox_inches="tight")
-    if upload_results:
-        cloud.upload_file(file_path)
     plt.show()
 
 # %%
