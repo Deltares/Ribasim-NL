@@ -30,7 +30,6 @@ warnings.filterwarnings(
 KWK_INVERSE_FLOW_DIRECTION = ["750028686", "44D-002-03", "43C-002-03"]
 VERDEELSLEUTELS = ["Lobith", "Monsin"]
 RVW_IJSSELMEER = ["KOBU", "OEBU"]
-AS_PUMP = ["Gemaal Ternaaien4"]
 
 # %% functies
 boundary_node_ids = []
@@ -438,26 +437,21 @@ for verdeelsleutel in VERDEELSLEUTELS:
                 meta_code_waterbeheerder=code_waterbeheerder,
             )
 
-            if name in AS_PUMP:
-                print(f"{name} needs continous control to work!")
-                model.pump.add(
-                    node,
-                    [pump.Static(flow_rate=[0])],
-                )
-                node = model.pump[node_id]
-            else:
-                qh = pd.Series(qhq_df[waterlichaam].to_list(), index=min_upstream_level)
-                qh = qh[~qh.duplicated()]
-                model.tabulated_rating_curve.add(
-                    node,
-                    [
-                        tabulated_rating_curve.Static(
-                            flow_rate=qh.to_numpy(),
-                            level=qh.index.to_numpy(),
-                        )
-                    ],
-                )
-                node = model.tabulated_rating_curve[node_id]
+            qh = pd.Series(qhq_df[waterlichaam].to_list(), index=min_upstream_level)
+            assert qh.index.is_monotonic_increasing and qh.index.is_unique, f"levels of {name} not increasing"
+            # Alleen tussenliggende records van een constant debiet weglaten; begin en eind blijven staan zodat de curve
+            # tot het hoogste peil constant blijft: https://github.com/Deltares/Ribasim-NL/issues/679
+            qh = qh[(qh != qh.shift()) | (qh != qh.shift(-1))]
+            model.tabulated_rating_curve.add(
+                node,
+                [
+                    tabulated_rating_curve.Static(
+                        flow_rate=qh.to_numpy(),
+                        level=qh.index.to_numpy(),
+                    )
+                ],
+            )
+            node = model.tabulated_rating_curve[node_id]
 
             # toevoegen link tussen control-node en fractie
             # model.link.add(
