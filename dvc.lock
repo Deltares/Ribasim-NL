@@ -118,12 +118,12 @@ stages:
       nfiles: 11
     - path: notebooks/08_samenvoegen_modellen.py
       hash: md5
-      md5: 7031ef096df60a712a0c54949d31ef7e
-      size: 7538
+      md5: f55c73740f60fa10453de572bd6ef9e1
+      size: 7529
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: dee8fa47e28cef54e63b4e85159c4eb7.dir
+      md5: 9de4f7e64b208243fcc748a91a8bb615.dir
       size: 2270363896
       nfiles: 2
   bathymetry:
@@ -163,7 +163,7 @@ stages:
     deps:
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: dee8fa47e28cef54e63b4e85159c4eb7.dir
+      md5: 9de4f7e64b208243fcc748a91a8bb615.dir
       size: 2270363896
       nfiles: 2
     - path: data/Rijkswaterstaat/verwerkt/netwerk.gpkg
@@ -177,7 +177,7 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: 46461d8258dba8fba8aeec9e0026e180.dir
+      md5: 8f020e76ff62191efab1f98be2878f27.dir
       size: 1293631393
       nfiles: 4
   rwzi:
