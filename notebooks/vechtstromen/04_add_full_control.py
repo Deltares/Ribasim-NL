@@ -556,6 +556,7 @@ flow_control_nodes = node_list(
     [509, 513, 518, 522, 539, 632, 635, 672, 672],
     [700, 765, 840, 853, 908, 963, 971, 998],
     [1004, 1041, 1074, 1083, 1088,1289,1290, 1314, 1316, 2334],
+    [180],  # Stuw De Haandrik in de Vecht is geen inlaat en moet ook kunnen afvoeren (#675)
 )
 
 supply_nodes = node_list(
