@@ -26,7 +26,8 @@ warnings.filterwarnings(
     module="openpyxl",
 )
 
-KWK_INVERSE_FLOW_DIRECTION = ["750028686", "44D-002-03"]
+# Krammersluizen (43C-002-03) lozen van Krammer op Oosterschelde, zie issue #813
+KWK_INVERSE_FLOW_DIRECTION = ["750028686", "44D-002-03", "43C-002-03"]
 VERDEELSLEUTELS = ["Lobith", "Monsin"]
 RVW_IJSSELMEER = ["KOBU", "OEBU"]
 AS_PUMP = ["Gemaal Ternaaien4"]
