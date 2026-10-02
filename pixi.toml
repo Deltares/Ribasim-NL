@@ -57,6 +57,7 @@ ty = ">=0.0.63"
 xarray = ">=2026.2"
 xugrid = ">=0.14"
 zarr = ">=2.17"
+nodejs = ">=22"
 
 [pypi-dependencies]
 hydamo = { path = "src/hydamo", editable = true }
@@ -82,8 +83,13 @@ install = { depends-on = ["install-core", "install-prek"] }
 repro = "dvc repro --keep-going && prek run"
 check = "prek run --all-files"
 dvc-dag = { cmd = "python scripts/dvc_dag.py > docs/dev/_dvc-dag.mmd", inputs = ["dvc.yaml"], outputs = ["docs/dev/_dvc-dag.mmd"] }
-docs = { cmd = "quartodoc build && quarto preview", cwd = "docs", depends-on = ["dvc-dag"] }
-docs-render = { cmd = "quartodoc build && rm -f objects.json && quarto render --to html --execute", cwd = "docs", depends-on = ["dvc-dag"] }
+docs = { cmd = "quartodoc build && quarto preview", cwd = "docs", depends-on = ["dvc-dag", "viewer-build"] }
+docs-render = { cmd = "quartodoc build && rm -f objects.json && quarto render --to html --execute", cwd = "docs", depends-on = ["dvc-dag", "viewer-build"] }
+viewer-install = { cmd = "npm ci", cwd = "viewer", inputs = ["viewer/package.json", "viewer/package-lock.json"], outputs = ["viewer/node_modules/.package-lock.json"] }
+viewer-build = { cmd = "npm run build", cwd = "viewer", depends-on = ["viewer-install"] }
+# Serves the local `export_webmap` output, see viewer/vite.config.ts
+viewer-dev = { cmd = "npm run dev", cwd = "viewer", depends-on = ["viewer-install"] }
+publish-webmap = "python scripts/publish_webmap.py"
 ribasim = { cmd = "bin/ribasim/bin/ribasim", depends-on = ["install-core"] }
 edit-toml = "python scripts/edit_toml.py"
 delwaq = "python -m ribasim_nl.delwaq"

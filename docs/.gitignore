@@ -2,5 +2,6 @@
 /_site/
 /reference/
 /dev/_dvc-dag.mmd
+/viewer-app/
 
 **/*.quarto_ipynb

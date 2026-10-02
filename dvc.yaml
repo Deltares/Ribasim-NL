@@ -1020,3 +1020,12 @@ stages:
       - data/Rijkswaterstaat/verwerkt/netwerk.gpkg
     outs:
       - data/Rijkswaterstaat/modellen/lhm_coupled
+  export_webmap:
+    cmd: pixi run python scripts/export_webmap.py
+    deps:
+      - scripts/export_webmap.py
+      - src/ribasim_nl/ribasim_nl/webmap.py
+      - data/Rijkswaterstaat/modellen/lhm_coupled
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+    outs:
+      - data/Rijkswaterstaat/webmap/lhm_coupled

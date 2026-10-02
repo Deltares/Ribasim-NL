@@ -1,0 +1,24 @@
+{
+  "name": "ribasim-nl-viewer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@deck.gl/core": "^9.4.0",
+    "@deck.gl/layers": "^9.4.0",
+    "@deck.gl/mapbox": "^9.4.0",
+    "hyparquet": "^1.31.2",
+    "hyparquet-compressors": "^1.1.2",
+    "maplibre-gl": "^6.11.2",
+    "pmtiles": "^4.5.0",
+    "uplot": "^1.6.32"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2"
+  }
+}
