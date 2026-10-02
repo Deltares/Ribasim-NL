@@ -61,18 +61,41 @@ export interface Manifest {
 export type Row = Record<string, unknown>;
 
 const DEFAULT_DATA_URL = "https://s3.deltares.nl/ribasim-nl/doc-image/webmap/lhm_coupled/";
-const dataUrl = new URL(
-  new URLSearchParams(location.search).get("data") ?? (import.meta.env.DEV ? "/" : DEFAULT_DATA_URL),
-  location.href,
-);
+const TRUSTED_DATA_ORIGINS = new Set([new URL(DEFAULT_DATA_URL).origin, location.origin]);
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+// Manifest paths are relative paths of the export, hashes are hex digests
+const SAFE_PATH = /^[\w-]+(\/[\w-]+)*\.\w+$/;
+const SAFE_HASH = /^[0-9a-f]+$/;
+
+/** The data location; `?data=<url>` may only point to the default host, this site or localhost. */
+function resolveDataUrl(): URL {
+  const requested = new URLSearchParams(location.search).get("data");
+  const url = new URL(requested ?? (import.meta.env.DEV ? "/" : DEFAULT_DATA_URL), location.href);
+  const trusted = TRUSTED_DATA_ORIGINS.has(url.origin) || LOCAL_HOSTS.has(url.hostname);
+  if (!trusted || !["http:", "https:"].includes(url.protocol)) {
+    throw new Error(`Untrusted data location: ${url.origin}`);
+  }
+  return url;
+}
+
+let dataLocation: URL | undefined;
+const dataUrl = () => (dataLocation ??= resolveDataUrl());
 
 /** URL of an exported file; the content hash makes it safe to cache indefinitely. */
 export function fileUrl(entry: FileEntry): string {
-  return new URL(`${entry.path}?v=${entry.hash}`, dataUrl).href;
+  if (!SAFE_PATH.test(entry.path) || !SAFE_HASH.test(entry.hash)) {
+    throw new Error(`Invalid file entry in manifest: ${entry.path}`);
+  }
+  const base = dataUrl();
+  const url = new URL(`${entry.path}?v=${entry.hash}`, base);
+  if (url.origin !== base.origin || !url.pathname.startsWith(base.pathname)) {
+    throw new Error(`File outside the data location: ${entry.path}`);
+  }
+  return url.href;
 }
 
 export async function loadManifest(): Promise<Manifest> {
-  const response = await fetch(new URL("manifest.json", dataUrl), { cache: "no-cache" });
+  const response = await fetch(new URL("manifest.json", dataUrl()), { cache: "no-cache" });
   if (!response.ok) throw new Error(`Failed to load manifest.json: HTTP ${response.status}`);
   return response.json();
 }

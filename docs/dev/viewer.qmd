@@ -80,3 +80,4 @@ Changes to the TypeScript code reload the page automatically.
 `pixi run viewer-build` checks types and builds the viewer into `docs/viewer-app`.
 `pixi run docs` and `pixi run docs-render` run it before rendering the docs.
 Add `?data=<url>` to the viewer page URL to load the data from another location, for instance `?data=http://localhost:5173/` to use the development server.
+Only the default MinIO host, the docs site itself and `localhost` are accepted.
