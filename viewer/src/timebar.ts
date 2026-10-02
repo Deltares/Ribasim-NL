@@ -68,7 +68,7 @@ export class TimeBar {
     select.addEventListener("change", () => {
       this.state[kind] = select.value || null;
       this.update();
-      this.onChange();
+      void this.onChange();
     });
     const wrapper = el("label", "variable", `${label} `);
     wrapper.append(select);
@@ -111,7 +111,7 @@ export class TimeBar {
     while (this.playing) {
       const started = performance.now();
       if (this.state.step >= this.times.length - 1) {
-        this.togglePlay();
+        void this.togglePlay();
         break;
       }
       await this.setStep(this.state.step + 1);

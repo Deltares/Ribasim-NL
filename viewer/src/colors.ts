@@ -6,7 +6,7 @@ const VIRIDIS = ["#440154", "#482878", "#3e4989", "#31688e", "#26828e", "#1f9e89
 // Red for falling, blue for rising values
 const RED_BLUE = ["#b2182b", "#d6604d", "#f4a582", "#fddbc7", "#f7f7f7", "#d1e5f0", "#92c5de", "#4393c3", "#2166ac"];
 
-const parseHex = (hex: string): [number, number, number] => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
+const parseHex = (hex: string): [number, number, number] => [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
 
 export function palette(variable: ResultVariable): string[] {
   return variable.scale === "diverging" ? RED_BLUE : VIRIDIS;
@@ -18,12 +18,12 @@ export function normalize(variable: ResultVariable, value: number): number {
   let t: number;
   if (variable.scale === "log") {
     const magnitude = Math.abs(value);
-    if (!(magnitude > 0)) return NaN;
+    if (magnitude <= 0 || Number.isNaN(magnitude)) return Number.NaN;
     t = (Math.log10(magnitude) - Math.log10(low)) / (Math.log10(high) - Math.log10(low));
   } else {
     t = (value - low) / (high - low);
   }
-  return Number.isFinite(t) ? Math.min(1, Math.max(0, t)) : NaN;
+  return Number.isFinite(t) ? Math.min(1, Math.max(0, t)) : Number.NaN;
 }
 
 export class ColorScale {

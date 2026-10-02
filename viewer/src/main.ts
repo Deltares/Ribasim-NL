@@ -94,7 +94,7 @@ interface Coloring {
 function coloring(scale: ColorScale, values: Float32Array, local: Int32Array, length: number, version: number): Coloring {
   const colors = new Uint8Array(length * 4);
   for (let i = 0; i < length; i++) colors.set(NO_DATA, i * 4);
-  const localValues = new Float32Array(length).fill(NaN);
+  const localValues = new Float32Array(length).fill(Number.NaN);
   values.forEach((value, i) => {
     const index = local[i];
     if (index < 0) return;
@@ -149,10 +149,10 @@ class Viewer {
       this.select(selection);
       if (!hashParams().has("map")) this.zoomTo(selection);
     }
-    if (manifest.results) this.initResults().catch((error) => console.error("Failed to load results", error));
   }
 
-  private async initResults(): Promise<void> {
+  async initResults(): Promise<void> {
+    if (!this.manifest.results) return;
     const results = this.manifest.results!;
     const frames = new ResultFrames(results);
     const { network } = this;
@@ -509,13 +509,15 @@ async function main(): Promise<void> {
     map.addControl(new maplibregl.ScaleControl(), "bottom-left");
     // "load" also waits for basemap tiles and a rendered frame; the style is all we need to add layers
     const [network] = await Promise.all([loadNetwork(manifest), map.once("style.load")]);
-    new Viewer(map, root, manifest, network);
+    const viewer = new Viewer(map, root, manifest, network);
     status.remove();
+    await viewer.initResults();
   } catch (error) {
+    root.append(status);
     status.textContent = `Failed to load the model viewer: ${error}`;
     status.classList.add("error");
     throw error;
   }
 }
 
-main();
+await main();

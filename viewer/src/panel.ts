@@ -75,7 +75,7 @@ function timeChart(rows: Row[], width: number, only?: string[]): HTMLElement | n
     ...columns.map((column) => rows.map((row) => (typeof row[column] === "number" ? (row[column] as number) : null))),
   ];
   const container = el("div", { className: "chart" });
-  new uPlot(
+  const plot = new uPlot(
     {
       width,
       height: 200,
@@ -84,8 +84,8 @@ function timeChart(rows: Row[], width: number, only?: string[]): HTMLElement | n
       legend: { live: false },
     },
     data,
-    container,
   );
+  container.append(plot.root);
   return container;
 }
 
@@ -176,7 +176,7 @@ export class Panel {
     return el("header", {}, el("h2", {}, title), zoom, close);
   }
 
-  async show(selection: Selection): Promise<void> {
+  show(selection: Selection): void {
     const token = ++this.token;
     const { network, manifest } = this;
     const width = this.element.clientWidth || 360;
@@ -224,7 +224,7 @@ export class Panel {
         sections.push(el("h3", {}, "Tables"), ...tables.map((table) => tableSection(table, selection.id, width)));
       }
       this.render(sections);
-      this.fillAttributes(token, attributes, readRow(manifest.files.nodes, row));
+      void this.fillAttributes(token, attributes, readRow(manifest.files.nodes, row));
     } else {
       const row = network.linkRow.get(selection.id);
       if (row === undefined) return this.hide();
@@ -245,7 +245,7 @@ export class Panel {
         );
       }
       this.render(sections);
-      this.fillAttributes(token, attributes, readRow(manifest.files.links, row));
+      void this.fillAttributes(token, attributes, readRow(manifest.files.links, row));
     }
   }
 

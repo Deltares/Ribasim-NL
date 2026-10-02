@@ -66,6 +66,8 @@ export class ResultFrames {
   /** Start loading the row group of a later time step, to play smoothly. */
   prefetch(kind: "basin" | "flow", variable: string, step: number): void {
     const source = this.set(kind).variables[variable].source ?? variable;
-    if (step < this.times.length) this.group(kind, source, Math.floor(step / this.results.steps_per_row_group));
+    if (step >= this.times.length) return;
+    // A failed prefetch is retried when the frame is shown
+    this.group(kind, source, Math.floor(step / this.results.steps_per_row_group)).catch(() => undefined);
   }
 }

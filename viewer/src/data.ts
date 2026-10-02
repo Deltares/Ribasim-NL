@@ -87,7 +87,8 @@ export function fileUrl(entry: FileEntry): string {
     throw new Error(`Invalid file entry in manifest: ${entry.path}`);
   }
   const base = dataUrl();
-  const url = new URL(`${entry.path}?v=${entry.hash}`, base);
+  const path = entry.path.split("/").map(encodeURIComponent).join("/");
+  const url = new URL(`${path}?v=${encodeURIComponent(entry.hash)}`, base);
   if (url.origin !== base.origin || !url.pathname.startsWith(base.pathname)) {
     throw new Error(`File outside the data location: ${entry.path}`);
   }
