@@ -90,8 +90,6 @@ function timeChart(rows: Row[], width: number, only?: string[]): HTMLElement | n
       ],
       scales: { x: { time: true } },
       axes: [{}, { size: 60, values: (_, ticks) => ticks.map(formatNumber) }],
-      // Show the values under the cursor in the legend
-      legend: { live: true },
     },
     data,
   );

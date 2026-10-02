@@ -34,23 +34,18 @@ import { TimeBar, type FlowStyle } from "./timebar";
 
 const HIDDEN_BY_DEFAULT = new Set(["ContinuousControl", "DiscreteControl", "PidControl", "control", "listen"]);
 const HIGHLIGHT: [number, number, number, number] = [255, 140, 0, 255];
-// Translucent, since zero flow (no color on a log scale) is common and should not dominate the map
-const NO_DATA: [number, number, number, number] = [150, 150, 150, 110];
+const NO_DATA: [number, number, number, number] = [170, 170, 170, 255];
 const DASHED = [new PathStyleExtension({ dash: true })];
 const DASH_ARRAY: [number, number] = [4, 2];
 // Icons shrink with the map below this size in meters, so dense areas stay readable when zoomed out
-const NODE_ICON_SIZE_M = 500;
-const NODE_ICON_MIN_PX = 6;
+const NODE_ICON_SIZE_M = 320;
 const ARROW_SIZE_M = 60;
-// Links are thinner when zoomed out; overlapping wide links are slow to draw
-const LINK_WIDTH_M = 100;
 // Link widths in pixels for the smallest and largest flow in the width style; the color scale is
 // logarithmic over orders of magnitude, so a cubic ramp keeps all but the larger flows thin
 const FLOW_WIDTH_PX: [number, number] = [1, 8];
 const FLOW_WIDTH_POWER = 3;
 const NO_FLOW_WIDTH_PX = 0.5;
 // Details that are too small to see when zoomed out, and slow to draw
-const NODE_MIN_ZOOM = 9;
 const ARROW_MIN_ZOOM = 10;
 const BASIN_OUTLINE_MIN_ZOOM = 9;
 const LABEL_MIN_ZOOM = 13;
@@ -341,8 +336,7 @@ class Viewer {
     const common = {
       id: `node-${group.type}`,
       data: group.data,
-      // Zoomed out, tens of thousands of nodes only hide the links
-      visible: this.visible.get(group.type) && this.map.getZoom() >= NODE_MIN_ZOOM,
+      visible: this.visible.get(group.type),
       pickable: true,
       autoHighlight: true,
       highlightColor: HIGHLIGHT,
@@ -356,7 +350,7 @@ class Viewer {
         getIcon: () => group.type,
         sizeUnits: "meters",
         getSize: NODE_ICON_SIZE_M,
-        sizeMinPixels: NODE_ICON_MIN_PX,
+        sizeMinPixels: 6,
         sizeMaxPixels: NODE_ICON_SIZE_PX,
       });
     }
@@ -370,7 +364,7 @@ class Viewer {
       getLineWidth: 0.5,
       radiusUnits: "meters",
       getRadius: NODE_ICON_SIZE_M / 2,
-      radiusMinPixels: NODE_ICON_MIN_PX / 2,
+      radiusMinPixels: 2,
       radiusMaxPixels: NODE_ICON_SIZE_PX / 2,
     });
   }
@@ -382,10 +376,8 @@ class Viewer {
     const coloring = group.type === "flow" ? this.flowColoring : null;
     const flowStyle: FlowStyle | null = coloring ? (this.timeBar?.state.flowStyle ?? "color") : null;
     const style = LINK_STYLES[group.type] ?? DEFAULT_LINK_STYLE;
-    // Width in meters, so links are thinner when zoomed out, except when the width shows the flow;
-    // colored links are wider, so the color is visible
+    // Colored links are wider, so the color is visible
     const byWidth = coloring !== null && flowStyle === "width";
-    const scale = flowStyle === "color" ? 2 : 1;
     return new PathLayer({
       id: `link-${group.type}`,
       data: group.data,
@@ -397,12 +389,13 @@ class Viewer {
           ? (_: unknown, { index }: { index: number }) =>
               coloring.colors.subarray(index * 4, index * 4 + 4) as unknown as Color
           : style.color,
-      widthUnits: byWidth ? "pixels" : "meters",
+      widthUnits: "pixels",
       getWidth: byWidth
         ? (_: unknown, { index }: { index: number }) => coloring.widths[index]
-        : scale * LINK_WIDTH_M,
+        : flowStyle === "color"
+          ? 2 * LINK_WIDTH_PX
+          : LINK_WIDTH_PX,
       widthMinPixels: byWidth ? 0 : 1,
-      widthMaxPixels: byWidth ? Number.MAX_SAFE_INTEGER : scale * LINK_WIDTH_PX,
       updateTriggers: { getColor: [coloring?.version, flowStyle], getWidth: [coloring?.version, flowStyle] },
       ...(style.dashed ? { extensions: DASHED, getDashArray: DASH_ARRAY, dashJustified: true } : {}),
       pickable: true,
@@ -464,7 +457,7 @@ class Viewer {
 
   private zoomDetail(): string {
     const zoom = this.map.getZoom();
-    return [NODE_MIN_ZOOM, ARROW_MIN_ZOOM, LABEL_MIN_ZOOM].map((min) => zoom >= min).join();
+    return [ARROW_MIN_ZOOM, LABEL_MIN_ZOOM].map((min) => zoom >= min).join();
   }
 
   private render(): void {
@@ -596,7 +589,7 @@ class Viewer {
     // On phones the list would cover most of the map
     details.open = !matchMedia("(max-width: 600px)").matches;
     details.append(el("summary", "", "Layers"));
-    details.append(el("h4", "", "Nodes"), el("p", "note", "Shown when zoomed in"));
+    details.append(el("h4", "", "Nodes"));
     for (const group of network.nodeGroups) {
       details.append(this.checkbox(group.type, group.type, this.nodeSymbol(group.type), group.rows.length));
     }
@@ -612,19 +605,12 @@ class Viewer {
       this.checkbox("basin_area", "Basin / area", el("span", "area-swatch")),
       this.checkbox("waterboards", "Water boards"),
     );
-    details.append(el("h4", "", "Base map"));
-    for (const [id, { label }] of Object.entries(BASEMAPS)) {
-      const input = el("input");
-      input.type = "radio";
-      input.name = "basemap";
-      input.checked = id === this.basemap;
-      input.addEventListener("change", () => {
-        this.setBasemap(id).catch((error) => console.error("Failed to change the base map", error));
-      });
-      const row = el("label");
-      row.append(input, label);
-      details.append(row);
-    }
+    const basemap = el("select", "basemap");
+    basemap.append(...Object.entries(BASEMAPS).map(([id, { label }]) => new Option(label, id, false, id === this.basemap)));
+    basemap.addEventListener("change", () => {
+      this.setBasemap(basemap.value).catch((error) => console.error("Failed to change the base map", error));
+    });
+    details.append(el("h4", "", "Base map"), basemap);
     return details;
   }
 

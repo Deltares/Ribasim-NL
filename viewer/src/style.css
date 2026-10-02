@@ -453,3 +453,9 @@
   margin: 0;
   font-weight: 600;
 }
+
+.ribasim-viewer .layers select.basemap {
+  width: 100%;
+  margin-top: 2px;
+  font: inherit;
+}
