@@ -56,6 +56,17 @@ export class ColorScale {
   }
 }
 
+const SUPERSCRIPTS: Record<string, string> = Object.fromEntries(
+  [..."-0123456789"].map((char, i) => [char, "⁻⁰¹²³⁴⁵⁶⁷⁸⁹"[i]]),
+);
+
+/** Write exponents in units as superscripts, like "m3 s-1" as "m³ s⁻¹". */
+export function formatUnits(units: string): string {
+  return units.replace(/([a-zA-Z])(-?\d+)/g, (_, unit: string, exponent: string) =>
+    unit + [...exponent].map((char) => SUPERSCRIPTS[char]).join(""),
+  );
+}
+
 export function formatNumber(value: number): string {
   if (value === 0 || !Number.isFinite(value)) return String(value);
   const magnitude = Math.abs(value);

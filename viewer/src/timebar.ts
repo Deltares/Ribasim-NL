@@ -1,13 +1,21 @@
-import { ColorScale, formatNumber } from "./colors";
-import type { Results } from "./data";
+import { ColorScale } from "./colors";
+import type { ResultVariable, Results } from "./data";
+
+/** Flow is shown as a color ramp, or as blue links whose width grows with the magnitude */
+export type FlowStyle = "color" | "width";
+type Kind = "basin" | "flow";
 
 export interface TimeState {
   step: number;
   basin: string | null;
   flow: string | null;
+  flowStyle: FlowStyle;
 }
 
 const FRAME_INTERVAL_MS = 150;
+// Default limits that replace those of the export, by "<kind>/<variable>"; the exported upper limit of the
+// flow rate is the 98th percentile, which makes all larger flows look the same
+const DEFAULT_LIMITS: Record<string, { lower?: number; upper?: number }> = { "flow/flow_rate": { upper: 100 } };
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text = ""): HTMLElementTagNameMap[K] {
   const element = document.createElement(tag);
@@ -16,14 +24,16 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text 
   return element;
 }
 
-/** Time slider, play button and result variable selection, with color legends. */
+/** Time slider, play button and result variable selection, with legends whose limits can be edited. */
 export class TimeBar {
   readonly state: TimeState;
   private playing = false;
   private readonly slider: HTMLInputElement;
   private readonly date: HTMLSpanElement;
   private readonly play: HTMLButtonElement;
-  private readonly legends: HTMLDivElement;
+  private readonly legends = {} as Record<Kind, HTMLDivElement>;
+  /** Color scale or width limits set by the user, by "<kind>/<variable>" */
+  private readonly limits = new Map<string, [number, number]>();
 
   constructor(
     parent: HTMLElement,
@@ -32,7 +42,7 @@ export class TimeBar {
     initial: Partial<TimeState>,
     private readonly onChange: () => Promise<void>,
   ) {
-    this.state = { step: 0, basin: null, flow: "flow_rate", ...initial };
+    this.state = { step: 0, basin: null, flow: "flow_rate", flowStyle: "width", ...initial };
     const bar = el("div", "timebar");
     this.play = el("button", "play", "▶");
     this.play.type = "button";
@@ -45,56 +55,116 @@ export class TimeBar {
     this.slider.value = String(this.state.step);
     this.slider.addEventListener("input", () => this.setStep(Number(this.slider.value)));
     this.date = el("span", "date");
-    this.legends = el("div", "legends");
-    bar.append(
-      this.play,
-      this.slider,
-      this.date,
-      this.select("Links", "flow", Object.keys(results.flow.variables)),
-      this.select("Basins", "basin", Object.keys(results.basin.variables)),
-      this.legends,
-    );
+    const time = el("div", "time");
+    time.append(this.play, this.slider, this.date);
+    const variables = el("div", "variables");
+    variables.append(this.selector("Links", "flow"), this.selector("Basins", "basin"));
+    bar.append(time, variables);
     parent.append(bar);
     this.update();
+    this.renderLegend("flow");
+    this.renderLegend("basin");
   }
 
-  private select(label: string, kind: "basin" | "flow", variables: string[]): HTMLLabelElement {
+  /** The selected variable of a kind, with the limits set by the user. */
+  variable(kind: Kind): ResultVariable | null {
+    const name = this.state[kind];
+    if (!name) return null;
+    const variable = this.results[kind].variables[name];
+    const key = `${kind}/${name}`;
+    const defaults = DEFAULT_LIMITS[key];
+    const domain = this.limits.get(key) ?? [
+      defaults?.lower ?? variable.domain[0],
+      defaults?.upper ?? variable.domain[1],
+    ];
+    return { ...variable, domain };
+  }
+
+  /** Variable selection with its legend below; flow variables can be shown by color or by width. */
+  private selector(label: string, kind: Kind): HTMLDivElement {
     const select = el("select");
     select.append(new Option("none", ""));
-    for (const variable of variables) {
-      select.append(new Option(this.results[kind].variables[variable].label, variable));
+    for (const [variable, { label }] of Object.entries(this.results[kind].variables)) {
+      if (kind === "basin") {
+        select.append(new Option(label, variable));
+        continue;
+      }
+      select.append(new Option(`${label} (color)`, `${variable}:color`), new Option(`${label} (width)`, `${variable}:width`));
     }
-    select.value = this.state[kind] ?? "";
+    const { flow, flowStyle } = this.state;
+    select.value = kind === "basin" ? (this.state.basin ?? "") : flow ? `${flow}:${flowStyle}` : "";
     select.addEventListener("change", () => {
-      this.state[kind] = select.value || null;
-      this.update();
+      if (kind === "basin") {
+        this.state.basin = select.value || null;
+      } else {
+        const [variable, style] = select.value.split(":");
+        this.state.flow = variable || null;
+        if (style) this.state.flowStyle = style as FlowStyle;
+      }
+      this.renderLegend(kind);
       void this.onChange();
     });
-    const wrapper = el("label", "variable", `${label} `);
+    const wrapper = el("label", "", label);
     wrapper.append(select);
-    return wrapper;
+    this.legends[kind] = el("div", "legend");
+    const column = el("div", "variable");
+    column.append(wrapper, this.legends[kind]);
+    return column;
+  }
+
+  /** The color ramp or width wedge, with editable lower and upper limits. */
+  private renderLegend(kind: Kind): void {
+    const legend = this.legends[kind];
+    const variable = this.variable(kind);
+    legend.hidden = !variable;
+    if (!variable) return;
+    const byWidth = kind === "flow" && this.state.flowStyle === "width";
+    const bar = el("div", byWidth ? "wedge" : "gradient");
+    if (!byWidth) bar.style.background = new ColorScale(variable).gradient();
+    const key = `${kind}/${this.state[kind]}`;
+    const limit = (i: 0 | 1) => {
+      const input = el("input", "limit");
+      input.type = "number";
+      input.step = "any";
+      input.value = String(Number(variable.domain[i].toPrecision(3)));
+      input.title = i === 0 ? "Lower limit" : "Upper limit";
+      input.addEventListener("change", () => this.setLimit(kind, i, Number(input.value), input));
+      return input;
+    };
+    const units = el("span", "units", `${variable.scale === "log" ? "|x| " : ""}${variable.units}`);
+    const labels = el("div", "legend-labels");
+    labels.append(limit(0), units);
+    if (this.limits.has(key)) {
+      const reset = el("button", "reset", "reset");
+      reset.type = "button";
+      reset.title = "Reset the limits";
+      reset.addEventListener("click", () => {
+        this.limits.delete(key);
+        this.renderLegend(kind);
+        void this.onChange();
+      });
+      labels.append(reset);
+    }
+    labels.append(limit(1));
+    legend.replaceChildren(bar, labels);
+  }
+
+  private setLimit(kind: Kind, i: 0 | 1, value: number, input: HTMLInputElement): void {
+    const variable = this.variable(kind);
+    if (!variable) return;
+    const domain: [number, number] = [...variable.domain];
+    domain[i] = value;
+    const valid = Number.isFinite(value) && domain[0] < domain[1] && (variable.scale !== "log" || domain[0] > 0);
+    input.classList.toggle("invalid", !valid);
+    if (!valid) return;
+    this.limits.set(`${kind}/${this.state[kind]}`, domain);
+    this.renderLegend(kind);
+    void this.onChange();
   }
 
   private update(): void {
     this.slider.value = String(this.state.step);
     this.date.textContent = this.times[this.state.step].toISOString().slice(0, 10);
-    this.legends.replaceChildren();
-    for (const kind of ["flow", "basin"] as const) {
-      const variable = this.state[kind];
-      if (!variable) continue;
-      const scale = new ColorScale(this.results[kind].variables[variable]);
-      const { label, units, domain, scale: type } = scale.variable;
-      const bar = el("div", "gradient");
-      bar.style.background = scale.gradient();
-      const prefix = type === "log" ? "|x| " : "";
-      const legend = el("div", "legend");
-      legend.append(
-        el("div", "legend-title", `${label} (${units})`),
-        bar,
-        el("div", "legend-labels", `${prefix}${formatNumber(domain[0])} … ${formatNumber(domain[1])}`),
-      );
-      this.legends.append(legend);
-    }
   }
 
   async setStep(step: number): Promise<void> {

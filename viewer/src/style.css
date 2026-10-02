@@ -28,18 +28,36 @@
 
 .ribasim-viewer .layers,
 .ribasim-viewer .search,
-.ribasim-viewer .panel {
-  position: absolute;
-  z-index: 2;
+.ribasim-viewer .search-choices,
+.ribasim-viewer .panel,
+.ribasim-viewer .timebar {
   background: rgba(255, 255, 255, 0.95);
   border-radius: 4px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
-.ribasim-viewer .search {
+.ribasim-viewer .sidebar {
+  position: absolute;
+  z-index: 2;
   top: 10px;
   left: 10px;
-  width: 200px;
+  bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 240px;
+  max-width: calc(100% - 70px);
+  /* Let map clicks through the empty space below the layer list */
+  pointer-events: none;
+}
+
+.ribasim-viewer .sidebar > * {
+  pointer-events: auto;
+}
+
+.ribasim-viewer .search {
+  box-sizing: border-box;
+  width: 100%;
   padding: 6px 8px;
   border: 1px solid transparent;
   font: inherit;
@@ -50,16 +68,8 @@
 }
 
 .ribasim-viewer .search-choices {
-  position: absolute;
-  z-index: 3;
-  top: 44px;
-  left: 10px;
   display: flex;
   flex-direction: column;
-  width: 218px;
-  background: #fff;
-  border-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
 .ribasim-viewer .search-choices[hidden] {
@@ -80,9 +90,7 @@
 }
 
 .ribasim-viewer .layers {
-  top: 50px;
-  left: 10px;
-  max-height: calc(100% - 100px);
+  min-height: 0;
   overflow-y: auto;
   padding: 6px 10px;
 }
@@ -103,7 +111,13 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 1px 0;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.ribasim-viewer .layers input {
+  margin: 0;
 }
 
 .ribasim-viewer .swatch {
@@ -138,12 +152,17 @@
 }
 
 .ribasim-viewer .panel {
+  position: absolute;
+  z-index: 2;
+  box-sizing: border-box;
   top: 10px;
-  right: 50px;
+  right: 10px;
   bottom: 30px;
-  width: 400px;
-  max-width: calc(100% - 70px);
+  width: 420px;
+  max-width: calc(100% - 20px);
   overflow-y: auto;
+  /* Charts are sized to the content width, which must not change once the content overflows */
+  scrollbar-gutter: stable;
   padding: 10px 12px;
 }
 
@@ -229,50 +248,76 @@
 }
 
 .ribasim-viewer .timebar {
+  --panel-space: 0px;
   position: absolute;
   z-index: 2;
-  left: 50%;
+  box-sizing: border-box;
   bottom: 30px;
+  /* Centered in the map space left of the panel */
+  left: calc((100% - var(--panel-space)) / 2);
   transform: translateX(-50%);
+  width: min(560px, max(320px, calc(100% - var(--panel-space) - 140px)));
+  padding: 6px 10px 8px;
+}
+
+.ribasim-viewer .panel:not([hidden]) ~ .timebar {
+  --panel-space: 440px;
+}
+
+.ribasim-viewer .timebar .time {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
-  max-width: calc(100% - 140px);
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  gap: 8px;
 }
 
 .ribasim-viewer .timebar input[type="range"] {
-  width: 240px;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
 }
 
 .ribasim-viewer .timebar .play {
   width: 32px;
+  height: 26px;
+  padding: 0;
   font: inherit;
   cursor: pointer;
 }
 
 .ribasim-viewer .timebar .date {
   font-variant-numeric: tabular-nums;
-  min-width: 80px;
+}
+
+.ribasim-viewer .timebar .variables {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.ribasim-viewer .timebar .variable {
+  min-width: 0;
+}
+
+.ribasim-viewer .timebar .variable label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .ribasim-viewer .timebar select {
+  flex: 1;
+  min-width: 0;
   font: inherit;
-  max-width: 200px;
-}
-
-.ribasim-viewer .legends {
-  display: flex;
-  gap: 12px;
 }
 
 .ribasim-viewer .legend {
-  width: 180px;
+  margin-top: 4px;
   font-size: 11px;
+}
+
+.ribasim-viewer .legend[hidden] {
+  display: none;
 }
 
 .ribasim-viewer .legend .gradient {
@@ -280,9 +325,145 @@
   border-radius: 2px;
 }
 
-.ribasim-viewer .legend-title,
 .ribasim-viewer .legend-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  color: #444;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+/* Phones: the panel becomes a bottom sheet and replaces the time bar while open */
+@media (max-width: 600px) {
+  .ribasim-viewer .panel {
+    top: auto;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    width: auto;
+    max-width: none;
+    height: 55%;
+  }
+
+  .ribasim-viewer .timebar {
+    width: calc(100% - 20px);
+  }
+
+  .ribasim-viewer .panel:not([hidden]) ~ .timebar {
+    display: none;
+  }
+}
+
+.ribasim-viewer .legend .wedge {
+  height: 8px;
+  background: rgb(54, 144, 192);
+  /* Follows the cubic width ramp of the links */
+  clip-path: polygon(0 44%, 25% 43%, 50% 38%, 75% 25%, 100% 0, 100% 100%, 75% 75%, 50% 62%, 25% 57%, 0 56%);
+}
+
+.ribasim-viewer .levels svg {
+  display: block;
+  font-size: 10px;
+}
+
+.ribasim-viewer .levels .grid {
+  stroke: #eee;
+}
+
+.ribasim-viewer .levels .tick,
+.ribasim-viewer .levels .side-name {
+  fill: #555;
+}
+
+.ribasim-viewer .levels .connector {
+  fill: #bbb;
+}
+
+.ribasim-viewer .levels .value {
+  fill: #2c7fb8;
+  font-weight: 600;
+}
+
+.ribasim-viewer .level-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin-top: 4px;
+  color: #555;
+  font-size: 11px;
+}
+
+.ribasim-viewer .level-legend .key {
+  display: inline-block;
+  width: 16px;
+  margin-right: 4px;
+  vertical-align: middle;
+  border-top: 2px solid;
+}
+
+.ribasim-viewer .level-legend .water {
+  border-color: #2c7fb8;
+}
+
+.ribasim-viewer .level-legend .limit {
+  border-top-style: dotted;
+  border-color: #000;
+}
+
+.ribasim-viewer .level-legend .bottom {
+  border-top-style: dotted;
+  border-color: #8c510a;
+}
+
+.ribasim-viewer .legend-labels .limit {
+  width: 6em;
+  padding: 0 2px;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+  font: inherit;
+  background: transparent;
+}
+
+.ribasim-viewer .legend-labels .limit:last-child {
+  text-align: right;
+}
+
+.ribasim-viewer .legend-labels .limit.invalid {
+  border-color: #b00020;
+}
+
+.ribasim-viewer .legend-labels .reset {
+  padding: 0 4px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ribasim-viewer .facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  margin: 0 0 6px;
+}
+
+.ribasim-viewer .facts dt {
+  color: #555;
+}
+
+.ribasim-viewer .facts dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.ribasim-viewer .layers select.basemap {
+  width: 100%;
+  margin-top: 2px;
+  font: inherit;
+}
+
+.ribasim-viewer .layers label.section {
+  margin-top: 8px;
+}
+
+.ribasim-viewer .layers label.section h4 {
+  margin: 0;
 }
