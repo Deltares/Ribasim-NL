@@ -44,6 +44,8 @@ export interface Results {
   steps_per_row_group: number;
   basin: ResultSet;
   flow: ResultSet;
+  /** Control state changes, sorted by control_node_id and time */
+  control?: FileEntry;
 }
 
 export interface Manifest {

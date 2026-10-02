@@ -4,13 +4,14 @@ import "./style.css";
 
 import type { PickingInfo } from "@deck.gl/core";
 import { PathStyleExtension } from "@deck.gl/extensions";
-import { IconLayer, PathLayer, ScatterplotLayer } from "@deck.gl/layers";
+import { IconLayer, PathLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import * as maplibregl from "maplibre-gl";
 // maplibre resolves its worker at runtime, which bundlers cannot follow
 import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { Protocol } from "pmtiles";
-import { ColorScale, formatNumber } from "./colors";
+import { BASEMAPS, basemapStyle, DEFAULT_BASEMAP, withOverlays } from "./basemaps";
+import { ColorScale, formatNumber, normalize } from "./colors";
 import { fileUrl, loadManifest, type Manifest } from "./data";
 import { loadNetwork, type Group, type Network } from "./network";
 import { Panel, type Selection } from "./panel";
@@ -29,7 +30,7 @@ import {
   type Color,
   type IconAtlas,
 } from "./styles";
-import { TimeBar } from "./timebar";
+import { TimeBar, type FlowStyle } from "./timebar";
 
 const HIDDEN_BY_DEFAULT = new Set(["ContinuousControl", "DiscreteControl", "PidControl", "control", "listen"]);
 const HIGHLIGHT: [number, number, number, number] = [255, 140, 0, 255];
@@ -39,9 +40,23 @@ const DASHED = [new PathStyleExtension({ dash: true })];
 const DASH_ARRAY: [number, number] = [4, 2];
 // Icons shrink with the map below this size in meters, so dense areas stay readable when zoomed out
 const NODE_ICON_SIZE_M = 500;
-const NODE_ICON_MIN_PX = 2;
+const NODE_ICON_MIN_PX = 6;
 const ARROW_SIZE_M = 60;
-const BASEMAP = "https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/grijs/EPSG:3857/{z}/{x}/{y}.png";
+// Links are thinner when zoomed out; overlapping wide links are slow to draw
+const LINK_WIDTH_M = 100;
+// Link widths in pixels for the smallest and largest flow in the width style; the color scale is
+// logarithmic over orders of magnitude, so a cubic ramp keeps all but the larger flows thin
+const FLOW_WIDTH_PX: [number, number] = [1, 8];
+const FLOW_WIDTH_POWER = 3;
+const NO_FLOW_WIDTH_PX = 0.5;
+// Details that are too small to see when zoomed out, and slow to draw
+const NODE_MIN_ZOOM = 9;
+const ARROW_MIN_ZOOM = 10;
+const BASIN_OUTLINE_MIN_ZOOM = 9;
+const LABEL_MIN_ZOOM = 13;
+const MAX_LABELS = 2000;
+// Sources and layers kept when the base map style changes
+const OVERLAY_SOURCES = new Set(["basin_area", "waterboards"]);
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text = ""): HTMLElementTagNameMap[K] {
   const element = document.createElement(tag);
@@ -80,9 +95,11 @@ function writeSelectionToHash(selection: Selection | null): void {
   });
 }
 
-/** Per-feature colors and values of the current time step, indexed like the features of a layer group. */
+/** Per-feature colors, widths and values of the current time step, indexed like the features of a layer group. */
 interface Coloring {
   colors: Uint8Array;
+  /** Line widths in pixels for the width style */
+  widths: Float32Array;
   values: Float32Array;
   version: number;
 }
@@ -90,18 +107,29 @@ interface Coloring {
 function coloring(scale: ColorScale, values: Float32Array, local: Int32Array, length: number, version: number): Coloring {
   const colors = new Uint8Array(length * 4);
   for (let i = 0; i < length; i++) colors.set(NO_DATA, i * 4);
+  const widths = new Float32Array(length).fill(NO_FLOW_WIDTH_PX);
   const localValues = new Float32Array(length).fill(Number.NaN);
+  const [minWidth, maxWidth] = FLOW_WIDTH_PX;
   values.forEach((value, i) => {
     const index = local[i];
     if (index < 0) return;
     localValues[index] = value;
     if (!scale.write(value, colors, index * 4)) colors.set(NO_DATA, index * 4);
+    const t = normalize(scale.variable, value);
+    if (!Number.isNaN(t)) widths[index] = minWidth + t ** FLOW_WIDTH_POWER * (maxWidth - minWidth);
   });
-  return { colors, values: localValues, version };
+  return { colors, widths, values: localValues, version };
+}
+
+interface Label {
+  position: [number, number];
+  text: string;
 }
 
 class Viewer {
   private readonly visible = new Map<string, boolean>();
+  private basemap = DEFAULT_BASEMAP;
+  private basinAreaColors: { scale: ColorScale; values: Float32Array } | null = null;
   private selection: Selection | null = null;
   private readonly overlay: MapboxOverlay;
   private readonly panel: Panel;
@@ -113,6 +141,9 @@ class Viewer {
   private basinColoring: Coloring | null = null;
   private basinAreasColored = false;
   private frameToken = 0;
+  private labels: Label[] = [];
+  /** Which zoom-dependent details are shown, to redraw only when that changes */
+  private detail = "";
 
   constructor(
     private readonly map: maplibregl.Map,
@@ -141,13 +172,14 @@ class Viewer {
     sidebar.append(...this.searchControl(), this.layerControl());
     root.append(sidebar);
     map.on("click", (event: maplibregl.MapMouseEvent) => this.onClick(event));
+    map.on("zoom", () => {
+      if (this.detail !== this.zoomDetail()) this.render();
+    });
+    map.on("moveend", () => {
+      this.updateLabels();
+      this.render();
+    });
     this.render();
-
-    const selection = selectionFromHash();
-    if (selection) {
-      this.select(selection);
-      if (!hashParams().has("map")) this.zoomTo(selection);
-    }
   }
 
   async initResults(): Promise<void> {
@@ -192,8 +224,11 @@ class Viewer {
     ]);
     if (token !== this.frameToken) return;
 
-    const flowScale = flow ? new ColorScale(results.flow.variables[flow]) : null;
-    const basinScale = basin ? new ColorScale(results.basin.variables[basin]) : null;
+    // The variables have the color scale limits set in the time bar
+    const flowVariable = timeBar.variable("flow");
+    const basinVariable = timeBar.variable("basin");
+    const flowScale = flowVariable ? new ColorScale(flowVariable) : null;
+    const basinScale = basinVariable ? new ColorScale(basinVariable) : null;
     this.flowColoring =
       flowScale && flowValues
         ? coloring(flowScale, flowValues, resultIndex.flow, this.groupLength("flow"), token)
@@ -204,6 +239,8 @@ class Viewer {
         : null;
     this.colorBasinAreas(basinScale, basinValues);
     writeHash({ t: frames.times[step].toISOString().slice(0, 10) });
+    this.panel.setStep(step);
+    this.updateLabels();
     this.render();
 
     const next = step + results.steps_per_row_group;
@@ -213,6 +250,7 @@ class Viewer {
 
   private colorBasinAreas(scale: ColorScale | null, values: Float32Array | null): void {
     const target = { source: "basin_area", sourceLayer: "basin_area" };
+    this.basinAreaColors = scale && values ? { scale, values } : null;
     if (!scale || !values) {
       if (!this.basinAreasColored) return;
       this.map.removeFeatureState(target);
@@ -222,6 +260,27 @@ class Viewer {
     }
     this.resultIndex!.basinIds.forEach((id, i) => this.map.setFeatureState({ ...target, id }, { color: scale.css(values[i]) }));
     this.basinAreasColored = true;
+  }
+
+  private async setBasemap(id: string): Promise<void> {
+    this.basemap = id;
+    const style = await basemapStyle(id);
+    if (this.basemap !== id) return;
+    this.map.setStyle(style, { transformStyle: (current, next) => withOverlays(current, next, OVERLAY_SOURCES) });
+    // A new style can drop feature states and layer visibility, so restore them
+    this.map.once("styledata", () => {
+      this.render();
+      if (this.selection?.kind === "node") {
+        this.map.setFeatureState(
+          { source: "basin_area", sourceLayer: "basin_area", id: this.selection.id },
+          { selected: true },
+        );
+      }
+      if (this.basinAreaColors) {
+        this.basinAreasColored = false;
+        this.colorBasinAreas(this.basinAreaColors.scale, this.basinAreaColors.values);
+      }
+    });
   }
 
   private addMapLayers(): void {
@@ -259,10 +318,11 @@ class Viewer {
       type: "line",
       source: "basin_area",
       "source-layer": "basin_area",
+      minzoom: BASIN_OUTLINE_MIN_ZOOM,
       paint: {
         "line-color": "#000",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 7, 0.2, 12, 1.36],
-        "line-opacity": ["interpolate", ["linear"], ["zoom"], 7, 0.3, 11, 1],
+        "line-width": ["interpolate", ["linear"], ["zoom"], BASIN_OUTLINE_MIN_ZOOM, 0.3, 12, 1.36],
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], BASIN_OUTLINE_MIN_ZOOM, 0.4, 11, 1],
       },
     });
     map.addSource("waterboards", { type: "geojson", data: fileUrl(manifest.files.waterboards) });
@@ -281,7 +341,8 @@ class Viewer {
     const common = {
       id: `node-${group.type}`,
       data: group.data,
-      visible: this.visible.get(group.type),
+      // Zoomed out, tens of thousands of nodes only hide the links
+      visible: this.visible.get(group.type) && this.map.getZoom() >= NODE_MIN_ZOOM,
       pickable: true,
       autoHighlight: true,
       highlightColor: HIGHLIGHT,
@@ -319,20 +380,30 @@ class Viewer {
       this.selection?.kind === "link" ? this.network.linkRow.get(this.selection.id) : undefined;
     const isSelected = selected !== undefined && this.network.linkType[selected] === group.type;
     const coloring = group.type === "flow" ? this.flowColoring : null;
+    const flowStyle: FlowStyle | null = coloring ? (this.timeBar?.state.flowStyle ?? "color") : null;
     const style = LINK_STYLES[group.type] ?? DEFAULT_LINK_STYLE;
+    // Width in meters, so links are thinner when zoomed out, except when the width shows the flow;
+    // colored links are wider, so the color is visible
+    const byWidth = coloring !== null && flowStyle === "width";
+    const scale = flowStyle === "color" ? 2 : 1;
     return new PathLayer({
       id: `link-${group.type}`,
       data: group.data,
       _pathType: "open",
       positionFormat: "XY",
       visible: this.visible.get(group.type),
-      getColor: coloring
-        ? (_: unknown, { index }: { index: number }) => coloring.colors.subarray(index * 4, index * 4 + 4) as unknown as Color
-        : style.color,
-      updateTriggers: { getColor: coloring?.version ?? -1 },
-      widthUnits: "pixels",
-      getWidth: coloring ? 2 * LINK_WIDTH_PX : LINK_WIDTH_PX,
-      widthMinPixels: 1,
+      getColor:
+        coloring && flowStyle === "color"
+          ? (_: unknown, { index }: { index: number }) =>
+              coloring.colors.subarray(index * 4, index * 4 + 4) as unknown as Color
+          : style.color,
+      widthUnits: byWidth ? "pixels" : "meters",
+      getWidth: byWidth
+        ? (_: unknown, { index }: { index: number }) => coloring.widths[index]
+        : scale * LINK_WIDTH_M,
+      widthMinPixels: byWidth ? 0 : 1,
+      widthMaxPixels: byWidth ? Number.MAX_SAFE_INTEGER : scale * LINK_WIDTH_PX,
+      updateTriggers: { getColor: [coloring?.version, flowStyle], getWidth: [coloring?.version, flowStyle] },
       ...(style.dashed ? { extensions: DASHED, getDashArray: DASH_ARRAY, dashJustified: true } : {}),
       pickable: true,
       autoHighlight: true,
@@ -346,7 +417,7 @@ class Viewer {
     return new IconLayer({
       id: `arrow-${group.type}`,
       data: group.arrows!,
-      visible: this.visible.get(group.type),
+      visible: this.visible.get(group.type) && this.map.getZoom() >= ARROW_MIN_ZOOM,
       iconAtlas: this.icons.atlas,
       iconMapping: this.icons.mapping,
       getIcon: () => ARROW_ICON,
@@ -357,13 +428,54 @@ class Viewer {
     });
   }
 
+  /** Flow values next to the links in view, only when zoomed in far enough to avoid clutter. */
+  private updateLabels(): void {
+    const coloring = this.flowColoring;
+    const flow = this.network.linkGroups.find((group) => group.type === "flow");
+    const labels: Label[] = [];
+    if (coloring && flow && this.visible.get("flow") && this.map.getZoom() >= LABEL_MIN_ZOOM) {
+      const bounds = this.map.getBounds();
+      const positions = flow.arrows!.attributes.getPosition.value;
+      for (let i = 0; i < flow.rows.length && labels.length < MAX_LABELS; i++) {
+        const position: [number, number] = [positions[2 * i], positions[2 * i + 1]];
+        const value = coloring.values[i];
+        if (Number.isFinite(value) && bounds.contains(position)) labels.push({ position, text: formatNumber(value) });
+      }
+    }
+    // A new array makes deck.gl rebuild the layer, so keep the old one if both are empty
+    if (labels.length > 0 || this.labels.length > 0) this.labels = labels;
+  }
+
+  private labelLayer() {
+    return new TextLayer<Label>({
+      id: "flow-labels",
+      data: this.labels,
+      getPosition: (label) => label.position,
+      getText: (label) => label.text,
+      getSize: 11,
+      getColor: [20, 20, 20],
+      getPixelOffset: [0, -12],
+      fontFamily: "system-ui, sans-serif",
+      background: true,
+      getBackgroundColor: [255, 255, 255, 210],
+      backgroundPadding: [2, 1],
+    });
+  }
+
+  private zoomDetail(): string {
+    const zoom = this.map.getZoom();
+    return [NODE_MIN_ZOOM, ARROW_MIN_ZOOM, LABEL_MIN_ZOOM].map((min) => zoom >= min).join();
+  }
+
   private render(): void {
     const { network } = this;
+    this.detail = this.zoomDetail();
     this.overlay.setProps({
       layers: [
         ...network.linkGroups.map((g) => this.linkLayer(g)),
         ...network.linkGroups.map((g) => this.arrowLayer(g)),
         ...network.nodeGroups.map((g) => this.nodeLayer(g)),
+        this.labelLayer(),
       ],
     });
     for (const id of ["basin_area", "basin_area_outline"]) {
@@ -479,12 +591,12 @@ class Viewer {
   }
 
   private layerControl(): HTMLDetailsElement {
-    const { network, manifest } = this;
+    const { network } = this;
     const details = el("details", "layers");
     // On phones the list would cover most of the map
     details.open = !matchMedia("(max-width: 600px)").matches;
     details.append(el("summary", "", "Layers"));
-    details.append(el("h4", "", "Nodes"));
+    details.append(el("h4", "", "Nodes"), el("p", "note", "Shown when zoomed in"));
     for (const group of network.nodeGroups) {
       details.append(this.checkbox(group.type, group.type, this.nodeSymbol(group.type), group.rows.length));
     }
@@ -500,8 +612,19 @@ class Viewer {
       this.checkbox("basin_area", "Basin / area", el("span", "area-swatch")),
       this.checkbox("waterboards", "Water boards"),
     );
-    const version = manifest.ribasim_version ? `, Ribasim ${manifest.ribasim_version}` : "";
-    details.append(el("p", "note", `${manifest.model}${version}`));
+    details.append(el("h4", "", "Base map"));
+    for (const [id, { label }] of Object.entries(BASEMAPS)) {
+      const input = el("input");
+      input.type = "radio";
+      input.name = "basemap";
+      input.checked = id === this.basemap;
+      input.addEventListener("change", () => {
+        this.setBasemap(id).catch((error) => console.error("Failed to change the base map", error));
+      });
+      const row = el("label");
+      row.append(input, label);
+      details.append(row);
+    }
     return details;
   }
 
@@ -570,31 +693,35 @@ async function main(): Promise<void> {
     const protocol = new Protocol();
     maplibregl.addProtocol("pmtiles", protocol.tile);
     const manifest = await loadManifest();
+    // MapLibre adds its view to the hash, so check for it before creating the map
+    const hasView = hashParams().has("map");
     const map = new maplibregl.Map({
       container,
       hash: "map",
-      bounds: hashParams().has("map") ? undefined : manifest.bounds,
+      bounds: hasView ? undefined : manifest.bounds,
       fitBoundsOptions: { padding: 20 },
-      style: {
-        version: 8,
-        sources: {
-          basemap: {
-            type: "raster",
-            tiles: [BASEMAP],
-            tileSize: 256,
-            maxzoom: 19,
-            attribution: 'Kaartgegevens &copy; <a href="https://www.kadaster.nl">Kadaster</a>',
-          },
-        },
-        layers: [{ id: "basemap", type: "raster", source: "basemap" }],
-      },
+      // The network is drawn flat, so rotation and pitch would only disorient
+      dragRotate: false,
+      pitchWithRotate: false,
+      touchPitch: false,
+      style: await basemapStyle(DEFAULT_BASEMAP),
+      // The default control collapses into an "i" button on narrow maps and once the map is moved
+      attributionControl: false,
     });
-    map.addControl(new maplibregl.NavigationControl(), "top-right");
+    map.touchZoomRotate.disableRotation();
+    map.keyboard.disableRotation();
+    // Zoom with the mouse wheel, pinch or keyboard; the buttons would sit under the panel
+    map.addControl(new maplibregl.AttributionControl({ compact: false }), "bottom-right");
     map.addControl(new maplibregl.ScaleControl(), "bottom-left");
     // "load" also waits for basemap tiles and a rendered frame; the style is all we need to add layers
     const [network, icons] = await Promise.all([loadNetwork(manifest), loadIconAtlas(), map.once("style.load")]);
     const viewer = new Viewer(map, root, manifest, network, icons);
     status.remove();
+    const selection = selectionFromHash();
+    if (selection) {
+      viewer.select(selection);
+      if (!hasView) viewer.zoomTo(selection);
+    }
     await viewer.initResults();
   } catch (error) {
     root.append(status);

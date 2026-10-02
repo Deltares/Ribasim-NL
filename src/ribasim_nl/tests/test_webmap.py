@@ -120,6 +120,15 @@ def test_export_results(tmp_path):
         },
         coords={"time": time, "link_id": link_ids},
     ).to_netcdf(results_dir / "flow.nc")
+    # Ribasim writes one row per control state change
+    xr.Dataset(
+        {
+            "control_node_id": (("time",), np.array([8, 7, 8], dtype="int32")),
+            "truth_state": (("time",), np.array(["T", "F", "F"])),
+            "control_state": (("time",), np.array(["off", "on", "on"])),
+        },
+        coords={"time": pd.to_datetime(["2020-01-01", "2020-01-01", "2020-01-05"])},
+    ).to_netcdf(results_dir / "control.nc")
 
     output = tmp_path / "webmap"
     output.mkdir()
@@ -141,6 +150,12 @@ def test_export_results(tmp_path):
     flow = pd.read_parquet(results["flow"]["by_id"])
     assert flow.columns.tolist() == ["link_id", "time", "flow_rate"]
     assert flow["link_id"].dtype == "int32"
+
+    control = pd.read_parquet(results["control"])
+    assert control.columns.tolist() == ["control_node_id", "time", "control_state"]
+    assert control["control_node_id"].tolist() == [7, 8, 8]
+    assert control["control_state"].tolist() == ["on", "off", "on"]
+    assert control["control_node_id"].dtype == "int32"
 
 
 def test_color_domain():

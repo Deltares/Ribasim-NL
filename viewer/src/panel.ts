@@ -1,5 +1,7 @@
 import uPlot from "uplot";
+import { formatNumber } from "./colors";
 import { readRow, readRowsById, type Manifest, type Row, type TableEntry } from "./data";
+import { LevelDiagram, type LevelSeries, type LevelSide } from "./levels";
 import type { Network } from "./network";
 
 export type Selection = { kind: "node" | "link"; id: number };
@@ -8,6 +10,8 @@ const MAX_TABLE_ROWS = 2000;
 const MAX_LINK_SERIES = 8;
 const HIDDEN_COLUMNS = new Set(["x", "y", "coords"]);
 const ID_COLUMNS = new Set(["node_id", "link_id"]);
+/** Nodes with one flow in and out, see https://ribasim.org/reference/ */
+const CONNECTOR_TYPES = new Set(["TabulatedRatingCurve", "Outlet", "Pump", "LinearResistance", "ManningResistance"]);
 const BASIN_CHARTS: [string, string[]][] = [
   ["Level", ["level"]],
   ["Storage", ["storage"]],
@@ -75,18 +79,51 @@ function timeChart(rows: Row[], width: number, only?: string[]): HTMLElement | n
     ...columns.map((column) => rows.map((row) => (typeof row[column] === "number" ? (row[column] as number) : null))),
   ];
   const container = el("div", { className: "chart" });
+  const seriesValue = (_: uPlot, value: number | null) => (value === null ? "–" : formatNumber(value));
   const plot = new uPlot(
     {
       width,
       height: 200,
-      series: [{}, ...columns.map((label, i) => ({ label, stroke: SERIES_COLORS[i % SERIES_COLORS.length] }))],
+      series: [
+        { value: "{YYYY}-{MM}-{DD}" },
+        ...columns.map((label, i) => ({ label, stroke: SERIES_COLORS[i % SERIES_COLORS.length], value: seriesValue })),
+      ],
       scales: { x: { time: true } },
-      legend: { live: false },
+      axes: [{}, { size: 60, values: (_, ticks) => ticks.map(formatNumber) }],
+      // Show the values under the cursor in the legend
+      legend: { live: true },
     },
     data,
   );
   container.append(plot.root);
   return container;
+}
+
+/** The rows of a time table in effect at each time step: the last at or before it. */
+function lastRowPerStep(rows: Row[], times: Date[]): (Row | undefined)[] {
+  const sorted = [...rows].sort((a, b) => (a.time as Date).getTime() - (b.time as Date).getTime());
+  let row = -1;
+  return times.map((time) => {
+    while (row + 1 < sorted.length && (sorted[row + 1].time as Date).getTime() <= time.getTime()) row++;
+    return row >= 0 ? sorted[row] : undefined;
+  });
+}
+
+/** Content that follows the time step of the map. */
+interface Situation {
+  element: HTMLElement;
+  update: (step: number) => void;
+}
+
+function levelLegend(): HTMLElement {
+  const item = (className: string, text: string) => el("span", {}, el("span", { className: `key ${className}` }), text);
+  return el(
+    "div",
+    { className: "level-legend" },
+    item("water", "water level"),
+    item("limit", "min upstream / max downstream level of the control state"),
+    item("bottom", "Basin bottom"),
+  );
 }
 
 /** A collapsible section whose content is loaded when it is first opened. */
@@ -133,6 +170,9 @@ export interface PanelCallbacks {
 export class Panel {
   private readonly element: HTMLElement;
   private token = 0;
+  private step = 0;
+  private readonly times: Date[];
+  private situation: Situation | null = null;
 
   constructor(
     parent: HTMLElement,
@@ -142,6 +182,13 @@ export class Panel {
   ) {
     this.element = el("div", { className: "panel", hidden: true });
     parent.append(this.element);
+    this.times = (manifest.results?.times ?? []).map((time) => new Date(`${time}Z`));
+  }
+
+  /** Follow the time step of the map, for the level diagram. */
+  setStep(step: number): void {
+    this.step = step;
+    this.situation?.update(step);
   }
 
   private nodeLink(nodeId: number): HTMLElement {
@@ -178,6 +225,7 @@ export class Panel {
 
   show(selection: Selection): void {
     const token = ++this.token;
+    this.situation = null;
     const { network, manifest } = this;
     const width = this.contentWidth();
     const attributes = el("div", {}, "Loading…");
@@ -192,15 +240,25 @@ export class Panel {
       const incoming: HTMLElement[] = [];
       const outgoing: HTMLElement[] = [];
       const flowLinks: [number, string][] = [];
+      const upstream: number[] = [];
+      const downstream: number[] = [];
+      const controllers: number[] = [];
+      const outflows: number[] = [];
+      // Inflow and outflow of a connector are equal, so only the outflow is charted
+      const isConnector = CONNECTOR_TYPES.has(nodeType);
       network.linkId.forEach((linkId, linkRow) => {
         const isFlow = network.linkType[linkRow] === "flow";
         if (network.toNodeId[linkRow] === selection.id) {
           incoming.push(this.linkLink(linkRow, "from"));
-          if (isFlow) flowLinks.push([linkId, `in #${linkId}`]);
+          if (isFlow && !isConnector) flowLinks.push([linkId, `in #${linkId}`]);
+          if (isFlow) upstream.push(network.fromNodeId[linkRow]);
+          if (network.linkType[linkRow] === "control") controllers.push(network.fromNodeId[linkRow]);
         }
         if (network.fromNodeId[linkRow] === selection.id) {
           outgoing.push(this.linkLink(linkRow, "to"));
           if (isFlow) flowLinks.push([linkId, `out #${linkId}`]);
+          if (isFlow) downstream.push(network.toNodeId[linkRow]);
+          if (isFlow) outflows.push(linkId);
         }
       });
       if (incoming.length) sections.push(el("h3", {}, "Incoming links"), el("ul", {}, ...incoming));
@@ -217,6 +275,27 @@ export class Panel {
         );
       } else if (results && flowLinks.length) {
         sections.push(lazySection("Flow results", () => this.linkFlows(flowLinks, width), true));
+      }
+      if (isConnector) {
+        const title = this.times.length ? "Situation at the current time" : "Situation";
+        sections.push(
+          lazySection(
+            title,
+            async () => {
+              const situation = await this.connectorSituation(nodeType, selection.id, width, {
+                upstream: upstream[0],
+                downstream: downstream[0],
+                controller: controllers[0],
+                outflow: outflows[0],
+              });
+              if (token !== this.token) return [];
+              this.situation = situation;
+              situation.update(this.step);
+              return [situation.element];
+            },
+            true,
+          ),
+        );
       }
 
       const tables = manifest.tables.filter((table) => table.node_type === nodeType);
@@ -247,6 +326,123 @@ export class Panel {
       this.render(sections);
       void this.fillAttributes(token, attributes, readRow(manifest.files.links, row));
     }
+  }
+
+  private table(nodeType: string, kind: string): TableEntry | undefined {
+    return this.manifest.tables.find((table) => table.name === `${nodeType} / ${kind}`);
+  }
+
+  private async tableRows(nodeType: string, kind: string, nodeId: number): Promise<Row[]> {
+    const table = this.table(nodeType, kind);
+    return table ? readRowsById(table, "node_id", nodeId) : [];
+  }
+
+  /** Water level per time step: Basin results, or the LevelBoundary input. */
+  private async levelSeries(nodeType: string, nodeId: number): Promise<Float64Array | null> {
+    const results = this.manifest.results;
+    const steps = Math.max(this.times.length, 1);
+    if (nodeType === "Basin" && results) {
+      const byTime = new Map<number, number>();
+      for (const row of await readRowsById(results.basin.by_id, "node_id", nodeId)) {
+        byTime.set((row.time as Date).getTime(), row.level as number);
+      }
+      return Float64Array.from(this.times, (time) => byTime.get(time.getTime()) ?? Number.NaN);
+    }
+    if (nodeType !== "LevelBoundary") return null;
+    const rows = await this.tableRows(nodeType, "time", nodeId);
+    if (rows.length && this.times.length) {
+      return Float64Array.from(lastRowPerStep(rows, this.times), (row) => (row?.level as number) ?? Number.NaN);
+    }
+    const [constant] = await this.tableRows(nodeType, "static", nodeId);
+    return typeof constant?.level === "number" ? new Float64Array(steps).fill(constant.level) : null;
+  }
+
+  private async levelSide(nodeId: number | undefined, limit: LevelSeries | null): Promise<LevelSide> {
+    const row = nodeId === undefined ? undefined : this.network.nodeRow.get(nodeId);
+    if (nodeId === undefined || row === undefined) return { name: "none", levels: null, bottom: null, limit };
+    const nodeType = this.network.nodeType[row];
+    const [levels, profile] = await Promise.all([
+      this.levelSeries(nodeType, nodeId),
+      nodeType === "Basin" ? this.tableRows(nodeType, "profile", nodeId) : [],
+    ]);
+    const bottoms = profile.map((r) => r.level).filter((level): level is number => typeof level === "number");
+    return {
+      name: `${nodeType} #${nodeId}`,
+      levels,
+      bottom: bottoms.length ? Math.min(...bottoms) : null,
+      limit,
+    };
+  }
+
+  /** The control state per time step, from the results of a DiscreteControl node. */
+  private async controlStates(controller: number | undefined): Promise<(string | null)[] | null> {
+    const control = this.manifest.results?.control;
+    const row = controller === undefined ? undefined : this.network.nodeRow.get(controller);
+    if (!control || row === undefined || this.network.nodeType[row] !== "DiscreteControl") return null;
+    const rows = await readRowsById(control, "control_node_id", controller!);
+    return lastRowPerStep(rows, this.times).map((row) => (row ? String(row.control_state) : null));
+  }
+
+  /** Flow rate per time step of a link. */
+  private async flowSeries(linkId: number | undefined): Promise<Float64Array | null> {
+    const flow = this.manifest.results?.flow;
+    if (!flow || linkId === undefined) return null;
+    const byTime = new Map<number, number>();
+    for (const row of await readRowsById(flow.by_id, "link_id", linkId)) {
+      byTime.set((row.time as Date).getTime(), row.flow_rate as number);
+    }
+    return Float64Array.from(this.times, (time) => byTime.get(time.getTime()) ?? Number.NaN);
+  }
+
+  /** Levels, control state and limits, and flow rate around a connector node, per time step. */
+  private async connectorSituation(
+    nodeType: string,
+    nodeId: number,
+    width: number,
+    neighbors: { upstream?: number; downstream?: number; controller?: number; outflow?: number },
+  ): Promise<Situation> {
+    const steps = Math.max(this.times.length, 1);
+    const [rows, states, flow] = await Promise.all([
+      this.tableRows(nodeType, "static", nodeId),
+      this.controlStates(neighbors.controller),
+      this.flowSeries(neighbors.outflow),
+    ]);
+    // The static row in use: the one of the current control state, or the only one without control
+    const uncontrolled = rows.length === 1 ? rows[0] : rows.find((row) => row.control_state == null);
+    const activeRows = Array.from({ length: steps }, (_, step) => {
+      const state = states?.[step];
+      return state ? rows.find((row) => row.control_state === state) : uncontrolled;
+    });
+    const limit = (column: string, label: string): LevelSeries | null => {
+      const values = Float64Array.from(activeRows, (row) =>
+        typeof row?.[column] === "number" ? (row[column] as number) : Number.NaN,
+      );
+      return values.some(Number.isFinite) ? { label, values } : null;
+    };
+    const [up, down] = await Promise.all([
+      this.levelSide(neighbors.upstream, limit("min_upstream_level", "min upstream")),
+      this.levelSide(neighbors.downstream, limit("max_downstream_level", "max downstream")),
+    ]);
+    const diagram = new LevelDiagram(up, down, width);
+
+    const controllerRow = neighbors.controller === undefined ? undefined : this.network.nodeRow.get(neighbors.controller);
+    const controllerName =
+      controllerRow === undefined ? "" : ` (${this.network.nodeType[controllerRow]} #${neighbors.controller})`;
+    const stateValue = el("dd");
+    const flowValue = el("dd");
+    const facts = el("dl", { className: "facts" }, el("dt", {}, "Control state"), stateValue);
+    if (flow) facts.append(el("dt", {}, "Flow rate"), flowValue);
+    const element = el("div", {}, facts, diagram.element, levelLegend());
+    return {
+      element,
+      update: (step) => {
+        const state = states?.[step];
+        stateValue.textContent =
+          neighbors.controller === undefined ? "not controlled" : `${states ? (state ?? "unknown") : "–"}${controllerName}`;
+        if (flow) flowValue.textContent = `${formatNumber(flow[step])} m3 s-1`;
+        diagram.update(step);
+      },
+    };
   }
 
   /** One chart with the flow rate of each link, merged on time. */
@@ -294,6 +490,7 @@ export class Panel {
 
   hide(): void {
     this.token++;
+    this.situation = null;
     this.element.hidden = true;
     this.element.replaceChildren();
   }

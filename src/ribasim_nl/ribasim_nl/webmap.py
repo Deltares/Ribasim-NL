@@ -23,6 +23,10 @@ WEB_CRS = "EPSG:4326"
 # Simplification tolerances in model CRS units (m)
 LINK_TOLERANCE = 2.0
 WATERBOARD_TOLERANCE = 25.0
+# Basin / area simplification in vector tile units (4096 per tile), at the lowest and highest zoom level;
+# zoomed out the full detail is invisible and slow to draw
+BASIN_AREA_SIMPLIFICATION = 4.0
+BASIN_AREA_SIMPLIFICATION_MAX_ZOOM = 0.5
 ROW_GROUP_SIZE = 4096
 NETCDF_NODES_PER_ROW_GROUP = 16
 TIME_STEPS_PER_ROW_GROUP = 8
@@ -119,7 +123,14 @@ def export_basin_area(database: Path, path: Path) -> None:
         path,
         driver="PMTiles",
         layer="basin_area",
-        dataset_options={"MINZOOM": "6", "MAXZOOM": "13", "MAX_SIZE": "2000000", "MAX_FEATURES": "500000"},
+        dataset_options={
+            "MINZOOM": "6",
+            "MAXZOOM": "13",
+            "MAX_SIZE": "2000000",
+            "MAX_FEATURES": "500000",
+            "SIMPLIFICATION": str(BASIN_AREA_SIMPLIFICATION),
+            "SIMPLIFICATION_MAX_ZOOM": str(BASIN_AREA_SIMPLIFICATION_MAX_ZOOM),
+        },
     )
 
 
@@ -275,7 +286,25 @@ def export_results(results_dir: Path, output_dir: Path) -> dict:
             assert results["times"] == [str(t) for t in times], f"Time steps of {source} differ"
         results["times"] = [str(t) for t in times]
         results[name] = {"id": id_dim, "count": len(ids), "variables": variables, "by_id": by_id, "by_time": by_time}
+    control = results_dir / "control.nc"
+    if control.is_file():
+        results["control"] = export_control(control, output_dir / "results" / "control.parquet")
     return results
+
+
+def export_control(source: Path, path: Path) -> Path:
+    """Export the control state changes per DiscreteControl node, sorted by control_node_id and time."""
+    with xr.open_dataset(source) as ds:
+        df = pd.DataFrame(
+            {
+                "control_node_id": ds["control_node_id"].to_numpy().astype("int32"),
+                "time": ds["time"].to_numpy().astype("datetime64[ms]"),
+                "control_state": ds["control_state"].to_numpy().astype(str),
+            }
+        )
+    df = df.sort_values(["control_node_id", "time"], kind="stable")
+    write_parquet(df, path)
+    return path
 
 
 def export_webmap(toml_path: Path, waterboards_path: Path, output_dir: Path) -> dict:
@@ -341,6 +370,8 @@ def export_webmap(toml_path: Path, waterboards_path: Path, output_dir: Path) -> 
         for name in ("basin", "flow"):
             results[name]["by_id"] = entry(results[name]["by_id"])
             results[name]["by_time"] = entry(results[name]["by_time"])
+        if "control" in results:
+            results["control"] = entry(results["control"])
         manifest["results"] = results
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
     return manifest

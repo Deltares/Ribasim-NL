@@ -156,10 +156,10 @@
   z-index: 2;
   box-sizing: border-box;
   top: 10px;
-  right: 50px;
+  right: 10px;
   bottom: 30px;
   width: 420px;
-  max-width: calc(100% - 70px);
+  max-width: calc(100% - 20px);
   overflow-y: auto;
   /* Charts are sized to the content width, which must not change once the content overflows */
   scrollbar-gutter: stable;
@@ -261,7 +261,7 @@
 }
 
 .ribasim-viewer .panel:not([hidden]) ~ .timebar {
-  --panel-space: 480px;
+  --panel-space: 440px;
 }
 
 .ribasim-viewer .timebar .time {
@@ -352,4 +352,104 @@
   .ribasim-viewer .panel:not([hidden]) ~ .timebar {
     display: none;
   }
+}
+
+.ribasim-viewer .legend .wedge {
+  height: 8px;
+  background: rgb(54, 144, 192);
+  /* Follows the cubic width ramp of the links */
+  clip-path: polygon(0 44%, 25% 43%, 50% 38%, 75% 25%, 100% 0, 100% 100%, 75% 75%, 50% 62%, 25% 57%, 0 56%);
+}
+
+.ribasim-viewer .levels svg {
+  display: block;
+  font-size: 10px;
+}
+
+.ribasim-viewer .levels .grid {
+  stroke: #eee;
+}
+
+.ribasim-viewer .levels .tick,
+.ribasim-viewer .levels .side-name {
+  fill: #555;
+}
+
+.ribasim-viewer .levels .connector {
+  fill: #bbb;
+}
+
+.ribasim-viewer .levels .value {
+  fill: #2c7fb8;
+  font-weight: 600;
+}
+
+.ribasim-viewer .level-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin-top: 4px;
+  color: #555;
+  font-size: 11px;
+}
+
+.ribasim-viewer .level-legend .key {
+  display: inline-block;
+  width: 16px;
+  margin-right: 4px;
+  vertical-align: middle;
+  border-top: 2px solid;
+}
+
+.ribasim-viewer .level-legend .water {
+  border-color: #2c7fb8;
+}
+
+.ribasim-viewer .level-legend .limit {
+  border-top-style: dotted;
+  border-color: #000;
+}
+
+.ribasim-viewer .level-legend .bottom {
+  border-top-style: dotted;
+  border-color: #8c510a;
+}
+
+.ribasim-viewer .legend-labels .limit {
+  width: 6em;
+  padding: 0 2px;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+  font: inherit;
+  background: transparent;
+}
+
+.ribasim-viewer .legend-labels .limit:last-child {
+  text-align: right;
+}
+
+.ribasim-viewer .legend-labels .limit.invalid {
+  border-color: #b00020;
+}
+
+.ribasim-viewer .legend-labels .reset {
+  padding: 0 4px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ribasim-viewer .facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  margin: 0 0 6px;
+}
+
+.ribasim-viewer .facts dt {
+  color: #555;
+}
+
+.ribasim-viewer .facts dd {
+  margin: 0;
+  font-weight: 600;
 }
