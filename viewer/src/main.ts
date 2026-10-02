@@ -10,6 +10,7 @@ import * as maplibregl from "maplibre-gl";
 // maplibre resolves its worker at runtime, which bundlers cannot follow
 import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { Protocol } from "pmtiles";
+import { BASEMAPS, basemapStyle, DEFAULT_BASEMAP, withOverlays } from "./basemaps";
 import { ColorScale, formatNumber } from "./colors";
 import { fileUrl, loadManifest, type Manifest } from "./data";
 import { loadNetwork, type Group, type Network } from "./network";
@@ -36,9 +37,9 @@ const HIGHLIGHT: [number, number, number, number] = [255, 140, 0, 255];
 const NO_DATA: [number, number, number, number] = [170, 170, 170, 255];
 const DASHED = [new PathStyleExtension({ dash: true })];
 // Icons shrink with the map below this size in meters, so dense areas stay readable when zoomed out
-const NODE_ICON_SIZE_M = 500;
+const NODE_ICON_SIZE_M = 320;
 const ARROW_SIZE_M = 60;
-const BASEMAP = "https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/grijs/EPSG:3857/{z}/{x}/{y}.png";
+const OVERLAY_SOURCES = new Set(["basin_area", "waterboards"]);
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text = ""): HTMLElementTagNameMap[K] {
   const element = document.createElement(tag);
@@ -99,6 +100,8 @@ function coloring(scale: ColorScale, values: Float32Array, local: Int32Array, le
 
 class Viewer {
   private readonly visible = new Map<string, boolean>();
+  private basemap = DEFAULT_BASEMAP;
+  private basinAreaColors: { scale: ColorScale; values: Float32Array } | null = null;
   private selection: Selection | null = null;
   private readonly overlay: MapboxOverlay;
   private readonly panel: Panel;
@@ -208,6 +211,7 @@ class Viewer {
 
   private colorBasinAreas(scale: ColorScale | null, values: Float32Array | null): void {
     const target = { source: "basin_area", sourceLayer: "basin_area" };
+    this.basinAreaColors = scale && values ? { scale, values } : null;
     if (!scale || !values) {
       if (!this.basinAreasColored) return;
       this.map.removeFeatureState(target);
@@ -217,6 +221,27 @@ class Viewer {
     }
     this.resultIndex!.basinIds.forEach((id, i) => this.map.setFeatureState({ ...target, id }, { color: scale.css(values[i]) }));
     this.basinAreasColored = true;
+  }
+
+  private async setBasemap(id: string): Promise<void> {
+    this.basemap = id;
+    const style = await basemapStyle(id);
+    if (this.basemap !== id) return;
+    this.map.setStyle(style, { transformStyle: (current, next) => withOverlays(current, next, OVERLAY_SOURCES) });
+    // A new style can drop feature states and layer visibility, so restore them
+    this.map.once("styledata", () => {
+      this.render();
+      if (this.selection?.kind === "node") {
+        this.map.setFeatureState(
+          { source: "basin_area", sourceLayer: "basin_area", id: this.selection.id },
+          { selected: true },
+        );
+      }
+      if (this.basinAreaColors) {
+        this.basinAreasColored = false;
+        this.colorBasinAreas(this.basinAreaColors.scale, this.basinAreaColors.values);
+      }
+    });
   }
 
   private addMapLayers(): void {
@@ -504,6 +529,19 @@ class Viewer {
       this.checkbox("basin_area", "Basin / area", el("span", "area-swatch")),
       this.checkbox("waterboards", "Water boards"),
     );
+    details.append(el("h4", "", "Base map"));
+    for (const [id, { label }] of Object.entries(BASEMAPS)) {
+      const input = el("input");
+      input.type = "radio";
+      input.name = "basemap";
+      input.checked = id === this.basemap;
+      input.addEventListener("change", () => {
+        this.setBasemap(id).catch((error) => console.error("Failed to change the base map", error));
+      });
+      const row = el("label");
+      row.append(input, label);
+      details.append(row);
+    }
     const version = manifest.ribasim_version ? `, Ribasim ${manifest.ribasim_version}` : "";
     details.append(el("p", "note", `${manifest.model}${version}`));
     this.root.append(details);
@@ -579,20 +617,11 @@ async function main(): Promise<void> {
       hash: "map",
       bounds: hashParams().has("map") ? undefined : manifest.bounds,
       fitBoundsOptions: { padding: 20 },
-      style: {
-        version: 8,
-        sources: {
-          basemap: {
-            type: "raster",
-            tiles: [BASEMAP],
-            tileSize: 256,
-            maxzoom: 19,
-            attribution: 'Kaartgegevens &copy; <a href="https://www.kadaster.nl">Kadaster</a>',
-          },
-        },
-        layers: [{ id: "basemap", type: "raster", source: "basemap" }],
-      },
+      style: await basemapStyle(DEFAULT_BASEMAP),
+      // The default control collapses into an "i" button on narrow maps and once the map is moved
+      attributionControl: false,
     });
+    map.addControl(new maplibregl.AttributionControl({ compact: false }), "bottom-right");
     map.addControl(new maplibregl.NavigationControl(), "top-right");
     map.addControl(new maplibregl.ScaleControl(), "bottom-left");
     // "load" also waits for basemap tiles and a rendered frame; the style is all we need to add layers
