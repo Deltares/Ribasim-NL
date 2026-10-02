@@ -3,7 +3,8 @@ import "uplot/dist/uPlot.min.css";
 import "./style.css";
 
 import type { PickingInfo } from "@deck.gl/core";
-import { PathLayer, ScatterplotLayer } from "@deck.gl/layers";
+import { PathStyleExtension } from "@deck.gl/extensions";
+import { IconLayer, PathLayer, ScatterplotLayer } from "@deck.gl/layers";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import * as maplibregl from "maplibre-gl";
 // maplibre resolves its worker at runtime, which bundlers cannot follow
@@ -14,37 +15,29 @@ import { fileUrl, loadManifest, type Manifest } from "./data";
 import { loadNetwork, type Group, type Network } from "./network";
 import { Panel, type Selection } from "./panel";
 import { ResultFrames } from "./results";
+import {
+  ARROW_ICON,
+  ARROW_SIZE_PX,
+  DEFAULT_LINK_STYLE,
+  DEFAULT_NODE_COLOR,
+  LINK_STYLES,
+  LINK_WIDTH_PX,
+  loadIconAtlas,
+  NODE_ICON_SIZE_PX,
+  NODE_STYLES,
+  nodeIconPng,
+  type Color,
+  type IconAtlas,
+} from "./styles";
 import { TimeBar } from "./timebar";
 
-type Color = [number, number, number];
-
-const NODE_COLORS: Record<string, Color> = {
-  Basin: [31, 120, 180],
-  ContinuousControl: [90, 90, 90],
-  DiscreteControl: [40, 40, 40],
-  FlowBoundary: [177, 89, 40],
-  FlowDemand: [231, 41, 138],
-  Junction: [150, 150, 150],
-  LevelBoundary: [0, 160, 160],
-  LevelDemand: [102, 166, 30],
-  LinearResistance: [253, 191, 111],
-  ManningResistance: [255, 127, 0],
-  Outlet: [106, 61, 154],
-  PidControl: [90, 90, 90],
-  Pump: [227, 26, 28],
-  TabulatedRatingCurve: [51, 160, 44],
-  Terminal: [60, 60, 60],
-  UserDemand: [230, 171, 2],
-};
-const LINK_COLORS: Record<string, Color> = {
-  flow: [70, 70, 70],
-  control: [200, 60, 60],
-  listen: [110, 110, 220],
-};
-const DEFAULT_COLOR: Color = [128, 128, 128];
 const HIDDEN_BY_DEFAULT = new Set(["ContinuousControl", "DiscreteControl", "PidControl", "control", "listen"]);
 const HIGHLIGHT: [number, number, number, number] = [255, 140, 0, 255];
 const NO_DATA: [number, number, number, number] = [170, 170, 170, 255];
+const DASHED = [new PathStyleExtension({ dash: true })];
+// Icons shrink with the map below this size in meters, so dense areas stay readable when zoomed out
+const NODE_ICON_SIZE_M = 500;
+const ARROW_SIZE_M = 60;
 const BASEMAP = "https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/grijs/EPSG:3857/{z}/{x}/{y}.png";
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text = ""): HTMLElementTagNameMap[K] {
@@ -123,6 +116,7 @@ class Viewer {
     private readonly root: HTMLElement,
     private readonly manifest: Manifest,
     private readonly network: Network,
+    private readonly icons: IconAtlas,
   ) {
     for (const group of [...network.nodeGroups, ...network.linkGroups]) {
       this.visible.set(group.type, !HIDDEN_BY_DEFAULT.has(group.type));
@@ -242,15 +236,16 @@ class Viewer {
           "case",
           ["boolean", ["feature-state", "selected"], false],
           "#ff8c00",
-          ["to-color", ["coalesce", ["feature-state", "color"], "#6fa8dc"]],
+          ["to-color", ["coalesce", ["feature-state", "color"], "#f7f7f7"]],
         ],
+        // Unfilled as in QGIS; transparent fills are still found by queryRenderedFeatures for clicks
         "fill-opacity": [
           "case",
           ["boolean", ["feature-state", "selected"], false],
           0.5,
           ["!=", ["feature-state", "color"], null],
           0.75,
-          0.15,
+          0,
         ],
       },
     });
@@ -259,8 +254,11 @@ class Viewer {
       type: "line",
       source: "basin_area",
       "source-layer": "basin_area",
-      minzoom: 9,
-      paint: { "line-color": "#3d85c6", "line-width": 0.5 },
+      paint: {
+        "line-color": "#000",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 7, 0.2, 12, 1.36],
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 7, 0.3, 11, 1],
+      },
     });
     map.addSource("waterboards", { type: "geojson", data: fileUrl(manifest.files.waterboards) });
     map.addLayer({
@@ -275,27 +273,39 @@ class Viewer {
     const selected =
       this.selection?.kind === "node" ? this.network.nodeRow.get(this.selection.id) : undefined;
     const isSelected = selected !== undefined && this.network.nodeType[selected] === group.type;
-    const coloring = group.type === "Basin" ? this.basinColoring : null;
-    return new ScatterplotLayer({
+    const common = {
       id: `node-${group.type}`,
       data: { length: group.rows.length, attributes: { getPosition: { value: group.positions, size: 2 } } },
       visible: this.visible.get(group.type),
-      getFillColor: coloring
-        ? (_: unknown, { index }: { index: number }) => coloring.colors.subarray(index * 4, index * 4 + 4) as unknown as Color
-        : (NODE_COLORS[group.type] ?? DEFAULT_COLOR),
-      updateTriggers: { getFillColor: coloring?.version ?? -1 },
-      getLineColor: [255, 255, 255],
-      stroked: true,
-      lineWidthUnits: "pixels",
-      getLineWidth: 0.5,
-      radiusUnits: "meters",
-      getRadius: group.type === "Basin" ? 60 : 40,
-      radiusMinPixels: 1.5,
-      radiusMaxPixels: group.type === "Basin" ? 6 : 5,
       pickable: true,
       autoHighlight: true,
       highlightColor: HIGHLIGHT,
       highlightedObjectIndex: isSelected ? this.network.nodeLocal[selected] : -1,
+    };
+    if (group.type in this.icons.mapping) {
+      return new IconLayer({
+        ...common,
+        iconAtlas: this.icons.atlas,
+        iconMapping: this.icons.mapping,
+        getIcon: () => group.type,
+        sizeUnits: "meters",
+        getSize: NODE_ICON_SIZE_M,
+        sizeMinPixels: 6,
+        sizeMaxPixels: NODE_ICON_SIZE_PX,
+      });
+    }
+    // Node types without an icon, or when the icons failed to load
+    return new ScatterplotLayer({
+      ...common,
+      getFillColor: NODE_STYLES[group.type] ?? DEFAULT_NODE_COLOR,
+      getLineColor: [0, 0, 0],
+      stroked: true,
+      lineWidthUnits: "pixels",
+      getLineWidth: 0.5,
+      radiusUnits: "meters",
+      getRadius: NODE_ICON_SIZE_M / 2,
+      radiusMinPixels: 2,
+      radiusMaxPixels: NODE_ICON_SIZE_PX / 2,
     });
   }
 
@@ -304,6 +314,7 @@ class Viewer {
       this.selection?.kind === "link" ? this.network.linkRow.get(this.selection.id) : undefined;
     const isSelected = selected !== undefined && this.network.linkType[selected] === group.type;
     const coloring = group.type === "flow" ? this.flowColoring : null;
+    const style = LINK_STYLES[group.type] ?? DEFAULT_LINK_STYLE;
     return new PathLayer({
       id: `link-${group.type}`,
       data: {
@@ -316,11 +327,12 @@ class Viewer {
       visible: this.visible.get(group.type),
       getColor: coloring
         ? (_: unknown, { index }: { index: number }) => coloring.colors.subarray(index * 4, index * 4 + 4) as unknown as Color
-        : (LINK_COLORS[group.type] ?? DEFAULT_COLOR),
+        : style.color,
       updateTriggers: { getColor: coloring?.version ?? -1 },
       widthUnits: "pixels",
-      getWidth: group.type === "flow" ? (coloring ? 2.5 : 1.5) : 1,
+      getWidth: coloring ? 2 * LINK_WIDTH_PX : LINK_WIDTH_PX,
       widthMinPixels: 1,
+      ...(style.dashed ? { extensions: DASHED, getDashArray: [4, 2], dashJustified: true } : {}),
       pickable: true,
       autoHighlight: true,
       highlightColor: HIGHLIGHT,
@@ -328,10 +340,36 @@ class Viewer {
     });
   }
 
+  /** Direction arrows halfway along each link, as the QGIS plugin draws them. */
+  private arrowLayer(group: Group) {
+    return new IconLayer({
+      id: `arrow-${group.type}`,
+      data: {
+        length: group.rows.length,
+        attributes: {
+          getPosition: { value: group.arrowPositions!, size: 2 },
+          getAngle: { value: group.arrowAngles!, size: 1 },
+        },
+      },
+      visible: this.visible.get(group.type),
+      iconAtlas: this.icons.atlas,
+      iconMapping: this.icons.mapping,
+      getIcon: () => ARROW_ICON,
+      getColor: (LINK_STYLES[group.type] ?? DEFAULT_LINK_STYLE).color,
+      sizeUnits: "meters",
+      getSize: ARROW_SIZE_M,
+      sizeMaxPixels: ARROW_SIZE_PX,
+    });
+  }
+
   private render(): void {
     const { network } = this;
     this.overlay.setProps({
-      layers: [...network.linkGroups.map((g) => this.linkLayer(g)), ...network.nodeGroups.map((g) => this.nodeLayer(g))],
+      layers: [
+        ...network.linkGroups.map((g) => this.linkLayer(g)),
+        ...network.linkGroups.map((g) => this.arrowLayer(g)),
+        ...network.nodeGroups.map((g) => this.nodeLayer(g)),
+      ],
     });
     for (const id of ["basin_area", "basin_area_outline"]) {
       this.map.setLayoutProperty(id, "visibility", this.visible.get("basin_area") ? "visible" : "none");
@@ -417,7 +455,7 @@ class Viewer {
     if (!bounds.isEmpty()) this.map.fitBounds(bounds, { padding: 80, maxZoom: 15 });
   }
 
-  private checkbox(key: string, label: string, color?: Color, count?: number): HTMLLabelElement {
+  private checkbox(key: string, label: string, symbol?: HTMLElement, count?: number): HTMLLabelElement {
     const input = el("input");
     input.type = "checkbox";
     input.checked = this.visible.get(key) ?? false;
@@ -427,13 +465,22 @@ class Viewer {
     });
     const row = el("label");
     row.append(input);
-    if (color) {
-      const swatch = el("span", "swatch");
-      swatch.style.background = `rgb(${color.join(",")})`;
-      row.append(swatch);
-    }
+    if (symbol) row.append(symbol);
     row.append(count === undefined ? label : `${label} (${count.toLocaleString()})`);
     return row;
+  }
+
+  private nodeSymbol(nodeType: string): HTMLElement {
+    const png = nodeIconPng(nodeType);
+    if (png && nodeType in this.icons.mapping) {
+      const image = el("img", "symbol");
+      image.src = png;
+      image.alt = "";
+      return image;
+    }
+    const swatch = el("span", "swatch");
+    swatch.style.background = `rgb(${(NODE_STYLES[nodeType] ?? DEFAULT_NODE_COLOR).join(",")})`;
+    return swatch;
   }
 
   private addLayerControl(): void {
@@ -443,33 +490,74 @@ class Viewer {
     details.append(el("summary", "", "Layers"));
     details.append(el("h4", "", "Nodes"));
     for (const group of network.nodeGroups) {
-      details.append(this.checkbox(group.type, group.type, NODE_COLORS[group.type] ?? DEFAULT_COLOR, group.rows.length));
+      details.append(this.checkbox(group.type, group.type, this.nodeSymbol(group.type), group.rows.length));
     }
     details.append(el("h4", "", "Links"));
     for (const group of network.linkGroups) {
-      details.append(this.checkbox(group.type, group.type, LINK_COLORS[group.type] ?? DEFAULT_COLOR, group.rows.length));
+      const style = LINK_STYLES[group.type] ?? DEFAULT_LINK_STYLE;
+      const line = el("span", "line-swatch");
+      line.style.borderTop = `2px ${style.dashed ? "dashed" : "solid"} rgb(${style.color.join(",")})`;
+      details.append(this.checkbox(group.type, group.type, line, group.rows.length));
     }
     details.append(el("h4", "", "Areas"));
-    details.append(this.checkbox("basin_area", "Basin / area"), this.checkbox("waterboards", "Water boards"));
+    details.append(
+      this.checkbox("basin_area", "Basin / area", el("span", "area-swatch")),
+      this.checkbox("waterboards", "Water boards"),
+    );
     const version = manifest.ribasim_version ? `, Ribasim ${manifest.ribasim_version}` : "";
     details.append(el("p", "note", `${manifest.model}${version}`));
     this.root.append(details);
+  }
+
+  private searchMatches(query: string): Selection[] {
+    // Node and link ids overlap, so "node 12" / "n12" or "link 12" / "l12" restrict the search
+    const match = /^(?:(n|node|l|link)\s*#?\s*)?#?(\d+)$/i.exec(query.trim());
+    if (!match) return [];
+    const id = Number(match[2]);
+    const prefix = match[1]?.[0].toLowerCase();
+    const matches: Selection[] = [];
+    if (prefix !== "l" && this.network.nodeRow.has(id)) matches.push({ kind: "node", id });
+    if (prefix !== "n" && this.network.linkRow.has(id)) matches.push({ kind: "link", id });
+    return matches;
   }
 
   private addSearch(): void {
     const input = el("input", "search");
     input.type = "search";
     input.placeholder = "Node or link id";
+    input.title = "Prefix with n or l to search only nodes or links, e.g. l200001";
+    const choices = el("div", "search-choices");
+    choices.hidden = true;
+    const go = (selection: Selection) => {
+      choices.hidden = true;
+      this.select(selection);
+      this.zoomTo(selection);
+    };
     input.addEventListener("keydown", (event) => {
       if (event.key !== "Enter") return;
-      const id = Number(input.value.trim());
-      const kind = this.network.nodeRow.has(id) ? "node" : this.network.linkRow.has(id) ? "link" : null;
-      input.classList.toggle("not-found", kind === null);
-      if (kind === null) return;
-      this.select({ kind, id });
-      this.zoomTo({ kind, id });
+      const matches = this.searchMatches(input.value);
+      input.classList.toggle("not-found", matches.length === 0);
+      choices.hidden = matches.length < 2;
+      if (matches.length === 1) go(matches[0]);
+      if (matches.length < 2) return;
+      choices.replaceChildren(
+        ...matches.map((selection) => {
+          const { network } = this;
+          const label =
+            selection.kind === "node"
+              ? `${network.nodeType[network.nodeRow.get(selection.id)!]} #${selection.id}`
+              : `${network.linkType[network.linkRow.get(selection.id)!]} link #${selection.id}`;
+          const button = el("button", "", label);
+          button.type = "button";
+          button.addEventListener("click", () => go(selection));
+          return button;
+        }),
+      );
     });
-    this.root.append(input);
+    input.addEventListener("input", () => {
+      choices.hidden = true;
+    });
+    this.root.append(input, choices);
   }
 }
 
@@ -508,8 +596,8 @@ async function main(): Promise<void> {
     map.addControl(new maplibregl.NavigationControl(), "top-right");
     map.addControl(new maplibregl.ScaleControl(), "bottom-left");
     // "load" also waits for basemap tiles and a rendered frame; the style is all we need to add layers
-    const [network] = await Promise.all([loadNetwork(manifest), map.once("style.load")]);
-    const viewer = new Viewer(map, root, manifest, network);
+    const [network, icons] = await Promise.all([loadNetwork(manifest), loadIconAtlas(), map.once("style.load")]);
+    const viewer = new Viewer(map, root, manifest, network, icons);
     status.remove();
     await viewer.initResults();
   } catch (error) {

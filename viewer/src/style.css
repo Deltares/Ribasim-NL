@@ -49,6 +49,36 @@
   border-color: #b00020;
 }
 
+.ribasim-viewer .search-choices {
+  position: absolute;
+  z-index: 3;
+  top: 44px;
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  width: 218px;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.ribasim-viewer .search-choices[hidden] {
+  display: none;
+}
+
+.ribasim-viewer .search-choices button {
+  padding: 6px 8px;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ribasim-viewer .search-choices button:hover {
+  background: #eef4fb;
+}
+
 .ribasim-viewer .layers {
   top: 50px;
   left: 10px;
@@ -81,6 +111,24 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
+}
+
+.ribasim-viewer .symbol {
+  width: 16px;
+  height: 16px;
+}
+
+.ribasim-viewer .line-swatch {
+  display: inline-block;
+  width: 16px;
+}
+
+.ribasim-viewer .area-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 10px;
+  border: 1px solid #000;
+  background: #f7f7f7;
 }
 
 .ribasim-viewer .note {
