@@ -25,6 +25,10 @@ LINK_TOLERANCE = 2.0
 WATERBOARD_TOLERANCE = 25.0
 ROW_GROUP_SIZE = 4096
 NETCDF_NODES_PER_ROW_GROUP = 16
+TIME_STEPS_PER_ROW_GROUP = 8
+# Result variables that can color the map, with their color scale
+MAP_VARIABLES = {"basin": {"level": "linear", "storage": "log"}, "flow": {"flow_rate": "log"}}
+LOG_SCALE_DYNAMIC_RANGE = 1e-4
 SKIP_TABLES = {"layer_styles", "ribasim_metadata"}
 
 
@@ -161,27 +165,117 @@ def export_gpkg_table(database: Path, name: str, path: Path) -> int:
     return len(df)
 
 
-def export_netcdf_table(source: Path, path: Path) -> int:
-    """Export a (time, node_id) NetCDF table to long-format float32 Parquet, one row group per node block."""
+def read_netcdf(source: Path, id_dim: str) -> tuple[np.ndarray, np.ndarray, dict[str, np.ndarray]]:
+    """Read the (time, id) variables of a Ribasim NetCDF file as float32 (id, time) arrays sorted by id."""
     with xr.open_dataset(source) as ds:
-        assert set(ds.dims) == {"time", "node_id"}, f"Unsupported dimensions in {source}: {dict(ds.sizes)}"
-        node_ids = ds["node_id"].to_numpy().astype("int32")
+        assert {"time", id_dim} <= set(ds.dims), f"Expected time and {id_dim} dimensions in {source}"
+        raw_ids = ds[id_dim].to_numpy()
+        assert np.all(raw_ids == np.round(raw_ids)), f"Non-integer {id_dim} in {source}"
+        ids = raw_ids.astype("int32")
         times = ds["time"].to_numpy().astype("datetime64[ms]")
-        variables = list(ds.data_vars)
-        data = {v: ds[v].transpose("node_id", "time").to_numpy().astype("float32") for v in variables}
+        variables = [str(v) for v in ds.data_vars if set(ds[v].dims) == {"time", id_dim}]
+        assert variables, f"No (time, {id_dim}) variables in {source}"
+        order = np.argsort(ids, kind="stable")
+        data = {v: ds[v].transpose(id_dim, "time").to_numpy().astype("float32")[order] for v in variables}
+    assert len(np.unique(ids)) == len(ids), f"Duplicate {id_dim} in {source}"
+    return ids[order], times, data
 
-    schema = pa.schema([("node_id", pa.int32()), ("time", pa.timestamp("ms"))] + [(v, pa.float32()) for v in variables])
-    order = np.argsort(node_ids, kind="stable")
+
+def float_encoding(*dictionary_columns: str, data: dict[str, np.ndarray]) -> dict:
+    """Parquet writer options that store float columns with byte stream split, which compresses well."""
+    return {
+        "compression": "zstd",
+        "use_dictionary": list(dictionary_columns),
+        "column_encoding": dict.fromkeys(data, "BYTE_STREAM_SPLIT"),
+    }
+
+
+def write_by_id(ids: np.ndarray, times: np.ndarray, data: dict[str, np.ndarray], id_dim: str, path: Path) -> int:
+    """Write long-format Parquet sorted by id, one row group per block of ids, for per-feature time series."""
+    schema = pa.schema([(id_dim, pa.int32()), ("time", pa.timestamp("ms"))] + [(v, pa.float32()) for v in data])
     ntime = len(times)
-    with pq.ParquetWriter(path, schema, compression="zstd", write_statistics=True) as writer:
-        for start in range(0, len(order), NETCDF_NODES_PER_ROW_GROUP):
-            block = order[start : start + NETCDF_NODES_PER_ROW_GROUP]
-            columns = {
-                "node_id": np.repeat(node_ids[block], ntime),
-                "time": np.tile(times, len(block)),
-            } | {v: data[v][block].ravel() for v in variables}
-            writer.write_table(pa.table(columns, schema=schema), row_group_size=len(block) * ntime)
-    return len(node_ids) * ntime
+    with pq.ParquetWriter(path, schema, write_statistics=True, **float_encoding(id_dim, "time", data=data)) as writer:
+        for start in range(0, len(ids), NETCDF_NODES_PER_ROW_GROUP):
+            block = slice(start, start + NETCDF_NODES_PER_ROW_GROUP)
+            nblock = len(ids[block])
+            columns = {id_dim: np.repeat(ids[block], ntime), "time": np.tile(times, nblock)} | {
+                v: values[block].ravel() for v, values in data.items()
+            }
+            writer.write_table(pa.table(columns, schema=schema), row_group_size=nblock * ntime)
+    return len(ids) * ntime
+
+
+def write_by_time(ids: np.ndarray, data: dict[str, np.ndarray], id_dim: str, path: Path) -> None:
+    """Write Parquet ordered by time then id, one row group per block of time steps, for map animation."""
+    schema = pa.schema([(id_dim, pa.int32())] + [(v, pa.float32()) for v in data])
+    ntime = next(iter(data.values())).shape[1]
+    with pq.ParquetWriter(path, schema, **float_encoding(id_dim, data=data)) as writer:
+        for start in range(0, ntime, TIME_STEPS_PER_ROW_GROUP):
+            steps = slice(start, start + TIME_STEPS_PER_ROW_GROUP)
+            nsteps = len(range(ntime)[steps])
+            columns = {id_dim: np.tile(ids, nsteps)} | {v: values[:, steps].T.ravel() for v, values in data.items()}
+            writer.write_table(pa.table(columns, schema=schema), row_group_size=nsteps * len(ids))
+
+
+def color_domain(values: np.ndarray, scale: str) -> list[float]:
+    """Robust color scale domain: 2nd to 98th percentile, of magnitudes for log and diverging scales."""
+    values = values[np.isfinite(values)]
+    if scale == "linear":
+        low, high = np.percentile(values, [2, 98])
+        return [float(low), float(high)]
+    magnitude = np.abs(values)
+    if scale == "diverging":
+        high = float(np.percentile(magnitude, 98))
+        return [-high, high]
+    assert scale == "log", f"Unknown scale {scale!r}"
+    low, high = np.percentile(magnitude[magnitude > 0], [2, 98])
+    # Solver noise around zero would otherwise stretch the scale over many orders of magnitude
+    return [float(max(low, high * LOG_SCALE_DYNAMIC_RANGE)), float(high)]
+
+
+def export_netcdf_table(source: Path, path: Path) -> int:
+    """Export a (time, node_id) NetCDF input table to long-format float32 Parquet sorted by node_id."""
+    ids, times, data = read_netcdf(source, "node_id")
+    return write_by_id(ids, times, data, "node_id", path)
+
+
+def export_results(results_dir: Path, output_dir: Path) -> dict:
+    """Export Basin and flow results, both per feature for charts and per time step for the map."""
+    results: dict = {"steps_per_row_group": TIME_STEPS_PER_ROW_GROUP}
+    (output_dir / "results").mkdir()
+    for name, id_dim in [("basin", "node_id"), ("flow", "link_id")]:
+        source = results_dir / f"{name}.nc"
+        ids, times, data = read_netcdf(source, id_dim)
+        with xr.open_dataset(source) as ds:
+            attrs = {v: ds[v].attrs for v in data}
+        by_id = output_dir / "results" / f"{name}_by_id.parquet"
+        by_time = output_dir / "results" / f"{name}_by_time.parquet"
+        write_by_id(ids, times, data, id_dim, by_id)
+        map_variables = MAP_VARIABLES[name]
+        write_by_time(ids, {v: data[v] for v in map_variables}, id_dim, by_time)
+
+        variables = {}
+        for variable, scale in map_variables.items():
+            values = data[variable]
+            variables[variable] = {
+                "label": attrs[variable].get("long_name", variable),
+                "units": attrs[variable].get("units", ""),
+                "scale": scale,
+                "domain": color_domain(values, scale),
+            }
+            if variable == "level":
+                variables["level_change"] = {
+                    "label": "water level change since start",
+                    "units": attrs[variable].get("units", ""),
+                    "scale": "diverging",
+                    "domain": color_domain(values - values[:, :1], "diverging"),
+                    "source": "level",
+                }
+        if "times" in results:
+            assert results["times"] == [str(t) for t in times], f"Time steps of {source} differ"
+        results["times"] = [str(t) for t in times]
+        results[name] = {"id": id_dim, "count": len(ids), "variables": variables, "by_id": by_id, "by_time": by_time}
+    return results
 
 
 def export_webmap(toml_path: Path, waterboards_path: Path, output_dir: Path) -> dict:
@@ -241,5 +335,12 @@ def export_webmap(toml_path: Path, waterboards_path: Path, output_dir: Path) -> 
         "files": files,
         "tables": tables,
     }
+    results_dir = toml_path.parent / config.get("results_dir", "results")
+    if results_dir.is_dir():
+        results = export_results(results_dir, output_dir)
+        for name in ("basin", "flow"):
+            results[name]["by_id"] = entry(results[name]["by_id"])
+            results[name]["by_time"] = entry(results[name]["by_time"])
+        manifest["results"] = results
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
     return manifest

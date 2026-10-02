@@ -36,6 +36,8 @@ prefix = f"doc-image/webmap/{MODEL}/"
 manifest_path = source_dir / "manifest.json"
 manifest = json.loads(manifest_path.read_text())
 entries = list(manifest["files"].values()) + manifest["tables"]
+if "results" in manifest:
+    entries += [manifest["results"][name][key] for name in ("basin", "flow") for key in ("by_id", "by_time")]
 
 client = Minio(MINIO_SERVER, access_key=settings.aws_access_key_id, secret_key=settings.aws_secret_access_key)
 

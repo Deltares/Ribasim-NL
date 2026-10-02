@@ -20,6 +20,32 @@ export interface TableEntry extends FileEntry {
   rows: number;
 }
 
+export interface ResultVariable {
+  label: string;
+  units: string;
+  scale: "linear" | "log" | "diverging";
+  domain: [number, number];
+  /** Derived variables are differences from the first time step of this variable */
+  source?: string;
+}
+
+export interface ResultSet {
+  id: "node_id" | "link_id";
+  count: number;
+  variables: Record<string, ResultVariable>;
+  /** Sorted by id, for time series of one feature */
+  by_id: FileEntry;
+  /** Ordered by time step then id, for map frames */
+  by_time: FileEntry;
+}
+
+export interface Results {
+  times: string[];
+  steps_per_row_group: number;
+  basin: ResultSet;
+  flow: ResultSet;
+}
+
 export interface Manifest {
   model: string;
   ribasim_version: string | null;
@@ -29,6 +55,7 @@ export interface Manifest {
   node_types: Record<string, number>;
   files: Record<"nodes" | "links" | "basin_area" | "waterboards", FileEntry>;
   tables: TableEntry[];
+  results?: Results;
 }
 
 export type Row = Record<string, unknown>;
@@ -109,8 +136,38 @@ export async function readRow(entry: FileEntry, row: number): Promise<Row> {
   return rows[0];
 }
 
-/** Rows of a table for one node; tables are sorted by node_id so statistics skip other row groups. */
-export async function readNodeRows(entry: FileEntry, nodeId: number): Promise<Row[]> {
+/** Read a range of a numeric column into a typed array. */
+export async function readNumbers<T extends Float32Array | Int32Array>(
+  entry: FileEntry,
+  column: string,
+  rowStart: number,
+  rowEnd: number,
+  ArrayType: { new (length: number): T },
+): Promise<T> {
   const { file, metadata } = await openParquet(entry);
-  return parquetReadObjects({ file, metadata, filter: { node_id: { $eq: nodeId } }, compressors });
+  const values = new ArrayType(rowEnd - rowStart);
+  let filled = 0;
+  await parquetRead({
+    file,
+    metadata,
+    columns: [column],
+    rowStart,
+    rowEnd,
+    compressors,
+    // Chunks may extend beyond the requested rows
+    onChunk: ({ columnData, rowStart: chunkStart }) => {
+      const from = Math.max(chunkStart, rowStart);
+      const to = Math.min(chunkStart + columnData.length, rowEnd);
+      for (let row = from; row < to; row++) values[row - rowStart] = Number(columnData[row - chunkStart]);
+      filled += Math.max(0, to - from);
+    },
+  });
+  if (filled !== values.length) throw new Error(`Incomplete read of ${column} in ${entry.path}`);
+  return values;
+}
+
+/** Rows for one feature; files are sorted by the id column so statistics skip other row groups. */
+export async function readRowsById(entry: FileEntry, idColumn: string, id: number): Promise<Row[]> {
+  const { file, metadata } = await openParquet(entry);
+  return parquetReadObjects({ file, metadata, filter: { [idColumn]: { $eq: id } }, compressors });
 }

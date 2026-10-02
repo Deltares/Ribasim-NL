@@ -9,9 +9,12 @@ import * as maplibregl from "maplibre-gl";
 // maplibre resolves its worker at runtime, which bundlers cannot follow
 import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { Protocol } from "pmtiles";
+import { ColorScale, formatNumber } from "./colors";
 import { fileUrl, loadManifest, type Manifest } from "./data";
 import { loadNetwork, type Group, type Network } from "./network";
 import { Panel, type Selection } from "./panel";
+import { ResultFrames } from "./results";
+import { TimeBar } from "./timebar";
 
 type Color = [number, number, number];
 
@@ -41,6 +44,7 @@ const LINK_COLORS: Record<string, Color> = {
 const DEFAULT_COLOR: Color = [128, 128, 128];
 const HIDDEN_BY_DEFAULT = new Set(["ContinuousControl", "DiscreteControl", "PidControl", "control", "listen"]);
 const HIGHLIGHT: [number, number, number, number] = [255, 140, 0, 255];
+const NO_DATA: [number, number, number, number] = [170, 170, 170, 255];
 const BASEMAP = "https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/grijs/EPSG:3857/{z}/{x}/{y}.png";
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text = ""): HTMLElementTagNameMap[K] {
@@ -63,13 +67,41 @@ function selectionFromHash(): Selection | null {
   return null;
 }
 
-function writeSelectionToHash(selection: Selection | null): void {
+function writeHash(updates: Record<string, string | null>): void {
   const params = hashParams();
-  params.delete("node");
-  params.delete("link");
-  if (selection) params.set(selection.kind, String(selection.id));
+  for (const [key, value] of Object.entries(updates)) {
+    if (value === null) params.delete(key);
+    else params.set(key, value);
+  }
   // Keep MapLibre's `map=zoom/lat/lon` readable instead of percent-encoded
   history.replaceState(history.state, "", `#${params.toString().replaceAll("%2F", "/")}`);
+}
+
+function writeSelectionToHash(selection: Selection | null): void {
+  writeHash({
+    node: selection?.kind === "node" ? String(selection.id) : null,
+    link: selection?.kind === "link" ? String(selection.id) : null,
+  });
+}
+
+/** Per-feature colors and values of the current time step, indexed like the features of a layer group. */
+interface Coloring {
+  colors: Uint8Array;
+  values: Float32Array;
+  version: number;
+}
+
+function coloring(scale: ColorScale, values: Float32Array, local: Int32Array, length: number, version: number): Coloring {
+  const colors = new Uint8Array(length * 4);
+  for (let i = 0; i < length; i++) colors.set(NO_DATA, i * 4);
+  const localValues = new Float32Array(length).fill(NaN);
+  values.forEach((value, i) => {
+    const index = local[i];
+    if (index < 0) return;
+    localValues[index] = value;
+    if (!scale.write(value, colors, index * 4)) colors.set(NO_DATA, index * 4);
+  });
+  return { colors, values: localValues, version };
 }
 
 class Viewer {
@@ -77,6 +109,14 @@ class Viewer {
   private selection: Selection | null = null;
   private readonly overlay: MapboxOverlay;
   private readonly panel: Panel;
+  private frames: ResultFrames | null = null;
+  private timeBar: TimeBar | null = null;
+  /** Result index to the index in the "flow" link group and "Basin" node group, or -1 */
+  private resultIndex: { flow: Int32Array; basin: Int32Array; basinIds: Int32Array } | null = null;
+  private flowColoring: Coloring | null = null;
+  private basinColoring: Coloring | null = null;
+  private basinAreasColored = false;
+  private frameToken = 0;
 
   constructor(
     private readonly map: maplibregl.Map,
@@ -109,6 +149,80 @@ class Viewer {
       this.select(selection);
       if (!hashParams().has("map")) this.zoomTo(selection);
     }
+    if (manifest.results) this.initResults().catch((error) => console.error("Failed to load results", error));
+  }
+
+  private async initResults(): Promise<void> {
+    const results = this.manifest.results!;
+    const frames = new ResultFrames(results);
+    const { network } = this;
+    const [flowIds, basinIds] = await Promise.all([frames.featureIds("flow"), frames.featureIds("basin")]);
+    const flow = flowIds.map((id) => {
+      const row = network.linkRow.get(id);
+      return row !== undefined && network.linkType[row] === "flow" ? network.linkLocal[row] : -1;
+    });
+    const basin = basinIds.map((id) => {
+      const row = network.nodeRow.get(id);
+      return row !== undefined && network.nodeType[row] === "Basin" ? network.nodeLocal[row] : -1;
+    });
+    this.resultIndex = { flow, basin, basinIds };
+    this.frames = frames;
+
+    const date = hashParams().get("t");
+    const step = frames.times.findIndex((time) => time.toISOString().slice(0, 10) === date);
+    this.timeBar = new TimeBar(this.root, results, frames.times, { step: Math.max(step, 0) }, () =>
+      this.updateResults(),
+    );
+    await this.updateResults();
+  }
+
+  private groupLength(kind: "flow" | "basin"): number {
+    const groups = kind === "flow" ? this.network.linkGroups : this.network.nodeGroups;
+    return groups.find((group) => group.type === (kind === "flow" ? "flow" : "Basin"))?.rows.length ?? 0;
+  }
+
+  private async updateResults(): Promise<void> {
+    const { frames, timeBar, resultIndex } = this;
+    if (!frames || !timeBar || !resultIndex) return;
+    const results = this.manifest.results!;
+    const token = ++this.frameToken;
+    const { step, basin, flow } = timeBar.state;
+    const [flowValues, basinValues] = await Promise.all([
+      flow ? frames.frame("flow", flow, step) : null,
+      basin ? frames.frame("basin", basin, step) : null,
+    ]);
+    if (token !== this.frameToken) return;
+
+    const flowScale = flow ? new ColorScale(results.flow.variables[flow]) : null;
+    const basinScale = basin ? new ColorScale(results.basin.variables[basin]) : null;
+    this.flowColoring =
+      flowScale && flowValues
+        ? coloring(flowScale, flowValues, resultIndex.flow, this.groupLength("flow"), token)
+        : null;
+    this.basinColoring =
+      basinScale && basinValues
+        ? coloring(basinScale, basinValues, resultIndex.basin, this.groupLength("basin"), token)
+        : null;
+    this.colorBasinAreas(basinScale, basinValues);
+    writeHash({ t: frames.times[step].toISOString().slice(0, 10) });
+    this.render();
+
+    const next = step + results.steps_per_row_group;
+    if (flow) frames.prefetch("flow", flow, next);
+    if (basin) frames.prefetch("basin", basin, next);
+  }
+
+  private colorBasinAreas(scale: ColorScale | null, values: Float32Array | null): void {
+    const target = { source: "basin_area", sourceLayer: "basin_area" };
+    if (!scale || !values) {
+      if (!this.basinAreasColored) return;
+      this.map.removeFeatureState(target);
+      this.basinAreasColored = false;
+      if (this.selection?.kind === "node") this.map.setFeatureState({ ...target, id: this.selection.id }, { selected: true });
+      return;
+    }
+    this.resultIndex!.basinIds.forEach((id, i) => this.map.setFeatureState({ ...target, id }, { color: scale.css(values[i]) }));
+    this.basinAreasColored = true;
   }
 
   private addMapLayers(): void {
@@ -124,8 +238,20 @@ class Viewer {
       source: "basin_area",
       "source-layer": "basin_area",
       paint: {
-        "fill-color": ["case", ["boolean", ["feature-state", "selected"], false], "#ff8c00", "#6fa8dc"],
-        "fill-opacity": ["case", ["boolean", ["feature-state", "selected"], false], 0.4, 0.15],
+        "fill-color": [
+          "case",
+          ["boolean", ["feature-state", "selected"], false],
+          "#ff8c00",
+          ["to-color", ["coalesce", ["feature-state", "color"], "#6fa8dc"]],
+        ],
+        "fill-opacity": [
+          "case",
+          ["boolean", ["feature-state", "selected"], false],
+          0.5,
+          ["!=", ["feature-state", "color"], null],
+          0.75,
+          0.15,
+        ],
       },
     });
     map.addLayer({
@@ -149,11 +275,15 @@ class Viewer {
     const selected =
       this.selection?.kind === "node" ? this.network.nodeRow.get(this.selection.id) : undefined;
     const isSelected = selected !== undefined && this.network.nodeType[selected] === group.type;
+    const coloring = group.type === "Basin" ? this.basinColoring : null;
     return new ScatterplotLayer({
       id: `node-${group.type}`,
       data: { length: group.rows.length, attributes: { getPosition: { value: group.positions, size: 2 } } },
       visible: this.visible.get(group.type),
-      getFillColor: NODE_COLORS[group.type] ?? DEFAULT_COLOR,
+      getFillColor: coloring
+        ? (_: unknown, { index }: { index: number }) => coloring.colors.subarray(index * 4, index * 4 + 4) as unknown as Color
+        : (NODE_COLORS[group.type] ?? DEFAULT_COLOR),
+      updateTriggers: { getFillColor: coloring?.version ?? -1 },
       getLineColor: [255, 255, 255],
       stroked: true,
       lineWidthUnits: "pixels",
@@ -173,6 +303,7 @@ class Viewer {
     const selected =
       this.selection?.kind === "link" ? this.network.linkRow.get(this.selection.id) : undefined;
     const isSelected = selected !== undefined && this.network.linkType[selected] === group.type;
+    const coloring = group.type === "flow" ? this.flowColoring : null;
     return new PathLayer({
       id: `link-${group.type}`,
       data: {
@@ -183,9 +314,12 @@ class Viewer {
       _pathType: "open",
       positionFormat: "XY",
       visible: this.visible.get(group.type),
-      getColor: LINK_COLORS[group.type] ?? DEFAULT_COLOR,
+      getColor: coloring
+        ? (_: unknown, { index }: { index: number }) => coloring.colors.subarray(index * 4, index * 4 + 4) as unknown as Color
+        : (LINK_COLORS[group.type] ?? DEFAULT_COLOR),
+      updateTriggers: { getColor: coloring?.version ?? -1 },
       widthUnits: "pixels",
-      getWidth: group.type === "flow" ? 1.5 : 1,
+      getWidth: group.type === "flow" ? (coloring ? 2.5 : 1.5) : 1,
       widthMinPixels: 1,
       pickable: true,
       autoHighlight: true,
@@ -221,11 +355,22 @@ class Viewer {
     const selection = this.picked(info);
     if (!selection) return null;
     const { network } = this;
+    const value = (coloring: Coloring | null, kind: "flow" | "basin") => {
+      const variable = this.timeBar?.state[kind];
+      if (!coloring || !variable) return "";
+      const { label, units } = this.manifest.results![kind].variables[variable];
+      return `\n${label}: ${formatNumber(coloring.values[info.index])} ${units}`;
+    };
     if (selection.kind === "node") {
-      return { text: `${network.nodeType[network.nodeRow.get(selection.id)!]} #${selection.id}` };
+      const nodeType = network.nodeType[network.nodeRow.get(selection.id)!];
+      const extra = nodeType === "Basin" ? value(this.basinColoring, "basin") : "";
+      return { text: `${nodeType} #${selection.id}${extra}` };
     }
     const row = network.linkRow.get(selection.id)!;
-    return { text: `${network.linkType[row]} link #${selection.id}\n${network.fromNodeId[row]} → ${network.toNodeId[row]}` };
+    const extra = network.linkType[row] === "flow" ? value(this.flowColoring, "flow") : "";
+    return {
+      text: `${network.linkType[row]} link #${selection.id}\n${network.fromNodeId[row]} → ${network.toNodeId[row]}${extra}`,
+    };
   }
 
   private onClick(event: maplibregl.MapMouseEvent): void {

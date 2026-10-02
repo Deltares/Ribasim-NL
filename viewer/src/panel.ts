@@ -1,11 +1,21 @@
 import uPlot from "uplot";
-import { readNodeRows, readRow, type Manifest, type Row, type TableEntry } from "./data";
+import { readRow, readRowsById, type Manifest, type Row, type TableEntry } from "./data";
 import type { Network } from "./network";
 
 export type Selection = { kind: "node" | "link"; id: number };
 
 const MAX_TABLE_ROWS = 2000;
+const MAX_LINK_SERIES = 8;
 const HIDDEN_COLUMNS = new Set(["x", "y", "coords"]);
+const ID_COLUMNS = new Set(["node_id", "link_id"]);
+const BASIN_CHARTS: [string, string[]][] = [
+  ["Level", ["level"]],
+  ["Storage", ["storage"]],
+  [
+    "Fluxes",
+    ["inflow_rate", "outflow_rate", "precipitation", "surface_runoff", "evaporation", "drainage", "infiltration"],
+  ],
+];
 
 /** Create an element; children are added as text nodes so data is never parsed as HTML. */
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -53,11 +63,11 @@ function dataTable(rows: Row[]): HTMLElement {
 
 const SERIES_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2"];
 
-/** A time series chart of all numeric columns, if the rows form one. */
-function timeChart(rows: Row[], width: number): HTMLElement | null {
+/** A time series chart of numeric columns, if the rows form one. */
+function timeChart(rows: Row[], width: number, only?: string[]): HTMLElement | null {
   if (rows.length < 2 || !rows.every((row) => row.time instanceof Date)) return null;
-  const columns = Object.keys(rows[0]).filter(
-    (column) => column !== "node_id" && rows.some((row) => typeof row[column] === "number"),
+  const columns = (only ?? Object.keys(rows[0])).filter(
+    (column) => !ID_COLUMNS.has(column) && rows.some((row) => typeof row[column] === "number"),
   );
   if (columns.length === 0) return null;
   const data: uPlot.AlignedData = [
@@ -79,24 +89,39 @@ function timeChart(rows: Row[], width: number): HTMLElement | null {
   return container;
 }
 
-function tableSection(entry: TableEntry, nodeId: number, width: number): HTMLElement {
+/** A collapsible section whose content is loaded when it is first opened. */
+function lazySection(title: string, load: () => Promise<(Node | string)[]>, open = false): HTMLElement {
   const content = el("div", {}, "Loading…");
-  const details = el("details", {}, el("summary", {}, entry.name), content);
+  const details = el("details", {}, el("summary", {}, title), content);
   let loaded = false;
   details.addEventListener("toggle", async () => {
     if (!details.open || loaded) return;
     loaded = true;
     try {
-      const rows = await readNodeRows(entry, nodeId);
-      const chart = rows.length > 0 ? timeChart(rows, width) : null;
-      content.replaceChildren(
-        ...(rows.length === 0 ? ["No rows for this node."] : chart ? [chart, dataTable(rows)] : [dataTable(rows)]),
-      );
+      content.replaceChildren(...(await load()));
     } catch (error) {
       content.replaceChildren(el("p", { className: "error" }, `Failed to load: ${error}`));
     }
   });
+  details.open = open;
   return details;
+}
+
+function tableSection(entry: TableEntry, nodeId: number, width: number): HTMLElement {
+  return lazySection(entry.name, async () => {
+    const rows = await readRowsById(entry, "node_id", nodeId);
+    if (rows.length === 0) return ["No rows for this node."];
+    const chart = timeChart(rows, width);
+    return chart ? [chart, dataTable(rows)] : [dataTable(rows)];
+  });
+}
+
+function charts(rows: Row[], width: number, specs: [string, string[]][]): (Node | string)[] {
+  if (rows.length === 0) return ["No results for this feature."];
+  return specs.flatMap(([title, columns]) => {
+    const chart = timeChart(rows, width, columns);
+    return chart ? [el("h4", {}, title), chart] : [];
+  });
 }
 
 export interface PanelCallbacks {
@@ -166,12 +191,33 @@ export class Panel {
 
       const incoming: HTMLElement[] = [];
       const outgoing: HTMLElement[] = [];
-      network.linkId.forEach((_, linkRow) => {
-        if (network.toNodeId[linkRow] === selection.id) incoming.push(this.linkLink(linkRow, "from"));
-        if (network.fromNodeId[linkRow] === selection.id) outgoing.push(this.linkLink(linkRow, "to"));
+      const flowLinks: [number, string][] = [];
+      network.linkId.forEach((linkId, linkRow) => {
+        const isFlow = network.linkType[linkRow] === "flow";
+        if (network.toNodeId[linkRow] === selection.id) {
+          incoming.push(this.linkLink(linkRow, "from"));
+          if (isFlow) flowLinks.push([linkId, `in #${linkId}`]);
+        }
+        if (network.fromNodeId[linkRow] === selection.id) {
+          outgoing.push(this.linkLink(linkRow, "to"));
+          if (isFlow) flowLinks.push([linkId, `out #${linkId}`]);
+        }
       });
       if (incoming.length) sections.push(el("h3", {}, "Incoming links"), el("ul", {}, ...incoming));
       if (outgoing.length) sections.push(el("h3", {}, "Outgoing links"), el("ul", {}, ...outgoing));
+
+      const results = manifest.results;
+      if (results && nodeType === "Basin") {
+        sections.push(
+          lazySection(
+            "Results",
+            async () => charts(await readRowsById(results.basin.by_id, "node_id", selection.id), width, BASIN_CHARTS),
+            true,
+          ),
+        );
+      } else if (results && flowLinks.length) {
+        sections.push(lazySection("Flow results", () => this.linkFlows(flowLinks, width), true));
+      }
 
       const tables = manifest.tables.filter((table) => table.node_type === nodeType);
       if (tables.length) {
@@ -187,9 +233,40 @@ export class Panel {
         el("p", {}, "From ", this.nodeLink(network.fromNodeId[row]), " to ", this.nodeLink(network.toNodeId[row])),
         attributes,
       );
+      const results = manifest.results;
+      if (results && network.linkType[row] === "flow") {
+        sections.push(
+          lazySection(
+            "Results",
+            async () =>
+              charts(await readRowsById(results.flow.by_id, "link_id", selection.id), width, [["Flow", ["flow_rate"]]]),
+            true,
+          ),
+        );
+      }
       this.render(sections);
       this.fillAttributes(token, attributes, readRow(manifest.files.links, row));
     }
+  }
+
+  /** One chart with the flow rate of each link, merged on time. */
+  private async linkFlows(links: [number, string][], width: number): Promise<(Node | string)[]> {
+    const flow = this.manifest.results!.flow;
+    const shown = links.slice(0, MAX_LINK_SERIES);
+    const series = await Promise.all(shown.map(([id]) => readRowsById(flow.by_id, "link_id", id)));
+    const byTime = new Map<number, Row>();
+    series.forEach((rows, i) => {
+      for (const row of rows) {
+        const time = (row.time as Date).getTime();
+        let merged = byTime.get(time);
+        if (!merged) byTime.set(time, (merged = { time: row.time }));
+        merged[shown[i][1]] = row.flow_rate;
+      }
+    });
+    const rows = [...byTime.values()].sort((a, b) => (a.time as Date).getTime() - (b.time as Date).getTime());
+    const chart = timeChart(rows, width);
+    const note = links.length > shown.length ? [el("p", { className: "note" }, `Showing ${shown.length} of ${links.length} links.`)] : [];
+    return chart ? [el("h4", {}, "Flow rate (m3 s-1)"), chart, ...note] : ["No results for these links."];
   }
 
   private render(sections: HTMLElement[]): void {

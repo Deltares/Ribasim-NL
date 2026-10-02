@@ -2,19 +2,31 @@
 title: "Model viewer"
 ---
 
-The [Model viewer](../viewer.qmd) shows the input of the coupled LHM model (`lhm_coupled`) on a web map.
+The [Model viewer](../viewer.qmd) shows the input and results of the coupled LHM model (`lhm_coupled`) on a web map.
 It is a static web app: the docs site serves only the JavaScript, and the browser reads the model data directly from MinIO.
 
 ```{mermaid}
 flowchart LR
-  A[lhm_coupled] -->|dvc repro export_webmap| B[data/Rijkswaterstaat/webmap/lhm_coupled]
+  A[modellen/lhm_coupled] -->|dvc repro run_lhm_coupled| R[runs/lhm_coupled]
+  R -->|dvc repro export_webmap| B[webmap/lhm_coupled]
   B -->|pixi run publish-webmap| C[MinIO doc-image/webmap/lhm_coupled]
   C --> D[Model viewer page]
 ```
 
+All local paths are relative to `data/Rijkswaterstaat`.
+
 ## Updating the published data
 
-1. Export the model to web-friendly files with the `export_webmap` DVC stage, which takes a few minutes:
+1. Run the model with the `run_lhm_coupled` DVC stage.
+    It writes `runs/lhm_coupled/lhm_coupled.toml`, which reads the input of `modellen/lhm_coupled`, and the results next to it.
+    For now this runs 1 year with a looser solver tolerance, see `scripts/run_lhm_coupled.py`.
+    This takes many hours, so normally pull the cached results instead:
+
+    ```sh
+    pixi run dvc pull run_lhm_coupled
+    ```
+
+2. Export the model to web-friendly files with the `export_webmap` DVC stage, which takes about 10 minutes:
 
     ```sh
     pixi run dvc repro --pull --single-item export_webmap
@@ -29,15 +41,19 @@ flowchart LR
     | `basin_area.pmtiles` | Basin / area polygons as vector tiles |
     | `waterboards.geojson` | Simplified water board boundaries |
     | `tables/*.parquet` | All other input tables, including those in NetCDF, sorted by `node_id` |
-    | `manifest.json` | List of the files above with their content hash and size |
+    | `results/*_by_id.parquet` | Basin and flow results sorted by id, for the time series charts |
+    | `results/*_by_time.parquet` | Basin level and storage, and flow rate, ordered by time step, for coloring the map |
+    | `manifest.json` | List of the files above with their content hash and size, and the color scale of each result variable |
 
-2. Push the outputs and commit the updated `dvc.lock`, see [DVC](dvc.qmd#pushing-changes):
+    Results are only exported if the model's `results` directory exists.
+
+3. Push the outputs and commit the updated `dvc.lock`, see [DVC](dvc.qmd#pushing-changes):
 
     ```sh
-    pixi run dvc push export_webmap
+    pixi run dvc push run_lhm_coupled export_webmap
     ```
 
-3. Upload the files to the anonymously readable `doc-image/webmap/lhm_coupled/` prefix on MinIO.
+4. Upload the files to the anonymously readable `doc-image/webmap/lhm_coupled/` prefix on MinIO.
     This needs credentials with write access in `.env`.
 
     ```sh

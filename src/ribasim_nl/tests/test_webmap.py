@@ -5,13 +5,17 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pytest
 import xarray as xr
 from ribasim import Model, Node
 from ribasim.nodes import basin, level_boundary, tabulated_rating_curve
 from ribasim_nl.webmap import (
     NETCDF_NODES_PER_ROW_GROUP,
+    TIME_STEPS_PER_ROW_GROUP,
+    color_domain,
     downcast_int64,
     export_netcdf_table,
+    export_results,
     export_webmap,
     file_hash,
     netcdf_tables,
@@ -96,6 +100,56 @@ def test_export_netcdf_table(tmp_path):
     assert df["node_id"].is_monotonic_increasing
     expected = values[:, list(node_ids).index(5)]
     np.testing.assert_array_equal(df.loc[df.node_id == 5, "drainage"], expected.astype("float32"))
+
+
+def test_export_results(tmp_path):
+    results_dir = tmp_path / "results"
+    results_dir.mkdir()
+    time = pd.date_range("2020-01-01", periods=10, freq="D")
+    node_ids = np.array([3, 1, 2], dtype="int32")
+    level = np.arange(30, dtype="float64").reshape(10, 3)
+    xr.Dataset(
+        {"level": (("time", "node_id"), level, {"units": "m"}), "storage": (("time", "node_id"), level + 1.0)},
+        coords={"time": time, "node_id": node_ids},
+    ).to_netcdf(results_dir / "basin.nc")
+    link_ids = np.array([10.0, 11.0])
+    xr.Dataset(
+        {
+            "flow_rate": (("time", "link_id"), np.ones((10, 2))),
+            "from_node_id": (("link_id",), np.array([1, 2], dtype="int32")),
+        },
+        coords={"time": time, "link_id": link_ids},
+    ).to_netcdf(results_dir / "flow.nc")
+
+    output = tmp_path / "webmap"
+    output.mkdir()
+    results = export_results(results_dir, output)
+
+    assert len(results["times"]) == 10
+    assert results["basin"]["count"] == 3
+    assert results["basin"]["variables"]["level"]["units"] == "m"
+    assert results["basin"]["variables"]["level_change"]["source"] == "level"
+    assert set(results["flow"]["variables"]) == {"flow_rate"}
+
+    by_time = pq.ParquetFile(results["basin"]["by_time"])
+    assert by_time.metadata.num_row_groups == int(np.ceil(10 / TIME_STEPS_PER_ROW_GROUP))
+    df = by_time.read().to_pandas()
+    assert df["node_id"].tolist()[:3] == [1, 2, 3]
+    # Second time step, node 3 is the first column in the NetCDF
+    assert df["level"].iloc[5] == level[1, 0]
+
+    flow = pd.read_parquet(results["flow"]["by_id"])
+    assert flow.columns.tolist() == ["link_id", "time", "flow_rate"]
+    assert flow["link_id"].dtype == "int32"
+
+
+def test_color_domain():
+    values = np.linspace(-100.0, 100.0, 1001)
+    assert color_domain(values, "linear") == pytest.approx([-96.0, 96.0])
+    assert color_domain(values, "diverging") == pytest.approx([-98.0, 98.0])
+    assert color_domain(np.array([0.0, 1.0, 10.0, 100.0]), "log")[1] <= 100.0
+    low, high = color_domain(np.array([1e-15] * 10 + [1.0] * 90), "log")
+    assert low == pytest.approx(high * 1e-4)
 
 
 def test_netcdf_tables(tmp_path):
