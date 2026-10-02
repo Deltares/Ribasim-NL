@@ -29,6 +29,7 @@ website:
         - dev/dvc.qmd
         - dev/type-checking.qmd
         - dev/slurm.qmd
+        - dev/viewer.qmd
     - title: "Workflows"
       contents:
         - workflow/main-watersystem.qmd

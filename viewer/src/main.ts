@@ -362,7 +362,8 @@ async function main(): Promise<void> {
     });
     map.addControl(new maplibregl.NavigationControl(), "top-right");
     map.addControl(new maplibregl.ScaleControl(), "bottom-left");
-    const [network] = await Promise.all([loadNetwork(manifest), map.once("load")]);
+    // "load" also waits for basemap tiles and a rendered frame; the style is all we need to add layers
+    const [network] = await Promise.all([loadNetwork(manifest), map.once("style.load")]);
     new Viewer(map, root, manifest, network);
     status.remove();
   } catch (error) {

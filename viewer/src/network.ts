@@ -1,4 +1,3 @@
-import type { DecodedArray } from "hyparquet";
 import { readColumns, type Manifest } from "./data";
 
 /** Rows of one node or link type, with positions laid out for deck.gl binary attributes. */
@@ -45,7 +44,7 @@ function indexById(ids: Int32Array): Map<number, number> {
   return index;
 }
 
-const toStrings = (array: DecodedArray) => Array.from(array as ArrayLike<string>, String);
+const toStrings = (array: unknown[]) => array.map(String);
 
 export async function loadNetwork(manifest: Manifest): Promise<Network> {
   const [nodes, links] = await Promise.all([

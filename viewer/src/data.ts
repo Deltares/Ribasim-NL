@@ -5,7 +5,7 @@ import {
   parquetRead,
   parquetReadObjects,
 } from "hyparquet";
-import type { AsyncBuffer, ColumnData, DecodedArray, FileMetaData } from "hyparquet";
+import type { AsyncBuffer, FileMetaData } from "hyparquet";
 import { compressors } from "hyparquet-compressors";
 
 export interface FileEntry {
@@ -56,15 +56,28 @@ interface ParquetFile {
 }
 
 const parquetFiles = new Map<string, Promise<ParquetFile>>();
+// Smaller files are fetched in one request instead of many concurrent range requests
+const WHOLE_FILE_BYTES = 32e6;
+
+async function fetchWhole(url: string): Promise<AsyncBuffer> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Failed to fetch ${url}: HTTP ${response.status}`);
+  const buffer = await response.arrayBuffer();
+  return { byteLength: buffer.byteLength, slice: (start, end) => buffer.slice(start, end) };
+}
 
 function openParquet(entry: FileEntry): Promise<ParquetFile> {
   const url = fileUrl(entry);
   let parquet = parquetFiles.get(url);
   if (!parquet) {
     parquet = (async () => {
-      const file = cachedAsyncBuffer(await asyncBufferFromUrl({ url, byteLength: entry.bytes }));
+      const file =
+        entry.bytes < WHOLE_FILE_BYTES
+          ? await fetchWhole(url)
+          : cachedAsyncBuffer(await asyncBufferFromUrl({ url, byteLength: entry.bytes }));
       return { file, metadata: await parquetMetadataAsync(file) };
     })();
+    parquet.catch(() => parquetFiles.delete(url));
     parquetFiles.set(url, parquet);
   }
   return parquet;
@@ -74,22 +87,18 @@ function openParquet(entry: FileEntry): Promise<ParquetFile> {
 export async function readColumns<K extends string>(
   entry: FileEntry,
   columns: K[],
-): Promise<Record<K, DecodedArray>> {
+): Promise<Record<K, unknown[]>> {
   const { file, metadata } = await openParquet(entry);
-  const chunks: ColumnData[] = [];
-  await parquetRead({ file, metadata, columns, compressors, onChunk: (chunk) => chunks.push(chunk) });
-  const numRows = Number(metadata.num_rows);
-  const result = {} as Record<K, DecodedArray>;
-  for (const column of columns) {
-    const parts = chunks.filter((c) => c.columnName === column).sort((a, b) => a.rowStart - b.rowStart);
-    const values: unknown[] = [];
-    for (const part of parts) {
-      if (part.rowStart !== values.length) throw new Error(`Gap in column ${column} of ${entry.path}`);
-      for (let i = 0; i < part.columnData.length; i++) values.push(part.columnData[i]);
-    }
-    if (values.length !== numRows) throw new Error(`Column ${column} of ${entry.path} is incomplete`);
-    result[column] = values as DecodedArray;
-  }
+  const rows = await new Promise<unknown[][]>((resolve, reject) => {
+    parquetRead({ file, metadata, columns, compressors, onComplete: (rows) => resolve(rows as unknown[][]) }).catch(
+      reject,
+    );
+  });
+  if (rows.length !== Number(metadata.num_rows)) throw new Error(`Incomplete read of ${entry.path}`);
+  const result = {} as Record<K, unknown[]>;
+  columns.forEach((column, i) => {
+    result[column] = rows.map((row) => row[i]);
+  });
   return result;
 }
 

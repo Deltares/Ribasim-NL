@@ -3686,3 +3686,29 @@ stages:
       md5: dd22a4effe5bcb72cb94b3300250aa7d.dir
       size: 68102371
       nfiles: 11
+  export_webmap:
+    cmd: pixi run python scripts/export_webmap.py
+    deps:
+    - path: data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      hash: md5
+      md5: 85c6e35e295d25ca9f7a139174077d40
+      size: 4665344
+    - path: data/Rijkswaterstaat/modellen/lhm_coupled
+      hash: md5
+      md5: c9ccfa9a9c8bc59286753a4563bfddb0.dir
+      size: 1293631393
+      nfiles: 4
+    - path: scripts/export_webmap.py
+      hash: md5
+      md5: 7fdca2628d8540aed6eb4db86eaa3319
+      size: 475
+    - path: src/ribasim_nl/ribasim_nl/webmap.py
+      hash: md5
+      md5: 9b36e0e2a20ba5ba6436987e5e77f8d0
+      size: 10950
+    outs:
+    - path: data/Rijkswaterstaat/webmap/lhm_coupled
+      hash: md5
+      md5: 60714fa5ed91bc9ebc5cb3e78e5b5217.dir
+      size: 344773456
+      nfiles: 28
