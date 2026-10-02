@@ -3686,3 +3686,52 @@ stages:
       md5: dd22a4effe5bcb72cb94b3300250aa7d.dir
       size: 68102371
       nfiles: 11
+  export_webmap:
+    cmd: pixi run python scripts/export_webmap.py
+    deps:
+    - path: data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      hash: md5
+      md5: 85c6e35e295d25ca9f7a139174077d40
+      size: 4665344
+    - path: data/Rijkswaterstaat/modellen/lhm_coupled
+      hash: md5
+      md5: c9ccfa9a9c8bc59286753a4563bfddb0.dir
+      size: 1293631393
+      nfiles: 4
+    - path: data/Rijkswaterstaat/runs/lhm_coupled
+      hash: md5
+      md5: 89a9f8c3fa5e66913e7c26fc57dbb92c.dir
+      size: 1147612007
+      nfiles: 7
+    - path: scripts/export_webmap.py
+      hash: md5
+      md5: 59adef311e043e75a5a39beccfa34a89
+      size: 471
+    - path: src/ribasim_nl/ribasim_nl/webmap.py
+      hash: md5
+      md5: 0127c5c51de68839e170fd1099ce8f82
+      size: 16321
+    outs:
+    - path: data/Rijkswaterstaat/webmap/lhm_coupled
+      hash: md5
+      md5: bb89c549e7263de6fec22beea020f791.dir
+      size: 811228531
+      nfiles: 32
+  run_lhm_coupled:
+    cmd: pixi run python scripts/run_lhm_coupled.py
+    deps:
+    - path: data/Rijkswaterstaat/modellen/lhm_coupled
+      hash: md5
+      md5: c9ccfa9a9c8bc59286753a4563bfddb0.dir
+      size: 1293631393
+      nfiles: 4
+    - path: scripts/run_lhm_coupled.py
+      hash: md5
+      md5: 0ee09afbccb9ba611f75a47adc29313c
+      size: 1362
+    outs:
+    - path: data/Rijkswaterstaat/runs/lhm_coupled
+      hash: md5
+      md5: 89a9f8c3fa5e66913e7c26fc57dbb92c.dir
+      size: 1147612007
+      nfiles: 7

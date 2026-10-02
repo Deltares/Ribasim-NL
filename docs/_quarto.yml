@@ -2,6 +2,7 @@ project:
   type: website
   resources:
     - CNAME
+    - viewer-app/**
 website:
   title: "Ribasim-NL"
   navbar:
@@ -12,6 +13,8 @@ website:
         file: workflow/main-watersystem.qmd
       - text: "Watersystems"
         file: watersystems/main.qmd
+      - text: "Model viewer"
+        file: viewer.qmd
     right:
       - text: "Contributing"
         file: dev/index.qmd
@@ -26,6 +29,7 @@ website:
         - dev/dvc.qmd
         - dev/type-checking.qmd
         - dev/slurm.qmd
+        - dev/viewer.qmd
     - title: "Workflows"
       contents:
         - workflow/main-watersystem.qmd

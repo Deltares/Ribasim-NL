@@ -1,0 +1,240 @@
+.ribasim-viewer {
+  position: relative;
+  overflow: hidden;
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+}
+
+.ribasim-viewer .map {
+  position: absolute;
+  inset: 0;
+}
+
+.ribasim-viewer .status {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.ribasim-viewer .error {
+  color: #b00020;
+}
+
+.ribasim-viewer .layers,
+.ribasim-viewer .search,
+.ribasim-viewer .panel {
+  position: absolute;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.ribasim-viewer .search {
+  top: 10px;
+  left: 10px;
+  width: 200px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  font: inherit;
+}
+
+.ribasim-viewer .search.not-found {
+  border-color: #b00020;
+}
+
+.ribasim-viewer .layers {
+  top: 50px;
+  left: 10px;
+  max-height: calc(100% - 100px);
+  overflow-y: auto;
+  padding: 6px 10px;
+}
+
+.ribasim-viewer .layers summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.ribasim-viewer .layers h4 {
+  margin: 8px 0 2px;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #666;
+}
+
+.ribasim-viewer .layers label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.ribasim-viewer .swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.ribasim-viewer .note {
+  margin: 6px 0 0;
+  color: #666;
+  font-size: 12px;
+}
+
+.ribasim-viewer .panel {
+  top: 10px;
+  right: 50px;
+  bottom: 30px;
+  width: 400px;
+  max-width: calc(100% - 70px);
+  overflow-y: auto;
+  padding: 10px 12px;
+}
+
+.ribasim-viewer .panel header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ribasim-viewer .panel h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+}
+
+.ribasim-viewer .panel h3 {
+  margin: 12px 0 4px;
+  font-size: 13px;
+}
+
+.ribasim-viewer .panel ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.ribasim-viewer .panel button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.ribasim-viewer .panel .close {
+  border: none;
+  background: none;
+  font-size: 18px;
+}
+
+.ribasim-viewer .panel details {
+  margin: 4px 0;
+}
+
+.ribasim-viewer .panel summary {
+  cursor: pointer;
+}
+
+.ribasim-viewer table {
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ribasim-viewer table.attributes {
+  width: 100%;
+}
+
+.ribasim-viewer th,
+.ribasim-viewer td {
+  padding: 2px 6px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+  vertical-align: top;
+}
+
+.ribasim-viewer table.attributes th {
+  width: 40%;
+  font-weight: 500;
+  color: #555;
+  word-break: break-all;
+}
+
+.ribasim-viewer .table-scroll {
+  max-height: 300px;
+  overflow: auto;
+}
+
+.ribasim-viewer table.data thead th {
+  position: sticky;
+  top: 0;
+  background: #f5f5f5;
+}
+
+.ribasim-viewer .panel h4 {
+  margin: 8px 0 2px;
+  font-size: 12px;
+}
+
+.ribasim-viewer .timebar {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: 30px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  max-width: calc(100% - 140px);
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.ribasim-viewer .timebar input[type="range"] {
+  width: 240px;
+}
+
+.ribasim-viewer .timebar .play {
+  width: 32px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ribasim-viewer .timebar .date {
+  font-variant-numeric: tabular-nums;
+  min-width: 80px;
+}
+
+.ribasim-viewer .timebar select {
+  font: inherit;
+  max-width: 200px;
+}
+
+.ribasim-viewer .legends {
+  display: flex;
+  gap: 12px;
+}
+
+.ribasim-viewer .legend {
+  width: 180px;
+  font-size: 11px;
+}
+
+.ribasim-viewer .legend .gradient {
+  height: 8px;
+  border-radius: 2px;
+}
+
+.ribasim-viewer .legend-title,
+.ribasim-viewer .legend-labels {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
