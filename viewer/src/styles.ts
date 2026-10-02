@@ -42,8 +42,8 @@ export const DEFAULT_NODE_COLOR: Color = [128, 128, 128];
 
 /** QGIS sizes in mm, at 96 DPI */
 const MM = 96 / 25.4;
-// Smaller than the 6.6 mm in QGIS, where nodes are typically viewed less densely
-export const NODE_ICON_SIZE_PX = 4.2 * MM;
+// The size in QGIS, reached when zoomed in; zoomed out the icons shrink with the map
+export const NODE_ICON_SIZE_PX = 6.6 * MM;
 export const LINK_WIDTH_PX = 0.5 * MM;
 export const ARROW_SIZE_PX = 3 * MM;
 
@@ -61,26 +61,50 @@ export interface IconAtlas {
   mapping: Record<string, { x: number; y: number; width: number; height: number; mask: boolean }>;
 }
 
-async function loadSvg(nodeType: string): Promise<HTMLImageElement> {
-  const image = new Image(ATLAS_ICON_PX, ATLAS_ICON_PX);
-  // Without CORS the canvas becomes tainted and cannot be exported as the atlas
-  image.crossOrigin = "anonymous";
-  image.src = `${NODE_ICON_URL}svg/${nodeType}.svg`;
-  await image.decode();
-  return image;
+/**
+ * Load an image from a same-origin blob URL. Loading the remote URL directly can taint the atlas canvas when the
+ * browser reuses a cached response without CORS headers, which makes every icon fall back to a circle.
+ */
+async function loadImage(url: string): Promise<HTMLImageElement> {
+  // The icons are served without Cache-Control, so browsers may reuse an outdated icon without asking
+  const response = await fetch(url, { cache: "no-cache" });
+  if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
+  const blobUrl = URL.createObjectURL(await response.blob());
+  try {
+    const image = new Image(ATLAS_ICON_PX, ATLAS_ICON_PX);
+    image.src = blobUrl;
+    await image.decode();
+    return image;
+  } finally {
+    // The decoded image stays usable for drawing
+    URL.revokeObjectURL(blobUrl);
+  }
+}
+
+/** The SVG icon of a node type, or the smaller PNG if the browser cannot decode the SVG, like Edge for some icons. */
+async function loadIcon(nodeType: string): Promise<HTMLImageElement> {
+  try {
+    return await loadImage(`${NODE_ICON_URL}svg/${nodeType}.svg`);
+  } catch (error) {
+    console.info(`Using the PNG icon of ${nodeType}, the SVG failed to load:`, error);
+    return loadImage(`${NODE_ICON_URL}png/${nodeType}.png`);
+  }
 }
 
 /** Rasterize the node icons and a link arrow into one atlas; node types whose icon fails to load are left out. */
 export async function loadIconAtlas(): Promise<IconAtlas> {
   const nodeTypes = Object.keys(NODE_STYLES);
-  const results = await Promise.allSettled(nodeTypes.map(loadSvg));
+  const results = await Promise.allSettled(nodeTypes.map(loadIcon));
   const atlas = document.createElement("canvas");
   atlas.width = ATLAS_ICON_PX * (nodeTypes.length + 1);
   atlas.height = ATLAS_ICON_PX;
   const context = atlas.getContext("2d")!;
   const mapping: IconAtlas["mapping"] = {};
   results.forEach((result, i) => {
-    if (result.status !== "fulfilled") return;
+    if (result.status !== "fulfilled") {
+      console.warn(`Node icon ${nodeTypes[i]} failed to load, drawing circles instead:`, result.reason);
+      return;
+    }
     const x = i * ATLAS_ICON_PX;
     context.drawImage(result.value, x, 0, ATLAS_ICON_PX, ATLAS_ICON_PX);
     mapping[nodeTypes[i]] = { x, y: 0, width: ATLAS_ICON_PX, height: ATLAS_ICON_PX, mask: false };

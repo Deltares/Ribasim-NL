@@ -121,6 +121,14 @@ interface Label {
   text: string;
 }
 
+/** A layer in the layer list. */
+interface LayerRow {
+  key: string;
+  label: string;
+  symbol?: HTMLElement;
+  count?: number;
+}
+
 class Viewer {
   private readonly visible = new Map<string, boolean>();
   private basemap = DEFAULT_BASEMAP;
@@ -555,19 +563,46 @@ class Viewer {
     if (!bounds.isEmpty()) this.map.fitBounds(bounds, { padding: 80, maxZoom: 15 });
   }
 
-  private checkbox(key: string, label: string, symbol?: HTMLElement, count?: number): HTMLLabelElement {
-    const input = el("input");
-    input.type = "checkbox";
-    input.checked = this.visible.get(key) ?? false;
-    input.addEventListener("change", () => {
-      this.visible.set(key, input.checked);
+  /** A header with a checkbox that toggles all layers below it, which follows their state. */
+  private layerSection(title: string, layers: LayerRow[]): HTMLElement[] {
+    const all = el("input");
+    all.type = "checkbox";
+    all.title = `Show or hide all ${title.toLowerCase()}`;
+    const inputs = layers.map(() => el("input"));
+    const sync = () => {
+      const shown = layers.filter(({ key }) => this.visible.get(key)).length;
+      all.checked = shown === layers.length;
+      all.indeterminate = shown > 0 && shown < layers.length;
+    };
+    all.addEventListener("change", () => {
+      layers.forEach(({ key }, i) => {
+        this.visible.set(key, all.checked);
+        inputs[i].checked = all.checked;
+      });
+      all.indeterminate = false;
+      this.updateLabels();
       this.render();
     });
-    const row = el("label");
-    row.append(input);
-    if (symbol) row.append(symbol);
-    row.append(count === undefined ? label : `${label} (${count.toLocaleString()})`);
-    return row;
+    const rows = layers.map(({ key, label, symbol, count }, i) => {
+      const input = inputs[i];
+      input.type = "checkbox";
+      input.checked = this.visible.get(key) ?? false;
+      input.addEventListener("change", () => {
+        this.visible.set(key, input.checked);
+        sync();
+        this.updateLabels();
+        this.render();
+      });
+      const row = el("label");
+      row.append(input);
+      if (symbol) row.append(symbol);
+      row.append(count === undefined ? label : `${label} (${count.toLocaleString()})`);
+      return row;
+    });
+    sync();
+    const header = el("label", "section");
+    header.append(all, el("h4", "", title));
+    return [header, ...rows];
   }
 
   private nodeSymbol(nodeType: string): HTMLElement {
@@ -589,21 +624,25 @@ class Viewer {
     // On phones the list would cover most of the map
     details.open = !matchMedia("(max-width: 600px)").matches;
     details.append(el("summary", "", "Layers"));
-    details.append(el("h4", "", "Nodes"));
-    for (const group of network.nodeGroups) {
-      details.append(this.checkbox(group.type, group.type, this.nodeSymbol(group.type), group.rows.length));
-    }
-    details.append(el("h4", "", "Links"));
-    for (const group of network.linkGroups) {
-      const style = LINK_STYLES[group.type] ?? DEFAULT_LINK_STYLE;
-      const line = el("span", "line-swatch");
-      line.style.borderTop = `2px ${style.dashed ? "dashed" : "solid"} rgb(${style.color.join(",")})`;
-      details.append(this.checkbox(group.type, group.type, line, group.rows.length));
-    }
-    details.append(el("h4", "", "Areas"));
+    const nodes = network.nodeGroups.map(({ type, rows }) => ({
+      key: type,
+      label: type,
+      symbol: this.nodeSymbol(type),
+      count: rows.length,
+    }));
+    const links = network.linkGroups.map(({ type, rows }) => {
+      const style = LINK_STYLES[type] ?? DEFAULT_LINK_STYLE;
+      const symbol = el("span", "line-swatch");
+      symbol.style.borderTop = `2px ${style.dashed ? "dashed" : "solid"} rgb(${style.color.join(",")})`;
+      return { key: type, label: type, symbol, count: rows.length };
+    });
     details.append(
-      this.checkbox("basin_area", "Basin / area", el("span", "area-swatch")),
-      this.checkbox("waterboards", "Water boards"),
+      ...this.layerSection("Nodes", nodes),
+      ...this.layerSection("Links", links),
+      ...this.layerSection("Areas", [
+        { key: "basin_area", label: "Basin / area", symbol: el("span", "area-swatch") },
+        { key: "waterboards", label: "Water boards" },
+      ]),
     );
     const basemap = el("select", "basemap");
     basemap.append(...Object.entries(BASEMAPS).map(([id, { label }]) => new Option(label, id, false, id === this.basemap)));

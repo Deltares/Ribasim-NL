@@ -13,6 +13,9 @@ export interface TimeState {
 }
 
 const FRAME_INTERVAL_MS = 150;
+// Default limits that replace those of the export, by "<kind>/<variable>"; the exported upper limit of the
+// flow rate is the 98th percentile, which makes all larger flows look the same
+const DEFAULT_LIMITS: Record<string, { lower?: number; upper?: number }> = { "flow/flow_rate": { upper: 100 } };
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text = ""): HTMLElementTagNameMap[K] {
   const element = document.createElement(tag);
@@ -39,7 +42,7 @@ export class TimeBar {
     initial: Partial<TimeState>,
     private readonly onChange: () => Promise<void>,
   ) {
-    this.state = { step: 0, basin: null, flow: "flow_rate", flowStyle: "color", ...initial };
+    this.state = { step: 0, basin: null, flow: "flow_rate", flowStyle: "width", ...initial };
     const bar = el("div", "timebar");
     this.play = el("button", "play", "▶");
     this.play.type = "button";
@@ -68,8 +71,13 @@ export class TimeBar {
     const name = this.state[kind];
     if (!name) return null;
     const variable = this.results[kind].variables[name];
-    const domain = this.limits.get(`${kind}/${name}`);
-    return domain ? { ...variable, domain } : variable;
+    const key = `${kind}/${name}`;
+    const defaults = DEFAULT_LIMITS[key];
+    const domain = this.limits.get(key) ?? [
+      defaults?.lower ?? variable.domain[0],
+      defaults?.upper ?? variable.domain[1],
+    ];
+    return { ...variable, domain };
   }
 
   /** Variable selection with its legend below; flow variables can be shown by color or by width. */

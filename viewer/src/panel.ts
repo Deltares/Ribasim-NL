@@ -437,7 +437,7 @@ export class Panel {
         const state = states?.[step];
         stateValue.textContent =
           neighbors.controller === undefined ? "not controlled" : `${states ? (state ?? "unknown") : "–"}${controllerName}`;
-        if (flow) flowValue.textContent = `${formatNumber(flow[step])} m3 s-1`;
+        if (flow) flowValue.textContent = `${formatNumber(flow[step])} m³ s⁻¹`;
         diagram.update(step);
       },
     };
@@ -460,7 +460,7 @@ export class Panel {
     const rows = [...byTime.values()].sort((a, b) => (a.time as Date).getTime() - (b.time as Date).getTime());
     const chart = timeChart(rows, width);
     const note = links.length > shown.length ? [el("p", { className: "note" }, `Showing ${shown.length} of ${links.length} links.`)] : [];
-    return chart ? [el("h4", {}, "Flow rate (m3 s-1)"), chart, ...note] : ["No results for these links."];
+    return chart ? [el("h4", {}, "Flow rate (m³ s⁻¹)"), chart, ...note] : ["No results for these links."];
   }
 
   /** Width available for charts; the panel is shown first, since a hidden panel has no width. */

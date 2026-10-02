@@ -459,3 +459,11 @@
   margin-top: 2px;
   font: inherit;
 }
+
+.ribasim-viewer .layers label.section {
+  margin-top: 8px;
+}
+
+.ribasim-viewer .layers label.section h4 {
+  margin: 0;
+}
