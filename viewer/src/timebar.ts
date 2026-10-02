@@ -23,7 +23,7 @@ export class TimeBar {
   private readonly slider: HTMLInputElement;
   private readonly date: HTMLSpanElement;
   private readonly play: HTMLButtonElement;
-  private readonly legends: HTMLDivElement;
+  private readonly legends = {} as Record<"basin" | "flow", HTMLDivElement>;
 
   constructor(
     parent: HTMLElement,
@@ -45,23 +45,20 @@ export class TimeBar {
     this.slider.value = String(this.state.step);
     this.slider.addEventListener("input", () => this.setStep(Number(this.slider.value)));
     this.date = el("span", "date");
-    this.legends = el("div", "legends");
-    bar.append(
-      this.play,
-      this.slider,
-      this.date,
-      this.select("Links", "flow", Object.keys(results.flow.variables)),
-      this.select("Basins", "basin", Object.keys(results.basin.variables)),
-      this.legends,
-    );
+    const time = el("div", "time");
+    time.append(this.play, this.slider, this.date);
+    const variables = el("div", "variables");
+    variables.append(this.variable("Links", "flow"), this.variable("Basins", "basin"));
+    bar.append(time, variables);
     parent.append(bar);
     this.update();
   }
 
-  private select(label: string, kind: "basin" | "flow", variables: string[]): HTMLLabelElement {
+  /** Variable selection with its color legend below. */
+  private variable(label: string, kind: "basin" | "flow"): HTMLDivElement {
     const select = el("select");
     select.append(new Option("none", ""));
-    for (const variable of variables) {
+    for (const variable of Object.keys(this.results[kind].variables)) {
       select.append(new Option(this.results[kind].variables[variable].label, variable));
     }
     select.value = this.state[kind] ?? "";
@@ -70,30 +67,33 @@ export class TimeBar {
       this.update();
       void this.onChange();
     });
-    const wrapper = el("label", "variable", `${label} `);
+    const wrapper = el("label", "", label);
     wrapper.append(select);
-    return wrapper;
+    this.legends[kind] = el("div", "legend");
+    const column = el("div", "variable");
+    column.append(wrapper, this.legends[kind]);
+    return column;
   }
 
   private update(): void {
     this.slider.value = String(this.state.step);
     this.date.textContent = this.times[this.state.step].toISOString().slice(0, 10);
-    this.legends.replaceChildren();
     for (const kind of ["flow", "basin"] as const) {
+      const legend = this.legends[kind];
       const variable = this.state[kind];
+      legend.hidden = !variable;
       if (!variable) continue;
       const scale = new ColorScale(this.results[kind].variables[variable]);
-      const { label, units, domain, scale: type } = scale.variable;
+      const { units, domain, scale: type } = scale.variable;
       const bar = el("div", "gradient");
       bar.style.background = scale.gradient();
-      const prefix = type === "log" ? "|x| " : "";
-      const legend = el("div", "legend");
-      legend.append(
-        el("div", "legend-title", `${label} (${units})`),
-        bar,
-        el("div", "legend-labels", `${prefix}${formatNumber(domain[0])} … ${formatNumber(domain[1])}`),
+      const labels = el("div", "legend-labels");
+      labels.append(
+        el("span", "", `${type === "log" ? "|x| " : ""}${formatNumber(domain[0])}`),
+        el("span", "", units),
+        el("span", "", formatNumber(domain[1])),
       );
-      this.legends.append(legend);
+      legend.replaceChildren(bar, labels);
     }
   }
 

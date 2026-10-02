@@ -179,7 +179,7 @@ export class Panel {
   show(selection: Selection): void {
     const token = ++this.token;
     const { network, manifest } = this;
-    const width = this.element.clientWidth || 360;
+    const width = this.contentWidth();
     const attributes = el("div", {}, "Loading…");
     const sections: HTMLElement[] = [];
 
@@ -267,6 +267,14 @@ export class Panel {
     const chart = timeChart(rows, width);
     const note = links.length > shown.length ? [el("p", { className: "note" }, `Showing ${shown.length} of ${links.length} links.`)] : [];
     return chart ? [el("h4", {}, "Flow rate (m3 s-1)"), chart, ...note] : ["No results for these links."];
+  }
+
+  /** Width available for charts; the panel is shown first, since a hidden panel has no width. */
+  private contentWidth(): number {
+    this.element.hidden = false;
+    const style = getComputedStyle(this.element);
+    const width = this.element.clientWidth - Number.parseFloat(style.paddingLeft) - Number.parseFloat(style.paddingRight);
+    return width > 0 ? Math.floor(width) : 360;
   }
 
   private render(sections: HTMLElement[]): void {

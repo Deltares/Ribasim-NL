@@ -33,10 +33,13 @@ import { TimeBar } from "./timebar";
 
 const HIDDEN_BY_DEFAULT = new Set(["ContinuousControl", "DiscreteControl", "PidControl", "control", "listen"]);
 const HIGHLIGHT: [number, number, number, number] = [255, 140, 0, 255];
-const NO_DATA: [number, number, number, number] = [170, 170, 170, 255];
+// Translucent, since zero flow (no color on a log scale) is common and should not dominate the map
+const NO_DATA: [number, number, number, number] = [150, 150, 150, 110];
 const DASHED = [new PathStyleExtension({ dash: true })];
+const DASH_ARRAY: [number, number] = [4, 2];
 // Icons shrink with the map below this size in meters, so dense areas stay readable when zoomed out
 const NODE_ICON_SIZE_M = 500;
+const NODE_ICON_MIN_PX = 2;
 const ARROW_SIZE_M = 60;
 const BASEMAP = "https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/grijs/EPSG:3857/{z}/{x}/{y}.png";
 
@@ -133,8 +136,10 @@ class Viewer {
       close: () => this.select(null),
     });
     this.addMapLayers();
-    this.addLayerControl();
-    this.addSearch();
+    // Search and layer list share a column, so the search choices push the list down
+    const sidebar = el("div", "sidebar");
+    sidebar.append(...this.searchControl(), this.layerControl());
+    root.append(sidebar);
     map.on("click", (event: maplibregl.MapMouseEvent) => this.onClick(event));
     this.render();
 
@@ -275,7 +280,7 @@ class Viewer {
     const isSelected = selected !== undefined && this.network.nodeType[selected] === group.type;
     const common = {
       id: `node-${group.type}`,
-      data: { length: group.rows.length, attributes: { getPosition: { value: group.positions, size: 2 } } },
+      data: group.data,
       visible: this.visible.get(group.type),
       pickable: true,
       autoHighlight: true,
@@ -290,7 +295,7 @@ class Viewer {
         getIcon: () => group.type,
         sizeUnits: "meters",
         getSize: NODE_ICON_SIZE_M,
-        sizeMinPixels: 6,
+        sizeMinPixels: NODE_ICON_MIN_PX,
         sizeMaxPixels: NODE_ICON_SIZE_PX,
       });
     }
@@ -304,7 +309,7 @@ class Viewer {
       getLineWidth: 0.5,
       radiusUnits: "meters",
       getRadius: NODE_ICON_SIZE_M / 2,
-      radiusMinPixels: 2,
+      radiusMinPixels: NODE_ICON_MIN_PX / 2,
       radiusMaxPixels: NODE_ICON_SIZE_PX / 2,
     });
   }
@@ -317,11 +322,7 @@ class Viewer {
     const style = LINK_STYLES[group.type] ?? DEFAULT_LINK_STYLE;
     return new PathLayer({
       id: `link-${group.type}`,
-      data: {
-        length: group.rows.length,
-        startIndices: group.startIndices,
-        attributes: { getPath: { value: group.positions, size: 2 } },
-      },
+      data: group.data,
       _pathType: "open",
       positionFormat: "XY",
       visible: this.visible.get(group.type),
@@ -332,7 +333,7 @@ class Viewer {
       widthUnits: "pixels",
       getWidth: coloring ? 2 * LINK_WIDTH_PX : LINK_WIDTH_PX,
       widthMinPixels: 1,
-      ...(style.dashed ? { extensions: DASHED, getDashArray: [4, 2], dashJustified: true } : {}),
+      ...(style.dashed ? { extensions: DASHED, getDashArray: DASH_ARRAY, dashJustified: true } : {}),
       pickable: true,
       autoHighlight: true,
       highlightColor: HIGHLIGHT,
@@ -344,13 +345,7 @@ class Viewer {
   private arrowLayer(group: Group) {
     return new IconLayer({
       id: `arrow-${group.type}`,
-      data: {
-        length: group.rows.length,
-        attributes: {
-          getPosition: { value: group.arrowPositions!, size: 2 },
-          getAngle: { value: group.arrowAngles!, size: 1 },
-        },
-      },
+      data: group.arrows!,
       visible: this.visible.get(group.type),
       iconAtlas: this.icons.atlas,
       iconMapping: this.icons.mapping,
@@ -483,10 +478,11 @@ class Viewer {
     return swatch;
   }
 
-  private addLayerControl(): void {
+  private layerControl(): HTMLDetailsElement {
     const { network, manifest } = this;
     const details = el("details", "layers");
-    details.open = true;
+    // On phones the list would cover most of the map
+    details.open = !matchMedia("(max-width: 600px)").matches;
     details.append(el("summary", "", "Layers"));
     details.append(el("h4", "", "Nodes"));
     for (const group of network.nodeGroups) {
@@ -506,7 +502,7 @@ class Viewer {
     );
     const version = manifest.ribasim_version ? `, Ribasim ${manifest.ribasim_version}` : "";
     details.append(el("p", "note", `${manifest.model}${version}`));
-    this.root.append(details);
+    return details;
   }
 
   private searchMatches(query: string): Selection[] {
@@ -521,7 +517,7 @@ class Viewer {
     return matches;
   }
 
-  private addSearch(): void {
+  private searchControl(): HTMLElement[] {
     const input = el("input", "search");
     input.type = "search";
     input.placeholder = "Node or link id";
@@ -557,7 +553,7 @@ class Viewer {
     input.addEventListener("input", () => {
       choices.hidden = true;
     });
-    this.root.append(input, choices);
+    return [input, choices];
   }
 }
 

@@ -1,15 +1,24 @@
 import { readColumns, type Manifest } from "./data";
 
-/** Rows of one node or link type, with positions laid out for deck.gl binary attributes. */
+/**
+ * deck.gl binary layer data. Layers must get the same object on every render,
+ * since deck.gl compares data by reference and otherwise rebuilds all attributes.
+ */
+export interface LayerData {
+  length: number;
+  /** Start vertex of each path */
+  startIndices?: Uint32Array;
+  attributes: Record<string, { value: Float32Array; size: number }>;
+}
+
+/** Rows of one node or link type, with their deck.gl layer data. */
 export interface Group {
   type: string;
   rows: Int32Array;
-  positions: Float32Array;
-  /** Start vertex of each path, only for links */
-  startIndices?: Uint32Array;
-  /** Position halfway along each path and its direction in degrees counterclockwise from east, only for links */
-  arrowPositions?: Float32Array;
-  arrowAngles?: Float32Array;
+  /** Node positions, or link paths */
+  data: LayerData;
+  /** Position halfway along each link and its direction in degrees counterclockwise from east, only for links */
+  arrows?: LayerData;
 }
 
 export interface Network {
@@ -92,7 +101,8 @@ export async function loadNetwork(manifest: Manifest): Promise<Network> {
       positions[2 * i + 1] = nodeY[row];
       nodeLocal[row] = i;
     });
-    return { type, rows: Int32Array.from(rows), positions };
+    const data = { length: rows.length, attributes: { getPosition: { value: positions, size: 2 } } };
+    return { type, rows: Int32Array.from(rows), data };
   });
 
   const linkId = Int32Array.from(links.link_id as ArrayLike<number>);
@@ -117,7 +127,15 @@ export async function loadNetwork(manifest: Manifest): Promise<Network> {
       arrowPositions[2 * i + 1] = y;
       arrowAngles[i] = angle;
     });
-    return { type, rows: Int32Array.from(rows), positions, startIndices, arrowPositions, arrowAngles };
+    return {
+      type,
+      rows: Int32Array.from(rows),
+      data: { length: rows.length, startIndices, attributes: { getPath: { value: positions, size: 2 } } },
+      arrows: {
+        length: rows.length,
+        attributes: { getPosition: { value: arrowPositions, size: 2 }, getAngle: { value: arrowAngles, size: 1 } },
+      },
+    };
   });
 
   return {
