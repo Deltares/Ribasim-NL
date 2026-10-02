@@ -266,8 +266,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="repro.sh-pipeline-reproduction">repro.sh: pipeline reproduction</h2>
 <p>Submits the DVC pipeline as individual SLURM jobs. Each <code>foreach</code> stage gets its own job, and SLURM <code>--dependency=afterok</code> ensures correct ordering.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./repro.sh</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This submits jobs in three waves:</p>
-<ol type="1">
+<p>This submits jobs in these waves:</p>
+<ol start="0" type="1">
+<li><code>clean</code>: removes the outputs of all stages that are run, like <code>dvc repro</code> does, and runs <code>dvc pull --force</code> for everything upstream of them; no manual pull is needed</li>
 <li><code>rwzi</code> (shared dependency)</li>
 <li>22 parallel jobs: 11 <code>dynamic@*</code>, 10 <code>forcing@*</code>, 1 <code>hws_transient</code></li>
 <li><code>samenvoegen</code> → <code>koppelen</code></li>
