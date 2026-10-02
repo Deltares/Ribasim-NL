@@ -65,9 +65,9 @@ if df.crs != df_extra.crs:
 df_extra_only = gpd.overlay(df_extra, df, how="difference", keep_geom_type=True)
 
 # Kolommen gelijk maken
-for col in set(df.columns) - set(df_extra_only.columns):
+for col in sorted(set(df.columns) - set(df_extra_only.columns)):
     df_extra_only[col] = pd.NA
-for col in set(df_extra_only.columns) - set(df.columns):
+for col in sorted(set(df_extra_only.columns) - set(df.columns)):
     df[col] = pd.NA
 
 df_extra_only = df_extra_only[df.columns]

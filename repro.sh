@@ -9,7 +9,8 @@
 # (.dvc/tmp/rwlock) on the shared checkout, which was failing many jobs.
 #
 # DVC is still used for data, but only in two serial, uncontended jobs:
-#   * "pull"   : fetches all DVC-tracked inputs once, before the pipeline runs
+#   * "clean"  : removes the stage outputs and pulls all inputs once, before the
+#                pipeline runs
 #   * "commit" : runs `dvc commit` + `dvc push` once at the end to register and
 #                upload all produced outputs
 #
@@ -48,35 +49,58 @@ chain() {
 
 py() { echo "pixi run python $*"; }
 
-# Step 0: fetch all DVC-tracked inputs once (serial, no lock contention).
-# Use `afterany` (not `afterok`): `dvc pull --force` exits non-zero when an out is declared in
-# dvc.yaml but not yet in the cache/remote (e.g. a newly added output on its first pipeline run).
-# The pull is best-effort -- it fetches whatever exists, and the stages regenerate the rest -- so a
-# non-zero pull must not block the whole pipeline.
-JOB_PULL=$(submit pull singleton ${TIME} "pixi run dvc pull --force")
-DEP_PULL="afterany:${JOB_PULL}"
+# 11 dynamic chains (parameterized -> bergend -> dynamic), key:item
+DYNAMIC_PAIRS=(
+  aa_en_maas:AaenMaas
+  brabantse_delta:BrabantseDelta
+  de_dommel:DeDommel
+  drents_overijsselse_delta:DrentsOverijsselseDelta
+  hunze_en_aas:HunzeenAas
+  limburg:Limburg
+  noorderzijlvest:Noorderzijlvest
+  rijn_en_ijssel:RijnenIJssel
+  stichtse_rijnlanden:StichtseRijnlanden
+  vallei_en_veluwe:ValleienVeluwe
+  vechtstromen:Vechtstromen
+)
 
-# Step 1: shared rwzi dependency (needs pulled inputs).
-JOB_RWZI=$(submit rwzi "${DEP_PULL}" ${TIME} "$(py notebooks/create_rwzi_model.py)")
+# 10 peilbeheerst chains (feedback -> profiles -> forcing), key:item
+PEILBEHEERST_PAIRS=(
+  delfland:Delfland
+  amstel_gooi_en_vecht:AmstelGooienVecht
+  hollands_noorderkwartier:HollandsNoorderkwartier
+  hollandse_delta:HollandseDelta
+  rijnland:Rijnland
+  rivierenland:Rivierenland
+  scheldestromen:Scheldestromen
+  schieland_en_de_krimpenerwaard:SchielandendeKrimpenerwaard
+  wetterskip_fryslan:WetterskipFryslan
+  zuiderzeeland:Zuiderzeeland
+)
+
+# Step 0: prepare the workspace once (serial, no lock contention), see scripts/clean.py:
+# remove the outputs of all stages run below, like `dvc repro` does, and `dvc pull --force`
+# everything upstream of them. Those outputs are not pulled, so a newly added output that is not
+# yet in the remote does not make the pull fail.
+STAGES="rwzi hws_demand hws_transient samenvoegen koppelen"
+for pair in "${DYNAMIC_PAIRS[@]}"; do
+  key="${pair%%:*}"
+  STAGES="${STAGES} parameterized_${key} bergend_${key} dynamic@${key}"
+done
+for pair in "${PEILBEHEERST_PAIRS[@]}"; do
+  key="${pair%%:*}"
+  STAGES="${STAGES} feedback_${key} profiles_${key} forcing_${key}"
+done
+JOB_CLEAN=$(submit clean singleton ${TIME} "$(py scripts/clean.py ${STAGES})")
+
+# Step 1: shared rwzi dependency (needs the pulled inputs).
+JOB_RWZI=$(submit rwzi "afterok:${JOB_CLEAN}" ${TIME} "$(py notebooks/create_rwzi_model.py)")
 DEP="afterok:${JOB_RWZI}"
 
 # Step 2: 22 independent stage jobs
 JOBIDS=""
 
-# 11 dynamic chains (parameterized -> bergend -> dynamic), key:item
-for pair in \
-  aa_en_maas:AaenMaas \
-  brabantse_delta:BrabantseDelta \
-  de_dommel:DeDommel \
-  drents_overijsselse_delta:DrentsOverijsselseDelta \
-  hunze_en_aas:HunzeenAas \
-  limburg:Limburg \
-  noorderzijlvest:Noorderzijlvest \
-  rijn_en_ijssel:RijnenIJssel \
-  stichtse_rijnlanden:StichtseRijnlanden \
-  vallei_en_veluwe:ValleienVeluwe \
-  vechtstromen:Vechtstromen
-do
+for pair in "${DYNAMIC_PAIRS[@]}"; do
   key="${pair%%:*}"; item="${pair##*:}"
   cmds=$(chain \
     "$(py notebooks/${key}/_preprocess_profielen.py)" \
@@ -92,19 +116,7 @@ do
   STAGGER_COUNT=$((STAGGER_COUNT + 1))
 done
 
-# 10 peilbeheerst chains (feedback -> profiles -> forcing), key:item
-for pair in \
-  delfland:Delfland \
-  amstel_gooi_en_vecht:AmstelGooienVecht \
-  hollands_noorderkwartier:HollandsNoorderkwartier \
-  hollandse_delta:HollandseDelta \
-  rijnland:Rijnland \
-  rivierenland:Rivierenland \
-  scheldestromen:Scheldestromen \
-  schieland_en_de_krimpenerwaard:SchielandendeKrimpenerwaard \
-  wetterskip_fryslan:WetterskipFryslan \
-  zuiderzeeland:Zuiderzeeland
-do
+for pair in "${PEILBEHEERST_PAIRS[@]}"; do
   key="${pair%%:*}"; item="${pair##*:}"
   cmds=$(chain \
     "$(py src/peilbeheerst_model/feedback/${item}.py)" \

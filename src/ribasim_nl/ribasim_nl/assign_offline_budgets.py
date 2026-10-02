@@ -449,7 +449,7 @@ class AssignOfflineBudgets:
         print("compute budgets per basin")
         primary_budgets_df = (
             _compute_budgets_per_basin(
-                _crop_to_gdf(budgets[list(self.primary_budget_keys)], primary_basin_definition),
+                _crop_to_gdf(budgets[sorted(self.primary_budget_keys)], primary_basin_definition),
                 primary_basin_mask,
             )
             / 86400
@@ -458,7 +458,7 @@ class AssignOfflineBudgets:
         secondary_budgets_df = (
             _compute_budgets_per_basin(
                 _crop_to_gdf(
-                    budgets[list(self.secondary_budget_keys | self.surface_runoff_budget_keys)],
+                    budgets[sorted(self.secondary_budget_keys | self.surface_runoff_budget_keys)],
                     secondary_basin_definition,
                 ),
                 secondary_basin_mask,
@@ -473,7 +473,7 @@ class AssignOfflineBudgets:
         # sum all budgets (columns) and create drainage and infiltration series
         # Group-sum to ensure unique (node_id, time) index before mapping
         summed_budgets = pd.Series(
-            budgets_df[list(self.primary_budget_keys | self.secondary_budget_keys)]
+            budgets_df[sorted(self.primary_budget_keys | self.secondary_budget_keys)]
             .groupby(level=["node_id", "time"])
             .sum()
             .sum(axis=1)
@@ -485,7 +485,7 @@ class AssignOfflineBudgets:
             lower=0
         )  # alles > 0 (infiltratie is in modflow, ontrekking uit ribasim, maar in ribasim positief teken)
         surface_runoff = (
-            budgets_df[list(self.surface_runoff_budget_keys)]
+            budgets_df[sorted(self.surface_runoff_budget_keys)]
             .groupby(level=["node_id", "time"])
             .sum()
             .sum(axis=1)
