@@ -98,7 +98,12 @@ export function fileUrl(entry: FileEntry): string {
 export async function loadManifest(): Promise<Manifest> {
   const response = await fetch(new URL("manifest.json", dataUrl()), { cache: "no-cache" });
   if (!response.ok) throw new Error(`Failed to load manifest.json: HTTP ${response.status}`);
-  return response.json();
+  const manifest: Manifest = await response.json();
+  // NetCDF long names like "water flow rate" are verbose in the variable dropdowns
+  for (const set of manifest.results ? [manifest.results.basin, manifest.results.flow] : []) {
+    for (const variable of Object.values(set.variables)) variable.label = variable.label.replace(/^water /, "");
+  }
+  return manifest;
 }
 
 interface ParquetFile {

@@ -7,6 +7,9 @@ export interface Group {
   positions: Float32Array;
   /** Start vertex of each path, only for links */
   startIndices?: Uint32Array;
+  /** Position halfway along each path and its direction in degrees counterclockwise from east, only for links */
+  arrowPositions?: Float32Array;
+  arrowAngles?: Float32Array;
 }
 
 export interface Network {
@@ -46,6 +49,31 @@ function indexById(ids: Int32Array): Map<number, number> {
 
 const toStrings = (array: unknown[]) => array.map(String);
 
+/** The point halfway along a lon/lat path, with the local direction, using an equirectangular approximation. */
+function halfway(coords: ArrayLike<number>): [number, number, number] {
+  const scale = Math.cos((coords[1] * Math.PI) / 180);
+  const segments: number[] = [];
+  let total = 0;
+  for (let i = 2; i < coords.length; i += 2) {
+    const length = Math.hypot((coords[i] - coords[i - 2]) * scale, coords[i + 1] - coords[i - 1]);
+    segments.push(length);
+    total += length;
+  }
+  let remaining = total / 2;
+  for (let s = 0; s < segments.length; s++) {
+    const i = 2 * s;
+    const dx = coords[i + 2] - coords[i];
+    const dy = coords[i + 3] - coords[i + 1];
+    if (remaining <= segments[s] || s === segments.length - 1) {
+      const f = segments[s] > 0 ? Math.min(remaining / segments[s], 1) : 0;
+      const angle = (Math.atan2(dy, dx * scale) * 180) / Math.PI;
+      return [coords[i] + f * dx, coords[i + 1] + f * dy, angle];
+    }
+    remaining -= segments[s];
+  }
+  return [coords[0], coords[1], 0];
+}
+
 export async function loadNetwork(manifest: Manifest): Promise<Network> {
   const [nodes, links] = await Promise.all([
     readColumns(manifest.files.nodes, ["node_id", "node_type", "x", "y"]),
@@ -80,8 +108,16 @@ export async function loadNetwork(manifest: Manifest): Promise<Network> {
       linkLocal[row] = i;
     });
     const positions = new Float32Array(vertices * 2);
-    rows.forEach((row, i) => positions.set(coords[row], startIndices[i] * 2));
-    return { type, rows: Int32Array.from(rows), positions, startIndices };
+    const arrowPositions = new Float32Array(rows.length * 2);
+    const arrowAngles = new Float32Array(rows.length);
+    rows.forEach((row, i) => {
+      positions.set(coords[row], startIndices[i] * 2);
+      const [x, y, angle] = halfway(coords[row]);
+      arrowPositions[2 * i] = x;
+      arrowPositions[2 * i + 1] = y;
+      arrowAngles[i] = angle;
+    });
+    return { type, rows: Int32Array.from(rows), positions, startIndices, arrowPositions, arrowAngles };
   });
 
   return {
