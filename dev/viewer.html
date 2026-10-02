@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>read_style – Ribasim-NL</title>
+<title>Model viewer – Ribasim-NL</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -105,12 +105,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script>
+<script src="../site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="../site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="../site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
 
 
 <link rel="stylesheet" href="styles.css">
 </head>
 
-<body class="nav-fixed quarto-light">
+<body class="nav-sidebar floating nav-fixed quarto-light">
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top">
@@ -150,7 +153,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul>
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../dev/index.html"> 
+    <a class="nav-link active" href="../dev/index.html" aria-current="page"> 
 <span class="menu-text">Contributing</span></a>
   </li>  
   <li class="nav-item compact">
@@ -164,77 +167,185 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
       </div> <!-- /container-fluid -->
     </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/viewer.html">Model viewer</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
 </header>
 <!-- content -->
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Contributing</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/testing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Testing</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/dvc.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">DVC (Data Version Control)</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/type-checking.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Type checking</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/slurm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Running on SLURM</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/viewer.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Model viewer</span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
         <nav id="TOC" role="doc-toc" class="toc-active">
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#hydamo.read_style" id="toc-hydamo.read_style" class="nav-link active" data-scroll-target="#hydamo.read_style">read_style</a>
-  <ul class="collapse">
-  <li><a href="#parameters" id="toc-parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
-  <li><a href="#returns" id="toc-returns" class="nav-link" data-scroll-target="#returns">Returns</a></li>
-  </ul></li>
+  <li><a href="#updating-the-published-data" id="toc-updating-the-published-data" class="nav-link active" data-scroll-target="#updating-the-published-data">Updating the published data</a></li>
+  <li><a href="#developing-the-viewer" id="toc-developing-the-viewer" class="nav-link" data-scroll-target="#developing-the-viewer">Developing the viewer</a></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"></header>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Model viewer</h1>
+</div>
 
 
 
+<div class="quarto-title-meta">
 
-<section id="hydamo.read_style" class="level1">
-<h1>read_style</h1>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>read_style(style_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>To make style-text sql-compatible, we need to replace single ’ to ’’.</p>
-<p>Example ‘http://mrcc.com/qgis.dtd -&gt;’‘http://mrcc.com/qgis.dtd’’</p>
-<section id="parameters" class="level2 doc-section doc-section-parameters">
-<h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>The <a href="../viewer.html">Model viewer</a> shows the input and results of the coupled LHM model (<code>lhm_coupled</code>) on a web map. It is a static web app: the docs site serves only the JavaScript, and the browser reads the model data directly from MinIO.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart LR
+  A[modellen/lhm_coupled] --&gt;|dvc repro run_lhm_coupled| R[runs/lhm_coupled]
+  R --&gt;|dvc repro export_webmap| B[webmap/lhm_coupled]
+  B --&gt;|pixi run publish-webmap| C[MinIO doc-image/webmap/lhm_coupled]
+  C --&gt; D[Model viewer page]
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<p>All local paths are relative to <code>data/Rijkswaterstaat</code>.</p>
+<section id="updating-the-published-data" class="level2">
+<h2 class="anchored" data-anchor-id="updating-the-published-data">Updating the published data</h2>
+<ol type="1">
+<li><p>Run the model with the <code>run_lhm_coupled</code> DVC stage. It writes <code>runs/lhm_coupled/lhm_coupled.toml</code>, which reads the input of <code>modellen/lhm_coupled</code>, and the results next to it. For now this runs 1 year with a looser solver tolerance, see <code>scripts/run_lhm_coupled.py</code>. This takes many hours, so normally pull the cached results instead:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull run_lhm_coupled</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div></li>
+<li><p>Export the model to web-friendly files with the <code>export_webmap</code> DVC stage, which takes about 10 minutes:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc repro <span class="at">--pull</span> <span class="at">--single-item</span> export_webmap</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This writes <code>data/Rijkswaterstaat/webmap/lhm_coupled</code>, see <code>ribasim_nl.webmap</code> for details:</p>
 <table class="caption-top table">
+<colgroup>
+<col style="width: 40%">
+<col style="width: 60%">
+</colgroup>
 <thead>
 <tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-<th>Default</th>
+<th style="text-align: left;">File</th>
+<th style="text-align: left;">Content</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td>style_path</td>
-<td>Path</td>
-<td>Path to sld-file</td>
-<td><em>required</em></td>
+<td style="text-align: left;"><code>nodes.parquet</code></td>
+<td style="text-align: left;">Node table with all attributes and lon/lat</td>
 </tr>
-</tbody>
-</table>
-</section>
-<section id="returns" class="level2 doc-section doc-section-returns">
-<h2 class="doc-section doc-section-returns anchored" data-anchor-id="returns">Returns</h2>
-<table class="caption-top table">
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
+<tr class="even">
+<td style="text-align: left;"><code>links.parquet</code></td>
+<td style="text-align: left;">Link table with all attributes and simplified geometry</td>
 </tr>
-</thead>
-<tbody>
 <tr class="odd">
-<td></td>
-<td>str</td>
-<td>style-string for SQL</td>
+<td style="text-align: left;"><code>basin_area.pmtiles</code></td>
+<td style="text-align: left;">Basin / area polygons as vector tiles</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>waterboards.geojson</code></td>
+<td style="text-align: left;">Simplified water board boundaries</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>tables/*.parquet</code></td>
+<td style="text-align: left;">All other input tables, including those in NetCDF, sorted by <code>node_id</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>results/*_by_id.parquet</code></td>
+<td style="text-align: left;">Basin and flow results sorted by id, for the time series charts</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>results/*_by_time.parquet</code></td>
+<td style="text-align: left;">Basin level and storage, and flow rate, ordered by time step, for coloring the map</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>manifest.json</code></td>
+<td style="text-align: left;">List of the files above with their content hash and size, and the color scale of each result variable</td>
 </tr>
 </tbody>
 </table>
-
-
+<p>Results are only exported if the model’s <code>results</code> directory exists.</p></li>
+<li><p>Push the outputs and commit the updated <code>dvc.lock</code>, see <a href="../dev/dvc.html#pushing-changes">DVC</a>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc push run_lhm_coupled export_webmap</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div></li>
+<li><p>Upload the files to the anonymously readable <code>doc-image/webmap/lhm_coupled/</code> prefix on MinIO. This needs credentials with write access in <code>.env</code>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run publish-webmap</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Unchanged files are skipped, and <code>manifest.json</code> is uploaded last, so visitors never see a manifest pointing to files that are not uploaded yet. Files that are no longer in the manifest are listed but not deleted.</p></li>
+</ol>
+<p>The docs do not need to be rebuilt: the viewer always reads the latest <code>manifest.json</code>.</p>
 </section>
+<section id="developing-the-viewer" class="level2">
+<h2 class="anchored" data-anchor-id="developing-the-viewer">Developing the viewer</h2>
+<p>The viewer lives in <a href="https://github.com/Deltares/Ribasim-NL/tree/main/viewer"><code>viewer/</code></a> and is written in TypeScript, built with <a href="https://vite.dev/">Vite</a>. It uses <a href="https://maplibre.org/">MapLibre GL JS</a> for the basemap and the Basin / area tiles, <a href="https://deck.gl/">deck.gl</a> to draw the nodes and links, and <a href="https://github.com/hyparam/hyparquet">hyparquet</a> to read Parquet files with HTTP range requests.</p>
+<p>Start a development server that serves your local <code>export_webmap</code> output, and open <a href="http://localhost:5173" class="uri">http://localhost:5173</a>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run viewer-dev</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Changes to the TypeScript code reload the page automatically. <code>pixi run viewer-build</code> checks types and builds the viewer into <code>docs/viewer-app</code>. <code>pixi run docs</code> and <code>pixi run docs-render</code> run it before rendering the docs. Add <code>?data=&lt;url&gt;</code> to the viewer page URL to load the data from another location, for instance <code>?data=http://localhost:5173/</code> to use the development server. Only the default MinIO host, the docs site itself and <code>localhost</code> are accepted.</p>
+
+
 </section>
 
 </main> <!-- /main -->
