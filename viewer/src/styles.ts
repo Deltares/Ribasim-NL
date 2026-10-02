@@ -42,7 +42,8 @@ export const DEFAULT_NODE_COLOR: Color = [128, 128, 128];
 
 /** QGIS sizes in mm, at 96 DPI */
 const MM = 96 / 25.4;
-export const NODE_ICON_SIZE_PX = 6.6 * MM;
+// Smaller than the 6.6 mm in QGIS, where nodes are typically viewed less densely
+export const NODE_ICON_SIZE_PX = 4.2 * MM;
 export const LINK_WIDTH_PX = 0.5 * MM;
 export const ARROW_SIZE_PX = 3 * MM;
 

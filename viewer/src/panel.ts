@@ -1,4 +1,5 @@
 import uPlot from "uplot";
+import { formatNumber } from "./colors";
 import { readRow, readRowsById, type Manifest, type Row, type TableEntry } from "./data";
 import type { Network } from "./network";
 
@@ -75,13 +76,17 @@ function timeChart(rows: Row[], width: number, only?: string[]): HTMLElement | n
     ...columns.map((column) => rows.map((row) => (typeof row[column] === "number" ? (row[column] as number) : null))),
   ];
   const container = el("div", { className: "chart" });
+  const seriesValue = (_: uPlot, value: number | null) => (value === null ? "–" : formatNumber(value));
   const plot = new uPlot(
     {
       width,
       height: 200,
-      series: [{}, ...columns.map((label, i) => ({ label, stroke: SERIES_COLORS[i % SERIES_COLORS.length] }))],
+      series: [
+        { value: "{YYYY}-{MM}-{DD}" },
+        ...columns.map((label, i) => ({ label, stroke: SERIES_COLORS[i % SERIES_COLORS.length], value: seriesValue })),
+      ],
       scales: { x: { time: true } },
-      legend: { live: false },
+      axes: [{}, { size: 60, values: (_, ticks) => ticks.map(formatNumber) }],
     },
     data,
   );
