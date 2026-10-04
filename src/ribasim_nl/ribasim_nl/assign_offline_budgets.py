@@ -79,6 +79,15 @@ def _compute_budgets_per_basin(budgets: xr.Dataset, basin_mask: xr.DataArray, no
     return df
 
 
+def _sorted_query(tree: shapely.STRtree, geometries: gpd.GeoSeries, predicate: str) -> np.ndarray:
+    """`tree.query(geometries, predicate=predicate)`, sorted by input and then tree index.
+
+    The order of the tree indices per input geometry differs between platforms.
+    """
+    indices = tree.query(geometries, predicate=predicate)
+    return indices[:, np.lexsort((indices[1], indices[0]))]
+
+
 def _transpose_basin_definition_polygons(
     basin_definition_primary: gpd.GeoDataFrame, basin_definition_secundary: gpd.GeoDataFrame
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -99,7 +108,7 @@ def _transpose_basin_definition_polygons(
         polygons without any intersection for primary and secundary basins
     """
     tree = shapely.STRtree(basin_definition_secundary["geometry"])
-    index_in, index_out = tree.query(basin_definition_primary.representative_point(), predicate="intersects")
+    index_in, index_out = _sorted_query(tree, basin_definition_primary.representative_point(), predicate="intersects")
     index_in = basin_definition_primary.index[index_in]
     index_out = basin_definition_secundary.index[index_out]
     index_undefined_secundary = basin_definition_secundary.index[~np.isin(basin_definition_secundary.index, index_out)]
@@ -134,7 +143,7 @@ def _fill_basin_definition_from_points(
         basin_definition with indices derived from the underlying Ribasim basins.
     """
     tree = shapely.STRtree(basin_definition["geometry"])
-    index_nodes, index_basin_definition = tree.query(nodes["geometry"], predicate="within")
+    index_nodes, index_basin_definition = _sorted_query(tree, nodes["geometry"], predicate="within")
     index_basin_definition = basin_definition.index[index_basin_definition]
     index_nodes = nodes.index[index_nodes]
     basin_definition = basin_definition.loc[index_basin_definition]

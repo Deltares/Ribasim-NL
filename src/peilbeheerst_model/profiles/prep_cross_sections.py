@@ -5,6 +5,7 @@ import logging
 import geopandas as gpd
 import pandas as pd
 import shapely
+from ribasim_nl.geodataframe import sorted_sjoin
 from ribasim_nl.profiles.depth import make_depth_profiles
 
 from ribasim_nl import CloudStorage
@@ -128,7 +129,7 @@ def points2lines_scheldestromen(cloud: CloudStorage = CloudStorage(), *, buffer:
     fn = cloud.joinpath("Basisgegevens", "profielen", "Scheldestromen", "Profielen_Scheldestromen.gpkg")
     points = gpd.read_file(fn, layer="profielpunt", columns=["OBJECTID"])
     lines = gpd.read_file(fn, layer="profiellijn", columns=["PRO_ID"])
-    out = points.sjoin(lines, how="left", predicate="dwithin", distance=buffer, rsuffix="line")
+    out = sorted_sjoin(points, lines, how="left", predicate="dwithin", distance=buffer, rsuffix="line")
     out = make_depth_profiles(out.dropna(subset=["PRO_ID"]), col_profile_id="PRO_ID")
     out.rename(columns={"line_id": "profiellijnid"}, inplace=True)
     return out
@@ -188,13 +189,13 @@ def get_profiles(water_authority: str, cloud: CloudStorage = CloudStorage(), *, 
             return points2lines_general(basins, cloud=cloud, buffer=buffer)
 
 
-def export_to_cloud(
+def preprocess_cross_sections(
     water_authority: str,
     cloud: CloudStorage = CloudStorage(),  # noqa: B008
     *,
     buffer: float = 0,
 ) -> None:
-    """Export cross-sectional profiles to the GoodCloud.
+    """Preprocess the cross-sectional profiles of a water authority to `verwerkt/profielen/intermediate/lines_z.gpkg`.
 
     :param water_authority: name of water authority
     :param cloud: the GoodCloud-connection, defaults to CloudStorage()
@@ -213,10 +214,8 @@ def export_to_cloud(
     if (src / fn).exists():
         LOG.info(f"Redoing cross-section preprocessing for {water_authority}")
 
-    # ensure existence of working directories
+    # ensure existence of working directory
     src.mkdir(parents=True, exist_ok=True)
-    cloud.create_dir(*folders[:-1])
-    cloud.create_dir(*folders)
 
     # get data
     lines = get_profiles(water_authority, cloud, buffer=buffer)
@@ -247,4 +246,4 @@ if __name__ == "__main__":
 
     # execute preprocessing
     logging.basicConfig(level=args.log.upper())
-    export_to_cloud(args.water_authority, buffer=args.buffer)
+    preprocess_cross_sections(args.water_authority, buffer=args.buffer)

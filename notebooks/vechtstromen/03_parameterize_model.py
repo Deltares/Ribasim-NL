@@ -2,11 +2,11 @@
 import time
 
 import geopandas as gpd
-import pandas as pd
 from peilbeheerst_model.controle_output import AFVOER_METRICS, Control
 from ribasim_nl.check_basin_level import add_check_basin_level
 from ribasim_nl.parametrization.basin_tables import (
     apply_basin_level_overrides,
+    clear_ungated_outlet_levels,
     sync_min_upstream_levels_with_profile_bottoms,
 )
 from ribasim_nl.parametrization.level_boundary_table import update_level_boundary_static
@@ -92,10 +92,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 704, "min_upstream_
 
 
 # %%
-node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
-mask = model.outlet.static.df["node_id"].isin(node_ids)
-model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
-model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
+clear_ungated_outlet_levels(model)
 sync_min_upstream_levels_with_profile_bottoms(model=model)
 
 # %%

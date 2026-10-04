@@ -155,10 +155,15 @@ class AssignAuthorities:
         # discard all rows where the waterschap itself occurs, as we only want to know the other waterschap
         joined = joined.loc[joined.naam != waterschap]
 
-        # if authority areas overlap, duplicates may form. Retain the Rijkswaterstaat one
-        joined = pd.concat([joined.loc[joined.naam == "Rijkswaterstaat"], joined.loc[joined.naam != "Rijkswaterstaat"]])
+        # if authority areas overlap, duplicates may form. Retain the Rijkswaterstaat one, otherwise the waterschap
+        # nearest to the node (without buffer), and otherwise the first by name
+        ws_areas = self.ws_grenzen_OG.dissolve(by="naam").geometry
+        joined["is_rws"] = joined.naam == "Rijkswaterstaat"
+        joined["distance"] = joined.geometry.distance(gpd.GeoSeries(ws_areas.reindex(joined.naam)), align=False)
+        joined = joined.sort_values(
+            ["node_id", "is_rws", "distance", "naam"], ascending=[True, False, True, True], kind="stable"
+        )
         joined = joined.drop_duplicates(subset="node_id", keep="first")
-        joined = joined.sort_values(by="node_id")
 
         joined = joined.rename(columns={"naam": "meta_couple_authority"})
 

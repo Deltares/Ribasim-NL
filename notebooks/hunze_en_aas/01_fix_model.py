@@ -1,10 +1,10 @@
 # %%
-import inspect
 
 import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet, tabulated_rating_curve
+from ribasim_nl.geodataframe import assign_node_ids_by_largest_overlap
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
@@ -16,7 +16,7 @@ cloud = CloudStorage()
 
 authority = "HunzeenAas"
 name = "hea"
-run_model = True
+run_model = False
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
@@ -116,16 +116,7 @@ actions = [
     "deactivate_node",
 ]
 actions = [i for i in actions if i in gpd.list_layers(model_edits_path).name.to_list()]
-for action in actions:
-    print(action)
-    # get method and args
-    method = getattr(model, action)
-    keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_path, layer=action, fid_as_index=True)
-    for row in df.itertuples():
-        # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
-        method(**kwargs)
+model.apply_edits(model_edits_path, actions)
 model.remove_node(node_id=2019, remove_links=True)
 model.remove_node(node_id=17, remove_links=True)
 
@@ -133,33 +124,7 @@ model.remove_node(node_id=17, remove_links=True)
 # %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code) by overlapping the Ribasim area file baed on largest overlap
 # then assign Ribasim node-ID's to areas with the same area code. Many nodata areas disappear by this method
 # Create the overlay of areas
-combined_basin_areas_gdf = gpd.overlay(ribasim_areas_gdf, model.basin.area.df, how="union").explode()
-
-# Calculate area for each geometry
-combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
-
-# Separate rows with and without node_id
-non_null_basin_areas_gdf = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].notna()]
-
-# Find largest area node_ids for each code
-largest_area_node_ids = non_null_basin_areas_gdf.loc[
-    non_null_basin_areas_gdf.groupby("code")["area"].idxmax(), ["code", "node_id"]
-]
-
-# Merge largest area node_ids back into the combined DataFrame
-combined_basin_areas_gdf = combined_basin_areas_gdf.merge(
-    largest_area_node_ids, on="code", how="left", suffixes=("", "_largest")
-)
-
-# Fill missing node_id with the largest_area node_id
-combined_basin_areas_gdf["node_id"] = combined_basin_areas_gdf["node_id"].fillna(
-    combined_basin_areas_gdf["node_id_largest"]
-)
-combined_basin_areas_gdf.drop(columns=["node_id_largest"], inplace=True)
-combined_basin_areas_gdf = combined_basin_areas_gdf.drop_duplicates()
-combined_basin_areas_gdf = combined_basin_areas_gdf.dissolve(by="node_id").reset_index()
-combined_basin_areas_gdf = combined_basin_areas_gdf[["node_id", "geometry"]]
-combined_basin_areas_gdf.index.name = "fid"
+combined_basin_areas_gdf = assign_node_ids_by_largest_overlap(ribasim_areas_gdf, model.basin.area.df)
 
 model.basin.area.df = combined_basin_areas_gdf
 

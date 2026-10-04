@@ -10,6 +10,7 @@ from ribasim_nl.control import (
     add_controllers_to_supply_area,
     add_controllers_to_uncontrolled_connector_nodes,
     mark_level_update_protected,
+    print_node_list_diff,
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
@@ -41,16 +42,6 @@ EXCLUDE_NODES = {201, 593, 67, 137, 232}
 # Helpers
 
 
-def update_nodes(model: Model, node_ids: list[int], node_type: str) -> None:
-    for node_id in dict.fromkeys(node_ids):
-        model.update_node(node_id=node_id, node_type=node_type)
-
-
-def remove_nodes(model: Model, node_ids: list[int]) -> None:
-    for node_id in dict.fromkeys(node_ids):
-        model.remove_node(node_id, remove_links=True)
-
-
 def remove_basin_with_level_boundaries(
     model: Model,
     basin_id: int,
@@ -62,7 +53,7 @@ def remove_basin_with_level_boundaries(
 
     if links_to_basin.empty:
         model.remove_node(basin_id, remove_links=True)
-        remove_nodes(model, list(remove_neighbor_node_ids))
+        model.remove_nodes(list(remove_neighbor_node_ids), remove_links=True)
         return []
 
     boundary_level = None
@@ -125,7 +116,7 @@ def remove_basin_with_level_boundaries(
             model.link.add(model.get_node(connector_id), boundary_node, geometry=boundary_link_geometry)
 
     model.remove_node(basin_id, remove_links=True)
-    remove_nodes(model, list(remove_neighbor_node_ids))
+    model.remove_nodes(list(remove_neighbor_node_ids), remove_links=True)
 
     return boundary_connector_node_ids
 
@@ -238,23 +229,22 @@ model.node.df.loc[
 # Node type fixes
 
 # make outlet nodes
-update_nodes(
-    model,
+model.update_nodes(
     [646],
     "Outlet",
 )
 
 # make manning nodes
-update_nodes(model, [], "ManningResistance")
+model.update_nodes([], "ManningResistance")
 
 # make pump nodes
-update_nodes(model, [1287], "Pump")  # Aanvoergemaal De Wenden
+model.update_nodes([1287], "Pump")  # Aanvoergemaal De Wenden
 
 # Verwijderen nutteloze kunstwerken voor LHM
-remove_nodes(model, [484, 490, 501, 525, 42])
+model.remove_nodes([484, 490, 501, 525, 42], remove_links=True)
 
 # Verwijderen dubbele sluispompen. Capaciteit staat op de dichtstbijzijnde pomp per sluis.
-remove_nodes(model, [])
+model.remove_nodes([], remove_links=True)
 
 # Streefpeil te laag
 set_static_values(
@@ -456,18 +446,6 @@ def get_supply_nodes_from_gdb(
             supply_node_ids.extend(matched_node_ids)
 
     return list(dict.fromkeys(supply_node_ids))
-
-
-def print_node_list_diff(label: str, before_nodes: list[int], after_nodes: list[int]) -> None:
-    before_nodes = set(before_nodes)
-    after_nodes = set(after_nodes)
-
-    added_nodes = sorted(after_nodes - before_nodes)
-    removed_nodes = sorted(before_nodes - after_nodes)
-
-    print(f"{label}: {len(added_nodes)} toegevoegd, {len(removed_nodes)} verwijderd t.o.v. handmatig")
-    print(f"{label} toegevoegd: {added_nodes}")
-    print(f"{label} verwijderd: {removed_nodes}")
 
 
 def print_manual_role_conflicts(

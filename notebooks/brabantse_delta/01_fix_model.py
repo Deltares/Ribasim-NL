@@ -1,10 +1,10 @@
 # %%
-import inspect
 
 import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet
+from ribasim_nl.geodataframe import assign_node_ids_by_largest_overlap
 from ribasim_nl.geometry import drop_z
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
@@ -16,7 +16,7 @@ cloud = CloudStorage()
 
 authority = "BrabantseDelta"
 short_name = "wbd"
-run_model = True
+run_model = False
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 database_gpkg = ribasim_toml.with_name("database.gpkg")
@@ -98,16 +98,7 @@ for row in network_validator.link_incorrect_type_connectivity(
 
 
 # %%
-for action in gpd.list_layers(model_edits_gpkg).name:
-    print(action)
-    # get method and args
-    method = getattr(model, action)
-    keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
-    for row in df.itertuples():
-        # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
-        method(**kwargs)
+model.apply_edits(model_edits_gpkg, gpd.list_layers(model_edits_gpkg).name)
 # %%
 # Toeveoegen Inlaten vanuit Volkerak door omkeren links:
 # Omkeren links
@@ -140,28 +131,7 @@ for row in network_validator.link_incorrect_type_connectivity(
 ribasim_areas_gdf["geometry"] = ribasim_areas_gdf.buffer(-0.01).buffer(0.01)
 
 # Step 2: Overlay
-combined_basin_areas_gdf = gpd.overlay(
-    ribasim_areas_gdf, model.basin.area.df, how="union", keep_geom_type=True
-).explode(index_parts=False)
-
-# Step 3: Handle Z-coordinates and calculate area
-combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
-
-# Step 4: Find and assign node_id
-non_null = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].notna()]
-largest = non_null.loc[non_null.groupby("code")["area"].idxmax(), ["code", "node_id"]]
-
-combined_basin_areas_gdf = combined_basin_areas_gdf.merge(largest, on="code", how="left", suffixes=("", "_largest"))
-combined_basin_areas_gdf["node_id"] = combined_basin_areas_gdf["node_id"].fillna(
-    combined_basin_areas_gdf["node_id_largest"]
-)
-combined_basin_areas_gdf.drop(columns=["node_id_largest"], inplace=True)
-
-# Step 5: Final processing
-combined_basin_areas_gdf = combined_basin_areas_gdf.drop_duplicates()
-combined_basin_areas_gdf = combined_basin_areas_gdf.dissolve(by="node_id").reset_index()
-combined_basin_areas_gdf = combined_basin_areas_gdf[["node_id", "geometry"]]
-combined_basin_areas_gdf.index.name = "fid"
+combined_basin_areas_gdf = assign_node_ids_by_largest_overlap(ribasim_areas_gdf, model.basin.area.df)
 combined_basin_areas_gdf.to_file(ribasim_areas_bewerkt_gpkg, driver="GPKG")
 
 # Assign to model

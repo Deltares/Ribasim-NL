@@ -2,29 +2,17 @@
 import time
 
 import geopandas as gpd
-import pandas as pd
 from peilbeheerst_model.controle_output import AFVOER_METRICS, Control
 from ribasim_nl.check_basin_level import add_check_basin_level
 from ribasim_nl.parametrization.basin_tables import (
     apply_basin_level_overrides,
+    clear_ungated_outlet_levels,
     sync_min_upstream_levels_with_profile_bottoms,
 )
 from ribasim_nl.parametrization.level_boundary_table import update_level_boundary_static
 from ribasim_nl.parametrization.manning_level import sync_parameterized_manning_basin_levels
 
 from ribasim_nl import CloudStorage, Model
-
-
-# Helper
-def update_nodes(model: Model, node_ids: list[int], node_type: str) -> None:
-    for node_id in dict.fromkeys(node_ids):
-        model.update_node(node_id=node_id, node_type=node_type)
-
-
-def remove_nodes(model: Model, node_ids: list[int]) -> None:
-    for node_id in dict.fromkeys(node_ids):
-        model.remove_node(node_id, remove_links=True)
-
 
 # %%
 cloud = CloudStorage()
@@ -96,34 +84,32 @@ protected_basin_node_ids = apply_basin_level_overrides(model=model, basin_level_
 model.update_node(node_id=1452, node_type="Outlet")
 
 # make outlet nodes
-update_nodes(
-    model,
+model.update_nodes(
     [1418, 1419, 1428, 1433, 1444, 1448, 1452, 1459, 1460, 1462, 1466, 1488, 1512, 1513, 1522, 1548, 1550],
     "Outlet",
 )
 
 # make manning nodes
-update_nodes(model, [859, 1032, 1060, 1083], "ManningResistance")
+model.update_nodes([859, 1032, 1060, 1083], "ManningResistance")
 
 # make pump nodes
-update_nodes(model, [195, 332, 346, 414, 742, 829, 906, 1048, 1076, 1423, 1484, 1516], "Pump")
+model.update_nodes([195, 332, 346, 414, 742, 829, 906, 1048, 1076, 1423, 1484, 1516], "Pump")
 
 
 # make outlet nodes
-update_nodes(
-    model,
+model.update_nodes(
     [1418, 1419, 1428, 1433, 1444, 1448, 1452, 1459, 1460, 1462, 1466, 1488, 1512, 1513, 1522, 1548, 1550],
     "Outlet",
 )
 
 # Westerveld
-update_nodes(model, [1104, 885, 1522], "ManningResistance")
+model.update_nodes([1104, 885, 1522], "ManningResistance")
 
 # Verwijderen nutteloze kunstwerken voor LHM
-remove_nodes(model, [530, 264, 849, 1174, 1229, 266, 268, 523, 275, 537, 464, 406])
+model.remove_nodes([530, 264, 849, 1174, 1229, 266, 268, 523, 275, 537, 464, 406], remove_links=True)
 
 # Verwijderen dubbele sluispompen. Capaciteit staat op de dichtstbijzijnde pomp per sluis.
-remove_nodes(model, [706, 550, 548, 632, 686, 406, 650])
+model.remove_nodes([706, 550, 548, 632, 686, 406, 650], remove_links=True)
 
 
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
@@ -175,10 +161,7 @@ update_level_boundary_static(
 
 # %%
 
-node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
-mask = model.outlet.static.df["node_id"].isin(node_ids)
-model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
-model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
+clear_ungated_outlet_levels(model)
 
 # %%
 

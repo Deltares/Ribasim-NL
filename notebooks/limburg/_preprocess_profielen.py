@@ -1,6 +1,6 @@
 # %%
 import geopandas as gpd
-from shapely.geometry import LineString
+from ribasim_nl.parametrization.damo_profiles import profile_lines_from_points
 
 from ribasim_nl import CloudStorage
 
@@ -14,14 +14,7 @@ dwarsprofielen_gpkg = cloud.joinpath(authority, "verwerkt/profielen.gpkg")
 
 profielpunt_df = gpd.read_file(hydamo_gpkg, layer="Profielpunt")
 
-
-data = []
-for profiellijnid, df in profielpunt_df.groupby("profiellijnid"):
-    data += [
-        {
-            "globalid": profiellijnid,
-            "geometry": LineString(df.sort_values("codevolgnummer")["geometry"].iloc[[0, -1]].to_numpy()),
-        }
-    ]
-gpd.GeoDataFrame(data, crs=profielpunt_df.crs).to_file(dwarsprofielen_gpkg, layer="profiellijn")
+profile_lines_from_points(profielpunt_df, profile_id_col="profiellijnid", line_id_col="globalid").to_file(
+    dwarsprofielen_gpkg, layer="profiellijn"
+)
 profielpunt_df.to_file(dwarsprofielen_gpkg, layer="profielpunt")

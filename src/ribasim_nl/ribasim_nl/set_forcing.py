@@ -1,5 +1,7 @@
 """Assign dynamic precipitation and evaporation forcing from LHM zarr budgets to Ribasim Basin nodes."""
 
+from datetime import datetime
+
 import imod
 import numpy as np
 import pandas as pd
@@ -70,8 +72,8 @@ class SetDynamicForcing:
         self,
         model: Model,
         budgets: xr.Dataset,
-        startdate: str,
-        enddate: str,
+        startdate: str | datetime,
+        enddate: str | datetime,
     ) -> None:
         """Set up dynamic precipitation and evaporation forcing for a Ribasim model.
 
@@ -81,9 +83,9 @@ class SetDynamicForcing:
             Ribasim model to add forcing to. Note: ``basin.time.df`` will be cleared on ``add()``.
         budgets : xr.Dataset
             LHM zarr dataset containing precipitation and evaporation variables.
-        startdate : str
+        startdate : str | datetime
             Model start date (ISO format, e.g. "2000-01-01").
-        enddate : str
+        enddate : str | datetime
             Model end date (ISO format, e.g. "2001-01-01").
         """
         self.model = model

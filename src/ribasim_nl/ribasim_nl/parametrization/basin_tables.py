@@ -234,3 +234,24 @@ def add_basin_time_synthetic(
     model.basin.time.df = time_df.reset_index()
     model.starttime = start_time
     model.endtime = end_time
+
+
+def apply_level_boundary_overrides(model: Model, level_by_node_id: dict[int, float]) -> None:
+    """Set the level of LevelBoundary nodes."""
+    static_df = model.level_boundary.static.df
+    assert static_df is not None
+    for node_id, level in level_by_node_id.items():
+        mask = static_df.node_id == node_id
+        assert mask.any(), f"LevelBoundary {node_id} not in the static table"
+        static_df.loc[mask, "level"] = level
+
+
+def clear_ungated_outlet_levels(model: Model) -> None:
+    """Remove the min_upstream_level and max_downstream_level of outlets without a weir (meta_gestuwd "False")."""
+    outlet_node_df = model.filter_nodes("Outlet")
+    static_df = model.outlet.static.df
+    assert static_df is not None
+    node_ids = outlet_node_df[outlet_node_df["meta_gestuwd"] == "False"].index
+    mask = static_df["node_id"].isin(node_ids)
+    static_df.loc[mask, "min_upstream_level"] = pd.NA
+    static_df.loc[mask, "max_downstream_level"] = pd.NA

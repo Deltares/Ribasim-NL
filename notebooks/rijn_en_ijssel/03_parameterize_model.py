@@ -2,10 +2,12 @@
 import time
 
 import geopandas as gpd
-import pandas as pd
 from peilbeheerst_model.controle_output import AFVOER_METRICS, Control
 from ribasim_nl.check_basin_level import add_check_basin_level
-from ribasim_nl.parametrization.basin_tables import sync_min_upstream_levels_with_profile_bottoms
+from ribasim_nl.parametrization.basin_tables import (
+    clear_ungated_outlet_levels,
+    sync_min_upstream_levels_with_profile_bottoms,
+)
 from ribasim_nl.parametrization.manning_level import sync_parameterized_manning_basin_levels
 
 from ribasim_nl import CloudStorage, Model
@@ -70,10 +72,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 119, "min_upstream_
 
 # %%
 
-node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
-mask = model.outlet.static.df["node_id"].isin(node_ids)
-model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
-model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
+clear_ungated_outlet_levels(model)
 
 # %%
 # Write model

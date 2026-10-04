@@ -1,5 +1,4 @@
 # %%
-import inspect
 
 import geopandas as gpd
 import pandas as pd
@@ -17,6 +16,7 @@ cloud = CloudStorage()
 
 authority = "DrentsOverijsselseDelta"
 name = "dod"
+run_model = False
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
@@ -349,25 +349,7 @@ actions = [
 ]
 
 actions = [i for i in actions if i in gpd.list_layers(model_edits_path).name.to_list()]
-for action in actions:
-    print(action)
-    method = getattr(model, action)
-    keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_path, layer=action, fid_as_index=True)
-
-    if "order" in df.columns:
-        df.sort_values("order", inplace=True)
-
-    for row in df.itertuples():
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
-        try:
-            method(**kwargs)
-        except Exception:
-            print(f"Failed action: {action}")
-            print(kwargs)
-            print("NaN link index rows:")
-            print(model.link.df[model.link.df.index.isna()])
-            raise
+model.apply_edits(model_edits_path, actions, sort_by_order=True)
 
 # fixes:
 # Gemaal Westerveld is een inlaat gemaal en een uitlaat ernaast, dus richting omdraaien evt takken toevoegen
@@ -607,8 +589,6 @@ model.validate_link_source_destination()
 model.report_basin_area()
 model.report_internal_basins()
 # %% Test run model
-
-model = Model.read(ribasim_toml)
-status_code = model.run()
-
-# assert status_code == 0
+if run_model:
+    result = model.run()
+    assert result.exit_code == 0

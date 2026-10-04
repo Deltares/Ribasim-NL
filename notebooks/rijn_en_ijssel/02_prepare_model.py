@@ -114,18 +114,7 @@ static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=Tr
 # from basin streefpeil
 static_data.reset_data_frame(node_type="Pump")
 # from DAMO profiles
-node_ids = static_data.pump[static_data.pump.min_upstream_level.isna()].node_id.to_numpy()
-profile_ids = [
-    model.link.df[model.link.df.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
-]
-levels = (
-    profiles_df.loc[profile_ids]["bottom_level"]
-    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 3
-).to_numpy()
-
-min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
-min_upstream_level.index.name = "node_id"
-static_data.add_series(node_type="Pump", series=min_upstream_level, fill_na=True)
+static_data.fill_min_upstream_level_from_profiles("Pump", profiles_df, divisor=3)
 
 # %%
 
@@ -155,18 +144,7 @@ static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
 
 # get all nodata streefpeilen with their profile_ids and levels
-node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
-profile_ids = [damo_profiles.get_profile_id(node_id) for node_id in node_ids]
-levels = (
-    profiles_df.loc[profile_ids]["bottom_level"]
-    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 3
-).to_numpy()
-
-# # update static_data
-profielid = pd.Series(profile_ids, index=pd.Index(node_ids, name="node_id"), name="profielid")
-static_data.add_series(node_type="Basin", series=profielid, fill_na=True)
-streefpeil = pd.Series(levels, index=pd.Index(node_ids, name="node_id"), name="streefpeil")
-static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
+static_data.fill_streefpeil_from_profiles(damo_profiles, profiles_df, divisor=3)
 
 # # update model basin-data
 model.basin.area.df.set_index("node_id", inplace=True)

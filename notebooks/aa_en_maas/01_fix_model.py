@@ -1,5 +1,4 @@
 # %%
-import inspect
 
 import geopandas as gpd
 import numpy as np
@@ -614,24 +613,7 @@ actions = [
 available_layers = gpd.list_layers(model_edits_gpkg).name.to_list()
 actions = [a for a in actions if a in available_layers]
 
-for action in actions:
-    method = getattr(model, action)
-    keywords = inspect.getfullargspec(method).args
-
-    df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
-
-    # als er een volgorde-kolom is: respecteer die
-    if "order" in df.columns:
-        df.sort_values("order", inplace=True)
-
-    for row in df.itertuples():
-        # alleen kwargs die daadwerkelijk in de method signature zitten
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
-
-        # GeoPandas zet lege waarden vaak als NaN; filter die eruit
-        kwargs = {k: v for k, v in kwargs.items() if pd.notna(v)}
-
-        method(**kwargs)
+model.apply_edits(model_edits_gpkg, actions, sort_by_order=True, drop_na=True)
 
 
 # %% corrigeren knoop-topologie

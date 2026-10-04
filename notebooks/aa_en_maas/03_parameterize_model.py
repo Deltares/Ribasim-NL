@@ -1,7 +1,6 @@
 # %%
 import time
 
-import pandas as pd
 from peilbeheerst_model.controle_output import AFVOER_METRICS, Control
 from ribasim import run_ribasim
 from ribasim_nl.check_basin_level import add_check_basin_level
@@ -9,6 +8,8 @@ from ribasim_nl.check_basin_level import add_check_basin_level
 # voeg deze imports toe
 from ribasim_nl.parametrization.basin_tables import (
     apply_basin_level_overrides,
+    apply_level_boundary_overrides,
+    clear_ungated_outlet_levels,
     sync_min_upstream_levels_with_profile_bottoms,
     update_basin_state,
     update_basin_static,
@@ -92,24 +93,16 @@ boundary_level_overrides = {
     38: 31.0,
 }
 
-for node_id, level in boundary_level_overrides.items():
-    mask = model.level_boundary.static.df.node_id == node_id
-    model.level_boundary.static.df.loc[mask, "level"] = level
+apply_level_boundary_overrides(model, boundary_level_overrides)
 
 
 # Fixes
-def update_nodes(model: Model, node_ids: list[int], node_type: str) -> None:
-    for node_id in dict.fromkeys(node_ids):
-        model.update_node(node_id=node_id, node_type=node_type)
 
 
 # make pump nodes
-update_nodes(model, [100, 95, 105, 113], "Pump")
+model.update_nodes([100, 95, 105, 113], "Pump")
 # %%
-node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
-mask = model.outlet.static.df["node_id"].isin(node_ids)
-model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
-model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
+clear_ungated_outlet_levels(model)
 
 model.outlet.static.df.loc[model.outlet.static.df.node_id.isin([98, 103, 221]), "min_upstream_level"] = (
     2.2  # peil drongelens kanaal

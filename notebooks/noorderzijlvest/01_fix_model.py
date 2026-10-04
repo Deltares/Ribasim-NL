@@ -1,5 +1,4 @@
 # %%
-import inspect
 
 import geopandas as gpd
 import pandas as pd
@@ -15,7 +14,7 @@ from ribasim_nl.sanitize_node_table import sanitize_node_table
 from shapely.geometry import MultiLineString, Point
 from shapely.ops import snap, split
 
-from ribasim_nl import CloudStorage, Model, Network, NetworkValidator
+from ribasim_nl import CloudStorage, Model, Network, NetworkValidator, link_geometries
 
 cloud = CloudStorage()
 
@@ -133,26 +132,20 @@ he_outlet_df.to_file(cloud.joinpath(authority, "verwerkt/HydrologischeEenheden_v
 # We modify the network:
 # merge basins in Lauwersmeer
 
-for action in [
-    "merge_basins",
-    "remove_node",
-    "reverse_link",
-    "move_node",
-    "add_basin",
-    "connect_basins",
-    "update_node",
-    "remove_link",
-    "update_node",
-]:
-    print(action)
-    # get method and args
-    method = getattr(model, action)
-    keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_path, layer=action, fid_as_index=True)
-    for row in df.itertuples():
-        # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
-        method(**kwargs)
+model.apply_edits(
+    model_edits_path,
+    [
+        "merge_basins",
+        "remove_node",
+        "reverse_link",
+        "move_node",
+        "add_basin",
+        "connect_basins",
+        "update_node",
+        "remove_link",
+        "update_node",
+    ],
+)
 
 
 model.merge_basins(node_id=1231, to_node_id=1280)
@@ -204,10 +197,7 @@ he_df.loc[mask, "node_id"] = he_df[mask]["KWKuit"].apply(lambda x: find_basin_id
 
 # We find all hydrologische eenheden using outlets between basin and it's connector-nodes
 def get_network_node(point):
-    node = network.move_node(point, max_distance=1, align_distance=10)
-    if node is None:
-        node = network.add_node(point, max_distance=1, align_distance=10)
-    return node
+    return link_geometries.get_network_node(network, point, max_distance=1, max_move_distance=1)
 
 
 for node_id in model.basin.node.df.index:
@@ -300,16 +290,7 @@ df.loc[:, "geometry"] = df.buffer(0.1).buffer(-0.1)
 df.index.name = "fid"
 model.basin.area.df = df
 
-for action in ["remove_basin_area", "add_basin_area"]:
-    print(action)
-    # get method and args
-    method = getattr(model, action)
-    keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_path, layer=action, fid_as_index=True)
-    for row in df.itertuples():
-        # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
-        method(**kwargs)
+model.apply_edits(model_edits_path, ["remove_basin_area", "add_basin_area"])
 
 model.remove_unassigned_basin_area()
 

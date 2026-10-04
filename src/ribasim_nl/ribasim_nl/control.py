@@ -650,6 +650,31 @@ def add_control_functions_to_connector_nodes(
     return selected_nodes_df
 
 
+def supply_area_polygon(supply_areas_df: gpd.GeoDataFrame, area_name: str) -> Polygon:
+    """Polygon of a supply area (aanvoergebied), the largest part if it consists of multiple parts.
+
+    `supply_areas_df` is indexed by area name, possibly with multiple rows per area.
+    """
+    polygon = supply_areas_df.loc[[area_name], "geometry"].union_all()
+    polygon = polygon.buffer(0).buffer(0)
+
+    if isinstance(polygon, MultiPolygon):
+        polygon = max(polygon.geoms, key=lambda g: g.area)
+
+    return polygon
+
+
+def print_node_list_diff(label: str, before_nodes: list[int], after_nodes: list[int]) -> None:
+    """Print the node_ids added to and removed from a list of nodes."""
+    before, after = set(before_nodes), set(after_nodes)
+    added_nodes = sorted(after - before)
+    removed_nodes = sorted(before - after)
+
+    print(f"{label}: {len(added_nodes)} toegevoegd, {len(removed_nodes)} verwijderd t.o.v. handmatig")
+    print(f"{label} toegevoegd: {added_nodes}")
+    print(f"{label} verwijderd: {removed_nodes}")
+
+
 def get_control_nodes_position_from_supply_area(
     model: Model,
     polygon: Polygon | MultiPolygon,
