@@ -319,6 +319,13 @@ ribasim_model, from_to_node_function_table = scale_outlets_pumps(
     )
 )
 
+# the North Sea and Wadden Sea boundaries stay in the LHM, so give them mean sea level instead of the
+# hypothetical drainage and supply levels, see https://github.com/Deltares/Ribasim-NL/issues/660
+lb_node_df = ribasim_model.level_boundary.node.df
+ribasim_param.set_static_level_boundaries(
+    ribasim_model, lb_node_df.index[lb_node_df["meta_couple_authority"] == "Noordzee"], level=0.0
+)
+
 # check if meta_categorie in the basin.node.df is completely filled
 check_basin_meta_categorie(ribasim_model)
 

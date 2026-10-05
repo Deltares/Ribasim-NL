@@ -285,6 +285,29 @@ def set_dynamic_level_boundaries(
     ribasim_model.level_boundary.time.df = lb_time.reset_index(drop=True)
 
 
+def set_static_level_boundaries(ribasim_model: Model, node_ids: typing.Iterable[int], level: float) -> None:
+    """Give LevelBoundary nodes a static level, replacing any level time series.
+
+    :param ribasim_model: ribasim model
+    :param node_ids: LevelBoundary node IDs
+    :param level: static water level
+    """
+    node_ids = list(node_ids)
+    not_level_boundary = set(node_ids) - set(ribasim_model.level_boundary.node.df.index)
+    assert not not_level_boundary, f"Not LevelBoundary nodes: {sorted(not_level_boundary)}"
+
+    time_df = ribasim_model.level_boundary.time.df
+    if time_df is not None:
+        time_df = time_df[~time_df["node_id"].isin(node_ids)].reset_index(drop=True)
+        ribasim_model.level_boundary.time.df = None if time_df.empty else time_df
+
+    static_df = pd.DataFrame({"node_id": node_ids, "level": level})
+    if ribasim_model.level_boundary.static.df is not None:
+        existing_df = ribasim_model.level_boundary.static.df
+        static_df = pd.concat([existing_df[~existing_df["node_id"].isin(node_ids)], static_df], ignore_index=True)
+    ribasim_model.level_boundary.static.df = static_df
+
+
 def set_hypothetical_dynamic_level_boundaries(
     ribasim_model: Model,
     start_time: datetime.datetime,
