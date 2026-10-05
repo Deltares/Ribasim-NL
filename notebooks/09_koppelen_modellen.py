@@ -7,6 +7,7 @@ from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 from networkx import NetworkXNoPath
+from ribasim.nodes import manning_resistance
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.coupling_level_apply import (
     ensure_doorlaat_afvoer_max_downstream_level,
@@ -137,6 +138,11 @@ forced_coupling = {
     203887: 3402060,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-Junction, zie #824
     203898: 3402060,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-Junction, zie #824
     203900: 3402060,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-Junction, zie #824
+}
+
+# Outlets that are open water connections, converted to ManningResistance after coupling, removing their control
+outlet_to_manning_resistance = {
+    1100600: {"profile_width": 10.0, "manning_n": 0.02},  # open water Angstel - ARK, zie #820
 }
 
 # Node names to set after coupling
@@ -573,6 +579,33 @@ def update_node_metadata(model: Model) -> None:
             static_df.loc[mask, column] = value
 
 
+def convert_outlets_to_manning_resistance(model: Model) -> None:
+    """Convert the configured Outlets between two Basins to ManningResistance, removing their controllers."""
+    for node_id, parameters in outlet_to_manning_resistance.items():
+        if not node_in_model(model, node_id):
+            continue
+        node_type = model.get_node_type(node_id)
+        if node_type != "Outlet":
+            raise ValueError(f"Expected Outlet for node {node_id}, got {node_type}.")
+        for neighbor_id in [model.upstream_node_id(node_id), model.downstream_node_id(node_id)]:
+            if isinstance(neighbor_id, pd.Series) or model.get_node_type(neighbor_id) != "Basin":
+                raise ValueError(f"Outlet {node_id} should connect two Basins to become a ManningResistance.")
+
+        control_df = model.link.df[model.link.df["link_type"] == "control"]
+        for control_node_id in control_df.loc[control_df["to_node_id"] == node_id, "from_node_id"]:
+            if (control_df["from_node_id"] == control_node_id).sum() != 1:
+                raise ValueError(f"Control node {control_node_id} controls more nodes than Outlet {node_id}.")
+            model.remove_node(control_node_id, remove_links=True)
+
+        static = manning_resistance.Static(
+            length=[100.0],
+            manning_n=[parameters["manning_n"]],
+            profile_width=[parameters["profile_width"]],
+            profile_slope=[3.0],
+        )
+        model.update_node(node_id, "ManningResistance", [static])
+
+
 def remove_invalid_topology_nodes(model: Model) -> None:
     """Remove nodes with invalid flow/control topology and clean up their control references."""
     for link_type in ["flow", "control"]:
@@ -774,6 +807,7 @@ def couple_model(toml_file: Path) -> None:
     model, network, basin_areas_df = initialize_models(toml_file)
     all_link_table = process_boundary_nodes(model, network, basin_areas_df)
     update_node_metadata(model)
+    convert_outlets_to_manning_resistance(model)
     fix_basin_profiles(model)
     remove_invalid_topology_nodes(model)
     coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)
