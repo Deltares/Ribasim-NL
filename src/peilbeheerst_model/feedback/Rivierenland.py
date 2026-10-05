@@ -328,5 +328,19 @@ ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, def
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
+# outlets near Groesbeek drain via Germany into the Ooijpolder, entering it near (193612, 426427)
+# see https://github.com/Deltares/Ribasim-NL/issues/743
+ooijpolder = ribasim_model.basin[161]
+for outlet_id in (749, 755, 1019):
+    outlet_node = ribasim_model.outlet[outlet_id]
+    level_boundary_id = ribasim_model.downstream_node_id(outlet_id)
+    assert ribasim_model.get_node_type(level_boundary_id) == "LevelBoundary"
+    ribasim_model.remove_node(level_boundary_id, remove_links=True)
+    ribasim_model.link.add(
+        outlet_node,
+        ooijpolder,
+        geometry=LineString([outlet_node.geometry, Point(193612, 426427), ooijpolder.geometry]),
+    )
+
 ribasim_param.clean_tables(ribasim_model, waterschap)
 ribasim_model.write(paths.model_dir("feedback") / "ribasim.toml")
