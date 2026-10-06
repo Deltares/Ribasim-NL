@@ -467,3 +467,62 @@
 .ribasim-viewer .layers label.section h4 {
   margin: 0;
 }
+
+.ribasim-viewer .diff-summary {
+  flex-shrink: 0;
+  max-height: 45%;
+  overflow-y: auto;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.ribasim-viewer .diff-summary > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.ribasim-viewer .diff-summary summary {
+  cursor: pointer;
+}
+
+.ribasim-viewer .diff-summary .models {
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+}
+
+.ribasim-viewer .diff-summary td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ribasim-viewer .diff-list {
+  margin: 2px 0 4px;
+  padding-left: 16px;
+  font-size: 12px;
+}
+
+.ribasim-viewer .diff-list li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ribasim-viewer .diff-badge {
+  display: inline-block;
+  padding: 0 5px;
+  border-radius: 3px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.ribasim-viewer table.attributes tr.changed {
+  background: #eaf5fc;
+}
+
+.ribasim-viewer table.attributes del {
+  color: #888;
+}

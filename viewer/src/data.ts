@@ -13,6 +13,8 @@ export interface FileEntry {
   path: string;
   hash: string;
   bytes: number;
+  /** Set when the manifest is loaded, since the base model of a comparison has another location */
+  url?: string;
 }
 
 export interface TableEntry extends FileEntry {
@@ -56,12 +58,39 @@ export interface Manifest {
   endtime: string;
   bounds: [number, number, number, number];
   node_types: Record<string, number>;
-  files: Record<"nodes" | "links" | "basin_area" | "waterboards", FileEntry>;
+  files: Record<"nodes" | "links" | "basin_area", FileEntry> & { waterboards?: FileEntry };
   tables: TableEntry[];
   results?: Results;
 }
 
 export type Row = Record<string, unknown>;
+
+export type DiffStatus = "added" | "removed" | "changed";
+export const DIFF_STATUSES: DiffStatus[] = ["added", "removed", "changed"];
+
+export interface FeatureDiff {
+  status: DiffStatus;
+  /** Attribute columns, tables, "geometry" or "Basin / area" that differ */
+  changes: string[];
+  /** The id in the base model of a changed link that was renumbered */
+  base_id?: number;
+}
+
+/** The differences between two models, written by `ribasim_nl.webmap_diff`. */
+export interface ModelDiff {
+  base: { model: string; toml: string };
+  head: { model: string; toml: string };
+  config: { key: string; base: string | null; head: string | null }[];
+  nodes: Map<number, FeatureDiff>;
+  /** Removed links are keyed by their negated base id, which may be in use in the head model */
+  links: Map<number, FeatureDiff>;
+}
+
+/** The model to compare with, and the differences; the viewer shows the newer "head" model. */
+export interface Comparison {
+  base: Manifest;
+  diff: ModelDiff;
+}
 
 const DEFAULT_DATA_URL = "https://s3.deltares.nl/ribasim-nl/doc-image/webmap/lhm_coupled/";
 const TRUSTED_DATA_ORIGINS = new Set([new URL(DEFAULT_DATA_URL).origin, location.origin]);
@@ -70,10 +99,11 @@ const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const SAFE_PATH = /^[\w-]+(\/[\w-]+)*\.\w+$/;
 const SAFE_HASH = /^[0-9a-f]+$/;
 
-/** The data location; `?data=<url>` may only point to the default host, this site or localhost. */
-function resolveDataUrl(): URL {
-  const requested = new URLSearchParams(location.search).get("data");
-  const url = new URL(requested ?? (import.meta.env.DEV ? "/" : DEFAULT_DATA_URL), location.href);
+/** A data location from the URL; it may only point to the default host, this site or localhost. */
+function locationParam(name: "data" | "base" | "diff"): URL | null {
+  const requested = new URLSearchParams(location.search).get(name);
+  if (requested === null) return null;
+  const url = new URL(requested, location.href);
   const trusted = TRUSTED_DATA_ORIGINS.has(url.origin) || LOCAL_HOSTS.has(url.hostname);
   if (!trusted || !["http:", "https:"].includes(url.protocol)) {
     throw new Error(`Untrusted data location: ${url.origin}`);
@@ -81,15 +111,14 @@ function resolveDataUrl(): URL {
   return url;
 }
 
-let dataLocation: URL | undefined;
-const dataUrl = () => (dataLocation ??= resolveDataUrl());
+/** The location of the model to show, `?data=<url>`. */
+const dataUrl = () => locationParam("data") ?? new URL(import.meta.env.DEV ? "/" : DEFAULT_DATA_URL, location.href);
 
 /** URL of an exported file; the content hash makes it safe to cache indefinitely. */
-export function fileUrl(entry: FileEntry): string {
+function resolveFile(base: URL, entry: FileEntry): string {
   if (!SAFE_PATH.test(entry.path) || !SAFE_HASH.test(entry.hash)) {
     throw new Error(`Invalid file entry in manifest: ${entry.path}`);
   }
-  const base = dataUrl();
   const path = entry.path.split("/").map(encodeURIComponent).join("/");
   const url = new URL(`${path}?v=${encodeURIComponent(entry.hash)}`, base);
   if (url.origin !== base.origin || !url.pathname.startsWith(base.pathname)) {
@@ -98,10 +127,30 @@ export function fileUrl(entry: FileEntry): string {
   return url.href;
 }
 
-export async function loadManifest(): Promise<Manifest> {
-  const response = await fetch(new URL("manifest.json", dataUrl()), { cache: "no-cache" });
-  if (!response.ok) throw new Error(`Failed to load manifest.json: HTTP ${response.status}`);
-  const manifest: Manifest = await response.json();
+export function fileUrl(entry: FileEntry): string {
+  if (!entry.url) throw new Error(`File entry without URL: ${entry.path}`);
+  return entry.url;
+}
+
+function fileEntries(manifest: Manifest): FileEntry[] {
+  const entries: FileEntry[] = [...Object.values(manifest.files), ...manifest.tables];
+  const results = manifest.results;
+  if (results) {
+    entries.push(results.basin.by_id, results.basin.by_time, results.flow.by_id, results.flow.by_time);
+    if (results.control) entries.push(results.control);
+  }
+  return entries;
+}
+
+async function fetchJson<T>(url: URL): Promise<T> {
+  const response = await fetch(url, { cache: "no-cache" });
+  if (!response.ok) throw new Error(`Failed to load ${url}: HTTP ${response.status}`);
+  return response.json();
+}
+
+export async function loadManifest(base: URL = dataUrl()): Promise<Manifest> {
+  const manifest = await fetchJson<Manifest>(new URL("manifest.json", base));
+  for (const entry of fileEntries(manifest)) entry.url = resolveFile(base, entry);
   for (const set of manifest.results ? [manifest.results.basin, manifest.results.flow] : []) {
     for (const variable of Object.values(set.variables)) {
       // NetCDF long names like "water flow rate" are verbose in the variable dropdowns
@@ -110,6 +159,28 @@ export async function loadManifest(): Promise<Manifest> {
     }
   }
   return manifest;
+}
+
+function featureDiffs(record: Record<string, FeatureDiff>): Map<number, FeatureDiff> {
+  const diffs = new Map<number, FeatureDiff>();
+  for (const [id, diff] of Object.entries(record)) {
+    if (!Number.isInteger(Number(id)) || !DIFF_STATUSES.includes(diff.status) || !Array.isArray(diff.changes)) {
+      throw new Error(`Invalid difference for id ${id}`);
+    }
+    diffs.set(Number(id), diff);
+  }
+  return diffs;
+}
+
+/** The model to compare with, if `?base=<url>&diff=<url>` are given. */
+export async function loadComparison(): Promise<Comparison | null> {
+  const base = locationParam("base");
+  const diff = locationParam("diff");
+  if (!base && !diff) return null;
+  if (!base || !diff) throw new Error("Comparing models needs both ?base= and ?diff=");
+  type RawDiff = Omit<ModelDiff, "nodes" | "links"> & Record<"nodes" | "links", Record<string, FeatureDiff>>;
+  const [manifest, raw] = await Promise.all([loadManifest(base), fetchJson<RawDiff>(new URL("diff.json", diff))]);
+  return { base: manifest, diff: { ...raw, nodes: featureDiffs(raw.nodes), links: featureDiffs(raw.links) } };
 }
 
 interface ParquetFile {

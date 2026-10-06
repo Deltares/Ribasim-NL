@@ -12,8 +12,9 @@ import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import { Protocol } from "pmtiles";
 import { BASEMAPS, basemapStyle, DEFAULT_BASEMAP, withOverlays } from "./basemaps";
 import { ColorScale, formatNumber, normalize } from "./colors";
-import { fileUrl, loadManifest, type Manifest } from "./data";
-import { loadNetwork, type Group, type Network } from "./network";
+import { fileUrl, loadComparison, loadManifest, type Comparison, type Manifest } from "./data";
+import { CONTEXT_COLOR, DIFF_CSS, describeDiff, diffSummary, statusColors } from "./diff";
+import { linkLabel, loadNetwork, type Group, type LayerData, type Network } from "./network";
 import { Panel, type Selection } from "./panel";
 import { ResultFrames } from "./results";
 import {
@@ -51,7 +52,9 @@ const BASIN_OUTLINE_MIN_ZOOM = 9;
 const LABEL_MIN_ZOOM = 13;
 const MAX_LABELS = 2000;
 // Sources and layers kept when the base map style changes
-const OVERLAY_SOURCES = new Set(["basin_area", "waterboards"]);
+const OVERLAY_SOURCES = new Set(["basin_area", "basin_area_base", "waterboards"]);
+// The status ring around a differing node, relative to the icon size
+const DIFF_RING_SCALE = 0.75;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text = ""): HTMLElementTagNameMap[K] {
   const element = document.createElement(tag);
@@ -147,6 +150,10 @@ class Viewer {
   private labels: Label[] = [];
   /** Which zoom-dependent details are shown, to redraw only when that changes */
   private detail = "";
+  /** Status colors per node or link group, only when comparing models */
+  private readonly diffColors = new Map<Group, Uint8Array>();
+  /** Status rings around the differing nodes, only when comparing models */
+  private readonly diffRings: LayerData | null = null;
 
   constructor(
     private readonly map: maplibregl.Map,
@@ -154,17 +161,26 @@ class Viewer {
     private readonly manifest: Manifest,
     private readonly network: Network,
     private readonly icons: IconAtlas,
+    private readonly comparison: Comparison | null,
   ) {
     for (const group of [...network.nodeGroups, ...network.linkGroups]) {
-      this.visible.set(group.type, !HIDDEN_BY_DEFAULT.has(group.type));
+      // When comparing, all differences are shown, also of the control nodes and links
+      this.visible.set(group.type, comparison !== null || !HIDDEN_BY_DEFAULT.has(group.type));
     }
     this.visible.set("basin_area", true);
     this.visible.set("waterboards", true);
+    this.visible.set("unchanged", false);
+    if (comparison) {
+      const { diff } = comparison;
+      for (const group of network.nodeGroups) this.diffColors.set(group, statusColors(group, network.nodeId, diff.nodes));
+      for (const group of network.linkGroups) this.diffColors.set(group, statusColors(group, network.linkId, diff.links));
+      this.diffRings = this.ringData();
+    }
 
     // Interleaved mode reads `map.transform`, which maplibre-gl 6 no longer exposes
     this.overlay = new MapboxOverlay({ interleaved: false, getTooltip: (info) => this.tooltip(info) });
     map.addControl(this.overlay);
-    this.panel = new Panel(root, manifest, network, {
+    this.panel = new Panel(root, manifest, network, comparison, {
       select: (selection) => this.select(selection),
       zoomTo: (selection) => this.zoomTo(selection),
       close: () => this.select(null),
@@ -172,7 +188,16 @@ class Viewer {
     this.addMapLayers();
     // Search and layer list share a column, so the search choices push the list down
     const sidebar = el("div", "sidebar");
-    sidebar.append(...this.searchControl(), this.layerControl());
+    sidebar.append(...this.searchControl());
+    if (comparison) {
+      sidebar.append(
+        diffSummary(comparison.diff, network, (selection) => {
+          this.select(selection);
+          this.zoomTo(selection);
+        }),
+      );
+    }
+    sidebar.append(this.layerControl());
     root.append(sidebar);
     map.on("click", (event: maplibregl.MapMouseEvent) => this.onClick(event));
     map.on("zoom", () => {
@@ -185,8 +210,40 @@ class Viewer {
     this.render();
   }
 
+  /** Positions and colors of the status rings, of all node groups together. */
+  private ringData(): LayerData {
+    const groups = this.network.nodeGroups;
+    const length = groups.reduce((sum, group) => sum + group.rows.length, 0);
+    const positions = new Float32Array(length * 2);
+    const colors = new Uint8Array(length * 4);
+    let offset = 0;
+    for (const group of groups) {
+      positions.set(group.data.attributes.getPosition.value, offset * 2);
+      colors.set(this.diffColors.get(group)!, offset * 4);
+      offset += group.rows.length;
+    }
+    return {
+      length,
+      attributes: {
+        getPosition: { value: positions, size: 2 },
+        getLineColor: { value: colors, size: 4, normalized: true },
+      },
+    };
+  }
+
+  /** Color the Basin / areas of the differing Basins in the head model by their status. */
+  private colorDiffAreas(): void {
+    if (!this.comparison) return;
+    for (const [id, { status }] of this.comparison.diff.nodes) {
+      const row = this.network.nodeRow.get(id);
+      if (status === "removed" || row === undefined || this.network.nodeType[row] !== "Basin") continue;
+      this.map.setFeatureState({ source: "basin_area", sourceLayer: "basin_area", id }, { diff: DIFF_CSS[status] });
+    }
+  }
+
   async initResults(): Promise<void> {
-    if (!this.manifest.results) return;
+    // When comparing models the map shows the differences, and the panel compares the results
+    if (!this.manifest.results || this.comparison) return;
     const results = this.manifest.results!;
     const frames = new ResultFrames(results);
     const { network } = this;
@@ -283,6 +340,7 @@ class Viewer {
         this.basinAreasColored = false;
         this.colorBasinAreas(this.basinAreaColors.scale, this.basinAreaColors.values);
       }
+      this.colorDiffAreas();
     });
   }
 
@@ -303,7 +361,7 @@ class Viewer {
           "case",
           ["boolean", ["feature-state", "selected"], false],
           "#ff8c00",
-          ["to-color", ["coalesce", ["feature-state", "color"], "#f7f7f7"]],
+          ["to-color", ["coalesce", ["feature-state", "color"], ["feature-state", "diff"], "#f7f7f7"]],
         ],
         // Unfilled as in QGIS; transparent fills are still found by queryRenderedFeatures for clicks
         "fill-opacity": [
@@ -312,6 +370,8 @@ class Viewer {
           0.5,
           ["!=", ["feature-state", "color"], null],
           0.75,
+          ["!=", ["feature-state", "diff"], null],
+          0.35,
           0,
         ],
       },
@@ -328,12 +388,36 @@ class Viewer {
         "line-opacity": ["interpolate", ["linear"], ["zoom"], BASIN_OUTLINE_MIN_ZOOM, 0.4, 11, 1],
       },
     });
-    map.addSource("waterboards", { type: "geojson", data: fileUrl(manifest.files.waterboards) });
-    map.addLayer({
-      id: "waterboards",
+    this.addBaseAreas();
+    this.colorDiffAreas();
+    if (manifest.files.waterboards) {
+      map.addSource("waterboards", { type: "geojson", data: fileUrl(manifest.files.waterboards) });
+      map.addLayer({
+        id: "waterboards",
+        type: "line",
+        source: "waterboards",
+        paint: { "line-color": "#333", "line-width": 1.5, "line-dasharray": [4, 2] },
+      });
+    }
+  }
+
+  /** The outlines of the removed and changed Basin / areas in the base model. */
+  private addBaseAreas(): void {
+    if (!this.comparison) return;
+    const ids = [...this.comparison.diff.nodes]
+      .filter(([, diff]) => diff.status === "removed" || diff.changes.includes("Basin / area"))
+      .map(([id]) => id);
+    this.map.addSource("basin_area_base", {
+      type: "vector",
+      url: `pmtiles://${fileUrl(this.comparison.base.files.basin_area)}`,
+    });
+    this.map.addLayer({
+      id: "basin_area_base",
       type: "line",
-      source: "waterboards",
-      paint: { "line-color": "#333", "line-width": 1.5, "line-dasharray": [4, 2] },
+      source: "basin_area_base",
+      "source-layer": "basin_area",
+      filter: ["in", ["get", "node_id"], ["literal", ids]],
+      paint: { "line-color": DIFF_CSS.removed, "line-width": 2, "line-dasharray": [2, 1] },
     });
   }
 
@@ -384,6 +468,7 @@ class Viewer {
     const coloring = group.type === "flow" ? this.flowColoring : null;
     const flowStyle: FlowStyle | null = coloring ? (this.timeBar?.state.flowStyle ?? "color") : null;
     const style = LINK_STYLES[group.type] ?? DEFAULT_LINK_STYLE;
+    const diffColors = this.diffColors.get(group);
     // Colored links are wider, so the color is visible
     const byWidth = coloring !== null && flowStyle === "width";
     return new PathLayer({
@@ -396,11 +481,13 @@ class Viewer {
         coloring && flowStyle === "color"
           ? (_: unknown, { index }: { index: number }) =>
               coloring.colors.subarray(index * 4, index * 4 + 4) as unknown as Color
-          : style.color,
+          : diffColors
+            ? (_: unknown, { index }: { index: number }) => diffColors.subarray(index * 4, index * 4 + 4) as unknown as Color
+            : style.color,
       widthUnits: "pixels",
       getWidth: byWidth
         ? (_: unknown, { index }: { index: number }) => coloring.widths[index]
-        : flowStyle === "color"
+        : flowStyle === "color" || diffColors
           ? 2 * LINK_WIDTH_PX
           : LINK_WIDTH_PX,
       widthMinPixels: byWidth ? 0 : 1,
@@ -415,6 +502,7 @@ class Viewer {
 
   /** Direction arrows halfway along each link, as the QGIS plugin draws them. */
   private arrowLayer(group: Group) {
+    const diffColors = this.diffColors.get(group);
     return new IconLayer({
       id: `arrow-${group.type}`,
       data: group.arrows!,
@@ -422,7 +510,9 @@ class Viewer {
       iconAtlas: this.icons.atlas,
       iconMapping: this.icons.mapping,
       getIcon: () => ARROW_ICON,
-      getColor: (LINK_STYLES[group.type] ?? DEFAULT_LINK_STYLE).color,
+      getColor: diffColors
+        ? (_: unknown, { index }: { index: number }) => diffColors.subarray(index * 4, index * 4 + 4) as unknown as Color
+        : (LINK_STYLES[group.type] ?? DEFAULT_LINK_STYLE).color,
       sizeUnits: "meters",
       getSize: ARROW_SIZE_M,
       sizeMaxPixels: ARROW_SIZE_PX,
@@ -463,6 +553,69 @@ class Viewer {
     });
   }
 
+  /** The unchanged features when comparing models, faint for context; they can be clicked for details. */
+  private contextLayers() {
+    const context = this.network.context;
+    if (!context) return [];
+    const { selection } = this;
+    const selected = (kind: "node" | "link") => {
+      if (selection?.kind !== kind) return -1;
+      const row = (kind === "node" ? this.network.nodeRow : this.network.linkRow).get(selection.id);
+      const local = kind === "node" ? context.nodeLocal : context.linkLocal;
+      return row === undefined ? -1 : (local.get(row) ?? -1);
+    };
+    const visible = this.visible.get("unchanged");
+    return [
+      new PathLayer({
+        id: "context-link",
+        data: context.links.data,
+        _pathType: "open",
+        positionFormat: "XY",
+        visible,
+        getColor: CONTEXT_COLOR,
+        widthUnits: "pixels",
+        getWidth: 1,
+        pickable: true,
+        autoHighlight: true,
+        highlightColor: HIGHLIGHT,
+        highlightedObjectIndex: selected("link"),
+      }),
+      new ScatterplotLayer({
+        id: "context-node",
+        data: context.nodes.data,
+        visible,
+        getFillColor: CONTEXT_COLOR,
+        radiusUnits: "meters",
+        getRadius: NODE_ICON_SIZE_M / 4,
+        radiusMinPixels: 1.5,
+        radiusMaxPixels: NODE_ICON_SIZE_PX / 4,
+        pickable: true,
+        autoHighlight: true,
+        highlightColor: HIGHLIGHT,
+        highlightedObjectIndex: selected("node"),
+      }),
+    ];
+  }
+
+  /** Rings in the status color around the differing nodes, under their icons. */
+  private ringLayer() {
+    if (!this.diffRings) return [];
+    return [
+      new ScatterplotLayer({
+        id: "diff-rings",
+        data: this.diffRings,
+        stroked: true,
+        filled: false,
+        lineWidthUnits: "pixels",
+        getLineWidth: 3,
+        radiusUnits: "meters",
+        getRadius: NODE_ICON_SIZE_M * DIFF_RING_SCALE,
+        radiusMinPixels: 6,
+        radiusMaxPixels: NODE_ICON_SIZE_PX * DIFF_RING_SCALE,
+      }),
+    ];
+  }
+
   private zoomDetail(): string {
     const zoom = this.map.getZoom();
     return [ARROW_MIN_ZOOM, LABEL_MIN_ZOOM].map((min) => zoom >= min).join();
@@ -473,21 +626,34 @@ class Viewer {
     this.detail = this.zoomDetail();
     this.overlay.setProps({
       layers: [
+        ...this.contextLayers(),
         ...network.linkGroups.map((g) => this.linkLayer(g)),
         ...network.linkGroups.map((g) => this.arrowLayer(g)),
+        ...this.ringLayer(),
         ...network.nodeGroups.map((g) => this.nodeLayer(g)),
         this.labelLayer(),
       ],
     });
-    for (const id of ["basin_area", "basin_area_outline"]) {
-      this.map.setLayoutProperty(id, "visibility", this.visible.get("basin_area") ? "visible" : "none");
+    for (const id of ["basin_area", "basin_area_outline", "basin_area_base"]) {
+      if (this.map.getLayer(id)) {
+        this.map.setLayoutProperty(id, "visibility", this.visible.get("basin_area") ? "visible" : "none");
+      }
     }
-    this.map.setLayoutProperty("waterboards", "visibility", this.visible.get("waterboards") ? "visible" : "none");
+    if (this.map.getLayer("waterboards")) {
+      this.map.setLayoutProperty("waterboards", "visibility", this.visible.get("waterboards") ? "visible" : "none");
+    }
   }
 
   /** Map a deck.gl pick back to a node or link. */
   private picked(info: PickingInfo): Selection | null {
     if (!info.layer || info.index < 0) return null;
+    const context = this.network.context;
+    if (context && info.layer.id === "context-node") {
+      return { kind: "node", id: this.network.nodeId[context.nodes.rows[info.index]] };
+    }
+    if (context && info.layer.id === "context-link") {
+      return { kind: "link", id: this.network.linkId[context.links.rows[info.index]] };
+    }
     const [kind, type] = info.layer.id.split(/-(.*)/s);
     if (kind === "node") {
       const group = this.network.nodeGroups.find((g) => g.type === type);
@@ -507,15 +673,18 @@ class Viewer {
       const { label, units } = this.manifest.results![kind].variables[variable];
       return `\n${label}: ${formatNumber(coloring.values[info.index])} ${units}`;
     };
+    const diffs = selection.kind === "node" ? this.comparison?.diff.nodes : this.comparison?.diff.links;
+    const diff = diffs?.get(selection.id);
+    const status = diff ? `\n${describeDiff(diff)}` : "";
     if (selection.kind === "node") {
       const nodeType = network.nodeType[network.nodeRow.get(selection.id)!];
       const extra = nodeType === "Basin" ? value(this.basinColoring, "basin") : "";
-      return { text: `${nodeType} #${selection.id}${extra}` };
+      return { text: `${nodeType} #${selection.id}${extra}${status}` };
     }
     const row = network.linkRow.get(selection.id)!;
     const extra = network.linkType[row] === "flow" ? value(this.flowColoring, "flow") : "";
     return {
-      text: `${network.linkType[row]} link #${selection.id}\n${network.fromNodeId[row]} → ${network.toNodeId[row]}${extra}`,
+      text: `${network.linkType[row]} link ${linkLabel(selection.id)}\n${network.fromNodeId[row]} → ${network.toNodeId[row]}${extra}${status}`,
     };
   }
 
@@ -523,7 +692,7 @@ class Viewer {
     const info = this.overlay.pickObject({ x: event.point.x, y: event.point.y, radius: 4 });
     const picked = info ? this.picked(info) : null;
     if (picked) return this.select(picked);
-    if (this.visible.get("basin_area")) {
+    if (this.visible.get("basin_area") && this.map.getLayer("basin_area")) {
       const [area] = this.map.queryRenderedFeatures(event.point, { layers: ["basin_area"] });
       if (area?.id !== undefined) return this.select({ kind: "node", id: Number(area.id) });
     }
@@ -641,9 +810,16 @@ class Viewer {
       ...this.layerSection("Links", links),
       ...this.layerSection("Areas", [
         { key: "basin_area", label: "Basin / area", symbol: el("span", "area-swatch") },
-        { key: "waterboards", label: "Water boards" },
+        ...(this.manifest.files.waterboards ? [{ key: "waterboards", label: "Water boards" }] : []),
       ]),
     );
+    const context = this.network.context;
+    if (context) {
+      const symbol = el("span", "swatch");
+      symbol.style.background = `rgb(${CONTEXT_COLOR.slice(0, 3).join(",")})`;
+      const count = context.nodes.rows.length + context.links.rows.length;
+      details.append(...this.layerSection("Comparison", [{ key: "unchanged", label: "Unchanged", symbol, count }]));
+    }
     const basemap = el("select", "basemap");
     basemap.append(...Object.entries(BASEMAPS).map(([id, { label }]) => new Option(label, id, false, id === this.basemap)));
     basemap.addEventListener("change", () => {
@@ -690,7 +866,7 @@ class Viewer {
           const label =
             selection.kind === "node"
               ? `${network.nodeType[network.nodeRow.get(selection.id)!]} #${selection.id}`
-              : `${network.linkType[network.linkRow.get(selection.id)!]} link #${selection.id}`;
+              : `${network.linkType[network.linkRow.get(selection.id)!]} link ${linkLabel(selection.id)}`;
           const button = el("button", "", label);
           button.type = "button";
           button.addEventListener("click", () => go(selection));
@@ -705,6 +881,22 @@ class Viewer {
   }
 }
 
+/** The extent of the differing nodes, and of the nodes of differing links. */
+function diffBounds(network: Network): [number, number, number, number] | null {
+  const bounds = new maplibregl.LngLatBounds();
+  const extend = (nodeRow: number | undefined) => {
+    if (nodeRow !== undefined) bounds.extend([network.nodeX[nodeRow], network.nodeY[nodeRow]]);
+  };
+  for (const group of network.nodeGroups) group.rows.forEach(extend);
+  for (const group of network.linkGroups) {
+    for (const row of group.rows) {
+      extend(network.nodeRow.get(network.fromNodeId[row]));
+      extend(network.nodeRow.get(network.toNodeId[row]));
+    }
+  }
+  return bounds.isEmpty() ? null : (bounds.toArray().flat() as [number, number, number, number]);
+}
+
 async function main(): Promise<void> {
   const root = document.getElementById("ribasim-viewer");
   if (!root) throw new Error("Missing #ribasim-viewer element");
@@ -717,13 +909,16 @@ async function main(): Promise<void> {
     maplibregl.setWorkerUrl(maplibreWorkerUrl);
     const protocol = new Protocol();
     maplibregl.addProtocol("pmtiles", protocol.tile);
-    const manifest = await loadManifest();
+    const [manifest, comparison] = await Promise.all([loadManifest(), loadComparison()]);
+    const networkPromise = loadNetwork(manifest, comparison);
     // MapLibre adds its view to the hash, so check for it before creating the map
     const hasView = hashParams().has("map");
+    // When comparing models, start with a view of the differences
+    const bounds = hasView ? undefined : comparison ? (diffBounds(await networkPromise) ?? manifest.bounds) : manifest.bounds;
     const map = new maplibregl.Map({
       container,
       hash: "map",
-      bounds: hasView ? undefined : manifest.bounds,
+      bounds,
       fitBoundsOptions: { padding: 20 },
       // The network is drawn flat, so rotation and pitch would only disorient
       dragRotate: false,
@@ -739,8 +934,8 @@ async function main(): Promise<void> {
     map.addControl(new maplibregl.AttributionControl({ compact: false }), "bottom-right");
     map.addControl(new maplibregl.ScaleControl(), "bottom-left");
     // "load" also waits for basemap tiles and a rendered frame; the style is all we need to add layers
-    const [network, icons] = await Promise.all([loadNetwork(manifest), loadIconAtlas(), map.once("style.load")]);
-    const viewer = new Viewer(map, root, manifest, network, icons);
+    const [network, icons] = await Promise.all([networkPromise, loadIconAtlas(), map.once("style.load")]);
+    const viewer = new Viewer(map, root, manifest, network, icons, comparison);
     status.remove();
     const selection = selectionFromHash();
     if (selection) {

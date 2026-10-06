@@ -86,7 +86,9 @@ dvc-dag = { cmd = "python scripts/dvc_dag.py > docs/dev/_dvc-dag.mmd", inputs = 
 docs = { cmd = "quartodoc build && quarto preview", cwd = "docs", depends-on = ["dvc-dag", "viewer-build"] }
 docs-render = { cmd = "quartodoc build && rm -f objects.json && quarto render --to html --execute", cwd = "docs", depends-on = ["dvc-dag", "viewer-build"] }
 viewer-install = { cmd = "npm ci", cwd = "viewer", inputs = ["viewer/package.json", "viewer/package-lock.json"], outputs = ["viewer/node_modules/.package-lock.json"] }
-viewer-build = { cmd = "npm run build", cwd = "viewer", depends-on = ["viewer-install"] }
+viewer-build = { cmd = "npm run build", cwd = "viewer", depends-on = ["viewer-install"], inputs = ["viewer/src/**", "viewer/package-lock.json", "viewer/vite.config.ts", "viewer/tsconfig.json"], outputs = ["docs/viewer-app/viewer.js"] }
+# View a local model, optionally only its differences from another: `pixi run viewer <toml> [--base <toml>]`
+viewer = { cmd = "python -m ribasim_nl.webmap_local", depends-on = ["viewer-build"] }
 # Serves the local `export_webmap` output, see viewer/vite.config.ts
 viewer-dev = { cmd = "npm run dev", cwd = "viewer", depends-on = ["viewer-install"] }
 publish-webmap = "python scripts/publish_webmap.py"
