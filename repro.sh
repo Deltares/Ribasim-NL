@@ -151,8 +151,8 @@ JOB_SAMENVOEGEN=$(submit samenvoegen "afterok${JOBIDS}" ${TIME} "$(py notebooks/
 # Step 4: koppelen (after samenvoegen)
 JOB_KOPPELEN=$(submit koppelen "afterok:${JOB_SAMENVOEGEN}" ${TIME} "$(py notebooks/09_koppelen_modellen.py)")
 
-# Step 5: register + upload all produced outputs to DVC once (serial).
-JOB_COMMIT=$(submit commit "afterok:${JOB_KOPPELEN}" ${TIME} "pixi run dvc commit -f && pixi run dvc push")
+# Step 5: register outputs, check, + upload to DVC once (serial).
+JOB_COMMIT=$(submit commit "afterok:${JOB_KOPPELEN}" ${TIME} "pixi run dvc commit -f && pixi run check && pixi run dvc push")
 
 # Log job IDs for run.sh to depend on
 echo "samenvoegen	${JOB_SAMENVOEGEN}" > repro_jobs.txt
