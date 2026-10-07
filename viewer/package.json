@@ -12,6 +12,7 @@
     "@deck.gl/extensions": "~9.4.0",
     "@deck.gl/layers": "^9.4.0",
     "@deck.gl/mapbox": "^9.4.0",
+    "@fontsource/atkinson-hyperlegible-next": "^5.3.0",
     "hyparquet": "^1.31.2",
     "hyparquet-compressors": "^1.1.2",
     "maplibre-gl": "^6.11.2",

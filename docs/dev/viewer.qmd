@@ -94,17 +94,20 @@ Fetch first to compare with the latest `origin/main`.
 
 Nodes are matched by id, and links by their from and to node, since links get renumbered, see `ribasim_nl.webmap_diff`.
 A node or link in both models is changed if its geometry, an attribute, its rows in an input table, or its Basin / area differ.
-The map shows only the added, removed and changed features, in the colors of their status.
+The map shows only the added, removed and changed features, in the colors of their status: green, orange and purple, on a grey base map.
+When zoomed out, the status rings around changed nodes become small dots.
 Removed and changed Basin / areas of the old model are drawn as dashed outlines.
 Turn on *Unchanged* in the layer list to show the other features faintly, for context.
 
 If both models have results, the Basin levels and flow rates are compared too.
-Basins and flow links whose results differ more than a tolerance are also shown, in shades of purple by the largest difference.
+Basins and flow links whose results differ more than a tolerance are also shown, in shades of grey by the largest difference.
 Differences of up to 1 mm in level, and of up to 1 L/s plus 1% in flow rate, are ignored as solver noise.
 
-The *Differences* box lists the changed TOML settings, all differing features, and the features whose results differ, largest first; click one to zoom to it.
+The *Differences* box counts the differences by status and by what changed, for instance `Basin / state` or `geometry`.
+Uncheck a status or a change to hide those features from the map, for instance to look past the many changed initial states.
+It also lists the changed TOML settings, all differing features, and the features whose results differ, largest first; click one to zoom to it.
 The panel of a changed feature lists what changed, shows the old value of changed attributes struck through, and shows both versions of changed tables.
-The result charts show the old model as dashed lines.
+The result charts show the old model as dashed lines in a lighter tint.
 
 ## Developing the viewer
 

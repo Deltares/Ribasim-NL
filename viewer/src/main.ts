@@ -1,9 +1,11 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import "uplot/dist/uPlot.min.css";
+import "@fontsource/atkinson-hyperlegible-next/latin-400.css";
+import "@fontsource/atkinson-hyperlegible-next/latin-600.css";
 import "./style.css";
 
 import type { PickingInfo } from "@deck.gl/core";
-import { PathStyleExtension } from "@deck.gl/extensions";
+import { DataFilterExtension, PathStyleExtension } from "@deck.gl/extensions";
 import { IconLayer, PathLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import * as maplibregl from "maplibre-gl";
@@ -13,7 +15,16 @@ import { Protocol } from "pmtiles";
 import { BASEMAPS, basemapStyle, DEFAULT_BASEMAP, withOverlays } from "./basemaps";
 import { ColorScale, formatNumber, normalize } from "./colors";
 import { fileUrl, loadComparison, loadManifest, type Comparison, type Manifest, type ModelDiff, type ResultKind } from "./data";
-import { CONTEXT_COLOR, DIFF_CSS, describeDiff, describeResult, diffSummary, ResultColors, statusColors } from "./diff";
+import {
+  CONTEXT_COLOR,
+  DIFF_CSS,
+  DiffFilter,
+  describeDiff,
+  describeResult,
+  diffSummary,
+  ResultColors,
+  statusColors,
+} from "./diff";
 import { linkLabel, loadNetwork, type Group, type LayerData, type Network } from "./network";
 import { Panel, type Selection } from "./panel";
 import { ResultFrames } from "./results";
@@ -34,9 +45,15 @@ import {
 import { TimeBar, type FlowStyle } from "./timebar";
 
 const HIDDEN_BY_DEFAULT = new Set(["ContinuousControl", "DiscreteControl", "PidControl", "control", "listen"]);
-const HIGHLIGHT: [number, number, number, number] = [255, 140, 0, 255];
+// Slate ink for the hovered and selected feature, which leaves the status colors to the differences
+const HIGHLIGHT: [number, number, number, number] = [30, 42, 50, 255];
+const HIGHLIGHT_CSS = "#1e2a32";
+// A quiet base map when comparing models, so the status colors stand out
+const COMPARISON_BASEMAP = "grey";
 const NO_DATA: [number, number, number, number] = [170, 170, 170, 255];
 const DASHED = [new PathStyleExtension({ dash: true })];
+// Hides the differences that are filtered out in the Differences box
+const FILTER = new DataFilterExtension({ filterSize: 1 });
 const DASH_ARRAY: [number, number] = [4, 2];
 // Icons shrink with the map below this size in meters, so dense areas stay readable when zoomed out
 const NODE_ICON_SIZE_M = 320;
@@ -53,8 +70,13 @@ const LABEL_MIN_ZOOM = 13;
 const MAX_LABELS = 2000;
 // Sources and layers kept when the base map style changes
 const OVERLAY_SOURCES = new Set(["basin_area", "basin_area_base", "waterboards"]);
-// The status ring around a differing node, relative to the icon size
+// The status ring around a differing node, relative to the icon size; when zoomed out the rings of dense
+// differences would merge into blobs, so they are small dots on top of the icons instead
 const DIFF_RING_SCALE = 0.75;
+const DIFF_RING_MIN_ZOOM = 10;
+const DIFF_DOT_PX = 3;
+// The ring around the selected node, relative to the icon size
+const SELECTION_RING_SCALE = 0.9;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text = ""): HTMLElementTagNameMap[K] {
   const element = document.createElement(tag);
@@ -119,6 +141,14 @@ function coloring(scale: ColorScale, values: Float32Array, local: Int32Array, le
   return { colors, widths, values: localValues, version };
 }
 
+/** Layer props of the filter of the Differences box. */
+interface FilterProps {
+  extensions: DataFilterExtension[];
+  getFilterValue?: (object: unknown, info: { index: number }) => number;
+  filterRange?: [number, number];
+  updateTriggers: { getFilterValue?: number };
+}
+
 interface Label {
   position: [number, number];
   text: string;
@@ -134,7 +164,7 @@ interface LayerRow {
 
 class Viewer {
   private readonly visible = new Map<string, boolean>();
-  private basemap = DEFAULT_BASEMAP;
+  private basemap: string;
   private basinAreaColors: { scale: ColorScale; values: Float32Array } | null = null;
   private selection: Selection | null = null;
   private readonly overlay: MapboxOverlay;
@@ -156,6 +186,10 @@ class Viewer {
   private readonly diffRings: LayerData | null = null;
   /** The colors of the result differences, only when comparing models that both have results */
   private readonly resultColors: Record<ResultKind, ResultColors> | null = null;
+  private readonly filter = new DiffFilter();
+  /** Per node or link group, 1 for the features shown by the filter and 0 for the others */
+  private readonly filterValues = new Map<Group, Float32Array>();
+  private ringFilterValues = new Float32Array(0);
 
   constructor(
     private readonly map: maplibregl.Map,
@@ -165,6 +199,7 @@ class Viewer {
     private readonly icons: IconAtlas,
     private readonly comparison: Comparison | null,
   ) {
+    this.basemap = comparison ? COMPARISON_BASEMAP : DEFAULT_BASEMAP;
     for (const group of [...network.nodeGroups, ...network.linkGroups]) {
       // When comparing, all differences are shown, also of the control nodes and links
       this.visible.set(group.type, comparison !== null || !HIDDEN_BY_DEFAULT.has(group.type));
@@ -185,6 +220,7 @@ class Viewer {
         this.diffColors.set(group, statusColors(group, network.linkId, diff.links, flow));
       }
       this.diffRings = this.ringData();
+      this.updateFilterValues();
     }
 
     // Interleaved mode reads `map.transform`, which maplibre-gl 6 no longer exposes
@@ -201,10 +237,21 @@ class Viewer {
     sidebar.append(...this.searchControl());
     if (comparison) {
       sidebar.append(
-        diffSummary(comparison.diff, this.resultColors, network, (selection) => {
-          this.select(selection);
-          this.zoomTo(selection);
-        }),
+        diffSummary(
+          comparison.diff,
+          this.resultColors,
+          network,
+          this.filter,
+          () => {
+            this.updateFilterValues();
+            this.colorDiffAreas();
+            this.render();
+          },
+          (selection) => {
+            this.select(selection);
+            this.zoomTo(selection);
+          },
+        ),
       );
     }
     sidebar.append(this.layerControl());
@@ -237,21 +284,69 @@ class Viewer {
       attributes: {
         getPosition: { value: positions, size: 2 },
         getLineColor: { value: colors, size: 4, normalized: true },
+        getFillColor: { value: colors, size: 4, normalized: true },
       },
     };
   }
 
-  /** Color the Basin / areas of the differing Basins in the head model by their status, or result difference. */
+  /** Which features the filter of the Differences box shows, per group and for the status rings. */
+  private updateFilterValues(): void {
+    const { comparison, network, filter, resultColors } = this;
+    if (!comparison) return;
+    const { diff } = comparison;
+    const values = (group: Group, ids: Int32Array, diffs: typeof diff.nodes, results?: ResultColors) =>
+      Float32Array.from(group.rows, (row) =>
+        filter.shows(diffs.get(ids[row]), results?.diff.differences.has(ids[row]) ?? false) ? 1 : 0,
+      );
+    for (const group of network.nodeGroups) {
+      const basin = group.type === "Basin" ? resultColors?.basin : undefined;
+      this.filterValues.set(group, values(group, network.nodeId, diff.nodes, basin));
+    }
+    for (const group of network.linkGroups) {
+      const flow = group.type === "flow" ? resultColors?.flow : undefined;
+      this.filterValues.set(group, values(group, network.linkId, diff.links, flow));
+    }
+    const rings = network.nodeGroups.map((group) => this.filterValues.get(group)!);
+    this.ringFilterValues = new Float32Array(rings.reduce((sum, part) => sum + part.length, 0));
+    let offset = 0;
+    for (const part of rings) {
+      this.ringFilterValues.set(part, offset);
+      offset += part.length;
+    }
+  }
+
+  /** Layer props that hide the features the filter of the Differences box leaves out, when comparing models. */
+  private filterProps(values: Float32Array | undefined): FilterProps {
+    if (!values) return { extensions: [], updateTriggers: {} };
+    return {
+      extensions: [FILTER],
+      getFilterValue: (_: unknown, { index }: { index: number }) => values[index],
+      filterRange: [0.5, 1],
+      updateTriggers: { getFilterValue: this.filter.version },
+    };
+  }
+
+  /**
+   * Color the Basin / areas of the differing Basins in the head model by their status, or result difference,
+   * if the filter of the Differences box shows them.
+   */
   private colorDiffAreas(): void {
     if (!this.comparison) return;
+    const { diff } = this.comparison;
     const target = { source: "basin_area", sourceLayer: "basin_area" };
-    for (const id of this.resultColors?.basin.diff.differences.keys() ?? []) {
-      this.map.setFeatureState({ ...target, id }, { diff: this.resultColors!.basin.css(id) });
-    }
-    for (const [id, { status }] of this.comparison.diff.nodes) {
+    const results = this.resultColors?.basin;
+    const ids = new Set([...(results?.diff.differences.keys() ?? []), ...diff.nodes.keys()]);
+    for (const id of ids) {
       const row = this.network.nodeRow.get(id);
-      if (status === "removed" || row === undefined || this.network.nodeType[row] !== "Basin") continue;
-      this.map.setFeatureState({ ...target, id }, { diff: DIFF_CSS[status] });
+      const nodeDiff = diff.nodes.get(id);
+      if (nodeDiff?.status === "removed" || row === undefined || this.network.nodeType[row] !== "Basin") continue;
+      const resultDiffers = results?.diff.differences.has(id) ?? false;
+      const color = !this.filter.shows(nodeDiff, resultDiffers)
+        ? null
+        : nodeDiff && !this.filter.hiddenStatuses.has(nodeDiff.status)
+          ? DIFF_CSS[nodeDiff.status]
+          : results!.css(id);
+      this.map.setFeatureState({ ...target, id }, { diff: color });
     }
   }
 
@@ -374,14 +469,14 @@ class Viewer {
         "fill-color": [
           "case",
           ["boolean", ["feature-state", "selected"], false],
-          "#ff8c00",
+          HIGHLIGHT_CSS,
           ["to-color", ["coalesce", ["feature-state", "color"], ["feature-state", "diff"], "#f7f7f7"]],
         ],
         // Unfilled as in QGIS; transparent fills are still found by queryRenderedFeatures for clicks
         "fill-opacity": [
           "case",
           ["boolean", ["feature-state", "selected"], false],
-          0.5,
+          0.3,
           ["!=", ["feature-state", "color"], null],
           0.75,
           ["!=", ["feature-state", "diff"], null],
@@ -398,7 +493,16 @@ class Viewer {
       minzoom: BASIN_OUTLINE_MIN_ZOOM,
       paint: {
         "line-color": "#000",
-        "line-width": ["interpolate", ["linear"], ["zoom"], BASIN_OUTLINE_MIN_ZOOM, 0.3, 12, 1.36],
+        // The selected area has a thick outline, its fill is light to keep the map below visible
+        "line-width": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          BASIN_OUTLINE_MIN_ZOOM,
+          ["case", ["boolean", ["feature-state", "selected"], false], 2, 0.3],
+          12,
+          ["case", ["boolean", ["feature-state", "selected"], false], 3, 1.36],
+        ],
         "line-opacity": ["interpolate", ["linear"], ["zoom"], BASIN_OUTLINE_MIN_ZOOM, 0.4, 11, 1],
       },
     });
@@ -443,6 +547,7 @@ class Viewer {
       id: `node-${group.type}`,
       data: group.data,
       visible: this.visible.get(group.type),
+      ...this.filterProps(this.filterValues.get(group)),
       pickable: true,
       autoHighlight: true,
       highlightColor: HIGHLIGHT,
@@ -485,6 +590,7 @@ class Viewer {
     const diffColors = this.diffColors.get(group);
     // Colored links are wider, so the color is visible
     const byWidth = coloring !== null && flowStyle === "width";
+    const filter = this.filterProps(this.filterValues.get(group));
     return new PathLayer({
       id: `link-${group.type}`,
       data: group.data,
@@ -505,8 +611,14 @@ class Viewer {
           ? 2 * LINK_WIDTH_PX
           : LINK_WIDTH_PX,
       widthMinPixels: byWidth ? 0 : 1,
-      updateTriggers: { getColor: [coloring?.version, flowStyle], getWidth: [coloring?.version, flowStyle] },
-      ...(style.dashed ? { extensions: DASHED, getDashArray: DASH_ARRAY, dashJustified: true } : {}),
+      ...filter,
+      updateTriggers: {
+        ...filter.updateTriggers,
+        getColor: [coloring?.version, flowStyle],
+        getWidth: [coloring?.version, flowStyle],
+      },
+      extensions: [...filter.extensions, ...(style.dashed ? DASHED : [])],
+      ...(style.dashed ? { getDashArray: DASH_ARRAY, dashJustified: true } : {}),
       pickable: true,
       autoHighlight: true,
       highlightColor: HIGHLIGHT,
@@ -524,6 +636,7 @@ class Viewer {
       iconAtlas: this.icons.atlas,
       iconMapping: this.icons.mapping,
       getIcon: () => ARROW_ICON,
+      ...this.filterProps(this.filterValues.get(group)),
       getColor: diffColors
         ? (_: unknown, { index }: { index: number }) => diffColors.subarray(index * 4, index * 4 + 4) as unknown as Color
         : (LINK_STYLES[group.type] ?? DEFAULT_LINK_STYLE).color,
@@ -611,40 +724,72 @@ class Viewer {
     ];
   }
 
-  /** Rings in the status color around the differing nodes, under their icons. */
+  /** Whether the differing nodes have rings under their icons, or are zoomed out and have dots on top. */
+  private showRings(): boolean {
+    return this.map.getZoom() >= DIFF_RING_MIN_ZOOM;
+  }
+
+  /** Rings in the status color around the differing nodes, or dots when zoomed out. */
   private ringLayer() {
     if (!this.diffRings) return [];
+    const rings = this.showRings();
     return [
       new ScatterplotLayer({
         id: "diff-rings",
         data: this.diffRings,
+        stroked: rings,
+        filled: !rings,
+        lineWidthUnits: "pixels",
+        getLineWidth: 3,
+        radiusUnits: rings ? "meters" : "pixels",
+        getRadius: rings ? NODE_ICON_SIZE_M * DIFF_RING_SCALE : DIFF_DOT_PX,
+        radiusMinPixels: rings ? 6 : 0,
+        radiusMaxPixels: rings ? NODE_ICON_SIZE_PX * DIFF_RING_SCALE : DIFF_DOT_PX,
+        ...this.filterProps(this.ringFilterValues),
+      }),
+    ];
+  }
+
+  /** A ring in the highlight color around the selected node, so it stands out from the status rings. */
+  private selectionLayer() {
+    const row = this.selection?.kind === "node" ? this.network.nodeRow.get(this.selection.id) : undefined;
+    if (row === undefined) return [];
+    return [
+      new ScatterplotLayer<number>({
+        id: "selection",
+        data: [row],
+        getPosition: (nodeRow) => [this.network.nodeX[nodeRow], this.network.nodeY[nodeRow]],
         stroked: true,
         filled: false,
         lineWidthUnits: "pixels",
-        getLineWidth: 3,
+        getLineWidth: 2.5,
+        getLineColor: HIGHLIGHT,
         radiusUnits: "meters",
-        getRadius: NODE_ICON_SIZE_M * DIFF_RING_SCALE,
-        radiusMinPixels: 6,
-        radiusMaxPixels: NODE_ICON_SIZE_PX * DIFF_RING_SCALE,
+        getRadius: NODE_ICON_SIZE_M * SELECTION_RING_SCALE,
+        radiusMinPixels: 9,
+        radiusMaxPixels: NODE_ICON_SIZE_PX * SELECTION_RING_SCALE + 3,
       }),
     ];
   }
 
   private zoomDetail(): string {
     const zoom = this.map.getZoom();
-    return [ARROW_MIN_ZOOM, LABEL_MIN_ZOOM].map((min) => zoom >= min).join();
+    return [ARROW_MIN_ZOOM, LABEL_MIN_ZOOM, DIFF_RING_MIN_ZOOM].map((min) => zoom >= min).join();
   }
 
   private render(): void {
     const { network } = this;
     this.detail = this.zoomDetail();
+    const rings = this.showRings();
     this.overlay.setProps({
       layers: [
         ...this.contextLayers(),
         ...network.linkGroups.map((g) => this.linkLayer(g)),
         ...network.linkGroups.map((g) => this.arrowLayer(g)),
-        ...this.ringLayer(),
+        ...(rings ? this.ringLayer() : []),
         ...network.nodeGroups.map((g) => this.nodeLayer(g)),
+        ...(rings ? [] : this.ringLayer()),
+        ...this.selectionLayer(),
         this.labelLayer(),
       ],
     });
@@ -712,6 +857,10 @@ class Viewer {
       if (area?.id !== undefined) return this.select({ kind: "node", id: Number(area.id) });
     }
     this.select(null);
+  }
+
+  selected(): Selection | null {
+    return this.selection;
   }
 
   select(selection: Selection | null): void {
@@ -945,7 +1094,7 @@ async function main(): Promise<void> {
       dragRotate: false,
       pitchWithRotate: false,
       touchPitch: false,
-      style: await basemapStyle(DEFAULT_BASEMAP),
+      style: await basemapStyle(comparison ? COMPARISON_BASEMAP : DEFAULT_BASEMAP),
       // The default control collapses into an "i" button on narrow maps and once the map is moved
       attributionControl: false,
     });
@@ -956,14 +1105,25 @@ async function main(): Promise<void> {
     map.addControl(new maplibregl.ScaleControl(), "bottom-left");
     // "load" also waits for basemap tiles and a rendered frame; the style is all we need to add layers
     const [network, icons] = await Promise.all([networkPromise, loadIconAtlas(), map.once("style.load")]);
+    status.textContent = "Drawing the model…";
     const viewer = new Viewer(map, root, manifest, network, icons, comparison);
-    status.remove();
     const selection = selectionFromHash();
     if (selection) {
       viewer.select(selection);
       if (!hasView) viewer.zoomTo(selection);
     }
-    await viewer.initResults();
+    // A pasted link or going back in history only changes the hash, which selects another feature
+    addEventListener("hashchange", () => {
+      const next = selectionFromHash();
+      if (next?.kind === viewer.selected()?.kind && next?.id === viewer.selected()?.id) return;
+      viewer.select(next);
+      if (next) viewer.zoomTo(next);
+    });
+    const results = viewer.initResults();
+    // Drawing the network and the base map tiles takes a while for large models, so keep saying so
+    await map.once("idle");
+    status.remove();
+    await results;
   } catch (error) {
     root.append(status);
     status.textContent = `Failed to load the model viewer: ${error}`;

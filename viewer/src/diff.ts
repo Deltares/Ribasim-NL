@@ -1,15 +1,18 @@
-import { ColorScale, formatNumber, PURPLES } from "./colors";
+import { ColorScale, formatNumber, GREYS } from "./colors";
 import { DIFF_STATUSES, type DiffStatus, type FeatureDiff, type ModelDiff, type ResultDiff, type ResultKind } from "./data";
 import { linkLabel, type Group, type Network } from "./network";
 import type { Selection } from "./panel";
 
 export type Rgba = [number, number, number, number];
 
-/** Colorblind-safe colors of the Okabe-Ito palette, also used for the node types */
+/**
+ * Colorblind-safe colors of the Okabe-Ito palette. Changed is reddish purple rather than sky blue, which would
+ * be lost among the water on the base map and the blue Basins and flow links.
+ */
 export const DIFF_COLORS: Record<DiffStatus, Rgba> = {
   added: [0, 158, 115, 255],
   removed: [213, 94, 0, 255],
-  changed: [86, 180, 233, 255],
+  changed: [204, 121, 167, 255],
 };
 export const DIFF_CSS: Record<DiffStatus, string> = Object.fromEntries(
   DIFF_STATUSES.map((status) => [status, `rgb(${DIFF_COLORS[status].slice(0, 3).join(",")})`]),
@@ -28,6 +31,25 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return element;
 }
 
+/** Which differences are shown on the map, set with the checkboxes of the Differences box. */
+export class DiffFilter {
+  readonly hiddenStatuses = new Set<DiffStatus>();
+  /** Changes like "Basin / state" or "geometry" */
+  readonly hiddenChanges = new Set<string>();
+  hideResults = false;
+  /** Increased on every change, to update the map */
+  version = 0;
+
+  /** Whether a feature is shown: by its status and what changed, or by a difference in its results. */
+  shows(diff: FeatureDiff | undefined, resultDiffers: boolean): boolean {
+    const byDiff =
+      diff !== undefined &&
+      !this.hiddenStatuses.has(diff.status) &&
+      (diff.status !== "changed" || diff.changes.some((change) => !this.hiddenChanges.has(change)));
+    return byDiff || (resultDiffers && !this.hideResults);
+  }
+}
+
 /** Result differences of one kind with the color scale of their size. */
 export class ResultColors {
   readonly scale: ColorScale;
@@ -40,7 +62,7 @@ export class ResultColors {
     }
     if (!(high > 0)) [low, high] = [diff.atol || 1, 10 * (diff.atol || 1)];
     if (low === high) low = high / 10;
-    this.scale = new ColorScale({ label: diff.variable, units: diff.units, scale: "log", domain: [low, high] }, PURPLES);
+    this.scale = new ColorScale({ label: diff.variable, units: diff.units, scale: "log", domain: [low, high] }, GREYS);
   }
 
   /** Write the color of a feature with a result difference, returns false if it has none. */
@@ -95,16 +117,40 @@ export function describeDiff(diff: FeatureDiff, max = 4): string {
   return `changed: ${shown}${diff.changes.length > max ? `, … (${diff.changes.length} in total)` : ""}`;
 }
 
-export function statusBadge(status: DiffStatus): HTMLElement {
-  const badge = el("span", { className: "diff-badge" }, status);
-  badge.style.background = DIFF_CSS[status];
-  return badge;
+/** A dot in the color of a status. */
+export function statusDot(status: DiffStatus): HTMLElement {
+  const dot = el("span", { className: "dot" });
+  dot.style.background = DIFF_CSS[status];
+  return dot;
+}
+
+/** The status of a feature as a colored dot and its name, for headings. */
+export function statusLabel(status: DiffStatus): HTMLElement {
+  return el("span", { className: "diff-status" }, statusDot(status), status);
 }
 
 function counts(diffs: Map<number, FeatureDiff>): Record<DiffStatus, number> {
   const result = { added: 0, removed: 0, changed: 0 };
   for (const { status } of diffs.values()) result[status]++;
   return result;
+}
+
+/** The number of changed nodes and links per change, most frequent first. */
+function changeCounts(diff: ModelDiff): [string, number][] {
+  const result = new Map<string, number>();
+  for (const diffs of [diff.nodes, diff.links]) {
+    for (const { changes } of diffs.values()) {
+      for (const change of changes) result.set(change, (result.get(change) ?? 0) + 1);
+    }
+  }
+  return [...result].sort(([a, m], [b, n]) => n - m || a.localeCompare(b));
+}
+
+/** A checkbox that shows or hides a kind of difference on the map. */
+function filterBox(checked: boolean, title: string, onChange: (checked: boolean) => void): HTMLInputElement {
+  const input = el("input", { type: "checkbox", checked, title });
+  input.addEventListener("change", () => onChange(input.checked));
+  return input;
 }
 
 /** A list of differing features of one kind, by status, that selects a feature when clicked. */
@@ -136,7 +182,7 @@ function featureList(
     }
     const note = ids.length > MAX_LISTED ? [el("p", { className: "note" }, `Showing ${MAX_LISTED} of ${ids.length}.`)] : [];
     const title = `${status[0].toUpperCase()}${status.slice(1)} ${kind}s (${ids.length.toLocaleString()})`;
-    return [el("details", {}, el("summary", {}, statusBadge(status), " ", title), list, ...note)];
+    return [el("details", {}, el("summary", {}, statusDot(status), title), list, ...note)];
   });
 }
 
@@ -175,42 +221,76 @@ function resultList(kind: ResultKind, results: ResultColors, go: (selection: Sel
   return el("details", {}, el("summary", { title: tolerance }, title), ...(ids.length ? [legend, list] : []), ...notes);
 }
 
-/** A box with the compared models, the number of differences and the differing settings, features and results. */
+/** The compared models: the model name once if both have it, and their labels. */
+function modelLine(diff: ModelDiff): HTMLElement {
+  const { base, head } = diff;
+  const line = el("p", { className: "models" });
+  if (base.model === head.model && base.label !== base.model && head.label !== head.model) {
+    line.append(el("strong", {}, head.model), " ");
+  }
+  const label = (model: ModelDiff["base"]) => el("span", { title: model.toml }, model.label);
+  line.append(label(base), " → ", label(head));
+  return line;
+}
+
+/**
+ * A box with the compared models and the number of differences by status and by what changed, with checkboxes
+ * to filter the map, and lists of the differing settings, features and results.
+ */
 export function diffSummary(
   diff: ModelDiff,
   results: Record<ResultKind, ResultColors> | null,
   network: Network,
+  filter: DiffFilter,
+  onFilter: () => void,
   go: (selection: Selection) => void,
 ): HTMLElement {
   const details = el("details", { className: "diff-summary" });
   details.open = !matchMedia("(max-width: 600px)").matches;
+  const update = () => {
+    filter.version++;
+    onFilter();
+  };
   const nodes = counts(diff.nodes);
   const links = counts(diff.links);
   const table = el(
     "table",
-    {},
+    { className: "diff-counts" },
     el("tr", {}, el("th"), el("th", {}, "Nodes"), el("th", {}, "Links")),
-    ...DIFF_STATUSES.map((status) =>
-      el(
+    ...DIFF_STATUSES.map((status) => {
+      const box = filterBox(true, `Show the ${status} features`, (checked) => {
+        if (checked) filter.hiddenStatuses.delete(status);
+        else filter.hiddenStatuses.add(status);
+        update();
+      });
+      return el(
         "tr",
         {},
-        el("th", {}, statusBadge(status)),
+        el("th", {}, el("label", {}, box, statusDot(status), status)),
         el("td", {}, nodes[status].toLocaleString()),
         el("td", {}, links[status].toLocaleString()),
-      ),
-    ),
+      );
+    }),
   );
-  details.append(
-    el("summary", {}, "Differences"),
-    el(
-      "p",
-      { className: "models" },
-      el("span", { title: diff.base.toml }, diff.base.label),
-      " → ",
-      el("span", { title: diff.head.toml }, diff.head.label),
-    ),
-    table,
-  );
+  details.append(el("summary", {}, "Differences"), modelLine(diff), table);
+
+  const changes = changeCounts(diff);
+  if (changes.length) {
+    const list = el(
+      "ul",
+      { className: "diff-changes" },
+      ...changes.map(([change, count]) => {
+        const box = filterBox(true, `Show the features with a changed ${change}`, (checked) => {
+          if (checked) filter.hiddenChanges.delete(change);
+          else filter.hiddenChanges.add(change);
+          update();
+        });
+        return el("li", {}, el("label", {}, box, el("span", { className: "name" }, change), el("span", { className: "count" }, count.toLocaleString())));
+      }),
+    );
+    const section = el("details", { className: "diff-changes-section", open: true }, el("summary", {}, `What changed (${changes.length})`), list);
+    details.append(section);
+  }
   if (diff.config.length) {
     const list = el(
       "ul",
@@ -219,10 +299,20 @@ export function diffSummary(
     );
     details.append(el("details", {}, el("summary", {}, `Settings (${diff.config.length})`), list));
   }
-  details.append(...featureList("node", diff.nodes, network, go), ...featureList("link", diff.links, network, go));
-  if (diff.nodes.size === 0 && diff.links.size === 0) details.append(el("p", { className: "note" }, "No differences in the network."));
+  const features = [...featureList("node", diff.nodes, network, go), ...featureList("link", diff.links, network, go)];
+  if (features.length) details.append(el("h4", {}, "Features"), ...features);
+  else details.append(el("p", { className: "note" }, "No differences in the network."));
+
   if (results) {
-    details.append(el("h4", {}, "Results"), resultList("basin", results.basin, go), resultList("flow", results.flow, go));
+    const box = filterBox(true, "Show the features whose results differ", (checked) => {
+      filter.hideResults = !checked;
+      update();
+    });
+    details.append(
+      el("h4", {}, el("label", {}, box, "Results")),
+      resultList("basin", results.basin, go),
+      resultList("flow", results.flow, go),
+    );
   } else if (diff.results_note) {
     details.append(el("h4", {}, "Results"), el("p", { className: "note" }, diff.results_note));
   }

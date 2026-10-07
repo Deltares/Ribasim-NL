@@ -1,5 +1,5 @@
 import uPlot from "uplot";
-import { formatNumber } from "./colors";
+import { formatNumber, formatTicks } from "./colors";
 import {
   readRow,
   readRowsById,
@@ -9,7 +9,7 @@ import {
   type Row,
   type TableEntry,
 } from "./data";
-import { describeResult, statusBadge } from "./diff";
+import { describeResult, statusLabel } from "./diff";
 import { LevelDiagram, type LevelSeries, type LevelSide } from "./levels";
 import { linkLabel, type Network } from "./network";
 
@@ -84,6 +84,8 @@ function dataTable(rows: Row[]): HTMLElement {
 }
 
 const SERIES_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2"];
+// The base model is drawn dashed in a lighter tint of the same color, which also sets it apart in the legend
+const BASE_ALPHA = "73";
 
 /** A time series chart of numeric columns, if the rows form one. */
 function timeChart(rows: Row[], width: number, only?: string[]): HTMLElement | null {
@@ -98,21 +100,24 @@ function timeChart(rows: Row[], width: number, only?: string[]): HTMLElement | n
   ];
   const colors = columns.filter((column) => !column.endsWith(BASE));
   const container = el("div", { className: "chart" });
-  const seriesValue = (_: uPlot, value: number | null) => (value === null ? "–" : formatNumber(value));
+  // Values are only shown while hovering the chart
+  const seriesValue = (_: uPlot, value: number | null) => (value === null ? "" : formatNumber(value));
   const plot = new uPlot(
     {
       width,
       height: 200,
       series: [
-        { value: "{YYYY}-{MM}-{DD}" },
+        { value: (_: uPlot, value: number | null) => (value === null ? "" : new Date(value * 1000).toISOString().slice(0, 10)) },
         ...columns.map((label) => {
           const isBase = label.endsWith(BASE);
           const color = SERIES_COLORS[colors.indexOf(isBase ? label.slice(0, -BASE.length) : label) % SERIES_COLORS.length];
-          return { label, stroke: color, dash: isBase ? [4, 4] : undefined, value: seriesValue };
+          return isBase
+            ? { label, stroke: `${color}${BASE_ALPHA}`, dash: [4, 4], class: "base", value: seriesValue }
+            : { label, stroke: color, value: seriesValue };
         }),
       ],
       scales: { x: { time: true } },
-      axes: [{}, { size: 60, values: (_, ticks) => ticks.map(formatNumber) }],
+      axes: [{}, { size: 60, values: (_, ticks, _axis, _space, increment) => formatTicks(ticks, increment) }],
     },
     data,
   );
@@ -259,7 +264,7 @@ export class Panel {
     const close = el("button", { type: "button", title: "Close", className: "close" }, "×");
     close.addEventListener("click", () => this.callbacks.close());
     const heading = el("h2", {}, title);
-    if (diff) heading.append(" ", statusBadge(diff.status));
+    if (diff) heading.append(" ", statusLabel(diff.status));
     return el("header", {}, heading, zoom, close);
   }
 

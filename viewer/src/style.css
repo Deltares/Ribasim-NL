@@ -1,8 +1,19 @@
 .ribasim-viewer {
+  /* Slate ink for text and the selection, with its muted tint for secondary text */
+  --ink: #1e2a32;
+  --ink-muted: #56656f;
   position: relative;
   overflow: hidden;
-  font-family: system-ui, sans-serif;
+  /* Designed to keep look-alike characters apart, which helps reading ids like 2701747 */
+  font-family: "Atkinson Hyperlegible Next", system-ui, sans-serif;
   font-size: 13px;
+  color: var(--ink);
+}
+
+.ribasim-viewer table,
+.ribasim-viewer .count,
+.ribasim-viewer .legend-labels {
+  font-variant-numeric: tabular-nums;
 }
 
 .ribasim-viewer .map {
@@ -103,8 +114,8 @@
 .ribasim-viewer .layers h4 {
   margin: 8px 0 2px;
   font-size: 12px;
-  text-transform: uppercase;
-  color: #666;
+  font-weight: 600;
+  color: var(--ink-muted);
 }
 
 .ribasim-viewer .layers label {
@@ -147,7 +158,7 @@
 
 .ribasim-viewer .note {
   margin: 6px 0 0;
-  color: #666;
+  color: var(--ink-muted);
   font-size: 12px;
 }
 
@@ -227,7 +238,7 @@
 .ribasim-viewer table.attributes th {
   width: 40%;
   font-weight: 500;
-  color: #555;
+  color: var(--ink-muted);
   word-break: break-all;
 }
 
@@ -329,7 +340,7 @@
   display: flex;
   justify-content: space-between;
   gap: 6px;
-  color: #444;
+  color: var(--ink-muted);
   white-space: nowrap;
 }
 
@@ -389,7 +400,7 @@
   flex-wrap: wrap;
   gap: 2px 12px;
   margin-top: 4px;
-  color: #555;
+  color: var(--ink-muted);
   font-size: 11px;
 }
 
@@ -446,7 +457,7 @@
 }
 
 .ribasim-viewer .facts dt {
-  color: #555;
+  color: var(--ink-muted);
 }
 
 .ribasim-viewer .facts dd {
@@ -509,14 +520,62 @@
   white-space: nowrap;
 }
 
-.ribasim-viewer .diff-badge {
+.ribasim-viewer .dot {
   display: inline-block;
-  padding: 0 5px;
-  border-radius: 3px;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
-  vertical-align: middle;
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  margin-right: 5px;
+  border-radius: 50%;
+}
+
+.ribasim-viewer .diff-status {
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink-muted);
+}
+
+.ribasim-viewer .diff-counts th:first-child {
+  text-align: left;
+  font-weight: 400;
+}
+
+.ribasim-viewer .diff-counts label,
+.ribasim-viewer .diff-changes label,
+.ribasim-viewer .diff-summary h4 label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.ribasim-viewer .diff-counts input,
+.ribasim-viewer .diff-changes input,
+.ribasim-viewer .diff-summary h4 input {
+  margin: 0;
+}
+
+.ribasim-viewer .diff-changes {
+  margin: 2px 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.ribasim-viewer .diff-changes .name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ribasim-viewer .diff-changes .count {
+  color: var(--ink-muted);
+}
+
+.ribasim-viewer .diff-summary summary .dot {
+  margin-left: 4px;
 }
 
 .ribasim-viewer table.attributes tr.changed {
@@ -537,4 +596,14 @@
   height: 8px;
   margin-right: 4px;
   border-radius: 2px;
+}
+
+/* Chart values appear only while hovering, and the base model series are a lighter tint of their color */
+.ribasim-viewer .u-legend {
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.ribasim-viewer .u-legend .u-series {
+  padding: 0 4px;
 }

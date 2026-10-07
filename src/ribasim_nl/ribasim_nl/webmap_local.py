@@ -304,13 +304,13 @@ def serve(mounts: dict[str, Path], query: str, title: str, port: int, open_brows
 
 
 def model_at(toml_path: Path, revision: str | None) -> tuple[Path, str]:
-    """The TOML of a model in the working tree, or at a git revision, and a label for it."""
+    """The TOML of a model in the working tree, or at a git revision, and a label: the revision or the model name."""
     if revision is None:
         return toml_path, toml_path.stem
     commit = resolve_commit(revision)
     if commit is None:
         sys.exit(f"{revision} is not a git revision")
-    return checkout_model(toml_path, commit), f"{toml_path.stem} @ {revision}"
+    return checkout_model(toml_path, commit), revision
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -331,20 +331,22 @@ def main(argv: list[str] | None = None) -> None:
         serve(
             {"model": head_dir},
             "data=model/",
-            f"{head_label} - Ribasim model viewer",
+            f"{head_label if args.rev is None else f'{args.toml.stem} @ {args.rev}'} - Ribasim model viewer",
             args.port,
             not args.no_browser,
         )
         return
     base_path = Path(args.base)
     base_toml, base_label = (base_path, base_path.stem) if base_path.is_file() else model_at(args.toml, args.base)
+    if not base_path.is_file() and args.rev is None:
+        head_label = "working tree"
     base_dir = export_cached(base_toml)
     assert base_dir != head_dir, "The model and --base are the same model"
     diff_dir = diff_cached(base_toml, head_toml, base_dir, head_dir, (base_label, head_label))
     serve(
         {"head": head_dir, "base": base_dir, "diff": diff_dir},
         "data=head/&base=base/&diff=diff/",
-        f"{base_label} → {head_label} - Ribasim model viewer",
+        f"{args.toml.stem}: {base_label} → {head_label} - Ribasim model viewer",
         args.port,
         not args.no_browser,
     )
