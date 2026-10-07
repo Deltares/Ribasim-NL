@@ -307,18 +307,35 @@ def export_control(source: Path, path: Path) -> Path:
     return path
 
 
-def export_webmap(toml_path: Path, waterboards_path: Path, output_dir: Path) -> dict:
-    """Export a Ribasim model to a directory of web-friendly files plus a `manifest.json`.
-
-    The viewer fetches files as `<path>?v=<hash>` so they can be cached indefinitely.
-    """
+def read_config(toml_path: Path) -> tuple[dict, Path, Path]:
+    """Read a Ribasim TOML, return the config, the input directory and the database path."""
     assert toml_path.is_file(), f"TOML not found: {toml_path}"
-    assert waterboards_path.is_file(), f"Water boards not found: {waterboards_path}"
     with toml_path.open("rb") as f:
         config = tomllib.load(f)
-    input_dir = toml_path.parent / config.get("input_dir", ".")
+    input_dir = model_input_dir(toml_path, config)
     database = input_dir / "database.gpkg"
     assert database.is_file(), f"Database not found: {database}"
+    return config, input_dir, database
+
+
+def model_input_dir(toml_path: Path, config: dict) -> Path:
+    """The input directory of a model, with its `database.gpkg`."""
+    return toml_path.parent / config.get("input_dir", ".")
+
+
+def model_results_dir(toml_path: Path, config: dict) -> Path:
+    """The results directory of a model, which may not exist."""
+    return toml_path.parent / config.get("results_dir", "results")
+
+
+def export_webmap(toml_path: Path, waterboards_path: Path | None, output_dir: Path) -> dict:
+    """Export a Ribasim model to a directory of web-friendly files plus a `manifest.json`.
+
+    The water boards are left out if `waterboards_path` is None.
+    The viewer fetches files as `<path>?v=<hash>` so they can be cached indefinitely.
+    """
+    config, input_dir, database = read_config(toml_path)
+    assert waterboards_path is None or waterboards_path.is_file(), f"Water boards not found: {waterboards_path}"
 
     if output_dir.exists():
         shutil.rmtree(output_dir)
@@ -334,16 +351,11 @@ def export_webmap(toml_path: Path, waterboards_path: Path, output_dir: Path) -> 
     nodes = export_nodes(database, output_dir / "nodes.parquet")
     export_links(database, output_dir / "links.parquet")
     export_basin_area(database, output_dir / "basin_area.pmtiles")
-    export_waterboards(waterboards_path, output_dir / "waterboards.geojson")
-    files = {
-        name: entry(output_dir / filename)
-        for name, filename in [
-            ("nodes", "nodes.parquet"),
-            ("links", "links.parquet"),
-            ("basin_area", "basin_area.pmtiles"),
-            ("waterboards", "waterboards.geojson"),
-        ]
-    }
+    exported = [("nodes", "nodes.parquet"), ("links", "links.parquet"), ("basin_area", "basin_area.pmtiles")]
+    if waterboards_path is not None:
+        export_waterboards(waterboards_path, output_dir / "waterboards.geojson")
+        exported.append(("waterboards", "waterboards.geojson"))
+    files = {name: entry(output_dir / filename) for name, filename in exported}
 
     tables = []
     sources: list[tuple[str, Path | None]] = [(name, None) for name in attribute_tables(database)]
@@ -364,7 +376,7 @@ def export_webmap(toml_path: Path, waterboards_path: Path, output_dir: Path) -> 
         "files": files,
         "tables": tables,
     }
-    results_dir = toml_path.parent / config.get("results_dir", "results")
+    results_dir = model_results_dir(toml_path, config)
     if results_dir.is_dir():
         results = export_results(results_dir, output_dir)
         for name in ("basin", "flow"):

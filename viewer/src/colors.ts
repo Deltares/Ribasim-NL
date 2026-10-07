@@ -3,6 +3,9 @@ import type { ResultVariable } from "./data";
 export type RGBA = [number, number, number, number];
 
 const VIRIDIS = ["#440154", "#482878", "#3e4989", "#31688e", "#26828e", "#1f9e89", "#35b779", "#6ece58", "#b5de2b", "#fde725"];
+// Light grey to slate ink, for the size of result differences: quieter than the colors of the network changes
+// that cause them
+export const GREYS = ["#c9d1d6", "#a3afb7", "#7e8d97", "#5a6b77", "#3a4a55", "#1e2a32"];
 // Red for falling, blue for rising values
 const RED_BLUE = ["#b2182b", "#d6604d", "#f4a582", "#fddbc7", "#f7f7f7", "#d1e5f0", "#92c5de", "#4393c3", "#2166ac"];
 
@@ -29,8 +32,11 @@ export function normalize(variable: ResultVariable, value: number): number {
 export class ColorScale {
   private readonly stops: [number, number, number][];
 
-  constructor(readonly variable: ResultVariable) {
-    this.stops = palette(variable).map(parseHex);
+  constructor(
+    readonly variable: ResultVariable,
+    private readonly colors = palette(variable),
+  ) {
+    this.stops = colors.map(parseHex);
   }
 
   /** Write the color of a value into `target` at `offset`, returns false if the value has no color. */
@@ -52,7 +58,7 @@ export class ColorScale {
   }
 
   gradient(): string {
-    return `linear-gradient(to right, ${palette(this.variable).join(", ")})`;
+    return `linear-gradient(to right, ${this.colors.join(", ")})`;
   }
 }
 
@@ -71,4 +77,15 @@ export function formatNumber(value: number): string {
   if (value === 0 || !Number.isFinite(value)) return String(value);
   const magnitude = Math.abs(value);
   return magnitude >= 1e4 || magnitude < 1e-2 ? value.toExponential(1) : String(Number(value.toPrecision(3)));
+}
+
+/** Tick labels with the decimals the tick spacing needs, so neighboring ticks never read the same. */
+export function formatTicks(ticks: number[], increment: number): string[] {
+  const largest = Math.max(0, ...ticks.map(Math.abs));
+  const step = Math.floor(Math.log10(increment) + 1e-9);
+  if (largest >= 1e5 || (largest > 0 && largest < 1e-3)) {
+    const digits = Math.max(1, Math.floor(Math.log10(largest)) - step);
+    return ticks.map((tick) => (tick === 0 ? "0" : tick.toExponential(digits)));
+  }
+  return ticks.map((tick) => tick.toFixed(Math.max(0, -step)));
 }

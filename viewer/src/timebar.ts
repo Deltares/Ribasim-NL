@@ -131,7 +131,8 @@ export class TimeBar {
       input.addEventListener("change", () => this.setLimit(kind, i, Number(input.value), input));
       return input;
     };
-    const units = el("span", "units", `${variable.scale === "log" ? "|x| " : ""}${variable.units}`);
+    const units = el("span", "units", variable.units);
+    if (variable.scale === "log") units.title = "Colored by the absolute value, on a log scale";
     const labels = el("div", "legend-labels");
     labels.append(limit(0), units);
     if (this.limits.has(key)) {

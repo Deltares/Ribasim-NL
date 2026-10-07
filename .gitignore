@@ -112,3 +112,6 @@ scripts/local_coupled_pipelines/
 /notebooks/ribasim_delwaq/ANIMO_to_delwaq/output
 /notebooks/ribasim_delwaq/ER_to_delwaq/data
 /notebooks/ribasim_delwaq/ER_to_delwaq/output
+
+# Model viewer exports of local models, see ribasim_nl.webmap_local
+.cache/
