@@ -64,8 +64,11 @@ INDEX_HTML = """<!doctype html>
   </body>
 </html>
 """
+MANIFEST = "manifest.json"
 # The result files that `export_webmap` reads
 RESULT_FILES = ("basin.nc", "flow.nc", "control.nc")
+# The characters of git revisions like main, origin/main, HEAD~2 or v1.0, without a leading dash: never an option
+REVISION = re.compile(r"[\w.@/~^{}:][\w.@/~^{}:-]*")
 RANGE = re.compile(r"bytes=(\d*)-(\d*)")
 COPY_CHUNK = 1 << 20
 
@@ -94,7 +97,7 @@ def cache_key(toml_path: Path) -> str:
 def export_cached(toml_path: Path, cache_dir: Path = CACHE_DIR) -> Path:
     """Export a model for the viewer, unless the cached export is up to date; return the export directory."""
     output_dir = cache_dir / cache_key(toml_path)
-    if is_up_to_date(output_dir / "manifest.json", model_sources(toml_path)):
+    if is_up_to_date(output_dir / MANIFEST, model_sources(toml_path)):
         print(f"Using the cached export of {toml_path} in {output_dir}")
         return output_dir
     print(f"Exporting {toml_path} to {output_dir}")
@@ -116,7 +119,7 @@ def diff_cached(
     """Compare two exported models, unless the cached comparison is up to date; return its directory."""
     output_dir = cache_dir / f"diff-{base_dir.name}-{head_dir.name}"
     output = output_dir / "diff.json"
-    sources = [base_dir / "manifest.json", head_dir / "manifest.json", Path(ribasim_nl.webmap_diff.__file__)]
+    sources = [base_dir / MANIFEST, head_dir / MANIFEST, Path(ribasim_nl.webmap_diff.__file__)]
     if is_up_to_date(output, sources):
         print(f"Using the cached comparison in {output_dir}")
         # The same commits can be named by other revisions
@@ -132,7 +135,10 @@ def diff_cached(
 
 def resolve_commit(revision: str, repo_dir: Path = REPO_DIR) -> str | None:
     """The commit hash of a git revision, or None if it is not one."""
-    result = subprocess.run(
+    if not REVISION.fullmatch(revision):
+        return None
+    # The revision is validated above and passed after --end-of-options
+    result = subprocess.run(  # NOSONAR
         ["git", "-C", str(repo_dir), "rev-parse", "--verify", "--quiet", "--end-of-options", f"{revision}^{{commit}}"],
         capture_output=True,
         text=True,
@@ -296,7 +302,8 @@ def serve(mounts: dict[str, Path], query: str, title: str, port: int, open_brows
     if open_browser:
         webbrowser.open(url)
     try:
-        server.serve_forever()  # NOSONAR: plain HTTP on the loopback interface only
+        # Plain HTTP is fine on the loopback interface only
+        server.serve_forever()  # NOSONAR
     except KeyboardInterrupt:
         pass
     finally:

@@ -204,7 +204,7 @@ def results_match_links(toml_path: Path, config: dict, links: pd.DataFrame) -> b
             }
         )
     columns = ["link_id", "from_node_id", "to_node_id"]
-    merged = results.merge(links[columns], on="link_id", how="left", suffixes=("", "_model"))
+    merged = results.merge(links[columns], on="link_id", how="left", suffixes=("", "_model"), validate="one_to_one")
     return bool(
         (
             (merged["from_node_id"] == merged["from_node_id_model"])

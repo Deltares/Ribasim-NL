@@ -323,7 +323,7 @@ export class Panel {
     const base = this.comparison?.base;
     const tables = source.tables.filter((table) => table.node_type === nodeType);
     const baseTables = diff?.status === "changed" && base ? base.tables.filter((table) => table.node_type === nodeType) : [];
-    const names = [...new Set([...tables, ...baseTables].map((table) => table.name))].sort();
+    const names = [...new Set([...tables, ...baseTables].map((table) => table.name))].sort((a, b) => a.localeCompare(b));
     return names.flatMap((name) => {
       const changed = diff?.status === "changed" && diff.changes.includes(name);
       const head = tables.find((table) => table.name === name);
