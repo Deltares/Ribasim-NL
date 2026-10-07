@@ -1549,6 +1549,17 @@
     ]
   },
   {
+    "objectID": "dev/viewer.html#viewing-local-models",
+    "href": "dev/viewer.html#viewing-local-models",
+    "title": "Model viewer",
+    "section": "Viewing local models",
+    "text": "Viewing local models\nThe viewer can also show any local model, without publishing it:\npixi run viewer data/Rijkswaterstaat/modellen/hws_2025_10_1/hws.toml\nThis exports the model with ribasim_nl.webmap to .cache/viewer, serves it with the viewer on http://localhost:8000, and opens it in a web browser. The export is reused as long as the model, its results and the export code are unchanged, so only the first run takes long; about 10 minutes for the coupled LHM model with results. Results are shown if the model’s results directory exists. Use --port to serve on another port, and --no-browser to not open a browser.\n\nComparing models\nTo review a pull request that changes a model, view only the differences from another version of the model. Usually that is the same model at another git revision, like main:\npixi run viewer data/Rijkswaterstaat/runs/lhm_coupled/lhm_coupled.toml --base origin/main\n--base takes a git revision or the TOML of another model. The model at a revision is read with DVC, from the DVC cache or the DVC remote, into .cache/viewer/revisions. Add --rev to also take the viewed model from a git revision instead of the working tree, for instance --rev HEAD --base origin/main. Fetch first to compare with the latest origin/main.\nNodes are matched by id, and links by their from and to node, since links get renumbered, see ribasim_nl.webmap_diff. A node or link in both models is changed if its geometry, an attribute, its rows in an input table, or its Basin / area differ. The map shows only the added, removed and changed features, in the colors of their status: green, orange and purple, on a grey base map. When zoomed out, the status rings around changed nodes become small dots. Removed and changed Basin / areas of the old model are drawn as dashed outlines. Turn on Unchanged in the layer list to show the other features faintly, for context.\nIf both models have results, the Basin levels and flow rates are compared too. Basins and flow links whose results differ more than a tolerance are also shown, in shades of grey by the largest difference. Differences of up to 1 mm in level, and of up to 1 L/s plus 1% in flow rate, are ignored as solver noise.\nThe Differences box counts the differences by status and by what changed, for instance Basin / state or geometry. Uncheck a status or a change to hide those features from the map, for instance to look past the many changed initial states. It also lists the changed TOML settings, all differing features, and the features whose results differ, largest first; click one to zoom to it. The panel of a changed feature lists what changed, shows the old value of changed attributes struck through, and shows both versions of changed tables. The result charts show the old model as dashed lines in a lighter tint.",
+    "crumbs": [
+      "Contributing",
+      "Model viewer"
+    ]
+  },
+  {
     "objectID": "dev/viewer.html#developing-the-viewer",
     "href": "dev/viewer.html#developing-the-viewer",
     "title": "Model viewer",
