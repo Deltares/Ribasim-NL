@@ -7,6 +7,7 @@ from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 from networkx import NetworkXNoPath
+from ribasim.nodes import manning_resistance
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.coupling_level_apply import (
     ensure_doorlaat_afvoer_max_downstream_level,
@@ -133,6 +134,31 @@ forced_coupling = {
     6000003: 3801961,  # Forceren zijtak Helanvaart Limburg
     3800029: 6002294,  # Defensiekanaal Limburg: voorkom koppeling via Junction 6003598
     3801958: 6002408,  # AaenMaas FlowDemand-inlaat 3800601 koppelen aan Limburg-basin
+    203885: 3402060,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-Junction, zie #824
+    203887: 3402060,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-Junction, zie #824
+    203898: 3402060,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-Junction, zie #824
+    203900: 3402060,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-Junction, zie #824
+}
+
+# Outlets that are open water connections, converted to ManningResistance after coupling, removing their control
+outlet_to_manning_resistance = {
+    1100600: {"profile_width": 10.0, "manning_n": 0.02},  # open water Angstel - ARK, zie #820
+}
+
+# Node names to set after coupling
+node_names = {
+    203899: "Dokkumer Nieuwe Zijlen schutsluis",  # zie #824
+    203901: "Dokkumer Nieuwe Zijlen stuw",  # zie #824
+    225212: "uitlaat: -0.52/-0.60 [m+NAP]",  # zie #824
+    225213: "uitlaat: -0.52/-0.60 [m+NAP]",  # zie #824
+}
+
+# Static metadata of connector nodes to set after coupling, e.g. levels that were boundary placeholders
+connector_static_meta = {
+    203886: {"meta_to_level": -0.60},  # zie #824
+    203888: {"meta_from_level": -2.35},  # zie #824
+    203899: {"meta_to_level": -0.60},  # zie #824
+    203901: {"meta_to_level": -0.60},  # zie #824
 }
 
 
@@ -436,6 +462,8 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
 
         # Replace boundary id in all control tables with basin id
         has_control = replace_listen_node_id(model, boundary_node_id, couple_with_basin_id)
+        if has_control and model.get_node_type(couple_with_basin_id) == "Junction":
+            raise ValueError(f"Control listens to {boundary_node}, which cannot be coupled to a Junction.")
 
         # Add control node for non RWS boundaries when no control node is yet present
         # Disabled since no data is supplied yet to the control node
@@ -522,6 +550,60 @@ def fix_basin_profiles(model: Model) -> None:
             if min_level < basin.level.iloc[0]:
                 print(f"Lowering basin {upstream_basin_id} profile {min_level}.")
                 model.basin.profile.df.loc[(mask[mask]).index[0], "level"] = min_level - MIN_BASIN_OUTLET_DIFF
+
+
+def node_in_model(model: Model, node_id: int) -> bool:
+    """Check if a configured node is in the model, raising if its authority is included but the node is not."""
+    if node_id in model.node.df.index:
+        return True
+    authority = _prefix_to_authority.get(node_id // 10**5)
+    if authority in set(model.node.df["meta_waterbeheerder"].dropna().unique()):
+        raise KeyError(f"Node {node_id} not found in model, but its authority '{authority}' is included.")
+    return False
+
+
+def update_node_metadata(model: Model) -> None:
+    """Set the configured node names and connector static metadata."""
+    for node_id, name in node_names.items():
+        if node_in_model(model, node_id):
+            model.node.df.loc[node_id, "name"] = name
+
+    for node_id, meta in connector_static_meta.items():
+        if not node_in_model(model, node_id):
+            continue
+        static_df = model.get_component(model.get_node_type(node_id)).static.df
+        mask = static_df.node_id == node_id
+        if not mask.any():
+            raise KeyError(f"Node {node_id} in connector_static_meta has no static rows.")
+        for column, value in meta.items():
+            static_df.loc[mask, column] = value
+
+
+def convert_outlets_to_manning_resistance(model: Model) -> None:
+    """Convert the configured Outlets between two Basins to ManningResistance, removing their controllers."""
+    for node_id, parameters in outlet_to_manning_resistance.items():
+        if not node_in_model(model, node_id):
+            continue
+        node_type = model.get_node_type(node_id)
+        if node_type != "Outlet":
+            raise ValueError(f"Expected Outlet for node {node_id}, got {node_type}.")
+        for neighbor_id in [model.upstream_node_id(node_id), model.downstream_node_id(node_id)]:
+            if isinstance(neighbor_id, pd.Series) or model.get_node_type(neighbor_id) != "Basin":
+                raise ValueError(f"Outlet {node_id} should connect two Basins to become a ManningResistance.")
+
+        control_df = model.link.df[model.link.df["link_type"] == "control"]
+        for control_node_id in control_df.loc[control_df["to_node_id"] == node_id, "from_node_id"]:
+            if (control_df["from_node_id"] == control_node_id).sum() != 1:
+                raise ValueError(f"Control node {control_node_id} controls more nodes than Outlet {node_id}.")
+            model.remove_node(control_node_id, remove_links=True)
+
+        static = manning_resistance.Static(
+            length=[100.0],
+            manning_n=[parameters["manning_n"]],
+            profile_width=[parameters["profile_width"]],
+            profile_slope=[3.0],
+        )
+        model.update_node(node_id, "ManningResistance", [static])
 
 
 def remove_invalid_topology_nodes(model: Model) -> None:
@@ -720,17 +802,24 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
     return merged_outlet
 
 
+def couple_model(toml_file: Path) -> None:
+    """Couple the models merged in `toml_file`, and write the coupled model next to it."""
+    model, network, basin_areas_df = initialize_models(toml_file)
+    all_link_table = process_boundary_nodes(model, network, basin_areas_df)
+    update_node_metadata(model)
+    convert_outlets_to_manning_resistance(model)
+    fix_basin_profiles(model)
+    remove_invalid_topology_nodes(model)
+    coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)
+    run_configured_coupling_level_check(coupled_toml_file)
+
+
 # %% Process lhm_parts model
 
 # couple LHM
 if couple_lhm:
     toml_file = data_dir / "Rijkswaterstaat/modellen/lhm_parts/lhm.toml"
-    model, network, basin_areas_df = initialize_models(toml_file)
-    all_link_table = process_boundary_nodes(model, network, basin_areas_df)
-    fix_basin_profiles(model)
-    remove_invalid_topology_nodes(model)
-    coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)
-    run_configured_coupling_level_check(coupled_toml_file)
+    couple_model(toml_file)
 
 if sub_models:
     # couple sub-models if any
@@ -749,9 +838,4 @@ if sub_models:
         except ValueError:
             print(f"Not exactly one TOML in {model_dir}, skipping.")
             continue
-        model, network, basin_areas_df = initialize_models(toml_file)
-        all_link_table = process_boundary_nodes(model, network, basin_areas_df)
-        fix_basin_profiles(model)
-        remove_invalid_topology_nodes(model)
-        coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)
-        run_configured_coupling_level_check(coupled_toml_file)
+        couple_model(toml_file)

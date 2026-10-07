@@ -465,17 +465,6 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[563])
 
-# TEMP add gemaal and LB
-level_boundary_node = ribasim_model.level_boundary.add(
-    Node(geometry=Point(79312, 424826)), [level_boundary.Static(level=[default_level])]
-)
-tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
-    Node(geometry=Point(79325, 424862)),
-    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
-)
-ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[26])
-
 # reversing Pump and Outlet (not possible in FF)
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(98844, 425287)), [level_boundary.Static(level=[default_level])]

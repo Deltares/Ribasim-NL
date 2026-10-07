@@ -22,6 +22,7 @@ from ribasim_nl.rws_kunstwerken import (
     read_qq_curve,
     read_rating_curve,
 )
+from shapely.affinity import translate
 from shapely.geometry import LineString, MultiLineString
 
 from ribasim_nl import CloudStorage, Model, Network
@@ -498,7 +499,6 @@ for row in basin_poly_gdf.itertuples():
     # overige basin_boundary_nodes voorzien van een ManningResistance
     for bbn_row in basin_boundary_nodes.reset_index().itertuples():
         node = Node(bbn_row.node_id, bbn_row.geometry)
-        poly = basin_poly_gdf.loc[[bbn_row.upstream, bbn_row.downstream]].buffer(1).union_all().buffer(-1)
         line = LineString(
             [
                 network.nodes.at[bbn_row.node_id, "geometry"],
@@ -506,7 +506,28 @@ for row in basin_poly_gdf.itertuples():
             ]
         )
 
-        geometry = clip_profile(get_profile(line, bbn_row.geometry, 50000), bbn_row.geometry, poly)
+        # the narrowest of both basins at the boundary sets the width, e.g. the Schelde-Rijnkanaal, not the Krammer
+        # the profile lies on the basin boundary, so measure it a few meters into each basin
+        # see https://github.com/Deltares/Ribasim-NL/issues/803
+        profile = get_profile(line, bbn_row.geometry, 50000)
+        shift = min(25.0, line.length / 2)
+        dx, dy = (
+            (line.coords[1][0] - line.coords[0][0]) / line.length,
+            (line.coords[1][1] - line.coords[0][1]) / line.length,
+        )
+        basin_profiles = []
+        for basin_id, sign in ((bbn_row.upstream, 1), (bbn_row.downstream, -1)):
+            xoff, yoff = sign * shift * dx, sign * shift * dy
+            basin_profiles.append(
+                clip_profile(
+                    translate(profile, xoff, yoff),
+                    translate(bbn_row.geometry, xoff, yoff),
+                    basin_poly_gdf.at[basin_id, "geometry"],
+                )
+            )
+        basin_profiles = [i for i in basin_profiles if i.length > 0]
+        assert basin_profiles, f"No profile across the basins at ManningResistance {bbn_row.node_id}"
+        geometry = min(basin_profiles, key=lambda i: i.length)
         profile_geometries += [{"node_id": bbn_row.node_id, "geometry": geometry}]
 
         data = [

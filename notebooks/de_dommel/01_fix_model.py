@@ -361,6 +361,10 @@ model.node.df.loc[model.flow_boundary.node.df.index, "meta_categorie"] = "buiten
 # fix Dommel en Aa
 model.merge_basins(node_id=1557, to_node_id=1140)
 
+# no culvert between basins 1859 and 1747 near Soerendonk, this connection caused circular pumping
+# see: https://github.com/Deltares/Ribasim-NL/issues/825
+model.remove_node(643, remove_links=True)
+
 # %%
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{short_name}.toml")
 model.write(ribasim_toml)
