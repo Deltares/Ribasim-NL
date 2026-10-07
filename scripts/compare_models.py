@@ -7,12 +7,11 @@ Usage:
 
 Both arguments may be directories or single files. GeoPackages are compared per table
 through SQLite (geometry blobs byte for byte), Arrow and NetCDF files per column or variable,
-TOML files after parsing, and other files by content hash. Directories named `results` are
+TOML files after parsing, and other files byte for byte. Directories named `results` are
 skipped unless `--include-results` is given, since they hold simulation output.
 """
 
 import argparse
-import hashlib
 import sqlite3
 import sys
 import tomllib
@@ -85,7 +84,8 @@ def compare_gpkg(ref: Path, cand: Path, rtol: float) -> list[str]:
     """Compare all user tables of two GeoPackages."""
 
     def tables(path: Path) -> dict[str, pd.DataFrame]:
-        with sqlite3.connect(f"file:{path}?mode=ro", uri=True) as con:
+        # as_uri percent-encodes characters like `?` and `#` that would otherwise end the path
+        with sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True) as con:
             names = [
                 r[0]
                 for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -137,8 +137,8 @@ def compare_netcdf(ref: Path, cand: Path, rtol: float) -> list[str]:
 
 def compare_toml(ref: Path, cand: Path) -> list[str]:
     """Compare two TOML files after parsing."""
-    a = tomllib.loads(ref.read_text())
-    b = tomllib.loads(cand.read_text())
+    a = tomllib.loads(ref.read_text())  # NOSONAR: comparing user-chosen paths is the purpose
+    b = tomllib.loads(cand.read_text())  # NOSONAR: comparing user-chosen paths is the purpose
     return [] if a == b else [f"{ref.name}: TOML content differs"]
 
 
@@ -154,7 +154,7 @@ def compare_file(ref: Path, cand: Path, rtol: float) -> list[str]:
         case ".toml":
             return compare_toml(ref, cand)
         case _:
-            same = hashlib.sha256(ref.read_bytes()).digest() == hashlib.sha256(cand.read_bytes()).digest()
+            same = ref.read_bytes() == cand.read_bytes()  # NOSONAR: comparing user-chosen paths is the purpose
             return [] if same else [f"{ref.name}: content differs"]
 
 
