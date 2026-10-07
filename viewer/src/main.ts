@@ -12,8 +12,8 @@ import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import { Protocol } from "pmtiles";
 import { BASEMAPS, basemapStyle, DEFAULT_BASEMAP, withOverlays } from "./basemaps";
 import { ColorScale, formatNumber, normalize } from "./colors";
-import { fileUrl, loadComparison, loadManifest, type Comparison, type Manifest } from "./data";
-import { CONTEXT_COLOR, DIFF_CSS, describeDiff, diffSummary, statusColors } from "./diff";
+import { fileUrl, loadComparison, loadManifest, type Comparison, type Manifest, type ModelDiff, type ResultKind } from "./data";
+import { CONTEXT_COLOR, DIFF_CSS, describeDiff, describeResult, diffSummary, ResultColors, statusColors } from "./diff";
 import { linkLabel, loadNetwork, type Group, type LayerData, type Network } from "./network";
 import { Panel, type Selection } from "./panel";
 import { ResultFrames } from "./results";
@@ -154,6 +154,8 @@ class Viewer {
   private readonly diffColors = new Map<Group, Uint8Array>();
   /** Status rings around the differing nodes, only when comparing models */
   private readonly diffRings: LayerData | null = null;
+  /** The colors of the result differences, only when comparing models that both have results */
+  private readonly resultColors: Record<ResultKind, ResultColors> | null = null;
 
   constructor(
     private readonly map: maplibregl.Map,
@@ -172,8 +174,16 @@ class Viewer {
     this.visible.set("unchanged", false);
     if (comparison) {
       const { diff } = comparison;
-      for (const group of network.nodeGroups) this.diffColors.set(group, statusColors(group, network.nodeId, diff.nodes));
-      for (const group of network.linkGroups) this.diffColors.set(group, statusColors(group, network.linkId, diff.links));
+      const results = diff.results && { basin: new ResultColors(diff.results.basin), flow: new ResultColors(diff.results.flow) };
+      this.resultColors = results;
+      for (const group of network.nodeGroups) {
+        const basin = group.type === "Basin" ? results?.basin : undefined;
+        this.diffColors.set(group, statusColors(group, network.nodeId, diff.nodes, basin));
+      }
+      for (const group of network.linkGroups) {
+        const flow = group.type === "flow" ? results?.flow : undefined;
+        this.diffColors.set(group, statusColors(group, network.linkId, diff.links, flow));
+      }
       this.diffRings = this.ringData();
     }
 
@@ -191,7 +201,7 @@ class Viewer {
     sidebar.append(...this.searchControl());
     if (comparison) {
       sidebar.append(
-        diffSummary(comparison.diff, network, (selection) => {
+        diffSummary(comparison.diff, this.resultColors, network, (selection) => {
           this.select(selection);
           this.zoomTo(selection);
         }),
@@ -231,13 +241,17 @@ class Viewer {
     };
   }
 
-  /** Color the Basin / areas of the differing Basins in the head model by their status. */
+  /** Color the Basin / areas of the differing Basins in the head model by their status, or result difference. */
   private colorDiffAreas(): void {
     if (!this.comparison) return;
+    const target = { source: "basin_area", sourceLayer: "basin_area" };
+    for (const id of this.resultColors?.basin.diff.differences.keys() ?? []) {
+      this.map.setFeatureState({ ...target, id }, { diff: this.resultColors!.basin.css(id) });
+    }
     for (const [id, { status }] of this.comparison.diff.nodes) {
       const row = this.network.nodeRow.get(id);
       if (status === "removed" || row === undefined || this.network.nodeType[row] !== "Basin") continue;
-      this.map.setFeatureState({ source: "basin_area", sourceLayer: "basin_area", id }, { diff: DIFF_CSS[status] });
+      this.map.setFeatureState({ ...target, id }, { diff: DIFF_CSS[status] });
     }
   }
 
@@ -675,7 +689,8 @@ class Viewer {
     };
     const diffs = selection.kind === "node" ? this.comparison?.diff.nodes : this.comparison?.diff.links;
     const diff = diffs?.get(selection.id);
-    const status = diff ? `\n${describeDiff(diff)}` : "";
+    const result = describeResult(this.comparison?.diff.results?.[selection.kind === "node" ? "basin" : "flow"], selection.id);
+    const status = (diff ? `\n${describeDiff(diff)}` : "") + (result ? `\n${result}` : "");
     if (selection.kind === "node") {
       const nodeType = network.nodeType[network.nodeRow.get(selection.id)!];
       const extra = nodeType === "Basin" ? value(this.basinColoring, "basin") : "";
@@ -881,18 +896,24 @@ class Viewer {
   }
 }
 
-/** The extent of the differing nodes, and of the nodes of differing links. */
-function diffBounds(network: Network): [number, number, number, number] | null {
+/**
+ * The extent of the differing nodes, and of the nodes of differing links. Differences in results only spread
+ * downstream of a change, so they are left out, unless there are no other differences.
+ */
+function diffBounds(network: Network, diff: ModelDiff): [number, number, number, number] | null {
   const bounds = new maplibregl.LngLatBounds();
   const extend = (nodeRow: number | undefined) => {
     if (nodeRow !== undefined) bounds.extend([network.nodeX[nodeRow], network.nodeY[nodeRow]]);
   };
-  for (const group of network.nodeGroups) group.rows.forEach(extend);
-  for (const group of network.linkGroups) {
-    for (const row of group.rows) {
-      extend(network.nodeRow.get(network.fromNodeId[row]));
-      extend(network.nodeRow.get(network.toNodeId[row]));
-    }
+  const networkChanged = diff.nodes.size > 0 || diff.links.size > 0;
+  const nodeIds = networkChanged ? diff.nodes.keys() : (diff.results?.basin.differences.keys() ?? []);
+  const linkIds = networkChanged ? diff.links.keys() : (diff.results?.flow.differences.keys() ?? []);
+  for (const id of nodeIds) extend(network.nodeRow.get(id));
+  for (const id of linkIds) {
+    const row = network.linkRow.get(id);
+    if (row === undefined) continue;
+    extend(network.nodeRow.get(network.fromNodeId[row]));
+    extend(network.nodeRow.get(network.toNodeId[row]));
   }
   return bounds.isEmpty() ? null : (bounds.toArray().flat() as [number, number, number, number]);
 }
@@ -914,7 +935,7 @@ async function main(): Promise<void> {
     // MapLibre adds its view to the hash, so check for it before creating the map
     const hasView = hashParams().has("map");
     // When comparing models, start with a view of the differences
-    const bounds = hasView ? undefined : comparison ? (diffBounds(await networkPromise) ?? manifest.bounds) : manifest.bounds;
+    const bounds = hasView ? undefined : comparison ? (diffBounds(await networkPromise, comparison.diff) ?? manifest.bounds) : manifest.bounds;
     const map = new maplibregl.Map({
       container,
       hash: "map",

@@ -3,6 +3,8 @@ import type { ResultVariable } from "./data";
 export type RGBA = [number, number, number, number];
 
 const VIRIDIS = ["#440154", "#482878", "#3e4989", "#31688e", "#26828e", "#1f9e89", "#35b779", "#6ece58", "#b5de2b", "#fde725"];
+// Light to dark, for magnitudes; unlike the other palettes distinct from the colors of the comparison status
+export const PURPLES = ["#dadaeb", "#bcbddc", "#9e9ac8", "#807dba", "#6a51a3", "#54278f", "#3f007d"];
 // Red for falling, blue for rising values
 const RED_BLUE = ["#b2182b", "#d6604d", "#f4a582", "#fddbc7", "#f7f7f7", "#d1e5f0", "#92c5de", "#4393c3", "#2166ac"];
 
@@ -29,8 +31,11 @@ export function normalize(variable: ResultVariable, value: number): number {
 export class ColorScale {
   private readonly stops: [number, number, number][];
 
-  constructor(readonly variable: ResultVariable) {
-    this.stops = palette(variable).map(parseHex);
+  constructor(
+    readonly variable: ResultVariable,
+    private readonly colors = palette(variable),
+  ) {
+    this.stops = colors.map(parseHex);
   }
 
   /** Write the color of a value into `target` at `offset`, returns false if the value has no color. */
@@ -52,7 +57,7 @@ export class ColorScale {
   }
 
   gradient(): string {
-    return `linear-gradient(to right, ${palette(this.variable).join(", ")})`;
+    return `linear-gradient(to right, ${this.colors.join(", ")})`;
   }
 }
 

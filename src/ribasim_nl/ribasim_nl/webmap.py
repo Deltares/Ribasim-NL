@@ -312,10 +312,15 @@ def read_config(toml_path: Path) -> tuple[dict, Path, Path]:
     assert toml_path.is_file(), f"TOML not found: {toml_path}"
     with toml_path.open("rb") as f:
         config = tomllib.load(f)
-    input_dir = toml_path.parent / config.get("input_dir", ".")
+    input_dir = model_input_dir(toml_path, config)
     database = input_dir / "database.gpkg"
     assert database.is_file(), f"Database not found: {database}"
     return config, input_dir, database
+
+
+def model_input_dir(toml_path: Path, config: dict) -> Path:
+    """The input directory of a model, with its `database.gpkg`."""
+    return toml_path.parent / config.get("input_dir", ".")
 
 
 def model_results_dir(toml_path: Path, config: dict) -> Path:

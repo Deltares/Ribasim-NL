@@ -2,7 +2,7 @@
 
 Nodes are matched by node_id, and links by from_node_id and to_node_id, since links get renumbered.
 A feature in both models is changed if its geometry, an attribute, its rows in an input table or its
-Basin / area differ.
+Basin / area differ. If both models have results, the Basin levels and flow rates that differ are listed too.
 """
 
 import json
@@ -13,14 +13,18 @@ import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 import shapely
+import xarray as xr
 
-from ribasim_nl.webmap import read_config, read_features
+from ribasim_nl.webmap import model_results_dir, read_config, read_features
 
 # Geometries that differ less than this, in model CRS units (m), are equal
 GEOMETRY_TOLERANCE = 0.01
 TABLE_BATCH_ROWS = 1 << 20
 # Ids of the regional models, renumbered together with the links, so differences are no change
 IGNORED_COLUMNS = {"meta_link_id_waterbeheerder"}
+# The result variable compared per result set, with the absolute and relative tolerance below which results are
+# equal. The relative tolerance applies to the largest magnitude of a feature, and is chosen above solver noise.
+RESULT_VARIABLES = {"basin": ("level", 1e-3, 0.0), "flow": ("flow_rate", 1e-3, 1e-2)}
 
 
 def values_equal(base: pd.Series, head: pd.Series) -> np.ndarray:
@@ -36,6 +40,14 @@ def geometries_equal(base: np.ndarray, head: np.ndarray) -> np.ndarray:
         shapely.equals_exact(shapely.normalize(base), shapely.normalize(head), tolerance=GEOMETRY_TOLERANCE),
         dtype=bool,
     )
+
+
+def matched_ids(base: pd.DataFrame, head: pd.DataFrame, id_column: str, key: list[str]) -> pd.Series:
+    """The base id of each feature in both models, indexed by head id, matched on the key columns."""
+    columns = list(dict.fromkeys([*key, id_column]))
+    merged = head[columns].merge(base[columns], on=key, suffixes=("", "_base"), validate="one_to_one")
+    base_ids = merged[id_column] if id_column in key else merged[f"{id_column}_base"]
+    return pd.Series(base_ids.to_numpy(), index=pd.Index(merged[id_column].to_numpy(), name=id_column))
 
 
 def compare_features(
@@ -181,6 +193,62 @@ def compare_basin_areas(base: gpd.GeoSeries, head: gpd.GeoSeries) -> list[int]:
     return sorted(int(id) for id in common[differs].union(head.index.symmetric_difference(base.index)))
 
 
+def results_match_links(toml_path: Path, config: dict, links: pd.DataFrame) -> bool:
+    """Whether every link in the flow results connects the same nodes in the model, so the results are not outdated."""
+    with xr.open_dataset(model_results_dir(toml_path, config) / "flow.nc") as ds:
+        results = pd.DataFrame(
+            {
+                "link_id": ds["link_id"].to_numpy().astype("int64"),
+                "from_node_id": ds["from_node_id"].to_numpy(),
+                "to_node_id": ds["to_node_id"].to_numpy(),
+            }
+        )
+    columns = ["link_id", "from_node_id", "to_node_id"]
+    merged = results.merge(links[columns], on="link_id", how="left", suffixes=("", "_model"))
+    return bool(
+        (
+            (merged["from_node_id"] == merged["from_node_id_model"])
+            & (merged["to_node_id"] == merged["to_node_id_model"])
+        ).all()
+    )
+
+
+def read_result(export_dir: Path, manifest: dict, kind: str, variable: str) -> pd.DataFrame:
+    """One result variable of an export, with a row per time step and a column per feature id."""
+    entry = manifest["results"][kind]
+    df = pd.read_parquet(export_dir / entry["by_id"]["path"], columns=[entry["id"], "time", variable])
+    return df.pivot(index="time", columns=entry["id"], values=variable)
+
+
+def compare_results(base: pd.DataFrame, head: pd.DataFrame, base_ids: pd.Series, atol: float, rtol: float) -> dict:
+    """Compare a result variable at the time steps of both models, for the features matched by `base_ids`.
+
+    Returns the number of compared features, and the difference head - base with the largest magnitude per
+    head id, for features where it exceeds `atol` plus `rtol` times the largest magnitude of the feature.
+    A value missing in one model only is a difference of unknown size, reported as None.
+    """
+    times = base.index.intersection(head.index)
+    assert len(times) > 0, "The results have no time steps in common"
+    base_ids = base_ids[base_ids.index.isin(head.columns) & base_ids.isin(base.columns)]
+    head_values = head.loc[times, base_ids.index].to_numpy(dtype="float64")
+    base_values = base.loc[times, base_ids.to_numpy()].to_numpy(dtype="float64")
+    delta = head_values - base_values
+    delta[np.isnan(head_values) & np.isnan(base_values)] = 0.0
+    delta[np.isnan(delta)] = np.inf
+    scale = np.fmax(
+        np.nanmax(np.abs(head_values), axis=0, initial=0.0), np.nanmax(np.abs(base_values), axis=0, initial=0.0)
+    )
+    largest = delta[np.abs(delta).argmax(axis=0), np.arange(delta.shape[1])]
+    differs = np.abs(largest) > atol + rtol * scale
+    return {
+        "compared": len(base_ids),
+        "differences": {
+            int(id): float(value) if np.isfinite(value) else None
+            for id, value in zip(base_ids.index[differs], largest[differs], strict=True)
+        },
+    }
+
+
 def flatten(config: dict, prefix: str = "") -> dict[str, str]:
     """Flatten nested TOML tables to dotted keys with string values."""
     flat = {}
@@ -202,13 +270,23 @@ def compare_config(base: dict, head: dict) -> list[dict]:
     ]
 
 
-def diff_models(base_toml: Path, head_toml: Path, base_dir: Path, head_dir: Path, output_path: Path) -> dict:
+def diff_models(
+    base_toml: Path,
+    head_toml: Path,
+    base_dir: Path,
+    head_dir: Path,
+    output_path: Path,
+    labels: tuple[str, str] | None = None,
+) -> dict:
     """Compare two models and their `export_webmap` output, and write the differences as JSON.
 
     Nodes and links map ids to `{"status": "added" | "removed" | "changed", "changes": [...]}`, where the
     changes name the attribute columns, the tables, "geometry" or "Basin / area" that differ.
     Changed links have a `base_id` if they were renumbered. Removed links are keyed by their negated base
     link_id, since that id may be used by another link in the head model.
+    If both models have results, `results` has the Basin levels and flow rates that differ per head id,
+    see `compare_results`, otherwise it is None. Results whose links are not those of their model are outdated,
+    and are not compared; `results_note` then says why. The labels name the models, by default their model names.
     """
     base_config, _, base_database = read_config(base_toml)
     head_config, _, head_database = read_config(head_toml)
@@ -220,12 +298,10 @@ def diff_models(base_toml: Path, head_toml: Path, base_dir: Path, head_dir: Path
     nodes, removed_nodes = compare_features(base_nodes, head_nodes, "node_id")
     nodes |= removed_nodes
     # Link ids are not stable, links are renumbered when the network is rebuilt
-    links, removed_links = compare_features(
-        read_features(base_database, "Link", "link_id"),
-        read_features(head_database, "Link", "link_id"),
-        "link_id",
-        key=["from_node_id", "to_node_id"],
-    )
+    base_links = read_features(base_database, "Link", "link_id")
+    head_links = read_features(head_database, "Link", "link_id")
+    link_key = ["from_node_id", "to_node_id"]
+    links, removed_links = compare_features(base_links, head_links, "link_id", key=link_key)
     # The ids of removed links may be in use in the head model
     links |= {-id: diff for id, diff in removed_links.items()}
     node_changes = compare_tables(base_dir, base_manifest, head_dir, head_manifest)
@@ -237,12 +313,42 @@ def diff_models(base_toml: Path, head_toml: Path, base_dir: Path, head_dir: Path
         if node_id in in_both:
             nodes.setdefault(node_id, {"status": "changed", "changes": []})["changes"].extend(changes)
 
+    results, results_note = None, None
+    outdated = [
+        name
+        for name, toml, config, manifest, model_links in [
+            ("base", base_toml, base_config, base_manifest, base_links),
+            ("head", head_toml, head_config, head_manifest, head_links),
+        ]
+        if "results" in manifest and not results_match_links(toml, config, model_links)
+    ]
+    if outdated:
+        models = " and ".join(outdated) + (" models" if len(outdated) > 1 else " model")
+        results_note = f"The results of the {models} are outdated: their links differ from the model"
+        print(results_note)
+    elif "results" in base_manifest and "results" in head_manifest:
+        base_ids = {
+            "basin": matched_ids(base_nodes, head_nodes, "node_id", ["node_id"]),
+            "flow": matched_ids(base_links, head_links, "link_id", link_key),
+        }
+        results = {}
+        for kind, (variable, atol, rtol) in RESULT_VARIABLES.items():
+            base_result = read_result(base_dir, base_manifest, kind, variable)
+            head_result = read_result(head_dir, head_manifest, kind, variable)
+            units = head_manifest["results"][kind]["variables"][variable]["units"]
+            results[kind] = {"variable": variable, "units": units, "atol": atol, "rtol": rtol} | compare_results(
+                base_result, head_result, base_ids[kind], atol, rtol
+            )
+
+    base_label, head_label = labels or (base_manifest["model"], head_manifest["model"])
     diff = {
-        "base": {"model": base_manifest["model"], "toml": base_toml.as_posix()},
-        "head": {"model": head_manifest["model"], "toml": head_toml.as_posix()},
+        "base": {"model": base_manifest["model"], "toml": base_toml.as_posix(), "label": base_label},
+        "head": {"model": head_manifest["model"], "toml": head_toml.as_posix(), "label": head_label},
         "config": compare_config(base_config, head_config),
         "nodes": {str(id): nodes[id] for id in sorted(nodes)},
         "links": {str(id): links[id] for id in sorted(links)},
+        "results": results,
+        "results_note": results_note,
     }
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(diff, indent=1))

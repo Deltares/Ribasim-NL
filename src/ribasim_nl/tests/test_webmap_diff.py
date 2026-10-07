@@ -1,4 +1,6 @@
 import json
+import shutil
+import subprocess
 import threading
 import urllib.request
 from http.server import ThreadingHTTPServer
@@ -9,11 +11,19 @@ import pandas as pd
 import pytest
 import ribasim_nl.webmap_diff
 import ribasim_nl.webmap_local
+import xarray as xr
 from ribasim import Model, Node
 from ribasim.nodes import basin, level_boundary, tabulated_rating_curve
 from ribasim_nl.webmap import export_webmap
-from ribasim_nl.webmap_diff import compare_config, compare_features, diff_models, node_digests
-from ribasim_nl.webmap_local import export_cached, make_handler, parse_range
+from ribasim_nl.webmap_diff import (
+    compare_config,
+    compare_features,
+    compare_results,
+    diff_models,
+    matched_ids,
+    node_digests,
+)
+from ribasim_nl.webmap_local import checkout_model, export_cached, make_handler, parse_range, resolve_commit
 from shapely.geometry import LineString, MultiPolygon, Point, box
 
 
@@ -45,6 +55,27 @@ def _write_model(path, changed: bool):
     return toml
 
 
+def _write_results(toml, link_ids: list[int], changed: bool, level_offset: float, flow_scale: float) -> None:
+    """Results of the small model: Basin #1, and links with the given ids from the Basin and to the boundary."""
+    results_dir = toml.parent / "results"
+    results_dir.mkdir()
+    time = pd.date_range("2020-01-01", periods=3, freq="D")
+    level = np.array([[0.5], [0.6], [0.7]]) + level_offset
+    xr.Dataset(
+        {"level": (("time", "node_id"), level, {"units": "m"}), "storage": (("time", "node_id"), 10.0 * level)},
+        coords={"time": time, "node_id": [1]},
+    ).to_netcdf(results_dir / "basin.nc")
+    boundary_id = 4 if changed else 3
+    xr.Dataset(
+        {
+            "flow_rate": (("time", "link_id"), np.full((3, len(link_ids)), 10.0) * flow_scale, {"units": "m3 s-1"}),
+            "from_node_id": (("link_id",), [1, 2]),
+            "to_node_id": (("link_id",), [2, boundary_id]),
+        },
+        coords={"time": time, "link_id": link_ids},
+    ).to_netcdf(results_dir / "flow.nc")
+
+
 def test_diff_models(tmp_path):
     base_toml = _write_model(tmp_path / "base", changed=False)
     head_toml = _write_model(tmp_path / "head", changed=True)
@@ -65,9 +96,64 @@ def test_diff_models(tmp_path):
     assert diff["links"] == {"12": {"status": "added", "changes": []}, "-11": {"status": "removed", "changes": []}}
     assert {"key": "solver.abstol", "base": "1e-06", "head": "1e-05"} in diff["config"]
 
+    assert diff["results"] is None
+    assert diff["base"]["label"] == diff["head"]["label"] == "model"
+
     # A model compared with itself has no differences
-    same = diff_models(base_toml, base_toml, base_dir, base_dir, tmp_path / "same.json")
+    same = diff_models(base_toml, base_toml, base_dir, base_dir, tmp_path / "same.json", ("main", "head"))
     assert same["nodes"] == {} and same["links"] == {} and same["config"] == []
+    assert same["base"]["label"] == "main" and same["head"]["label"] == "head"
+
+
+def test_diff_models_results(tmp_path):
+    base_toml = _write_model(tmp_path / "base", changed=False)
+    head_toml = _write_model(tmp_path / "head", changed=True)
+    # The Basin to weir link is renumbered from 10 to 20, and its flow changes by 0.1 %, within the tolerance
+    _write_results(base_toml, [10, 11], changed=False, level_offset=0.0, flow_scale=1.0)
+    _write_results(head_toml, [20, 12], changed=True, level_offset=0.25, flow_scale=1.001)
+    base_dir, head_dir = tmp_path / "base_webmap", tmp_path / "head_webmap"
+    export_webmap(base_toml, None, base_dir)
+    export_webmap(head_toml, None, head_dir)
+    results = diff_models(base_toml, head_toml, base_dir, head_dir, tmp_path / "diff.json")["results"]
+
+    assert results["basin"]["variable"] == "level"
+    assert results["basin"]["units"] == "m"
+    assert results["basin"]["compared"] == 1
+    assert results["basin"]["differences"] == {1: pytest.approx(0.25)}
+    # Link 12 is added, so only the renumbered link is compared
+    assert results["flow"]["compared"] == 1
+    assert results["flow"]["differences"] == {}
+
+    # Results of another network, here with swapped link ids, are outdated and not compared
+    shutil.rmtree(head_toml.parent / "results")
+    _write_results(head_toml, [12, 20], changed=True, level_offset=0.25, flow_scale=1.0)
+    diff = diff_models(base_toml, head_toml, base_dir, head_dir, tmp_path / "diff.json")
+    assert diff["results"] is None
+    assert diff["results_note"] == "The results of the head model are outdated: their links differ from the model"
+
+
+def test_compare_results():
+    time = pd.date_range("2020-01-01", periods=3, freq="D")
+    base = pd.DataFrame({1: [1.0, 1.0, 1.0], 2: [5.0, 5.0, 5.0], 3: [2.0, 2.0, np.nan], 4: [0.0, 0.0, 0.0]}, time)
+    head = pd.DataFrame(
+        {1: [1.0, 1.0005, 1.0], 2: [5.0, 4.5, 5.2], 7: [2.0, np.nan, np.nan], 4: [0.0, 0.0, 0.0]},
+        # A later time step is not compared
+        time[:2].append(pd.DatetimeIndex(["2021-01-01"])),
+    )
+    # Head feature 7 is base feature 3, head feature 4 is not in the base model
+    base_ids = pd.Series([1, 2, 3], index=[1, 2, 7])
+    result = compare_results(base, head, base_ids, atol=1e-3, rtol=0.0)
+    assert result == {"compared": 3, "differences": {2: -0.5, 7: None}}
+    # A relative tolerance relative to the largest magnitude of the feature
+    assert compare_results(base, head, base_ids, atol=0.0, rtol=0.2)["differences"] == {7: None}
+
+
+def test_matched_ids():
+    base = pd.DataFrame({"link_id": [1, 2, 3], "from_node_id": [1, 2, 3], "to_node_id": [2, 3, 4]})
+    head = pd.DataFrame({"link_id": [9, 1], "from_node_id": [2, 1], "to_node_id": [3, 5]})
+    key = ["from_node_id", "to_node_id"]
+    assert matched_ids(base, head, "link_id", key).to_dict() == {9: 2}
+    assert matched_ids(base, base, "link_id", ["link_id"]).to_dict() == {1: 1, 2: 2, 3: 3}
 
 
 def test_compare_features_renumbered():
@@ -128,6 +214,41 @@ def test_export_cached(tmp_path, monkeypatch):
     mtime = manifest.stat().st_mtime_ns
     assert export_cached(toml, tmp_path / "cache") == output
     assert manifest.stat().st_mtime_ns == mtime
+
+
+def _git(repo, *args: str) -> None:
+    subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
+
+
+def test_checkout_model(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "--quiet")
+    subprocess.run(["dvc", "init", "--quiet"], cwd=repo, check=True)
+    toml = _write_model(repo / "model", changed=False)
+    _write_results(toml, [10, 11], changed=False, level_offset=0.0, flow_scale=1.0)
+    subprocess.run(["dvc", "add", "--quiet", "model"], cwd=repo, check=True)
+    _git(repo, "add", ".")
+    _git(repo, "-c", "user.name=test", "-c", "user.email=test@example.com", "commit", "--quiet", "-m", "model")
+    commit = resolve_commit("HEAD", repo)
+    assert commit is not None and len(commit) == 40
+    assert resolve_commit("no-such-branch", repo) is None
+    assert resolve_commit("--help", repo) is None
+    original = toml.read_text()
+    toml.write_text(f"{original}\n# changed in the working tree\n")
+
+    cache = tmp_path / "cache"
+    target = checkout_model(toml, commit, repo, cache)
+    assert target == cache / "revisions" / commit / "model" / "model.toml"
+    assert target.read_text() == original
+    assert (target.parent / "input" / "database.gpkg").is_file()
+    assert sorted(path.name for path in (target.parent / "results").iterdir()) == ["basin.nc", "flow.nc"]
+    # A second time the cached files are used
+    (target.parent / "input" / "database.gpkg").unlink()
+    assert checkout_model(toml, commit, repo, cache) == target
+    assert not (target.parent / "input" / "database.gpkg").exists()
+    with pytest.raises(AssertionError, match="not in the repository"):
+        checkout_model(tmp_path / "other.toml", commit, repo, cache)
 
 
 def _get(url: str, headers: dict[str, str] | None = None):

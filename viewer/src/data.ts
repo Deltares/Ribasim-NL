@@ -76,14 +76,33 @@ export interface FeatureDiff {
   base_id?: number;
 }
 
+/** The features whose results differ, for one result set, see `ribasim_nl.webmap_diff.compare_results`. */
+export interface ResultDiff {
+  variable: string;
+  units: string;
+  /** Results are equal if they differ less than `atol` plus `rtol` times the largest magnitude of the feature */
+  atol: number;
+  rtol: number;
+  /** The number of features in both models */
+  compared: number;
+  /** The difference head - base with the largest magnitude by head id, null if a value is missing in one model */
+  differences: Map<number, number | null>;
+}
+
+export type ResultKind = "basin" | "flow";
+
 /** The differences between two models, written by `ribasim_nl.webmap_diff`. */
 export interface ModelDiff {
-  base: { model: string; toml: string };
-  head: { model: string; toml: string };
+  base: { model: string; toml: string; label: string };
+  head: { model: string; toml: string; label: string };
   config: { key: string; base: string | null; head: string | null }[];
   nodes: Map<number, FeatureDiff>;
   /** Removed links are keyed by their negated base id, which may be in use in the head model */
   links: Map<number, FeatureDiff>;
+  /** Only if both models have results that are not outdated */
+  results: Record<ResultKind, ResultDiff> | null;
+  /** Why the results are not compared, if they are outdated */
+  results_note: string | null;
 }
 
 /** The model to compare with, and the differences; the viewer shows the newer "head" model. */
@@ -172,15 +191,30 @@ function featureDiffs(record: Record<string, FeatureDiff>): Map<number, FeatureD
   return diffs;
 }
 
+type RawResultDiff = Omit<ResultDiff, "differences"> & { differences: Record<string, number | null> };
+
+function resultDiff(raw: RawResultDiff): ResultDiff {
+  const differences = new Map<number, number | null>();
+  for (const [id, value] of Object.entries(raw.differences)) {
+    if (!Number.isInteger(Number(id)) || !(value === null || typeof value === "number")) {
+      throw new Error(`Invalid result difference for id ${id}`);
+    }
+    differences.set(Number(id), value);
+  }
+  return { ...raw, units: formatUnits(raw.units), differences };
+}
+
 /** The model to compare with, if `?base=<url>&diff=<url>` are given. */
 export async function loadComparison(): Promise<Comparison | null> {
   const base = locationParam("base");
   const diff = locationParam("diff");
   if (!base && !diff) return null;
   if (!base || !diff) throw new Error("Comparing models needs both ?base= and ?diff=");
-  type RawDiff = Omit<ModelDiff, "nodes" | "links"> & Record<"nodes" | "links", Record<string, FeatureDiff>>;
+  type RawDiff = Omit<ModelDiff, "nodes" | "links" | "results"> &
+    Record<"nodes" | "links", Record<string, FeatureDiff>> & { results: Record<ResultKind, RawResultDiff> | null };
   const [manifest, raw] = await Promise.all([loadManifest(base), fetchJson<RawDiff>(new URL("diff.json", diff))]);
-  return { base: manifest, diff: { ...raw, nodes: featureDiffs(raw.nodes), links: featureDiffs(raw.links) } };
+  const results = raw.results && { basin: resultDiff(raw.results.basin), flow: resultDiff(raw.results.flow) };
+  return { base: manifest, diff: { ...raw, nodes: featureDiffs(raw.nodes), links: featureDiffs(raw.links), results } };
 }
 
 interface ParquetFile {

@@ -80,28 +80,31 @@ Use `--port` to serve on another port, and `--no-browser` to not open a browser.
 
 ### Comparing models
 
-To review a pull request that changes a model, view only the differences from another version of the model:
+To review a pull request that changes a model, view only the differences from another version of the model.
+Usually that is the same model at another git revision, like `main`:
 
 ```sh
-pixi run viewer path/to/new/model.toml --base path/to/old/model.toml
+pixi run viewer data/Rijkswaterstaat/runs/lhm_coupled/lhm_coupled.toml --base origin/main
 ```
 
-For a model that is a DVC output, get the version of another branch with `dvc get`, for instance from `main`:
+`--base` takes a git revision or the TOML of another model.
+The model at a revision is read with DVC, from the DVC cache or the DVC remote, into `.cache/viewer/revisions`.
+Add `--rev` to also take the viewed model from a git revision instead of the working tree, for instance `--rev HEAD --base origin/main`.
+Fetch first to compare with the latest `origin/main`.
 
-```sh
-pixi run dvc get . data/Rijkswaterstaat/modellen/lhm_coupled --rev main -o data/Rijkswaterstaat/modellen/lhm_coupled_main
-pixi run viewer data/Rijkswaterstaat/modellen/lhm_coupled/lhm_coupled.toml --base data/Rijkswaterstaat/modellen/lhm_coupled_main/lhm_coupled.toml
-```
-
-Nodes and links are matched by id, see `ribasim_nl.webmap_diff`.
+Nodes are matched by id, and links by their from and to node, since links get renumbered, see `ribasim_nl.webmap_diff`.
 A node or link in both models is changed if its geometry, an attribute, its rows in an input table, or its Basin / area differ.
 The map shows only the added, removed and changed features, in the colors of their status.
 Removed and changed Basin / areas of the old model are drawn as dashed outlines.
 Turn on *Unchanged* in the layer list to show the other features faintly, for context.
 
-The *Differences* box lists the changed TOML settings and all differing features; click one to zoom to it.
+If both models have results, the Basin levels and flow rates are compared too.
+Basins and flow links whose results differ more than a tolerance are also shown, in shades of purple by the largest difference.
+Differences of up to 1 mm in level, and of up to 1 L/s plus 1% in flow rate, are ignored as solver noise.
+
+The *Differences* box lists the changed TOML settings, all differing features, and the features whose results differ, largest first; click one to zoom to it.
 The panel of a changed feature lists what changed, shows the old value of changed attributes struck through, and shows both versions of changed tables.
-If both models have results, the result charts show the old model as dashed lines.
+The result charts show the old model as dashed lines.
 
 ## Developing the viewer
 

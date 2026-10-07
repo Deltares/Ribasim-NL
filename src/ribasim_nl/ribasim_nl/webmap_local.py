@@ -1,16 +1,24 @@
 """View local Ribasim models in the model viewer, optionally only their differences from another model.
 
     pixi run viewer path/to/model.toml
+    pixi run viewer path/to/model.toml --base main
     pixi run viewer path/to/model.toml --base path/to/other/model.toml
 
-The models are exported with `ribasim_nl.webmap` to a cache that is reused while the model is unchanged,
-and served with the viewer from `docs/viewer-app` on localhost.
+`--base` is another model, or a git revision to compare with the same model at that revision. `--rev` views
+the model at a git revision instead of in the working tree. Models at a revision are read with DVC, from the
+DVC cache or remote. The models are exported with `ribasim_nl.webmap` to a cache that is reused while the
+model is unchanged, and served with the viewer from `docs/viewer-app` on localhost.
 """
 
 import argparse
 import hashlib
+import json
 import mimetypes
+import os
 import re
+import subprocess
+import sys
+import tomllib
 import webbrowser
 from collections.abc import Iterator
 from http import HTTPStatus
@@ -18,10 +26,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
+from dvc.api import DVCFileSystem
+
 import ribasim_nl.webmap
 import ribasim_nl.webmap_diff
 from ribasim_nl.settings import settings
-from ribasim_nl.webmap import export_webmap, model_results_dir, netcdf_tables, read_config
+from ribasim_nl.webmap import export_webmap, model_input_dir, model_results_dir, netcdf_tables, read_config
 from ribasim_nl.webmap_diff import diff_models
 
 REPO_DIR = Path(__file__).parents[3]
@@ -54,6 +64,8 @@ INDEX_HTML = """<!doctype html>
   </body>
 </html>
 """
+# The result files that `export_webmap` reads
+RESULT_FILES = ("basin.nc", "flow.nc", "control.nc")
 RANGE = re.compile(r"bytes=(\d*)-(\d*)")
 COPY_CHUNK = 1 << 20
 
@@ -93,16 +105,82 @@ def export_cached(toml_path: Path, cache_dir: Path = CACHE_DIR) -> Path:
     return output_dir
 
 
-def diff_cached(base_toml: Path, head_toml: Path, base_dir: Path, head_dir: Path, cache_dir: Path = CACHE_DIR) -> Path:
+def diff_cached(
+    base_toml: Path,
+    head_toml: Path,
+    base_dir: Path,
+    head_dir: Path,
+    labels: tuple[str, str],
+    cache_dir: Path = CACHE_DIR,
+) -> Path:
     """Compare two exported models, unless the cached comparison is up to date; return its directory."""
     output_dir = cache_dir / f"diff-{base_dir.name}-{head_dir.name}"
+    output = output_dir / "diff.json"
     sources = [base_dir / "manifest.json", head_dir / "manifest.json", Path(ribasim_nl.webmap_diff.__file__)]
-    if is_up_to_date(output_dir / "diff.json", sources):
+    if is_up_to_date(output, sources):
         print(f"Using the cached comparison in {output_dir}")
+        # The same commits can be named by other revisions
+        diff = json.loads(output.read_text())
+        if (diff["base"]["label"], diff["head"]["label"]) != labels:
+            diff["base"]["label"], diff["head"]["label"] = labels
+            output.write_text(json.dumps(diff, indent=1))
     else:
         print(f"Comparing {base_toml} with {head_toml}")
-        diff_models(base_toml, head_toml, base_dir, head_dir, output_dir / "diff.json")
+        diff_models(base_toml, head_toml, base_dir, head_dir, output, labels)
     return output_dir
+
+
+def resolve_commit(revision: str, repo_dir: Path = REPO_DIR) -> str | None:
+    """The commit hash of a git revision, or None if it is not one."""
+    result = subprocess.run(
+        ["git", "-C", str(repo_dir), "rev-parse", "--verify", "--quiet", "--end-of-options", f"{revision}^{{commit}}"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+def checkout_model(toml_path: Path, commit: str, repo_dir: Path = REPO_DIR, cache_dir: Path = CACHE_DIR) -> Path:
+    """Get the files of a model at a git commit that the viewer needs into the cache; return the TOML there.
+
+    The files keep their path relative to the repository, so the relative paths in the TOML still work.
+    Files tracked by DVC are read from the DVC cache, or from the DVC remote if they are not in the cache.
+    """
+    repo_dir = repo_dir.resolve()
+    assert toml_path.resolve().is_relative_to(repo_dir), f"{toml_path} is not in the repository {repo_dir}"
+    root = cache_dir / "revisions" / commit
+    target = root / toml_path.resolve().relative_to(repo_dir)
+    complete = target.with_name(f"{target.name}.complete")
+    if complete.is_file():
+        print(f"Using the cached files of {toml_path} at {commit} in {root}")
+        return target
+    print(f"Getting the files of {toml_path} at {commit} into {root}")
+    fs = DVCFileSystem(str(repo_dir), rev=commit)
+
+    def repo_path(path: Path) -> str:
+        normalized = Path(os.path.normpath(path))
+        assert normalized.is_relative_to(root), f"{path} is outside the repository"
+        return normalized.relative_to(root).as_posix()
+
+    def get(path: Path) -> None:
+        source = repo_path(path)
+        assert fs.isfile(source), f"{source} not found at {commit}"
+        path = root / source
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fs.get_file(source, str(path))
+
+    get(target)
+    config = tomllib.loads(target.read_text())
+    input_dir = model_input_dir(target, config)
+    for path in [input_dir / "database.gpkg", *netcdf_tables(config, input_dir).values()]:
+        get(path)
+    results_dir = model_results_dir(target, config)
+    for name in RESULT_FILES:
+        if fs.isfile(repo_path(results_dir / name)):
+            get(results_dir / name)
+    complete.touch()
+    return target
 
 
 def parse_range(header: str, size: int) -> tuple[int, int] | None:
@@ -218,39 +296,55 @@ def serve(mounts: dict[str, Path], query: str, title: str, port: int, open_brows
     if open_browser:
         webbrowser.open(url)
     try:
-        server.serve_forever()
+        server.serve_forever()  # NOSONAR: plain HTTP on the loopback interface only
     except KeyboardInterrupt:
         pass
     finally:
         server.server_close()
 
 
+def model_at(toml_path: Path, revision: str | None) -> tuple[Path, str]:
+    """The TOML of a model in the working tree, or at a git revision, and a label for it."""
+    if revision is None:
+        return toml_path, toml_path.stem
+    commit = resolve_commit(revision)
+    if commit is None:
+        sys.exit(f"{revision} is not a git revision")
+    return checkout_model(toml_path, commit), f"{toml_path.stem} @ {revision}"
+
+
 def main(argv: list[str] | None = None) -> None:
     """Command line entry point, see the module docstring."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("toml", type=Path, help="Ribasim model TOML to view")
-    parser.add_argument("--base", type=Path, help="Ribasim model TOML to compare with, to show only the differences")
+    parser.add_argument("--rev", help="Git revision to view the model at, instead of the working tree")
+    parser.add_argument(
+        "--base", help="Ribasim model TOML, or git revision of the same model, to compare with to show the differences"
+    )
     parser.add_argument("--port", type=int, default=8000, help="Port to serve on, 0 for any free port")
     parser.add_argument("--no-browser", action="store_true", help="Do not open the viewer in a web browser")
     args = parser.parse_args(argv)
 
-    head_dir = export_cached(args.toml)
+    head_toml, head_label = model_at(args.toml, args.rev)
+    head_dir = export_cached(head_toml)
     if args.base is None:
         serve(
             {"model": head_dir},
             "data=model/",
-            f"{args.toml.stem} - Ribasim model viewer",
+            f"{head_label} - Ribasim model viewer",
             args.port,
             not args.no_browser,
         )
         return
-    base_dir = export_cached(args.base)
+    base_path = Path(args.base)
+    base_toml, base_label = (base_path, base_path.stem) if base_path.is_file() else model_at(args.toml, args.base)
+    base_dir = export_cached(base_toml)
     assert base_dir != head_dir, "The model and --base are the same model"
-    diff_dir = diff_cached(args.base, args.toml, base_dir, head_dir)
+    diff_dir = diff_cached(base_toml, head_toml, base_dir, head_dir, (base_label, head_label))
     serve(
         {"head": head_dir, "base": base_dir, "diff": diff_dir},
         "data=head/&base=base/&diff=diff/",
-        f"{args.base.stem} → {args.toml.stem} - Ribasim model viewer",
+        f"{base_label} → {head_label} - Ribasim model viewer",
         args.port,
         not args.no_browser,
     )

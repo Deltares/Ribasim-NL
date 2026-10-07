@@ -9,7 +9,7 @@ import {
   type Row,
   type TableEntry,
 } from "./data";
-import { statusBadge } from "./diff";
+import { describeResult, statusBadge } from "./diff";
 import { LevelDiagram, type LevelSeries, type LevelSide } from "./levels";
 import { linkLabel, type Network } from "./network";
 
@@ -274,11 +274,17 @@ export class Panel {
     return diff?.status === "removed" ? this.comparison!.base : this.manifest;
   }
 
-  /** What differs from the base model. */
-  private changes(diff: FeatureDiff | undefined): HTMLElement[] {
-    if (!diff) return this.comparison ? [el("p", { className: "note" }, "Unchanged.")] : [];
-    if (!diff.changes.length) return [el("p", { className: "note" }, `${diff.status[0].toUpperCase()}${diff.status.slice(1)}.`)];
-    return [el("h3", {}, "Changes"), el("ul", {}, ...diff.changes.map((change) => el("li", {}, change)))];
+  /** What differs from the base model, also in the results. */
+  private changes(selection: Selection, diff: FeatureDiff | undefined): HTMLElement[] {
+    if (!this.comparison) return [];
+    const results = this.comparison.diff.results?.[selection.kind === "node" ? "basin" : "flow"];
+    const result = describeResult(results, selection.id);
+    const changes = [...(diff?.changes ?? []), ...(result ? [result] : [])];
+    if (!changes.length) {
+      const status = diff ? `${diff.status[0].toUpperCase()}${diff.status.slice(1)}.` : "Unchanged.";
+      return [el("p", { className: "note" }, status)];
+    }
+    return [el("h3", {}, "Changes"), el("ul", {}, ...changes.map((change) => el("li", {}, change)))];
   }
 
   /** The base row of a feature in both models, to show the attributes that changed. */
@@ -300,7 +306,10 @@ export class Panel {
     const head = source ? await readRowsById(source[kind].by_id, idColumn, sourceId) : [];
     const base = this.comparison?.base.results;
     if (!base || diff?.status === "removed" || diff?.status === "added") return head;
-    return mergeOnTime(head, await readRowsById(base[kind].by_id, idColumn, diff?.base_id ?? id));
+    // Links are renumbered, so also unchanged links can have another id in the base model
+    const baseId = kind === "flow" ? this.network.baseLinkId.get(id) : id;
+    if (baseId === undefined) return head;
+    return mergeOnTime(head, await readRowsById(base[kind].by_id, idColumn, baseId));
   }
 
   /** Input tables of a node; changed tables are shown for both models. */
@@ -335,7 +344,7 @@ export class Panel {
       const row = network.nodeRow.get(selection.id);
       if (row === undefined) return this.hide();
       const nodeType = network.nodeType[row];
-      sections.push(this.header(`${nodeType} #${selection.id}`, selection, diff), ...this.changes(diff), attributes);
+      sections.push(this.header(`${nodeType} #${selection.id}`, selection, diff), ...this.changes(selection, diff), attributes);
 
       const incoming: HTMLElement[] = [];
       const outgoing: HTMLElement[] = [];
@@ -414,7 +423,7 @@ export class Panel {
       sections.push(
         this.header(`${network.linkType[row]} link ${linkLabel(selection.id)}`, selection, diff),
         el("p", {}, "From ", this.nodeLink(network.fromNodeId[row]), " to ", this.nodeLink(network.toNodeId[row])),
-        ...this.changes(diff),
+        ...this.changes(selection, diff),
         attributes,
       );
       const results = manifest.results;

@@ -526,3 +526,15 @@
 .ribasim-viewer table.attributes del {
   color: #888;
 }
+
+.ribasim-viewer .diff-summary h4 {
+  margin: 6px 0 2px;
+}
+
+.ribasim-viewer .diff-list .swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 4px;
+  border-radius: 2px;
+}
