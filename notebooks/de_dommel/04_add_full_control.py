@@ -4,11 +4,11 @@ from ribasim_nl.control import (
     add_controllers_to_supply_area,
     add_controllers_to_uncontrolled_connector_nodes,
     mark_level_update_protected,
+    supply_area_polygon,
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from ribasim_nl.run_model import run_model_and_control
-from shapely.geometry import MultiPolygon
 
 from ribasim_nl import CloudStorage, Model
 
@@ -80,16 +80,6 @@ SUPPLY_AREA_IGNORE_LINKS = {
 
 # %%
 # Helpers
-
-
-def supply_area_polygon(aanvoergebieden_df: gpd.GeoDataFrame, area_name: str):
-    polygon = aanvoergebieden_df.loc[[area_name], "geometry"].union_all()
-    polygon = polygon.buffer(0).buffer(0)
-
-    if isinstance(polygon, MultiPolygon):
-        polygon = max(polygon.geoms, key=lambda g: g.area)
-
-    return polygon
 
 
 def add_supply_area_control(

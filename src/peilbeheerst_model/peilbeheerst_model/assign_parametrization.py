@@ -182,7 +182,8 @@ class AssignMetaData:
 
             # Find nearest gemaal
             idx = dfa.sindex.nearest(row.geometry, max_distance=max_distance, return_all=True)
-            dfa = df_gemaal.iloc[idx[1, :]].copy()
+            # sorted, since the order of equidistant matches differs between platforms
+            dfa = df_gemaal.iloc[np.sort(idx[1, :])].copy()
 
             if len(dfa) == 0:
                 print(f"  - Warning: No matching pump found for node_id={node_id_str}")
@@ -230,7 +231,7 @@ class AssignMetaData:
                 continue
 
             # Find overlapping area(s)
-            idxs = df_area.sindex.query(row.geometry, predicate="intersects")
+            idxs = np.sort(df_area.sindex.query(row.geometry, predicate="intersects"))
             dfa = df_area.iloc[idxs].copy()
 
             # Filter out insufficient overlapping areas and order by
@@ -239,7 +240,7 @@ class AssignMetaData:
             dfa["t_area"] = dfa.geometry.area
             dfa["f_area"] = dfa["i_area"] / dfa["t_area"]
             dfa = dfa[dfa.f_area >= min_overlap]
-            dfa = dfa.sort_values(["i_area", "t_area"], ascending=False)
+            dfa = dfa.sort_values(["i_area", "t_area"], ascending=False, kind="stable")
 
             if len(dfa) == 0:
                 print(f"  - Warning: Found no matching area for basin #{row.node_id}")

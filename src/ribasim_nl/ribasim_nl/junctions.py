@@ -157,7 +157,7 @@ def _junctionify(model: Model, links: gpd.GeoDataFrame, converging: bool = True)
     return junction_ids
 
 
-def junctionify(model: Model) -> Model:
+def junctionify[M: Model](model: M) -> M:
     """Add Junction nodes in a model inplace where flow links share common geometry.
 
     Useful for model visualization and debugging, as otherwise there will be many

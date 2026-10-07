@@ -1,5 +1,6 @@
 # %%
 import geopandas as gpd
+import numpy as np
 from shapely.geometry import Point
 from tqdm import tqdm
 
@@ -23,8 +24,8 @@ def link_profile_id(link_id: int, model: Model, profiles: DAMOProfiles | gpd.Geo
     assert model.node.df is not None
     link_geometry = model.link.df.at[link_id, "geometry"]
 
-    # get intersecting profiles
-    profile_select_df = profiles[profiles.intersects(link_geometry)]
+    # get intersecting profiles, in their original order
+    profile_select_df = profiles.iloc[np.sort(profiles.sindex.query(link_geometry, predicate="intersects"))]
 
     # update profile by furthest downstream the link_geometry if we have intersections
     if not profile_select_df.empty:
@@ -43,7 +44,7 @@ def link_profile_id(link_id: int, model: Model, profiles: DAMOProfiles | gpd.Geo
             geometry = model.link.df[
                 (model.link.df.from_node_id == node_id) | (model.link.df.to_node_id == node_id)
             ].union_all()
-            profile_select_df = profiles[profiles.intersects(geometry)]
+            profile_select_df = profiles.iloc[np.sort(profiles.sindex.query(geometry, predicate="intersects"))]
 
             if not profile_select_df.empty:
                 profile = profile_select_df.loc[profile_select_df.distance(to_node_geometry).idxmin()]

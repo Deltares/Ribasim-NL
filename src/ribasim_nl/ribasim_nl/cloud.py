@@ -2,6 +2,7 @@ import logging
 import re
 import shutil
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -79,6 +80,7 @@ class CloudStorage:
     user: str = RIBASIM_NL_CLOUD_USER
     url: str = BASE_URL
     password: str = field(repr=False, default=settings.ribasim_nl_cloud_pass)
+    _credentials_checked: bool = field(default=False, init=False, repr=False)
 
     def __post_init__(self) -> None:
         # check if user and password are specified
@@ -86,12 +88,6 @@ class CloudStorage:
             raise ValueError("""'user' is None. Provide it.""")
         if self.password is None:
             raise ValueError("""'password' is None. Provide it or set environment variable RIBASIM_NL_CLOUD_PASS.""")
-        # check if we have correct credentials
-        response = requests.get(self.url, auth=self.auth, timeout=300)
-        if response.ok:
-            logger.info("valid credentials")
-        else:
-            response.raise_for_status()
 
         # check if data_dir is specified and convert to Path
         if self.data_dir is None:
@@ -112,8 +108,17 @@ class CloudStorage:
 
     @property
     def auth(self) -> tuple[str, str]:
-        """Auth tuple for requests"""
-        return (self.user, self.password)
+        """Auth tuple for requests.
+
+        The credentials are checked on first use, so working with local data only doesn't need a connection.
+        """
+        auth = (self.user, self.password)
+        if not self._credentials_checked:
+            response = requests.get(self.url, auth=auth, timeout=300)
+            response.raise_for_status()
+            logger.info("valid credentials")
+            self._credentials_checked = True
+        return auth
 
     @property
     def water_authorities(self) -> list[str]:
@@ -144,6 +149,30 @@ class CloudStorage:
 
     def joinpath(self, *args: str) -> Path:
         return self.data_dir.joinpath(*args)
+
+    def model_dir(self, authority: str, post_fix: str) -> Path:
+        """Local directory of the model of an authority, e.g. `<authority>/modellen/<authority>_<post_fix>`."""
+        return self.joinpath(authority, "modellen", f"{authority}_{post_fix}")
+
+    def find_model_dir(self, authority: str, post_fixes: Iterable[str]) -> Path | None:
+        """First existing model directory of an authority, trying `post_fixes` in order."""
+        return next(
+            (
+                self.model_dir(authority, post_fix)
+                for post_fix in post_fixes
+                if self.model_dir(authority, post_fix).exists()
+            ),
+            None,
+        )
+
+    def select_authorities(self, requested: Iterable[str], fallback: Iterable[str] = ()) -> list[str]:
+        """Select valid authorities: the requested ones, else those in fallback, else all of them."""
+        valid_authorities = set(self.water_authorities)
+        for candidates in (requested, fallback):
+            authorities = set(candidates) & valid_authorities
+            if authorities:
+                return sorted(authorities)
+        return sorted(valid_authorities)
 
     def upload_file(self, file_path: str | Path) -> None:
         # get url

@@ -64,7 +64,8 @@ def couple_bgt_to_hydro_objects(
         out = network_selection.sjoin(bgt_selection[[bgt_id, "geometry"]], how="inner", predicate="intersects")
         if min_overlap is not None:
             out = out[out.apply(lambda row: overlap_with_bgt(row["geometry"], row["index_right"]), axis=1)]
-        out = out.groupby(level=0)["index_right"].apply(list)
+        # sort the matches, since the order of sjoin matches depends on the spatial index (platform)
+        out = out.groupby(level=0)["index_right"].apply(sorted)
         return out
 
     # couple BGT-data to hydro-objects

@@ -14,6 +14,7 @@ from ribasim_nl.coupling_level_apply import (
 )
 from ribasim_nl.coupling_level_common import finite_level, finite_levels
 from ribasim_nl.coupling_levels import run_coupling_level_check
+from ribasim_nl.model import find_toml
 from ribasim_nl.settings import settings
 from shapely.geometry import LineString, Point
 from tqdm import tqdm
@@ -719,15 +720,6 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
     return merged_outlet
 
 
-def find_toml_path(model_dir: Path) -> Path:
-    tomls = list(model_dir.glob("*.toml"))
-    if len(tomls) == 0:
-        raise ValueError(f"No TOML file found at: {model_dir}")
-    elif len(tomls) > 1:
-        raise ValueError(f"User provided more than one toml-file: {len(tomls)}, remove one! {tomls}")
-    return tomls[0]
-
-
 # %% Process lhm_parts model
 
 # couple LHM
@@ -753,7 +745,7 @@ if sub_models:
             print(f"Submodel directory does not exist, skipping: {model_dir}")
             continue
         try:
-            toml_file = find_toml_path(model_dir)
+            toml_file = find_toml(model_dir)
         except ValueError:
             print(f"Not exactly one TOML in {model_dir}, skipping.")
             continue

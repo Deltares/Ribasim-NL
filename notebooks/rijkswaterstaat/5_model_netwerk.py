@@ -12,10 +12,16 @@ from ribasim.nodes import (
     manning_resistance,
     outlet,
     pid_control,
-    pump,
     tabulated_rating_curve,
 )
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.rws_kunstwerken import (
+    read_flow_kwargs,
+    read_kwk_properties,
+    read_pump,
+    read_qq_curve,
+    read_rating_curve,
+)
 from shapely.geometry import LineString, MultiLineString
 
 from ribasim_nl import CloudStorage, Model, Network
@@ -50,54 +56,6 @@ def clip_profile(line, point, poly):
     return line
 
 
-def read_rating_curve(kwk_df):
-    qh_df = kwk_df.loc[kwk_df.Eigenschap.to_list().index("Q(h) relatie") + 2 :][["Eigenschap", "Waarde"]].rename(
-        columns={"Eigenschap": "level", "Waarde": "flow_rate"}
-    )
-    qh_df.dropna(inplace=True)
-    return tabulated_rating_curve.Static(**qh_df.to_dict(orient="list"))
-
-
-def read_qq_curve(kwk_df):
-    return kwk_df.loc[kwk_df.Eigenschap.to_list().index("QQ relatie") + 2 :][["Eigenschap", "Waarde"]].rename(
-        columns={"Eigenschap": "condition_flow_rate", "Waarde": "flow_rate"}
-    )
-
-
-def read_qhq(verdeling_df):
-    df = verdeling_df.loc[verdeling_df.Eigenschap.to_list().index("QHQ relatie") + 2 :]
-    df.columns = ["control_flow_rate", "min_upstream_level", "flow_rate_1", "flow_rate_2"]
-
-
-def read_kwk_properties(kwk_df):
-    properties = kwk_df[0:12][["Eigenschap", "Waarde"]].dropna().set_index("Eigenschap")["Waarde"]
-
-    if "Kunstwerkcode" in properties:
-        properties["Kunstwerkcode"] = str(properties["Kunstwerkcode"])
-    return properties
-
-
-def read_flow_kwargs(kwk_properties, include_crest_level=True):
-    mapper = {
-        "Capaciteit (m3/s)": "flow_rate",
-        "Minimale capaciteit (m3/s)": "min_flow_rate",
-        "Maximale capaciteit (m3/s)": "max_flow_rate",
-        "Streefpeil bovenstrooms (m +NAP)": "min_upstream_level",
-        "Streefpeil benedenstrooms (m +NAP)": "max_downstream_level",
-    }
-
-    kwargs = kwk_properties.rename(mapper).to_dict()
-    if "flow_rate" in kwargs:
-        kwargs["max_flow_rate"] = kwargs["flow_rate"]
-    kwargs = {
-        k: [v]
-        for k, v in kwargs.items()
-        if k in ["flow_rate", "min_flow_rate", "max_flow_rate", "min_upstream_level", "max_downstream_level"]
-    }
-    # kwargs["flow_rate"] = [kwk_properties["Capaciteit (m3/s)"]]
-    return kwargs
-
-
 def read_outlet(kwk_df, name=None):
     if "QQ relatie" in kwk_df["Eigenschap"].to_numpy():
         qq_properties = read_qq_curve(kwk_df)
@@ -112,12 +70,7 @@ def read_outlet(kwk_df, name=None):
             control_state=outlet_df.control_state.to_list(),
         )
     else:
-        return outlet.Static(**read_flow_kwargs(read_kwk_properties(kwk_df), include_crest_level=True))
-
-
-def read_pump(kwk_properties):
-    kwargs = read_flow_kwargs(kwk_properties)
-    return pump.Static(**kwargs)
+        return outlet.Static(**read_flow_kwargs(read_kwk_properties(kwk_df)))
 
 
 def read_pid(control_properties, control_basin_id):

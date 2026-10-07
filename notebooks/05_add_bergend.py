@@ -10,54 +10,31 @@ cloud = CloudStorage()
 FIND_POST_FIXES = ["full_control_model"]
 # pass authorities as arguments, or edit list here
 SELECTION: set = {"RijnenIJssel"}
-INCLUDE_RESULTS = False
 REBUILD = True
 RUN_MODEL: bool = False
 
+# authorities provided as arguments, else in SELECTION, else all
+authorities = cloud.select_authorities(sys.argv[1:], fallback=SELECTION)
 
-def get_model_dir(authority, post_fix):
-    return cloud.joinpath(authority, "modellen", f"{authority}_{post_fix}")
-
-
-valid_authorities = set(cloud.water_authorities)
-
-# We make a list of authorities:
-# 1. provided as arguments
-authorities = set(sys.argv[1:]) & valid_authorities
-# 2. provided in global SELECTION
-if len(authorities) == 0:
-    authorities = SELECTION & valid_authorities
-# 3. all authorities
-if len(authorities) == 0:
-    authorities = valid_authorities
 # %%
-link_data = []
 for authority in authorities:
-    # find model directory
-    model_dir = next(
-        (
-            get_model_dir(authority, post_fix)
-            for post_fix in FIND_POST_FIXES
-            if get_model_dir(authority, post_fix).exists()
-        ),
-        None,
-    )
-    if model_dir is not None:
-        print(authority)
-        toml_file = next(model_dir.glob("*.toml"))
-        model = Model.read(toml_file)
+    model_dir = cloud.find_model_dir(authority, FIND_POST_FIXES)
+    if model_dir is None:
+        raise FileNotFoundError(f"No model of {authority} found with post fixes {FIND_POST_FIXES}")
+    print(authority)
+    toml_file = next(model_dir.glob("*.toml"))
+    model = Model.read(toml_file)
 
-        # write dynamic model
-        dst_model_dir = model_dir.with_name(f"{authority}_bergend_model")
-        dst_toml_file = dst_model_dir / toml_file.name
+    # write model with berging
+    dst_toml_file = cloud.model_dir(authority, "bergend_model") / toml_file.name
 
-        if (not dst_toml_file.exists()) or REBUILD:
-            # add berging
-            add_berging = VdGaastBerging(model=model, cloud=cloud, use_add_api=False)
-            add_berging.add()
+    if (not dst_toml_file.exists()) or REBUILD:
+        # add berging
+        add_berging = VdGaastBerging(model=model, cloud=cloud, use_add_api=False)
+        add_berging.add()
 
-            # run model
-            model.write(dst_toml_file)
-            if RUN_MODEL:
-                result = model.run()
-                assert result.exit_code == 0
+        # run model
+        model.write(dst_toml_file)
+        if RUN_MODEL:
+            result = model.run()
+            assert result.exit_code == 0

@@ -1,6 +1,5 @@
 # %%
 
-import inspect
 
 import geopandas as gpd
 import pandas as pd
@@ -15,6 +14,7 @@ from ribasim_nl import CloudStorage, Model, NetworkValidator
 cloud = CloudStorage()
 authority = "DeDommel"
 short_name = "dommel"
+run_model = False
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 
@@ -238,6 +238,9 @@ drainage_areas_df = gpd.read_file(areas_gpkg, layer="drainage_areas")
 
 drainage_areas_df = drainage_areas_df[drainage_areas_df.buffer(-10).intersects(basin_polygon)]
 
+# negatively buffered basin areas, only updated for the basin area that changes in the loop below
+basin_area_buffered = model.basin.area.df.buffer(-10)
+
 for _idx, geometry in enumerate(geoseries):
     # select drainage-area
     drainage_area_select = drainage_areas_df[drainage_areas_df.contains(geometry.buffer(-10))]
@@ -248,10 +251,7 @@ for _idx, geometry in enumerate(geoseries):
         drainage_area = drainage_area_select.iloc[0].geometry
 
         # find basin_id to merge to
-        selected_basins_df = model.basin.area.df[model.basin.area.df.buffer(-10).within(drainage_area)].set_index(
-            "node_id"
-        )
-        intersecting_basins_df = selected_basins_df.intersection(geometry.buffer(10))
+        selected_basins_df = model.basin.area.df[basin_area_buffered.within(drainage_area)].set_index("node_id")
         assigned_basin_id = selected_basins_df.intersection(geometry.buffer(10)).area.idxmax()
 
         # clip and merge geometry
@@ -263,7 +263,9 @@ for _idx, geometry in enumerate(geoseries):
             .buffer(0.1)
             .buffer(-0.1)
         )
-        model.basin.area.df.loc[model.basin.area.df.node_id == assigned_basin_id, "geometry"] = geometry
+        mask = model.basin.area.df.node_id == assigned_basin_id
+        model.basin.area.df.loc[mask, "geometry"] = geometry
+        basin_area_buffered[mask] = model.basin.area.df.loc[mask].buffer(-10)
 
 # %% Verplaats boundary ruimtelijk van Vugtherstuw (afvoerpijl juiste richting in schematics, cosmetisch!)
 
@@ -279,16 +281,7 @@ model.link.add(model.outlet[121], model.level_boundary[9])
 # %% fix_basin_area
 
 
-for action in ["merge_basins", "remove_node", "update_node"]:
-    print(action)
-    # get method and args
-    method = getattr(model, action)
-    keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
-    for row in df.itertuples():
-        # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
-        method(**kwargs)
+model.apply_edits(model_edits_gpkg, ["merge_basins", "remove_node", "update_node"])
 
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
 for row in network_validator.link_incorrect_type_connectivity().itertuples():
@@ -375,7 +368,7 @@ model.report_basin_area()
 model.report_internal_basins()
 
 # %% Test run model
-
-result = model.run()
-assert result.simulation_time is not None
+if run_model:
+    result = model.run()
+    assert result.exit_code == 0
 # %%

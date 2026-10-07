@@ -78,13 +78,8 @@ FIND_POST_FIXES = ["bergend_model"]
 # FIND_POST_FIXES = ["full_control_model"]
 # pass authorities as arguments, or edit list here
 SELECTION: set = {"BrabantseDelta"}  # , "Limburg", "DeDommel"}
-INCLUDE_RESULTS = False
 REBUILD = True
 RUN_MODEL = True
-
-
-def get_model_dir(authority, post_fix):
-    return cloud.joinpath(authority, "modellen", f"{authority}_{post_fix}")
 
 
 def check_build(toml_file):
@@ -111,92 +106,75 @@ def check_build(toml_file):
     return build
 
 
-valid_authorities = set(cloud.water_authorities)
+# authorities provided as arguments, else in SELECTION, else all
+authorities = cloud.select_authorities(sys.argv[1:], fallback=SELECTION)
 
-# We make a list of authorities:
-# 1. provided as arguments
-authorities = set(sys.argv[1:]) & valid_authorities
-# 2. provided in global SELECTION
-if len(authorities) == 0:
-    authorities = SELECTION & valid_authorities
-# 3. all authorities
-if len(authorities) == 0:
-    authorities = valid_authorities
 # %%
 for authority in authorities:
-    # find model directory
-    model_dir = next(
-        (
-            get_model_dir(authority, post_fix)
-            for post_fix in FIND_POST_FIXES
-            if get_model_dir(authority, post_fix).exists()
-        ),
-        None,
-    )
-    if model_dir is not None:
-        print(authority)
-        toml_file = next(model_dir.glob("*.toml"))
+    model_dir = cloud.find_model_dir(authority, FIND_POST_FIXES)
+    if model_dir is None:
+        raise FileNotFoundError(f"No model of {authority} found with post fixes {FIND_POST_FIXES}")
+    print(authority)
+    toml_file = next(model_dir.glob("*.toml"))
 
-        # check if we need to (re)do the model
+    # write dynamic model
+    dst_model_dir = cloud.model_dir(authority, "dynamic_model")
+    dst_toml_file = dst_model_dir / toml_file.name
 
-        # write dynamic model
-        dst_model_dir = model_dir.with_name(f"{authority}_dynamic_model")
-        dst_toml_file = dst_model_dir / toml_file.name
+    if check_build(dst_toml_file):
+        model = Model.read(toml_file)
 
-        if check_build(dst_toml_file):
-            model = Model.read(toml_file)
+        # add categorie to basin / state
+        series = model.basin.node.df["meta_categorie"]  # type: ignore
+        uncategorized_basins = series[series.isna()].index.values
+        if len(uncategorized_basins) > 0:
+            print(f"uncategorized basins: {uncategorized_basins}, will be set to doorgaand")
+            model.node.df.loc[uncategorized_basins, "meta_categorie"] = "doorgaand"
 
-            # add categorie to basin / state
-            series = model.basin.node.df["meta_categorie"]  # type: ignore
-            uncategorized_basins = series[series.isna()].index.values
-            if len(uncategorized_basins) > 0:
-                print(f"uncategorized basins: {uncategorized_basins}, will be set to doorgaand")
-                model.node.df.loc[uncategorized_basins, "meta_categorie"] = "doorgaand"
+        # add forcing
+        budgets_df = add_forcing(
+            model, cloud, starttime, endtime, assign_budget_fractions, fraction_prefix=waterbeheercode[authority]
+        )
 
-            # add forcing
-            budgets_df = add_forcing(
-                model, cloud, starttime, endtime, assign_budget_fractions, fraction_prefix=waterbeheercode[authority]
-            )
+        # add transboundary inflow
+        dict_flow = import_transboundary_inflow(transboundary_data_path, starttime, endtime, model)
+        add_transboundary_inflow(model, dict_flow)
 
-            # add transboundary inflow
-            dict_flow = import_transboundary_inflow(transboundary_data_path, starttime, endtime, model)
-            add_transboundary_inflow(model, dict_flow)
+        # merge RWZI model, which requires meta_waterbeheerder
+        model.node.df.loc[model.basin.node.df.index, "meta_waterbeheerder"] = authority
+        model = merge_rwzi_model(
+            model,
+            rwzi_model_path,
+            rwzi_coverage_path,
+            dst_model_dir / "meta/RWZI_coordinates_lhm_coverage.geojson",
+        )
 
-            # merge RWZI model, which requires meta_waterbeheerder
-            model.node.df.loc[model.basin.node.df.index, "meta_waterbeheerder"] = authority
-            model = merge_rwzi_model(
-                model,
-                rwzi_model_path,
-                rwzi_coverage_path,
-                dst_model_dir / "meta/RWZI_coordinates_lhm_coverage.geojson",
-            )
+        # add LHM fractions
+        if add_lhm_fractions:
+            assign_lhm_fractions(model)
 
-            # add LHM fractions
-            if add_lhm_fractions:
-                assign_lhm_fractions(model)
+        # Avoid large databases by writing some tables to NetCDF
+        # TODO add flow_boundary after we can run core versions with
+        # https://github.com/Deltares/Ribasim/pull/3033
+        if model.basin.time.df is not None:
+            model.basin.time.filepath = Path("basin_time.nc")
 
-            # Avoid large databases by writing some tables to NetCDF
-            # TODO add flow_boundary after we can run core versions with
-            # https://github.com/Deltares/Ribasim/pull/3033
-            if model.basin.time.df is not None:
-                model.basin.time.filepath = Path("basin_time.nc")
+        # write model and optionally run it
+        model.write(dst_toml_file)
+        model.validate_ribasim_nl()
 
-            # write model and optionally run it
-            model.write(dst_toml_file)
-            model.validate_ribasim_nl()
+        if write_budgets:
+            budgets_df.to_feather(dst_toml_file.with_name("mfms_budgets.arrow"))  # for later reference
 
-            if write_budgets:
-                budgets_df.to_feather(dst_toml_file.with_name("mfms_budgets.arrow"))  # for later reference
+        if RUN_MODEL:
+            result = model.run()
+            if result.exit_code != 0:
+                raise RuntimeError(f"Ribasim run failed for {dst_toml_file} with exit code {result.exit_code}")
+            model.update_state()
+            model.basin.state.write()
+            write_performance(model)
 
-            if RUN_MODEL:
-                result = model.run()
-                if result.exit_code != 0:
-                    raise RuntimeError(f"Ribasim run failed for {dst_toml_file} with exit code {result.exit_code}")
-                model.update_state()
-                model.basin.state.write()
-                write_performance(model)
-
-            # DELWAQ(!)
-            if compute_fractions and RUN_MODEL:
-                print("compute DELWAQ fractions")
-                compute_delwaq(model)
+        # DELWAQ(!)
+        if compute_fractions and RUN_MODEL:
+            print("compute DELWAQ fractions")
+            compute_delwaq(model)

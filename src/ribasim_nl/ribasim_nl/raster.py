@@ -1,3 +1,5 @@
+from collections.abc import Callable
+from functools import wraps
 from pathlib import Path
 
 import numpy as np
@@ -6,6 +8,23 @@ from pandas import DataFrame
 from rasterio import features  # noqa:F401
 from rasterio.windows import from_bounds
 from shapely.geometry import Polygon
+
+
+def with_rasterio_env[**P, R](func: Callable[P, R]) -> Callable[P, R]:
+    """Run `func` within a single rasterio environment.
+
+    Without an active environment, rasterio creates one for every call. With AWS credentials in the
+    environment variables, each of those also creates a boto3 session, which is slow when repeated thousands
+    of times. `Env.from_defaults()` is what rasterio itself uses when no environment is active.
+    """
+
+    @wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        with rasterio.Env.from_defaults():
+            return func(*args, **kwargs)
+
+    return wrapper
+
 
 DEFAULT_PERCENTILES = [
     0.01,

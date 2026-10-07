@@ -11,8 +11,9 @@ from ribasim_nl import Model, Network
 logger = logging.getLogger(__name__)
 
 
-def get_network_node(network, point, max_distance: float = 5):
-    node = network.move_node(point, max_distance=0.5, align_distance=10)
+def get_network_node(network: Network, point, max_distance: float = 5, max_move_distance: float = 0.5):
+    """Network node at a point: move the nearest node within `max_move_distance`, else add one within `max_distance`."""
+    node = network.move_node(point, max_distance=max_move_distance, align_distance=10)
     if node is None:
         node = network.add_node(point, max_distance=max_distance, align_distance=10)
     return node
@@ -27,11 +28,16 @@ def accept_length(geometry, point1, point2, max_straight_line_ratio: float = 5):
 
 def get_link_geometry(network, source, target, forbidden_nodes):
     straight_line = LineString((network.graph.nodes[source]["geometry"], network.graph.nodes[target]["geometry"]))
-    # Use a subgraph view excluding forbidden nodes (O(1) creation, no copy)
-    allowed_nodes = set(network.graph_undirected.nodes) - set(forbidden_nodes)
-    subgraph = network.graph_undirected.subgraph(allowed_nodes)
+    forbidden = set(forbidden_nodes)
+    if source in forbidden or target in forbidden:
+        return straight_line
+
+    def length(u, v, data):
+        # hide links of forbidden nodes, equivalent to a search on the subgraph without them
+        return None if u in forbidden or v in forbidden else data.get("length", 1)
+
     try:
-        path = shortest_path(subgraph, source=source, target=target, weight="length")
+        path = shortest_path(network.graph_undirected, source=source, target=target, weight=length)
     except (NetworkXNoPath, NodeNotFound):
         return straight_line
 

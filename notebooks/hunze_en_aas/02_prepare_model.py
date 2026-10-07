@@ -273,18 +273,7 @@ static_data.basin.loc[static_data.basin.node_id == 1946, "streefpeil"] = -1.27
 
 # %%
 # get all nodata streefpeilen with their profile_ids and levels
-node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
-profile_ids = [damo_profiles.get_profile_id(node_id) for node_id in node_ids]
-levels = (
-    profiles_df.loc[profile_ids]["bottom_level"]
-    + (profiles_df.loc[profile_ids]["invert_level"] - profiles_df.loc[profile_ids]["bottom_level"]) / 2
-).to_numpy()
-
-# # update static_data
-profielid = pd.Series(profile_ids, index=pd.Index(node_ids, name="node_id"), name="profielid")
-static_data.add_series(node_type="Basin", series=profielid, fill_na=True)
-streefpeil = pd.Series(levels, index=pd.Index(node_ids, name="node_id"), name="streefpeil")
-static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
+static_data.fill_streefpeil_from_profiles(damo_profiles, profiles_df)
 
 # # update model basin-data
 model.basin.area.df.set_index("node_id", inplace=True)

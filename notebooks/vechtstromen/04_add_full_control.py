@@ -8,6 +8,7 @@ from ribasim_nl.control import (
     add_controllers_to_supply_area,
     add_controllers_to_uncontrolled_connector_nodes,
     mark_level_update_protected,
+    print_node_list_diff,
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
@@ -439,18 +440,6 @@ model.pump.static.df.loc[mask, "max_flow_rate"] = model.pump.static.df.loc[mask,
 # %%Duikers voor nu op 1m3/s
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_object_type"] == "duikersifonhevel"].index
 mask = model.outlet.static.df["node_id"].isin(node_ids)
-
-
-def print_node_list_diff(label: str, before_nodes: list[int], after_nodes: list[int]) -> None:
-    before_nodes = set(before_nodes)
-    after_nodes = set(after_nodes)
-
-    added_nodes = sorted(after_nodes - before_nodes)
-    removed_nodes = sorted(before_nodes - after_nodes)
-
-    print(f"{label}: {len(added_nodes)} toegevoegd, {len(removed_nodes)} verwijderd t.o.v. handmatig")
-    print(f"{label} toegevoegd: {added_nodes}")
-    print(f"{label} verwijderd: {removed_nodes}")
 
 
 def print_supply_role_conflicts(

@@ -1,10 +1,11 @@
 # %%
 import time
 
-import pandas as pd
 from peilbeheerst_model.controle_output import AFVOER_METRICS, Control
 from ribasim_nl.parametrization.basin_tables import (
     apply_basin_level_overrides,
+    apply_level_boundary_overrides,
+    clear_ungated_outlet_levels,
     sync_min_upstream_levels_with_profile_bottoms,
 )
 
@@ -38,10 +39,7 @@ model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 # %%
 
 
-node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
-mask = model.outlet.static.df["node_id"].isin(node_ids)
-model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
-model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
+clear_ungated_outlet_levels(model)
 
 # %% fixes basins and profiles
 
@@ -68,9 +66,7 @@ boundary_level_overrides = {
     121: 31.0,
 }
 
-for node_id, level in boundary_level_overrides.items():
-    mask = model.level_boundary.static.df.node_id == node_id
-    model.level_boundary.static.df.loc[mask, "level"] = level
+apply_level_boundary_overrides(model, boundary_level_overrides)
 
 # %%
 # Write model

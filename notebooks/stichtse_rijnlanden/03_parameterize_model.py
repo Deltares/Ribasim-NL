@@ -3,10 +3,10 @@
 import time
 
 import geopandas as gpd
-import pandas as pd
 from peilbeheerst_model.controle_output import AFVOER_METRICS, Control
 from ribasim_nl.parametrization.basin_tables import (
     apply_basin_level_overrides,
+    clear_ungated_outlet_levels,
     sync_min_upstream_levels_with_profile_bottoms,
 )
 from ribasim_nl.parametrization.manning_level import sync_parameterized_manning_basin_levels
@@ -79,10 +79,7 @@ apply_basin_level_overrides(model=model, basin_level_overrides=basin_level_overr
 
 # %%
 # Write model
-node_ids = model.outlet.node.df[model.outlet.node.df["meta_gestuwd"] == "False"].index
-mask = model.outlet.static.df["node_id"].isin(node_ids)
-model.outlet.static.df.loc[mask, "min_upstream_level"] = pd.NA
-model.outlet.static.df.loc[mask, "max_downstream_level"] = pd.NA
+clear_ungated_outlet_levels(model)
 
 sync_min_upstream_levels_with_profile_bottoms(model=model)
 model.basin.area.df.loc[:, "meta_area_m2"] = model.basin.area.df.area

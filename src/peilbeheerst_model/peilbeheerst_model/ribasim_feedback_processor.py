@@ -92,19 +92,11 @@ class RibasimFeedbackProcessor:
         model = Model.read(ribasim_toml)
         return model
 
-    def get_current_max_nodeid(self):
-        max_ids = []
-        for v in self.model.__dict__.values():
-            if hasattr(v, "node") and not v.node.df.index.empty:
-                mid = v.node.df.index.max()
-                if not np.isnan(mid):
-                    max_ids.append(int(mid))
-
-        if len(max_ids) == 0:
+    def get_current_max_nodeid(self) -> int:
+        node_df = self.model.node.df
+        if node_df is None or node_df.index.empty:
             raise ValueError("No node ids found")
-
-        max_id = max(max_ids)
-        return max_id
+        return int(node_df.index.max())
 
     def write_ribasim_model(self) -> None:
         outputdir = Path(self.output_folder)

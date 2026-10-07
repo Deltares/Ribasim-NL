@@ -8,6 +8,7 @@ import shapely
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump
 from ribasim.validation import can_connect
+from ribasim_nl.geodataframe import assign_node_ids_by_largest_overlap
 from ribasim_nl.geometry import drop_z, link, split_basin, split_basin_multi_polygon
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
@@ -21,7 +22,7 @@ from ribasim_nl import CloudStorage, Model, NetworkValidator
 cloud = CloudStorage()
 authority = "Vechtstromen"
 name = "vechtstromen"
-run_model = True
+run_model = False
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
@@ -61,16 +62,6 @@ basin_data = [
     basin.State(level=[0]),
 ]
 outlet_data = outlet.Static(flow_rate=[5.0])
-
-
-def update_nodes(model: Model, node_ids: list[int], node_type: str) -> None:
-    for node_id in dict.fromkeys(node_ids):
-        model.update_node(node_id=node_id, node_type=node_type)
-
-
-def remove_nodes(model: Model, node_ids: list[int]) -> None:
-    for node_id in dict.fromkeys(node_ids):
-        model.remove_node(node_id, remove_links=True)
 
 
 def redirect_links(model: Model, redirects: list[dict]) -> None:
@@ -1154,28 +1145,7 @@ exploded_internal_no_data_gdf = gpd.overlay(
 )
 unique_codes = exploded_internal_no_data_gdf["code"].unique()
 filtered_ribasim_areas_gdf = ribasim_areas_gdf[ribasim_areas_gdf["code"].isin(unique_codes)]
-combined_basin_areas_gdf = gpd.overlay(
-    filtered_ribasim_areas_gdf, model.basin.area.df, how="union", keep_geom_type=True
-).explode()
-combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
-non_null_basin_areas_gdf = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].notna()]
-largest_area_node_ids = non_null_basin_areas_gdf.loc[
-    non_null_basin_areas_gdf.groupby("code")["area"].idxmax(), ["code", "node_id"]
-]
-combined_basin_areas_gdf = combined_basin_areas_gdf.merge(
-    largest_area_node_ids, on="code", how="left", suffixes=("", "_largest")
-)
-
-# Fill missing node_id with the largest_area node_id
-combined_basin_areas_gdf["node_id"] = combined_basin_areas_gdf["node_id"].fillna(
-    combined_basin_areas_gdf["node_id_largest"]
-)
-
-combined_basin_areas_gdf.drop(columns=["node_id_largest"], inplace=True)
-combined_basin_areas_gdf = combined_basin_areas_gdf.drop_duplicates()
-combined_basin_areas_gdf = combined_basin_areas_gdf.dissolve(by="node_id").reset_index()
-combined_basin_areas_gdf = combined_basin_areas_gdf[["node_id", "geometry"]]
-combined_basin_areas_gdf.index.name = "fid"
+combined_basin_areas_gdf = assign_node_ids_by_largest_overlap(filtered_ribasim_areas_gdf, model.basin.area.df)
 model.basin.area.df = combined_basin_areas_gdf
 
 # buffer out small slivers
@@ -1316,7 +1286,7 @@ FULL_CONTROL_REVERSE_LINK_IDS = [
 redirect_links(model, CUSTOM_REDIRECT_LINKS)
 merge_basin_pairs(model, MERGE_TO_NODE)
 model.merge_basins(node_id=2254, to_node_id=1493, are_connected=False)
-remove_nodes(model, NODES_TO_REMOVE)
+model.remove_nodes(NODES_TO_REMOVE, remove_links=True)
 merge_basin_pairs(model, MERGE_TO_BASIN)
 reverse_links(model, [1171, 1475])
 
@@ -1534,10 +1504,10 @@ FINAL_BASIN_MERGES = [
 ]
 # fmt: on
 
-update_nodes(model, OUTLET_TYPE_FIX_NODE_IDS, "Outlet")
-update_nodes(model, MANNING_TYPE_FIX_NODE_IDS, "ManningResistance")
-update_nodes(model, gdb_pump_node_ids, "Pump")
-remove_nodes(model, OBSOLETE_NODE_IDS)
+model.update_nodes(OUTLET_TYPE_FIX_NODE_IDS, "Outlet")
+model.update_nodes(MANNING_TYPE_FIX_NODE_IDS, "ManningResistance")
+model.update_nodes(gdb_pump_node_ids, "Pump")
+model.remove_nodes(OBSOLETE_NODE_IDS, remove_links=True)
 
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 2300, "level"] = 15.33
 

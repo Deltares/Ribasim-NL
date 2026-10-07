@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from ribasim_nl.aquo import waterbeheercode
+from ribasim_nl.model import find_toml
 from ribasim_nl.settings import settings
 
 from ribasim_nl import Model, concat, prefix_index
@@ -170,15 +171,6 @@ def get_model_dir(model_spec: dict[str, Any]) -> Path:
     return data_dir / f"{model_spec['authority']}/modellen/{model_spec['model']}"
 
 
-def find_toml_path(model_dir: Path) -> Path:
-    tomls = list(model_dir.glob("*.toml"))
-    if len(tomls) == 0:
-        raise ValueError(f"No TOML file found at: {model_dir}")
-    elif len(tomls) > 1:
-        raise ValueError(f"User provided more than one toml-file: {len(tomls)}, remove one! {tomls}")
-    return tomls[0]
-
-
 def process_model_spec(
     idx: int, model_spec: dict[str, Any], lhm_model: Model | None, write_toml: Path | None = None
 ) -> Model | None:
@@ -186,7 +178,7 @@ def process_model_spec(
         return lhm_model
     print(f"{model_spec['authority']} - {model_spec['model']}")
     model_dir = get_model_dir(model_spec)
-    model_path = find_toml_path(model_dir)
+    model_path = find_toml(model_dir)
     model = Model.read(model_path)
     model.node.df["meta_waterbeheerder"] = model_spec["authority"]
     # TODO reduce max_digits back to 4 after fixing #364

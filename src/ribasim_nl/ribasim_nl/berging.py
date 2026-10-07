@@ -20,6 +20,7 @@ from shapely.geometry import Point, Polygon
 from ribasim_nl.cloud import CloudStorage
 from ribasim_nl.model import Model
 from ribasim_nl.profiles import MIN_PROFILE_AREA
+from ribasim_nl.raster import with_rasterio_env
 from ribasim_nl.settings import settings
 
 LHM_RASTER_FILE = settings.ribasim_nl_data_dir / Path("Basisgegevens/LHM/4.3/input/LHM_data.tif")
@@ -216,6 +217,7 @@ def basin_link_buffer_area(model: Model, node_id, buffer_distance=2.5):
     return buffered_union.area
 
 
+@with_rasterio_env
 def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: float = 2.0, buffer_distance=2.5) -> None:
     """Surface water area of primary basin based on primair_oppervlaktewater in LHM4.3
 
@@ -335,6 +337,7 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
     model.basin.profile.df = cast(Any, basin_profile_df)
 
 
+@with_rasterio_env
 def add_basin_statistics(df: GeoDataFrame, lhm_raster_file: Path, ma_raster_file: Path) -> GeoDataFrame:
     """Add Vd Gaast basin-statistics to a Polygon basin GeoDataFrame
 
@@ -603,6 +606,7 @@ class VdGaastBerging:
         self.lhm_raster_file = lhm_raster_file
         self.ma_raster_file = ma_raster_file
 
+    @with_rasterio_env
     def add(self) -> None:
         model = self.model
 
@@ -613,9 +617,9 @@ class VdGaastBerging:
             df=basin_area_df, lhm_raster_file=self.lhm_raster_file, ma_raster_file=self.ma_raster_file
         )
 
-        for row in tqdm.tqdm(
-            model.basin.node.df.itertuples(), total=len(model.basin.node.df), desc="add storage nodes"
-        ):
+        basin_node_df = model.filter_nodes("Basin")
+        node_pairs = []
+        for row in tqdm.tqdm(basin_node_df.itertuples(), total=len(basin_node_df), desc="add storage nodes"):
             # get basin_id and basin polygon
             basin_id = row.Index
             basin_row = basin_area_df.loc[basin_id]
@@ -661,12 +665,24 @@ class VdGaastBerging:
             data = [get_rating_curve(row=basin_row, min_level=basin_profile.df.level.min())]
 
             # connect storage basin with basin with a tabulated rating curve
-            model.add_and_connect_node(
-                basin_node.node_id,
-                to_basin_id=basin_id,
-                geometry=Point(row.geometry.x + 5, row.geometry.y),
-                node_type="TabulatedRatingCurve",
-                tables=data,
-                use_add_api=self.use_add_api,
-                meta_categorie="bergend",
-            )
+            if self.use_add_api:
+                model.add_and_connect_node(
+                    basin_node.node_id,
+                    to_basin_id=basin_id,
+                    geometry=Point(row.geometry.x + 5, row.geometry.y),
+                    node_type="TabulatedRatingCurve",
+                    tables=data,
+                    use_add_api=True,
+                    meta_categorie="bergend",
+                )
+            else:
+                # links are added at once after the loop, which is much faster
+                connector_node = model.add_node(
+                    node_type="TabulatedRatingCurve",
+                    geometry=Point(row.geometry.x + 5, row.geometry.y),
+                    tables=data,
+                    meta_categorie="bergend",
+                )
+                node_pairs += [(basin_node, connector_node), (connector_node, model.get_node(basin_id))]
+
+        model.add_links(node_pairs)

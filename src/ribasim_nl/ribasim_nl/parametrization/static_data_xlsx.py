@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Literal
 
 import pandas as pd
 from openpyxl import load_workbook
@@ -8,6 +9,7 @@ from pydantic import BaseModel, ConfigDict
 
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.model import Model
+from ribasim_nl.parametrization.damo_profiles import DAMOProfiles, profile_level
 from ribasim_nl.parametrization.empty_table import empty_table_df
 
 description = [
@@ -162,6 +164,46 @@ class StaticData(BaseModel):
         if fill_na:
             mask = mask & df[series.name].isna()
         df.loc[mask, series.name] = series[df[mask][col]].to_numpy()
+
+    def fill_min_upstream_level_from_profiles(
+        self, node_type: Literal["Outlet", "Pump"], profiles_df: pd.DataFrame, divisor: float = 2
+    ) -> None:
+        """Fill missing min_upstream_level from the profile on the link flowing into the node.
+
+        Args:
+            node_type: Outlet or Pump
+            profiles_df: profiles indexed by profile id, with bottom_level and invert_level
+            divisor: the level is at 1/divisor of the profile depth above the bottom level
+        """
+        df = getattr(self, pascal_to_snake_case(node_type))
+        assert df is not None, f"reset the {node_type} data frame first"
+        link_df = self.model.link.df
+        assert link_df is not None
+        node_ids = df[df.min_upstream_level.isna()].node_id.to_numpy()
+        profile_ids = [
+            link_df[link_df.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
+        ]
+        levels = profile_level(profiles_df, profile_ids, divisor=divisor)
+        min_upstream_level = pd.Series(levels, index=pd.Index(node_ids, name="node_id"), name="min_upstream_level")
+        self.add_series(node_type=node_type, series=min_upstream_level, fill_na=True)
+
+    def fill_streefpeil_from_profiles(
+        self, damo_profiles: DAMOProfiles, profiles_df: pd.DataFrame, divisor: float = 2
+    ) -> None:
+        """Fill missing Basin streefpeil and profielid from the profile with the lowest level around the basin.
+
+        Args:
+            damo_profiles: profiles to select the profile id per basin from
+            profiles_df: processed profiles indexed by profile id, with bottom_level and invert_level
+            divisor: the level is at 1/divisor of the profile depth above the bottom level
+        """
+        assert self.basin is not None, "reset the Basin data frame first"
+        node_ids = self.basin[self.basin.streefpeil.isna()].node_id.to_numpy()
+        profile_ids = [damo_profiles.get_profile_id(node_id) for node_id in node_ids]
+        levels = profile_level(profiles_df, profile_ids, divisor=divisor)
+        index = pd.Index(node_ids, name="node_id")
+        self.add_series(node_type="Basin", series=pd.Series(profile_ids, index=index, name="profielid"), fill_na=True)
+        self.add_series(node_type="Basin", series=pd.Series(levels, index=index, name="streefpeil"), fill_na=True)
 
     def write(self) -> None:
         # remove exel if exists

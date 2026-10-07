@@ -7,6 +7,7 @@ import numpy as np
 import shapely
 import shapely.affinity
 
+from ribasim_nl.geodataframe import sorted_sjoin
 from ribasim_nl.profiles import hydrotopes as ht
 
 LOG = logging.getLogger(__name__)
@@ -96,7 +97,7 @@ def depth_from_hydrotopes(
         hydrotope_map.to_crs(hydro_objects.crs)
 
     # find overlapping hydrotopes per hydro-object
-    temp = gpd.sjoin(hydro_objects, hydrotope_map, how="left", predicate="intersects", rsuffix="map")
+    temp = sorted_sjoin(hydro_objects, hydrotope_map, how="left", predicate="intersects", rsuffix="map")
     mask = temp["index_map"].isna()
     if mask.any():
         LOG.warning(f"Hydro-objects outside hydrotope map ({sum(mask)}) linked to nearest hydrotope")
@@ -108,14 +109,18 @@ def depth_from_hydrotopes(
     temp["overlap"] = temp.apply(
         lambda row: row["geometry"].intersection(hydrotope_map.loc[row["index_map"], "geometry"]).length, axis=1
     )
+    temp["depth"] = np.array(
+        [depth_calculator(fid, width) for fid, width in zip(temp[col_fid], temp["width"], strict=True)], dtype=float
+    )
+    temp["has_depth"] = temp["depth"].notna()
 
-    # assign the hydrotope with the largest overlap per hydro-object
-    temp.reset_index(drop=False, inplace=True)
-    idx = temp.groupby("index")["overlap"].idxmax()
-    hydro_objects["ht_code"] = temp.loc[idx, col_fid]
-
-    # calculate depth
-    hydro_objects["depth"] = hydro_objects.apply(lambda row: depth_calculator(row["ht_code"], row["width"]), axis=1)
+    # assign the hydrotope with the largest overlap per hydro-object (`temp` is indexed by hydro-object), preferring
+    # a hydrotope with a defined depth on equal overlap, e.g. for hydro-objects on the boundary between hydrotopes
+    temp = temp.sort_values(["overlap", "has_depth"], ascending=False, kind="stable")
+    best = temp[~temp.index.duplicated(keep="first")]
+    assert hydro_objects.index.is_unique and best.index.sort_values().equals(hydro_objects.index.sort_values())
+    hydro_objects["ht_code"] = best[col_fid]
+    hydro_objects["depth"] = best["depth"]
     if drop_na:
         hydro_objects.dropna(subset="depth", inplace=True, ignore_index=True)
 
@@ -179,8 +184,12 @@ def depth_from_measurements(
     assert all(cross_sections.has_z)
 
     # couple hydro-objects to cross-sections
-    temp = (hydro_objects[hydro_objects["main-route"]] if only_main_route else hydro_objects).sjoin(
-        cross_sections, how="left", predicate="intersects", rsuffix="xs"
+    temp = sorted_sjoin(
+        hydro_objects[hydro_objects["main-route"]] if only_main_route else hydro_objects,
+        cross_sections,
+        how="left",
+        predicate="intersects",
+        rsuffix="xs",
     )
     temp["index_xs"] = temp["index_xs"].fillna(-1).astype(int)
     temp = temp.groupby(level=0)["index_xs"].apply(list).to_frame()
