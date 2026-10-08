@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Running on SLURM – Ribasim-NL</title>
+<title>Running locally – Ribasim-NL</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -169,7 +169,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/slurm.html">Running on SLURM</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/local.html">Running locally</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -207,13 +207,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../dev/local.html" class="sidebar-item-text sidebar-link">
+  <a href="../dev/local.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Running locally</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../dev/slurm.html" class="sidebar-item-text sidebar-link active">
+  <a href="../dev/slurm.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Running on SLURM</span></a>
   </div>
 </li>
@@ -233,11 +233,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#repro.sh-pipeline-reproduction" id="toc-repro.sh-pipeline-reproduction" class="nav-link active" data-scroll-target="#repro.sh-pipeline-reproduction">repro.sh: pipeline reproduction</a></li>
-  <li><a href="#run.sh-isolated-simulation-runs" id="toc-run.sh-isolated-simulation-runs" class="nav-link" data-scroll-target="#run.sh-isolated-simulation-runs">run.sh: isolated simulation runs</a>
-  <ul class="collapse">
-  <li><a href="#examples" id="toc-examples" class="nav-link" data-scroll-target="#examples">Examples</a></li>
-  </ul></li>
+  <li><a href="#options" id="toc-options" class="nav-link active" data-scroll-target="#options">Options</a></li>
   </ul>
 </nav>
     </div>
@@ -246,7 +242,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Running on SLURM</h1>
+<h1 class="title">Running locally</h1>
 </div>
 
 
@@ -263,53 +259,27 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>The full pipeline can be reproduced on an HPC cluster using two scripts:</p>
-<ul>
-<li><code>repro.sh</code> — submits DVC pipeline stages as SLURM jobs with correct dependencies</li>
-<li><code>run.sh</code> — submits isolated Ribasim simulation runs</li>
-</ul>
-<section id="repro.sh-pipeline-reproduction" class="level2">
-<h2 class="anchored" data-anchor-id="repro.sh-pipeline-reproduction">repro.sh: pipeline reproduction</h2>
-<p>Submits the DVC pipeline as individual SLURM jobs. Each <code>foreach</code> stage gets its own job, and SLURM <code>--dependency=afterok</code> ensures correct ordering.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./repro.sh</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This submits jobs in these waves:</p>
+<p>On a workstation with enough cores and memory, the pipeline can be reproduced in parallel with:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run repro-local</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This is the local counterpart of <a href="../dev/slurm.html"><code>repro.sh</code></a>, and runs the same stages: <code>koppelen</code> and everything upstream of it, except frozen stages. The stages and their commands are taken from <code>dvc.yaml</code>. It:</p>
 <ol start="0" type="1">
-<li><code>clean</code>: removes the outputs of all stages that are run, like <code>dvc repro</code> does, and runs <code>dvc pull --force</code> for everything upstream of them; no manual pull is needed</li>
-<li><code>rwzi</code> (shared dependency)</li>
-<li>22 parallel jobs: 11 <code>dynamic@*</code>, 10 <code>forcing@*</code>, 1 <code>hws_transient</code></li>
-<li><code>samenvoegen</code> → <code>koppelen</code></li>
+<li>Removes the outputs of all stages that are run, like <code>dvc repro</code> does, and runs <code>dvc pull --force</code> for everything upstream of them; no manual pull is needed.</li>
+<li>Runs each stage as soon as the stages it depends on have succeeded, so the water authorities run in parallel. If a stage fails, the stages downstream of it are skipped, and the others continue.</li>
+<li>Runs <code>dvc commit</code> for the stages that succeeded. If all succeeded, it runs <code>pixi run check</code>, a second time if hooks fixed files such as <code>dvc.lock</code>, and with <code>--push</code> also <code>dvc push</code>.</li>
 </ol>
-<p>On completion, job IDs are written to <code>repro_jobs.txt</code> for use with <code>run.sh</code>.</p>
-</section>
-<section id="run.sh-isolated-simulation-runs" class="level2">
-<h2 class="anchored" data-anchor-id="run.sh-isolated-simulation-runs">run.sh: isolated simulation runs</h2>
-<p>Copies a model to <code>runs/&lt;name&gt;/</code> and submits a SLURM job using the named Ribasim core configured in <code>scripts/install_ribasim_core.py</code>.</p>
-<p>As an immediate preparation step, <code>run.sh</code> runs the <code>archive-core</code> Pixi task. This task depends on <code>install-core</code>, then archives <code>bin/ribasim</code> at <code>/p/ribasim-nl/bin/&lt;NAME&gt;</code>. Pixi skips the copy when the input directory and installer configuration are unchanged.</p>
-<p>Named archives are immutable: <code>archive-core</code> does not replace an existing <code>/p/ribasim-nl/bin/&lt;NAME&gt;</code> directory. Change <code>NAME</code> when archiving a different core.</p>
-<p>The submitted SLURM job runs this archived executable, not <code>bin/ribasim</code> in the repository. The repository and its installed core can therefore change while simulations are queued or running without changing the executable used by those simulations. The exact Ribasim version is written to each SLURM log before the model starts.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./run.sh</span> <span class="op">&lt;</span>name<span class="op">&gt;</span> <span class="op">&lt;</span>model_dir<span class="op">&gt;</span> [--after=<span class="op">&lt;</span>jobid<span class="op">&gt;</span>] [key=value ...]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>TOML overrides use dot notation for nested keys.</p>
-<section id="examples" class="level3">
-<h3 class="anchored" data-anchor-id="examples">Examples</h3>
-<p>Run <code>lhm_coupled</code> after koppelen finishes:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./run.sh</span> lhm_coupled data/Rijkswaterstaat/modellen/lhm_coupled <span class="dt">\</span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--after</span><span class="op">=</span><span class="va">$(</span><span class="fu">grep</span> koppelen repro_jobs.txt <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-f2</span><span class="va">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Run <code>lhm_coupled</code> with a shorter simulation period:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./run.sh</span> lhm_coupled_1yr data/Rijkswaterstaat/modellen/lhm_coupled <span class="dt">\</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--after</span><span class="op">=</span><span class="va">$(</span><span class="fu">grep</span> koppelen repro_jobs.txt <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-f2</span><span class="va">)</span> <span class="dt">\</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  endtime=<span class="st">"2018-01-01 00:00:00"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Compare solver settings:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./run.sh</span> lhm_coupled_tight data/Rijkswaterstaat/modellen/lhm_coupled <span class="dt">\</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--after</span><span class="op">=</span><span class="va">$(</span><span class="fu">grep</span> koppelen repro_jobs.txt <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-f2</span><span class="va">)</span> <span class="dt">\</span></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  solver.abstol=1e-6</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="ex">./run.sh</span> lhm_coupled_qndf data/Rijkswaterstaat/modellen/lhm_coupled <span class="dt">\</span></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--after</span><span class="op">=</span><span class="va">$(</span><span class="fu">grep</span> koppelen repro_jobs.txt <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-f2</span><span class="va">)</span> <span class="dt">\</span></span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  solver.algorithm=QNDF solver.abstol=1e-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>All submissions are logged to <code>runs/jobs.txt</code>. Run directories and job logs are gitignored.</p>
+<p>Like <code>repro.sh</code>, it runs the stage commands directly, since parallel <code>dvc repro</code> processes would contend for the DVC lock. The output of each stage is written to <code>logs/repro/&lt;timestamp&gt;/&lt;stage&gt;.log</code>, and a summary with the status and duration of each stage is printed at the end.</p>
+<section id="options" class="level2">
+<h2 class="anchored" data-anchor-id="options">Options</h2>
+<ul>
+<li>Targets: stages to reproduce together with their upstream stages, <code>koppelen</code> by default. For example, <code>pixi run repro-local export_webmap</code> also runs <code>run_lhm_coupled</code> and <code>export_webmap</code>, after which <code>pixi run publish-webmap</code> updates the <a href="../dev/viewer.html">model viewer</a>.</li>
+<li><code>--jobs N</code>: the maximum number of stages that run at once, 12 by default. Each stage is a Python process that may also run Ribasim, so watch the memory use when increasing it.</li>
+<li><code>--stagger SECONDS</code>: the minimum time between stage starts, 30 by default, to not overload the GoodCloud server that some stages still download from.</li>
+<li><code>--incremental</code>: only run the stages that DVC reports as changed, and everything downstream of them, rather than all stages. Missing outputs count as changed, so this also reruns stages that failed before. Run <code>pixi run dvc pull</code> first if the workspace may be behind <code>dvc.lock</code>.</li>
+<li><code>--push</code>: run <code>dvc push</code> for the reproduced stages if they all succeeded.</li>
+</ul>
+<p>To keep the run going after closing the terminal, start it in for instance <code>tmux</code> or with <code>nohup</code>.</p>
 
 
-</section>
 </section>
 
 </main> <!-- /main -->
