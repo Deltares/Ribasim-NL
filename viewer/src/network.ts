@@ -175,6 +175,55 @@ const isRemoved = (diffs: Map<number, FeatureDiff> | undefined, sign: 1 | -1) =>
 /** The label of a link id; removed links have their negated id in the base model. */
 export const linkLabel = (id: number) => (id < 0 ? `#${-id} (base)` : `#${id}`);
 
+/** Flow neighbors of each Junction, upstream and downstream, built once per network. */
+const junctionNeighbors = new WeakMap<Network, { upstream: Map<number, number[]>; downstream: Map<number, number[]> }>();
+
+function neighborsOfJunctions(network: Network) {
+  let neighbors = junctionNeighbors.get(network);
+  if (neighbors) return neighbors;
+  neighbors = { upstream: new Map(), downstream: new Map() };
+  const isJunction = (id: number) => network.nodeType[network.nodeRow.get(id) ?? -1] === "Junction";
+  const add = (map: Map<number, number[]>, key: number, value: number) => {
+    const list = map.get(key);
+    if (list) list.push(value);
+    else map.set(key, [value]);
+  };
+  network.linkId.forEach((_, row) => {
+    if (network.linkType[row] !== "flow") return;
+    const from = network.fromNodeId[row];
+    const to = network.toNodeId[row];
+    if (isJunction(to)) add(neighbors.upstream, to, from);
+    if (isJunction(from)) add(neighbors.downstream, from, to);
+  });
+  junctionNeighbors.set(network, neighbors);
+  return neighbors;
+}
+
+/**
+ * The node beyond any Junctions, following flow links in the given direction. Junctions only join links, so the
+ * Basin behind them holds the water level. Prefers a Basin over other nodes, and returns the node itself when it is
+ * no Junction or no node is found beyond it.
+ */
+export function pastJunctions(network: Network, nodeId: number, direction: "upstream" | "downstream"): number {
+  const typeOf = (id: number) => network.nodeType[network.nodeRow.get(id) ?? -1];
+  if (typeOf(nodeId) !== "Junction") return nodeId;
+  const next = neighborsOfJunctions(network)[direction];
+  const seen = new Set([nodeId]);
+  const queue = [nodeId];
+  let found: number | undefined;
+  while (queue.length) {
+    for (const neighbor of next.get(queue.shift()!) ?? []) {
+      if (seen.has(neighbor)) continue;
+      seen.add(neighbor);
+      const type = typeOf(neighbor);
+      if (type === "Basin") return neighbor;
+      if (type === "Junction") queue.push(neighbor);
+      else found ??= neighbor;
+    }
+  }
+  return found ?? nodeId;
+}
+
 /** The base id of each link in both models by head id, matched on the from and to node like `webmap_diff`. */
 function matchLinks(head: Columns["links"], base: Columns["links"]): Map<number, number> {
   const key = (links: Columns["links"], row: number) => `${links.from_node_id[row]}-${links.to_node_id[row]}`;
