@@ -112,5 +112,13 @@ for node in inlaat_structures:
     ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_aanvoer"] = 1
     ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_afvoer"] = 0
 
+# add Gemaal Postweg, Kapelle, draining GPG1336 (basin 138) to GPG1335 (basin 142), see #844
+# added last, so the node IDs of the nodes added above do not change
+# its name and capacity are assigned from the 'gemaal' layer in the forcing stage
+pump_node = ribasim_model.pump.add(Node(geometry=Point(57403, 390161)), [pump.Static(flow_rate=[0.1])])
+ribasim_model.node.df.loc[pump_node.node_id, "meta_node_id"] = pump_node.node_id
+ribasim_model.link.add(ribasim_model.basin[138], pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[142])
+
 ribasim_param.clean_tables(ribasim_model, waterschap)
 ribasim_model.write(paths.model_dir("feedback") / "ribasim.toml")
