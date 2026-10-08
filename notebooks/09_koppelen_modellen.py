@@ -134,10 +134,10 @@ forced_coupling = {
     6000003: 3801961,  # Forceren zijtak Helanvaart Limburg
     3800029: 6002294,  # Defensiekanaal Limburg: voorkom koppeling via Junction 6003598
     3801958: 6002408,  # AaenMaas FlowDemand-inlaat 3800601 koppelen aan Limburg-basin
-    203885: 3402060,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-Junction, zie #824
-    203887: 3402060,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-Junction, zie #824
-    203898: 3402060,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-Junction, zie #824
-    203900: 3402060,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-Junction, zie #824
+    203885: 3401124,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-basin achter Junction 3402060, zie #824
+    203887: 3401124,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-basin achter Junction 3402060, zie #824
+    203898: 3401124,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-basin achter Junction 3402060, zie #824
+    203900: 3401124,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-basin achter Junction 3402060, zie #824
 }
 
 # Outlets that are open water connections, converted to ManningResistance after coupling, removing their control

@@ -41,14 +41,17 @@ def write_performance(
     model: Model | str | PathLike[str],
     output_path: str | PathLike[str] | None = None,
 ) -> Path:
-    """Write performance.xlsx next to a model TOML file.
+    """Write performance.xlsx to the results directory of a model.
+
+    It is written to the results directory, which is not tracked by DVC, since the solver
+    timings it contains differ between runs.
 
     Parameters
     ----------
     model : Model or path-like
         A ``ribasim_nl.Model`` instance or a path to a model TOML file.
     output_path : path-like, optional
-        Output Excel path. Defaults to ``performance.xlsx`` next to the TOML.
+        Output Excel path. Defaults to ``performance.xlsx`` in the results directory.
 
     Returns
     -------
@@ -67,7 +70,7 @@ def write_performance(
         raise FileNotFoundError(f"basin.nc not found: {basin_path}")
 
     if output_path is None:
-        output_path = toml_path.with_name("performance.xlsx")
+        output_path = results_path / "performance.xlsx"
     output_path = Path(output_path).resolve()
 
     with xr.open_dataset(solver_stats_path) as ds:

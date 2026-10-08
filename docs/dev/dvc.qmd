@@ -101,7 +101,7 @@ pixi run dvc repro --pull rwzi
 Without `--pull`, `dvc repro` only uses data already present in the workspace or local DVC cache. Other useful options are [`--force`](https://doc.dvc.org/command-reference/repro#-f) to run a stage even when DVC considers it unchanged and [`--single-item`](https://doc.dvc.org/command-reference/repro#-s) to run only the named stage without reproducing its upstream dependencies.
 
 ::: {.callout-warning}
-A full `pixi run dvc repro` currently takes several days. We only run full reproductions in parallel on the SLURM cluster using `repro.sh`; see [Running on SLURM](slurm.qmd).
+A full `pixi run dvc repro` runs all stages one by one and takes several days. Run full reproductions in parallel instead, on a workstation with `pixi run repro-local`, see [Running locally](local.qmd), or on the SLURM cluster with `repro.sh`, see [Running on SLURM](slurm.qmd).
 :::
 
 ## Pushing changes

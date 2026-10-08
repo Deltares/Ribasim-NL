@@ -11,7 +11,7 @@ import {
 } from "./data";
 import { describeResult, statusLabel } from "./diff";
 import { LevelDiagram, type LevelSeries, type LevelSide } from "./levels";
-import { linkLabel, type Network } from "./network";
+import { linkLabel, type Network, pastJunctions } from "./network";
 
 export type Selection = { kind: "node" | "link"; id: number };
 
@@ -480,17 +480,24 @@ export class Panel {
     return typeof constant?.level === "number" ? new Float64Array(steps).fill(constant.level) : null;
   }
 
-  private async levelSide(nodeId: number | undefined, limit: LevelSeries | null): Promise<LevelSide> {
+  /** The levels on one side of a connector node, looking past Junctions to the Basin behind them. */
+  private async levelSide(
+    neighbor: number | undefined,
+    direction: "upstream" | "downstream",
+    limit: LevelSeries | null,
+  ): Promise<LevelSide> {
+    const nodeId = neighbor === undefined ? undefined : pastJunctions(this.network, neighbor, direction);
     const row = nodeId === undefined ? undefined : this.network.nodeRow.get(nodeId);
     if (nodeId === undefined || row === undefined) return { name: "none", levels: null, bottom: null, limit };
     const nodeType = this.network.nodeType[row];
+    const via = nodeId === neighbor ? "" : ` (via Junction #${neighbor})`;
     const [levels, profile] = await Promise.all([
       this.levelSeries(nodeType, nodeId),
       nodeType === "Basin" ? this.tableRows(nodeType, "profile", nodeId) : [],
     ]);
     const bottoms = profile.map((r) => r.level).filter((level): level is number => typeof level === "number");
     return {
-      name: `${nodeType} #${nodeId}`,
+      name: `${nodeType} #${nodeId}${via}`,
       levels,
       bottom: bottoms.length ? Math.min(...bottoms) : null,
       limit,
@@ -543,8 +550,8 @@ export class Panel {
       return values.some(Number.isFinite) ? { label, values } : null;
     };
     const [up, down] = await Promise.all([
-      this.levelSide(neighbors.upstream, limit("min_upstream_level", "min upstream")),
-      this.levelSide(neighbors.downstream, limit("max_downstream_level", "max downstream")),
+      this.levelSide(neighbors.upstream, "upstream", limit("min_upstream_level", "min upstream")),
+      this.levelSide(neighbors.downstream, "downstream", limit("max_downstream_level", "max downstream")),
     ]);
     const diagram = new LevelDiagram(up, down, width);
 

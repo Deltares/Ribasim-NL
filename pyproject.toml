@@ -54,6 +54,7 @@ include = [
     "notebooks/05_add_bergend.py",
     "notebooks/06_add_synthetic_forcing.py",
     "notebooks/07_add_dynamic_forcing.py",
+    "scripts/clean.py",
     "scripts/repro.py",
     "src/hydamo/hydamo",
     "src/peilbeheerst_model/peilbeheerst_model",
@@ -63,6 +64,7 @@ include = [
 [tool.ty.environment]
 python-version = "3.13"
 root = [
+    "scripts",
     "src/hydamo",
     "src/peilbeheerst_model",
     "src/ribasim_nl",

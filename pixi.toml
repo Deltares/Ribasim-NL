@@ -80,7 +80,8 @@ xlwings = ">=0.33"
 typecheck = "ty check"
 install-prek = "prek install -f"
 install = { depends-on = ["install-core", "install-prek"] }
-repro = "dvc repro --keep-going && prek run"
+# Reproduce stages and their upstream in parallel on this machine: `pixi run repro-local [TARGET ...]`
+repro-local = "python scripts/repro.py"
 check = "prek run --all-files"
 dvc-dag = { cmd = "python scripts/dvc_dag.py > docs/dev/_dvc-dag.mmd", inputs = ["dvc.yaml"], outputs = ["docs/dev/_dvc-dag.mmd"] }
 docs = { cmd = "quartodoc build && quarto preview", cwd = "docs", depends-on = ["dvc-dag", "viewer-build"] }

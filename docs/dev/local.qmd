@@ -1,0 +1,27 @@
+---
+title: "Running locally"
+---
+
+On a workstation with enough cores and memory, the pipeline can be reproduced in parallel with:
+
+```sh
+pixi run repro-local
+```
+
+This is the local counterpart of [`repro.sh`](slurm.qmd), and runs the same stages: `koppelen` and everything upstream of it, except frozen stages. The stages and their commands are taken from `dvc.yaml`. It:
+
+0. Removes the outputs of all stages that are run, like `dvc repro` does, and runs `dvc pull --force` for everything upstream of them; no manual pull is needed.
+1. Runs each stage as soon as the stages it depends on have succeeded, so the water authorities run in parallel. If a stage fails, the stages downstream of it are skipped, and the others continue.
+2. Runs `dvc commit` for the stages that succeeded. If all succeeded, it runs `pixi run check`, a second time if hooks fixed files such as `dvc.lock`, and with `--push` also `dvc push`.
+
+Like `repro.sh`, it runs the stage commands directly, since parallel `dvc repro` processes would contend for the DVC lock. The output of each stage is written to `logs/repro/<timestamp>/<stage>.log`, and a summary with the status and duration of each stage is printed at the end.
+
+## Options
+
+- Targets: stages to reproduce together with their upstream stages, `koppelen` by default. For example, `pixi run repro-local export_webmap` also runs `run_lhm_coupled` and `export_webmap`, after which `pixi run publish-webmap` updates the [model viewer](viewer.qmd).
+- `--jobs N`: the maximum number of stages that run at once, 12 by default. Each stage is a Python process that may also run Ribasim, so watch the memory use when increasing it.
+- `--stagger SECONDS`: the minimum time between stage starts, 30 by default, to not overload the GoodCloud server that some stages still download from.
+- `--incremental`: only run the stages that DVC reports as changed, and everything downstream of them, rather than all stages. Missing outputs count as changed, so this also reruns stages that failed before. Run `pixi run dvc pull` first if the workspace may be behind `dvc.lock`.
+- `--push`: run `dvc push` for the reproduced stages if they all succeeded.
+
+To keep the run going after closing the terminal, start it in for instance `tmux` or with `nohup`.

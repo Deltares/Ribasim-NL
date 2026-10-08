@@ -151,8 +151,10 @@ JOB_SAMENVOEGEN=$(submit samenvoegen "afterok${JOBIDS}" ${TIME} "$(py notebooks/
 # Step 4: koppelen (after samenvoegen)
 JOB_KOPPELEN=$(submit koppelen "afterok:${JOB_SAMENVOEGEN}" ${TIME} "$(py notebooks/09_koppelen_modellen.py)")
 
-# Step 5: register outputs, check, + upload to DVC once (serial).
-JOB_COMMIT=$(submit commit "afterok:${JOB_KOPPELEN}" ${TIME} "pixi run dvc commit -f && pixi run check && pixi run dvc push")
+# Step 5: register outputs, check, + upload to DVC once (serial). Only commit the stages that ran,
+# an untargeted `dvc commit -f` would also record stale outputs of downstream stages as up to date.
+# The check runs again if the first run failed only because hooks fixed files, like dvc.lock.
+JOB_COMMIT=$(submit commit "afterok:${JOB_KOPPELEN}" ${TIME} "pixi run dvc commit -f ${STAGES} && (pixi run check || pixi run check) && pixi run dvc push ${STAGES}")
 
 # Log job IDs for run.sh to depend on
 echo "samenvoegen	${JOB_SAMENVOEGEN}" > repro_jobs.txt
