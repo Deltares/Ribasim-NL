@@ -94,12 +94,14 @@ bin/
 *.nc
 *.ps1
 *.tmp
-**/results/**
+# DVC checks directories with a trailing slash, for which `results/*` style patterns also match `results/`
+# itself, hiding the .dvc file below from DVC. Keep patterns that do not match the directory itself.
+**/results/
 !data/Basisgegevens/LHM/4.3/results/
-data/Basisgegevens/LHM/4.3/results/*/
-!data/Basisgegevens/LHM/4.3/results/*.dvc
+data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink/
 runs/
 repro_jobs.txt
+logs/
 delwaq/
 
 # Main scripts to run workflows per water authority

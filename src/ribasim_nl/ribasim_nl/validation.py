@@ -102,6 +102,42 @@ def _inert_control_state_issues(model: "Model") -> list[str]:
     return issues
 
 
+# Node types that Ribasim does not allow to be connected to each other, also not through Junctions
+CONNECTOR_NODE_TYPES = {"Pump", "Outlet", "TabulatedRatingCurve", "LinearResistance", "ManningResistance"}
+
+
+def _connector_through_junction_issues(model: "Model") -> list[str]:
+    """Return connector nodes that are connected to other connector nodes through Junctions.
+
+    Ribasim treats Junctions as transparent, so it rejects such links as connecting e.g. a Pump to a Pump.
+    """
+    link_df, node_df = model.link.df, model.node.df
+    if link_df is None or node_df is None:
+        return []
+    flow = link_df[link_df["link_type"] == "flow"]
+    node_type = node_df["node_type"]
+    downstream = flow.groupby("from_node_id")["to_node_id"].agg(list).to_dict()
+
+    pairs = []
+    for from_node_id in sorted(node_type.index[node_type.isin(CONNECTOR_NODE_TYPES)]):
+        junctions = [n for n in downstream.get(from_node_id, []) if node_type[n] == "Junction"]
+        seen = set(junctions)
+        while junctions:
+            for to_node_id in downstream.get(junctions.pop(), []):
+                if node_type[to_node_id] == "Junction":
+                    if to_node_id not in seen:
+                        seen.add(to_node_id)
+                        junctions.append(to_node_id)
+                elif node_type[to_node_id] in CONNECTOR_NODE_TYPES:
+                    pairs.append((int(from_node_id), int(to_node_id)))
+    if not pairs:
+        return []
+    return [
+        "Connector nodes must not be connected to connector nodes through Junctions, add a Basin in between; "
+        f"invalid (from, to) node IDs: {sorted(set(pairs))}"
+    ]
+
+
 def validate_model(model: "Model") -> None:
     """Validate Ribasim-NL conventions and report all issues together."""
     issues = [
@@ -109,6 +145,7 @@ def validate_model(model: "Model") -> None:
         *_discrete_control_condition_issues(model),
         *_partially_missing_control_state_issues(model),
         *_inert_control_state_issues(model),
+        *_connector_through_junction_issues(model),
     ]
     if issues:
         raise ValueError("Ribasim-NL model validation failed:\n- " + "\n- ".join(issues))

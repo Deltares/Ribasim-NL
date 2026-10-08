@@ -9,7 +9,7 @@ Build and maintain a reproducible [DVC (Data Version Control)](https://dvc.org/)
 - Use Pixi for commands and dependencies.
 - Only support the Python and dependency versions in the lockfile; do not use compatibility features such as `from __future__ import annotations`.
 - Define reproducible stages in `dvc.yaml`, with complete inputs and outputs.
-- Run only the smallest relevant DVC stage while developing. Never run `pixi run repro`; complete reproduction runs are submitted to SLURM manually.
+- Run only the smallest relevant DVC stage while developing. Do not run complete reproductions unless asked; they are started manually, locally with `pixi run repro-local` or on SLURM with `repro.sh`.
 - Run `pixi run check` before finishing; it includes Ruff linting and formatting, and ty type checking.
 - Add tests for new behavior where practical.
 - Add type hints and concise docstrings to new Python code.

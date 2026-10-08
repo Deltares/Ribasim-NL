@@ -28,6 +28,7 @@ website:
         - dev/testing.qmd
         - dev/dvc.qmd
         - dev/type-checking.qmd
+        - dev/local.qmd
         - dev/slurm.qmd
         - dev/viewer.qmd
     - title: "Workflows"
