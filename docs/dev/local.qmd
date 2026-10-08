@@ -12,7 +12,7 @@ This is the local counterpart of [`repro.sh`](slurm.qmd), and runs the same stag
 
 0. Removes the outputs of all stages that are run, like `dvc repro` does, and runs `dvc pull --force` for everything upstream of them; no manual pull is needed.
 1. Runs each stage as soon as the stages it depends on have succeeded, so the water authorities run in parallel. If a stage fails, the stages downstream of it are skipped, and the others continue.
-2. Runs `dvc commit` for the stages that succeeded. If all succeeded, it runs `pixi run check`, and with `--push` also `dvc push`.
+2. Runs `dvc commit` for the stages that succeeded. If all succeeded, it runs `pixi run check`, a second time if hooks fixed files such as `dvc.lock`, and with `--push` also `dvc push`.
 
 Like `repro.sh`, it runs the stage commands directly, since parallel `dvc repro` processes would contend for the DVC lock. The output of each stage is written to `logs/repro/<timestamp>/<stage>.log`, and a summary with the status and duration of each stage is printed at the end.
 

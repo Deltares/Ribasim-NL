@@ -153,7 +153,8 @@ JOB_KOPPELEN=$(submit koppelen "afterok:${JOB_SAMENVOEGEN}" ${TIME} "$(py notebo
 
 # Step 5: register outputs, check, + upload to DVC once (serial). Only commit the stages that ran,
 # an untargeted `dvc commit -f` would also record stale outputs of downstream stages as up to date.
-JOB_COMMIT=$(submit commit "afterok:${JOB_KOPPELEN}" ${TIME} "pixi run dvc commit -f ${STAGES} && pixi run check && pixi run dvc push ${STAGES}")
+# The check runs again if the first run failed only because hooks fixed files, like dvc.lock.
+JOB_COMMIT=$(submit commit "afterok:${JOB_KOPPELEN}" ${TIME} "pixi run dvc commit -f ${STAGES} && (pixi run check || pixi run check) && pixi run dvc push ${STAGES}")
 
 # Log job IDs for run.sh to depend on
 echo "samenvoegen	${JOB_SAMENVOEGEN}" > repro_jobs.txt

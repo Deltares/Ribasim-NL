@@ -238,7 +238,9 @@ def main() -> int:
         log(f"{len(results) - len(succeeded)} stages failed or were skipped, not running checks or pushing")
         return 1
 
-    subprocess.run(["pixi", "run", "check"], cwd=root, check=True)
+    # Hooks that fix files, like trimming trailing whitespace in dvc.lock, fail the first run
+    if subprocess.run(["pixi", "run", "check"], cwd=root).returncode != 0:
+        subprocess.run(["pixi", "run", "check"], cwd=root, check=True)
     if args.push:
         log("Pushing")
         subprocess.run(["dvc", "push", *succeeded], cwd=root, check=True)
