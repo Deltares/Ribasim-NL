@@ -1,5 +1,7 @@
 """Parameterisation of water board: Scheldestromen."""
 
+import math
+
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
@@ -337,6 +339,12 @@ ribasim_model, from_to_node_table = scale_outlets_pumps(
         max_exceedance_days=5,
     )
 )
+
+# Gemaal Postweg pumps into basin 142, which aggregates peilgebieden with target levels up to -1.1 m NAP,
+# so do not limit it by the -1.8 m NAP target level of that basin, see #844
+postweg = 1189
+assert ribasim_model.node.df.at[postweg, "name"] == "Gemaal Postweg, Kapelle", "Node ID of Gemaal Postweg changed"
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == postweg, "max_downstream_level"] = math.inf
 
 # check if meta_categorie in the basin.node.df is completely filled
 check_basin_meta_categorie(ribasim_model)
