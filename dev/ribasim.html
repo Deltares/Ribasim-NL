@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Testing – Ribasim-NL</title>
+<title>Co-development with Ribasim – Ribasim-NL</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -169,7 +169,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/testing.html">Testing</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/ribasim.html">Co-development with Ribasim</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -189,7 +189,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../dev/testing.html" class="sidebar-item-text sidebar-link active">
+  <a href="../dev/testing.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Testing</span></a>
   </div>
 </li>
@@ -225,7 +225,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../dev/ribasim.html" class="sidebar-item-text sidebar-link">
+  <a href="../dev/ribasim.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Co-development with Ribasim</span></a>
   </div>
 </li>
@@ -234,26 +234,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </nav>
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        <nav id="TOC" role="doc-toc" class="toc-active">
-    <h2 id="toc-title">On this page</h2>
-   
-  <ul>
-  <li><a href="#model-input-validation" id="toc-model-input-validation" class="nav-link active" data-scroll-target="#model-input-validation">Model input validation</a></li>
-  <li><a href="#result-regression-testing" id="toc-result-regression-testing" class="nav-link" data-scroll-target="#result-regression-testing">Result regression testing</a></li>
-  <li><a href="#completed-model-result-checks" id="toc-completed-model-result-checks" class="nav-link" data-scroll-target="#completed-model-result-checks">Completed-model result checks</a>
-  <ul class="collapse">
-  <li><a href="#allowing-a-known-exception" id="toc-allowing-a-known-exception" class="nav-link" data-scroll-target="#allowing-a-known-exception">Allowing a known exception</a></li>
-  </ul></li>
-  </ul>
-</nav>
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+        
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Testing</h1>
+<h1 class="title">Co-development with Ribasim</h1>
 </div>
 
 
@@ -270,30 +259,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>Run the repository checks before submitting changes:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run check</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This also runs on CI.</p>
-<section id="model-input-validation" class="level2">
-<h2 class="anchored" data-anchor-id="model-input-validation">Model input validation</h2>
-<p><code>Model.validate_ribasim_nl()</code> runs extensible checks on model input and supplements Ribasim schema validation. Add project-wide input rules to <code>ribasim_nl.validation.validate_model</code>.</p>
-</section>
-<section id="result-regression-testing" class="level2">
-<h2 class="anchored" data-anchor-id="result-regression-testing">Result regression testing</h2>
-<p>The dry and wet steady-state scenarios guard against a Basin losing its ability to maintain its water level. During the existing <code>bergend_*</code> and <code>forcing_*</code> DVC stages, and in <code>repro.sh</code>, the dry and wet models are run and checked. A Basin is steady-state when its final water level differs by at most 0.01 m from the mean of the final 24 hours and its storage remains positive throughout the simulation.</p>
-<p>Known level-instability exceptions are kept as explicit scenario-specific Basin node IDs in <code>peilbeheerst_model.steady_state_regression</code>. Exceptions do not bypass the positive-storage check, and an exception for a missing Basin ID fails the run.</p>
-<p>Scenario results are available for inspection in each model’s <code>results</code> directory, including <code>output_controle.gpkg</code> and <code>output_controle.qlr</code>.</p>
-</section>
-<section id="completed-model-result-checks" class="level2">
-<h2 class="anchored" data-anchor-id="completed-model-result-checks">Completed-model result checks</h2>
-<p><code>Control.run()</code> exports selected result metrics to <code>results/output_controle.gpkg</code>. It defaults to <code>DYNAMIC_FORCING_METRICS</code>; use <code>STATIC_FORCING_METRICS</code> or <code>AFVOER_METRICS</code> for the other established workflows, or pass a custom metric set. Call <code>Control.validate_result_conditions()</code> after export to enforce conditions. It logs every violation with its Basin node ID before raising one error, so all failures can be addressed together.</p>
-<p>New completed-model checks belong on <code>Control</code> and can be called after future dynamic model exports without changing the dry/wet scenario runner.</p>
-<section id="allowing-a-known-exception" class="level3">
-<h3 class="anchored" data-anchor-id="allowing-a-known-exception">Allowing a known exception</h3>
-<p>Only after reviewing an intentional model change, add the Basin node ID to <code>ALLOWED_NON_STEADY_STATE_NODE_IDS</code> for its authority and scenario. Remove an exception once the Basin becomes steady-state again.</p>
+<p>Ribasim-NL pins to a specific Ribasim version in <code>pixi.toml</code>. Generally this will be the latest release. During development sometimes you may want to test out the latest unreleased development version of Ribasim.</p>
+<p>To do so, open <code>pixi.toml</code> in your editor. Find the <code>[pypi-dependencies]</code> section and change the ribasim git source:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode toml code-with-copy"><code class="sourceCode toml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[pypi-dependencies]</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="dt">ribasim</span> <span class="op">=</span> <span class="op">{ </span><span class="dt">git</span><span class="op"> =</span> <span class="st">"https://github.com/Deltares/Ribasim"</span><span class="op">, </span><span class="dt">branch</span><span class="op"> =</span> <span class="st">"main"</span><span class="op">, </span><span class="dt">subdirectory</span><span class="op"> =</span> <span class="st">"python/ribasim"</span><span class="op"> }</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>You can change the branch name if needed, or use a specific commit with <code>rev = "0075d4a"</code>.</p>
+<p>If you are making changes to the Ribasim repository yourself, it will be more convenient to point to a local clone rather than GitHub. This can be done using this syntax:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode toml code-with-copy"><code class="sourceCode toml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[pypi-dependencies]</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dt">ribasim</span> <span class="op">=</span> <span class="op">{ </span><span class="dt">path</span><span class="op"> =</span> <span class="st">"../Ribasim/python/ribasim"</span><span class="op">, </span><span class="dt">editable</span><span class="op"> =</span> <span class="cn">true</span><span class="op"> }</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This path will work if you clone Ribasim next to Ribasim-NL.</p>
+<p>After you are done modifying <code>pixi.toml</code>, run <code>pixi install</code> to ensure the dependencies are installed.</p>
+<p>The Ribasim core binary is installed separately by <code>pixi run install-core</code>, see <code>scripts/install_ribasim_core.py</code>. Make sure its version is compatible with the Ribasim Python package.</p>
+<p>For Ribasim developer documentation see <a href="https://ribasim.org/dev/">ribasim.org/dev</a>.</p>
 
 
-</section>
-</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
