@@ -3,11 +3,16 @@ from pathlib import Path
 
 import geopandas as gpd
 
+# %% CONFIG
+# select basin polygons (or other selection) and save shapefiles
+basin_types = ["bergend"]  # ,  "hoofdwater"]
 model_name = "lhm_coupled_full"
 
-root_dir = Path(__file__).resolve().parents[3]
-model_path = root_dir / "data" / "Rijkswaterstaat" / "modellen" / model_name
-output_path = root_dir / "data" / "Basisgegevens" / "Delwaq" / "ANIMO" / "aangeleverd" / "shapes" / model_name
+# %%
+
+ROOT = Path(__file__).resolve().parents[3]
+model_path = ROOT / "data" / "Rijkswaterstaat" / "modellen" / model_name
+output_path = ROOT / "data" / "Basisgegevens" / "Delwaq" / "ANIMO" / "aangeleverd" / "shapes" / model_name
 # %%
 
 basin_path = model_path / "input/database.gpkg"
@@ -20,9 +25,6 @@ nodes = nodes.reset_index()
 basin = basin.merge(nodes[["node_id", "meta_categorie"]], on="node_id", how="left")
 
 # %%
-# select basin polygons (or other selection) and save shapefiles
-
-basin_types = ["bergend"]  # ,  "hoofdwater"]
 
 basins_to_save = basin[basin["meta_categorie"].isin(basin_types)]
 total_area_km2 = basins_to_save.geometry.area.sum() / 1e6
