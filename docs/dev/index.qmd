@@ -6,7 +6,7 @@ Ribasim-NL welcomes contributions.
 
 # Setting up the developer environment
 
-## Clone Ribasim
+## Clone Ribasim-NL
 
 In order to have the Ribasim-NL repository locally available, you can clone it with Git.
 Git can be installed from [git-scm.com](https://git-scm.com/downloads).
@@ -22,27 +22,59 @@ To continue with the following steps, make the root of the repository your worki
 cd Ribasim-NL
 ```
 
-## Setting up Pixi
+## Install Pixi
 
-First, install Pixi as described in the [Pixi documentation](https://pixi.sh/latest/#installation).
+Install Pixi as described in the [Pixi documentation](https://pixi.sh/latest/#installation).
+Pixi manages all dependencies; always run commands through it, for example `pixi run python path/to/script.py`.
 
+## Add your access key {#sec-environment-variables}
 
+The project data and the Ribasim core binary are stored on Deltares MinIO (S3) storage.
+To access them you need an access key.
+**Ask a repository maintainer for a read-only key.**
 
-Then set up the full development environment by running:
+Copy the template `.env.default` in the root of the repository to `.env`:
+
+```sh
+cp .env.default .env
+```
+
+Then fill in your key, using single quotes around the values:
+
+```ini
+AWS_ACCESS_KEY_ID='<access key>'
+AWS_SECRET_ACCESS_KEY='<secret key>'
+```
+
+The `.env` file is gitignored, since it contains secrets.
+Pixi loads it automatically for every `pixi run` command.
+The other variables can normally keep their defaults, see [Other settings](#sec-other-settings).
+
+## Install the environment
+
+Set up the full development environment by running:
 
 ```sh
 pixi run install
 ```
 
-This installs Git hooks and the Ribasim core binaries, but does not download project data.
-Data can be pulled automatically for the DVC stage you are working on; see the [DVC page](/dev/dvc.qmd#pulling-data).
-You can run Python scripts using `pixi run python path/to/script.py`.
-
-The install task downloads and installs the right Ribasim core version to `RIBASIM_HOME='bin/ribasim'`.
+This installs the Python environment, the Git hooks, and the Ribasim core binary in `bin/ribasim`.
+It does not download project data; see [Get data](#get-data).
 
 The first time you open the Ribasim-NL repo in Visual Studio Code, the [pixi-code](https://github.com/renan-r-santos/pixi-code) extension should automatically detect the Pixi environment and configure the Python interpreter.
 
-If you encounter issues, try running `pixi clean`and running `pixi install` again.
+If you encounter issues, try running `pixi clean` and running `pixi run install` again.
+
+## Get data
+
+The data is versioned with [DVC](https://dvc.org/), a tool that works like Git for large data files.
+You don't need to know DVC to get started: download only the data you need, for instance the latest nationwide coupled model:
+
+```sh
+pixi run dvc pull data/Rijkswaterstaat/modellen/lhm_coupled/
+```
+
+The [DVC page](dvc.qmd) explains how to get the data for a specific step of the pipeline, and how to rerun it.
 
 ## Git hooks
 
@@ -59,63 +91,15 @@ To run all hooks on all files manually:
 pixi run check
 ```
 
-## Co-development with Ribasim
+## Other settings {#sec-other-settings}
 
-Ribasim-NL pins to a specific Ribasim version in `pixi.toml`.
-Generally this will be the latest release.
-During development sometimes you may want to test out the latest unreleased development version of Ribasim.
+Besides the access key, `.env` can hold these optional settings, read in `src/ribasim_nl/ribasim_nl/settings.py`:
 
-To do so, open `pixi.toml` in your editor.
-Find the `[pypi-dependencies]` section and change the ribasim git source:
+| Environment variable | Description |
+|:---------------------|:------------|
+| `RIBASIM_NL_DATA_DIR` | Local directory for data files, `data` by default |
+| `D3D_HOME` | Root of the Delft3D installation, only needed for Delwaq |
+| `RIBASIM_NL_CLOUD_PASS` | Password for the legacy [Good Cloud storage](/cloudstorage.qmd); most users can leave it empty |
+| `OVERWRITE_FILES_FROM_CLOUD` | Whether legacy Good Cloud downloads overwrite local files, `true` by default |
 
-```toml
-[pypi-dependencies]
-ribasim = { git = "https://github.com/Deltares/Ribasim", branch = "main", subdirectory = "python/ribasim" }
-```
-
-You can change the branch name if needed, or use a specific commit with `rev = "0075d4a"`.
-
-If you are making changes to the Ribasim repository yourself, it will be more convenient to point to a local clone rather than GitHub.
-This can be done using this syntax:
-
-```toml
-[pypi-dependencies]
-ribasim = { path = "../Ribasim/python/ribasim", editable = true }
-```
-
-This path will work if you clone Ribasim next to Ribasim-NL.
-
-After you are done modifying `pixi.toml`, run `pixi install` to ensure the dependencies are installed.
-
-For Ribasim developer documentation see [ribasim.org/dev](https://ribasim.org/dev/).
-
-## Environment variables {#sec-environment-variables}
-
-Several settings need to be configured via environment variables, managed by [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/) in `src/ribasim_nl/ribasim_nl/settings.py`.
-
-| Setting | Environment variable | Description |
-|:--------|:---------------------|:------------|
-| `d3d_home` | `D3D_HOME` | Root of the Delft3D installation |
-| `ribasim_nl_cloud_pass` | `RIBASIM_NL_CLOUD_PASS` | Password retained for legacy [CloudStorage](/cloudstorage.qmd) code |
-| `ribasim_nl_data_dir` | `RIBASIM_NL_DATA_DIR` | Local directory for data files |
-| `overwrite_files_from_cloud` | `OVERWRITE_FILES_FROM_CLOUD` | Whether cloud downloads overwrite local files |
-| `aws_access_key_id` | `AWS_ACCESS_KEY_ID` | Required access key for MinIO storage and DVC workflows |
-| `aws_secret_access_key` | `AWS_SECRET_ACCESS_KEY` | Required secret key for MinIO storage and DVC workflows |
-
-In the root of the repository is a `.env.default` file with the defaults that can serve as a template.
-Copy it to `.env` and fill in `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`; these credentials are required to pull DVC data and run workflows that access MinIO.
-`RIBASIM_NL_CLOUD_PASS` is only needed by legacy code that still accesses The Good Cloud directly and can otherwise remain empty.
-The `.env` file is gitignored because it is different per developer and contains secrets.
-Make sure to use single quotes around values.
-The defaults below come from `src/ribasim_nl/ribasim_nl/settings.py`:
-
-```{.ini include="../../.env.default"}
-```
-
-Values from the `.env` file take precedence over environment variables, so you can override system-wide settings per project.
-If you prefer to set these environment variables in your OS or terminal instead, that will also work.
-
-`OVERWRITE_FILES_FROM_CLOUD` is `true` by default.
-When using `cloud.synchronize` or `cloud.download_content`, this determines if local files will be overwritten when the `overwrite` keyword argument is not explicitly passed.
-Whilst updating datasets locally, you can set this to `false` to ensure your modifications are not lost.
-After uploading the new dataset, set it back to `true`.
+Values from `.env` take precedence over environment variables set in your OS or terminal.

@@ -3,22 +3,23 @@ title: "DVC (Data Version Control)"
 ---
 
 We use [DVC](https://dvc.org/) to version-control large data files (models, input datasets) without storing them in Git.
-DVC tracks file hashes in `.dvc` files committed to Git, while the actual data lives on remote storage.
+Git only stores small fingerprints of the data, in `dvc.lock` and `.dvc` files; the data itself lives on MinIO storage.
 
-## Authentication
+DVC also describes how the data is made: the pipeline in `dvc.yaml` is a list of *stages*, each a Python script with its input and output files.
+Most stages build the model of one water authority, and later stages combine them into the nationwide model.
 
-DVC uses the standard AWS credentials from the root `.env` file:
+## In short
 
-```ini
-AWS_ACCESS_KEY_ID='<MinIO access key>'
-AWS_SECRET_ACCESS_KEY='<MinIO secret key>'
-```
+You only need a few commands, always run through Pixi so your access key from `.env` is used (see [Add your access key](index.qmd#sec-environment-variables)):
 
-Pixi activation scripts use python-dotenv to load `.env` before running any task. The MinIO endpoint and region are non-secret and are committed in `.dvc/config`, so new contributors do not need to create `.dvc/config.local` for authentication. Run DVC through Pixi so the credentials are available:
+| Goal | Command |
+|:-----|:--------|
+| Download a file or folder | `pixi run dvc pull <path>` |
+| Download the inputs of a stage, e.g. `rwzi` | `pixi run dvc pull rwzi --with-deps` |
+| Rerun a stage after changing its script | `pixi run dvc repro --pull rwzi` |
+| See which stages are out of date | `pixi run dvc status` |
 
-```sh
-pixi run dvc <command>
-```
+The sections below explain these in more detail.
 
 ::: {.callout-note}
 Existing clones may still have remote credentials in `.dvc/config.local`. Remove those credential fields after migrating `.env` from `MINIO_ACCESS_KEY` and `MINIO_SECRET_KEY` to `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.

@@ -31,6 +31,7 @@ website:
         - dev/local.qmd
         - dev/slurm.qmd
         - dev/viewer.qmd
+        - dev/ribasim.qmd
     - title: "Workflows"
       contents:
         - workflow/main-watersystem.qmd
