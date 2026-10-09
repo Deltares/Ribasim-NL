@@ -15,6 +15,39 @@ from ribasim_nl.profiles import MIN_GENERATED_PROFILE_AREA, MIN_PROFILE_AREA
 
 LOG = logging.getLogger(__name__)
 
+# ManningResistance between a storing ('bergend') basin and its flowing ('doorgaand') basin, which share the same
+# area A. The drainage network of a polder scales with its area: the summed width of the connections from the
+# secondary to the primary water system grows with the number of connections (∝ A), and the flow path with the
+# linear size of the area (∝ √A). The width and length are effective values, chosen such that a basin of the
+# reference area has a head difference of about 0.5 mm at a discharge of 10 mm/d and a depth of 1 m. A literal width,
+# the sum of all ditch widths, would give a near-zero resistance, which makes the simulation needlessly stiff.
+BERGEND_REFERENCE_AREA = 1e6  # m2
+BERGEND_REFERENCE_WIDTH = 2.0  # m
+BERGEND_REFERENCE_LENGTH = 500.0  # m
+BERGEND_MANNING_N = 0.03  # s/m^(1/3)
+BERGEND_PROFILE_SLOPE = 3.0
+
+
+def bergend_manning_static(area: pd.Series) -> pd.DataFrame:
+    """Get the ManningResistance static table between storing and flowing basins, scaled by the basin area.
+
+    :param area: basin area [m2], indexed by the ManningResistance node ID
+
+    :return: ManningResistance static table
+    """
+    assert area.index.is_unique, "ManningResistance node IDs should be unique"
+    assert area.notna().all() and (area > 0).all(), f"Invalid basin areas for nodes {area[~(area > 0)].index.tolist()}"
+    relative_area = area.to_numpy() / BERGEND_REFERENCE_AREA
+    return pd.DataFrame(
+        {
+            "node_id": area.index.to_numpy(),
+            "length": BERGEND_REFERENCE_LENGTH * relative_area**0.5,
+            "manning_n": BERGEND_MANNING_N,
+            "profile_width": BERGEND_REFERENCE_WIDTH * relative_area,
+            "profile_slope": BERGEND_PROFILE_SLOPE,
+        }
+    )
+
 
 def get_tables(water_authority: str, cloud: CloudStorage = CloudStorage()) -> tuple[pd.DataFrame, pd.DataFrame]:  # noqa: B008
     """Get profile tables
@@ -298,9 +331,10 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     )
 
     # create static table: ManningResistance
-    manning_static = manning_node.reset_index(drop=False)[["node_id"]]
-    manning_static = manning_static.assign(length=1000, manning_n=0.02, profile_width=2.0, profile_slope=3.0)
-    # TODO: Assign `profile_width` based on representative widths of storing basins
+    storing_area = basin_area.geometry.area.groupby(basin_area["node_id"]).sum()
+    manning_static = bergend_manning_static(
+        pd.Series(storing_area.reindex(basin_node.index).to_numpy(), index=basin_node["manning_id"].to_numpy())
+    )
 
     # create links tables
     sm_link = (

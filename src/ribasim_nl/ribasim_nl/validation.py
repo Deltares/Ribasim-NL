@@ -102,6 +102,26 @@ def _inert_control_state_issues(model: "Model") -> list[str]:
     return issues
 
 
+# Below these bounds a ManningResistance has effectively no resistance, which makes the simulation needlessly stiff
+MIN_MANNING_LENGTH = 10.0  # m
+MIN_MANNING_N = 0.01  # s/m^(1/3)
+
+
+def _manning_resistance_issues(model: "Model") -> list[str]:
+    """Return ManningResistance nodes with a length or Manning's n below the minimum."""
+    static_df = model.manning_resistance.static.df
+    if static_df is None:
+        return []
+    invalid = static_df.loc[(static_df["length"] < MIN_MANNING_LENGTH) | (static_df["manning_n"] < MIN_MANNING_N)]
+    if invalid.empty:
+        return []
+    node_ids = sorted(map(int, invalid["node_id"].unique()))
+    return [
+        f"ManningResistance must have length >= {MIN_MANNING_LENGTH} m and manning_n >= {MIN_MANNING_N}; "
+        f"invalid node IDs: {node_ids}"
+    ]
+
+
 # Node types that Ribasim does not allow to be connected to each other, also not through Junctions
 CONNECTOR_NODE_TYPES = {"Pump", "Outlet", "TabulatedRatingCurve", "LinearResistance", "ManningResistance"}
 
@@ -146,6 +166,7 @@ def validate_model(model: "Model") -> None:
         *_partially_missing_control_state_issues(model),
         *_inert_control_state_issues(model),
         *_connector_through_junction_issues(model),
+        *_manning_resistance_issues(model),
     ]
     if issues:
         raise ValueError("Ribasim-NL model validation failed:\n- " + "\n- ".join(issues))

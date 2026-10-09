@@ -12,6 +12,7 @@ from peilbeheerst_model.workflow import (
     check_basin_meta_categorie,
     preserve_connector_meta,
     set_forcing,
+    set_manning_resistance_outside_bergend,
     write_and_run_forcing_model,
 )
 from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
@@ -233,9 +234,8 @@ ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
 # ribasim_model.level_boundary.static.df = lb_static.copy()
 # del lb_static
 
-# lower the difference in waterlevel for each manning node
-ribasim_model.manning_resistance.static.df["length"] = 10.0
-ribasim_model.manning_resistance.static.df["manning_n"] = 0.01
+# lower the difference in waterlevel for each manning node, except those of storing basins
+set_manning_resistance_outside_bergend(ribasim_model, length=10.0, manning_n=0.01)
 
 # last formatting of the tables
 # only retain node_id's which are present in the .node table

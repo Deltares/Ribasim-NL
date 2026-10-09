@@ -140,6 +140,24 @@ def check_basin_meta_categorie(model: Model) -> None:
         )
 
 
+def set_manning_resistance_outside_bergend(model: Model, length: float, manning_n: float) -> None:
+    """Set the length and Manning's n of the ManningResistance nodes that don't connect a storing ('bergend') basin.
+
+    The ManningResistance nodes of storing basins are parametrized by their area in `set_basin_profiles`.
+    """
+    static_df = model.manning_resistance.static.df
+    assert static_df is not None and model.link.df is not None
+    basin_node_df = model.filter_nodes("Basin")
+    bergend_basin_ids = basin_node_df.index[basin_node_df["meta_categorie"] == "bergend"]
+    link_df = model.link.df
+    bergend_manning_ids = set(link_df.loc[link_df["from_node_id"].isin(bergend_basin_ids), "to_node_id"]) | set(
+        link_df.loc[link_df["to_node_id"].isin(bergend_basin_ids), "from_node_id"]
+    )
+    is_bergend = static_df["node_id"].isin(bergend_manning_ids)
+    assert is_bergend.sum() == len(bergend_basin_ids), "Expected one ManningResistance node per storing basin"
+    static_df.loc[~is_bergend, ["length", "manning_n"]] = [length, manning_n]
+
+
 def set_forcing(
     model: Model,
     cloud: CloudStorage,
