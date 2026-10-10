@@ -16,16 +16,17 @@ from ribasim_nl.profiles import MIN_GENERATED_PROFILE_AREA, MIN_PROFILE_AREA
 LOG = logging.getLogger(__name__)
 
 # ManningResistance between a storing ('bergend') basin and its flowing ('doorgaand') basin, which share the same
-# area A. The drainage network of a polder scales with its area: the summed width of the connections from the
-# secondary to the primary water system grows with the number of connections (∝ A), and the flow path with the
-# linear size of the area (∝ √A). The width and length are effective values, chosen such that a basin of the
-# reference area has a head difference of about 0.5 mm at a discharge of 10 mm/d and a depth of 1 m. A literal width,
-# the sum of all ditch widths, would give a near-zero resistance, which makes the simulation needlessly stiff.
+# area A. Its discharge scales with A, since the gains and losses of the storing basin are mostly vertical. For the
+# head difference to be independent of A, the conductance should scale with A too. We represent the connections of
+# the secondary to the primary water system as parallel ditches with a fixed length, whose number scales with A.
+# Their summed cross section is a trapezoid whose bottom width and summed bank slope both scale with A. These are
+# effective values: a literal sum of all ditches would give a near-zero resistance, which makes the simulation
+# needlessly stiff.
 BERGEND_REFERENCE_AREA = 1e6  # m2
 BERGEND_REFERENCE_WIDTH = 2.0  # m
-BERGEND_REFERENCE_LENGTH = 500.0  # m
+BERGEND_REFERENCE_PROFILE_SLOPE = 4.0
+BERGEND_LENGTH = 500.0  # m
 BERGEND_MANNING_N = 0.03  # s/m^(1/3)
-BERGEND_PROFILE_SLOPE = 3.0
 
 
 def bergend_manning_static(area: pd.Series) -> pd.DataFrame:
@@ -41,10 +42,10 @@ def bergend_manning_static(area: pd.Series) -> pd.DataFrame:
     return pd.DataFrame(
         {
             "node_id": area.index.to_numpy(),
-            "length": BERGEND_REFERENCE_LENGTH * relative_area**0.5,
+            "length": BERGEND_LENGTH,
             "manning_n": BERGEND_MANNING_N,
             "profile_width": BERGEND_REFERENCE_WIDTH * relative_area,
-            "profile_slope": BERGEND_PROFILE_SLOPE,
+            "profile_slope": BERGEND_REFERENCE_PROFILE_SLOPE * relative_area,
         }
     )
 
