@@ -662,7 +662,7 @@ environments:
       - pypi: ./src/hydamo
       - pypi: ./src/peilbeheerst_model
       - pypi: ./src/ribasim_nl
-      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=2488bd9351e3e28c4b285b4f013f6e43554659da#2488bd9351e3e28c4b285b4f013f6e43554659da
+      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=3a08ef64f6f47fd0f6528605babe648d2a9452e1#3a08ef64f6f47fd0f6528605babe648d2a9452e1
       - pypi: https://files.pythonhosted.org/packages/05/2e/7c85f00260aa332fbab9caba209290a07be645ee1d5691415ae635a7382a/rasterstats-0.21.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/09/a9/630671072a482afc8e75fd1a4ffdecc400fd70846e197f3ce2cc6cfe628b/types_pycurl-7.48.0.20260923-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/15/c0/fc0644b7ddcfb969e95845837143cb5173ddd6e06ee4ba5fc493cd9329b7/types_pyyaml-6.0.12.20260906-py3-none-any.whl
@@ -1247,7 +1247,7 @@ environments:
       - pypi: ./src/hydamo
       - pypi: ./src/peilbeheerst_model
       - pypi: ./src/ribasim_nl
-      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=2488bd9351e3e28c4b285b4f013f6e43554659da#2488bd9351e3e28c4b285b4f013f6e43554659da
+      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=3a08ef64f6f47fd0f6528605babe648d2a9452e1#3a08ef64f6f47fd0f6528605babe648d2a9452e1
       - pypi: https://files.pythonhosted.org/packages/05/2e/7c85f00260aa332fbab9caba209290a07be645ee1d5691415ae635a7382a/rasterstats-0.21.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/09/a9/630671072a482afc8e75fd1a4ffdecc400fd70846e197f3ce2cc6cfe628b/types_pycurl-7.48.0.20260923-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/15/c0/fc0644b7ddcfb969e95845837143cb5173ddd6e06ee4ba5fc493cd9329b7/types_pyyaml-6.0.12.20260906-py3-none-any.whl
@@ -1806,7 +1806,7 @@ environments:
       - pypi: ./src/hydamo
       - pypi: ./src/peilbeheerst_model
       - pypi: ./src/ribasim_nl
-      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=2488bd9351e3e28c4b285b4f013f6e43554659da#2488bd9351e3e28c4b285b4f013f6e43554659da
+      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=3a08ef64f6f47fd0f6528605babe648d2a9452e1#3a08ef64f6f47fd0f6528605babe648d2a9452e1
       - pypi: https://files.pythonhosted.org/packages/05/2e/7c85f00260aa332fbab9caba209290a07be645ee1d5691415ae635a7382a/rasterstats-0.21.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/09/a9/630671072a482afc8e75fd1a4ffdecc400fd70846e197f3ce2cc6cfe628b/types_pycurl-7.48.0.20260923-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/15/c0/fc0644b7ddcfb969e95845837143cb5173ddd6e06ee4ba5fc493cd9329b7/types_pyyaml-6.0.12.20260906-py3-none-any.whl
@@ -4935,8 +4935,7 @@ packages:
   - tbb >=2023.1.0
   license: Apache-2.0
   license_family: APACHE
-  purls:
-  - pkg:pypi/libopenvino-gguf-frontend
+  purls: []
   run_exports:
     weak:
     - libopenvino-gguf-frontend >=2026.4.0,<2026.4.1.0a0
@@ -6888,7 +6887,8 @@ packages:
   license: LGPL-3.0-only
   license_family: LGPL
   purls:
-  - pkg:pypi/pyside6?source=compressed-mapping
+  - pkg:pypi/pyside6?source=hash-mapping
+  - pkg:pypi/shiboken6?source=hash-mapping
   run_exports: {}
   size: 13947145
   timestamp: 1788745031498
@@ -7171,7 +7171,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/rpds-py?source=compressed-mapping
+  - pkg:pypi/rpds-py?source=hash-mapping
   run_exports: {}
   size: 300095
   timestamp: 1788577298075
@@ -8303,7 +8303,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/affine?source=compressed-mapping
+  - pkg:pypi/affine?source=hash-mapping
   run_exports: {}
   size: 22619
   timestamp: 1788134268940
@@ -8988,8 +8988,7 @@ packages:
   - openssl !=1.1.1e
   license: BSD-3-Clause
   license_family: BSD
-  purls:
-  - pkg:pypi/dask?source=compressed-mapping
+  purls: []
   run_exports: {}
   size: 10415
   timestamp: 1787917206356
@@ -11381,7 +11380,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/python-dotenv?source=compressed-mapping
+  - pkg:pypi/python-dotenv?source=hash-mapping
   run_exports: {}
   size: 28328
   timestamp: 1787003234261
@@ -11538,7 +11537,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/pyvista-validation
+  - pkg:pypi/pyvista-validation?source=compressed-mapping
   run_exports: {}
   size: 40640
   timestamp: 1789614540757
@@ -12523,7 +12522,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/xyzservices?source=compressed-mapping
+  - pkg:pypi/xyzservices?source=hash-mapping
   run_exports: {}
   size: 53963
   timestamp: 1788530754725
@@ -12979,7 +12978,7 @@ packages:
   - python_abi 3.13.* *_cp313
   license: BSD-3-Clause AND MIT AND EPL-2.0
   purls:
-  - pkg:pypi/backports-zstd?source=compressed-mapping
+  - pkg:pypi/backports-zstd?source=hash-mapping
   run_exports: {}
   size: 241808
   timestamp: 1788491298513
@@ -15115,8 +15114,7 @@ packages:
   - tbb >=2023.1.0
   license: Apache-2.0
   license_family: APACHE
-  purls:
-  - pkg:pypi/libopenvino-gguf-frontend
+  purls: []
   run_exports:
     weak:
     - libopenvino-gguf-frontend >=2026.4.0,<2026.4.1.0a0
@@ -22431,7 +22429,7 @@ packages:
   - geopandas
   - pytest ; extra == 'tests'
   requires_python: '>=3.13'
-- pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=2488bd9351e3e28c4b285b4f013f6e43554659da#2488bd9351e3e28c4b285b4f013f6e43554659da
+- pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=3a08ef64f6f47fd0f6528605babe648d2a9452e1#3a08ef64f6f47fd0f6528605babe648d2a9452e1
   name: ribasim
   version: 2026.1.2
   requires_dist:

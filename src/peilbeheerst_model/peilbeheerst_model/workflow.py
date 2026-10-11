@@ -15,6 +15,7 @@ from typing import Literal
 import xarray as xr
 from ribasim import run_ribasim
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
+from ribasim_nl.capacity import bound_supply_inflows
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.controle_output import DYNAMIC_FORCING_METRICS, STATIC_FORCING_METRICS, Control
@@ -241,6 +242,8 @@ def write_and_run_forcing_model(
     output_dir = paths.model_dir("forcing")
     model_toml = output_dir / "ribasim.toml"
     qlr_path = paths.qlr(mixed_conditions)
+
+    bound_supply_inflows(model)
 
     # add junctions last: a layout-only transformation merging overlapping flow links into a
     # Junction. Done after all parametrization so junctions never break adjacency/validation.
