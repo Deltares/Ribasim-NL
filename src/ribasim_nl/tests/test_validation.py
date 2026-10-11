@@ -1,7 +1,7 @@
 import pytest
 from ribasim import Node
-from ribasim.nodes import basin, level_boundary, pump
-from ribasim_nl.validation import _connector_through_junction_issues
+from ribasim.nodes import basin, level_boundary, manning_resistance, pump
+from ribasim_nl.validation import _connector_through_junction_issues, _manning_resistance_issues
 from shapely.geometry import Point
 
 from ribasim_nl import Model
@@ -54,3 +54,16 @@ def test_connector_through_junction_to_basin(model):
     )
     model.link.add(model.junction[7], model.basin[9])
     assert _connector_through_junction_issues(model) == []
+
+
+@pytest.mark.parametrize(
+    ("length", "manning_n", "valid"), [(10.0, 0.01, True), (1.0, 0.03, False), (100.0, 0.001, False)]
+)
+def test_manning_resistance_bounds(length, manning_n, valid):
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    model.manning_resistance.add(
+        Node(1, Point(0, 0)),
+        [manning_resistance.Static(length=[length], manning_n=[manning_n], profile_width=[2.0], profile_slope=[3.0])],
+    )
+    issues = _manning_resistance_issues(model)
+    assert issues == [] if valid else "[1]" in issues[0]

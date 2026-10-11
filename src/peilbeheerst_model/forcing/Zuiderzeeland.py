@@ -12,6 +12,7 @@ from peilbeheerst_model.workflow import (
     check_basin_meta_categorie,
     preserve_connector_meta,
     set_forcing,
+    set_manning_resistance_outside_bergend,
     write_and_run_forcing_model,
 )
 from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
@@ -220,9 +221,8 @@ ribasim_model.pump.static.df.loc[
 mr_null_geom = ribasim_model.manning_resistance.node.df[ribasim_model.manning_resistance.node.df.geometry.isna()].index
 ribasim_model.node.df = ribasim_model.node.df.drop(mr_null_geom)
 
-# lower the difference in waterlevel for each manning node
-ribasim_model.manning_resistance.static.df["length"] = 100.0
-ribasim_model.manning_resistance.static.df["manning_n"] = 0.01
+# lower the difference in waterlevel for each manning node, except those of storing basins
+set_manning_resistance_outside_bergend(ribasim_model, length=100.0, manning_n=0.01)
 
 # increase aanslagpeil for gemaal Wortman
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 2436, "min_upstream_level"] += (
