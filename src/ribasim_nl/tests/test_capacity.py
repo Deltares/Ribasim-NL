@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from ribasim import Node
 from ribasim.nodes import basin, discrete_control, level_boundary, outlet
-from ribasim_nl.capacity import DRAINAGE_FLOW_RATE_PLACEHOLDER, bound_supply_inflows, set_drainage_capacities
+from ribasim_nl.capacity import bound_supply_inflows
 from shapely.geometry import MultiPolygon, Point, Polygon
 
 from ribasim_nl import Model
@@ -36,14 +36,14 @@ def model() -> Model:
         [
             outlet.Static(
                 control_state=["aanvoer", "afvoer"],
-                flow_rate=[1.0, DRAINAGE_FLOW_RATE_PLACEHOLDER],
+                flow_rate=[1.0, 100.0],
                 max_flow_rate=[1.0, 10.0],
                 min_upstream_level=[0.9, 1.0],
                 max_downstream_level=[np.inf, np.inf],
             )
         ],
     )
-    model.outlet.add(Node(4, Point(3000, 0)), [outlet.Static(flow_rate=[DRAINAGE_FLOW_RATE_PLACEHOLDER])])
+    model.outlet.add(Node(4, Point(3000, 0)), [outlet.Static(flow_rate=[100.0])])
     model.level_boundary.add(Node(5, Point(4000, 0)), [level_boundary.Static(level=[-1.0])])
     model.discrete_control.add(
         Node(6, Point(1000, 100)),
@@ -73,20 +73,6 @@ def static(model: Model, node_id: int, control_state: str | None = None):
     if control_state is not None:
         rows &= df["control_state"] == control_state
     return df[rows].iloc[0]
-
-
-def test_set_drainage_capacities(model):
-    capacities = set_drainage_capacities(model)
-    # only the controlled Outlet, with the area of the upstream Basin 1 at 15 mm/d
-    expected = AREA * 15 / 1000 / 86400
-    assert capacities.to_dict() == {3: pytest.approx(expected, rel=1e-2)}
-    afvoer = static(model, 3, "afvoer")
-    assert afvoer["flow_rate"] == capacities[3]
-    # a known capacity is kept
-    assert afvoer["max_flow_rate"] == 10.0
-    assert static(model, 3, "aanvoer")["flow_rate"] == 1.0
-    # the uncontrolled Outlet is left alone
-    assert static(model, 4)["flow_rate"] == DRAINAGE_FLOW_RATE_PLACEHOLDER
 
 
 def test_bound_supply_inflows(model):

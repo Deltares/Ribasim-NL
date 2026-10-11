@@ -2,7 +2,7 @@
 import sys
 
 from ribasim_nl.berging import VdGaastBerging
-from ribasim_nl.capacity import bound_supply_inflows, set_drainage_capacities
+from ribasim_nl.capacity import bound_supply_inflows
 
 from ribasim_nl import CloudStorage, Model
 
@@ -30,8 +30,7 @@ for authority in authorities:
     dst_toml_file = cloud.model_dir(authority, "bergend_model") / toml_file.name
 
     if (not dst_toml_file.exists()) or REBUILD:
-        # replace placeholder drainage capacities and limit supply to the target level, before adding storing basins
-        set_drainage_capacities(model)
+        # limit supply to the target level, before adding storing basins
         bound_supply_inflows(model)
 
         # add berging

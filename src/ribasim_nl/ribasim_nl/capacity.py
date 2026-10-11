@@ -1,22 +1,14 @@
-"""Flow capacities and level limits of the DiscreteControl-controlled Outlets and Pumps."""
+"""Level limits of the DiscreteControl-controlled Outlets and Pumps."""
 
 import logging
 
-import networkx as nx
 import numpy as np
 import pandas as pd
 
 from ribasim_nl.model import Model
-from ribasim_nl.parametrization.conversions import round_to_significant_digits
-from ribasim_nl.upstream import upstream_nodes
 
 LOG = logging.getLogger(__name__)
 
-# placeholder capacity of the `afvoer` control state, used in the full control notebooks where the capacity is unknown
-DRAINAGE_FLOW_RATE_PLACEHOLDER = 100.0  # m3/s
-# design specific discharge to derive the capacity from the upstream area, as for an 'Afvoergemaal' in static_data.xlsx
-DESIGN_SPECIFIC_DISCHARGE = 15.0  # mm/d
-MIN_DRAINAGE_FLOW_RATE = 0.001  # m3/s
 CONTROLLED_NODE_TYPES = ("Outlet", "Pump")
 
 
@@ -54,57 +46,12 @@ def _flow_link_df(model: Model) -> pd.DataFrame:
     return model.link.df[model.link.df["link_type"] == "flow"]
 
 
-def _flow_graph(model: Model) -> nx.DiGraph:
-    """Get the graph of the flow links, with the node attributes of `Model.graph`, which also has the control links."""
-    graph = nx.from_pandas_edgelist(
-        _flow_link_df(model), source="from_node_id", target="to_node_id", create_using=nx.DiGraph
-    )
-    nx.set_node_attributes(graph, {n: model.graph.nodes[n] for n in graph.nodes})
-    return graph
-
-
 def _downstream_neighbor(model: Model) -> pd.Series:
     """Get the downstream flow neighbor of each controlled node."""
     flow_link_df = _flow_link_df(model)
     flow_link_df = flow_link_df[flow_link_df["from_node_id"].isin(_controllers(model).index)]
     assert not flow_link_df["from_node_id"].duplicated().any(), "Expected one downstream flow link per controlled node"
     return flow_link_df.set_index("from_node_id")["to_node_id"]
-
-
-def set_drainage_capacities(
-    model: Model,
-    specific_discharge: float = DESIGN_SPECIFIC_DISCHARGE,
-    placeholder: float = DRAINAGE_FLOW_RATE_PLACEHOLDER,
-) -> pd.Series:
-    """Replace the placeholder capacity of the `afvoer` control state by one derived from the upstream area.
-
-    The capacity is the area of the upstream Basins, up to the next inlet, times the design specific discharge.
-    Capacities that differ from the placeholder are assumed to be known and are kept.
-
-    :param model: model with DiscreteControl-controlled Outlets and Pumps, without storing Basins
-    :param specific_discharge: design specific discharge [mm/d]
-    :param placeholder: capacity [m3/s] that marks an unknown capacity
-    :return: the new capacities [m3/s], indexed by node ID
-    """
-    assert specific_discharge > 0, f"Expected a positive specific discharge, got {specific_discharge}"
-    controlled_ids = set(_controllers(model).index)
-    assert model.basin.area.df is not None
-    basin_area = model.basin.area.df.area.groupby(model.basin.area.df["node_id"]).sum()
-    graph = _flow_graph(model)
-    capacities = {}
-    for static_df in _static_dfs(model):
-        is_afvoer = static_df["control_state"].eq("afvoer") & static_df["node_id"].isin(controlled_ids)
-        columns = [c for c in ("flow_rate", "max_flow_rate") if c in static_df.columns]
-        for node_id in static_df.loc[is_afvoer & static_df[columns].eq(placeholder).any(axis=1), "node_id"].unique():
-            if node_id not in capacities:
-                area = basin_area.reindex(list(upstream_nodes(graph, node_id, stop_at_inlet=True))).sum()
-                flow_rate = round_to_significant_digits(area * specific_discharge / 1000 / 86400)
-                capacities[node_id] = max(flow_rate, MIN_DRAINAGE_FLOW_RATE)
-            for column in columns:
-                rows = is_afvoer & static_df["node_id"].eq(node_id) & static_df[column].eq(placeholder)
-                static_df.loc[rows, column] = capacities[node_id]
-    LOG.info(f"Set the drainage capacity of {len(capacities)} nodes from their upstream area")
-    return pd.Series(capacities, dtype=float)
 
 
 def bound_supply_inflows(model: Model, target_level_column: str = "meta_streefpeil") -> list[int]:
