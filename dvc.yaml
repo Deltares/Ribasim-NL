@@ -320,6 +320,7 @@ stages:
     deps:
       - notebooks/aa_en_maas/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - data/AaenMaas/modellen/AaenMaas_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -335,6 +336,7 @@ stages:
     deps:
       - notebooks/brabantse_delta/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - data/BrabantseDelta/modellen/BrabantseDelta_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -349,6 +351,7 @@ stages:
     deps:
       - notebooks/de_dommel/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - data/DeDommel/modellen/DeDommel_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -363,6 +366,7 @@ stages:
     deps:
       - notebooks/drents_overijsselse_delta/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -379,6 +383,7 @@ stages:
     deps:
       - notebooks/hunze_en_aas/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - data/HunzeenAas/modellen/HunzeenAas_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -393,6 +398,7 @@ stages:
     deps:
       - notebooks/limburg/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - data/Limburg/modellen/Limburg_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -407,6 +413,7 @@ stages:
     deps:
       - notebooks/noorderzijlvest/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - data/Noorderzijlvest/modellen/Noorderzijlvest_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -421,6 +428,7 @@ stages:
     deps:
       - notebooks/rijn_en_ijssel/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - data/RijnenIJssel/modellen/RijnenIJssel_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -435,6 +443,7 @@ stages:
     deps:
       - notebooks/stichtse_rijnlanden/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - data/StichtseRijnlanden/modellen/StichtseRijnlanden_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -450,6 +459,7 @@ stages:
     deps:
       - notebooks/vallei_en_veluwe/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - data/ValleienVeluwe/modellen/ValleienVeluwe_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -465,6 +475,7 @@ stages:
     deps:
       - notebooks/vechtstromen/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - data/Vechtstromen/modellen/Vechtstromen_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -768,6 +779,9 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/Delfland.py
     deps:
       - src/peilbeheerst_model/forcing/Delfland.py
+      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/Delfland/modellen/Delfland_profiles
@@ -786,6 +800,9 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/AmstelGooienVecht.py
     deps:
       - src/peilbeheerst_model/forcing/AmstelGooienVecht.py
+      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/AmstelGooienVecht/modellen/AmstelGooienVecht_profiles
@@ -804,6 +821,9 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/HollandsNoorderkwartier.py
     deps:
       - src/peilbeheerst_model/forcing/HollandsNoorderkwartier.py
+      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_profiles
@@ -822,6 +842,9 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/HollandseDelta.py
     deps:
       - src/peilbeheerst_model/forcing/HollandseDelta.py
+      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/HollandseDelta/modellen/HollandseDelta_profiles
@@ -840,6 +863,9 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/Rijnland.py
     deps:
       - src/peilbeheerst_model/forcing/Rijnland.py
+      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/Rijnland/modellen/Rijnland_profiles
@@ -858,6 +884,9 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/Rivierenland.py
     deps:
       - src/peilbeheerst_model/forcing/Rivierenland.py
+      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/Rivierenland/modellen/Rivierenland_profiles
@@ -876,6 +905,9 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/Scheldestromen.py
     deps:
       - src/peilbeheerst_model/forcing/Scheldestromen.py
+      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/Scheldestromen/modellen/Scheldestromen_profiles
@@ -894,6 +926,9 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/SchielandendeKrimpenerwaard.py
     deps:
       - src/peilbeheerst_model/forcing/SchielandendeKrimpenerwaard.py
+      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_profiles
@@ -912,6 +947,9 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/WetterskipFryslan.py
     deps:
       - src/peilbeheerst_model/forcing/WetterskipFryslan.py
+      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/WetterskipFryslan/modellen/WetterskipFryslan_profiles
@@ -930,6 +968,9 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/Zuiderzeeland.py
     deps:
       - src/peilbeheerst_model/forcing/Zuiderzeeland.py
+      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/Zuiderzeeland/modellen/Zuiderzeeland_profiles

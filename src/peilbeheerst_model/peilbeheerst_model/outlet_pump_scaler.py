@@ -91,6 +91,23 @@ def read_output_data(file: Path, columns: list[str] | None = None) -> pd.DataFra
     return df
 
 
+def last_result_time(starttime: pd.Timestamp, endtime: pd.Timestamp, saveat: float) -> pd.Timestamp:
+    """Return the time of the last Basin result of a complete run.
+
+    Basin results are labeled by the start of their save interval, so the last one is before the end time.
+
+    :param starttime: simulation start time
+    :param endtime: simulation end time
+    :param saveat: save interval [s]
+    :return: label of the last save interval of a complete run
+    """
+    assert endtime > starttime, f"End time {endtime} must be after start time {starttime}"
+    assert saveat > 0, f"Expected a positive save interval, got {saveat}"
+    interval = pd.Timedelta(seconds=saveat)
+    n_intervals = -(-(endtime - starttime) // interval)  # the last interval may be partial
+    return starttime + (n_intervals - 1) * interval
+
+
 def set_initial_water_levels(ribasim_model):
     """Set basin initial water levels equal to target levels.
 
@@ -816,7 +833,13 @@ class _OutletPumpScaler:
                 # Partial runs cannot establish that a capacity is sufficient. Increase it on any
                 # observed exceedance; otherwise hold it until a complete run justifies lowering it.
                 result_endtimes = ribasim_water_levels.groupby("node_id")["time"].max()
-                complete = run_completed & basin_exceedance["node_id"].map(result_endtimes).ge(ribasim_model.endtime)
+                complete = run_completed & basin_exceedance["node_id"].map(result_endtimes).ge(
+                    last_result_time(
+                        pd.Timestamp(ribasim_model.starttime),
+                        pd.Timestamp(ribasim_model.endtime),
+                        ribasim_model.solver.saveat,
+                    )
+                )
                 basin_exceedance[column_name_direction] = "equal"
                 basin_exceedance.loc[
                     (basin_exceedance[column_name_iteration] > max_exceedance_days)
