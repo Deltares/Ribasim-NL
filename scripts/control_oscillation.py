@@ -46,7 +46,8 @@ def listening_nodes(gpkg: Path) -> pd.DataFrame:
                 for t in ("Outlet", "Pump")
             ]
         )
-    capacity = static.set_index("node_id")[["flow_rate", "max_flow_rate"]].max(axis=1).groupby(level=0).max()
+    # Ribasim limits the flow rate to the max_flow_rate
+    capacity = static.set_index("node_id")[["flow_rate", "max_flow_rate"]].min(axis=1).groupby(level=0).max()
     controlled = variable.merge(link, left_on="node_id", right_on="from_node_id")[["listen_node_id", "to_node_id"]]
     controlled = controlled.drop_duplicates().rename(columns={"to_node_id": "controlled_node_id"})
     return controlled.assign(capacity=controlled["controlled_node_id"].map(capacity))
