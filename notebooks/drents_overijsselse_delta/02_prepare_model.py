@@ -51,7 +51,7 @@ damo_profiles = DAMOProfiles(
 profiles_df = damo_profiles.process_profiles()
 profiles_df.to_file(profiles_gpkg)
 add_link_profile_ids(model, profiles=damo_profiles)
-fix_link_geometries(model, network, max_straight_line_ratio=1.5)
+fix_link_geometries(model, network)
 model.link.df.reset_index().to_file(link_geometries_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)

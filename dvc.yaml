@@ -29,6 +29,7 @@ stages:
       - notebooks/aa_en_maas/_preprocess_profielen.py
       - notebooks/aa_en_maas/01_fix_model.py
       - notebooks/aa_en_maas/02_prepare_model.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/aa_en_maas/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -57,6 +58,7 @@ stages:
       - notebooks/brabantse_delta/_preprocess_profielen.py
       - notebooks/brabantse_delta/01_fix_model.py
       - notebooks/brabantse_delta/02_prepare_model.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/brabantse_delta/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -83,6 +85,7 @@ stages:
       - notebooks/de_dommel/_preprocess_profielen.py
       - notebooks/de_dommel/01_fix_model.py
       - notebooks/de_dommel/02_prepare_model.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/de_dommel/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -107,6 +110,7 @@ stages:
       - notebooks/drents_overijsselse_delta/_preprocess_profielen.py
       - notebooks/drents_overijsselse_delta/01_fix_model.py
       - notebooks/drents_overijsselse_delta/02_prepare_model.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/drents_overijsselse_delta/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -136,6 +140,7 @@ stages:
       - notebooks/hunze_en_aas/_preprocess_profielen.py
       - notebooks/hunze_en_aas/01_fix_model.py
       - notebooks/hunze_en_aas/02_prepare_model.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/hunze_en_aas/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/ribasim_nl/ribasim_nl/assign_neighbors_at_boundaries.py
@@ -164,6 +169,7 @@ stages:
       - notebooks/limburg/_preprocess_profielen.py
       - notebooks/limburg/01_fix_model.py
       - notebooks/limburg/02_prepare_model.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/limburg/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -213,6 +219,7 @@ stages:
       - notebooks/rijn_en_ijssel/_preprocess_profielen.py
       - notebooks/rijn_en_ijssel/01_fix_model.py
       - notebooks/rijn_en_ijssel/02_prepare_model.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/rijn_en_ijssel/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -239,6 +246,7 @@ stages:
       - notebooks/stichtse_rijnlanden/_preprocess_profielen.py
       - notebooks/stichtse_rijnlanden/01_fix_model.py
       - notebooks/stichtse_rijnlanden/02_prepare_model.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/stichtse_rijnlanden/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -267,6 +275,7 @@ stages:
       - notebooks/vallei_en_veluwe/_preprocess_profielen.py
       - notebooks/vallei_en_veluwe/01_fix_model.py
       - notebooks/vallei_en_veluwe/02_prepare_model.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/vallei_en_veluwe/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -292,6 +301,7 @@ stages:
       - notebooks/vechtstromen/_preprocess_profielen.py
       - notebooks/vechtstromen/01_fix_model.py
       - notebooks/vechtstromen/02_prepare_model.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/vechtstromen/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -501,6 +511,11 @@ stages:
       cmd: pixi run python notebooks/07_add_dynamic_forcing.py ${item}
       deps:
         - notebooks/07_add_dynamic_forcing.py
+        - src/ribasim_nl/ribasim_nl/observations.py
+        - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
+        - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
+        - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
+        - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_afvoer_dag_totaal.csv
         - data/${item}/modellen/${item}_bergend_model
         - data/Rijkswaterstaat/modellen/rwzi
         - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
@@ -781,10 +796,19 @@ stages:
       - src/peilbeheerst_model/forcing/Delfland.py
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/observations.py
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_afvoer_dag_totaal.csv
+      - src/peilbeheerst_model/peilbeheerst_model/network_snapping.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
+      - src/ribasim_nl/ribasim_nl/junctions.py
       - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/Delfland/modellen/Delfland_profiles
+      - data/Delfland/verwerkt/profielen/network.gpkg
       - data/Delfland/modellen/Delfland_boezemmodel_2024_12_0
       - data/Delfland/verwerkt/Feedback Formulier/feedback_formulier_Delfland.xlsx
       - data/Delfland/aangeleverd/Na_levering/Wateraanvoer/Aanvoergebied_Afvoergebied_polders.gpkg
@@ -802,10 +826,19 @@ stages:
       - src/peilbeheerst_model/forcing/AmstelGooienVecht.py
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/observations.py
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_afvoer_dag_totaal.csv
+      - src/peilbeheerst_model/peilbeheerst_model/network_snapping.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
+      - src/ribasim_nl/ribasim_nl/junctions.py
       - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/AmstelGooienVecht/modellen/AmstelGooienVecht_profiles
+      - data/AmstelGooienVecht/verwerkt/profielen/network.gpkg
       - data/AmstelGooienVecht/modellen/AmstelGooienVecht_boezemmodel_2024_12_0
       - data/AmstelGooienVecht/verwerkt/Feedback Formulier/feedback_formulier_AmstelGooienVecht.xlsx
       - data/AmstelGooienVecht/aangeleverd/Na_levering/Wateraanvoer/afvoergebiedaanvoergebied.gpkg
@@ -823,10 +856,19 @@ stages:
       - src/peilbeheerst_model/forcing/HollandsNoorderkwartier.py
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/observations.py
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_afvoer_dag_totaal.csv
+      - src/peilbeheerst_model/peilbeheerst_model/network_snapping.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
+      - src/ribasim_nl/ribasim_nl/junctions.py
       - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_profiles
+      - data/HollandsNoorderkwartier/verwerkt/profielen/network.gpkg
       - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_boezemmodel_2024_12_0
       - data/HollandsNoorderkwartier/verwerkt/Feedback Formulier/feedback_formulier_HollandsNoorderkwartier.xlsx
       - data/HollandsNoorderkwartier/aangeleverd/Na_levering/20240618_peilgebieden_en_polders
@@ -844,10 +886,19 @@ stages:
       - src/peilbeheerst_model/forcing/HollandseDelta.py
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/observations.py
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_afvoer_dag_totaal.csv
+      - src/peilbeheerst_model/peilbeheerst_model/network_snapping.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
+      - src/ribasim_nl/ribasim_nl/junctions.py
       - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/HollandseDelta/modellen/HollandseDelta_profiles
+      - data/HollandseDelta/verwerkt/profielen/network.gpkg
       - data/HollandseDelta/modellen/HollandseDelta_boezemmodel_2024_12_3
       - data/HollandseDelta/verwerkt/Feedback Formulier/feedback_formulier_HollandseDelta.xlsx
       - data/HollandseDelta/aangeleverd/Na_levering/Wateraanvoer
@@ -865,10 +916,19 @@ stages:
       - src/peilbeheerst_model/forcing/Rijnland.py
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/observations.py
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_afvoer_dag_totaal.csv
+      - src/peilbeheerst_model/peilbeheerst_model/network_snapping.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
+      - src/ribasim_nl/ribasim_nl/junctions.py
       - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/Rijnland/modellen/Rijnland_profiles
+      - data/Rijnland/verwerkt/profielen/network.gpkg
       - data/Rijnland/modellen/Rijnland_boezemmodel_2024_12_3
       - data/Rijnland/verwerkt/Feedback Formulier/feedback_formulier_Rijnland.xlsx
       - data/Rijnland/aangeleverd/Na_levering/Wateraanvoer
@@ -886,10 +946,19 @@ stages:
       - src/peilbeheerst_model/forcing/Rivierenland.py
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/observations.py
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_afvoer_dag_totaal.csv
+      - src/peilbeheerst_model/peilbeheerst_model/network_snapping.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
+      - src/ribasim_nl/ribasim_nl/junctions.py
       - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/Rivierenland/modellen/Rivierenland_profiles
+      - data/Rivierenland/verwerkt/profielen/network.gpkg
       - data/Rivierenland/modellen/Rivierenland_boezemmodel_2024_12_0
       - data/Rivierenland/verwerkt/Feedback Formulier/feedback_formulier_Rivierenland.xlsx
       - data/Rivierenland/aangeleverd/Na_levering/Wateraanvoer
@@ -907,10 +976,19 @@ stages:
       - src/peilbeheerst_model/forcing/Scheldestromen.py
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/observations.py
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_afvoer_dag_totaal.csv
+      - src/peilbeheerst_model/peilbeheerst_model/network_snapping.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
+      - src/ribasim_nl/ribasim_nl/junctions.py
       - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/Scheldestromen/modellen/Scheldestromen_profiles
+      - data/Scheldestromen/verwerkt/profielen/network.gpkg
       - data/Scheldestromen/modellen/Scheldestromen_boezemmodel_2024_12_0
       - data/Scheldestromen/verwerkt/Feedback Formulier/feedback_formulier_Scheldestromen.xlsx
       - data/Scheldestromen/aangeleverd/Na_levering/Wateraanvoer
@@ -928,10 +1006,19 @@ stages:
       - src/peilbeheerst_model/forcing/SchielandendeKrimpenerwaard.py
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/observations.py
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_afvoer_dag_totaal.csv
+      - src/peilbeheerst_model/peilbeheerst_model/network_snapping.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
+      - src/ribasim_nl/ribasim_nl/junctions.py
       - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_profiles
+      - data/SchielandendeKrimpenerwaard/verwerkt/profielen/network.gpkg
       - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_boezemmodel_2024_12_1
       - data/SchielandendeKrimpenerwaard/verwerkt/Feedback Formulier/feedback_formulier_SchielandendeKrimpenerwaard.xlsx
       - data/SchielandendeKrimpenerwaard/aangeleverd/Na_levering/Wateraanvoer/HyDamo_metWasverzachter_20230905.gpkg
@@ -949,10 +1036,19 @@ stages:
       - src/peilbeheerst_model/forcing/WetterskipFryslan.py
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/observations.py
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_afvoer_dag_totaal.csv
+      - src/peilbeheerst_model/peilbeheerst_model/network_snapping.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
+      - src/ribasim_nl/ribasim_nl/junctions.py
       - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/WetterskipFryslan/modellen/WetterskipFryslan_profiles
+      - data/WetterskipFryslan/verwerkt/profielen/network.gpkg
       - data/WetterskipFryslan/modellen/WetterskipFryslan_boezemmodel_2025_5_1
       - data/WetterskipFryslan/verwerkt/Feedback Formulier/feedback_formulier_WetterskipFryslan.xlsx
       - data/WetterskipFryslan/aangeleverd/Na_levering/Wateraanvoer/aanvoer.gpkg
@@ -970,10 +1066,19 @@ stages:
       - src/peilbeheerst_model/forcing/Zuiderzeeland.py
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
+      - src/ribasim_nl/ribasim_nl/observations.py
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_afvoer_dag_totaal.csv
+      - src/peilbeheerst_model/peilbeheerst_model/network_snapping.py
+      - src/ribasim_nl/ribasim_nl/link_geometries.py
+      - src/ribasim_nl/ribasim_nl/junctions.py
       - src/ribasim_nl/ribasim_nl/capacity.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/Zuiderzeeland/modellen/Zuiderzeeland_profiles
+      - data/Zuiderzeeland/verwerkt/profielen/network.gpkg
       - data/Zuiderzeeland/modellen/Zuiderzeeland_boezemmodel_2024_12_0
       - data/Zuiderzeeland/verwerkt/Feedback Formulier/feedback_formulier_Zuiderzeeland.xlsx
       - data/Zuiderzeeland/aangeleverd/Na_levering/peilgebieden.gpkg
@@ -1033,6 +1138,11 @@ stages:
       - data/Rijkswaterstaat/modellen/rwzi
       - data/Rijkswaterstaat/aangeleverd/Matroos_debieten_2017_2022_Lobith_Monsin.xlsx
       - notebooks/rijkswaterstaat/8b_update_bc.py
+      - src/ribasim_nl/ribasim_nl/observations.py
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
+      - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
+      - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_afvoer_dag_totaal.csv
     outs:
       - data/Rijkswaterstaat/modellen/hws_transient
   samenvoegen:

@@ -20,3 +20,15 @@ For the rest, it follows the same workflow as `AmstelGooienVecht_parametrize.ipy
 Finally: step 1 started with a clear script per water board.
 During the process of 1.5 years, these scripts have become increasingly larger and more confusing, whereby not every line is needed anymore.
 For now, there is no priority to clean this up, partly because this is a major risk that the data will (unintentionally) change, which will change the networks and the feedback forms can no longer be used.
+
+## Layout
+
+At the end of the forcing stage, `peilbeheerst_model.network_snapping.snap_model` aligns the layout of the model with the hydro-objects in `verwerkt/profielen/network.gpkg`, which are written by the [profile generation](profile-generation.qmd).
+This only changes the layout, not the model results:
+
+- Connector nodes stay at the location of the structure they represent.
+- Basin nodes are moved onto the nearest main route of the longest connected part of the hydro-objects in their basin, as in the gravity controlled models. The bergend Basin and ManningResistance move along.
+- Links between a Basin and a connector node are drawn as a straight line from the connector node to the nearest hydro-object, followed by the shortest route to the Basin node. Gaps of up to 100 m between hydro-objects are bridged.
+- Links stay straight if no such route is found, or if it is not less than `ribasim_nl.link_geometries.MAX_STRAIGHT_LINE_RATIO` times longer than the straight line, the same threshold as for the gravity controlled models.
+
+Finally `ribasim_nl.junctionify` merges the shared parts of links into Junctions.

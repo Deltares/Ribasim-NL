@@ -36,7 +36,7 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 # %%
 
 # fix link geometries
-fix_link_geometries(model, network, max_straight_line_ratio=5)
+fix_link_geometries(model, network)
 model.link.df.reset_index().to_file(link_geometries_gpkg)
 
 

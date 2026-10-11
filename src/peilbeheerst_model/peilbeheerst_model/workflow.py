@@ -16,9 +16,11 @@ import xarray as xr
 from ribasim import run_ribasim
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.capacity import bound_supply_inflows
+from ribasim_nl.observations import add_observations
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.controle_output import DYNAMIC_FORCING_METRICS, STATIC_FORCING_METRICS, Control
+from peilbeheerst_model.network_snapping import snap_model
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing, junctionify
 
@@ -236,7 +238,6 @@ def write_and_run_forcing_model(
     paths: WaterBoardPaths,
     *,
     mixed_conditions: bool,
-    add_junctions: bool,
 ) -> None:
     """Write and run the forcing model, its steady state regression variants, and check the results."""
     output_dir = paths.model_dir("forcing")
@@ -245,14 +246,15 @@ def write_and_run_forcing_model(
 
     bound_supply_inflows(model)
 
-    # add junctions last: a layout-only transformation merging overlapping flow links into a
-    # Junction. Done after all parametrization so junctions never break adjacency/validation.
-    if add_junctions:
-        model = junctionify(model)
+    # Layout-only transformations, done after all parametrization so they never affect it: route links along the
+    # hydro-objects and move Basin nodes onto them, and merge the overlapping parts of links into Junctions.
+    model = snap_model(model, paths.profielen_dir)
+    model = junctionify(model)
 
     model.use_validation = True
     model.starttime = STARTTIME
     model.endtime = ENDTIME
+    model = add_observations(model, paths.waterschap, paths.cloud)
     model.solver.saveat = SAVEAT
     model.write(model_toml)
     ribasim_param.write_steady_state_regression_models(

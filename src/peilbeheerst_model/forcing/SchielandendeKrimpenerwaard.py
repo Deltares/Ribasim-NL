@@ -3,7 +3,6 @@
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
-from peilbeheerst_model.network_snapping import snap_model
 from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
 from peilbeheerst_model.workflow import (
     ENDTIME,
@@ -32,7 +31,6 @@ DYNAMIC_CONDITIONS: bool = True
 RESCALE_FLOW_CAPACITIES: bool = True
 ADD_LHM_FRACTIONS: bool = True
 ADD_RWZI: bool = True
-ADD_JUNCTIONS: bool = False
 
 if MIXED_CONDITIONS and not AANVOER_CONDITIONS:
     AANVOER_CONDITIONS = True
@@ -59,11 +57,6 @@ default_level = 0.75 if AANVOER_CONDITIONS else -0.75  # default LevelBoundary l
 processor = paths.feedback_processor(work_dir=paths.model_dir("profiles"))
 
 ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
-
-# network snapping (junctions are added at the very end, just before writing, so they stay
-# transparent to all parametrization, classification and validation steps)
-if ADD_JUNCTIONS:
-    ribasim_model = snap_model(ribasim_model, paths.profielen_dir)
 
 # check if meta_categorie in the basin.node.df is completely filled
 check_basin_meta_categorie(ribasim_model)
@@ -341,4 +334,4 @@ check_basin_meta_categorie(ribasim_model)
 # write model output
 
 # write and run the model
-write_and_run_forcing_model(ribasim_model, paths, mixed_conditions=MIXED_CONDITIONS, add_junctions=ADD_JUNCTIONS)
+write_and_run_forcing_model(ribasim_model, paths, mixed_conditions=MIXED_CONDITIONS)

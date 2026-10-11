@@ -8,6 +8,7 @@ from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.delwaq import compute_delwaq
+from ribasim_nl.observations import add_observations
 from ribasim_nl.set_forcing import SetDynamicForcing
 
 from ribasim_nl import (
@@ -152,6 +153,9 @@ for authority in authorities:
         # add LHM fractions
         if add_lhm_fractions:
             assign_lhm_fractions(model)
+
+        # add Observation nodes with measured discharges
+        model = add_observations(model, authority, cloud)
 
         # Avoid large databases by writing some tables to NetCDF
         # TODO add flow_boundary after we can run core versions with

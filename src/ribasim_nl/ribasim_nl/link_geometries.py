@@ -10,6 +10,9 @@ from ribasim_nl import Model, Network
 
 logger = logging.getLogger(__name__)
 
+# A link geometry along the network is only used if it is less than this many times longer than the straight line
+MAX_STRAIGHT_LINE_RATIO = 3.0
+
 
 def get_network_node(network: Network, point, max_distance: float = 5, max_move_distance: float = 0.5):
     """Network node at a point: move the nearest node within `max_move_distance`, else add one within `max_distance`."""
@@ -19,8 +22,9 @@ def get_network_node(network: Network, point, max_distance: float = 5, max_move_
     return node
 
 
-def accept_length(geometry, point1, point2, max_straight_line_ratio: float = 5):
-    if geometry.length == 0:
+def accept_length(geometry, point1, point2, max_straight_line_ratio: float = MAX_STRAIGHT_LINE_RATIO) -> bool:
+    """Whether a link geometry between two points is less than `max_straight_line_ratio` times the straight line."""
+    if geometry.length == 0 or point1.distance(point2) == 0:
         return False
     else:
         return geometry.length / point1.distance(point2) < max_straight_line_ratio
@@ -48,7 +52,10 @@ def get_link_geometry(network, source, target, forbidden_nodes):
 
 
 def fix_link_geometries(
-    model: Model, network: Network, max_straight_line_ratio: float = 2, node_ids: list[int] | None = None
+    model: Model,
+    network: Network,
+    max_straight_line_ratio: float = MAX_STRAIGHT_LINE_RATIO,
+    node_ids: list[int] | None = None,
 ) -> None:
     """Fix model.link.geometry column by finding routes over network
 
@@ -57,7 +64,7 @@ def fix_link_geometries(
         network (Network): Ribasim_nl Network with hydroobject line geometries
         max_straight_line_ratio (float, optional): threshold to check line.
          If the new line is `max_straight_line_ratio` times longer than straight line distance we don't accept the geometry.
-         Defaults to 2.
+         Defaults to MAX_STRAIGHT_LINE_RATIO.
     """
     assert model.node.df is not None
     assert model.link.df is not None
