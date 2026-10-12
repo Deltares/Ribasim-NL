@@ -1222,6 +1222,7 @@ stages:
     cmd: pixi run python notebooks/09_koppelen_modellen.py
     deps:
       - notebooks/09_koppelen_modellen.py
+      - src/ribasim_nl/ribasim_nl/junctions.py
       - src/ribasim_nl/ribasim_nl/network_snapping.py
       - src/ribasim_nl/ribasim_nl/layout.py
       - src/ribasim_nl/ribasim_nl/link_geometries.py

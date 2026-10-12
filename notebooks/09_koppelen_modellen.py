@@ -17,6 +17,7 @@ from ribasim_nl.coupling_level_apply import (
 from ribasim_nl.coupling_level_common import finite_level, finite_levels
 from ribasim_nl.coupling_level_network import first_non_junction, flow_link_graphs
 from ribasim_nl.coupling_levels import run_coupling_level_check
+from ribasim_nl.junctions import junctionify
 from ribasim_nl.layout import offset_links, resolve_overlaps, separate_nodes
 from ribasim_nl.model import find_toml
 from ribasim_nl.network_snapping import snap_to_waterways
@@ -647,6 +648,24 @@ def route_links_between_models(model: Model, network: Network) -> list[int]:
     return link_ids
 
 
+def tidy_coupling_layout(model: Model, link_ids: list[int]) -> None:
+    """Tidy the layout of the coupling: the layout of the models is already tidy, see `tidy_layout`.
+
+    The links between models share routes towards the same Basins, which are merged into Junctions, and these and
+    the routed links `link_ids` are offset, such that no links overlap.
+    """
+    junctions = set(model.node.df.index[model.node.df["node_type"] == "Junction"])
+    junctionify(model)
+    nodes, flow = model.node.df, model.link.df[model.link.df["link_type"] == "flow"]
+    new_junctions = set(nodes.index[nodes["node_type"] == "Junction"]) - junctions
+    authority = nodes["meta_waterbeheerder"]
+    between = flow["from_node_id"].map(authority).to_numpy() != flow["to_node_id"].map(authority).to_numpy()
+    at_new_junction = (flow["from_node_id"].isin(new_junctions) | flow["to_node_id"].isin(new_junctions)).to_numpy()
+    offset_links(model, link_ids={*flow.index[between | at_new_junction], *link_ids})
+    separate_nodes(model)
+    resolve_overlaps(model, max_iterations=10)
+
+
 def remove_invalid_topology_nodes(model: Model) -> None:
     """Remove nodes with invalid flow/control topology and clean up their control references."""
     for link_type in ["flow", "control"]:
@@ -854,10 +873,7 @@ def couple_model(toml_file: Path) -> None:
     link_ids = route_links_between_models(model, network)
     # series measured on links between models can only be observed in the coupled model
     link_observations(model)
-    # the layout of the models is already tidy, see ribasim_nl.layout.tidy_layout, apart from the coupling
-    offset_links(model, link_ids=link_ids)
-    separate_nodes(model)
-    resolve_overlaps(model)
+    tidy_coupling_layout(model, link_ids)
     coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)
     run_configured_coupling_level_check(coupled_toml_file)
 
