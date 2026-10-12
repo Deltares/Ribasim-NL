@@ -16,6 +16,7 @@ import xarray as xr
 from ribasim import run_ribasim
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.capacity import bound_supply_inflows
+from ribasim_nl.layout import tidy_layout
 from ribasim_nl.network_snapping import snap_model
 from ribasim_nl.observations import add_observations
 
@@ -289,6 +290,7 @@ def write_and_run_forcing_model(
     model.starttime = STARTTIME
     model.endtime = ENDTIME
     model = add_observations(model, paths.waterschap, paths.cloud)
+    model = tidy_layout(model)
     model.solver.saveat = SAVEAT
     model.write(model_toml)
     ribasim_param.write_steady_state_regression_models(

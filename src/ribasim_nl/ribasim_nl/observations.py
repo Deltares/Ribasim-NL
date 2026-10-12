@@ -197,26 +197,38 @@ class _Graph:
         return None
 
 
-def _match(model: Model, end: LinkEnd, graph: _Graph, tolerance: float) -> tuple[int | None, str]:
-    """The model node of a `LinkEnd`, or None and why there is none."""
+def _match(
+    model: Model, end: LinkEnd, graph: _Graph, tolerance: float, moved_tolerance: float
+) -> tuple[int | None, str]:
+    """The model node of a `LinkEnd`, or None and why there is none.
+
+    Nodes on top of each other are moved apart, see `ribasim_nl.layout.separate_nodes`, so if there is no node within
+    `tolerance`, the nearest node within `moved_tolerance` is used.
+    """
     assert model.node.df is not None
     nodes = model.node.df
     candidates = nodes[nodes["node_type"] == end.node_type]
-    candidates = list(candidates.index[candidates.distance(end.geometry) <= tolerance])
-    if len(candidates) > 1:
+    distance = candidates.distance(end.geometry)
+    within = list(candidates.index[distance <= tolerance])
+    if not within and moved_tolerance > tolerance:
+        # the nearest node within moved_tolerance, as the node may have been moved
+        within = sorted(candidates.index[distance <= moved_tolerance], key=lambda c: distance[c])[:1]
+    if len(within) > 1:
         # stacked nodes, keep those with a neighbor of the right type on the right side, possibly behind Junctions
-        candidates = [c for c in candidates if graph.node_types.get(graph.neighbor(c, end.upstream)) == end.other_type]
-    if len(candidates) != 1:
-        return None, f"{len(candidates)} {end.node_type} nodes at the location in the koppeltabel"
-    return int(candidates[0]), ""
+        within = [c for c in within if graph.node_types.get(graph.neighbor(c, end.upstream)) == end.other_type]
+    if len(within) != 1:
+        return None, f"{len(within)} {end.node_type} nodes at the location in the koppeltabel"
+    return int(within[0]), ""
 
 
-def _observed_node(model: Model, row: pd.Series, graph: _Graph, tolerance: float) -> tuple[int | None, str]:
+def _observed_node(
+    model: Model, row: pd.Series, graph: _Graph, tolerance: float, moved_tolerance: float
+) -> tuple[int | None, str]:
     """The node to observe for a series of `read_coupling`, or None and why there is none."""
     ends = row["ends"]
     if not isinstance(ends, list):
         return None, row["koppeling"]
-    matches = [_match(model, end, graph, tolerance) for end in ends]
+    matches = [_match(model, end, graph, tolerance, moved_tolerance) for end in ends]
     unmatched = [reason for node_id, reason in matches if node_id is None]
     if unmatched:
         return None, unmatched[0]
@@ -251,7 +263,7 @@ def add_observation_nodes(
     graph = _Graph(model)
     times: list[pd.DataFrame] = [] if model.observation.time.df is None else [model.observation.time.df]
     for _, row in coupling.iterrows():
-        node_id, koppeling = _observed_node(model, row, graph, tolerance)
+        node_id, koppeling = _observed_node(model, row, graph, tolerance, tolerance)
         observation = model.observation.add(
             Node(geometry=row["geometry"], name=row["MeetreeksC"], meta_aan_af=row["Aan/Af"], meta_koppeling=koppeling)
         )
@@ -282,7 +294,9 @@ def add_observation_nodes(
     return model
 
 
-def link_observations(model: Model, cloud: CloudStorage | None = None, tolerance: float = 1.0) -> Model:
+def link_observations(
+    model: Model, cloud: CloudStorage | None = None, tolerance: float = 1.0, moved_tolerance: float = 50.0
+) -> Model:
     """Link the Observation nodes that are not linked yet, for instance in a model coupled from other models.
 
     Series can be measured on links between models, of which only the coupled model has all nodes.
@@ -290,6 +304,7 @@ def link_observations(model: Model, cloud: CloudStorage | None = None, tolerance
     :param model: Ribasim model with a meta_waterbeheerder column with the authority of each node
     :param cloud: cloud storage with the koppeltabel, defaults to CloudStorage()
     :param tolerance: maximum distance between the node to observe in the koppeltabel and in the model
+    :param moved_tolerance: maximum distance to a node that was moved to separate it from other nodes, see `_match`
 
     :return: updated Ribasim model
     """
@@ -307,7 +322,7 @@ def link_observations(model: Model, cloud: CloudStorage | None = None, tolerance
         for observation_id, observation in group.iterrows():
             observation_id = int(typing.cast(int, observation_id))
             row = coupling.loc[(observation["name"], observation["meta_aan_af"])]
-            node_id, koppeling = _observed_node(model, row, graph, tolerance)
+            node_id, koppeling = _observed_node(model, row, graph, tolerance, moved_tolerance)
             if node_id is not None:
                 geometry = typing.cast(shapely.Point, nodes.at[node_id, "geometry"])
                 model.link.add(

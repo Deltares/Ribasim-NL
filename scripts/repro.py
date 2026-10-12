@@ -179,7 +179,7 @@ def main() -> int:
     """Reproduce the stages given on the command line, and return the exit code."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("targets", nargs="*", default=DEFAULT_TARGETS, help="stages to reproduce with their upstream")
-    parser.add_argument("--jobs", "-j", type=int, default=12, help="maximum number of stages to run at once")
+    parser.add_argument("--jobs", "-j", type=int, default=24, help="maximum number of stages to run at once")
     parser.add_argument("--stagger", type=float, default=30.0, help="minimum seconds between stage starts")
     parser.add_argument("--incremental", action="store_true", help="only run changed stages and their downstream")
     parser.add_argument("--push", action="store_true", help="dvc push the stages if all succeeded")

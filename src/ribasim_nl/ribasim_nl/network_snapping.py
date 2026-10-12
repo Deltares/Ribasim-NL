@@ -187,40 +187,6 @@ class _BasinNetwork:
                 self.graph.add_edge(node, target, weight=shapely.LineString(gap).length, coords=gap, main=False)
         self._index()
 
-    def connect_components(self, penalty: float, max_bridge: float) -> None:
-        """Connect the connected components by the shortest straight bridges between them, a minimum spanning tree.
-
-        Only components within `max_bridge` of each other are connected.
-        These bridges are a guess, so their weight is their length times `penalty`, such that routes only use them
-        when the hydro-objects are not connected otherwise. They are marked with `guess=True`.
-        """
-        components = np.unique(self.component)
-        if len(components) < 2:
-            return
-        merged = [shapely.union_all(self.geometries[self.component == c]) for c in components]
-        tree = shapely.STRtree(merged)
-        candidates = nx.Graph()
-        for i, geometry in enumerate(merged):
-            nearby = tree.query(geometry, predicate="dwithin", distance=max_bridge)
-            nearby = nearby[nearby != i]
-            for j, distance in zip(nearby, shapely.distance(geometry, np.asarray(merged)[nearby]), strict=True):
-                candidates.add_edge(i, int(j), weight=distance)
-        mst = list(nx.minimum_spanning_edges(candidates, data=False))
-        requests: dict[typing.Hashable, tuple[shapely.Point, int]] = {}
-        for i, j in mst:
-            line = shapely.shortest_line(merged[i], merged[j])
-            for k, c, coord in ((0, components[i], line.coords[0]), (1, components[j], line.coords[-1])):
-                point = shapely.Point(coord)
-                requests[(i, j, k)] = (point, self.nearest_edge(point, np.flatnonzero(self.component == c)))
-        attached = self.split(requests)
-        for i, j in mst:
-            a, b = attached[(i, j, 0)], attached[(i, j, 1)]
-            gap = [a, b]
-            self.graph.add_edge(
-                a, b, weight=penalty * shapely.LineString(gap).length, coords=gap, main=False, guess=True
-            )
-        self._index()
-
     def path_coords(self, path: list[Coord]) -> list[Coord]:
         """Coordinates along a path of graph nodes."""
         coords = [path[0]]
@@ -243,13 +209,13 @@ def route_basin_links(
     *,
     culverts: list[shapely.LineString] | None = None,
     water: shapely.Geometry | None = None,
+    area: shapely.Geometry | None = None,
     basin_area: shapely.Polygon | shapely.MultiPolygon | None = None,
     max_gap: float = 2.0,
     max_water_gap: float = 500.0,
     culvert_snap: float = 10.0,
-    guess_penalty: float | None = None,
-    max_guess: float = 1000.0,
     max_attach_distance: float = 100.0,
+    max_land: float = 50.0,
     max_straight_line_ratio: float = MAX_STRAIGHT_LINE_RATIO,
     min_routed_fraction: float = 0.5,
 ) -> tuple[shapely.Point, dict[int, list[Coord]]]:
@@ -258,12 +224,13 @@ def route_basin_links(
     The hydro-objects are connected by the `culverts`, and dangling ends are connected to other parts of the network
     if the gap is small or crossed over `water`, see `_BasinNetwork.bridge_gaps`. Then only the longest connected part
     of the network is used. The Basin node is attached to its nearest main route hydro-object in this part (if any),
-    and each connector node to its nearest hydro-object. If `basin_area` is given and contains the attachment point of
-    the Basin node, and at least `min_routed_fraction` of the links can be routed from there, the Basin node is moved
-    there. A
-    connector is not routed if it is farther than `max_attach_distance` from this part or farther from it than from the
-    Basin node, or if the route is not less than `max_straight_line_ratio` times the straight line, as in
-    `ribasim_nl.link_geometries.fix_link_geometries`.
+    and each connector node to its nearest hydro-object within `max_attach_distance`. Connector nodes farther away are
+    attached over the `water` within `area` instead, crossing at most `max_land` of land, see `_WaterRaster`. All
+    routes follow the shortest paths from the Basin node, such that routes share their common parts exactly.
+
+    If `basin_area` is given and contains the attachment point of the Basin node, and at least `min_routed_fraction`
+    of the links can be routed from there, the Basin node is moved there. A route is not used if it is not less than
+    `max_straight_line_ratio` times the straight line, as in `ribasim_nl.link_geometries.fix_link_geometries`.
 
     :param basin_point: location of the Basin node
     :param connectors: locations of the connector nodes, by key
@@ -271,11 +238,13 @@ def route_basin_links(
     :param main_route: per hydro-object, whether it is part of the main route
     :param culverts: culverts within the basin area, defaults to None
     :param water: water surface within the basin area, defaults to None
+    :param area: area within which routes over water are found, defaults to None (no routes over water)
     :param basin_area: area within which the Basin node may be moved onto the network, defaults to None (not moved)
     :param max_gap: maximum gap between hydro-objects to bridge
     :param max_water_gap: maximum gap between hydro-objects to bridge over water
     :param culvert_snap: maximum distance between a culvert end and the hydro-objects
     :param max_attach_distance: maximum distance between a connector node and the network
+    :param max_land: maximum length of land crossed by a route over water
     :param max_straight_line_ratio: maximum ratio between route length and straight line length
     :param min_routed_fraction: minimum fraction of the links that can be routed to move the Basin node
 
@@ -284,14 +253,19 @@ def route_basin_links(
     """
     assert len(lines) == len(main_route)
     assert -1 not in connectors
-    network = _BasinNetwork(lines, main_route)
-    if not connectors or len(network.edges) == 0:
+    if not connectors:
         return basin_point, {}
+    network = _BasinNetwork(lines, main_route)
+    use_water = water is not None and area is not None
+    if len(network.edges) == 0:
+        if not use_water:
+            return basin_point, {}
+        return basin_point, route_over_water(
+            basin_point, connectors, water, area, max_land=max_land, max_straight_line_ratio=max_straight_line_ratio
+        )
     if culverts:
         network.add_culverts(culverts, culvert_snap)
     network.bridge_gaps(max_gap, water, max_water_gap)
-    if guess_penalty is not None:
-        network.connect_components(guess_penalty, max_guess)
 
     # use the longest connected part of the network, typically the main waterway
     lengths = np.bincount(network.component, weights=shapely.length(network.geometries))
@@ -302,27 +276,47 @@ def route_basin_links(
     to_attach: dict[typing.Hashable, tuple[shapely.Point, int]] = {
         -1: (basin_point, network.nearest_edge(basin_point, main if len(main) > 0 else candidates))
     }
+    far = {}
     for key, point in connectors.items():
         edge = network.nearest_edge(point, candidates)
         distance = network.geometries[edge].distance(point)
         if distance <= max_attach_distance and distance < point.distance(basin_point):
             to_attach[key] = (point, edge)
+        else:
+            far[key] = point
+
+    # connectors far from the network are attached over water, to the nearest cell of the network
+    water_coords: dict[typing.Hashable, list[Coord]] = {}
+    if use_water and far:
+        raster = _WaterRaster(water, area, land_cost=20.0, max_cells=1_000_000)
+        sources = [int(c) for c in np.flatnonzero(raster.rasterize(list(network.geometries[candidates])).ravel())]
+        if sources:
+            paths = raster.paths(sources, {key: raster.cell_of(point) for key, point in far.items()})
+            paths = {key: path for key, path in paths.items() if raster.land(path) <= max_land}
+            water_coords = raster.coords(paths)
+            for key, coords in water_coords.items():
+                start = shapely.Point(coords[0])
+                to_attach[("water", key)] = (start, network.nearest_edge(start, candidates))
     attached = network.split(to_attach)
     anchor = attached.pop(-1)
-
     paths = nx.single_source_dijkstra_path(network.graph, anchor, weight="weight")
 
     def route(location: shapely.Point) -> dict[int, list[Coord]]:
         routes = {}
-        for key, node in attached.items():
-            point = connectors[key]
-            coords = _dedupe([(location.x, location.y), *network.path_coords(paths[node]), (point.x, point.y)])
+        for key, point in connectors.items():
+            if key in attached:
+                middle = network.path_coords(paths[attached[key]])
+            elif ("water", key) in attached:
+                middle = [*network.path_coords(paths[attached[("water", key)]]), *water_coords[key][1:-1]]
+            else:
+                continue
+            coords = _dedupe([(location.x, location.y), *middle, (point.x, point.y)])
             if accept_length(shapely.LineString(coords), location, point, max_straight_line_ratio):
                 routes[key] = coords
         return routes
 
-    # move the Basin node onto the network if that is within its area, not on a connector node, and at least half of
-    # the links can be routed, such that it represents the network
+    # move the Basin node onto the network if that is within its area, not on a connector node, and enough links can
+    # be routed from there, such that it represents the network
     anchor_point = shapely.Point(anchor)
     if (
         basin_area is not None
@@ -333,6 +327,100 @@ def route_basin_links(
         if len(routes) >= min_routed_fraction * len(connectors):
             return anchor_point, routes
     return basin_point, route(basin_point)
+
+
+class _WaterRaster:
+    """Raster graph of an area, to find least-cost paths over the water surface in it.
+
+    Crossing land costs `land_cost` times as much as crossing water, such that paths only cross land where needed,
+    for instance where a culvert is missing in the water surfaces.
+    """
+
+    def __init__(self, water: shapely.Geometry, area: shapely.Geometry, land_cost: float, max_cells: int) -> None:
+        x0, y0, x1, y1 = shapely.bounds(area)
+        self.cell = cell = max(10.0, np.sqrt((x1 - x0) * (y1 - y0) / max_cells))
+        self.ncol, self.nrow = ncol, nrow = int(np.ceil((x1 - x0) / cell)) + 1, int(np.ceil((y1 - y0) / cell)) + 1
+        self.transform = rasterio.transform.Affine(cell, 0.0, x0, 0.0, -cell, y0 + nrow * cell)
+        inside = self.rasterize([area]).ravel()
+        self.wet = self.rasterize([water]).ravel()
+        cost = np.where(self.wet, 1.0, land_cost)
+
+        # graph of the cells within the area, with 8 neighbors
+        index = np.arange(nrow * ncol).reshape(nrow, ncol)
+        sources, targets, weights = [], [], []
+        for dr, dc in ((0, 1), (1, 0), (1, 1), (1, -1)):
+            a = index[max(0, -dr) : nrow - max(0, dr), max(0, -dc) : ncol - max(0, dc)].ravel()
+            b = a + dr * ncol + dc
+            ok = inside[a] & inside[b]
+            sources.append(a[ok])
+            targets.append(b[ok])
+            weights.append(np.hypot(dr, dc) * cell * (cost[a[ok]] + cost[b[ok]]) / 2)
+        self.graph = scipy.sparse.coo_matrix(
+            (np.concatenate(weights), (np.concatenate(sources), np.concatenate(targets))), shape=(nrow * ncol,) * 2
+        ).tocsr()
+
+    def rasterize(self, geometries: list[shapely.Geometry]) -> np.ndarray:
+        """Cells touched by geometries."""
+        shape = (self.nrow, self.ncol)
+        return rasterio.features.rasterize(geometries, shape, transform=self.transform, all_touched=True).astype(bool)
+
+    def cell_of(self, point: shapely.Point) -> int:
+        row, col = rasterio.transform.rowcol(self.transform, point.x, point.y)
+        return int(np.clip(row, 0, self.nrow - 1)) * self.ncol + int(np.clip(col, 0, self.ncol - 1))
+
+    def center(self, cell: int) -> Coord:
+        x, y = rasterio.transform.xy(self.transform, cell // self.ncol, cell % self.ncol)
+        return float(x), float(y)
+
+    def paths(self, sources: list[int], targets: dict[typing.Hashable, int]) -> dict[typing.Hashable, list[int]]:
+        """Least-cost paths of cells from the nearest of the sources to each target, if reachable."""
+        _, predecessors, _ = scipy.sparse.csgraph.dijkstra(
+            self.graph, directed=False, indices=sources, return_predecessors=True, min_only=True
+        )
+        source_set = set(sources)
+        paths = {}
+        for key, cell in targets.items():
+            if cell not in source_set and predecessors[cell] < 0:
+                continue
+            path = [cell]
+            while path[-1] not in source_set:
+                path.append(int(predecessors[path[-1]]))
+            paths[key] = path[::-1]
+        return paths
+
+    def land(self, path: list[int]) -> float:
+        """Length of land crossed by a path, without its ends."""
+        return float((~self.wet[path[1:-1]]).sum() * self.cell)
+
+    def coords(self, paths: dict[typing.Hashable, list[int]]) -> dict[typing.Hashable, list[Coord]]:
+        """Simplified coordinates of paths that start at the sources, the same where paths share cells.
+
+        The paths form a tree from the sources, so they are split where the number of paths through a cell changes,
+        and each piece is simplified once.
+        """
+        usage: dict[int, int] = defaultdict(int)
+        for path in paths.values():
+            for cell in path:
+                usage[cell] += 1
+        pieces: dict[tuple[int, int], list[Coord]] = {}
+        result = {}
+        for key, path in paths.items():
+            coords = [self.center(path[0])]
+            start = 0
+            for i in range(1, len(path) + 1):
+                if i < len(path) and usage[path[i]] == usage[path[start]]:
+                    continue
+                end = min(i, len(path) - 1)
+                if end == start:
+                    break
+                piece_key = (path[start], path[end])
+                if piece_key not in pieces:
+                    line = shapely.LineString([self.center(c) for c in path[start : end + 1]])
+                    pieces[piece_key] = [(float(x), float(y)) for x, y in shapely.simplify(line, self.cell).coords]
+                coords.extend(pieces[piece_key][1:])
+                start = end
+            result[key] = _dedupe(coords)
+        return result
 
 
 def route_over_water(
@@ -348,11 +436,8 @@ def route_over_water(
 ) -> dict[int, list[Coord]]:
     """Route the links between a Basin node and its connector nodes over the water surface in the basin area.
 
-    This is for basins where the hydro-objects do not cover the water, such as lakes and harbours. The route is the
-    least-cost path on a raster of the area, where crossing land costs `land_cost` times as much as crossing water,
-    such that it only crosses land where needed, for instance where a culvert is missing in the water surfaces. Routes
-    that cross more than `max_land` of land, or are not less than `max_straight_line_ratio` times the straight line,
-    are not used.
+    This is for basins without hydro-objects, such as lakes and harbours, see `_WaterRaster`. Routes that cross more
+    than `max_land` of land, or are not less than `max_straight_line_ratio` times the straight line, are not used.
 
     :param basin_point: location of the Basin node
     :param connectors: locations of the connector nodes, by key
@@ -365,56 +450,15 @@ def route_over_water(
 
     :return: per routed connector key, the coordinates from the Basin node to the connector node
     """
-    x0, y0, x1, y1 = shapely.bounds(area)
-    cell = max(10.0, np.sqrt((x1 - x0) * (y1 - y0) / max_cells))
-    ncol, nrow = int(np.ceil((x1 - x0) / cell)) + 1, int(np.ceil((y1 - y0) / cell)) + 1
-    transform = rasterio.transform.Affine(cell, 0.0, x0, 0.0, -cell, y0 + nrow * cell)
-    inside = rasterio.features.rasterize([area], (nrow, ncol), transform=transform, all_touched=True).astype(bool)
-    wet = rasterio.features.rasterize([water], (nrow, ncol), transform=transform, all_touched=True).astype(bool)
-    cost = np.where(wet, 1.0, land_cost)
-
-    def cell_of(point: shapely.Point) -> int:
-        row, col = rasterio.transform.rowcol(transform, point.x, point.y)
-        return int(np.clip(row, 0, nrow - 1)) * ncol + int(np.clip(col, 0, ncol - 1))
-
-    # graph of the cells within the area, with 8 neighbors
-    index = np.arange(nrow * ncol).reshape(nrow, ncol)
-    sources, targets, weights = [], [], []
-    for dr, dc in ((0, 1), (1, 0), (1, 1), (1, -1)):
-        rows = slice(max(0, -dr), nrow - max(0, dr))
-        cols = slice(max(0, -dc), ncol - max(0, dc))
-        a = index[rows, cols].ravel()
-        b = a + dr * ncol + dc
-        ok = inside.ravel()[a] & inside.ravel()[b]
-        a, b = a[ok], b[ok]
-        sources.append(a)
-        targets.append(b)
-        weights.append(np.hypot(dr, dc) * cell * (cost.ravel()[a] + cost.ravel()[b]) / 2)
-    graph = scipy.sparse.coo_matrix(
-        (np.concatenate(weights), (np.concatenate(sources), np.concatenate(targets))), shape=(nrow * ncol,) * 2
-    ).tocsr()
-    start = cell_of(basin_point)
-    _, predecessors = scipy.sparse.csgraph.dijkstra(graph, directed=False, indices=start, return_predecessors=True)
-
+    raster = _WaterRaster(water, area, land_cost, max_cells)
+    paths = raster.paths([raster.cell_of(basin_point)], {k: raster.cell_of(p) for k, p in connectors.items()})
+    paths = {k: path for k, path in paths.items() if raster.land(path) <= max_land}
     routes = {}
-    for key, point in connectors.items():
-        node = cell_of(point)
-        if node != start and predecessors[node] < 0:
-            continue
-        path = [node]
-        while path[-1] != start:
-            path.append(int(predecessors[path[-1]]))
-        rows, cols = np.divmod(np.array(path[::-1]), ncol)
-        xs, ys = rasterio.transform.xy(transform, rows, cols)
-        # simplify the staircase of cell centers, keeping the exact end points
-        middle = shapely.simplify(shapely.LineString(np.column_stack([xs, ys])), cell) if len(path) > 1 else None
-        inner: list[Coord] = [(float(x), float(y)) for x, y in middle.coords[1:-1]] if middle is not None else []
-        coords = _dedupe([(basin_point.x, basin_point.y), *inner, (point.x, point.y)])
-        if not accept_length(shapely.LineString(coords), basin_point, point, max_straight_line_ratio):
-            continue
-        # crossing land is a guess, only accept it over short distances, such as a road with a missing culvert
-        if (~wet.ravel()[path[1:-1]]).sum() * cell <= max_land:
-            routes[key] = coords
+    for key, coords in raster.coords(paths).items():
+        point = connectors[typing.cast(int, key)]
+        coords = _dedupe([(basin_point.x, basin_point.y), *coords[1:-1], (point.x, point.y)])
+        if accept_length(shapely.LineString(coords), basin_point, point, max_straight_line_ratio):
+            routes[typing.cast(int, key)] = coords
     return routes
 
 
@@ -489,7 +533,7 @@ def snap_to_network(
     :param tolerance: buffer around the basin area within which hydro-objects are used, defaults to 10.0
     :param move_basins: move non-bergend Basin nodes onto the network, defaults to True
     :param route_water: route links that cannot be routed along the hydro-objects over the water surface, see
-        `route_over_water`, defaults to True
+        `route_basin_links`, defaults to True
     :param link_ids: only route these links, defaults to None (all)
 
     :return: updated Ribasim model
@@ -561,13 +605,11 @@ def snap_to_network(
             list(main_route[idx]),
             culverts=list(basin_culverts),
             water=None if basin_water.is_empty else basin_water,
+            area=area if route_water else None,
             basin_area=areas[basin_id] if move_basins else None,
         )
         if not location.equals(basin_point):
             new_locations[int(basin_id)] = location
-        unrouted = {k: p for k, p in connectors.items() if k not in routes}
-        if route_water and unrouted and not basin_water.is_empty:
-            routes |= route_over_water(location, unrouted, basin_water, area)
         for link_id, coords in routes.items():
             if to_basin[link_id]:
                 coords = coords[::-1]

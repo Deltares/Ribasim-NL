@@ -8,6 +8,7 @@ from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.delwaq import compute_delwaq
+from ribasim_nl.layout import tidy_layout
 from ribasim_nl.network_snapping import snap_to_waterways, straight_flow_link_ids
 from ribasim_nl.observations import add_observations
 from ribasim_nl.set_forcing import SetDynamicForcing
@@ -161,6 +162,9 @@ for authority in authorities:
 
         # add Observation nodes with measured discharges
         model = add_observations(model, authority, cloud)
+
+        # no nodes on top of each other and no overlapping links
+        model = tidy_layout(model)
 
         # Avoid large databases by writing some tables to NetCDF
         # TODO add flow_boundary after we can run core versions with

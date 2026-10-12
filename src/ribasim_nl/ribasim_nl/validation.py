@@ -158,8 +158,34 @@ def _connector_through_junction_issues(model: "Model") -> list[str]:
     ]
 
 
-def validate_model(model: "Model") -> None:
-    """Validate Ribasim-NL conventions and report all issues together."""
+# Nodes closer than this are on top of each other, and links overlapping longer than this overlap, see ribasim_nl.layout
+MIN_NODE_DISTANCE = 1.0  # m
+MIN_LINK_OVERLAP = 1.0  # m
+
+
+def _layout_issues(model: "Model") -> list[str]:
+    """Return nodes on top of each other and overlapping links, which make the model hard to read on a map."""
+    from ribasim_nl.layout import coincident_nodes, overlapping_links
+
+    if model.node.df is None or model.link.df is None:
+        return []
+    issues = []
+    nodes = coincident_nodes(model, MIN_NODE_DISTANCE)
+    if nodes.shape[1]:
+        pairs = sorted(map(tuple, nodes.T.tolist()))
+        issues.append(f"Nodes must be at least {MIN_NODE_DISTANCE} m apart, see ribasim_nl.layout; node IDs: {pairs}")
+    links = overlapping_links(model, MIN_LINK_OVERLAP)
+    if links.shape[1]:
+        pairs = sorted(map(tuple, links.T.tolist()))
+        issues.append(f"Links must not overlap over {MIN_LINK_OVERLAP} m, see ribasim_nl.layout; link IDs: {pairs}")
+    return issues
+
+
+def validate_model(model: "Model", layout: bool = True) -> None:
+    """Validate Ribasim-NL conventions and report all issues together.
+
+    With `layout`, also check that nodes are not on top of each other and links do not overlap.
+    """
     issues = [
         *_basin_profile_issues(model),
         *_discrete_control_condition_issues(model),
@@ -167,6 +193,7 @@ def validate_model(model: "Model") -> None:
         *_inert_control_state_issues(model),
         *_connector_through_junction_issues(model),
         *_manning_resistance_issues(model),
+        *(_layout_issues(model) if layout else []),
     ]
     if issues:
         raise ValueError("Ribasim-NL model validation failed:\n- " + "\n- ".join(issues))

@@ -17,6 +17,7 @@ from ribasim_nl.coupling_level_apply import (
 from ribasim_nl.coupling_level_common import finite_level, finite_levels
 from ribasim_nl.coupling_level_network import first_non_junction, flow_link_graphs
 from ribasim_nl.coupling_levels import run_coupling_level_check
+from ribasim_nl.layout import offset_links, resolve_overlaps, separate_nodes
 from ribasim_nl.model import find_toml
 from ribasim_nl.network_snapping import snap_to_waterways
 from ribasim_nl.observations import link_observations
@@ -629,7 +630,7 @@ def convert_outlets_to_manning_resistance(model: Model) -> None:
         model.update_node(node_id, "ManningResistance", [static])
 
 
-def route_links_between_models(model: Model, network: Network) -> None:
+def route_links_between_models(model: Model, network: Network) -> list[int]:
     """Route the straight links between models, and in the Rijkswaterstaat model, along waterways and water.
 
     The connector nodes are often outside the area of the receiving Basin, so waterways up to 250 m around it are
@@ -643,6 +644,7 @@ def route_links_between_models(model: Model, network: Network) -> None:
     link_ids = flow.index[straight & ((from_authority != to_authority) | rws)].tolist()
     top10nl = data_dir / "Basisgegevens/Top10NL/top10nl_Compleet.gpkg"
     snap_to_waterways(model, top10nl, link_ids, main_route=network.links, tolerance=250.0)
+    return link_ids
 
 
 def remove_invalid_topology_nodes(model: Model) -> None:
@@ -849,9 +851,13 @@ def couple_model(toml_file: Path) -> None:
     convert_outlets_to_manning_resistance(model)
     fix_basin_profiles(model)
     remove_invalid_topology_nodes(model)
-    route_links_between_models(model, network)
+    link_ids = route_links_between_models(model, network)
     # series measured on links between models can only be observed in the coupled model
     link_observations(model)
+    # the layout of the models is already tidy, see ribasim_nl.layout.tidy_layout, apart from the coupling
+    offset_links(model, link_ids=link_ids)
+    separate_nodes(model)
+    resolve_overlaps(model)
     coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)
     run_configured_coupling_level_check(coupled_toml_file)
 
