@@ -251,6 +251,7 @@ def route_basin_links(
     max_guess: float = 1000.0,
     max_attach_distance: float = 100.0,
     max_straight_line_ratio: float = MAX_STRAIGHT_LINE_RATIO,
+    min_routed_fraction: float = 0.5,
 ) -> tuple[shapely.Point, dict[int, list[Coord]]]:
     """Route the links between a Basin node and its connector nodes along the hydro-objects in the basin.
 
@@ -258,7 +259,8 @@ def route_basin_links(
     if the gap is small or crossed over `water`, see `_BasinNetwork.bridge_gaps`. Then only the longest connected part
     of the network is used. The Basin node is attached to its nearest main route hydro-object in this part (if any),
     and each connector node to its nearest hydro-object. If `basin_area` is given and contains the attachment point of
-    the Basin node, and at least half of the links can be routed from there, the Basin node is moved there. A
+    the Basin node, and at least `min_routed_fraction` of the links can be routed from there, the Basin node is moved
+    there. A
     connector is not routed if it is farther than `max_attach_distance` from this part or farther from it than from the
     Basin node, or if the route is not less than `max_straight_line_ratio` times the straight line, as in
     `ribasim_nl.link_geometries.fix_link_geometries`.
@@ -275,6 +277,7 @@ def route_basin_links(
     :param culvert_snap: maximum distance between a culvert end and the hydro-objects
     :param max_attach_distance: maximum distance between a connector node and the network
     :param max_straight_line_ratio: maximum ratio between route length and straight line length
+    :param min_routed_fraction: minimum fraction of the links that can be routed to move the Basin node
 
     :return: the (possibly moved) location of the Basin node, and per routed connector key the coordinates from the
         Basin node to the connector node
@@ -327,7 +330,7 @@ def route_basin_links(
         and min(anchor_point.distance(p) for p in connectors.values()) > 1.0
     ):
         routes = route(anchor_point)
-        if 2 * len(routes) >= len(connectors):
+        if len(routes) >= min_routed_fraction * len(connectors):
             return anchor_point, routes
     return basin_point, route(basin_point)
 
@@ -369,8 +372,6 @@ def route_over_water(
     inside = rasterio.features.rasterize([area], (nrow, ncol), transform=transform, all_touched=True).astype(bool)
     wet = rasterio.features.rasterize([water], (nrow, ncol), transform=transform, all_touched=True).astype(bool)
     cost = np.where(wet, 1.0, land_cost)
-    wet_area = shapely.buffer(water, cell)
-    shapely.prepare(wet_area)
 
     def cell_of(point: shapely.Point) -> int:
         row, col = rasterio.transform.rowcol(transform, point.x, point.y)
@@ -409,11 +410,10 @@ def route_over_water(
         middle = shapely.simplify(shapely.LineString(np.column_stack([xs, ys])), cell) if len(path) > 1 else None
         inner: list[Coord] = [(float(x), float(y)) for x, y in middle.coords[1:-1]] if middle is not None else []
         coords = _dedupe([(basin_point.x, basin_point.y), *inner, (point.x, point.y)])
-        line = shapely.LineString(coords)
-        if not accept_length(line, basin_point, point, max_straight_line_ratio):
+        if not accept_length(shapely.LineString(coords), basin_point, point, max_straight_line_ratio):
             continue
         # crossing land is a guess, only accept it over short distances, such as a road with a missing culvert
-        if shapely.difference(line, wet_area).length <= max_land:
+        if (~wet.ravel()[path[1:-1]]).sum() * cell <= max_land:
             routes[key] = coords
     return routes
 
