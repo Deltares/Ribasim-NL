@@ -17,6 +17,7 @@ from ribasim_nl.coupling_level_common import finite_level, finite_levels
 from ribasim_nl.coupling_level_network import first_non_junction, flow_link_graphs
 from ribasim_nl.coupling_levels import run_coupling_level_check
 from ribasim_nl.model import find_toml
+from ribasim_nl.observations import link_observations
 from ribasim_nl.settings import settings
 from shapely.geometry import LineString, Point
 from tqdm import tqdm
@@ -830,6 +831,8 @@ def couple_model(toml_file: Path) -> None:
     convert_outlets_to_manning_resistance(model)
     fix_basin_profiles(model)
     remove_invalid_topology_nodes(model)
+    # series measured on links between models can only be observed in the coupled model
+    link_observations(model)
     coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)
     run_configured_coupling_level_check(coupled_toml_file)
 

@@ -1,9 +1,10 @@
 """Add Observation nodes with measured discharges to a model.
 
 The measurement series and the model links they are compared with are taken from the koppeltabel that is also used
-by `ribasim_nl.analyse_results`. Each series measured at a single connector node gets an Observation node at the
-measurement location, observing the `flow_rate` of that connector node. Connector nodes are found by their type and
-location, which do not change when links are renumbered. Series that combine multiple links are not added.
+by `ribasim_nl.analyse_results`. Each series gets an Observation node at the measurement location, with the measured
+values. If the series is measured on a single link, the Observation node observes the `flow_rate` of the connector
+node of that link, or else of its Junction. These nodes are found by their type and location, which do not change
+when links are renumbered. Other Observation nodes are not linked, as a reminder; `meta_koppeling` says why.
 """
 
 import logging
@@ -19,6 +20,7 @@ from ribasim.input_base import NodeData
 from ribasim.schemas import ObservationTimeSchema
 
 from ribasim_nl.cloud import CloudStorage
+from ribasim_nl.coupling_level_network import first_non_junction, flow_link_graphs
 from ribasim_nl.model import Model
 
 LOG = logging.getLogger(__name__)
@@ -34,15 +36,18 @@ MEASUREMENT_CSVS = {
     "Afvoer": f"{RESULTAATVERGELIJKING}/meetreeksen_2026/Metingen_afvoer_dag_totaal.csv",
 }
 
-# Node types of which the flow_rate can be observed
-OBSERVED_NODE_TYPES = {
+# Node types of which the flow_rate can be observed, in order of preference
+OBSERVED_NODE_TYPES = (
     "Pump",
     "Outlet",
     "ManningResistance",
     "TabulatedRatingCurve",
     "LinearResistance",
     "FlowBoundary",
-}
+    "Junction",
+)
+# Operations of the koppeltabel after which the measurement has the sign of the model flow, see ApplySpecificOperation
+NEGATE_OPERATIONS = ("negatief_maken", "optellen_en_negatief_maken")
 
 
 def _points(value: object) -> list[shapely.Point]:
@@ -55,11 +60,36 @@ def _strings(value: object) -> list[str]:
     return re.findall(r"'([^']*)'", str(value))
 
 
+class LinkEnd(typing.NamedTuple):
+    """The node to observe of a koppeltabel link, and the type of the node on the other end."""
+
+    node_type: str
+    geometry: shapely.Point
+    other_type: str
+    upstream: bool  # whether the other node is upstream
+
+
+def _link_end(from_type: str, from_point: shapely.Point, to_type: str, to_point: shapely.Point) -> LinkEnd | None:
+    """The preferred node to observe of a koppeltabel link, if any."""
+    ends = [LinkEnd(from_type, from_point, to_type, False), LinkEnd(to_type, to_point, from_type, True)]
+    ends = [end for end in ends if end.node_type in OBSERVED_NODE_TYPES]
+    return min(ends, key=lambda end: OBSERVED_NODE_TYPES.index(end.node_type)) if ends else None
+
+
+def _is_sum(operation: str | float | None, count: int) -> bool:
+    """Whether a koppeltabel operation sums the flows of `count` links, possibly negated."""
+    if operation is None or (isinstance(operation, float) and pd.isna(operation)) or operation == "negatief_maken":
+        return count == 1
+    sum_formula = "+".join(f"link{i + 1}" for i in range(count))
+    return operation in ("optellen", "optellen_en_negatief_maken", sum_formula)
+
+
 def read_coupling(cloud: CloudStorage, authority: str) -> gpd.GeoDataFrame:
-    """The single-connector series of an authority, with the type and location of the observed connector node.
+    """The series of an authority, with the nodes to observe of their links.
 
     :return: a table with columns MeetreeksC, Aan/Af, negate (whether the measurement has the opposite sign of the
-        flow_rate), node_type and node_geometry of the connector node, and geometry of the measurement location
+        flow_rate), ends (the `LinkEnd` per link, or None if the series is not the sum of the links or a link has no
+        node to observe), koppeling (why ends is None) and geometry of the measurement location
     """
     coupling = pd.read_excel(cloud.joinpath(COUPLING_XLSX))
     coupling = coupling[coupling["Waterschap"] == authority]
@@ -72,27 +102,30 @@ def read_coupling(cloud: CloudStorage, authority: str) -> gpd.GeoDataFrame:
         from_types, to_types = _strings(row["new_from_node_types"]), _strings(row["new_to_node_types"])
         from_points, to_points = _points(row["new_from_node_geometry"]), _points(row["new_to_node_geometry"])
         assert len(from_types) == len(to_types) == len(from_points) == len(to_points), row["MeetreeksC"]
-        if len(from_types) != 1:
-            LOG.info(f"Skipping {row['MeetreeksC']}: it combines {len(from_types)} links")
-            continue
-        if from_types[0] in OBSERVED_NODE_TYPES:
-            node_type, node_geometry = from_types[0], from_points[0]
-        elif to_types[0] in OBSERVED_NODE_TYPES:
-            node_type, node_geometry = to_types[0], to_points[0]
-        else:
-            LOG.info(f"Skipping {row['MeetreeksC']}: no connector on its {from_types[0]} -> {to_types[0]} link")
-            continue
         operation = specifics.get((row["MeetreeksC"], row["Aan/Af"]))
-        assert pd.isna(operation) or operation in ("optellen", "negatief_maken"), (row["MeetreeksC"], operation)
+        ends: list[LinkEnd | None] | None = [
+            _link_end(*link) for link in zip(from_types, from_points, to_types, to_points, strict=True)
+        ]
+        koppeling = ""
+        if not from_types:
+            ends, koppeling = None, "no links in the koppeltabel"
+        elif not _is_sum(operation, len(from_types)):
+            ends, koppeling = None, f"combines {len(from_types)} links with {operation}"
+        elif None in ends:
+            link = ends.index(None)
+            ends, koppeling = None, f"no node to observe on its {from_types[link]} -> {to_types[link]} link"
         location = shapely.from_wkt(row["geometry"]) if isinstance(row["geometry"], str) else None
+        if location is None:
+            assert ends and ends[0] is not None, f"No location for {row['MeetreeksC']}"
+            location = ends[0].geometry
         rows.append(
             {
                 "MeetreeksC": row["MeetreeksC"],
                 "Aan/Af": row["Aan/Af"],
-                "negate": operation == "negatief_maken",
-                "node_type": node_type,
-                "node_geometry": node_geometry,
-                "geometry": location if location is not None else node_geometry,
+                "negate": operation in NEGATE_OPERATIONS,
+                "ends": ends,
+                "koppeling": koppeling,
+                "geometry": location,
             }
         )
     return gpd.GeoDataFrame(rows, geometry="geometry", crs="EPSG:28992")
@@ -109,7 +142,7 @@ def read_measurements(cloud: CloudStorage) -> dict[str, pd.DataFrame]:
 
 
 def add_observations(model: Model, authority: str, cloud: CloudStorage | None = None) -> Model:
-    """Add an Observation node with the measured discharge for each series measured at a single connector node.
+    """Add an Observation node with the measured discharge for each series of an authority.
 
     :param model: Ribasim model
     :param authority: water authority as named in the koppeltabel
@@ -121,9 +154,83 @@ def add_observations(model: Model, authority: str, cloud: CloudStorage | None = 
     coupling = read_coupling(cloud, authority)
     model = add_observation_nodes(model, coupling, read_measurements(cloud))
     assert model.node.df is not None
-    count = (model.node.df["node_type"] == "Observation").sum()
-    LOG.info(f"{authority} has {count} Observation nodes for {len(coupling)} series")
+    links = model.link.df[model.link.df["link_type"] == "observation"] if model.link.df is not None else []
+    LOG.info(f"{authority} has {len(coupling)} Observation nodes, of which {len(links)} are linked")
     return model
+
+
+class _Graph:
+    """Flow neighbors of the nodes of a model, to look past Junctions."""
+
+    def __init__(self, model: Model) -> None:
+        assert model.node.df is not None
+        assert model.link.df is not None
+        node_type = model.node.df["node_type"]
+        self.node_types = dict(zip(node_type.index.astype(int), node_type.astype(str), strict=True))
+        self.outgoing, self.incoming = flow_link_graphs(model.link.df.reset_index())
+
+    def neighbor(self, node_id: int, upstream: bool) -> int | None:
+        """The first neighbor that is not a Junction, if there is one."""
+        return first_non_junction(node_id, self.incoming if upstream else self.outgoing, self.node_types)[0]
+
+    def behind_junctions(self, node_id: int, upstream: bool) -> set[int]:
+        """The nodes reached through Junctions from a Junction."""
+        found, stack = set(), [node_id]
+        while stack:
+            for _, next_id in (self.incoming if upstream else self.outgoing).get(stack.pop(), []):
+                if self.node_types[next_id] == "Junction":
+                    stack.append(next_id)
+                else:
+                    found.add(next_id)
+        return found
+
+    def collecting_junction(self, node_ids: set[int], upstream: bool) -> int | None:
+        """The Junction that collects the flow of exactly `node_ids`: downstream of them, or upstream if `upstream`."""
+        node_id = next(iter(node_ids))
+        for _ in range(50):
+            links = (self.incoming if upstream else self.outgoing).get(node_id, [])
+            if len(links) != 1 or self.node_types[links[0][1]] != "Junction":
+                return None
+            node_id = links[0][1]
+            if self.behind_junctions(node_id, not upstream) == node_ids:
+                return node_id
+        return None
+
+
+def _match(model: Model, end: LinkEnd, graph: _Graph, tolerance: float) -> tuple[int | None, str]:
+    """The model node of a `LinkEnd`, or None and why there is none."""
+    assert model.node.df is not None
+    nodes = model.node.df
+    candidates = nodes[nodes["node_type"] == end.node_type]
+    candidates = list(candidates.index[candidates.distance(end.geometry) <= tolerance])
+    if len(candidates) > 1:
+        # stacked nodes, keep those with a neighbor of the right type on the right side, possibly behind Junctions
+        candidates = [c for c in candidates if graph.node_types.get(graph.neighbor(c, end.upstream)) == end.other_type]
+    if len(candidates) != 1:
+        return None, f"{len(candidates)} {end.node_type} nodes at the location in the koppeltabel"
+    return int(candidates[0]), ""
+
+
+def _observed_node(model: Model, row: pd.Series, graph: _Graph, tolerance: float) -> tuple[int | None, str]:
+    """The node to observe for a series of `read_coupling`, or None and why there is none."""
+    ends = row["ends"]
+    if not isinstance(ends, list):
+        return None, row["koppeling"]
+    matches = [_match(model, end, graph, tolerance) for end in ends]
+    unmatched = [reason for node_id, reason in matches if node_id is None]
+    if unmatched:
+        return None, unmatched[0]
+    node_ids = {node_id for node_id, _ in matches if node_id is not None}
+    if len(node_ids) != len(ends):
+        return None, "the same node for multiple links"
+    if len(node_ids) == 1:
+        return node_ids.pop(), ""
+    # the sum of the flows of multiple nodes is the flow of a Junction that combines exactly them, on either side
+    for upstream in (False, True):
+        junction = graph.collecting_junction(node_ids, upstream=upstream)
+        if junction is not None:
+            return junction, ""
+    return None, f"no Junction combines exactly its {len(ends)} links"
 
 
 def add_observation_nodes(
@@ -132,32 +239,33 @@ def add_observation_nodes(
     """Add Observation nodes for the series in `coupling`, see `read_coupling` and `read_measurements`.
 
     :param model: Ribasim model
-    :param coupling: series with their observed connector node
+    :param coupling: series with the node to observe
     :param measurements: measured discharges
-    :param tolerance: maximum distance between the connector node in `coupling` and in the model
+    :param tolerance: maximum distance between the node to observe in `coupling` and in the model
 
     :return: updated Ribasim model
     """
     assert model.node.df is not None
-    nodes = model.node.df
     period = slice(pd.Timestamp(model.starttime), pd.Timestamp(model.endtime))
 
+    graph = _Graph(model)
     times: list[pd.DataFrame] = [] if model.observation.time.df is None else [model.observation.time.df]
     for _, row in coupling.iterrows():
-        candidates = nodes[(nodes["node_type"] == row["node_type"])]
-        candidates = candidates[candidates.distance(row["node_geometry"]) <= tolerance]
-        if len(candidates) != 1:
-            LOG.warning(f"Skipping {row['MeetreeksC']}: {len(candidates)} {row['node_type']} nodes at its location")
-            continue
-        node_id = int(candidates.index[0])
-        observed = NodeData(node_id, row["node_type"], typing.cast(shapely.Point, candidates.at[node_id, "geometry"]))
+        node_id, koppeling = _observed_node(model, row, graph, tolerance)
         observation = model.observation.add(
-            Node(geometry=row["geometry"], name=row["MeetreeksC"], meta_aan_af=row["Aan/Af"])
+            Node(geometry=row["geometry"], name=row["MeetreeksC"], meta_aan_af=row["Aan/Af"], meta_koppeling=koppeling)
         )
-        model.link.add(observation, observed)
+        if node_id is None:
+            LOG.warning(f"Not linking the Observation of {row['MeetreeksC']}: {koppeling}")
+        else:
+            geometry = typing.cast(shapely.Point, model.node.df.at[node_id, "geometry"])
+            model.link.add(observation, NodeData(node_id, graph.node_types[node_id], geometry))
 
-        series = measurements["Aanvoer" if row["Aan/Af"] == "Aanvoer" else "Afvoer"][row["MeetreeksC"]]
-        series = series.loc[period].dropna()
+        measured = measurements["Aanvoer" if row["Aan/Af"] == "Aanvoer" else "Afvoer"]
+        if row["MeetreeksC"] not in measured.columns:
+            LOG.warning(f"No measurements of {row['MeetreeksC']}")
+            continue
+        series = measured[row["MeetreeksC"]].loc[period].dropna()
         times.append(
             pd.DataFrame(
                 {
@@ -171,4 +279,41 @@ def add_observation_nodes(
 
     if times:
         model.observation.time.df = DataFrame[ObservationTimeSchema](pd.concat(times, ignore_index=True))
+    return model
+
+
+def link_observations(model: Model, cloud: CloudStorage | None = None, tolerance: float = 1.0) -> Model:
+    """Link the Observation nodes that are not linked yet, for instance in a model coupled from other models.
+
+    Series can be measured on links between models, of which only the coupled model has all nodes.
+
+    :param model: Ribasim model with a meta_waterbeheerder column with the authority of each node
+    :param cloud: cloud storage with the koppeltabel, defaults to CloudStorage()
+    :param tolerance: maximum distance between the node to observe in the koppeltabel and in the model
+
+    :return: updated Ribasim model
+    """
+    assert model.node.df is not None
+    assert model.link.df is not None
+    cloud = CloudStorage() if cloud is None else cloud
+    nodes = model.node.df
+    linked = model.link.df.loc[model.link.df["link_type"] == "observation", "from_node_id"]
+    unlinked = nodes[(nodes["node_type"] == "Observation") & ~nodes.index.isin(linked)]
+    graph = _Graph(model)
+    count = 0
+    for authority, group in unlinked.groupby("meta_waterbeheerder"):
+        coupling = read_coupling(cloud, str(authority)).set_index(["MeetreeksC", "Aan/Af"])
+        assert coupling.index.is_unique, f"Duplicate series in the koppeltabel of {authority}"
+        for observation_id, observation in group.iterrows():
+            observation_id = int(typing.cast(int, observation_id))
+            row = coupling.loc[(observation["name"], observation["meta_aan_af"])]
+            node_id, koppeling = _observed_node(model, row, graph, tolerance)
+            if node_id is not None:
+                geometry = typing.cast(shapely.Point, nodes.at[node_id, "geometry"])
+                model.link.add(
+                    model.observation[observation_id], NodeData(node_id, graph.node_types[node_id], geometry)
+                )
+                count += 1
+            nodes.loc[observation_id, "meta_koppeling"] = koppeling
+    LOG.info(f"Linked {count} of {len(unlinked)} unlinked Observation nodes")
     return model
