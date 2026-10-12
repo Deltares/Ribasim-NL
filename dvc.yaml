@@ -809,6 +809,9 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/Delfland/modellen/Delfland_profiles
       - data/Delfland/verwerkt/profielen/network.gpkg
+      - data/Delfland/verwerkt/Crossings/delfland_crossings_v08.gpkg
+      - data/Delfland/verwerkt/BGT/bgt_Delfland_water.gpkg
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Delfland/modellen/Delfland_boezemmodel_2024_12_0
       - data/Delfland/verwerkt/Feedback Formulier/feedback_formulier_Delfland.xlsx
       - data/Delfland/aangeleverd/Na_levering/Wateraanvoer/Aanvoergebied_Afvoergebied_polders.gpkg
@@ -839,6 +842,9 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/AmstelGooienVecht/modellen/AmstelGooienVecht_profiles
       - data/AmstelGooienVecht/verwerkt/profielen/network.gpkg
+      - data/AmstelGooienVecht/verwerkt/Crossings/agv_crossings_v05.gpkg
+      - data/AmstelGooienVecht/verwerkt/BGT/bgt_AmstelGooienVecht_water.gpkg
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/AmstelGooienVecht/modellen/AmstelGooienVecht_boezemmodel_2024_12_0
       - data/AmstelGooienVecht/verwerkt/Feedback Formulier/feedback_formulier_AmstelGooienVecht.xlsx
       - data/AmstelGooienVecht/aangeleverd/Na_levering/Wateraanvoer/afvoergebiedaanvoergebied.gpkg
@@ -869,6 +875,9 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_profiles
       - data/HollandsNoorderkwartier/verwerkt/profielen/network.gpkg
+      - data/HollandsNoorderkwartier/verwerkt/Crossings/hhnk_crossings_v26.gpkg
+      - data/HollandsNoorderkwartier/verwerkt/BGT/bgt_HollandsNoorderkwartier_water.gpkg
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_boezemmodel_2024_12_0
       - data/HollandsNoorderkwartier/verwerkt/Feedback Formulier/feedback_formulier_HollandsNoorderkwartier.xlsx
       - data/HollandsNoorderkwartier/aangeleverd/Na_levering/20240618_peilgebieden_en_polders
@@ -899,6 +908,9 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/HollandseDelta/modellen/HollandseDelta_profiles
       - data/HollandseDelta/verwerkt/profielen/network.gpkg
+      - data/HollandseDelta/verwerkt/Crossings/hd_crossings_v06.gpkg
+      - data/HollandseDelta/verwerkt/BGT/bgt_HollandseDelta_water.gpkg
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/HollandseDelta/modellen/HollandseDelta_boezemmodel_2024_12_3
       - data/HollandseDelta/verwerkt/Feedback Formulier/feedback_formulier_HollandseDelta.xlsx
       - data/HollandseDelta/aangeleverd/Na_levering/Wateraanvoer
@@ -929,6 +941,9 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/Rijnland/modellen/Rijnland_profiles
       - data/Rijnland/verwerkt/profielen/network.gpkg
+      - data/Rijnland/verwerkt/Crossings/rijnland_crossings_v05.gpkg
+      - data/Rijnland/verwerkt/BGT/bgt_Rijnland_water.gpkg
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Rijnland/modellen/Rijnland_boezemmodel_2024_12_3
       - data/Rijnland/verwerkt/Feedback Formulier/feedback_formulier_Rijnland.xlsx
       - data/Rijnland/aangeleverd/Na_levering/Wateraanvoer
@@ -959,6 +974,9 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/Rivierenland/modellen/Rivierenland_profiles
       - data/Rivierenland/verwerkt/profielen/network.gpkg
+      - data/Rivierenland/verwerkt/Crossings/wsrl_crossings_v06.gpkg
+      - data/Rivierenland/verwerkt/BGT/bgt_Rivierenland_water.gpkg
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Rivierenland/modellen/Rivierenland_boezemmodel_2024_12_0
       - data/Rivierenland/verwerkt/Feedback Formulier/feedback_formulier_Rivierenland.xlsx
       - data/Rivierenland/aangeleverd/Na_levering/Wateraanvoer
@@ -989,6 +1007,9 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/Scheldestromen/modellen/Scheldestromen_profiles
       - data/Scheldestromen/verwerkt/profielen/network.gpkg
+      - data/Scheldestromen/verwerkt/Crossings/scheldestromen_crossings_v02.gpkg
+      - data/Scheldestromen/verwerkt/BGT/bgt_Scheldestromen_water.gpkg
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Scheldestromen/modellen/Scheldestromen_boezemmodel_2024_12_0
       - data/Scheldestromen/verwerkt/Feedback Formulier/feedback_formulier_Scheldestromen.xlsx
       - data/Scheldestromen/aangeleverd/Na_levering/Wateraanvoer
@@ -1019,6 +1040,9 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_profiles
       - data/SchielandendeKrimpenerwaard/verwerkt/profielen/network.gpkg
+      - data/SchielandendeKrimpenerwaard/verwerkt/Crossings/hhsk_crossings_voor_profielen_met_OG_hydroobjecten.gpkg
+      - data/SchielandendeKrimpenerwaard/verwerkt/BGT/bgt_SchielandendeKrimpenerwaard_water.gpkg
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_boezemmodel_2024_12_1
       - data/SchielandendeKrimpenerwaard/verwerkt/Feedback Formulier/feedback_formulier_SchielandendeKrimpenerwaard.xlsx
       - data/SchielandendeKrimpenerwaard/aangeleverd/Na_levering/Wateraanvoer/HyDamo_metWasverzachter_20230905.gpkg
@@ -1049,6 +1073,9 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/WetterskipFryslan/modellen/WetterskipFryslan_profiles
       - data/WetterskipFryslan/verwerkt/profielen/network.gpkg
+      - data/WetterskipFryslan/verwerkt/Crossings/wetterskip_crossings_v06.gpkg
+      - data/WetterskipFryslan/verwerkt/BGT/bgt_WetterskipFryslan_water.gpkg
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/WetterskipFryslan/modellen/WetterskipFryslan_boezemmodel_2025_5_1
       - data/WetterskipFryslan/verwerkt/Feedback Formulier/feedback_formulier_WetterskipFryslan.xlsx
       - data/WetterskipFryslan/aangeleverd/Na_levering/Wateraanvoer/aanvoer.gpkg
@@ -1079,6 +1106,9 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/assign_parametrization.py
       - data/Zuiderzeeland/modellen/Zuiderzeeland_profiles
       - data/Zuiderzeeland/verwerkt/profielen/network.gpkg
+      - data/Zuiderzeeland/verwerkt/Crossings/zzl_crossings_v05.gpkg
+      - data/Zuiderzeeland/verwerkt/BGT/bgt_Zuiderzeeland_water.gpkg
+      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Zuiderzeeland/modellen/Zuiderzeeland_boezemmodel_2024_12_0
       - data/Zuiderzeeland/verwerkt/Feedback Formulier/feedback_formulier_Zuiderzeeland.xlsx
       - data/Zuiderzeeland/aangeleverd/Na_levering/peilgebieden.gpkg

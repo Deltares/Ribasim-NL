@@ -55,6 +55,22 @@ PUMP_META_COLUMNS = [
 ]
 
 
+# GeoPackage per water board in verwerkt/Crossings, with the hydro-objects, culverts and crossings, as also used in
+# src/peilbeheerst_model/profiles
+CROSSINGS = {
+    "AmstelGooienVecht": "agv_crossings_v05.gpkg",
+    "Delfland": "delfland_crossings_v08.gpkg",
+    "HollandsNoorderkwartier": "hhnk_crossings_v26.gpkg",
+    "HollandseDelta": "hd_crossings_v06.gpkg",
+    "Rijnland": "rijnland_crossings_v05.gpkg",
+    "Rivierenland": "wsrl_crossings_v06.gpkg",
+    "Scheldestromen": "scheldestromen_crossings_v02.gpkg",
+    "SchielandendeKrimpenerwaard": "hhsk_crossings_voor_profielen_met_OG_hydroobjecten.gpkg",
+    "WetterskipFryslan": "wetterskip_crossings_v06.gpkg",
+    "Zuiderzeeland": "zzl_crossings_v05.gpkg",
+}
+
+
 @dataclass(frozen=True)
 class WaterBoardPaths:
     """Paths of the input and output of one water board in the peilbeheerst pipeline."""
@@ -92,6 +108,18 @@ class WaterBoardPaths:
     @property
     def profielen_dir(self) -> Path:
         return self.cloud.joinpath(self.waterschap, "verwerkt/profielen")
+
+    @property
+    def crossings(self) -> Path:
+        return self.cloud.joinpath(self.waterschap, "verwerkt/Crossings", CROSSINGS[self.waterschap])
+
+    @property
+    def bgt_water(self) -> Path:
+        return self.cloud.joinpath(self.waterschap, "verwerkt/BGT", f"bgt_{self.waterschap}_water.gpkg")
+
+    @property
+    def top10nl(self) -> Path:
+        return self.cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
     def model_dir(self, stage: Literal["feedback", "profiles", "forcing"]) -> Path:
         """Directory of the model written by a pipeline stage."""
@@ -248,7 +276,13 @@ def write_and_run_forcing_model(
 
     # Layout-only transformations, done after all parametrization so they never affect it: route links along the
     # hydro-objects and move Basin nodes onto them, and merge the overlapping parts of links into Junctions.
-    model = snap_model(model, paths.profielen_dir)
+    model = snap_model(
+        model,
+        paths.profielen_dir,
+        crossings_path=paths.crossings,
+        water_path=paths.bgt_water,
+        top10nl_path=paths.top10nl,
+    )
     model = junctionify(model)
 
     model.use_validation = True

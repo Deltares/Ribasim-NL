@@ -1,6 +1,6 @@
 import geopandas as gpd
 import shapely
-from peilbeheerst_model.network_snapping import route_basin_links, snap_to_network
+from peilbeheerst_model.network_snapping import route_basin_links, route_over_water, snap_to_network
 from ribasim import Node
 from ribasim.nodes import basin, outlet
 from shapely.geometry import LineString, Point, box
@@ -28,13 +28,35 @@ def test_route_basin_links():
 def test_route_basin_links_bridges_gaps():
     lines = [LineString([(0, 0), (40, 0)]), LineString([(70, 0), (100, 0)])]
     connectors = {1: Point(100, 0)}
-    # gaps are bridged, either from a dangling end within `max_gap`, or otherwise by the shortest bridge
-    for max_gap in (50, 5):
-        location, routes = route_basin_links(
-            Point(20, 5), connectors, lines, [True, True], basin_area=AREA, max_gap=max_gap
-        )
-        assert location.equals(Point(20, 0))
-        assert routes == {1: [(20, 0), (40, 0), (70, 0), (100, 0)]}
+    bridged = {1: [(20, 0), (40, 0), (70, 0), (100, 0)]}
+
+    # without evidence of a connection the gap is not bridged, only the longest part of the network is used, and
+    # the connector is attached to it by a straight line
+    location, routes = route_basin_links(Point(20, 5), connectors, lines, [True, True], basin_area=AREA)
+    assert routes == {1: [(20, 0), (40, 0), (100, 0)]}
+
+    # a culvert, water or a tiny gap connects the hydro-objects
+    culvert = LineString([(41, 0), (69, 0)])
+    location, routes = route_basin_links(Point(20, 5), connectors, lines, [True, True], culverts=[culvert])
+    assert routes == {1: [(20, 5), (20, 0), (40, 0), (41, 0), (69, 0), (70, 0), (100, 0)]}
+    water = box(30, -10, 80, 10)
+    location, routes = route_basin_links(Point(20, 5), connectors, lines, [True, True], water=water, basin_area=AREA)
+    assert location.equals(Point(20, 0))
+    assert routes == bridged
+    location, routes = route_basin_links(Point(20, 5), connectors, lines, [True, True], max_gap=40, basin_area=AREA)
+    assert routes == bridged
+
+
+def test_route_over_water():
+    # a lake without hydro-objects, with a dike of 20 m between the lake and the connector
+    water = box(0, 0, 1000, 100)
+    area = box(-10, -10, 1010, 160)
+    routes = route_over_water(Point(10, 50), {1: Point(990, 140)}, water, area)
+    coords = routes[1]
+    assert coords[0] == (10, 50) and coords[-1] == (990, 140)
+    assert shapely.LineString(coords).difference(water.buffer(10)).length <= 50
+    # crossing much land is not accepted
+    assert route_over_water(Point(10, 50), {1: Point(990, 150)}, box(0, 0, 500, 100), area) == {}
 
 
 def test_route_basin_links_detour():
