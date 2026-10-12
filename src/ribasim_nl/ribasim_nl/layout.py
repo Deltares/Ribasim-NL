@@ -155,7 +155,7 @@ def _right_offset(coords: np.ndarray, distance: float) -> np.ndarray:
 def offset_links(
     model: Model, distance: float = 5.0, link_ids: typing.Iterable[int] | None = None, bend: bool = False
 ) -> None:
-    """Offset the flow links to the right of their direction, like traffic, keeping their ends at their nodes.
+    """Offset links to the right of their direction, like traffic, keeping their ends at their nodes.
 
     Links that share a route in opposite directions, such as the inflows and outflows of a Basin, then no longer
     overlap, while links that share a route in the same direction stay together. With `bend`, straight links get a
@@ -163,9 +163,8 @@ def offset_links(
     """
     assert model.link.df is not None
     links = model.link.df
-    flow = links[links["link_type"] == "flow"]
-    if link_ids is not None:
-        flow = flow[flow.index.isin(list(link_ids))]
+    # the given links, which may also be observation links, or else all flow links
+    flow = links[links.index.isin(list(link_ids))] if link_ids is not None else links[links["link_type"] == "flow"]
     geometries = []
     for geometry in flow.geometry:
         coords = np.array(geometry.coords)[:, :2]

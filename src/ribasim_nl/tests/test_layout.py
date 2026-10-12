@@ -5,7 +5,9 @@ from ribasim.nodes import basin, manning_resistance, outlet
 from ribasim_nl.layout import (
     coincident_nodes,
     offset_links,
+    overlapping_links,
     place_bergend_nodes,
+    resolve_overlaps,
     separate_nodes,
     tidy_layout,
 )
@@ -96,3 +98,18 @@ def test_tidy_layout(model):
     tidy_layout(model)
     assert _layout_issues(model) == []
     model.validate_ribasim_nl()
+
+
+def test_resolve_observation_overlaps(model):
+    """Two Observation nodes in line with the observed Outlet."""
+    for node_id, x in ((7, 510), (8, 520)):
+        model.observation.add(Node(node_id, Point(x, 0)))
+        model.link.add(model.observation[node_id], model.outlet[3])
+    observation_links = set(model.link.df.index[model.link.df["link_type"] == "observation"])
+
+    def observation_overlaps() -> list[tuple[int, int]]:
+        return [(a, b) for a, b in overlapping_links(model, 1.0).T if {a, b} <= observation_links]
+
+    assert len(observation_overlaps()) == 1
+    resolve_overlaps(model)
+    assert observation_overlaps() == []
