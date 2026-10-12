@@ -186,8 +186,8 @@ stages:
       size: 3731456
     - path: notebooks/09_koppelen_modellen.py
       hash: md5
-      md5: 55ca6378ffb06d243c3955a0b3f7873b
-      size: 39948
+      md5: 66e6e5a0beed3abd9cf9db16c0d719e6
+      size: 39943
     - path: src/ribasim_nl/ribasim_nl/junctions.py
       hash: md5
       md5: becec1df9e4c23ccfa8ad23f8f1cd772
@@ -211,7 +211,7 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: c569efc26e5dbfcae0d6d6ce1e0e99eb.dir
+      md5: 831848851f3b803732e0fe37e4145e33.dir
       size: 1363499032
       nfiles: 4
   rwzi:
@@ -5007,13 +5007,13 @@ stages:
       size: 4665344
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: 3ccd2e259946a304c86376fcdeb72b07.dir
-      size: 1293912088
+      md5: 831848851f3b803732e0fe37e4145e33.dir
+      size: 1363499032
       nfiles: 4
     - path: data/Rijkswaterstaat/runs/lhm_coupled
       hash: md5
-      md5: 0fdf957687f370c22fd2718758da93ba.dir
-      size: 1147537271
+      md5: 9caed60662a45f8387edeb7889e7f65e.dir
+      size: 48788443
       nfiles: 7
     - path: scripts/export_webmap.py
       hash: md5
@@ -5026,24 +5026,24 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/webmap/lhm_coupled
       hash: md5
-      md5: a6a8b6756ffa8aefbb6d4c1abd7317bc.dir
-      size: 714707908
-      nfiles: 33
+      md5: 72f048a4f8c4533ec89cd0e3c7c2cd70.dir
+      size: 244625025
+      nfiles: 34
   run_lhm_coupled:
     cmd: pixi run python scripts/run_lhm_coupled.py
     deps:
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: 3ccd2e259946a304c86376fcdeb72b07.dir
-      size: 1293912088
+      md5: 831848851f3b803732e0fe37e4145e33.dir
+      size: 1363499032
       nfiles: 4
     - path: scripts/run_lhm_coupled.py
       hash: md5
-      md5: 0ee09afbccb9ba611f75a47adc29313c
-      size: 1362
+      md5: f6a60954b50d2cd79bfb9f072f417a7f
+      size: 1384
     outs:
     - path: data/Rijkswaterstaat/runs/lhm_coupled
       hash: md5
-      md5: 0fdf957687f370c22fd2718758da93ba.dir
-      size: 1147537271
+      md5: 9caed60662a45f8387edeb7889e7f65e.dir
+      size: 48788443
       nfiles: 7
