@@ -166,7 +166,7 @@ model = merge_rwzi_model(
 )
 
 # add Observation nodes with measured discharges
-model = add_observations(model, "Rijkswaterstaat", cloud)
+model = add_observations(model, "Rijkswaterstaat")
 model = tidy_layout(model)
 
 # %%

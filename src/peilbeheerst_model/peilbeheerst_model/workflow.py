@@ -19,6 +19,7 @@ from ribasim_nl.capacity import bound_supply_inflows
 from ribasim_nl.layout import tidy_layout
 from ribasim_nl.network_snapping import snap_model
 from ribasim_nl.observations import add_observations
+from ribasim_nl.settings import settings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.controle_output import DYNAMIC_FORCING_METRICS, STATIC_FORCING_METRICS, Control
@@ -112,15 +113,15 @@ class WaterBoardPaths:
 
     @property
     def crossings(self) -> Path:
-        return self.cloud.joinpath(self.waterschap, "verwerkt/Crossings", CROSSINGS[self.waterschap])
+        return settings.ribasim_nl_data_dir / self.waterschap / "verwerkt/Crossings" / CROSSINGS[self.waterschap]
 
     @property
     def bgt_water(self) -> Path:
-        return self.cloud.joinpath(self.waterschap, "verwerkt/BGT", f"bgt_{self.waterschap}_water.gpkg")
+        return settings.ribasim_nl_data_dir / self.waterschap / "verwerkt/BGT" / f"bgt_{self.waterschap}_water.gpkg"
 
     @property
     def top10nl(self) -> Path:
-        return self.cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
+        return settings.ribasim_nl_data_dir / "Basisgegevens/Top10NL/top10nl_Compleet.gpkg"
 
     def model_dir(self, stage: Literal["feedback", "profiles", "forcing"]) -> Path:
         """Directory of the model written by a pipeline stage."""
@@ -289,7 +290,7 @@ def write_and_run_forcing_model(
     model.use_validation = True
     model.starttime = STARTTIME
     model.endtime = ENDTIME
-    model = add_observations(model, paths.waterschap, paths.cloud)
+    model = add_observations(model, paths.waterschap)
     model = tidy_layout(model)
     model.solver.saveat = SAVEAT
     model.write(model_toml)

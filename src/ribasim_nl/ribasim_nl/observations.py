@@ -19,21 +19,21 @@ from ribasim import Node
 from ribasim.input_base import NodeData
 from ribasim.schemas import ObservationTimeSchema
 
-from ribasim_nl.cloud import CloudStorage
 from ribasim_nl.coupling_level_network import first_non_junction, flow_link_graphs
 from ribasim_nl.model import Model
+from ribasim_nl.settings import settings
 
 LOG = logging.getLogger(__name__)
 
-RESULTAATVERGELIJKING = "Basisgegevens/resultaatvergelijking"
+RESULTAATVERGELIJKING = settings.ribasim_nl_data_dir / "Basisgegevens/resultaatvergelijking"
 COUPLING_XLSX = (
-    f"{RESULTAATVERGELIJKING}/koppeltabel_2026/"
-    "Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx"
+    RESULTAATVERGELIJKING
+    / "koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx"
 )
-SPECIFICS_XLSX = f"{RESULTAATVERGELIJKING}/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx"
+SPECIFICS_XLSX = RESULTAATVERGELIJKING / "koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx"
 MEASUREMENT_CSVS = {
-    "Aanvoer": f"{RESULTAATVERGELIJKING}/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv",
-    "Afvoer": f"{RESULTAATVERGELIJKING}/meetreeksen_2026/Metingen_afvoer_dag_totaal.csv",
+    "Aanvoer": RESULTAATVERGELIJKING / "meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv",
+    "Afvoer": RESULTAATVERGELIJKING / "meetreeksen_2026/Metingen_afvoer_dag_totaal.csv",
 }
 
 # Node types of which the flow_rate can be observed, in order of preference
@@ -84,16 +84,16 @@ def _is_sum(operation: str | float | None, count: int) -> bool:
     return operation in ("optellen", "optellen_en_negatief_maken", sum_formula)
 
 
-def read_coupling(cloud: CloudStorage, authority: str) -> gpd.GeoDataFrame:
+def read_coupling(authority: str) -> gpd.GeoDataFrame:
     """The series of an authority, with the nodes to observe of their links.
 
     :return: a table with columns MeetreeksC, Aan/Af, negate (whether the measurement has the opposite sign of the
         flow_rate), ends (the `LinkEnd` per link, or None if the series is not the sum of the links or a link has no
         node to observe), koppeling (why ends is None) and geometry of the measurement location
     """
-    coupling = pd.read_excel(cloud.joinpath(COUPLING_XLSX))
+    coupling = pd.read_excel(COUPLING_XLSX)
     coupling = coupling[coupling["Waterschap"] == authority]
-    specifics = pd.read_excel(cloud.joinpath(SPECIFICS_XLSX))
+    specifics = pd.read_excel(SPECIFICS_XLSX)
     specifics = specifics[specifics["Waterschap"] == authority].set_index(["MeetreeksC", "Aan/Af"])["Specifiek"]
     assert specifics.index.is_unique, f"Duplicate specific operations for {authority}"
 
@@ -131,28 +131,26 @@ def read_coupling(cloud: CloudStorage, authority: str) -> gpd.GeoDataFrame:
     return gpd.GeoDataFrame(rows, geometry="geometry", crs="EPSG:28992")
 
 
-def read_measurements(cloud: CloudStorage) -> dict[str, pd.DataFrame]:
+def read_measurements() -> dict[str, pd.DataFrame]:
     """Daily measured discharges [m3/s] per measurement file, with a time index and a column per series."""
     measurements = {}
     for key, path in MEASUREMENT_CSVS.items():
-        df = pd.read_csv(cloud.joinpath(path), index_col="Datum")
+        df = pd.read_csv(path, index_col="Datum")
         df.index = pd.to_datetime(df.index).rename("time")
         measurements[key] = df
     return measurements
 
 
-def add_observations(model: Model, authority: str, cloud: CloudStorage | None = None) -> Model:
+def add_observations(model: Model, authority: str) -> Model:
     """Add an Observation node with the measured discharge for each series of an authority.
 
     :param model: Ribasim model
     :param authority: water authority as named in the koppeltabel
-    :param cloud: cloud storage with the koppeltabel and measurements, defaults to CloudStorage()
 
     :return: updated Ribasim model
     """
-    cloud = CloudStorage() if cloud is None else cloud
-    coupling = read_coupling(cloud, authority)
-    model = add_observation_nodes(model, coupling, read_measurements(cloud))
+    coupling = read_coupling(authority)
+    model = add_observation_nodes(model, coupling, read_measurements())
     assert model.node.df is not None
     links = model.link.df[model.link.df["link_type"] == "observation"] if model.link.df is not None else []
     LOG.info(f"{authority} has {len(coupling)} Observation nodes, of which {len(links)} are linked")
@@ -294,15 +292,12 @@ def add_observation_nodes(
     return model
 
 
-def link_observations(
-    model: Model, cloud: CloudStorage | None = None, tolerance: float = 1.0, moved_tolerance: float = 50.0
-) -> Model:
+def link_observations(model: Model, tolerance: float = 1.0, moved_tolerance: float = 50.0) -> Model:
     """Link the Observation nodes that are not linked yet, for instance in a model coupled from other models.
 
     Series can be measured on links between models, of which only the coupled model has all nodes.
 
     :param model: Ribasim model with a meta_waterbeheerder column with the authority of each node
-    :param cloud: cloud storage with the koppeltabel, defaults to CloudStorage()
     :param tolerance: maximum distance between the node to observe in the koppeltabel and in the model
     :param moved_tolerance: maximum distance to a node that was moved to separate it from other nodes, see `_match`
 
@@ -310,14 +305,13 @@ def link_observations(
     """
     assert model.node.df is not None
     assert model.link.df is not None
-    cloud = CloudStorage() if cloud is None else cloud
     nodes = model.node.df
     linked = model.link.df.loc[model.link.df["link_type"] == "observation", "from_node_id"]
     unlinked = nodes[(nodes["node_type"] == "Observation") & ~nodes.index.isin(linked)]
     graph = _Graph(model)
     count = 0
     for authority, group in unlinked.groupby("meta_waterbeheerder"):
-        coupling = read_coupling(cloud, str(authority)).set_index(["MeetreeksC", "Aan/Af"])
+        coupling = read_coupling(str(authority)).set_index(["MeetreeksC", "Aan/Af"])
         assert coupling.index.is_unique, f"Duplicate series in the koppeltabel of {authority}"
         for observation_id, observation in group.iterrows():
             observation_id = int(typing.cast(int, observation_id))

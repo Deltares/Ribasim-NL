@@ -12,6 +12,7 @@ from ribasim_nl.layout import tidy_layout
 from ribasim_nl.network_snapping import snap_to_waterways, straight_flow_link_ids
 from ribasim_nl.observations import add_observations
 from ribasim_nl.set_forcing import SetDynamicForcing
+from ribasim_nl.settings import settings
 
 from ribasim_nl import (
     CloudStorage,
@@ -31,7 +32,7 @@ add_lhm_fractions: bool = True
 compute_fractions: bool = False
 rwzi_model_path = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
 rwzi_coverage_path = rwzi_model_path.parent / "meta/RWZI_coordinates_model_coverage.geojson"
-top10nl_path = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
+top10nl_path = settings.ribasim_nl_data_dir / "Basisgegevens/Top10NL/top10nl_Compleet.gpkg"
 transboundary_data_path = cloud.joinpath("Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx")
 
 # LHM4.3 mfma budgets to be assign to primary/secondary drainage/surface_runoff columns
@@ -161,7 +162,7 @@ for authority in authorities:
         model = snap_to_waterways(model, top10nl_path, straight_flow_link_ids(model))
 
         # add Observation nodes with measured discharges
-        model = add_observations(model, authority, cloud)
+        model = add_observations(model, authority)
 
         # no nodes on top of each other and no overlapping links
         model = tidy_layout(model)
