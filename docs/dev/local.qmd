@@ -19,7 +19,7 @@ Like `repro.sh`, it runs the stage commands directly, since parallel `dvc repro`
 ## Options
 
 - Targets: stages to reproduce together with their upstream stages, `koppelen` by default. For example, `pixi run repro-local export_webmap` also runs `run_lhm_coupled` and `export_webmap`, after which `pixi run publish-webmap` updates the [model viewer](viewer.qmd).
-- `--jobs N`: the maximum number of stages that run at once, 24 by default, such that all water authorities run at once. Each stage is a Python process that may also run Ribasim; with 24 jobs about 70 GB of memory is used.
+- `--jobs N`: the maximum number of stages that run at once, 12 by default. Each stage is a Python process that may also run Ribasim, so watch the memory use when increasing it.
 - `--stagger SECONDS`: the minimum time between stage starts, 30 by default, to not overload the GoodCloud server that some stages still download from.
 - `--incremental`: only run the stages that DVC reports as changed, and everything downstream of them, rather than all stages. Missing outputs count as changed, so this also reruns stages that failed before. Run `pixi run dvc pull` first if the workspace may be behind `dvc.lock`.
 - `--push`: run `dvc push` for the reproduced stages if they all succeeded.
