@@ -842,13 +842,11 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
         print(f"Cannot merge {boundary_node} => {neighbor_node}: One of the two is controlled, the other is not")
         return
 
-    # Update listen references for removed boundary nodes
-    upstream_basin_id = model.upstream_node_id(from_node_ids)
-    if isinstance(upstream_basin_id, pd.Series):
-        upstream_basin_id = upstream_basin_id.iloc[0]
-    downstream_basin_id = model.downstream_node_id(to_node_ids)
-    if isinstance(downstream_basin_id, pd.Series):
-        downstream_basin_id = downstream_basin_id.iloc[0]
+    # Update listen references for removed boundary nodes, to the Basins behind any Junctions
+    outgoing, incoming = flow_link_graphs(model.link.df.reset_index())
+    node_types = model.node.df["node_type"].to_dict()
+    upstream_basin_id, _, _ = first_non_junction(from_node_ids, incoming, node_types)
+    downstream_basin_id, _, _ = first_non_junction(to_node_ids, outgoing, node_types)
     replacement_basin = upstream_basin_id if upstream_basin_id is not None else downstream_basin_id
     replace_listen_node_id(model, boundary_node_id, replacement_basin)
     replace_listen_node_id(model, neighbor_id, replacement_basin)

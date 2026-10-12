@@ -161,6 +161,10 @@ stages:
   koppelen:
     cmd: pixi run python notebooks/09_koppelen_modellen.py
     deps:
+    - path: data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      hash: md5
+      md5: 1ea9a1ba765f3ce90884c4308fa2c215
+      size: 11001376768
     - path:
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
       hash: md5
@@ -173,8 +177,8 @@ stages:
       size: 99155
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: be4f519618b8d5e27ce0861a1192cea0.dir
-      size: 2343837979
+      md5: 46848d461b56fedfc39b5cd785f316fc.dir
+      size: 2341245211
       nfiles: 2
     - path: data/Rijkswaterstaat/verwerkt/netwerk.gpkg
       hash: md5
@@ -182,17 +186,33 @@ stages:
       size: 3731456
     - path: notebooks/09_koppelen_modellen.py
       hash: md5
-      md5: 152422778c3d0bef6fddccf524fd1dce
-      size: 37556
+      md5: 55ca6378ffb06d243c3955a0b3f7873b
+      size: 39948
+    - path: src/ribasim_nl/ribasim_nl/junctions.py
+      hash: md5
+      md5: becec1df9e4c23ccfa8ad23f8f1cd772
+      size: 9690
+    - path: src/ribasim_nl/ribasim_nl/layout.py
+      hash: md5
+      md5: e0e9c93d7bdc861764f3a71937eb13df
+      size: 14581
+    - path: src/ribasim_nl/ribasim_nl/link_geometries.py
+      hash: md5
+      md5: e4ceb6b8639ee532e0fca1c5fcb22ae2
+      size: 6079
+    - path: src/ribasim_nl/ribasim_nl/network_snapping.py
+      hash: md5
+      md5: 42a6d32f92d9c8d84fdfdfa1db4b6e13
+      size: 37055
     - path: src/ribasim_nl/ribasim_nl/observations.py
       hash: md5
-      md5: 8e0b12ab59976c0423db3162f8b5e4df
-      size: 15359
+      md5: b2b4ee00ed39f183f1f2e5cb9a6a5615
+      size: 16074
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: 6a78165f02a95e35f0af89bdf8bcf04a.dir
-      size: 1367005208
+      md5: c569efc26e5dbfcae0d6d6ce1e0e99eb.dir
+      size: 1363499032
       nfiles: 4
   rwzi:
     cmd: pixi run python notebooks/create_rwzi_model.py

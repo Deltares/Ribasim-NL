@@ -181,6 +181,21 @@ def _layout_issues(model: "Model") -> list[str]:
     return issues
 
 
+def _listen_to_junction_issues(model: "Model") -> list[str]:
+    """Return control nodes that listen to a Junction, which has no level or flow rate of its own."""
+    if model.node.df is None:
+        return []
+    node_type = model.node.df["node_type"]
+    pairs = []
+    for table in (model.discrete_control.variable.df, model.continuous_control.variable.df):
+        if table is not None:
+            listening = table[table["listen_node_id"].map(node_type) == "Junction"]
+            pairs += list(zip(listening["node_id"].tolist(), listening["listen_node_id"].tolist(), strict=True))
+    if not pairs:
+        return []
+    return [f"Control nodes must not listen to a Junction; invalid (control, Junction) node IDs: {sorted(set(pairs))}"]
+
+
 def validate_model(model: "Model", layout: bool = True) -> None:
     """Validate Ribasim-NL conventions and report all issues together.
 
@@ -193,6 +208,7 @@ def validate_model(model: "Model", layout: bool = True) -> None:
         *_inert_control_state_issues(model),
         *_connector_through_junction_issues(model),
         *_manning_resistance_issues(model),
+        *_listen_to_junction_issues(model),
         *(_layout_issues(model) if layout else []),
     ]
     if issues:
