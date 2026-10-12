@@ -11,8 +11,8 @@ import tomli_w
 from ribasim_nl.run_model import run
 from ribasim_nl.settings import settings
 
-# Temporary: 2 weeks with a looser tolerance, to iterate quickly, until a full run is feasible
-OVERRIDES = {"endtime": datetime(2017, 1, 15)}
+# Temporary: 1 year with a looser tolerance, until a full run is feasible
+OVERRIDES = {"endtime": datetime(2018, 1, 1)}
 SOLVER_OVERRIDES = {"reltol": 1e-3}
 
 model_toml = settings.ribasim_nl_data_dir / "Rijkswaterstaat/modellen/lhm_coupled/lhm_coupled.toml"
