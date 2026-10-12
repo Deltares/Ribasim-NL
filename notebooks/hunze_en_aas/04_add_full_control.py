@@ -85,7 +85,7 @@ DORKWERD_LISTEN_NODE_ID = 1261
 DORKWERD_THRESHOLD_LOW = 0.533 - LEVEL_THRESHOLD_RANGE / 2
 DORKWERD_THRESHOLD_HIGH = 0.533 + LEVEL_THRESHOLD_RANGE / 2
 DORKWERD_MIN_UPSTREAM_LEVEL = -0.97
-DORKWERD_MAX_DOWNSTREAM_LEVEL = 0.53
+DORKWERD_MAX_DOWNSTREAM_LEVEL = 0.63
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 EXCLUDE_NODES = {
@@ -755,7 +755,7 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
     static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 0.0
 
 # %%
-# Dorkwerd apart overrulen: stuur op de Manning-keten, begrens lokaal op het streefpeil van 0.53 m.
+# Dorkwerd apart overrulen: stuur op de Manning-keten, begrens lokaal op 0.63 m.
 configure_dorkwerd_control(model)
 
 assert model.node.df.at[13, "node_type"] == "LevelBoundary"
