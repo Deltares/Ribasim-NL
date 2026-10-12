@@ -1,8 +1,8 @@
 import geopandas as gpd
 import shapely
-from peilbeheerst_model.network_snapping import route_basin_links, route_over_water, snap_to_network
 from ribasim import Node
 from ribasim.nodes import basin, outlet
+from ribasim_nl.network_snapping import route_basin_links, route_over_water, snap_to_network
 from shapely.geometry import LineString, Point, box
 
 from ribasim_nl import Model

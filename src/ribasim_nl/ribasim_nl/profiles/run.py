@@ -107,7 +107,7 @@ def main(
         If provided, the hydro-object network used to derive the profiles is exported here as
         "network.gpkg" (layer "hydro_objects"). This file is a regular profile output (always
         written, independent of `wd_intermediate_output`) and is consumed by the network-snapping
-        step (see `peilbeheerst_model.network_snapping.get_graph`).
+        step (see `ribasim_nl.network_snapping.read_hydro_objects`).
 
     :key debug: flag for debug-mode, defaults to False
     :key epsg: EPSG to which all geospatial data is projected, defaults to 28992
@@ -289,8 +289,8 @@ def main(
         hydro_objects.to_file(wd_intermediate_output / _fn_int_output, layer="hydro-objects")
 
     # export the hydro-object network used to derive the profiles [first-class output]
-    # This is the network consumed by the network-snapping step (peilbeheerst_model.network_snapping
-    # .get_graph). It is written for both routing strategies (network-based and pre-flagged) and is
+    # This is the network consumed by the network-snapping step (ribasim_nl.network_snapping
+    # .read_hydro_objects). It is written for both routing strategies (network-based and pre-flagged) and is
     # independent of `wd_intermediate_output`, so the snapping step does not rely on debug output.
     # Geometries are exploded to single-part LineStrings: `momepy.gdf_to_nx` (used to rebuild the
     # graph from this file) does not support multi-part geometries, which may occur for pre-flagged

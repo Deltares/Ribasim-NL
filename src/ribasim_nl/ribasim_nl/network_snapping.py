@@ -26,10 +26,11 @@ import scipy.sparse
 import scipy.sparse.csgraph
 import shapely
 import shapely.affinity
+import shapely.ops
 import tqdm
-from ribasim_nl.link_geometries import MAX_STRAIGHT_LINE_RATIO, accept_length
 
 from ribasim_nl import Model
+from ribasim_nl.link_geometries import MAX_STRAIGHT_LINE_RATIO, accept_length
 
 LOG = logging.getLogger(__name__)
 
@@ -361,7 +362,7 @@ def route_over_water(
 
     :return: per routed connector key, the coordinates from the Basin node to the connector node
     """
-    x0, y0, x1, y1 = area.bounds
+    x0, y0, x1, y1 = shapely.bounds(area)
     cell = max(10.0, np.sqrt((x1 - x0) * (y1 - y0) / max_cells))
     ncol, nrow = int(np.ceil((x1 - x0) / cell)) + 1, int(np.ceil((y1 - y0) / cell)) + 1
     transform = rasterio.transform.Affine(cell, 0.0, x0, 0.0, -cell, y0 + nrow * cell)
@@ -405,8 +406,9 @@ def route_over_water(
         rows, cols = np.divmod(np.array(path[::-1]), ncol)
         xs, ys = rasterio.transform.xy(transform, rows, cols)
         # simplify the staircase of cell centers, keeping the exact end points
-        middle = shapely.simplify(shapely.LineString(np.column_stack([xs, ys])), cell)
-        coords = _dedupe([(basin_point.x, basin_point.y), *middle.coords[1:-1], (point.x, point.y)])
+        middle = shapely.simplify(shapely.LineString(np.column_stack([xs, ys])), cell) if len(path) > 1 else None
+        inner: list[Coord] = [(float(x), float(y)) for x, y in middle.coords[1:-1]] if middle is not None else []
+        coords = _dedupe([(basin_point.x, basin_point.y), *inner, (point.x, point.y)])
         line = shapely.LineString(coords)
         if not accept_length(line, basin_point, point, max_straight_line_ratio):
             continue
@@ -416,7 +418,7 @@ def route_over_water(
     return routes
 
 
-def straight_link_geometries(model: Model, tolerance: float = 0.01) -> Model:
+def straight_link_geometries(model: Model, tolerance: float = 1.0) -> Model:
     """Make link geometries start at their from-node and end at their to-node.
 
     Link ends within `tolerance` of their node are moved onto it, other link geometries are replaced by straight lines.
@@ -428,7 +430,7 @@ def straight_link_geometries(model: Model, tolerance: float = 0.01) -> Model:
     """
     assert model.node.df is not None
     assert model.link.df is not None
-    link_df = model.link.df.copy()
+    link_df = model.link.df
     from_points = model.node.df.geometry.reindex(link_df["from_node_id"]).to_numpy()
     to_points = model.node.df.geometry.reindex(link_df["to_node_id"]).to_numpy()
     geometries = link_df.geometry.to_numpy()
@@ -436,11 +438,14 @@ def straight_link_geometries(model: Model, tolerance: float = 0.01) -> Model:
         shapely.distance(shapely.get_point(geometries, -1), to_points) > tolerance
     )
     LOG.info(f"Replaced {invalid.sum()} link geometries that do not connect their nodes by straight lines")
-    link_df["geometry"] = [
-        shapely.LineString([start, end] if straight else [start, *geometry.coords[1:-1], end])
-        for geometry, start, end, straight in zip(geometries, from_points, to_points, invalid, strict=True)
-    ]
-    model.link.df = link_df
+    link_df["geometry"] = gpd.GeoSeries(
+        [
+            shapely.LineString([start, end] if straight else [start, *geometry.coords[1:-1], end])
+            for geometry, start, end, straight in zip(geometries, from_points, to_points, invalid, strict=True)
+        ],
+        index=link_df.index,
+        crs=link_df.crs,
+    )
     return model
 
 
@@ -468,6 +473,7 @@ def snap_to_network(
     tolerance: float = 10.0,
     move_basins: bool = True,
     route_water: bool = True,
+    link_ids: list[int] | None = None,
 ) -> Model:
     """Route flow links between a Basin and a connector node along the hydro-objects, and move Basin nodes onto them.
 
@@ -484,6 +490,7 @@ def snap_to_network(
     :param move_basins: move non-bergend Basin nodes onto the network, defaults to True
     :param route_water: route links that cannot be routed along the hydro-objects over the water surface, see
         `route_over_water`, defaults to True
+    :param link_ids: only route these links, defaults to None (all)
 
     :return: updated Ribasim model
     """
@@ -501,6 +508,8 @@ def snap_to_network(
     to_basin = from_type.isin(CONNECTOR_NODE_TYPES) & (to_type == "Basin")
     from_basin = (from_type == "Basin") & to_type.isin(CONNECTOR_NODE_TYPES)
     selected = links[(links["link_type"] == "flow") & (to_basin | from_basin)].copy()
+    if link_ids is not None:
+        selected = selected[selected.index.isin(link_ids)]
     selected["basin_id"] = selected["to_node_id"].where(to_basin[selected.index], selected["from_node_id"])
     selected["connector_id"] = selected["from_node_id"].where(to_basin[selected.index], selected["to_node_id"])
     if "meta_categorie" in nodes.columns:
@@ -541,7 +550,10 @@ def snap_to_network(
             shapely.union_all(water_geometries[water_tree.query(area, predicate="intersects")]), area
         )
         basin_point = typing.cast(shapely.Point, nodes.at[basin_id, "geometry"])
-        connectors = {link_id: nodes.at[cid, "geometry"] for link_id, cid in group["connector_id"].items()}
+        connectors = {
+            int(typing.cast(int, link_id)): typing.cast(shapely.Point, nodes.at[cid, "geometry"])
+            for link_id, cid in group["connector_id"].items()
+        }
         location, routes = route_basin_links(
             basin_point,
             connectors,
@@ -562,32 +574,86 @@ def snap_to_network(
             new_geometries[link_id] = shapely.LineString(coords)
 
     LOG.info(f"Routed {len(new_geometries)} of {len(selected)} links along the hydro-objects")
-    link_df = model.link.df.copy()
-    link_df.loc[list(new_geometries), "geometry"] = gpd.GeoSeries(new_geometries, crs=link_df.crs)
-    model.link.df = link_df
+    model.link.df.loc[list(new_geometries), "geometry"] = gpd.GeoSeries(new_geometries, crs=model.link.df.crs)
 
     LOG.info(f"Moved {len(new_locations)} Basin nodes onto the hydro-objects")
-    node_df = model.node.df.copy()
+    moved: dict[int, shapely.Point] = {}
     for basin_id, location in new_locations.items():
-        old = node_df.at[basin_id, "geometry"]
-        dx, dy = location.x - old.x, location.y - old.y
-        node_df.at[basin_id, "geometry"] = location
+        old = typing.cast(shapely.Point, nodes.at[basin_id, "geometry"])
+        moved[basin_id] = location
         for node_id in _bergend_nodes(model, basin_id):
-            node_df.at[node_id, "geometry"] = shapely.affinity.translate(node_df.at[node_id, "geometry"], dx, dy)
-    model.node.df = node_df
+            point = typing.cast(shapely.Point, nodes.at[node_id, "geometry"])
+            moved[node_id] = shapely.affinity.translate(point, location.x - old.x, location.y - old.y)
+    nodes.loc[list(moved), "geometry"] = gpd.GeoSeries(moved, crs=nodes.crs)
 
     # links to moved nodes that are not routed are redrawn as straight lines
     return straight_link_geometries(model)
 
 
-def read_waterways(top10nl_path: pathlib.Path, bounds: tuple[float, float, float, float]) -> gpd.GeoDataFrame:
-    """Read the Top10NL water lines within bounds, to complement the hydro-objects."""
-    lines = gpd.read_file(top10nl_path, layer="top10nl_waterdeel_lijn", bbox=bounds).explode(ignore_index=True)
+def read_waterways(top10nl_path: pathlib.Path, mask: shapely.Geometry) -> gpd.GeoDataFrame:
+    """Read the Top10NL water lines within a mask, to complement the hydro-objects."""
+    lines = gpd.read_file(top10nl_path, layer="top10nl_waterdeel_lijn", mask=mask).explode(ignore_index=True)
     lines = lines[lines.geom_type == "LineString"]
     return gpd.GeoDataFrame(
         {"main-route": np.zeros(len(lines), dtype=bool)},
         geometry=shapely.force_2d(lines.geometry.to_numpy()),
         crs=lines.crs,
+    )
+
+
+def straight_flow_link_ids(model: Model) -> list[int]:
+    """The flow links with a straight geometry."""
+    assert model.link.df is not None
+    flow = model.link.df[model.link.df["link_type"] == "flow"]
+    return flow.index[shapely.get_num_points(flow.geometry.to_numpy()) == 2].tolist()
+
+
+def snap_to_waterways(
+    model: Model,
+    top10nl_path: pathlib.Path,
+    link_ids: list[int],
+    *,
+    main_route: gpd.GeoDataFrame | None = None,
+    tolerance: float = 10.0,
+) -> Model:
+    """Route links along the Top10NL water lines and over the Top10NL water surfaces, without moving nodes.
+
+    This is a fallback for links that cannot be routed along the hydro-objects of a water authority, see
+    `snap_to_network`.
+
+    :param model: Ribasim model
+    :param top10nl_path: Top10NL GeoPackage
+    :param link_ids: links to route
+    :param main_route: lines of the main route, such as a network of main waterways, defaults to None
+    :param tolerance: buffer around the basin area within which waterways are used, defaults to 10.0
+
+    :return: updated Ribasim model
+    """
+    assert model.link.df is not None
+    assert model.basin.area.df is not None
+    basin_ids = set(model.link.df.loc[link_ids, ["from_node_id", "to_node_id"]].to_numpy().ravel())
+    areas = model.basin.area.df[model.basin.area.df["node_id"].isin(basin_ids)]
+    mask = shapely.union_all(areas.geometry.buffer(tolerance).to_numpy())
+    waterways = [read_waterways(top10nl_path, mask)]
+    if main_route is not None:
+        lines = main_route.explode(ignore_index=True)
+        lines = lines[lines.geom_type == "LineString"]
+        waterways.append(
+            gpd.GeoDataFrame(
+                {"main-route": np.ones(len(lines), dtype=bool)},
+                geometry=shapely.force_2d(lines.geometry.to_numpy()),
+                crs=lines.crs,
+            )
+        )
+    water = gpd.read_file(top10nl_path, layer="top10nl_waterdeel_vlak", mask=mask)
+    LOG.info(f"Routing {len(link_ids)} links along the Top10NL waterways")
+    return snap_to_network(
+        model,
+        pd.concat(waterways, ignore_index=True),
+        water=water,
+        tolerance=tolerance,
+        move_basins=False,
+        link_ids=link_ids,
     )
 
 
@@ -613,11 +679,14 @@ def snap_model(
     node_geometry = model.node.df.geometry.copy()
     hydro_objects = read_hydro_objects(profiles_path)
     if top10nl_path is not None:
-        bounds = tuple(model.basin.area.df.total_bounds) if model.basin.area.df is not None else None
-        hydro_objects = pd.concat([hydro_objects, read_waterways(top10nl_path, bounds)], ignore_index=True)
+        assert model.basin.area.df is not None
+        x0, y0, x1, y1 = model.basin.area.df.total_bounds
+        mask = shapely.box(x0, y0, x1, y1)
+        hydro_objects = pd.concat([hydro_objects, read_waterways(top10nl_path, mask)], ignore_index=True)
     culverts = None if crossings_path is None else gpd.read_file(crossings_path, layer="duikersifonhevel")
     water = None if water_path is None else gpd.read_file(water_path)
     model = snap_to_network(model, hydro_objects, culverts=culverts, water=water, tolerance=tolerance)
+    assert model.node.df is not None
     moved = ~model.node.df.geometry.geom_equals_exact(node_geometry, tolerance=0)
     moved_types = set(model.node.df.loc[moved, "node_type"])
     assert moved_types <= {"Basin", "ManningResistance"}, f"Only Basin nodes may move, not {moved_types}"

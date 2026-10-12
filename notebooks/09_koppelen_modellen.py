@@ -6,6 +6,7 @@ from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
+import shapely
 from networkx import NetworkXNoPath
 from ribasim.nodes import manning_resistance
 from ribasim_nl.aquo import waterbeheercode
@@ -17,6 +18,7 @@ from ribasim_nl.coupling_level_common import finite_level, finite_levels
 from ribasim_nl.coupling_level_network import first_non_junction, flow_link_graphs
 from ribasim_nl.coupling_levels import run_coupling_level_check
 from ribasim_nl.model import find_toml
+from ribasim_nl.network_snapping import snap_to_waterways
 from ribasim_nl.observations import link_observations
 from ribasim_nl.settings import settings
 from shapely.geometry import LineString, Point
@@ -627,6 +629,22 @@ def convert_outlets_to_manning_resistance(model: Model) -> None:
         model.update_node(node_id, "ManningResistance", [static])
 
 
+def route_links_between_models(model: Model, network: Network) -> None:
+    """Route the straight links between models, and in the Rijkswaterstaat model, along waterways and water.
+
+    The connector nodes are often outside the area of the receiving Basin, so waterways up to 250 m around it are
+    used, see `snap_to_waterways`.
+    """
+    nodes, flow = model.node.df, model.link.df[model.link.df["link_type"] == "flow"]
+    from_authority = flow["from_node_id"].map(nodes["meta_waterbeheerder"]).to_numpy()
+    to_authority = flow["to_node_id"].map(nodes["meta_waterbeheerder"]).to_numpy()
+    straight = shapely.get_num_points(flow.geometry.to_numpy()) == 2
+    rws = (from_authority == "Rijkswaterstaat") & (to_authority == "Rijkswaterstaat")
+    link_ids = flow.index[straight & ((from_authority != to_authority) | rws)].tolist()
+    top10nl = data_dir / "Basisgegevens/Top10NL/top10nl_Compleet.gpkg"
+    snap_to_waterways(model, top10nl, link_ids, main_route=network.links, tolerance=250.0)
+
+
 def remove_invalid_topology_nodes(model: Model) -> None:
     """Remove nodes with invalid flow/control topology and clean up their control references."""
     for link_type in ["flow", "control"]:
@@ -831,6 +849,7 @@ def couple_model(toml_file: Path) -> None:
     convert_outlets_to_manning_resistance(model)
     fix_basin_profiles(model)
     remove_invalid_topology_nodes(model)
+    route_links_between_models(model, network)
     # series measured on links between models can only be observed in the coupled model
     link_observations(model)
     coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)

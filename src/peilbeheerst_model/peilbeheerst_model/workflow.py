@@ -16,11 +16,11 @@ import xarray as xr
 from ribasim import run_ribasim
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.capacity import bound_supply_inflows
+from ribasim_nl.network_snapping import snap_model
 from ribasim_nl.observations import add_observations
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.controle_output import DYNAMIC_FORCING_METRICS, STATIC_FORCING_METRICS, Control
-from peilbeheerst_model.network_snapping import snap_model
 from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl import CloudStorage, Model, SetDynamicForcing, junctionify
 
