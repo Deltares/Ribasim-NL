@@ -14,6 +14,7 @@ from ribasim_nl.coupling_level_apply import (
     sync_static_controller_thresholds,
 )
 from ribasim_nl.coupling_level_common import finite_level, finite_levels
+from ribasim_nl.coupling_level_network import first_non_junction, flow_link_graphs
 from ribasim_nl.coupling_levels import run_coupling_level_check
 from ribasim_nl.model import find_toml
 from ribasim_nl.settings import settings
@@ -121,7 +122,7 @@ forced_coupling = {
     1301498: 1300169,  # LevelBoundary buiten de boezem van HDSR geplaatst
     1301499: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
     1301496: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
-    1301495: 1404816,  # LevelBoundary buiten de boezem van HDSR geplaatst; inlaat vanaf bovenstroomse TRC-basin
+    1301495: 1404804,  # LevelBoundary buiten de boezem van HDSR geplaatst; inlaat vanaf bovenstroomse TRC-basin
     1301492: 1402100,  # LevelBoundary buiten de boezem van HDSR geplaatst; pomp naar benedenstroomse TRC-basin
     4400015: 5903236,  # LB ligt op exact dezelfde locatie
     4402348: 5900072,  # LB ligt op exact dezelfde locatie
@@ -132,7 +133,7 @@ forced_coupling = {
     3800048: 3801394,  # Aansluiten Drongelens kanaal op Binnenstad
     3300009: 4401377,  # Levelboundary takt niet aan op Verlengde Hoogeveense Vaart
     6000003: 3801961,  # Forceren zijtak Helanvaart Limburg
-    3800029: 6002294,  # Defensiekanaal Limburg: voorkom koppeling via Junction 6003598
+    3800029: 6002294,  # Defensiekanaal Limburg: voorkom koppeling via Junction 6003577
     3801958: 6002408,  # AaenMaas FlowDemand-inlaat 3800601 koppelen aan Limburg-basin
     203885: 3401124,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-basin achter Junction 3402060, zie #824
     203887: 3401124,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-basin achter Junction 3402060, zie #824
@@ -281,6 +282,24 @@ def create_link_geometry(
         geometry = LineString([kwargs["from_node"].geometry, kwargs["to_node"].geometry])
 
     return geometry
+
+
+def reverse_flow_link_ids(model: Model, from_node_id: int, to_node_id: int) -> list[int]:
+    """The flow links of an existing path from `to_node_id` to `from_node_id`, directly or through Junctions."""
+    assert model.link.df is not None
+    flow = model.link.df[model.link.df["link_type"] == "flow"]
+    node_types = model.node.df["node_type"]
+    stack: list[tuple[int, list[int]]] = [(to_node_id, [])]
+    seen = {to_node_id}
+    while stack:
+        node_id, path = stack.pop()
+        for link_id, next_node_id in flow.loc[flow["from_node_id"] == node_id, "to_node_id"].items():
+            if next_node_id == from_node_id:
+                return [*path, int(link_id)]
+            if node_types[next_node_id] == "Junction" and next_node_id not in seen:
+                seen.add(next_node_id)
+                stack.append((int(next_node_id), [*path, int(link_id)]))
+    return []
 
 
 def add_control(
@@ -479,13 +498,10 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
             )
 
             # Check for cycles
-            cycles = model.link.df[
-                (model.link.df.from_node_id == kwargs["to_node"].node_id)
-                & (model.link.df.to_node_id == kwargs["from_node"].node_id)
-            ]
-            if len(cycles) > 0:
-                print(f"Link {kwargs['from_node']} -> {kwargs['to_node']} already exists.")
-                model.link.df.drop(cycles.index, inplace=True)
+            cycle = reverse_flow_link_ids(model, kwargs["from_node"].node_id, kwargs["to_node"].node_id)
+            if cycle:
+                print(f"Link {kwargs['to_node']} -> {kwargs['from_node']} already exists.")
+                model.link.df.drop(cycle, inplace=True)
                 if kwargs["to_node"].node_type != "Basin":
                     print("Removing node", kwargs["to_node"])
                     model.remove_node(kwargs["to_node"].node_id, remove_links=True)
@@ -587,8 +603,12 @@ def convert_outlets_to_manning_resistance(model: Model) -> None:
         node_type = model.get_node_type(node_id)
         if node_type != "Outlet":
             raise ValueError(f"Expected Outlet for node {node_id}, got {node_type}.")
-        for neighbor_id in [model.upstream_node_id(node_id), model.downstream_node_id(node_id)]:
-            if isinstance(neighbor_id, pd.Series) or model.get_node_type(neighbor_id) != "Basin":
+        # the Basins may be behind Junctions
+        outgoing, incoming = flow_link_graphs(model.link.df.reset_index())
+        node_types = model.node.df["node_type"].to_dict()
+        for graph in (incoming, outgoing):
+            neighbor_id, _, _ = first_non_junction(node_id, graph, node_types)
+            if neighbor_id is None or node_types[neighbor_id] != "Basin":
                 raise ValueError(f"Outlet {node_id} should connect two Basins to become a ManningResistance.")
 
         control_df = model.link.df[model.link.df["link_type"] == "control"]
