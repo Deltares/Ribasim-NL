@@ -19,6 +19,7 @@ from ribasim_nl.capacity import bound_supply_inflows
 from ribasim_nl.layout import tidy_layout
 from ribasim_nl.network_snapping import snap_model
 from ribasim_nl.observations import add_observations
+from ribasim_nl.rwzi import attach_rwzi_junctions
 from ribasim_nl.settings import settings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
@@ -286,6 +287,8 @@ def write_and_run_forcing_model(
         top10nl_path=paths.top10nl,
     )
     model = junctionify(model)
+    # let the RWZIs discharge on the links into their Basins, see #860
+    model = attach_rwzi_junctions(model)
 
     model.use_validation = True
     model.starttime = STARTTIME

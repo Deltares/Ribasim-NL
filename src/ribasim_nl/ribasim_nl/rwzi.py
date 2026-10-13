@@ -10,6 +10,8 @@ from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
+from shapely.geometry import LineString, Point
+from shapely.ops import substring
 
 from ribasim_nl import Model, concat
 from ribasim_nl.reset_index import reset_index
@@ -193,6 +195,104 @@ def terminal2junction(rwzi_coupled_model, coupling_lookup, *, verbose=False):
             print(f"Geen koppeling gevonden voor RWZI-code {rwzi_code}")
 
     return rwzi_coupled_model
+
+
+def _downstream_ends(links: pd.DataFrame, node_types: pd.Series) -> dict[int, frozenset[int]]:
+    """The first non-Junction nodes downstream of each flow link, following its downstream Junctions."""
+    targets = links.groupby("from_node_id")["to_node_id"].agg(list).to_dict()
+    ends: dict[int, frozenset[int]] = {}
+
+    def node_ends(node_id: int, visiting: set[int]) -> frozenset[int]:
+        if node_types[node_id] != "Junction":
+            return frozenset([node_id])
+        if node_id in ends:
+            return ends[node_id]
+        if node_id in visiting:  # a cycle of Junctions
+            return frozenset()
+        visiting.add(node_id)
+        result = frozenset().union(*(node_ends(n, visiting) for n in targets.get(node_id, [])))
+        ends[node_id] = result
+        return result
+
+    return {int(link_id): node_ends(int(to_node_id), set()) for link_id, to_node_id in links["to_node_id"].items()}
+
+
+def attach_rwzi_junctions(model: Model, max_distance: float = 1000.0) -> Model:
+    """Move each RWZI Junction onto the nearest flow link into its Basin, and split that link there.
+
+    An RWZI Junction, see `terminal2junction`, is located at the discharge point, with a straight link to the
+    Basin node. Instead, the RWZI discharges into the nearest flow link that flows into this Basin, directly or
+    through Junctions only, such as the routed links of the doorgaand and hoofdwater Basins. RWZI Junctions
+    without such a link within `max_distance` are left as is.
+
+    Parameters
+    ----------
+        model (Model): model with RWZI Junctions, which have a meta_rwzi_code.
+        max_distance (float): maximum distance in meters between the RWZI Junction and the link.
+
+    Returns
+    -------
+        Model: the model with the RWZI Junctions on the links.
+    """
+    assert model.node.df is not None
+    assert model.link.df is not None
+    nodes = model.node.df
+    if "meta_rwzi_code" not in nodes.columns:
+        return model
+    node_types = nodes["node_type"]
+    rwzi_junction_ids = nodes.index[(node_types == "Junction") & nodes["meta_rwzi_code"].notna()]
+
+    attached = 0
+    for junction_id in rwzi_junction_ids:
+        links = model.link.df
+        flow = links[links["link_type"] == "flow"]
+        outflow = flow[flow["from_node_id"] == junction_id]
+        inflow = flow[flow["to_node_id"] == junction_id]
+        if len(outflow) != 1 or node_types[outflow["to_node_id"].iloc[0]] != "Basin":
+            continue
+        basin_id = int(outflow["to_node_id"].iloc[0])
+
+        # flow links into the Basin, other than those of RWZIs
+        candidates = flow[
+            (flow["from_node_id"] != junction_id)
+            & (flow["to_node_id"] != junction_id)
+            & (flow["from_node_id"].map(node_types) != "FlowBoundary")
+        ]
+        ends = _downstream_ends(flow, node_types)
+        candidates = candidates[[ends[link_id] == {basin_id} for link_id in candidates.index]]
+        point = nodes.at[junction_id, "geometry"]
+        distances = candidates.distance(point)
+        if distances.empty or distances.min() > max_distance:
+            continue
+        link_id = distances.idxmin()
+
+        # split the link at the nearest point, a bit away from its end nodes
+        geometry = links.at[link_id, "geometry"]
+        margin = min(1.0, geometry.length / 4)
+        distance = min(max(geometry.project(point), margin), geometry.length - margin)
+        upstream = substring(geometry, 0.0, distance)
+        downstream = substring(geometry, distance, geometry.length)
+        location = Point(downstream.coords[0])
+
+        to_node_id = int(links.at[link_id, "to_node_id"])
+        model.link.df = links.drop(index=outflow.index)
+        model.link.df.loc[link_id, "to_node_id"] = junction_id
+        model.link.df.loc[[link_id], "geometry"] = gpd.GeoSeries([upstream], index=[link_id], crs=links.crs)
+        model.node.df.loc[[junction_id], "geometry"] = gpd.GeoSeries([location], index=[junction_id], crs=nodes.crs)
+        model.link.add(
+            model.get_node(junction_id),
+            model.get_node(to_node_id),
+            geometry=downstream,
+            name=links.at[link_id, "name"],
+        )
+        inflow_geometries = [LineString([nodes.at[i, "geometry"], location]) for i in inflow["from_node_id"]]
+        model.link.df.loc[inflow.index, "geometry"] = gpd.GeoSeries(
+            inflow_geometries, index=inflow.index, crs=links.crs
+        )
+        attached += 1
+
+    logger.info(f"Attached {attached} of {len(rwzi_junction_ids)} RWZI Junctions to a flow link into their Basin")
+    return model
 
 
 def merge_rwzi_model(
