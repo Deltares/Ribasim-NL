@@ -33,6 +33,6 @@ run_dir.mkdir(parents=True, exist_ok=True)
 with run_toml.open("wb") as f:
     tomli_w.dump(config, f)
 
-specs = run(run_toml)
+specs = run(run_toml, threads=4)
 if specs.exit_code != 0:
     raise RuntimeError(f"Ribasim failed with exit code {specs.exit_code}")
