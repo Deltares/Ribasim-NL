@@ -85,7 +85,7 @@ DORKWERD_LISTEN_NODE_ID = 1261
 DORKWERD_THRESHOLD_LOW = 0.533 - LEVEL_THRESHOLD_RANGE / 2
 DORKWERD_THRESHOLD_HIGH = 0.533 + LEVEL_THRESHOLD_RANGE / 2
 DORKWERD_MIN_UPSTREAM_LEVEL = -0.97
-DORKWERD_MAX_DOWNSTREAM_LEVEL = 0.58
+DORKWERD_MAX_DOWNSTREAM_LEVEL = 0.63
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 EXCLUDE_NODES = {
@@ -740,6 +740,7 @@ flow_demand_controlled_node_ids = set(
 )
 manual_max_flow_rate_node_ids = set(outlet_max_flow_rate_by_node_id)
 manual_max_flow_rate_node_ids.update(pump_max_flow_rate_by_node_id)
+manual_max_flow_rate_node_ids.update(pump_max_flow_rate_from_results)
 protected_max_flow_rate_node_ids = set(EXCLUDE_NODES) | flow_demand_controlled_node_ids | manual_max_flow_rate_node_ids
 for static_df in (model.outlet.static.df, model.pump.static.df):
     afvoer_mask = (
@@ -754,8 +755,13 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
     static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 0.0
 
 # %%
-# Dorkwerd apart overrulen: stuur op de Manning-keten, begrens lokaal op 0.57 m.
+# Dorkwerd apart overrulen: stuur op de Manning-keten, begrens lokaal op 0.63 m.
 configure_dorkwerd_control(model)
+
+assert model.node.df.at[13, "node_type"] == "LevelBoundary"
+boundary_mask = model.level_boundary.static.df.node_id.eq(13)
+assert boundary_mask.sum() == 1
+model.level_boundary.static.df.loc[boundary_mask, "level"] = 6.62
 
 # %%
 # Model run
@@ -767,7 +773,7 @@ ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 
 # hoofd run met verdamping
-update_basin_static(model=model, evaporation_mm_per_day=0.1)
+update_basin_static(model=model, evaporation_mm_per_day=4.0)
 model = run_model_and_control(
     model, ribasim_toml_dry, model_exec=MODEL_EXEC, qlr_path=qlr_path, authority=AUTHORITY, scenario="dry"
 )
