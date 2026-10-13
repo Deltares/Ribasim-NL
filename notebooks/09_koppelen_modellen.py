@@ -18,7 +18,7 @@ from ribasim_nl.coupling_level_common import finite_level, finite_levels
 from ribasim_nl.coupling_level_network import first_non_junction, flow_link_graphs
 from ribasim_nl.coupling_levels import run_coupling_level_check
 from ribasim_nl.junctions import junctionify
-from ribasim_nl.layout import offset_links, resolve_overlaps, separate_nodes
+from ribasim_nl.layout import move_nodes, offset_links, resolve_overlaps, separate_nodes
 from ribasim_nl.model import find_toml
 from ribasim_nl.network_snapping import snap_to_waterways
 from ribasim_nl.observations import link_observations
@@ -140,10 +140,17 @@ forced_coupling = {
     6000003: 3801961,  # Forceren zijtak Helanvaart Limburg
     3800029: 6002294,  # Defensiekanaal Limburg: voorkom koppeling via Junction 6003577
     3801958: 6002408,  # AaenMaas FlowDemand-inlaat 3800601 koppelen aan Limburg-basin
-    203885: 3401124,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-basin achter Junction 3402060, zie #824
-    203887: 3401124,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-basin achter Junction 3402060, zie #824
-    203898: 3401124,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-basin achter Junction 3402060, zie #824
-    203900: 3401124,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-basin achter Junction 3402060, zie #824
+    # Dokkumer Nieuwe Zijlen, zie #824: Fryslân-uitlaten op NZV-afvoerjunction 3401931, inlaat 203888 vanaf
+    # NZV-aanvoerjunction 3402060. Een inlaat kan niet vanaf 3401931, die alleen connectors bovenstrooms heeft.
+    203885: 3401931,
+    203887: 3402060,
+    203898: 3401931,
+    203900: 3401931,
+}
+
+# Nodes to move after coupling, by (dx, dy) in meters
+node_offsets = {
+    3401931: (10.0, 0.0),  # NZV-afvoerjunction visueel scheiden van aanvoerjunction 3402060, zie #824
 }
 
 # Outlets that are open water connections, converted to ManningResistance after coupling, removing their control
@@ -600,6 +607,17 @@ def update_node_metadata(model: Model) -> None:
             static_df.loc[mask, column] = value
 
 
+def move_configured_nodes(model: Model) -> None:
+    """Move the configured nodes by their offsets, see `node_offsets`."""
+    assert model.node.df is not None
+    locations = {}
+    for node_id, (dx, dy) in node_offsets.items():
+        if node_in_model(model, node_id):
+            point = model.node.df.at[node_id, "geometry"]
+            locations[node_id] = Point(point.x + dx, point.y + dy)
+    move_nodes(model, locations)
+
+
 def convert_outlets_to_manning_resistance(model: Model) -> None:
     """Convert the configured Outlets between two Basins to ManningResistance, removing their controllers."""
     for node_id, parameters in outlet_to_manning_resistance.items():
@@ -865,6 +883,7 @@ def couple_model(toml_file: Path) -> None:
     model, network, basin_areas_df = initialize_models(toml_file)
     all_link_table = process_boundary_nodes(model, network, basin_areas_df)
     update_node_metadata(model)
+    move_configured_nodes(model)
     convert_outlets_to_manning_resistance(model)
     fix_basin_profiles(model)
     remove_invalid_topology_nodes(model)

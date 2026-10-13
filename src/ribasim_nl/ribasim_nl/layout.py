@@ -53,7 +53,7 @@ def _set_link_ends(model: Model, node_ids: typing.Iterable[int]) -> None:
     links.loc[affected, "geometry"] = gpd.GeoSeries(geometries, index=affected, crs=links.crs)
 
 
-def _move_nodes(model: Model, locations: dict[int, shapely.Point]) -> None:
+def move_nodes(model: Model, locations: dict[int, shapely.Point]) -> None:
     """Move nodes, and the ends of their links along."""
     assert model.node.df is not None
     if not locations:
@@ -127,7 +127,7 @@ def place_bergend_nodes(model: Model, distance: float = 100.0, directions: int =
             locations[connector_id] = far[best]
             break
     LOG.info(f"Placed {len(locations) // 2} of {len(chains)} bergend Basins")
-    _move_nodes(model, locations)
+    move_nodes(model, locations)
 
 
 def _right_offset(coords: np.ndarray, distance: float) -> np.ndarray:
@@ -200,7 +200,7 @@ def offset_junctions(model: Model, distance: float = 5.0) -> None:
             continue
         point = typing.cast(shapely.Point, nodes.at[junction_id, "geometry"])
         locations[int(junction_id)] = shapely.Point(point.x + distance * dy / length, point.y - distance * dx / length)
-    _move_nodes(model, locations)
+    move_nodes(model, locations)
 
 
 def separate_nodes(model: Model, min_distance: float = 10.0) -> None:
@@ -265,7 +265,7 @@ def separate_nodes(model: Model, min_distance: float = 10.0) -> None:
                 locations[int(ids[k])] = shapely.Point(found)
                 break
     LOG.info(f"Moved {len(locations)} nodes away from other nodes")
-    _move_nodes(model, locations)
+    move_nodes(model, locations)
 
 
 def resolve_overlaps(model: Model, distance: float = 5.0, min_length: float = 1.0, max_iterations: int = 5) -> None:
