@@ -601,7 +601,7 @@ export class Panel {
     const outflow = network.linkId.find(
       (_, linkRow) => network.linkType[linkRow] === "flow" && network.fromNodeId[linkRow] === observedId,
     );
-    const variables = [...new Set(observations.map((observation) => String(observation.variable)))].sort();
+    const variables = [...new Set(observations.map((observation) => String(observation.variable)))].sort((a, b) => a.localeCompare(b));
     if (variables.length === 0) return ["No observed values."];
     const sections = await Promise.all(
       variables.map(async (variable) => {
