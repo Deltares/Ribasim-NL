@@ -11,6 +11,7 @@ from ribasim_nl.delwaq import compute_delwaq
 from ribasim_nl.layout import tidy_layout
 from ribasim_nl.network_snapping import snap_to_waterways, straight_flow_link_ids
 from ribasim_nl.observations import add_observations
+from ribasim_nl.rwzi import attach_rwzi_junctions
 from ribasim_nl.set_forcing import SetDynamicForcing
 from ribasim_nl.settings import settings
 
@@ -157,6 +158,9 @@ for authority in authorities:
         # add LHM fractions
         if add_lhm_fractions:
             assign_lhm_fractions(model)
+
+        # let the RWZIs discharge on the links into their Basins, see #860
+        model = attach_rwzi_junctions(model)
 
         # route the links that are still straight along the Top10NL waterways, which only changes the layout
         model = snap_to_waterways(model, top10nl_path, straight_flow_link_ids(model))

@@ -8,7 +8,8 @@ import geopandas as gpd
 import pandas as pd
 import shapely
 from networkx import NetworkXNoPath
-from ribasim.nodes import manning_resistance
+from ribasim import Node
+from ribasim.nodes import manning_resistance, user_demand
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.coupling_level_apply import (
     ensure_doorlaat_afvoer_max_downstream_level,
@@ -18,7 +19,7 @@ from ribasim_nl.coupling_level_common import finite_level, finite_levels
 from ribasim_nl.coupling_level_network import first_non_junction, flow_link_graphs
 from ribasim_nl.coupling_levels import run_coupling_level_check
 from ribasim_nl.junctions import junctionify
-from ribasim_nl.layout import offset_links, resolve_overlaps, separate_nodes
+from ribasim_nl.layout import move_nodes, offset_links, resolve_overlaps, separate_nodes
 from ribasim_nl.model import find_toml
 from ribasim_nl.network_snapping import snap_to_waterways
 from ribasim_nl.observations import link_observations
@@ -140,16 +141,43 @@ forced_coupling = {
     6000003: 3801961,  # Forceren zijtak Helanvaart Limburg
     3800029: 6002294,  # Defensiekanaal Limburg: voorkom koppeling via Junction 6003577
     3801958: 6002408,  # AaenMaas FlowDemand-inlaat 3800601 koppelen aan Limburg-basin
-    203885: 3401124,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-basin achter Junction 3402060, zie #824
-    203887: 3401124,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-basin achter Junction 3402060, zie #824
-    203898: 3401124,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-basin achter Junction 3402060, zie #824
-    203900: 3401124,  # Dokkumer Nieuwe Zijlen: Fryslân koppelen aan NZV-basin achter Junction 3402060, zie #824
+    # Dokkumer Nieuwe Zijlen, zie #824: Fryslân-uitlaten op NZV-afvoerjunction 3401931, inlaat 203888 vanaf
+    # NZV-aanvoerjunction 3402060. Een inlaat kan niet vanaf 3401931, die alleen connectors bovenstrooms heeft.
+    203885: 3401931,
+    203887: 3402060,
+    203898: 3401931,
+    203900: 3401931,
+}
+
+# Nodes to move after coupling, by (dx, dy) in meters
+node_offsets = {
+    3401931: (10.0, 0.0),  # NZV-afvoerjunction visueel scheiden van aanvoerjunction 3402060, zie #824
 }
 
 # Outlets that are open water connections, converted to ManningResistance after coupling, removing their control
 outlet_to_manning_resistance = {
     1100600: {"profile_width": 10.0, "manning_n": 0.02},  # open water Angstel - ARK, zie #820
 }
+
+# UserDemands across models, added after coupling with straight links (pipelines), with the location in RD
+user_demands = [
+    {
+        "name": "Evides Industriewater DWP Maasvlakte",  # zie #857
+        "geometry": Point(65911, 439586),
+        "from_basin_id": 4000298,  # Brielse Meer
+        "to_basin_id": 8001886,  # Beerkanaal, 2e Maasvlakte
+        "demand": 0.222,  # 800 m3/uur netto capaciteit
+    },
+    {
+        "name": "Evides Industriewater DWP Botlek",  # zie #857
+        "geometry": Point(76710, 433932),
+        "from_basin_id": 4000298,  # Brielse Meer
+        "to_basin_id": 8002247,  # Calandkanaal
+        "demand": 0.388,  # 1400 m3/uur netto capaciteit
+    },
+]
+USER_DEMAND_PRIORITY = 3  # industrie, as in notebooks/rijkswaterstaat/7_model_onttrekkingen.py
+USER_DEMAND_MIN_LEVEL_OFFSET = 0.1  # above the bottom of the source Basin
 
 # Node names to set after coupling
 node_names = {
@@ -600,6 +628,17 @@ def update_node_metadata(model: Model) -> None:
             static_df.loc[mask, column] = value
 
 
+def move_configured_nodes(model: Model) -> None:
+    """Move the configured nodes by their offsets, see `node_offsets`."""
+    assert model.node.df is not None
+    locations = {}
+    for node_id, (dx, dy) in node_offsets.items():
+        if node_in_model(model, node_id):
+            point = model.node.df.at[node_id, "geometry"]
+            locations[node_id] = Point(point.x + dx, point.y + dy)
+    move_nodes(model, locations)
+
+
 def convert_outlets_to_manning_resistance(model: Model) -> None:
     """Convert the configured Outlets between two Basins to ManningResistance, removing their controllers."""
     for node_id, parameters in outlet_to_manning_resistance.items():
@@ -646,6 +685,36 @@ def route_links_between_models(model: Model, network: Network) -> list[int]:
     top10nl = data_dir / "Basisgegevens/Top10NL/top10nl_Compleet.gpkg"
     snap_to_waterways(model, top10nl, link_ids, main_route=network.links, tolerance=250.0)
     return link_ids
+
+
+def add_user_demands(model: Model) -> None:
+    """Add the configured UserDemands between Basins of different models, see `user_demands`."""
+    for config in user_demands:
+        from_basin_id, to_basin_id = config["from_basin_id"], config["to_basin_id"]
+        if not (node_in_model(model, from_basin_id) and node_in_model(model, to_basin_id)):
+            continue
+        for basin_id in (from_basin_id, to_basin_id):
+            node_type = model.get_node_type(basin_id)
+            if node_type != "Basin":
+                raise ValueError(f"Expected Basin for node {basin_id} of UserDemand {config['name']}, got {node_type}.")
+
+        bottom = model.basin.profile.df.loc[model.basin.profile.df.node_id == from_basin_id, "level"].min()
+        node = Node(
+            model.next_node_id,
+            config["geometry"],
+            name=config["name"],
+            meta_sector="industrie",
+            meta_waterbeheerder="Rijkswaterstaat",
+        )
+        static = user_demand.Static(
+            demand_priority=[USER_DEMAND_PRIORITY],
+            demand=[config["demand"]],
+            return_factor=[0.0],
+            min_level=[bottom + USER_DEMAND_MIN_LEVEL_OFFSET],
+        )
+        demand_node = model.user_demand.add(node, [static])
+        model.link.add(model.basin[from_basin_id], demand_node)
+        model.link.add(demand_node, model.basin[to_basin_id])
 
 
 def tidy_coupling_layout(model: Model, link_ids: list[int]) -> None:
@@ -865,10 +934,12 @@ def couple_model(toml_file: Path) -> None:
     model, network, basin_areas_df = initialize_models(toml_file)
     all_link_table = process_boundary_nodes(model, network, basin_areas_df)
     update_node_metadata(model)
+    move_configured_nodes(model)
     convert_outlets_to_manning_resistance(model)
     fix_basin_profiles(model)
     remove_invalid_topology_nodes(model)
     link_ids = route_links_between_models(model, network)
+    add_user_demands(model)
     # series measured on links between models can only be observed in the coupled model
     link_observations(model)
     tidy_coupling_layout(model, link_ids)

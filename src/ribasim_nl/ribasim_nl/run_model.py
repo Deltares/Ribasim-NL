@@ -69,20 +69,23 @@ def parse_computation_time(line: str) -> timedelta | None:
 
 def run(
     toml_path: Path,
+    threads: int = 1,
 ) -> RunSpecs:
     """To run a Ribasim model
 
     Args:
         toml_path (Path): path to your ribasim toml-file
+        threads (int): number of threads passed to the Ribasim CLI
 
     """
     toml_path = Path(toml_path)
+    assert threads >= 1, f"threads must be at least 1, got {threads}"
 
     if not toml_path.exists():
         raise FileNotFoundError(f"{toml_path} does not exist!")
 
     cli = _find_cli()
-    args = [cli.as_posix(), toml_path.absolute().as_posix()]
+    args = [cli.as_posix(), f"--threads={threads}", toml_path.absolute().as_posix()]
 
     proc = subprocess.Popen(
         args,
