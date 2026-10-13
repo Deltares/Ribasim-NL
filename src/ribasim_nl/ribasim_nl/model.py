@@ -130,11 +130,11 @@ class Model(ribasim.Model):
     def parameterize(self, **kwargs) -> None:
         self._parameterize.run(**kwargs)
 
-    def validate_ribasim_nl(self) -> None:
-        """Validate Ribasim-NL-specific model conventions."""
+    def validate_ribasim_nl(self, layout: bool = True) -> None:
+        """Validate Ribasim-NL-specific model conventions, see `ribasim_nl.validation.validate_model`."""
         from ribasim_nl.validation import validate_model
 
-        validate_model(self)
+        validate_model(self, layout=layout)
 
     @property
     def basin_results(self) -> Results:

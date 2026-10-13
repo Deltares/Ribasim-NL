@@ -2,6 +2,8 @@
 from pathlib import Path
 
 import pandas as pd
+from ribasim_nl.layout import tidy_layout
+from ribasim_nl.observations import add_observations
 
 from ribasim_nl import CloudStorage, Model, merge_rwzi_model
 
@@ -162,6 +164,10 @@ model = merge_rwzi_model(
     rwzi_coverage_path,
     cloud.joinpath("Rijkswaterstaat/modellen/hws_transient/meta/RWZI_coordinates_lhm_coverage.geojson"),
 )
+
+# add Observation nodes with measured discharges
+model = add_observations(model, "Rijkswaterstaat")
+model = tidy_layout(model)
 
 # %%
 ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_transient/hws.toml")

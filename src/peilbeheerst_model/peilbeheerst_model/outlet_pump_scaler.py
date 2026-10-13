@@ -774,7 +774,7 @@ class _OutletPumpScaler:
                             "\n - (temporarily) changed vertical fluxes"
                             "\n - initial guessed flow rates."
                         )
-                    ribasim_model.validate_ribasim_nl()
+                    ribasim_model.validate_ribasim_nl(layout=False)
                     ribasim_model.write(config.ribasim_model_path)
                     first_iteration = (
                         False  # avoid resetting initial water levels and initial guess flow rates in next iterations
@@ -913,7 +913,7 @@ class _OutletPumpScaler:
                 set_flow_rate_to_max_flow_rate(ribasim_model.pump.static.df, pump_off)
 
                 # store model
-                ribasim_model.validate_ribasim_nl()
+                ribasim_model.validate_ribasim_nl(layout=False)
                 ribasim_model.write(config.ribasim_model_path)
 
                 # write from_to_node_table locally (push to cloud after everything has run)

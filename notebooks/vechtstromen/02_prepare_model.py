@@ -77,7 +77,7 @@ profiles_df = profiles_df[profiles_df.bottom_level != 0]
 profiles_df = profiles_df[profiles_df.invert_level < 50]
 profiles_df.to_file(profiles_gpkg)
 
-fix_link_geometries(model, network, max_straight_line_ratio=3)
+fix_link_geometries(model, network)
 add_link_profile_ids(model, profiles=profiles_df, id_col="profiel_id")
 model.link.df.reset_index().to_file(link_geometries_gpkg)
 

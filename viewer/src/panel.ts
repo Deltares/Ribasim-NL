@@ -379,6 +379,20 @@ export class Panel {
       if (outgoing.length) sections.push(el("h3", {}, "Outgoing links"), el("ul", {}, ...outgoing));
 
       const results = manifest.results;
+      if (nodeType === "Observation" && diff?.status !== "removed") {
+        const observed = network.linkId.findIndex(
+          (_, linkRow) => network.linkType[linkRow] === "observation" && network.fromNodeId[linkRow] === selection.id,
+        );
+        if (observed >= 0) {
+          sections.push(
+            lazySection(
+              "Observed and simulated",
+              () => this.observedSimulated(selection.id, network.toNodeId[observed], width),
+              true,
+            ),
+          );
+        }
+      }
       if (results && nodeType === "Basin") {
         sections.push(
           lazySection(
@@ -573,6 +587,52 @@ export class Panel {
         diagram.update(step);
       },
     };
+  }
+
+  /** Per observed variable, a chart of the observed values and the simulated values of the observed node. */
+  private async observedSimulated(nodeId: number, observedId: number, width: number): Promise<(Node | string)[]> {
+    const { network } = this;
+    const row = network.nodeRow.get(observedId);
+    if (row === undefined) return ["The observed node is not in the model."];
+    const observedType = network.nodeType[row];
+    const observations = await this.tableRows("Observation", "time", nodeId);
+    const results = this.manifest.results;
+    // The simulated flow rate of a node with one flow in and out is that of its outflow
+    const outflow = network.linkId.find(
+      (_, linkRow) => network.linkType[linkRow] === "flow" && network.fromNodeId[linkRow] === observedId,
+    );
+    const variables = [...new Set(observations.map((observation) => String(observation.variable)))].sort((a, b) => a.localeCompare(b));
+    if (variables.length === 0) return ["No observed values."];
+    const sections = await Promise.all(
+      variables.map(async (variable) => {
+        let simulated: Row[] = [];
+        if (results && observedType === "Basin") {
+          simulated = await readRowsById(results.basin.by_id, "node_id", observedId);
+        } else if (results && variable === "flow_rate" && outflow !== undefined) {
+          simulated = await readRowsById(results.flow.by_id, "link_id", outflow);
+        }
+        const byTime = new Map<number, Row>();
+        const add = (rows: Row[], column: string, value: (row: Row) => unknown) => {
+          for (const row of rows) {
+            const time = (row.time as Date).getTime();
+            let merged = byTime.get(time);
+            if (!merged) byTime.set(time, (merged = { time: row.time }));
+            merged[column] = value(row);
+          }
+        };
+        add(
+          observations.filter((observation) => observation.variable === variable),
+          "observed",
+          (observation) => observation.value,
+        );
+        add(simulated, "simulated", (result) => result[variable]);
+        const rows = [...byTime.values()].sort((a, b) => (a.time as Date).getTime() - (b.time as Date).getTime());
+        const chart = timeChart(rows, width, ["observed", "simulated"]);
+        const title = `${variable} of ${observedType} #${observedId}`;
+        return chart ? [el("h4", {}, title), chart] : [el("h4", {}, title), "Too few values to chart."];
+      }),
+    );
+    return [...sections.flat(), ...(results ? [] : [el("p", { className: "note" }, "No simulation results.")])];
   }
 
   /** One chart with the flow rate of each link, merged on time. */

@@ -16,6 +16,10 @@ import xarray as xr
 from ribasim import run_ribasim
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.capacity import bound_supply_inflows
+from ribasim_nl.layout import tidy_layout
+from ribasim_nl.network_snapping import snap_model
+from ribasim_nl.observations import add_observations
+from ribasim_nl.settings import settings
 
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.controle_output import DYNAMIC_FORCING_METRICS, STATIC_FORCING_METRICS, Control
@@ -51,6 +55,22 @@ PUMP_META_COLUMNS = [
     "meta_from_level",
     "meta_to_level",
 ]
+
+
+# GeoPackage per water board in verwerkt/Crossings, with the hydro-objects, culverts and crossings, as also used in
+# src/peilbeheerst_model/profiles
+CROSSINGS = {
+    "AmstelGooienVecht": "agv_crossings_v05.gpkg",
+    "Delfland": "delfland_crossings_v08.gpkg",
+    "HollandsNoorderkwartier": "hhnk_crossings_v26.gpkg",
+    "HollandseDelta": "hd_crossings_v06.gpkg",
+    "Rijnland": "rijnland_crossings_v05.gpkg",
+    "Rivierenland": "wsrl_crossings_v06.gpkg",
+    "Scheldestromen": "scheldestromen_crossings_v02.gpkg",
+    "SchielandendeKrimpenerwaard": "hhsk_crossings_voor_profielen_met_OG_hydroobjecten.gpkg",
+    "WetterskipFryslan": "wetterskip_crossings_v06.gpkg",
+    "Zuiderzeeland": "zzl_crossings_v05.gpkg",
+}
 
 
 @dataclass(frozen=True)
@@ -90,6 +110,18 @@ class WaterBoardPaths:
     @property
     def profielen_dir(self) -> Path:
         return self.cloud.joinpath(self.waterschap, "verwerkt/profielen")
+
+    @property
+    def crossings(self) -> Path:
+        return settings.ribasim_nl_data_dir / self.waterschap / "verwerkt/Crossings" / CROSSINGS[self.waterschap]
+
+    @property
+    def bgt_water(self) -> Path:
+        return settings.ribasim_nl_data_dir / self.waterschap / "verwerkt/BGT" / f"bgt_{self.waterschap}_water.gpkg"
+
+    @property
+    def top10nl(self) -> Path:
+        return settings.ribasim_nl_data_dir / "Basisgegevens/Top10NL/top10nl_Compleet.gpkg"
 
     def model_dir(self, stage: Literal["feedback", "profiles", "forcing"]) -> Path:
         """Directory of the model written by a pipeline stage."""
@@ -236,7 +268,6 @@ def write_and_run_forcing_model(
     paths: WaterBoardPaths,
     *,
     mixed_conditions: bool,
-    add_junctions: bool,
 ) -> None:
     """Write and run the forcing model, its steady state regression variants, and check the results."""
     output_dir = paths.model_dir("forcing")
@@ -245,14 +276,22 @@ def write_and_run_forcing_model(
 
     bound_supply_inflows(model)
 
-    # add junctions last: a layout-only transformation merging overlapping flow links into a
-    # Junction. Done after all parametrization so junctions never break adjacency/validation.
-    if add_junctions:
-        model = junctionify(model)
+    # Layout-only transformations, done after all parametrization so they never affect it: route links along the
+    # hydro-objects and move Basin nodes onto them, and merge the overlapping parts of links into Junctions.
+    model = snap_model(
+        model,
+        paths.profielen_dir,
+        crossings_path=paths.crossings,
+        water_path=paths.bgt_water,
+        top10nl_path=paths.top10nl,
+    )
+    model = junctionify(model)
 
     model.use_validation = True
     model.starttime = STARTTIME
     model.endtime = ENDTIME
+    model = add_observations(model, paths.waterschap)
+    model = tidy_layout(model)
     model.solver.saveat = SAVEAT
     model.write(model_toml)
     ribasim_param.write_steady_state_regression_models(
