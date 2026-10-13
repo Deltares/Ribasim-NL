@@ -186,6 +186,8 @@ aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).diss
 duplicate_level_boundary_for_link(model=model, source_node_id=15, link_id=2822)
 
 reverse_existing_links(model, [2682, 2823, 2822, 1337, 27, 1891])
+# De Haandrik: ManningResistance 49 voert meestal af van Basin 2222 naar Basin 1700, zie #846
+reverse_existing_links(model, [66, 1372])
 
 # Gemaal Orveltersluis was opggedeeld
 model.remove_node(node_id=665, remove_links=True)
