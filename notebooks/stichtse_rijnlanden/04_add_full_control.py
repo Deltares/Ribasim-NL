@@ -1,5 +1,6 @@
 # %%
 import geopandas as gpd
+import pandas as pd
 from ribasim_nl.control import (
     add_controllers_to_supply_area,
     add_controllers_to_uncontrolled_connector_nodes,
@@ -372,6 +373,109 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
 for static_df in (model.outlet.static.df, model.pump.static.df):
     afvoer_mask = static_df["control_state"].eq("afvoer") & static_df["node_id"].isin(aanvoer_only_node_ids)
     static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 0.0
+
+# %% Wijk bij Duurstede stuurt op het debiet bij ADCP Amelisweerd, zie #855
+# De control_states heten geen aanvoer/afvoer, zodat de koppelpeil-synchronisatie deze sturing niet aanpast.
+WIJK_BIJ_DUURSTEDE = 481
+AMELISWEERD = 1333  # ManningResistance in de Kromme Rijn benedenstrooms van Basin 1673, bij ADCP Amelisweerd
+AMELISWEERD_THRESHOLDS = [6.0, 7.0]  # m3/s; regime 1 bij <= 6, regime 2 bij > 6, regime 3 en 4 bij > 7
+WIJK_BIJ_DUURSTEDE_FLOW_RATES = {"regime 1": 5.0, "regime 2": 3.5, "regime 3+4": 1.0}  # m3/s
+FLOW_THRESHOLD_HYSTERESIS = 0.1  # m3/s
+
+
+def set_flow_regime_control(
+    model: Model,
+    node_id: int,
+    listen_node_id: int,
+    thresholds: list[float],
+    flow_rates: dict[str, float],
+    name: str,
+) -> None:
+    """Let the DiscreteControl of Outlet `node_id` set its flow rate per regime of the flow at `listen_node_id`.
+
+    Regime i applies while the flow exceeds i of the ascending `thresholds`. The levels of the aanvoer state are kept.
+    """
+    assert model.link.df is not None
+    assert len(flow_rates) == len(thresholds) + 1, "Expected one flow rate per regime"
+    assert thresholds == sorted(thresholds), "Expected ascending thresholds"
+    assert model.get_node_type(node_id) == "Outlet", f"Expected Outlet for node {node_id}"
+    assert model.get_node_type(listen_node_id) in {"ManningResistance", "Outlet", "Pump", "TabulatedRatingCurve"}
+
+    links = model.link.df
+    control_node_ids = links.loc[(links.link_type == "control") & (links.to_node_id == node_id), "from_node_id"]
+    assert len(control_node_ids) == 1, f"Expected one DiscreteControl for node {node_id}, got {len(control_node_ids)}"
+    control_node_id = int(control_node_ids.iloc[0])
+    assert (links.loc[links.link_type == "control", "from_node_id"] == control_node_id).sum() == 1
+
+    static = model.outlet.static.df
+    aanvoer = static[(static.node_id == node_id) & (static.control_state == "aanvoer")]
+    assert len(aanvoer) == 1, f"Expected one aanvoer row for node {node_id}"
+    regime_rows = [
+        aanvoer.assign(control_state=state, flow_rate=flow_rate, max_flow_rate=flow_rate)
+        for state, flow_rate in flow_rates.items()
+    ]
+    model.outlet.static.df = pd.concat([static[static.node_id != node_id], *regime_rows], ignore_index=True)
+
+    # the old listen link is removed, and a new one added
+    model.link.df = links[~((links.link_type == "listen") & (links.to_node_id == control_node_id))]
+    model.link.add(model.get_node(listen_node_id), model.get_node(control_node_id))
+
+    dc = model.discrete_control
+    for table in (dc.variable, dc.condition, dc.logic):
+        table.df = table.df[table.df.node_id != control_node_id]
+    dc.variable.df = pd.concat(
+        [
+            dc.variable.df,
+            pd.DataFrame(
+                {
+                    "node_id": [control_node_id],
+                    "compound_variable_id": [1],
+                    "listen_node_id": [listen_node_id],
+                    "variable": ["flow_rate"],
+                    "weight": [1.0],
+                }
+            ),
+        ],
+        ignore_index=True,
+    )
+    dc.condition.df = pd.concat(
+        [
+            dc.condition.df,
+            pd.DataFrame(
+                {
+                    "node_id": control_node_id,
+                    "compound_variable_id": 1,
+                    "condition_id": range(1, len(thresholds) + 1),
+                    "threshold_high": thresholds,
+                    "threshold_low": [threshold - FLOW_THRESHOLD_HYSTERESIS for threshold in thresholds],
+                    "time": model.starttime,
+                }
+            ),
+        ],
+        ignore_index=True,
+    )
+    # with ascending thresholds, the truth states are a run of T followed by F
+    states = list(flow_rates)
+    truth_states = ["T" * i + "F" * (len(thresholds) - i) for i in range(len(states))]
+    dc.logic.df = pd.concat(
+        [dc.logic.df, pd.DataFrame({"node_id": control_node_id, "truth_state": truth_states, "control_state": states})],
+        ignore_index=True,
+    )
+    model.node.df.loc[control_node_id, "name"] = name
+
+
+set_flow_regime_control(
+    model,
+    node_id=WIJK_BIJ_DUURSTEDE,
+    listen_node_id=AMELISWEERD,
+    thresholds=AMELISWEERD_THRESHOLDS,
+    flow_rates=WIJK_BIJ_DUURSTEDE_FLOW_RATES,
+    name="debiet Amelisweerd: 6/7 [m3/s]",
+)
+
+# %% Namen, zie #855
+model.node.df.loc[168, "name"] = "Oog in Al, spuisluis"
+model.node.df.loc[752, "name"] = "Oog in Al, Muntsluis"
 
 # Model run
 
