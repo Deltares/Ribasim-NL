@@ -74,6 +74,16 @@ for _drain_point in _drain_points:
     to_drain_node_ids.append(_drain_candidates.index[0])
 to_drain_node_ids = tuple(to_drain_node_ids)
 
+# Appelscha, see https://github.com/Deltares/Ribasim-NL/issues/831
+# Basin 340 (AP-051, AP-143, GPG-F13117) with its bergend Basin 8125, and Basin 1001 (GPG-F13118) are already
+# represented by Drents Overijsselse Delta, so they and the doorlaten 3064 and 3065 between them are removed.
+for node_id in (3064, 3065, 15882, 8125, 340, 1001):
+    ribasim_model.remove_node(node_id, remove_links=True)
+# Basin 554 (AP-141, AP-142) drains via outlets 2018 and 2236 into Drents Overijsselse Delta, instead of being supplied
+APPELSCHA_OUTLETS = (2018, 2236)
+for link_id in (4907, 918, 4912, 1120):  # LevelBoundary -> Outlet -> Basin 554
+    ribasim_model.reverse_link(link_id=link_id)
+
 # check if meta_categorie in the basin.node.df is completely filled
 check_basin_meta_categorie(ribasim_model)
 
@@ -177,9 +187,9 @@ to_supply = (
     3884,
     3888,
 )
-to_flow_control = (2452, 3064, 3065, 3068)
+to_flow_control = (2452, 3068)
 
-to_drain = (2147, 2751, 2944, 3041, 3494, 3568, 3709, *to_drain_node_ids)
+to_drain = (2147, 2751, 2944, 3041, 3494, 3568, 3709, *to_drain_node_ids, *APPELSCHA_OUTLETS)
 
 from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
@@ -318,6 +328,19 @@ lb_node_df = ribasim_model.level_boundary.node.df
 ribasim_param.set_static_level_boundaries(
     ribasim_model, lb_node_df.index[lb_node_df["meta_couple_authority"] == "Noordzee"], level=0.0
 )
+
+# Appelscha uitlaten: no supply, and drain at most 1 m3/s down to 9.35 m NAP, see #831
+outlet_static_df = ribasim_model.outlet.static.df
+for control_state, max_flow_rate, max_downstream_level in (("aanvoer", 0.0, None), ("afvoer", 1.0, 9.35)):
+    mask = outlet_static_df.node_id.isin(APPELSCHA_OUTLETS) & (outlet_static_df.control_state == control_state)
+    assert mask.sum() == len(APPELSCHA_OUTLETS), f"Expected one {control_state} row per Appelscha outlet"
+    outlet_static_df.loc[mask, ["flow_rate", "max_flow_rate"]] = max_flow_rate
+    if max_downstream_level is not None:
+        outlet_static_df.loc[mask, "max_downstream_level"] = max_downstream_level
+control_link_df = ribasim_model.link.df[ribasim_model.link.df.link_type == "control"]
+appelscha_control_ids = control_link_df.loc[control_link_df.to_node_id.isin(APPELSCHA_OUTLETS), "from_node_id"]
+assert len(appelscha_control_ids) == len(APPELSCHA_OUTLETS), "Expected one DiscreteControl per Appelscha outlet"
+ribasim_model.node.df.loc[appelscha_control_ids, "name"] = "uitlaat: 9.40/9.35 [m+NAP]"
 
 # check if meta_categorie in the basin.node.df is completely filled
 check_basin_meta_categorie(ribasim_model)
