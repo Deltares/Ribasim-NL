@@ -193,8 +193,14 @@ ul.task-list li input[type="checkbox"] {
 </nav>
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#layout" id="toc-layout" class="nav-link active" data-scroll-target="#layout">Layout</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
@@ -229,8 +235,19 @@ ul.task-list li input[type="checkbox"] {
 </ol>
 <p>We originally had more parametrize scripts, but because so much has changed I have now saved these in our backup. We will only use these to see if there were any additional manual adjustments. For the rest, it follows the same workflow as <code>AmstelGooienVecht_parametrize.ipynb</code>.</p>
 <p>Finally: step 1 started with a clear script per water board. During the process of 1.5 years, these scripts have become increasingly larger and more confusing, whereby not every line is needed anymore. For now, there is no priority to clean this up, partly because this is a major risk that the data will (unintentionally) change, which will change the networks and the feedback forms can no longer be used.</p>
+<section id="layout" class="level2">
+<h2 class="anchored" data-anchor-id="layout">Layout</h2>
+<p>At the end of the forcing stage, <code>ribasim_nl.network_snapping.snap_model</code> aligns the layout of the model with the hydro-objects in <code>verwerkt/profielen/network.gpkg</code>, which are written by the <a href="../workflow/profile-generation.html">profile generation</a>. This only changes the layout, not the model results:</p>
+<ul>
+<li>Connector nodes stay at the location of the structure they represent.</li>
+<li>Basin nodes are moved onto the nearest main route of the longest connected part of the hydro-objects in their basin, as in the gravity controlled models.</li>
+<li>Links between a Basin and a connector node follow the hydro-objects, complemented by the Top10NL water lines. Hydro-objects are only connected where there is evidence: the culverts (<code>duikersifonhevel</code>) of the crossings data, gaps of at most 2 m, and gaps across BGT water surfaces. Connector nodes far from the hydro-objects are connected over the BGT water surfaces, crossing at most 50 m of land.</li>
+<li>Links stay straight if no such route is found, or if it is not less than <code>ribasim_nl.link_geometries.MAX_STRAIGHT_LINE_RATIO</code> times longer than the straight line, the same threshold as for the gravity controlled models.</li>
+</ul>
+<p>Then <code>ribasim_nl.junctionify</code> merges the shared parts of links into Junctions, and <code>ribasim_nl.layout.tidy_layout</code> makes sure no nodes are on top of each other and no links overlap: bergend Basins are placed 100 m from their doorgaand Basin, links are offset 5 m to the right of their direction, such that inflows and outflows along the same waterway are drawn side by side, and nodes that are still within 10 m of each other are moved apart. The gravity controlled models get the same layout step at the end of their dynamic stage, and <code>ribasim_nl.validation.validate_model</code> checks it.</p>
 
 
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
