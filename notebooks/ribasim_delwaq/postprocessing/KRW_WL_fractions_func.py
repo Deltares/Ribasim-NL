@@ -67,6 +67,31 @@ def compute_overlap_df(krw_wl_path, basin_path):
         | basin["meta_waterbeheerder"].isin(["Rijkswaterstaat"])
     ]
 
+    # DEBUGGING
+    print("#############################")
+    print("Start DEBUGGING")
+    print("Basin 3900043:")
+    print(basin_unique[basin_unique["node_id"].isin([3900043])])
+    print("Basin 3900003:")
+    print(basin_unique[basin_unique["node_id"].isin([3900003])])
+    print("KRW Polygons NL39_14a:")
+    print(krw_wl_polygons[krw_wl_polygons["localId"].isin(["NL39_14a"])])
+    print("KRW Lines NL39_14a:")
+    print(krw_wl_lines[krw_wl_lines["localId"].isin(["NL39_14a"])])
+    print("--------------------------------")
+    print("Basin 1200032:")
+    print(basin_unique[basin_unique["node_id"].isin([1200032])])
+    print("Basin 1200025:")
+    print(basin_unique[basin_unique["node_id"].isin([1200025])])
+    print("Basin 1200025:")
+    print(basin[basin["node_id"].isin([1200025])])
+    print("KRW Polygons NL12_430:")
+    print(krw_wl_polygons[krw_wl_polygons["localId"].isin(["NL12_430"])])
+    print("KRW Lines NL12_430:")
+    print(krw_wl_lines[krw_wl_lines["localId"].isin(["NL12_430"])])
+    print("End DEBUGGING")
+    print("#############################")
+
     # Ensure same CRS
     if krw_wl_polygons.crs != basin.crs:
         krw_wl_polygons = krw_wl_polygons.to_crs(basin.crs)
@@ -153,17 +178,30 @@ def compute_overlap_df(krw_wl_path, basin_path):
         ]
     )
 
-    print(f"dimension of resulting dataframe: {len(df)}")
+    # group by WL_Id, sum the basin fractions
+    fraction_sum = df.groupby(["WL_Id"], as_index=False).agg(
+        {
+            "fractie": "sum",
+        }
+    )
+    fraction_sum.to_csv("krw_wl_fractionsum.csv", index=False)
+    logger.info(f"KRW waterbodies: {len(fraction_sum)}")
+    tolerance = 1e-2  # select a tolerance value for filtering; remove range between 0.99 and 1.01
+    filtered_fraction_sum_tolerance_option1 = fraction_sum[(fraction_sum["fractie"] - 1.0).abs() > tolerance]
+    filtered_fraction_sum_tolerance_option1.to_csv("krw_wl_filtered_fractionsum_tolerance_option1.csv", index=False)
+    tolerance = 5e-2  # select a tolerance value for filtering; remove range between 0.95 and 1.05
+    filtered_fraction_sum_tolerance_option2 = fraction_sum[(fraction_sum["fractie"] - 1.0).abs() > tolerance]
+    filtered_fraction_sum_tolerance_option2.to_csv("krw_wl_filtered_fractionsum_tolerance_option2.csv", index=False)
 
-    # check summed fraction
-    fraction_sum = df.groupby("WL_Id")["fractie"].sum()
-    print(fraction_sum.describe())
+    # Normalize fractions so they sum to 1
+    df_normalized = df.copy()
+    df_normalized["fractie_normalized"] = df_normalized["fractie"] / df_normalized.groupby("WL_Id")[
+        "fractie"
+    ].transform("sum")
 
-    return df
+    print(f"dimension of resulting dataframe: {len(df_normalized)}")
 
-
-# TODO: move "overlap_length" column to middle of dataframe, after "overlap_area" column, for better readability
-# TODO: filter basins for only those that are relevant for the KRW waterbody, e.g. by using the "meta_categorie" column in the Node layer, to prevent duplicate fractions for basins that are not relevant for the KRW waterbody, e.g. by filtering for "meta_categorie" in ["waterloop", "watergang", "kanaal", "beek", "rivier", "meer", "plas", "vijver", "reservoir"]
+    return df_normalized
 
 
 # %%
@@ -183,6 +221,6 @@ if __name__ == "__main__":
     # overlap_df = compute_overlap_df(gaf_path, basin_path)
     overlap_df = compute_overlap_df(krw_wl_path, basin_path)
     print(overlap_df)
-    overlap_df.to_csv("krw_wl_fractions.csv", index=False)
+    overlap_df.to_csv("krw_wl_fractions_normalized.csv", index=False)
 
 # %%

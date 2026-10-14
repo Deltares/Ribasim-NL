@@ -222,7 +222,8 @@ basins = nmodel.basin.area.df
 # select nodes with meta_categorie == "doorgaand"
 nodes_doorgaand = nmodel.node.df.mask("meta_categorie", "doorgaand")  # | "hoofdwater"
 nodes_hoofdwater = nmodel.node.df.mask("meta_categorie", "hoofdwater")
-nodes_combined = pd.concat([nodes_doorgaand, nodes_hoofdwater], ignore_index=False)
+nodes_Rijkswater = nmodel.node.df.mask("meta_waterbeheerder", "Rijkswaterstaat")
+nodes_combined = pd.concat([nodes_doorgaand, nodes_hoofdwater, nodes_Rijkswater], ignore_index=False)
 nodes_combined_selectedcols = nodes_combined[["node_type", "meta_categorie", "geometry"]]
 basins_doorgaand = basins.merge(nodes_combined_selectedcols, on="node_id", how="right")
 
