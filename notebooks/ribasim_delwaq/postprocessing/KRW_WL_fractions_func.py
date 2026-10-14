@@ -3,6 +3,7 @@ import logging
 
 import geopandas as gpd
 import pandas as pd
+import xarray as xr
 
 logger = logging.getLogger(__name__)
 if not logging.getLogger().handlers:
@@ -59,38 +60,14 @@ def compute_overlap_df(krw_wl_path, basin_path):
     # Filter invalid geometries
     krw_wl_polygons = krw_wl_polygons[krw_wl_polygons.is_valid]
     krw_wl_lines = krw_wl_lines[krw_wl_lines.is_valid]
-    basin = basin[basin.is_valid]
+    basin = basin[basin.is_valid]  # currently, 8 basin geometries are invalid:
+    # ids 1100155, 1102256, 1200025, 1202826, 3900043, 3900136, 3901357, 3901450
     # select basins with meta_categorie "doorgaand" or "hoofdwater"
     # basin_unique = basin
     basin_unique = basin[
         basin["meta_categorie"].isin(["doorgaand", "hoofdwater"])
         | basin["meta_waterbeheerder"].isin(["Rijkswaterstaat"])
     ]
-
-    # DEBUGGING
-    print("#############################")
-    print("Start DEBUGGING")
-    print("Basin 3900043:")
-    print(basin_unique[basin_unique["node_id"].isin([3900043])])
-    print("Basin 3900003:")
-    print(basin_unique[basin_unique["node_id"].isin([3900003])])
-    print("KRW Polygons NL39_14a:")
-    print(krw_wl_polygons[krw_wl_polygons["localId"].isin(["NL39_14a"])])
-    print("KRW Lines NL39_14a:")
-    print(krw_wl_lines[krw_wl_lines["localId"].isin(["NL39_14a"])])
-    print("--------------------------------")
-    print("Basin 1200032:")
-    print(basin_unique[basin_unique["node_id"].isin([1200032])])
-    print("Basin 1200025:")
-    print(basin_unique[basin_unique["node_id"].isin([1200025])])
-    print("Basin 1200025:")
-    print(basin[basin["node_id"].isin([1200025])])
-    print("KRW Polygons NL12_430:")
-    print(krw_wl_polygons[krw_wl_polygons["localId"].isin(["NL12_430"])])
-    print("KRW Lines NL12_430:")
-    print(krw_wl_lines[krw_wl_lines["localId"].isin(["NL12_430"])])
-    print("End DEBUGGING")
-    print("#############################")
 
     # Ensure same CRS
     if krw_wl_polygons.crs != basin.crs:
@@ -205,6 +182,42 @@ def compute_overlap_df(krw_wl_path, basin_path):
 
 
 # %%
+def add_volume(df, model_path, output_csv="krw_wl_fractions_normalized_with_volume.csv"):
+    """Add volume information to the dataframe based on basin areas.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame containing the overlap fractions.
+    basin_path : str | Path
+        Path to the Ribasim GeoPackage containing layers 'Basin / area' and 'Node'.
+    output_csv : str, optional
+        Path to save the resulting DataFrame with volume information, by default "krw_wl_fractions_normalized_with_volume.csv".
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame with added volume information.
+    """
+    # Load basin volumes
+    lhm_basins = xr.open_dataset(model_path / "results" / "basin.nc")
+    lhm_basins = lhm_basins.to_dataframe().reset_index()
+    lhm_basins_timeaveraged = lhm_basins.groupby("node_id").mean().reset_index()
+
+    # Merge to get volume for each basin_id
+    df_with_volume = df.merge(
+        lhm_basins_timeaveraged[["node_id", "storage"]], left_on="basin_id", right_on="node_id", how="left"
+    )
+    df_with_volume.rename(columns={"storage": "basin_volume"}, inplace=True)
+
+    # Save to CSV
+    df_with_volume.to_csv(output_csv, index=False)
+    logger.info(f"Saved dataframe with volume information to {output_csv}")
+
+    return df_with_volume
+
+
+# %%
 
 if __name__ == "__main__":
     import os
@@ -222,5 +235,7 @@ if __name__ == "__main__":
     overlap_df = compute_overlap_df(krw_wl_path, basin_path)
     print(overlap_df)
     overlap_df.to_csv("krw_wl_fractions_normalized.csv", index=False)
+    add_volume(overlap_df, model_path, output_csv="krw_wl_fractions_normalized_with_volume.csv")
+
 
 # %%
