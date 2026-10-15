@@ -212,8 +212,9 @@ model.remove_node(node_id=939, remove_links=True)
 model.remove_node(node_id=2497, remove_links=True)  # Parallel aan doorlaat 2496 tussen hetzelfde basin-paar.
 model.remove_node(node_id=120, remove_links=True)  # LevelBoundary van verwijderde parallelle doorlaat 2497.
 
-# Verplaats node 788, behoud bestaande verbindingen en update gekoppelde linkgeometrieen.
-model.move_node(node_id=788, geometry=Point(193403.3, 352653.3))
+# Verplaats node 788 naar de overgang van Basin 1466 naar 1347, behoud bestaande verbindingen en update gekoppelde
+# linkgeometrieen, zie #871. Eerder stond 788 op de locatie van node 1162 bij Roermond.
+model.move_node(node_id=788, geometry=Point(181887.6, 320695.9))
 
 # Redirect link 2208 naar node 1802.
 model.redirect_link(link_id=2208, to_node_id=1802)

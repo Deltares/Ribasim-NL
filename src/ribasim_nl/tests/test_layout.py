@@ -78,6 +78,14 @@ def test_offset_links(model):
     assert there.distance(back.interpolate(0.5, normalized=True)) == pytest.approx(10, rel=0.1)
 
 
+def test_offset_links_bend_repeated_point(model):
+    """A straight link with a repeated point is bent as well."""
+    link_id = model.link.df.index[1]
+    model.link.df.loc[[link_id], "geometry"] = [LineString([(500, 0), (1000, 0), (1000, 0)])]
+    offset_links(model, 5.0, [link_id], bend=True)
+    assert model.link.df.at[link_id, "geometry"].coords[:] == [(500, 0), (750, -5), (1000, 0)]
+
+
 def test_separate_nodes(model):
     assert coincident_nodes(model, 1.0).tolist() == [[3], [4]]
     separate_nodes(model, 10.0)

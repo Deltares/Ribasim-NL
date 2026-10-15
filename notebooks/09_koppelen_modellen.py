@@ -18,11 +18,13 @@ from ribasim_nl.coupling_level_apply import (
 from ribasim_nl.coupling_level_common import finite_level, finite_levels
 from ribasim_nl.coupling_level_network import first_non_junction, flow_link_graphs
 from ribasim_nl.coupling_levels import run_coupling_level_check
+from ribasim_nl.flow_paths import branch_from_route, merge_inflows, merge_outflows, place_on_link
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.layout import move_nodes, offset_links, resolve_overlaps, separate_nodes
 from ribasim_nl.model import find_toml
 from ribasim_nl.network_snapping import snap_to_waterways
 from ribasim_nl.observations import link_observations
+from ribasim_nl.rwzi import attach_rwzi_junctions
 from ribasim_nl.settings import settings
 from shapely.geometry import LineString, Point
 from tqdm import tqdm
@@ -171,13 +173,31 @@ user_demands = [
     {
         "name": "Evides Industriewater DWP Botlek",  # zie #857
         "geometry": Point(76710, 433932),
-        "from_basin_id": 4000298,  # Brielse Meer
+        "from_basin_id": 4000234,  # Scheepvaart- en Voedingskanaal, zie #871
+        "branch_towards_id": 4002322,  # vanaf de route naar ManningResistance 4002322, zie #871
         "to_basin_id": 8002247,  # Calandkanaal
         "demand": 0.388,  # 1400 m3/uur netto capaciteit
     },
 ]
 USER_DEMAND_PRIORITY = 3  # industrie, as in notebooks/rijkswaterstaat/7_model_onttrekkingen.py
 USER_DEMAND_MIN_LEVEL_OFFSET = 0.1  # above the bottom of the source Basin
+
+# Nodes whose link from a Basin branches off the route from that Basin towards another node, see `branch_from_route`
+route_branches = {
+    1200327: (1202747, 1200393),  # HHNK-uitlaat vanaf de route naar uitlaat 1200393, zie #871
+    1500460: (4000298, 4001451),  # Gemaal Winsemius vanaf de route naar Stenen Baak, zie #871
+}
+
+# Links from a Basin to nodes, merged into a Junction on a link of that Basin, see `merge_inflows` and `place_on_link`
+route_junctions_on_link = [
+    # inlaten Boven Regge op de Schipbeek, zie #861
+    {"basin_id": 700797, "node_ids": [4401049, 4401103, 4401104], "link_id": 700438},
+]
+
+# Nodes connected directly to the first Junction downstream that their routes share, see `merge_outflows`
+merged_outflows = [
+    [4401049, 4401103, 4401104],  # inlaten Boven Regge, zie #861
+]
 
 # Node names to set after coupling
 node_names = {
@@ -715,6 +735,25 @@ def add_user_demands(model: Model) -> None:
         demand_node = model.user_demand.add(node, [static])
         model.link.add(model.basin[from_basin_id], demand_node)
         model.link.add(demand_node, model.basin[to_basin_id])
+        if "branch_towards_id" in config:
+            branch_from_route(model, demand_node.node_id, from_basin_id, config["branch_towards_id"])
+
+
+def change_routes(model: Model) -> None:
+    """Change the configured routes, see `route_branches`, `route_junctions_on_link` and `merged_outflows`."""
+    for node_id, (basin_id, towards_id) in route_branches.items():
+        if node_in_model(model, node_id) and node_in_model(model, basin_id):
+            branch_from_route(model, node_id, basin_id, towards_id)
+
+    for config in route_junctions_on_link:
+        basin_id, node_ids = config["basin_id"], config["node_ids"]
+        if all(node_in_model(model, i) for i in [basin_id, *node_ids]):
+            junction_id = merge_inflows(model, basin_id, node_ids)
+            place_on_link(model, junction_id, basin_id, config["link_id"])
+
+    for node_ids in merged_outflows:
+        if all(node_in_model(model, i) for i in node_ids):
+            merge_outflows(model, node_ids)
 
 
 def tidy_coupling_layout(model: Model, link_ids: list[int]) -> None:
@@ -723,6 +762,7 @@ def tidy_coupling_layout(model: Model, link_ids: list[int]) -> None:
     The links between models share routes towards the same Basins, which are merged into Junctions, and these and
     the routed links `link_ids` are offset, such that no links overlap.
     """
+    link_ids = [i for i in link_ids if i in model.link.df.index]  # some were replaced, see `change_routes`
     junctions = set(model.node.df.index[model.node.df["node_type"] == "Junction"])
     junctionify(model)
     nodes, flow = model.node.df, model.link.df[model.link.df["link_type"] == "flow"]
@@ -940,6 +980,9 @@ def couple_model(toml_file: Path) -> None:
     remove_invalid_topology_nodes(model)
     link_ids = route_links_between_models(model, network)
     add_user_demands(model)
+    # the RWZIs of Rijkswaterstaat and those that discharge into another model, see #860 and #871
+    attach_rwzi_junctions(model, authorities={"Rijkswaterstaat"})
+    change_routes(model)
     # series measured on links between models can only be observed in the coupled model
     link_observations(model)
     tidy_coupling_layout(model, link_ids)
