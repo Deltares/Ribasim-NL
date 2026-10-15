@@ -16,8 +16,8 @@ def rwzi_model() -> Model:
         )
     model.outlet.add(Node(3, Point(90, 0)), [outlet.Static(flow_rate=[1.0])])
     model.junction.add(Node(4, Point(50, 0)))
-    model.flow_boundary.add(Node(5, Point(60, 30), meta_rwzi_code="R1"), [flow_boundary.Static(flow_rate=[0.1])])
-    model.junction.add(Node(6, Point(60, 20), meta_rwzi_code="R1"))
+    model.flow_boundary.add(Node(5, Point(60, 30), meta_rwzi_code=1.0), [flow_boundary.Static(flow_rate=[0.1])])
+    model.junction.add(Node(6, Point(60, 20), meta_rwzi_code=1.0))
     model.link.add(model.basin[2], model.outlet[3])
     model.link.add(model.outlet[3], model.junction[4], geometry=LineString([(90, 0), (70, 5), (50, 0)]))
     model.link.add(model.junction[4], model.basin[1])
@@ -42,3 +42,59 @@ def test_attach_rwzi_junctions_too_far():
     model = attach_rwzi_junctions(rwzi_model(), max_distance=5.0)
     assert model.node.df.at[6, "geometry"].equals(Point(60, 20))
     assert (6, 1) in model.link.df.set_index(["from_node_id", "to_node_id"]).index
+
+
+def test_attach_rwzi_junctions_out_of_basin():
+    """Along the link out of Basin 1, as the FlowBoundary cannot discharge into its Outlet."""
+    model = rwzi_model()
+    model.outlet.add(Node(7, Point(-50, 0)), [outlet.Static(flow_rate=[1.0])])
+    line = LineString([(0, 0), (60, 19), (-50, 0)])
+    model.link.add(model.basin[1], model.outlet[7], geometry=line)
+    model = attach_rwzi_junctions(model)
+    location = model.node.df.at[6, "geometry"]
+    assert location.distance(line.interpolate(line.project(Point(60, 20)))) < 1e-9
+    links = model.link.df.set_index(["from_node_id", "to_node_id"]).geometry
+    assert set(links.index) == {(2, 3), (3, 4), (4, 1), (1, 7), (5, 6), (6, 1)}
+    # the link to Basin 1 runs back along the link out of it
+    assert links[(6, 1)].coords[:] == [location.coords[0], (0, 0)]
+    assert links[(1, 7)].equals(line)
+
+
+def test_attach_rwzi_junctions_not_bergend():
+    """Not on the link of a bergend Basin, even if it is nearer."""
+    model = rwzi_model()
+    model.basin.add(
+        Node(8, Point(60, 25), meta_categorie="bergend"),
+        [basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]), basin.State(level=[0.5])],
+    )
+    model.outlet.add(Node(9, Point(55, 25), meta_categorie="bergend"), [outlet.Static(flow_rate=[1.0])])
+    model.link.add(model.basin[8], model.outlet[9])
+    model.link.add(model.outlet[9], model.basin[1], geometry=LineString([(55, 25), (60, 21), (0, 0)]))
+    model = attach_rwzi_junctions(model)
+    assert (3, 6) in model.link.df.set_index(["from_node_id", "to_node_id"]).index
+
+
+def test_attach_rwzi_junctions_other_basin():
+    """Along the link out of Basin 2 if configured, at any distance, and only once."""
+    model = attach_rwzi_junctions(rwzi_model(), max_distance=5.0, basins={1: 2})
+    links = model.link.df.set_index(["from_node_id", "to_node_id"]).geometry
+    assert set(links.index) == {(2, 3), (3, 4), (4, 1), (5, 6), (6, 2)}
+    assert model.node.df.at[6, "geometry"].distance(links[(2, 3)]) < 1e-9
+    again = attach_rwzi_junctions(model, basins={1: 2}).link.df.set_index(["from_node_id", "to_node_id"]).geometry
+    assert links.equals(again)
+
+
+def test_attach_rwzi_junctions_not_in_model():
+    """Left as is if the configured Basin is not in the model, such as before coupling."""
+    model = attach_rwzi_junctions(rwzi_model(), basins={1: 10})
+    assert model.node.df.at[6, "geometry"].equals(Point(60, 20))
+
+
+def test_attach_rwzi_junctions_authorities():
+    """Only for the given authorities, or if the Basin is configured, of any authority."""
+    model = rwzi_model()
+    model.node.df["meta_waterbeheerder"] = "A"
+    unchanged = attach_rwzi_junctions(model.model_copy(deep=True), authorities={"B"})
+    assert (6, 1) in unchanged.link.df.set_index(["from_node_id", "to_node_id"]).index
+    model = attach_rwzi_junctions(model, basins={1: 2}, authorities={"B"})
+    assert (6, 2) in model.link.df.set_index(["from_node_id", "to_node_id"]).index

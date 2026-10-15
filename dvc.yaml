@@ -513,6 +513,7 @@ stages:
         - notebooks/07_add_dynamic_forcing.py
         - src/ribasim_nl/ribasim_nl/network_snapping.py
         - src/ribasim_nl/ribasim_nl/rwzi.py
+        - src/ribasim_nl/ribasim_nl/flow_paths.py
         - src/ribasim_nl/ribasim_nl/layout.py
         - src/ribasim_nl/ribasim_nl/link_geometries.py
         - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -802,6 +803,7 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
+      - src/ribasim_nl/ribasim_nl/flow_paths.py
       - src/ribasim_nl/ribasim_nl/observations.py
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
@@ -837,6 +839,7 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
+      - src/ribasim_nl/ribasim_nl/flow_paths.py
       - src/ribasim_nl/ribasim_nl/observations.py
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
@@ -872,6 +875,7 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
+      - src/ribasim_nl/ribasim_nl/flow_paths.py
       - src/ribasim_nl/ribasim_nl/observations.py
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
@@ -907,6 +911,7 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
+      - src/ribasim_nl/ribasim_nl/flow_paths.py
       - src/ribasim_nl/ribasim_nl/observations.py
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
@@ -942,6 +947,7 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
+      - src/ribasim_nl/ribasim_nl/flow_paths.py
       - src/ribasim_nl/ribasim_nl/observations.py
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
@@ -977,6 +983,7 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
+      - src/ribasim_nl/ribasim_nl/flow_paths.py
       - src/ribasim_nl/ribasim_nl/observations.py
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
@@ -1012,6 +1019,7 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
+      - src/ribasim_nl/ribasim_nl/flow_paths.py
       - src/ribasim_nl/ribasim_nl/observations.py
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
@@ -1047,6 +1055,7 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
+      - src/ribasim_nl/ribasim_nl/flow_paths.py
       - src/ribasim_nl/ribasim_nl/observations.py
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
@@ -1082,6 +1091,7 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
+      - src/ribasim_nl/ribasim_nl/flow_paths.py
       - src/ribasim_nl/ribasim_nl/observations.py
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
@@ -1117,6 +1127,7 @@ stages:
       - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
+      - src/ribasim_nl/ribasim_nl/flow_paths.py
       - src/ribasim_nl/ribasim_nl/observations.py
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
@@ -1234,6 +1245,8 @@ stages:
     deps:
       - notebooks/09_koppelen_modellen.py
       - src/ribasim_nl/ribasim_nl/junctions.py
+      - src/ribasim_nl/ribasim_nl/flow_paths.py
+      - src/ribasim_nl/ribasim_nl/rwzi.py
       - src/ribasim_nl/ribasim_nl/network_snapping.py
       - src/ribasim_nl/ribasim_nl/layout.py
       - src/ribasim_nl/ribasim_nl/link_geometries.py

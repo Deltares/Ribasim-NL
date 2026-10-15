@@ -168,8 +168,10 @@ def offset_links(
     geometries = []
     for geometry in flow.geometry:
         coords = np.array(geometry.coords)[:, :2]
-        if bend and len(coords) == 2:
-            coords = np.array([coords[0], coords.mean(axis=0), coords[1]])
+        distinct = np.r_[True, np.any(np.diff(coords, axis=0) != 0, axis=1)]
+        if bend and distinct.sum() == 2:  # straight, possibly with repeated points
+            start, end = coords[distinct]
+            coords = np.array([start, (start + end) / 2, end])
         geometries.append(shapely.LineString(_right_offset(coords, distance)))
     links.loc[flow.index, "geometry"] = gpd.GeoSeries(geometries, index=flow.index, crs=links.crs)
 
