@@ -163,6 +163,8 @@ def compute_overlap_df(krw_wl_path, basin_path):
     )
     fraction_sum.to_csv("krw_wl_fractionsum.csv", index=False)
     logger.info(f"KRW waterbodies: {len(fraction_sum)}")
+
+    # FOR DEBUGGING: Filter krw_wl for which calculated fractions do not sum to 1 within a specified tolerance
     tolerance = 1e-2  # select a tolerance value for filtering; remove range between 0.99 and 1.01
     filtered_fraction_sum_tolerance_option1 = fraction_sum[(fraction_sum["fractie"] - 1.0).abs() > tolerance]
     filtered_fraction_sum_tolerance_option1.to_csv("krw_wl_filtered_fractionsum_tolerance_option1.csv", index=False)
@@ -183,7 +185,7 @@ def compute_overlap_df(krw_wl_path, basin_path):
 
 # %%
 def add_volume(df, model_path, output_csv="krw_wl_fractions_normalized_with_volume.csv"):
-    """Add volume information to the dataframe based on basin areas.
+    """Add volume information (time averaged) to the dataframe based on model output for each basin.
 
     Parameters
     ----------
@@ -227,15 +229,10 @@ if __name__ == "__main__":
     model_name = "lhm_coupled_full"
     model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "Rijkswaterstaat" / "modellen" / model_name
     basin_path = model_path / "input/database.gpkg"
-    gaf_path = "P:/archivedprojects/11210327-lwkm2/01_data/Emissieregistratie/gaf_90.shp"
     krw_wl_path = "p:\\11212767-lwkm2\\RibasimNL\\Validatie\\Waterkwaliteit\\INSPIRESurfaceWaterBody.gml"
 
     # Compute overlap and create dataframe
-    # overlap_df = compute_overlap_df(gaf_path, basin_path)
     overlap_df = compute_overlap_df(krw_wl_path, basin_path)
     print(overlap_df)
     overlap_df.to_csv("krw_wl_fractions_normalized.csv", index=False)
     add_volume(overlap_df, model_path, output_csv="krw_wl_fractions_normalized_with_volume.csv")
-
-
-# %%
