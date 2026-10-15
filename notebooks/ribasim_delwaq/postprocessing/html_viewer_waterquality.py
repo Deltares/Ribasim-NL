@@ -44,6 +44,8 @@ def create_waterquality_html_viewer(
     toml_path = model_path / "lhm_coupled.toml"
     model_gpkg_path = model_path / "input" / "database.gpkg"
     mapping_path = validation_path / "output_validate/basins_doorgaand_joined_monlocs.shp"
+    # mapping_path = validation_path / "basins_selected_joined_monlocs.shp"
+    parent_mapping_path = validation_path / "krw_wl_basin_fractions_normalized.csv"
     observations_path = validation_path / "KRWMeetwaarden_1990_2025_20260615_1432.parquet"
     locations_path = validation_path / "WKP_KRW-monitoringlocaties-oppervlaktewater_Nederland_2025_20250915090837.csv"
 
@@ -52,6 +54,7 @@ def create_waterquality_html_viewer(
         (toml_path, "Ribasim model"),
         (model_gpkg_path, "Ribasim model GeoPackage"),
         (mapping_path, "Monitoring-to-node mapping"),
+        (parent_mapping_path, "Parent-to-child mapping"),
         (observations_path, "Monitoring data"),
         (locations_path, "Monitoring location metadata"),
     ]:
@@ -189,6 +192,8 @@ def create_waterquality_html_viewer(
             "meetwaarde"
         ]
         ntot_seasonal_bias_percent = _mean_seasonal_relative_bias(ntot_modelled.to_series(), ntot_observed)
+        # TODO: test below function
+        # ntot_modelled_parent = _calculate_concentration_parent_location(ntot_modelled, parent_mapping_path)
         validation_factors = {
             parameter: calculate_validation_factor(
                 modelled_concentrations[parameter].to_series(),
@@ -320,6 +325,37 @@ def _mean_seasonal_relative_bias(modelled: pd.Series, observed: pd.Series) -> fl
         / paired_seasonal_means["observed"]
     )
     return float(relative_error.mean())
+
+
+def _calculate_concentration_parent_location(modelled: pd.DataFrame, parent_mapping_path: Path) -> None:
+    """Return volume and area weigthed average concentrations for parent locations KRW-waterbodies from children (RIBASIM basins)."""
+    children = modelled.copy()
+    print(children.columns)
+    children = children.rename(
+        columns={"node_id": "child", "time": "time", "concentration": "concentration", "storage": "volume"}
+    )
+    mapped_parent_children = pd.read_csv(parent_mapping_path)
+    mapped_parent_children = mapped_parent_children.rename(
+        columns={"WL_Id": "parent", "basin_id": "child", "fractie_normalized": "fraction_child_within_parent"}
+    )
+    print(mapped_parent_children.columns)
+
+    # join the children with the parent mapping
+    children = children.merge(mapped_parent_children, on="child", how="left")
+
+    # Calculate the parent concentration per timestep:
+
+    parent_conc = (
+        children.groupby(["parent", "time"])
+        .apply(
+            lambda g: (
+                (g["concentration"] * g["volume"] * g["fraction_child_within_parent"]).sum()
+                / (g["volume"] * g["fraction_child_within_parent"]).sum()
+            )
+        )
+        .reset_index(name="parent_concentration")
+    )
+    print(parent_conc.head())
 
 
 def _write_html(
