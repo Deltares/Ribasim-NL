@@ -800,7 +800,12 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/Delfland.py
     deps:
       - src/peilbeheerst_model/forcing/Delfland.py
-      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
+      - src/ribasim_nl/ribasim_nl/upstream.py
+      - src/ribasim_nl/ribasim_nl/downstream.py
+      - src/ribasim_nl/ribasim_nl/control.py
+      - src/ribasim_nl/ribasim_nl/parametrization/static_data_xlsx.py
+      - src/ribasim_nl/ribasim_nl/parametrization/conversions.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
       - src/ribasim_nl/ribasim_nl/flow_paths.py
@@ -836,7 +841,12 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/AmstelGooienVecht.py
     deps:
       - src/peilbeheerst_model/forcing/AmstelGooienVecht.py
-      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
+      - src/ribasim_nl/ribasim_nl/upstream.py
+      - src/ribasim_nl/ribasim_nl/downstream.py
+      - src/ribasim_nl/ribasim_nl/control.py
+      - src/ribasim_nl/ribasim_nl/parametrization/static_data_xlsx.py
+      - src/ribasim_nl/ribasim_nl/parametrization/conversions.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
       - src/ribasim_nl/ribasim_nl/flow_paths.py
@@ -872,7 +882,12 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/HollandsNoorderkwartier.py
     deps:
       - src/peilbeheerst_model/forcing/HollandsNoorderkwartier.py
-      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
+      - src/ribasim_nl/ribasim_nl/upstream.py
+      - src/ribasim_nl/ribasim_nl/downstream.py
+      - src/ribasim_nl/ribasim_nl/control.py
+      - src/ribasim_nl/ribasim_nl/parametrization/static_data_xlsx.py
+      - src/ribasim_nl/ribasim_nl/parametrization/conversions.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
       - src/ribasim_nl/ribasim_nl/flow_paths.py
@@ -908,7 +923,12 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/HollandseDelta.py
     deps:
       - src/peilbeheerst_model/forcing/HollandseDelta.py
-      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
+      - src/ribasim_nl/ribasim_nl/upstream.py
+      - src/ribasim_nl/ribasim_nl/downstream.py
+      - src/ribasim_nl/ribasim_nl/control.py
+      - src/ribasim_nl/ribasim_nl/parametrization/static_data_xlsx.py
+      - src/ribasim_nl/ribasim_nl/parametrization/conversions.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
       - src/ribasim_nl/ribasim_nl/flow_paths.py
@@ -944,7 +964,12 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/Rijnland.py
     deps:
       - src/peilbeheerst_model/forcing/Rijnland.py
-      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
+      - src/ribasim_nl/ribasim_nl/upstream.py
+      - src/ribasim_nl/ribasim_nl/downstream.py
+      - src/ribasim_nl/ribasim_nl/control.py
+      - src/ribasim_nl/ribasim_nl/parametrization/static_data_xlsx.py
+      - src/ribasim_nl/ribasim_nl/parametrization/conversions.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
       - src/ribasim_nl/ribasim_nl/flow_paths.py
@@ -980,7 +1005,12 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/Rivierenland.py
     deps:
       - src/peilbeheerst_model/forcing/Rivierenland.py
-      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
+      - src/ribasim_nl/ribasim_nl/upstream.py
+      - src/ribasim_nl/ribasim_nl/downstream.py
+      - src/ribasim_nl/ribasim_nl/control.py
+      - src/ribasim_nl/ribasim_nl/parametrization/static_data_xlsx.py
+      - src/ribasim_nl/ribasim_nl/parametrization/conversions.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
       - src/ribasim_nl/ribasim_nl/flow_paths.py
@@ -1016,7 +1046,12 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/Scheldestromen.py
     deps:
       - src/peilbeheerst_model/forcing/Scheldestromen.py
-      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
+      - src/ribasim_nl/ribasim_nl/upstream.py
+      - src/ribasim_nl/ribasim_nl/downstream.py
+      - src/ribasim_nl/ribasim_nl/control.py
+      - src/ribasim_nl/ribasim_nl/parametrization/static_data_xlsx.py
+      - src/ribasim_nl/ribasim_nl/parametrization/conversions.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
       - src/ribasim_nl/ribasim_nl/flow_paths.py
@@ -1052,7 +1087,12 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/SchielandendeKrimpenerwaard.py
     deps:
       - src/peilbeheerst_model/forcing/SchielandendeKrimpenerwaard.py
-      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
+      - src/ribasim_nl/ribasim_nl/upstream.py
+      - src/ribasim_nl/ribasim_nl/downstream.py
+      - src/ribasim_nl/ribasim_nl/control.py
+      - src/ribasim_nl/ribasim_nl/parametrization/static_data_xlsx.py
+      - src/ribasim_nl/ribasim_nl/parametrization/conversions.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
       - src/ribasim_nl/ribasim_nl/flow_paths.py
@@ -1088,7 +1128,12 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/WetterskipFryslan.py
     deps:
       - src/peilbeheerst_model/forcing/WetterskipFryslan.py
-      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
+      - src/ribasim_nl/ribasim_nl/upstream.py
+      - src/ribasim_nl/ribasim_nl/downstream.py
+      - src/ribasim_nl/ribasim_nl/control.py
+      - src/ribasim_nl/ribasim_nl/parametrization/static_data_xlsx.py
+      - src/ribasim_nl/ribasim_nl/parametrization/conversions.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
       - src/ribasim_nl/ribasim_nl/flow_paths.py
@@ -1124,7 +1169,12 @@ stages:
     cmd: pixi run python src/peilbeheerst_model/forcing/Zuiderzeeland.py
     deps:
       - src/peilbeheerst_model/forcing/Zuiderzeeland.py
-      - src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py
+      - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
+      - src/ribasim_nl/ribasim_nl/upstream.py
+      - src/ribasim_nl/ribasim_nl/downstream.py
+      - src/ribasim_nl/ribasim_nl/control.py
+      - src/ribasim_nl/ribasim_nl/parametrization/static_data_xlsx.py
+      - src/ribasim_nl/ribasim_nl/parametrization/conversions.py
       - src/peilbeheerst_model/peilbeheerst_model/workflow.py
       - src/ribasim_nl/ribasim_nl/rwzi.py
       - src/ribasim_nl/ribasim_nl/flow_paths.py

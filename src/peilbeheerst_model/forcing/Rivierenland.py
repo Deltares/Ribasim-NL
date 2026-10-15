@@ -3,7 +3,7 @@
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
-from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
+from peilbeheerst_model.design_capacities import set_design_capacities
 from peilbeheerst_model.workflow import (
     ENDTIME,
     STARTTIME,
@@ -30,7 +30,6 @@ from ribasim_nl import CloudStorage, Model, merge_rwzi_model
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = True
 ADD_LHM_FRACTIONS: bool = True
 ADD_RWZI: bool = True
 
@@ -281,21 +280,8 @@ ribasim_model.outlet.static.df.loc[
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 1025, "max_flow_rate"] = 8.0
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 664, "max_flow_rate"] = 16.0
 
-ribasim_model, from_to_node_table = scale_outlets_pumps(
-    OutletPumpScalingConfig(
-        ribasim_model_path=output_dir / "scaler" / "ribasim.toml",  # keep the profiles model unchanged
-        ribasim_model=ribasim_model,
-        from_to_node_function_table=from_to_node_function_table,
-        waterschap=waterschap,
-        cloud=cloud,
-        rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
-        initial_guess_flow_rate_pump=15,
-        design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
-        design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
-        simulation_days=365,  # avoid empty basins which causes convergence issues. Lower max_days
-        max_exceedance_days=5,
-    )
-)
+# set the unknown capacities of Pumps and Outlets from the area they drain or supply
+set_design_capacities(ribasim_model, from_to_node_function_table)
 
 set_flow_rate(ribasim_model.pump.static.df, [664], 8.0)  # average flow rate in the winter
 
