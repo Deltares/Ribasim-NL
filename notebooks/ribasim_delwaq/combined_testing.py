@@ -3,7 +3,6 @@
 
 - Test script to generate delwaq input files from Ribasim model, run delwaq simulation and check results
 
-Updated doc will follow after ANIMO coupling is done from this script
 """
 
 # %%
@@ -13,44 +12,58 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+from ribasim import Model
 from ribasim.delwaq import generate, parse
-from ribasim_nl.model import Model
 
 # %%
-# set path of Ribasim model
+ROOT = Path(__file__).resolve().parents[2]
+
 model_name = "lhm_coupled_full"
 toml_name = "lhm_coupled.toml"
 
-# model_path = Path(os.environ["RIBASIM_NL_DATA_DIR"]) / "Rijkswaterstaat" / "modellen" / model_name
-model_path = Path(__file__).parent.parent.parent / "data/Rijkswaterstaat/modellen" / model_name
+model_path = ROOT / "data" / "Rijkswaterstaat" / "modellen" / model_name
 toml_path = model_path / toml_name
 assert toml_path.is_file()
 
-model = Model.read(toml_path)
+# %% define data dirs
+DELWAQ_DATA_DIR = ROOT / "data" / "Basisgegevens" / "Delwaq"
+
+ANIMO_DATA_DIR = DELWAQ_DATA_DIR / "ANIMO"
+ER_DATA_DIR = DELWAQ_DATA_DIR / "Emissieregistratie"
+IM_DATA_DIR = DELWAQ_DATA_DIR / "IM"
+ZINFO_DATA_DIR = DELWAQ_DATA_DIR / "Zinfo"
+
+RUN_CONVERSION_SCRIPTS = False
+
+
+def run_conversion_script(script_path: Path, description: str) -> None:
+    result = subprocess.run(
+        [sys.executable, str(script_path)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    if result.stdout:
+        print(result.stdout)
+
+    if result.stderr:
+        print(result.stderr)
+
+    if result.returncode != 0:
+        raise RuntimeError(f"{description} failed with exit code {result.returncode}")
+
 
 ### READ & PROCESS MASS LOAD EMISSIONS ###
 
 # %% run ER data conversion script
 # units: g/s
-# 1. Couple emission data to Ribasim model
-ER_loads_df_script = Path(__file__).resolve().parent / "ER_to_delwaq" / "ER_data_conversion_delwaq.py"
-ER_loads_df_path = ER_loads_df_script.parent / "output" / "ER_loads_g_s_df.parquet"
 
-result = subprocess.run(
-    [sys.executable, str(ER_loads_df_script)],
-    check=False,
-    capture_output=True,
-    text=True,
-)
+ER_loads_df_script = Path(__file__).resolve().parents[0] / "ER_to_delwaq" / "ER_coupling_delwaq.py"
+ER_loads_df_path = ER_DATA_DIR / "output" / "ER_loads_g_s_df.parquet"
 
-if result.stdout:
-    print(result.stdout)
-
-if result.stderr:
-    print(result.stderr)
-
-if result.returncode != 0:
-    raise RuntimeError(f"ER data coupling script failed with exit code {result.returncode}")
+if RUN_CONVERSION_SCRIPTS:
+    run_conversion_script(ER_loads_df_script, "ER data coupling script")
 
 if ER_loads_df_path.exists():
     ER_loads_df = pd.read_parquet(ER_loads_df_path)
@@ -61,47 +74,53 @@ else:
 # %% run ANIMO data conversion script
 # units: g/s
 
-ANIMO_loads_df_script = Path(__file__).resolve().parent / "ANIMO_to_delwaq" / "ANIMO_to_clean_csv.py"
-ANIMO_loads_df_path = ANIMO_loads_df_script.parent / "output" / "ANIMO_loads_g_s_df.parquet"
+ANIMO_loads_df_script = Path(__file__).resolve().parents[0] / "ANIMO_to_delwaq" / "ANIMO_coupling_delwaq.py"
+ANIMO_loads_df_path = ANIMO_DATA_DIR / "output" / "ANIMO_loads_g_s_df.parquet"
 
-
-# ANIMO_loads_df_script = r"p:\11212767-lwkm2\Koppeling_ANIMO_Delwaq\scripts\1-prepare\ANIMO2Delwaq.py"
-
-result = subprocess.run(
-    [sys.executable, str(ANIMO_loads_df_script)],
-    check=False,
-    capture_output=True,
-    text=True,
-)
-
-if result.stdout:
-    print(result.stdout)
-
-if result.stderr:
-    print(result.stderr)
-
-if result.returncode != 0:
-    raise RuntimeError(f"ANIMO data coupling script failed with exit code {result.returncode}")
+if RUN_CONVERSION_SCRIPTS:
+    run_conversion_script(ANIMO_loads_df_script, "ANIMO data coupling script")
 
 if ANIMO_loads_df_path.exists():
     ANIMO_loads_df = pd.read_parquet(ANIMO_loads_df_path)
 else:
     raise FileNotFoundError(f"Expected ANIMO loads file not found: {ANIMO_loads_df_path}")
 
-ANIMO_loads_df.head()
 
-### COMBINE LOADS AND COUPLE TO RIBASIM ###
+# %% run boundwq data conversion script
+# units: mg/L
+
+boundwq_df_script = Path(__file__).resolve().parents[0] / "IM_Zinfo_to_delwaq" / "write_boundwq_files.py"
+IM_boundaries_df_path = IM_DATA_DIR / "output" / "IM_boundaries_mg_L_df.parquet"
+Zinfo_boundaries_df_path = ZINFO_DATA_DIR / "output" / "Zinfo_boundaries_mg_L_df.parquet"
+
+if RUN_CONVERSION_SCRIPTS:
+    run_conversion_script(boundwq_df_script, "Boundary data coupling script")
+
+# Load IM boundaries
+
+if IM_boundaries_df_path.exists():
+    IM_boundaries_df = pd.read_parquet(IM_boundaries_df_path)
+else:
+    raise FileNotFoundError(f"Expected Boundary loads file not found: {IM_boundaries_df_path}")
+
+# Load Zinfo boundaries
+
+if Zinfo_boundaries_df_path.exists():
+    Zinfo_boundaries_df = pd.read_parquet(Zinfo_boundaries_df_path)
+else:
+    raise FileNotFoundError(f"Expected Boundary loads file not found: {Zinfo_boundaries_df_path}")
+
 
 # %%
+"""
+COMBINING LOADS FROM ANIMO AND ER
 
-# for every ANIMO load in a specific time, add the ER load that is defined for that year
-# this assumes that the ER load, defined for the first day of that year, is representative for that whole year
-# if we end up using more detailed ER values, we might use merge_asof + direction = backward
-# --> this would take for every ANIMO load the most recent ER load defined either on that day or before that day
-# but it is more likely that we change generate.py to handle multiple emission sources together
-
-# ER_loads_df["year"] = ER_loads_df["time"].dt.year
-# ANIMO_loads_df["year"] = ANIMO_loads_df["time"].dt.year
+for every ANIMO load in a specific time, add the ER load that is defined for that year
+this assumes that the ER load, defined for the first day of that year, is representative for that whole year
+if we end up using more detailed ER values, we might use merge_asof + direction = backward
+--> this would take for every ANIMO load the most recent ER load defined either on that day or before that day
+but it is more likely that we change generate.py to handle multiple emission sources together
+"""
 
 animo = ANIMO_loads_df.assign(year=ANIMO_loads_df["time"].dt.year)
 
@@ -122,75 +141,50 @@ ANIMO_and_ER_loads_df = result[["node_id", "time", "substance", "load"]]
 
 ANIMO_and_ER_loads_df.sort_values("load")
 
-# %% run boundwq data conversion script
-# units: mg/L
+# %%
+"""
+COMBINING BOUNDARY CONCENTRATIONS FROM IM AND ZINFO
 
-boundwq_df_script = Path(__file__).resolve().parent / "IM_Zinfo_to_delwaq" / "write_boundwq_files.py"
-IM_boundaries_df_path = boundwq_df_script.parent / "output" / "IM_boundaries_mg_L_df.parquet"
-Zinfo_boundaries_df_path = boundwq_df_script.parent / "output" / "Zinfo_boundaries_mg_L_df.parquet"
-
-result = subprocess.run(
-    [sys.executable, str(boundwq_df_script)],
-    check=False,
-    capture_output=True,
-    text=True,
-)
-
-if result.stdout:
-    print(result.stdout)
-
-if result.stderr:
-    print(result.stderr)
-
-if result.returncode != 0:
-    raise RuntimeError(f"Boundary data coupling script failed with exit code {result.returncode}")
-
-# Load IM boundaries
-
-if IM_boundaries_df_path.exists():
-    IM_boundaries_df = pd.read_parquet(IM_boundaries_df_path)
-else:
-    raise FileNotFoundError(f"Expected Boundary loads file not found: {IM_boundaries_df_path}")
-
-IM_boundaries_df.head()
-
-# Load Zinfo boundaries
-
-if Zinfo_boundaries_df_path.exists():
-    Zinfo_boundaries_df = pd.read_parquet(Zinfo_boundaries_df_path)
-else:
-    raise FileNotFoundError(f"Expected Boundary loads file not found: {Zinfo_boundaries_df_path}")
-
-Zinfo_boundaries_df.head()
+This is less complex as both data sources are linked to different boundaries: transboundary inflows and WWTPs respecitively
+--> here, NA/NaN/-999 entries have to be removed to enable coupling to ribasim model --> check whether this is a problem
+"""
 
 IM_and_Zinfo_df = pd.concat([IM_boundaries_df, Zinfo_boundaries_df], ignore_index=True)
 
-# %% inspect and remove nans & -999
-
-IM_and_Zinfo_df["concentration"].describe()
-
 conc = IM_and_Zinfo_df["concentration"]
 
-print("NA/NaN:", conc.isna().sum())
-print("-999:", (conc == -999).sum())
+print("Rows with concentration == NA/NaN:", conc.isna().sum(), "- excluding rows..")
+print("Rows with concentration == -999:", (conc == -999).sum(), "- excluding rows..")
 
 nodeid = IM_and_Zinfo_df["node_id"]
 
-print("NA/NaN:", nodeid.isna().sum())
+print("Rows with node_id == NA/NaN:", nodeid.isna().sum(), "- excluding rows..")
 
 IM_and_Zinfo_df = IM_and_Zinfo_df[IM_and_Zinfo_df["concentration"].notna() & (IM_and_Zinfo_df["concentration"] != -999)]
 
 IM_and_Zinfo_df = IM_and_Zinfo_df[IM_and_Zinfo_df["node_id"].notna()]
 
 IM_and_Zinfo_df.sort_values("node_id")
-# %% add emission data to model
+
+
+# %%
+
+"""
+ADD EMISSION DATA TO MODEL AND WRITE FOR REPRODUCIBILITY
+
+--> The 'new' written model may be added to dvc - simply running generate based on this model should result in a properly set up delwaq simulation
+--> With DVC, it could then easily be tested whether changes in generate.py still result in the same delwaq input, given that the WQ forcing remains constant
+"""
+
+# read model to add emission data to
+model = Model.read(toml_path)
 
 # mass loads
 mass_loads = ANIMO_and_ER_loads_df  # or ER_loads_df or ANIMO_loads_df
 model.basin.mass_load = mass_loads  # either the sum of ER and ANIMO or two separate dataframes (or another column specifying the data source, depending on what generate.py can handle easiest)
 
 # boundary concentrations
-# replace current concentration object or simply append this data? Have not run generate with concentration data before
+# Add new data to existing (basic) tracers
 flow_boundary_concentration = IM_and_Zinfo_df
 model.flow_boundary.concentration = pd.concat(
     [model.flow_boundary.concentration.df, flow_boundary_concentration],
