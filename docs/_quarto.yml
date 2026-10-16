@@ -5,7 +5,9 @@ project:
     - viewer-app/**
 website:
   title: "Ribasim-NL"
+  favicon: assets/favicon.ico
   navbar:
+    logo: assets/logo.png
     left:
       - reference/index.qmd
       - cloudstorage.qmd
