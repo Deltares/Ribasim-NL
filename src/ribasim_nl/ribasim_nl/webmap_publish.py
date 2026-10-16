@@ -28,6 +28,7 @@ import argparse
 import copy
 import io
 import json
+import re
 import subprocess
 import sys
 from collections import Counter
@@ -63,6 +64,7 @@ CONTENT_TYPES = {
     ".json": "application/json",
 }
 IMMUTABLE = "public, max-age=31536000, immutable"
+COMMIT = re.compile(r"[0-9a-f]{40}")
 
 
 def export_hash(lock: dict) -> str:
@@ -139,15 +141,26 @@ def now() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
 
 
-def run(*args: str) -> str:
-    """Run a command in the repository and return its output."""
-    return subprocess.run(args, check=True, capture_output=True, text=True, cwd=REPO_DIR).stdout
+def commit_hash(commit: str) -> str:
+    """Assert a commit is a full commit hash, so it is never read as an option; return it."""
+    assert COMMIT.fullmatch(commit), f"Invalid commit {commit!r}"
+    return commit
+
+
+def pr_number(number: int) -> int:
+    """Assert a pull request number is valid; return it."""
+    assert isinstance(number, int) and number > 0, f"Invalid pull request number {number!r}"
+    return number
 
 
 def lock_at(commit: str | None) -> dict:
     """The parsed `dvc.lock` of the working tree, or at a commit."""
-    text = (REPO_DIR / "dvc.lock").read_text() if commit is None else run("git", "show", f"{commit}:dvc.lock")
-    return yaml.safe_load(text)
+    if commit is None:
+        return yaml.safe_load((REPO_DIR / "dvc.lock").read_text())
+    show = subprocess.run(
+        ["git", "show", f"{commit_hash(commit)}:dvc.lock"], check=True, capture_output=True, text=True, cwd=REPO_DIR
+    )
+    return yaml.safe_load(show.stdout)
 
 
 def checkout_export(commit: str, md5: str, cache_dir: Path = CACHE_DIR) -> Path:
@@ -232,10 +245,12 @@ class Store:
 
 def fetch_main() -> str:
     """Fetch main from GitHub and return its commit."""
-    run("git", "fetch", "--quiet", "origin", "main")
+    subprocess.run(
+        ["git", "fetch", "--quiet", "origin", "main"], check=True, capture_output=True, text=True, cwd=REPO_DIR
+    )
     commit = resolve_commit(MAIN)
     assert commit is not None, f"{MAIN} not found"
-    return commit
+    return commit_hash(commit)
 
 
 def publish_main(store: Store, commit: str) -> str:
@@ -251,7 +266,9 @@ def check_working_tree() -> str:
     changed = Repo(str(REPO_DIR)).status(targets=[STAGE])
     assert not changed, f"{STAGE} is not up to date, reproduce it first: {changed}"
     md5 = export_hash(lock_at(None))
-    if run("git", "status", "--porcelain", "--", "dvc.lock"):
+    if subprocess.run(
+        ["git", "status", "--porcelain", "--", "dvc.lock"], check=True, capture_output=True, text=True, cwd=REPO_DIR
+    ).stdout:
         print("dvc.lock has uncommitted changes, commit and push them, so main shows this model once merged")
     return md5
 
@@ -263,33 +280,49 @@ def find_pr() -> int:
     )
     if result.returncode != 0:
         sys.exit(f"No pull request found for this branch, open one first, or use --pr or --main.\n{result.stderr}")
-    return int(json.loads(result.stdout)["number"])
+    return pr_number(int(json.loads(result.stdout)["number"]))
 
 
 def upsert_comment(number: int, body: str) -> None:
     """Update the viewer comment on a pull request, or add it if there is none."""
-    comments = json.loads(run("gh", "api", "--paginate", "--slurp", f"repos/{GITHUB_REPO}/issues/{number}/comments"))
-    existing = [comment for page in comments for comment in page if COMMENT_MARKER in comment["body"]]
+    comments_url = f"repos/{GITHUB_REPO}/issues/{pr_number(number)}/comments"
+    pages = subprocess.run(
+        ["gh", "api", "--paginate", "--slurp", comments_url], check=True, capture_output=True, text=True, cwd=REPO_DIR
+    ).stdout
+    existing = [comment for page in json.loads(pages) for comment in page if COMMENT_MARKER in comment["body"]]
+    # The body is passed as JSON on stdin, rather than as an argument
+    payload = json.dumps({"body": body})
     if existing:
-        run(
-            "gh",
-            "api",
-            "--method",
-            "PATCH",
-            f"repos/{GITHUB_REPO}/issues/comments/{existing[0]['id']}",
-            "-f",
-            f"body={body}",
+        comment_url = f"repos/{GITHUB_REPO}/issues/comments/{int(existing[0]['id'])}"
+        subprocess.run(
+            ["gh", "api", "--method", "PATCH", comment_url, "--input", "-"],
+            input=payload,
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=REPO_DIR,
         )
         print(f"Updated {existing[0]['html_url']}")
     else:
-        run("gh", "api", "--method", "POST", f"repos/{GITHUB_REPO}/issues/{number}/comments", "-f", f"body={body}")
+        subprocess.run(
+            ["gh", "api", "--method", "POST", comments_url, "--input", "-"],
+            input=payload,
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=REPO_DIR,
+        )
         print(f"Commented on pull request #{number}")
 
 
 def publish_pr(store: Store, number: int) -> None:
     """Publish the model of the working tree for a pull request, with its differences from main."""
     head_md5 = check_working_tree()
-    head_commit = run("git", "rev-parse", "HEAD").strip()
+    head_commit = commit_hash(
+        subprocess.run(
+            ["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True, cwd=REPO_DIR
+        ).stdout.strip()
+    )
     base_commit = fetch_main()
     base_md5 = publish_main(store, base_commit)
     head_dir = REPO_DIR / EXPORT_PATH
@@ -328,7 +361,7 @@ def main(argv: list[str] | None = None) -> None:
         publish_main(store, fetch_main())
         print(f"Published {VIEWER_URL}")
     else:
-        publish_pr(store, args.pr if args.pr is not None else find_pr())
+        publish_pr(store, pr_number(args.pr) if args.pr is not None else find_pr())
 
 
 if __name__ == "__main__":

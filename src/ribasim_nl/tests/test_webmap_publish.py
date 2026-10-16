@@ -3,9 +3,11 @@ from ribasim_nl.webmap_publish import (
     COMMENT_MARKER,
     EXPORT_PATH,
     comment_body,
+    commit_hash,
     diff_counts,
     export_hash,
     manifest_entries,
+    pr_number,
     store_manifest,
 )
 
@@ -76,3 +78,14 @@ def test_comment_body():
     assert "1 Basins and 0 flow links" in body
     assert "`solver.reltol`" in body
     assert "`bbbbbbb` with `main` at `aaaaaaa`" in body
+
+
+def test_command_inputs():
+    assert commit_hash("a" * 40) == "a" * 40
+    assert pr_number(886) == 886
+    for commit in ["--output=x", "main", "a" * 39, "A" * 40]:
+        with pytest.raises(AssertionError):
+            commit_hash(commit)
+    for number in [0, -1]:
+        with pytest.raises(AssertionError):
+            pr_number(number)
