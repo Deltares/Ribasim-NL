@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Scale max flow rates outlets and pumps based on design events – Ribasim-NL</title>
+<title>Design capacities of outlets and pumps – Ribasim-NL</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -70,6 +70,9 @@ ul.task-list li input[type="checkbox"] {
     "search-label": "Search"
   }
 }</script>
+<script src="../site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="../site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="../site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
 
 
 <link rel="stylesheet" href="styles.css">
@@ -134,7 +137,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/scale-outlets-pumps.html">Scale max flow rates outlets and pumps based on design events</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/design-capacities.html">Design capacities of outlets and pumps</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -166,8 +169,8 @@ ul.task-list li input[type="checkbox"] {
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../workflow/scale-outlets-pumps.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Scale max flow rates outlets and pumps based on design events</span></a>
+  <a href="../workflow/design-capacities.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Design capacities of outlets and pumps</span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -198,21 +201,11 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#purpose" id="toc-purpose" class="nav-link active" data-scroll-target="#purpose">Purpose</a></li>
-  <li><a href="#how-to-run" id="toc-how-to-run" class="nav-link" data-scroll-target="#how-to-run">How to run</a></li>
-  <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
-  <li><a href="#main-steps" id="toc-main-steps" class="nav-link" data-scroll-target="#main-steps">Main steps</a>
-  <ul class="collapse">
-  <li><a href="#prepare-the-model" id="toc-prepare-the-model" class="nav-link" data-scroll-target="#prepare-the-model">1. Prepare the model</a></li>
-  <li><a href="#determine-which-connector-nodes-may-be-scaled" id="toc-determine-which-connector-nodes-may-be-scaled" class="nav-link" data-scroll-target="#determine-which-connector-nodes-may-be-scaled">2. Determine which connector nodes may be scaled</a></li>
-  <li><a href="#define-the-design-situations" id="toc-define-the-design-situations" class="nav-link" data-scroll-target="#define-the-design-situations">3. Define the design situations</a></li>
-  <li><a href="#run-iterative-scaling" id="toc-run-iterative-scaling" class="nav-link" data-scroll-target="#run-iterative-scaling">4. Run iterative scaling</a></li>
-  <li><a href="#update-guessed-flow-rates" id="toc-update-guessed-flow-rates" class="nav-link" data-scroll-target="#update-guessed-flow-rates">5. Update guessed flow rates</a></li>
-  <li><a href="#write-guessed-capacities-back-into-the-model" id="toc-write-guessed-capacities-back-into-the-model" class="nav-link" data-scroll-target="#write-guessed-capacities-back-into-the-model">6. Write guessed capacities back into the model</a></li>
-  <li><a href="#inspect-warnings-and-diagnostics" id="toc-inspect-warnings-and-diagnostics" class="nav-link" data-scroll-target="#inspect-warnings-and-diagnostics">7. Inspect warnings and diagnostics</a></li>
-  </ul></li>
-  <li><a href="#important-assumptions" id="toc-important-assumptions" class="nav-link" data-scroll-target="#important-assumptions">Important assumptions</a></li>
-  <li><a href="#output" id="toc-output" class="nav-link" data-scroll-target="#output">Output</a></li>
+  <li><a href="#design-flow-rates" id="toc-design-flow-rates" class="nav-link active" data-scroll-target="#design-flow-rates">Design flow rates</a></li>
+  <li><a href="#splitting-the-drainage-over-the-outflows" id="toc-splitting-the-drainage-over-the-outflows" class="nav-link" data-scroll-target="#splitting-the-drainage-over-the-outflows">Splitting the drainage over the outflows</a></li>
+  <li><a href="#limits-from-the-neighbouring-nodes" id="toc-limits-from-the-neighbouring-nodes" class="nav-link" data-scroll-target="#limits-from-the-neighbouring-nodes">Limits from the neighbouring nodes</a></li>
+  <li><a href="#known-capacities" id="toc-known-capacities" class="nav-link" data-scroll-target="#known-capacities">Known capacities</a></li>
+  <li><a href="#why-not-scale-with-simulations" id="toc-why-not-scale-with-simulations" class="nav-link" data-scroll-target="#why-not-scale-with-simulations">Why not scale with simulations</a></li>
   </ul>
 </nav>
     </div>
@@ -221,7 +214,7 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Scale max flow rates outlets and pumps based on design events</h1>
+<h1 class="title">Design capacities of outlets and pumps</h1>
 </div>
 
 
@@ -238,144 +231,102 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>Workflow for iteratively scaling outlet and pump capacities in a Ribasim model until basin water levels stay within an allowed deviation from the target level. The implementation lives in <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py"><code>src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py</code></a>.</p>
-<section id="purpose" class="level2">
-<h2 class="anchored" data-anchor-id="purpose">Purpose</h2>
-<p>This workflow is used after a Ribasim model has already been built and parameterized. It adjusts <code>max_flow_rate</code> for outlet and pump nodes whose discharge or supply capacity is unknown or still provisional. The script does this by repeatedly:</p>
-<ol type="1">
-<li>running the model for a design situation,</li>
-<li>checking which basins deviate too much from <code>meta_streefpeil</code>, and</li>
-<li>increasing or decreasing connector capacities accordingly.</li>
-</ol>
+<p>The polder models set the unknown capacities (<code>max_flow_rate</code>) of Outlets and Pumps from the area they drain or supply, with the same design flow rates as the parametrization of the vrij afwaterend models. The implementation lives in <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/peilbeheerst_model/design_capacities.py"><code>src/peilbeheerst_model/peilbeheerst_model/design_capacities.py</code></a>, and the design flow rates in the defaults of <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/parametrization/static_data_xlsx.py"><code>ribasim_nl.parametrization.static_data_xlsx</code></a>.</p>
+<section id="design-flow-rates" class="level2">
+<h2 class="anchored" data-anchor-id="design-flow-rates">Design flow rates</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Function</th>
+<th>Node type</th>
+<th>Design flow rate</th>
+<th>Area</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>drain</td>
+<td>Pump</td>
+<td>15 mm/day</td>
+<td>its share of the drainage, see below</td>
+</tr>
+<tr class="even">
+<td>drain</td>
+<td>Outlet</td>
+<td>50 mm/day</td>
+<td>its share of the drainage, see below</td>
+</tr>
+<tr class="odd">
+<td>supply</td>
+<td>Pump or Outlet</td>
+<td>4 mm/day</td>
+<td>Basins downstream, up to the drain nodes</td>
+</tr>
+<tr class="even">
+<td>flow_control</td>
+<td>Pump or Outlet</td>
+<td>the larger of drain and supply</td>
+<td>both</td>
+</tr>
+</tbody>
+</table>
+<p>The function of each node comes from the <code>from_to_node_function_table</code>. A supply node that supplies no Basin, such as one out of the model, supplies the area upstream instead. The area of bergend Basins is left out, as it is the same as that of their doorgaand Basin.</p>
 </section>
-<section id="how-to-run" class="level2">
-<h2 class="anchored" data-anchor-id="how-to-run">How to run</h2>
-<p>This workflow is intended to be run after a water board model has already been built and parameterized:</p>
-<ol type="1">
-<li>Build the Ribasim network for the water board.</li>
-<li>Prepare <code>from_to_node_function_table.csv</code>. This table links connector nodes to upstream and downstream basins and indicates whether a connector functions in drainage or demand.</li>
-<li>Open and configure <code>src/peilbeheerst_model/Parametrize/outlet_pump_scaler.py</code> from your ribasim model parametrize code. Set the model path, results path, initial guesses, design events, exclusions, and iteration settings.</li>
-<li>Run <code>src/peilbeheerst_model/Parametrize/outlet_pump_scaler.py</code> from your ribasim model parametrize code. The script writes temporary scaled models, runs Ribasim repeatedly, reads results, and updates guessed outlet and pump capacities.</li>
-</ol>
-</section>
-<section id="inputs" class="level2">
-<h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
-<p>The script expects at least the following inputs to be available:</p>
+<section id="splitting-the-drainage-over-the-outflows" class="level2">
+<h2 class="anchored" data-anchor-id="splitting-the-drainage-over-the-outflows">Splitting the drainage over the outflows</h2>
+<p>Basins joined by resistances or Junctions count as one water body. Each water body drains its own area plus what the drains into it carry, and this drainage is split over the drains out of it:</p>
 <ul>
-<li>a Ribasim model</li>
-<li>basin target levels in <code>model.basin.area.df["meta_streefpeil"]</code>,</li>
-<li>connector metadata in pump and outlet tables, including <code>meta_known_flow_rate</code>,</li>
-<li>a <code>from_to_node_function_table.csv</code> with at least:
-<ul>
-<li><code>node_id</code></li>
-<li><code>from_node_id</code></li>
-<li><code>to_node_id</code></li>
-<li>a function classification used to distinguish drainage and demand,</li>
-</ul></li>
-<li>a writable model path for the scaled model,</li>
-<li>a results path from which basin results can be read after each Ribasim run.</li>
+<li>drains with a known capacity carry up to that capacity, and</li>
+<li>the other drains share the rest equally.</li>
 </ul>
+<p>The drained area of a drain, times its design flow rate, is its design capacity. Each unknown drain gets at least its share of the own area of its water body, so it keeps a capacity when the known drains can carry all. Because the drainage is passed on from water body to water body, this repeats until the drained areas no longer change. Where unknown drains form a loop that no unknown drain leaves, they would pass the drainage around forever, so in the water bodies of such a loop with known drains, these carry all.</p>
+<p>In the example below, boezem B drains its own 2 km², the 6 km² of polders P1 and P2, and what comes back from polder C, over c, d and e. Splitting gives c = d = e = 4.5 km² and f = 5.5 km², so c and d drain together the 9 km² of land to the boundary. If every drain got the full area upstream instead, c and d would each get 9 km², and e and f around the loop too.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-split-drainage" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-split-drainage-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-split-drainage">flowchart LR
+  P1["polder P1&lt;br&gt;4 km²"] --&gt;|"a: 4"| B["boezem B&lt;br&gt;2 km²"]
+  P2["polder P2&lt;br&gt;2 km²"] --&gt;|"b: 2"| B
+  B --&gt;|"e: 4.5"| C["polder C&lt;br&gt;1 km²"]
+  C --&gt;|"f: 5.5"| B
+  B --&gt;|"c: 4.5"| S["boundary"]
+  B --&gt;|"d: 4.5"| S
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-split-drainage-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Drained area in km² per drain when the drainage of each water body is split over its outflows.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
 </section>
-<section id="main-steps" class="level2">
-<h2 class="anchored" data-anchor-id="main-steps">Main steps</h2>
-<section id="prepare-the-model" class="level3">
-<h3 class="anchored" data-anchor-id="prepare-the-model">1. Prepare the model</h3>
-<p>The script first loads the model and stores the original state and forcing tables. It then derives initial basin water levels from <code>meta_streefpeil</code> using <code>set_initial_water_levels(...)</code>. For bergende basins without a direct target level, the script infers the level from the downstream doorgaande basin.</p>
+<section id="limits-from-the-neighbouring-nodes" class="level2">
+<h2 class="anchored" data-anchor-id="limits-from-the-neighbouring-nodes">Limits from the neighbouring nodes</h2>
+<p>Finally, every unknown capacity is limited by the nodes around it. A node carries no more than:</p>
+<ul>
+<li>the supply of the water body it flows into, plus the Pumps and Outlets out of it, and</li>
+<li>the drainage of the water body it comes from, plus the Pumps and Outlets into it.</li>
+</ul>
+<p>Nodes straight between both water bodies are left out, so that nodes in opposite directions do not keep up each other’s capacity. The limits are applied repeatedly until no capacity changes, so that a small known pump also limits the outlets further upstream. Flows from or to a boundary, or through another node without a capacity, such as a FlowBoundary, give no limit.</p>
 </section>
-<section id="determine-which-connector-nodes-may-be-scaled" class="level3">
-<h3 class="anchored" data-anchor-id="determine-which-connector-nodes-may-be-scaled">2. Determine which connector nodes may be scaled</h3>
-<p>Pump and outlet nodes are collected and merged into the <code>from_to_node_function_table</code>. A node is marked as not scalable when:</p>
-<ul>
-<li>it is present in <code>node_id_exclusion_list</code>, or</li>
-<li><code>meta_known_flow_rate</code> is <code>True</code> (which should be set in the outlet/pump .static table).</li>
-</ul>
-<p>The current <code>max_flow_rate</code> values are then added to the table so each iteration has a baseline. Capacity is independent of the current control-state flow: a closed state with <code>flow_rate = 0</code> must not erase a measured pump capacity. If any state has a known capacity, the node is protected from scaling.</p>
+<section id="known-capacities" class="level2">
+<h2 class="anchored" data-anchor-id="known-capacities">Known capacities</h2>
+<p>Capacities with <code>meta_known_flow_rate</code> in the Pump and Outlet static tables are kept, as are those of nodes that drain or supply no Basin, such as an Outlet between two LevelBoundaries. For the other nodes, the design capacity is the largest <code>max_flow_rate</code> of the node, and the other control states keep their ratio to it, so closed states stay closed. The <code>flow_rate</code> of all nodes is set to their <code>max_flow_rate</code>, except in the control states that switch them off.</p>
 </section>
-<section id="define-the-design-situations" class="level3">
-<h3 class="anchored" data-anchor-id="define-the-design-situations">3. Define the design situations</h3>
-<p>The script runs two scenarios:</p>
-<ul>
-<li><code>water_drainage</code></li>
-<li><code>water_demand</code></li>
-</ul>
-<p>For each situation it adjusts:</p>
-<ul>
-<li>level boundary water levels so water can flow under gravity,</li>
-<li>basin drainage and infiltration forcing via <code>set_vertical_static_forcing(...)</code>,</li>
-<li>initial outlet and pump capacities for unknown capacities.</li>
-</ul>
-</section>
-<section id="run-iterative-scaling" class="level3">
-<h3 class="anchored" data-anchor-id="run-iterative-scaling">4. Run iterative scaling</h3>
-<p>For each iteration and each situation, the script:</p>
-<ol type="1">
-<li>writes the temporary Ribasim model,</li>
-<li>runs Ribasim with <code>run_ribasim(...)</code>,</li>
-<li>reads basin water levels from the results file,</li>
-<li>computes deviation from <code>meta_streefpeil</code>,</li>
-<li>determines whether each basin exceeded the allowed deviation for too many timesteps,</li>
-<li>translates that basin-level result into a connector scaling direction.</li>
-</ol>
-<p>The direction is stored per iteration as one of:</p>
-<ul>
-<li><code>higher</code></li>
-<li><code>lower</code></li>
-<li><code>equal</code></li>
-</ul>
-<p>If Ribasim fails but produces readable partial results, the scaler can retry. An exceedance in an incomplete run calls for a higher capacity; otherwise the capacity is held constant. Partial results never justify a lower capacity, because the run may have stopped before the allowed exceedance duration could be observed. The final model run must still succeed; its failure is propagated rather than treated as a calibrated result.</p>
-</section>
-<section id="update-guessed-flow-rates" class="level3">
-<h3 class="anchored" data-anchor-id="update-guessed-flow-rates">5. Update guessed flow rates</h3>
-<p>New guesses are generated with <code>update_from_to_node_function_table_with_new_flow_rate(...)</code>. The script uses earlier iterations to decide the next guess:</p>
-<ul>
-<li>first guess: double or halve the current value,</li>
-<li>later guesses: move between previously tried values using a geometric mean,</li>
-<li>unchanged nodes: keep the latest value.</li>
-</ul>
-<p>Additional safeguards are then applied:</p>
-<ul>
-<li><code>overwrite_demand_values_with_drainage_values(...)</code> prevents demand capacities from dropping below the highest drainage guess,</li>
-<li><code>overwrite_guessed_flow_rates_if_not_allowed_to_scale(...)</code> restores original values for protected nodes,</li>
-<li><code>cap_guessed_flow_rates_at_maximum(...)</code> enforces <code>max_scaled_flow_rate</code>.</li>
-</ul>
-</section>
-<section id="write-guessed-capacities-back-into-the-model" class="level3">
-<h3 class="anchored" data-anchor-id="write-guessed-capacities-back-into-the-model">6. Write guessed capacities back into the model</h3>
-<p>The latest guessed values are copied into:</p>
-<ul>
-<li><code>model.pump.static.df["max_flow_rate"]</code></li>
-<li><code>model.outlet.static.df["max_flow_rate"]</code></li>
-</ul>
-<p>using <code>update_max_flow_rates_in_model(...)</code>.</p>
-</section>
-<section id="inspect-warnings-and-diagnostics" class="level3">
-<h3 class="anchored" data-anchor-id="inspect-warnings-and-diagnostics">7. Inspect warnings and diagnostics</h3>
-<p>The workflow includes checks and warnings for:</p>
-<ul>
-<li>missing <code>meta_known_flow_rate</code> columns,</li>
-<li>missing target levels,</li>
-<li>connector flow rates above a configured threshold,</li>
-<li>iteration history in the <code>from_to_node_function_table</code>.</li>
-</ul>
-</section>
-</section>
-<section id="important-assumptions" class="level2">
-<h2 class="anchored" data-anchor-id="important-assumptions">Important assumptions</h2>
-<p>This workflow assumes:</p>
-<ul>
-<li><code>meta_streefpeil</code> is present and reliable,</li>
-<li>the connector-node table correctly links basins to outlet and pump nodes,</li>
-<li>design precipitation and evaporation events are representative for the scaling task,</li>
-</ul>
-</section>
-<section id="output" class="level2">
-<h2 class="anchored" data-anchor-id="output">Output</h2>
-<p>The main outputs are:</p>
-<ul>
-<li>an updated Ribasim model with revised outlet and pump <code>max_flow_rate</code> values,</li>
-<li>an enriched <code>from_to_node_function_table</code> with iteration history,</li>
-<li>optional diagnostic plots showing how guessed capacities changed over time.</li>
-</ul>
+<section id="why-not-scale-with-simulations" class="level2">
+<h2 class="anchored" data-anchor-id="why-not-scale-with-simulations">Why not scale with simulations</h2>
+<p>Before, the capacities were scaled iteratively, by running design events and doubling or halving each capacity until the Basin levels stayed close to their target level. This drove many capacities to the maximum of 50 m³/s, also where a larger capacity could not lower the level, such as behind a small known pump or in loops. Such capacities on small Basins made the models stiff. Capacities from the drained area scale with the flow that a node carries, and need no simulations.</p>
 
 
 </section>

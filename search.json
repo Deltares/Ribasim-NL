@@ -1,79 +1,68 @@
 [
   {
-    "objectID": "workflow/scale-outlets-pumps.html",
-    "href": "workflow/scale-outlets-pumps.html",
-    "title": "Scale max flow rates outlets and pumps based on design events",
+    "objectID": "workflow/design-capacities.html",
+    "href": "workflow/design-capacities.html",
+    "title": "Design capacities of outlets and pumps",
     "section": "",
-    "text": "Workflow for iteratively scaling outlet and pump capacities in a Ribasim model until basin water levels stay within an allowed deviation from the target level. The implementation lives in src/peilbeheerst_model/peilbeheerst_model/outlet_pump_scaler.py.",
+    "text": "The polder models set the unknown capacities (max_flow_rate) of Outlets and Pumps from the area they drain or supply, with the same design flow rates as the parametrization of the vrij afwaterend models. The implementation lives in src/peilbeheerst_model/peilbeheerst_model/design_capacities.py, and the design flow rates in the defaults of ribasim_nl.parametrization.static_data_xlsx.",
     "crumbs": [
       "Workflows",
-      "Scale max flow rates outlets and pumps based on design events"
+      "Design capacities of outlets and pumps"
     ]
   },
   {
-    "objectID": "workflow/scale-outlets-pumps.html#purpose",
-    "href": "workflow/scale-outlets-pumps.html#purpose",
-    "title": "Scale max flow rates outlets and pumps based on design events",
-    "section": "Purpose",
-    "text": "Purpose\nThis workflow is used after a Ribasim model has already been built and parameterized. It adjusts max_flow_rate for outlet and pump nodes whose discharge or supply capacity is unknown or still provisional. The script does this by repeatedly:\n\nrunning the model for a design situation,\nchecking which basins deviate too much from meta_streefpeil, and\nincreasing or decreasing connector capacities accordingly.",
+    "objectID": "workflow/design-capacities.html#design-flow-rates",
+    "href": "workflow/design-capacities.html#design-flow-rates",
+    "title": "Design capacities of outlets and pumps",
+    "section": "Design flow rates",
+    "text": "Design flow rates\n\n\n\n\n\n\n\n\n\nFunction\nNode type\nDesign flow rate\nArea\n\n\n\n\ndrain\nPump\n15 mm/day\nits share of the drainage, see below\n\n\ndrain\nOutlet\n50 mm/day\nits share of the drainage, see below\n\n\nsupply\nPump or Outlet\n4 mm/day\nBasins downstream, up to the drain nodes\n\n\nflow_control\nPump or Outlet\nthe larger of drain and supply\nboth\n\n\n\nThe function of each node comes from the from_to_node_function_table. A supply node that supplies no Basin, such as one out of the model, supplies the area upstream instead. The area of bergend Basins is left out, as it is the same as that of their doorgaand Basin.",
     "crumbs": [
       "Workflows",
-      "Scale max flow rates outlets and pumps based on design events"
+      "Design capacities of outlets and pumps"
     ]
   },
   {
-    "objectID": "workflow/scale-outlets-pumps.html#how-to-run",
-    "href": "workflow/scale-outlets-pumps.html#how-to-run",
-    "title": "Scale max flow rates outlets and pumps based on design events",
-    "section": "How to run",
-    "text": "How to run\nThis workflow is intended to be run after a water board model has already been built and parameterized:\n\nBuild the Ribasim network for the water board.\nPrepare from_to_node_function_table.csv. This table links connector nodes to upstream and downstream basins and indicates whether a connector functions in drainage or demand.\nOpen and configure src/peilbeheerst_model/Parametrize/outlet_pump_scaler.py from your ribasim model parametrize code. Set the model path, results path, initial guesses, design events, exclusions, and iteration settings.\nRun src/peilbeheerst_model/Parametrize/outlet_pump_scaler.py from your ribasim model parametrize code. The script writes temporary scaled models, runs Ribasim repeatedly, reads results, and updates guessed outlet and pump capacities.",
+    "objectID": "workflow/design-capacities.html#splitting-the-drainage-over-the-outflows",
+    "href": "workflow/design-capacities.html#splitting-the-drainage-over-the-outflows",
+    "title": "Design capacities of outlets and pumps",
+    "section": "Splitting the drainage over the outflows",
+    "text": "Splitting the drainage over the outflows\nBasins joined by resistances or Junctions count as one water body. Each water body drains its own area plus what the drains into it carry, and this drainage is split over the drains out of it:\n\ndrains with a known capacity carry up to that capacity, and\nthe other drains share the rest equally.\n\nThe drained area of a drain, times its design flow rate, is its design capacity. Each unknown drain gets at least its share of the own area of its water body, so it keeps a capacity when the known drains can carry all. Because the drainage is passed on from water body to water body, this repeats until the drained areas no longer change. Where unknown drains form a loop that no unknown drain leaves, they would pass the drainage around forever, so in the water bodies of such a loop with known drains, these carry all.\nIn the example below, boezem B drains its own 2 km², the 6 km² of polders P1 and P2, and what comes back from polder C, over c, d and e. Splitting gives c = d = e = 4.5 km² and f = 5.5 km², so c and d drain together the 9 km² of land to the boundary. If every drain got the full area upstream instead, c and d would each get 9 km², and e and f around the loop too.\n\n\n\n\n\n\nflowchart LR\n  P1[\"polder P1&lt;br&gt;4 km²\"] --&gt;|\"a: 4\"| B[\"boezem B&lt;br&gt;2 km²\"]\n  P2[\"polder P2&lt;br&gt;2 km²\"] --&gt;|\"b: 2\"| B\n  B --&gt;|\"e: 4.5\"| C[\"polder C&lt;br&gt;1 km²\"]\n  C --&gt;|\"f: 5.5\"| B\n  B --&gt;|\"c: 4.5\"| S[\"boundary\"]\n  B --&gt;|\"d: 4.5\"| S\n\n\n\n\nFigure 1: Drained area in km² per drain when the drainage of each water body is split over its outflows.",
     "crumbs": [
       "Workflows",
-      "Scale max flow rates outlets and pumps based on design events"
+      "Design capacities of outlets and pumps"
     ]
   },
   {
-    "objectID": "workflow/scale-outlets-pumps.html#inputs",
-    "href": "workflow/scale-outlets-pumps.html#inputs",
-    "title": "Scale max flow rates outlets and pumps based on design events",
-    "section": "Inputs",
-    "text": "Inputs\nThe script expects at least the following inputs to be available:\n\na Ribasim model\nbasin target levels in model.basin.area.df[\"meta_streefpeil\"],\nconnector metadata in pump and outlet tables, including meta_known_flow_rate,\na from_to_node_function_table.csv with at least:\n\nnode_id\nfrom_node_id\nto_node_id\na function classification used to distinguish drainage and demand,\n\na writable model path for the scaled model,\na results path from which basin results can be read after each Ribasim run.",
+    "objectID": "workflow/design-capacities.html#limits-from-the-neighbouring-nodes",
+    "href": "workflow/design-capacities.html#limits-from-the-neighbouring-nodes",
+    "title": "Design capacities of outlets and pumps",
+    "section": "Limits from the neighbouring nodes",
+    "text": "Limits from the neighbouring nodes\nFinally, every unknown capacity is limited by the nodes around it. A node carries no more than:\n\nthe supply of the water body it flows into, plus the Pumps and Outlets out of it, and\nthe drainage of the water body it comes from, plus the Pumps and Outlets into it.\n\nNodes straight between both water bodies are left out, so that nodes in opposite directions do not keep up each other’s capacity. The limits are applied repeatedly until no capacity changes, so that a small known pump also limits the outlets further upstream. Flows from or to a boundary, or through another node without a capacity, such as a FlowBoundary, give no limit.",
     "crumbs": [
       "Workflows",
-      "Scale max flow rates outlets and pumps based on design events"
+      "Design capacities of outlets and pumps"
     ]
   },
   {
-    "objectID": "workflow/scale-outlets-pumps.html#main-steps",
-    "href": "workflow/scale-outlets-pumps.html#main-steps",
-    "title": "Scale max flow rates outlets and pumps based on design events",
-    "section": "Main steps",
-    "text": "Main steps\n\n1. Prepare the model\nThe script first loads the model and stores the original state and forcing tables. It then derives initial basin water levels from meta_streefpeil using set_initial_water_levels(...). For bergende basins without a direct target level, the script infers the level from the downstream doorgaande basin.\n\n\n2. Determine which connector nodes may be scaled\nPump and outlet nodes are collected and merged into the from_to_node_function_table. A node is marked as not scalable when:\n\nit is present in node_id_exclusion_list, or\nmeta_known_flow_rate is True (which should be set in the outlet/pump .static table).\n\nThe current max_flow_rate values are then added to the table so each iteration has a baseline. Capacity is independent of the current control-state flow: a closed state with flow_rate = 0 must not erase a measured pump capacity. If any state has a known capacity, the node is protected from scaling.\n\n\n3. Define the design situations\nThe script runs two scenarios:\n\nwater_drainage\nwater_demand\n\nFor each situation it adjusts:\n\nlevel boundary water levels so water can flow under gravity,\nbasin drainage and infiltration forcing via set_vertical_static_forcing(...),\ninitial outlet and pump capacities for unknown capacities.\n\n\n\n4. Run iterative scaling\nFor each iteration and each situation, the script:\n\nwrites the temporary Ribasim model,\nruns Ribasim with run_ribasim(...),\nreads basin water levels from the results file,\ncomputes deviation from meta_streefpeil,\ndetermines whether each basin exceeded the allowed deviation for too many timesteps,\ntranslates that basin-level result into a connector scaling direction.\n\nThe direction is stored per iteration as one of:\n\nhigher\nlower\nequal\n\nIf Ribasim fails but produces readable partial results, the scaler can retry. An exceedance in an incomplete run calls for a higher capacity; otherwise the capacity is held constant. Partial results never justify a lower capacity, because the run may have stopped before the allowed exceedance duration could be observed. The final model run must still succeed; its failure is propagated rather than treated as a calibrated result.\n\n\n5. Update guessed flow rates\nNew guesses are generated with update_from_to_node_function_table_with_new_flow_rate(...). The script uses earlier iterations to decide the next guess:\n\nfirst guess: double or halve the current value,\nlater guesses: move between previously tried values using a geometric mean,\nunchanged nodes: keep the latest value.\n\nAdditional safeguards are then applied:\n\noverwrite_demand_values_with_drainage_values(...) prevents demand capacities from dropping below the highest drainage guess,\noverwrite_guessed_flow_rates_if_not_allowed_to_scale(...) restores original values for protected nodes,\ncap_guessed_flow_rates_at_maximum(...) enforces max_scaled_flow_rate.\n\n\n\n6. Write guessed capacities back into the model\nThe latest guessed values are copied into:\n\nmodel.pump.static.df[\"max_flow_rate\"]\nmodel.outlet.static.df[\"max_flow_rate\"]\n\nusing update_max_flow_rates_in_model(...).\n\n\n7. Inspect warnings and diagnostics\nThe workflow includes checks and warnings for:\n\nmissing meta_known_flow_rate columns,\nmissing target levels,\nconnector flow rates above a configured threshold,\niteration history in the from_to_node_function_table.",
+    "objectID": "workflow/design-capacities.html#known-capacities",
+    "href": "workflow/design-capacities.html#known-capacities",
+    "title": "Design capacities of outlets and pumps",
+    "section": "Known capacities",
+    "text": "Known capacities\nCapacities with meta_known_flow_rate in the Pump and Outlet static tables are kept, as are those of nodes that drain or supply no Basin, such as an Outlet between two LevelBoundaries. For the other nodes, the design capacity is the largest max_flow_rate of the node, and the other control states keep their ratio to it, so closed states stay closed. The flow_rate of all nodes is set to their max_flow_rate, except in the control states that switch them off.",
     "crumbs": [
       "Workflows",
-      "Scale max flow rates outlets and pumps based on design events"
+      "Design capacities of outlets and pumps"
     ]
   },
   {
-    "objectID": "workflow/scale-outlets-pumps.html#important-assumptions",
-    "href": "workflow/scale-outlets-pumps.html#important-assumptions",
-    "title": "Scale max flow rates outlets and pumps based on design events",
-    "section": "Important assumptions",
-    "text": "Important assumptions\nThis workflow assumes:\n\nmeta_streefpeil is present and reliable,\nthe connector-node table correctly links basins to outlet and pump nodes,\ndesign precipitation and evaporation events are representative for the scaling task,",
+    "objectID": "workflow/design-capacities.html#why-not-scale-with-simulations",
+    "href": "workflow/design-capacities.html#why-not-scale-with-simulations",
+    "title": "Design capacities of outlets and pumps",
+    "section": "Why not scale with simulations",
+    "text": "Why not scale with simulations\nBefore, the capacities were scaled iteratively, by running design events and doubling or halving each capacity until the Basin levels stayed close to their target level. This drove many capacities to the maximum of 50 m³/s, also where a larger capacity could not lower the level, such as behind a small known pump or in loops. Such capacities on small Basins made the models stiff. Capacities from the drained area scale with the flow that a node carries, and need no simulations.",
     "crumbs": [
       "Workflows",
-      "Scale max flow rates outlets and pumps based on design events"
-    ]
-  },
-  {
-    "objectID": "workflow/scale-outlets-pumps.html#output",
-    "href": "workflow/scale-outlets-pumps.html#output",
-    "title": "Scale max flow rates outlets and pumps based on design events",
-    "section": "Output",
-    "text": "Output\nThe main outputs are:\n\nan updated Ribasim model with revised outlet and pump max_flow_rate values,\nan enriched from_to_node_function_table with iteration history,\noptional diagnostic plots showing how guessed capacities changed over time.",
-    "crumbs": [
-      "Workflows",
-      "Scale max flow rates outlets and pumps based on design events"
+      "Design capacities of outlets and pumps"
     ]
   },
   {
