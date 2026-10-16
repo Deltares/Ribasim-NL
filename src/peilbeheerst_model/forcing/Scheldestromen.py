@@ -5,7 +5,7 @@ import math
 import peilbeheerst_model.ribasim_parametrization as ribasim_param
 from peilbeheerst_model.assign_authorities import AssignAuthorities
 from peilbeheerst_model.assign_parametrization import AssignMetaData
-from peilbeheerst_model.outlet_pump_scaler import OutletPumpScalingConfig, scale_outlets_pumps
+from peilbeheerst_model.design_capacities import set_design_capacities
 from peilbeheerst_model.workflow import (
     ENDTIME,
     STARTTIME,
@@ -31,7 +31,6 @@ from ribasim_nl import CloudStorage, Model, merge_rwzi_model
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
 DYNAMIC_CONDITIONS: bool = True
-RESCALE_FLOW_CAPACITIES: bool = True
 ADD_LHM_FRACTIONS: bool = True
 ADD_RWZI: bool = True
 
@@ -317,21 +316,8 @@ ribasim_model.pump.static.df.loc[
     "meta_known_flow_rate",
 ] = False
 
-ribasim_model, from_to_node_table = scale_outlets_pumps(
-    OutletPumpScalingConfig(
-        ribasim_model_path=output_dir / "scaler" / "ribasim.toml",  # keep the profiles model unchanged
-        ribasim_model=ribasim_model,
-        from_to_node_function_table=from_to_node_function_table,
-        waterschap=waterschap,
-        cloud=cloud,
-        rescale_flow_capacities=RESCALE_FLOW_CAPACITIES,
-        initial_guess_flow_rate_pump=15,
-        design_precipitation_event=MIXED_CONDITIONS_DESIGN_P,
-        design_potential_evaporation_event=MIXED_CONDITIONS_DESIGN_E,
-        simulation_days=365,  # avoid empty basins which causes convergence issues. Lower max_days
-        max_exceedance_days=5,
-    )
-)
+# set the unknown capacities of Pumps and Outlets from the area they drain or supply
+set_design_capacities(ribasim_model, from_to_node_function_table)
 
 # Gemaal Postweg pumps into basin 142, which aggregates peilgebieden with target levels up to -1.1 m NAP,
 # so do not limit it by the -1.8 m NAP target level of that basin, see #844
