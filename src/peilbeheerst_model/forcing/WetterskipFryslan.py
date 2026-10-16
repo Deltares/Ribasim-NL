@@ -322,35 +322,44 @@ ribasim_model.node.df.loc[appelscha_control_ids, "name"] = "uitlaat: 9.40/9.35 [
 
 # Boezem in- and outlets are controlled on the level of the Pikmeer, deeper in the boezem than the Basins next to them,
 # with the relations of the Landelijk Sobek Model (LSM3), see https://github.com/Deltares/Ribasim-NL/issues/878.
-# The local level limits are dropped, so these relations steer, except the Lauwersmeer limit of Dokkumer Nieuwe Zijlen.
+# The Pikmeer is far from these structures in the model, so the Basins next to them get safety limits around the
+# streefpeil of -0.52 m NAP, with which inlets do not overfill them and drains do not empty them.
 # Makkum, Workum and Hindelopen keep their DiscreteControl.
 PIKMEER_BASIN = 7669
+INLET_LIMIT = {"max_downstream_level": -0.45}
+DRAIN_LIMIT = {"min_upstream_level": -0.60}
+LAUWERSMEER_LIMIT = {"max_downstream_level": -0.60}
 # (node_id, name, [(level [m+NAP], flow_rate [m3/s]), ...], keyword arguments)
 BOEZEM_CONTROLS = (
-    (3892, "inlaat: Lemmer/Teroelsterkolk", [(-1.0, 46), (-0.55, 46), (-0.53, 23), (-0.52, 0)], {}),
-    (3023, "inlaat: Tacozijl", [(-1.0, 23), (-0.56, 23), (-0.54, 11), (-0.53, 0)], {}),
-    (3897, "inlaat: Stavoren", [(-1.0, 33), (-0.65, 33), (-0.61, 22), (-0.58, 11), (-0.56, 5.5), (-0.54, 0)], {}),
-    (2436, "uitlaat: Woudagemaal", [(-1.0, 0), (-0.5, 0), (-0.47, 65), (-0.42, 72)], {}),
-    (3894, "uitlaat: Hooglandgemaal", [(-1.0, 0), (-0.5, 0), (-0.47, 76), (-0.42, 116)], {}),
+    (3892, "inlaat: Lemmer/Teroelsterkolk", [(-1.0, 46), (-0.55, 46), (-0.53, 23), (-0.52, 0)], INLET_LIMIT),
+    (3023, "inlaat: Tacozijl", [(-1.0, 23), (-0.56, 23), (-0.54, 11), (-0.53, 0)], INLET_LIMIT),
+    (
+        3897,
+        "inlaat: Stavoren",
+        [(-1.0, 33), (-0.65, 33), (-0.61, 22), (-0.58, 11), (-0.56, 5.5), (-0.54, 0)],
+        INLET_LIMIT,
+    ),
+    (2436, "uitlaat: Woudagemaal", [(-1.0, 0), (-0.5, 0), (-0.47, 65), (-0.42, 72)], DRAIN_LIMIT),
+    (3894, "uitlaat: Hooglandgemaal", [(-1.0, 0), (-0.5, 0), (-0.47, 76), (-0.42, 116)], DRAIN_LIMIT),
     # The drains below are closed under -0.52 m NAP, so level control takes priority over flushing (doorspoeling).
     # Harlingen drains the tide-averaged spui to the Waddenzee at mean sea level, so it is a Pump instead of an Outlet.
     (
         3041,
         "uitlaat: Harlingen",
         [(-1.0, 0), (-0.53, 0), (-0.52, 5.1), (-0.50, 10), (-0.42, 30)],
-        {"node_type": "Pump"},
+        DRAIN_LIMIT | {"node_type": "Pump"},
     ),
     (
         3899,
         "uitlaat: Dokkumer Nieuwe Zijlen schutsluis",
         [(-1.0, 0), (-0.53, 0), (-0.52, 1.8), (-0.50, 5.8), (-0.42, 12)],
-        {"max_downstream_level": -0.60},
+        DRAIN_LIMIT | LAUWERSMEER_LIMIT,
     ),
     (
         3901,
         "uitlaat: Dokkumer Nieuwe Zijlen stuw",
         [(-1.0, 0), (-0.53, 0), (-0.52, 4), (-0.50, 6), (-0.42, 22)],
-        {"max_downstream_level": -0.60},
+        DRAIN_LIMIT | LAUWERSMEER_LIMIT,
     ),
 )
 for node_id, name, points, kwargs in BOEZEM_CONTROLS:
