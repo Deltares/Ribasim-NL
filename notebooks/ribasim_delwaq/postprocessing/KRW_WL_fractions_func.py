@@ -172,8 +172,20 @@ def compute_overlap_df(krw_wl_path, basin_path):
     filtered_fraction_sum_tolerance_option2 = fraction_sum[(fraction_sum["fractie"] - 1.0).abs() > tolerance]
     filtered_fraction_sum_tolerance_option2.to_csv("krw_wl_filtered_fractionsum_tolerance_option2.csv", index=False)
 
+    # selecteer WLs die niet voldoen aan tolerance
+    lower_tolerance = (
+        25e-2  # <75%; select a tolerance value for filtering; remove WLs that do not meet min. 75% coverage
+    )
+    upper_tolerance = 1e-2  # > 101%
+    WLs_outside_tolerance = fraction_sum[
+        ((1.0 - fraction_sum["fractie"]) > lower_tolerance) | (fraction_sum["fractie"] > (1.0 + upper_tolerance))
+    ]
+    print(WLs_outside_tolerance)
+
     # Normalize fractions so they sum to 1
-    df_normalized = df.copy()
+    df_copy = df.copy()
+    df_normalized = df_copy[~df_copy["WL_Id"].isin(WLs_outside_tolerance["WL_Id"])]
+
     df_normalized["fractie_normalized"] = df_normalized["fractie"] / df_normalized.groupby("WL_Id")[
         "fractie"
     ].transform("sum")
@@ -234,5 +246,7 @@ if __name__ == "__main__":
     # Compute overlap and create dataframe
     overlap_df = compute_overlap_df(krw_wl_path, basin_path)
     print(overlap_df)
-    overlap_df.to_csv("krw_wl_fractions_normalized.csv", index=False)
-    add_volume(overlap_df, model_path, output_csv="krw_wl_fractions_normalized_with_volume.csv")
+    overlap_df.to_csv("krw_wl_basin_fractions_normalized.csv", index=False)
+    add_volume(overlap_df, model_path, output_csv="krw_wl_basin_fractions_normalized_with_volume.csv")
+
+# %%
