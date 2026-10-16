@@ -6,8 +6,10 @@ from `dvc.yaml`:
 
 1. Select the given target stages and all their upstream stages, skipping frozen stages and
    `.dvc` files. Without `--incremental` all of them are run, like `repro.sh`. With `--incremental`
-   only the stages that DVC reports as changed, and everything downstream of them, are run.
-2. Prepare the workspace with `clean.py`: remove the outputs of the selected stages and pull
+   only the stages that changed compared with `dvc.lock`, and everything downstream of them, are run.
+   Data that is not in the workspace does not count as a change, so this also works in a fresh git worktree.
+2. Check that the Ribasim core and credentials are installed, see `pixi run setup-worktree` for worktrees.
+   Then prepare the workspace with `clean.py`: remove the outputs of the selected stages and pull
    everything upstream of them.
 3. Run the stages as soon as their upstream stages have succeeded, with at most `--jobs` at a time.
    Each stage logs to `logs/repro/<timestamp>/<stage>.log`. If a stage fails, its downstream stages
@@ -71,6 +73,31 @@ def select_stages[T](graph: nx.DiGraph, targets: Iterable[T], runnable: Callable
         assert runnable(target), f"Target {target} cannot be run, it is frozen or has no command"
     upstream = set().union(*(nx.descendants(graph, target) for target in targets))
     return set(targets) | {stage for stage in upstream if runnable(stage)}
+
+
+# Statuses of a dependency or output that is not in the workspace, which `clean.py` pulls at its locked version
+MISSING_STATUSES = {"deleted", "not in cache"}
+
+
+def changed(stage: Stage) -> bool:
+    """Whether a stage changed compared with `dvc.lock`, ignoring data that is not in the workspace.
+
+    Unlike `Stage.changed`, a fresh worktree without data does not make every stage changed. A changed
+    upstream stage still selects this stage, see `with_downstream`.
+    """
+    if stage.always_changed or stage.changed_stage():
+        return True
+    entries = (*stage.deps, *stage.outs)
+    return any(status not in MISSING_STATUSES for entry in entries for status in entry.status().values())
+
+
+def check_environment(root: Path) -> None:
+    """Fail before removing any outputs if the Ribasim core or the credentials are missing."""
+    ribasim_home = Path(os.environ.get("RIBASIM_HOME", root / "bin/ribasim"))
+    cli = ribasim_home / "bin" / ("ribasim.exe" if os.name == "nt" else "ribasim")
+    hint = "In a git worktree run `pixi run setup-worktree`, otherwise"
+    assert cli.is_file(), f"No Ribasim core at {cli}. {hint} `pixi run install-core`"
+    assert (root / ".env").is_file(), f"No credentials in {root / '.env'}. {hint} add them"
 
 
 def with_downstream[T](graph: nx.DiGraph, selected: Collection[T], changed: Iterable[T]) -> set[T]:
@@ -203,14 +230,15 @@ def main() -> int:
     selected = select_stages(graph, (by_name[name] for name in args.targets), runnable)
     if args.incremental:
         with repo.lock:
-            changed = [stage for stage in selected if stage.changed()]
-        selected = with_downstream(graph, selected, changed)
+            changed_stages = [stage for stage in selected if changed(stage)]
+        selected = with_downstream(graph, selected, changed_stages)
     if not selected:
         log("All stages are up to date")
         return 0
     names = sorted(stage.addressing for stage in selected)
     log(f"Reproducing {len(names)} stages: {' '.join(names)}")
 
+    check_environment(root)
     clean(names)
 
     log_dir = root / "logs/repro" / f"{datetime.now():%Y%m%d-%H%M%S}"
