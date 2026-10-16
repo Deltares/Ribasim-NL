@@ -8,7 +8,8 @@ Build and maintain a reproducible [DVC (Data Version Control)](https://dvc.org/)
 
 - Use Pixi for commands and dependencies.
 - Only support the Python and dependency versions in the lockfile; do not use compatibility features such as `from __future__ import annotations`.
-- Define reproducible stages in `dvc.yaml`, with complete inputs and outputs.
+- In a new git worktree, run `pixi run setup-worktree` before running stages or model runs. It shares the `.env` credentials and DVC cache of the main checkout and installs the Ribasim core, without pulling data. Do not run `pixi run install` in a worktree: it points the git hooks, which all worktrees share, to that worktree.
+- Define reproducible stages in `dvc.yaml`, with complete inputs and outputs, including the `src` modules that the scripts of a stage import.
 - Run only the smallest relevant DVC stage while developing. Do not run complete reproductions unless asked; they are started manually, locally with `pixi run repro-local` or on SLURM with `repro.sh`.
 - Run `pixi run check` before finishing; it includes Ruff linting and formatting, and ty type checking.
 - Add tests for new behavior where practical.
@@ -18,3 +19,8 @@ Build and maintain a reproducible [DVC (Data Version Control)](https://dvc.org/)
 - Strive for DRY (don't repeat yourself) code without introducing unnecessary abstractions.
 - Keep changes focused and maintainable; reuse existing repository patterns.
 - This repository is public, but the code is not used outside this repository. Backward compatibility is not required, so prefer clear improvements over preserving obsolete APIs.
+
+## Model conventions
+
+- Node IDs in the coupled LHM model, and in the model viewer, are the `waterbeheercode` of the authority (`ribasim_nl.aquo`) times 100 000 plus the node ID in the model of that authority. For instance, 203892 is node 3892 of Wetterskip Fryslân. Fix an authority's nodes in its own stages where possible, rather than in `koppelen`.
+- Analyse model behavior with the results of the latest coupled run in `data/Rijkswaterstaat/runs/lhm_coupled/results` before changing the model; a new coupled run takes about 1.5 hours.
