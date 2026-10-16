@@ -247,7 +247,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#updating-the-published-data" id="toc-updating-the-published-data" class="nav-link active" data-scroll-target="#updating-the-published-data">Updating the published data</a></li>
+  <li><a href="#updating-the-published-data" id="toc-updating-the-published-data" class="nav-link active" data-scroll-target="#updating-the-published-data">Updating the published data</a>
+  <ul class="collapse">
+  <li><a href="#how-the-published-models-are-found" id="toc-how-the-published-models-are-found" class="nav-link" data-scroll-target="#how-the-published-models-are-found">How the published models are found</a></li>
+  </ul></li>
   <li><a href="#viewing-local-models" id="toc-viewing-local-models" class="nav-link" data-scroll-target="#viewing-local-models">Viewing local models</a>
   <ul class="collapse">
   <li><a href="#comparing-models" id="toc-comparing-models" class="nav-link" data-scroll-target="#comparing-models">Comparing models</a></li>
@@ -278,7 +281,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>The <a href="../viewer.html">Model viewer</a> shows the input and results of the coupled LHM model (<code>lhm_coupled</code>) on a web map. It is a static web app: the docs site serves only the JavaScript, and the browser reads the model data directly from MinIO.</p>
+<p>The <a href="../viewer.html">Model viewer</a> shows the input and results of the coupled LHM model (<code>lhm_coupled</code>) of <code>main</code> on a web map. It is a static web app: the docs site serves only the JavaScript, and the browser reads the model data directly from MinIO. The model of a pull request can be previewed too, together with its differences from <code>main</code>, at <code>https://ribasim.nl/viewer?pr=&lt;number&gt;</code>.</p>
 <div class="cell" data-layout-align="default">
 <div class="cell-output-display">
 <div>
@@ -287,8 +290,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <pre class="mermaid mermaid-js">flowchart LR
   A[modellen/lhm_coupled] --&gt;|dvc repro run_lhm_coupled| R[runs/lhm_coupled]
   R --&gt;|dvc repro export_webmap| B[webmap/lhm_coupled]
-  B --&gt;|pixi run publish-webmap| C[MinIO doc-image/webmap/lhm_coupled]
+  B --&gt;|pixi run publish-webmap| C[MinIO doc-image/webmap]
   C --&gt; D[Model viewer page]
+  L[dvc.lock on GitHub main] --&gt; D
 </pre>
 </div>
 <p></p></figure><p></p>
@@ -353,11 +357,50 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Results are only exported if the model’s <code>results</code> directory exists.</p></li>
 <li><p>Push the outputs and commit the updated <code>dvc.lock</code>, see <a href="../dev/dvc.html#pushing-changes">DVC</a>:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc push run_lhm_coupled export_webmap</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div></li>
-<li><p>Upload the files to the anonymously readable <code>doc-image/webmap/lhm_coupled/</code> prefix on MinIO. This needs credentials with write access in <code>.env</code>.</p>
+<li><p>Publish the model as a preview of the pull request of the current branch. This needs credentials with write access in <code>.env</code>, and the <a href="https://cli.github.com/">GitHub CLI</a> <code>gh</code>, logged in.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run publish-webmap</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Unchanged files are skipped, and <code>manifest.json</code> is uploaded last, so visitors never see a manifest pointing to files that are not uploaded yet. Files that are no longer in the manifest are listed but not deleted.</p></li>
+<p>This uploads the model of the working tree, and that of <code>origin/main</code>, which it fetches first, and their differences, see <a href="#comparing-models">Comparing models</a>. It then adds a comment to the pull request with the link <code>https://ribasim.nl/viewer?pr=&lt;number&gt;</code> and a summary of the differences, or updates that comment on later publishes. Use <code>--pr &lt;number&gt;</code> to publish for another pull request, and <code>--main</code> to only publish the model of <code>origin/main</code>.</p></li>
 </ol>
-<p>The docs do not need to be rebuilt: the viewer always reads the latest <code>manifest.json</code>.</p>
+<p><code>pixi run repro-local</code> runs steps 1 to 4 by default, see <a href="../dev/local.html">Running locally</a>. The docs do not need to be rebuilt to show another model.</p>
+<section id="how-the-published-models-are-found" class="level3">
+<h3 class="anchored" data-anchor-id="how-the-published-models-are-found">How the published models are found</h3>
+<p>Everything is uploaded to the anonymously readable <code>doc-image/webmap/</code> prefix on MinIO, see <code>ribasim_nl.webmap_publish</code>:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 47%">
+<col style="width: 52%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Object</th>
+<th style="text-align: left;">Content</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>files/&lt;hash&gt;.&lt;ext&gt;</code></td>
+<td style="text-align: left;">The exported files, named by their content hash, so unchanged files are uploaded once and shared by all models</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>lhm_coupled/snapshots/&lt;md5&gt;/manifest.json</code></td>
+<td style="text-align: left;">The manifest of an export, named by the DVC hash of the <code>export_webmap</code> output in <code>dvc.lock</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>lhm_coupled/main.json</code></td>
+<td style="text-align: left;">The snapshot of the latest published <code>main</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>lhm_coupled/diffs/&lt;base md5&gt;-&lt;head md5&gt;.json</code></td>
+<td style="text-align: left;">The differences between two snapshots</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>lhm_coupled/prs/&lt;number&gt;.json</code></td>
+<td style="text-align: left;">The snapshots of a pull request and the <code>main</code> it was compared with, and their differences</td>
+</tr>
+</tbody>
+</table>
+<p>To show <code>main</code>, the viewer reads <code>dvc.lock</code> from <code>main</code> on GitHub, and loads the snapshot of its <code>export_webmap</code> output. So once a pull request whose model was published is merged, the viewer shows its model, without publishing again. If that snapshot is not published, for instance because a pull request changed the model without publishing it, the viewer shows the snapshot in <code>main.json</code> with a warning. For a pull request, the viewer warns if <code>main</code> changed since the model was published; publish again to compare with the latest <code>main</code>. Snapshots and files that are no longer used are not deleted.</p>
+</section>
 </section>
 <section id="viewing-local-models" class="level2">
 <h2 class="anchored" data-anchor-id="viewing-local-models">Viewing local models</h2>
