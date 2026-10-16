@@ -121,8 +121,24 @@ export interface Comparison {
   diff: ModelDiff;
 }
 
-const DEFAULT_DATA_URL = "https://s3.deltares.nl/ribasim-nl/doc-image/webmap/lhm_coupled/";
-const TRUSTED_DATA_ORIGINS = new Set([new URL(DEFAULT_DATA_URL).origin, location.origin]);
+/** What the viewer shows: a model, optionally compared with a base model, and a warning about it, if any. */
+export interface Source {
+  manifest: Manifest;
+  comparison: Comparison | null;
+  notice: string | null;
+}
+
+// The published models and their files, see `ribasim_nl.webmap_publish`
+const STORE_URL = "https://s3.deltares.nl/ribasim-nl/doc-image/webmap/";
+const MODEL_URL = new URL("lhm_coupled/", STORE_URL);
+const FILES_URL = new URL("files/", STORE_URL);
+// The model of main is the snapshot of the `export_webmap` output in its `dvc.lock`
+const DVC_LOCK_URL = "https://raw.githubusercontent.com/Deltares/Ribasim-NL/main/dvc.lock";
+const EXPORT_STAGE = "export_webmap";
+const EXPORT_PATH = "data/Rijkswaterstaat/webmap/lhm_coupled";
+const SNAPSHOT = /^[0-9a-f]{32}$/;
+const DIFF_PATH = /^diffs\/[0-9a-f]{32}-[0-9a-f]{32}\.json$/;
+const TRUSTED_DATA_ORIGINS = new Set([new URL(STORE_URL).origin, location.origin]);
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 // Manifest paths are relative paths of the export, hashes are hex digests
 const SAFE_PATH = /^[\w-]+(\/[\w-]+)*\.\w+$/;
@@ -140,8 +156,8 @@ function locationParam(name: "data" | "base" | "diff"): URL | null {
   return url;
 }
 
-/** The location of the model to show, `?data=<url>`. */
-const dataUrl = () => locationParam("data") ?? new URL(import.meta.env.DEV ? "/" : DEFAULT_DATA_URL, location.href);
+/** The location of a local model to show, `?data=<url>`; the development server serves one at `/`. */
+const dataUrl = () => locationParam("data") ?? new URL("/", location.href);
 
 /** URL of an exported file; the content hash makes it safe to cache indefinitely. */
 function resolveFile(base: URL, entry: FileEntry): string {
@@ -177,9 +193,10 @@ async function fetchJson<T>(url: URL): Promise<T> {
   return response.json();
 }
 
-export async function loadManifest(base: URL = dataUrl()): Promise<Manifest> {
+/** The manifest in a directory, with file paths relative to `files`, by default that directory. */
+async function loadManifest(base: URL, files: URL = base): Promise<Manifest> {
   const manifest = await fetchJson<Manifest>(new URL("manifest.json", base));
-  for (const entry of fileEntries(manifest)) entry.url = resolveFile(base, entry);
+  for (const entry of fileEntries(manifest)) entry.url = resolveFile(files, entry);
   for (const set of manifest.results ? [manifest.results.basin, manifest.results.flow] : []) {
     for (const variable of Object.values(set.variables)) {
       // NetCDF long names like "water flow rate" are verbose in the variable dropdowns
@@ -214,17 +231,129 @@ function resultDiff(raw: RawResultDiff): ResultDiff {
   return { ...raw, units: formatUnits(raw.units), differences };
 }
 
-/** The model to compare with, if `?base=<url>&diff=<url>` are given. */
-export async function loadComparison(): Promise<Comparison | null> {
+async function loadDiff(url: URL): Promise<ModelDiff> {
+  type RawDiff = Omit<ModelDiff, "nodes" | "links" | "results"> &
+    Record<"nodes" | "links", Record<string, FeatureDiff>> & { results: Record<ResultKind, RawResultDiff> | null };
+  const raw = await fetchJson<RawDiff>(url);
+  const results = raw.results && { basin: resultDiff(raw.results.basin), flow: resultDiff(raw.results.flow) };
+  return { ...raw, nodes: featureDiffs(raw.nodes), links: featureDiffs(raw.links), results };
+}
+
+/** The local model to compare with, if `?base=<url>&diff=<url>` are given. */
+async function loadComparison(): Promise<Comparison | null> {
   const base = locationParam("base");
   const diff = locationParam("diff");
   if (!base && !diff) return null;
   if (!base || !diff) throw new Error("Comparing models needs both ?base= and ?diff=");
-  type RawDiff = Omit<ModelDiff, "nodes" | "links" | "results"> &
-    Record<"nodes" | "links", Record<string, FeatureDiff>> & { results: Record<ResultKind, RawResultDiff> | null };
-  const [manifest, raw] = await Promise.all([loadManifest(base), fetchJson<RawDiff>(new URL("diff.json", diff))]);
-  const results = raw.results && { basin: resultDiff(raw.results.basin), flow: resultDiff(raw.results.flow) };
-  return { base: manifest, diff: { ...raw, nodes: featureDiffs(raw.nodes), links: featureDiffs(raw.links), results } };
+  const [manifest, modelDiff] = await Promise.all([loadManifest(base), loadDiff(new URL("diff.json", diff))]);
+  return { base: manifest, diff: modelDiff };
+}
+
+function snapshot(md5: unknown): string {
+  if (typeof md5 !== "string" || !SNAPSHOT.test(md5)) throw new Error(`Invalid snapshot ${md5}`);
+  return md5;
+}
+
+/** A published model, named by the DVC hash of its `export_webmap` output. */
+const loadSnapshot = (md5: string) => loadManifest(new URL(`snapshots/${snapshot(md5)}/`, MODEL_URL), FILES_URL);
+
+/** The DVC hash of the `export_webmap` output in the text of a `dvc.lock`, or null if it is not there. */
+export function exportHash(lock: string): string | null {
+  const lines = lock.split(/\r?\n/);
+  const start = lines.indexOf(`  ${EXPORT_STAGE}:`);
+  if (start < 0) return null;
+  let inOuts = false;
+  let inExport = false;
+  for (const line of lines.slice(start + 1)) {
+    // The next stage
+    if (/^ {0,2}\S/.test(line)) break;
+    if (/^ {4}[^\s-]/.test(line)) inOuts = line === "    outs:";
+    const path = /^ {4}- path: (.+)$/.exec(line);
+    if (path) inExport = inOuts && path[1] === EXPORT_PATH;
+    const md5 = /^ {6}md5: ([0-9a-f]{32})\.dir$/.exec(line);
+    if (inExport && md5) return md5[1];
+  }
+  return null;
+}
+
+/** The snapshot of the current main, or null if it cannot be read from GitHub. */
+async function currentMain(): Promise<string | null> {
+  try {
+    const response = await fetch(DVC_LOCK_URL, { cache: "no-cache" });
+    return response.ok ? exportHash(await response.text()) : null;
+  } catch {
+    return null;
+  }
+}
+
+interface Published {
+  snapshot: string;
+  commit: string;
+  published: string;
+}
+
+const shortCommit = (commit: unknown) => String(commit).slice(0, 7);
+
+/** The model of main; the latest published main if that of the current main is not published. */
+async function loadMain(): Promise<Source> {
+  const md5 = await currentMain();
+  if (md5) {
+    try {
+      return { manifest: await loadSnapshot(md5), comparison: null, notice: null };
+    } catch (error) {
+      console.warn(`The model of main ${md5} is not published`, error);
+    }
+  }
+  const latest = await fetchJson<Published>(new URL("main.json", MODEL_URL));
+  const notice = md5
+    ? `The model of the latest main is not published yet, this is main at ${shortCommit(latest.commit)}.`
+    : `Could not find the latest main on GitHub, this is main at ${shortCommit(latest.commit)}.`;
+  return { manifest: await loadSnapshot(latest.snapshot), comparison: null, notice };
+}
+
+interface PullRequest {
+  pr: number;
+  head: { snapshot: string; commit: string };
+  base: { snapshot: string; commit: string };
+  diff: string;
+  published: string;
+}
+
+/** The model of a pull request, compared with the main it was published with. */
+async function loadPullRequest(number: number): Promise<Source> {
+  const record = await fetchJson<PullRequest>(new URL(`prs/${number}.json`, MODEL_URL)).catch((error) => {
+    throw new Error(`No model is published for pull request #${number} (${error})`);
+  });
+  if (!DIFF_PATH.test(record.diff)) throw new Error(`Invalid differences ${record.diff}`);
+  const [manifest, base, diff, main] = await Promise.all([
+    loadSnapshot(record.head.snapshot),
+    loadSnapshot(record.base.snapshot),
+    loadDiff(new URL(record.diff, MODEL_URL)),
+    currentMain(),
+  ]);
+  const notice =
+    main && main !== record.base.snapshot
+      ? `Main has changed since pull request #${number} was compared with it, at ${shortCommit(record.base.commit)}. Publish it again to compare with the latest main.`
+      : null;
+  return { manifest, comparison: { base, diff }, notice };
+}
+
+/**
+ * The model to show: by default the model of main, with `?pr=<number>` that of a pull request compared with
+ * main, and with `?data=<url>`, optionally with `?base=<url>&diff=<url>`, a local model.
+ */
+export async function loadSource(): Promise<Source> {
+  const params = new URLSearchParams(location.search);
+  const pr = params.get("pr");
+  if (pr !== null) {
+    if (!/^[1-9]\d{0,5}$/.test(pr)) throw new Error(`Invalid pull request number ${pr}`);
+    return loadPullRequest(Number(pr));
+  }
+  if (["data", "base", "diff"].some((name) => params.has(name)) || import.meta.env.DEV) {
+    const [manifest, comparison] = await Promise.all([loadManifest(dataUrl()), loadComparison()]);
+    return { manifest, comparison, notice: null };
+  }
+  return loadMain();
 }
 
 interface ParquetFile {
