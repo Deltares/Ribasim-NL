@@ -71,6 +71,7 @@ bin/
 *.geojson
 *.qlr
 *.png
+!docs/assets/logo.png
 *.bat
 !scripts/load-env.bat
 *.pdf
