@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import re
 import shutil
 import sqlite3
 import tomllib
@@ -34,6 +35,13 @@ TIME_STEPS_PER_ROW_GROUP = 8
 MAP_VARIABLES = {"basin": {"level": "linear", "storage": "log"}, "flow": {"flow_rate": "log"}}
 LOG_SCALE_DYNAMIC_RANGE = 1e-4
 SKIP_TABLES = {"layer_styles", "ribasim_metadata"}
+# The local times at which Ribasim logs the start and successful end of a simulation, in `ribasim.log`
+RUN_LOG_TIMES = {
+    "start": re.compile(r"Starting a Ribasim simulation at (\S+?)\.?$", re.MULTILINE),
+    "end": re.compile(r"The model finished successfully at (\S+?)\.?$", re.MULTILINE),
+}
+# Written next to the TOML by the run script, with the commit of the code that built and ran the model
+RUN_INFO = "runinfo.json"
 
 
 def file_hash(path: Path) -> str:
@@ -328,6 +336,26 @@ def model_results_dir(toml_path: Path, config: dict) -> Path:
     return toml_path.parent / config.get("results_dir", "results")
 
 
+def run_info(toml_path: Path, results_dir: Path) -> dict:
+    """When the model was run, from `ribasim.log`, and from which commit, from `runinfo.json` next to the TOML.
+
+    Only what is known is included, so the result may be empty.
+    """
+    info = {}
+    log = results_dir / "ribasim.log"
+    if log.is_file():
+        text = log.read_text(encoding="utf-8", errors="replace")
+        for key, pattern in RUN_LOG_TIMES.items():
+            if match := pattern.search(text):
+                info[key] = match.group(1)
+    path = toml_path.parent / RUN_INFO
+    if path.is_file():
+        recorded = json.loads(path.read_text())
+        assert isinstance(recorded.get("commit"), str), f"No commit in {path}"
+        info |= {key: recorded[key] for key in ("commit", "dirty") if key in recorded}
+    return info
+
+
 def export_webmap(toml_path: Path, waterboards_path: Path | None, output_dir: Path) -> dict:
     """Export a Ribasim model to a directory of web-friendly files plus a `manifest.json`.
 
@@ -385,5 +413,7 @@ def export_webmap(toml_path: Path, waterboards_path: Path | None, output_dir: Pa
         if "control" in results:
             results["control"] = entry(results["control"])
         manifest["results"] = results
+        if run := run_info(toml_path, results_dir):
+            manifest["run"] = run
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
     return manifest

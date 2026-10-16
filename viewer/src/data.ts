@@ -61,6 +61,16 @@ export interface Manifest {
   files: Record<"nodes" | "links" | "basin_area", FileEntry> & { waterboards?: FileEntry };
   tables: TableEntry[];
   results?: Results;
+  run?: RunInfo;
+}
+
+/** When the model was run, in local time, and from which commit, see `ribasim_nl.webmap.run_info`. */
+export interface RunInfo {
+  start?: string;
+  end?: string;
+  commit?: string;
+  /** Whether the code had uncommitted changes */
+  dirty?: boolean;
 }
 
 export type Row = Record<string, unknown>;

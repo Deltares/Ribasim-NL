@@ -14,7 +14,16 @@ import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import { Protocol } from "pmtiles";
 import { BASEMAPS, basemapStyle, DEFAULT_BASEMAP, withOverlays } from "./basemaps";
 import { ColorScale, formatNumber, normalize } from "./colors";
-import { fileUrl, loadComparison, loadManifest, type Comparison, type Manifest, type ModelDiff, type ResultKind } from "./data";
+import {
+  fileUrl,
+  loadComparison,
+  loadManifest,
+  type Comparison,
+  type Manifest,
+  type ModelDiff,
+  type ResultKind,
+  type RunInfo,
+} from "./data";
 import {
   CONTEXT_COLOR,
   DIFF_CSS,
@@ -1067,6 +1076,34 @@ function diffBounds(network: Network, diff: ModelDiff): [number, number, number,
   return bounds.isEmpty() ? null : (bounds.toArray().flat() as [number, number, number, number]);
 }
 
+const COMMIT_URL = "https://github.com/Deltares/Ribasim-NL/commit/";
+
+/** A map control next to the scale bar that says when the model was run, and from which commit. */
+function runInfoControl(run: RunInfo): maplibregl.IControl {
+  const element = document.createElement("div");
+  element.className = "maplibregl-ctrl run-info";
+  // Ribasim logs local times with milliseconds, minutes are enough
+  const time = (value: string) => value.slice(0, 16).replace("T", " ");
+  const parts: (Node | string)[] = [];
+  if (run.start) parts.push(`Run ${time(run.start)}`);
+  if (run.end) parts.push(`${run.start ? " → " : "Run finished "}${time(run.end)}`);
+  if (run.commit) {
+    const link = Object.assign(document.createElement("a"), {
+      href: `${COMMIT_URL}${run.commit}`,
+      target: "_blank",
+      rel: "noopener",
+      textContent: run.commit.slice(0, 7),
+      title: run.dirty ? "Run with uncommitted changes to this commit" : "The commit the model was built and run with",
+    });
+    parts.push(parts.length ? " · commit " : "Commit ", link, run.dirty ? " + changes" : "");
+  }
+  element.append(...parts);
+  return {
+    onAdd: () => element,
+    onRemove: () => element.remove(),
+  };
+}
+
 async function main(): Promise<void> {
   const root = document.getElementById("ribasim-viewer");
   if (!root) throw new Error("Missing #ribasim-viewer element");
@@ -1102,6 +1139,8 @@ async function main(): Promise<void> {
     map.keyboard.disableRotation();
     // Zoom with the mouse wheel, pinch or keyboard; the buttons would sit under the panel
     map.addControl(new maplibregl.AttributionControl({ compact: false }), "bottom-right");
+    // Controls at the bottom are prepended, so the run info is added first to be right of the scale bar
+    if (manifest.run) map.addControl(runInfoControl(manifest.run), "bottom-left");
     map.addControl(new maplibregl.ScaleControl(), "bottom-left");
     // "load" also waits for basemap tiles and a rendered frame; the style is all we need to add layers
     const [network, icons] = await Promise.all([networkPromise, loadIconAtlas(), map.once("style.load")]);
