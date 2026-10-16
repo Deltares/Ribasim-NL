@@ -16,8 +16,7 @@ import { BASEMAPS, basemapStyle, DEFAULT_BASEMAP, withOverlays } from "./basemap
 import { ColorScale, formatNumber, normalize } from "./colors";
 import {
   fileUrl,
-  loadComparison,
-  loadManifest,
+  loadSource,
   type Comparison,
   type Manifest,
   type ModelDiff,
@@ -1116,7 +1115,8 @@ async function main(): Promise<void> {
     maplibregl.setWorkerUrl(maplibreWorkerUrl);
     const protocol = new Protocol();
     maplibregl.addProtocol("pmtiles", protocol.tile);
-    const [manifest, comparison] = await Promise.all([loadManifest(), loadComparison()]);
+    const { manifest, comparison, notice } = await loadSource();
+    if (notice) root.append(Object.assign(document.createElement("div"), { className: "notice", textContent: notice }));
     const networkPromise = loadNetwork(manifest, comparison);
     // MapLibre adds its view to the hash, so check for it before creating the map
     const hasView = hashParams().has("map");

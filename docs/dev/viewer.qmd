@@ -2,15 +2,17 @@
 title: "Model viewer"
 ---
 
-The [Model viewer](../viewer.qmd) shows the input and results of the coupled LHM model (`lhm_coupled`) on a web map.
+The [Model viewer](../viewer.qmd) shows the input and results of the coupled LHM model (`lhm_coupled`) of `main` on a web map.
 It is a static web app: the docs site serves only the JavaScript, and the browser reads the model data directly from MinIO.
+The model of a pull request can be previewed too, together with its differences from `main`, at `https://ribasim.nl/viewer?pr=<number>`.
 
 ```{mermaid}
 flowchart LR
   A[modellen/lhm_coupled] -->|dvc repro run_lhm_coupled| R[runs/lhm_coupled]
   R -->|dvc repro export_webmap| B[webmap/lhm_coupled]
-  B -->|pixi run publish-webmap| C[MinIO doc-image/webmap/lhm_coupled]
+  B -->|pixi run publish-webmap| C[MinIO doc-image/webmap]
   C --> D[Model viewer page]
+  L[dvc.lock on GitHub main] --> D
 ```
 
 All local paths are relative to `data/Rijkswaterstaat`.
@@ -54,17 +56,37 @@ All local paths are relative to `data/Rijkswaterstaat`.
     pixi run dvc push run_lhm_coupled export_webmap
     ```
 
-4. Upload the files to the anonymously readable `doc-image/webmap/lhm_coupled/` prefix on MinIO.
-    This needs credentials with write access in `.env`.
+4. Publish the model as a preview of the pull request of the current branch.
+    This needs credentials with write access in `.env`, and the [GitHub CLI](https://cli.github.com/) `gh`, logged in.
 
     ```sh
     pixi run publish-webmap
     ```
 
-    Unchanged files are skipped, and `manifest.json` is uploaded last, so visitors never see a manifest pointing to files that are not uploaded yet.
-    Files that are no longer in the manifest are listed but not deleted.
+    This uploads the model of the working tree, and that of `origin/main`, which it fetches first, and their differences, see [Comparing models](#comparing-models).
+    It then adds a comment to the pull request with the link `https://ribasim.nl/viewer?pr=<number>` and a summary of the differences, or updates that comment on later publishes.
+    Use `--pr <number>` to publish for another pull request, and `--main` to only publish the model of `origin/main`.
 
-The docs do not need to be rebuilt: the viewer always reads the latest `manifest.json`.
+`pixi run repro-local` runs steps 1 to 4 by default, see [Running locally](local.qmd).
+The docs do not need to be rebuilt to show another model.
+
+### How the published models are found
+
+Everything is uploaded to the anonymously readable `doc-image/webmap/` prefix on MinIO, see `ribasim_nl.webmap_publish`:
+
+| Object | Content |
+|:-------|:--------|
+| `files/<hash>.<ext>` | The exported files, named by their content hash, so unchanged files are uploaded once and shared by all models |
+| `lhm_coupled/snapshots/<md5>/manifest.json` | The manifest of an export, named by the DVC hash of the `export_webmap` output in `dvc.lock` |
+| `lhm_coupled/main.json` | The snapshot of the latest published `main` |
+| `lhm_coupled/diffs/<base md5>-<head md5>.json` | The differences between two snapshots |
+| `lhm_coupled/prs/<number>.json` | The snapshots of a pull request and the `main` it was compared with, and their differences |
+
+To show `main`, the viewer reads `dvc.lock` from `main` on GitHub, and loads the snapshot of its `export_webmap` output.
+So once a pull request whose model was published is merged, the viewer shows its model, without publishing again.
+If that snapshot is not published, for instance because a pull request changed the model without publishing it, the viewer shows the snapshot in `main.json` with a warning.
+For a pull request, the viewer warns if `main` changed since the model was published; publish again to compare with the latest `main`.
+Snapshots and files that are no longer used are not deleted.
 
 ## Viewing local models
 

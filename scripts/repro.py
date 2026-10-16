@@ -14,8 +14,10 @@ from `dvc.yaml`:
    are skipped while the others continue.
 4. `dvc commit` the stages that succeeded. If all succeeded, run `pixi run check`, and with
    `--push` also `dvc push` them.
+5. If `export_webmap` ran, publish the model to the model viewer as a preview of the pull request of this
+   branch, compared with main, see `ribasim_nl.webmap_publish`. Use `--no-publish` to skip this.
 
-Usage: pixi run repro-local [TARGET ...] [--jobs N] [--stagger SECONDS] [--incremental] [--push]
+Usage: pixi run repro-local [TARGET ...] [--jobs N] [--stagger SECONDS] [--incremental] [--push] [--no-publish]
 """
 
 import argparse
@@ -35,8 +37,10 @@ from clean import clean
 from dvc.repo import Repo
 from dvc.stage import PipelineStage, Stage
 
-# The final stage of the model building pipeline, which `repro.sh` reproduces
-DEFAULT_TARGETS = ["koppelen"]
+# The final stage of the pipeline: the coupled model, its results and their export for the model viewer.
+# `repro.sh` reproduces the pipeline up to `koppelen`.
+DEFAULT_TARGETS = ["export_webmap"]
+PUBLISHED_STAGE = "export_webmap"
 
 
 class Status(StrEnum):
@@ -183,6 +187,7 @@ def main() -> int:
     parser.add_argument("--stagger", type=float, default=30.0, help="minimum seconds between stage starts")
     parser.add_argument("--incremental", action="store_true", help="only run changed stages and their downstream")
     parser.add_argument("--push", action="store_true", help="dvc push the stages if all succeeded")
+    parser.add_argument("--no-publish", action="store_true", help=f"do not publish the model if {PUBLISHED_STAGE} ran")
     args = parser.parse_args()
 
     repo = Repo()
@@ -244,6 +249,11 @@ def main() -> int:
     if args.push:
         log("Pushing")
         subprocess.run(["dvc", "push", *succeeded], cwd=root, check=True)
+    if PUBLISHED_STAGE in succeeded and not args.no_publish:
+        log("Publishing the model viewer preview")
+        if subprocess.run(["pixi", "run", "publish-webmap"], cwd=root).returncode != 0:
+            log("Publishing failed, fix the cause and run `pixi run publish-webmap`")
+            return 1
     log("Finished")
     return 0
 
