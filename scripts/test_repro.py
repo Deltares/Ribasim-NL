@@ -8,7 +8,7 @@ import networkx as nx
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
-from repro import Result, Status, dependencies, run_dag, select_stages, with_downstream
+from repro import Result, Status, changed, check_environment, dependencies, run_dag, select_stages, with_downstream
 
 
 def pipeline() -> nx.DiGraph:
@@ -126,3 +126,54 @@ def test_run_dag_stagger_and_duration():
     assert all(result.status == Status.SUCCEEDED for result in results.values())
     # Durations are measured in the worker, not including the stagger waits in the scheduler
     assert all(0.04 < result.seconds < 0.09 for result in results.values())
+
+
+class FakeEntry:
+    """A dependency or output with a DVC status."""
+
+    def __init__(self, status: str | None = None):
+        self._status = {} if status is None else {"path": status}
+
+    def status(self) -> dict[str, str]:
+        return self._status
+
+
+class FakeStage:
+    """A stage with the attributes that `changed` uses."""
+
+    def __init__(self, *statuses: str | None, changed_stage: bool = False, always_changed: bool = False):
+        self.deps = [FakeEntry(status) for status in statuses]
+        self.outs = [FakeEntry()]
+        self._changed_stage = changed_stage
+        self.always_changed = always_changed
+
+    def changed_stage(self) -> bool:
+        return self._changed_stage
+
+
+@pytest.mark.parametrize(
+    ("stage", "expected"),
+    [
+        (FakeStage(None), False),
+        # missing data is pulled at its locked version
+        (FakeStage("deleted", "not in cache"), False),
+        (FakeStage("deleted", "modified"), True),
+        (FakeStage(None, changed_stage=True), True),
+        (FakeStage(None, always_changed=True), True),
+    ],
+)
+def test_changed(stage, expected):
+    assert changed(stage) is expected
+
+
+def test_check_environment(tmp_path, monkeypatch):
+    monkeypatch.setenv("RIBASIM_HOME", str(tmp_path / "ribasim"))
+    with pytest.raises(AssertionError, match="No Ribasim core"):
+        check_environment(tmp_path)
+    cli = tmp_path / "ribasim/bin" / ("ribasim.exe" if sys.platform == "win32" else "ribasim")
+    cli.parent.mkdir(parents=True)
+    cli.touch()
+    with pytest.raises(AssertionError, match="No credentials"):
+        check_environment(tmp_path)
+    (tmp_path / ".env").touch()
+    check_environment(tmp_path)

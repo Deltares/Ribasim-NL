@@ -80,6 +80,8 @@ xlwings = ">=0.33"
 typecheck = "ty check"
 install-prek = "prek install -f"
 install = { depends-on = ["install-core", "install-prek"] }
+# Share the credentials and DVC cache of the main checkout with a git worktree, see scripts/setup_worktree.py
+setup-worktree = "python scripts/setup_worktree.py"
 # Reproduce stages and their upstream in parallel on this machine: `pixi run repro-local [TARGET ...]`
 repro-local = "python scripts/repro.py"
 check = "prek run --all-files"
