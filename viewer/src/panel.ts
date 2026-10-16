@@ -203,6 +203,47 @@ function charts(rows: Row[], width: number, specs: [string, string[]][]): (Node 
   });
 }
 
+const VOLUME_UNIT = 1e6;
+
+/**
+ * The cumulative volume of flow rate columns since the first row, reset to 0 on every 1 January.
+ *
+ * A flow rate holds until the next row, like the mean flow rate over a time step in Ribasim results.
+ * To compare the columns, only intervals that start with a value in each column are summed, and only
+ * the rows between the first and last with values in each column are returned.
+ */
+function cumulativeVolume(rows: Row[], columns: string[]): Row[] {
+  const complete = (row: Row) => columns.every((column) => typeof row[column] === "number" && Number.isFinite(row[column]));
+  const first = rows.findIndex(complete);
+  let last = rows.length - 1;
+  while (last > first && !complete(rows[last])) last--;
+  if (first < 0 || last <= first) return [];
+  const totals = columns.map(() => 0);
+  const result: Row[] = [];
+  for (let i = first; i <= last; i++) {
+    const time = rows[i].time as Date;
+    if (i > first) {
+      const previous = rows[i - 1];
+      const start = (previous.time as Date).getTime();
+      const newYear = Date.UTC(time.getUTCFullYear(), 0, 1);
+      // Reset on 1 January, then count only the part of the interval in the new year
+      const resets = start < newYear;
+      if (resets) totals.fill(0);
+      const seconds = (time.getTime() - (resets ? newYear : start)) / 1000;
+      if (complete(previous)) columns.forEach((column, j) => (totals[j] += ((previous[column] as number) * seconds) / VOLUME_UNIT));
+    }
+    result.push(Object.fromEntries([["time", time], ...columns.map((column, j) => [column, totals[j]])]));
+  }
+  return result;
+}
+
+/** A chart of the cumulative volume of flow rate columns, see `cumulativeVolume`. */
+function cumulativeChart(rows: Row[], width: number, columns: string[]): (Node | string)[] {
+  const present = columns.filter((column) => rows.some((row) => typeof row[column] === "number"));
+  const chart = timeChart(cumulativeVolume(rows, present), width);
+  return chart ? [el("h4", {}, "Cumulative volume since 1 January (10⁶ m³)"), chart] : [];
+}
+
 export interface PanelCallbacks {
   select: (selection: Selection) => void;
   zoomTo: (selection: Selection) => void;
@@ -450,7 +491,13 @@ export class Panel {
         sections.push(
           lazySection(
             "Results",
-            async () => charts(await this.resultRows("flow", selection.id, diff), width, [["Flow", ["flow_rate"]]]),
+            async () => {
+              const rows = await this.resultRows("flow", selection.id, diff);
+              return [
+                ...charts(rows, width, [["Flow", ["flow_rate"]]]),
+                ...cumulativeChart(rows, width, ["flow_rate", `flow_rate${BASE}`]),
+              ];
+            },
             true,
           ),
         );
@@ -629,7 +676,12 @@ export class Panel {
         const rows = [...byTime.values()].sort((a, b) => (a.time as Date).getTime() - (b.time as Date).getTime());
         const chart = timeChart(rows, width, ["observed", "simulated"]);
         const title = `${variable} of ${observedType} #${observedId}`;
-        return chart ? [el("h4", {}, title), chart] : [el("h4", {}, title), "Too few values to chart."];
+        if (!chart) return [el("h4", {}, title), "Too few values to chart."];
+        return [
+          el("h4", {}, title),
+          chart,
+          ...(variable === "flow_rate" ? cumulativeChart(rows, width, ["observed", "simulated"]) : []),
+        ];
       }),
     );
     return [...sections.flat(), ...(results ? [] : [el("p", { className: "note" }, "No simulation results.")])];
@@ -651,8 +703,9 @@ export class Panel {
     });
     const rows = [...byTime.values()].sort((a, b) => (a.time as Date).getTime() - (b.time as Date).getTime());
     const chart = timeChart(rows, width);
+    const cumulative = cumulativeChart(rows, width, shown.map(([, label]) => label));
     const note = links.length > shown.length ? [el("p", { className: "note" }, `Showing ${shown.length} of ${links.length} links.`)] : [];
-    return chart ? [el("h4", {}, "Flow rate (m³ s⁻¹)"), chart, ...note] : ["No results for these links."];
+    return chart ? [el("h4", {}, "Flow rate (m³ s⁻¹)"), chart, ...cumulative, ...note] : ["No results for these links."];
   }
 
   /** Width available for charts; the panel is shown first, since a hidden panel has no width. */

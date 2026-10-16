@@ -31,7 +31,7 @@ from dvc.api import DVCFileSystem
 import ribasim_nl.webmap
 import ribasim_nl.webmap_diff
 from ribasim_nl.settings import settings
-from ribasim_nl.webmap import export_webmap, model_input_dir, model_results_dir, netcdf_tables, read_config
+from ribasim_nl.webmap import RUN_INFO, export_webmap, model_input_dir, model_results_dir, netcdf_tables, read_config
 from ribasim_nl.webmap_diff import diff_models
 
 REPO_DIR = Path(__file__).parents[3]
@@ -80,6 +80,7 @@ def model_sources(toml_path: Path) -> list[Path]:
     results_dir = model_results_dir(toml_path, config)
     if results_dir.is_dir():
         sources += sorted(results_dir.glob("*.nc"))
+        sources += [path for path in (results_dir / "ribasim.log", toml_path.parent / RUN_INFO) if path.is_file()]
     return sources
 
 

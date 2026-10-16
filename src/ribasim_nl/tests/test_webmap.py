@@ -19,6 +19,7 @@ from ribasim_nl.webmap import (
     export_webmap,
     file_hash,
     netcdf_tables,
+    run_info,
     table_slug,
 )
 from shapely.geometry import MultiPolygon, Point, box
@@ -81,6 +82,29 @@ def test_export_webmap(tmp_path):
 
     boards = gpd.read_file(output / "waterboards.geojson")
     assert boards["naam"].tolist() == ["Waterschap Test"]
+
+
+def test_run_info(tmp_path):
+    toml = tmp_path / "model.toml"
+    results_dir = tmp_path / "results"
+    assert run_info(toml, results_dir) == {}
+
+    results_dir.mkdir()
+    (results_dir / "ribasim.log").write_text(
+        "┌ Info: Starting a Ribasim simulation at 2026-10-15T23:54:23.620.\n"
+        "│   toml_path = model.toml\n"
+        "┌ Info: The model finished successfully at 2026-10-16T01:28:57.134.\n"
+        "└ @ Ribasim logging.jl:94\n"
+    )
+    assert run_info(toml, results_dir) == {"start": "2026-10-15T23:54:23.620", "end": "2026-10-16T01:28:57.134"}
+
+    (tmp_path / "runinfo.json").write_text(json.dumps({"commit": "abc123", "dirty": False}))
+    assert run_info(toml, results_dir) == {
+        "start": "2026-10-15T23:54:23.620",
+        "end": "2026-10-16T01:28:57.134",
+        "commit": "abc123",
+        "dirty": False,
+    }
 
 
 def test_export_netcdf_table(tmp_path):

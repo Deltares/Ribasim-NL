@@ -607,3 +607,18 @@
 .ribasim-viewer .u-legend .u-series {
   padding: 0 4px;
 }
+
+/* Next to the scale bar, rather than above it */
+.ribasim-viewer .maplibregl-ctrl.run-info {
+  clear: none;
+  padding: 0 5px;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--ink-muted);
+  font-size: 11px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ribasim-viewer .run-info a {
+  color: inherit;
+}
