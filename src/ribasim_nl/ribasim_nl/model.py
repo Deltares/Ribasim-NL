@@ -570,7 +570,7 @@ class Model(ribasim.Model):
         self,
         to_node_id: int | list[int],
         data,
-        ctrl_type: Literal["DiscreteControl", "PidControl"] = "DiscreteControl",
+        ctrl_type: Literal["DiscreteControl", "ContinuousControl", "PidControl"] = "DiscreteControl",
         node_geom: Point | None = None,
         node_offset: int = 100,
         node_properties: dict[str, object] | None = None,

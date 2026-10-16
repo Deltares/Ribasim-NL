@@ -1,13 +1,14 @@
 # %%
 import logging
 import math
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Literal, cast
 
 import geopandas as gpd
 import pandas as pd
 from ribasim import Node, nodes
-from ribasim.nodes import discrete_control, flow_demand
+from ribasim.nodes import continuous_control, discrete_control, flow_demand, outlet, pump
 from shapely.geometry import MultiPolygon, Point, Polygon
 from shapely.ops import unary_union
 
@@ -2173,3 +2174,105 @@ def remove_duplicate_controls(ribasim_model: ribasim_nl.Model) -> ribasim_nl.Mod
 
     # return update Ribasim model
     return ribasim_model
+
+
+def set_continuous_level_control(
+    model: Model,
+    node_id: int,
+    listen_node_id: int,
+    level: Sequence[float],
+    flow_rate: Sequence[float],
+    *,
+    node_type: Literal["Outlet", "Pump"] | None = None,
+    min_upstream_level: float = -math.inf,
+    max_downstream_level: float = math.inf,
+    name: str | None = None,
+) -> int:
+    """Set the flow rate of an Outlet or Pump from the level of a Basin, replacing its DiscreteControl.
+
+    The flow rate follows a ContinuousControl function through the (level, flow_rate) points, and is limited to
+    [0, max(flow_rate)] by the static table, so beyond the outer points the curve does not exceed these bounds.
+    The node keeps a single static row with the metadata of its first static row, and its levels are protected from
+    coupling-level updates.
+
+    :param model: model to update in place
+    :param node_id: Outlet or Pump to control
+    :param listen_node_id: Basin whose level sets the flow rate
+    :param level: levels [m+NAP] of the function points
+    :param flow_rate: flow rates [m3/s] at these levels
+    :param node_type: convert the node to this type, by default keep its type
+    :param min_upstream_level: min_upstream_level of the node
+    :param max_downstream_level: max_downstream_level of the node
+    :param name: name of the ContinuousControl node
+    :return: node ID of the ContinuousControl node
+    """
+    assert model.link.df is not None
+    current_type = model.get_node_type(node_id)
+    if current_type not in ("Outlet", "Pump"):
+        raise ValueError(f"Node {node_id} is a {current_type}, expected an Outlet or Pump")
+    if model.get_node_type(listen_node_id) != "Basin":
+        raise ValueError(f"Listen node {listen_node_id} of node {node_id} is not a Basin")
+    points = pd.DataFrame({"level": level, "flow_rate": flow_rate}, dtype=float).sort_values("level")
+    if len(points) < 2 or not points["level"].is_unique:
+        raise ValueError(f"Expected at least 2 distinct levels for node {node_id}, got {list(level)}")
+    if not (points.map(math.isfinite).all(axis=None) and points["flow_rate"].ge(0).all()):
+        raise ValueError(f"Expected finite, non-negative flow rates for node {node_id}, got {list(flow_rate)}")
+    max_flow_rate = float(points["flow_rate"].max())
+
+    # remove the current control, which should only control this node
+    link_df = model.link.df
+    control_ids = link_df.loc[(link_df.link_type == "control") & (link_df.to_node_id == node_id), "from_node_id"]
+    for control_id in control_ids:
+        control_type = model.get_node_type(control_id)
+        if control_type != "DiscreteControl":
+            raise ValueError(f"Node {node_id} is controlled by {control_type} {control_id}, expected DiscreteControl")
+        n_controlled = ((link_df.link_type == "control") & (link_df.from_node_id == control_id)).sum()
+        if n_controlled != 1:
+            raise ValueError(f"DiscreteControl {control_id} controls {n_controlled} nodes, expected only {node_id}")
+        model.remove_node(control_id, remove_links=True)
+
+    # replace the static rows by a single row, keeping the metadata
+    static_df = model.get_component(current_type).static.df
+    assert static_df is not None
+    rows = static_df[static_df.node_id == node_id]
+    if rows.empty:
+        raise ValueError(f"Node {node_id} has no static rows")
+    meta = rows.iloc[0][[c for c in rows.columns if c.startswith("meta_")]].to_dict()
+    target_type = node_type or current_type
+    static = (outlet if target_type == "Outlet" else pump).Static(
+        flow_rate=[max_flow_rate],
+        min_flow_rate=[0.0],
+        max_flow_rate=[max_flow_rate],
+        min_upstream_level=[min_upstream_level],
+        max_downstream_level=[max_downstream_level],
+    )
+    model.update_node(node_id, target_type, data=[static])
+    static_df = model.get_component(target_type).static.df
+    assert static_df is not None
+    mask = static_df.node_id == node_id
+    assert mask.sum() == 1, f"Expected one static row for node {node_id}"
+    for column, value in meta.items():
+        if column != LEVEL_UPDATE_PROTECTION_COLUMN:
+            static_df.loc[mask, column] = value
+    mark_level_update_protected(static_df, mask)
+    for end in ("from", "to"):
+        column = f"meta_{end}_node_type"
+        if column in model.link.df.columns:
+            model.link.df.loc[model.link.df[f"{end}_node_id"] == node_id, column] = target_type
+
+    control_id = model.next_node_id
+    model.add_control_node(
+        to_node_id=node_id,
+        data=[
+            continuous_control.Variable(listen_node_id=[listen_node_id], variable=["level"]),
+            continuous_control.Function(
+                input=points["level"].to_list(),
+                output=points["flow_rate"].to_list(),
+                controlled_variable=["flow_rate"] * len(points),
+            ),
+        ],
+        ctrl_type="ContinuousControl",
+        node_offset=20,
+        node_properties={} if name is None else {"name": name},
+    )
+    return control_id
