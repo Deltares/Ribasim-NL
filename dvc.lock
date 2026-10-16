@@ -57,8 +57,8 @@ stages:
       nfiles: 5
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_dynamic_model
       hash: md5
-      md5: efed3976d211978b8492ebfc7d954d0f.dir
-      size: 89871844
+      md5: 14aa974007c82156bc63e64586dab243.dir
+      size: 89892324
       nfiles: 5
     - path: data/Rijkswaterstaat/modellen/hws_transient
       hash: md5
@@ -108,8 +108,8 @@ stages:
       nfiles: 5
     - path: data/WetterskipFryslan/modellen/WetterskipFryslan_forcing
       hash: md5
-      md5: 7dbf82407824ee739d7eadc87c9e41a0.dir
-      size: 190539630
+      md5: 092c36cfeceebd3e0c581525090d9d85.dir
+      size: 190572398
       nfiles: 3
     - path: data/Zuiderzeeland/modellen/Zuiderzeeland_forcing
       hash: md5
@@ -123,8 +123,8 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: 5d21fd59c677cc3c89075432863de9b8.dir
-      size: 2341347611
+      md5: c0e2cf96e2d5c7b318477f992caf076e.dir
+      size: 2341392667
       nfiles: 2
   bathymetry:
     cmd: pixi run python notebooks/rijkswaterstaat/1_bathymetrie.py
@@ -177,8 +177,8 @@ stages:
       size: 99155
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: 5d21fd59c677cc3c89075432863de9b8.dir
-      size: 2341347611
+      md5: c0e2cf96e2d5c7b318477f992caf076e.dir
+      size: 2341392667
       nfiles: 2
     - path: data/Rijkswaterstaat/verwerkt/netwerk.gpkg
       hash: md5
@@ -186,8 +186,8 @@ stages:
       size: 3731456
     - path: notebooks/09_koppelen_modellen.py
       hash: md5
-      md5: ab053faac35ccc8c05eca424edfe2be2
-      size: 45116
+      md5: f7a195daf87dc0cfc7e1e878fd460655
+      size: 45004
     - path: src/ribasim_nl/ribasim_nl/flow_paths.py
       hash: md5
       md5: 0b27847fd2250a2124da6e164dbe93b7
@@ -219,8 +219,8 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: 322e9f0e254ad91763a7412e9329aa2c.dir
-      size: 1363764812
+      md5: 46c21404a66da2b58dfc75bdb7ac5fbd.dir
+      size: 1363785292
       nfiles: 4
   rwzi:
     cmd: pixi run python notebooks/create_rwzi_model.py
@@ -777,8 +777,8 @@ stages:
       size: 25518595
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_bergend_model
       hash: md5
-      md5: 6b73b20cee0680a14bfd39c61d218943.dir
-      size: 18161859
+      md5: 9f1de5c39aab95a9998a4b1d726c4651.dir
+      size: 18186435
       nfiles: 2
     - path: data/Rijkswaterstaat/modellen/rwzi
       hash: md5
@@ -816,8 +816,8 @@ stages:
     outs:
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_dynamic_model
       hash: md5
-      md5: efed3976d211978b8492ebfc7d954d0f.dir
-      size: 89871844
+      md5: 14aa974007c82156bc63e64586dab243.dir
+      size: 89892324
       nfiles: 5
   dynamic@rijn_en_ijssel:
     cmd: pixi run python notebooks/07_add_dynamic_forcing.py RijnenIJssel
@@ -2656,17 +2656,21 @@ stages:
       size: 1372
     - path: notebooks/noorderzijlvest/04_add_full_control.py
       hash: md5
-      md5: d936083c50ea09697cead3bdc614398b
-      size: 13227
+      md5: 05161bc42fbcc3a2a6f9322d42175277
+      size: 13796
     - path: src/ribasim_nl/ribasim_nl/capacity.py
       hash: md5
       md5: c847698d88c536e61eec756300e1776a
       size: 4307
+    - path: src/ribasim_nl/ribasim_nl/control.py
+      hash: md5
+      md5: 712b2733c6e45dffdcd5f1a781d9ae25
+      size: 103479
     outs:
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_bergend_model
       hash: md5
-      md5: 6b73b20cee0680a14bfd39c61d218943.dir
-      size: 18161859
+      md5: 9f1de5c39aab95a9998a4b1d726c4651.dir
+      size: 18186435
       nfiles: 2
   bergend_rijn_en_ijssel:
     cmd:
@@ -3835,8 +3839,8 @@ stages:
       size: 4307
     - path: src/ribasim_nl/ribasim_nl/control.py
       hash: md5
-      md5: 7a6ae559dd0c5fe5f43ad704ef678f0e
-      size: 98382
+      md5: 712b2733c6e45dffdcd5f1a781d9ae25
+      size: 103479
     - path: src/ribasim_nl/ribasim_nl/downstream.py
       hash: md5
       md5: 453d72a645f70215d7949d5b4a2d805e
@@ -4000,8 +4004,8 @@ stages:
       size: 4307
     - path: src/ribasim_nl/ribasim_nl/control.py
       hash: md5
-      md5: 7a6ae559dd0c5fe5f43ad704ef678f0e
-      size: 98382
+      md5: 712b2733c6e45dffdcd5f1a781d9ae25
+      size: 103479
     - path: src/ribasim_nl/ribasim_nl/downstream.py
       hash: md5
       md5: 453d72a645f70215d7949d5b4a2d805e
@@ -4170,8 +4174,8 @@ stages:
       size: 4307
     - path: src/ribasim_nl/ribasim_nl/control.py
       hash: md5
-      md5: 7a6ae559dd0c5fe5f43ad704ef678f0e
-      size: 98382
+      md5: 712b2733c6e45dffdcd5f1a781d9ae25
+      size: 103479
     - path: src/ribasim_nl/ribasim_nl/downstream.py
       hash: md5
       md5: 453d72a645f70215d7949d5b4a2d805e
@@ -4334,8 +4338,8 @@ stages:
       size: 4307
     - path: src/ribasim_nl/ribasim_nl/control.py
       hash: md5
-      md5: 7a6ae559dd0c5fe5f43ad704ef678f0e
-      size: 98382
+      md5: 712b2733c6e45dffdcd5f1a781d9ae25
+      size: 103479
     - path: src/ribasim_nl/ribasim_nl/downstream.py
       hash: md5
       md5: 453d72a645f70215d7949d5b4a2d805e
@@ -4497,8 +4501,8 @@ stages:
       size: 4307
     - path: src/ribasim_nl/ribasim_nl/control.py
       hash: md5
-      md5: 7a6ae559dd0c5fe5f43ad704ef678f0e
-      size: 98382
+      md5: 712b2733c6e45dffdcd5f1a781d9ae25
+      size: 103479
     - path: src/ribasim_nl/ribasim_nl/downstream.py
       hash: md5
       md5: 453d72a645f70215d7949d5b4a2d805e
@@ -4660,8 +4664,8 @@ stages:
       size: 4307
     - path: src/ribasim_nl/ribasim_nl/control.py
       hash: md5
-      md5: 7a6ae559dd0c5fe5f43ad704ef678f0e
-      size: 98382
+      md5: 712b2733c6e45dffdcd5f1a781d9ae25
+      size: 103479
     - path: src/ribasim_nl/ribasim_nl/downstream.py
       hash: md5
       md5: 453d72a645f70215d7949d5b4a2d805e
@@ -4824,8 +4828,8 @@ stages:
       size: 4307
     - path: src/ribasim_nl/ribasim_nl/control.py
       hash: md5
-      md5: 7a6ae559dd0c5fe5f43ad704ef678f0e
-      size: 98382
+      md5: 712b2733c6e45dffdcd5f1a781d9ae25
+      size: 103479
     - path: src/ribasim_nl/ribasim_nl/downstream.py
       hash: md5
       md5: 453d72a645f70215d7949d5b4a2d805e
@@ -4993,8 +4997,8 @@ stages:
       size: 4307
     - path: src/ribasim_nl/ribasim_nl/control.py
       hash: md5
-      md5: 7a6ae559dd0c5fe5f43ad704ef678f0e
-      size: 98382
+      md5: 712b2733c6e45dffdcd5f1a781d9ae25
+      size: 103479
     - path: src/ribasim_nl/ribasim_nl/downstream.py
       hash: md5
       md5: 453d72a645f70215d7949d5b4a2d805e
@@ -5136,8 +5140,8 @@ stages:
       size: 39419904
     - path: src/peilbeheerst_model/forcing/WetterskipFryslan.py
       hash: md5
-      md5: 910799409129170ac1278cc58c8dcd09
-      size: 13001
+      md5: 92f22842424ca67e6c260390803ef877
+      size: 14600
     - path: src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       hash: md5
       md5: 34a527814984231731ae2074dc127c5f
@@ -5160,8 +5164,8 @@ stages:
       size: 4307
     - path: src/ribasim_nl/ribasim_nl/control.py
       hash: md5
-      md5: 7a6ae559dd0c5fe5f43ad704ef678f0e
-      size: 98382
+      md5: 712b2733c6e45dffdcd5f1a781d9ae25
+      size: 103479
     - path: src/ribasim_nl/ribasim_nl/downstream.py
       hash: md5
       md5: 453d72a645f70215d7949d5b4a2d805e
@@ -5209,8 +5213,8 @@ stages:
     outs:
     - path: data/WetterskipFryslan/modellen/WetterskipFryslan_forcing
       hash: md5
-      md5: 7dbf82407824ee739d7eadc87c9e41a0.dir
-      size: 190539630
+      md5: 092c36cfeceebd3e0c581525090d9d85.dir
+      size: 190572398
       nfiles: 3
   forcing_zuiderzeeland:
     cmd: pixi run python src/peilbeheerst_model/forcing/Zuiderzeeland.py
@@ -5322,8 +5326,8 @@ stages:
       size: 4307
     - path: src/ribasim_nl/ribasim_nl/control.py
       hash: md5
-      md5: 7a6ae559dd0c5fe5f43ad704ef678f0e
-      size: 98382
+      md5: 712b2733c6e45dffdcd5f1a781d9ae25
+      size: 103479
     - path: src/ribasim_nl/ribasim_nl/downstream.py
       hash: md5
       md5: 453d72a645f70215d7949d5b4a2d805e
@@ -5383,43 +5387,43 @@ stages:
       size: 4665344
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: 322e9f0e254ad91763a7412e9329aa2c.dir
-      size: 1363764812
+      md5: 46c21404a66da2b58dfc75bdb7ac5fbd.dir
+      size: 1363785292
       nfiles: 4
     - path: data/Rijkswaterstaat/runs/lhm_coupled
       hash: md5
-      md5: 2c2c6afa8b0dc24b1946ff413c67fe17.dir
-      size: 1192966927
-      nfiles: 7
+      md5: 8add1ccd9b7a82d9888580a8cba11d92.dir
+      size: 1193013983
+      nfiles: 8
     - path: scripts/export_webmap.py
       hash: md5
       md5: 59adef311e043e75a5a39beccfa34a89
       size: 471
     - path: src/ribasim_nl/ribasim_nl/webmap.py
       hash: md5
-      md5: a7e39cf0e1966440830d89fab1edabf2
-      size: 18341
+      md5: a5e5be45e2e6c3b61ac0b27840cc8e35
+      size: 19679
     outs:
     - path: data/Rijkswaterstaat/webmap/lhm_coupled
       hash: md5
-      md5: 9a4179107b7b8453ffbe531376149250.dir
-      size: 784517604
+      md5: d952e294e90fc205129316fa475edcbb.dir
+      size: 784472318
       nfiles: 34
   run_lhm_coupled:
     cmd: pixi run python scripts/run_lhm_coupled.py
     deps:
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: 322e9f0e254ad91763a7412e9329aa2c.dir
-      size: 1363764812
+      md5: 46c21404a66da2b58dfc75bdb7ac5fbd.dir
+      size: 1363785292
       nfiles: 4
     - path: scripts/run_lhm_coupled.py
       hash: md5
-      md5: 81b2fa8ac74d1398de48b31c7e60aaa2
-      size: 1373
+      md5: b8415d787b3e56921ad22d2e2690a16f
+      size: 2127
     outs:
     - path: data/Rijkswaterstaat/runs/lhm_coupled
       hash: md5
-      md5: 2c2c6afa8b0dc24b1946ff413c67fe17.dir
-      size: 1192966927
-      nfiles: 7
+      md5: 8add1ccd9b7a82d9888580a8cba11d92.dir
+      size: 1193013983
+      nfiles: 8
