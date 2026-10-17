@@ -3,6 +3,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from collections import namedtuple
 from datetime import timedelta
 from pathlib import Path
@@ -14,6 +15,23 @@ if TYPE_CHECKING:
     from ribasim_nl.model import Model
 
 RunSpecs = namedtuple("RunSpecs", ["exit_code", "simulation_time"])
+
+CORE_INFO_KEYS = ("version", "commit", "branch")
+
+
+def core_info(ribasim_home: Path) -> dict[str, str]:
+    """The version, commit and branch of a Ribasim core, from the TOML block in its `README.md`.
+
+    The commit and branch are GitHub URLs. The version alone does not identify a build of a branch.
+    """
+    readme = ribasim_home / "README.md"
+    assert readme.is_file(), f"No README.md in the Ribasim core at {ribasim_home}"
+    match = re.search(r"^```toml\n(.*?)^```", readme.read_text(encoding="utf-8"), re.DOTALL | re.MULTILINE)
+    assert match, f"No TOML block in {readme}"
+    info = tomllib.loads(match.group(1))
+    missing = [key for key in CORE_INFO_KEYS if not isinstance(info.get(key), str)]
+    assert not missing, f"{readme} does not record {missing}"
+    return {key: info[key] for key in CORE_INFO_KEYS}
 
 
 def run_model_and_control(

@@ -1312,6 +1312,8 @@ stages:
     cmd: pixi run python scripts/run_lhm_coupled.py
     deps:
       - scripts/run_lhm_coupled.py
+      - scripts/install_ribasim_core.py
+      - src/ribasim_nl/ribasim_nl/run_model.py
       - data/Rijkswaterstaat/modellen/lhm_coupled
     outs:
       - data/Rijkswaterstaat/runs/lhm_coupled
