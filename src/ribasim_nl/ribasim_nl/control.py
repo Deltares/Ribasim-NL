@@ -2220,8 +2220,19 @@ def set_continuous_level_control(
     max_flow_rate = float(points["flow_rate"].max())
 
     # remove the current control, which should only control this node
+    # The new ContinuousControl reuses the node and link IDs of the DiscreteControl it replaces, so the IDs of
+    # other nodes and links, which are referred to in issues and model viewer links, do not change.
     link_df = model.link.df
-    control_ids = link_df.loc[(link_df.link_type == "control") & (link_df.to_node_id == node_id), "from_node_id"]
+    control_links = link_df[(link_df.link_type == "control") & (link_df.to_node_id == node_id)]
+    control_ids = control_links["from_node_id"]
+    reuse: dict[str, int | None] = {"node_id": None, "link_id": None, "listen_link_id": None}
+    if len(control_ids) == 1:
+        listen_links = link_df.index[(link_df.link_type == "listen") & (link_df.to_node_id == control_ids.iloc[0])]
+        reuse = {
+            "node_id": int(control_ids.iloc[0]),
+            "link_id": int(control_links.index[0]),
+            "listen_link_id": int(listen_links[0]) if len(listen_links) == 1 else None,
+        }
     for control_id in control_ids:
         control_type = model.get_node_type(control_id)
         if control_type != "DiscreteControl":
@@ -2260,7 +2271,7 @@ def set_continuous_level_control(
         if column in model.link.df.columns:
             model.link.df.loc[model.link.df[f"{end}_node_id"] == node_id, column] = target_type
 
-    control_id = model.next_node_id
+    control_id = model.next_node_id if reuse["node_id"] is None else reuse["node_id"]
     model.add_control_node(
         to_node_id=node_id,
         data=[
@@ -2274,5 +2285,13 @@ def set_continuous_level_control(
         ctrl_type="ContinuousControl",
         node_offset=20,
         node_properties={} if name is None else {"name": name},
+        node_id=control_id,
+        link_id=reuse["link_id"],
     )
+    # The listen link is added with the control link, with a new ID
+    if reuse["listen_link_id"] is not None:
+        link_df = model.link.df
+        (listen_link_id,) = link_df.index[(link_df.link_type == "listen") & (link_df.to_node_id == control_id)]
+        if listen_link_id != reuse["listen_link_id"]:
+            model.set_link_id(listen_link_id, reuse["listen_link_id"])
     return control_id

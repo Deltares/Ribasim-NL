@@ -149,3 +149,21 @@ def test_prefix_index(model):
     assert model.link.df.from_node_id.to_list()[:2] == [70001, 70004]
     assert model.outlet.static.df.node_id.to_list() == [70004, 70005, 70006]
     assert model.outlet.static.df.node_id.dtype == "int32"
+
+
+def test_set_link_id():
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    model.level_boundary.add(Node(1, Point(0, 0)), [level_boundary.Static(level=[0.0])])
+    model.outlet.add(Node(2, Point(1, 0)), [outlet.Static(flow_rate=[1.0])])
+    model.level_boundary.add(Node(3, Point(2, 0)), [level_boundary.Static(level=[0.0])])
+    model.link.add(model.level_boundary[1], model.outlet[2])
+    model.link.add(model.outlet[2], model.level_boundary[3])
+    model.remove_links([1])
+    model.set_link_id(2, 1)
+    assert model.link.df.index.tolist() == [1]
+    assert model.link.df.at[1, "from_node_id"] == 2
+    # the released ID 2 can be reused without a warning
+    model.link.add(model.level_boundary[1], model.outlet[2], link_id=2)
+    assert sorted(model.link.df.index) == [1, 2]
+    with pytest.raises(AssertionError, match="already exists"):
+        model.set_link_id(1, 2)

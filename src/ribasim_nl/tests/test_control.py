@@ -15,7 +15,10 @@ def square(x: float) -> MultiPolygon:
 
 @pytest.fixture
 def model() -> Model:
-    """LevelBoundary 1 -> Outlet 2 -> Basin 3 -> Outlet 4 -> LevelBoundary 5, DiscreteControl 6 controls Outlet 2."""
+    """LevelBoundary 1 -> Outlet 2 -> Basin 3 -> Outlet 4 -> LevelBoundary 5, DiscreteControl 6 controls Outlet 2.
+
+    Links 1-4 are flow links, 5 is the control link and 6 the listen link of DiscreteControl 6.
+    """
     model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
     model.level_boundary.add(Node(1, Point(0, 0)), [level_boundary.Static(level=[0.0])])
     model.outlet.add(
@@ -65,13 +68,19 @@ def test_set_continuous_level_control(model):
     control_id = set_continuous_level_control(
         model, 2, listen_node_id=3, level=[-0.52, -0.53, -0.55, -1.0], flow_rate=[0.0, 23.0, 46.0, 46.0], name="inlaat"
     )
-    # the DiscreteControl is replaced
+    # the DiscreteControl is replaced, keeping its node and link IDs
+    assert control_id == 6
     assert (model.node.df.node_type != "DiscreteControl").all()
     assert model.discrete_control.variable.df is None or model.discrete_control.variable.df.empty
     assert model.get_node_type(control_id) == "ContinuousControl"
     assert model.node.df.at[control_id, "name"] == "inlaat"
     control_links = model.link.df[model.link.df.link_type == "control"]
     assert control_links[["from_node_id", "to_node_id"]].values.tolist() == [[control_id, 2]]
+    assert control_links.index.tolist() == [5]
+    listen_links = model.link.df[model.link.df.link_type == "listen"]
+    assert listen_links[["from_node_id", "to_node_id"]].values.tolist() == [[3, control_id]]
+    assert listen_links.index.tolist() == [6]
+    assert sorted(model.link.df.index) == [1, 2, 3, 4, 5, 6]
 
     function = model.continuous_control.function.df
     assert function.input.tolist() == [-1.0, -0.55, -0.53, -0.52]
@@ -90,9 +99,12 @@ def test_set_continuous_level_control(model):
 
 
 def test_set_continuous_level_control_to_pump(model):
-    set_continuous_level_control(
+    control_id = set_continuous_level_control(
         model, 4, listen_node_id=3, level=[-1.0, -0.52, -0.42], flow_rate=[0.0, 5.0, 30.0], node_type="Pump"
     )
+    # Outlet 4 had no DiscreteControl, so the ContinuousControl and its links get new IDs
+    assert control_id == 7
+    assert sorted(model.link.df.index) == [1, 2, 3, 4, 5, 6, 7, 8]
     assert model.get_node_type(4) == "Pump"
     assert (model.outlet.static.df.node_id != 4).all()
     assert model.pump.static.df.set_index("node_id").at[4, "max_flow_rate"] == 30.0
