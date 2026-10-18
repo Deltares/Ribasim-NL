@@ -11,6 +11,7 @@ from affine import Affine
 from geopandas import GeoDataFrame
 from rasterio.enums import Resampling
 from rasterio.features import geometry_mask
+from rasterio.io import MemoryFile
 from rasterio.windows import Window, from_bounds
 from rasterstats import zonal_stats
 from ribasim import Node
@@ -76,37 +77,26 @@ def percentage_secundair_oppervlaktewater() -> None:
             dst.write(result, 1)
 
 
-def percentage_primair_oppervlaktewater() -> None:
-    """Single-use function to compute percentage primary surface water per LHM cell and write as GTIFF LHM_oppervlaktewater_percentage.tif"""
-    out_file = LHM_RASTER_FILE.with_name("LHM_oppervlaktewater_percentage_primair.tif")
+def primary_surface_water_fraction() -> MemoryFile:
+    """The fraction of each LHM cell that is primary surface water, as a raster in memory.
+
+    It is derived from `LHM_RASTER_FILE` on each call, rather than cached next to it in a file that DVC does not track.
+    """
     with rasterio.open(LHM_RASTER_FILE) as src:
-        band10 = src.read(11).astype("float32")
+        area = src.read(11).astype("float32")
         profile = src.profile.copy()
-
-        # nodata ophalen
         nodata = src.nodata
+        cell_area = src.transform.a * abs(src.transform.e)
 
-        # celoppervlak uit resolutie
-        cell_width = src.transform.a
-        cell_height = abs(src.transform.e)
-        cell_area = cell_width * cell_height
+    valid = area != nodata if nodata is not None else np.ones(area.shape, dtype=bool)
+    fraction = np.full(area.shape, np.nan, dtype="float32")
+    fraction[valid] = area[valid] / cell_area
 
-        # geldige pixels bepalen
-        valid = band10 != nodata if nodata is not None else np.ones(band10.shape, dtype=bool)
-
-        # oppervlaktes optellen
-        summed_area = np.full(band10.shape, np.nan, dtype="float32")
-        summed_area[valid] = band10[valid]
-
-        # delen door celoppervlak
-        result = np.full(band10.shape, np.nan, dtype="float32")
-        result[valid] = summed_area[valid] / cell_area
-
-        # output profiel aanpassen naar 1 band
-        profile.update(dtype="float32", count=1, nodata=np.nan)
-
-        with rasterio.open(out_file, "w", **profile) as dst:
-            dst.write(result, 1)
+    profile.update(driver="GTiff", dtype="float32", count=1, nodata=np.nan)
+    memfile = MemoryFile()
+    with memfile.open(**profile) as dst:
+        dst.write(fraction, 1)
+    return memfile
 
 
 def sample_raster(
@@ -274,12 +264,6 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
         assert df is not None
         return df
 
-    # generate raster_file if not existing
-    cloud = CloudStorage()
-    src_file = cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_oppervlaktewater_percentage_primair.tif")
-    if not src_file.exists():
-        percentage_primair_oppervlaktewater()
-
     basin_node_df = cast(pd.DataFrame, model.basin.node.df)
     basin_area_df = cast(pd.DataFrame, model.basin.area.df)
     basin_profile_df = cast(pd.DataFrame, model.basin.profile.df)
@@ -287,7 +271,7 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
     # read resampled raster average and multiply by polygon.area
     basin_ids = basin_node_df[basin_node_df.meta_categorie.isin(["hoofdwater", "doorgaand"])].index.values
     profiles: list[pd.DataFrame] = []
-    with rasterio.open(src_file) as src:
+    with primary_surface_water_fraction() as memfile, memfile.open() as src:
         for basin_id in tqdm.tqdm(basin_ids, total=len(basin_ids), desc="profiles primary basins"):
             # read basin-area table
             polygon = cast(Polygon, cast(Any, basin_area_df.set_index("node_id").at[basin_id, "geometry"]))
