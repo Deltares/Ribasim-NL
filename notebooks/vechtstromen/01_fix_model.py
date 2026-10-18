@@ -1200,6 +1200,12 @@ sanitize_node_table(
     names=names,
 )
 
+# %% https://github.com/Deltares/Ribasim-NL/issues/890
+# FlowBoundary 25 is the inflow of the Wetteringe, not of the CPK, which is LevelBoundary 34
+assert model.node.df.at[25, "node_type"] == "FlowBoundary", model.node.df.at[25, "node_type"]
+assert model.node.df.at[25, "name"] == "CPK", model.node.df.at[25, "name"]
+model.node.df.loc[25, "name"] = "Wetteringe"
+
 # %%
 actions = [
     "remove_basin_area",
