@@ -644,9 +644,11 @@ export class Panel {
     const observedType = network.nodeType[row];
     const observations = await this.tableRows("Observation", "time", nodeId);
     const results = this.manifest.results;
-    // The simulated flow rate of a node with one flow in and out is that of its outflow
-    const outflow = network.linkId.find(
-      (_, linkRow) => network.linkType[linkRow] === "flow" && network.fromNodeId[linkRow] === observedId,
+    // The simulated flow rate of a node is its total outflow, which for a Junction is the flow through it
+    const outflows = Array.from(
+      network.linkId.filter(
+        (_, linkRow) => network.linkType[linkRow] === "flow" && network.fromNodeId[linkRow] === observedId,
+      ),
     );
     const variables = [...new Set(observations.map((observation) => String(observation.variable)))].sort((a, b) => a.localeCompare(b));
     if (variables.length === 0) return ["No observed values."];
@@ -655,8 +657,16 @@ export class Panel {
         let simulated: Row[] = [];
         if (results && observedType === "Basin") {
           simulated = await readRowsById(results.basin.by_id, "node_id", observedId);
-        } else if (results && variable === "flow_rate" && outflow !== undefined) {
-          simulated = await readRowsById(results.flow.by_id, "link_id", outflow);
+        } else if (results && variable === "flow_rate" && outflows.length > 0) {
+          const series = await Promise.all(outflows.map((id) => readRowsById(results.flow.by_id, "link_id", id)));
+          const total = new Map<number, Row>();
+          for (const row of series.flat()) {
+            const time = (row.time as Date).getTime();
+            const sum = total.get(time);
+            if (sum) sum.flow_rate = (sum.flow_rate as number) + (row.flow_rate as number);
+            else total.set(time, { time: row.time, flow_rate: row.flow_rate });
+          }
+          simulated = [...total.values()];
         }
         const byTime = new Map<number, Row>();
         const add = (rows: Row[], column: string, value: (row: Row) => unknown) => {
