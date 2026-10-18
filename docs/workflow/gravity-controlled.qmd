@@ -31,7 +31,7 @@ Explanation of a node's `function` in terms of upstream/downstream levels, suppl
 
 Steps 5, 6 and 7 are shared between water authorities, and live directly beneath the `notebooks` directory.
 
-5. `05_add_bergend.py` adds VdGaast-based storage basins (input = models are from script 4)
+5. `05_add_bergend.py` adds VdGaast-based storage basins (input = models are from script 4). A storage basin drains through a VdGaast-based TabulatedRatingCurve, except in the supply areas of `verwerkt/sturing/aanvoergebieden.gpkg`. There it is connected with a ManningResistance, so it can also be supplied.
 6. `06_add_synthetic_forcing.py` adds synthetic forcing (constant precipitation switched to constant evaporation) to the models produced by script 5
 7. `07_add_dynamic_forcing.py` adds Modflow-Metaswap drainage/infiltration and WIWB precipitation/evaporation to the models produced by script 5
 

@@ -330,7 +330,9 @@ stages:
     deps:
       - notebooks/aa_en_maas/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/berging.py
       - src/ribasim_nl/ribasim_nl/capacity.py
+      - src/ribasim_nl/ribasim_nl/profiles/implement.py
       - data/AaenMaas/modellen/AaenMaas_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -346,7 +348,9 @@ stages:
     deps:
       - notebooks/brabantse_delta/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/berging.py
       - src/ribasim_nl/ribasim_nl/capacity.py
+      - src/ribasim_nl/ribasim_nl/profiles/implement.py
       - data/BrabantseDelta/modellen/BrabantseDelta_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -361,7 +365,9 @@ stages:
     deps:
       - notebooks/de_dommel/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/berging.py
       - src/ribasim_nl/ribasim_nl/capacity.py
+      - src/ribasim_nl/ribasim_nl/profiles/implement.py
       - data/DeDommel/modellen/DeDommel_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -376,7 +382,9 @@ stages:
     deps:
       - notebooks/drents_overijsselse_delta/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/berging.py
       - src/ribasim_nl/ribasim_nl/capacity.py
+      - src/ribasim_nl/ribasim_nl/profiles/implement.py
       - data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -393,7 +401,9 @@ stages:
     deps:
       - notebooks/hunze_en_aas/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/berging.py
       - src/ribasim_nl/ribasim_nl/capacity.py
+      - src/ribasim_nl/ribasim_nl/profiles/implement.py
       - data/HunzeenAas/modellen/HunzeenAas_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -408,7 +418,9 @@ stages:
     deps:
       - notebooks/limburg/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/berging.py
       - src/ribasim_nl/ribasim_nl/capacity.py
+      - src/ribasim_nl/ribasim_nl/profiles/implement.py
       - data/Limburg/modellen/Limburg_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -423,7 +435,9 @@ stages:
     deps:
       - notebooks/noorderzijlvest/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/berging.py
       - src/ribasim_nl/ribasim_nl/capacity.py
+      - src/ribasim_nl/ribasim_nl/profiles/implement.py
       - src/ribasim_nl/ribasim_nl/control.py
       - data/Noorderzijlvest/modellen/Noorderzijlvest_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
@@ -439,7 +453,9 @@ stages:
     deps:
       - notebooks/rijn_en_ijssel/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/berging.py
       - src/ribasim_nl/ribasim_nl/capacity.py
+      - src/ribasim_nl/ribasim_nl/profiles/implement.py
       - data/RijnenIJssel/modellen/RijnenIJssel_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -454,7 +470,9 @@ stages:
     deps:
       - notebooks/stichtse_rijnlanden/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/berging.py
       - src/ribasim_nl/ribasim_nl/capacity.py
+      - src/ribasim_nl/ribasim_nl/profiles/implement.py
       - data/StichtseRijnlanden/modellen/StichtseRijnlanden_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -470,7 +488,9 @@ stages:
     deps:
       - notebooks/vallei_en_veluwe/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/berging.py
       - src/ribasim_nl/ribasim_nl/capacity.py
+      - src/ribasim_nl/ribasim_nl/profiles/implement.py
       - data/ValleienVeluwe/modellen/ValleienVeluwe_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -486,7 +506,9 @@ stages:
     deps:
       - notebooks/vechtstromen/04_add_full_control.py
       - notebooks/05_add_bergend.py
+      - src/ribasim_nl/ribasim_nl/berging.py
       - src/ribasim_nl/ribasim_nl/capacity.py
+      - src/ribasim_nl/ribasim_nl/profiles/implement.py
       - data/Vechtstromen/modellen/Vechtstromen_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
