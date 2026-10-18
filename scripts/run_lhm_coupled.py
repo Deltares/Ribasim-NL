@@ -8,7 +8,6 @@ import json
 import os
 import subprocess
 import tomllib
-from datetime import datetime
 from pathlib import Path
 
 import tomli_w
@@ -16,8 +15,7 @@ from ribasim_nl.run_model import core_info, run
 from ribasim_nl.settings import settings
 from ribasim_nl.webmap import RUN_INFO
 
-# Temporary: 1 year with a looser tolerance, until a full run is feasible
-OVERRIDES = {"endtime": datetime(2018, 1, 1)}
+# A looser tolerance, until a run with the default tolerance is feasible
 SOLVER_OVERRIDES = {"reltol": 1e-3}
 
 
@@ -35,7 +33,6 @@ with model_toml.open("rb") as f:
 input_dir = model_toml.parent / config.get("input_dir", ".")
 assert (input_dir / "database.gpkg").is_file(), f"No database in {input_dir}"
 
-config |= OVERRIDES
 config["solver"] = config.get("solver", {}) | SOLVER_OVERRIDES
 config["input_dir"] = os.path.relpath(input_dir, run_dir).replace("\\", "/")
 config["results_dir"] = "results"
