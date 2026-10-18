@@ -1302,8 +1302,8 @@ stages:
       size: 25642
     - path: notebooks/rijkswaterstaat/6_model_sturing.py
       hash: md5
-      md5: 909ba37bfbcf9ec75381ee8eb839b553
-      size: 6051
+      md5: 7db0fe21286ab5783125bd3271f3fe17
+      size: 6622
     - path: notebooks/rijkswaterstaat/7_model_onttrekkingen.py
       hash: md5
       md5: 4e412880d26b4257d8100231593d1176
@@ -1319,7 +1319,7 @@ stages:
     outs:
     - path: data/Rijkswaterstaat/modellen/hws_demand
       hash: md5
-      md5: e61a77e282d824af4da1ff6e6575c427.dir
+      md5: b031e1da86df9274014cbeb9f1a3405c.dir
       size: 42651848
       nfiles: 2
     - path: data/Rijkswaterstaat/verwerkt/netwerk.gpkg
