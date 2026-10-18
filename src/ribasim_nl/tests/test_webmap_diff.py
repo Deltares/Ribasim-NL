@@ -19,6 +19,7 @@ from ribasim_nl.webmap_diff import (
     compare_config,
     compare_features,
     compare_results,
+    compare_tables,
     diff_models,
     matched_ids,
     node_digests,
@@ -168,6 +169,23 @@ def test_compare_features_renumbered():
     )
     assert diff == {8: {"status": "changed", "changes": ["name"], "base_id": 2}}
     assert removed == {}
+
+
+def test_compare_tables_missing_columns(tmp_path):
+    """A new column without values for a node does not change the rows of that node.
+
+    Such as the metadata of a node converted from another type.
+    """
+    manifests = {}
+    for name in ("base", "head"):
+        path = tmp_path / f"{name}.parquet"
+        df = pd.DataFrame({"node_id": [1, 2, 2], "flow_rate": [1.0, 2.0, 3.0 if name == "base" else 4.0]})
+        if name == "head":
+            df["meta_note"] = pd.array([None, None, "converted"], dtype="string")
+            df["meta_level"] = [np.nan, np.nan, 1.0]
+        df.to_parquet(path)
+        manifests[name] = {"tables": [{"name": "Pump / static", "path": path.name, "hash": name}]}
+    assert compare_tables(tmp_path, manifests["base"], tmp_path, manifests["head"]) == {2: ["Pump / static"]}
 
 
 def test_node_digests_across_batches(tmp_path, monkeypatch):

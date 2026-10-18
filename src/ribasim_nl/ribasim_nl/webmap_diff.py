@@ -6,11 +6,13 @@ Basin / area differ. If both models have results, the Basin levels and flow rate
 """
 
 import json
+from collections.abc import Collection
 from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 import pyarrow.parquet as pq
 import shapely
 import xarray as xr
@@ -89,12 +91,19 @@ def compare_features(
     return diff, removed
 
 
-def normalize_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
-    """Columns in a fixed order with dtypes that hash equally for equal values, missing columns are NaN."""
+def normalize_columns(df: pd.DataFrame, columns: list[str], string_columns: Collection[str] = ()) -> pd.DataFrame:
+    """Columns in a fixed order with dtypes that hash equally for equal values.
+
+    Missing columns are null, like an empty column: missing values of `string_columns`, NaN otherwise.
+    """
     result = {}
     for column in columns:
         if column not in df:
-            result[column] = np.full(len(df), np.nan)
+            result[column] = (
+                pd.Series(pd.NA, index=df.index, dtype="string")
+                if column in string_columns
+                else np.full(len(df), np.nan)
+            )
         elif pd.api.types.is_datetime64_any_dtype(df[column]):
             result[column] = df[column].astype("datetime64[ms]").astype("int64").where(df[column].notna(), np.nan)
         elif pd.api.types.is_numeric_dtype(df[column]):
@@ -104,7 +113,7 @@ def normalize_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     return pd.DataFrame(result, index=df.index)
 
 
-def node_digests(path: Path, columns: list[str]) -> pd.DataFrame:
+def node_digests(path: Path, columns: list[str], string_columns: Collection[str] = ()) -> pd.DataFrame:
     """The row count and an order-sensitive digest of the rows of each node in a table sorted by node_id."""
     file = pq.ParquetFile(path)
     present = [column for column in columns if column in file.schema_arrow.names]
@@ -118,7 +127,7 @@ def node_digests(path: Path, columns: list[str]) -> pd.DataFrame:
         ids = df["node_id"].to_numpy()
         assert np.all(ids[1:] >= ids[:-1]), f"{path} is not sorted by node_id"
         assert pending_id is None or ids[0] >= pending_id, f"{path} is not sorted by node_id"
-        hashes = pd.util.hash_pandas_object(normalize_columns(df, columns), index=False).to_numpy()
+        hashes = pd.util.hash_pandas_object(normalize_columns(df, columns, string_columns), index=False).to_numpy()
         starts = np.flatnonzero(np.r_[True, ids[1:] != ids[:-1]])
         counts = np.diff(np.r_[starts, len(ids)])
         position = (np.arange(len(ids)) - np.repeat(starts, counts)).astype("uint64")
@@ -165,9 +174,17 @@ def compare_tables(base_dir: Path, base_manifest: dict, head_dir: Path, head_man
             base_dir / base_table["path"] if base_table else None,
             head_dir / head_table["path"] if head_table else None,
         ]
-        columns = sorted({c for path in paths if path for c in pq.read_schema(path).names} - {"node_id"})
+        schemas = [pq.read_schema(path) for path in paths if path]
+        columns = sorted({c for schema in schemas for c in schema.names} - {"node_id"})
+        # So that a column that is missing in one table hashes like the same column without values in the other
+        string_columns = {
+            field.name
+            for schema in schemas
+            for field in schema
+            if pa.types.is_string(field.type) or pa.types.is_large_string(field.type)
+        }
         empty = pd.DataFrame({"rows": [], "digest": []}, index=pd.Index([], name="node_id"))
-        base_digests, head_digests = (node_digests(path, columns) if path else empty for path in paths)
+        base_digests, head_digests = (node_digests(path, columns, string_columns) if path else empty for path in paths)
         joined = base_digests.join(head_digests, how="outer", lsuffix="_base", rsuffix="_head")
         differs = ~(
             (joined["rows_base"] == joined["rows_head"]) & (joined["digest_base"] == joined["digest_head"])
