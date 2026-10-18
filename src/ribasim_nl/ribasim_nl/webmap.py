@@ -337,7 +337,7 @@ def model_results_dir(toml_path: Path, config: dict) -> Path:
 
 
 def run_info(toml_path: Path, results_dir: Path) -> dict:
-    """When the model was run, from `ribasim.log`, and from which commit, from `runinfo.json` next to the TOML.
+    """When the model was run, from `ribasim.log`, and from which commits, from `runinfo.json` next to the TOML.
 
     Only what is known is included, so the result may be empty.
     """
@@ -352,7 +352,7 @@ def run_info(toml_path: Path, results_dir: Path) -> dict:
     if path.is_file():
         recorded = json.loads(path.read_text())
         assert isinstance(recorded.get("commit"), str), f"No commit in {path}"
-        info |= {key: recorded[key] for key in ("commit", "dirty") if key in recorded}
+        info |= {key: recorded[key] for key in ("commit", "dirty", "core") if key in recorded}
     return info
 
 

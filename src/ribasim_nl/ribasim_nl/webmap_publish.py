@@ -1,6 +1,6 @@
 """Publish the `export_webmap` output to MinIO for the model viewer on the documentation site.
 
-    pixi run publish-webmap            # the model of the pull request of this branch, compared with main
+    pixi run publish-webmap            # the model of the pull request of this branch, compared with its base
     pixi run publish-webmap --pr 123   # the model of the working tree as that pull request
     pixi run publish-webmap --main     # only the model of origin/main
 
@@ -15,8 +15,9 @@ Everything is uploaded below the anonymously readable `doc-image/webmap/` prefix
   `main` is not published.
 - `lhm_coupled/diffs/<base md5>-<head md5>.json`: the differences between two snapshots, see
   `ribasim_nl.webmap_diff`.
-- `lhm_coupled/prs/<number>.json`: the snapshots and differences of a pull request, compared with `main`,
-  which the viewer shows for `?pr=<number>`.
+- `lhm_coupled/prs/<number>.json`: the snapshots and differences of a pull request, which the viewer shows for
+  `?pr=<number>`. A pull request is compared with `main`, or in a stack of pull requests with the pull request
+  of its base branch, so it only shows its own changes. That pull request must be published first.
 
 This needs the following environment variables to be set in `.env` (Deltares only):
 AWS_ACCESS_KEY_ID
@@ -65,6 +66,7 @@ CONTENT_TYPES = {
 }
 IMMUTABLE = "public, max-age=31536000, immutable"
 COMMIT = re.compile(r"[0-9a-f]{40}")
+BRANCH = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*")
 
 
 def export_hash(lock: dict) -> str:
@@ -111,12 +113,16 @@ def diff_counts(diff: dict) -> dict[str, Counter]:
     return counts
 
 
-def comment_body(number: int, diff: dict, base_commit: str, head_commit: str) -> str:
-    """The pull request comment with the viewer link and a summary of the differences with main."""
+def comment_body(number: int, diff: dict, base_commit: str, head_commit: str, base_pr: int | None = None) -> str:
+    """The pull request comment with the viewer link and a summary of the differences with its base.
+
+    The base is `main`, or pull request `base_pr` in a stack.
+    """
     counts = diff_counts(diff)
+    base = "`main`" if base_pr is None else f"#{base_pr}"
     lines = [
         COMMENT_MARKER,
-        f"**[View the model of this pull request]({VIEWER_URL}?pr={number})**, with the differences from `main`.",
+        f"**[View the model of this pull request]({VIEWER_URL}?pr={number})**, with the differences from {base}.",
         "",
         "| | added | removed | changed |",
         "|:--|--:|--:|--:|",
@@ -132,7 +138,7 @@ def comment_body(number: int, diff: dict, base_commit: str, head_commit: str) ->
         lines += ["", f"Results are not compared: {diff['results_note']}"]
     if diff["config"]:
         lines += ["", "Changed settings: " + ", ".join(f"`{setting['key']}`" for setting in diff["config"])]
-    lines += ["", f"Compared `{head_commit[:7]}` with `main` at `{base_commit[:7]}`, published {now()}."]
+    lines += ["", f"Compared `{head_commit[:7]}` with {base} at `{base_commit[:7]}`, published {now()}."]
     return "\n".join(lines)
 
 
@@ -243,14 +249,50 @@ class Store:
         return name
 
 
+def branch_name(branch: str) -> str:
+    """Assert a branch name is valid, so it is never read as an option; return it."""
+    assert BRANCH.fullmatch(branch) and ".." not in branch, f"Invalid branch {branch!r}"
+    return branch
+
+
+def fetch_branch(branch: str) -> str:
+    """Fetch a branch from GitHub and return its commit."""
+    refspec = f"refs/heads/{branch_name(branch)}:refs/remotes/origin/{branch}"
+    subprocess.run(
+        ["git", "fetch", "--quiet", "origin", refspec], check=True, capture_output=True, text=True, cwd=REPO_DIR
+    )
+    commit = resolve_commit(f"origin/{branch}")
+    assert commit is not None, f"origin/{branch} not found"
+    return commit_hash(commit)
+
+
 def fetch_main() -> str:
     """Fetch main from GitHub and return its commit."""
-    subprocess.run(
-        ["git", "fetch", "--quiet", "origin", "main"], check=True, capture_output=True, text=True, cwd=REPO_DIR
-    )
-    commit = resolve_commit(MAIN)
-    assert commit is not None, f"{MAIN} not found"
-    return commit_hash(commit)
+    commit = fetch_branch(MAIN.removeprefix("origin/"))
+    assert commit == resolve_commit(MAIN)
+    return commit
+
+
+def gh_json(*args: str) -> object:
+    """Run a GitHub CLI command with JSON output and return the parsed result."""
+    result = subprocess.run(["gh", *args], check=True, capture_output=True, text=True, cwd=REPO_DIR)
+    return json.loads(result.stdout)
+
+
+def stack_base(number: int) -> tuple[str, int] | None:
+    """The base branch of a pull request and the open pull request of that branch, or None if it is based on main.
+
+    In a stack of pull requests, a pull request is based on the branch of the one below it.
+    """
+    pr = gh_json("pr", "view", str(pr_number(number)), "--repo", GITHUB_REPO, "--json", "baseRefName")
+    assert isinstance(pr, dict)
+    branch = branch_name(pr["baseRefName"])
+    if branch == MAIN.removeprefix("origin/"):
+        return None
+    prs = gh_json("pr", "list", "--repo", GITHUB_REPO, "--head", branch, "--state", "open", "--json", "number")
+    assert isinstance(prs, list)
+    assert len(prs) == 1, f"Expected one open pull request of base branch {branch} of #{number}, found {prs}"
+    return branch, pr_number(prs[0]["number"])
 
 
 def publish_main(store: Store, commit: str) -> str:
@@ -316,20 +358,33 @@ def upsert_comment(number: int, body: str) -> None:
 
 
 def publish_pr(store: Store, number: int) -> None:
-    """Publish the model of the working tree for a pull request, with its differences from main."""
+    """Publish the model of the working tree for a pull request, with its differences from its base.
+
+    The base is main, or in a stack the pull request of the base branch, whose export must be pushed with DVC.
+    """
     head_md5 = check_working_tree()
     head_commit = commit_hash(
         subprocess.run(
             ["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True, cwd=REPO_DIR
         ).stdout.strip()
     )
-    base_commit = fetch_main()
-    base_md5 = publish_main(store, base_commit)
+    stack = stack_base(number)
+    if stack is None:
+        base_pr = None
+        base_commit = fetch_main()
+        base_md5 = publish_main(store, base_commit)
+        base_label = "main"
+    else:
+        branch, base_pr = stack
+        base_commit = fetch_branch(branch)
+        base_md5 = export_hash(lock_at(base_commit))
+        store.publish_snapshot(checkout_export(base_commit, base_md5), base_md5)
+        base_label = f"#{base_pr}"
     head_dir = REPO_DIR / EXPORT_PATH
     store.publish_snapshot(head_dir, head_md5)
 
     base_toml = checkout_model(REPO_DIR / RUN_TOML, base_commit)
-    labels = (f"main @ {base_commit[:7]}", f"#{number} @ {head_commit[:7]}")
+    labels = (f"{base_label} @ {base_commit[:7]}", f"#{number} @ {head_commit[:7]}")
     base_dir = checkout_export(base_commit, base_md5)
     diff_dir = diff_cached(base_toml, REPO_DIR / RUN_TOML, base_dir, head_dir, labels)
     diff = json.loads((diff_dir / "diff.json").read_text())
@@ -340,13 +395,13 @@ def publish_pr(store: Store, number: int) -> None:
     pr = {
         "pr": number,
         "head": {"snapshot": head_md5, "commit": head_commit},
-        "base": {"snapshot": base_md5, "commit": base_commit},
+        "base": {"snapshot": base_md5, "commit": base_commit} | ({} if base_pr is None else {"pr": base_pr}),
         "diff": diff_name.removeprefix(f"{MODEL}/"),
         "published": now(),
     }
     store.put_json(f"{MODEL}/prs/{number}.json", pr, "no-cache")
     print(f"Published {VIEWER_URL}?pr={number}")
-    upsert_comment(number, comment_body(number, diff, base_commit, head_commit))
+    upsert_comment(number, comment_body(number, diff, base_commit, head_commit, base_pr))
 
 
 def main(argv: list[str] | None = None) -> None:

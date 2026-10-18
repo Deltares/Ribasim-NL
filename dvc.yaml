@@ -511,6 +511,8 @@ stages:
     do:
       cmd: pixi run python notebooks/07_add_dynamic_forcing.py ${item}
       deps:
+        # The model is run to update its state
+        - scripts/install_ribasim_core.py
         - notebooks/07_add_dynamic_forcing.py
         - src/ribasim_nl/ribasim_nl/network_snapping.py
         - src/ribasim_nl/ribasim_nl/rwzi.py
@@ -800,6 +802,8 @@ stages:
   forcing_delfland:
     cmd: pixi run python src/peilbeheerst_model/forcing/Delfland.py
     deps:
+      # The model is run to update its state
+      - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/Delfland.py
       - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
       - src/ribasim_nl/ribasim_nl/upstream.py
@@ -841,6 +845,8 @@ stages:
   forcing_amstel_gooi_en_vecht:
     cmd: pixi run python src/peilbeheerst_model/forcing/AmstelGooienVecht.py
     deps:
+      # The model is run to update its state
+      - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/AmstelGooienVecht.py
       - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
       - src/ribasim_nl/ribasim_nl/upstream.py
@@ -882,6 +888,8 @@ stages:
   forcing_hollands_noorderkwartier:
     cmd: pixi run python src/peilbeheerst_model/forcing/HollandsNoorderkwartier.py
     deps:
+      # The model is run to update its state
+      - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/HollandsNoorderkwartier.py
       - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
       - src/ribasim_nl/ribasim_nl/upstream.py
@@ -923,6 +931,8 @@ stages:
   forcing_hollandse_delta:
     cmd: pixi run python src/peilbeheerst_model/forcing/HollandseDelta.py
     deps:
+      # The model is run to update its state
+      - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/HollandseDelta.py
       - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
       - src/ribasim_nl/ribasim_nl/upstream.py
@@ -964,6 +974,8 @@ stages:
   forcing_rijnland:
     cmd: pixi run python src/peilbeheerst_model/forcing/Rijnland.py
     deps:
+      # The model is run to update its state
+      - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/Rijnland.py
       - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
       - src/ribasim_nl/ribasim_nl/upstream.py
@@ -1005,6 +1017,8 @@ stages:
   forcing_rivierenland:
     cmd: pixi run python src/peilbeheerst_model/forcing/Rivierenland.py
     deps:
+      # The model is run to update its state
+      - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/Rivierenland.py
       - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
       - src/ribasim_nl/ribasim_nl/upstream.py
@@ -1046,6 +1060,8 @@ stages:
   forcing_scheldestromen:
     cmd: pixi run python src/peilbeheerst_model/forcing/Scheldestromen.py
     deps:
+      # The model is run to update its state
+      - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/Scheldestromen.py
       - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
       - src/ribasim_nl/ribasim_nl/upstream.py
@@ -1087,6 +1103,8 @@ stages:
   forcing_schieland_en_de_krimpenerwaard:
     cmd: pixi run python src/peilbeheerst_model/forcing/SchielandendeKrimpenerwaard.py
     deps:
+      # The model is run to update its state
+      - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/SchielandendeKrimpenerwaard.py
       - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
       - src/ribasim_nl/ribasim_nl/upstream.py
@@ -1128,6 +1146,8 @@ stages:
   forcing_wetterskip_fryslan:
     cmd: pixi run python src/peilbeheerst_model/forcing/WetterskipFryslan.py
     deps:
+      # The model is run to update its state
+      - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/WetterskipFryslan.py
       - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
       - src/ribasim_nl/ribasim_nl/upstream.py
@@ -1169,6 +1189,8 @@ stages:
   forcing_zuiderzeeland:
     cmd: pixi run python src/peilbeheerst_model/forcing/Zuiderzeeland.py
     deps:
+      # The model is run to update its state
+      - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/Zuiderzeeland.py
       - src/peilbeheerst_model/peilbeheerst_model/design_capacities.py
       - src/ribasim_nl/ribasim_nl/upstream.py
@@ -1217,6 +1239,8 @@ stages:
       - pixi run python notebooks/rijkswaterstaat/7_model_onttrekkingen.py
       - pixi run python notebooks/rijkswaterstaat/8a_update_state.py
     deps:
+      # The model is run to update its state
+      - scripts/install_ribasim_core.py
       - notebooks/rijkswaterstaat/2_basins.py
       - notebooks/rijkswaterstaat/3_netwerk.py
       - notebooks/rijkswaterstaat/4_kunstwerken.py
@@ -1313,6 +1337,8 @@ stages:
     cmd: pixi run python scripts/run_lhm_coupled.py
     deps:
       - scripts/run_lhm_coupled.py
+      - scripts/install_ribasim_core.py
+      - src/ribasim_nl/ribasim_nl/run_model.py
       - data/Rijkswaterstaat/modellen/lhm_coupled
     outs:
       - data/Rijkswaterstaat/runs/lhm_coupled
