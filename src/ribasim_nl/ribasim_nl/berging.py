@@ -83,7 +83,7 @@ def primary_surface_water_fraction() -> MemoryFile:
     It is derived from `LHM_RASTER_FILE` on each call, rather than cached next to it in a file that DVC does not track.
     """
     with rasterio.open(LHM_RASTER_FILE) as src:
-        area = src.read(11).astype("float32")
+        area = src.read(BANDEN["opp_primair"]).astype("float32")
         profile = src.profile.copy()
         nodata = src.nodata
         cell_area = src.transform.a * abs(src.transform.e)
