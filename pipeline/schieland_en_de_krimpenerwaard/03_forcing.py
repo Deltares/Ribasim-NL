@@ -1,7 +1,6 @@
 """Parameterisation of water board: Schieland en de Krimpenerwaard."""
 
 import ribasim_nl.ribasim_parametrization as ribasim_param
-from ribasim_nl.assign_parametrization import AssignMetaData
 from ribasim_nl.control import (
     set_node_functions,
 )
@@ -9,8 +8,10 @@ from ribasim_nl.design_capacities import set_design_capacities
 from ribasim_nl.workflow import (
     WaterBoardPaths,
     add_controllers,
+    assign_pump_and_basin_names,
     categorize_nodes,
     complete_parametrization,
+    keep_model_supply_basins,
     node_function_table,
     set_boundary_conditions,
     set_manning_resistance_outside_bergend,
@@ -48,10 +49,7 @@ aanvoergebieden = supply.special_load_geometry(
 
 # add control, based on the meta_categorie
 
-# filter processor basin IDs to only those present in the model
-basin_ids = set(ribasim_model.basin.node.df.index)
-processor._basin_aanvoer_on = tuple(n for n in (processor.basin_aanvoer_on or ()) if n in basin_ids)
-processor._basin_aanvoer_off = tuple(n for n in (processor.basin_aanvoer_off or ()) if n in basin_ids)
+keep_model_supply_basins(processor, ribasim_model)
 
 ribasim_param.set_aanvoer_flags(
     ribasim_model,
@@ -141,27 +139,7 @@ add_controllers(ribasim_model, from_to_node_function_table, remove_duplicates=Fa
 #     print(f"Removed duplicate control node {duplicate}")
 
 
-# assign metadata for pumps and basins
-assign_metadata = AssignMetaData(
-    authority=waterschap,
-    model_name=ribasim_model,
-    param_name="HHSK.gpkg",
-    sync=False,
-)
-assign_metadata.add_meta_to_pumps(
-    layer="gemaal",
-    mapper={
-        "meta_name": {"node": ["name"]},
-        "meta_capaciteit": {"static": ["flow_rate", "max_flow_rate"]},
-    },
-    max_distance=10,
-    factor_flowrate=1 / 60,  # m3/min -> m3/s
-)
-assign_metadata.add_meta_to_basins(
-    layer="aggregation_area",
-    mapper={"meta_name": {"node": ["name"]}},
-    min_overlap=0.95,
-)
+assign_pump_and_basin_names(ribasim_model, paths, param_name="HHSK.gpkg", pump_max_distance=10)
 
 # increase_flow_rate_pumps = [395]
 # ribasim_model.pump.static.df.loc[

@@ -1,7 +1,6 @@
 """Parameterisation of water board: Fryslan."""
 
 import ribasim_nl.ribasim_parametrization as ribasim_param
-from ribasim_nl.assign_parametrization import AssignMetaData
 from ribasim_nl.control import (
     set_continuous_level_control,
     set_flow_rate,
@@ -11,6 +10,7 @@ from ribasim_nl.design_capacities import set_design_capacities
 from ribasim_nl.workflow import (
     WaterBoardPaths,
     add_controllers,
+    assign_pump_and_basin_names,
     categorize_nodes,
     complete_parametrization,
     node_function_table,
@@ -146,27 +146,7 @@ from_to_node_function_table = set_node_functions(
 # retain meta data of the outlets and pumps
 add_controllers(ribasim_model, from_to_node_function_table, remove_duplicates=True, method="combine_first")
 
-# assign metadata for pumps and basins
-assign_metadata = AssignMetaData(
-    authority=waterschap,
-    model_name=ribasim_model,
-    param_name=f"{waterschap}.gpkg",
-    sync=False,
-)
-assign_metadata.add_meta_to_pumps(
-    layer="gemaal",
-    mapper={
-        "meta_name": {"node": ["name"]},
-        "meta_capaciteit": {"static": ["flow_rate", "max_flow_rate"]},
-    },
-    max_distance=100,
-    factor_flowrate=1 / 60,  # m3/min -> m3/s
-)
-assign_metadata.add_meta_to_basins(
-    layer="aggregation_area",
-    mapper={"meta_name": {"node": ["name"]}},
-    min_overlap=0.95,
-)
+assign_pump_and_basin_names(ribasim_model, paths)
 
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 2700, "max_flow_rate"] = 172 / 60
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 3891, "max_flow_rate"] = 7340 / 60
