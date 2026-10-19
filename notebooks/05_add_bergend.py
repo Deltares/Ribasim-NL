@@ -1,7 +1,8 @@
 # %%
 import sys
 
-from ribasim_nl.berging import VdGaastBerging
+import geopandas as gpd
+from ribasim_nl.berging import VdGaastBerging, supply_area_basin_ids
 from ribasim_nl.capacity import bound_supply_inflows
 
 from ribasim_nl import CloudStorage, Model
@@ -33,8 +34,13 @@ for authority in authorities:
         # limit supply to the target level, before adding storing basins
         bound_supply_inflows(model)
 
+        # storing basins in supply areas get a ManningResistance, so they can be supplied too
+        supply_areas = gpd.read_file(cloud.joinpath(authority, "verwerkt", "sturing", "aanvoergebieden.gpkg"))
+        manning_basin_ids = supply_area_basin_ids(model, supply_areas)
+        print(f"{len(manning_basin_ids)} storing basins in supply areas are connected with a ManningResistance")
+
         # add berging
-        add_berging = VdGaastBerging(model=model, cloud=cloud, use_add_api=False)
+        add_berging = VdGaastBerging(model=model, cloud=cloud, manning_basin_ids=manning_basin_ids)
         add_berging.add()
 
         # run model

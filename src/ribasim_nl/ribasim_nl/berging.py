@@ -14,12 +14,13 @@ from rasterio.features import geometry_mask
 from rasterio.windows import Window, from_bounds
 from rasterstats import zonal_stats
 from ribasim import Node
-from ribasim.nodes import basin, tabulated_rating_curve
+from ribasim.nodes import basin, manning_resistance, tabulated_rating_curve
 from shapely.geometry import Point, Polygon
 
 from ribasim_nl.cloud import CloudStorage
 from ribasim_nl.model import Model
 from ribasim_nl.profiles import MIN_PROFILE_AREA
+from ribasim_nl.profiles.implement import bergend_manning_static
 from ribasim_nl.raster import with_rasterio_env
 from ribasim_nl.settings import settings
 
@@ -424,6 +425,53 @@ def get_rating_curve(row, min_level: float, maaiveld: float | None = None) -> ta
     return tabulated_rating_curve.Static(level=df.level, flow_rate=df.flow_rate)
 
 
+def get_manning_resistance(area: float) -> manning_resistance.Static:
+    """Generate the ManningResistance static table between a storing and a flowing basin, see `bergend_manning_static`
+
+    Args:
+        area (float): area of the basin [m2]
+
+    Returns
+    -------
+        manning_resistance.Static: Static-table for ManningResistance node
+    """
+    static = bergend_manning_static(pd.Series([area])).iloc[0]
+    return manning_resistance.Static(
+        **{column: [static[column]] for column in ("length", "manning_n", "profile_width", "profile_slope")}
+    )
+
+
+def supply_area_basin_ids(model: Model, supply_areas: GeoDataFrame, min_overlap: float = 0.5) -> set[int]:
+    """Get the flowing (non-'bergend') basins that lie in the supply areas ('aanvoergebieden')
+
+    Basins are selected by area rather than by node_id, since the node_ids in the supply areas can be outdated.
+
+    Args:
+        model (Model): Ribasim model
+        supply_areas (GeoDataFrame): Polygons of the supply areas
+        min_overlap (float, optional): Minimal fraction of the basin area within the supply areas. Defaults to 0.5.
+
+    Returns
+    -------
+        set[int]: node_ids of the basins in the supply areas
+    """
+    assert 0 < min_overlap <= 1, f"min_overlap should be in (0, 1], not {min_overlap}"
+    supply_areas = supply_areas[supply_areas.geometry.notna()]
+    assert not supply_areas.empty, "No supply areas with a geometry"
+    supply_area = supply_areas.geometry.make_valid().union_all()
+
+    basin_node_df = model.basin.node.df
+    assert basin_node_df is not None
+    flowing_ids = basin_node_df.index[basin_node_df["meta_categorie"] != "bergend"]
+
+    basin_area_df = model.basin.area.df
+    assert basin_area_df is not None
+    basin_area_df = basin_area_df[basin_area_df["node_id"].isin(flowing_ids) & basin_area_df.geometry.notna()]
+    basin_area = basin_area_df.dissolve("node_id").geometry
+    overlap = basin_area.intersection(supply_area).area / basin_area.area
+    return {int(node_id) for node_id in overlap.index[overlap > min_overlap]}
+
+
 def simplify_area_level_df(
     df: pd.DataFrame,
     level_col: str = "level",
@@ -595,11 +643,22 @@ class VdGaastBerging:
         self,
         model: Model,
         cloud: CloudStorage,
-        use_add_api: bool = True,
+        manning_basin_ids: set[int] | None = None,
     ) -> None:
+        """Add a storing ('bergend') basin to every basin of the model
+
+        A storing basin drains through a TabulatedRatingCurve, based on Van der Gaast. In the basins of
+        `manning_basin_ids` it is connected with a ManningResistance instead, so it can also be supplied.
+
+        Args:
+            model (Model): Ribasim model
+            cloud (CloudStorage): Cloud storage with the LHM and Van der Gaast rasters
+            manning_basin_ids (set[int] | None, optional): Basins whose storing basin is connected with a
+                ManningResistance, see `supply_area_basin_ids`. Defaults to None.
+        """
         self.model = model
         self.cloud = cloud
-        self.use_add_api = use_add_api
+        self.manning_basin_ids = set() if manning_basin_ids is None else manning_basin_ids
 
         lhm_raster_file = self.cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_data.tif")
         ma_raster_file = self.cloud.joinpath("Basisgegevens/VanDerGaast_QH/spafvoer1.tif")
@@ -609,6 +668,8 @@ class VdGaastBerging:
     @with_rasterio_env
     def add(self) -> None:
         model = self.model
+        unknown_ids = self.manning_basin_ids - set(model.filter_nodes("Basin").index)
+        assert not unknown_ids, f"manning_basin_ids are not Basins in the model: {sorted(unknown_ids)}"
 
         # get basin_area and add statistics
         print("compute basin statistics")
@@ -659,30 +720,21 @@ class VdGaastBerging:
             )
             basin_node = model.basin.add(node=node, tables=data)
 
-            # add connector
-
-            # get data for TabulatedRatingCurve or Outlet
-            data = [get_rating_curve(row=basin_row, min_level=basin_profile.df.level.min())]
-
-            # connect storage basin with basin with a tabulated rating curve
-            if self.use_add_api:
-                model.add_and_connect_node(
-                    basin_node.node_id,
-                    to_basin_id=basin_id,
-                    geometry=Point(row.geometry.x + 5, row.geometry.y),
-                    node_type="TabulatedRatingCurve",
-                    tables=data,
-                    use_add_api=True,
-                    meta_categorie="bergend",
-                )
+            # connect storage basin with basin with a ManningResistance or a TabulatedRatingCurve
+            if basin_id in self.manning_basin_ids:
+                node_type = "ManningResistance"
+                data = [get_manning_resistance(area=basin_polygon.area)]
             else:
-                # links are added at once after the loop, which is much faster
-                connector_node = model.add_node(
-                    node_type="TabulatedRatingCurve",
-                    geometry=Point(row.geometry.x + 5, row.geometry.y),
-                    tables=data,
-                    meta_categorie="bergend",
-                )
-                node_pairs += [(basin_node, connector_node), (connector_node, model.get_node(basin_id))]
+                node_type = "TabulatedRatingCurve"
+                data = [get_rating_curve(row=basin_row, min_level=basin_profile.df.level.min())]
+
+            # links are added at once after the loop, which is much faster
+            connector_node = model.add_node(
+                node_type=node_type,
+                geometry=Point(row.geometry.x + 5, row.geometry.y),
+                tables=data,
+                meta_categorie="bergend",
+            )
+            node_pairs += [(basin_node, connector_node), (connector_node, model.get_node(basin_id))]
 
         model.add_links(node_pairs)
