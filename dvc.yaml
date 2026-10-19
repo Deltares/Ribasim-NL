@@ -23,12 +23,10 @@ stages:
       - data/Rijkswaterstaat/modellen/rwzi
   parameterized_aa_en_maas:
     cmd:
-      - pixi run python pipeline/aa_en_maas/_preprocess_profielen.py
       - pixi run python pipeline/aa_en_maas/01_fix_model.py
       - pixi run python pipeline/aa_en_maas/02_prepare_model.py
       - pixi run python pipeline/aa_en_maas/03_parameterize_model.py
     deps:
-      - pipeline/aa_en_maas/_preprocess_profielen.py
       - pipeline/aa_en_maas/01_fix_model.py
       - pipeline/aa_en_maas/02_prepare_model.py
       - src/ribasim_nl/ribasim_nl
@@ -79,12 +77,10 @@ stages:
       - data/BrabantseDelta/modellen/BrabantseDelta_parameterized_model
   parameterized_de_dommel:
     cmd:
-      - pixi run python pipeline/de_dommel/_preprocess_profielen.py
       - pixi run python pipeline/de_dommel/01_fix_model.py
       - pixi run python pipeline/de_dommel/02_prepare_model.py
       - pixi run python pipeline/de_dommel/03_parameterize_model.py
     deps:
-      - pipeline/de_dommel/_preprocess_profielen.py
       - pipeline/de_dommel/01_fix_model.py
       - pipeline/de_dommel/02_prepare_model.py
       - src/ribasim_nl/ribasim_nl
@@ -104,12 +100,10 @@ stages:
       - data/DeDommel/modellen/DeDommel_parameterized_model
   parameterized_drents_overijsselse_delta:
     cmd:
-      - pixi run python pipeline/drents_overijsselse_delta/_preprocess_profielen.py
       - pixi run python pipeline/drents_overijsselse_delta/01_fix_model.py
       - pixi run python pipeline/drents_overijsselse_delta/02_prepare_model.py
       - pixi run python pipeline/drents_overijsselse_delta/03_parameterize_model.py
     deps:
-      - pipeline/drents_overijsselse_delta/_preprocess_profielen.py
       - pipeline/drents_overijsselse_delta/01_fix_model.py
       - pipeline/drents_overijsselse_delta/02_prepare_model.py
       - src/ribasim_nl/ribasim_nl
@@ -134,12 +128,10 @@ stages:
       - data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_parameterized_model
   parameterized_hunze_en_aas:
     cmd:
-      - pixi run python pipeline/hunze_en_aas/_preprocess_profielen.py
       - pixi run python pipeline/hunze_en_aas/01_fix_model.py
       - pixi run python pipeline/hunze_en_aas/02_prepare_model.py
       - pixi run python pipeline/hunze_en_aas/03_parameterize_model.py
     deps:
-      - pipeline/hunze_en_aas/_preprocess_profielen.py
       - pipeline/hunze_en_aas/01_fix_model.py
       - pipeline/hunze_en_aas/02_prepare_model.py
       - src/ribasim_nl/ribasim_nl
@@ -187,12 +179,10 @@ stages:
       - data/Limburg/modellen/Limburg_parameterized_model
   parameterized_noorderzijlvest:
     cmd:
-      - pixi run python pipeline/noorderzijlvest/_preprocess_profielen.py
       - pixi run python pipeline/noorderzijlvest/01_fix_model.py
       - pixi run python pipeline/noorderzijlvest/02_prepare_model.py
       - pixi run python pipeline/noorderzijlvest/03_parameterize_model.py
     deps:
-      - pipeline/noorderzijlvest/_preprocess_profielen.py
       - pipeline/noorderzijlvest/01_fix_model.py
       - pipeline/noorderzijlvest/02_prepare_model.py
       - pipeline/noorderzijlvest/03_parameterize_model.py
@@ -212,12 +202,10 @@ stages:
       - data/Noorderzijlvest/modellen/Noorderzijlvest_parameterized_model
   parameterized_rijn_en_ijssel:
     cmd:
-      - pixi run python pipeline/rijn_en_ijssel/_preprocess_profielen.py
       - pixi run python pipeline/rijn_en_ijssel/01_fix_model.py
       - pixi run python pipeline/rijn_en_ijssel/02_prepare_model.py
       - pixi run python pipeline/rijn_en_ijssel/03_parameterize_model.py
     deps:
-      - pipeline/rijn_en_ijssel/_preprocess_profielen.py
       - pipeline/rijn_en_ijssel/01_fix_model.py
       - pipeline/rijn_en_ijssel/02_prepare_model.py
       - src/ribasim_nl/ribasim_nl
@@ -239,12 +227,10 @@ stages:
       - data/RijnenIJssel/modellen/RijnenIJssel_parameterized_model
   parameterized_stichtse_rijnlanden:
     cmd:
-      - pixi run python pipeline/stichtse_rijnlanden/_preprocess_profielen.py
       - pixi run python pipeline/stichtse_rijnlanden/01_fix_model.py
       - pixi run python pipeline/stichtse_rijnlanden/02_prepare_model.py
       - pixi run python pipeline/stichtse_rijnlanden/03_parameterize_model.py
     deps:
-      - pipeline/stichtse_rijnlanden/_preprocess_profielen.py
       - pipeline/stichtse_rijnlanden/01_fix_model.py
       - pipeline/stichtse_rijnlanden/02_prepare_model.py
       - src/ribasim_nl/ribasim_nl
@@ -268,12 +254,10 @@ stages:
       - data/StichtseRijnlanden/verwerkt/4_ribasim/peilgebieden_bewerkt.gpkg
   parameterized_vallei_en_veluwe:
     cmd:
-      - pixi run python pipeline/vallei_en_veluwe/_preprocess_profielen.py
       - pixi run python pipeline/vallei_en_veluwe/01_fix_model.py
       - pixi run python pipeline/vallei_en_veluwe/02_prepare_model.py
       - pixi run python pipeline/vallei_en_veluwe/03_parameterize_model.py
     deps:
-      - pipeline/vallei_en_veluwe/_preprocess_profielen.py
       - pipeline/vallei_en_veluwe/01_fix_model.py
       - pipeline/vallei_en_veluwe/02_prepare_model.py
       - src/ribasim_nl/ribasim_nl
@@ -294,12 +278,10 @@ stages:
       - data/ValleienVeluwe/modellen/ValleienVeluwe_parameterized_model
   parameterized_vechtstromen:
     cmd:
-      - pixi run python pipeline/vechtstromen/_preprocess_profielen.py
       - pixi run python pipeline/vechtstromen/01_fix_model.py
       - pixi run python pipeline/vechtstromen/02_prepare_model.py
       - pixi run python pipeline/vechtstromen/03_parameterize_model.py
     deps:
-      - pipeline/vechtstromen/_preprocess_profielen.py
       - pipeline/vechtstromen/01_fix_model.py
       - pipeline/vechtstromen/02_prepare_model.py
       - src/ribasim_nl/ribasim_nl
