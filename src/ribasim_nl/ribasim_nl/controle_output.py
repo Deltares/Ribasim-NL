@@ -7,10 +7,10 @@ import geopandas as gpd
 import pandas as pd
 import xarray as xr
 
-from peilbeheerst_model.steady_state_regression import (
+from ribasim_nl import Model
+from ribasim_nl.steady_state_regression import (
     steady_state_results,
 )
-from ribasim_nl import Model
 
 logger = logging.getLogger(__name__)
 

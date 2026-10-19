@@ -1,9 +1,9 @@
 # %%
 import time
 
-from peilbeheerst_model.controle_output import AFVOER_METRICS, Control
 from ribasim import run_ribasim
 from ribasim_nl.check_basin_level import add_check_basin_level
+from ribasim_nl.controle_output import AFVOER_METRICS, Control
 
 # voeg deze imports toe
 from ribasim_nl.parametrization.basin_tables import (

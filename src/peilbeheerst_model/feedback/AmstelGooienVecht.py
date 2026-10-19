@@ -1,9 +1,9 @@
 """Parameterisation of water board: Amstel, Gooi en Vecht."""
 
-import peilbeheerst_model.ribasim_parametrization as ribasim_param
-from peilbeheerst_model.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form
+import ribasim_nl.ribasim_parametrization as ribasim_param
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
+from ribasim_nl.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form
 from shapely import Point
 
 from ribasim_nl import CloudStorage

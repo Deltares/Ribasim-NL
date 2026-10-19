@@ -4,9 +4,9 @@ from typing import Any
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from ribasim_nl.control import is_off_state, off_states
 
 from ribasim_nl import CloudStorage, Model
+from ribasim_nl.control import is_off_state, off_states
 
 
 class AssignMetaData:

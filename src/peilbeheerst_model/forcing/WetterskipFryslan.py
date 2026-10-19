@@ -1,19 +1,9 @@
 """Parameterisation of water board: Fryslan."""
 
-import peilbeheerst_model.ribasim_parametrization as ribasim_param
-from peilbeheerst_model.assign_authorities import AssignAuthorities
-from peilbeheerst_model.assign_parametrization import AssignMetaData
-from peilbeheerst_model.design_capacities import set_design_capacities
-from peilbeheerst_model.workflow import (
-    ENDTIME,
-    STARTTIME,
-    WaterBoardPaths,
-    check_basin_meta_categorie,
-    preserve_connector_meta,
-    set_forcing,
-    write_and_run_forcing_model,
-)
+import ribasim_nl.ribasim_parametrization as ribasim_param
+from ribasim_nl.assign_authorities import AssignAuthorities
 from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
+from ribasim_nl.assign_parametrization import AssignMetaData
 from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
     add_function_to_peilbeheerst_node_table,
@@ -23,10 +13,19 @@ from ribasim_nl.control import (
     set_flow_rate,
     set_node_functions,
 )
+from ribasim_nl.design_capacities import set_design_capacities
+from ribasim_nl.workflow import (
+    ENDTIME,
+    STARTTIME,
+    WaterBoardPaths,
+    check_basin_meta_categorie,
+    preserve_connector_meta,
+    set_forcing,
+    write_and_run_forcing_model,
+)
 from shapely.geometry import Point
 
-from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, merge_rwzi_model
+from ribasim_nl import CloudStorage, Model, merge_rwzi_model, supply
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True

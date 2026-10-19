@@ -2,8 +2,8 @@
 import time
 
 import geopandas as gpd
-from peilbeheerst_model.controle_output import AFVOER_METRICS, Control
 from ribasim_nl.check_basin_level import add_check_basin_level
+from ribasim_nl.controle_output import AFVOER_METRICS, Control
 from ribasim_nl.parametrization.basin_tables import (
     apply_basin_level_overrides,
     sync_min_upstream_levels_with_profile_bottoms,

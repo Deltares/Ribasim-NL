@@ -14,18 +14,18 @@ from typing import Literal
 
 import xarray as xr
 from ribasim import run_ribasim
+
+import ribasim_nl.ribasim_parametrization as ribasim_param
+from ribasim_nl import CloudStorage, Model, SetDynamicForcing, junctionify
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.capacity import bound_supply_inflows
+from ribasim_nl.controle_output import DYNAMIC_FORCING_METRICS, STATIC_FORCING_METRICS, Control
 from ribasim_nl.layout import tidy_layout
 from ribasim_nl.network_snapping import snap_model
 from ribasim_nl.observations import add_observations
+from ribasim_nl.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl.rwzi import attach_rwzi_junctions
 from ribasim_nl.settings import settings
-
-import peilbeheerst_model.ribasim_parametrization as ribasim_param
-from peilbeheerst_model.controle_output import DYNAMIC_FORCING_METRICS, STATIC_FORCING_METRICS, Control
-from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, junctionify
 
 # streefpeil used where it is unknown; we need one to create the profiles, Q(h)-relations, and af- and aanslag peil
 UNKNOWN_STREEFPEIL = 0.00012345

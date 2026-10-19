@@ -4,7 +4,6 @@ stages:
     deps:
       - notebooks/rijkswaterstaat/1_bathymetrie.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Basisgegevens/Baseline/baseline-nl_land-j23_6-v1/baseline.gdb
       - data/Basisgegevens/KRW/krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg
       - data/Rijkswaterstaat/aangeleverd/bathymetrie
@@ -17,7 +16,6 @@ stages:
     deps:
       - notebooks/create_rwzi_model.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Basisgegevens/RWZI/aangeleverd/RwziBase/Belasting.xlsx
       - data/Basisgegevens/RWZI/aangeleverd/Z-info/metingen/zinfo_20160101_20231231_influentdebieten.csv
       - data/Basisgegevens/RWZI/aangeleverd/locaties/RWZI_coordinates.geojson
@@ -34,7 +32,6 @@ stages:
       - notebooks/aa_en_maas/01_fix_model.py
       - notebooks/aa_en_maas/02_prepare_model.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - notebooks/aa_en_maas/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -64,7 +61,6 @@ stages:
       - notebooks/brabantse_delta/01_fix_model.py
       - notebooks/brabantse_delta/02_prepare_model.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - notebooks/brabantse_delta/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -92,7 +88,6 @@ stages:
       - notebooks/de_dommel/01_fix_model.py
       - notebooks/de_dommel/02_prepare_model.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - notebooks/de_dommel/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -118,7 +113,6 @@ stages:
       - notebooks/drents_overijsselse_delta/01_fix_model.py
       - notebooks/drents_overijsselse_delta/02_prepare_model.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - notebooks/drents_overijsselse_delta/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -149,7 +143,6 @@ stages:
       - notebooks/hunze_en_aas/01_fix_model.py
       - notebooks/hunze_en_aas/02_prepare_model.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - notebooks/hunze_en_aas/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -178,7 +171,6 @@ stages:
       - notebooks/limburg/01_fix_model.py
       - notebooks/limburg/02_prepare_model.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - notebooks/limburg/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -205,7 +197,6 @@ stages:
       - notebooks/noorderzijlvest/02_prepare_model.py
       - notebooks/noorderzijlvest/03_parameterize_model.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
@@ -230,7 +221,6 @@ stages:
       - notebooks/rijn_en_ijssel/01_fix_model.py
       - notebooks/rijn_en_ijssel/02_prepare_model.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - notebooks/rijn_en_ijssel/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -258,7 +248,6 @@ stages:
       - notebooks/stichtse_rijnlanden/01_fix_model.py
       - notebooks/stichtse_rijnlanden/02_prepare_model.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - notebooks/stichtse_rijnlanden/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -288,7 +277,6 @@ stages:
       - notebooks/vallei_en_veluwe/01_fix_model.py
       - notebooks/vallei_en_veluwe/02_prepare_model.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - notebooks/vallei_en_veluwe/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -315,7 +303,6 @@ stages:
       - notebooks/vechtstromen/01_fix_model.py
       - notebooks/vechtstromen/02_prepare_model.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - notebooks/vechtstromen/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
@@ -345,7 +332,6 @@ stages:
       - notebooks/aa_en_maas/04_add_full_control.py
       - notebooks/05_add_bergend.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/AaenMaas/modellen/AaenMaas_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -362,7 +348,6 @@ stages:
       - notebooks/brabantse_delta/04_add_full_control.py
       - notebooks/05_add_bergend.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/BrabantseDelta/modellen/BrabantseDelta_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -378,7 +363,6 @@ stages:
       - notebooks/de_dommel/04_add_full_control.py
       - notebooks/05_add_bergend.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/DeDommel/modellen/DeDommel_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -394,7 +378,6 @@ stages:
       - notebooks/drents_overijsselse_delta/04_add_full_control.py
       - notebooks/05_add_bergend.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -412,7 +395,6 @@ stages:
       - notebooks/hunze_en_aas/04_add_full_control.py
       - notebooks/05_add_bergend.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/HunzeenAas/modellen/HunzeenAas_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -428,7 +410,6 @@ stages:
       - notebooks/limburg/04_add_full_control.py
       - notebooks/05_add_bergend.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Limburg/modellen/Limburg_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -444,7 +425,6 @@ stages:
       - notebooks/noorderzijlvest/04_add_full_control.py
       - notebooks/05_add_bergend.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Noorderzijlvest/modellen/Noorderzijlvest_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -460,7 +440,6 @@ stages:
       - notebooks/rijn_en_ijssel/04_add_full_control.py
       - notebooks/05_add_bergend.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/RijnenIJssel/modellen/RijnenIJssel_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -476,7 +455,6 @@ stages:
       - notebooks/stichtse_rijnlanden/04_add_full_control.py
       - notebooks/05_add_bergend.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/StichtseRijnlanden/modellen/StichtseRijnlanden_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -493,7 +471,6 @@ stages:
       - notebooks/vallei_en_veluwe/04_add_full_control.py
       - notebooks/05_add_bergend.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/ValleienVeluwe/modellen/ValleienVeluwe_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -510,7 +487,6 @@ stages:
       - notebooks/vechtstromen/04_add_full_control.py
       - notebooks/05_add_bergend.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Vechtstromen/modellen/Vechtstromen_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif
@@ -539,7 +515,6 @@ stages:
         - scripts/install_ribasim_core.py
         - notebooks/07_add_dynamic_forcing.py
         - src/ribasim_nl/ribasim_nl
-        - src/peilbeheerst_model/peilbeheerst_model
         - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
         - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
         - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
@@ -556,7 +531,6 @@ stages:
     deps:
       - src/peilbeheerst_model/feedback/Delfland.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Delfland/modellen/Delfland_boezemmodel_2024_12_0
       - data/Delfland/verwerkt/Feedback Formulier/feedback_formulier_Delfland.xlsx
       - data/Delfland/verwerkt/Splitting_basins/Opgeknipte_basin_2.gpkg
@@ -569,7 +543,6 @@ stages:
     deps:
       - src/peilbeheerst_model/feedback/AmstelGooienVecht.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/AmstelGooienVecht/modellen/AmstelGooienVecht_boezemmodel_2024_12_0
       - data/AmstelGooienVecht/verwerkt/Feedback Formulier/feedback_formulier_AmstelGooienVecht.xlsx
     outs:
@@ -579,7 +552,6 @@ stages:
     deps:
       - src/peilbeheerst_model/feedback/HollandsNoorderkwartier.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_boezemmodel_2024_12_0
       - data/HollandsNoorderkwartier/verwerkt/Feedback Formulier/feedback_formulier_HollandsNoorderkwartier.xlsx
       - data/HollandsNoorderkwartier/verwerkt/Splitting_basins/Opgeknipte_basin_3.gpkg
@@ -590,7 +562,6 @@ stages:
     deps:
       - src/peilbeheerst_model/feedback/HollandseDelta.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/HollandseDelta/modellen/HollandseDelta_boezemmodel_2024_12_3
       - data/HollandseDelta/verwerkt/Feedback Formulier/feedback_formulier_HollandseDelta.xlsx
     outs:
@@ -600,7 +571,6 @@ stages:
     deps:
       - src/peilbeheerst_model/feedback/Rijnland.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Rijnland/modellen/Rijnland_boezemmodel_2024_12_3
       - data/Rijnland/verwerkt/Feedback Formulier/feedback_formulier_Rijnland.xlsx
       - data/Rijnland/verwerkt/Splitting_basins/Opgeknipte_basin_1.gpkg
@@ -613,7 +583,6 @@ stages:
     deps:
       - src/peilbeheerst_model/feedback/Rivierenland.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Rivierenland/modellen/Rivierenland_boezemmodel_2024_12_0
       - data/Rivierenland/verwerkt/Feedback Formulier/feedback_formulier_Rivierenland.xlsx
       - data/Rivierenland/aangeleverd/Na_levering/gaten.gpkg
@@ -624,7 +593,6 @@ stages:
     deps:
       - src/peilbeheerst_model/feedback/Scheldestromen.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Scheldestromen/modellen/Scheldestromen_boezemmodel_2024_12_0
       - data/Scheldestromen/verwerkt/Feedback Formulier/feedback_formulier_Scheldestromen.xlsx
     outs:
@@ -634,7 +602,6 @@ stages:
     deps:
       - src/peilbeheerst_model/feedback/SchielandendeKrimpenerwaard.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_boezemmodel_2024_12_1
       - data/SchielandendeKrimpenerwaard/verwerkt/Feedback Formulier/feedback_formulier_SchielandendeKrimpenerwaard.xlsx
     outs:
@@ -644,7 +611,6 @@ stages:
     deps:
       - src/peilbeheerst_model/feedback/WetterskipFryslan.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/WetterskipFryslan/modellen/WetterskipFryslan_boezemmodel_2025_5_1
       - data/WetterskipFryslan/verwerkt/Feedback Formulier/feedback_formulier_WetterskipFryslan.xlsx
       - data/WetterskipFryslan/aangeleverd/Na_levering/gaarkeuken.gpkg
@@ -658,7 +624,6 @@ stages:
     deps:
       - src/peilbeheerst_model/feedback/Zuiderzeeland.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Zuiderzeeland/modellen/Zuiderzeeland_boezemmodel_2024_12_0
       - data/Zuiderzeeland/verwerkt/Feedback Formulier/feedback_formulier_Zuiderzeeland.xlsx
       - data/Zuiderzeeland/verwerkt/Splitting_basins/Opgeknipte_basin_16.gpkg
@@ -674,7 +639,6 @@ stages:
       - src/peilbeheerst_model/profiles/prep_cross_sections.py
       - src/peilbeheerst_model/profiles/gen_profiles.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - src/peilbeheerst_model/profiles/Delfland.py
       - data/Delfland/modellen/Delfland_feedback
       - data/Delfland/verwerkt/Crossings/delfland_crossings_v08.gpkg
@@ -692,7 +656,6 @@ stages:
       - src/peilbeheerst_model/profiles/prep_cross_sections.py
       - src/peilbeheerst_model/profiles/gen_profiles.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - src/peilbeheerst_model/profiles/AmstelGooienVecht.py
       - data/AmstelGooienVecht/modellen/AmstelGooienVecht_feedback
       - data/AmstelGooienVecht/verwerkt/Crossings/agv_crossings_v05.gpkg
@@ -710,7 +673,6 @@ stages:
       - src/peilbeheerst_model/profiles/prep_cross_sections.py
       - src/peilbeheerst_model/profiles/gen_profiles.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - src/peilbeheerst_model/profiles/HollandsNoorderkwartier.py
       - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_feedback
       - data/HollandsNoorderkwartier/verwerkt/Crossings/hhnk_crossings_v26.gpkg
@@ -728,7 +690,6 @@ stages:
       - src/peilbeheerst_model/profiles/prep_cross_sections.py
       - src/peilbeheerst_model/profiles/gen_profiles.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - src/peilbeheerst_model/profiles/HollandseDelta.py
       - data/HollandseDelta/modellen/HollandseDelta_feedback
       - data/HollandseDelta/verwerkt/Crossings/hd_crossings_v06.gpkg
@@ -747,7 +708,6 @@ stages:
       - src/peilbeheerst_model/profiles/prep_cross_sections.py
       - src/peilbeheerst_model/profiles/gen_profiles.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - src/peilbeheerst_model/profiles/Rijnland.py
       - data/Rijnland/modellen/Rijnland_feedback
       - data/Rijnland/verwerkt/Crossings/rijnland_crossings_v05.gpkg
@@ -766,7 +726,6 @@ stages:
       - src/peilbeheerst_model/profiles/prep_cross_sections.py
       - src/peilbeheerst_model/profiles/gen_profiles.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - src/peilbeheerst_model/profiles/Rivierenland.py
       - data/Rivierenland/modellen/Rivierenland_feedback
       - data/Rivierenland/verwerkt/Crossings/wsrl_crossings_v06.gpkg
@@ -784,7 +743,6 @@ stages:
       - src/peilbeheerst_model/profiles/prep_cross_sections.py
       - src/peilbeheerst_model/profiles/gen_profiles.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - src/peilbeheerst_model/profiles/Scheldestromen.py
       - data/Scheldestromen/modellen/Scheldestromen_feedback
       - data/Scheldestromen/verwerkt/Crossings/scheldestromen_crossings_v02.gpkg
@@ -803,7 +761,6 @@ stages:
       - src/peilbeheerst_model/profiles/prep_cross_sections.py
       - src/peilbeheerst_model/profiles/gen_profiles.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - src/peilbeheerst_model/profiles/SchielandendeKrimpenerwaard.py
       - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_feedback
       - data/SchielandendeKrimpenerwaard/verwerkt/Crossings/hhsk_crossings_voor_profielen_met_OG_hydroobjecten.gpkg
@@ -821,7 +778,6 @@ stages:
       - src/peilbeheerst_model/profiles/prep_cross_sections.py
       - src/peilbeheerst_model/profiles/gen_profiles.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - src/peilbeheerst_model/profiles/WetterskipFryslan.py
       - data/WetterskipFryslan/modellen/WetterskipFryslan_feedback
       - data/WetterskipFryslan/verwerkt/Crossings/wetterskip_crossings_v06.gpkg
@@ -839,7 +795,6 @@ stages:
       - src/peilbeheerst_model/profiles/prep_cross_sections.py
       - src/peilbeheerst_model/profiles/gen_profiles.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - src/peilbeheerst_model/profiles/Zuiderzeeland.py
       - data/Zuiderzeeland/modellen/Zuiderzeeland_feedback
       - data/Zuiderzeeland/verwerkt/Crossings/zzl_crossings_v05.gpkg
@@ -856,7 +811,6 @@ stages:
       - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/Delfland.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
       - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
@@ -884,7 +838,6 @@ stages:
       - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/AmstelGooienVecht.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
       - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
@@ -912,7 +865,6 @@ stages:
       - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/HollandsNoorderkwartier.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
       - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
@@ -940,7 +892,6 @@ stages:
       - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/HollandseDelta.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
       - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
@@ -968,7 +919,6 @@ stages:
       - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/Rijnland.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
       - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
@@ -996,7 +946,6 @@ stages:
       - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/Rivierenland.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
       - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
@@ -1024,7 +973,6 @@ stages:
       - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/Scheldestromen.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
       - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
@@ -1052,7 +1000,6 @@ stages:
       - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/SchielandendeKrimpenerwaard.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
       - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
@@ -1080,7 +1027,6 @@ stages:
       - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/WetterskipFryslan.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
       - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
@@ -1108,7 +1054,6 @@ stages:
       - scripts/install_ribasim_core.py
       - src/peilbeheerst_model/forcing/Zuiderzeeland.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
       - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
@@ -1149,7 +1094,6 @@ stages:
       - notebooks/rijkswaterstaat/7_model_onttrekkingen.py
       - notebooks/rijkswaterstaat/8a_update_state.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Basisgegevens/Baseline/baseline-nl_land-j23_6-v1/baseline.gdb
       - data/Basisgegevens/KRW/krw_oppervlaktewaterlichamen_nederland_vlakken.gpkg
       - data/Basisgegevens/OSM/lock_belgium.gpkg
@@ -1182,7 +1126,6 @@ stages:
       - data/Rijkswaterstaat/aangeleverd/Matroos_debieten_2017_2022_Lobith_Monsin.xlsx
       - notebooks/rijkswaterstaat/8b_update_bc.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
       - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
@@ -1194,7 +1137,6 @@ stages:
     deps:
       - notebooks/08_samenvoegen_modellen.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Rijkswaterstaat/modellen/hws_transient
       - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_forcing
       - data/AmstelGooienVecht/modellen/AmstelGooienVecht_forcing
@@ -1224,7 +1166,6 @@ stages:
     deps:
       - notebooks/09_koppelen_modellen.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
@@ -1238,7 +1179,6 @@ stages:
       - scripts/run_lhm_coupled.py
       - scripts/install_ribasim_core.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Rijkswaterstaat/modellen/lhm_coupled
     outs:
       - data/Rijkswaterstaat/runs/lhm_coupled
@@ -1247,7 +1187,6 @@ stages:
     deps:
       - scripts/export_webmap.py
       - src/ribasim_nl/ribasim_nl
-      - src/peilbeheerst_model/peilbeheerst_model
       - data/Rijkswaterstaat/modellen/lhm_coupled
       - data/Rijkswaterstaat/runs/lhm_coupled
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg

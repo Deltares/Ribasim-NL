@@ -1,8 +1,8 @@
 import pandas as pd
 import pytest
-from peilbeheerst_model.design_capacities import design_capacities, set_design_capacities
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump
+from ribasim_nl.design_capacities import design_capacities, set_design_capacities
 from shapely.geometry import MultiPolygon, Point, box
 
 from ribasim_nl import Model

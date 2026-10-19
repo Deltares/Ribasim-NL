@@ -1,11 +1,11 @@
 """Parameterisation of water board: Rivierenland."""
 
 import geopandas as gpd
-import peilbeheerst_model.ribasim_parametrization as ribasim_param
+import ribasim_nl.ribasim_parametrization as ribasim_param
 import shapely
-from peilbeheerst_model.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
+from ribasim_nl.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form
 from shapely import LineString, Point
 
 from ribasim_nl import CloudStorage, geometry

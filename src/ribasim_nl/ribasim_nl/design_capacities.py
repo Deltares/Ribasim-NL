@@ -12,13 +12,13 @@ import math
 
 import networkx as nx
 import pandas as pd
+
+from ribasim_nl import Model
 from ribasim_nl.control import is_off_state, off_states
 from ribasim_nl.downstream import downstream_nodes
 from ribasim_nl.parametrization.conversions import round_to_significant_digits
 from ribasim_nl.parametrization.static_data_xlsx import defaults
 from ribasim_nl.upstream import upstream_nodes
-
-from ribasim_nl import Model
 
 __all__ = ["design_capacities", "known_capacities", "set_design_capacities"]
 

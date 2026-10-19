@@ -1,7 +1,7 @@
 # %%
 import time
 
-from peilbeheerst_model.controle_output import AFVOER_METRICS, Control
+from ribasim_nl.controle_output import AFVOER_METRICS, Control
 from ribasim_nl.parametrization.basin_tables import (
     apply_basin_level_overrides,
     apply_level_boundary_overrides,

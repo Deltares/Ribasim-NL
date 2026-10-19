@@ -1,12 +1,12 @@
 import datetime
 
 import pytest
-from peilbeheerst_model.ribasim_parametrization import (
+from ribasim import Node
+from ribasim.nodes import basin, level_boundary
+from ribasim_nl.ribasim_parametrization import (
     set_dynamic_level_boundaries,
     set_static_level_boundaries,
 )
-from ribasim import Node
-from ribasim.nodes import basin, level_boundary
 from shapely.geometry import Point
 
 from ribasim_nl import Model

@@ -3,7 +3,7 @@
 import time
 
 import geopandas as gpd
-from peilbeheerst_model.controle_output import AFVOER_METRICS, Control
+from ribasim_nl.controle_output import AFVOER_METRICS, Control
 from ribasim_nl.parametrization.basin_tables import (
     apply_basin_level_overrides,
     clear_ungated_outlet_levels,

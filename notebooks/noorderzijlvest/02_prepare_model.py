@@ -1,7 +1,7 @@
 # %%
 
 
-from peilbeheerst_model.assign_authorities import AssignAuthorities
+from ribasim_nl.assign_authorities import AssignAuthorities
 from ribasim_nl.assign_neighbors_at_boundaries import assign_noordzee
 from ribasim_nl.parametrization.static_data_xlsx import StaticData
 

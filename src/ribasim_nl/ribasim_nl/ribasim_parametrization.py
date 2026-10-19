@@ -16,13 +16,12 @@ import ribasim
 import shapely
 import tqdm.auto as tqdm
 from ribasim.nodes import continuous_control
-from ribasim_nl.case_conversions import pascal_to_snake_case
-from ribasim_nl.control_layout import DEFAULT_LEVEL_THRESHOLD_RANGE
 from shapely.geometry import LineString, Point
 
-from peilbeheerst_model import supply
-from peilbeheerst_model.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl import Model
+from ribasim_nl import Model, supply
+from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.control_layout import DEFAULT_LEVEL_THRESHOLD_RANGE
+from ribasim_nl.ribasim_feedback_processor import RibasimFeedbackProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -159,8 +158,8 @@ def write_steady_state_regression_models(
         output_path.parent.mkdir(parents=True, exist_ok=True)
         scenario_model.write(output_path)
 
-        from peilbeheerst_model.controle_output import STATIC_FORCING_METRICS, Control
-        from peilbeheerst_model.steady_state_regression import allowed_non_steady_state_node_ids
+        from ribasim_nl.controle_output import STATIC_FORCING_METRICS, Control
+        from ribasim_nl.steady_state_regression import allowed_non_steady_state_node_ids
 
         scenario_model.run()
         control = Control(ribasim_toml=output_path, qlr_path=qlr_path)

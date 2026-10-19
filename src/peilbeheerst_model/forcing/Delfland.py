@@ -1,10 +1,17 @@
 """Parametrisation of water board: Delfland."""
 
-import peilbeheerst_model.ribasim_parametrization as ribasim_param
-from peilbeheerst_model.assign_authorities import AssignAuthorities
-from peilbeheerst_model.assign_parametrization import AssignMetaData
-from peilbeheerst_model.design_capacities import set_design_capacities
-from peilbeheerst_model.workflow import (
+import ribasim_nl.ribasim_parametrization as ribasim_param
+from ribasim_nl.assign_authorities import AssignAuthorities
+from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
+from ribasim_nl.assign_parametrization import AssignMetaData
+from ribasim_nl.control import (
+    add_controllers_to_connector_nodes,
+    add_function_to_peilbeheerst_node_table,
+    get_node_table_with_from_to_node_ids,
+    set_node_functions,
+)
+from ribasim_nl.design_capacities import set_design_capacities
+from ribasim_nl.workflow import (
     ENDTIME,
     STARTTIME,
     WaterBoardPaths,
@@ -14,16 +21,8 @@ from peilbeheerst_model.workflow import (
     set_manning_resistance_outside_bergend,
     write_and_run_forcing_model,
 )
-from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
-from ribasim_nl.control import (
-    add_controllers_to_connector_nodes,
-    add_function_to_peilbeheerst_node_table,
-    get_node_table_with_from_to_node_ids,
-    set_node_functions,
-)
 
-from peilbeheerst_model import supply
-from ribasim_nl import CloudStorage, Model, merge_rwzi_model
+from ribasim_nl import CloudStorage, Model, merge_rwzi_model, supply
 
 AANVOER_CONDITIONS: bool = True
 MIXED_CONDITIONS: bool = True
