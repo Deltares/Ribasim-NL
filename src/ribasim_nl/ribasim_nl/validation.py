@@ -102,6 +102,34 @@ def _inert_control_state_issues(model: "Model") -> list[str]:
     return issues
 
 
+def _flow_boundary_forcing_issues(model: "Model") -> list[str]:
+    """Return FlowBoundary forcing coverage, duplication and discharge issues."""
+    node_table = model.flow_boundary.node
+    if node_table is None:
+        return []
+    nodes = node_table.df
+    if nodes is None or nodes.empty:
+        return []
+    static = model.flow_boundary.static.df
+    time = model.flow_boundary.time.df
+    static_ids = set() if static is None else set(static["node_id"])
+    time_ids = set() if time is None else set(time["node_id"])
+    issues = []
+    if overlap := static_ids & time_ids:
+        issues.append(f"FlowBoundary nodes must not have both static and time forcing; node IDs: {sorted(overlap)}")
+    if missing := set(nodes.index) - (static_ids | time_ids):
+        issues.append(f"FlowBoundary nodes must have forcing; missing node IDs: {sorted(missing)}")
+    for label, frame, keys in [("static", static, ["node_id"]), ("time", time, ["node_id", "time"])]:
+        if frame is None or frame.empty:
+            continue
+        if frame.duplicated(keys).any():
+            issues.append(f"FlowBoundary {label} forcing must have unique {keys}")
+        rates = frame["flow_rate"].astype(float)
+        if not np.isfinite(rates).all() or rates.lt(0).any():
+            issues.append(f"FlowBoundary {label} flow rates must be finite and non-negative")
+    return issues
+
+
 def validate_model(model: "Model") -> None:
     """Validate Ribasim-NL conventions and report all issues together."""
     issues = [
@@ -109,6 +137,7 @@ def validate_model(model: "Model") -> None:
         *_discrete_control_condition_issues(model),
         *_partially_missing_control_state_issues(model),
         *_inert_control_state_issues(model),
+        *_flow_boundary_forcing_issues(model),
     ]
     if issues:
         raise ValueError("Ribasim-NL model validation failed:\n- " + "\n- ".join(issues))

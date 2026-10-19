@@ -63,6 +63,27 @@ The MinIO remote is configured in `.dvc/config`:
 
 ## Pipeline
 
+Foreign inflows must be listed in
+`data/Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv`.
+Each inflow can reference a timeseries and define summer, winter and global
+constant discharges. The pipeline uses the global constant as the fallback when
+the requested forcing is unavailable. Timeseries are averaged for coarser timesteps
+and interpolated for finer timesteps, without extrapolation. The overview and measurement CSVs are
+tracked with DVC.
+
+The mapping selects an authority by its Aquo code and matches existing foreign
+FlowBoundary nodes by name or by coordinates in EPSG:28992 (within one metre).
+Each selected boundary must match exactly once; hydroobject mapping is not yet
+implemented. Timeseries references are relative to the overview directory and
+omit the `.csv` extension. The measurement CSV must contain a `Datum` column with
+timezone-naive local timestamps and a column matching the boundary name, or the
+optional `timeseries_column` override. Boundaries sharing a file are read and
+resampled together. Missing files, columns, or entirely unavailable series use
+static global constants; gaps in otherwise available series use each boundary's
+own global constant.
+Rows without parsed timestamps are dropped with a warning. Infinite measured or
+resampled flows are rejected before the model forcing is changed.
+
 The DVC pipeline is defined in [`dvc.yaml`](https://github.com/Deltares/Ribasim-NL/blob/main/dvc.yaml). Dependencies determine the order in which stages run:
 
 ```{mermaid}

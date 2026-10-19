@@ -10,7 +10,7 @@ from ribasim_nl.parametrization.basin_tables import (
 )
 from ribasim_nl.parametrization.manning_level import sync_parameterized_manning_basin_levels
 
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import CloudStorage, Model, add_transboundary_inflow
 
 cloud = CloudStorage()
 authority = "BrabantseDelta"
@@ -110,6 +110,12 @@ basin_level_overrides = [
 ]
 
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5, profiles_gpkg=profiles_gpkg)
+add_transboundary_inflow(
+    model,
+    cloud.joinpath("Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv"),
+    authority=authority,
+    input="constant_global",
+)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
 protected_basin_node_ids = apply_basin_level_overrides(model=model, basin_level_overrides=basin_level_overrides)

@@ -13,7 +13,7 @@ from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
 from ribasim_nl.run_model import run_model_and_control
 
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import CloudStorage, Model, add_transboundary_inflow
 
 # execute model run
 MODEL_EXEC: bool = False
@@ -779,12 +779,14 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
 # %%
 # Model run
 
+transboundary_mapping = cloud.joinpath("Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv")
 ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_steady_state_wet", f"{SHORT_NAME}.toml")
 ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_steady_state_dry", f"{SHORT_NAME}.toml")
 ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 
 # hoofd run met verdamping
 update_basin_static(model=model, evaporation_mm_per_day=0.5)
+add_transboundary_inflow(model, transboundary_mapping, authority=AUTHORITY, input="constant_summer")
 fill_missing_level_boundary_static_levels(model)
 model = run_model_and_control(
     model, ribasim_toml_dry, model_exec=MODEL_EXEC, qlr_path=qlr_path, authority=AUTHORITY, scenario="dry"
@@ -792,6 +794,7 @@ model = run_model_and_control(
 
 # prerun om het model te initialiseren met neerslag
 update_basin_static(model=model, precipitation_mm_per_day=2)
+add_transboundary_inflow(model, transboundary_mapping, authority=AUTHORITY, input="constant_winter")
 fill_missing_level_boundary_static_levels(model)
 model = run_model_and_control(
     model, ribasim_toml_wet, model_exec=MODEL_EXEC, qlr_path=qlr_path, authority=AUTHORITY, scenario="wet"
@@ -799,6 +802,7 @@ model = run_model_and_control(
 
 # hoofd run
 update_basin_static(model=model, precipitation_mm_per_day=1.5)
+add_transboundary_inflow(model, transboundary_mapping, authority=AUTHORITY, input="constant_global")
 fill_missing_level_boundary_static_levels(model)
 model = run_model_and_control(
     model, ribasim_toml, model_exec=MODEL_EXEC, qlr_path=qlr_path, authority=AUTHORITY, scenario=None

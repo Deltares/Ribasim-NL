@@ -243,11 +243,16 @@ stages:
   dynamic@brabantse_delta:
     cmd: pixi run python notebooks/07_add_dynamic_forcing.py BrabantseDelta
     deps:
-    - path:
-        data/Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx
+    - path: data/Basisgegevens/BuitenlandseAanvoer/aangeleverd
       hash: md5
-      md5: ad7c7a239c5bbe5437987c884fbbdd01
-      size: 20963938
+      md5: 5958ba90a93fa2a0faf91888359c5a38.dir
+      size: 30276259
+      nfiles: 9
+    - path:
+        data/Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv
+      hash: md5
+      md5: 30950e12dd21f7d29bf6de8f1c285920
+      size: 7410
     - path: data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       hash: md5
       md5: 0c4ae661e4387aaafe136c6eaefba437.dir
@@ -255,8 +260,8 @@ stages:
       nfiles: 1760
     - path: data/BrabantseDelta/modellen/BrabantseDelta_bergend_model
       hash: md5
-      md5: 7209bc7b3f780e7cad1990bec54a15b1.dir
-      size: 29073557
+      md5: ad05984fcd72c4f1f9705480b880c70a.dir
+      size: 29081749
       nfiles: 2
     - path: data/Rijkswaterstaat/modellen/rwzi
       hash: md5
@@ -265,13 +270,21 @@ stages:
       nfiles: 3
     - path: notebooks/07_add_dynamic_forcing.py
       hash: md5
-      md5: 300a6c361310900675e90bb37a0fcddd
-      size: 7147
+      md5: 3a1bce6217574379e2f9f976c360a079
+      size: 7046
+    - path: src/ribasim_nl/ribasim_nl/aquo.py
+      hash: md5
+      md5: 06ad5b3fd8551ffc5ff9db9a4baf6ebe
+      size: 2179
+    - path: src/ribasim_nl/ribasim_nl/transboundary_inflow.py
+      hash: md5
+      md5: 5538078487a65a98d5c400ba54755ed0
+      size: 13437
     outs:
     - path: data/BrabantseDelta/modellen/BrabantseDelta_dynamic_model
       hash: md5
-      md5: 0f272d387418f869543095ede1e9c370.dir
-      size: 125896738
+      md5: 56196c6f0388e91aabcdbf9b76240122.dir
+      size: 125902876
       nfiles: 6
   dynamic@de_dommel:
     cmd: pixi run python notebooks/07_add_dynamic_forcing.py DeDommel
@@ -1111,6 +1124,11 @@ stages:
     - pixi run python notebooks/brabantse_delta/02_prepare_model.py
     - pixi run python notebooks/brabantse_delta/03_parameterize_model.py
     deps:
+    - path:
+        data/Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv
+      hash: md5
+      md5: 30950e12dd21f7d29bf6de8f1c285920
+      size: 7410
     - path: data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       hash: md5
       md5: b79410c909cb80baa7b14a27fe5318a8
@@ -1171,8 +1189,8 @@ stages:
       size: 14601
     - path: notebooks/brabantse_delta/03_parameterize_model.py
       hash: md5
-      md5: 7f5ff5795ffb8f069d46ce5dc1f3a353
-      size: 3866
+      md5: 7c98212fe281383e1b7bf0e9a083c498
+      size: 4076
     - path: notebooks/brabantse_delta/_preprocess_profielen.py
       hash: md5
       md5: 7b071cd07920573d8ed795edace855c7
@@ -1181,11 +1199,19 @@ stages:
       hash: md5
       md5: f0d6f439622edd3af25c557802bcb2ec
       size: 8714
+    - path: src/ribasim_nl/ribasim_nl/aquo.py
+      hash: md5
+      md5: 06ad5b3fd8551ffc5ff9db9a4baf6ebe
+      size: 2179
+    - path: src/ribasim_nl/ribasim_nl/transboundary_inflow.py
+      hash: md5
+      md5: 5538078487a65a98d5c400ba54755ed0
+      size: 13437
     outs:
     - path: data/BrabantseDelta/modellen/BrabantseDelta_parameterized_model
       hash: md5
-      md5: eb1fafa6d68be6b78183c426369ff33a.dir
-      size: 15769749
+      md5: 248a996cc2fce0f6a658d3421ccbbc9d.dir
+      size: 15773845
       nfiles: 3
   parameterized_de_dommel:
     cmd:
@@ -1757,6 +1783,11 @@ stages:
     - pixi run python notebooks/brabantse_delta/04_add_full_control.py
     - pixi run python notebooks/05_add_bergend.py BrabantseDelta
     deps:
+    - path:
+        data/Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv
+      hash: md5
+      md5: 30950e12dd21f7d29bf6de8f1c285920
+      size: 7410
     - path: data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       hash: md5
       md5: abafeffc59048449e708f2b91030bcd9
@@ -1771,8 +1802,8 @@ stages:
       size: 561756752
     - path: data/BrabantseDelta/modellen/BrabantseDelta_parameterized_model
       hash: md5
-      md5: eb1fafa6d68be6b78183c426369ff33a.dir
-      size: 15769749
+      md5: 248a996cc2fce0f6a658d3421ccbbc9d.dir
+      size: 15773845
       nfiles: 3
     - path: data/BrabantseDelta/verwerkt/sturing/aanvoergebieden.gpkg
       hash: md5
@@ -1784,13 +1815,21 @@ stages:
       size: 1755
     - path: notebooks/brabantse_delta/04_add_full_control.py
       hash: md5
-      md5: 025a328895e7f66eb9179a731bf8f4ee
-      size: 19552
+      md5: c03dd26e001da67da6aed6e2cd0321fd
+      size: 19991
+    - path: src/ribasim_nl/ribasim_nl/aquo.py
+      hash: md5
+      md5: 06ad5b3fd8551ffc5ff9db9a4baf6ebe
+      size: 2179
+    - path: src/ribasim_nl/ribasim_nl/transboundary_inflow.py
+      hash: md5
+      md5: 5538078487a65a98d5c400ba54755ed0
+      size: 13437
     outs:
     - path: data/BrabantseDelta/modellen/BrabantseDelta_bergend_model
       hash: md5
-      md5: 7209bc7b3f780e7cad1990bec54a15b1.dir
-      size: 29073557
+      md5: ad05984fcd72c4f1f9705480b880c70a.dir
+      size: 29081749
       nfiles: 2
   bergend_de_dommel:
     cmd:

@@ -11,7 +11,7 @@ from ribasim_nl.reset_index import prefix_index, reset_index
 from ribasim_nl.rwzi import merge_rwzi_model
 from ribasim_nl.set_forcing import SetDynamicForcing
 from ribasim_nl.settings import settings
-from ribasim_nl.transboundary_inflow import add_transboundary_inflow, import_transboundary_inflow
+from ribasim_nl.transboundary_inflow import add_transboundary_inflow
 
 __all__ = [
     "CloudStorage",
@@ -21,7 +21,6 @@ __all__ = [
     "SetDynamicForcing",
     "add_transboundary_inflow",
     "concat",
-    "import_transboundary_inflow",
     "junctionify",
     "merge_rwzi_model",
     "prefix_index",

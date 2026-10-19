@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 import xarray as xr
-from ribasim_nl.aquo import waterbeheercode
+from ribasim_nl.aquo import get_id
 from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.delwaq import compute_delwaq
@@ -14,7 +14,6 @@ from ribasim_nl import (
     CloudStorage,
     Model,
     add_transboundary_inflow,
-    import_transboundary_inflow,
     merge_rwzi_model,
     write_performance,
 )
@@ -28,7 +27,7 @@ add_lhm_fractions: bool = True
 compute_fractions: bool = False
 rwzi_model_path = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
 rwzi_coverage_path = rwzi_model_path.parent / "meta/RWZI_coordinates_model_coverage.geojson"
-transboundary_data_path = cloud.joinpath("Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx")
+transboundary_data_path = cloud.joinpath("Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv")
 
 # LHM4.3 mfma budgets to be assign to primary/secondary drainage/surface_runoff columns
 primary_budgets: set[str] = {"bdgriv_sys1", "bdgriv_sys4", "bdgriv_sys5", "bdgpssw_m3d"}
@@ -155,12 +154,11 @@ for authority in authorities:
 
             # add forcing
             budgets_df = add_forcing(
-                model, cloud, starttime, endtime, assign_budget_fractions, fraction_prefix=waterbeheercode[authority]
+                model, cloud, starttime, endtime, assign_budget_fractions, fraction_prefix=get_id(name=authority)
             )
 
             # add transboundary inflow
-            dict_flow = import_transboundary_inflow(transboundary_data_path, starttime, endtime, model)
-            add_transboundary_inflow(model, dict_flow)
+            add_transboundary_inflow(model, transboundary_data_path, authority=authority, input="timeseries")
 
             # merge RWZI model, which requires meta_waterbeheerder
             model.node.df.loc[model.basin.node.df.index, "meta_waterbeheerder"] = authority

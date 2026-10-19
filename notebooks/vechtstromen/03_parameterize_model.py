@@ -12,7 +12,7 @@ from ribasim_nl.parametrization.basin_tables import (
 from ribasim_nl.parametrization.level_boundary_table import update_level_boundary_static
 from ribasim_nl.parametrization.manning_level import sync_parameterized_manning_basin_levels
 
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import CloudStorage, Model, add_transboundary_inflow
 
 cloud = CloudStorage()
 authority = "Vechtstromen"
@@ -36,6 +36,12 @@ start_time = time.time()
 # %%
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=1)
+add_transboundary_inflow(
+    model,
+    cloud.joinpath("Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv"),
+    authority=authority,
+    input="constant_global",
+)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")

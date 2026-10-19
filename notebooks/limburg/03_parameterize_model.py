@@ -8,7 +8,7 @@ from ribasim_nl.parametrization.basin_tables import (
     sync_min_upstream_levels_with_profile_bottoms,
 )
 
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import CloudStorage, Model, add_transboundary_inflow
 
 cloud = CloudStorage()
 authority = "Limburg"
@@ -33,6 +33,12 @@ start_time = time.time()
 # %%
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5, profiles_gpkg=profiles_gpkg)
+add_transboundary_inflow(
+    model,
+    cloud.joinpath("Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv"),
+    authority=authority,
+    input="constant_global",
+)
 print("Elapsed Time:", time.time() - start_time, "seconds")
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 # %%

@@ -58,6 +58,9 @@ stages:
       - notebooks/brabantse_delta/01_fix_model.py
       - notebooks/brabantse_delta/02_prepare_model.py
       - notebooks/brabantse_delta/03_parameterize_model.py
+      - src/ribasim_nl/ribasim_nl/transboundary_inflow.py
+      - src/ribasim_nl/ribasim_nl/aquo.py
+      - data/Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
@@ -84,6 +87,9 @@ stages:
       - notebooks/de_dommel/01_fix_model.py
       - notebooks/de_dommel/02_prepare_model.py
       - notebooks/de_dommel/03_parameterize_model.py
+      - src/ribasim_nl/ribasim_nl/transboundary_inflow.py
+      - src/ribasim_nl/ribasim_nl/aquo.py
+      - data/Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
@@ -165,6 +171,9 @@ stages:
       - notebooks/limburg/01_fix_model.py
       - notebooks/limburg/02_prepare_model.py
       - notebooks/limburg/03_parameterize_model.py
+      - src/ribasim_nl/ribasim_nl/transboundary_inflow.py
+      - src/ribasim_nl/ribasim_nl/aquo.py
+      - data/Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
@@ -214,6 +223,9 @@ stages:
       - notebooks/rijn_en_ijssel/01_fix_model.py
       - notebooks/rijn_en_ijssel/02_prepare_model.py
       - notebooks/rijn_en_ijssel/03_parameterize_model.py
+      - src/ribasim_nl/ribasim_nl/transboundary_inflow.py
+      - src/ribasim_nl/ribasim_nl/aquo.py
+      - data/Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
@@ -293,6 +305,9 @@ stages:
       - notebooks/vechtstromen/01_fix_model.py
       - notebooks/vechtstromen/02_prepare_model.py
       - notebooks/vechtstromen/03_parameterize_model.py
+      - src/ribasim_nl/ribasim_nl/transboundary_inflow.py
+      - src/ribasim_nl/ribasim_nl/aquo.py
+      - data/Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
@@ -334,6 +349,9 @@ stages:
       - pixi run python notebooks/05_add_bergend.py BrabantseDelta
     deps:
       - notebooks/brabantse_delta/04_add_full_control.py
+      - src/ribasim_nl/ribasim_nl/transboundary_inflow.py
+      - src/ribasim_nl/ribasim_nl/aquo.py
+      - data/Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv
       - notebooks/05_add_bergend.py
       - data/BrabantseDelta/modellen/BrabantseDelta_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
@@ -348,6 +366,9 @@ stages:
       - pixi run python notebooks/05_add_bergend.py DeDommel
     deps:
       - notebooks/de_dommel/04_add_full_control.py
+      - src/ribasim_nl/ribasim_nl/transboundary_inflow.py
+      - src/ribasim_nl/ribasim_nl/aquo.py
+      - data/Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv
       - notebooks/05_add_bergend.py
       - data/DeDommel/modellen/DeDommel_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
@@ -392,6 +413,9 @@ stages:
       - pixi run python notebooks/05_add_bergend.py Limburg
     deps:
       - notebooks/limburg/04_add_full_control.py
+      - src/ribasim_nl/ribasim_nl/transboundary_inflow.py
+      - src/ribasim_nl/ribasim_nl/aquo.py
+      - data/Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv
       - notebooks/05_add_bergend.py
       - data/Limburg/modellen/Limburg_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
@@ -420,6 +444,9 @@ stages:
       - pixi run python notebooks/05_add_bergend.py RijnenIJssel
     deps:
       - notebooks/rijn_en_ijssel/04_add_full_control.py
+      - src/ribasim_nl/ribasim_nl/transboundary_inflow.py
+      - src/ribasim_nl/ribasim_nl/aquo.py
+      - data/Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv
       - notebooks/05_add_bergend.py
       - data/RijnenIJssel/modellen/RijnenIJssel_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
@@ -464,6 +491,9 @@ stages:
       - pixi run python notebooks/05_add_bergend.py Vechtstromen
     deps:
       - notebooks/vechtstromen/04_add_full_control.py
+      - src/ribasim_nl/ribasim_nl/transboundary_inflow.py
+      - src/ribasim_nl/ribasim_nl/aquo.py
+      - data/Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv
       - notebooks/05_add_bergend.py
       - data/Vechtstromen/modellen/Vechtstromen_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
@@ -493,7 +523,10 @@ stages:
         - data/${item}/modellen/${item}_bergend_model
         - data/Rijkswaterstaat/modellen/rwzi
         - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
-        - data/Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx
+        - src/ribasim_nl/ribasim_nl/transboundary_inflow.py
+        - src/ribasim_nl/ribasim_nl/aquo.py
+        - data/Basisgegevens/BuitenlandseAanvoer/buitenlandse_aanvoer_overview.csv
+        - data/Basisgegevens/BuitenlandseAanvoer/aangeleverd
       outs:
         - data/${item}/modellen/${item}_dynamic_model
   feedback_delfland:
