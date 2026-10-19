@@ -67,7 +67,12 @@ The MinIO remote is configured in `.dvc/config`:
 
 ## Pipeline
 
-The DVC pipeline is defined in [`dvc.yaml`](https://github.com/Deltares/Ribasim-NL/blob/main/dvc.yaml). Dependencies determine the order in which stages run:
+The DVC pipeline is defined in [`dvc.yaml`](https://github.com/Deltares/Ribasim-NL/blob/main/dvc.yaml).
+Each stage depends on its scripts, its input data, and the `src/ribasim_nl/ribasim_nl` and `src/peilbeheerst_model/peilbeheerst_model` packages as a whole.
+Every stage imports most of these packages, so a change to either one marks all stages as changed.
+That sometimes reruns a stage that did not need it, but never skips one whose code changed.
+
+Dependencies determine the order in which stages run:
 
 ```{mermaid}
 %%| label: fig-dvc-pipeline
