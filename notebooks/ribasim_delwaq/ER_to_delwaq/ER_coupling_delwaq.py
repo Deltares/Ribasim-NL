@@ -63,9 +63,6 @@ if not logging.getLogger().handlers:
 
 logger.info("Starting ER data conversion script")
 
-current_dir = Path(__file__).resolve().parent
-root_dir = current_dir.parents[2]
-
 # -------------------------------Conversions------------------------------------
 
 conv_yr2sec = 60 * 60 * 24 * 365.25
@@ -73,24 +70,35 @@ conv_kg2g = 1000
 conv_ton2g = 10**6
 
 # -------------------------------Directories------------------------------------
+
+# fixed
+
+ROOT = Path(__file__).resolve().parents[3]
+
+ER_DATA_DIR = ROOT / "data" / "Basisgegevens" / "Delwaq" / "Emissieregistratie"
+
+ER_INPUT_DIR = ER_DATA_DIR / "aangeleverd"  # vervangt "data\1-external" of /
+ER_INTERIM_DIR = ER_DATA_DIR / "interim"  # vervangt "data\2-interim" of /
+ER_OUTPUT_DIR = ER_DATA_DIR / "output"  # vervangt "data/5-results" of \
+ER_FIGURES_DIR = ER_DATA_DIR / "figures"  # vervangt "data/6-visualization" of \
+
+ER_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+emissies_buiten_ER_path = ER_INPUT_DIR / "Emissies_per_jaar_buiten_ER.csv"
+ER_export_path = ER_INPUT_DIR / "ER_DataExport-2026-09-16-103931.xlsx"
+OE_bedrijven_path = ER_INPUT_DIR / "OverigeEmissies_bedrijven__2024_01_24.csv"
+gaf_path = ER_INPUT_DIR / "gaf_90.shp"
+
+# model-dependent
 model_name = "lhm_coupled_full"
 toml_name = "lhm_coupled.toml"
-model_path = Path(root_dir, "data/Rijkswaterstaat/modellen", model_name)
+model_path = ROOT / "data" / "Rijkswaterstaat" / "modellen" / model_name
 toml_path = model_path / toml_name
 basin_path = model_path / "input/database.gpkg"
 
-delwaq_data_path = root_dir / "data/Basisgegevens/Delwaq"
-er_path = delwaq_data_path / "aangeleverd/Emissieregistratie"
-emissies_buiten_ER_path = er_path / "Emissies_per_jaar_buiten_ER.csv"
-ER_export_path = er_path / "ER_DataExport-2026-09-16-103931.xlsx"
-OE_bedrijven_path = er_path / "OverigeEmissies_bedrijven__2024_01_24.csv"
-gaf_path = er_path / "gaf_90.shp"
-
-output_dir = delwaq_data_path / "output"
-output_dir.mkdir(parents=True, exist_ok=True)
 # %%
 # -------------------------------Settings---------------------------------------
-frac_doorgaand = 0.5  # deel ER op doorvoerende basin node
+frac_doorgaand = 0  # deel ER op doorvoerende basin node
 frac_bergend = 1 - frac_doorgaand  # deel ER op bergende basin node
 make_plots = False
 
@@ -638,7 +646,7 @@ loads_df = ER_df_wide.melt(
     value_name="load",
 )
 
-output_path = output_dir / "ER_loads_g_s_df.parquet"
+output_path = ER_OUTPUT_DIR / "ER_loads_g_s_df.parquet"
 
 try:
     loads_df.to_parquet(output_path, index=False)
