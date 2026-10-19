@@ -297,6 +297,8 @@ def main(
     # hydro-objects that skip the network-patching step.
     if wd_output is not None:
         network = hydro_objects.explode(index_parts=False, ignore_index=True)
+        # write a new file, as overwriting a layer gives different bytes for the same content
+        (wd_output / "network.gpkg").unlink(missing_ok=True)
         network.to_file(wd_output / "network.gpkg", layer="hydro_objects")
 
     # basin profiles

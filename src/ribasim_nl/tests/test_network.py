@@ -1,4 +1,5 @@
 # %%
+import time
 from pathlib import Path
 
 import geopandas as gpd
@@ -200,3 +201,17 @@ def test_get_link_geometry_forbidden_nodes(t_network):
 
 
 # %%
+
+
+def test_network_to_file_is_reproducible(tmp_path):
+    """Writing the same network twice gives the same bytes, also when the file exists, so DVC sees no change."""
+    lines_gdf = gpd.GeoDataFrame(
+        geometry=gpd.GeoSeries([LineString(((0, 0), (10, 0))), LineString(((10, 0), (10, 10)))]), crs="EPSG:28992"
+    )
+    network = Network(lines_gdf)
+    output_file = tmp_path / "network.gpkg"
+    network.to_file(output_file)
+    first = output_file.read_bytes()
+    time.sleep(1.1)  # a timestamp in the file would now differ
+    network.to_file(output_file)
+    assert output_file.read_bytes() == first

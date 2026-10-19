@@ -86,6 +86,7 @@ mask = df_combined["streefpeil"].isna()
 df_combined.loc[mask, "streefpeil"] = df_combined.loc[mask, "WS_OP"]
 
 # Wegschrijven
+peilgebieden_gpkg_editted.unlink(missing_ok=True)  # a new file, so its bytes only depend on its content
 df_combined.to_file(peilgebieden_gpkg_editted, driver="GPKG")
 
 # Inlezen
