@@ -1,6 +1,5 @@
 # %%
 import geopandas as gpd
-import pandas as pd
 from ribasim_nl.assign_authorities import AssignAuthorities
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.link_geometries import fix_link_geometries
@@ -127,24 +126,7 @@ static_data.add_series(node_type="Pump", series=flow_rate)
 static_data.reset_data_frame(node_type="Basin")
 
 # fill streefpeil from ds min_upstream_level
-node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
-
-ds_node_ids = (model.downstream_node_id(i) for i in node_ids)
-ds_node_ids = [i.to_list() if isinstance(i, pd.Series) else [i] for i in ds_node_ids]
-ds_node_ids = pd.Series(ds_node_ids, index=node_ids).explode()
-
-ds_levels = (
-    pd.concat([static_data.basin, static_data.outlet], ignore_index=True)
-    .set_index("node_id")["min_upstream_level"]
-    .dropna()
-    .groupby(level=0)
-    .min()
-)
-
-streefpeil = ds_node_ids.map(ds_levels).dropna().groupby(level=0).min()
-streefpeil.name = "streefpeil"
-streefpeil.index.name = "node_id"
-static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
+static_data.fill_streefpeil_from_downstream_levels()
 
 # get all nodata streefpeilen with their profile_ids and levels
 static_data.fill_streefpeil_from_profiles(damo_profiles, profiles_df)
@@ -180,16 +162,7 @@ mask = static_data.basin["node_id"].isin(forced_levels.keys())
 static_data.basin.loc[mask, "streefpeil"] = static_data.basin.loc[mask, "node_id"].map(forced_levels)
 
 # # update model basin-data
-model.basin.area.df.set_index("node_id", inplace=True)
-
-streefpeil = static_data.basin.set_index("node_id")["streefpeil"]
-model.basin.area.df.loc[streefpeil.index, "meta_streefpeil"] = streefpeil
-profiellijnid = static_data.basin.set_index("node_id")["profielid"]
-model.basin.area.df.loc[streefpeil.index, "meta_profiellijnid"] = profiellijnid
-
-model.basin.area.df.reset_index(drop=False, inplace=True)
-model.basin.area.df.index += 1
-model.basin.area.df.index.name = "fid"
+static_data.update_model_basin_levels()
 
 # toevoegen aangrenzende autoriteiten
 ws_grenzen_path = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg")
