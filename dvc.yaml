@@ -424,6 +424,7 @@ stages:
       - notebooks/noorderzijlvest/04_add_full_control.py
       - notebooks/05_add_bergend.py
       - src/ribasim_nl/ribasim_nl/capacity.py
+      - src/ribasim_nl/ribasim_nl/control.py
       - data/Noorderzijlvest/modellen/Noorderzijlvest_parameterized_model
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/VanDerGaast_QH/spafvoer1.tif

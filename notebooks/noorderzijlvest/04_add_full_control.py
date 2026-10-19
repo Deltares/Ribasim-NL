@@ -4,7 +4,7 @@ import geopandas as gpd
 from ribasim_nl.control import (
     add_controllers_to_supply_area,
     add_controllers_to_uncontrolled_connector_nodes,
-    mark_level_update_protected,
+    set_continuous_level_control,
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.parametrization.basin_tables import update_basin_static
@@ -23,11 +23,16 @@ IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 SCHUTVERLIES_FLOW_RATE_BY_NODE_ID = {
     #    1756: 1.5,  # Oostersluis
 }
-INLAAT_FLOW_RATE_AANVOER_BY_NODE_ID = {
-    1741: 26.0,  # Gaarkeuken
-}
+# Gaarkeuken supplies on the level of the Van Starkenborghkanaal with the relation of the Landelijk Sobek Model (LSM3),
+# and keeps its source limit on the Fryslân boezem, see https://github.com/Deltares/Ribasim-NL/issues/878
 GAARKEUKEN_OUTLET_NODE_ID = 1741
+GAARKEUKEN_LISTEN_NODE_ID = 1186  # Van Starkenborghkanaal
 GAARKEUKEN_MIN_UPSTREAM_LEVEL = -0.93
+GAARKEUKEN_CONTROL = [(-2.0, 24.0), (-1.0, 24.0), (-0.95, 10.0), (-0.94, 8.7), (-0.93, 0.0)]  # level [m+NAP], m3/s
+# Gaarkeukensluis: schutverlies
+GAARKEUKENSLUIS_NODE_ID = 1744
+GAARKEUKENSLUIS_FLOW_RATE = 0.1
+GAARKEUKENSLUIS_MAX_FLOW_RATE = 0.2
 OUTLET_FLOW_RATE_AFVOER_OVERRIDE_BY_NODE_ID = {
     724: 400.0,
     728: 9999.0,
@@ -62,13 +67,25 @@ aanvoergebieden_gpkg = cloud.joinpath(r"Noorderzijlvest/verwerkt/sturing/aanvoer
 
 
 def configure_gaarkeuken_control(model: Model) -> None:
-    outlet_mask = model.outlet.static.df["node_id"].eq(GAARKEUKEN_OUTLET_NODE_ID) & model.outlet.static.df[
-        "control_state"
-    ].eq("aanvoer")
-    if outlet_mask.sum() != 1:
-        raise ValueError(f"Expected one aanvoer row for Gaarkeuken outlet {GAARKEUKEN_OUTLET_NODE_ID}")
-    model.outlet.static.df.loc[outlet_mask, "min_upstream_level"] = GAARKEUKEN_MIN_UPSTREAM_LEVEL
-    mark_level_update_protected(model.outlet.static.df, outlet_mask)
+    """Control Gaarkeuken on the Van Starkenborghkanaal, and give the Gaarkeukensluis its schutverlies."""
+    levels, flow_rates = zip(*GAARKEUKEN_CONTROL, strict=True)
+    set_continuous_level_control(
+        model,
+        GAARKEUKEN_OUTLET_NODE_ID,
+        GAARKEUKEN_LISTEN_NODE_ID,
+        level=levels,
+        flow_rate=flow_rates,
+        min_upstream_level=GAARKEUKEN_MIN_UPSTREAM_LEVEL,
+        name="inlaat: Gaarkeuken",
+    )
+    sluis_mask = model.outlet.static.df["node_id"].eq(GAARKEUKENSLUIS_NODE_ID)
+    if sluis_mask.sum() != 1:
+        raise ValueError(f"Expected one static row for Gaarkeukensluis {GAARKEUKENSLUIS_NODE_ID}")
+    model.outlet.static.df.loc[sluis_mask, ["flow_rate", "min_flow_rate", "max_flow_rate"]] = [
+        GAARKEUKENSLUIS_FLOW_RATE,
+        0.0,
+        GAARKEUKENSLUIS_MAX_FLOW_RATE,
+    ]
 
 
 # %%
@@ -365,11 +382,7 @@ aanvoer_max_flow_rate = model.outlet.static.df.loc[aanvoer_outlet_mask, "node_id
 )
 model.outlet.static.df.loc[aanvoer_outlet_mask, "max_flow_rate"] = aanvoer_max_flow_rate
 
-for node_id, flow_rate in INLAAT_FLOW_RATE_AANVOER_BY_NODE_ID.items():
-    mask = (model.outlet.static.df.node_id == node_id) & (model.outlet.static.df.control_state == "aanvoer")
-    model.outlet.static.df.loc[mask, ["flow_rate", "max_flow_rate"]] = flow_rate
-
-# Gaarkeuken apart overrulen: alleen de bronvoorwaarde verruimen.
+# Gaarkeuken apart overrulen met ContinuousControl.
 configure_gaarkeuken_control(model)
 
 # %% Junctionify(!)

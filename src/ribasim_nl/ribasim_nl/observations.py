@@ -46,6 +46,9 @@ OBSERVED_NODE_TYPES = (
     "FlowBoundary",
     "Junction",
 )
+# A structure can be converted between an Outlet and a Pump, keeping its location, see
+# `ribasim_nl.control.set_continuous_level_control`, so the koppeltabel may name the other type
+INTERCHANGEABLE_TYPES = {"Outlet": "Pump", "Pump": "Outlet"}
 # Operations of the koppeltabel after which the measurement has the sign of the model flow, see ApplySpecificOperation
 NEGATE_OPERATIONS = ("negatief_maken", "optellen_en_negatief_maken")
 
@@ -201,16 +204,24 @@ def _match(
     """The model node of a `LinkEnd`, or None and why there is none.
 
     Nodes on top of each other are moved apart, see `ribasim_nl.layout.separate_nodes`, so if there is no node within
-    `tolerance`, the nearest node within `moved_tolerance` is used.
+    `tolerance`, the nearest node within `moved_tolerance` is used. If there is no node of the type of the koppeltabel,
+    an Outlet may be a Pump instead, or the other way around, see `INTERCHANGEABLE_TYPES`.
     """
     assert model.node.df is not None
     nodes = model.node.df
-    candidates = nodes[nodes["node_type"] == end.node_type]
-    distance = candidates.distance(end.geometry)
-    within = list(candidates.index[distance <= tolerance])
-    if not within and moved_tolerance > tolerance:
-        # the nearest node within moved_tolerance, as the node may have been moved
-        within = sorted(candidates.index[distance <= moved_tolerance], key=lambda c: distance[c])[:1]
+
+    def nearby(node_type: str) -> list:
+        candidates = nodes[nodes["node_type"] == node_type]
+        distance = candidates.distance(end.geometry)
+        within = list(candidates.index[distance <= tolerance])
+        if not within and moved_tolerance > tolerance:
+            # the nearest node within moved_tolerance, as the node may have been moved
+            within = sorted(candidates.index[distance <= moved_tolerance], key=lambda c: distance[c])[:1]
+        return within
+
+    within = nearby(end.node_type)
+    if not within and end.node_type in INTERCHANGEABLE_TYPES:
+        within = nearby(INTERCHANGEABLE_TYPES[end.node_type])
     if len(within) > 1:
         # stacked nodes, keep those with a neighbor of the right type on the right side, possibly behind Junctions
         within = [c for c in within if graph.node_types.get(graph.neighbor(c, end.upstream)) == end.other_type]

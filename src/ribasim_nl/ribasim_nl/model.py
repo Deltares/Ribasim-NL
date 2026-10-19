@@ -570,10 +570,12 @@ class Model(ribasim.Model):
         self,
         to_node_id: int | list[int],
         data,
-        ctrl_type: Literal["DiscreteControl", "PidControl"] = "DiscreteControl",
+        ctrl_type: Literal["DiscreteControl", "ContinuousControl", "PidControl"] = "DiscreteControl",
         node_geom: Point | None = None,
         node_offset: int = 100,
         node_properties: dict[str, object] | None = None,
+        node_id: int | None = None,
+        link_id: int | None = None,
     ) -> None:
         """Add a control_node to the network
 
@@ -594,6 +596,10 @@ class Model(ribasim.Model):
             By default 100
         node_properties: dict, optional
             extra properties to add to the control node id.
+        node_id: int, optional
+            ID of the control node, by default `next_node_id`. Reuse the ID of a node it replaces to keep IDs stable.
+        link_id: int, optional
+            ID of the control link, only with a single to_node_id. By default a new ID.
 
         """
         # define node
@@ -612,7 +618,10 @@ class Model(ribasim.Model):
                     node_geom = Point(lo.coords[-1])
                 to_node_id = [to_node_id]
 
-        node_id = self.next_node_id
+        if node_id is None:
+            node_id = self.next_node_id
+        assert self.node.df is not None
+        assert node_id not in self.node.df.index, f"Node {node_id} already exists"
         node = Node(node_id=node_id, geometry=node_geom)
 
         # add node
@@ -625,8 +634,9 @@ class Model(ribasim.Model):
         # add links
         if isinstance(to_node_id, int):
             to_node_id = [to_node_id]
+        assert link_id is None or len(to_node_id) == 1, f"A link_id needs a single to_node_id, got {to_node_id}"
         for _to_node_id in to_node_id:
-            self.link.add(table[node_id], self.get_node(_to_node_id))
+            self.link.add(table[node_id], self.get_node(_to_node_id), link_id=link_id)
 
     def reverse_link(
         self,
@@ -664,7 +674,7 @@ class Model(ribasim.Model):
             ].index
 
             # remove link from link-table
-            set_df_unvalidated(self.link, self.link.df[~self.link.df.index.isin(indices)])
+            self.remove_links(list(indices))
 
             # remove disconnected nodes
             if remove_disconnected_nodes:
@@ -672,9 +682,20 @@ class Model(ribasim.Model):
                     if node_id not in self.link.df[["from_node_id", "to_node_id"]].to_numpy().ravel():
                         self.remove_node(node_id)
 
+    def set_link_id(self, link_id: int, new_link_id: int) -> None:
+        """Change the ID of a link, for instance to reuse the ID of a link it replaces"""
+        assert self.link.df is not None
+        assert link_id in self.link.df.index, f"Link {link_id} does not exist"
+        assert new_link_id not in self.link.df.index, f"Link {new_link_id} already exists"
+        set_df_unvalidated(self.link, self.link.df.rename(index={link_id: new_link_id}))
+        self.link._used_link_ids.node_ids.discard(link_id)
+        self.link._used_link_ids.add(new_link_id)
+
     def remove_links(self, link_ids: list[int]) -> None:
+        """Remove links, and release their IDs so they can be reused"""
         if self.link.df is not None:
             set_df_unvalidated(self.link, self.link.df[~self.link.df.index.isin(link_ids)])
+            self.link._used_link_ids.node_ids.difference_update(link_ids)
 
     def add_basin(self, node_id, geometry, tables=None, **kwargs) -> None:
         # define node properties

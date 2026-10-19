@@ -46,13 +46,20 @@ def test_add_observation_nodes():
 
     coupling = gpd.GeoDataFrame(
         {
-            "MeetreeksC": ["outlet", "sum", "elders", "netto"],
-            "Aan/Af": ["Aanvoer", "Afvoer", "Afvoer", "Afvoer"],
-            "negate": [True, False, False, False],
-            "ends": [[end(1)], [end(1), end(-1)], [LinkEnd("Outlet", Point(100, 0), "Basin", True)], None],
-            "koppeling": ["", "", "", "combines 2 links with link1-link2"],
+            "MeetreeksC": ["outlet", "sum", "elders", "netto", "gemaal"],
+            "Aan/Af": ["Aanvoer", "Afvoer", "Afvoer", "Afvoer", "Afvoer"],
+            "negate": [True, False, False, False, False],
+            "ends": [
+                [end(1)],
+                [end(1), end(-1)],
+                [LinkEnd("Outlet", Point(100, 0), "Basin", True)],
+                None,
+                # a Pump in the koppeltabel that is an Outlet in the model
+                [LinkEnd("Pump", Point(10.5, -1), "Basin", True)],
+            ],
+            "koppeling": ["", "", "", "combines 2 links with link1-link2", ""],
         },
-        geometry=[Point(12, 3), Point(20, 1), Point(100, 0), Point(50, 0)],
+        geometry=[Point(12, 3), Point(20, 1), Point(100, 0), Point(50, 0), Point(12, -3)],
         crs="EPSG:28992",
     )
     time = pd.date_range("2019-12-31", "2020-01-04", name="time")
@@ -64,17 +71,18 @@ def test_add_observation_nodes():
     model = add_observation_nodes(model, coupling, measurements)
     # all series get an Observation node at the measurement location, also when it cannot be linked
     observations = model.node.df[model.node.df["node_type"] == "Observation"]
-    assert observations["name"].tolist() == ["outlet", "sum", "elders", "netto"]
+    assert observations["name"].tolist() == ["outlet", "sum", "elders", "netto", "gemaal"]
     assert observations.geometry.iloc[0].equals(Point(12, 3))
     links = model.link.df[model.link.df["link_type"] == "observation"]
     observed = dict(zip(links["from_node_id"].map(observations["name"]), links["to_node_id"], strict=True))
     # the sum of both outlets is the flow of the Junction that collects them
-    assert observed == {"outlet": 2, "sum": 4}
+    assert observed == {"outlet": 2, "sum": 4, "gemaal": 3}
     assert observations["meta_koppeling"].tolist() == [
         "",
         "",
         "0 Outlet nodes at the location in the koppeltabel",
         "combines 2 links with link1-link2",
+        "",
     ]
     # measurements in the model period, with the sign of the flow_rate
     time_df = model.observation.time.df

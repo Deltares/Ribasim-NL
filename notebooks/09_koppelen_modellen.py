@@ -203,8 +203,6 @@ merged_outflows = [
 node_names = {
     203899: "Dokkumer Nieuwe Zijlen schutsluis",  # zie #824
     203901: "Dokkumer Nieuwe Zijlen stuw",  # zie #824
-    225212: "uitlaat: -0.52/-0.60 [m+NAP]",  # zie #824
-    225213: "uitlaat: -0.52/-0.60 [m+NAP]",  # zie #824
 }
 
 # Static metadata of connector nodes to set after coupling, e.g. levels that were boundary placeholders
