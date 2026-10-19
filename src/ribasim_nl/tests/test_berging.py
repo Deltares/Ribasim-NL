@@ -1,6 +1,7 @@
 import geopandas as gpd
 import pandas as pd
 import pytest
+import rasterio
 import shapely
 from ribasim import Node
 from ribasim.nodes import basin, outlet
@@ -87,3 +88,15 @@ def test_vd_gaast_berging_manning_basin_ids(model, monkeypatch, tmp_path):
 def test_vd_gaast_berging_unknown_manning_basin_ids(model, tmp_path):
     with pytest.raises(AssertionError, match="not Basins"):
         VdGaastBerging(model=model, cloud=CloudStorage(tmp_path), manning_basin_ids={99}).add()
+
+
+def test_band_index():
+    profile = {"driver": "GTiff", "width": 1, "height": 1, "count": 2, "dtype": "float32"}
+    with rasterio.MemoryFile() as memfile:
+        with memfile.open(**profile) as dst:
+            dst.descriptions = ("maaiveld", "opp_primair")
+        with memfile.open() as src:
+            assert berging.band_index(src, "maaiveld") == 1
+            assert berging.band_index(src, "opp_primair") == 2
+            with pytest.raises(AssertionError, match="opp_secundair"):
+                berging.band_index(src, "opp_secundair")
