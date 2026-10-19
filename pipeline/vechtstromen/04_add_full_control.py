@@ -11,8 +11,7 @@ from ribasim_nl.control import (
     print_node_list_diff,
 )
 from ribasim_nl.junctions import junctionify
-from ribasim_nl.parametrization.basin_tables import update_basin_static
-from ribasim_nl.run_model import run_model_and_control
+from ribasim_nl.run_model import write_steady_state_scenarios
 
 from ribasim_nl import CloudStorage, Model
 
@@ -89,11 +88,6 @@ def validate_file_gdb(gdb_path: Path) -> None:
         raise FileNotFoundError(
             f"{gdb_path} is geen lokale FileGDB-directory. Synchroniseer dit pad opnieuw met overwrite=True."
         )
-
-
-def fill_missing_level_boundary_static_levels(model: Model, default_level: float = 0.0) -> None:
-    missing_level_mask = model.level_boundary.static.df["level"].isna()
-    model.level_boundary.static.df.loc[missing_level_mask, "level"] = default_level
 
 
 def lower_outlet_max_downstream_level(model: Model, node_id: int, offset: float = 0.01) -> None:
@@ -771,29 +765,16 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
 # %%
 # Model run
 
-ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_steady_state_wet", f"{SHORT_NAME}.toml")
-ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_steady_state_dry", f"{SHORT_NAME}.toml")
-ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 
-# hoofd run met verdamping
-update_basin_static(model=model, evaporation_mm_per_day=0.5)
-fill_missing_level_boundary_static_levels(model)
-model = run_model_and_control(
-    model, ribasim_toml_dry, model_exec=MODEL_EXEC, qlr_path=qlr_path, authority=AUTHORITY, scenario="dry"
-)
-
-# prerun om het model te initialiseren met neerslag
-update_basin_static(model=model, precipitation_mm_per_day=2)
-fill_missing_level_boundary_static_levels(model)
-model = run_model_and_control(
-    model, ribasim_toml_wet, model_exec=MODEL_EXEC, qlr_path=qlr_path, authority=AUTHORITY, scenario="wet"
-)
-
-# hoofd run
-update_basin_static(model=model, precipitation_mm_per_day=1.5)
-fill_missing_level_boundary_static_levels(model)
-model = run_model_and_control(
-    model, ribasim_toml, model_exec=MODEL_EXEC, qlr_path=qlr_path, authority=AUTHORITY, scenario=None
+# write the dry and wet steady state scenarios and the full control model
+model = write_steady_state_scenarios(
+    model,
+    AUTHORITY,
+    SHORT_NAME,
+    dry_evaporation_mm_per_day=0.5,
+    fill_missing_level_boundaries=True,
+    model_exec=MODEL_EXEC,
+    qlr_path=qlr_path,
 )
 
 # %%

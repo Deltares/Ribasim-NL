@@ -37,8 +37,10 @@ class Parameterize(BaseModel):
             print("  static_data_xlsx bestaat lokaal.")
 
         # add meta_function as we will need that for further parametrization
+        assert self.model.node.df is not None
         if "meta_function" not in self.model.node.df.columns:
             print("meta_function kolom ontbreekt -> wordt toegevoegd via populate_function_column()")
+            assert self.static_data_xlsx is not None, "static_data_xlsx is needed to populate meta_function"
             for node_type in ["Pump", "Outlet"]:
                 print(f"  Populeer meta_function voor {node_type}...")
                 populate_function_column(model=self.model, static_data_xlsx=self.static_data_xlsx, node_type=node_type)
@@ -62,7 +64,9 @@ class Parameterize(BaseModel):
 
         if self.max_pump_flow_rate is not None:
             print(f"max_pump_flow_rate: {self.max_pump_flow_rate}")
+            assert self.model.pump.static.df is not None
             mask = self.model.pump.static.df.flow_rate > self.max_pump_flow_rate
+
             if mask.any():
                 print(f"  {mask.sum()} pompen beperkt tot {self.max_pump_flow_rate}")
                 self.model.pump.static.df.loc[mask, "flow_rate"] = self.max_pump_flow_rate

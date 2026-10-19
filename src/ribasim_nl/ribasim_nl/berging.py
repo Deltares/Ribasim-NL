@@ -34,42 +34,6 @@ def band_index(src: rasterio.DatasetReader, name: str) -> int:
     return src.descriptions.index(name) + 1
 
 
-def percentage_secundair_oppervlaktewater() -> None:
-    """Single-use function to compute percentage secondary surface water per LHM cell and write as GTIFF LHM_oppervlaktewater_percentage.tif"""
-    out_file = LHM_RASTER_FILE.with_name("LHM_oppervlaktewater_percentage_secundair.tif")
-    with rasterio.open(LHM_RASTER_FILE) as src:
-        secundair = src.read(band_index(src, "opp_secundair")).astype("float32")
-        tertiair = src.read(band_index(src, "opp_tertiair")).astype("float32")
-        profile = src.profile.copy()
-
-        # nodata ophalen
-        nodata = src.nodata
-
-        # celoppervlak uit resolutie
-        cell_width = src.transform.a
-        cell_height = abs(src.transform.e)
-        cell_area = cell_width * cell_height
-
-        # geldige pixels bepalen
-        valid = (
-            (secundair != nodata) & (tertiair != nodata) if nodata is not None else np.ones(secundair.shape, dtype=bool)
-        )
-
-        # oppervlaktes optellen
-        summed_area = np.full(secundair.shape, np.nan, dtype="float32")
-        summed_area[valid] = secundair[valid] + tertiair[valid]
-
-        # delen door celoppervlak
-        result = np.full(secundair.shape, np.nan, dtype="float32")
-        result[valid] = summed_area[valid] / cell_area
-
-        # output profiel aanpassen naar 1 band
-        profile.update(dtype="float32", count=1, nodata=np.nan)
-
-        with rasterio.open(out_file, "w", **profile) as dst:
-            dst.write(result, 1)
-
-
 def primary_surface_water_fraction() -> MemoryFile:
     """The fraction of each LHM cell that is primary surface water, as a raster in memory.
 
@@ -257,6 +221,7 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
         assert df is not None
         return df
 
+    assert model.basin.node is not None
     basin_node_df = cast(pd.DataFrame, model.basin.node.df)
     basin_area_df = cast(pd.DataFrame, model.basin.area.df)
     basin_profile_df = cast(pd.DataFrame, model.basin.profile.df)
@@ -437,6 +402,7 @@ def supply_area_basin_ids(model: Model, supply_areas: GeoDataFrame, min_overlap:
     assert not supply_areas.empty, "No supply areas with a geometry"
     supply_area = supply_areas.geometry.make_valid().union_all()
 
+    assert model.basin.node is not None
     basin_node_df = model.basin.node.df
     assert basin_node_df is not None
     flowing_ids = basin_node_df.index[basin_node_df["meta_categorie"] != "bergend"]
@@ -650,7 +616,9 @@ class VdGaastBerging:
 
         # get basin_area and add statistics
         print("compute basin statistics")
+        assert model.basin.area.df is not None
         basin_area_df = model.basin.area.df.dissolve("node_id").copy()
+
         basin_area_df = add_basin_statistics(
             df=basin_area_df, lhm_raster_file=self.lhm_raster_file, ma_raster_file=self.ma_raster_file
         )

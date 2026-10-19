@@ -281,16 +281,7 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 2190, "meta_streefpeil"] 
 static_data.fill_streefpeil_from_profiles(damo_profiles, profiles_df)
 
 # # update model basin-data
-model.basin.area.df.set_index("node_id", inplace=True)
-streefpeil = static_data.basin.set_index("node_id")["streefpeil"]
-model.basin.area.df.loc[streefpeil.index, "meta_streefpeil"] = streefpeil
-profiellijnid = static_data.basin.set_index("node_id")["profielid"]
-model.basin.area.df.loc[streefpeil.index, "meta_profiellijnid"] = profiellijnid
-model.basin.area.df["meta_streefpeil"] = pd.to_numeric(model.basin.area.df["meta_streefpeil"], errors="coerce")
-
-model.basin.area.df.reset_index(drop=False, inplace=True)
-model.basin.area.df.index += 1
-model.basin.area.df.index.name = "fid"
+static_data.update_model_basin_levels()
 
 
 # # koppelen

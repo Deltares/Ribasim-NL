@@ -86,6 +86,7 @@ mask = df_combined["streefpeil"].isna()
 df_combined.loc[mask, "streefpeil"] = df_combined.loc[mask, "WS_OP"]
 
 # Wegschrijven
+peilgebieden_gpkg_editted.unlink(missing_ok=True)  # a new file, so its bytes only depend on its content
 df_combined.to_file(peilgebieden_gpkg_editted, driver="GPKG")
 
 # Inlezen
@@ -340,13 +341,7 @@ static_data.add_series(node_type="Outlet", series=flow_rate)
 static_data.outlet.loc[static_data.outlet.flow_rate.isna(), "flow_rate"] = 20.0
 # %%
 
-model.basin.area.df.set_index("node_id", inplace=True)
-streefpeil = static_data.basin.set_index("node_id")["streefpeil"]
-model.basin.area.df.loc[streefpeil.index, "meta_streefpeil"] = streefpeil
-model.basin.area.df["meta_streefpeil"] = pd.to_numeric(model.basin.area.df["meta_streefpeil"], errors="coerce")
-model.basin.area.df.reset_index(drop=False, inplace=True)
-model.basin.area.df.index += 1
-model.basin.area.df.index.name = "fid"
+static_data.update_model_basin_levels(profile_ids=False)
 
 
 # # koppelen

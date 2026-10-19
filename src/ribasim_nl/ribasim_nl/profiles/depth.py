@@ -94,6 +94,7 @@ def depth_from_hydrotopes(
 
     # align CRSs
     if hydro_objects.crs != hydrotope_map.crs:
+        assert hydro_objects.crs is not None
         hydrotope_map.to_crs(hydro_objects.crs)
 
     # find overlapping hydrotopes per hydro-object

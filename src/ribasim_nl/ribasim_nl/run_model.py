@@ -5,9 +5,9 @@ import subprocess
 import sys
 import tomllib
 from collections import namedtuple
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from ribasim.cli import _find_cli
 
@@ -59,6 +59,63 @@ def run_model_and_control(
         allowed_non_steady_state_node_ids=allowed_non_steady_state_node_ids(authority, scenario)
     )
     return Model.read(ribasim_toml)
+
+
+def write_steady_state_scenarios(
+    model: "Model",
+    authority: str,
+    short_name: str,
+    *,
+    dry_evaporation_mm_per_day: float,
+    model_exec: bool,
+    qlr_path: Path,
+    dry_period: tuple[datetime, datetime] | None = None,
+    wet_period: tuple[datetime, datetime] | None = None,
+    fill_missing_level_boundaries: bool = False,
+) -> "Model":
+    """Write, and optionally run and check, the dry and wet steady state scenarios, and then the full control model.
+
+    The scenarios get constant forcing, in this order: evaporation in the dry scenario, 2 mm/day precipitation in the
+    wet scenario, and 1.5 mm/day precipitation in the full control model. See `run_model_and_control`.
+
+    :param model: model of the vrij afwaterend water authority
+    :param authority: water authority, the folder of its models
+    :param short_name: name of the TOML files
+    :param dry_evaporation_mm_per_day: evaporation in the dry scenario [mm/day]
+    :param model_exec: run the scenarios and check their results
+    :param qlr_path: QGIS layer definition for `output_controle`
+    :param dry_period: start and end time of the dry scenario, defaults to the time of the model
+    :param wet_period: start and end time of the wet scenario and the full control model, defaults to the time of
+        the model
+    :param fill_missing_level_boundaries: set the missing levels of LevelBoundaries, see
+        `topology.fill_missing_level_boundary_static_levels`
+    :return: the full control model
+    """
+    from ribasim_nl.cloud import CloudStorage
+    from ribasim_nl.parametrization.basin_tables import update_basin_static
+    from ribasim_nl.topology import fill_missing_level_boundary_static_levels
+
+    model_dir = CloudStorage().joinpath(authority, "modellen")
+    scenarios = (
+        ("dry", {"evaporation_mm_per_day": dry_evaporation_mm_per_day}, dry_period, "steady_state_dry"),
+        ("wet", {"precipitation_mm_per_day": 2}, wet_period, "steady_state_wet"),
+        (None, {"precipitation_mm_per_day": 1.5}, None, "full_control_model"),
+    )
+    for scenario, forcing, period, post_fix in scenarios:
+        update_basin_static(model=model, **forcing)
+        if period is not None:
+            model.starttime, model.endtime = period
+        if fill_missing_level_boundaries:
+            fill_missing_level_boundary_static_levels(model)
+        model = run_model_and_control(
+            model,
+            model_dir / f"{authority}_{post_fix}" / f"{short_name}.toml",
+            model_exec=model_exec,
+            qlr_path=qlr_path,
+            authority=authority,
+            scenario=scenario,
+        )
+    return model
 
 
 def parse_computation_time(line: str) -> timedelta | None:
@@ -117,7 +174,7 @@ def run(
         assert proc.stdout is not None
         # Reconfigure stdout to replace unencodable characters (e.g. cp1252 on Windows)
         if hasattr(sys.stdout, "reconfigure"):
-            sys.stdout.reconfigure(errors="replace")
+            cast(Any, sys.stdout).reconfigure(errors="replace")
         was_simulating = False
         computation_time = None
         term_width = shutil.get_terminal_size((80, 20)).columns

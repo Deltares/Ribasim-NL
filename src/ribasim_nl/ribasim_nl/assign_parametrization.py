@@ -72,6 +72,8 @@ class AssignMetaData:
                 if ribasim_attr == "node":
                     # Use global node table
                     df_ribasim = self.model.node.df
+                    assert df_ribasim is not None
+
                     type_name = type(rtype).__name__
                     type_mask = df_ribasim["node_type"] == type_name
                 else:
@@ -113,6 +115,7 @@ class AssignMetaData:
             df_ribasim = getattr(getattr(self.model, ribasim_type), ribasim_attr).df
             matching_rows = df_ribasim.node_id.isin(node_id).to_numpy()
 
+        assert df_ribasim is not None
         return df_ribasim, matching_rows
 
     def _nodeid_is_assigned(

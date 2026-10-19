@@ -9,8 +9,7 @@ from ribasim_nl.control import (
     print_node_list_diff,
 )
 from ribasim_nl.junctions import junctionify
-from ribasim_nl.parametrization.basin_tables import update_basin_static
-from ribasim_nl.run_model import run_model_and_control
+from ribasim_nl.run_model import write_steady_state_scenarios
 from shapely import Point
 
 from ribasim_nl import CloudStorage, Model
@@ -778,24 +777,13 @@ model.outlet.static.df = static_df
 # %%
 # Model run
 
-ribasim_toml_wet = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_steady_state_wet", f"{SHORT_NAME}.toml")
-ribasim_toml_dry = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_steady_state_dry", f"{SHORT_NAME}.toml")
-ribasim_toml = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_full_control_model", f"{SHORT_NAME}.toml")
 
-# hoofd run met verdamping
-update_basin_static(model=model, evaporation_mm_per_day=1)
-model = run_model_and_control(
-    model, ribasim_toml_dry, model_exec=MODEL_EXEC, qlr_path=qlr_path, authority=AUTHORITY, scenario="dry"
-)
-
-# prerun om het model te initialiseren met neerslag
-update_basin_static(model=model, precipitation_mm_per_day=2)
-model = run_model_and_control(
-    model, ribasim_toml_wet, model_exec=MODEL_EXEC, qlr_path=qlr_path, authority=AUTHORITY, scenario="wet"
-)
-
-# hoofd run
-update_basin_static(model=model, precipitation_mm_per_day=1.5)
-model = run_model_and_control(
-    model, ribasim_toml, model_exec=MODEL_EXEC, qlr_path=qlr_path, authority=AUTHORITY, scenario=None
+# write the dry and wet steady state scenarios and the full control model
+model = write_steady_state_scenarios(
+    model,
+    AUTHORITY,
+    SHORT_NAME,
+    dry_evaporation_mm_per_day=1,
+    model_exec=MODEL_EXEC,
+    qlr_path=qlr_path,
 )

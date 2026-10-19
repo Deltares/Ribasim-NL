@@ -26,7 +26,9 @@ def concat(models: list[Model], keep_original_index: bool = False) -> Model:
     for merge_model in models[1:]:
         if not keep_original_index:
             # reset index of mergemodel, node_start is max node_id
+            assert model.node.df is not None
             node_start = model.node.df.index.max() + 1
+
             merge_model = reset_index(merge_model, node_start)
 
         # concat node table

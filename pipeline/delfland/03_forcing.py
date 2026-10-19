@@ -1,12 +1,12 @@
 """Parametrisation of water board: Delfland."""
 
 import ribasim_nl.ribasim_parametrization as ribasim_param
-from ribasim_nl.assign_parametrization import AssignMetaData
 from ribasim_nl.control import set_node_functions
 from ribasim_nl.design_capacities import set_design_capacities
 from ribasim_nl.workflow import (
     WaterBoardPaths,
     add_controllers,
+    assign_pump_and_basin_names,
     categorize_nodes,
     complete_parametrization,
     node_function_table,
@@ -53,27 +53,7 @@ ribasim_model.outlet.static.df.loc[
 ] = -0.63  # 2 cm below Rijnlands streefpeil, to avoid too much water entering from Delfland
 
 
-# assign metadata for pumps and basins
-assign_metadata = AssignMetaData(
-    authority=waterschap,
-    model_name=ribasim_model,
-    param_name=f"{waterschap}.gpkg",
-    sync=False,
-)
-assign_metadata.add_meta_to_pumps(
-    layer="gemaal",
-    mapper={
-        "meta_name": {"node": ["name"]},
-        "meta_capaciteit": {"static": ["flow_rate", "max_flow_rate"]},
-    },
-    max_distance=100,
-    factor_flowrate=1 / 60,  # m3/min -> m3/s
-)
-assign_metadata.add_meta_to_basins(
-    layer="aggregation_area",
-    mapper={"meta_name": {"node": ["name"]}},
-    min_overlap=0.95,
-)
+assign_pump_and_basin_names(ribasim_model, paths)
 
 # presumably wrong conversion of flow capacity in the data
 increase_flow_rate_pumps = [474, 298]

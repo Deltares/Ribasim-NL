@@ -699,7 +699,8 @@ class Network:
         if path.suffix.lower() != ".gpkg":
             raise ValueError(f"{path} is not a GeoPackage, please provide a file with extention 'gpkg'")
 
-        # write nodes and links
+        # write nodes and links to a new file, as overwriting layers gives different bytes for the same content
+        path.unlink(missing_ok=True)
         self.nodes[["geometry", "type"]].to_file(path, layer="nodes", engine="pyogrio")
         self.links.to_file(path, layer="links", engine="pyogrio")
         # add styles

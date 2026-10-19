@@ -353,9 +353,12 @@ class SupplyWork(abc.ABC):
         if overruling_enabled:
             remove_nodes = set()
             # collect all nodes that are considered part of the 'hoofdwatersysteem'
-            if "meta_categorie" in self.model.basin.node.df.columns:
+            assert self.model.basin.node is not None
+            basin_node_df = self.model.basin.node.df
+            assert basin_node_df is not None
+            if "meta_categorie" in basin_node_df.columns:
                 main_water_system_node_ids = (
-                    self.model.basin.node.df[self.model.basin.node.df["meta_categorie"] == "hoofdwater"].index.to_list()
+                    basin_node_df[basin_node_df["meta_categorie"] == "hoofdwater"].index.to_list()
                     + boundaries.index.to_list()
                 )
             else:
@@ -386,7 +389,7 @@ class SupplyWork(abc.ABC):
                 if v:
                     remove_nodes.update(basin_sub[k])
             # disable 'meta_aanvoer' for collected 'kunstwerk'-IDs
-            self.set_aanvoer_off(*remove_nodes)
+            self.set_aanvoer_off(*typing.cast(set[int], remove_nodes))
 
         # update model data: 'kunstwerk' statics
         return self.get_statics()
@@ -469,21 +472,6 @@ class SupplyOutlet(SupplyWork):
         """
         super().set_statics(df)
         self.model.outlet.static.df = df.copy(deep=True)
-
-
-class SupplyPump(SupplyWork):
-    """Labelling of Ribasim's pump nodes as 'aanvoer' or 'afvoer' based on basin labels."""
-
-    _node_type = "Pump"
-
-    def set_statics(self, df: pd.DataFrame) -> None:
-        """Set Ribasim pumps' Static-data.
-
-        :param df: data with pump statics
-        :type df: pandas.DataFrame
-        """
-        super().set_statics(df)
-        self.model.pump.static.df = df.copy(deep=True)
 
 
 def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoDataFrame:

@@ -122,41 +122,14 @@ static_data.fill_min_upstream_level_from_profiles("Pump", profiles_df, divisor=3
 static_data.reset_data_frame(node_type="Basin")
 
 # Vind Basin nodes zonder streefpeil
-node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
-
-# Zoek downstream nodes per Basin
-ds_node_ids = (model.downstream_node_id(i) for i in node_ids)
-ds_node_ids = [i.to_list() if isinstance(i, pd.Series) else [i] for i in ds_node_ids]
-ds_node_ids = pd.Series(ds_node_ids, index=node_ids).explode()
-
-ds_levels = (
-    pd.concat([static_data.basin, static_data.outlet, static_data.pump], ignore_index=True)
-    .set_index("node_id")["min_upstream_level"]
-    .dropna()
-    .groupby(level=0)
-    .min()
-)
-
-streefpeil = ds_node_ids.map(ds_levels).dropna().groupby(level=0).min()
-streefpeil.name = "streefpeil"
-streefpeil.index.name = "node_id"
-static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
+static_data.fill_streefpeil_from_downstream_levels(include_pumps=True)
 
 
 # get all nodata streefpeilen with their profile_ids and levels
 static_data.fill_streefpeil_from_profiles(damo_profiles, profiles_df, divisor=3)
 
 # # update model basin-data
-model.basin.area.df.set_index("node_id", inplace=True)
-
-streefpeil = static_data.basin.set_index("node_id")["streefpeil"]
-model.basin.area.df.loc[streefpeil.index, "meta_streefpeil"] = streefpeil
-profiellijnid = static_data.basin.set_index("node_id")["profielid"]
-model.basin.area.df.loc[streefpeil.index, "meta_profiellijnid"] = profiellijnid
-
-model.basin.area.df.reset_index(drop=False, inplace=True)
-model.basin.area.df.index += 1
-model.basin.area.df.index.name = "fid"
+static_data.update_model_basin_levels()
 
 
 # # koppelen

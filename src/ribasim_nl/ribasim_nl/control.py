@@ -116,13 +116,6 @@ def _node_max_flow_rate(flow_rate: float | dict[int, float] | None, node_id: int
     return float(flow_rate)
 
 
-class InvalidTable(Exception):
-    """Basin.Area table is invalid."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
-
-
 class MissingTable(Exception):
     """Table is missing."""
 
@@ -233,7 +226,7 @@ def _target_level(
             msg = f"Target level missing in Basin.Area table for node_id={node_id} in column '{target_level_column}'"
             raise ValueError(msg)
     else:
-        return target_level
+        return cast(float, target_level)
 
 
 def _maalstop_level(

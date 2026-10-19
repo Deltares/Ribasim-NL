@@ -2,8 +2,6 @@ import datetime
 import json
 import logging
 import math
-import subprocess
-import sys
 import typing
 import warnings
 from pathlib import Path
@@ -14,7 +12,6 @@ import numpy as np
 import pandas as pd
 import ribasim
 import shapely
-import tqdm.auto as tqdm
 from ribasim.nodes import continuous_control
 from shapely.geometry import LineString, Point
 
@@ -33,6 +30,7 @@ def get_current_max_node_id(ribasim_model: Model) -> int:
         warnings.simplefilter(action="ignore", category=FutureWarning)
         df_all_nodes = ribasim_model.node.df
 
+    assert df_all_nodes is not None
     max_id = 1 if len(df_all_nodes) == 0 else int(df_all_nodes.meta_node_id.max())
 
     return max_id
@@ -207,51 +205,6 @@ def set_dynamic_forcing(
     ribasim_model.endtime = time[-1]
 
 
-def set_hypothetical_dynamic_forcing(
-    ribasim_model: Model,
-    start_time: datetime.datetime,
-    end_time: datetime.datetime,
-    mixed_conditions_design_P: float,
-    mixed_conditions_design_E: float,
-) -> None:
-    """Set a basic hypothetical dynamic forcing.
-
-    The hypothetical forcing consists of an initial precipitation period covering the
-    first third of the simulation, followed by a potential-evaporation period covering
-    the remaining two thirds.
-
-    :param ribasim_model: ribasim model
-    :param start_time: start time of simulation
-    :param end_time: end time of simulation
-    :param mixed_conditions_design_P: precipitation rate during the first period in mm/day
-    :param mixed_conditions_design_E: potential evaporation rate during the later period in mm/day
-
-    :type ribasim_model: Model
-    :type start_time: datetime.datetime
-    :type end_time: datetime.datetime
-    :type mixed_conditions_design_P: float
-    :type mixed_conditions_design_E: float
-    """
-    # define time-variables
-    halftime = start_time + (end_time - start_time) // 3
-    time = start_time, halftime, end_time
-
-    # define forcing time-series
-    v_P = convert_mm_day_to_m_sec(mixed_conditions_design_P)
-    v_E = convert_mm_day_to_m_sec(mixed_conditions_design_E)
-    precipitation = v_P, 0.0, 0.0
-    evaporation = 0.0, v_E, v_E
-
-    # set forcing conditions
-    forcing = {
-        "precipitation": precipitation,
-        "potential_evaporation": evaporation,
-        "drainage": 0.0,
-        "infiltration": 0.0,
-    }
-    set_dynamic_forcing(ribasim_model, time, forcing)
-
-
 def set_dynamic_level_boundaries(
     ribasim_model: Model, time: typing.Sequence[datetime.datetime], levels: typing.Sequence[float]
 ) -> None:
@@ -313,7 +266,6 @@ def set_hypothetical_dynamic_level_boundaries(
     end_time: datetime.datetime,
     low: float,
     high: float,
-    DYNAMIC_CONDITIONS: bool,
 ) -> None:
     """Set basic hypothetical dynamic level boundaries.
 
@@ -329,39 +281,32 @@ def set_hypothetical_dynamic_level_boundaries(
     :type low: float
     :type high: float
     """
+
     # define time-series
-    if DYNAMIC_CONDITIONS:
+    def seasonal_level(timestamp: datetime.datetime) -> float:
+        summer_start = datetime.datetime(timestamp.year, 4, 2)
+        summer_end = datetime.datetime(timestamp.year, 10, 1)
+        return high if summer_start <= timestamp <= summer_end else low
 
-        def seasonal_level(timestamp: datetime.datetime) -> float:
-            summer_start = datetime.datetime(timestamp.year, 4, 2)
-            summer_end = datetime.datetime(timestamp.year, 10, 1)
-            return high if summer_start <= timestamp <= summer_end else low
-
-        transitions = (
-            transition
-            for year in range(start_time.year, end_time.year + 1)
-            for transition in (
-                (datetime.datetime(year, 4, 1), low),
-                (datetime.datetime(year, 4, 2), high),
-                (datetime.datetime(year, 10, 1), high),
-                (datetime.datetime(year, 10, 2), low),
-            )
+    transitions = (
+        transition
+        for year in range(start_time.year, end_time.year + 1)
+        for transition in (
+            (datetime.datetime(year, 4, 1), low),
+            (datetime.datetime(year, 4, 2), high),
+            (datetime.datetime(year, 10, 1), high),
+            (datetime.datetime(year, 10, 2), low),
         )
-        time_levels = {
-            transition_time: transition_level
-            for transition_time, transition_level in transitions
-            if start_time <= transition_time <= end_time
-        }
+    )
+    time_levels = {
+        transition_time: transition_level
+        for transition_time, transition_level in transitions
+        if start_time <= transition_time <= end_time
+    }
 
-        time_levels[start_time] = seasonal_level(start_time)
-        time_levels[end_time] = seasonal_level(end_time)
-        time, level = zip(*sorted(time_levels.items()), strict=True)
-
-    else:
-        halftime = start_time + (end_time - start_time) // 3
-        halftime_1 = halftime + datetime.timedelta(days=1)
-        time = start_time, halftime, halftime_1, end_time
-        level = low, low, high, high
+    time_levels[start_time] = seasonal_level(start_time)
+    time_levels[end_time] = seasonal_level(end_time)
+    time, level = zip(*sorted(time_levels.items()), strict=True)
 
     # set dynamic level boundaries
     set_dynamic_level_boundaries(ribasim_model, time, level)
@@ -590,37 +535,6 @@ def add_outlets(ribasim_model, delta_crest_level=0.10) -> None:
     ribasim_model.link.df = ribasim_model.link.df.replace(to_replace="TabulatedRatingCurve", value="Outlet")
 
     return
-
-
-def write_ribasim_model_Zdrive(ribasim_model, path_ribasim_toml) -> None:
-    # Write Ribasim model to the Z drive
-    if not Path(path_ribasim_toml).exists():
-        Path(path_ribasim_toml).mkdir(parents=True)
-
-    ribasim_model.write(path_ribasim_toml)
-
-
-def tqdm_subprocess(cmd, suffix=None, print_other=True, leave=True) -> None:
-    desc = "Simulating"
-    if suffix is not None:
-        desc = f"{desc} {suffix}"
-
-    with tqdm.tqdm(total=100, desc=desc, leave=leave) as pbar:
-        process = subprocess.Popen(
-            cmd, shell=False, bufsize=1, encoding="utf-8", errors="replace", stderr=subprocess.PIPE
-        )
-        for line in process.stderr:
-            if line.startswith("Simulating"):
-                cur_perc = int(line.split("%")[0].lower().replace("simulating", ""))
-                pbar.update(cur_perc - pbar.n)
-            elif print_other:
-                print(line.strip())
-            sys.stderr.flush()
-        process.stderr.close()
-
-        return_code = process.wait()
-        if return_code != 0:
-            raise subprocess.CalledProcessError(return_code, cmd)
 
 
 def validate_basin_area(model, threshold_area=45000) -> None:
@@ -1713,7 +1627,7 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
 
 def add_continuous_control_node(
     ribasim_model: Model, connection_node: ribasim.geometry.link.NodeData, listen_nodes: list[int], **kwargs
-) -> ribasim.Node | None:
+) -> ribasim.geometry.node.NodeData:
     """Add a continuous control node to `Pump`-/`Outlet`-nodes that are for both 'aanvoer' and 'afvoer'.
 
     :param ribasim_model: Ribasim model
@@ -1749,8 +1663,8 @@ def add_continuous_control_node(
     :raise AssertionError: if `listen_variable` is unknown
     :raise AssertionError: if lengths of `listen_nodes`, `weights` and `listen_targets` are not 2
 
-    :return: continuous control node (if created)
-    :rtype: ribasim.Node, None
+    :return: continuous control node
+    :rtype: ribasim.geometry.node.NodeData
     """
     # optional arguments
     dx: float = kwargs.get("dx", 0)

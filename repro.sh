@@ -102,12 +102,17 @@ JOBIDS=""
 
 for pair in "${DYNAMIC_PAIRS[@]}"; do
   key="${pair%%:*}"; item="${pair##*:}"
+  # only some water boards preprocess their measured profiles
+  preprocess=()
+  if [[ -f pipeline/${key}/_preprocess_profielen.py ]]; then
+    preprocess=("$(py pipeline/${key}/_preprocess_profielen.py)")
+  fi
   cmds=$(chain \
-    "$(py notebooks/${key}/_preprocess_profielen.py)" \
-    "$(py notebooks/${key}/01_fix_model.py)" \
-    "$(py notebooks/${key}/02_prepare_model.py)" \
-    "$(py notebooks/${key}/03_parameterize_model.py)" \
-    "$(py notebooks/${key}/04_add_full_control.py)" \
+    "${preprocess[@]}" \
+    "$(py pipeline/${key}/01_fix_model.py)" \
+    "$(py pipeline/${key}/02_prepare_model.py)" \
+    "$(py pipeline/${key}/03_parameterize_model.py)" \
+    "$(py pipeline/${key}/04_add_full_control.py)" \
     "$(py pipeline/05_add_bergend.py ${item})" \
     "$(py pipeline/07_add_dynamic_forcing.py ${item})")
   BEGIN="now+$((STAGGER_COUNT * STAGGER))seconds"

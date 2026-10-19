@@ -3,6 +3,8 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+from pandera.typing import DataFrame
+from ribasim.schemas import FlowBoundaryTimeSchema
 
 from ribasim_nl.model import Model
 
@@ -161,6 +163,8 @@ def add_transboundary_inflow(model: Model, dict_flow: dict[str, pd.DataFrame]) -
         ]
     # add the rows of df_flowboundaries_time to the existing df
     if model.flow_boundary.time.df is None:
-        model.flow_boundary.time.df = df_flowboundaries_time
+        model.flow_boundary.time.df = DataFrame[FlowBoundaryTimeSchema](df_flowboundaries_time)
     else:
-        model.flow_boundary.time.df = pd.concat([model.flow_boundary.time.df, df_flowboundaries_time])
+        model.flow_boundary.time.df = DataFrame[FlowBoundaryTimeSchema](
+            pd.concat([model.flow_boundary.time.df, df_flowboundaries_time])
+        )

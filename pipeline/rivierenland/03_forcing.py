@@ -1,7 +1,6 @@
 """Parameterisation of water board: Rivierenland."""
 
 import ribasim_nl.ribasim_parametrization as ribasim_param
-from ribasim_nl.assign_parametrization import AssignMetaData
 from ribasim_nl.control import (
     set_flow_rate,
     set_node_functions,
@@ -10,6 +9,7 @@ from ribasim_nl.design_capacities import set_design_capacities
 from ribasim_nl.workflow import (
     WaterBoardPaths,
     add_controllers,
+    assign_pump_and_basin_names,
     categorize_nodes,
     complete_parametrization,
     node_function_table,
@@ -132,27 +132,7 @@ from_to_node_function_table = set_node_functions(
 
 add_controllers(ribasim_model, from_to_node_function_table, remove_duplicates=False)
 
-# assign metadata for pumps and basins
-assign_metadata = AssignMetaData(
-    authority=waterschap,
-    model_name=ribasim_model,
-    param_name=f"{waterschap}.gpkg",
-    sync=False,
-)
-assign_metadata.add_meta_to_pumps(
-    layer="gemaal",
-    mapper={
-        "meta_name": {"node": ["name"]},
-        "meta_capaciteit": {"static": ["flow_rate", "max_flow_rate"]},
-    },
-    max_distance=25,
-    factor_flowrate=1 / 60,  # m3/min -> m3/s
-)
-assign_metadata.add_meta_to_basins(
-    layer="aggregation_area",
-    mapper={"meta_name": {"node": ["name"]}},
-    min_overlap=0.95,
-)
+assign_pump_and_basin_names(ribasim_model, paths, pump_max_distance=25)
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason

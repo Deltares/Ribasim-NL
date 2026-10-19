@@ -2,6 +2,7 @@
 
 import itertools
 import logging
+from typing import cast
 
 import geopandas as gpd
 import numpy as np
@@ -49,6 +50,7 @@ def couple_bgt_to_hydro_objects(
 
     # align CRSs
     if hydro_objects.crs != bgt_data.crs:
+        assert hydro_objects.crs is not None
         bgt_data.to_crs(hydro_objects.crs)
         LOG.warning(f"BGT-data' CRS changed to {bgt_data.crs=}")
 
@@ -57,7 +59,8 @@ def couple_bgt_to_hydro_objects(
 
         def overlap_with_bgt(line: shapely.LineString, polygon_index: int) -> bool:
             """Verify minimum overlap of hydro-object with BGT-polygon to be coupled."""
-            polygon = bgt_data.loc[polygon_index, "geometry"]
+            polygon = cast(shapely.Polygon, bgt_data.loc[polygon_index, "geometry"])
+            assert min_overlap is not None
             return (line.intersection(polygon).length / line.length) > min_overlap
 
         # TODO: Decide on method: No intersection results in discarding the hydro-object (how='inner'); or keep it (how='left')

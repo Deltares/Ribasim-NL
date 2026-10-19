@@ -43,6 +43,7 @@ def populate_function_column(model: Model, node_type: Literal["Pump", "Outlet"],
             function = row.function
             static_data.loc[static_data["categorie"] == category, "meta_function"] = function
 
+        assert model.node.df is not None
         model.node.df.loc[static_data.index, "meta_function"] = static_data["meta_function"]
 
     return model

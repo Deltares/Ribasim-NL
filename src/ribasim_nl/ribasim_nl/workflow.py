@@ -16,6 +16,7 @@ import geopandas as gpd
 import ribasim_nl.ribasim_parametrization as ribasim_param
 from ribasim_nl import CloudStorage, Model, junctionify, supply
 from ribasim_nl.assign_authorities import AssignAuthorities
+from ribasim_nl.assign_parametrization import AssignMetaData
 from ribasim_nl.capacity import bound_supply_inflows
 from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
@@ -163,6 +164,52 @@ def check_basin_meta_categorie(model: Model) -> None:
         )
 
 
+def keep_model_supply_basins(processor: RibasimFeedbackProcessor, model: Model) -> None:
+    """Keep only the Basins of the model in the aanvoer settings of the feedback form, for `set_aanvoer_flags`."""
+    assert model.basin.node is not None and model.basin.node.df is not None
+    basin_ids = set(model.basin.node.df.index)
+    processor._basin_aanvoer_on = tuple(n for n in (processor.basin_aanvoer_on or ()) if n in basin_ids)
+    processor._basin_aanvoer_off = tuple(n for n in (processor.basin_aanvoer_off or ()) if n in basin_ids)
+
+
+def assign_pump_and_basin_names(
+    model: Model,
+    paths: WaterBoardPaths,
+    *,
+    param_name: str | None = None,
+    pump_max_distance: float = 100,
+    pump_flow_rate_factor: float = 1 / 60,
+) -> None:
+    """Assign the names and capacities of the pumping stations, and the names of the aggregation areas.
+
+    :param model: model
+    :param paths: paths of the water board
+    :param param_name: GeoPackage with the parameters of the water board, defaults to `<water board>.gpkg`
+    :param pump_max_distance: maximum distance between a Pump and its pumping station [m]
+    :param pump_flow_rate_factor: factor from the capacity of the pumping stations to m3/s
+    """
+    assign_metadata = AssignMetaData(
+        authority=paths.waterschap,
+        model_name=model,
+        param_name=param_name if param_name is not None else f"{paths.waterschap}.gpkg",
+        sync=False,
+    )
+    assign_metadata.add_meta_to_pumps(
+        layer="gemaal",
+        mapper={
+            "meta_name": {"node": ["name"]},
+            "meta_capaciteit": {"static": ["flow_rate", "max_flow_rate"]},
+        },
+        max_distance=pump_max_distance,
+        factor_flowrate=pump_flow_rate_factor,
+    )
+    assign_metadata.add_meta_to_basins(
+        layer="aggregation_area",
+        mapper={"meta_name": {"node": ["name"]}},
+        min_overlap=0.95,
+    )
+
+
 def set_manning_resistance_outside_bergend(model: Model, length: float, manning_n: float) -> None:
     """Set the length and Manning's n of the ManningResistance nodes that don't connect a storing ('bergend') basin.
 
@@ -198,7 +245,7 @@ def set_boundary_conditions(
     model = add_lhm_forcing(model, paths.model_dir("forcing"), sprinkling="secondary")
 
     drain_level, supply_level = level_boundary_levels
-    ribasim_param.set_hypothetical_dynamic_level_boundaries(model, STARTTIME, ENDTIME, drain_level, supply_level, True)
+    ribasim_param.set_hypothetical_dynamic_level_boundaries(model, STARTTIME, ENDTIME, drain_level, supply_level)
     ribasim_param.find_upstream_downstream_target_levels(model, node="outlet")
     ribasim_param.find_upstream_downstream_target_levels(model, node="pump")
     return model

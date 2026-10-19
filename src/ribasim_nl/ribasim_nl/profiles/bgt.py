@@ -12,8 +12,6 @@ import geopandas as gpd
 import requests
 import shapely
 
-from ribasim_nl import CloudStorage
-
 BASE_URL = "https://api.pdok.nl"
 DATA = {
     "featuretypes": ["waterdeel"],
@@ -132,7 +130,8 @@ def get_water_surfaces(wd: Path, **kwargs) -> gpd.GeoDataFrame:
     """
     # optional arguments
     fn: str = kwargs.get("fn", "bgt_water.gpkg")
-    geo_filter: shapely.Polygon | shapely.MultiPolygon = kwargs.get("geo_filter")
+    geo_filter: shapely.Polygon | shapely.MultiPolygon | None = kwargs.get("geo_filter")
+
     overwrite: bool = kwargs.get("overwrite", False)
     write: bool = kwargs.get("write", True)
 
@@ -148,60 +147,6 @@ def get_water_surfaces(wd: Path, **kwargs) -> gpd.GeoDataFrame:
 
     # return water surfaces
     return bgt_data
-
-
-def upload_bgt_water(authority: str, cloud: CloudStorage = CloudStorage(), **kwargs) -> None:  # noqa: B008
-    """Upload BGT-data per water authority.
-
-    The geo-filter used for the download of the BGT-data is based on the basins of the water authority: A convex hull is
-    drawn around all basins to define the geo-filter.
-
-    :param authority: water authority
-    :param cloud: the GoodCloud-server, defaults to CloudStorage
-    :param kwargs: optional arguments
-
-    :key basins_fn: filename with water authority's basins, defaults to f'{authority}.gpkg'
-    :key basins_layer: layer-name of `basins_fn` with the basin-geometries, defaults to 'peilgebied'
-    :key mkdir: create the (local) directory to save the BGT-data to, defaults to True
-    :key overwrite: overwrite existing BGT-data, defaults to True
-    :key sync: sync the GoodCloud-server, defaults to True
-
-    :type authority: str
-    :type cloud: CloudStorage, optional
-    """
-    # optional arguments
-    basins_fn: str = kwargs.get("basins_fn", f"{authority}.gpkg")
-    basins_layer: str = kwargs.get("basins_layer", "peilgebied")
-    mkdir: bool = kwargs.get("mkdir", True)
-    overwrite: bool = kwargs.get("overwrite", True)
-    sync: bool = kwargs.get("sync", True)
-
-    # validate optional arguments
-    if not basins_fn.endswith(".gpkg"):
-        basins_fn += ".gpkg"
-
-    # sync 'verwerkt'-directory
-    if sync:
-        cloud.download_verwerkt(authority, overwrite=overwrite)
-        paths = [cloud.joinpath(authority, "verwerkt", "Parametrisatie_data")]
-        cloud.synchronize(paths)
-
-    # create geo-filter from basins
-    basins = gpd.read_file(cloud.joinpath(authority, "verwerkt", "Parametrisatie_data", basins_fn), layer=basins_layer)
-    geo_filter = shapely.MultiPolygon(basins.explode().geometry.values).convex_hull
-    if geo_filter.has_z:
-        assert isinstance(geo_filter, shapely.Polygon)
-        geo_filter = shapely.Polygon([(x, y) for x, y, _ in geo_filter.exterior.coords])
-
-    # download BGT-data
-    fn_bgt = cloud.joinpath(authority, "verwerkt", "BGT", f"bgt_{authority}_water.gpkg")
-    if mkdir:
-        fn_bgt.parent.mkdir(parents=True, exist_ok=True)
-    _ = get_water_surfaces(fn_bgt.parent, geo_filter=geo_filter, fn=fn_bgt.name, force=overwrite, write=True)
-
-    # upload BGT-data
-    cloud.create_dir(authority, "verwerkt", "BGT")
-    cloud.upload_file(fn_bgt)
 
 
 def save_bgt_coupling(
