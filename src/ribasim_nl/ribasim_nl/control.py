@@ -116,13 +116,6 @@ def _node_max_flow_rate(flow_rate: float | dict[int, float] | None, node_id: int
     return float(flow_rate)
 
 
-class InvalidTable(Exception):
-    """Basin.Area table is invalid."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
-
-
 class MissingTable(Exception):
     """Table is missing."""
 

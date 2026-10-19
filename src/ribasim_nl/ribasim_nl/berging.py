@@ -43,40 +43,6 @@ BANDEN = {
 }
 
 
-def percentage_secundair_oppervlaktewater() -> None:
-    """Single-use function to compute percentage secondary surface water per LHM cell and write as GTIFF LHM_oppervlaktewater_percentage.tif"""
-    out_file = LHM_RASTER_FILE.with_name("LHM_oppervlaktewater_percentage_secundair.tif")
-    with rasterio.open(LHM_RASTER_FILE) as src:
-        band11 = src.read(11).astype("float32")
-        band12 = src.read(12).astype("float32")
-        profile = src.profile.copy()
-
-        # nodata ophalen
-        nodata = src.nodata
-
-        # celoppervlak uit resolutie
-        cell_width = src.transform.a
-        cell_height = abs(src.transform.e)
-        cell_area = cell_width * cell_height
-
-        # geldige pixels bepalen
-        valid = (band11 != nodata) & (band12 != nodata) if nodata is not None else np.ones(band11.shape, dtype=bool)
-
-        # oppervlaktes optellen
-        summed_area = np.full(band11.shape, np.nan, dtype="float32")
-        summed_area[valid] = band11[valid] + band12[valid]
-
-        # delen door celoppervlak
-        result = np.full(band11.shape, np.nan, dtype="float32")
-        result[valid] = summed_area[valid] / cell_area
-
-        # output profiel aanpassen naar 1 band
-        profile.update(dtype="float32", count=1, nodata=np.nan)
-
-        with rasterio.open(out_file, "w", **profile) as dst:
-            dst.write(result, 1)
-
-
 def primary_surface_water_fraction() -> MemoryFile:
     """The fraction of each LHM cell that is primary surface water, as a raster in memory.
 

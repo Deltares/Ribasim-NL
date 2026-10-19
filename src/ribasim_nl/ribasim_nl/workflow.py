@@ -245,7 +245,7 @@ def set_boundary_conditions(
     model = add_lhm_forcing(model, paths.model_dir("forcing"), sprinkling="secondary")
 
     drain_level, supply_level = level_boundary_levels
-    ribasim_param.set_hypothetical_dynamic_level_boundaries(model, STARTTIME, ENDTIME, drain_level, supply_level, True)
+    ribasim_param.set_hypothetical_dynamic_level_boundaries(model, STARTTIME, ENDTIME, drain_level, supply_level)
     ribasim_param.find_upstream_downstream_target_levels(model, node="outlet")
     ribasim_param.find_upstream_downstream_target_levels(model, node="pump")
     return model

@@ -471,21 +471,6 @@ class SupplyOutlet(SupplyWork):
         self.model.outlet.static.df = df.copy(deep=True)
 
 
-class SupplyPump(SupplyWork):
-    """Labelling of Ribasim's pump nodes as 'aanvoer' or 'afvoer' based on basin labels."""
-
-    _node_type = "Pump"
-
-    def set_statics(self, df: pd.DataFrame) -> None:
-        """Set Ribasim pumps' Static-data.
-
-        :param df: data with pump statics
-        :type df: pandas.DataFrame
-        """
-        super().set_statics(df)
-        self.model.pump.static.df = df.copy(deep=True)
-
-
 def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoDataFrame:
     """Loading geometry data in a non-straightforward way.
 
