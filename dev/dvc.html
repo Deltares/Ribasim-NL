@@ -78,7 +78,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-0ee12bc46b95cc9c0fec3aa43639fc8a.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-af0b5a157174cb675ad7c53d3a367904.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -369,7 +369,8 @@ Note
 </section>
 <section id="pipeline" class="level2">
 <h2 class="anchored" data-anchor-id="pipeline">Pipeline</h2>
-<p>The DVC pipeline is defined in <a href="https://github.com/Deltares/Ribasim-NL/blob/main/dvc.yaml"><code>dvc.yaml</code></a>. Dependencies determine the order in which stages run:</p>
+<p>The DVC pipeline is defined in <a href="https://github.com/Deltares/Ribasim-NL/blob/main/dvc.yaml"><code>dvc.yaml</code></a>. Each stage depends on its scripts, its input data, and the <code>src/ribasim_nl/ribasim_nl</code> package as a whole. Every stage imports most of this package, so a change to it marks all stages as changed. That sometimes reruns a stage that did not need it, but never skips one whose code changed.</p>
+<p>Dependencies determine the order in which stages run:</p>
 <div class="cell" data-file="_dvc-dag.mmd" data-layout-align="default">
 <div class="cell-output-display">
 <div id="fig-dvc-pipeline" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -716,6 +717,16 @@ Note
     node32--&gt;node242
     node32--&gt;node243
     node32--&gt;node244
+    node32--&gt;node256
+    node32--&gt;node257
+    node32--&gt;node258
+    node32--&gt;node259
+    node32--&gt;node260
+    node32--&gt;node261
+    node32--&gt;node262
+    node32--&gt;node263
+    node32--&gt;node264
+    node32--&gt;node265
     node33--&gt;node280
     node33--&gt;node281
     node33--&gt;node282
@@ -739,6 +750,17 @@ Note
     node35--&gt;node10
     node35--&gt;node11
     node35--&gt;node12
+    node35--&gt;node269
+    node35--&gt;node270
+    node35--&gt;node271
+    node35--&gt;node272
+    node35--&gt;node273
+    node35--&gt;node274
+    node35--&gt;node275
+    node35--&gt;node276
+    node35--&gt;node277
+    node35--&gt;node278
+    node35--&gt;node279
     node36--&gt;node234
     node36--&gt;node235
     node36--&gt;node236
@@ -767,6 +789,17 @@ Note
     node41--&gt;node266
     node42--&gt;node266
     node43--&gt;node266
+    node44--&gt;node234
+    node44--&gt;node235
+    node44--&gt;node236
+    node44--&gt;node237
+    node44--&gt;node238
+    node44--&gt;node239
+    node44--&gt;node240
+    node44--&gt;node241
+    node44--&gt;node242
+    node44--&gt;node243
+    node44--&gt;node244
     node44--&gt;node256
     node44--&gt;node257
     node44--&gt;node258

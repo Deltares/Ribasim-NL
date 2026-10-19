@@ -78,7 +78,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-0ee12bc46b95cc9c0fec3aa43639fc8a.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-af0b5a157174cb675ad7c53d3a367904.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -324,7 +324,7 @@ window.Quarto = {
 <p>The profile generation is coded as standalone and intended to be executed prior to model generation, ideally once. Therefore, all relevant code is grouped inside a <code>profiles</code>-module:</p>
 <ul>
 <li>source-code: <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/profiles"><code>src/ribasim_nl/ribasim_nl/profiles</code></a>, and</li>
-<li>implementation-code: <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/profiles"><code>src/peilbeheerst_model/profiles</code></a>.</li>
+<li>implementation-code: <a href="https://github.com/Deltares/Ribasim-NL/tree/main/pipeline"><code>pipeline</code></a>.</li>
 </ul>
 <p>This results in the following structures:</p>
 <ul>
@@ -336,15 +336,14 @@ window.Quarto = {
 <ul>
 <li>For the implementation-code:</li>
 </ul>
-<pre><code>src/peilbeheerst_model/profiles/
- -  __init__.py
+<pre><code>pipeline/
  -  prep_cross_sections.py
- -  &lt;water-authority&gt;.py</code></pre>
-<p>As part of the implementation code, there is the preprocessing of cross-sections (<a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/profiles/prep_cross_sections.py"><code>prep_cross_sections.py</code></a>), which should be executed prior to running any of the <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/profiles"><code>&lt;water-authority&gt;.py</code></a> scripts. This way, the measured cross-sections are preprocessed so they are presented as <code>LINESTRING Z</code>-objects. Preprocessing of the measured cross-sections must be done per water authority:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run python src/peilbeheerst_model/profiles/prep_cross_sections.py <span class="op">&lt;</span>water-authority<span class="op">&gt;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+ -  &lt;water-authority&gt;/02_profiles.py</code></pre>
+<p>As part of the implementation code, there is the preprocessing of cross-sections (<a href="https://github.com/Deltares/Ribasim-NL/tree/main/pipeline/prep_cross_sections.py"><code>prep_cross_sections.py</code></a>), which should be executed prior to running any of the <code>pipeline/&lt;water-authority&gt;/02_profiles.py</code> scripts. This way, the measured cross-sections are preprocessed so they are presented as <code>LINESTRING Z</code>-objects. Preprocessing of the measured cross-sections must be done per water authority:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run python pipeline/prep_cross_sections.py <span class="op">&lt;</span>water-authority<span class="op">&gt;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>This call has to be done only once per water authority (or when changes are made to the data sources and/or source code).</p>
 <p>Subsequently, the profile tables (<em>doorgaand</em> and <em>bergend</em>) are generated/updated per water authority as well:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run python src/peilbeheerst_model/profiles/<span class="op">&lt;</span>water-authority<span class="op">&gt;</span>.py</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run python pipeline/<span class="op">&lt;</span>water-authority<span class="op">&gt;</span>/02_profiles.py</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Again, this call has to be done only once per water authority (or when changes are mode to the data sources and/or source code).</p>
 
 

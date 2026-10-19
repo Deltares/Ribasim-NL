@@ -43,7 +43,7 @@ ul.task-list li input[type="checkbox"] {
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-0ee12bc46b95cc9c0fec3aa43639fc8a.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-af0b5a157174cb675ad7c53d3a367904.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -203,8 +203,8 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#notebookssamenvoegen_modellen.py" id="toc-notebookssamenvoegen_modellen.py" class="nav-link active" data-scroll-target="#notebookssamenvoegen_modellen.py"><code>notebooks/samenvoegen_modellen.py</code></a></li>
-  <li><a href="#notebookskoppelen_modellen.py" id="toc-notebookskoppelen_modellen.py" class="nav-link" data-scroll-target="#notebookskoppelen_modellen.py"><code>notebooks/koppelen_modellen.py</code></a>
+  <li><a href="#pipeline08_samenvoegen_modellen.py" id="toc-pipeline08_samenvoegen_modellen.py" class="nav-link active" data-scroll-target="#pipeline08_samenvoegen_modellen.py"><code>pipeline/08_samenvoegen_modellen.py</code></a></li>
+  <li><a href="#pipeline09_koppelen_modellen.py" id="toc-pipeline09_koppelen_modellen.py" class="nav-link" data-scroll-target="#pipeline09_koppelen_modellen.py"><code>pipeline/09_koppelen_modellen.py</code></a>
   <ul class="collapse">
   <li><a href="#connector-levelboundary-replaced-by-connector-basin" id="toc-connector-levelboundary-replaced-by-connector-basin" class="nav-link" data-scroll-target="#connector-levelboundary-replaced-by-connector-basin"><code>Connector</code> | <code>LevelBoundary</code> replaced by <code>Connector</code> | <code>Basin</code></a></li>
   <li><a href="#outlet-levelboundary-.-levelboundary-outlet-replaced-by-outlet" id="toc-outlet-levelboundary-.-levelboundary-outlet-replaced-by-outlet" class="nav-link" data-scroll-target="#outlet-levelboundary-.-levelboundary-outlet-replaced-by-outlet"><code>Outlet</code> | <code>LevelBoundary</code> . <code>LevelBoundary</code> | <code>Outlet</code> replaced by <code>Outlet</code></a></li>
@@ -240,12 +240,12 @@ ul.task-list li input[type="checkbox"] {
 <ul class="task-list">
 <li><label><input type="checkbox">Ensure all models have a <code>meta_couple_authority</code>.</label></li>
 </ul>
-<section id="notebookssamenvoegen_modellen.py" class="level1">
-<h1><code>notebooks/samenvoegen_modellen.py</code></h1>
+<section id="pipeline08_samenvoegen_modellen.py" class="level1">
+<h1><code>pipeline/08_samenvoegen_modellen.py</code></h1>
 <p>First we determine which models we want to couple. Currently this is tested for <code>Rijkswaterstaat</code>, <code>AmstelGooienVecht</code>, <code>Rijnland</code>, <code>HollandseDelta</code>, <code>Delfland</code>, although the model should scale. This script will concat all models by prefixing local ids with a unique model number (Aquo waterbeheercode), e.g.&nbsp;<code>80</code> for <code>Rijkswaterstaat</code>. This will result in an <code>lhm</code> model.</p>
 </section>
-<section id="notebookskoppelen_modellen.py" class="level1">
-<h1><code>notebooks/koppelen_modellen.py</code></h1>
+<section id="pipeline09_koppelen_modellen.py" class="level1">
+<h1><code>pipeline/09_koppelen_modellen.py</code></h1>
 <p>Secondly, we can use this <code>lhm</code> model to actually couple the individual models in there. To do so, each <code>LevelBoundary</code> with a filled in <code>meta_couple_authority</code> in their <code>Static</code> table is replaced by another node from the <code>meta_couple_authority</code>s model.</p>
 <p>There are several combinations possible:</p>
 <section id="connector-levelboundary-replaced-by-connector-basin" class="level3">

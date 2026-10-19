@@ -43,7 +43,7 @@ ul.task-list li input[type="checkbox"] {
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-0ee12bc46b95cc9c0fec3aa43639fc8a.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-af0b5a157174cb675ad7c53d3a367904.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -240,6 +240,7 @@ ul.task-list li input[type="checkbox"] {
 </ol>
 <p>We originally had more parametrize scripts, but because so much has changed I have now saved these in our backup. We will only use these to see if there were any additional manual adjustments. For the rest, it follows the same workflow as <code>AmstelGooienVecht_parametrize.ipynb</code>.</p>
 <p>Finally: step 1 started with a clear script per water board. During the process of 1.5 years, these scripts have become increasingly larger and more confusing, whereby not every line is needed anymore. For now, there is no priority to clean this up, partly because this is a major risk that the data will (unintentionally) change, which will change the networks and the feedback forms can no longer be used.</p>
+<p>The DVC pipeline then builds the model of each water board with <code>pipeline/&lt;water board&gt;/01_feedback.py</code>, <code>02_profiles.py</code> and <code>03_forcing.py</code>. The steps the forcing scripts have in common are in <code>ribasim_nl.workflow</code>. The forcing, the foreign inflows and RWZIs, and the final steps that lay out, write and run the model are shared with the <a href="../workflow/gravity-controlled.html">gravity controlled</a> models, see <code>ribasim_nl.regional_model</code>.</p>
 <section id="layout" class="level2">
 <h2 class="anchored" data-anchor-id="layout">Layout</h2>
 <p>At the end of the forcing stage, <code>ribasim_nl.network_snapping.snap_model</code> aligns the layout of the model with the hydro-objects in <code>verwerkt/profielen/network.gpkg</code>, which are written by the <a href="../workflow/profile-generation.html">profile generation</a>. This only changes the layout, not the model results:</p>

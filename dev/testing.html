@@ -78,7 +78,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-0ee12bc46b95cc9c0fec3aa43639fc8a.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-af0b5a157174cb675ad7c53d3a367904.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -285,7 +285,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="result-regression-testing" class="level2">
 <h2 class="anchored" data-anchor-id="result-regression-testing">Result regression testing</h2>
 <p>The dry and wet steady-state scenarios guard against a Basin losing its ability to maintain its water level. During the existing <code>bergend_*</code> and <code>forcing_*</code> DVC stages, and in <code>repro.sh</code>, the dry and wet models are run and checked. A Basin is steady-state when its final water level differs by at most 0.01 m from the mean of the final 24 hours and its storage remains positive throughout the simulation.</p>
-<p>Known level-instability exceptions are kept as explicit scenario-specific Basin node IDs in <code>peilbeheerst_model.steady_state_regression</code>. Exceptions do not bypass the positive-storage check, and an exception for a missing Basin ID fails the run.</p>
+<p>Known level-instability exceptions are kept as explicit scenario-specific Basin node IDs in <code>ribasim_nl.steady_state_regression</code>. Exceptions do not bypass the positive-storage check, and an exception for a missing Basin ID fails the run.</p>
 <p>Scenario results are available for inspection in each model’s <code>results</code> directory, including <code>output_controle.gpkg</code> and <code>output_controle.qlr</code>.</p>
 </section>
 <section id="completed-model-result-checks" class="level2">
