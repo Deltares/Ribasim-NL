@@ -22,6 +22,7 @@ During the process of 1.5 years, these scripts have become increasingly larger a
 For now, there is no priority to clean this up, partly because this is a major risk that the data will (unintentionally) change, which will change the networks and the feedback forms can no longer be used.
 
 The DVC pipeline then builds the model of each water board with `pipeline/<water board>/01_feedback.py`, `02_profiles.py` and `03_forcing.py`.
+The steps the forcing scripts have in common are in `ribasim_nl.workflow`. The forcing, the foreign inflows and RWZIs, and the final steps that lay out, write and run the model are shared with the [gravity controlled](gravity-controlled.qmd) models, see `ribasim_nl.regional_model`.
 
 ## Layout
 

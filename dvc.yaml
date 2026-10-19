@@ -524,6 +524,7 @@ stages:
         - data/Rijkswaterstaat/modellen/rwzi
         - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
         - data/Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx
+        - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
       outs:
         - data/${item}/modellen/${item}_dynamic_model
   feedback_delfland:
@@ -817,6 +818,7 @@ stages:
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
     outs:
@@ -844,6 +846,7 @@ stages:
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
     outs:
@@ -871,6 +874,7 @@ stages:
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
     outs:
@@ -898,6 +902,7 @@ stages:
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
     outs:
@@ -925,6 +930,7 @@ stages:
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
     outs:
@@ -952,6 +958,7 @@ stages:
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
     outs:
@@ -979,6 +986,7 @@ stages:
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
     outs:
@@ -1006,6 +1014,7 @@ stages:
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
     outs:
@@ -1033,6 +1042,7 @@ stages:
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
     outs:
@@ -1060,6 +1070,7 @@ stages:
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+      - data/Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
     outs:

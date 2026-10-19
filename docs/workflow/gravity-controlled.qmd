@@ -32,6 +32,6 @@ Steps 5, 6 and 7 are shared between water authorities. Steps 5 and 7 are part of
 
 5. `05_add_bergend.py` adds VdGaast-based storage basins (input = models are from script 4). A storage basin drains through a VdGaast-based TabulatedRatingCurve, except in the supply areas of `verwerkt/sturing/aanvoergebieden.gpkg`. There it is connected with a ManningResistance, so it can also be supplied.
 6. `06_add_synthetic_forcing.py` adds synthetic forcing (constant precipitation switched to constant evaporation) to the models produced by script 5
-7. `07_add_dynamic_forcing.py` adds Modflow-Metaswap drainage/infiltration and WIWB precipitation/evaporation to the models produced by script 5
+7. `07_add_dynamic_forcing.py` adds Modflow-Metaswap drainage/infiltration and WIWB precipitation/evaporation to the models produced by script 5, and the foreign inflows and RWZIs, and lays out, writes and runs them. These steps are shared with the [level controlled](level-controlled.qmd) models, see `ribasim_nl.regional_model`.
 
 Finally `uploaden_modellen.py` uploads all models produced by script 7.
