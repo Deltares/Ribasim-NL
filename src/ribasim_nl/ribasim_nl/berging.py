@@ -27,20 +27,11 @@ from ribasim_nl.settings import settings
 
 LHM_RASTER_FILE = settings.ribasim_nl_data_dir / Path("Basisgegevens/LHM/4.3/input/LHM_data.tif")
 
-BANDEN = {
-    "maaiveld": 1,
-    "bodemhoogte_primair_winter": 2,
-    "bodemhoogte_primair_zomer": 3,
-    "bodemhoogte_secundair_winter": 4,
-    "bodemhoogte_secundair_zomer": 5,
-    "bodemhoogte_tertiair_winter": 6,
-    "bodemhoogte_tertiair_zomer": 7,
-    "ghg_2010-2019": 8,
-    "glg_2010-2019": 9,
-    "opp_primair": 10,
-    "opp_secundair": 11,
-    "opp_tertiair": 12,
-}
+
+def band_index(src: rasterio.DatasetReader, name: str) -> int:
+    """The 1-based index of the band in `src` whose description is `name`, such as "opp_primair" in `LHM_RASTER_FILE`."""
+    assert name in src.descriptions, f"No band {name!r} in {src.name}, only {src.descriptions}"
+    return src.descriptions.index(name) + 1
 
 
 def primary_surface_water_fraction() -> MemoryFile:
@@ -49,7 +40,7 @@ def primary_surface_water_fraction() -> MemoryFile:
     It is derived from `LHM_RASTER_FILE` on each call, rather than cached next to it in a file that DVC does not track.
     """
     with rasterio.open(LHM_RASTER_FILE) as src:
-        area = src.read(BANDEN["opp_primair"]).astype("float32")
+        area = src.read(band_index(src, "opp_primair")).astype("float32")
         profile = src.profile.copy()
         nodata = src.nodata
         cell_area = src.transform.a * abs(src.transform.e)
@@ -68,7 +59,7 @@ def primary_surface_water_fraction() -> MemoryFile:
 def sample_raster(
     raster_file: Path,
     df: GeoDataFrame,
-    band: int = 1,
+    band: int | str = 1,
     fill_value: float | None = None,
     all_touched: bool = False,
     stats: str = "mean",
@@ -79,7 +70,7 @@ def sample_raster(
     Args:
         raster_file (Path): Raster-file to sample
         df (GeoDataFrame): GeoDataFrame with polygons
-        band (int, optional): Band in raster-file to sample from. Defaults to 1.
+        band (int | str, optional): Band in raster-file to sample from, by 1-based index or description. Defaults to 1.
         fill_value (float | None, optional): Fill-value for nodata-cells. Defaults to None.
         all_touched (bool, optional): rasterize all_touched setting. Defaults to False.
         stats (str, optional): rasterstats stats setting. Defaults to "mean".
@@ -91,7 +82,7 @@ def sample_raster(
     """
     with rasterio.open(raster_file) as raster_src:
         # read band
-        data = raster_src.read(band)
+        data = raster_src.read(band if isinstance(band, int) else band_index(raster_src, band))
 
         if maaiveld_data is not None:
             data = maaiveld_data - data
@@ -304,13 +295,13 @@ def add_basin_statistics(df: GeoDataFrame, lhm_raster_file: Path, ma_raster_file
     """
     with rasterio.open(lhm_raster_file) as raster_src:
         # read band
-        maaiveld_data = raster_src.read(BANDEN["maaiveld"])
+        maaiveld_data = raster_src.read(band_index(raster_src, "maaiveld"))
 
     # sample rasters
     ghg = sample_raster(
         raster_file=lhm_raster_file,
         df=df,
-        band=BANDEN["ghg_2010-2019"],
+        band="ghg_2010-2019",
         all_touched=True,
         maaiveld_data=maaiveld_data,
     )
@@ -320,7 +311,7 @@ def add_basin_statistics(df: GeoDataFrame, lhm_raster_file: Path, ma_raster_file
     glg = sample_raster(
         raster_file=lhm_raster_file,
         df=df,
-        band=BANDEN["glg_2010-2019"],
+        band="glg_2010-2019",
         all_touched=True,
         maaiveld_data=maaiveld_data,
     )
@@ -332,7 +323,7 @@ def add_basin_statistics(df: GeoDataFrame, lhm_raster_file: Path, ma_raster_file
     df.loc[:, ["ma"]] = [i["mean"] for i in ma]
 
     maaiveld = sample_raster(
-        raster_file=lhm_raster_file, df=df, band=BANDEN["maaiveld"], stats="mean min max", all_touched=True
+        raster_file=lhm_raster_file, df=df, band="maaiveld", stats="mean min max", all_touched=True
     )
     df.loc[:, ["maaiveld"]] = pd.Series(dtype=float)
     df.loc[:, ["maaiveld"]] = [i["mean"] for i in maaiveld]
@@ -529,8 +520,8 @@ def get_basin_profile(
 
             # 5) bandparen uitlezen
             band_pairs = [
-                (BANDEN["bodemhoogte_tertiair_zomer"], BANDEN["opp_tertiair"]),
-                (BANDEN["bodemhoogte_secundair_zomer"], BANDEN["opp_secundair"]),
+                (band_index(src, "bodemhoogte_tertiair_zomer"), band_index(src, "opp_tertiair")),
+                (band_index(src, "bodemhoogte_secundair_zomer"), band_index(src, "opp_secundair")),
             ]
 
             dfs = []
