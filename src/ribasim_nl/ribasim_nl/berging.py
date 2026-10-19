@@ -11,6 +11,7 @@ from affine import Affine
 from geopandas import GeoDataFrame
 from rasterio.enums import Resampling
 from rasterio.features import geometry_mask
+from rasterio.io import MemoryFile
 from rasterio.windows import Window, from_bounds
 from rasterstats import zonal_stats
 from ribasim import Node
@@ -26,28 +27,19 @@ from ribasim_nl.settings import settings
 
 LHM_RASTER_FILE = settings.ribasim_nl_data_dir / Path("Basisgegevens/LHM/4.3/input/LHM_data.tif")
 
-BANDEN = {
-    "maaiveld": 1,
-    "bodemhoogte_primair_winter": 2,
-    "bodemhoogte_primair_zomer": 3,
-    "bodemhoogte_secundair_winter": 4,
-    "bodemhoogte_secundair_zomer": 5,
-    "bodemhoogte_tertiair_winter": 6,
-    "bodemhoogte_tertiair_zomer": 7,
-    "ghg_2010-2019": 8,
-    "glg_2010-2019": 9,
-    "opp_primair": 10,
-    "opp_secundair": 11,
-    "opp_tertiair": 12,
-}
+
+def band_index(src: rasterio.DatasetReader, name: str) -> int:
+    """The 1-based index of the band in `src` whose description is `name`, such as "opp_primair" in `LHM_RASTER_FILE`."""
+    assert name in src.descriptions, f"No band {name!r} in {src.name}, only {src.descriptions}"
+    return src.descriptions.index(name) + 1
 
 
 def percentage_secundair_oppervlaktewater() -> None:
     """Single-use function to compute percentage secondary surface water per LHM cell and write as GTIFF LHM_oppervlaktewater_percentage.tif"""
     out_file = LHM_RASTER_FILE.with_name("LHM_oppervlaktewater_percentage_secundair.tif")
     with rasterio.open(LHM_RASTER_FILE) as src:
-        band11 = src.read(11).astype("float32")
-        band12 = src.read(12).astype("float32")
+        secundair = src.read(band_index(src, "opp_secundair")).astype("float32")
+        tertiair = src.read(band_index(src, "opp_tertiair")).astype("float32")
         profile = src.profile.copy()
 
         # nodata ophalen
@@ -59,14 +51,16 @@ def percentage_secundair_oppervlaktewater() -> None:
         cell_area = cell_width * cell_height
 
         # geldige pixels bepalen
-        valid = (band11 != nodata) & (band12 != nodata) if nodata is not None else np.ones(band11.shape, dtype=bool)
+        valid = (
+            (secundair != nodata) & (tertiair != nodata) if nodata is not None else np.ones(secundair.shape, dtype=bool)
+        )
 
         # oppervlaktes optellen
-        summed_area = np.full(band11.shape, np.nan, dtype="float32")
-        summed_area[valid] = band11[valid] + band12[valid]
+        summed_area = np.full(secundair.shape, np.nan, dtype="float32")
+        summed_area[valid] = secundair[valid] + tertiair[valid]
 
         # delen door celoppervlak
-        result = np.full(band11.shape, np.nan, dtype="float32")
+        result = np.full(secundair.shape, np.nan, dtype="float32")
         result[valid] = summed_area[valid] / cell_area
 
         # output profiel aanpassen naar 1 band
@@ -76,43 +70,32 @@ def percentage_secundair_oppervlaktewater() -> None:
             dst.write(result, 1)
 
 
-def percentage_primair_oppervlaktewater() -> None:
-    """Single-use function to compute percentage primary surface water per LHM cell and write as GTIFF LHM_oppervlaktewater_percentage.tif"""
-    out_file = LHM_RASTER_FILE.with_name("LHM_oppervlaktewater_percentage_primair.tif")
+def primary_surface_water_fraction() -> MemoryFile:
+    """The fraction of each LHM cell that is primary surface water, as a raster in memory.
+
+    It is derived from `LHM_RASTER_FILE` on each call, rather than cached next to it in a file that DVC does not track.
+    """
     with rasterio.open(LHM_RASTER_FILE) as src:
-        band10 = src.read(11).astype("float32")
+        area = src.read(band_index(src, "opp_primair")).astype("float32")
         profile = src.profile.copy()
-
-        # nodata ophalen
         nodata = src.nodata
+        cell_area = src.transform.a * abs(src.transform.e)
 
-        # celoppervlak uit resolutie
-        cell_width = src.transform.a
-        cell_height = abs(src.transform.e)
-        cell_area = cell_width * cell_height
+    valid = area != nodata if nodata is not None else np.ones(area.shape, dtype=bool)
+    fraction = np.full(area.shape, np.nan, dtype="float32")
+    fraction[valid] = area[valid] / cell_area
 
-        # geldige pixels bepalen
-        valid = band10 != nodata if nodata is not None else np.ones(band10.shape, dtype=bool)
-
-        # oppervlaktes optellen
-        summed_area = np.full(band10.shape, np.nan, dtype="float32")
-        summed_area[valid] = band10[valid]
-
-        # delen door celoppervlak
-        result = np.full(band10.shape, np.nan, dtype="float32")
-        result[valid] = summed_area[valid] / cell_area
-
-        # output profiel aanpassen naar 1 band
-        profile.update(dtype="float32", count=1, nodata=np.nan)
-
-        with rasterio.open(out_file, "w", **profile) as dst:
-            dst.write(result, 1)
+    profile.update(driver="GTiff", dtype="float32", count=1, nodata=np.nan)
+    memfile = MemoryFile()
+    with memfile.open(**profile) as dst:
+        dst.write(fraction, 1)
+    return memfile
 
 
 def sample_raster(
     raster_file: Path,
     df: GeoDataFrame,
-    band: int = 1,
+    band: int | str = 1,
     fill_value: float | None = None,
     all_touched: bool = False,
     stats: str = "mean",
@@ -123,7 +106,7 @@ def sample_raster(
     Args:
         raster_file (Path): Raster-file to sample
         df (GeoDataFrame): GeoDataFrame with polygons
-        band (int, optional): Band in raster-file to sample from. Defaults to 1.
+        band (int | str, optional): Band in raster-file to sample from, by 1-based index or description. Defaults to 1.
         fill_value (float | None, optional): Fill-value for nodata-cells. Defaults to None.
         all_touched (bool, optional): rasterize all_touched setting. Defaults to False.
         stats (str, optional): rasterstats stats setting. Defaults to "mean".
@@ -135,7 +118,7 @@ def sample_raster(
     """
     with rasterio.open(raster_file) as raster_src:
         # read band
-        data = raster_src.read(band)
+        data = raster_src.read(band if isinstance(band, int) else band_index(raster_src, band))
 
         if maaiveld_data is not None:
             data = maaiveld_data - data
@@ -274,12 +257,6 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
         assert df is not None
         return df
 
-    # generate raster_file if not existing
-    cloud = CloudStorage()
-    src_file = cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_oppervlaktewater_percentage_primair.tif")
-    if not src_file.exists():
-        percentage_primair_oppervlaktewater()
-
     basin_node_df = cast(pd.DataFrame, model.basin.node.df)
     basin_area_df = cast(pd.DataFrame, model.basin.area.df)
     basin_profile_df = cast(pd.DataFrame, model.basin.profile.df)
@@ -287,7 +264,7 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
     # read resampled raster average and multiply by polygon.area
     basin_ids = basin_node_df[basin_node_df.meta_categorie.isin(["hoofdwater", "doorgaand"])].index.values
     profiles: list[pd.DataFrame] = []
-    with rasterio.open(src_file) as src:
+    with primary_surface_water_fraction() as memfile, memfile.open() as src:
         for basin_id in tqdm.tqdm(basin_ids, total=len(basin_ids), desc="profiles primary basins"):
             # read basin-area table
             polygon = cast(Polygon, cast(Any, basin_area_df.set_index("node_id").at[basin_id, "geometry"]))
@@ -353,13 +330,13 @@ def add_basin_statistics(df: GeoDataFrame, lhm_raster_file: Path, ma_raster_file
     """
     with rasterio.open(lhm_raster_file) as raster_src:
         # read band
-        maaiveld_data = raster_src.read(BANDEN["maaiveld"])
+        maaiveld_data = raster_src.read(band_index(raster_src, "maaiveld"))
 
     # sample rasters
     ghg = sample_raster(
         raster_file=lhm_raster_file,
         df=df,
-        band=BANDEN["ghg_2010-2019"],
+        band="ghg_2010-2019",
         all_touched=True,
         maaiveld_data=maaiveld_data,
     )
@@ -369,7 +346,7 @@ def add_basin_statistics(df: GeoDataFrame, lhm_raster_file: Path, ma_raster_file
     glg = sample_raster(
         raster_file=lhm_raster_file,
         df=df,
-        band=BANDEN["glg_2010-2019"],
+        band="glg_2010-2019",
         all_touched=True,
         maaiveld_data=maaiveld_data,
     )
@@ -381,7 +358,7 @@ def add_basin_statistics(df: GeoDataFrame, lhm_raster_file: Path, ma_raster_file
     df.loc[:, ["ma"]] = [i["mean"] for i in ma]
 
     maaiveld = sample_raster(
-        raster_file=lhm_raster_file, df=df, band=BANDEN["maaiveld"], stats="mean min max", all_touched=True
+        raster_file=lhm_raster_file, df=df, band="maaiveld", stats="mean min max", all_touched=True
     )
     df.loc[:, ["maaiveld"]] = pd.Series(dtype=float)
     df.loc[:, ["maaiveld"]] = [i["mean"] for i in maaiveld]
@@ -577,8 +554,8 @@ def get_basin_profile(
 
             # 5) bandparen uitlezen
             band_pairs = [
-                (BANDEN["bodemhoogte_tertiair_zomer"], BANDEN["opp_tertiair"]),
-                (BANDEN["bodemhoogte_secundair_zomer"], BANDEN["opp_secundair"]),
+                (band_index(src, "bodemhoogte_tertiair_zomer"), band_index(src, "opp_tertiair")),
+                (band_index(src, "bodemhoogte_secundair_zomer"), band_index(src, "opp_secundair")),
             ]
 
             dfs = []

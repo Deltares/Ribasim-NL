@@ -32,6 +32,8 @@ stages:
       - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/aa_en_maas/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/ribasim_nl/ribasim_nl/berging.py
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
@@ -61,6 +63,8 @@ stages:
       - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/brabantse_delta/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/ribasim_nl/ribasim_nl/berging.py
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
@@ -88,6 +92,8 @@ stages:
       - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/de_dommel/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/ribasim_nl/ribasim_nl/berging.py
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
@@ -113,6 +119,8 @@ stages:
       - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/drents_overijsselse_delta/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/ribasim_nl/ribasim_nl/berging.py
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
@@ -143,6 +151,8 @@ stages:
       - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/hunze_en_aas/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/ribasim_nl/ribasim_nl/berging.py
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - src/ribasim_nl/ribasim_nl/assign_neighbors_at_boundaries.py
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
@@ -172,6 +182,8 @@ stages:
       - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/limburg/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/ribasim_nl/ribasim_nl/berging.py
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
@@ -196,6 +208,8 @@ stages:
       - notebooks/noorderzijlvest/02_prepare_model.py
       - notebooks/noorderzijlvest/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/ribasim_nl/ribasim_nl/berging.py
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - src/ribasim_nl/ribasim_nl/assign_neighbors_at_boundaries.py
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
@@ -222,6 +236,8 @@ stages:
       - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/rijn_en_ijssel/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/ribasim_nl/ribasim_nl/berging.py
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
@@ -249,6 +265,8 @@ stages:
       - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/stichtse_rijnlanden/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/ribasim_nl/ribasim_nl/berging.py
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
@@ -278,6 +296,8 @@ stages:
       - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/vallei_en_veluwe/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/ribasim_nl/ribasim_nl/berging.py
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
@@ -304,6 +324,8 @@ stages:
       - src/ribasim_nl/ribasim_nl/link_geometries.py
       - notebooks/vechtstromen/03_parameterize_model.py
       - src/peilbeheerst_model/peilbeheerst_model/assign_authorities.py
+      - src/ribasim_nl/ribasim_nl/berging.py
+      - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg

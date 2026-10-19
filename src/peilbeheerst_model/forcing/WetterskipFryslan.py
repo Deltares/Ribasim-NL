@@ -307,9 +307,10 @@ ribasim_param.set_static_level_boundaries(
     ribasim_model, lb_node_df.index[lb_node_df["meta_couple_authority"] == "Noordzee"], level=0.0
 )
 
-# Appelscha uitlaten: no supply, and drain at most 1 m3/s down to 9.35 m NAP, see #831
+# Appelscha uitlaten: no supply, and drain at most 1 m3/s, see #831. They fill the Basins downstream to 9.38 m NAP,
+# above their streefpeil of 9.35 m NAP, so these drain themselves, see #879
 outlet_static_df = ribasim_model.outlet.static.df
-for control_state, max_flow_rate, max_downstream_level in (("aanvoer", 0.0, None), ("afvoer", 1.0, 9.35)):
+for control_state, max_flow_rate, max_downstream_level in (("aanvoer", 0.0, None), ("afvoer", 1.0, 9.38)):
     mask = outlet_static_df.node_id.isin(APPELSCHA_OUTLETS) & (outlet_static_df.control_state == control_state)
     assert mask.sum() == len(APPELSCHA_OUTLETS), f"Expected one {control_state} row per Appelscha outlet"
     outlet_static_df.loc[mask, ["flow_rate", "max_flow_rate"]] = max_flow_rate
@@ -318,7 +319,7 @@ for control_state, max_flow_rate, max_downstream_level in (("aanvoer", 0.0, None
 control_link_df = ribasim_model.link.df[ribasim_model.link.df.link_type == "control"]
 appelscha_control_ids = control_link_df.loc[control_link_df.to_node_id.isin(APPELSCHA_OUTLETS), "from_node_id"]
 assert len(appelscha_control_ids) == len(APPELSCHA_OUTLETS), "Expected one DiscreteControl per Appelscha outlet"
-ribasim_model.node.df.loc[appelscha_control_ids, "name"] = "uitlaat: 9.40/9.35 [m+NAP]"
+ribasim_model.node.df.loc[appelscha_control_ids, "name"] = "uitlaat: 9.40/9.38 [m+NAP]"
 
 # Boezem in- and outlets are controlled on the level of the Pikmeer, deeper in the boezem than the Basins next to them,
 # with the relations of the Landelijk Sobek Model (LSM3), see https://github.com/Deltares/Ribasim-NL/issues/878.

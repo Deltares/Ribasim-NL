@@ -3,8 +3,8 @@
 The measurement series and the model links they are compared with are taken from the koppeltabel that is also used
 by `ribasim_nl.analyse_results`. Each series gets an Observation node at the measurement location, with the measured
 values. If the series is measured on a single link, the Observation node observes the `flow_rate` of the connector
-node of that link, or else of its Junction. These nodes are found by their type and location, which do not change
-when links are renumbered. Other Observation nodes are not linked, as a reminder; `meta_koppeling` says why.
+node of that link, or else of its Junction. The `flow_rate` of a Junction is the flow through it, the sum of its
+outflows. These nodes are found by their type and location, which do not change when links are renumbered. Other Observation nodes are not linked, as a reminder; `meta_koppeling` says why.
 """
 
 import logging

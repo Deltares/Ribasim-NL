@@ -180,6 +180,16 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
                 node_offset=20,
             )
 
+# %% Nijkerkersluis drains the Veluwerandmeren into the Eemmeer, see https://github.com/Deltares/Ribasim-NL/issues/887
+node_id = model.find_node_id(meta_code_waterbeheerder="32E-001-04")
+assert model.node.df.at[node_id, "node_type"] == "Pump", model.node.df.at[node_id, "node_type"]
+upstream_name = model.node.df.at[model.upstream_node_id(node_id), "name"]
+assert upstream_name == "Nuldernauw", upstream_name
+model.update_node(
+    node_id=node_id,
+    node_type="Outlet",
+    data=[outlet.Static(flow_rate=[100.0], max_flow_rate=[150.0], min_upstream_level=[-0.05])],
+)
 
 # %% write
 ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_sturing/hws.toml")
