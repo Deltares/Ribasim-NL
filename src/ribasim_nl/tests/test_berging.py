@@ -5,7 +5,7 @@ import rasterio
 import shapely
 from ribasim import Node
 from ribasim.nodes import basin, outlet
-from ribasim_nl.berging import VdGaastBerging, get_manning_resistance, supply_area_basin_ids
+from ribasim_nl.berging import VdGaastBerging, get_manning_resistance, parse_meta_aanvoer, supply_area_basin_ids
 from ribasim_nl.profiles.implement import bergend_manning_static
 from shapely.geometry import MultiPolygon, Point, box
 
@@ -39,14 +39,37 @@ def model() -> Model:
 def test_supply_area_basin_ids(model):
     add_basin(model, 5, Point(10, 0), box(-500, -500, 500, 500), meta_categorie="bergend")
     # all of Basin 1, 70% of Basin 2 and 30% of Basin 3; not the bergend Basin 5
-    supply_areas = gpd.GeoDataFrame(geometry=[box(-500, -500, 1200, 500), box(2200, -500, 2800, 500)], crs=model.crs)
+    supply_areas = gpd.GeoDataFrame(
+        {"meta_aanvoer": [True, True]},
+        geometry=[box(-500, -500, 1200, 500), box(2200, -500, 2800, 500)],
+        crs=model.crs,
+    )
     assert supply_area_basin_ids(model, supply_areas) == {1, 2}
     assert supply_area_basin_ids(model, supply_areas, min_overlap=0.8) == {1}
 
 
 def test_supply_area_basin_ids_ignores_missing_geometry(model):
-    supply_areas = gpd.GeoDataFrame(geometry=[box(-500, -500, 500, 500), None], crs=model.crs)
+    supply_areas = gpd.GeoDataFrame(
+        {"meta_aanvoer": [1.0, 1.0]}, geometry=[box(-500, -500, 500, 500), None], crs=model.crs
+    )
     assert supply_area_basin_ids(model, supply_areas) == {1}
+
+
+def test_supply_area_basin_ids_only_supplied(model):
+    """Only the supply areas with meta_aanvoer true select basins."""
+    geometry = [box(-500, -500, 500, 500), box(500, -500, 1500, 500), box(1500, -500, 2500, 500)]
+    supply_areas = gpd.GeoDataFrame({"meta_aanvoer": ["true", 0.0, None]}, geometry=geometry, crs=model.crs)
+    assert supply_area_basin_ids(model, supply_areas) == {1}
+    supply_areas["meta_aanvoer"] = False
+    assert supply_area_basin_ids(model, supply_areas) == set()
+
+
+def test_parse_meta_aanvoer():
+    values = pd.Series([True, False, 1.0, 0.0, 1, "true", "False", "TRUE", None, float("nan")], dtype=object)
+    expected = [True, False, True, False, True, True, False, True, False, False]
+    assert parse_meta_aanvoer(values).tolist() == expected
+    with pytest.raises(AssertionError, match="Unknown meta_aanvoer values"):
+        parse_meta_aanvoer(pd.Series(["ja", 2.0]))
 
 
 def test_get_manning_resistance():
