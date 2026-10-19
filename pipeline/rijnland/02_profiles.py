@@ -1,17 +1,19 @@
-"""Generation of profiles table for Schieland en de Krimpenerwaard."""
+"""Generation of profiles table for Rijnland."""
 
-from ribasim_nl.profiles import implement
+from ribasim_nl.profiles import gen_profiles, implement
 
-from profiles import gen_profiles
 from ribasim_nl import Model
 
 if __name__ == "__main__":
-    waterschap = "SchielandendeKrimpenerwaard"
+    waterschap = "Rijnland"
+    fn_water_bodies = "aangeleverd/Na_levering/20260422_MerenPlassen/Rijnland_meren_plassen_diepte.geojson"
     gen_profiles.main(
         waterschap,
-        "hhsk_crossings_voor_profielen_met_OG_hydroobjecten.gpkg",
+        "rijnland_crossings_v05.gpkg",
         export_profile_tables=True,
         export_intermediate_output=True,
+        fn_water_bodies=fn_water_bodies,
+        col_wb_depth="DIEPTE",
         sync=False,
     )
     src_toml = f"data/{waterschap}/modellen/{waterschap}_feedback/ribasim.toml"

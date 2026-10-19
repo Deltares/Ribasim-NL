@@ -51,9 +51,9 @@ convention = "numpy"
 
 [tool.ty.src]
 include = [
-    "notebooks/05_add_bergend.py",
     "notebooks/06_add_synthetic_forcing.py",
-    "notebooks/07_add_dynamic_forcing.py",
+    "pipeline/05_add_bergend.py",
+    "pipeline/07_add_dynamic_forcing.py",
     "scripts/clean.py",
     "scripts/repro.py",
     "src/hydamo/hydamo",
@@ -233,7 +233,7 @@ possibly-missing-submodule = "ignore"
 
 [[tool.ty.overrides]]
 include = [
-    "notebooks/07_add_dynamic_forcing.py",
+    "pipeline/07_add_dynamic_forcing.py",
     "src/peilbeheerst_model/peilbeheerst_model/assign_flushing.py",
     "src/peilbeheerst_model/peilbeheerst_model/crossings_to_ribasim.py",
     "src/peilbeheerst_model/peilbeheerst_model/parse_crossings.py",

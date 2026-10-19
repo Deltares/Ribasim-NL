@@ -179,7 +179,7 @@ user_demands = [
         "demand": 0.388,  # 1400 m3/uur netto capaciteit
     },
 ]
-USER_DEMAND_PRIORITY = 3  # industrie, as in notebooks/rijkswaterstaat/7_model_onttrekkingen.py
+USER_DEMAND_PRIORITY = 3  # industrie, as in pipeline/rijkswaterstaat/7_model_onttrekkingen.py
 USER_DEMAND_MIN_LEVEL_OFFSET = 0.1  # above the bottom of the source Basin
 
 # Nodes whose link from a Basin branches off the route from that Basin towards another node, see `branch_from_route`

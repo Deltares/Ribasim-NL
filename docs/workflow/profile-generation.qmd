@@ -51,7 +51,7 @@ The profile generation is coded as standalone and intended to be executed prior 
 Therefore, all relevant code is grouped inside a `profiles`-module:
 
  -  source-code: [`src/ribasim_nl/ribasim_nl/profiles`](https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/profiles), and
- -  implementation-code: [`src/peilbeheerst_model/profiles`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/profiles).
+ -  implementation-code: [`pipeline`](https://github.com/Deltares/Ribasim-NL/tree/main/pipeline).
 
 This results in the following structures:
 
@@ -63,25 +63,24 @@ src/ribasim_nl/ribasim_nl/profiles/
 ```
 - For the implementation-code:
 ```
-src/peilbeheerst_model/profiles/
- -  __init__.py
+pipeline/
  -  prep_cross_sections.py
- -  <water-authority>.py
+ -  <water-authority>/02_profiles.py
 ```
 
-As part of the implementation code, there is the preprocessing of cross-sections ([`prep_cross_sections.py`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/profiles/prep_cross_sections.py)),
-which should be executed prior to running any of the [`<water-authority>.py`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/profiles) scripts.
+As part of the implementation code, there is the preprocessing of cross-sections ([`prep_cross_sections.py`](https://github.com/Deltares/Ribasim-NL/tree/main/pipeline/prep_cross_sections.py)),
+which should be executed prior to running any of the `pipeline/<water-authority>/02_profiles.py` scripts.
 This way, the measured cross-sections are preprocessed so they are presented as `LINESTRING Z`-objects.
 Preprocessing of the measured cross-sections must be done per water authority:
 ```bash
-pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py <water-authority>
+pixi run python pipeline/prep_cross_sections.py <water-authority>
 ```
 This call has to be done only once per water authority
 (or when changes are made to the data sources and/or source code).
 
 Subsequently, the profile tables (_doorgaand_ and _bergend_) are generated/updated per water authority as well:
 ```bash
-pixi run python src/peilbeheerst_model/profiles/<water-authority>.py
+pixi run python pipeline/<water-authority>/02_profiles.py
 ```
 Again, this call has to be done only once per water authority
 (or when changes are mode to the data sources and/or source code).

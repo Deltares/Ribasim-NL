@@ -6,9 +6,8 @@ The generation of profiles for Scheldestromen should not be executed with the ge
 flagged-based method is implemented: `src.peilbeheerst.profiles.gen_profiles.flagged_hydro_objects()`.
 """
 
-from ribasim_nl.profiles import implement
+from ribasim_nl.profiles import gen_profiles, implement
 
-from profiles import gen_profiles
 from ribasim_nl import Model
 
 if __name__ == "__main__":

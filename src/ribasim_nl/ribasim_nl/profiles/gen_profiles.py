@@ -5,9 +5,13 @@ from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
-from ribasim_nl.profiles import hydrotopes, run
 
 from ribasim_nl import CloudStorage
+from ribasim_nl.profiles import hydrotopes, run
+
+# A file name, or a file name and the name of a layer in it
+type FileName = Path | str
+type LayeredFileName = FileName | tuple[FileName, str]
 
 
 def main(
@@ -19,7 +23,7 @@ def main(
     overwrite: bool = False,
     export_intermediate_output: bool = False,
     cross_sections_available: bool = True,
-    fn_water_bodies: gpd.GeoDataFrame | None = None,
+    fn_water_bodies: LayeredFileName | None = None,
     **kwargs,
 ) -> None:
     """Execute profile table generator.
@@ -98,7 +102,7 @@ def flagged_hydro_objects(
     overwrite: bool = False,
     export_intermediate_output: bool = False,
     cross_sections_available: bool = True,
-    fn_water_bodies: Path | str | tuple[Path, str] | tuple[str, str] | None = None,
+    fn_water_bodies: LayeredFileName | None = None,
     **kwargs,
 ) -> None:
     """Execute profile table generator with user-defined main-routing.
@@ -168,7 +172,11 @@ def flagged_hydro_objects(
 
 
 def _sync(
-    cloud: CloudStorage, water_authority: str, overwrite: bool, fn_crossings: str, *extra_files: str | tuple | None
+    cloud: CloudStorage,
+    water_authority: str,
+    overwrite: bool,
+    fn_crossings: FileName,
+    *extra_files: LayeredFileName | None,
 ) -> None:
     """Sync required input files from the GoodCloud.
 
@@ -234,7 +242,7 @@ def _read_cross_sections(cloud: CloudStorage, water_authority: str, available: b
     return out
 
 
-def _read_target_levels(cloud: CloudStorage, water_authority: str, fn_target_levels: str) -> gpd.GeoDataFrame:
+def _read_target_levels(cloud: CloudStorage, water_authority: str, fn_target_levels: FileName) -> gpd.GeoDataFrame:
     """Get polygons with target levels from source-data.
 
     :param cloud: the GoodCloud
@@ -262,7 +270,7 @@ def _read_hydrotope_table(cloud: CloudStorage) -> hydrotopes.HydrotopeTable:
 
 
 def _read_water_bodies(
-    cloud: CloudStorage, water_authority: str, fn_water_bodies: Path | str | tuple | None
+    cloud: CloudStorage, water_authority: str, fn_water_bodies: LayeredFileName | None
 ) -> gpd.GeoDataFrame | None:
     """Read geospatial dataset with water bodies (polygons).
 

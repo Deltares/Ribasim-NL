@@ -1,21 +1,14 @@
-"""
-Generation of profiles table for Zuiderzeeland.
+"""Generation of profiles table for Schieland en de Krimpenerwaard."""
 
-The generation of profiles for Zuiderzeeland cannot be executed with the generalised approach as defined in
-`src.peilberheest.profiles.gen_profiles.main()`. The `main()`-function below does have a lot in common with this
-function, but contains subtle yet crucial differences.
-"""
+from ribasim_nl.profiles import gen_profiles, implement
 
-from ribasim_nl.profiles import implement
-
-from profiles import gen_profiles
 from ribasim_nl import Model
 
 if __name__ == "__main__":
-    waterschap = "Zuiderzeeland"
+    waterschap = "SchielandendeKrimpenerwaard"
     gen_profiles.main(
         waterschap,
-        "zzl_crossings_v05.gpkg",
+        "hhsk_crossings_voor_profielen_met_OG_hydroobjecten.gpkg",
         export_profile_tables=True,
         export_intermediate_output=True,
         sync=False,

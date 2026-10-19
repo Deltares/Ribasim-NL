@@ -1,16 +1,20 @@
-"""Generation of profiles table for Hollands Noorderkwartier."""
+"""
+Generation of profiles table for Zuiderzeeland.
 
-from ribasim_nl.profiles import implement
+The generation of profiles for Zuiderzeeland cannot be executed with the generalised approach as defined in
+`src.peilberheest.profiles.gen_profiles.main()`. The `main()`-function below does have a lot in common with this
+function, but contains subtle yet crucial differences.
+"""
 
-from profiles import gen_profiles
+from ribasim_nl.profiles import gen_profiles, implement
+
 from ribasim_nl import Model
 
 if __name__ == "__main__":
-    waterschap = "HollandsNoorderkwartier"
+    waterschap = "Zuiderzeeland"
     gen_profiles.main(
         waterschap,
-        "hhnk_crossings_v26.gpkg",
-        cross_sections_available=False,
+        "zzl_crossings_v05.gpkg",
         export_profile_tables=True,
         export_intermediate_output=True,
         sync=False,

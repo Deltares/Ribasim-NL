@@ -217,8 +217,8 @@ def _handle_validation_error(func: typing.Callable) -> typing.Callable:
             raise BasinProfileError(
                 f"This is likely caused by a mismatch between the node IDs of the basins in the model, "
                 f"and the generated basin profiles node IDs.\n"
-                f"This might be fixed by rerunning the profile generator of {water_authority}:\n\n\t"
-                f"`pixi run python src/peilbeheerst_model/profiles/{water_authority}.py`"
+                f"This might be fixed by rerunning the profile generator of {water_authority}, "
+                f"`pipeline/<water authority>/02_profiles.py`."
             ) from e
 
     return wrapper

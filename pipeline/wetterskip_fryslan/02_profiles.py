@@ -1,15 +1,14 @@
-"""Generation of profiles table for Amstel, Gooi en Vecht."""
+"""Generation of profiles table for Wetterskip Fryslan."""
 
-from ribasim_nl.profiles import implement
+from ribasim_nl.profiles import gen_profiles, implement
 
-from profiles import gen_profiles
 from ribasim_nl import Model
 
 if __name__ == "__main__":
-    waterschap = "AmstelGooienVecht"
+    waterschap = "WetterskipFryslan"
     gen_profiles.main(
         waterschap,
-        "agv_crossings_v05.gpkg",
+        "wetterskip_crossings_v06.gpkg",
         export_profile_tables=True,
         export_intermediate_output=True,
         sync=False,

@@ -147,7 +147,7 @@ class CloudStorage:
     def joinurl(self, *args: str) -> str:
         return "/".join((self.url, *args))
 
-    def joinpath(self, *args: str) -> Path:
+    def joinpath(self, *args: str | Path) -> Path:
         return self.data_dir.joinpath(*args)
 
     def model_dir(self, authority: str, post_fix: str) -> Path:

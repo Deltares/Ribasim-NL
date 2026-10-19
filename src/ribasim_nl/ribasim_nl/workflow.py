@@ -1,6 +1,6 @@
 """Shared steps of the feedback and forcing scripts of the peilbeheerst water boards.
 
-The scripts in `src/peilbeheerst_model/feedback` and `src/peilbeheerst_model/forcing` contain the
+The scripts `pipeline/<water board>/01_feedback.py` and `pipeline/<water board>/03_forcing.py` contain the
 water board specific edits. The steps they have in common are defined here.
 """
 
@@ -59,7 +59,7 @@ PUMP_META_COLUMNS = [
 
 
 # GeoPackage per water board in verwerkt/Crossings, with the hydro-objects, culverts and crossings, as also used in
-# src/peilbeheerst_model/profiles
+# pipeline/<water board>/02_profiles.py
 CROSSINGS = {
     "AmstelGooienVecht": "agv_crossings_v05.gpkg",
     "Delfland": "delfland_crossings_v08.gpkg",

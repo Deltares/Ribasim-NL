@@ -1,15 +1,15 @@
-"""Generation of profiles table for Rivierenland."""
+"""Generation of profiles table for Hollands Noorderkwartier."""
 
-from ribasim_nl.profiles import implement
+from ribasim_nl.profiles import gen_profiles, implement
 
-from profiles import gen_profiles
 from ribasim_nl import Model
 
 if __name__ == "__main__":
-    waterschap = "Rivierenland"
+    waterschap = "HollandsNoorderkwartier"
     gen_profiles.main(
         waterschap,
-        "wsrl_crossings_v06.gpkg",
+        "hhnk_crossings_v26.gpkg",
+        cross_sections_available=False,
         export_profile_tables=True,
         export_intermediate_output=True,
         sync=False,

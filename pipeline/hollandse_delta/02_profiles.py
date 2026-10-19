@@ -1,15 +1,18 @@
-"""Generation of profiles table for Delfland."""
+"""Generation of profiles table for Hollandse Delta."""
 
-from ribasim_nl.profiles import implement
+from ribasim_nl.profiles import gen_profiles, implement
 
-from profiles import gen_profiles
 from ribasim_nl import Model
 
 if __name__ == "__main__":
-    waterschap = "Delfland"
-    gen_profiles.main(
+    waterschap = "HollandseDelta"
+    gen_profiles.flagged_hydro_objects(
         waterschap,
-        "delfland_crossings_v08.gpkg",
+        "hd_crossings_v06.gpkg",
+        "aangeleverd/Eerste_levering/watergangen/HydroObjectWatergangtype.shp",
+        "SOORT_OPPE",
+        val_flag="hoofdwaterloop",
+        layer_hydro_objects=None,
         export_profile_tables=True,
         export_intermediate_output=True,
         sync=False,
