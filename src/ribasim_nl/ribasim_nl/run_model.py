@@ -48,10 +48,9 @@ def run_model_and_control(
     if not model_exec:
         return model
 
-    from peilbeheerst_model.controle_output import STATIC_FORCING_METRICS, Control
-    from peilbeheerst_model.steady_state_regression import allowed_non_steady_state_node_ids
-
+    from ribasim_nl.controle_output import STATIC_FORCING_METRICS, Control
     from ribasim_nl.model import Model
+    from ribasim_nl.steady_state_regression import allowed_non_steady_state_node_ids
 
     model.run()
     control = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)

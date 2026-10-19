@@ -8,12 +8,12 @@ This procedure assumes there's a `meta_couple_authority` column in the `LevelBou
 
 - [ ] Ensure all models have a `meta_couple_authority`.
 
-# `notebooks/samenvoegen_modellen.py`
+# `pipeline/08_samenvoegen_modellen.py`
 
 First we determine which models we want to couple. Currently this is tested for `Rijkswaterstaat`, `AmstelGooienVecht`, `Rijnland`, `HollandseDelta`, `Delfland`, although the model should scale. This script will concat all models by prefixing local ids with a unique model number (Aquo waterbeheercode), e.g. `80` for `Rijkswaterstaat`.
 This will result in an `lhm` model.
 
-# `notebooks/koppelen_modellen.py`
+# `pipeline/09_koppelen_modellen.py`
 
 Secondly, we can use this `lhm` model to actually couple the individual models in there.
 To do so, each `LevelBoundary` with a filled in `meta_couple_authority` in their `Static` table is replaced by another node from the `meta_couple_authority`s model.

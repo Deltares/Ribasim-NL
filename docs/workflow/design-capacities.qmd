@@ -3,7 +3,7 @@ title: "Design capacities of outlets and pumps"
 ---
 
 The polder models set the unknown capacities (`max_flow_rate`) of Outlets and Pumps from the area they drain or supply, with the same design flow rates as the parametrization of the vrij afwaterend models.
-The implementation lives in [`src/peilbeheerst_model/peilbeheerst_model/design_capacities.py`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/peilbeheerst_model/design_capacities.py), and the design flow rates in the defaults of [`ribasim_nl.parametrization.static_data_xlsx`](https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/parametrization/static_data_xlsx.py).
+The implementation lives in [`src/ribasim_nl/ribasim_nl/design_capacities.py`](https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/design_capacities.py), and the design flow rates in the defaults of [`ribasim_nl.parametrization.static_data_xlsx`](https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/parametrization/static_data_xlsx.py).
 
 ## Design flow rates
 

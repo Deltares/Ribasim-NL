@@ -9,7 +9,7 @@ Build and maintain a reproducible [DVC (Data Version Control)](https://dvc.org/)
 - Use Pixi for commands and dependencies.
 - Only support the Python and dependency versions in the lockfile; do not use compatibility features such as `from __future__ import annotations`.
 - In a new git worktree, run `pixi run setup-worktree` before running stages or model runs. It shares the `.env` credentials and DVC cache of the main checkout and installs the Ribasim core, without pulling data. Do not run `pixi run install` in a worktree: it points the git hooks, which all worktrees share, to that worktree.
-- Define reproducible stages in `dvc.yaml`, with complete inputs and outputs. Stages depend on their scripts, and on the `src/ribasim_nl/ribasim_nl` and `src/peilbeheerst_model/peilbeheerst_model` packages as a whole, since every stage imports most of them.
+- Define reproducible stages in `dvc.yaml`, with complete inputs and outputs. Stages depend on their scripts, and on the `src/ribasim_nl/ribasim_nl` package as a whole, since every stage imports most of it.
 - Run only the smallest relevant DVC stage while developing. Do not run complete reproductions unless asked; they are started manually, locally with `pixi run repro-local` or on SLURM with `repro.sh`.
 - Run `pixi run check` before finishing; it includes Ruff linting and formatting, and ty type checking.
 - Add tests for new behavior where practical.
