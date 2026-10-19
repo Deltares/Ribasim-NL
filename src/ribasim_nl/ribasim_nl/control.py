@@ -226,7 +226,7 @@ def _target_level(
             msg = f"Target level missing in Basin.Area table for node_id={node_id} in column '{target_level_column}'"
             raise ValueError(msg)
     else:
-        return target_level
+        return cast(float, target_level)
 
 
 def _maalstop_level(

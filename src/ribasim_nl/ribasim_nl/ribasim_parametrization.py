@@ -30,6 +30,7 @@ def get_current_max_node_id(ribasim_model: Model) -> int:
         warnings.simplefilter(action="ignore", category=FutureWarning)
         df_all_nodes = ribasim_model.node.df
 
+    assert df_all_nodes is not None
     max_id = 1 if len(df_all_nodes) == 0 else int(df_all_nodes.meta_node_id.max())
 
     return max_id
@@ -1626,7 +1627,7 @@ def add_discrete_control_partswise(ribasim_model, nodes_to_control, category, st
 
 def add_continuous_control_node(
     ribasim_model: Model, connection_node: ribasim.geometry.link.NodeData, listen_nodes: list[int], **kwargs
-) -> ribasim.Node | None:
+) -> ribasim.geometry.node.NodeData:
     """Add a continuous control node to `Pump`-/`Outlet`-nodes that are for both 'aanvoer' and 'afvoer'.
 
     :param ribasim_model: Ribasim model
@@ -1662,8 +1663,8 @@ def add_continuous_control_node(
     :raise AssertionError: if `listen_variable` is unknown
     :raise AssertionError: if lengths of `listen_nodes`, `weights` and `listen_targets` are not 2
 
-    :return: continuous control node (if created)
-    :rtype: ribasim.Node, None
+    :return: continuous control node
+    :rtype: ribasim.geometry.node.NodeData
     """
     # optional arguments
     dx: float = kwargs.get("dx", 0)

@@ -79,7 +79,7 @@ class NetworkValidator:
         mask = self.node_df.apply(lambda row: check_internal_basin(row, self.link_df), axis=1)
         return self.node_df[mask]
 
-    def node_invalid_connectivity(self, tolerance: float = 1.0) -> GeoDataFrame:
+    def node_invalid_connectivity(self, tolerance: float = 1.0) -> gpd.GeoDataFrame:
         """Check if node_from and node_to are correct on link"""
         node_df = self.node_df
         invalid_links_df = self.link_incorrect_connectivity()

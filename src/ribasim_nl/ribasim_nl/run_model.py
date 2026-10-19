@@ -7,7 +7,7 @@ import tomllib
 from collections import namedtuple
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from ribasim.cli import _find_cli
 
@@ -174,7 +174,7 @@ def run(
         assert proc.stdout is not None
         # Reconfigure stdout to replace unencodable characters (e.g. cp1252 on Windows)
         if hasattr(sys.stdout, "reconfigure"):
-            sys.stdout.reconfigure(errors="replace")
+            cast(Any, sys.stdout).reconfigure(errors="replace")
         was_simulating = False
         computation_time = None
         term_width = shutil.get_terminal_size((80, 20)).columns

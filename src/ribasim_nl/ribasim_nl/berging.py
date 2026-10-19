@@ -230,6 +230,7 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
         assert df is not None
         return df
 
+    assert model.basin.node is not None
     basin_node_df = cast(pd.DataFrame, model.basin.node.df)
     basin_area_df = cast(pd.DataFrame, model.basin.area.df)
     basin_profile_df = cast(pd.DataFrame, model.basin.profile.df)
@@ -410,6 +411,7 @@ def supply_area_basin_ids(model: Model, supply_areas: GeoDataFrame, min_overlap:
     assert not supply_areas.empty, "No supply areas with a geometry"
     supply_area = supply_areas.geometry.make_valid().union_all()
 
+    assert model.basin.node is not None
     basin_node_df = model.basin.node.df
     assert basin_node_df is not None
     flowing_ids = basin_node_df.index[basin_node_df["meta_categorie"] != "bergend"]
@@ -623,7 +625,9 @@ class VdGaastBerging:
 
         # get basin_area and add statistics
         print("compute basin statistics")
+        assert model.basin.area.df is not None
         basin_area_df = model.basin.area.df.dissolve("node_id").copy()
+
         basin_area_df = add_basin_statistics(
             df=basin_area_df, lhm_raster_file=self.lhm_raster_file, ma_raster_file=self.ma_raster_file
         )

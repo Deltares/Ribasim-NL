@@ -81,7 +81,6 @@ include = [
     "src/ribasim_nl/ribasim_nl/controle_output.py",
     "src/ribasim_nl/ribasim_nl/geodataframe.py",
     "src/ribasim_nl/ribasim_nl/model.py",
-    "src/ribasim_nl/ribasim_nl/run_model.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -101,25 +100,15 @@ include = [
     "src/ribasim_nl/ribasim_nl/controle_output.py",
     "src/ribasim_nl/ribasim_nl/geodataframe.py",
     "src/ribasim_nl/ribasim_nl/geometry.py",
-    "src/ribasim_nl/ribasim_nl/junctions.py",
     "src/ribasim_nl/ribasim_nl/link_profiles.py",
     "src/ribasim_nl/ribasim_nl/model.py",
     "src/ribasim_nl/ribasim_nl/network.py",
     "src/ribasim_nl/ribasim_nl/parametrization/damo_profiles.py",
-    "src/ribasim_nl/ribasim_nl/parametrization/manning_resistance_table.py",
-    "src/ribasim_nl/ribasim_nl/parametrization/parameterize.py",
-    "src/ribasim_nl/ribasim_nl/parametrization/pump_and_outlet_tables.py",
     "src/ribasim_nl/ribasim_nl/performance.py",
     "src/ribasim_nl/ribasim_nl/profiles/bgt.py",
-    "src/ribasim_nl/ribasim_nl/profiles/depth.py",
-    "src/ribasim_nl/ribasim_nl/profiles/hydrotopes.py",
     "src/ribasim_nl/ribasim_nl/profiles/path_finder.py",
     "src/ribasim_nl/ribasim_nl/profiles/run.py",
-    "src/ribasim_nl/ribasim_nl/profiles/width.py",
-    "src/ribasim_nl/ribasim_nl/ribasim_parametrization.py",
     "src/ribasim_nl/ribasim_nl/rwzi.py",
-    "src/ribasim_nl/ribasim_nl/streefpeilen.py",
-    "src/ribasim_nl/ribasim_nl/supply.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -130,26 +119,15 @@ include = [
     "src/peilbeheerst_model/peilbeheerst_model/crossings_to_ribasim.py",
     "src/peilbeheerst_model/peilbeheerst_model/parse_crossings.py",
     "src/ribasim_nl/ribasim_nl/analyse_results.py",
-    "src/ribasim_nl/ribasim_nl/assign_parametrization.py",
-    "src/ribasim_nl/ribasim_nl/codes.py",
     "src/ribasim_nl/ribasim_nl/geodataframe.py",
-    "src/ribasim_nl/ribasim_nl/junctions.py",
-    "src/ribasim_nl/ribasim_nl/link_geometries.py",
     "src/ribasim_nl/ribasim_nl/model.py",
     "src/ribasim_nl/ribasim_nl/parametrization/basin_tables.py",
-    "src/ribasim_nl/ribasim_nl/parametrization/level_boundary_table.py",
-    "src/ribasim_nl/ribasim_nl/parametrization/manning_resistance_table.py",
-    "src/ribasim_nl/ribasim_nl/parametrization/static_data_xlsx.py",
-    "src/ribasim_nl/ribasim_nl/profiles/bgt.py",
     "src/ribasim_nl/ribasim_nl/profiles/implement.py",
     "src/ribasim_nl/ribasim_nl/profiles/path_finder.py",
     "src/ribasim_nl/ribasim_nl/ribasim_feedback_processor.py",
     "src/ribasim_nl/ribasim_nl/ribasim_parametrization.py",
-    "src/ribasim_nl/ribasim_nl/sanitize_node_table.py",
-    "src/ribasim_nl/ribasim_nl/set_forcing.py",
     "src/ribasim_nl/ribasim_nl/split_basins.py",
     "src/ribasim_nl/ribasim_nl/supply.py",
-    "src/ribasim_nl/ribasim_nl/transboundary_inflow.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -159,12 +137,7 @@ invalid-assignment = "ignore"
 include = [
     "src/peilbeheerst_model/peilbeheerst_model/assign_flushing.py",
     "src/peilbeheerst_model/peilbeheerst_model/parse_crossings.py",
-    "src/ribasim_nl/ribasim_nl/assign_parametrization.py",
-    "src/ribasim_nl/ribasim_nl/codes.py",
-    "src/ribasim_nl/ribasim_nl/control.py",
     "src/ribasim_nl/ribasim_nl/geometry.py",
-    "src/ribasim_nl/ribasim_nl/network_validator.py",
-    "src/ribasim_nl/ribasim_nl/ribasim_parametrization.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -180,7 +153,6 @@ include = [
     "src/ribasim_nl/ribasim_nl/network.py",
     "src/ribasim_nl/ribasim_nl/profiles/cross_section.py",
     "src/ribasim_nl/ribasim_nl/profiles/run.py",
-    "src/ribasim_nl/ribasim_nl/profiles/width.py",
     "src/ribasim_nl/ribasim_nl/ribasim_feedback_processor.py",
     "src/ribasim_nl/ribasim_nl/ribasim_parametrization.py",
 ]
@@ -202,7 +174,6 @@ include = [
     "src/peilbeheerst_model/peilbeheerst_model/assign_flushing.py",
     "src/peilbeheerst_model/peilbeheerst_model/crossings_to_ribasim.py",
     "src/peilbeheerst_model/peilbeheerst_model/parse_crossings.py",
-    "src/ribasim_nl/ribasim_nl/assign_parametrization.py",
     "src/ribasim_nl/ribasim_nl/controle_output.py",
     "src/ribasim_nl/ribasim_nl/geodataframe.py",
     "src/ribasim_nl/ribasim_nl/geometry.py",
@@ -213,7 +184,6 @@ include = [
     "src/ribasim_nl/ribasim_nl/ribasim_feedback_processor.py",
     "src/ribasim_nl/ribasim_nl/ribasim_parametrization.py",
     "src/ribasim_nl/ribasim_nl/rwzi.py",
-    "src/ribasim_nl/ribasim_nl/supply.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -240,25 +210,16 @@ include = [
     "src/peilbeheerst_model/peilbeheerst_model/preprocess_data/Rivierenland.py",
     "src/peilbeheerst_model/peilbeheerst_model/shortest_path.py",
     "src/ribasim_nl/ribasim_nl/assign_parametrization.py",
-    "src/ribasim_nl/ribasim_nl/berging.py",
-    "src/ribasim_nl/ribasim_nl/concat.py",
     "src/ribasim_nl/ribasim_nl/controle_output.py",
     "src/ribasim_nl/ribasim_nl/geodataframe.py",
-    "src/ribasim_nl/ribasim_nl/junctions.py",
-    "src/ribasim_nl/ribasim_nl/link_profiles.py",
     "src/ribasim_nl/ribasim_nl/model.py",
     "src/ribasim_nl/ribasim_nl/network.py",
     "src/ribasim_nl/ribasim_nl/network_validator.py",
-    "src/ribasim_nl/ribasim_nl/parametrization/basin_tables.py",
     "src/ribasim_nl/ribasim_nl/parametrization/damo_profiles.py",
-    "src/ribasim_nl/ribasim_nl/parametrization/node_table.py",
-    "src/ribasim_nl/ribasim_nl/parametrization/parameterize.py",
     "src/ribasim_nl/ribasim_nl/parametrization/static_data_xlsx.py",
-    "src/ribasim_nl/ribasim_nl/profiles/implement.py",
     "src/ribasim_nl/ribasim_nl/ribasim_feedback_processor.py",
     "src/ribasim_nl/ribasim_nl/ribasim_parametrization.py",
     "src/ribasim_nl/ribasim_nl/rwzi.py",
-    "src/ribasim_nl/ribasim_nl/set_forcing.py",
     "src/ribasim_nl/ribasim_nl/supply.py",
     "src/ribasim_nl/ribasim_nl/transboundary_inflow.py",
 ]
@@ -270,11 +231,9 @@ unresolved-attribute = "ignore"
 include = [
     "src/peilbeheerst_model/peilbeheerst_model/parse_crossings.py",
     "src/ribasim_nl/ribasim_nl/berging.py",
-    "src/ribasim_nl/ribasim_nl/parametrization/manning_resistance_table.py",
     "src/ribasim_nl/ribasim_nl/profiles/run.py",
     "src/ribasim_nl/ribasim_nl/ribasim_feedback_processor.py",
     "src/ribasim_nl/ribasim_nl/ribasim_parametrization.py",
-    "src/ribasim_nl/ribasim_nl/sanitize_node_table.py",
 ]
 
 [tool.ty.overrides.rules]

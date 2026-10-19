@@ -1,5 +1,7 @@
 # function for sanitizing the node_table of Sweco build models
 
+from typing import Any
+
 import pandas as pd
 
 from ribasim_nl.model import Model
@@ -8,7 +10,7 @@ from ribasim_nl.model import Model
 def sanitize_node_table(
     model: Model,
     meta_columns: list[str] | None = None,
-    copy_map: list[dict[str, object]] | None = None,
+    copy_map: list[dict[str, Any]] | None = None,
     names: "pd.Series[str] | None" = None,
 ) -> None:
     """Clean all node-tables to their expected columns + (optionally) meta_columns."""

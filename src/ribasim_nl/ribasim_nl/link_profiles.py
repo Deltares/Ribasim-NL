@@ -1,7 +1,9 @@
 # %%
+from typing import cast
+
 import geopandas as gpd
 import numpy as np
-from shapely.geometry import Point
+from shapely.geometry import LineString, Point
 from tqdm import tqdm
 
 from ribasim_nl.model import Model
@@ -34,7 +36,8 @@ def link_profile_id(link_id: int, model: Model, profiles: DAMOProfiles | gpd.Geo
         ]
     else:
         # take closest profile from to_node as default
-        to_node_geometry = link_geometry.boundary.geoms[1]
+        to_node_geometry = cast(LineString, link_geometry).boundary.geoms[1]
+
         profile = profiles.loc[profiles.distance(to_node_geometry).idxmin()]
 
         # try to find a better one on the links in the same basin

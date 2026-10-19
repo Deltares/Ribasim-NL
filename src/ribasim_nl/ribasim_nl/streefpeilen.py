@@ -1,8 +1,10 @@
 # %%
 from pathlib import Path
+from typing import cast
 
 import geopandas as gpd
 import pandas as pd
+from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl.model import Model
 
@@ -37,7 +39,7 @@ def add_streefpeil(model: Model, peilgebieden_path: Path, layername: str, target
         basin_geometry = basin_row.geometry
 
         assert model.node.df is not None
-        downstream_nodes = model.node.df.loc[model.downstream_node_id(node_id=node_id)]
+        downstream_nodes = model.node.df.loc[model.downstream_node_id(node_id=cast(int, node_id))]
 
         buffer_100m_gdf = gpd.GeoDataFrame(
             {"node_id": downstream_nodes.index, "geometry": downstream_nodes.geometry.buffer(100)}, crs=peilgebieden.crs
@@ -48,7 +50,9 @@ def add_streefpeil(model: Model, peilgebieden_path: Path, layername: str, target
         overlapping_peilgebieden = peilgebieden[peilgebieden.geometry.intersects(buffer_union)]
 
         if overlapping_peilgebieden.empty:
-            overlapping_peilgebieden = peilgebieden[peilgebieden.geometry.intersects(basin_geometry)]
+            overlapping_peilgebieden = peilgebieden[
+                peilgebieden.geometry.intersects(cast(BaseGeometry, basin_geometry))
+            ]
 
         current_basin = basins_gdf[basins_gdf["node_id"] == node_id].copy()
 

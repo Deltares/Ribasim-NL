@@ -1,5 +1,6 @@
 import logging
 from collections import defaultdict
+from typing import Any, cast
 
 import geopandas as gpd
 import pandas as pd
@@ -138,12 +139,12 @@ def _junctionify(model: Model, links: gpd.GeoDataFrame, converging: bool = True)
         )
         # Introduce Junction for each overlapping part
         # And change the to_node_id of the lines to that junction
-        group.geometry = stripped_linestrings
+
         for i, common_linestring in enumerate(common_linestrings):
             idx = 0 if converging else -1
             junction = model.junction.add(Node(geometry=shapely.Point(common_linestring.coords[idx])))
             junction_ids.append(junction.node_id)
-            node = NodeData(node_id, node_type[node_id], model.node.df.at[node_id, "geometry"])
+            node = NodeData(node_id, node_type[node_id], cast(shapely.Point, model.node.df.at[node_id, "geometry"]))
             if converging:
                 model.link.add(from_node=junction, to_node=node, geometry=common_linestring)
             else:
@@ -155,7 +156,8 @@ def _junctionify(model: Model, links: gpd.GeoDataFrame, converging: bool = True)
                 if mapping == i:
                     LOG.debug(f"    Updating link #{group.index[idx]} to new {field} Junction #{junction.node_id}")
                     model.link.df.loc[group.index[idx], field] = junction.node_id
-                    model.link.df.loc[group.index[idx], "geometry"] = stripped_linestrings[idx]
+                    # the stubs of pandas do not allow geometries as values
+                    cast(Any, model.link.df.loc)[group.index[idx], "geometry"] = stripped_linestrings[idx]
 
     return junction_ids
 

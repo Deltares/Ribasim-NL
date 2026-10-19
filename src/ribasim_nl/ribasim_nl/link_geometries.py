@@ -70,7 +70,8 @@ def fix_link_geometries(
     assert model.link.df is not None
     node_df = model.node.df
     if node_ids is None:
-        node_ids = node_df[node_df.node_type.isin(["LevelBoundary", "Basin"])].index
+        node_ids = node_df[node_df.node_type.isin(["LevelBoundary", "Basin"])].index.to_list()
+
     for node_id in tqdm(node_ids, desc="fix line geometries"):
         logger.info(f"fixing links for {node_df.at[node_id, 'node_type']} {node_id}")
         # get basin_node_id

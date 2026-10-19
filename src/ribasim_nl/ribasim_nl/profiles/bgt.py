@@ -130,7 +130,8 @@ def get_water_surfaces(wd: Path, **kwargs) -> gpd.GeoDataFrame:
     """
     # optional arguments
     fn: str = kwargs.get("fn", "bgt_water.gpkg")
-    geo_filter: shapely.Polygon | shapely.MultiPolygon = kwargs.get("geo_filter")
+    geo_filter: shapely.Polygon | shapely.MultiPolygon | None = kwargs.get("geo_filter")
+
     overwrite: bool = kwargs.get("overwrite", False)
     write: bool = kwargs.get("write", True)
 

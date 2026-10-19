@@ -56,6 +56,7 @@ def update_basin_state(model: Model) -> None:
     Args:
         model (Model): Ribasim Model
     """
+    assert model.basin.profile.df is not None
     model.basin.state.df = model.basin.profile.df.groupby("node_id").max().reset_index()[["node_id", "level"]]
 
 

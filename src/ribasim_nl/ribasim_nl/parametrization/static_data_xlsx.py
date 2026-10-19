@@ -41,7 +41,7 @@ description = [
     {"kolom": "downstream_level_offset", "beschrijving": "afslagpunt (meter) onder benedenstrooms streefpeil"},
 ]
 
-defaults = {
+defaults: dict[str, dict[str, object]] = {
     "Afvoergemaal": {
         "upstream_level_offset": 0.0,
         "downstream_level_offset": pd.NA,
