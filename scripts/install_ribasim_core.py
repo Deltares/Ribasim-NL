@@ -6,8 +6,6 @@ depending on the SOURCE setting below. By default it is installed into
 ``/p/ribasim-nl/bin/<NAME>``.
 """
 
-from __future__ import annotations
-
 import argparse
 import os
 import platform
