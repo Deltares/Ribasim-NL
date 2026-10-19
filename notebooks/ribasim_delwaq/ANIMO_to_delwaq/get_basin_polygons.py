@@ -5,9 +5,9 @@ import geopandas as gpd
 
 model_name = "lhm_coupled_full"
 
-script_dir = Path(__file__).resolve().parent
-root_dir = script_dir.resolve().parent.parent.parent
-model_path = root_dir / "data/Rijkswaterstaat/modellen" / model_name
+root_dir = Path(__file__).resolve().parents[3]
+model_path = root_dir / "data" / "Rijkswaterstaat" / "modellen" / model_name
+output_path = root_dir / "data" / "Basisgegevens" / "Delwaq" / "ANIMO" / "aangeleverd" / "shapes" / model_name
 # %%
 
 basin_path = model_path / "input/database.gpkg"
@@ -28,13 +28,11 @@ basins_to_save = basin[basin["meta_categorie"].isin(basin_types)]
 total_area_km2 = basins_to_save.geometry.area.sum() / 1e6
 print(f"Total area of selected polygons: {total_area_km2:.2f} km²")
 
-out_dir = script_dir / "output"
-out_dir.mkdir(exist_ok=True)
+output_path.mkdir(exist_ok=True)
 
-shp_path = out_dir / f"basin_polygons_{model_name}.shp"
+shp_path = output_path / f"basin_polygons_{model_name}.shp"
 
 basins_to_save.to_file(shp_path)
-
 
 # %%
 # diagnostic: compare area of polygon selection to total area that is covered by LHM
