@@ -3,6 +3,7 @@ repos:
     hooks:
       - id: check-added-large-files
         args: [--maxkb=700]
+        exclude: ^data/Basisgegevens/BuitenlandseAanvoer/aangeleverd/[^/]+\.csv$
       - id: check-case-conflict
       - id: check-json
       - id: check-yaml

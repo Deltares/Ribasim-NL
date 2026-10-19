@@ -53,7 +53,12 @@ def _couple_nodes(table: pd.DataFrame, nodes: "gpd.GeoDataFrame", mapping: Mappi
     """Dispatch node mapping and validate one-to-one coverage."""
     node_ids = _map_by_name(table, nodes) if mapping == "name" else _map_by_coordinate(table, nodes)
     if node_ids.duplicated().any() or set(node_ids) != set(nodes.index):
-        raise ValueError("The mapping must cover each foreign FlowBoundary exactly once")
+        missing = nodes.loc[~nodes.index.isin(node_ids), "name"].to_dict()
+        duplicates = node_ids.loc[node_ids.duplicated(keep=False)].unique().tolist()
+        raise ValueError(
+            "The mapping must cover each foreign FlowBoundary exactly once; "
+            f"unmapped nodes (ID: name): {missing}; multiply mapped node IDs: {duplicates}"
+        )
     return node_ids
 
 
@@ -222,6 +227,8 @@ def add_transboundary_inflow(
     Timeseries paths are relative to its directory, omit .csv, and select the
     measurement column matching name (or an optional timeseries_column).
     Missing measurements or seasonal values always fall back to constant_global.
+    Every node classified as 'buitenlandse aanvoer' must be mapped exactly once;
+    unmapped nodes raise before forcing changes. Other categories are untouched.
     Node names, coordinates, metadata and links are never modified.
     """
     if mapping == "hydroobject":

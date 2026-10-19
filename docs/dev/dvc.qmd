@@ -68,13 +68,17 @@ Foreign inflows must be listed in
 Each inflow can reference a timeseries and define summer, winter and global
 constant discharges. The pipeline uses the global constant as the fallback when
 the requested forcing is unavailable. Timeseries are averaged for coarser timesteps
-and interpolated for finer timesteps, without extrapolation. The overview and measurement CSVs are
-tracked with DVC.
+and interpolated for finer timesteps, without extrapolation. The overview and
+measurement CSVs are temporarily tracked directly in Git for review, rather than
+as DVC outputs. They remain dependencies of the DVC pipeline.
 
 The mapping selects an authority by its Aquo code and matches existing foreign
 FlowBoundary nodes by name or by coordinates in EPSG:28992 (within one metre).
-Each selected boundary must match exactly once; hydroobject mapping is not yet
-implemented. Timeseries references are relative to the overview directory and
+Every model FlowBoundary classified as `buitenlandse aanvoer` must match exactly
+once. Missing or duplicate matches raise an error before any forcing is changed;
+coverage errors identify unmapped node IDs and names. Other FlowBoundary
+categories, such as RWZI inputs, are left untouched. Hydroobject mapping is not
+yet implemented. Timeseries references are relative to the overview directory and
 omit the `.csv` extension. The measurement CSV must contain a `Datum` column with
 timezone-naive local timestamps and a column matching the boundary name, or the
 optional `timeseries_column` override. Boundaries sharing a file are read and

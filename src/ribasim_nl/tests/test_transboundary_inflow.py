@@ -251,6 +251,33 @@ def test_duplicate_and_missing_mapping_rows_are_rejected(model: Model, tmp_path:
         add_transboundary_inflow(model, path, authority=25)
 
 
+@pytest.mark.parametrize("mapping", ["name", "coordinate"])
+@pytest.mark.parametrize("input", ["timeseries", "constant_global", "constant_summer", "constant_winter"])
+@pytest.mark.parametrize("empty_selection", [False, True], ids=["partial-mapping", "no-authority-rows"])
+def test_unmapped_foreign_boundary_raises_before_changing_forcing(
+    model: Model, tmp_path: Path, mapping: str, input: str, empty_selection: bool
+) -> None:
+    """Reject skipped foreign boundaries in every mode, identifying the missing node."""
+    model.flow_boundary.add(
+        Node(node_id=3, name="Unlisted river", geometry=Point(500, 600)),
+        [flow_boundary.Static(flow_rate=[7.0])],
+    )
+    model.node.df.loc[3, "meta_categorie"] = "buitenlandse aanvoer"
+    path = overview(tmp_path)
+    if empty_selection:
+        frame = pd.read_csv(path)
+        frame.assign(authority_aquo=27, authority_name="DeDommel").to_csv(path, index=False)
+    nodes = model.node.df.copy(deep=True)
+    static = model.flow_boundary.static.df.copy(deep=True)
+    with pytest.raises(ValueError, match="exactly once") as error:
+        add_transboundary_inflow(model, path, authority=25, mapping=mapping, input=input)
+    assert "3" in str(error.value)
+    assert "Unlisted river" in str(error.value)
+    pd.testing.assert_frame_equal(model.node.df, nodes)
+    pd.testing.assert_frame_equal(model.flow_boundary.static.df, static)
+    assert model.flow_boundary.time.df is None
+
+
 def test_ambiguous_coordinates_are_rejected(model: Model, tmp_path: Path):
     model.node.df.loc[2, "meta_categorie"] = "buitenlandse aanvoer"
     with pytest.raises(ValueError, match="found 2"):
