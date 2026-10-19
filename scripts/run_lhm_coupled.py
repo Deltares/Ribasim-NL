@@ -1,7 +1,7 @@
 """Run the coupled LHM model from `koppelen` in a separate directory, so its results can be tracked by DVC.
 
 The run TOML reads the input of `data/Rijkswaterstaat/modellen/lhm_coupled`, so the input is not copied.
-The commit of the code is written to `runinfo.json`, for the model viewer, see `ribasim_nl.webmap.run_info`.
+The commits of the code and of the Ribasim core in `RIBASIM_HOME` are written to `runinfo.json`, for the model viewer, see `ribasim_nl.webmap.run_info`.
 """
 
 import json
@@ -12,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 
 import tomli_w
-from ribasim_nl.run_model import run
+from ribasim_nl.run_model import core_info, run
 from ribasim_nl.settings import settings
 from ribasim_nl.webmap import RUN_INFO
 
@@ -45,7 +45,8 @@ commit = git("rev-parse", "HEAD").strip()
 dirty = git("status", "--porcelain", "--untracked-files=no", "--", ":/", ":!/dvc.lock") != ""
 
 run_dir.mkdir(parents=True, exist_ok=True)
-(run_dir / RUN_INFO).write_text(json.dumps({"commit": commit, "dirty": dirty}, indent=2))
+core = core_info(Path(os.environ["RIBASIM_HOME"]))
+(run_dir / RUN_INFO).write_text(json.dumps({"commit": commit, "dirty": dirty, "core": core}, indent=2))
 with run_toml.open("wb") as f:
     tomli_w.dump(config, f)
 

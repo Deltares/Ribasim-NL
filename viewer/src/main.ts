@@ -1077,7 +1077,7 @@ function diffBounds(network: Network, diff: ModelDiff): [number, number, number,
 
 const COMMIT_URL = "https://github.com/Deltares/Ribasim-NL/commit/";
 
-/** A map control next to the scale bar that says when the model was run, and from which commit. */
+/** A map control next to the scale bar that says when the model was run, from which commit, and with which core. */
 function runInfoControl(run: RunInfo): maplibregl.IControl {
   const element = document.createElement("div");
   element.className = "maplibregl-ctrl run-info";
@@ -1095,6 +1095,16 @@ function runInfoControl(run: RunInfo): maplibregl.IControl {
       title: run.dirty ? "Run with uncommitted changes to this commit" : "The commit the model was built and run with",
     });
     parts.push(parts.length ? " · commit " : "Commit ", link, run.dirty ? " + changes" : "");
+  }
+  if (run.core) {
+    const link = Object.assign(document.createElement("a"), {
+      href: run.core.commit,
+      target: "_blank",
+      rel: "noopener",
+      textContent: run.core.version,
+      title: `The Ribasim core the model was run with, built from ${run.core.branch}`,
+    });
+    parts.push(parts.length ? " · core " : "Core ", link);
   }
   element.append(...parts);
   return {

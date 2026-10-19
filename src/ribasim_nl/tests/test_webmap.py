@@ -98,12 +98,14 @@ def test_run_info(tmp_path):
     )
     assert run_info(toml, results_dir) == {"start": "2026-10-15T23:54:23.620", "end": "2026-10-16T01:28:57.134"}
 
-    (tmp_path / "runinfo.json").write_text(json.dumps({"commit": "abc123", "dirty": False}))
+    core = {"version": "2026.1.2-114-g954a73d", "commit": "https://x/954a73d126", "branch": "https://x/main"}
+    (tmp_path / "runinfo.json").write_text(json.dumps({"commit": "abc123", "dirty": False, "core": core}))
     assert run_info(toml, results_dir) == {
         "start": "2026-10-15T23:54:23.620",
         "end": "2026-10-16T01:28:57.134",
         "commit": "abc123",
         "dirty": False,
+        "core": core,
     }
 
 

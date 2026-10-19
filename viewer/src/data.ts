@@ -71,6 +71,8 @@ export interface RunInfo {
   commit?: string;
   /** Whether the code had uncommitted changes */
   dirty?: boolean;
+  /** The Ribasim core, from the `README.md` of its installation; commit and branch are GitHub URLs */
+  core?: { version: string; commit: string; branch: string };
 }
 
 export type Row = Record<string, unknown>;
@@ -314,33 +316,42 @@ async function loadMain(): Promise<Source> {
 interface PullRequest {
   pr: number;
   head: { snapshot: string; commit: string };
-  base: { snapshot: string; commit: string };
+  /** The pull request below this one in a stack, or main if `pr` is absent */
+  base: { snapshot: string; commit: string; pr?: number };
   diff: string;
   published: string;
 }
 
-/** The model of a pull request, compared with the main it was published with. */
+/** The snapshot the base of a pull request has now: the latest main, or the head of the pull request below it. */
+async function currentBase(base: PullRequest["base"]): Promise<string | null> {
+  if (base.pr === undefined) return currentMain();
+  const record = await fetchJson<PullRequest>(new URL(`prs/${base.pr}.json`, MODEL_URL)).catch(() => null);
+  return record?.head.snapshot ?? null;
+}
+
+/** The model of a pull request, compared with the main or the pull request below it that it was published with. */
 async function loadPullRequest(number: number): Promise<Source> {
   const record = await fetchJson<PullRequest>(new URL(`prs/${number}.json`, MODEL_URL)).catch((error) => {
     throw new Error(`No model is published for pull request #${number} (${error})`);
   });
   if (!DIFF_PATH.test(record.diff)) throw new Error(`Invalid differences ${record.diff}`);
-  const [manifest, base, diff, main] = await Promise.all([
+  const [manifest, base, diff, current] = await Promise.all([
     loadSnapshot(record.head.snapshot),
     loadSnapshot(record.base.snapshot),
     loadDiff(new URL(record.diff, MODEL_URL)),
-    currentMain(),
+    currentBase(record.base),
   ]);
+  const baseName = record.base.pr === undefined ? "main" : `pull request #${record.base.pr}`;
   const notice =
-    main && main !== record.base.snapshot
-      ? `Main has changed since pull request #${number} was compared with it, at ${shortCommit(record.base.commit)}. Publish it again to compare with the latest main.`
+    current && current !== record.base.snapshot
+      ? `The base ${baseName} has changed since pull request #${number} was compared with it, at ${shortCommit(record.base.commit)}. Publish it again to compare with the latest ${baseName}.`
       : null;
   return { manifest, comparison: { base, diff }, notice };
 }
 
 /**
  * The model to show: by default the model of main, with `?pr=<number>` that of a pull request compared with
- * main, and with `?data=<url>`, optionally with `?base=<url>&diff=<url>`, a local model.
+ * main or the pull request below it in a stack, and with `?data=<url>`, optionally with `?base=<url>&diff=<url>`, a local model.
  */
 export async function loadSource(): Promise<Source> {
   const params = new URLSearchParams(location.search);

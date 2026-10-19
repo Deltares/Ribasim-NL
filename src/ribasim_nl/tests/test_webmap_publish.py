@@ -2,6 +2,7 @@ import pytest
 from ribasim_nl.webmap_publish import (
     COMMENT_MARKER,
     EXPORT_PATH,
+    branch_name,
     comment_body,
     commit_hash,
     diff_counts,
@@ -79,6 +80,10 @@ def test_comment_body():
     assert "`solver.reltol`" in body
     assert "`bbbbbbb` with `main` at `aaaaaaa`" in body
 
+    stacked = comment_body(888, diff, "a" * 40, "b" * 40, base_pr=892)
+    assert "with the differences from #892." in stacked
+    assert "`bbbbbbb` with #892 at `aaaaaaa`" in stacked
+
 
 def test_command_inputs():
     assert commit_hash("a" * 40) == "a" * 40
@@ -89,3 +94,8 @@ def test_command_inputs():
     for number in [0, -1]:
         with pytest.raises(AssertionError):
             pr_number(number)
+    assert branch_name("pin-ribasim-core") == "pin-ribasim-core"
+    assert branch_name("user/fix_1.2") == "user/fix_1.2"
+    for branch in ["--upload-pack=x", "-x", "a..b", "a b", ""]:
+        with pytest.raises(AssertionError):
+            branch_name(branch)
