@@ -636,7 +636,34 @@ export class Panel {
     };
   }
 
-  /** Per observed variable, a chart of the observed values and the simulated values of the observed node. */
+  /**
+   * The simulated values of a variable of an observed node in the results of a model. The simulated flow rate of a
+   * node is its total outflow, which for a Junction is the flow through it.
+   */
+  private async simulatedRows(
+    results: Manifest["results"],
+    observedType: string,
+    observedId: number,
+    variable: string,
+    outflows: number[],
+  ): Promise<Row[]> {
+    if (results && observedType === "Basin") return readRowsById(results.basin.by_id, "node_id", observedId);
+    if (!results || variable !== "flow_rate" || outflows.length === 0) return [];
+    const series = await Promise.all(outflows.map((id) => readRowsById(results.flow.by_id, "link_id", id)));
+    const total = new Map<number, Row>();
+    for (const row of series.flat()) {
+      const time = (row.time as Date).getTime();
+      const sum = total.get(time);
+      if (sum) sum.flow_rate = (sum.flow_rate as number) + (row.flow_rate as number);
+      else total.set(time, { time: row.time, flow_rate: row.flow_rate });
+    }
+    return [...total.values()];
+  }
+
+  /**
+   * Per observed variable, a chart of the observed values and the simulated values of the observed node,
+   * also of the base model when comparing models.
+   */
   private async observedSimulated(nodeId: number, observedId: number, width: number): Promise<(Node | string)[]> {
     const { network } = this;
     const row = network.nodeRow.get(observedId);
@@ -644,30 +671,23 @@ export class Panel {
     const observedType = network.nodeType[row];
     const observations = await this.tableRows("Observation", "time", nodeId);
     const results = this.manifest.results;
-    // The simulated flow rate of a node is its total outflow, which for a Junction is the flow through it
     const outflows = Array.from(
       network.linkId.filter(
         (_, linkRow) => network.linkType[linkRow] === "flow" && network.fromNodeId[linkRow] === observedId,
       ),
     );
+    // Links are renumbered, so the outflows of the observed node can have other ids in the base model
+    const base = this.comparison?.base.results;
+    const baseOutflows = outflows.flatMap((id) => network.baseLinkId.get(id) ?? []);
+    const columns = ["observed", "simulated", ...(base ? [`simulated${BASE}`] : [])];
     const variables = [...new Set(observations.map((observation) => String(observation.variable)))].sort((a, b) => a.localeCompare(b));
     if (variables.length === 0) return ["No observed values."];
     const sections = await Promise.all(
       variables.map(async (variable) => {
-        let simulated: Row[] = [];
-        if (results && observedType === "Basin") {
-          simulated = await readRowsById(results.basin.by_id, "node_id", observedId);
-        } else if (results && variable === "flow_rate" && outflows.length > 0) {
-          const series = await Promise.all(outflows.map((id) => readRowsById(results.flow.by_id, "link_id", id)));
-          const total = new Map<number, Row>();
-          for (const row of series.flat()) {
-            const time = (row.time as Date).getTime();
-            const sum = total.get(time);
-            if (sum) sum.flow_rate = (sum.flow_rate as number) + (row.flow_rate as number);
-            else total.set(time, { time: row.time, flow_rate: row.flow_rate });
-          }
-          simulated = [...total.values()];
-        }
+        const [simulated, baseSimulated] = await Promise.all([
+          this.simulatedRows(results, observedType, observedId, variable, outflows),
+          this.simulatedRows(base, observedType, observedId, variable, baseOutflows),
+        ]);
         const byTime = new Map<number, Row>();
         const add = (rows: Row[], column: string, value: (row: Row) => unknown) => {
           for (const row of rows) {
@@ -683,15 +703,12 @@ export class Panel {
           (observation) => observation.value,
         );
         add(simulated, "simulated", (result) => result[variable]);
+        add(baseSimulated, `simulated${BASE}`, (result) => result[variable]);
         const rows = [...byTime.values()].sort((a, b) => (a.time as Date).getTime() - (b.time as Date).getTime());
-        const chart = timeChart(rows, width, ["observed", "simulated"]);
+        const chart = timeChart(rows, width, columns);
         const title = `${variable} of ${observedType} #${observedId}`;
         if (!chart) return [el("h4", {}, title), "Too few values to chart."];
-        return [
-          el("h4", {}, title),
-          chart,
-          ...(variable === "flow_rate" ? cumulativeChart(rows, width, ["observed", "simulated"]) : []),
-        ];
+        return [el("h4", {}, title), chart, ...(variable === "flow_rate" ? cumulativeChart(rows, width, columns) : [])];
       }),
     );
     return [...sections.flat(), ...(results ? [] : [el("p", { className: "note" }, "No simulation results.")])];

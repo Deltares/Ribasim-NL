@@ -33,7 +33,7 @@ import {
   ResultColors,
   statusColors,
 } from "./diff";
-import { linkLabel, loadNetwork, type Group, type LayerData, type Network } from "./network";
+import { ALWAYS_SHOWN_TYPES, linkLabel, loadNetwork, type Group, type LayerData, type Network } from "./network";
 import { Panel, type Selection } from "./panel";
 import { ResultFrames } from "./results";
 import {
@@ -302,19 +302,24 @@ class Viewer {
     const { comparison, network, filter, resultColors } = this;
     if (!comparison) return;
     const { diff } = comparison;
+    const shown = (id: number, diffs: typeof diff.nodes, results?: ResultColors) =>
+      filter.shows(diffs.get(id), results?.diff.differences.has(id) ?? false);
+    // The unchanged features of the types that are always shown, see `ALWAYS_SHOWN_TYPES`, have no status ring
     const values = (group: Group, ids: Int32Array, diffs: typeof diff.nodes, results?: ResultColors) =>
-      Float32Array.from(group.rows, (row) =>
-        filter.shows(diffs.get(ids[row]), results?.diff.differences.has(ids[row]) ?? false) ? 1 : 0,
-      );
+      Float32Array.from(group.rows, (row) => {
+        const unchanged = !diffs.has(ids[row]) && !results?.diff.differences.has(ids[row]);
+        return shown(ids[row], diffs, results) || (unchanged && ALWAYS_SHOWN_TYPES.has(group.type)) ? 1 : 0;
+      });
+    const rings: Float32Array[] = [];
     for (const group of network.nodeGroups) {
       const basin = group.type === "Basin" ? resultColors?.basin : undefined;
       this.filterValues.set(group, values(group, network.nodeId, diff.nodes, basin));
+      rings.push(Float32Array.from(group.rows, (row) => (shown(network.nodeId[row], diff.nodes, basin) ? 1 : 0)));
     }
     for (const group of network.linkGroups) {
       const flow = group.type === "flow" ? resultColors?.flow : undefined;
       this.filterValues.set(group, values(group, network.linkId, diff.links, flow));
     }
-    const rings = network.nodeGroups.map((group) => this.filterValues.get(group)!);
     this.ringFilterValues = new Float32Array(rings.reduce((sum, part) => sum + part.length, 0));
     let offset = 0;
     for (const part of rings) {

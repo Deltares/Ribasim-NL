@@ -121,6 +121,7 @@ The map shows only the added, removed and changed features, in the colors of the
 When zoomed out, the status rings around changed nodes become small dots.
 Removed and changed Basin / areas of the old model are drawn as dashed outlines.
 Turn on *Unchanged* in the layer list to show the other features faintly, for context.
+Observation nodes and their links are always shown, also when unchanged, so their charts can be compared; the observed values are charted with the simulated values of both models.
 
 If both models have results, the Basin levels and flow rates are compared too.
 Basins and flow links whose results differ more than a tolerance are also shown, in shades of grey by the largest difference.
