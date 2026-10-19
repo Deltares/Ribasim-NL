@@ -4,7 +4,6 @@ The scripts `pipeline/<water board>/01_feedback.py` and `pipeline/<water board>/
 water board specific edits. The steps they have in common are defined here.
 """
 
-import datetime
 import warnings
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -13,14 +12,10 @@ from pathlib import Path
 from typing import Literal
 
 import geopandas as gpd
-import xarray as xr
-from ribasim import run_ribasim
 
 import ribasim_nl.ribasim_parametrization as ribasim_param
-from ribasim_nl import CloudStorage, Model, SetDynamicForcing, junctionify, merge_rwzi_model, supply
+from ribasim_nl import CloudStorage, Model, junctionify, supply
 from ribasim_nl.assign_authorities import AssignAuthorities
-from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
-from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.capacity import bound_supply_inflows
 from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
@@ -28,23 +23,13 @@ from ribasim_nl.control import (
     get_node_table_with_from_to_node_ids,
     remove_duplicate_controls,
 )
-from ribasim_nl.controle_output import DYNAMIC_FORCING_METRICS, Control
-from ribasim_nl.layout import tidy_layout
 from ribasim_nl.network_snapping import snap_model
-from ribasim_nl.observations import add_observations
+from ribasim_nl.regional_model import ENDTIME, STARTTIME, add_inflows, add_lhm_forcing, finish_regional_model
 from ribasim_nl.ribasim_feedback_processor import RibasimFeedbackProcessor
-from ribasim_nl.rwzi import attach_rwzi_junctions
 from ribasim_nl.settings import settings
 
 # streefpeil used where it is unknown; we need one to create the profiles, Q(h)-relations, and af- and aanslag peil
 UNKNOWN_STREEFPEIL = 0.00012345
-
-# simulation period and output interval of the forcing models
-STARTTIME = datetime.datetime(2017, 1, 1)
-ENDTIME = datetime.datetime(2020, 1, 1)
-SAVEAT = 3600 * 24
-
-LHM_BUDGETS = "Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink"
 
 # meta columns of the Outlet and Pump static tables that add_controllers_to_connector_nodes doesn't preserve
 OUTLET_META_COLUMNS = [
@@ -137,11 +122,6 @@ class WaterBoardPaths:
         """Directory of the model written by a pipeline stage."""
         return self.cloud.model_dir(self.waterschap, stage)
 
-    @property
-    def qlr(self) -> Path:
-        """QGIS layer definition to inspect the model output with."""
-        return self.cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_cc.qlr")
-
     def feedback_processor(self, work_dir: Path, use_validation: bool = True) -> RibasimFeedbackProcessor:
         """Processor of the feedback form, writing its model to `work_dir`."""
         work_dir.mkdir(parents=True, exist_ok=True)
@@ -206,9 +186,8 @@ def set_boundary_conditions(
 ) -> Model:
     """Set the forcing and level boundaries, and the target levels around the Outlets and Pumps.
 
-    The Basins get meteo and groundwater from the LHM budgets, of which the assignment is plotted to
-    `results/assign_validation.png` of the forcing model. The LevelBoundaries alternate between a hypothetical dry
-    and wet level.
+    The Basins get meteo and groundwater from the LHM budgets, see `add_lhm_forcing`. The LevelBoundaries alternate
+    between a hypothetical dry and wet level.
 
     :param model: model of the profiles stage
     :param paths: paths of the water board
@@ -216,13 +195,7 @@ def set_boundary_conditions(
     :return: the model with forcing
     """
     check_basin_meta_categorie(model)
-    budgets = xr.open_zarr(str(paths.cloud.joinpath(LHM_BUDGETS))).sel(time=slice(STARTTIME, ENDTIME))
-    offline_budgets = AssignOfflineBudgets(budgets)
-    model = SetDynamicForcing(model=model, budgets=budgets, startdate=STARTTIME, enddate=ENDTIME).add()
-    offline_budgets.compute_budgets(model)
-    assign_validation_png = paths.model_dir("forcing") / "results" / "assign_validation.png"
-    assign_validation_png.parent.mkdir(parents=True, exist_ok=True)
-    offline_budgets.plot_assign_validation(model, path=assign_validation_png)
+    model = add_lhm_forcing(model, paths.model_dir("forcing"), sprinkling="secondary")
 
     drain_level, supply_level = level_boundary_levels
     ribasim_param.set_hypothetical_dynamic_level_boundaries(model, STARTTIME, ENDTIME, drain_level, supply_level, True)
@@ -287,7 +260,7 @@ def complete_parametrization(
     fill_na_authority: str = "Rijkswaterstaat",
     known_pump_flow_rates: bool | None = True,
 ) -> Model:
-    """Clean the tables, set dynamic level limits, assign the neighbouring authorities, and add RWZIs and fractions.
+    """Clean the tables, set dynamic level limits, assign the neighbouring authorities, and add the inflows.
 
     :param model: model with controllers
     :param paths: paths of the water board
@@ -310,13 +283,7 @@ def complete_parametrization(
         custom_nodes=custom_nodes if custom_nodes is not None else {},
         fill_na_authority=fill_na_authority,
     ).assign_authorities()
-    model = merge_rwzi_model(
-        model,
-        paths.cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml"),
-        paths.cloud.joinpath("Rijkswaterstaat/modellen/rwzi/meta/RWZI_coordinates_model_coverage.geojson"),
-        paths.model_dir("forcing") / "meta/RWZI_coordinates_lhm_coverage.geojson",
-    )
-    assign_lhm_fractions(model)
+    model = add_inflows(model, paths.model_dir("forcing"))
 
     assert model.outlet.static.df is not None
     assert model.pump.static.df is not None
@@ -360,50 +327,28 @@ def preserve_connector_meta(model: Model, method: Literal["merge", "combine_firs
 
 
 def write_and_run_forcing_model(model: Model, paths: WaterBoardPaths) -> None:
-    """Write and run the forcing model, its steady state regression variants, and check the results."""
-    check_basin_meta_categorie(model)
-    output_dir = paths.model_dir("forcing")
-    model_toml = output_dir / "ribasim.toml"
-    qlr_path = paths.qlr
+    """Write and run the forcing model and its steady state regression variants, and check the results.
 
+    See `finish_regional_model`, which snaps the model to the hydro-objects of the profile generation.
+    """
+    check_basin_meta_categorie(model)
     bound_supply_inflows(model)
 
-    # Layout-only transformations, done after all parametrization so they never affect it: route links along the
-    # hydro-objects and move Basin nodes onto them, and merge the overlapping parts of links into Junctions.
-    model = snap_model(
+    def snap(model: Model) -> Model:
+        """Route links along the hydro-objects, move Basin nodes onto them, and merge overlapping links."""
+        model = snap_model(
+            model,
+            paths.profielen_dir,
+            crossings_path=paths.crossings,
+            water_path=paths.bgt_water,
+            top10nl_path=paths.top10nl,
+        )
+        return junctionify(model)
+
+    finish_regional_model(
         model,
-        paths.profielen_dir,
-        crossings_path=paths.crossings,
-        water_path=paths.bgt_water,
-        top10nl_path=paths.top10nl,
+        paths.model_dir("forcing") / "ribasim.toml",
+        paths.waterschap,
+        snap=snap,
+        steady_state_regression=True,
     )
-    model = junctionify(model)
-    # let the RWZIs discharge on the links into their Basins, see #860
-    model = attach_rwzi_junctions(model)
-
-    model.use_validation = True
-    model.starttime = STARTTIME
-    model.endtime = ENDTIME
-    model = add_observations(model, paths.waterschap)
-    model = tidy_layout(model)
-    model.solver.saveat = SAVEAT
-    model.write(model_toml)
-    ribasim_param.write_steady_state_regression_models(
-        model_toml,
-        {
-            scenario: output_dir.parent / f"{paths.waterschap}_steady_state_{scenario}" / "ribasim.toml"
-            for scenario in ("dry", "wet")
-        },
-        authority=paths.waterschap,
-        qlr_path=qlr_path,
-    )
-    model.validate_ribasim_nl()
-
-    # run model and use the final state as initial state
-    run_ribasim(model_toml)
-    model.update_state()
-    model.basin.state.write()
-
-    # model performance
-    controle_output = Control(work_dir=output_dir, qlr_path=qlr_path)
-    controle_output.run(metrics=DYNAMIC_FORCING_METRICS)
