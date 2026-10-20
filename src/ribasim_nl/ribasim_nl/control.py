@@ -592,14 +592,14 @@ def add_control_functions_to_connector_nodes(
     # expand user_defined drain_nodes with outflow_nodes
     drain_nodes = sorted(set(drain_nodes + outflow_nodes))
 
-    # expand drain_nodes based on reverse connections to supply nodes
+    # expand drain_nodes based on reverse connections to supply and flow_control nodes, which pass water the other way
     candidates = [i for i in all_nodes if i not in supply_nodes + drain_nodes + flow_control_nodes]
-    supply_nodes_df = selected_nodes_df.loc[supply_nodes]
+    reversed_df = selected_nodes_df.loc[supply_nodes + flow_control_nodes]
     drain_nodes = sorted(
         [
             cast(int, i.Index)
             for i in selected_nodes_df.loc[candidates].itertuples()
-            if ((supply_nodes_df.from_node_id == i.to_node_id) & (supply_nodes_df.to_node_id == i.from_node_id)).any()
+            if ((reversed_df.from_node_id == i.to_node_id) & (reversed_df.to_node_id == i.from_node_id)).any()
         ]
         + drain_nodes
     )
