@@ -80,13 +80,21 @@ class Parameterize(BaseModel):
                 print("  Geen pompen boven max_pump_flow_rate.")
 
         print("Update ManningResistance...")
-        water_area_df = None
+        water_area_df = water_line_df = None
         manning_node = self.model.manning_resistance.node
         if self.water_area_gpkg is not None and manning_node is not None and manning_node.df is not None:
             xmin, ymin, xmax, ymax = manning_node.df.total_bounds
             bbox = (xmin - 500, ymin - 500, xmax + 500, ymax + 500)
             water_area_df = gpd.read_file(self.water_area_gpkg, layer="top10nl_waterdeel_vlak", bbox=bbox)
-        update_manning_resistance_static(self.model, profiles_gpkg=self.profiles_gpkg, water_area_df=water_area_df)
+            water_line_df = gpd.read_file(
+                self.water_area_gpkg, layer="top10nl_waterdeel_lijn", bbox=bbox, columns=["breedteklasse"]
+            )
+        update_manning_resistance_static(
+            self.model,
+            profiles_gpkg=self.profiles_gpkg,
+            water_area_df=water_area_df,
+            water_line_df=water_line_df,
+        )
         print("  ManningResistance bijgewerkt.")
 
         print("Update Basin-profiel en -state...")
