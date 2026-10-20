@@ -50,26 +50,29 @@ def test_process_profiles(damo_profiles):
     profiles_df = damo_profiles.process_profiles().set_index("profiel_id")
     assert profiles_df.index.to_list() == ["a", "b", "c", "d", "e"]
     assert profiles_df.loc["d", "bottom_level"] == 12.29
+    # no width at water level, so the minimum width with vertical sides
     assert profiles_df.loc["e", "profile_width"] == 1.0
-    assert profiles_df.loc["e", "profile_slope"] == 0.5
+    assert profiles_df.loc["e", "profile_slope"] == 0.0
 
-    # width at water level 4, depth 0.5 (minimum), so the bottom width is 4 - 2 * 0.5 / 0.5
+    # width at water level 4, depth 0.5 (minimum), so with the default slope of 2 horizontal over 1 vertical
+    # the bottom width is 4 - 2 * 0.5 * 2
     expected_in_water = {
         "bottom_level": 0.0,
         "water_level": 0.0,
         "invert_level": 1.0,
-        "profile_slope": 0.5,
+        "profile_slope": 2.0,
         "profile_width": 2.0,
     }
     for profile_id in ["a", "c"]:
         assert profiles_df.loc[profile_id, list(expected_in_water)].to_dict() == expected_in_water
 
-    # no water: width is a third of the line length, depth from the invert level
+    # no water: width is a third of the line length, depth from the invert level. The bottom is a third of that
+    # width, and the sides reach the full width at depth 1, so the slope is horizontal over vertical
     profile_b = profiles_df.loc["b"]
     assert profile_b.bottom_level == 2.0
     assert profile_b.invert_level == 3.0
     assert profile_b.profile_width == pytest.approx(round(10 / 3 / 3, 2))
-    assert profile_b.profile_slope == pytest.approx(round(1 / (10 / 3 / 3), 2))
+    assert profile_b.profile_slope == pytest.approx(round((10 / 3 - 10 / 9) / 2, 2))
 
 
 def test_get_profile_level(damo_profiles):

@@ -119,7 +119,7 @@ class DAMOProfiles(BaseModel):
     def process_profiles(
         self,
         elevation_col: str | None = None,
-        default_profile_slope: float = 0.5,
+        default_profile_slope: float = 2.0,
         min_profile_width: float = 1,
         min_profile_depth: float = 0.5,
     ) -> gpd.GeoDataFrame:
@@ -288,8 +288,10 @@ def _profile_dimensions(
 ) -> dict:
     """Profile levels, width and slope of a trapezoidal profile.
 
+    The slope is horizontal over vertical, like the `profile_slope` of a Ribasim ManningResistance.
     If no profile point lies in water (`has_water` is False), `water_level` and `width_at_water_level` are NaN.
     """
+    assert default_profile_slope >= 0, f"default_profile_slope should be non-negative, not {default_profile_slope}"
     if has_water:
         depth = max(water_level - bottom_level, min_profile_depth)
     else:
@@ -298,12 +300,12 @@ def _profile_dimensions(
         depth = max(invert_level - bottom_level, min_profile_depth)
 
     # estimate profile_width from width at water_level, depth and slope
-    profile_width = width_at_water_level - ((depth / default_profile_slope) * 2)
+    profile_width = width_at_water_level - 2 * depth * default_profile_slope
 
     # we assume profile_width is more than 1/3 of width at water_level. Correct values accordingly
     if profile_width < width_at_water_level / 3:
         profile_width = max(width_at_water_level / 3, min_profile_width)
-        profile_slope = depth / profile_width
+        profile_slope = max(width_at_water_level - profile_width, 0) / 2 / depth
     else:
         profile_slope = default_profile_slope
 
