@@ -125,6 +125,9 @@ class DAMOProfiles(BaseModel):
     ) -> gpd.GeoDataFrame:
         """Derive a trapezoidal profile (levels, width and slope) for every profile line from its points.
 
+        The width and slope are those of the trapezoid with the same top width and area as the points, see
+        `fit_trapezoid`. Profiles without such a shape get them estimated from the width at water level instead.
+
         Profiles with a unique, numeric and complete `codevolgnummer` are processed vectorized. Others are
         processed per profile, renumbering the points along the profile line if `codevolgnummer` is duplicated.
         """
@@ -210,9 +213,61 @@ class DAMOProfiles(BaseModel):
                 )
             )
 
+        # the trapezoid with the same top width and area as the points, where they have such a shape
+        lines = profile_line_geometry.reindex(points_df["profiellijnid"]).to_numpy()
+        offsets = shapely.line_locate_point(lines, np.asarray(points_df.geometry.array))
+        elevations = points_df["elevation"].to_numpy()
+        point_indices = points_df.groupby("profiellijnid").indices
+        for profile in data:
+            indices = point_indices[profile["profiel_id"]]
+            fit = fit_trapezoid(offsets[indices], elevations[indices])
+            if fit is not None:
+                profile_width, profile_slope = fit
+                profile["profile_width"] = round(max(profile_width, min_profile_width), 2)
+                profile["profile_slope"] = round(profile_slope, 2)
+
         # same order as a groupby over all profiles
         data.sort(key=lambda profile: profile["profiel_id"])
         return gpd.GeoDataFrame(data, crs=self.profile_line_df.crs)
+
+
+def fit_trapezoid(offsets: np.ndarray, elevations: np.ndarray) -> tuple[float, float] | None:
+    """The trapezoid with the same top width and area as a cross section, like `ribasim_nl.tables.manning_profile`.
+
+    The cross section is the line through the points, ordered by their offset along the profile line, up to the
+    lower of its two ends. The slope is horizontal over vertical, like the `profile_slope` of a ManningResistance.
+
+    Args:
+        offsets: distance of each point along the profile line [m]
+        elevations: elevation of each point [m]
+
+    Returns
+    -------
+        bottom width [m] and slope [-], or None if the points do not form a cross section with a depth
+    """
+    order = np.argsort(offsets, kind="stable")
+    x, z = np.asarray(offsets, dtype=float)[order], np.asarray(elevations, dtype=float)[order]
+    if len(x) < 3 or not np.isfinite(z).all() or x[-1] - x[0] <= 0:
+        return None
+    top = min(z[0], z[-1])
+    depth = top - z.min()
+    if depth <= 0:
+        return None
+
+    # exact area and width below the top of the piecewise linear cross section, per segment
+    area = top_width = 0.0
+    for x0, x1, d0, d1 in zip(x[:-1], x[1:], top - z[:-1], top - z[1:], strict=True):
+        if d0 <= 0 and d1 <= 0:
+            continue
+        length = x1 - x0
+        if d0 < 0 or d1 < 0:
+            # the part of the segment below the top
+            length *= max(d0, d1) / (abs(d0) + abs(d1))
+            d0, d1 = max(d0, 0.0), max(d1, 0.0)
+        area += (d0 + d1) / 2 * length
+        top_width += length
+    bottom_width = max(2 * area / depth - top_width, 0.0)
+    return bottom_width, max(top_width - bottom_width, 0.0) / 2 / depth
 
 
 def profile_level(profiles_df: pd.DataFrame, profile_ids: list, divisor: float = 2) -> np.ndarray:
