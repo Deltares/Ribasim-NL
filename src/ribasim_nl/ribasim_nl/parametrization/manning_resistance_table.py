@@ -3,7 +3,6 @@ from typing import cast
 
 import geopandas as gpd
 import numpy as np
-import pandas as pd
 import shapely
 from pandas import Timestamp
 from pandera.typing import DataFrame
@@ -13,90 +12,70 @@ from ribasim_nl.model import Model
 from ribasim_nl.parametrization.conversions import round_to_precision
 from ribasim_nl.parametrization.empty_table import empty_table_df
 
-# Half the width across a ManningResistance that is searched for water, and the distance from the node that a water
-# area may lie, for nodes just outside its polygon [m]
+# Half the width across a watercourse that is searched for water [m]
 MAX_WATER_HALF_WIDTH = 150.0
-WATER_TOLERANCE = 5.0
+# Distance between the cross sections along the links of a ManningResistance, and from their ends, which lie at
+# nodes, junctions and bends where a cross section is not representative [m]
+CROSS_SECTION_STEP = 25.0
+CROSS_SECTION_MARGIN = 30.0
+# Top width [m] of the width classes of watercourses that Top10NL maps as a line, the middle of each class
+WIDTH_CLASS_TOP_WIDTH = {"0,5 - 3 meter": 1.75, "3 - 6 meter": 4.5}
 
 
-def water_widths(model: Model, water_area_df: gpd.GeoDataFrame) -> pd.Series:
-    """Width of the water area across each ManningResistance, perpendicular to its links.
+def crosses_link(profile: shapely.LineString, link: shapely.LineString, max_angle: float = 45.0) -> bool:
+    """Whether a profile line lies across a link: crossing it near its middle, at most `max_angle` from square.
 
-    The links of a ManningResistance follow the watercourse, so the line through the node perpendicular to them
-    crosses it. The width is the length of the part of that line within the water area at the node, up to
-    `MAX_WATER_HALF_WIDTH` on both sides. Nodes without water area at them, such as on watercourses that are too
-    narrow to be mapped as an area, get a width of 0.
-
-    Args:
-        model (Model): Ribasim Model with ManningResistance nodes and their links
-        water_area_df (gpd.GeoDataFrame): Polygons of the water area, like the `top10nl_waterdeel_vlak` of Top10NL
-
-    Returns
-    -------
-        pd.Series: width of the water area [m] by ManningResistance node_id
+    A profile of a side ditch can touch the link where the ditch joins, but lies along it.
     """
-    assert model.link.df is not None and model.manning_resistance.node is not None
-    node_df = model.manning_resistance.node.df
-    assert node_df is not None
-    water = np.asarray(shapely.make_valid(water_area_df.geometry.to_numpy()))
-    tree = shapely.STRtree(water)
-    link_df = model.link.df[model.link.df.link_type == "flow"]
-    widths = pd.Series(0.0, index=node_df.index, name="water_width")
-    for node_id, point in node_df.geometry.items():
-        # direction of the watercourse at the node, from the ends of its links next to it
-        links = link_df[(link_df.from_node_id == node_id) | (link_df.to_node_id == node_id)].geometry
-        neighbours = [
-            np.asarray(line.interpolate(min(line.project(point) + side, line.length)).coords[0][:2])
-            for line in links
-            for side in (-10, 10)
-            if line.length > 0
-        ]
-        if len(neighbours) < 2:
-            continue
-        neighbours = np.array(neighbours)
-        # the principal direction of the points around the node
-        centred = neighbours - neighbours.mean(axis=0)
-        direction = np.linalg.svd(centred, full_matrices=False)[2][0]
-        across = np.array([-direction[1], direction[0]])
-        xy = np.asarray(point.coords[0][:2])
-        cross = shapely.LineString([xy - across * MAX_WATER_HALF_WIDTH, xy + across * MAX_WATER_HALF_WIDTH])
-        nearby = tree.query(cross, predicate="intersects")
-        if len(nearby) == 0:
-            continue
-        inside = cross.intersection(shapely.union_all(water[nearby]))
-        parts = [g for g in getattr(inside, "geoms", [inside]) if g.length > 0 and g.distance(point) <= WATER_TOLERANCE]
-        widths.at[node_id] = max((g.length for g in parts), default=0.0)
-    return widths
+    point = profile.intersection(link)
+    if point.is_empty:
+        return False
+    point = cast(
+        shapely.Point, shapely.get_point(shapely.get_parts(point)[0], 0) if point.geom_type != "Point" else point
+    )
+    if not 0.2 <= profile.project(point) / profile.length <= 0.8:
+        return False
+    across = np.subtract(profile.coords[-1][:2], profile.coords[0][:2])
+    at = link.project(point)
+    a, b = link.interpolate(max(at - 5, 0)), link.interpolate(min(at + 5, link.length))
+    along = np.array([b.x - a.x, b.y - a.y])
+    cosine = abs(across @ along) / (np.linalg.norm(across) * np.linalg.norm(along))
+    return cosine < np.sin(np.radians(max_angle))
 
 
-def widen_to_water_width(
-    static_df: pd.DataFrame, water_width: pd.Series, depth: float, profile_slope: float
-) -> pd.DataFrame:
-    """Widen the profiles that are narrower at `depth` than the water area across them, see `water_widths`.
+def reach_water_width(links: list[shapely.LineString], water: np.ndarray, tree: shapely.STRtree) -> float:
+    """Median width of the water area across links, or 0 if less than half of the cross sections lie in water.
 
-    Profiles of a watercourse can be missing, or be taken from a smaller watercourse nearby, so a ManningResistance
-    on a large watercourse gets a much too small profile. Those become a trapezoid with the width of the water area
-    at `depth` and sides of `profile_slope`, horizontal over vertical, with a bottom of at least a third of that width.
-
-    Args:
-        static_df (pd.DataFrame): ManningResistance static table with node_id, profile_width and profile_slope
-        water_width (pd.Series): width of the water area [m] by node_id
-        depth (float): depth of the profile at the water level [m], like that of the Basin profiles
-        profile_slope (float): slope of the sides of widened profiles, horizontal over vertical
-
-    Returns
-    -------
-        pd.DataFrame: static table with the widened profiles
+    The cross sections lie every `CROSS_SECTION_STEP` along the links, perpendicular to them, except within
+    `CROSS_SECTION_MARGIN` of their ends.
     """
-    assert depth > 0 and profile_slope >= 0
-    static_df = static_df.copy()
-    width = static_df["node_id"].map(water_width).fillna(0.0)
-    top_width = static_df["profile_width"] + 2 * static_df["profile_slope"] * depth
-    widen = width > top_width
-    bottom = np.maximum(width - 2 * depth * profile_slope, width / 3)
-    static_df.loc[widen, "profile_width"] = bottom[widen].round(2)
-    static_df.loc[widen, "profile_slope"] = ((width - bottom) / 2 / depth)[widen].round(2)
-    return static_df
+    widths = []
+    for line in links:
+        for at in np.arange(CROSS_SECTION_MARGIN, line.length - CROSS_SECTION_MARGIN + 1e-9, CROSS_SECTION_STEP):
+            point = line.interpolate(at)
+            a, b = line.interpolate(at - 5), line.interpolate(at + 5)
+            along = np.array([b.x - a.x, b.y - a.y])
+            across = np.array([-along[1], along[0]]) / np.linalg.norm(along)
+            xy = np.array([point.x, point.y])
+            cross = shapely.LineString([xy - across * MAX_WATER_HALF_WIDTH, xy + across * MAX_WATER_HALF_WIDTH])
+            nearby = tree.query(cross, predicate="intersects")
+            inside = cross.intersection(shapely.union_all(water[nearby])) if len(nearby) else shapely.LineString()
+            parts = [g for g in shapely.get_parts(inside) if g.length > 0 and g.distance(point) < 1]
+            widths.append(max((g.length for g in parts), default=0.0))
+    widths = np.array(widths)
+    if len(widths) == 0 or (widths > 0).mean() < 0.5:
+        return 0.0
+    return float(np.median(widths[widths > 0]))
+
+
+def trapezoid(top_width: float, depth: float, profile_slope: float) -> tuple[float, float]:
+    """Bottom width and slope of a trapezoid with `top_width` at `depth`, with sides of `profile_slope`.
+
+    The bottom is at least a third of the top width, with steeper sides if needed. Slopes are horizontal over vertical.
+    """
+    assert top_width > 0 and depth > 0 and profile_slope >= 0
+    bottom_width = max(top_width - 2 * depth * profile_slope, top_width / 3)
+    return bottom_width, (top_width - bottom_width) / 2 / depth
 
 
 def update_manning_resistance_static(
@@ -106,24 +85,32 @@ def update_manning_resistance_static(
     profile_width: float = 25,
     manning_n: float = 0.04,
     water_area_df: gpd.GeoDataFrame | None = None,
+    water_line_df: gpd.GeoDataFrame | None = None,
     depth: float = 2.0,
     water_profile_slope: float = 2.0,
 ) -> None:
-    """Generate a default manning-table.
+    """Generate the ManningResistance static table, with the profile from the first source that has one.
+
+    1. The DAMO profile of its link, from `profiles_gpkg`, if it lies across one of the links of the node, see
+       `crosses_link`. Otherwise it is of another watercourse, as watercourses can have no profiles at all.
+    2. The width of the Top10NL water area along its links, see `reach_water_width`.
+    3. The width class of the Top10NL water lines along its links, for watercourses too narrow to map as an area.
+    4. The default `profile_width` and `profile_slope`.
+
+    Widths from Top10NL are the top width at `depth`, the depth of the primary Basin profiles, with sides of
+    `water_profile_slope`, see `trapezoid`. The source is written to `meta_profile_source`.
 
     Args:
         model (Model): Ribasim Model
-        profile_slope (float, optional): Slope of the cross section talud. Defaults to 1.
-        profile_width (float, optional): _description_. Defaults to 25.
-        manning_n (float, optional): _description_. Defaults to 0.04.
-        water_area_df (gpd.GeoDataFrame, optional): Water area; profiles narrower than it are widened, see
-            `widen_to_water_width`. Defaults to None.
-        depth (float, optional): Depth of the profiles at the water level, see `widen_to_water_width`. Defaults to 2.
-        water_profile_slope (float, optional): Slope of the widened profiles. Defaults to 2.
-
-    Returns
-    -------
-        pd.DataFrame: dataframe for static Manning-table in Ribasim model
+        profiles_gpkg (Path, optional): DAMO profiles with profile lines, by `profiel_id`. Defaults to None.
+        profile_slope (float, optional): Default slope of the profile, horizontal over vertical. Defaults to 1.
+        profile_width (float, optional): Default bottom width of the profile [m]. Defaults to 25.
+        manning_n (float, optional): Manning roughness. Defaults to 0.04.
+        water_area_df (gpd.GeoDataFrame, optional): Top10NL `top10nl_waterdeel_vlak`. Defaults to None.
+        water_line_df (gpd.GeoDataFrame, optional): Top10NL `top10nl_waterdeel_lijn`, with `breedteklasse`.
+            Defaults to None.
+        depth (float, optional): Depth at which Top10NL widths apply [m]. Defaults to 2.
+        water_profile_slope (float, optional): Slope of profiles from Top10NL widths. Defaults to 2.
     """
     # empty dataframe
     static_df = empty_table_df(model=model, node_type="ManningResistance", table_type="Static")
@@ -139,23 +126,63 @@ def update_manning_resistance_static(
     ]
     static_df.loc[:, "length"] = length
 
-    # slope and width from profiles geopackage else defaults
+    static_df.loc[:, "profile_slope"] = profile_slope
+    static_df.loc[:, "profile_width"] = profile_width
+    static_df.loc[:, "meta_profile_source"] = "default"
+    link_df = model.link.df[model.link.df.link_type == "flow"]
+    links = {
+        node_id: list(link_df[(link_df.from_node_id == node_id) | (link_df.to_node_id == node_id)].geometry)
+        for node_id in static_df.node_id
+    }
+
+    def set_profile(row: int, width: float, slope: float, source: str) -> None:
+        static_df.loc[row, ["profile_width", "profile_slope", "meta_profile_source"]] = [
+            round(width, 2),
+            round(slope, 2),
+            source,
+        ]
+
+    remaining = list(static_df.index)
+    # 1. DAMO profile across the links
     if profiles_gpkg:
         profiles_df = gpd.read_file(profiles_gpkg).set_index("profiel_id")
-        profile_ids = [
-            model.link.df.set_index("to_node_id").at[i, "meta_profielid_waterbeheerder"] for i in static_df.node_id
-        ]
-        static_df.loc[:, "profile_slope"] = profiles_df.loc[profile_ids]["profile_slope"].to_numpy()
-        static_df.loc[:, "profile_width"] = profiles_df.loc[profile_ids]["profile_width"].to_numpy()
-    else:
-        static_df.loc[:, "profile_slope"] = profile_slope
-        static_df.loc[:, "profile_width"] = profile_width
+        profile_ids = model.link.df.set_index("to_node_id")["meta_profielid_waterbeheerder"]
+        for row in list(remaining):
+            profile_id = profile_ids.get(static_df.at[row, "node_id"])
+            if profile_id not in profiles_df.index:
+                continue
+            profile = profiles_df.loc[profile_id]
+            if any(crosses_link(profile.geometry, link) for link in links[static_df.at[row, "node_id"]]):
+                set_profile(row, profile["profile_width"], profile["profile_slope"], "DAMO")
+                remaining.remove(row)
+
+    # 2. width of the Top10NL water area along the links
+    if water_area_df is not None and remaining:
+        water = np.asarray(shapely.make_valid(water_area_df.geometry.to_numpy()))
+        tree = shapely.STRtree(water)
+        for row in list(remaining):
+            width = reach_water_width(links[static_df.at[row, "node_id"]], water, tree)
+            if width > 0:
+                set_profile(row, *trapezoid(width, depth, water_profile_slope), "Top10NL area")
+                remaining.remove(row)
+
+    # 3. width class of the Top10NL water lines along the links
+    if water_line_df is not None and remaining:
+        classes = water_line_df["breedteklasse"]
+        line_tree = shapely.STRtree(water_line_df.geometry.to_numpy())
+        for row in list(remaining):
+            reach = shapely.union_all(links[static_df.at[row, "node_id"]]).buffer(5)
+            near = classes.iloc[line_tree.query(reach, predicate="intersects")]
+            near = near[near.isin(WIDTH_CLASS_TOP_WIDTH)]
+            if not near.empty:
+                width_class = str(near.mode().iat[0])
+                set_profile(
+                    row, *trapezoid(WIDTH_CLASS_TOP_WIDTH[width_class], depth, water_profile_slope), "Top10NL line"
+                )
+                remaining.remove(row)
 
     # manning_n
     static_df.loc[:, "manning_n"] = manning_n
-
-    if water_area_df is not None:
-        static_df = widen_to_water_width(static_df, water_widths(model, water_area_df), depth, water_profile_slope)
 
     model.manning_resistance.static.df = DataFrame[ManningResistanceStaticSchema](static_df)
 
