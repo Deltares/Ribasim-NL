@@ -733,10 +733,14 @@ def get_control_nodes_position_from_supply_area(
     # read node_table for further use
     node_df = _read_node_table(model=model)
 
-    # intersecting links and direction (if not outflow, then inward)
+    # links that cross the boundary, with one node inside and one outside, and their direction (if not outflow,
+    # then inward). Links follow watercourses, so a link can pass through the area with both nodes outside it.
     link_df = _read_link_table(model=model, link_type="flow")
     link_intersect_df = link_df[link_df.intersects(boundary)].copy()
-    link_intersect_df.loc[:, ["outflow"]] = node_df.loc[link_intersect_df["from_node_id"]].within(polygon).to_numpy()
+    from_inside = node_df.loc[link_intersect_df["from_node_id"]].within(polygon).to_numpy()
+    to_inside = node_df.loc[link_intersect_df["to_node_id"]].within(polygon).to_numpy()
+    link_intersect_df = link_intersect_df[from_inside != to_inside].copy()
+    link_intersect_df.loc[:, ["outflow"]] = from_inside[from_inside != to_inside]
     link_intersect_df.loc[:, ["from_node_type"]] = node_df.loc[
         link_intersect_df["from_node_id"], "node_type"
     ].to_numpy()
