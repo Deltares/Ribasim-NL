@@ -6,6 +6,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import rasterio
+import shapely
 import tqdm
 from affine import Affine
 from geopandas import GeoDataFrame
@@ -383,24 +384,54 @@ def get_manning_resistance(area: float) -> manning_resistance.Static:
     )
 
 
-def supply_area_basin_ids(model: Model, supply_areas: GeoDataFrame, min_overlap: float = 0.5) -> set[int]:
-    """Get the flowing (non-'bergend') basins that lie in the supply areas ('aanvoergebieden')
+def parse_meta_aanvoer(values: pd.Series) -> pd.Series:
+    """Parse the `meta_aanvoer` column of the supply areas ('aanvoergebieden') to booleans
 
+    The files store it as booleans, as 0 and 1, or as strings. A missing value means no supply.
+
+    Args:
+        values (pd.Series): Values of `meta_aanvoer`
+
+    Returns
+    -------
+        pd.Series: True where the area is supplied
+    """
+    # 1 and 0 match True and False as keys, also as floats
+    mapping = {True: True, False: False, "true": True, "false": False}
+
+    def parse(value: Any) -> bool | None:
+        if pd.isna(value):
+            return False
+        return mapping.get(value.lower() if isinstance(value, str) else value)
+
+    parsed = values.map(parse)
+    unknown = values[parsed.isna()]
+    assert unknown.empty, f"Unknown meta_aanvoer values: {sorted(map(str, unknown.unique()))}"
+    return parsed.astype(bool)
+
+
+def supply_area_basin_ids(model: Model, supply_areas: GeoDataFrame, min_overlap: float = 0.5) -> set[int]:
+    """Get the flowing (non-'bergend') basins that lie in the supplied areas ('aanvoergebieden')
+
+    Only the supply areas with `meta_aanvoer` true are used, see `parse_meta_aanvoer`.
     Basins are selected by area rather than by node_id, since the node_ids in the supply areas can be outdated.
 
     Args:
         model (Model): Ribasim model
-        supply_areas (GeoDataFrame): Polygons of the supply areas
-        min_overlap (float, optional): Minimal fraction of the basin area within the supply areas. Defaults to 0.5.
+        supply_areas (GeoDataFrame): Polygons of the supply areas, with a `meta_aanvoer` column
+        min_overlap (float, optional): Minimal fraction of the basin area within the supplied areas. Defaults to 0.5.
 
     Returns
     -------
-        set[int]: node_ids of the basins in the supply areas
+        set[int]: node_ids of the basins in the supplied areas
     """
     assert 0 < min_overlap <= 1, f"min_overlap should be in (0, 1], not {min_overlap}"
-    supply_areas = supply_areas[supply_areas.geometry.notna()]
-    assert not supply_areas.empty, "No supply areas with a geometry"
-    supply_area = supply_areas.geometry.make_valid().union_all()
+    assert "meta_aanvoer" in supply_areas.columns, "Supply areas have no meta_aanvoer column"
+    supply_areas = supply_areas[supply_areas.geometry.notna() & parse_meta_aanvoer(supply_areas["meta_aanvoer"])]
+    if supply_areas.empty:
+        return set()
+    supply_geometries = supply_areas.geometry.make_valid().to_numpy()
+    tree = shapely.STRtree(supply_geometries)
 
     assert model.basin.node is not None
     basin_node_df = model.basin.node.df
@@ -411,8 +442,16 @@ def supply_area_basin_ids(model: Model, supply_areas: GeoDataFrame, min_overlap:
     assert basin_area_df is not None
     basin_area_df = basin_area_df[basin_area_df["node_id"].isin(flowing_ids) & basin_area_df.geometry.notna()]
     basin_area = basin_area_df.dissolve("node_id").geometry
-    overlap = basin_area.intersection(supply_area).area / basin_area.area
-    return {int(node_id) for node_id in overlap.index[overlap > min_overlap]}
+
+    def overlap(geometry: Any) -> float:
+        # Intersect with the union of only the supply areas that touch the basin, since the intersection with the
+        # union of all of them can be wrong: Hunze en Aa's basin 1717 lies for 39% in them, but got 0% or 107%
+        nearby = supply_geometries[tree.query(geometry, predicate="intersects")]
+        if len(nearby) == 0:
+            return 0.0
+        return geometry.intersection(shapely.union_all(nearby)).area / geometry.area
+
+    return {int(node_id) for node_id, geometry in basin_area.items() if overlap(geometry) > min_overlap}
 
 
 def simplify_area_level_df(

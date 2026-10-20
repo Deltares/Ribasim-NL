@@ -21,6 +21,12 @@ export interface Group {
   arrows?: LayerData;
 }
 
+/**
+ * Node and link types that keep their own layer when comparing models, also when unchanged, since their charts
+ * compare the results of both models.
+ */
+export const ALWAYS_SHOWN_TYPES = new Set(["Observation", "observation"]);
+
 /** Features that are the same in both models of a comparison, drawn faintly for context. */
 export interface Context {
   nodes: Group;
@@ -238,8 +244,8 @@ function matchLinks(head: Columns["links"], base: Columns["links"]): Map<number,
 
 /**
  * The nodes and links of a model, grouped by type. When comparing models, removed features are added from the
- * base model, and only the features that differ, also in their results, are grouped by type; the unchanged
- * features form the context.
+ * base model, and only the features that differ, also in their results, and those of `ALWAYS_SHOWN_TYPES` are
+ * grouped by type; the other unchanged features form the context.
  */
 export async function loadNetwork(manifest: Manifest, comparison: Comparison | null = null): Promise<Network> {
   const [head, base] = await Promise.all([readNetwork(manifest), comparison ? readNetwork(comparison.base) : null]);
@@ -251,10 +257,13 @@ export async function loadNetwork(manifest: Manifest, comparison: Comparison | n
   const nodeX = Float32Array.from(nodes.pick(head.nodes.x, base?.nodes.x) as number[]);
   const nodeY = Float32Array.from(nodes.pick(head.nodes.y, base?.nodes.y) as number[]);
   const nodeLocal = new Int32Array(nodeId.length).fill(-1);
-  const nodeDiffers = (row: number) =>
-    !diff || diff.nodes.has(nodeId[row]) || (diff.results?.basin.differences.has(nodeId[row]) ?? false);
+  const nodeGrouped = (row: number) =>
+    !diff ||
+    ALWAYS_SHOWN_TYPES.has(nodeType[row]) ||
+    diff.nodes.has(nodeId[row]) ||
+    (diff.results?.basin.differences.has(nodeId[row]) ?? false);
   const nodeGroups = [...rowsByType(nodeType)]
-    .map(([type, rows]) => nodeGroup(type, rows.filter(nodeDiffers), nodeX, nodeY, (row, i) => (nodeLocal[row] = i)))
+    .map(([type, rows]) => nodeGroup(type, rows.filter(nodeGrouped), nodeX, nodeY, (row, i) => (nodeLocal[row] = i)))
     .filter((group) => group.rows.length > 0);
 
   const links = mergedRows(head.links.link_id, base?.links.link_id, isRemoved(diff?.links, -1));
@@ -265,18 +274,21 @@ export async function loadNetwork(manifest: Manifest, comparison: Comparison | n
   const linkType = toStrings(links.pick(head.links.link_type, base?.links.link_type));
   const coords = links.pick(head.links.coords, base?.links.coords) as ArrayLike<number>[];
   const linkLocal = new Int32Array(linkId.length).fill(-1);
-  const linkDiffers = (row: number) =>
-    !diff || diff.links.has(linkId[row]) || (diff.results?.flow.differences.has(linkId[row]) ?? false);
+  const linkGrouped = (row: number) =>
+    !diff ||
+    ALWAYS_SHOWN_TYPES.has(linkType[row]) ||
+    diff.links.has(linkId[row]) ||
+    (diff.results?.flow.differences.has(linkId[row]) ?? false);
   const linkGroups = [...rowsByType(linkType)]
-    .map(([type, rows]) => linkGroup(type, rows.filter(linkDiffers), coords, (row, i) => (linkLocal[row] = i)))
+    .map(([type, rows]) => linkGroup(type, rows.filter(linkGrouped), coords, (row, i) => (linkLocal[row] = i)))
     .filter((group) => group.rows.length > 0);
 
   let context: Context | null = null;
   if (diff) {
     const contextNodeLocal = new Map<number, number>();
     const contextLinkLocal = new Map<number, number>();
-    const unchangedNodes = [...nodeId.keys()].filter((row) => !nodeDiffers(row));
-    const unchangedLinks = [...linkId.keys()].filter((row) => !linkDiffers(row));
+    const unchangedNodes = [...nodeId.keys()].filter((row) => !nodeGrouped(row));
+    const unchangedLinks = [...linkId.keys()].filter((row) => !linkGrouped(row));
     context = {
       nodes: nodeGroup("unchanged", unchangedNodes, nodeX, nodeY, (row, i) => contextNodeLocal.set(row, i)),
       links: linkGroup("unchanged", unchangedLinks, coords, (row, i) => contextLinkLocal.set(row, i)),
