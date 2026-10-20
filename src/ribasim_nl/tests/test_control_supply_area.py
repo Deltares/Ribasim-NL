@@ -1,6 +1,7 @@
+import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, outlet, pump
-from ribasim_nl.control import get_control_nodes_position_from_supply_area
+from ribasim_nl.control import add_control_functions_to_connector_nodes, get_control_nodes_position_from_supply_area
 from shapely.geometry import LineString, Point, box
 
 from ribasim_nl import Model
@@ -25,3 +26,24 @@ def test_links_passing_through_a_supply_area_are_not_crossings():
     supply_area = box(-100, -100, 100, 10)
     positions = get_control_nodes_position_from_supply_area(model, supply_area)
     assert positions["position"].to_dict() == {4: "inflow"}
+
+
+def test_reverse_of_flow_control_node_drains():
+    """Outlets 2 and 4 connect Basins 1 and 3 in opposite directions, inside a supply area."""
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    profile = basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0])
+    model.basin.add(Node(1, Point(0, 0)), [profile])
+    model.basin.add(Node(3, Point(100, 0)), [profile])
+    model.outlet.add(Node(2, Point(50, 10)), [outlet.Static(flow_rate=[1.0])])
+    model.outlet.add(Node(4, Point(50, -10)), [outlet.Static(flow_rate=[1.0])])
+    model.link.add(model.basin[1], model.outlet[2])
+    model.link.add(model.outlet[2], model.basin[3])
+    model.link.add(model.basin[3], model.outlet[4])
+    model.link.add(model.outlet[4], model.basin[1])
+
+    positions = pd.Series({2: "internal_nodes", 4: "internal_nodes"}, name="position")
+    functions = add_control_functions_to_connector_nodes(
+        model, positions, drain_nodes=[], supply_nodes=[], flow_control_nodes=[2], flushing_nodes={}
+    )
+    # a pair of flow_control nodes in opposite directions is not valid, so the reverse of Outlet 2 drains
+    assert functions["function"].to_dict() == {2: "flow_control", 4: "drain"}
