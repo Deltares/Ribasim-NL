@@ -6,6 +6,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import rasterio
+import shapely
 import tqdm
 from affine import Affine
 from geopandas import GeoDataFrame
@@ -429,7 +430,8 @@ def supply_area_basin_ids(model: Model, supply_areas: GeoDataFrame, min_overlap:
     supply_areas = supply_areas[supply_areas.geometry.notna() & parse_meta_aanvoer(supply_areas["meta_aanvoer"])]
     if supply_areas.empty:
         return set()
-    supply_area = supply_areas.geometry.make_valid().union_all()
+    supply_geometries = supply_areas.geometry.make_valid().to_numpy()
+    tree = shapely.STRtree(supply_geometries)
 
     assert model.basin.node is not None
     basin_node_df = model.basin.node.df
@@ -440,8 +442,16 @@ def supply_area_basin_ids(model: Model, supply_areas: GeoDataFrame, min_overlap:
     assert basin_area_df is not None
     basin_area_df = basin_area_df[basin_area_df["node_id"].isin(flowing_ids) & basin_area_df.geometry.notna()]
     basin_area = basin_area_df.dissolve("node_id").geometry
-    overlap = basin_area.intersection(supply_area).area / basin_area.area
-    return {int(node_id) for node_id in overlap.index[overlap > min_overlap]}
+
+    def overlap(geometry: Any) -> float:
+        # Intersect with the union of only the supply areas that touch the basin, since the intersection with the
+        # union of all of them can be wrong: Hunze en Aa's basin 1717 lies for 39% in them, but got 0% or 107%
+        nearby = supply_geometries[tree.query(geometry, predicate="intersects")]
+        if len(nearby) == 0:
+            return 0.0
+        return geometry.intersection(shapely.union_all(nearby)).area / geometry.area
+
+    return {int(node_id) for node_id, geometry in basin_area.items() if overlap(geometry) > min_overlap}
 
 
 def simplify_area_level_df(
