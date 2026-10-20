@@ -1,7 +1,7 @@
 # %%
 import logging
 import math
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from datetime import datetime
 from typing import Literal, cast
 
@@ -492,6 +492,16 @@ def get_node_table_with_from_to_node_ids(
     return selected_node_df
 
 
+def _reversed_node_ids(node_df: pd.DataFrame, node_ids: Iterable[int], other_ids: Iterable[int]) -> set[int]:
+    """Get the nodes of `node_ids` that connect the same nodes as a node of `other_ids`, in the opposite direction.
+
+    `node_df` has the `from_node_id` and `to_node_id` of each node, see `get_node_table_with_from_to_node_ids`.
+    """
+    others = node_df.loc[list(other_ids)]
+    pairs = set(zip(others["from_node_id"], others["to_node_id"], strict=True))
+    return {i for i in node_ids if (node_df.at[i, "to_node_id"], node_df.at[i, "from_node_id"]) in pairs}
+
+
 def add_control_functions_to_connector_nodes(
     model: Model,
     node_positions: pd.Series,
@@ -593,14 +603,8 @@ def add_control_functions_to_connector_nodes(
 
     # expand drain_nodes based on reverse connections to supply and flow_control nodes, which pass water the other way
     candidates = [i for i in all_nodes if i not in supply_nodes + drain_nodes + flow_control_nodes]
-    reversed_df = selected_nodes_df.loc[supply_nodes + flow_control_nodes]
     drain_nodes = sorted(
-        [
-            i.Index
-            for i in selected_nodes_df.loc[candidates].itertuples()
-            if ((reversed_df.from_node_id == i.to_node_id) & (reversed_df.to_node_id == i.from_node_id)).any()
-        ]
-        + drain_nodes
+        _reversed_node_ids(selected_nodes_df, candidates, supply_nodes + flow_control_nodes) | set(drain_nodes)
     )
 
     # list all flow_control_nodes
@@ -614,9 +618,11 @@ def add_control_functions_to_connector_nodes(
 
     flow_control_nodes = sorted(set(flow_control_nodes))
 
-    # list all drain_nodes again
+    # list all drain_nodes again. The other nodes drain by default, except the reverse of a drain node, which supplies
     skip_nodes = flow_control_nodes + supply_nodes + list(flushing_nodes.keys())
-    drain_nodes = sorted([i for i in all_nodes if i not in skip_nodes])
+    default_nodes = [i for i in all_nodes if i not in skip_nodes + drain_nodes]
+    supply_nodes = sorted(_reversed_node_ids(selected_nodes_df, default_nodes, drain_nodes) | set(supply_nodes))
+    drain_nodes = sorted(i for i in all_nodes if i not in skip_nodes and i not in supply_nodes)
 
     # Step: populate function column
     selected_nodes_df["function"] = pd.Series(dtype="string")
@@ -1915,10 +1921,11 @@ def add_controllers_to_uncontrolled_connector_nodes(
 
     supply_set = supply_set_manual | supply_set_auto
 
-    # --- 6) alles wat overblijft -> drain ---
+    # --- 6) alles wat overblijft -> drain, behalve het omgekeerde van een drain node: dat is supply ---
     used = flushing_set | flow_control_set | drain_set | supply_set
     remaining = eligible - used
-    drain_set = drain_set | remaining
+    supply_set = supply_set | _reversed_node_ids(connector_df, remaining, drain_set)
+    drain_set = drain_set | (remaining - supply_set)
 
     # --- 7) uitvoer: controllers toevoegen ---
     # Flushing
