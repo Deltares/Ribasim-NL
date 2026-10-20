@@ -171,7 +171,7 @@ flow_control_nodes = [
 
 supply_nodes = [
     72, 218, 240, 241, 331, 338, 383, 410, 432, 499, 503, 511, 554, 563, 569, 574, 589, 600,604, 627,
-    639, 663, 670, 690,704,706, 716, 726, 732, 750, 751, 785, 786, 818, 859, 950, 971, 972, 973, 1055,2323
+    639, 663, 670, 690,704,706, 716, 726, 732, 750, 751, 785, 786, 818, 859, 950, 971, 973, 1055,2323
 ]
 
 drain_nodes = [
@@ -268,11 +268,9 @@ model.reverse_link(link_id=861)
 model.reverse_link(link_id=845)
 model.reverse_link(link_id=1253)
 
-# Rode Vaart
+# Roode Vaart: Outlet 589 laat in vanuit het Hollandsch Diep; Pump 972 blijft de Roode Vaart afmalen
 model.reverse_link(link_id=2458)
 model.reverse_link(link_id=1685)
-model.reverse_link(link_id=2459)
-model.reverse_link(link_id=1687)
 
 ## Dintelsas Volkerak hoort hydraulisch een uitlaat naar RWS te zijn.
 ## Tijdelijk als pomp modelleren, omdat afwatering anders vastloopt op hoge RWS-waterstanden.
@@ -351,7 +349,7 @@ pump_max_flow_rate_from_results = {
     797: 3,  # naam onbekend; oude static flow_rate=1.58
     800: 2,  # naam onbekend; oude static flow_rate=0.08
     990: 1,  # naam onbekend; oude static flow_rate=0.04
-    972: 1,  # naam onbekend; dynamic max=0.08, oude max=120
+    972: 5,  # Roode Vaart naar Hollandsch Diep; 15 mm/dag over de 28.6 km2 die erop afwatert
     984: 1,  # Gemaal bij Keersluis Leursche Haven; dynamic max=0.54, oude max=120
     985: 1,  # Gemaal bii Keersluis Laaksche Vaart; dynamic max=0.46, oude max=120
     509: 24.1,  # Tijdelijke pomp naar Zoommeer; behoud de oude afvoercapaciteit van de uitlaat.
