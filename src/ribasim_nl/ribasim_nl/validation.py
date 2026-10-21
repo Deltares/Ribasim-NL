@@ -102,6 +102,47 @@ def _inert_control_state_issues(model: "Model") -> list[str]:
     return issues
 
 
+# Node types whose static tables have control states
+CONTROL_STATE_NODE_TYPES = (
+    "LinearResistance",
+    "ManningResistance",
+    "TabulatedRatingCurve",
+    "Pump",
+    "Outlet",
+    "PidControl",
+)
+
+
+def _uncontrolled_control_state_issues(model: "Model") -> list[str]:
+    """Return nodes with multiple control states that are not controlled by DiscreteControl.
+
+    Ribasim requires such nodes to have a static row without control_state, which sets their
+    parameters. This typically means that their DiscreteControl was removed by mistake.
+    """
+    link = model.link.df
+    node = model.node.df
+    discrete_controlled = set()
+    if link is not None and node is not None:
+        control = link.loc[link["link_type"] == "control"]
+        from_discrete_control = control["from_node_id"].map(node["node_type"]).eq("DiscreteControl")
+        discrete_controlled = set(control.loc[from_discrete_control, "to_node_id"])
+
+    issues = []
+    for node_type in CONTROL_STATE_NODE_TYPES:
+        static = model.get_component(node_type).static.df
+        if static is None or static.empty:
+            continue
+        grouped = static.groupby("node_id")["control_state"]
+        invalid = grouped.nunique().gt(1) & grouped.apply(lambda states: states.notna().all())
+        node_ids = sorted(int(i) for i in invalid.index[invalid] if i not in discrete_controlled)
+        if node_ids:
+            issues.append(
+                f"{node_type} nodes with multiple control states must be controlled by DiscreteControl "
+                f"or have a static row without control_state; invalid node IDs: {node_ids}"
+            )
+    return issues
+
+
 # Below these bounds a ManningResistance has effectively no resistance, which makes the simulation needlessly stiff
 MIN_MANNING_LENGTH = 10.0  # m
 MIN_MANNING_N = 0.01  # s/m^(1/3)
@@ -206,6 +247,7 @@ def validate_model(model: "Model", layout: bool = True) -> None:
         *_discrete_control_condition_issues(model),
         *_partially_missing_control_state_issues(model),
         *_inert_control_state_issues(model),
+        *_uncontrolled_control_state_issues(model),
         *_connector_through_junction_issues(model),
         *_manning_resistance_issues(model),
         *_listen_to_junction_issues(model),
