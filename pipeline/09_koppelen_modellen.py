@@ -83,11 +83,8 @@ remove_nodes = [
     6000109,  # parallel aan AaenMaas FlowDemand-inlaat 3800601
     6000800,  # parallel aan AaenMaas FlowDemand-inlaat 3800601
     6002497,  # parallel aan doorlaat 6002496 tussen hetzelfde Limburg/AaenMaas basin-paar
-    6002788,  # reparatie Helenavaart Limburg
-    6002788,  # reparatie Helenavaart Limburg
     3800052,  # forceren koppeling kanaal van Deurne
     3800447,  # forceren koppeling kanaal van Deurne
-    3803725,  # forceren koppeling kanaal van Deurne
     3802017,  # verwijderen rand binnenstad
     3800049,  # verwijderen rand binnenstad
     3803092,  # verwijderen zijtak Helanvaart Limburg
@@ -255,6 +252,15 @@ def get_basin_link(
     return LineString()
 
 
+def remove_own_control_nodes(model: Model, node_id: int) -> None:
+    """Remove the control nodes of `node_id` that control no other node."""
+    assert model.link.df is not None
+    control_df = model.link.df[model.link.df["link_type"] == "control"]
+    for control_node_id in control_df.loc[control_df["to_node_id"] == node_id, "from_node_id"].unique():
+        if (control_df["from_node_id"] == control_node_id).sum() == 1:
+            model.remove_node(int(control_node_id), remove_links=True)
+
+
 def initialize_models(toml_file: Path) -> tuple[Model, Network, pd.DataFrame]:
     """Initialize and load the model and network data.
 
@@ -271,11 +277,12 @@ def initialize_models(toml_file: Path) -> tuple[Model, Network, pd.DataFrame]:
     # Load the model
     model = Model.read(toml_file)
 
-    # Remove nodes if exists
+    # Remove nodes if exists, with the control nodes that only control them, since their ids are not stable
     node_ids = model.node.df.index.to_numpy()
     for i in remove_nodes:
         if i in node_ids:
             replace_listen_node_id(model, i, None)
+            remove_own_control_nodes(model, i)
             model.remove_node(node_id=i, remove_links=True)
 
     # Load the network
@@ -677,7 +684,7 @@ def convert_outlets_to_manning_resistance(model: Model) -> None:
         for control_node_id in control_df.loc[control_df["to_node_id"] == node_id, "from_node_id"]:
             if (control_df["from_node_id"] == control_node_id).sum() != 1:
                 raise ValueError(f"Control node {control_node_id} controls more nodes than Outlet {node_id}.")
-            model.remove_node(control_node_id, remove_links=True)
+        remove_own_control_nodes(model, node_id)
 
         static = manning_resistance.Static(
             length=[100.0],
