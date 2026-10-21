@@ -5,6 +5,7 @@ from ribasim_nl.validation import (
     _connector_through_junction_issues,
     _listen_to_junction_issues,
     _manning_resistance_issues,
+    _uncontrolled_control_state_issues,
 )
 from shapely.geometry import Point
 
@@ -87,3 +88,70 @@ def test_listen_to_junction(model):
     assert _listen_to_junction_issues(model) == [
         "Control nodes must not listen to a Junction; invalid (control, Junction) node IDs: [(9, 6)]"
     ]
+
+
+@pytest.fixture
+def controlled_outlet_model() -> Model:
+    """An Outlet between models with supply and drainage states, and an inlet of the other model with a FlowDemand.
+
+    Basin 1 -> Outlet 2 -> LevelBoundary 3, LevelBoundary 5 -> Outlet 6 -> Basin 8,
+    with DiscreteControl 4 -> Outlet 2 and FlowDemand 7 -> Outlet 6.
+    """
+    from ribasim.nodes import discrete_control, flow_demand, outlet
+
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    for node_id, x in ((1, 0), (8, 60)):
+        model.basin.add(
+            Node(node_id, Point(x, 0)),
+            [basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]), basin.State(level=[0.5])],
+        )
+    model.outlet.add(
+        Node(2, Point(10, 0)),
+        [outlet.Static(control_state=["aanvoer", "afvoer"], flow_rate=[0.0, 10.0], min_upstream_level=[0.2, 0.2])],
+    )
+    model.outlet.add(Node(6, Point(50, 0)), [outlet.Static(flow_rate=[1.0])])
+    for node_id, x in ((3, 20), (5, 40)):
+        model.level_boundary.add(Node(node_id, Point(x, 0)), [level_boundary.Static(level=[0.0])])
+    model.discrete_control.add(
+        Node(4, Point(10, 10)),
+        [
+            discrete_control.Variable(listen_node_id=[1], variable=["level"], compound_variable_id=[1]),
+            discrete_control.Condition(threshold_high=[0.5], compound_variable_id=[1], condition_id=[1]),
+            discrete_control.Logic(truth_state=["T", "F"], control_state=["afvoer", "aanvoer"]),
+        ],
+    )
+    model.flow_demand.add(Node(7, Point(50, 10)), [flow_demand.Static(demand=[0.5], demand_priority=[1])])
+    for from_node, to_node in (
+        (model.basin[1], model.outlet[2]),
+        (model.outlet[2], model.level_boundary[3]),
+        (model.level_boundary[5], model.outlet[6]),
+        (model.outlet[6], model.basin[8]),
+        (model.discrete_control[4], model.outlet[2]),
+        (model.flow_demand[7], model.outlet[6]),
+    ):
+        model.link.add(from_node, to_node)
+    return model
+
+
+def test_uncontrolled_control_states(controlled_outlet_model):
+    model = controlled_outlet_model
+    assert _uncontrolled_control_state_issues(model) == []
+    model.remove_node(4, remove_links=True)
+    issues = _uncontrolled_control_state_issues(model)
+    assert len(issues) == 1
+    assert "Outlet" in issues[0] and "[2]" in issues[0]
+
+
+def test_merge_outlets_keeps_discrete_control(controlled_outlet_model):
+    # An outlet merged with an inlet with a FlowDemand keeps its DiscreteControl and control states
+    model = controlled_outlet_model
+    model.outlet.static.df.loc[model.outlet.static.df.node_id == 6, "max_downstream_level"] = 0.4
+    model.remove_node(3, remove_links=True)
+    model.remove_node(5, remove_links=True)
+    model.merge_outlets(2, 6)
+    static = model.outlet.static.df.set_index("node_id")
+    assert static.loc[[2], "control_state"].tolist() == ["aanvoer", "afvoer"]
+    assert static.loc[[2], "max_downstream_level"].tolist() == [0.4, 0.4]
+    control = model.link.df[model.link.df["link_type"] == "control"]
+    assert sorted(control[["from_node_id", "to_node_id"]].values.tolist()) == [[4, 2], [7, 2]]
+    assert _uncontrolled_control_state_issues(model) == []
