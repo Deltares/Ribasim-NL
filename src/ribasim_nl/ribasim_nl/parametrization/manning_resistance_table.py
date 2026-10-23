@@ -18,8 +18,9 @@ MAX_WATER_HALF_WIDTH = 150.0
 # nodes, junctions and bends where a cross section is not representative [m]
 CROSS_SECTION_STEP = 25.0
 CROSS_SECTION_MARGIN = 30.0
-# Top width [m] of the width classes of watercourses that Top10NL maps as a line, the middle of each class
-WIDTH_CLASS_TOP_WIDTH = {"0,5 - 3 meter": 1.75, "3 - 6 meter": 4.5}
+# Distance from a link within which water counts as its watercourse: links follow hydro-objects, which can lie a few
+# metres beside the water of a narrow watercourse [m]
+WATER_TOLERANCE = 5.0
 
 
 def crosses_link(profile: shapely.LineString, link: shapely.LineString, max_angle: float = 45.0) -> bool:
@@ -43,7 +44,9 @@ def crosses_link(profile: shapely.LineString, link: shapely.LineString, max_angl
     return cosine < np.sin(np.radians(max_angle))
 
 
-def reach_water_width(links: list[shapely.LineString], water: np.ndarray, tree: shapely.STRtree) -> float:
+def reach_water_width(
+    links: list[shapely.LineString], water: np.ndarray, tree: shapely.STRtree, tolerance: float = WATER_TOLERANCE
+) -> float:
     """Median width of the water area across links, or 0 if less than half of the cross sections lie in water.
 
     The cross sections lie every `CROSS_SECTION_STEP` along the links, perpendicular to them, except within
@@ -60,7 +63,7 @@ def reach_water_width(links: list[shapely.LineString], water: np.ndarray, tree: 
             cross = shapely.LineString([xy - across * MAX_WATER_HALF_WIDTH, xy + across * MAX_WATER_HALF_WIDTH])
             nearby = tree.query(cross, predicate="intersects")
             inside = cross.intersection(shapely.union_all(water[nearby])) if len(nearby) else shapely.LineString()
-            parts = [g for g in shapely.get_parts(inside) if g.length > 0 and g.distance(point) < 1]
+            parts = [g for g in shapely.get_parts(inside) if g.length > 0 and g.distance(point) <= tolerance]
             widths.append(max((g.length for g in parts), default=0.0))
     widths = np.array(widths)
     if len(widths) == 0 or (widths > 0).mean() < 0.5:
@@ -85,7 +88,6 @@ def update_manning_resistance_static(
     profile_width: float = 25,
     manning_n: float = 0.04,
     water_area_df: gpd.GeoDataFrame | None = None,
-    water_line_df: gpd.GeoDataFrame | None = None,
     depth: float = 2.0,
     water_profile_slope: float = 2.0,
 ) -> None:
@@ -93,11 +95,10 @@ def update_manning_resistance_static(
 
     1. The DAMO profile of its link, from `profiles_gpkg`, if it lies across one of the links of the node, see
        `crosses_link`. Otherwise it is of another watercourse, as watercourses can have no profiles at all.
-    2. The width of the Top10NL water area along its links, see `reach_water_width`.
-    3. The width class of the Top10NL water lines along its links, for watercourses too narrow to map as an area.
-    4. The default `profile_width` and `profile_slope`.
+    2. The width of the BGT water along its links, see `reach_water_width` and `ribasim_nl.bgt_water`.
+    3. The default `profile_width` and `profile_slope`.
 
-    Widths from Top10NL are the top width at `depth`, the depth of the primary Basin profiles, with sides of
+    Widths from the BGT are the top width at `depth`, the depth of the primary Basin profiles, with sides of
     `water_profile_slope`, see `trapezoid`. The source is written to `meta_profile_source`.
 
     Args:
@@ -106,11 +107,9 @@ def update_manning_resistance_static(
         profile_slope (float, optional): Default slope of the profile, horizontal over vertical. Defaults to 1.
         profile_width (float, optional): Default bottom width of the profile [m]. Defaults to 25.
         manning_n (float, optional): Manning roughness. Defaults to 0.04.
-        water_area_df (gpd.GeoDataFrame, optional): Top10NL `top10nl_waterdeel_vlak`. Defaults to None.
-        water_line_df (gpd.GeoDataFrame, optional): Top10NL `top10nl_waterdeel_lijn`, with `breedteklasse`.
-            Defaults to None.
-        depth (float, optional): Depth at which Top10NL widths apply [m]. Defaults to 2.
-        water_profile_slope (float, optional): Slope of profiles from Top10NL widths. Defaults to 2.
+        water_area_df (gpd.GeoDataFrame, optional): BGT water, see `ribasim_nl.bgt_water`. Defaults to None.
+        depth (float, optional): Depth at which BGT widths apply [m]. Defaults to 2.
+        water_profile_slope (float, optional): Slope of profiles from BGT widths. Defaults to 2.
     """
     # empty dataframe
     static_df = empty_table_df(model=model, node_type="ManningResistance", table_type="Static")
@@ -156,29 +155,14 @@ def update_manning_resistance_static(
                 set_profile(row, profile["profile_width"], profile["profile_slope"], "DAMO")
                 remaining.remove(row)
 
-    # 2. width of the Top10NL water area along the links
+    # 2. width of the BGT water along the links
     if water_area_df is not None and remaining:
         water = np.asarray(shapely.make_valid(water_area_df.geometry.to_numpy()))
         tree = shapely.STRtree(water)
         for row in list(remaining):
             width = reach_water_width(links[static_df.at[row, "node_id"]], water, tree)
             if width > 0:
-                set_profile(row, *trapezoid(width, depth, water_profile_slope), "Top10NL area")
-                remaining.remove(row)
-
-    # 3. width class of the Top10NL water lines along the links
-    if water_line_df is not None and remaining:
-        classes = water_line_df["breedteklasse"]
-        line_tree = shapely.STRtree(water_line_df.geometry.to_numpy())
-        for row in list(remaining):
-            reach = shapely.union_all(links[static_df.at[row, "node_id"]]).buffer(5)
-            near = classes.iloc[line_tree.query(reach, predicate="intersects")]
-            near = near[near.isin(WIDTH_CLASS_TOP_WIDTH)]
-            if not near.empty:
-                width_class = str(near.mode().iat[0])
-                set_profile(
-                    row, *trapezoid(WIDTH_CLASS_TOP_WIDTH[width_class], depth, water_profile_slope), "Top10NL line"
-                )
+                set_profile(row, *trapezoid(width, depth, water_profile_slope), "BGT")
                 remaining.remove(row)
 
     # manning_n

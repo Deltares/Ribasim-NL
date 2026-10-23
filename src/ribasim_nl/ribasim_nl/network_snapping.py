@@ -30,6 +30,7 @@ import shapely.ops
 import tqdm
 
 from ribasim_nl import Model
+from ribasim_nl.bgt_water import read_bgt_water
 from ribasim_nl.link_geometries import MAX_STRAIGHT_LINE_RATIO, accept_length
 
 LOG = logging.getLogger(__name__)
@@ -713,7 +714,7 @@ def snap_model(
     :param model: Ribasim model
     :param profiles_path: directory with the network.gpkg of the profile-generation
     :param crossings_path: GeoPackage with a duikersifonhevel layer of culverts, defaults to None
-    :param water_path: GeoPackage with water surfaces, such as from the BGT, defaults to None
+    :param water_path: GeoParquet with water surfaces, see `ribasim_nl.bgt_water`, defaults to None
     :param top10nl_path: Top10NL GeoPackage, of which the water lines complement the hydro-objects, defaults to None
     :param tolerance: buffer around the basin area within which hydro-objects are used, defaults to 10.0
     """
@@ -726,7 +727,11 @@ def snap_model(
         mask = shapely.box(x0, y0, x1, y1)
         hydro_objects = pd.concat([hydro_objects, read_waterways(top10nl_path, mask)], ignore_index=True)
     culverts = None if crossings_path is None else gpd.read_file(crossings_path, layer="duikersifonhevel")
-    water = None if water_path is None else gpd.read_file(water_path)
+    water = None
+    if water_path is not None:
+        assert model.basin.area.df is not None
+        x0, y0, x1, y1 = model.basin.area.df.total_bounds
+        water = read_bgt_water(shapely.box(x0, y0, x1, y1), path=water_path, columns=["geometry"])
     model = snap_to_network(model, hydro_objects, culverts=culverts, water=water, tolerance=tolerance)
     assert model.node.df is not None
     moved = ~model.node.df.geometry.geom_equals_exact(node_geometry, tolerance=0)

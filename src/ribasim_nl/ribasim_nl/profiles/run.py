@@ -10,6 +10,7 @@ import pandas as pd
 import shapely
 
 from ribasim_nl import CloudStorage
+from ribasim_nl.bgt_water import BGT_WATER, read_bgt_water
 from ribasim_nl.profiles import bgt, cross_section, depth, path_finder, width
 from ribasim_nl.profiles import hydrotopes as ht
 
@@ -116,7 +117,7 @@ def main(
     :key create_depth_profile_lines: create depth profile lines of the cross-sections from point-data, defaults to False
     :key kw_make_depth_profile: optional arguments for making depth profile lines, defaults to {}
     :key simplify_geometries: simplify geometries by removing duplicates, defaults to True
-    :key fn_bgt: geospatial file with previously downloaded BGT-data, or where to export the newly downloaded BGT-data
+    :key fn_bgt: GeoParquet with BGT water, defaults to `ribasim_nl.bgt_water.BGT_WATER`
         to for future use, defaults to None
     :key bgt_buffer: minimum overlap between BGT-polygon and hydro-object to be coupled, defaults to 0.1 [m]
     :key bgt_full_coverage: consider BGT-data not intersecting any hydro-objects as part of the storing capacity of the
@@ -442,22 +443,13 @@ def _validate_hydro_objects_main_routing(hydro_objects: gpd.GeoDataFrame, col: s
 
 
 def _get_bgt_data(fn_bgt: Path | str | None, basins: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    """Get BGT-data.
+    """Get the BGT water within the convex hull of the basins, so that all basins are fully covered.
 
-    Define the geospatial filter for the BGT-data based on the convex hull of the basins. This ensures that all basins
-    are fully covered by the BGT-data.
-
-    If no filename with BGT-data is provided, the BGT-data is downloaded from the server. This may take a while. Using a
-    pre-downloaded BGT-dataset is recommended.
-
-    :param fn_bgt: filename of BGT-data
+    :param fn_bgt: GeoParquet with BGT water, defaults to `ribasim_nl.bgt_water.BGT_WATER`
     :param basins: geospatial dataset of basins (polygons)
     """
-    geo_filter = typing.cast(shapely.Polygon, shapely.MultiPolygon(list(basins.convex_hull.values)).convex_hull)
-    if fn_bgt is None:
-        return bgt.download_bgt_water(geo_filter=geo_filter)
-    fn_bgt = Path(fn_bgt)
-    return bgt.get_water_surfaces(fn_bgt.parent, fn=fn_bgt.name, geo_filter=geo_filter, write=True)
+    geo_filter = shapely.MultiPolygon(list(basins.convex_hull.values)).convex_hull
+    return read_bgt_water(geo_filter, path=BGT_WATER if fn_bgt is None else Path(fn_bgt))
 
 
 def _label_main_routing_from_flags(hydro_objects: gpd.GeoDataFrame, col: str, val: typing.Any) -> set[int]:

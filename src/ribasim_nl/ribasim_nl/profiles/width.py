@@ -27,7 +27,7 @@ def couple_bgt_to_hydro_objects(
     :param bgt_data: geospatial data with BGT-polygons
     :param kwargs: optional arguments
 
-    :key bgt_id: column-name with ID-information of the BGT-data, defaults to 'gml_id'
+    :key bgt_id: column-name with ID-information of the BGT-data, defaults to 'lokaalID'
     :key min_overlap: minimum required overlap (fraction of line-length) to couple BGT-polygon to hydro-object,
         defaults to None
 
@@ -40,7 +40,7 @@ def couple_bgt_to_hydro_objects(
     :raises ValueError: if the main routing of the hydro-objects is not yet determined
     """
     # optional arguments
-    bgt_id: str = kwargs.get("bgt_id", "gml_id")
+    bgt_id: str = kwargs.get("bgt_id", "lokaalID")
     min_overlap: float | None = kwargs.get("min_overlap")
 
     # verify preprocessing
