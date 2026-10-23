@@ -1178,6 +1178,18 @@ stages:
       - data/Rijkswaterstaat/modellen/lhm_coupled
     outs:
       - data/Rijkswaterstaat/runs/lhm_coupled
+  validate_lhm_coupled:
+    cmd: pixi run python pipeline/validate_lhm_coupled.py
+    deps:
+      - pipeline/validate_lhm_coupled.py
+      - src/ribasim_nl/ribasim_nl
+      - data/Rijkswaterstaat/modellen/lhm_coupled
+      - data/Rijkswaterstaat/runs/lhm_coupled
+    outs:
+      - data/Rijkswaterstaat/metrics/lhm_coupled_observations.csv
+    metrics:
+      - data/Rijkswaterstaat/metrics/lhm_coupled.json:
+          cache: false
   export_webmap:
     cmd: pixi run python pipeline/export_webmap.py
     deps:

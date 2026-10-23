@@ -22,6 +22,29 @@ Known level-instability exceptions are kept as explicit scenario-specific Basin 
 
 Scenario results are available for inspection in each model's `results` directory, including `output_controle.gpkg` and `output_controle.qlr`.
 
+## Coupled model result checks
+
+The `validate_lhm_coupled` DVC stage checks the results of `run_lhm_coupled` for large regressions, with `ribasim_nl.result_validation`. It takes a few seconds, so after pulling the results it can be run with:
+
+```sh
+pixi run dvc repro --single-item validate_lhm_coupled
+```
+
+It summarizes the run in metrics, and checks them against the loose limits in `LIMITS`:
+
+- `solver`: the computation time in hours, the number of right-hand side calls, the mean timestep and the 5th percentile of the mean timestep per day, and the fraction of rejected timesteps.
+- `observations`: the number of Observation nodes that are compared with the simulated flow rate of the node they observe, and their median Nash-Sutcliffe (NSE) and Kling-Gupta efficiencies (KGE).
+- `discharge_kge`: the KGE of the discharge at key points of the main water system, such as the Rhine branches and the sluices of the Afsluitdijk.
+- `level_p01` and `level_p99`: the 1st and 99th percentile of the levels of key Basins, such as the IJsselmeer and the Noordzeekanaal.
+
+The metrics are written to `data/Rijkswaterstaat/metrics/lhm_coupled.json`, which is tracked by git, so a pull request shows how they changed, and the comparison per Observation node to `lhm_coupled_observations.csv` next to it. Compare the metrics with those of `main` with:
+
+```sh
+pixi run dvc metrics diff main
+```
+
+The computation time depends on the machine, so its limit leaves room for slower machines. If a change of the results is intended, change `LIMITS` in the same pull request and explain why.
+
 ## Completed-model result checks
 
 `Control.run()` exports selected result metrics to `results/output_controle.gpkg`. It defaults to `DYNAMIC_FORCING_METRICS`; use `STATIC_FORCING_METRICS` or `AFVOER_METRICS` for the other established workflows, or pass a custom metric set. Call `Control.validate_result_conditions()` after export to enforce conditions. It logs every violation with its Basin node ID before raising one error, so all failures can be addressed together.

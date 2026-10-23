@@ -1,0 +1,49 @@
+{
+  "solver": {
+    "computation_time": 2.849,
+    "rhs_calls": 1669000.0,
+    "mean_dt": 225.0,
+    "dt_p05": 159.9,
+    "rejected_fraction": 0.06601
+  },
+  "observations": {
+    "compared": 639.0,
+    "median_nse": -0.04897,
+    "median_kge": 0.0581
+  },
+  "discharge_kge": {
+    "Lobith": 0.9997,
+    "Pannerdense Kop": 0.9307,
+    "IJsselkop": 0.9218,
+    "Driel boven": 0.8594,
+    "Hagestein boven": 0.8799,
+    "Tiel Waal": 0.926,
+    "Haringvlietsluizen binnen": 0.8353,
+    "Maasmond": 0.3771,
+    "Den Oever buiten": 0.396,
+    "Kornwerderzand buiten": 0.3091,
+    "IJmuiden binnen": 0.2515
+  },
+  "level_p01": {
+    "IJsselmeer": -0.3946,
+    "Markermeer": -0.4055,
+    "Veluwemeer": -0.04918,
+    "Noordzeekanaal": -0.3975,
+    "Amsterdam-Rijnkanaal": -0.3988,
+    "Volkerak": -0.08621,
+    "Haringvliet": 0.01794,
+    "Twentekanaal (Kanaal Zutphen-Enschede)": 9.993,
+    "Julianakanaal": 44.04
+  },
+  "level_p99": {
+    "IJsselmeer": -0.08319,
+    "Markermeer": -0.1881,
+    "Veluwemeer": -0.03088,
+    "Noordzeekanaal": -0.3909,
+    "Amsterdam-Rijnkanaal": -0.3764,
+    "Volkerak": 0.002048,
+    "Haringvliet": 0.08883,
+    "Twentekanaal (Kanaal Zutphen-Enschede)": 10.08,
+    "Julianakanaal": 44.05
+  }
+}

@@ -1413,3 +1413,5 @@ class Model(ribasim.Model):
         if self.basin.time.df is not None:
             self.basin.time.filepath = Path("basin_time.nc")
         self.solver.discrete_control_interval = DISCRETE_CONTROL_INTERVAL
+        # Track where the water comes from, which costs little with the tracer transport of the core
+        self.experimental.concentration = True

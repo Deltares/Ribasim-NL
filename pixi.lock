@@ -662,7 +662,7 @@ environments:
       - pypi: ./src/hydamo
       - pypi: ./src/peilbeheerst_model
       - pypi: ./src/ribasim_nl
-      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=954a73d126faad8759a56b7a3da38118e8c2f2c9#954a73d126faad8759a56b7a3da38118e8c2f2c9
+      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=016b54038746e60e6e645626d6c2383a591dc4a6#016b54038746e60e6e645626d6c2383a591dc4a6
       - pypi: https://files.pythonhosted.org/packages/05/2e/7c85f00260aa332fbab9caba209290a07be645ee1d5691415ae635a7382a/rasterstats-0.21.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/09/a9/630671072a482afc8e75fd1a4ffdecc400fd70846e197f3ce2cc6cfe628b/types_pycurl-7.48.0.20260923-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/15/c0/fc0644b7ddcfb969e95845837143cb5173ddd6e06ee4ba5fc493cd9329b7/types_pyyaml-6.0.12.20260906-py3-none-any.whl
@@ -1247,7 +1247,7 @@ environments:
       - pypi: ./src/hydamo
       - pypi: ./src/peilbeheerst_model
       - pypi: ./src/ribasim_nl
-      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=954a73d126faad8759a56b7a3da38118e8c2f2c9#954a73d126faad8759a56b7a3da38118e8c2f2c9
+      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=016b54038746e60e6e645626d6c2383a591dc4a6#016b54038746e60e6e645626d6c2383a591dc4a6
       - pypi: https://files.pythonhosted.org/packages/05/2e/7c85f00260aa332fbab9caba209290a07be645ee1d5691415ae635a7382a/rasterstats-0.21.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/09/a9/630671072a482afc8e75fd1a4ffdecc400fd70846e197f3ce2cc6cfe628b/types_pycurl-7.48.0.20260923-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/15/c0/fc0644b7ddcfb969e95845837143cb5173ddd6e06ee4ba5fc493cd9329b7/types_pyyaml-6.0.12.20260906-py3-none-any.whl
@@ -1806,7 +1806,7 @@ environments:
       - pypi: ./src/hydamo
       - pypi: ./src/peilbeheerst_model
       - pypi: ./src/ribasim_nl
-      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=954a73d126faad8759a56b7a3da38118e8c2f2c9#954a73d126faad8759a56b7a3da38118e8c2f2c9
+      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=016b54038746e60e6e645626d6c2383a591dc4a6#016b54038746e60e6e645626d6c2383a591dc4a6
       - pypi: https://files.pythonhosted.org/packages/05/2e/7c85f00260aa332fbab9caba209290a07be645ee1d5691415ae635a7382a/rasterstats-0.21.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/09/a9/630671072a482afc8e75fd1a4ffdecc400fd70846e197f3ce2cc6cfe628b/types_pycurl-7.48.0.20260923-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/15/c0/fc0644b7ddcfb969e95845837143cb5173ddd6e06ee4ba5fc493cd9329b7/types_pyyaml-6.0.12.20260906-py3-none-any.whl
@@ -22430,7 +22430,7 @@ packages:
   - geopandas
   - pytest ; extra == 'tests'
   requires_python: '>=3.13'
-- pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=954a73d126faad8759a56b7a3da38118e8c2f2c9#954a73d126faad8759a56b7a3da38118e8c2f2c9
+- pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=016b54038746e60e6e645626d6c2383a591dc4a6#016b54038746e60e6e645626d6c2383a591dc4a6
   name: ribasim
   version: 2026.1.2
   requires_dist:
