@@ -1,10 +1,11 @@
 import pytest
 from ribasim import Node
-from ribasim.nodes import basin, level_boundary, manning_resistance, pump
+from ribasim.nodes import basin, discrete_control, level_boundary, manning_resistance, pump
 from ribasim_nl.validation import (
     _connector_through_junction_issues,
     _listen_to_junction_issues,
     _manning_resistance_issues,
+    _uncontrolled_control_state_issues,
 )
 from shapely.geometry import Point
 
@@ -87,3 +88,24 @@ def test_listen_to_junction(model):
     assert _listen_to_junction_issues(model) == [
         "Control nodes must not listen to a Junction; invalid (control, Junction) node IDs: [(9, 6)]"
     ]
+
+
+def test_uncontrolled_control_state(model):
+    # Pump 5 gets an aanvoer and an afvoer state, without a DiscreteControl to switch between them
+    model.remove_node(5, remove_links=True)
+    model.pump.add(Node(5, Point(40, 0)), [pump.Static(control_state=["aanvoer", "afvoer"], flow_rate=[0.0, 1.0])])
+    model.link.add(model.junction[7], model.pump[5])
+    model.link.add(model.pump[5], model.level_boundary[8])
+    issues = _uncontrolled_control_state_issues(model)
+    assert issues == ["Pump nodes with several control states must be controlled; invalid node IDs: [5]"]
+
+    model.discrete_control.add(
+        Node(9, Point(40, 10)),
+        [
+            discrete_control.Variable(compound_variable_id=1, listen_node_id=[1], variable=["level"]),
+            discrete_control.Condition(compound_variable_id=1, condition_id=1, threshold_high=[0.5]),
+            discrete_control.Logic(truth_state=["F", "T"], control_state=["aanvoer", "afvoer"]),
+        ],
+    )
+    model.link.add(model.discrete_control[9], model.pump[5])
+    assert _uncontrolled_control_state_issues(model) == []

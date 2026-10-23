@@ -102,6 +102,25 @@ def _inert_control_state_issues(model: "Model") -> list[str]:
     return issues
 
 
+def _uncontrolled_control_state_issues(model: "Model") -> list[str]:
+    """Return issues with Pump and Outlet nodes that have several control states but no controller.
+
+    Without a controller such a node stays in its first control state, which is often the state that
+    switches it off.
+    """
+    link_df = model.link.df
+    controlled = set() if link_df is None else set(link_df.loc[link_df["link_type"] == "control", "to_node_id"])
+    issues = []
+    for node_type, grouped in _controlled_static_groups(model):
+        has_states = grouped["control_state"].nunique().gt(1)
+        node_ids = sorted(int(i) for i in has_states.index[has_states] if i not in controlled)
+        if node_ids:
+            issues.append(
+                f"{node_type} nodes with several control states must be controlled; invalid node IDs: {node_ids}"
+            )
+    return issues
+
+
 # Below these bounds a ManningResistance has effectively no resistance, which makes the simulation needlessly stiff
 MIN_MANNING_LENGTH = 10.0  # m
 MIN_MANNING_N = 0.01  # s/m^(1/3)
@@ -206,6 +225,7 @@ def validate_model(model: "Model", layout: bool = True) -> None:
         *_discrete_control_condition_issues(model),
         *_partially_missing_control_state_issues(model),
         *_inert_control_state_issues(model),
+        *_uncontrolled_control_state_issues(model),
         *_connector_through_junction_issues(model),
         *_manning_resistance_issues(model),
         *_listen_to_junction_issues(model),
