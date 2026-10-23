@@ -33,6 +33,7 @@ stages:
       - pipeline/aa_en_maas/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
@@ -62,6 +63,7 @@ stages:
       - pipeline/brabantse_delta/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
@@ -87,6 +89,7 @@ stages:
       - pipeline/de_dommel/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
@@ -110,6 +113,7 @@ stages:
       - pipeline/drents_overijsselse_delta/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
@@ -138,6 +142,7 @@ stages:
       - pipeline/hunze_en_aas/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
@@ -166,6 +171,7 @@ stages:
       - pipeline/limburg/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
@@ -189,6 +195,7 @@ stages:
       - src/ribasim_nl/ribasim_nl
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
@@ -212,6 +219,7 @@ stages:
       - pipeline/rijn_en_ijssel/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
@@ -237,6 +245,7 @@ stages:
       - pipeline/stichtse_rijnlanden/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
@@ -264,6 +273,7 @@ stages:
       - pipeline/vallei_en_veluwe/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
@@ -288,6 +298,7 @@ stages:
       - pipeline/vechtstromen/03_parameterize_model.py
       - data/Basisgegevens/LHM/4.3/input/LHM_data.tif
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
@@ -624,7 +635,7 @@ stages:
       - pipeline/delfland/02_profiles.py
       - data/Delfland/modellen/Delfland_feedback
       - data/Delfland/verwerkt/Crossings/delfland_crossings_v08.gpkg
-      - data/Delfland/verwerkt/BGT/bgt_Delfland_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/profielen/Delfland/Profielen_Delfland.gpkg
       - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
     outs:
@@ -640,7 +651,7 @@ stages:
       - pipeline/amstel_gooi_en_vecht/02_profiles.py
       - data/AmstelGooienVecht/modellen/AmstelGooienVecht_feedback
       - data/AmstelGooienVecht/verwerkt/Crossings/agv_crossings_v05.gpkg
-      - data/AmstelGooienVecht/verwerkt/BGT/bgt_AmstelGooienVecht_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/profielen/AGV/metingprofielpunt.gml
       - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
     outs:
@@ -656,7 +667,7 @@ stages:
       - pipeline/hollands_noorderkwartier/02_profiles.py
       - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_feedback
       - data/HollandsNoorderkwartier/verwerkt/Crossings/hhnk_crossings_v26.gpkg
-      - data/HollandsNoorderkwartier/verwerkt/BGT/bgt_HollandsNoorderkwartier_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/profielen/Profielen_NL.gpkg
       - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
     outs:
@@ -672,7 +683,7 @@ stages:
       - pipeline/hollandse_delta/02_profiles.py
       - data/HollandseDelta/modellen/HollandseDelta_feedback
       - data/HollandseDelta/verwerkt/Crossings/hd_crossings_v06.gpkg
-      - data/HollandseDelta/verwerkt/BGT/bgt_HollandseDelta_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/HollandseDelta/aangeleverd/Eerste_levering/watergangen
       - data/Basisgegevens/profielen/Profielen_NL.gpkg
       - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
@@ -689,7 +700,7 @@ stages:
       - pipeline/rijnland/02_profiles.py
       - data/Rijnland/modellen/Rijnland_feedback
       - data/Rijnland/verwerkt/Crossings/rijnland_crossings_v05.gpkg
-      - data/Rijnland/verwerkt/BGT/bgt_Rijnland_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Rijnland/aangeleverd/Na_levering/20260422_MerenPlassen/Rijnland_meren_plassen_diepte.geojson
       - data/Basisgegevens/profielen/Profielen_NL.gpkg
       - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
@@ -706,7 +717,7 @@ stages:
       - pipeline/rivierenland/02_profiles.py
       - data/Rivierenland/modellen/Rivierenland_feedback
       - data/Rivierenland/verwerkt/Crossings/wsrl_crossings_v06.gpkg
-      - data/Rivierenland/verwerkt/BGT/bgt_Rivierenland_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/profielen/Rivierenland/Profielen_Rivierenland.gpkg
       - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
     outs:
@@ -722,7 +733,7 @@ stages:
       - pipeline/scheldestromen/02_profiles.py
       - data/Scheldestromen/modellen/Scheldestromen_feedback
       - data/Scheldestromen/verwerkt/Crossings/scheldestromen_crossings_v02.gpkg
-      - data/Scheldestromen/verwerkt/BGT/bgt_Scheldestromen_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Scheldestromen/aangeleverd/Na_levering/Oplevering_Scheldestromen_20240328/Oplevering_20240328.gpkg
       - data/Basisgegevens/profielen/Scheldestromen/Profielen_Scheldestromen.gpkg
       - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
@@ -739,7 +750,7 @@ stages:
       - pipeline/schieland_en_de_krimpenerwaard/02_profiles.py
       - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_feedback
       - data/SchielandendeKrimpenerwaard/verwerkt/Crossings/hhsk_crossings_voor_profielen_met_OG_hydroobjecten.gpkg
-      - data/SchielandendeKrimpenerwaard/verwerkt/BGT/bgt_SchielandendeKrimpenerwaard_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/profielen/Profielen_NL.gpkg
       - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
     outs:
@@ -755,7 +766,7 @@ stages:
       - pipeline/wetterskip_fryslan/02_profiles.py
       - data/WetterskipFryslan/modellen/WetterskipFryslan_feedback
       - data/WetterskipFryslan/verwerkt/Crossings/wetterskip_crossings_v06.gpkg
-      - data/WetterskipFryslan/verwerkt/BGT/bgt_WetterskipFryslan_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/profielen/Profielen_NL.gpkg
       - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
     outs:
@@ -771,7 +782,7 @@ stages:
       - pipeline/zuiderzeeland/02_profiles.py
       - data/Zuiderzeeland/modellen/Zuiderzeeland_feedback
       - data/Zuiderzeeland/verwerkt/Crossings/zzl_crossings_v05.gpkg
-      - data/Zuiderzeeland/verwerkt/BGT/bgt_Zuiderzeeland_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/profielen/ZZL/Profielen_ZZL_DHYDRO.gpkg
       - data/Basisgegevens/Hydrotypen/vdGaast_water_depth.csv
     outs:
@@ -791,7 +802,7 @@ stages:
       - data/Delfland/modellen/Delfland_profiles
       - data/Delfland/verwerkt/profielen/network.gpkg
       - data/Delfland/verwerkt/Crossings/delfland_crossings_v08.gpkg
-      - data/Delfland/verwerkt/BGT/bgt_Delfland_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Delfland/modellen/Delfland_boezemmodel_2024_12_0
       - data/Delfland/verwerkt/Feedback Formulier/feedback_formulier_Delfland.xlsx
@@ -819,7 +830,7 @@ stages:
       - data/AmstelGooienVecht/modellen/AmstelGooienVecht_profiles
       - data/AmstelGooienVecht/verwerkt/profielen/network.gpkg
       - data/AmstelGooienVecht/verwerkt/Crossings/agv_crossings_v05.gpkg
-      - data/AmstelGooienVecht/verwerkt/BGT/bgt_AmstelGooienVecht_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/AmstelGooienVecht/modellen/AmstelGooienVecht_boezemmodel_2024_12_0
       - data/AmstelGooienVecht/verwerkt/Feedback Formulier/feedback_formulier_AmstelGooienVecht.xlsx
@@ -847,7 +858,7 @@ stages:
       - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_profiles
       - data/HollandsNoorderkwartier/verwerkt/profielen/network.gpkg
       - data/HollandsNoorderkwartier/verwerkt/Crossings/hhnk_crossings_v26.gpkg
-      - data/HollandsNoorderkwartier/verwerkt/BGT/bgt_HollandsNoorderkwartier_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_boezemmodel_2024_12_0
       - data/HollandsNoorderkwartier/verwerkt/Feedback Formulier/feedback_formulier_HollandsNoorderkwartier.xlsx
@@ -875,7 +886,7 @@ stages:
       - data/HollandseDelta/modellen/HollandseDelta_profiles
       - data/HollandseDelta/verwerkt/profielen/network.gpkg
       - data/HollandseDelta/verwerkt/Crossings/hd_crossings_v06.gpkg
-      - data/HollandseDelta/verwerkt/BGT/bgt_HollandseDelta_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/HollandseDelta/modellen/HollandseDelta_boezemmodel_2024_12_3
       - data/HollandseDelta/verwerkt/Feedback Formulier/feedback_formulier_HollandseDelta.xlsx
@@ -903,7 +914,7 @@ stages:
       - data/Rijnland/modellen/Rijnland_profiles
       - data/Rijnland/verwerkt/profielen/network.gpkg
       - data/Rijnland/verwerkt/Crossings/rijnland_crossings_v05.gpkg
-      - data/Rijnland/verwerkt/BGT/bgt_Rijnland_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Rijnland/modellen/Rijnland_boezemmodel_2024_12_3
       - data/Rijnland/verwerkt/Feedback Formulier/feedback_formulier_Rijnland.xlsx
@@ -931,7 +942,7 @@ stages:
       - data/Rivierenland/modellen/Rivierenland_profiles
       - data/Rivierenland/verwerkt/profielen/network.gpkg
       - data/Rivierenland/verwerkt/Crossings/wsrl_crossings_v06.gpkg
-      - data/Rivierenland/verwerkt/BGT/bgt_Rivierenland_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Rivierenland/modellen/Rivierenland_boezemmodel_2024_12_0
       - data/Rivierenland/verwerkt/Feedback Formulier/feedback_formulier_Rivierenland.xlsx
@@ -959,7 +970,7 @@ stages:
       - data/Scheldestromen/modellen/Scheldestromen_profiles
       - data/Scheldestromen/verwerkt/profielen/network.gpkg
       - data/Scheldestromen/verwerkt/Crossings/scheldestromen_crossings_v02.gpkg
-      - data/Scheldestromen/verwerkt/BGT/bgt_Scheldestromen_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Scheldestromen/modellen/Scheldestromen_boezemmodel_2024_12_0
       - data/Scheldestromen/verwerkt/Feedback Formulier/feedback_formulier_Scheldestromen.xlsx
@@ -987,7 +998,7 @@ stages:
       - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_profiles
       - data/SchielandendeKrimpenerwaard/verwerkt/profielen/network.gpkg
       - data/SchielandendeKrimpenerwaard/verwerkt/Crossings/hhsk_crossings_voor_profielen_met_OG_hydroobjecten.gpkg
-      - data/SchielandendeKrimpenerwaard/verwerkt/BGT/bgt_SchielandendeKrimpenerwaard_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_boezemmodel_2024_12_1
       - data/SchielandendeKrimpenerwaard/verwerkt/Feedback Formulier/feedback_formulier_SchielandendeKrimpenerwaard.xlsx
@@ -1015,7 +1026,7 @@ stages:
       - data/WetterskipFryslan/modellen/WetterskipFryslan_profiles
       - data/WetterskipFryslan/verwerkt/profielen/network.gpkg
       - data/WetterskipFryslan/verwerkt/Crossings/wetterskip_crossings_v06.gpkg
-      - data/WetterskipFryslan/verwerkt/BGT/bgt_WetterskipFryslan_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/WetterskipFryslan/modellen/WetterskipFryslan_boezemmodel_2025_5_1
       - data/WetterskipFryslan/verwerkt/Feedback Formulier/feedback_formulier_WetterskipFryslan.xlsx
@@ -1043,7 +1054,7 @@ stages:
       - data/Zuiderzeeland/modellen/Zuiderzeeland_profiles
       - data/Zuiderzeeland/verwerkt/profielen/network.gpkg
       - data/Zuiderzeeland/verwerkt/Crossings/zzl_crossings_v05.gpkg
-      - data/Zuiderzeeland/verwerkt/BGT/bgt_Zuiderzeeland_water.gpkg
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Zuiderzeeland/modellen/Zuiderzeeland_boezemmodel_2024_12_0
       - data/Zuiderzeeland/verwerkt/Feedback Formulier/feedback_formulier_Zuiderzeeland.xlsx

@@ -22,7 +22,7 @@ Prior to generating the profiles, the data is preprocessed:
     generating `LINESTRING Z`-objects of measured cross-sections,
     removing duplicate hydro-objects,
     repairing hydro-objects along HyDAMO-standards,
-    downloading BGT-data from their web-API.
+    reading the current BGT water surfaces of the area from the national `data/Basisgegevens/BGT/bgt_water.parquet`, see `ribasim_nl.bgt_water`.
 
 Subsequently, the following steps are executed on a per-basin basis:
 
