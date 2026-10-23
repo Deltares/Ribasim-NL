@@ -46,6 +46,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
 pump_node = ribasim_model.pump.add(Node(geometry=Point(122475, 491317)), [pump.Static(flow_rate=[11.67])])
 ribasim_model.link.add(ribasim_model.basin[2], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
+assert ribasim_model.node.df is not None
 ribasim_model.node.df.loc[level_boundary_node.node_id, "meta_node_id"] = level_boundary_node.node_id
 ribasim_model.node.df.loc[pump_node.node_id, "meta_node_id"] = pump_node.node_id
 
@@ -59,6 +60,7 @@ ribasim_model.link.add(manning_node, ribasim_model.basin[2757])
 ribasim_model.node.df.loc[manning_node.node_id, "meta_node_id"] = manning_node.node_id
 
 # reset pump capacity for each pump
+assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df["flow_rate"] = 10 / 60  # 10m3/min
 
 ribasim_model = set_boundary_conditions(ribasim_model, paths, level_boundary_levels=(-0.42, -0.4))
@@ -74,6 +76,7 @@ basin_aanvoer_off = (
 
 # add control, based on the meta_categorie
 keep_model_supply_basins(processor, ribasim_model)
+assert ribasim_model.basin.node is not None and ribasim_model.basin.node.df is not None
 basin_ids = set(ribasim_model.basin.node.df.index)
 basin_aanvoer_off = tuple(n for n in basin_aanvoer_off if n in basin_ids)
 
@@ -197,6 +200,7 @@ add_controllers(ribasim_model, from_to_node_function_table, remove_duplicates=Tr
 assign_pump_and_basin_names(ribasim_model, paths, param_name="Noorderkwartier.gpkg")
 
 # presumably wrong conversion of flow capacity in the data
+assert ribasim_model.pump.static.df is not None
 set_flow_rate(ribasim_model.pump.static.df, [452], 0.4)
 set_flow_rate(ribasim_model.pump.static.df, [895, 1144], 1.17)
 
@@ -211,6 +215,7 @@ ribasim_model.pump.static.df.loc[
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
+assert ribasim_model.node.df is not None
 ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
 
 # lower the difference in waterlevel for each manning node, except those of storing basins

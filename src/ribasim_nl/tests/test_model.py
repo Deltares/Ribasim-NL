@@ -1,7 +1,7 @@
 import geopandas as gpd
 import pytest
 from ribasim import Node
-from ribasim.nodes import basin, level_boundary, outlet
+from ribasim.nodes import basin, flow_boundary, level_boundary, outlet
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 
 from ribasim_nl import Model
@@ -93,6 +93,22 @@ def test_add_links(model):
     assert new_links.to_node_id.to_list() == [node.node_id, 3]
     assert (new_links.link_type == "flow").all()
     assert new_links.geometry.iloc[0].equals(LineString([(0, 0), (20, 10)]))
+
+
+def test_replace_flow_boundaries_by_level_boundaries(model):
+    model.flow_boundary.add(Node(8, Point(-30, 0), name="inflow"), [flow_boundary.Static(flow_rate=[1.0])])
+    model.link.add(model.flow_boundary[8], model.basin[1])
+
+    model.replace_flow_boundaries_by_level_boundaries()
+
+    assert model.flow_boundary.node.df.empty
+    assert model.get_node_type(8) == "LevelBoundary"
+    # an Outlet 10 m downstream of the boundary, on the former link to Basin 1
+    (outlet_id,) = model.link.df.loc[model.link.df.from_node_id == 8, "to_node_id"]
+    assert model.get_node_type(outlet_id) == "Outlet"
+    assert model.node.df.at[outlet_id, "name"] == "inflow"
+    assert model.node.df.at[outlet_id, "geometry"].equals(Point(-20, 0))
+    assert model.link.df.loc[model.link.df.from_node_id == outlet_id, "to_node_id"].to_list() == [1]
 
 
 def test_merge_basins_not_neighbors(model):

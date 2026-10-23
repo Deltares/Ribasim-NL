@@ -1,5 +1,7 @@
 """Parameterisation of water board: Fryslan."""
 
+from typing import Literal, TypedDict
+
 import ribasim_nl.ribasim_parametrization as ribasim_param
 from ribasim_nl.control import (
     set_continuous_level_control,
@@ -42,6 +44,7 @@ ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
 # hard-coded coordinates still match the original node locations (used much further below).
 _drain_points = [Point(206421, 592530), Point(206360, 592679)]
 to_drain_node_ids = []
+assert ribasim_model.node.df is not None
 for _drain_point in _drain_points:
     _drain_candidates = ribasim_model.node.df.loc[ribasim_model.node.df.geometry.distance(_drain_point) < 1]
     if len(_drain_candidates) != 1:
@@ -63,6 +66,7 @@ for link_id in (4907, 918, 4912, 1120):  # LevelBoundary -> Outlet -> Basin 554
     ribasim_model.reverse_link(link_id=link_id)
 
 # Read outlet_aanvoer_on BEFORE set_boundary_conditions, of which find_upstream_downstream_target_levels strips meta columns
+assert ribasim_model.outlet.static.df is not None
 outlet_aanvoer_on = tuple(
     ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["meta_func_aanvoer"] == 1, "node_id"]
 )
@@ -148,12 +152,15 @@ add_controllers(ribasim_model, from_to_node_function_table, remove_duplicates=Tr
 
 assign_pump_and_basin_names(ribasim_model, paths)
 
+assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 2700, "max_flow_rate"] = 172 / 60
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 3891, "max_flow_rate"] = 7340 / 60
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
+assert ribasim_model.manning_resistance.node is not None and ribasim_model.manning_resistance.node.df is not None
 mr_null_geom = ribasim_model.manning_resistance.node.df[ribasim_model.manning_resistance.node.df.geometry.isna()].index
+assert ribasim_model.node.df is not None
 ribasim_model.node.df = ribasim_model.node.df.drop(mr_null_geom)
 
 ribasim_model = complete_parametrization(
@@ -167,6 +174,7 @@ ribasim_model = complete_parametrization(
     fill_na_authority="Noordzee",
 )
 
+assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 3863, "meta_known_flow_rate"] = (
     False  # unknown capacity, set temp value
 )
@@ -177,7 +185,9 @@ set_design_capacities(ribasim_model, from_to_node_function_table)
 
 # the North Sea and Wadden Sea boundaries stay in the LHM, so give them mean sea level instead of the
 # hypothetical drainage and supply levels, see https://github.com/Deltares/Ribasim-NL/issues/660
+assert ribasim_model.level_boundary.node is not None and ribasim_model.level_boundary.node.df is not None
 lb_node_df = ribasim_model.level_boundary.node.df
+assert lb_node_df is not None
 ribasim_param.set_static_level_boundaries(
     ribasim_model, lb_node_df.index[lb_node_df["meta_couple_authority"] == "Noordzee"], level=0.0
 )
@@ -185,15 +195,18 @@ ribasim_param.set_static_level_boundaries(
 # Appelscha uitlaten: no supply, and drain at most 1 m3/s, see #831. They fill the Basins downstream to 9.38 m NAP,
 # above their streefpeil of 9.35 m NAP, so these drain themselves, see #879
 outlet_static_df = ribasim_model.outlet.static.df
+assert outlet_static_df is not None
 for control_state, max_flow_rate, max_downstream_level in (("aanvoer", 0.0, None), ("afvoer", 1.0, 9.38)):
     mask = outlet_static_df.node_id.isin(APPELSCHA_OUTLETS) & (outlet_static_df.control_state == control_state)
     assert mask.sum() == len(APPELSCHA_OUTLETS), f"Expected one {control_state} row per Appelscha outlet"
     outlet_static_df.loc[mask, ["flow_rate", "max_flow_rate"]] = max_flow_rate
     if max_downstream_level is not None:
         outlet_static_df.loc[mask, "max_downstream_level"] = max_downstream_level
+assert ribasim_model.link.df is not None
 control_link_df = ribasim_model.link.df[ribasim_model.link.df.link_type == "control"]
 appelscha_control_ids = control_link_df.loc[control_link_df.to_node_id.isin(APPELSCHA_OUTLETS), "from_node_id"]
 assert len(appelscha_control_ids) == len(APPELSCHA_OUTLETS), "Expected one DiscreteControl per Appelscha outlet"
+assert ribasim_model.node.df is not None
 ribasim_model.node.df.loc[appelscha_control_ids, "name"] = "uitlaat: 9.40/9.38 [m+NAP]"
 
 # Boezem in- and outlets are controlled on the level of the Pikmeer, deeper in the boezem than the Basins next to them,
@@ -202,11 +215,21 @@ ribasim_model.node.df.loc[appelscha_control_ids, "name"] = "uitlaat: 9.40/9.38 [
 # streefpeil of -0.52 m NAP, with which inlets do not overfill them and drains do not empty them.
 # Makkum, Workum and Hindelopen keep their DiscreteControl.
 PIKMEER_BASIN = 7669
-INLET_LIMIT = {"max_downstream_level": -0.45}
-DRAIN_LIMIT = {"min_upstream_level": -0.60}
-LAUWERSMEER_LIMIT = {"max_downstream_level": -0.60}
+
+
+class LevelControlOptions(TypedDict, total=False):
+    """The keyword arguments of `set_continuous_level_control` used here."""
+
+    node_type: Literal["Outlet", "Pump"]
+    min_upstream_level: float
+    max_downstream_level: float
+
+
+INLET_LIMIT: LevelControlOptions = {"max_downstream_level": -0.45}
+DRAIN_LIMIT: LevelControlOptions = {"min_upstream_level": -0.60}
+LAUWERSMEER_LIMIT: LevelControlOptions = {"max_downstream_level": -0.60}
 # (node_id, name, [(level [m+NAP], flow_rate [m3/s]), ...], keyword arguments)
-BOEZEM_CONTROLS = (
+BOEZEM_CONTROLS: tuple[tuple[int, str, list[tuple[float, float]], LevelControlOptions], ...] = (
     (3892, "inlaat: Lemmer/Teroelsterkolk", [(-1.0, 46), (-0.55, 46), (-0.53, 23), (-0.52, 0)], INLET_LIMIT),
     (3023, "inlaat: Tacozijl", [(-1.0, 23), (-0.56, 23), (-0.54, 11), (-0.53, 0)], INLET_LIMIT),
     (

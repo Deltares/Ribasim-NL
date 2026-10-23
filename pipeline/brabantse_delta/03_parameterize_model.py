@@ -114,6 +114,7 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 
 protected_basin_node_ids = apply_basin_level_overrides(model=model, basin_level_overrides=basin_level_overrides)
 
+assert model.manning_resistance.static.df is not None
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 sync_parameterized_manning_basin_levels(
     model=model,
@@ -133,6 +134,7 @@ sync_min_upstream_levels_with_profile_bottoms(model=model)
 # Write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
 add_check_basin_level(model=model)
+assert model.basin.area.df is not None
 model.basin.area.df.loc[:, "meta_area"] = model.basin.area.df.area
 model.write(ribasim_toml)
 

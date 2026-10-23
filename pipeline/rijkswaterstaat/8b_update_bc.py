@@ -2,6 +2,8 @@
 from pathlib import Path
 
 import pandas as pd
+from pandera.typing import DataFrame
+from ribasim.schemas import FlowBoundaryTimeSchema, LevelBoundaryTimeSchema
 from ribasim_nl.layout import tidy_layout
 from ribasim_nl.observations import add_observations
 
@@ -68,6 +70,7 @@ monsin_series = read_monsin(debieten_xlsx, model.starttime, model.endtime)
 # %% set FlowBoundary / Time
 
 # get node ids
+assert model.flow_boundary.node is not None and model.flow_boundary.node.df is not None
 lobith_node_id = (
     model.flow_boundary.node.df.reset_index(drop=False).set_index("meta_meetlocatie_code").at["LOBH", "node_id"]
 )
@@ -85,15 +88,17 @@ monsin_df.loc[:, "node_id"] = monsin_node_id
 # TODO fill the gaps before so we don't need dropna here
 # the resample introduces missing from gaps in the timeseries
 bc_time_df = pd.concat([lobith_df, monsin_df]).dropna(subset=["flow_rate"])
-model.flow_boundary.time = bc_time_df
+model.flow_boundary.time.df = DataFrame[FlowBoundaryTimeSchema](bc_time_df)
 
 # remove fixed values from static
+assert model.flow_boundary.static.df is not None
 model.flow_boundary.static.df = model.flow_boundary.static.df[
     ~model.flow_boundary.static.df.node_id.isin([lobith_node_id, monsin_node_id])
 ]
 
 # %% update LevelBoundary / Time
 
+assert model.level_boundary.node is not None and model.level_boundary.node.df is not None
 node_ids = model.level_boundary.node.df[
     model.level_boundary.node.df["meta_meetlocatie_code"].isin(["KOBU", "OEBU"])
 ].index.to_numpy()
@@ -154,9 +159,11 @@ level_df = pd.concat(
     [pd.concat([level_df, pd.DataFrame({"node_id": [node_id] * len(level_df)})], axis=1) for node_id in node_ids],
     ignore_index=True,
 )
-model.level_boundary.time.df = level_df
+model.level_boundary.time.df = DataFrame[LevelBoundaryTimeSchema](level_df)
 
 # merge RWZI model, which requires meta_waterbeheerder (the hws model is fully Rijkswaterstaat)
+assert model.node.df is not None
+assert model.basin.node is not None and model.basin.node.df is not None
 model.node.df.loc[model.basin.node.df.index, "meta_waterbeheerder"] = "Rijkswaterstaat"
 model = merge_rwzi_model(
     model,

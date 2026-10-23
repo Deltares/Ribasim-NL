@@ -1,13 +1,14 @@
 # %%
 import logging
 import math
-from collections.abc import Sequence
+from collections.abc import Collection, Mapping, Sequence
 from datetime import datetime
 from typing import Literal, cast
 
 import geopandas as gpd
 import pandas as pd
 from ribasim import Node, nodes
+from ribasim.input_base import TableModel
 from ribasim.nodes import continuous_control, discrete_control, flow_demand, outlet, pump
 from shapely.geometry import MultiPolygon, Point, Polygon
 from shapely.ops import unary_union
@@ -322,7 +323,7 @@ def discrete_control_tables_single_basin(
     threshold_high: float,
     threshold_low: float | None = None,
     level_threshold_range: float = DEFAULT_LEVEL_THRESHOLD_RANGE,
-) -> list[object]:
+) -> list[TableModel]:
     """Create discrete_control tables for a single-basin (upstream or downstream) control-node: drain and supply.
 
     Parameters
@@ -374,7 +375,7 @@ def discrete_control_tables_single_basin(
 
 
 def add_and_connect_discrete_control_node(
-    model: Model, node_id: int, offset: float, angle: int, tables: list[object], **kwargs
+    model: Model, node_id: int, offset: float, angle: int, tables: Sequence[TableModel], **kwargs
 ) -> None:
     """Add and connect a DiscreteControl Node to an existing node.
 
@@ -498,7 +499,7 @@ def add_control_functions_to_connector_nodes(
     drain_nodes: list[int],
     supply_nodes: list[int],
     flow_control_nodes: list[int],
-    flushing_nodes: dict[int, float | dict[str, float]],
+    flushing_nodes: Mapping[int, float | Mapping[str, float]],
     is_supply_node_column: str = "meta_supply_node",
 ) -> gpd.GeoDataFrame:
     """Add control functions `drain`, `supply`, `flusing` or `flow_control` to nodes
@@ -526,7 +527,7 @@ def add_control_functions_to_connector_nodes(
         Table with columns `node_id`, `from_node_id`, `to_node_id`, `function` and `demand` that can be used in `add_controllers_to_connector_nodes` function
     """
 
-    def parse_flushing_values(flushing_nodes: dict[int, float | dict[str, float]]):
+    def parse_flushing_values(flushing_nodes: Mapping[int, float | Mapping[str, float]]):
         def value_to_list(value):
             if isinstance(value, (int, float)):
                 return [value, value, value]
@@ -596,7 +597,7 @@ def add_control_functions_to_connector_nodes(
     supply_nodes_df = selected_nodes_df.loc[supply_nodes]
     drain_nodes = sorted(
         [
-            i.Index
+            cast(int, i.Index)
             for i in selected_nodes_df.loc[candidates].itertuples()
             if ((supply_nodes_df.from_node_id == i.to_node_id) & (supply_nodes_df.to_node_id == i.from_node_id)).any()
         ]
@@ -672,8 +673,8 @@ def print_node_list_diff(label: str, before_nodes: list[int], after_nodes: list[
 def get_control_nodes_position_from_supply_area(
     model: Model,
     polygon: Polygon | MultiPolygon,
-    exclude_nodes: list[int] | None = None,
-    control_node_types: list[Literal["Outlet", "Pump"]] | None = None,
+    exclude_nodes: Collection[int] | None = None,
+    control_node_types: Sequence[str] | None = None,
     ignore_intersecting_links: list[int] | None = None,
 ) -> gpd.GeoDataFrame:
     """Get control nodes with nodes position relative to a supply area defined by a polygon.
@@ -866,10 +867,10 @@ def add_controllers_to_drain_nodes(
     node_types = _read_node_table(model=model)["node_type"]
 
     for connector_node in drain_nodes_df.itertuples():
-        node_id = connector_node.Index
+        node_id = cast(int, connector_node.Index)
         node_type = str(connector_node.node_type)
         # get targed_level and define min_upstream_level; [target_level, target_level]
-        us_node_id = connector_node.from_node_id
+        us_node_id = cast(int, connector_node.from_node_id)
         us_target_level = _target_level(
             model=model,
             node_types=node_types,
@@ -886,7 +887,6 @@ def add_controllers_to_drain_nodes(
 
         # update static table
         control_state = ["aanvoer", "afvoer"]
-        node_id_int = cast(int, node_id)
         static_df = model.get_component(node_type).static.df.set_index("node_id").loc[[node_id]]
         original_max_flow_rate = static_df["flow_rate"].max()
         if "max_flow_rate" in static_df.columns and pd.notna(static_df["max_flow_rate"].max()):
@@ -900,7 +900,7 @@ def add_controllers_to_drain_nodes(
         if afvoer_flow_rate_source is None:
             afvoer_flow_rate = max_flow_capacity
         else:
-            afvoer_flow_rate = _node_flow_rate(afvoer_flow_rate_source, node_id=node_id_int, default=max_flow_capacity)
+            afvoer_flow_rate = _node_flow_rate(afvoer_flow_rate_source, node_id=node_id, default=max_flow_capacity)
         if afvoer_max_flow_rate_source is None:
             afvoer_max_flow_rate = original_max_flow_rate
         elif node_type == "Pump" and not isinstance(afvoer_max_flow_rate_source, dict):
@@ -908,13 +908,13 @@ def add_controllers_to_drain_nodes(
             afvoer_max_flow_rate = original_max_flow_rate
         else:
             afvoer_max_flow_rate = _node_max_flow_rate(
-                afvoer_max_flow_rate_source, node_id=node_id_int, default=original_max_flow_rate
+                afvoer_max_flow_rate_source, node_id=node_id, default=original_max_flow_rate
             )
         if not isinstance(afvoer_flow_rate_source, dict) and isinstance(afvoer_max_flow_rate_source, dict):
             afvoer_flow_rate = max(afvoer_flow_rate, afvoer_max_flow_rate)
         max_downstream_level = [
             math.inf,
-            _maalstop_level(model, node_types, node_type, connector_node.to_node_id, target_level_column),
+            _maalstop_level(model, node_types, node_type, cast(int, connector_node.to_node_id), target_level_column),
         ]
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
         model.update_node(
@@ -1000,10 +1000,10 @@ def add_controllers_to_supply_nodes(
 
     node_types = _read_node_table(model=model)["node_type"]
     for connector_node in supply_nodes_df.itertuples():
-        node_id = connector_node.Index
+        node_id = cast(int, connector_node.Index)
         node_type = str(connector_node.node_type)
         # get downstream target level, cannot be None (!)
-        ds_node_id = connector_node.to_node_id
+        ds_node_id = cast(int, connector_node.to_node_id)
         ds_target_level = _target_level(
             model=model,
             node_types=node_types,
@@ -1015,7 +1015,7 @@ def add_controllers_to_supply_nodes(
         max_downstream_level = [ds_target_level, math.inf]
 
         # get upstream target_level and define min_upstream_level;
-        us_node_id = connector_node.from_node_id
+        us_node_id = cast(int, connector_node.from_node_id)
         us_target_level = _target_level(
             model=model,
             node_types=node_types,
@@ -1035,10 +1035,9 @@ def add_controllers_to_supply_nodes(
         )
 
         # update static table
-        node_id = connector_node.Index
+        node_id = cast(int, connector_node.Index)
         node_type = str(connector_node.node_type)
         control_state = ["aanvoer", "afvoer"]
-        node_id_int = cast(int, node_id)
         static_df = model.get_component(node_type).static.df.set_index("node_id").loc[[node_id]]
         original_max_flow_rate = static_df["flow_rate"].max()
         if "max_flow_rate" in static_df.columns and pd.notna(static_df["max_flow_rate"].max()):
@@ -1049,7 +1048,7 @@ def add_controllers_to_supply_nodes(
 
         aanvoer_flow_rate_source = flow_rate_aanvoer if flow_rate_aanvoer is not None else supply_flow_rate
         aanvoer_max_flow_rate_source = max_flow_rate_aanvoer if max_flow_rate_aanvoer is not None else supply_flow_rate
-        aanvoer_flow_rate = _node_flow_rate(aanvoer_flow_rate_source, node_id=node_id_int)
+        aanvoer_flow_rate = _node_flow_rate(aanvoer_flow_rate_source, node_id=node_id)
         if aanvoer_max_flow_rate_source is None:
             aanvoer_max_flow_rate = original_max_flow_rate
         elif node_type == "Pump" and not isinstance(aanvoer_max_flow_rate_source, dict):
@@ -1057,7 +1056,7 @@ def add_controllers_to_supply_nodes(
             aanvoer_max_flow_rate = original_max_flow_rate
         else:
             aanvoer_max_flow_rate = _node_max_flow_rate(
-                aanvoer_max_flow_rate_source, node_id=node_id_int, default=original_max_flow_rate
+                aanvoer_max_flow_rate_source, node_id=node_id, default=original_max_flow_rate
             )
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
         model.update_node(
@@ -1169,10 +1168,10 @@ def add_controllers_to_flow_control_nodes(
 
     node_types = _read_node_table(model=model)["node_type"]
     for connector_node in flow_control_nodes_df.itertuples():
-        node_id = connector_node.Index
+        node_id = cast(int, connector_node.Index)
         node_type = str(connector_node.node_type)
         # get downstream target level, cannot be None (!)
-        ds_node_id = connector_node.to_node_id
+        ds_node_id = cast(int, connector_node.to_node_id)
         ds_target_level = _target_level(
             model=model,
             node_types=node_types,
@@ -1187,7 +1186,7 @@ def add_controllers_to_flow_control_nodes(
 
         # get upstream target_level and define min_upstream_level;
         # None if LevelBoundary, else [us_target_level + target_level_offset_supply, us_target_level]
-        us_node_id = connector_node.from_node_id
+        us_node_id = cast(int, connector_node.from_node_id)
         us_target_level = _target_level(
             model=model,
             node_types=node_types,
@@ -1204,7 +1203,6 @@ def add_controllers_to_flow_control_nodes(
 
         # update static table
         control_state = ["aanvoer", "afvoer"]
-        node_id_int = cast(int, node_id)
         static_df = model.get_component(node_type).static.df.set_index("node_id").loc[[node_id]]
         original_max_flow_rate = static_df["flow_rate"].max()
         if "max_flow_rate" in static_df.columns and pd.notna(static_df["max_flow_rate"].max()):
@@ -1217,7 +1215,7 @@ def add_controllers_to_flow_control_nodes(
         aanvoer_max_flow_rate_source = max_flow_rate_aanvoer if max_flow_rate_aanvoer is not None else supply_flow_rate
         afvoer_flow_rate_source = flow_rate_afvoer if flow_rate_afvoer is not None else drain_flow_rate
         afvoer_max_flow_rate_source = max_flow_rate_afvoer if max_flow_rate_afvoer is not None else drain_flow_rate
-        aanvoer_flow_rate = _node_flow_rate(aanvoer_flow_rate_source, node_id=node_id_int)
+        aanvoer_flow_rate = _node_flow_rate(aanvoer_flow_rate_source, node_id=node_id)
         if aanvoer_max_flow_rate_source is None:
             aanvoer_max_flow_rate = original_max_flow_rate
         elif node_type == "Pump" and not isinstance(aanvoer_max_flow_rate_source, dict):
@@ -1225,12 +1223,12 @@ def add_controllers_to_flow_control_nodes(
             aanvoer_max_flow_rate = original_max_flow_rate
         else:
             aanvoer_max_flow_rate = _node_max_flow_rate(
-                aanvoer_max_flow_rate_source, node_id=node_id_int, default=original_max_flow_rate
+                aanvoer_max_flow_rate_source, node_id=node_id, default=original_max_flow_rate
             )
         if afvoer_flow_rate_source is None:
             afvoer_flow_rate = 20
         else:
-            afvoer_flow_rate = _node_flow_rate(afvoer_flow_rate_source, node_id=node_id_int, default=100)
+            afvoer_flow_rate = _node_flow_rate(afvoer_flow_rate_source, node_id=node_id, default=100)
         if afvoer_max_flow_rate_source is None:
             afvoer_max_flow_rate = original_max_flow_rate
         elif node_type == "Pump" and not isinstance(afvoer_max_flow_rate_source, dict):
@@ -1238,7 +1236,7 @@ def add_controllers_to_flow_control_nodes(
             afvoer_max_flow_rate = original_max_flow_rate
         else:
             afvoer_max_flow_rate = _node_max_flow_rate(
-                afvoer_max_flow_rate_source, node_id=node_id_int, default=original_max_flow_rate
+                afvoer_max_flow_rate_source, node_id=node_id, default=original_max_flow_rate
             )
         if not isinstance(afvoer_flow_rate_source, dict) and isinstance(afvoer_max_flow_rate_source, dict):
             afvoer_flow_rate = max(afvoer_flow_rate, afvoer_max_flow_rate)
@@ -1380,12 +1378,12 @@ def add_controllers_and_demand_to_flushing_nodes(
     ]
 
     for connector_node in flushing_nodes_df.itertuples():
-        node_id = connector_node.Index
+        node_id = cast(int, connector_node.Index)
         node_type = str(connector_node.node_type)
         demand_flow_rate_summer = float(cast(float, connector_node.demand_flow_rate_summer))
         demand_flow_rate_winter = float(cast(float, connector_node.demand_flow_rate_winter))
         # get upstream target_level and define min_upstream_level;
-        us_node_id = connector_node.from_node_id
+        us_node_id = cast(int, connector_node.from_node_id)
         us_target_level = _target_level(
             model=model,
             node_id=us_node_id,
@@ -1423,7 +1421,9 @@ def add_controllers_and_demand_to_flushing_nodes(
                 static_table(
                     min_upstream_level=min_upstream_level,
                     max_downstream_level=[
-                        _maalstop_level(model, node_types, node_type, connector_node.to_node_id, target_level_column)
+                        _maalstop_level(
+                            model, node_types, node_type, cast(int, connector_node.to_node_id), target_level_column
+                        )
                     ]
                     * 2,
                     flow_rate=[0, 20],
@@ -1505,7 +1505,7 @@ def add_controllers_and_demand_to_flushing_nodes(
             demand_node_name = f"{demand_name_prefix} {connector_node.demand_flow_rate_summer} [m3/s]"
             demand_tables = [
                 flow_demand.Static(
-                    demand=[float(connector_node.demand_flow_rate_summer)],
+                    demand=[float(cast(float, connector_node.demand_flow_rate_summer))],
                     demand_priority=[1],
                 )
             ]
@@ -1658,12 +1658,12 @@ def add_controllers_to_supply_area(
     polygon: Polygon | MultiPolygon,
     ignore_intersecting_links: list[int],
     drain_nodes: list[int],
-    flushing_nodes: dict[int, float | dict[str, float]],
+    flushing_nodes: Mapping[int, float | Mapping[str, float]],
     supply_nodes: list[int],
     level_difference_threshold: float = 0.02,
     flow_control_nodes: list[int] | None = None,
-    exclude_nodes: list[int] | None = None,
-    control_node_types: list[Literal["Pump", "Outlet"]] | None = None,
+    exclude_nodes: Collection[int] | None = None,
+    control_node_types: Sequence[str] | None = None,
     is_supply_node_column: str = "meta_supply_node",
     target_level_column: str = "meta_streefpeil",
     add_supply_nodes: bool = True,
@@ -1796,12 +1796,12 @@ def add_controllers_to_supply_area(
 def add_controllers_to_uncontrolled_connector_nodes(
     model: "Model",
     us_threshold_offset: float = 0.02,
-    exclude_nodes: list[int] | None = None,
+    exclude_nodes: Collection[int] | None = None,
     supply_nodes: list[int] | None = None,
     drain_nodes: list[int] | None = None,
     flow_control_nodes: list[int] | None = None,
-    flushing_nodes: dict[int, float] | None = None,
-    control_node_types: list[Literal["Pump", "Outlet"]] | None = None,
+    flushing_nodes: Mapping[int, float] | None = None,
+    control_node_types: Sequence[str] | None = None,
     us_target_level_offset_supply: float = -0.04,
     level_difference_threshold: float = 0.02,
     flow_rate_aanvoer: float | dict[int, float] | None = None,

@@ -1,14 +1,15 @@
 # %%
+from typing import cast
 
 import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet
-from ribasim_nl.geometry import split_basin_multi_polygon, split_line
+from ribasim_nl.geometry import split_basin_multi_polygon
 from ribasim_nl.gkw import get_data_from_gkw
-from ribasim_nl.model import default_tables
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
+from shapely.geometry import LineString, MultiPolygon, Point
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -62,6 +63,7 @@ outlet_data = outlet.Static(flow_rate=[5.0])
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2393424844
 # Verwijderen duplicate links
 
+assert model.link.df is not None
 model.link.df.drop_duplicates(inplace=True)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2393458802
@@ -74,7 +76,7 @@ basin_nodes_df = network_validator.node_invalid_connectivity()
 
 for row in basin_nodes_df.itertuples():
     # maak basin-node
-    basin_node = model.basin.add(Node(geometry=row.geometry), tables=basin_data)
+    basin_node = model.basin.add(Node(geometry=cast(Point, row.geometry)), tables=basin_data)
 
     # update link_table
     model.link.df.loc[basin_links_df[basin_links_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
@@ -106,7 +108,7 @@ model.remove_links([2841, 2842, 2843, 2846])
 # duiker 286309 voegen we toe
 kdu = duikersifonhevel_gdf.loc[9063]
 outlet_node = model.outlet.add(
-    Node(geometry=kdu.geometry.interpolate(0.5, normalized=True), name=f"duikersifonhevel.{kdu.objectid}"),
+    Node(geometry=cast(Point, kdu.geometry.interpolate(0.5, normalized=True)), name=f"duikersifonhevel.{kdu.objectid}"),
     tables=[outlet_data],
 )
 
@@ -124,7 +126,7 @@ for node_id in [81, 839]:
     model.remove_node(node_id, remove_links=True)
 
 model.update_node(83, "Basin", data=basin_data)
-model.move_node(83, hydroobject_gdf.at[21045, "geometry"].boundary.geoms[0])
+model.move_node(83, cast(LineString, hydroobject_gdf.at[21045, "geometry"]).boundary.geoms[0])
 model.reverse_link(link_id=3013)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2399104407
@@ -132,9 +134,11 @@ model.reverse_link(link_id=3013)
 # Deelstroomgebied Frysland
 
 # Nieuwe Kanaal / Tussen Linde voorzien van basin nabij gemaal.20 (node_id 701)
-basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[19671, "geometry"].boundary.geoms[1]), tables=basin_data)
+basin_node = model.basin.add(
+    Node(geometry=cast(LineString, hydroobject_gdf.at[19671, "geometry"]).boundary.geoms[1]), tables=basin_data
+)
 outlet_node = model.outlet.add(
-    Node(geometry=hydroobject_gdf.at[19671, "geometry"].interpolate(0.5, normalized=True)),
+    Node(geometry=cast(LineString, hydroobject_gdf.at[19671, "geometry"]).interpolate(0.5, normalized=True)),
     tables=[outlet_data],
 )
 
@@ -156,7 +160,8 @@ model.link.add(model.pump[701], basin_node)
 # Aansluiten NW boezem op Fryslan
 
 # basin /area 1681 op te knippen nabij basin 1717 (rode lijn)
-model.split_basin(geometry=split_line_gdf.at[14, "geometry"])
+model.split_basin(geometry=cast(LineString, split_line_gdf.at[14, "geometry"]))
+assert model.basin.area.df is not None
 model.basin.area.df = model.basin.area.df[model.basin.area.df.node_id != 1717]
 
 # basin 1682 te veranderen in een LevelBoundary
@@ -168,7 +173,7 @@ model.remove_node(1556, remove_links=True)
 model.remove_links([945, 2537, 2536])
 
 boundary_node = model.level_boundary.add(
-    Node(geometry=hydroobject_gdf.at[7778, "geometry"].boundary.geoms[0]), tables=[level_data]
+    Node(geometry=cast(LineString, hydroobject_gdf.at[7778, "geometry"]).boundary.geoms[0]), tables=[level_data]
 )
 
 model.link.add(model.pump[642], boundary_node)
@@ -198,21 +203,25 @@ for link_id in [1081, 518]:
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2399425885
 # Opknippen NW boezem
 
-poly1, poly2 = split_basin_multi_polygon(model.basin.area.df.at[598, "geometry"], split_line_gdf.at[15, "geometry"])
-model.basin.area.df.loc[model.basin.area.df.node_id == 1681, ["geometry"]] = poly1
+poly1, poly2 = split_basin_multi_polygon(
+    cast(MultiPolygon, model.basin.area.df.at[598, "geometry"]), cast(LineString, split_line_gdf.at[15, "geometry"])
+)
+model.basin.area.df.loc[model.basin.area.df.node_id == 1681, ["geometry"]] = poly1  # ty: ignore[invalid-assignment]
 
-poly1, poly2 = split_basin_multi_polygon(poly2, split_line_gdf.at[16, "geometry"])
-model.basin.area.df.loc[598] = {"node_id": 1686, "geometry": poly1}
+poly1, poly2 = split_basin_multi_polygon(poly2, cast(LineString, split_line_gdf.at[16, "geometry"]))
+model.basin.area.df.loc[598] = {"node_id": 1686, "geometry": poly1}  # ty: ignore[invalid-assignment]
 
-poly1, poly2 = split_basin_multi_polygon(poly2, split_line_gdf.at[17, "geometry"])
-model.basin.area.df.loc[model.basin.area.df.index.max() + 1] = {"geometry": poly1, "node_id": 1695}
+poly1, poly2 = split_basin_multi_polygon(poly2, cast(LineString, split_line_gdf.at[17, "geometry"]))
+model.basin.area.df.loc[model.basin.area.df.index.max() + 1] = {"geometry": poly1, "node_id": 1695}  # ty: ignore[invalid-assignment]
 model.basin.area.df.crs = model.crs
 
 tables = [*basin_data, basin.Area(geometry=[poly2])]
-basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[19608, "geometry"].boundary.geoms[1]), tables=tables)
+basin_node = model.basin.add(
+    Node(geometry=cast(LineString, hydroobject_gdf.at[19608, "geometry"]).boundary.geoms[1]), tables=tables
+)
 
 
-model.move_node(1686, hydroobject_gdf.at[19566, "geometry"].boundary.geoms[1])
+model.move_node(1686, cast(LineString, hydroobject_gdf.at[19566, "geometry"]).boundary.geoms[1])
 model.merge_basins(node_id=2426, to_node_id=1696, are_connected=True)
 model.merge_basins(node_id=2460, to_node_id=1696, are_connected=True)
 model.merge_basins(node_id=1648, to_node_id=1696, are_connected=True)
@@ -286,9 +295,12 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 1545, ["node_id"]] = 1585
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2400050483
 
 # Ontbrekende basin beneden-Vecht
-basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[12057, "geometry"].boundary.geoms[0]), tables=basin_data)
+basin_node = model.basin.add(
+    Node(geometry=cast(LineString, hydroobject_gdf.at[12057, "geometry"]).boundary.geoms[0]), tables=basin_data
+)
 outlet_node = model.outlet.add(
-    Node(geometry=hydroobject_gdf.at[12057, "geometry"].interpolate(0.5, normalized=True)), tables=[outlet_data]
+    Node(geometry=cast(LineString, hydroobject_gdf.at[12057, "geometry"]).interpolate(0.5, normalized=True)),
+    tables=[outlet_data],
 )
 
 for link_id in [2956, 2957, 2958, 2959, 2960, 2961]:
@@ -554,31 +566,7 @@ sanitize_node_table(
 
 
 # %% set flow-boundaries to level-boundaries (plus outlet)
-for row in model.flow_boundary.node.df.itertuples():
-    node_id = row.Index
-    basin_node_id = model.downstream_node_id(node_id)
-
-    # get link geometry and remove link
-    link_id = model.link.df[model.link.df["from_node_id"] == node_id].index[0]
-    link_geometry = model.link.df.at[link_id, "geometry"]
-    model.link.df = model.link.df[model.link.df.index != link_id]
-
-    # outlet node.geometry 10m from upstream or at 10% of link.geometry
-    if link_geometry.length > 20:
-        outlet_node_geometry = link_geometry.interpolate(10)
-    else:
-        outlet_node_geometry = link_geometry.interpolate(0.1, normalized=True)
-
-    # change flow_boundary to level_boundary and add outlet_node
-    model.update_node(node_id, node_type="LevelBoundary")
-    outlet_node = model.outlet.add(
-        node=Node(geometry=outlet_node_geometry, name=row.name), tables=default_tables.outlet
-    )
-
-    # remove old links and add 2 new
-    left_link_geometry, right_link_geometry = split_line(link_geometry, outlet_node_geometry)
-    model.link.add(model.level_boundary[node_id], outlet_node, geometry=left_link_geometry)
-    model.link.add(outlet_node, model.basin[basin_node_id], geometry=right_link_geometry)
+model.replace_flow_boundaries_by_level_boundaries()
 
 
 #  %% write model

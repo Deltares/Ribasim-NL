@@ -52,8 +52,7 @@ convention = "numpy"
 [tool.ty.src]
 include = [
     "notebooks/06_add_synthetic_forcing.py",
-    "pipeline/05_add_bergend.py",
-    "pipeline/07_add_dynamic_forcing.py",
+    "pipeline",
     "scripts/clean.py",
     "scripts/repro.py",
     "src/hydamo/hydamo",
@@ -74,13 +73,10 @@ root = [
 replace-imports-with-any = ["tqdm", "tqdm.*", "openpyxl", "openpyxl.*"]
 
 # Keep type checking enabled by default. These overrides ignore only the named
-# diagnostic for the listed files, where dynamic APIs cannot be typed precisely.
+# diagnostic for the listed files, which are pre-pipeline peilbeheerst and hydamo code.
 [[tool.ty.overrides]]
 include = [
     "src/peilbeheerst_model/peilbeheerst_model/assign_flushing.py",
-    "src/ribasim_nl/ribasim_nl/controle_output.py",
-    "src/ribasim_nl/ribasim_nl/geodataframe.py",
-    "src/ribasim_nl/ribasim_nl/model.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -92,23 +88,6 @@ include = [
     "src/peilbeheerst_model/peilbeheerst_model/parse_crossings.py",
     "src/peilbeheerst_model/peilbeheerst_model/postprocess_data/post-processing_HHNK.py",
     "src/peilbeheerst_model/peilbeheerst_model/shortest_path.py",
-    "src/ribasim_nl/ribasim_nl/analyse_results.py",
-    "src/ribasim_nl/ribasim_nl/assign_offline_budgets.py",
-    "src/ribasim_nl/ribasim_nl/assign_parametrization.py",
-    "src/ribasim_nl/ribasim_nl/berging.py",
-    "src/ribasim_nl/ribasim_nl/control.py",
-    "src/ribasim_nl/ribasim_nl/controle_output.py",
-    "src/ribasim_nl/ribasim_nl/geodataframe.py",
-    "src/ribasim_nl/ribasim_nl/geometry.py",
-    "src/ribasim_nl/ribasim_nl/link_profiles.py",
-    "src/ribasim_nl/ribasim_nl/model.py",
-    "src/ribasim_nl/ribasim_nl/network.py",
-    "src/ribasim_nl/ribasim_nl/parametrization/damo_profiles.py",
-    "src/ribasim_nl/ribasim_nl/performance.py",
-    "src/ribasim_nl/ribasim_nl/profiles/bgt.py",
-    "src/ribasim_nl/ribasim_nl/profiles/path_finder.py",
-    "src/ribasim_nl/ribasim_nl/profiles/run.py",
-    "src/ribasim_nl/ribasim_nl/rwzi.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -118,16 +97,6 @@ invalid-argument-type = "ignore"
 include = [
     "src/peilbeheerst_model/peilbeheerst_model/crossings_to_ribasim.py",
     "src/peilbeheerst_model/peilbeheerst_model/parse_crossings.py",
-    "src/ribasim_nl/ribasim_nl/analyse_results.py",
-    "src/ribasim_nl/ribasim_nl/geodataframe.py",
-    "src/ribasim_nl/ribasim_nl/model.py",
-    "src/ribasim_nl/ribasim_nl/parametrization/basin_tables.py",
-    "src/ribasim_nl/ribasim_nl/profiles/implement.py",
-    "src/ribasim_nl/ribasim_nl/profiles/path_finder.py",
-    "src/ribasim_nl/ribasim_nl/ribasim_feedback_processor.py",
-    "src/ribasim_nl/ribasim_nl/ribasim_parametrization.py",
-    "src/ribasim_nl/ribasim_nl/split_basins.py",
-    "src/ribasim_nl/ribasim_nl/supply.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -137,7 +106,6 @@ invalid-assignment = "ignore"
 include = [
     "src/peilbeheerst_model/peilbeheerst_model/assign_flushing.py",
     "src/peilbeheerst_model/peilbeheerst_model/parse_crossings.py",
-    "src/ribasim_nl/ribasim_nl/geometry.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -148,13 +116,6 @@ include = [
     "src/hydamo/hydamo/datamodel.py",
     "src/peilbeheerst_model/peilbeheerst_model/crossings_to_ribasim.py",
     "src/peilbeheerst_model/peilbeheerst_model/parse_crossings.py",
-    "src/ribasim_nl/ribasim_nl/analyse_results.py",
-    "src/ribasim_nl/ribasim_nl/model.py",
-    "src/ribasim_nl/ribasim_nl/network.py",
-    "src/ribasim_nl/ribasim_nl/profiles/cross_section.py",
-    "src/ribasim_nl/ribasim_nl/profiles/run.py",
-    "src/ribasim_nl/ribasim_nl/ribasim_feedback_processor.py",
-    "src/ribasim_nl/ribasim_nl/ribasim_parametrization.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -163,7 +124,6 @@ no-matching-overload = "ignore"
 [[tool.ty.overrides]]
 include = [
     "src/peilbeheerst_model/peilbeheerst_model/crossings_to_ribasim.py",
-    "src/ribasim_nl/ribasim_nl/ribasim_parametrization.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -174,16 +134,6 @@ include = [
     "src/peilbeheerst_model/peilbeheerst_model/assign_flushing.py",
     "src/peilbeheerst_model/peilbeheerst_model/crossings_to_ribasim.py",
     "src/peilbeheerst_model/peilbeheerst_model/parse_crossings.py",
-    "src/ribasim_nl/ribasim_nl/controle_output.py",
-    "src/ribasim_nl/ribasim_nl/geodataframe.py",
-    "src/ribasim_nl/ribasim_nl/geometry.py",
-    "src/ribasim_nl/ribasim_nl/model.py",
-    "src/ribasim_nl/ribasim_nl/network.py",
-    "src/ribasim_nl/ribasim_nl/network_validator.py",
-    "src/ribasim_nl/ribasim_nl/parametrization/damo_profiles.py",
-    "src/ribasim_nl/ribasim_nl/ribasim_feedback_processor.py",
-    "src/ribasim_nl/ribasim_nl/ribasim_parametrization.py",
-    "src/ribasim_nl/ribasim_nl/rwzi.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -192,10 +142,6 @@ not-subscriptable = "ignore"
 [[tool.ty.overrides]]
 include = [
     "src/peilbeheerst_model/peilbeheerst_model/shortest_path.py",
-    "src/ribasim_nl/ribasim_nl/analyse_results.py",
-    "src/ribasim_nl/ribasim_nl/berging.py",
-    "src/ribasim_nl/ribasim_nl/raster.py",
-    "src/ribasim_nl/ribasim_nl/ribasim_parametrization.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -203,25 +149,11 @@ possibly-missing-submodule = "ignore"
 
 [[tool.ty.overrides]]
 include = [
-    "pipeline/07_add_dynamic_forcing.py",
     "src/peilbeheerst_model/peilbeheerst_model/assign_flushing.py",
     "src/peilbeheerst_model/peilbeheerst_model/crossings_to_ribasim.py",
     "src/peilbeheerst_model/peilbeheerst_model/parse_crossings.py",
     "src/peilbeheerst_model/peilbeheerst_model/preprocess_data/Rivierenland.py",
     "src/peilbeheerst_model/peilbeheerst_model/shortest_path.py",
-    "src/ribasim_nl/ribasim_nl/assign_parametrization.py",
-    "src/ribasim_nl/ribasim_nl/controle_output.py",
-    "src/ribasim_nl/ribasim_nl/geodataframe.py",
-    "src/ribasim_nl/ribasim_nl/model.py",
-    "src/ribasim_nl/ribasim_nl/network.py",
-    "src/ribasim_nl/ribasim_nl/network_validator.py",
-    "src/ribasim_nl/ribasim_nl/parametrization/damo_profiles.py",
-    "src/ribasim_nl/ribasim_nl/parametrization/static_data_xlsx.py",
-    "src/ribasim_nl/ribasim_nl/ribasim_feedback_processor.py",
-    "src/ribasim_nl/ribasim_nl/ribasim_parametrization.py",
-    "src/ribasim_nl/ribasim_nl/rwzi.py",
-    "src/ribasim_nl/ribasim_nl/supply.py",
-    "src/ribasim_nl/ribasim_nl/transboundary_inflow.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -230,10 +162,6 @@ unresolved-attribute = "ignore"
 [[tool.ty.overrides]]
 include = [
     "src/peilbeheerst_model/peilbeheerst_model/parse_crossings.py",
-    "src/ribasim_nl/ribasim_nl/berging.py",
-    "src/ribasim_nl/ribasim_nl/profiles/run.py",
-    "src/ribasim_nl/ribasim_nl/ribasim_feedback_processor.py",
-    "src/ribasim_nl/ribasim_nl/ribasim_parametrization.py",
 ]
 
 [tool.ty.overrides.rules]

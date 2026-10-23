@@ -1,7 +1,7 @@
 import logging
 import shutil
-from collections.abc import Callable
 from pathlib import Path
+from typing import cast
 
 import geopandas as gpd
 import pandas as pd
@@ -23,33 +23,6 @@ AFVOER_METRICS = LEVEL_METRICS | FLOW_METRICS | {"afvoer_mask", "flow_rate"}
 DYNAMIC_FORCING_METRICS = SUPPLY_METRICS | FLOW_METRICS | {"water_level_bounds", "error_bounds"}
 
 
-def model_loaded(func: Callable[..., dict[str, object]]) -> Callable[..., dict[str, object]]:
-    """Wrapper-function to assert that the model data is loaded before using methods that analyse this data.
-
-    :param func: class-method
-    :type func: callable
-
-    :return: wrapper
-    :rtype: callable
-    """
-
-    def wrapper(*args, **kwargs) -> dict[str, object]:
-        """Wrapper-function to assert that the model is loaded before using methods that analyse the data.
-
-        :param args: positional arguments
-        :param kwargs: optional arguments
-
-        :return: control dictionary
-        :rtype: dict
-        """
-        co = args[0]
-        assert isinstance(co, Control)
-        assert all(getattr(co, k) is not None for k in ("ds_basin", "ds_link", "model"))
-        return func(*args, **kwargs)
-
-    return wrapper
-
-
 class Control:
     """Export model-result metrics for QGIS and validate computed conditions.
 
@@ -62,17 +35,21 @@ class Control:
     ds_link: xr.Dataset | None = None
     model: Model | None = None
 
-    def __init__(self, qlr_path=None, work_dir=None, ribasim_toml=None) -> None:
+    def __init__(
+        self,
+        qlr_path: str | Path | None = None,
+        work_dir: str | Path | None = None,
+        ribasim_toml: str | Path | None = None,
+    ) -> None:
         """Configure paths to a model's results and optional QGIS layer definition."""
-        if (work_dir is None) and (ribasim_toml is None):
-            raise ValueError("provide either work_dir or ribasim_toml")
+        if ribasim_toml is not None:
+            self.path_ribasim_toml = ribasim_toml
+            self.work_dir = Path(ribasim_toml).parent
+        elif work_dir is not None:
+            self.path_ribasim_toml = Path(work_dir) / "ribasim.toml"
+            self.work_dir = work_dir
         else:
-            if ribasim_toml is not None:
-                self.path_ribasim_toml = ribasim_toml
-                self.work_dir = Path(ribasim_toml).parent
-            else:
-                self.path_ribasim_toml = Path(work_dir) / "ribasim.toml"
-                self.work_dir = work_dir
+            raise ValueError("provide either work_dir or ribasim_toml")
 
         if qlr_path is None:
             self.qlr_path = Path(__file__).parent.joinpath("data", "output_controle.qlr")
@@ -95,16 +72,29 @@ class Control:
 
         return control_dict
 
+    def _loaded(self) -> tuple[xr.Dataset, xr.Dataset, Model]:
+        """Return the Basin and flow output and the model, asserting that `read_model_output` loaded them."""
+        assert self.ds_basin is not None and self.ds_link is not None and self.model is not None, (
+            "Call `read_model_output` first"
+        )
+        return self.ds_basin, self.ds_link, self.model
+
+    def _basin_node_df(self) -> gpd.GeoDataFrame:
+        """Return the Basin node table of the loaded model."""
+        _, _, model = self._loaded()
+        assert model.basin.node is not None and model.basin.node.df is not None
+        return model.basin.node.df
+
     @staticmethod
     def _to_bool_series(series: pd.Series) -> pd.Series:
         """Convert mixed True/False representations to booleans without pandas downcasting warnings."""
         normalized = series.astype("string").str.strip().str.lower()
         return normalized.map({"true": True, "false": False, "1": True, "0": False}).fillna(False).astype(bool)
 
-    @model_loaded
     def initial_final_level(self, control_dict):
-        initial_level = self.ds_basin["level"].isel(time=0).to_series().rename("initial_level")
-        final_level = self.ds_basin["level"].isel(time=-1).to_series().rename("final_level")
+        ds_basin, _, _ = self._loaded()
+        initial_level = ds_basin["level"].isel(time=0).to_series().rename("initial_level")
+        final_level = ds_basin["level"].isel(time=-1).to_series().rename("final_level")
         initial_final_level_df = pd.concat([initial_level, final_level], axis=1).reset_index()
         initial_final_level_df["difference_level"] = (
             initial_final_level_df["initial_level"] - initial_final_level_df["final_level"]
@@ -112,9 +102,8 @@ class Control:
 
         # Retrieve the geometries
         initial_final_level_df = initial_final_level_df.merge(
-            self.model.basin.node.df, on="node_id", suffixes=("", "model_")
+            self._basin_node_df(), on="node_id", suffixes=("", "model_")
         )
-        initial_final_level_df = initial_final_level_df.set_geometry("geometry")
 
         initial_final_level_df = gpd.GeoDataFrame(initial_final_level_df, geometry="geometry")
 
@@ -123,9 +112,9 @@ class Control:
 
         return control_dict
 
-    @model_loaded
     def min_max_level(self, control_dict):
-        basin_level = self.ds_basin["level"]
+        ds_basin, _, _ = self._loaded()
+        basin_level = ds_basin["level"]
         min_basin_level = pd.concat(
             [
                 basin_level.min(dim="time").to_series().rename("min_level"),
@@ -136,7 +125,7 @@ class Control:
 
         # retrieve the geometries
         min_basin_level = min_basin_level.merge(
-            self.model.basin.node.df[["geometry"]], left_on="node_id", right_index=True, suffixes=("", "model_")
+            self._basin_node_df()[["geometry"]], left_on="node_id", right_index=True, suffixes=("", "model_")
         )
 
         max_basin_level = pd.concat(
@@ -149,7 +138,7 @@ class Control:
 
         # retrieve the geometries
         max_basin_level = max_basin_level.merge(
-            self.model.basin.node.df[["geometry"]], left_on="node_id", right_index=True, suffixes=("", "model_")
+            self._basin_node_df()[["geometry"]], left_on="node_id", right_index=True, suffixes=("", "model_")
         )
 
         # convert to geopandas
@@ -161,9 +150,9 @@ class Control:
 
         return control_dict
 
-    @model_loaded
     def error(self, control_dict):
-        relative_error = self.ds_basin["relative_error"]
+        ds_basin, _, _ = self._loaded()
+        relative_error = ds_basin["relative_error"]
         abs_relative_error = abs(relative_error)
 
         error_gdf = pd.concat(
@@ -177,8 +166,7 @@ class Control:
             axis=1,
         ).reset_index()
 
-        error_gdf = error_gdf.merge(self.model.basin.node.df, on="node_id", suffixes=("", "model_"))
-        error_gdf = error_gdf.set_geometry("geometry")
+        error_gdf = error_gdf.merge(self._basin_node_df(), on="node_id", suffixes=("", "model_"))
 
         error_gdf = gpd.GeoDataFrame(error_gdf, geometry="geometry")
 
@@ -186,29 +174,27 @@ class Control:
 
         return control_dict
 
-    @model_loaded
     def steady_state(self, control_dict):
-        assert self.ds_basin is not None
-        steady_state_gdf = steady_state_results(self.ds_basin["level"], self.ds_basin["storage"])
+        ds_basin, _, _ = self._loaded()
+        steady_state_gdf = steady_state_results(ds_basin["level"], ds_basin["storage"])
 
         # Retrieve the geometries
         steady_state_gdf["geometry"] = steady_state_gdf.merge(
-            self.model.basin.node.df, on="node_id", suffixes=("", "model_")
+            self._basin_node_df(), on="node_id", suffixes=("", "model_")
         )["geometry"]
 
         control_dict["steady_state"] = gpd.GeoDataFrame(steady_state_gdf, geometry="geometry")
 
         return control_dict
 
-    @model_loaded
     def validate_result_conditions(self, *, allowed_non_steady_state_node_ids: set[int] | None = None) -> None:
         """Validate Basin result conditions after exporting output-control data.
 
         All detected violations are logged with their Basin node IDs before one
         exception is raised, so a single run reports every condition to fix.
         """
-        assert self.ds_basin is not None
-        result = steady_state_results(self.ds_basin["level"], self.ds_basin["storage"]).set_index("node_id")
+        ds_basin, _, _ = self._loaded()
+        result = steady_state_results(ds_basin["level"], ds_basin["storage"]).set_index("node_id")
         allowed_non_steady_state_node_ids = allowed_non_steady_state_node_ids or set()
         issues: list[str] = []
 
@@ -232,21 +218,22 @@ class Control:
         if issues:
             raise AssertionError(f"Model result conditions failed for {len(issues)} Basin(s); see logged issues.")
 
-    @model_loaded
     def find_mean_flow(self, control_dict):
+        _, ds_link, model = self._loaded()
         df_link_avg = pd.concat(
             [
-                abs(self.ds_link["flow_rate"]).mean(dim="time").to_series().rename("flow_rate"),
-                self.ds_link["from_node_id"].to_series().rename("from_node_id"),
-                self.ds_link["to_node_id"].to_series().rename("to_node_id"),
+                abs(ds_link["flow_rate"]).mean(dim="time").to_series().rename("flow_rate"),
+                ds_link["from_node_id"].to_series().rename("from_node_id"),
+                ds_link["to_node_id"].to_series().rename("to_node_id"),
             ],
             axis=1,
         ).reset_index()
-        df_link_avg["time"] = pd.Timestamp(self.ds_link["time"].values[0])
+        df_link_avg["time"] = pd.Timestamp(ds_link["time"].values[0])
         print("MAX VALUE DF_LINK", df_link_avg["flow_rate"].max())
 
         # Merge the geometry from links_ribasim to df_link_avg to retrieve the geometries
-        links_ribasim = self.model.link.df.copy()
+        assert model.link.df is not None
+        links_ribasim = model.link.df.copy()
         df_link_avg = df_link_avg.merge(
             right=links_ribasim[["from_node_id", "to_node_id", "geometry"]],
             on=["from_node_id", "to_node_id"],
@@ -258,10 +245,11 @@ class Control:
 
         return control_dict
 
-    @model_loaded
     def water_aanvoer_areas(self, control_dict):
         """Retrieve the areas (polygons) of the wateraanvoer gebieden."""
-        aanvoer_areas = self.model.basin.area.df.copy(deep=True)
+        _, _, model = self._loaded()
+        assert model.basin.area.df is not None
+        aanvoer_areas = model.basin.area.df.copy(deep=True)
         aanvoer_areas["meta_aanvoer"] = self._to_bool_series(aanvoer_areas["meta_aanvoer"])
 
         aanvoer_areas = aanvoer_areas.loc[
@@ -273,11 +261,12 @@ class Control:
 
         return control_dict
 
-    @model_loaded
     def water_aanvoer_afvoer_basin_nodes(self, control_dict):
         """Retrieve the nodes (points) of the wateraanvoer gebieden basin, as well as afvoer basin nodes"""
-        aanvoer_areas = self.model.basin.area.df.copy(deep=True)
-        basin_nodes = self.model.basin.node.df.copy(deep=True).reset_index()
+        _, _, model = self._loaded()
+        assert model.basin.area.df is not None
+        aanvoer_areas = model.basin.area.df.copy(deep=True)
+        basin_nodes = self._basin_node_df().copy(deep=True).reset_index()
         basin_nodes = basin_nodes.merge(right=aanvoer_areas[["node_id", "meta_aanvoer"]], how="left", on="node_id")
 
         basin_nodes["meta_aanvoer"] = self._to_bool_series(basin_nodes["meta_aanvoer"])
@@ -297,11 +286,13 @@ class Control:
 
         return control_dict
 
-    @model_loaded
     def water_aanvoer_afvoer_pumps(self, control_dict):
         """Retrieve the nodes (points) of the wateraan- and afvoer pumps"""
-        aanvoer_afvoer_pumps = self.model.pump.static.df.copy(deep=True)
-        aanvoer_afvoer_pumps_nodes = self.model.pump.node.df.copy(deep=True).reset_index()
+        _, _, model = self._loaded()
+        assert model.pump.static.df is not None
+        assert model.pump.node is not None and model.pump.node.df is not None
+        aanvoer_afvoer_pumps = model.pump.static.df.copy(deep=True)
+        aanvoer_afvoer_pumps_nodes = model.pump.node.df.copy(deep=True).reset_index()
         aanvoer_afvoer_pumps = aanvoer_afvoer_pumps.merge(
             aanvoer_afvoer_pumps_nodes[["node_id", "geometry"]], on="node_id", how="left"
         )
@@ -321,11 +312,13 @@ class Control:
 
         return control_dict
 
-    @model_loaded
     def water_aanvoer_outlets(self, control_dict):
         """Retrieve the nodes (points) of the wateraan outlets"""
-        aanvoer_outlets = self.model.outlet.static.df.copy(deep=True)
-        outlet_nodes = self.model.outlet.node.df.copy(deep=True).reset_index()
+        _, _, model = self._loaded()
+        assert model.outlet.static.df is not None
+        assert model.outlet.node is not None and model.outlet.node.df is not None
+        aanvoer_outlets = model.outlet.static.df.copy(deep=True)
+        outlet_nodes = model.outlet.node.df.copy(deep=True).reset_index()
         aanvoer_outlets = aanvoer_outlets.merge(
             outlet_nodes[["node_id", "geometry"]], on="node_id", how="left"
         )  # merge to retrieve the geoms
@@ -337,25 +330,24 @@ class Control:
 
         return control_dict
 
-    @model_loaded
     def mask_basins(self, control_dict):
-        if "meta_gestuwd" in self.model.basin.node.df.columns:
-            control_dict["mask_afvoer"] = self.model.basin.node.df[
-                self.model.basin.node.df["meta_gestuwd"] == "False"
+        if "meta_gestuwd" in self._basin_node_df().columns:
+            control_dict["mask_afvoer"] = self._basin_node_df()[
+                self._basin_node_df()["meta_gestuwd"] == "False"
             ].reset_index()[["node_id", "geometry"]]
 
         return control_dict
 
-    @model_loaded
     def flow_rate(self, control_dict):
-        flow_rate = self.ds_link["flow_rate"].isel(time=-1).to_dataframe().reset_index()
-        link_df = self.model.link.df.reset_index()
+        _, ds_link, model = self._loaded()
+        flow_rate = ds_link["flow_rate"].isel(time=-1).to_dataframe().reset_index()
+        assert model.link.df is not None
+        link_df = model.link.df.reset_index()
         link_df = link_df.merge(flow_rate[["link_id", "flow_rate"]], on="link_id", how="left").set_index("link_id")
         control_dict["flow_rate"] = link_df
 
         return control_dict
 
-    @model_loaded
     def store_data(self, data, output_path) -> None:
         """Store the control_dict"""
         for key in data:
@@ -428,7 +420,6 @@ class Control:
         self.store_data(data=control_dict, output_path=self.path_control_dict_path)
         return control_dict
 
-    @model_loaded
     def water_level_bounds(self, control_dict: dict[str, object], skip_time_steps: int = 0) -> dict[str, object]:
         """Determine the minimum and maximum water levels within the basins occurring over time.
 
@@ -445,10 +436,9 @@ class Control:
         :return: updated analysed data collector
         :rtype: dict
         """
-        assert self.ds_basin is not None
-        assert self.model is not None
-        start_time = pd.Timestamp(self.ds_basin["time"].values[skip_time_steps])
-        level = self.ds_basin["level"].sel(time=slice(start_time, None))
+        ds_basin, _, _ = self._loaded()
+        start_time = pd.Timestamp(ds_basin["time"].values[skip_time_steps])
+        level = ds_basin["level"].sel(time=slice(start_time, None))
 
         # minimum water level
         min_basin_level = level.min(dim="time").to_series().rename("level").reset_index(drop=False)
@@ -457,12 +447,12 @@ class Control:
         max_basin_level = level.max(dim="time").to_series().rename("level").reset_index(drop=False)
 
         # collect analysed data in GeoDataFrame
-        gdf_min_basin_level = min_basin_level.merge(
-            self.model.basin.node.df, on="node_id", suffixes=("", "model_")
-        ).set_geometry("geometry")
-        gdf_max_basin_level = max_basin_level.merge(
-            self.model.basin.node.df, on="node_id", suffixes=("", "model_")
-        ).set_geometry("geometry")
+        gdf_min_basin_level = gpd.GeoDataFrame(
+            min_basin_level.merge(self._basin_node_df(), on="node_id", suffixes=("", "model_")), geometry="geometry"
+        )
+        gdf_max_basin_level = gpd.GeoDataFrame(
+            max_basin_level.merge(self._basin_node_df(), on="node_id", suffixes=("", "model_")), geometry="geometry"
+        )
         control_dict.update(
             {
                 "min_basin_level": gdf_min_basin_level,
@@ -473,7 +463,6 @@ class Control:
         # return updated analysed data collector
         return control_dict
 
-    @model_loaded
     def error_bounds(self, control_dict: dict[str, object], autofill_missing_data: bool = True) -> dict[str, object]:
         """Determine the minimum and maximum basin water level error occurring over time.
 
@@ -493,6 +482,7 @@ class Control:
 
         :raise ValueError: if data is missing in the collector and not auto-filled.
         """
+        ds_basin, _, _ = self._loaded()
         # validate available analysed data
         _keys = "min_basin_level", "max_basin_level"
         if not all(k in control_dict for k in _keys):
@@ -506,13 +496,11 @@ class Control:
                 raise ValueError(msg)
 
         # get water level bounds data
-        assert self.ds_basin is not None
-        assert self.model is not None
-        min_basin_level = control_dict["min_basin_level"]
-        max_basin_level = control_dict["max_basin_level"]
+        min_basin_level = cast(gpd.GeoDataFrame, control_dict["min_basin_level"])
+        max_basin_level = cast(gpd.GeoDataFrame, control_dict["max_basin_level"])
 
         # initial water level is considered the target level
-        initial_basin_level = self.ds_basin["level"].isel(time=0).to_series().rename("level").reset_index()
+        initial_basin_level = ds_basin["level"].isel(time=0).to_series().rename("level").reset_index()
 
         # water level differences
         min_difference_level = (
@@ -527,12 +515,14 @@ class Control:
         )
 
         # collect analysed data in GeoDataFrame
-        gdf_min_basin_level = min_difference_level.merge(
-            self.model.basin.node.df, on="node_id", suffixes=("", "model_")
-        ).set_geometry("geometry")
-        gdf_max_basin_level = max_difference_level.merge(
-            self.model.basin.node.df, on="node_id", suffixes=("", "model_")
-        ).set_geometry("geometry")
+        gdf_min_basin_level = gpd.GeoDataFrame(
+            min_difference_level.merge(self._basin_node_df(), on="node_id", suffixes=("", "model_")),
+            geometry="geometry",
+        )
+        gdf_max_basin_level = gpd.GeoDataFrame(
+            max_difference_level.merge(self._basin_node_df(), on="node_id", suffixes=("", "model_")),
+            geometry="geometry",
+        )
         control_dict.update(
             {
                 "error_min_basin_level": gdf_min_basin_level,

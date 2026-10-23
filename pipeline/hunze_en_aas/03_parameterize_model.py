@@ -52,6 +52,7 @@ model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5
 print("Elapsed Time:", time.time() - start_time, "seconds")
 protected_basin_node_ids = apply_basin_level_overrides(model=model, basin_level_overrides=basin_level_overrides)
 
+assert model.manning_resistance.static.df is not None
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 sync_parameterized_manning_basin_levels(
     model=model,
@@ -66,9 +67,11 @@ sync_parameterized_manning_basin_levels(
 )
 
 # %% Flow rates are replaced to max_flow_rate, otherwise it affects the flow ratio
+assert model.outlet.static.df is not None
 model.outlet.static.df.max_flow_rate = model.outlet.static.df.flow_rate
 model.outlet.static.df.flow_rate = 100.0
 # %% Fixes
+assert model.pump.static.df is not None
 model.pump.static.df.loc[model.pump.static.df.node_id == 27, "max_flow_rate"] = 5.0
 model.pump.static.df.loc[model.pump.static.df.node_id == 64, "max_flow_rate"] = 1.0
 model.pump.static.df.loc[model.pump.static.df.node_id == 71, "max_flow_rate"] = 5.0

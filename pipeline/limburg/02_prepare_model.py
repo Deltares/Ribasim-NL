@@ -54,6 +54,7 @@ profiles_df = damo_profiles.process_profiles()
 profiles_df.to_file(profiles_gpkg)
 fix_link_geometries(model, network)
 add_link_profile_ids(model, profiles=damo_profiles)
+assert model.link.df is not None
 model.link.df.reset_index().to_file(link_geometries_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
 
@@ -68,6 +69,7 @@ static_data.reset_data_frame(node_type="Outlet")
 stuwen_df = gpd.read_file(stuwen_shp)
 stuwen_df.index = "S_" + stuwen_df["CODE"]
 stuwen_df.index.name = "code"
+assert static_data.outlet is not None
 stuwen_df = stuwen_df[stuwen_df.index.isin(static_data.outlet["code"])]
 min_upstream_level = stuwen_df["WS_STUWF_3"]
 min_upstream_level.name = "min_upstream_level"
@@ -111,6 +113,7 @@ forced_levels = {
     2492: 30.75,
 }
 
+assert static_data.basin is not None
 mask = static_data.basin["node_id"].isin(forced_levels.keys())
 static_data.basin.loc[mask, "streefpeil"] = static_data.basin.loc[mask, "node_id"].map(forced_levels)
 

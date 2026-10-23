@@ -1,5 +1,6 @@
 # %%
 import warnings
+from typing import cast
 
 import openpyxl
 import pandas as pd
@@ -94,7 +95,7 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
         if kwk.naam not in sheet_names:
             raise ValueError(f"{kwk.naam} not a sheet in {file_name}")
 
-        kwk_df = pd.read_excel(file_name, sheet_name=kwk.naam)
+        kwk_df = pd.read_excel(file_name, sheet_name=cast(str, kwk.naam))
 
         # get properties
         kwk_properties = read_kwk_properties(kwk_df)
@@ -182,6 +183,7 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
 
 # %% Nijkerkersluis drains the Veluwerandmeren into the Eemmeer, see https://github.com/Deltares/Ribasim-NL/issues/887
 node_id = model.find_node_id(meta_code_waterbeheerder="32E-001-04")
+assert model.node.df is not None
 assert model.node.df.at[node_id, "node_type"] == "Pump", model.node.df.at[node_id, "node_type"]
 upstream_name = model.node.df.at[model.upstream_node_id(node_id), "name"]
 assert upstream_name == "Nuldernauw", upstream_name

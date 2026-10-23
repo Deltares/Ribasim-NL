@@ -1,17 +1,17 @@
 # %%
 
+from typing import cast
+
 import geopandas as gpd
 import pandas as pd
 from networkx import all_shortest_paths, shortest_path
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet, pump
-from ribasim_nl.geometry import split_line
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.junctions import junctionify
-from ribasim_nl.model import default_tables
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
-from shapely.geometry import MultiLineString, Point
+from shapely.geometry import LineString, MultiLineString, Point
 from shapely.ops import snap, split
 
 from ribasim_nl import CloudStorage, Model, Network, NetworkValidator, link_geometries
@@ -46,10 +46,11 @@ lines_gdf = gpd.read_file(
     fid_as_index=True,
 )
 
+assert model.node.df is not None
 points = model.node.df[model.node.df.node_type.isin(["TabulatedRatingCurve", "Outlet", "Pump"])].geometry
 
 for row in lines_gdf.itertuples():
-    line = row.geometry
+    line = cast(LineString, row.geometry)
     snap_points = points[points.distance(line) < 0.1]
     snap_points = snap_points[snap_points.distance(line.boundary) > 0.1]
     if not snap_points.empty:
@@ -57,7 +58,7 @@ for row in lines_gdf.itertuples():
         line = snap(line, snap_point, 1e-8)
         split_lines = split(line, snap_point)
 
-        lines_gdf.loc[row.Index, ["geometry"]] = split_lines
+        lines_gdf.loc[row.Index, ["geometry"]] = split_lines  # ty: ignore[invalid-assignment]
 
 lines_gdf = lines_gdf.explode(index_parts=False, ignore_index=True)
 lines_gdf.crs = 28992
@@ -85,6 +86,7 @@ pump_data = pump.Static(flow_rate=[10])
 # %% https://github.com/Deltares/Ribasim-NL/issues/155#issuecomment-2454955046
 
 # 76 links bij opgeheven nodes verwijderen
+assert model.link.df is not None
 mask = model.link.df.to_node_id.isin(model.node.df.index) & model.link.df.from_node_id.isin(model.node.df.index)
 missing_links_df = model.link.df[~mask]
 
@@ -204,7 +206,7 @@ for node_id in model.basin.node.df.index:
     print(node_id)
     # get basin_node_id
     network_basin_node = get_network_node(node_df.at[node_id, "geometry"])
-    network._graph.nodes[network_basin_node]["node_id"] = node_id
+    network.graph.nodes[network_basin_node]["node_id"] = node_id
 
     upstream_node_ids = model.upstream_node_id(node_id)
     upstream_node_ids = upstream_node_ids.to_list() if isinstance(upstream_node_ids, pd.Series) else [upstream_node_ids]
@@ -276,7 +278,7 @@ for row in he_df[he_df["node_id"].isna()].itertuples():
 
 data = []
 for node_id, df in he_df[he_df["node_id"].notna()].groupby("node_id"):
-    geometry = df.union_all()
+    geometry = cast(gpd.GeoDataFrame, df).union_all()
     df.sort_values("OPVAFWZP", inplace=True)
     streefpeil = df.iloc[0].OPVAFWZP
     code = df.iloc[0].GPGIDENT
@@ -327,31 +329,7 @@ outlet_mask = (model.node.df["node_type"] == "Outlet") & (model.node.df.name == 
 model.node.df.loc[outlet_mask, "name"] = model.node.df.loc[outlet_mask, "meta_code_waterbeheerder"]
 
 # %% set flow-boundaries to level-boundaries (plus outlet)
-for row in model.flow_boundary.node.df.itertuples():
-    node_id = row.Index
-    basin_node_id = model.downstream_node_id(node_id)
-
-    # get link geometry and remove link
-    link_id = model.link.df[model.link.df["from_node_id"] == node_id].index[0]
-    link_geometry = model.link.df.at[link_id, "geometry"]
-    model.link.df = model.link.df[model.link.df.index != link_id]
-
-    # outlet node.geometry 10m from upstream or at 10% of link.geometry
-    if link_geometry.length > 20:
-        outlet_node_geometry = link_geometry.interpolate(10)
-    else:
-        outlet_node_geometry = link_geometry.interpolate(0.1, normalized=True)
-
-    # change flow_boundary to level_boundary and add outlet_node
-    model.update_node(node_id, node_type="LevelBoundary")
-    outlet_node = model.outlet.add(
-        node=Node(geometry=outlet_node_geometry, name=row.name), tables=default_tables.outlet
-    )
-
-    # remove old links and add 2 new
-    left_link_geometry, right_link_geometry = split_line(link_geometry, outlet_node_geometry)
-    model.link.add(model.level_boundary[node_id], outlet_node, geometry=left_link_geometry)
-    model.link.add(outlet_node, model.basin[basin_node_id], geometry=right_link_geometry)
+model.replace_flow_boundaries_by_level_boundaries()
 
 # Moved t Noord-Willemskanaal so it connects properly with Hunze and Aa's model
 model.move_node(geometry=Point(233237, 559975), node_id=14)

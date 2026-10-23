@@ -48,6 +48,7 @@ apply_basin_level_overrides(model=model, basin_level_overrides=basin_level_overr
 
 # %%
 
+assert model.manning_resistance.static.df is not None
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 # Write model

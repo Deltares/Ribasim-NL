@@ -1,5 +1,6 @@
 # %%
 import inspect
+from typing import Any, cast
 
 import geopandas as gpd
 import pandas as pd
@@ -8,7 +9,7 @@ from ribasim.nodes import basin, level_boundary, outlet
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
-from shapely.geometry import MultiPolygon
+from shapely.geometry import LineString, MultiPolygon, Point
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -49,6 +50,7 @@ outlet_data = outlet.Static(flow_rate=[5.0])
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2401873626
 # Verwijderen duplicate links
 
+assert model.link.df is not None
 model.link.df.drop_duplicates(inplace=True)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2401876430
@@ -59,7 +61,7 @@ basin_nodes_df = network_validator.node_invalid_connectivity()
 
 for row in basin_nodes_df.itertuples():
     # maak basin-node
-    basin_node = model.basin.add(Node(geometry=row.geometry), tables=basin_data)
+    basin_node = model.basin.add(Node(geometry=cast(Point, row.geometry)), tables=basin_data)
 
     # update link_table
     model.link.df.loc[basin_links_df[basin_links_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
@@ -98,9 +100,9 @@ model.fix_unassigned_basin_area()
 # %% https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2402281396
 
 # Verwijderen basins zonder area of toevoegen/opknippen basin /area
-model.split_basin(line=split_line_gdf.at[1, "geometry"])
-model.split_basin(line=split_line_gdf.at[2, "geometry"])
-model.split_basin(line=split_line_gdf.at[3, "geometry"])
+model.split_basin(line=cast(LineString, split_line_gdf.at[1, "geometry"]))
+model.split_basin(line=cast(LineString, split_line_gdf.at[2, "geometry"]))
+model.split_basin(line=cast(LineString, split_line_gdf.at[3, "geometry"]))
 model.merge_basins(node_id=1150, to_node_id=1101)
 model.merge_basins(node_id=1196, to_node_id=1192)
 model.merge_basins(node_id=1202, to_node_id=1049)
@@ -147,6 +149,7 @@ model.merge_basins(node_id=1139, to_node_id=959, are_connected=False)
 model.merge_basins(node_id=1086, to_node_id=1137, are_connected=True)
 
 model.fix_unassigned_basin_area()
+assert model.basin.area.df is not None
 model.basin.area.df = model.basin.area.df[~model.basin.area.df.index.isin(model.unassigned_basin_area.index)]
 
 # %%
@@ -167,7 +170,7 @@ for row in network_validator.link_incorrect_type_connectivity(
 model.basin.area.df.loc[:, ["geometry"]] = (
     model.basin.area.df.buffer(0.1)
     .buffer(-0.1)
-    .apply(lambda x: x if x.geom_type == "MultiPolygon" else MultiPolygon([x]))
+    .apply(lambda x: x if x.geom_type == "MultiPolygon" else MultiPolygon([x]))  # ty: ignore[no-matching-overload]
 )
 
 # %% Reset static tables
@@ -229,7 +232,8 @@ for layer in layers:
         df.sort_values("order", inplace=True)
     for row in df.itertuples():
         # filter kwargs by keywords
-        kwargs = {k: v for k, v in row._asdict().items() if k in keywords}
+        # itertuples rows are namedtuples, whose `_asdict` ty sees as a column
+        kwargs = {k: v for k, v in cast(Any, row)._asdict().items() if k in keywords}
         method(**kwargs)
 
 # remove node (wrong connection)

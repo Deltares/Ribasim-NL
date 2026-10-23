@@ -40,6 +40,7 @@ start_time = time.time()
 # %%
 # parameterize
 manual_basin_level_node_ids = [1801]
+assert model.basin.area.df is not None
 model.basin.area.df.loc[model.basin.area.df.node_id == 1801, "meta_streefpeil"] = -0.25
 model.parameterize(
     static_data_xlsx=static_data_xlsx,
@@ -60,9 +61,11 @@ update_basin_static(
 )
 
 # %%
+assert model.manning_resistance.static.df is not None
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 # Fix afvoer
+assert model.outlet.static.df is not None
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 375, "flow_rate"] = 0.0
 
 # fix basin_levels
@@ -110,7 +113,9 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id.isin([98, 103, 221]), 
 
 # %%
 # optionele checks
+assert model.basin.profile.df is not None
 print(model.basin.profile.df.groupby("node_id")["area"].max().head())
+assert model.basin.static.df is not None
 print(model.basin.static.df[["node_id", "precipitation", "potential_evaporation"]].head())
 
 # Write model

@@ -1,16 +1,27 @@
 # %%
+from typing import cast
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+from pandera.typing import DataFrame
+from pandera.typing.geopandas import GeoDataFrame
 from ribasim import Node
+from ribasim.geometry.area import BasinAreaSchema
 from ribasim.nodes import basin, level_boundary, outlet
-from ribasim_nl.geometry import split_line
+from ribasim.schemas import (
+    BasinProfileSchema,
+    BasinStateSchema,
+    FlowBoundaryStaticSchema,
+    LevelBoundaryStaticSchema,
+    ManningResistanceStaticSchema,
+    TabulatedRatingCurveStaticSchema,
+)
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.model import default_tables
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
-from shapely.geometry import Point
+from shapely.geometry import LineString, Point
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -58,6 +69,7 @@ outlet_data = outlet.Static(flow_rate=[5.0])
 # %% https://github.com/Deltares/Ribasim-NL/issues/149#issuecomment-2421617819
 
 # Verwijderen duplicate links
+assert model.link.df is not None
 model.link.df.drop_duplicates(inplace=True)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/149#issuecomment-2421959240
@@ -75,7 +87,7 @@ basin_nodes_df = network_validator.node_invalid_connectivity()
 
 for row in basin_nodes_df.itertuples():
     # maak basin-node
-    basin_node = model.basin.add(Node(geometry=row.geometry), tables=basin_data)
+    basin_node = model.basin.add(Node(geometry=cast(Point, row.geometry)), tables=basin_data)
 
     # update link_table
     model.link.df.loc[basin_links_df[basin_links_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
@@ -90,26 +102,31 @@ for row in basin_nodes_df.itertuples():
 # Corrigeren netwerk Den Bosch
 
 # Binnenstad
-basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[2788, "geometry"].boundary.geoms[0]), tables=basin_data)
+basin_node = model.basin.add(
+    Node(geometry=cast(LineString, hydroobject_gdf.at[2788, "geometry"]).boundary.geoms[0]), tables=basin_data
+)
 
 model.reverse_link(link_id=2077)
 model.redirect_link(link_id=2077, to_node_id=basin_node.node_id)
 model.redirect_link(link_id=2078, from_node_id=basin_node.node_id)
 model.redirect_link(link_id=2079, from_node_id=basin_node.node_id)
 outlet_node = model.outlet.add(
-    Node(geometry=hydroobject_gdf.at[4999, "geometry"].interpolate(0.5, normalized=True)), tables=[outlet_data]
+    Node(geometry=cast(LineString, hydroobject_gdf.at[4999, "geometry"]).interpolate(0.5, normalized=True)),
+    tables=[outlet_data],
 )
 model.link.add(model.level_boundary[46], outlet_node)
 model.link.add(outlet_node, basin_node)
 
 # Dommel
 basin_node = model.basin.add(
-    Node(geometry=hydroobject_gdf.at[9055, "geometry"].interpolate(0.5, normalized=True)), tables=basin_data
+    Node(geometry=cast(LineString, hydroobject_gdf.at[9055, "geometry"]).interpolate(0.5, normalized=True)),
+    tables=basin_data,
 )
 model.redirect_link(link_id=2082, from_node_id=basin_node.node_id)
 
 outlet_node = model.outlet.add(
-    Node(geometry=hydroobject_gdf.at[9055, "geometry"].interpolate(0.1, normalized=True)), tables=[outlet_data]
+    Node(geometry=cast(LineString, hydroobject_gdf.at[9055, "geometry"]).interpolate(0.1, normalized=True)),
+    tables=[outlet_data],
 )
 
 model.link.add(model.level_boundary[49], outlet_node)
@@ -138,7 +155,7 @@ model.remove_node(4, remove_links=True)
 model.redirect_link(link_id=2018, to_node_id=1950)
 
 outlet_node = model.outlet.add(
-    Node(geometry=hydroobject_gdf.at[4825, "geometry"].boundary.geoms[0], name="AKW839"),
+    Node(geometry=cast(LineString, hydroobject_gdf.at[4825, "geometry"]).boundary.geoms[0], name="AKW839"),
     tables=[outlet_data],
 )
 
@@ -150,9 +167,12 @@ model.link.add(model.basin[1627], outlet_node)
 # Corrigeren Afleidingskanaal bij Holthees
 
 # nabij grens
-basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[8868, "geometry"].boundary.geoms[0]), tables=basin_data)
+basin_node = model.basin.add(
+    Node(geometry=cast(LineString, hydroobject_gdf.at[8868, "geometry"]).boundary.geoms[0]), tables=basin_data
+)
 outlet_node = model.outlet.add(
-    Node(geometry=hydroobject_gdf.at[4680, "geometry"].interpolate(0.1, normalized=True)), tables=[outlet_data]
+    Node(geometry=cast(LineString, hydroobject_gdf.at[4680, "geometry"]).interpolate(0.1, normalized=True)),
+    tables=[outlet_data],
 )
 
 model.redirect_link(link_id=2091, from_node_id=56, to_node_id=outlet_node.node_id)
@@ -161,9 +181,12 @@ model.redirect_link(link_id=2093, from_node_id=653, to_node_id=basin_node.node_i
 model.redirect_link(link_id=2094, from_node_id=basin_node.node_id, to_node_id=82)
 
 # nabij afleidingskanaal
-basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[7466, "geometry"].boundary.geoms[0]), tables=basin_data)
+basin_node = model.basin.add(
+    Node(geometry=cast(LineString, hydroobject_gdf.at[7466, "geometry"]).boundary.geoms[0]), tables=basin_data
+)
 outlet_node = model.outlet.add(
-    Node(geometry=hydroobject_gdf.at[8456, "geometry"].interpolate(0.1, normalized=True)), tables=[outlet_data]
+    Node(geometry=cast(LineString, hydroobject_gdf.at[8456, "geometry"]).interpolate(0.1, normalized=True)),
+    tables=[outlet_data],
 )
 model.redirect_link(link_id=2089, to_node_id=outlet_node.node_id)
 model.redirect_link(link_id=2088, from_node_id=outlet_node.node_id, to_node_id=basin_node.node_id)
@@ -171,9 +194,11 @@ model.link.add(model.tabulated_rating_curve[82], basin_node)
 model.link.add(basin_node, model.tabulated_rating_curve[853])
 
 # nabij Maas
-basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[2385, "geometry"].boundary.geoms[0]), tables=basin_data)
+basin_node = model.basin.add(
+    Node(geometry=cast(LineString, hydroobject_gdf.at[2385, "geometry"]).boundary.geoms[0]), tables=basin_data
+)
 outlet_node = model.outlet.add(
-    Node(geometry=hydroobject_gdf.at[2539, "geometry"].boundary.geoms[0]), tables=[outlet_data]
+    Node(geometry=cast(LineString, hydroobject_gdf.at[2539, "geometry"]).boundary.geoms[0]), tables=[outlet_data]
 )
 
 model.redirect_link(link_id=2054, to_node_id=basin_node.node_id)
@@ -185,15 +210,19 @@ model.link.add(outlet_node, model.level_boundary[26])
 
 # Toevoegen basin bij Oude Zuid-Willemsvaart
 outlet_node = model.outlet.add(
-    Node(geometry=hydroobject_gdf.at[3174, "geometry"].boundary.geoms[0], name="20301"), tables=[outlet_data]
+    Node(geometry=cast(LineString, hydroobject_gdf.at[3174, "geometry"]).boundary.geoms[0], name="20301"),
+    tables=[outlet_data],
 )
-basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[6499, "geometry"].boundary.geoms[0]), tables=basin_data)
+basin_node = model.basin.add(
+    Node(geometry=cast(LineString, hydroobject_gdf.at[6499, "geometry"]).boundary.geoms[0]), tables=basin_data
+)
 model.redirect_link(link_id=2102, to_node_id=outlet_node.node_id)
 model.link.add(outlet_node, basin_node)
 model.redirect_link(link_id=2106, to_node_id=2026)
 
 outlet_node = model.outlet.add(
-    Node(geometry=hydroobject_gdf.at[646, "geometry"].interpolate(0.9, normalized=True)), tables=[outlet_data]
+    Node(geometry=cast(LineString, hydroobject_gdf.at[646, "geometry"]).interpolate(0.9, normalized=True)),
+    tables=[outlet_data],
 )
 model.link.add(basin_node, outlet_node)
 model.link.add(outlet_node, model.level_boundary[66])
@@ -221,6 +250,7 @@ for row in network_validator.link_incorrect_type_connectivity(
 
 # %%
 # basin-profielen/state updaten
+assert model.basin.node is not None and model.basin.node.df is not None
 df = pd.DataFrame(
     {
         "node_id": np.repeat(model.basin.node.df.index.to_numpy(), 2),
@@ -229,14 +259,16 @@ df = pd.DataFrame(
     }
 )
 df.index.name = "fid"
-model.basin.profile.df = df
+model.basin.profile.df = DataFrame[BasinProfileSchema](df)
 
+assert model.basin.profile.df is not None
 df = model.basin.profile.df.groupby("node_id")[["level"]].max().reset_index()
 df.index.name = "fid"
-model.basin.state.df = df
+model.basin.state.df = DataFrame[BasinStateSchema](df)
 
 # %%
 # tabulated_rating_curves updaten
+assert model.tabulated_rating_curve.node is not None and model.tabulated_rating_curve.node.df is not None
 df = pd.DataFrame(
     {
         "node_id": np.repeat(model.tabulated_rating_curve.node.df.index.to_numpy(), 2),
@@ -245,10 +277,11 @@ df = pd.DataFrame(
     }
 )
 df.index.name = "fid"
-model.tabulated_rating_curve.static.df = df
+model.tabulated_rating_curve.static.df = DataFrame[TabulatedRatingCurveStaticSchema](df)
 
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/149#issuecomment-2431933060
+assert model.tabulated_rating_curve.static.df is not None
 model.tabulated_rating_curve.static.df.loc[
     model.tabulated_rating_curve.static.df.node_id.isin([280, 335, 373, 879]), "flow_rate"
 ] = 0.0
@@ -257,6 +290,7 @@ model.tabulated_rating_curve.static.df.loc[
 # %%
 
 # level_boundaries updaten
+assert model.level_boundary.node is not None and model.level_boundary.node.df is not None
 df = pd.DataFrame(
     {
         "node_id": model.level_boundary.node.df.index.to_list(),
@@ -264,10 +298,11 @@ df = pd.DataFrame(
     }
 )
 df.index.name = "fid"
-model.level_boundary.static.df = df
+model.level_boundary.static.df = DataFrame[LevelBoundaryStaticSchema](df)
 
 # %%
 # manning_resistance updaten
+assert model.manning_resistance.node is not None and model.manning_resistance.node.df is not None
 length = len(model.manning_resistance.node.df)
 df = pd.DataFrame(
     {
@@ -279,10 +314,11 @@ df = pd.DataFrame(
     }
 )
 df.index.name = "fid"
-model.manning_resistance.static.df = df
+model.manning_resistance.static.df = DataFrame[ManningResistanceStaticSchema](df)
 
 # %%
 # flow boundaries updaten
+assert model.flow_boundary.node is not None and model.flow_boundary.node.df is not None
 length = len(model.flow_boundary.node.df)
 df = pd.DataFrame(
     {
@@ -291,7 +327,7 @@ df = pd.DataFrame(
     }
 )
 df.index.name = "fid"
-model.flow_boundary.static.df = df
+model.flow_boundary.static.df = DataFrame[FlowBoundaryStaticSchema](df)
 
 # %% read
 drainage_units_gdf = gpd.read_file(
@@ -305,15 +341,17 @@ ribasim_areas_gdf = gpd.read_file(ribasim_areas_gpkg, fid_as_index=True, layer="
 basin_node_edits_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="unassigned_basin_node")
 basin_area_edits_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="unassigned_basin_area")
 internal_basin_edits_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="internal_basins")
+assert model.basin.area.df is not None
 model.basin.area.df = model.basin.area.df[~model.basin.area.df.index.isin(model.unassigned_basin_area.index)]
 remove_nodes_df = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="remove_node")
 
 df = basin_area_edits_gdf[basin_area_edits_gdf["to_node_id"].notna()]
 df.loc[:, ["node_id"]] = df["to_node_id"].astype("int32")
-model.basin.area.df = pd.concat([model.basin.area.df, df[["node_id", "geometry"]]])
+model.basin.area.df = GeoDataFrame[BasinAreaSchema](pd.concat([model.basin.area.df, df[["node_id", "geometry"]]]))
 
 # %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code) by overlapping the Ribasim area file baed on largest overlap
 # then assign Ribasim node-ID's to areas with the same area code. Many nodata areas disappear by this method
+assert model.basin.area.df is not None
 combined_basin_areas_gdf = gpd.overlay(
     ribasim_areas_gdf, model.basin.area.df, how="union", keep_geom_type=True
 ).explode()
@@ -337,6 +375,7 @@ filtered_drainage_units_gdf = drainage_units_johnny_gdf[
     drainage_units_johnny_gdf["SOORTAFVOE"] != "Deelstroomgebied"
 ].copy()
 
+assert combined_basin_areas_gdf.crs is not None
 filtered_drainage_units_gdf = filtered_drainage_units_gdf.to_crs(combined_basin_areas_gdf.crs)
 
 # Overlay filtered drainage units and updated basin areas
@@ -408,10 +447,11 @@ final_basins_gdf = merged_gdf.set_index("node_id").dissolve(by="node_id").reset_
 # final_basins_gdf.to_file("basins_noholes.gpkg", layer="basins_noholes")
 
 final_basins_gdf.index.name = "fid"
-model.basin.area.df = final_basins_gdf[["node_id", "geometry"]]
+model.basin.area.df = GeoDataFrame[BasinAreaSchema](final_basins_gdf[["node_id", "geometry"]])
 
 # %% Check Differences in Node_ID Between Initial and Final Models
 final_node_ids = final_basins_gdf["node_id"]
+assert model.basin.area.df is not None
 model_node_ids = model.basin.area.df["node_id"]
 missing_in_model = final_basins_gdf[~final_basins_gdf["node_id"].isin(model_node_ids)]
 missing_in_final = model.basin.area.df[~model.basin.area.df["node_id"].isin(final_node_ids)]
@@ -423,17 +463,21 @@ if "fid" in missing_gdf.columns:
 # %% merge_basins
 for row in basin_node_edits_gdf[basin_node_edits_gdf["to_node_id"].notna()].itertuples():
     are_connected = True if pd.isna(row.connected) else row.connected
-    model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=are_connected)
+    model.merge_basins(
+        node_id=cast(int, row.node_id), to_node_id=cast(int, row.to_node_id), are_connected=are_connected
+    )
 
 mask = internal_basin_edits_gdf["to_node_id"].notna() & internal_basin_edits_gdf["add_object"].isna()
 for row in internal_basin_edits_gdf[mask].itertuples():
     are_connected = True if pd.isna(row.connected) else row.connected
-    model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=are_connected)
+    model.merge_basins(
+        node_id=cast(int, row.node_id), to_node_id=cast(int, row.to_node_id), are_connected=are_connected
+    )
 
 # %% add and connect nodes
 for row in internal_basin_edits_gdf[internal_basin_edits_gdf.add_object.notna()].itertuples():
-    from_basin_id = row.node_id
-    to_basin_id = row.to_node_id
+    from_basin_id = cast(int, row.node_id)
+    to_basin_id = cast(int, row.to_node_id)
     if row.add_object == "stuw":
         node_type = "TabulatedRatingCurve"
     model.add_and_connect_node(
@@ -452,7 +496,7 @@ for row in basin_node_edits_gdf[basin_node_edits_gdf["change_to_node_type"].notn
 
 # %% remove_nodes
 for row in remove_nodes_df.itertuples():
-    model.remove_node(node_id=row.node_id, remove_links=row.remove_links)
+    model.remove_node(node_id=cast(int, row.node_id), remove_links=cast(bool, row.remove_links))
 
 
 # %% merge nodes
@@ -556,6 +600,7 @@ for node_id in dict.fromkeys(outlet_ids):
 
 # ligt benedenstrooms een stuw
 model.update_node(node_id=1077, node_type="Outlet")  # wordt outlet, was manning
+assert model.outlet.static.df is not None
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 1077, "min_upstream_level"] = 4.48499
 
 model.redirect_link(link_id=1147, from_node_id=1219, to_node_id=172)
@@ -630,6 +675,7 @@ for row in network_validator.link_incorrect_type_connectivity(
 
 # %% sanitize node-table
 # TabulatedRatingCurve to Outlet
+assert model.node.df is not None
 for row in model.node.df[model.node.df.node_type == "TabulatedRatingCurve"].itertuples():
     node_id = row.Index
     model.update_node(node_id=node_id, node_type="Outlet")
@@ -638,6 +684,7 @@ for row in model.node.df[model.node.df.node_type == "TabulatedRatingCurve"].iter
 model.node.df.loc[model.basin.node.df.index[model.basin.node.df["meta_categorie"].isna()], "meta_categorie"] = (
     "hoofdwater"
 )
+assert model.outlet.node is not None and model.outlet.node.df is not None
 model.node.df.loc[model.outlet.node.df.index[model.outlet.node.df["meta_categorie"].isna()], "meta_categorie"] = (
     "hoofdwater"
 )
@@ -723,31 +770,7 @@ sanitize_node_table(
 
 
 # %% set flow-boundaries to level-boundaries (plus outlet)
-for row in model.flow_boundary.node.df.itertuples():
-    node_id = row.Index
-    basin_node_id = model.downstream_node_id(node_id)
-
-    # get link geometry and remove link
-    link_id = model.link.df[model.link.df["from_node_id"] == node_id].index[0]
-    link_geometry = model.link.df.at[link_id, "geometry"]
-    model.link.df = model.link.df[model.link.df.index != link_id]
-
-    # outlet node.geometry 10m from upstream or at 10% of link.geometry
-    if link_geometry.length > 20:
-        outlet_node_geometry = link_geometry.interpolate(10)
-    else:
-        outlet_node_geometry = link_geometry.interpolate(0.1, normalized=True)
-
-    # change flow_boundary to level_boundary and add outlet_node
-    model.update_node(node_id, node_type="LevelBoundary")
-    outlet_node = model.outlet.add(
-        node=Node(geometry=outlet_node_geometry, name=row.name), tables=default_tables.outlet
-    )
-
-    # remove old links and add 2 new
-    left_link_geometry, right_link_geometry = split_line(link_geometry, outlet_node_geometry)
-    model.link.add(model.level_boundary[node_id], outlet_node, geometry=left_link_geometry)
-    model.link.add(outlet_node, model.basin[basin_node_id], geometry=right_link_geometry)
+model.replace_flow_boundaries_by_level_boundaries()
 
 # basin Deurnsche Peel
 model.move_node(node_id=1961, geometry=Point(192066.2, 377928.7))
@@ -766,7 +789,7 @@ df = gpd.read_file(model_edits_gpkg, layer="add_basin_area", fid_as_index=True)
 model.basin.area.df.loc[model.basin.area.df.node_id == 1276, "geometry"] = df.at[154, "geometry"]
 # add new basin
 basin_node = model.basin.add(
-    Node(geometry=model.outlet.node.df.loc[1067].geometry, meta_categorie="doorgaand"),
+    Node(geometry=cast(Point, model.outlet.node.df.loc[1067].geometry), meta_categorie="doorgaand"),
     tables=[*default_tables.basin, basin.Area(node_id=[basin_node.node_id], geometry=[df.at[155, "geometry"]])],
 )
 

@@ -1,14 +1,18 @@
 # %%
+from typing import cast
 
 import geopandas as gpd
 import pandas as pd
+from pandera.typing.geopandas import GeoDataFrame
 from ribasim import Node
+from ribasim.geometry.area import BasinAreaSchema
 from ribasim.nodes import basin, level_boundary, outlet
 from ribasim_nl.geodataframe import assign_node_ids_by_largest_overlap
 from ribasim_nl.geometry import drop_z
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
+from shapely.geometry import LineString
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -67,17 +71,19 @@ for link_id in link_ids:
 # %% https://github.com/Deltares/Ribasim-NL/issues/152#issuecomment-2428677846
 # Toevoegen Donge
 basin_node = model.basin.add(
-    Node(geometry=drop_z(hydroobject_gdf.at[13091, "geometry"].boundary.geoms[0])), tables=basin_data
+    Node(geometry=drop_z(cast(LineString, hydroobject_gdf.at[13091, "geometry"]).boundary.geoms[0])), tables=basin_data
 )
 outlet_node = model.outlet.add(
-    Node(geometry=drop_z(hydroobject_gdf.at[13136, "geometry"].boundary.geoms[0])), tables=[outlet_data]
+    Node(geometry=drop_z(cast(LineString, hydroobject_gdf.at[13136, "geometry"]).boundary.geoms[0])),
+    tables=[outlet_data],
 )
 model.redirect_link(link_id=2477, from_node_id=basin_node.node_id, to_node_id=973)
 model.link.add(basin_node, outlet_node)
 model.link.add(outlet_node, model.level_boundary[31])
 
 outlet_node = model.outlet.add(
-    Node(geometry=drop_z(hydroobject_gdf.at[13088, "geometry"].boundary.geoms[0])), tables=[outlet_data]
+    Node(geometry=drop_z(cast(LineString, hydroobject_gdf.at[13088, "geometry"]).boundary.geoms[0])),
+    tables=[outlet_data],
 )
 model.redirect_link(link_id=2497, to_node_id=outlet_node.node_id)
 model.redirect_link(link_id=2498, from_node_id=outlet_node.node_id, to_node_id=basin_node.node_id)
@@ -131,11 +137,12 @@ for row in network_validator.link_incorrect_type_connectivity(
 ribasim_areas_gdf["geometry"] = ribasim_areas_gdf.buffer(-0.01).buffer(0.01)
 
 # Step 2: Overlay
+assert model.basin.area.df is not None
 combined_basin_areas_gdf = assign_node_ids_by_largest_overlap(ribasim_areas_gdf, model.basin.area.df)
 combined_basin_areas_gdf.to_file(ribasim_areas_bewerkt_gpkg, driver="GPKG")
 
 # Assign to model
-model.basin.area.df = combined_basin_areas_gdf
+model.basin.area.df = GeoDataFrame[BasinAreaSchema](combined_basin_areas_gdf)
 
 # %%
 # fixes model

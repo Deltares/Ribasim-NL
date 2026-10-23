@@ -1,7 +1,9 @@
 # %%
 
 import math
+from collections.abc import Mapping
 from pathlib import Path
+from typing import cast
 
 import geopandas as gpd
 from ribasim import Node
@@ -14,6 +16,7 @@ from ribasim_nl.control import (
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.run_model import write_steady_state_scenarios
+from shapely.geometry import LineString
 from shapely.ops import substring
 
 from ribasim_nl import CloudStorage, Model
@@ -48,6 +51,7 @@ def remove_basin_with_level_boundaries(
     remove_neighbor_node_ids: set[int] | None = None,
 ) -> list[int]:
     remove_neighbor_node_ids = remove_neighbor_node_ids or set()
+    assert model.link.df is not None
     links_to_basin = model.link.df[(model.link.df.from_node_id == basin_id) | (model.link.df.to_node_id == basin_id)]
 
     if links_to_basin.empty:
@@ -71,20 +75,23 @@ def remove_basin_with_level_boundaries(
 
     boundary_data = [level_boundary.Static(level=[boundary_level])]
     link_ids_to_remove = links_to_basin.index.to_list()
+    assert model.node.df is not None
     next_boundary_node_id = max(int(model.node.df.index.max()) + 1, 10000)
     boundary_connector_node_ids = []
     model.remove_links(link_ids_to_remove)
 
     for row in links_to_basin.itertuples():
-        link_geometry = row.geometry
+        link_geometry = cast(LineString, row.geometry)
         distance = min(distance_from_connector, link_geometry.length / 2)
 
         if row.from_node_id == basin_id:
-            connector_id = row.to_node_id
+            connector_id = cast(int, row.to_node_id)
             if connector_id in remove_neighbor_node_ids:
                 continue
             boundary_geometry = link_geometry.interpolate(link_geometry.length - distance)
-            boundary_link_geometry = substring(link_geometry, link_geometry.length - distance, link_geometry.length)
+            boundary_link_geometry = cast(
+                LineString, substring(link_geometry, link_geometry.length - distance, link_geometry.length)
+            )
             boundary_node = model.level_boundary.add(
                 Node(
                     node_id=next_boundary_node_id,
@@ -97,11 +104,11 @@ def remove_basin_with_level_boundaries(
             boundary_connector_node_ids.append(connector_id)
             model.link.add(boundary_node, model.get_node(connector_id), geometry=boundary_link_geometry)
         else:
-            connector_id = row.from_node_id
+            connector_id = cast(int, row.from_node_id)
             if connector_id in remove_neighbor_node_ids:
                 continue
             boundary_geometry = link_geometry.interpolate(distance)
-            boundary_link_geometry = substring(link_geometry, 0, distance)
+            boundary_link_geometry = cast(LineString, substring(link_geometry, 0, distance))
             boundary_node = model.level_boundary.add(
                 Node(
                     node_id=next_boundary_node_id,
@@ -120,12 +127,12 @@ def remove_basin_with_level_boundaries(
     return boundary_connector_node_ids
 
 
-def set_static_values(static_df, node_values: dict[int, object], column: str) -> None:
+def set_static_values(static_df, node_values: Mapping[int, object], column: str) -> None:
     for node_id, value in node_values.items():
         static_df.loc[static_df.node_id == node_id, column] = value
 
 
-def set_node_meta_values(node_df, node_values: dict[int, object], column: str) -> None:
+def set_node_meta_values(node_df, node_values: Mapping[int, object], column: str) -> None:
     for node_id, value in node_values.items():
         if node_id in node_df.index:
             node_df.loc[node_id, column] = value
@@ -197,6 +204,7 @@ aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).diss
 # Linkrichting fixes
 reverse_link_ids = [244, 875, 926, 422, 351, 853, 605, 1018, 378, 1055, 536]
 
+assert model.link.df is not None
 missing_reverse_link_ids = [link_id for link_id in reverse_link_ids if link_id not in model.link.df.index]
 if missing_reverse_link_ids:
     print(f"Skipping missing reverse_link_ids: {missing_reverse_link_ids}")
@@ -209,6 +217,7 @@ for link_id in reverse_link_ids:
 model.redirect_link(278, to_node_id=936)
 
 # Rijkswaterstaat Basin 1134 verwijderen en alle aangrenzende kunstwerken op een boundary zetten.
+assert model.level_boundary.node is not None and model.level_boundary.node.df is not None
 assert model.level_boundary.node.df.meta_couple_authority.notna().all(), (
     "Zorg dat eerst je LevelBoundaries overal meta_couple_authority hebben"
 )
@@ -219,6 +228,7 @@ basin_1134_boundary_connector_node_ids = remove_basin_with_level_boundaries(
     remove_neighbor_node_ids={691},
 )
 
+assert model.node.df is not None
 model.node.df.loc[
     model.node.df.meta_couple_authority.isna() & (model.node.df.node_type == "LevelBoundary"),
     "meta_couple_authority",
@@ -390,8 +400,10 @@ manual_drain_nodes = list(drain_nodes)
 
 
 def get_node_df(model: Model, node_type: str):
+    assert model.outlet.node is not None and model.outlet.node.df is not None
     if node_type == "Outlet":
         return model.outlet.node.df
+    assert model.pump.node is not None and model.pump.node.df is not None
     if node_type == "Pump":
         return model.pump.node.df
 
@@ -453,16 +465,12 @@ def print_manual_role_conflicts(
     manual_drain_nodes: list[int],
     manual_flow_control_nodes: list[int],
 ) -> None:
-    inlaatwerk_supply_nodes = set(inlaatwerk_supply_nodes)
-    manual_supply_nodes = set(manual_supply_nodes)
-    manual_drain_nodes = set(manual_drain_nodes)
-    manual_flow_control_nodes = set(manual_flow_control_nodes)
-
+    inlaatwerk_supply_node_set = set(inlaatwerk_supply_nodes)
     print(
         "inlaatwerken genegeerd door handmatige indeling: "
-        f"flow_control={sorted(inlaatwerk_supply_nodes & manual_flow_control_nodes)}, "
-        f"drain={sorted(inlaatwerk_supply_nodes & manual_drain_nodes)}, "
-        f"supply={sorted(inlaatwerk_supply_nodes & manual_supply_nodes)}"
+        f"flow_control={sorted(inlaatwerk_supply_node_set & set(manual_flow_control_nodes))}, "
+        f"drain={sorted(inlaatwerk_supply_node_set & set(manual_drain_nodes))}, "
+        f"supply={sorted(inlaatwerk_supply_node_set & set(manual_supply_nodes))}"
     )
 
 
@@ -510,6 +518,7 @@ supply_nodes, drain_nodes, flow_control_nodes = combine_control_node_roles(
     manual_flow_control_nodes=manual_flow_control_nodes,
 )
 
+assert model.outlet.static.df is not None
 supply_outlet_mask = model.outlet.static.df.node_id.isin(supply_nodes) & ~model.outlet.static.df.node_id.isin(
     outlet_max_flow_rate_by_node_id
 )
@@ -535,6 +544,7 @@ outlet_max_flow_rate_aanvoer_by_node_id.update(outlet_max_flow_rate_by_node_id)
 
 boundary_supply_node_ids = set(basin_1134_boundary_connector_node_ids) & set(supply_nodes)
 for static_df in [model.outlet.static.df, model.pump.static.df]:
+    assert static_df is not None
     mask = static_df.node_id.isin(boundary_supply_node_ids)
     static_df.loc[mask, "min_upstream_level"] = -math.inf
     mark_level_update_protected(static_df, mask, model=model)
@@ -605,6 +615,7 @@ pump_max_flow_rate_from_results = {
     1286: 2,  # gekoppeld max=1.80, huidige max=0.00, link=4301400
     1294: 1,  # naam onbekend; oude static flow_rate=0
 }
+assert model.pump.static.df is not None
 mask = (
     model.pump.static.df.node_id.isin(pump_max_flow_rate_from_results)
     & model.pump.static.df.flow_rate.notna()
@@ -622,6 +633,7 @@ model = junctionify(model)
 aanvoer_only_node_ids = set(supply_nodes) - set(drain_nodes) - set(flow_control_nodes)
 
 # Aanvoer-cap: doorlaten/inlaten mogen in aanvoer niet de hoge afvoercapaciteit gebruiken.
+assert model.outlet.static.df is not None
 aanvoer_outlet_mask = model.outlet.static.df.control_state == "aanvoer"
 model.outlet.static.df.loc[aanvoer_outlet_mask, ["flow_rate", "max_flow_rate"]] = model.outlet.static.df.loc[
     aanvoer_outlet_mask, ["flow_rate", "max_flow_rate"]
@@ -636,6 +648,7 @@ for static_df, max_flow_rate_by_node_id in (
     (model.outlet.static.df, outlet_max_flow_rate_by_node_id),
     (model.pump.static.df, pump_max_flow_rate_by_node_id),
 ):
+    assert static_df is not None
     max_flow_rate = static_df["node_id"].map(max_flow_rate_by_node_id)
     aanvoer_mask = (
         static_df["control_state"].eq("aanvoer")
@@ -646,7 +659,9 @@ for static_df, max_flow_rate_by_node_id in (
     static_df.loc[aanvoer_mask, "max_flow_rate"] = max_flow_rate[aanvoer_mask]
 
 # Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
+assert model.node.df is not None
 node_type_by_id = model.node.df["node_type"].to_dict()
+assert model.link.df is not None
 flow_demand_controlled_node_ids = set(
     model.link.df.loc[
         model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),
@@ -659,6 +674,7 @@ manual_max_flow_rate_node_ids = set(outlet_max_flow_rate_by_node_id)
 manual_max_flow_rate_node_ids.update(pump_max_flow_rate_by_node_id)
 protected_max_flow_rate_node_ids = set(EXCLUDE_NODES) | flow_demand_controlled_node_ids | manual_max_flow_rate_node_ids
 for static_df in (model.outlet.static.df, model.pump.static.df):
+    assert static_df is not None
     afvoer_mask = (
         static_df["control_state"].eq("afvoer")
         & static_df["flow_rate"].fillna(0).gt(0)
@@ -667,6 +683,7 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
     static_df.loc[afvoer_mask, "max_flow_rate"] = static_df.loc[afvoer_mask, "max_flow_rate"].fillna(10).clip(lower=10)
 
 for static_df in (model.outlet.static.df, model.pump.static.df):
+    assert static_df is not None
     afvoer_mask = static_df["control_state"].eq("afvoer") & static_df["node_id"].isin(aanvoer_only_node_ids)
     static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 0.0
 

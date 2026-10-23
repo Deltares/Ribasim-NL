@@ -60,10 +60,10 @@ def add_supply_area_control(
     supply_nodes: list[int],
     drain_nodes: list[int],
     flow_control_nodes: list[int],
-    flow_rate_aanvoer: float | None = None,
-    max_flow_rate_aanvoer: float | None = None,
-    flow_rate_afvoer: float | None = None,
-    max_flow_rate_afvoer: float | None = None,
+    flow_rate_aanvoer: float | dict[int, float] | None = None,
+    max_flow_rate_aanvoer: float | dict[int, float] | None = None,
+    flow_rate_afvoer: float | dict[int, float] | None = None,
+    max_flow_rate_afvoer: float | dict[int, float] | None = None,
 ) -> None:
     polygon = aanvoergebieden_df.loc[[area_name], "geometry"].union_all()
 
@@ -104,6 +104,7 @@ model = Model.read(ribasim_toml)
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
 # Extra aanvoerpomp bij basin 1901, met boundary op dezelfde plek/level als boundary 72.
+assert model.level_boundary.static.df is not None
 boundary_level = model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 72, "level"].dropna()
 dod_extra_boundary = model.level_boundary.add(
     Node(
@@ -171,11 +172,13 @@ for node_id, to_node_id in [
 
 # Manning moet outlet zijn
 model.update_node(node_id=1468, node_type="Outlet")
+assert model.outlet.static.df is not None
 mask = model.outlet.static.df.node_id == 1468
 model.outlet.static.df.loc[mask, "min_upstream_level"] = 2.63
 mark_level_update_protected(model.outlet.static.df, mask, model=model)
 
 # Naamcorrectie: node_id 1344 is Zalk, niet Adsum
+assert model.node.df is not None
 model.node.df.loc[1344, "name"] = "Zalk"
 
 
@@ -243,7 +246,7 @@ outlet_max_flow_rate_coupled_by_node_id = {
     3234: 45,  # parameterized nul; gekoppeld max=29.20, huidige max=20.00, link=5903168
     3235: 2,  # parameterized nul; gekoppeld max=0.77
 }
-outlet_max_flow_rate_afvoer_by_node_id = {}
+outlet_max_flow_rate_afvoer_by_node_id: dict[int, float] = {}
 for max_flow_rates in (
     outlet_max_flow_rate_from_results,
     outlet_max_flow_rate_coupled_by_node_id,
@@ -428,6 +431,7 @@ def get_nearest_control_nodes(
 ) -> list[int]:
     kunstwerk_gdf = gpd.read_file(kunstwerk_path, fid_as_index=True).to_crs(model.crs)
 
+    assert model.node.df is not None
     control_node_gdf = model.node.df[model.node.df["node_type"].isin(node_types)].copy()
     control_node_gdf["ribasim_node_id"] = control_node_gdf.index
     control_node_gdf = gpd.GeoDataFrame(control_node_gdf, geometry="geometry", crs=model.crs)
@@ -465,21 +469,17 @@ def print_manual_role_conflicts(
     manual_drain_nodes: list[int],
     manual_flow_control_nodes: list[int],
 ) -> None:
-    kunstwerk_supply_nodes = set(kunstwerk_supply_nodes)
-    kunstwerk_drain_nodes = set(kunstwerk_drain_nodes)
-    manual_supply_nodes = set(manual_supply_nodes)
-    manual_drain_nodes = set(manual_drain_nodes)
-    manual_flow_control_nodes = set(manual_flow_control_nodes)
-
+    kunstwerk_supply_node_set = set(kunstwerk_supply_nodes)
+    kunstwerk_drain_node_set = set(kunstwerk_drain_nodes)
     print(
         "kunstwerk_in overruled door handmatig: "
-        f"flow_control={sorted(kunstwerk_supply_nodes & manual_flow_control_nodes)}, "
-        f"drain={sorted(kunstwerk_supply_nodes & manual_drain_nodes)}"
+        f"flow_control={sorted(kunstwerk_supply_node_set & set(manual_flow_control_nodes))}, "
+        f"drain={sorted(kunstwerk_supply_node_set & set(manual_drain_nodes))}"
     )
     print(
         "kunstwerk_uit overruled door handmatig: "
-        f"flow_control={sorted(kunstwerk_drain_nodes & manual_flow_control_nodes)}, "
-        f"supply={sorted(kunstwerk_drain_nodes & manual_supply_nodes)}"
+        f"flow_control={sorted(kunstwerk_drain_node_set & set(manual_flow_control_nodes))}, "
+        f"supply={sorted(kunstwerk_drain_node_set & set(manual_supply_nodes))}"
     )
 
 
@@ -603,12 +603,15 @@ add_controllers_to_uncontrolled_connector_nodes(
 )
 
 # Holthe max_downstream iets lager gezet omdat deze pas aangaat als andere inlaten niet meer kunnen aanleveren.
+assert model.pump.static.df is not None
 mask = model.pump.static.df.node_id == 648
 model.pump.static.df.loc[mask, "max_downstream_level"] -= 0.04
 mark_level_update_protected(model.pump.static.df, mask, model=model)
 
 # Noordscheschutsluis: basin 1920 is gemerged naar 1881; aanvoer stopt 1 cm onder benedenstrooms streefpeil.
 noordscheschutsluis_pump_node_id = 346
+assert model.link.df is not None
+assert model.basin.node is not None and model.basin.node.df is not None
 downstream_basin_ids = model.link.df.loc[
     (model.link.df.from_node_id == noordscheschutsluis_pump_node_id)
     & model.link.df.to_node_id.isin(model.basin.node.df.index),
@@ -621,6 +624,7 @@ if len(downstream_basin_ids) != 1:
     )
 
 downstream_basin_id = int(downstream_basin_ids[0])
+assert model.basin.area.df is not None
 downstream_target_level = model.basin.area.df.loc[
     model.basin.area.df.node_id == downstream_basin_id,
     "meta_streefpeil",
@@ -695,6 +699,7 @@ model.pump.static.df.loc[mask & (model.pump.static.df.control_state == "afvoer")
 
 # Handmatige ondergrens voor node 3235.
 for static_df in [model.outlet.static.df, model.pump.static.df]:
+    assert static_df is not None
     mask = static_df.node_id == 3235
     static_df.loc[mask, "min_upstream_level"] = 17.7
     mark_level_update_protected(static_df, mask, model=model)

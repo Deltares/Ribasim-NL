@@ -113,7 +113,9 @@ aanvoergebieden_gpkg = cloud.joinpath(rf"{AUTHORITY}/verwerkt/sturing/aanvoergeb
 
 
 def upstream_basin_target_level(model: Model, node_id: int) -> float | None:
+    assert model.link.df is not None
     upstream_node_ids = model.link.df.loc[model.link.df.to_node_id == node_id, "from_node_id"].unique()
+    assert model.basin.area.df is not None
     basin_levels = model.basin.area.df.dropna(subset=["meta_streefpeil"]).groupby("node_id")["meta_streefpeil"].first()
     target_levels = basin_levels[basin_levels.index.isin(upstream_node_ids)]
     if target_levels.empty:
@@ -122,6 +124,7 @@ def upstream_basin_target_level(model: Model, node_id: int) -> float | None:
 
 
 def configure_always_on_pumps(model: Model) -> None:
+    assert model.pump.static.df is not None
     for node_id, min_flow_rate in ALWAYS_ON_PUMP_MIN_FLOW_RATE_BY_NODE_ID.items():
         mask = model.pump.static.df.node_id == node_id
         if not mask.any():
@@ -147,6 +150,7 @@ def configure_always_on_pumps(model: Model) -> None:
 
 
 def configure_dorkwerd_control(model: Model) -> None:
+    assert model.link.df is not None
     control_links = model.link.df[
         model.link.df["link_type"].eq("control") & model.link.df["to_node_id"].eq(DORKWERD_PUMP_NODE_ID)
     ]
@@ -156,7 +160,9 @@ def configure_dorkwerd_control(model: Model) -> None:
         )
 
     control_node_id = int(control_links.iloc[0].from_node_id)
+    assert model.discrete_control.variable.df is not None
     variable_mask = model.discrete_control.variable.df["node_id"].eq(control_node_id)
+    assert model.discrete_control.condition.df is not None
     condition_mask = model.discrete_control.condition.df["node_id"].eq(control_node_id)
     if variable_mask.sum() != 1:
         raise ValueError(f"Expected one discrete control variable row for Dorkwerd control {control_node_id}")
@@ -168,6 +174,7 @@ def configure_dorkwerd_control(model: Model) -> None:
     model.discrete_control.condition.df.loc[condition_mask, "threshold_high"] = DORKWERD_THRESHOLD_HIGH
     mark_threshold_update_protected(model.discrete_control.condition.df, condition_mask)
 
+    assert model.pump.static.df is not None
     pump_mask = model.pump.static.df["node_id"].eq(DORKWERD_PUMP_NODE_ID) & model.pump.static.df["control_state"].eq(
         "aanvoer"
     )
@@ -177,6 +184,7 @@ def configure_dorkwerd_control(model: Model) -> None:
     model.pump.static.df.loc[pump_mask, "max_downstream_level"] = DORKWERD_MAX_DOWNSTREAM_LEVEL
     mark_level_update_protected(model.pump.static.df, pump_mask)
 
+    assert model.node.df is not None
     if DORKWERD_LISTEN_NODE_ID in model.node.df.index:
         model.node.df.loc[control_node_id, "name"] = (
             f"inlaat: {DORKWERD_THRESHOLD_HIGH:.3f}/{DORKWERD_MAX_DOWNSTREAM_LEVEL:.2f} via {DORKWERD_LISTEN_NODE_ID}"
@@ -187,12 +195,14 @@ def configure_dorkwerd_control(model: Model) -> None:
 # Read data
 model = Model.read(ribasim_toml)
 
+assert model.outlet.static.df is not None
 outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.node_id.astype(int), 10.0)
 
 # Handmatige inlaatcapaciteiten gelden ook in aanvoer; niet terugvallen op de default van 10 m3/s.
 outlet_max_flow_rate_aanvoer_by_node_id.update(outlet_max_flow_rate_by_node_id)
 
 # fixes (zo snel mogelijk)
+assert model.level_boundary.static.df is not None
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 6, "level"] = 0.0  # Noordzee
 remove_nodes = [152, 534, 678]
 # 152: Dorkwerdersluis (scheepvaart)
@@ -223,6 +233,7 @@ for node_id in ALWAYS_ON_PUMP_MIN_FLOW_RATE_BY_NODE_ID:
     model.update_node(node_id=node_id, node_type="Pump", node_properties={"meta_function": "pump"})
 
 model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0.0
+assert model.pump.static.df is not None
 model.pump.static.df.loc[model.pump.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0.0
 
 
@@ -239,6 +250,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 2014, "flow_rate"] 
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 2011, "flow_rate"] = 0.3  # Inlaat Verl. Hoogeveense Vaart
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 847, "flow_rate"] = 0.3  # Inlaat Barriereweg
 
+assert model.node.df is not None
 model.node.df[IS_SUPPLY_NODE_COLUMN] = False
 mask = model.node.df["meta_code_waterbeheerder"].str.contains("KIN-", case=False, na=False)
 model.node.df.loc[mask, IS_SUPPLY_NODE_COLUMN] = True
@@ -694,6 +706,7 @@ junctionify(model)
 # Minimale afvoer naar buitenwater op specifieke kunstwerken, voor alle control_states.
 for node_id, min_flow_rate in MIN_FLOW_RATE_BY_NODE_ID.items():
     for static_df in (model.outlet.static.df, model.pump.static.df):
+        assert static_df is not None
         if "min_flow_rate" not in static_df.columns:
             continue
         mask = static_df.node_id == node_id
@@ -718,6 +731,7 @@ for static_df, max_flow_rate_by_node_id in (
     (model.outlet.static.df, outlet_max_flow_rate_by_node_id),
     (model.pump.static.df, pump_max_flow_rate_by_node_id),
 ):
+    assert static_df is not None
     max_flow_rate = static_df["node_id"].map(max_flow_rate_by_node_id)
     aanvoer_mask = (
         static_df["control_state"].eq("aanvoer")
@@ -729,6 +743,7 @@ for static_df, max_flow_rate_by_node_id in (
 
 # Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
 node_type_by_id = model.node.df["node_type"].to_dict()
+assert model.link.df is not None
 flow_demand_controlled_node_ids = set(
     model.link.df.loc[
         model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),
@@ -742,6 +757,7 @@ manual_max_flow_rate_node_ids.update(pump_max_flow_rate_by_node_id)
 manual_max_flow_rate_node_ids.update(pump_max_flow_rate_from_results)
 protected_max_flow_rate_node_ids = set(EXCLUDE_NODES) | flow_demand_controlled_node_ids | manual_max_flow_rate_node_ids
 for static_df in (model.outlet.static.df, model.pump.static.df):
+    assert static_df is not None
     afvoer_mask = (
         static_df["control_state"].eq("afvoer")
         & static_df["flow_rate"].fillna(0).gt(0)
@@ -766,6 +782,7 @@ model.level_boundary.static.df.loc[boundary_mask, "level"] = 6.62
 # Model run
 
 
+assert model.discrete_control.condition.df is not None
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 
 # write the dry and wet steady state scenarios and the full control model

@@ -259,9 +259,9 @@ def main(
         if not main_route_from_hydro_objects:
             assert crossings is not None
             if internal_crossings:
-                _temp = shapely.MultiPolygon(basins.explode().geometry.values).buffer(selection_buffer)
+                _temp = shapely.MultiPolygon(list(basins.explode().geometry.values)).buffer(selection_buffer)
             else:
-                _temp = shapely.MultiPolygon(basins.explode().exterior.buffer(selection_buffer))
+                _temp = shapely.MultiPolygon(list(basins.explode().exterior.buffer(selection_buffer)))
             crossings[crossings.intersects(_temp)].to_file(wd_intermediate_output / _fn_int_output, layer="endpoints")
             del _temp
 
@@ -302,27 +302,27 @@ def main(
         network.to_file(wd_output / "network.gpkg", layer="hydro_objects")
 
     # basin profiles
-    main_route = hydro_objects["main-route"].values
+    main_route = hydro_objects["main-route"].to_numpy()
     flowing_profiles = cross_section.assign_basin_profiles(basins, hydro_objects[main_route], as_geo_dataframe=True)
     storing_profiles = cross_section.assign_basin_profiles(basins, hydro_objects[~main_route], as_geo_dataframe=True)
 
     # NaN-valued basin profiles
-    if sum(flowing_profiles["area"].isna()) > 0:
+    if flowing_profiles["area"].isna().sum() > 0:
         if debug:
             LOG.warning(
                 f"NaN-values present in profile-table (flowing/'doorgaand'):"
                 f"\n{flowing_profiles[flowing_profiles.isna()]}"
             )
         else:
-            msg = f"Abort profile table generation with NaN-values: {sum(flowing_profiles.isna())} NaN-values found"
+            msg = f"Abort profile table generation with NaN-values: {flowing_profiles.isna().sum().sum()} NaN-values found"
             raise ValueError(msg)
-    if sum(storing_profiles["area"].isna()) > 0:
+    if storing_profiles["area"].isna().sum() > 0:
         if debug:
             LOG.warning(
                 f"NaN-values present in profile-table (storing/'bergend')\n{storing_profiles[storing_profiles.isna()]}"
             )
         else:
-            msg = f"Abort profile table generation with NaN-values: {sum(storing_profiles.isna())} NaN-values found"
+            msg = f"Abort profile table generation with NaN-values: {storing_profiles.isna().sum().sum()} NaN-values found"
             raise ValueError(msg)
 
     # fill storing basins with BGT-data
@@ -333,10 +333,10 @@ def main(
 
     # assure no zero area-values
     assert all(flowing_profiles["area"] > 0), (
-        f"Not all profile areas are larger than zero: {flowing_profiles[~flowing_profiles['area'] > 0]}"
+        f"Not all profile areas are larger than zero: {flowing_profiles[~(flowing_profiles['area'] > 0)]}"
     )
     assert all(storing_profiles["area"] > 0), (
-        f"Not all profile areas are larger than zero: {storing_profiles[~storing_profiles['area'] > 0]}"
+        f"Not all profile areas are larger than zero: {storing_profiles[~(storing_profiles['area'] > 0)]}"
     )
 
     # export basin profiles
@@ -453,7 +453,7 @@ def _get_bgt_data(fn_bgt: Path | str | None, basins: gpd.GeoDataFrame) -> gpd.Ge
     :param fn_bgt: filename of BGT-data
     :param basins: geospatial dataset of basins (polygons)
     """
-    geo_filter = typing.cast(shapely.Polygon, shapely.MultiPolygon(basins.convex_hull.values).convex_hull)
+    geo_filter = typing.cast(shapely.Polygon, shapely.MultiPolygon(list(basins.convex_hull.values)).convex_hull)
     if fn_bgt is None:
         return bgt.download_bgt_water(geo_filter=geo_filter)
     fn_bgt = Path(fn_bgt)

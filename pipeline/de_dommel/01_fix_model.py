@@ -1,5 +1,5 @@
 # %%
-
+from typing import cast
 
 import geopandas as gpd
 import pandas as pd
@@ -7,7 +7,7 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.sanitize_node_table import sanitize_node_table
-from shapely.geometry import Point, Polygon
+from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -44,6 +44,7 @@ network_validator = NetworkValidator(model)
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2288780504
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291081244
+assert model.link.df is not None
 model.link.df = model.link.df.drop_duplicates(subset=["from_node_id", "to_node_id"])
 
 if not network_validator.link_duplicated().empty:
@@ -56,7 +57,8 @@ node_id = model.next_node_id
 link_id = model.link.df.loc[model.link.df.to_node_id == 251].index[0]
 model.link.df.loc[link_id, ["from_node_id"]] = node_id
 
-node = Node(node_id, model.link.df.at[link_id, "geometry"].boundary.geoms[0])
+node = Node(node_id, cast(LineString, model.link.df.at[link_id, "geometry"]).boundary.geoms[0])
+assert model.basin.area.df is not None
 model.basin.area.df.loc[model.basin.area.df.node_id == 1009, ["node_id"]] = node_id
 area = basin.Area(geometry=model.basin.area[node_id].geometry.to_list())
 model.basin.add(node, [*basin_data, area])
@@ -84,7 +86,7 @@ for row in network_validator.link_incorrect_connectivity().itertuples():
             fid_as_index=True,
         )
         kdu = gdf.loc[250]
-        geometry = kdu.geometry.interpolate(0.5, normalized=True)
+        geometry = cast(LineString, kdu.geometry).interpolate(0.5, normalized=True)
         geometry = Point(geometry.x, geometry.y)
         name = kdu.CODE
         meta_object_type = "duikersifonhevel"
@@ -108,6 +110,7 @@ if not network_validator.link_incorrect_connectivity().empty:
 # %% verwijderen internal basins
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291271525
+assert model.node.df is not None
 for row in network_validator.node_internal_basin().itertuples():
     if row.Index not in model.basin.area.df.node_id.to_numpy():  # remove or change to level-boundary
         link_select_df = model.link.df[model.link.df.to_node_id == row.Index]
@@ -157,7 +160,7 @@ geometry = gdf.loc[2751].geometry.interpolate(0.5, normalized=True)
 node_id = model.next_node_id
 manning_data = manning_resistance.Static(length=[100], manning_n=[0.03], profile_width=[10], profile_slope=[1])
 
-model.manning_resistance.add(Node(node_id=node_id, geometry=geometry), [manning_data])
+model.manning_resistance.add(Node(node_id=node_id, geometry=cast(Point, geometry)), [manning_data])
 
 model.link.df = model.link.df[~((model.link.df.from_node_id == 611) & (model.link.df.to_node_id == 1643))]
 model.link.add(model.basin[1643], model.manning_resistance[node_id])
@@ -178,7 +181,8 @@ gdf = gpd.read_file(
     fid_as_index=True,
 )
 kst = gdf.loc[35]
-geometry = Point(kst.geometry.x, kst.geometry.y)
+kst_geometry = cast(Point, kst.geometry)
+geometry = Point(kst_geometry.x, kst_geometry.y)
 name = kst.CODE
 meta_object_type = "stuw"
 
@@ -196,7 +200,7 @@ gdf = gpd.read_file(
     engine="pyogrio",
     fid_as_index=True,
 )
-geometry = gdf.at[2822, "geometry"].interpolate(0.5, normalized=True)
+geometry = cast(LineString, gdf.at[2822, "geometry"]).interpolate(0.5, normalized=True)
 basin_node_id = model.next_node_id
 basin_node = model.basin.add(
     Node(node_id=basin_node_id, geometry=geometry, meta_krw_name="Witte Loop/Peelrijt", meta_krw_id="NL27_KD_3_2"),
@@ -231,7 +235,11 @@ model.basin.area.df = model.basin.area.df[~model.basin.area.df.node_id.isin(mode
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2370880128
 basin_polygon = model.basin.area.df.union_all()
-holes = [Polygon(interior) for polygon in basin_polygon.buffer(10).buffer(-10).geoms for interior in polygon.interiors]
+holes = [
+    Polygon(interior)
+    for polygon in cast(MultiPolygon, basin_polygon.buffer(10).buffer(-10)).geoms
+    for interior in polygon.interiors
+]
 geoseries = gpd.GeoSeries(holes, crs=28992)
 
 drainage_areas_df = gpd.read_file(areas_gpkg, layer="drainage_areas")
@@ -257,8 +265,7 @@ for _idx, geometry in enumerate(geoseries):
         # clip and merge geometry
         geometry = geometry.buffer(10).difference(basin_polygon)
         geometry = (
-            model.basin.area.df.set_index("node_id")
-            .at[assigned_basin_id, "geometry"]
+            cast(MultiPolygon, model.basin.area.df.set_index("node_id").at[assigned_basin_id, "geometry"])
             .union(geometry)
             .buffer(0.1)
             .buffer(-0.1)
@@ -270,7 +277,7 @@ for _idx, geometry in enumerate(geoseries):
 # %% Verplaats boundary ruimtelijk van Vugtherstuw (afvoerpijl juiste richting in schematics, cosmetisch!)
 
 new_geom = Point(148523.8, 410424.6)
-model.node.df.at[9, "geometry"] = new_geom
+model.node.df.at[9, "geometry"] = new_geom  # ty: ignore[invalid-assignment]
 
 model.remove_link(from_node_id=627, to_node_id=9, remove_disconnected_nodes=False)
 model.remove_link(from_node_id=121, to_node_id=9, remove_disconnected_nodes=False)
@@ -290,10 +297,12 @@ for row in network_validator.link_incorrect_type_connectivity().itertuples():
 
 # %%
 # Sanitize node_table
+assert model.tabulated_rating_curve.node is not None and model.tabulated_rating_curve.node.df is not None
 for node_id in model.tabulated_rating_curve.node.df.index:
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # ManningResistance that are duikersifonhevel to outlet
+assert model.manning_resistance.node is not None and model.manning_resistance.node.df is not None
 for node_id in model.manning_resistance.node.df[
     model.manning_resistance.node.df["meta_object_type"] == "duikersifonhevel"
 ].index:
@@ -325,11 +334,13 @@ model.node.df.loc[
 node_df = model.node.df[model.node.df["meta_gestuwd"] & model.node.df["node_type"].isin(["Outlet", "Pump"])]
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
+assert model.basin.node is not None and model.basin.node.df is not None
 basin_node_ids = model.basin.node.df.index.intersection(upstream_node_ids)
 model.node.df.loc[basin_node_ids, "meta_gestuwd"] = True
 
 # set álle benedenstroomse outlets van gestuwde basins als gestuwd (dus ook duikers en andere objecten)
 downstream_node_ids = pd.Series([model.downstream_node_id(i) for i in basin_node_ids]).explode().to_numpy()
+assert model.outlet.node is not None and model.outlet.node.df is not None
 model.node.df.loc[model.outlet.node.df.index.intersection(downstream_node_ids), "meta_gestuwd"] = True
 
 
@@ -356,6 +367,7 @@ model.link.add(level_boundary_node, outlet_node)
 model.link.add(outlet_node, model.basin[1609])
 
 # label flow-boundaries to buitenlandse-aanvoer
+assert model.flow_boundary.node is not None and model.flow_boundary.node.df is not None
 model.node.df.loc[model.flow_boundary.node.df.index, "meta_categorie"] = "buitenlandse aanvoer"
 
 # fix Dommel en Aa

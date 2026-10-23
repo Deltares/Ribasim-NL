@@ -246,6 +246,7 @@ aanvoergebieden_gpkg = cloud.joinpath(r"BrabantseDelta/verwerkt/sturing/aanvoerg
 # Read data
 model = Model.read(ribasim_toml)
 
+assert model.outlet.static.df is not None
 outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.node_id.astype(int), 10.0)
 
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
@@ -278,9 +279,11 @@ model.reverse_link(link_id=1687)
 ## Tijdelijk als pomp modelleren, omdat afwatering anders vastloopt op hoge RWS-waterstanden.
 temporary_rws_pump_node_id = 1056
 model.update_node(node_id=temporary_rws_pump_node_id, node_type="Pump")
+assert model.node.df is not None
 model.node.df.loc[temporary_rws_pump_node_id, "name"] = (
     "Dintelsas Volkerak tijdelijke pomp naar RWS (eigenlijk uitlaat)"
 )
+assert model.pump.static.df is not None
 model.pump.static.df.loc[model.pump.static.df.node_id == temporary_rws_pump_node_id, ["flow_rate", "max_flow_rate"]] = (
     100
 )
@@ -382,6 +385,7 @@ model.outlet.static.df.loc[zero_aanvoer_mask, ["flow_rate", "max_flow_rate"]] = 
 
 # Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
 node_type_by_id = model.node.df["node_type"].to_dict()
+assert model.link.df is not None
 flow_demand_controlled_node_ids = set(
     model.link.df.loc[
         model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),
@@ -393,6 +397,7 @@ flow_demand_controlled_node_ids = set(
 manual_max_flow_rate_node_ids = {376, 446, 509, 1056}
 protected_max_flow_rate_node_ids = set(EXCLUDE_NODES) | flow_demand_controlled_node_ids | manual_max_flow_rate_node_ids
 for static_df in (model.outlet.static.df, model.pump.static.df):
+    assert static_df is not None
     afvoer_mask = (
         static_df["control_state"].eq("afvoer")
         & static_df["flow_rate"].fillna(0).gt(0)
@@ -407,6 +412,7 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
 # Model run
 
 
+assert model.discrete_control.condition.df is not None
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 
 # %% Verdeelwerk bij Eindhoven 10% afvgevoerd via Beatrixkanaal (max 20m3/s) en 90% via Dieze

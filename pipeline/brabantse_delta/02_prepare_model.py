@@ -1,4 +1,6 @@
 # %%
+from typing import cast
+
 import geopandas as gpd
 import pandas as pd
 from ribasim_nl.assign_authorities import AssignAuthorities
@@ -7,6 +9,7 @@ from ribasim_nl.link_geometries import fix_link_geometries
 from ribasim_nl.link_profiles import add_link_profile_ids
 from ribasim_nl.parametrization.damo_profiles import DAMOProfiles
 from ribasim_nl.parametrization.static_data_xlsx import StaticData
+from shapely.geometry import LineString
 
 from ribasim_nl import CloudStorage, Model, Network
 
@@ -63,10 +66,12 @@ profiles_df.to_file(profiles_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
 add_link_profile_ids(model, profiles=damo_profiles, id_col="code")
 fix_link_geometries(model, network)
+assert model.link.df is not None
 model.link.df.reset_index().to_file(link_geometries_gpkg)
 
 
 # %%
+assert model.basin.area.df is not None
 if "meta_code_waterbeheerder" not in model.basin.area.columns():
     model.basin.area.df["meta_code_waterbeheerder"] = pd.Series(dtype=str)
 
@@ -79,6 +84,7 @@ static_data.reset_data_frame(node_type="Pump")
 static_data.reset_data_frame(node_type="Outlet")
 
 # --- Corrigeer 'GEM'-prefix in Pump-codekolom ---
+assert static_data.pump is not None
 pump_df = static_data.pump.copy()
 
 if "code" in pump_df.columns:
@@ -125,6 +131,7 @@ static_data.add_series(node_type="Pump", series=max_cap, fill_na=True)
 
 # %% Add peilen van peilenkaart to pumps en outlets
 def add_min_upstream_level_from_peilenkaart(node_type):
+    assert static_data.outlet is not None
     if node_type == "Outlet":
         node_df = static_data.outlet[static_data.outlet.min_upstream_level.isna()]
     else:
@@ -133,11 +140,12 @@ def add_min_upstream_level_from_peilenkaart(node_type):
     node_ids = node_df.node_id.to_numpy()
     levels = []
 
+    assert model.link.df is not None
     for node_id in node_ids:
         node = getattr(model, node_type.lower())[node_id]
         tolerance = 30  # afstand voor zoeken bovenstrooms
 
-        line_to_node = model.link.df.set_index("to_node_id").at[node.node_id, "geometry"]
+        line_to_node = cast(LineString, model.link.df.set_index("to_node_id").at[node.node_id, "geometry"])
         distance_to_interpolate = line_to_node.length - tolerance
         if distance_to_interpolate < 0:
             distance_to_interpolate = 0
@@ -201,6 +209,7 @@ static_data.fill_streefpeil_from_profiles(damo_profiles, profiles_df, divisor=3)
 
 # # update model basin-data
 model.basin.area.df.set_index("node_id", inplace=True)
+assert static_data.basin is not None
 streefpeil = static_data.basin.set_index("node_id")["streefpeil"]
 
 # Handmatige fixes

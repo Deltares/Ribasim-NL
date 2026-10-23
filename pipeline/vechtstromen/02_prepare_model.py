@@ -1,4 +1,6 @@
 # %%
+from typing import cast
+
 import geopandas as gpd
 import pandas as pd
 from ribasim_nl.assign_authorities import AssignAuthorities
@@ -7,6 +9,7 @@ from ribasim_nl.link_geometries import fix_link_geometries
 from ribasim_nl.link_profiles import add_link_profile_ids
 from ribasim_nl.parametrization.damo_profiles import DAMOProfiles
 from ribasim_nl.parametrization.static_data_xlsx import StaticData
+from shapely.geometry import LineString
 
 from ribasim_nl import CloudStorage, Model, Network
 
@@ -79,6 +82,7 @@ profiles_df.to_file(profiles_gpkg)
 
 fix_link_geometries(model, network)
 add_link_profile_ids(model, profiles=profiles_df, id_col="profiel_id")
+assert model.link.df is not None
 model.link.df.reset_index().to_file(link_geometries_gpkg)
 
 profiles_df.set_index("profiel_id", inplace=True)
@@ -87,6 +91,7 @@ profiles_df.set_index("profiel_id", inplace=True)
 # add link profiles
 
 # %%
+assert model.basin.area.df is not None
 if "meta_code_waterbeheerder" not in model.basin.area.columns():
     model.basin.area.df["meta_code_waterbeheerder"] = pd.Series(dtype=str)
 
@@ -112,6 +117,7 @@ min_upstream_level_pr.name = "min_upstream_level"
 static_data.add_series(node_type="Outlet", series=min_upstream_level_pr, fill_na=True)
 
 # From Peilenkaart
+assert static_data.outlet is not None
 node_ids = static_data.outlet[static_data.outlet.min_upstream_level.isna()].node_id.to_numpy()
 levels = []
 
@@ -125,7 +131,7 @@ for node_id in node_ids:
     tolerance = 5  # afstand voor zoeken bovenstrooms
     node_geometry = node.geometry
 
-    line_to_node = model.link.df.set_index("to_node_id").at[node.node_id, "geometry"]
+    line_to_node = cast(LineString, model.link.df.set_index("to_node_id").at[node.node_id, "geometry"])
     distance_to_interpolate = line_to_node.length - tolerance
     if distance_to_interpolate < 0:
         distance_to_interpolate = 0
@@ -157,7 +163,7 @@ for node_id in node_ids:
     tolerance = 5  # afstand voor zoeken bovenstrooms
     node_id = node.node_id
     node_geometry = node.geometry
-    line_to_node = model.link.df.set_index("to_node_id").at[node_id, "geometry"]
+    line_to_node = cast(LineString, model.link.df.set_index("to_node_id").at[node_id, "geometry"])
     distance_to_interpolate = line_to_node.length - tolerance
     if distance_to_interpolate < 0:
         distance_to_interpolate = 0
@@ -195,6 +201,7 @@ static_data.outlet.loc[static_data.outlet.node_id == 1289, "min_upstream_level"]
 static_data.outlet.loc[static_data.outlet.node_id == 1290, "min_upstream_level"] = 1.25
 # %% Bepaal min_upstream_level pumps from peilenkaart
 static_data.reset_data_frame(node_type="Pump")
+assert static_data.pump is not None
 node_ids = static_data.pump.node_id
 levels = []
 for node_id in node_ids:
@@ -202,7 +209,7 @@ for node_id in node_ids:
     tolerance = 5  # afstand voor zoeken bovenstrooms
     node_geometry = node.geometry
 
-    line_to_node = model.link.df.set_index("to_node_id").at[node.node_id, "geometry"]
+    line_to_node = cast(LineString, model.link.df.set_index("to_node_id").at[node.node_id, "geometry"])
     distance_to_interpolate = line_to_node.length - tolerance
     if distance_to_interpolate < 0:
         distance_to_interpolate = 0
@@ -252,6 +259,7 @@ min_upstream_level_pumps.index.name = "node_id"
 static_data.add_series(node_type="Pump", series=min_upstream_level_pumps, fill_na=False)
 
 # Update de basins op basis van hun downstream outlet (outlets én pumps)
+assert static_data.basin is not None
 node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
 ds_node_ids = (model.downstream_node_id(i) for i in node_ids)
 ds_node_ids = [i.to_list() if isinstance(i, pd.Series) else [i] for i in ds_node_ids]

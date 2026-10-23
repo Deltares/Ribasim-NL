@@ -121,6 +121,7 @@ aanvoergebieden_gpkg = cloud.joinpath(r"DeDommel/verwerkt/sturing/aanvoergebiede
 # Read data
 model = Model.read(ribasim_toml)
 
+assert model.outlet.static.df is not None
 outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.node_id.astype(int), 10.0)
 
 # Handmatige inlaatcapaciteiten gelden ook in aanvoer; niet terugvallen op de default van 10 m3/s.
@@ -174,6 +175,7 @@ pump_max_flow_rate_from_results = {
     548: 7,  # 't Goor; gekoppeld max=6.24, huidige max=3.00, link=2700754
     558: 60,  # Oude Gracht uit; oude static flow_rate=39.8
 }
+assert model.pump.static.df is not None
 mask = (
     model.pump.static.df.node_id.isin(pump_max_flow_rate_from_results)
     & model.pump.static.df.flow_rate.notna()
@@ -209,7 +211,9 @@ model.outlet.static.df.loc[aanvoer_mask, "flow_rate"] = max_flow_rate[aanvoer_ma
 model.outlet.static.df.loc[aanvoer_mask, "max_flow_rate"] = max_flow_rate[aanvoer_mask]
 
 # Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
+assert model.node.df is not None
 node_type_by_id = model.node.df["node_type"].to_dict()
+assert model.link.df is not None
 flow_demand_controlled_node_ids = set(
     model.link.df.loc[
         model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),
@@ -222,6 +226,7 @@ manual_max_flow_rate_node_ids = set(outlet_max_flow_rate_by_node_id)
 manual_max_flow_rate_node_ids.add(379)
 protected_max_flow_rate_node_ids = set(EXCLUDE_NODES) | flow_demand_controlled_node_ids | manual_max_flow_rate_node_ids
 for static_df in (model.outlet.static.df, model.pump.static.df):
+    assert static_df is not None
     afvoer_mask = (
         static_df["control_state"].eq("afvoer")
         & static_df["flow_rate"].fillna(0).gt(0)
@@ -236,6 +241,7 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
 # Model run
 
 
+assert model.discrete_control.condition.df is not None
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 
 # %% Verdeelwerk bij Eindhoven 10% afvgevoerd via Beatrixkanaal (max 20m3/s) en 90% via Dieze

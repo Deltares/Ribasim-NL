@@ -38,6 +38,7 @@ processor = paths.feedback_processor(work_dir=paths.model_dir("profiles"))
 ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
 
 # reset pump capacity for each pump
+assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df["flow_rate"] = 10 / 60  # 10m3/min
 
 ribasim_model = set_boundary_conditions(ribasim_model, paths, level_boundary_levels=(-0.42, 1.24))
@@ -186,6 +187,7 @@ assign_pump_and_basin_names(ribasim_model, paths)
 
 # Manning resistance
 # there is an MR without geometry and without links for some reason
+assert ribasim_model.node.df is not None
 ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
 
 # lower the difference in waterlevel for each manning node, except those of storing basins
@@ -201,6 +203,7 @@ ribasim_model = complete_parametrization(
 # set the unknown capacities of Pumps and Outlets from the area they drain or supply
 set_design_capacities(ribasim_model, from_to_node_function_table)
 
+assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df.max_flow_rate *= 1.25  # safety factor
 
 write_and_run_forcing_model(ribasim_model, paths)

@@ -6,7 +6,9 @@ from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
+from pandera.typing.geopandas import GeoDataFrame
 from ribasim import Node
+from ribasim.geometry.node import NodeSchema
 from ribasim.nodes import manning_resistance
 from shapely.geometry import GeometryCollection, LineString, MultiLineString, Point
 from shapely.geometry.base import BaseGeometry
@@ -237,7 +239,7 @@ class SplitBasins:
                     else [geometry_connector_node, geometry_basin_node]
                 )
                 new_geometry = LineString(line_points)
-                self.model.link.df.loc[mask, "geometry"] = new_geometry
+                self.model.link.df.loc[mask, "geometry"] = new_geometry  # ty: ignore[invalid-assignment]
         return self.model
 
     def create_new_basins(self):
@@ -262,7 +264,7 @@ class SplitBasins:
 
             # replace the new basin geometry in the area table
             assert self.model.basin.area.df is not None
-            self.model.basin.area.df.loc[self.model.basin.area.df.node_id == new_node_id, "geometry"] = geometry
+            self.model.basin.area.df.loc[self.model.basin.area.df.node_id == new_node_id, "geometry"] = geometry  # ty: ignore[invalid-assignment]
 
             newly_created_basins.append(new_node_id)
             if self.printing:
@@ -289,7 +291,7 @@ class SplitBasins:
 
             rows = table.df.loc[table.df.node_id == original_node_id].copy()
             rows["node_id"] = new_node_id
-            table.df = pd.concat([table.df, rows], ignore_index=True)
+            table.df = pd.concat([table.df, rows], ignore_index=True)  # ty: ignore[invalid-assignment]
 
 
 class NodeMetaCache:
@@ -318,5 +320,5 @@ class NodeMetaCache:
             nodes.loc[nodes["node_type"] == "Basin", "meta_categorie"] = nodes.loc[
                 nodes["node_type"] == "Basin", "meta_categorie"
             ].fillna("hoofdwater")
-        model.node.df = nodes.copy()
+        model.node.df = GeoDataFrame[NodeSchema](nodes.copy())
         return model
