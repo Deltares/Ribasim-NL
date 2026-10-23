@@ -1,4 +1,6 @@
 # %%
+from typing import cast
+
 import geopandas as gpd
 from ribasim import Node
 from ribasim.nodes import user_demand
@@ -35,6 +37,7 @@ def add_demand(
         outlet_basin_node = inlet_basin_node
 
     # define demand_node
+    assert model.node.df is not None
     demand_node_id = model.node.df.index.max() + 1
     demand_node = Node(demand_node_id, geometry=geometry, name=name, **kwargs)
     if min_level is None:
@@ -141,6 +144,7 @@ onttrekkingen_gpkg = cloud.joinpath("Basisgegevens/Onttrekkingen/onttrekkingen.g
 network = Network.from_network_gpkg(cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg"))
 
 # %% add basin_node_ids to network
+assert model.basin.area.df is not None
 basin_area_gdf = model.basin.area.df.copy()
 basin_area_gdf.rename(columns={"node_id": "basin_id"}, inplace=True)
 network.overlay(basin_area_gdf)  # basin_id toekennen aan netwerk
@@ -161,11 +165,11 @@ for row in drinkwater_gdf.itertuples():
     add_demand(
         model=model,
         network=network,
-        demand=float(row.productie),
+        demand=float(cast(float, row.productie)),
         return_factor=return_factor,
         priority=priority,
-        name=row.naam,
-        geometry=row.geometry,
+        name=cast(str, row.naam),
+        geometry=cast(Point, row.geometry),
         meta_sector="drinkwater",
         meta_beheerder=row.beheerder,
     )
@@ -187,11 +191,11 @@ for row in energie_inlet_gdf[mask].itertuples():
     # inlet geometry and reference to osm_id, and demand
     inlet_geometry = row.geometry
     osm_id = row.osm_id_Energiecentrales
-    demand = float(row.capaciteit)
+    demand = float(cast(float, row.capaciteit))
 
     # from plant name and (demand-)geometry and
     plant = energie_gdf.set_index("osm_id").loc[osm_id]
-    name = plant["name"]
+    name = cast(str, plant["name"])
     print(name)
     beheerder = plant.operator
     geometry = plant.geometry.centroid
@@ -205,8 +209,8 @@ for row in energie_inlet_gdf[mask].itertuples():
         return_factor=return_factor,
         priority=priority,
         name=name,
-        geometry=geometry,
-        inlet_geometry=inlet_geometry,
+        geometry=cast(Point, geometry),
+        inlet_geometry=cast(Point, inlet_geometry),
         outlet_geometry=outlet_geometry,
         meta_sector="energie",
         meta_beheerder=beheerder,
@@ -218,7 +222,7 @@ industrie_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Industrieen")
 
 industrie_inlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Industrie-inlaat")
 industrie_inlet_gdf.rename(columns={"debiet(m3/s)": "demand"}, inplace=True)
-industrie_inlet_gdf.loc[:, "basin_id"] = industrie_inlet_gdf.geometry.apply(
+industrie_inlet_gdf.loc[:, "basin_id"] = industrie_inlet_gdf.geometry.apply(  # ty: ignore[no-matching-overload]
     lambda x: basin_area_gdf.set_index("basin_id").distance(x).idxmin()
 )
 industrie_inlet_gdf.drop_duplicates(["osm_id_Industrieen", "basin_id"], inplace=True)
@@ -229,11 +233,12 @@ mask = ~industrie_inlet_gdf.naam.isin(["Avebe", "Evides Geervliet", "Evides Veer
 industrie_outlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Industrie-uitlaat")
 
 #
+assert model.link.df is not None
 maas_line = model.link.df[model.link.df.name == "Maas"].union_all()
 index = industrie_outlet_gdf[industrie_outlet_gdf["naam"] == "Chemelot"].index[0]
-point = industrie_outlet_gdf.at[index, "geometry"]
+point = cast(Point, industrie_outlet_gdf.at[index, "geometry"])
 point = maas_line.interpolate(maas_line.project(point))
-industrie_outlet_gdf.loc[index, "geometry"] = point
+industrie_outlet_gdf.loc[index, "geometry"] = point  # ty: ignore[invalid-assignment]
 
 industrie_outlet_gdf.rename(columns={"debiet(m3/s)": "return_flow"}, inplace=True)
 
@@ -247,11 +252,11 @@ for row in industrie_inlet_gdf[mask].itertuples():
     # inlet geometry and reference to osm_id, and demand
     inlet_geometry = row.geometry
     osm_id = row.osm_id_Industrieen
-    demand = float(row.demand)
+    demand = float(cast(float, row.demand))
 
     # from plant name and (demand-)geometry and
     plant = industrie_gdf.set_index("osm_id").loc[osm_id]
-    name = plant["name"]
+    name = cast(str, plant["name"])
     print(name)
     geometry = plant.geometry.centroid
     outlets = industrie_outlet_gdf[industrie_outlet_gdf["osm_id_Industrieen"] == osm_id]
@@ -277,8 +282,8 @@ for row in industrie_inlet_gdf[mask].itertuples():
         return_factor=return_factor,
         priority=priority,
         name=name,
-        geometry=geometry,
-        inlet_geometry=inlet_geometry,
+        geometry=cast(Point, geometry),
+        inlet_geometry=cast(Point, inlet_geometry),
         outlet_geometry=outlet_geometry,
         outlet_as_terminal=outlet_as_terminal,
         meta_sector="industrie",

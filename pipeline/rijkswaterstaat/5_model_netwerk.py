@@ -1,5 +1,6 @@
 # %%
 import warnings
+from typing import cast
 
 import geopandas as gpd
 import openpyxl
@@ -23,7 +24,7 @@ from ribasim_nl.rws_kunstwerken import (
     read_rating_curve,
 )
 from shapely.affinity import translate
-from shapely.geometry import LineString, MultiLineString
+from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
 
 from ribasim_nl import CloudStorage, Model, Network
 from ribasim_nl import discrete_control as dc
@@ -57,7 +58,7 @@ def clip_profile(line, point, poly):
     return line
 
 
-def read_outlet(kwk_df, name=None):
+def read_outlet(kwk_df, name: str):
     if "QQ relatie" in kwk_df["Eigenschap"].to_numpy():
         qq_properties = read_qq_curve(kwk_df)
         outlet_df = dc.node_table(
@@ -270,7 +271,7 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
             raise ValueError("kunstwerk ligt te ver bij netwerk vandaan")
 
         # definieer de node
-        node = Node(node_id, point, name=row.naam, meta_code_waterbeheerder=row.code)
+        node = Node(node_id, cast(Point, point), name=row.naam, meta_code_waterbeheerder=row.code)
 
         # haal alle eigenschappen op
         kwk_df = pd.read_excel(file_name, sheet_name=row.naam)
@@ -386,7 +387,7 @@ for verdeelsleutel in VERDEELSLEUTELS:
 
             node = Node(
                 node_id,
-                point,
+                cast(Point, point),
                 name=name,
                 meta_code_waterbeheerder=code_waterbeheerder,
             )
@@ -469,11 +470,13 @@ for kwk in kwk_topology.itertuples():
 
 # opbouwen basin over het netwerk
 profile_geometries = []
+assert model.manning_resistance.node is not None and model.manning_resistance.node.df is not None
+assert model.node.df is not None
 for row in basin_poly_gdf.itertuples():
     # row = next(i for i in basin_poly_gdf.itertuples() if i.Index == 1)
     print(f"{row.Index} {row.naam}")
     # get upstream an downstream basin boundary nodes
-    basin_boundary_nodes = network.nodes[network.nodes.distance(row.geometry.boundary) < 0.01]
+    basin_boundary_nodes = network.nodes[network.nodes.distance(cast(Polygon, row.geometry).boundary) < 0.01]
     us_ds = [
         network.get_upstream_downstream(i, "basin_id", max_iters=3, max_length=1000) for i in basin_boundary_nodes.index
     ]
@@ -547,8 +550,8 @@ for row in basin_poly_gdf.itertuples():
 
     # toevoegen basin
 
-    nodes_from = list(set(row.nodes_from))
-    nodes_to = list(set(row.nodes_to))
+    nodes_from = list(set(cast(list[int], row.nodes_from)))
+    nodes_to = list(set(cast(list[int], row.nodes_to)))
 
     # add basin-node
     if (len(nodes_from) > 0) and (len(nodes_to) > 0):
@@ -576,7 +579,7 @@ for row in basin_poly_gdf.itertuples():
 
     gdf = gdf[gdf["basin_id"] == row.Index]
 
-    basin_node_id = gdf.distance(row.geometry.centroid).idxmin()
+    basin_node_id = gdf.distance(cast(Polygon, row.geometry).centroid).idxmin()
     basin_node = Node(basin_node_id, network.nodes.at[basin_node_id, "geometry"], name=row.naam)
     basin_poly_gdf.loc[row.Index, "node_id"] = basin_node_id
     level = basin_profile_df.loc[row.Index].level.to_list()
@@ -607,7 +610,7 @@ for row in basin_poly_gdf.itertuples():
             from_node=getattr(model, nodes_series[node_id])[node_id],
             to_node=model.basin[basin_node_id],
             geometry=network.get_line(node_id, basin_node_id),
-            name=row.naam,
+            name=cast(str, row.naam),
         )
     # connect all nodes_to to basin
     for node_id in nodes_to:
@@ -615,23 +618,25 @@ for row in basin_poly_gdf.itertuples():
             from_node=model.basin[basin_node_id],
             to_node=getattr(model, nodes_series[node_id])[node_id],
             geometry=network.get_line(basin_node_id, node_id),
-            name=row.naam,
+            name=cast(str, row.naam),
         )
 
 
 # %%
 
 # Verbinden overgebleven levelBoundaries zonder kunstwerken (bijv. Westerschelde en Nieuwe Maas)
+assert model.level_boundary.node is not None and model.level_boundary.node.df is not None
+assert model.level_boundary.static.df is not None
 for boundary_node_id in model.level_boundary.node.df[
     ~model.level_boundary.node.df.index.isin(boundary_node_ids)
 ].index.to_list():
     level = model.level_boundary.static.df.set_index("node_id").at[boundary_node_id, "level"]
     us_basin_id = network.find_upstream(boundary_node_id, "basin_id", max_iters=50)
 
-    basin_node_id = int(basin_poly_gdf.at[us_basin_id, "node_id"])
+    basin_node_id = int(cast(int, basin_poly_gdf.at[us_basin_id, "node_id"]))
     node_id = (
         network.nodes.loc[network.get_path(basin_node_id, boundary_node_id)]
-        .distance(basin_poly_gdf.at[us_basin_id, "geometry"].boundary)
+        .distance(cast(Polygon | MultiPolygon, basin_poly_gdf.at[us_basin_id, "geometry"]).boundary)
         .idxmin()
     )
     # toevoegen outlet met oneindig capaciteit en een crest_level op boundary level
@@ -659,6 +664,8 @@ for boundary_node_id in model.level_boundary.node.df[
 # We verwijderen deze knopen.
 # Later kunnen we het stuk bij basins verbeteren
 
+assert model.manning_resistance.static.df is not None
+assert model.link.df is not None
 for row in model.manning_resistance.static.df.itertuples():
     try:
         link_to = model.link.df[model.link.df["to_node_id"] == row.node_id].iloc[0]
@@ -674,7 +681,7 @@ for row in model.manning_resistance.static.df.itertuples():
     except IndexError:
         # deze knoop is niet verbonden met twee kanten, dus verwijderen
         print(f"remove manning_resistance node {row.node_id} not connected on both sides")
-        model.remove_node(row.node_id, remove_links=True)
+        model.remove_node(cast(int, row.node_id), remove_links=True)
 
 
 # %%wegschrijven model

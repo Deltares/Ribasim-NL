@@ -1,4 +1,6 @@
 # %%
+from typing import cast
+
 import geopandas as gpd
 import pandas as pd
 from ribasim_nl.assign_authorities import AssignAuthorities
@@ -8,6 +10,7 @@ from ribasim_nl.link_geometries import fix_link_geometries
 from ribasim_nl.link_profiles import add_link_profile_ids
 from ribasim_nl.parametrization.damo_profiles import DAMOProfiles
 from ribasim_nl.parametrization.static_data_xlsx import StaticData
+from shapely.geometry import LineString
 
 from ribasim_nl import CloudStorage, Model, Network
 
@@ -55,12 +58,14 @@ profiles_df = damo_profiles.process_profiles()
 profiles_df.to_file(profiles_gpkg)
 fix_link_geometries(model, network)
 add_link_profile_ids(model, profiles=damo_profiles, id_col="code")
+assert model.link.df is not None
 model.link.df.reset_index().to_file(link_geometries_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
 
 # %% Bepaal min_upstream_level Outlet`
 
 static_data.reset_data_frame(node_type="Outlet")
+assert static_data.outlet is not None
 node_ids = static_data.outlet.node_id
 levels = []
 for node_id in node_ids:
@@ -69,7 +74,7 @@ for node_id in node_ids:
     tolerance = 50
     node_id = node.node_id
     node_geometry = node.geometry
-    line_to_node = model.link.df.set_index("to_node_id").at[node_id, "geometry"]
+    line_to_node = cast(LineString, model.link.df.set_index("to_node_id").at[node_id, "geometry"])
     distance_to_interpolate = line_to_node.length - tolerance
     if distance_to_interpolate < 0:
         distance_to_interpolate = 0
@@ -95,6 +100,7 @@ static_data.add_series(node_type="Outlet", series=min_upstream_level)
 # %% Bepaal min_upstream_level pumps
 
 static_data.reset_data_frame(node_type="Pump")
+assert static_data.pump is not None
 node_ids = static_data.pump.node_id
 levels = []
 for node_id in node_ids:
@@ -103,7 +109,7 @@ for node_id in node_ids:
     tolerance = 50
     node_id = node.node_id
     node_geometry = node.geometry
-    line_to_node = model.link.df.set_index("to_node_id").at[node_id, "geometry"]
+    line_to_node = cast(LineString, model.link.df.set_index("to_node_id").at[node_id, "geometry"])
     distance_to_interpolate = line_to_node.length - tolerance
     if distance_to_interpolate < 0:
         distance_to_interpolate = 0
@@ -130,6 +136,7 @@ static_data.add_series(node_type="Pump", series=min_upstream_level)
 # %% Bepaal de basin streefpeilen door minimale upstream level outlet en gemalen. Streefpeil stuw en gemalen krijgt voorrang
 
 static_data.reset_data_frame(node_type="Basin")
+assert static_data.basin is not None
 node_ids = static_data.basin[static_data.basin.streefpeil.isna()].node_id.to_numpy()
 ds_node_ids = []
 
@@ -148,12 +155,11 @@ ds_node_ids = ds_node_ids[ds_node_ids.isin(static_data.outlet.node_id) | ds_node
 combined = pd.concat([static_data.outlet, static_data.pump])
 combined = combined.reset_index(drop=True)
 
-combined["source"] = combined.apply(
-    lambda row: "pump" if row["node_id"] in static_data.pump.node_id.values else "outlet", axis=1
-)
+pump_node_ids = static_data.pump.node_id.values
+combined["source"] = combined.apply(lambda row: "pump" if row["node_id"] in pump_node_ids else "outlet", axis=1)
 
 valid_ids = ds_node_ids[ds_node_ids.isin(combined["node_id"])]
-streefpeil = combined.set_index("node_id").loc[valid_ids.to_numpy(), ["min_upstream_level", "code", "source"]]
+streefpeil = combined.set_index("node_id").loc[valid_ids.to_list(), ["min_upstream_level", "code", "source"]]
 streefpeil["basin_node_id"] = valid_ids.loc[valid_ids.isin(streefpeil.index)].index
 streefpeil["node_id"] = streefpeil.index  # outlet/pump node_id
 streefpeil = streefpeil.set_index("basin_node_id")
@@ -167,7 +173,7 @@ all_first = streefpeil.groupby(level=0).first()
 
 # update duiker min_upstream_level wanneer een stuw/pomp in dat basin ligt
 streefpeil_update = streefpeil.loc[streefpeil.index.isin(non_kdu_first.index)].copy()
-streefpeil_update["min_upstream_level"] = streefpeil_update.index.map(non_kdu_first["min_upstream_level"])
+streefpeil_update["min_upstream_level"] = streefpeil_update.index.map(non_kdu_first["min_upstream_level"])  # ty: ignore[invalid-argument-type]
 min_upstream_level_outlets = streefpeil_update.set_index("node_id")["min_upstream_level"]
 min_upstream_level_outlets.index.name = "node_id"
 
@@ -183,6 +189,7 @@ static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
 # %% Bepaal min_upstream_level at Manning locations`en vul de nodata basins met deze streefpeilen
 
+assert model.manning_resistance.static.df is not None
 node_ids = model.manning_resistance.static.df["node_id"]
 min_upstream_level = []
 
@@ -193,7 +200,7 @@ for node_id in node_ids:
     tolerance = 50
     node_id = node.node_id
     node_geometry = node.geometry
-    line_to_node = model.link.df.set_index("to_node_id").at[node_id, "geometry"]
+    line_to_node = cast(LineString, model.link.df.set_index("to_node_id").at[node_id, "geometry"])
     distance_to_interpolate = line_to_node.length - tolerance
     if distance_to_interpolate < 0:
         distance_to_interpolate = 0
@@ -234,7 +241,7 @@ ds_node_ids = pd.Series(ds_node_ids, index=ds_index, name="ds_node_id")
 
 # Keep only those that exist in min_upstream_level
 valid_ds = ds_node_ids[ds_node_ids.isin(min_upstream_level.index)]
-streefpeil = min_upstream_level.loc[valid_ds.values].rename(
+streefpeil = min_upstream_level.loc[valid_ds.to_list()].rename(
     index=dict(zip(valid_ds.values, valid_ds.index, strict=True))
 )
 streefpeil = streefpeil.groupby(streefpeil.index).min()

@@ -15,6 +15,10 @@ from typing import Any
 
 import geopandas as gpd
 import pandas as pd
+from pandera.typing import DataFrame
+from pandera.typing.geopandas import GeoDataFrame
+from ribasim.geometry.area import BasinAreaSchema
+from ribasim.schemas import OutletStaticSchema
 
 from ribasim_nl import Model
 
@@ -158,11 +162,13 @@ class SupplyBasin:
     @property
     def basin_nodes(self) -> gpd.GeoDataFrame:
         """Ribasim basin nodes."""
+        assert self.model.basin.node is not None and self.model.basin.node.df is not None
         return self.model.basin.node.df.copy(deep=True)
 
     @property
-    def basin_areas(self) -> pd.DataFrame:
+    def basin_areas(self) -> gpd.GeoDataFrame:
         """Ribasim basin areas."""
+        assert self.model.basin.area.df is not None
         return self.model.basin.area.df.copy(deep=True)
 
     @basin_areas.setter
@@ -181,7 +187,7 @@ class SupplyBasin:
             msg = f"Missing required columns: {req_cols}"
             raise ValueError(msg)
 
-        self.model.basin.area.df = df.copy(deep=True)
+        self.model.basin.area.df = GeoDataFrame[BasinAreaSchema](df.copy(deep=True))
 
     @staticmethod
     def __df_check(df: pd.DataFrame) -> None:
@@ -280,6 +286,7 @@ class SupplyWork(abc.ABC):
         """
         _model = _load_model(model)
 
+        assert _model.basin.area.df is not None
         if "meta_aanvoer" not in _model.basin.area.df.columns:
             msg = (
                 f'Ribasim model has not been assigned its "aanvoergebieden"; '
@@ -297,16 +304,19 @@ class SupplyWork(abc.ABC):
     @property
     def basin_areas(self) -> gpd.GeoDataFrame:
         """Ribasim basin areas."""
+        assert self.model.basin.area.df is not None
         return self.model.basin.area.df.copy(deep=True)
 
     @property
     def basin_states(self) -> pd.DataFrame:
         """Ribasim basin states."""
+        assert self.model.basin.state.df is not None
         return self.model.basin.state.df.copy(deep=True)
 
     @property
     def level_boundaries(self) -> gpd.GeoDataFrame:
         """Ribasim level boundary nodes."""
+        assert self.model.level_boundary.node is not None and self.model.level_boundary.node.df is not None
         return self.model.level_boundary.node.df.copy(deep=True)
 
     def get_statics(self) -> pd.DataFrame:
@@ -471,10 +481,10 @@ class SupplyOutlet(SupplyWork):
         :type df: pandas.DataFrame
         """
         super().set_statics(df)
-        self.model.outlet.static.df = df.copy(deep=True)
+        self.model.outlet.static.df = DataFrame[OutletStaticSchema](df.copy(deep=True))
 
 
-def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoDataFrame:
+def special_load_geometry(f_geometry: str | Path, method: str, **kwargs) -> gpd.GeoDataFrame:
     """Loading geometry data in a non-straightforward way.
 
     Included special methods are:
@@ -516,7 +526,7 @@ def special_load_geometry(f_geometry: str, method: str, **kwargs) -> gpd.GeoData
     :key value: value of 'aanvoer'-geometries, defaults to True
         [relevant for `method`={'extract'}]
 
-    :type f_geometry: str
+    :type f_geometry: str | pathlib.Path
     :type method: str
     :type export: bool, optional
     :type export_directory: str, optional

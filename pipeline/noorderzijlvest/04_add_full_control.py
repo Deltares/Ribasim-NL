@@ -1,5 +1,7 @@
 # %%
 
+from typing import cast
+
 import geopandas as gpd
 from ribasim_nl.control import (
     add_controllers_to_supply_area,
@@ -8,6 +10,7 @@ from ribasim_nl.control import (
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.run_model import write_steady_state_scenarios
+from shapely.geometry import MultiPolygon, Polygon
 
 from ribasim_nl import CloudStorage, Model
 
@@ -77,6 +80,7 @@ def configure_gaarkeuken_control(model: Model) -> None:
         min_upstream_level=GAARKEUKEN_MIN_UPSTREAM_LEVEL,
         name="inlaat: Gaarkeuken",
     )
+    assert model.outlet.static.df is not None
     sluis_mask = model.outlet.static.df["node_id"].eq(GAARKEUKENSLUIS_NODE_ID)
     if sluis_mask.sum() != 1:
         raise ValueError(f"Expected one static row for Gaarkeukensluis {GAARKEUKENSLUIS_NODE_ID}")
@@ -90,21 +94,23 @@ def configure_gaarkeuken_control(model: Model) -> None:
 # %%
 # Read data
 model = Model.read(ribasim_toml)
+assert model.level_boundary.static.df is not None
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 16, "level"] = -1.0
 
+assert model.outlet.static.df is not None
 outlet_flow_rate_afvoer_by_node_id = (
     model.outlet.static.df.dropna(subset=["flow_rate"]).set_index("node_id")["flow_rate"].astype(float).to_dict()
 )
 outlet_flow_rate_afvoer_by_node_id = {
-    int(node_id): flow_rate for node_id, flow_rate in outlet_flow_rate_afvoer_by_node_id.items()
+    int(cast(int, node_id)): flow_rate for node_id, flow_rate in outlet_flow_rate_afvoer_by_node_id.items()
 }
 outlet_flow_rate_afvoer_by_node_id.update(OUTLET_FLOW_RATE_AFVOER_OVERRIDE_BY_NODE_ID)
-outlet_max_flow_rate_aanvoer_by_node_id = {}
+outlet_max_flow_rate_aanvoer_by_node_id: dict[int, float] = {}
 for outlet_static in model.outlet.static.df.itertuples():
-    max_flow_rate = outlet_static.max_flow_rate
+    max_flow_rate = cast(float, outlet_static.max_flow_rate)
     if max_flow_rate != max_flow_rate:
-        max_flow_rate = outlet_static.flow_rate
-    outlet_max_flow_rate_aanvoer_by_node_id[int(outlet_static.node_id)] = (
+        max_flow_rate = cast(float, outlet_static.flow_rate)
+    outlet_max_flow_rate_aanvoer_by_node_id[int(cast(int, outlet_static.node_id))] = (
         0.0 if max_flow_rate != max_flow_rate else float(max_flow_rate)
     )
 
@@ -118,6 +124,7 @@ aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).diss
 
 # aanmaken node_df en specificeren supply_nodes
 # knopen die beginnen met INL, i of eindigen op i, maar niet op fictief
+assert model.node.df is not None
 for node_type in CONTROL_NODE_TYPES:
     # set is supply
     node_df = model.get_component(node_type).node.df
@@ -235,7 +242,7 @@ add_controllers_to_supply_area(
 # %%
 # Toevoegen Jonkersvaart
 
-polygon = aanvoergebieden_df.at["Jonkersvaart", "geometry"]
+polygon = cast(Polygon | MultiPolygon, aanvoergebieden_df.at["Jonkersvaart", "geometry"])
 
 # links die intersecten die we kunnen negeren
 # 1810: sloot naast prallelweg (A7) die vrij afwatert op Oude Diep
@@ -281,7 +288,7 @@ add_controllers_to_supply_area(
 # %%
 # Toevoegen Peizerdiep
 
-polygon = aanvoergebieden_df.at["Peizerdiep", "geometry"]
+polygon = cast(Polygon | MultiPolygon, aanvoergebieden_df.at["Peizerdiep", "geometry"])
 
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
@@ -360,11 +367,13 @@ add_controllers_to_uncontrolled_connector_nodes(
 # Model run
 
 
+assert model.discrete_control.condition.df is not None
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 
 # Schutverliezen als vaste ondergrens; na EXCLUDE_NODES/defaultcapaciteiten zodat dit niet wordt overschreven.
 for node_id, flow_rate in SCHUTVERLIES_FLOW_RATE_BY_NODE_ID.items():
     for static_df in (model.outlet.static.df, model.pump.static.df):
+        assert static_df is not None
         mask = static_df.node_id == node_id
         if not mask.any():
             continue

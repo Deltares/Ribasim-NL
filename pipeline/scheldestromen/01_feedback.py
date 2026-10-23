@@ -36,6 +36,7 @@ ribasim_param.validate_manning_basins(ribasim_model)
 
 # model specific tweaks
 # the vrij-afwaterende basins are a multipolygon, in a single basin (189). Only retain the largest value
+assert ribasim_model.basin.area.df is not None
 exploded_basins = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 189].explode(
     index_parts=False
 )
@@ -58,6 +59,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
 )
 
 pump_node = ribasim_model.pump.add(Node(geometry=Point(74504, 382443)), [pump.Static(flow_rate=[0.1])])
+assert ribasim_model.node.df is not None
 ribasim_model.node.df.loc[pump_node.node_id, "meta_node_id"] = pump_node.node_id
 ribasim_model.link.add(level_boundary_node, pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[133])
@@ -108,6 +110,7 @@ ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, def
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
+assert ribasim_model.outlet.static.df is not None
 for node in inlaat_structures:
     ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_aanvoer"] = 1
     ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_afvoer"] = 0

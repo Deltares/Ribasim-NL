@@ -152,7 +152,8 @@ with rasterio.open(
 
                 if cube.ELEVATION.size > 0:
                     print("add to tiff")
-                    window = from_bounds(*cube.rio.bounds(), transform)
+                    left, bottom, right, top = cube.rio.bounds()
+                    window = from_bounds(left, bottom, right, top, transform)
                     dst.write(np.fliplr(np.flipud(cube.ELEVATION)), window=window, indexes=1)
                 else:
                     print("no cube.ELEVATION points within water-mask")
@@ -178,7 +179,7 @@ with rasterio.open(out_dir / "bathymetrie-nl.tif") as src:
 
 
 with rasterio.open(out_dir / "bedlevel_points_-20000_300000_320000_660000.tif") as src:
-    window = from_bounds(*bounds, src.transform)
+    window = from_bounds(bounds.left, bounds.bottom, bounds.right, bounds.top, src.transform)
     baseline_data = src.read(1, window=window)
     baseline_data = np.where(baseline_data == src.nodata, nodata, baseline_data)
 

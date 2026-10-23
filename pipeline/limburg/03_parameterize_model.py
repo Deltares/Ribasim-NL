@@ -35,6 +35,7 @@ start_time = time.time()
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5, profiles_gpkg=profiles_gpkg)
 print("Elapsed Time:", time.time() - start_time, "seconds")
+assert model.manning_resistance.static.df is not None
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 # %%
 
@@ -70,6 +71,7 @@ apply_level_boundary_overrides(model, boundary_level_overrides)
 
 # %%
 # Write model
+assert model.basin.area.df is not None
 model.basin.area.df.loc[:, "meta_area_m2"] = model.basin.area.df.area
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
 sync_min_upstream_levels_with_profile_bottoms(model=model)

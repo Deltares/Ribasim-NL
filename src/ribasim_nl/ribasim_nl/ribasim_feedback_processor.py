@@ -1,10 +1,13 @@
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pandas as pd
+from pandera.typing.geopandas import GeoDataFrame
 from pyproj import Proj, Transformer
+from ribasim.geometry.node import NodeSchema
 from shapely.geometry import LineString, Point
 
 from ribasim_nl import Model
@@ -113,7 +116,7 @@ class RibasimFeedbackProcessor:
 
         try:
             for index, row in self.df.iterrows():
-                logger.info(f"Processing row: {index + 7}")
+                logger.info(f"Processing row: {cast(int, index) + 7}")
                 try:
                     if row["Actie"] == "Verwijderen":
                         self.remove_node(row)
@@ -147,6 +150,9 @@ class RibasimFeedbackProcessor:
             logger.info(f"Node ID: {node_id}")
             value = getattr(self.model, key, None)
 
+            assert self.model.node.df is not None
+            assert self.model.link.df is not None
+
             # Remove the Node
             if value is not None:
                 # Remove from global node table
@@ -179,8 +185,8 @@ class RibasimFeedbackProcessor:
 
     def add_node(self, row) -> None:
         try:
-            key = row["Node Type.1"]
-            key = mapping.get(key)
+            key = mapping.get(row["Node Type.1"])
+            assert key is not None, f"Unknown node type {row['Node Type.1']}"
             max_id = self.get_current_max_nodeid()
             node_id = max_id + 1
             logger.info(f"Node ID: {node_id}")
@@ -193,15 +199,16 @@ class RibasimFeedbackProcessor:
                 x_coord = row["Coordinaat X"]
                 y_coord = row["Coordinaat Y"]
                 df_node = self.model.node.df
+                assert df_node is not None
                 template_row = df_node.iloc[-1:].copy()
                 template_row.index = pd.Index([node_id], name="node_id")
                 template_row["node_type"] = node_type_name
-                template_row["geometry"] = [Point(x_coord, y_coord)]
+                template_row["geometry"] = [Point(x_coord, y_coord)]  # ty: ignore[invalid-assignment]
                 for col in template_row.columns:
                     if col.startswith("meta_"):
                         template_row[col] = np.nan
                 template_row["meta_node_id"] = node_id
-                self.model.node.df = pd.concat([df_node, template_row])
+                self.model.node.df = GeoDataFrame[NodeSchema](pd.concat([df_node, template_row]))
 
                 # Add to type-specific tables
                 if hasattr(value, "__dict__"):
@@ -214,7 +221,6 @@ class RibasimFeedbackProcessor:
                                 continue
 
                             if sub_key == "static":
-                                sub_value = getattr(value, sub_key, None)
                                 df_value_static = sub_value.df.copy()
                                 last_row = df_value_static.iloc[-1].copy()
 
@@ -242,12 +248,12 @@ class RibasimFeedbackProcessor:
 
                 # Add the Links
                 if key in ["level_boundary", "flow_boundary", "terminal"]:
-                    new_node = getattr(self.model, key, None)[node_id]
+                    new_node = getattr(self.model, key)[node_id]
 
                     if pd.notna(row["Node ID A"]):
                         node_type_a = self.df_node_types.loc[int(row["Node ID A"])].node_type
                         node_type_a = mapping[str(node_type_a)]
-                        node_a = getattr(self.model, node_type_a, None)[int(row["Node ID A"])]
+                        node_a = getattr(self.model, node_type_a)[int(row["Node ID A"])]
                         self.model.link.add(new_node, node_a)
                     else:
                         logger.warning(f"'Node ID A' is NaN for node type {key} at index {row.name}")
@@ -255,13 +261,13 @@ class RibasimFeedbackProcessor:
                     if pd.isna(row["Node ID A"]) or pd.isna(row["Node ID B"]):
                         logger.error(f"'Node ID A' or 'Node ID B' is NaN for node type {key} at index {row.name}")
                         return None
-                    new_node = getattr(self.model, key, None)[node_id]
+                    new_node = getattr(self.model, key)[node_id]
                     node_type_a = self.df_node_types.loc[int(row["Node ID A"])].node_type
                     node_type_b = self.df_node_types.loc[int(row["Node ID B"])].node_type
                     node_type_a = mapping[str(node_type_a)]
                     node_type_b = mapping[str(node_type_b)]
-                    node_a = getattr(self.model, node_type_a, None)[int(row["Node ID A"])]
-                    node_b = getattr(self.model, node_type_b, None)[int(row["Node ID B"])]
+                    node_a = getattr(self.model, node_type_a)[int(row["Node ID A"])]
+                    node_b = getattr(self.model, node_type_b)[int(row["Node ID B"])]
                     self.model.link.add(node_a, new_node)
                     self.model.link.add(new_node, node_b)
 
@@ -294,6 +300,9 @@ class RibasimFeedbackProcessor:
             # node_id_old = node_id
             value = getattr(self.model, key, None)
 
+            assert self.model.node.df is not None
+            assert self.model.link.df is not None
+
             # Get old geometry and remove Node
             if value is not None:
                 # Get geometry from and remove from global node table
@@ -317,6 +326,7 @@ class RibasimFeedbackProcessor:
 
             new_node_type_name = row["Nieuw Node Type"]
             key = mapping.get(new_node_type_name)
+            assert key is not None, f"Unknown node type {new_node_type_name}"
             value = getattr(self.model, key, None)
 
             if value is not None:
@@ -330,7 +340,7 @@ class RibasimFeedbackProcessor:
                     if col.startswith("meta_"):
                         template_row[col] = np.nan
                 template_row["meta_node_id"] = node_id
-                self.model.node.df = pd.concat([df_node, template_row])
+                self.model.node.df = GeoDataFrame[NodeSchema](pd.concat([df_node, template_row]))
 
                 # Add to type-specific tables
                 if hasattr(value, "__dict__"):
@@ -343,7 +353,6 @@ class RibasimFeedbackProcessor:
                                 continue
 
                             if sub_key == "static":
-                                sub_value = getattr(value, sub_key, None)
                                 df_value_static = sub_value.df.copy()
                                 last_row = df_value_static.iloc[-1].copy()
 
@@ -394,6 +403,7 @@ class RibasimFeedbackProcessor:
         try:
             node_a = int(node_id_map.get(row["Node ID A.1"], row["Node ID A.1"]))
             node_b = int(node_id_map.get(row["Node ID B.1"], row["Node ID B.1"]))
+            assert self.model.link.df is not None
 
             df_row_a_b = self.model.link.df[
                 (self.model.link.df["from_node_id"] == node_a) & (self.model.link.df["to_node_id"] == node_b)
@@ -414,7 +424,7 @@ class RibasimFeedbackProcessor:
                 line = self.model.link.df.loc[row_index].geometry
                 reversed_coords = list(line.coords)[::-1]
                 reversed_line = LineString(reversed_coords)
-                self.model.link.df.at[row_index, "geometry"] = reversed_line
+                self.model.link.df.at[row_index, "geometry"] = reversed_line  # ty: ignore[invalid-assignment]
             print(f"Swapped link direction between Node A: {node_a} and Node B: {node_b}")
             logger.info(
                 f"Successfully swapped link direction between Node A: {node_a} and Node B: {node_b}, "
@@ -455,6 +465,9 @@ class RibasimFeedbackProcessor:
         df_TL = pd.read_excel(self.feedback_excel, sheet_name="Streefpeilen", header=0)
         df_TL = df_TL.sort_values(by=["Basin node_id"]).reset_index(drop=True)
         if len(df_TL) > 0:  # if the sheet is filled in, proceed
+            assert self.model.basin.node is not None and self.model.basin.node.df is not None
+            assert self.model.basin.state.df is not None
+            assert self.model.basin.area.df is not None
             # print warning if there are non existing basins
             existing_basins = self.model.basin.node.df.index.to_numpy()
             non_existing_basins = df_TL.loc[~df_TL["Basin node_id"].isin(existing_basins)]
@@ -481,6 +494,8 @@ class RibasimFeedbackProcessor:
             df_FG = pd.read_excel(self.feedback_excel, sheet_name="Aan_afvoer_gemalen", header=0, usecols="A:B")
 
         if len(df_FG) > 0:  # if the sheet is filled in, proceed
+            assert self.model.pump.node is not None and self.model.pump.node.df is not None
+            assert self.model.pump.static.df is not None
             # print warning if there are non existing pumps
             existing_pumps = self.model.pump.node.df.index.to_numpy()
             non_existing_pumps = df_FG.loc[~df_FG["Pump node_id"].isin(existing_pumps)]

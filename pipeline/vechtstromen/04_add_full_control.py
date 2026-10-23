@@ -1,5 +1,6 @@
 # %%
 from pathlib import Path
+from typing import cast
 
 import geopandas as gpd
 from ribasim import Node
@@ -78,6 +79,7 @@ def node_list(*groups: list[int]) -> list[int]:
 
 
 def reverse_existing_links(model: Model, link_ids: list[int]) -> None:
+    assert model.link.df is not None
     for link_id in link_ids:
         if link_id in model.link.df.index:
             model.reverse_link(link_id=link_id)
@@ -91,6 +93,8 @@ def validate_file_gdb(gdb_path: Path) -> None:
 
 
 def lower_outlet_max_downstream_level(model: Model, node_id: int, offset: float = 0.01) -> None:
+    assert model.basin.node is not None and model.basin.node.df is not None
+    assert model.link.df is not None
     downstream_basin_ids = model.link.df.loc[
         (model.link.df.from_node_id == node_id) & model.link.df.to_node_id.isin(model.basin.node.df.index),
         "to_node_id",
@@ -99,6 +103,7 @@ def lower_outlet_max_downstream_level(model: Model, node_id: int, offset: float 
         raise ValueError(f"Inlaat {node_id}: verwacht 1 benedenstrooms basin, gevonden {downstream_basin_ids}")
 
     downstream_basin_id = int(downstream_basin_ids[0])
+    assert model.basin.area.df is not None
     downstream_target_level = model.basin.area.df.loc[
         model.basin.area.df.node_id == downstream_basin_id,
         "meta_streefpeil",
@@ -106,6 +111,7 @@ def lower_outlet_max_downstream_level(model: Model, node_id: int, offset: float 
     if downstream_target_level.empty:
         raise ValueError(f"Inlaat {node_id}: geen streefpeil gevonden voor benedenstrooms basin {downstream_basin_id}")
 
+    assert model.outlet.static.df is not None
     mask = model.outlet.static.df.node_id == node_id
     if "control_state" in model.outlet.static.df.columns:
         aanvoer_mask = mask & (model.outlet.static.df.control_state == "aanvoer")
@@ -117,11 +123,13 @@ def lower_outlet_max_downstream_level(model: Model, node_id: int, offset: float 
 
 
 def duplicate_level_boundary_for_link(model: Model, source_node_id: int, link_id: int) -> int | None:
+    assert model.link.df is not None
     if link_id not in model.link.df.index:
         return None
 
-    current_from_node_id = int(model.link.df.at[link_id, "from_node_id"])
-    current_to_node_id = int(model.link.df.at[link_id, "to_node_id"])
+    current_from_node_id = int(cast(int, model.link.df.at[link_id, "from_node_id"]))
+    current_to_node_id = int(cast(int, model.link.df.at[link_id, "to_node_id"]))
+    assert model.level_boundary.node is not None and model.level_boundary.node.df is not None
     if current_from_node_id != source_node_id:
         if current_from_node_id in model.level_boundary.node.df.index:
             return current_from_node_id
@@ -133,6 +141,7 @@ def duplicate_level_boundary_for_link(model: Model, source_node_id: int, link_id
         raise ValueError(f"Node {source_node_id} is geen level boundary in dit model.")
 
     source_node = model.level_boundary[source_node_id]
+    assert model.node.df is not None
     source_name = model.node.df.at[source_node_id, "name"] if "name" in model.node.df.columns else ""
     if not isinstance(source_name, str):
         source_name = ""
@@ -147,6 +156,7 @@ def duplicate_level_boundary_for_link(model: Model, source_node_id: int, link_id
     node_columns = [column for column in model.node.df.columns if column not in {"node_type", "name", "geometry"}]
     model.node.df.loc[new_node_id, node_columns] = model.node.df.loc[source_node_id, node_columns]
 
+    assert model.level_boundary.static.df is not None
     source_static_mask = model.level_boundary.static.df.node_id == source_node_id
     new_static_mask = model.level_boundary.static.df.node_id == new_node_id
     static_columns = [column for column in model.level_boundary.static.df.columns if column != "node_id"]
@@ -391,6 +401,7 @@ for max_flow_rates in (
             max_flow_rate,
         )
 outlet_max_flow_rate_afvoer_by_node_id.update(outlet_max_flow_rate_by_node_id)
+assert model.outlet.static.df is not None
 outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.node_id.astype(int), 10.0)
 
 # Handmatige inlaatcapaciteiten gelden ook in aanvoer; niet terugvallen op de default van 10 m3/s.
@@ -424,6 +435,7 @@ max_flow_rate_aanvoer_by_node_id = {
 
 set_max_flow_rate(model.outlet.static.df, outlet_max_flow_rate_by_node_id)
 set_max_flow_rate(model.pump.static.df, pump_max_flow_rate_by_node_id)
+assert model.pump.static.df is not None
 mask = (
     model.pump.static.df.node_id.isin(pump_max_flow_rate_from_results)
     & model.pump.static.df.flow_rate.notna()
@@ -434,6 +446,7 @@ model.pump.static.df.loc[mask, "max_flow_rate"] = model.pump.static.df.loc[mask,
 )
 
 # %%Duikers voor nu op 1m3/s
+assert model.outlet.node is not None and model.outlet.node.df is not None
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_object_type"] == "duikersifonhevel"].index
 mask = model.outlet.static.df["node_id"].isin(node_ids)
 
@@ -444,14 +457,11 @@ def print_supply_role_conflicts(
     manual_drain_nodes: list[int],
     manual_flow_control_nodes: list[int],
 ) -> None:
-    source_supply_nodes = set(source_supply_nodes)
-    manual_drain_nodes = set(manual_drain_nodes)
-    manual_flow_control_nodes = set(manual_flow_control_nodes)
-
+    source_supply_node_set = set(source_supply_nodes)
     print(
         f"{label} overruled door handmatig: "
-        f"flow_control={sorted(source_supply_nodes & manual_flow_control_nodes)}, "
-        f"drain={sorted(source_supply_nodes & manual_drain_nodes)}"
+        f"flow_control={sorted(source_supply_node_set & set(manual_flow_control_nodes))}, "
+        f"drain={sorted(source_supply_node_set & set(manual_drain_nodes))}"
     )
 
 
@@ -508,6 +518,7 @@ def get_lhm_gemaal_supply_nodes(
     inlaat_mask = normalize_name_series(gemaal_df[name_column]).str.startswith(name_prefix.lower(), na=False)
     inlaat_names = set(normalize_name_series(gemaal_df.loc[inlaat_mask, name_column]).dropna())
 
+    assert model.node.df is not None
     control_node_df = model.node.df[model.node.df["node_type"].isin(node_types)].copy()
     control_node_df["_match_name"] = normalize_name_series(control_node_df["name"])
     matched_node_df = control_node_df[control_node_df["_match_name"].isin(inlaat_names)]
@@ -600,6 +611,7 @@ manual_drain_nodes = list(drain_nodes)
 
 lhm_gemaal_supply_nodes = get_lhm_gemaal_supply_nodes(model=model, lhm_gemaal_gdb=lhm_gemaal_gdb)
 
+assert model.node.df is not None
 if IS_SUPPLY_NODE_COLUMN not in model.node.df.columns:
     model.node.df[IS_SUPPLY_NODE_COLUMN] = False
 model.node.df.loc[lhm_gemaal_supply_nodes, IS_SUPPLY_NODE_COLUMN] = True
@@ -703,6 +715,7 @@ model = junctionify(model)
 # Laatste handmatige correcties
 
 # Gemaal Orveltersluis
+assert model.pump.static.df is not None
 mask = model.pump.static.df.node_id == 664
 model.pump.static.df.loc[mask, "min_upstream_level"] = 14.86
 mark_level_update_protected(model.pump.static.df, mask, model=model)
@@ -710,6 +723,7 @@ mark_level_update_protected(model.pump.static.df, mask, model=model)
 aanvoer_only_node_ids = set(supply_nodes) - set(drain_nodes) - set(flow_control_nodes)
 
 # Aanvoer-cap: doorlaten/inlaten mogen in aanvoer niet de hoge afvoercapaciteit gebruiken.
+assert model.outlet.static.df is not None
 aanvoer_outlet_mask = model.outlet.static.df.control_state == "aanvoer"
 model.outlet.static.df.loc[aanvoer_outlet_mask, ["flow_rate", "max_flow_rate"]] = model.outlet.static.df.loc[
     aanvoer_outlet_mask, ["flow_rate", "max_flow_rate"]
@@ -724,6 +738,7 @@ for static_df, max_flow_rate_by_node_id in (
     (model.outlet.static.df, outlet_max_flow_rate_by_node_id),
     (model.pump.static.df, pump_max_flow_rate_by_node_id),
 ):
+    assert static_df is not None
     max_flow_rate = static_df["node_id"].map(max_flow_rate_by_node_id)
     aanvoer_mask = (
         static_df["control_state"].eq("aanvoer")
@@ -738,7 +753,9 @@ zero_pump_mask = model.pump.static.df.node_id.isin(zero_pump_node_ids)
 model.pump.static.df.loc[zero_pump_mask, ["flow_rate", "max_flow_rate"]] = 0.0
 
 # Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
+assert model.node.df is not None
 node_type_by_id = model.node.df["node_type"].to_dict()
+assert model.link.df is not None
 flow_demand_controlled_node_ids = set(
     model.link.df.loc[
         model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),
@@ -751,6 +768,7 @@ manual_max_flow_rate_node_ids = set(outlet_max_flow_rate_by_node_id)
 manual_max_flow_rate_node_ids.update(pump_max_flow_rate_by_node_id)
 protected_max_flow_rate_node_ids = set(EXCLUDE_NODES) | flow_demand_controlled_node_ids | manual_max_flow_rate_node_ids
 for static_df in (model.outlet.static.df, model.pump.static.df):
+    assert static_df is not None
     afvoer_mask = (
         static_df["control_state"].eq("afvoer")
         & static_df["flow_rate"].fillna(0).gt(0)
@@ -759,6 +777,7 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
     static_df.loc[afvoer_mask, "max_flow_rate"] = static_df.loc[afvoer_mask, "max_flow_rate"].fillna(10).clip(lower=10)
 
 for static_df in (model.outlet.static.df, model.pump.static.df):
+    assert static_df is not None
     afvoer_mask = static_df["control_state"].eq("afvoer") & static_df["node_id"].isin(aanvoer_only_node_ids)
     static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 0.0
 

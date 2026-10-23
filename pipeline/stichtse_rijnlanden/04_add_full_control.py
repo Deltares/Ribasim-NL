@@ -1,6 +1,8 @@
 # %%
 import geopandas as gpd
 import pandas as pd
+from pandera.typing import DataFrame
+from ribasim.schemas import DiscreteControlConditionSchema, DiscreteControlLogicSchema, DiscreteControlVariableSchema
 from ribasim_nl.control import (
     add_controllers_to_supply_area,
     add_controllers_to_uncontrolled_connector_nodes,
@@ -159,6 +161,7 @@ aanvoergebieden_gpkg = cloud.joinpath(r"StichtseRijnlanden/verwerkt/sturing/aanv
 # Read data
 model = Model.read(ribasim_toml)
 
+assert model.outlet.static.df is not None
 outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.node_id.astype(int), 10.0)
 
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
@@ -168,6 +171,7 @@ aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).diss
 
 # aanmaken node_df en specificeren supply_nodes
 # knopen die beginnen met INL, i of eindigen op i, maar niet op fictief
+assert model.node.df is not None
 for node_type in CONTROL_NODE_TYPES:
     node_df = model.get_component(node_type).node.df
 
@@ -183,6 +187,7 @@ for node_type in CONTROL_NODE_TYPES:
 
 
 # %% model fixes
+assert model.level_boundary.static.df is not None
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 45, "level"] = -1.4
 
 # doorslag staat normaal open
@@ -258,6 +263,7 @@ add_controllers_to_uncontrolled_connector_nodes(
 )
 
 # %% Noordergemaal, node=536 slaat pas aan wanneer Wijk van Duurstede net genoeg kan leveren
+assert model.pump.static.df is not None
 mask = model.pump.static.df.node_id == 536
 model.pump.static.df.loc[mask, "max_downstream_level"] -= 0.01
 mark_level_update_protected(model.pump.static.df, mask, model=model)
@@ -351,6 +357,7 @@ model.outlet.static.df.loc[zero_aanvoer_mask, ["flow_rate", "max_flow_rate"]] = 
 
 # Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
 node_type_by_id = model.node.df["node_type"].to_dict()
+assert model.link.df is not None
 flow_demand_controlled_node_ids = set(
     model.link.df.loc[
         model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),
@@ -362,6 +369,7 @@ flow_demand_controlled_node_ids = set(
 manual_max_flow_rate_node_ids = {758}
 protected_max_flow_rate_node_ids = set(EXCLUDE_NODES) | flow_demand_controlled_node_ids | manual_max_flow_rate_node_ids
 for static_df in (model.outlet.static.df, model.pump.static.df):
+    assert static_df is not None
     afvoer_mask = (
         static_df["control_state"].eq("afvoer")
         & static_df["flow_rate"].fillna(0).gt(0)
@@ -407,6 +415,7 @@ def set_flow_regime_control(
     assert (links.loc[links.link_type == "control", "from_node_id"] == control_node_id).sum() == 1
 
     static = model.outlet.static.df
+    assert static is not None
     aanvoer = static[(static.node_id == node_id) & (static.control_state == "aanvoer")]
     assert len(aanvoer) == 1, f"Expected one aanvoer row for node {node_id}"
     regime_rows = [
@@ -421,45 +430,56 @@ def set_flow_regime_control(
 
     dc = model.discrete_control
     for table in (dc.variable, dc.condition, dc.logic):
-        table.df = table.df[table.df.node_id != control_node_id]
-    dc.variable.df = pd.concat(
-        [
-            dc.variable.df,
-            pd.DataFrame(
-                {
-                    "node_id": [control_node_id],
-                    "compound_variable_id": [1],
-                    "listen_node_id": [listen_node_id],
-                    "variable": ["flow_rate"],
-                    "weight": [1.0],
-                }
-            ),
-        ],
-        ignore_index=True,
+        assert table.df is not None
+        table.df = table.df[table.df.node_id != control_node_id]  # ty: ignore[invalid-assignment]
+    dc.variable.df = DataFrame[DiscreteControlVariableSchema](
+        pd.concat(
+            [
+                dc.variable.df,
+                pd.DataFrame(
+                    {
+                        "node_id": [control_node_id],
+                        "compound_variable_id": [1],
+                        "listen_node_id": [listen_node_id],
+                        "variable": ["flow_rate"],
+                        "weight": [1.0],
+                    }
+                ),
+            ],
+            ignore_index=True,
+        )
     )
-    dc.condition.df = pd.concat(
-        [
-            dc.condition.df,
-            pd.DataFrame(
-                {
-                    "node_id": control_node_id,
-                    "compound_variable_id": 1,
-                    "condition_id": range(1, len(thresholds) + 1),
-                    "threshold_high": thresholds,
-                    "threshold_low": [threshold - FLOW_THRESHOLD_HYSTERESIS for threshold in thresholds],
-                    "time": model.starttime,
-                }
-            ),
-        ],
-        ignore_index=True,
+    dc.condition.df = DataFrame[DiscreteControlConditionSchema](
+        pd.concat(
+            [
+                dc.condition.df,
+                pd.DataFrame(
+                    {
+                        "node_id": control_node_id,
+                        "compound_variable_id": 1,
+                        "condition_id": range(1, len(thresholds) + 1),
+                        "threshold_high": thresholds,
+                        "threshold_low": [threshold - FLOW_THRESHOLD_HYSTERESIS for threshold in thresholds],
+                        "time": model.starttime,
+                    }
+                ),
+            ],
+            ignore_index=True,
+        )
     )
     # with ascending thresholds, the truth states are a run of T followed by F
     states = list(flow_rates)
     truth_states = ["T" * i + "F" * (len(thresholds) - i) for i in range(len(states))]
-    dc.logic.df = pd.concat(
-        [dc.logic.df, pd.DataFrame({"node_id": control_node_id, "truth_state": truth_states, "control_state": states})],
-        ignore_index=True,
+    dc.logic.df = DataFrame[DiscreteControlLogicSchema](
+        pd.concat(
+            [
+                dc.logic.df,
+                pd.DataFrame({"node_id": control_node_id, "truth_state": truth_states, "control_state": states}),
+            ],
+            ignore_index=True,
+        )
     )
+    assert model.node.df is not None
     model.node.df.loc[control_node_id, "name"] = name
 
 
@@ -479,6 +499,7 @@ model.node.df.loc[752, "name"] = "Oog in Al, Muntsluis"
 # Model run
 
 
+assert model.discrete_control.condition.df is not None
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 
 # %%

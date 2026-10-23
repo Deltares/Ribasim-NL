@@ -52,6 +52,7 @@ profiles_df = damo_profiles.process_profiles()
 profiles_df.to_file(profiles_gpkg)
 fix_link_geometries(model, network)
 add_link_profile_ids(model, profiles=damo_profiles)
+assert model.link.df is not None
 model.link.df.reset_index().to_file(link_geometries_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
 
@@ -90,6 +91,7 @@ min_upstream_level.name = "min_upstream_level"
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
 # from DAMO profiles
+assert static_data.outlet is not None
 node_ids = static_data.outlet[static_data.outlet.min_upstream_level.isna()].node_id.to_numpy()
 profile_ids = [
     model.link.df[model.link.df.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids

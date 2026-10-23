@@ -40,6 +40,7 @@ start_time = time.time()
 # %%
 # %% wat basin-peilen zetten n.a.v. full control-checks
 manual_basin_level_node_ids = [1068, 777, 1085, 793, 857]
+assert model.basin.area.df is not None
 model.basin.area.df.loc[model.basin.area.df.node_id == 1068, "meta_streefpeil"] = 8.55
 model.basin.area.df.loc[model.basin.area.df.node_id == 777, "meta_streefpeil"] = 26.406666666666666
 model.basin.area.df.loc[model.basin.area.df.node_id == 1085, "meta_streefpeil"] = 5.5
@@ -51,6 +52,7 @@ model.basin.area.df.loc[model.basin.area.df.node_id == 1011, "meta_streefpeil"] 
 # parameterize
 model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5, profiles_gpkg=profiles_gpkg)
 print("Elapsed Time:", time.time() - start_time, "seconds")
+assert model.manning_resistance.static.df is not None
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 sync_parameterized_manning_basin_levels(
     model=model,
@@ -66,6 +68,7 @@ sync_parameterized_manning_basin_levels(
 
 # %% fixes
 
+assert model.outlet.static.df is not None
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 471, "flow_rate"] = 0.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 472, "flow_rate"] = 0.0
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 119, "min_upstream_level"] = 11.0

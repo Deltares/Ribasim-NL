@@ -48,6 +48,7 @@ set_node_functions(from_to_node_function_table, to_supply=to_supply)
 add_controllers(ribasim_model, from_to_node_function_table, remove_duplicates=False)
 
 # wateraanvoer node to other waterboard. Set max downstream level to a low value to prevent unwanted control actions
+assert ribasim_model.outlet.static.df is not None
 ribasim_model.outlet.static.df.loc[
     ribasim_model.outlet.static.df.node_id == 433, "max_downstream_level"
 ] = -0.63  # 2 cm below Rijnlands streefpeil, to avoid too much water entering from Delfland
@@ -57,6 +58,7 @@ assign_pump_and_basin_names(ribasim_model, paths)
 
 # presumably wrong conversion of flow capacity in the data
 increase_flow_rate_pumps = [474, 298]
+assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df.loc[
     ribasim_model.pump.static.df["node_id"].isin(increase_flow_rate_pumps), ["flow_rate", "max_flow_rate"]
 ] *= 60
@@ -73,6 +75,7 @@ ribasim_model.pump.static.df.loc[
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
+assert ribasim_model.node.df is not None
 ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
 # lower the difference in waterlevel for each manning node, except those of storing basins
 set_manning_resistance_outside_bergend(ribasim_model, length=100.0, manning_n=0.01)
@@ -81,6 +84,7 @@ set_manning_resistance_outside_bergend(ribasim_model, length=100.0, manning_n=0.
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 569, "max_downstream_level"] -= (
     0.05  # 5 cm lower than streefpeil to make sure Winsemius pumps first
 )
+assert ribasim_model.discrete_control.condition.df is not None
 ribasim_model.discrete_control.condition.df.loc[
     ribasim_model.discrete_control.condition.df.node_id == 3118, "threshold_high"
 ] -= 0.05

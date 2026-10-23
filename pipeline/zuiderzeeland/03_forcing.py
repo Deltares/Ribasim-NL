@@ -38,6 +38,7 @@ processor = paths.feedback_processor(work_dir=paths.model_dir("profiles"))
 ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
 
 # reset pump capacity for each pump
+assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df["flow_rate"] = 10 / 60  # 10m3/min
 
 ribasim_model = set_boundary_conditions(ribasim_model, paths, level_boundary_levels=(-0.42, -0.4))
@@ -63,6 +64,7 @@ add_controllers(ribasim_model, from_to_node_function_table, remove_duplicates=Fa
 assign_pump_and_basin_names(ribasim_model, paths, pump_flow_rate_factor=1)
 
 # data availability (and thus delivery) is not complete for all pumps. Hard code the flow rates based on some emails.
+assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df["meta_known_flow_rate"] = False
 
 # based on Excel for D-HYDRO model. Also set the meta_known_flow_rate to True for these pumps, as we have data for these.
@@ -132,7 +134,9 @@ ribasim_model.pump.static.df.loc[
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
+assert ribasim_model.manning_resistance.node is not None and ribasim_model.manning_resistance.node.df is not None
 mr_null_geom = ribasim_model.manning_resistance.node.df[ribasim_model.manning_resistance.node.df.geometry.isna()].index
+assert ribasim_model.node.df is not None
 ribasim_model.node.df = ribasim_model.node.df.drop(mr_null_geom)
 
 # lower the difference in waterlevel for each manning node, except those of storing basins
@@ -142,6 +146,7 @@ set_manning_resistance_outside_bergend(ribasim_model, length=100.0, manning_n=0.
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 2436, "min_upstream_level"] += (
     0.05  # 5 cm higher than streefpeil
 )
+assert ribasim_model.discrete_control.condition.df is not None
 ribasim_model.discrete_control.condition.df.loc[
     ribasim_model.discrete_control.condition.df.node_id == 14970, "threshold_high"
 ] += 0.05
@@ -176,6 +181,7 @@ for static_df, node_ids in (
     (ribasim_model.outlet.static.df, [337, 371, 416, 474]),
     (ribasim_model.pump.static.df, [914]),
 ):
+    assert static_df is not None
     set_flow_rate(static_df, node_ids, 1.0)
     static_df.loc[static_df.node_id.isin(node_ids), "max_flow_rate"] = 1.0
 

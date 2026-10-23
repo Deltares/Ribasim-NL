@@ -4,7 +4,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from itertools import chain, pairwise, product
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple, cast
 
 import geopandas as gpd
 import networkx as nx
@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import shapely
 from geopandas import GeoDataFrame, GeoSeries
+from geopandas.array import GeometryArray
 from networkx import DiGraph, Graph, NetworkXNoPath, shortest_path, traversal
 from shapely.geometry import LineString, Point, box
 from shapely.ops import snap, split
@@ -133,7 +134,8 @@ class Network:
         links_gdf = gpd.read_file(gpkg_file, layer="links", engine="pyogrio").set_index(["node_from", "node_to"])
         graph = DiGraph()
         graph.add_nodes_from(nodes_gdf.to_dict(orient="index").items())
-        graph.add_edges_from([(k[0], k[1], v) for k, v in links_gdf.to_dict(orient="index").items()])
+        link_attributes = cast(dict[tuple[int, int], dict[str, Any]], links_gdf.to_dict(orient="index"))
+        graph.add_edges_from([(node_from, node_to, v) for (node_from, node_to), v in link_attributes.items()])
 
         result = cls(links_gdf, **kwargs)
         result.set_graph(graph)
@@ -198,9 +200,9 @@ class Network:
                 self._graph.add_node(node_id, geometry=point)
 
             # add links using link_def
-            link_def = {}
+            link_def: dict[str, Any] = {}
             for row in self.lines_gdf.itertuples():
-                geometry = row.geometry
+                geometry = cast(LineString, row.geometry)
 
                 # provide id and name attributes if any
                 if self.id_col is not None:
@@ -209,7 +211,7 @@ class Network:
                     link_def["name"] = getattr(row, self.name_col)
 
                 # select nodes of interest, sorted since spatial index order differs between platforms
-                bounds = box(*geometry.bounds).buffer(self.tolerance).bounds if self.tolerance else row.geometry.bounds
+                bounds = box(*geometry.bounds).buffer(self.tolerance).bounds if self.tolerance else geometry.bounds
                 candidates = np.sort(nodes_gdf.sindex.intersection(bounds))
                 distance = shapely.distance(node_points[candidates], geometry)
                 if self.tolerance is None:
@@ -271,11 +273,11 @@ class Network:
         name=None,
     ) -> None:
         """Add a link (link) to the network"""
-        if not ((point_from is None) | (point_to is None)):
+        if point_from is not None and point_to is not None:
             geometry = LineString([(point_from.x, point_from.y), *geometry.coords[1:-1], (point_to.x, point_to.y)])
 
         # add link to graph
-        self._graph.add_edge(
+        self.graph.add_edge(
             node_from,
             node_to,
             name=name,
@@ -292,16 +294,16 @@ class Network:
         for row in gdf_overlay.itertuples():
             attrs = {k: v for k, v in row._asdict().items() if k not in ["Index", "node_id"]}
             for k, v in attrs.items():
-                self._graph.nodes[row.node_id][k] = v
+                self.graph.nodes[row.node_id][k] = v
 
         self._graph_undirected = None
         self._node_locations = None
 
     def upstream_nodes(self, node_id):
-        return [n for n in traversal.bfs_tree(self._graph, node_id, reverse=True) if n != node_id]
+        return [n for n in traversal.bfs_tree(self.graph, node_id, reverse=True) if n != node_id]
 
     def downstream_nodes(self, node_id):
-        return [n for n in traversal.bfs_tree(self._graph, node_id) if n != node_id]
+        return [n for n in traversal.bfs_tree(self.graph, node_id) if n != node_id]
 
     def has_upstream_nodes(self, node_id) -> bool:
         return len(self.upstream_nodes(node_id)) > 0
@@ -314,7 +316,7 @@ class Network:
         max_iters = min(max_iters, len(upstream_nodes))
         value = None
         for idx in range(max_iters):
-            node = self._graph.nodes[upstream_nodes[idx]]
+            node = self.graph.nodes[upstream_nodes[idx]]
             if attribute in node and pd.notna(node[attribute]):
                 value = node[attribute]
                 break
@@ -328,7 +330,7 @@ class Network:
         max_iters = min(max_iters, len(downstream_nodes))
         value = None
         for idx in range(max_iters):
-            node = self._graph.nodes[downstream_nodes[idx]]
+            node = self.graph.nodes[downstream_nodes[idx]]
             if attribute in node and pd.notna(node[attribute]):
                 value = node[attribute]
                 break
@@ -350,8 +352,8 @@ class Network:
         second_value = None
 
         for idx in range(0, max_iters, 2):
-            first_node = self._graph.nodes[downstream_nodes[idx]]
-            second_node = self._graph.nodes[downstream_nodes[idx + 1]]
+            first_node = self.graph.nodes[downstream_nodes[idx]]
+            second_node = self.graph.nodes[downstream_nodes[idx + 1]]
 
             if attribute in first_node:
                 if pd.notna(first_node[attribute]):
@@ -388,8 +390,8 @@ class Network:
                 > max_length
             ):
                 break
-            us_node = self._graph.nodes[upstream_nodes[idx]]
-            ds_node = self._graph.nodes[downstream_nodes[idx]]
+            us_node = self.graph.nodes[upstream_nodes[idx]]
+            ds_node = self.graph.nodes[downstream_nodes[idx]]
 
             if attribute in us_node:
                 if pd.notna(us_node[attribute]):
@@ -634,8 +636,8 @@ class Network:
         mask = ~(links.node_from.isin(nodes) & links.node_to.isin(nodes))
         weight = links.length
         weight.loc[mask] = weight[mask] * weight_value
-        weight_values = weight.to_dict()
-        nx.set_edge_attributes(self._graph, weight_values, "weight")
+        weight_values = cast(dict[tuple[int, int], float], weight.to_dict())
+        nx.set_edge_attributes(self.graph, weight_values, "weight")
 
         self._graph_undirected = None
 
@@ -659,7 +661,7 @@ class Network:
         GeoDataFrame
             GeoDataFrame with nodes and index
         """
-        geoseries = self.lines_gdf.boundary.explode(index_parts=True).unique()
+        geoseries = cast(GeometryArray, self.lines_gdf.boundary.explode(index_parts=True).unique())
 
         # snap nodes within tolerance if it's set. We:
 
@@ -685,13 +687,13 @@ class Network:
         us_boundaries = from_nodes - to_nodes
         ds_boundaries = to_nodes - from_nodes
         self._node_locations = None
-        for node_id in self._graph.nodes:
+        for node_id in self.graph.nodes:
             if node_id in us_boundaries:
-                self._graph.nodes[node_id]["type"] = "upstream_boundary"
+                self.graph.nodes[node_id]["type"] = "upstream_boundary"
             elif node_id in ds_boundaries:
-                self._graph.nodes[node_id]["type"] = "downstream_boundary"
+                self.graph.nodes[node_id]["type"] = "downstream_boundary"
             else:
-                self._graph.nodes[node_id]["type"] = "connection"
+                self.graph.nodes[node_id]["type"] = "connection"
 
     def to_file(self, path: str | Path) -> None:
         """Write output to geopackage"""

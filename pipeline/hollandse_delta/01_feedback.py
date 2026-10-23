@@ -279,6 +279,7 @@ ribasim_param.validate_basin_area(ribasim_model)
 ribasim_param.validate_manning_basins(ribasim_model)
 
 # change unknown streefpeilen to a default streefpeil
+assert ribasim_model.basin.area.df is not None
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"
 ] = str(UNKNOWN_STREEFPEIL)
@@ -287,6 +288,7 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
 )
 
 # change high initial states to 0
+assert ribasim_model.basin.state.df is not None
 ribasim_model.basin.state.df.loc[ribasim_model.basin.state.df["level"] == 9.999, "level"] = 0.0
 ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] == 9.999, "meta_streefpeil"] = str(
     UNKNOWN_STREEFPEIL
@@ -297,6 +299,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(55992, 424882)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(55982, 424908)), [pump.Static(flow_rate=[0.1])])
+assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_afvoer"] = 0
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
 ribasim_model.link.add(level_boundary_node, pump_node)
@@ -555,6 +558,7 @@ ribasim_model.remove_node(2125, True)
 ribasim_model.remove_node(2747, True)
 
 # (re) set 'meta_node_id'
+assert ribasim_model.node.df is not None
 for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
     mask = ribasim_model.node.df["node_type"] == node_type
     ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index

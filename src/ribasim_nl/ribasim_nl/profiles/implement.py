@@ -8,7 +8,11 @@ import pandas as pd
 import pydantic
 import shapely
 from pandera.typing import pandas as pdt
-from ribasim.schemas import BasinProfileSchema
+from pandera.typing.geopandas import GeoDataFrame
+from ribasim.geometry.area import BasinAreaSchema
+from ribasim.geometry.link import LinkSchema
+from ribasim.geometry.node import NodeSchema
+from ribasim.schemas import BasinProfileSchema, BasinStateSchema, BasinStaticSchema, ManningResistanceStaticSchema
 
 from ribasim_nl import CloudStorage, Model
 from ribasim_nl.profiles import MIN_GENERATED_PROFILE_AREA, MIN_PROFILE_AREA
@@ -372,17 +376,27 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
 
     # concatenate all newly generated tables to Ribasim model
     # > Node-table
-    ribasim_model.node.df = pd.concat([ribasim_model.node.df, basin_node, manning_node], ignore_index=False)
+    ribasim_model.node.df = GeoDataFrame[NodeSchema](
+        pd.concat([ribasim_model.node.df, basin_node, manning_node], ignore_index=False)
+    )
     # > Link-table
-    ribasim_model.link.df = pd.concat([ribasim_model.link.df, link], ignore_index=False)
+    ribasim_model.link.df = GeoDataFrame[LinkSchema](pd.concat([ribasim_model.link.df, link], ignore_index=False))
     # > Basin-tables
-    ribasim_model.basin.static.df = pd.concat([ribasim_model.basin.static.df, basin_static], ignore_index=True)
-    ribasim_model.basin.state.df = pd.concat([ribasim_model.basin.state.df, basin_state], ignore_index=True)
-    ribasim_model.basin.profile.df = pd.concat([ribasim_model.basin.profile.df, basin_profile], ignore_index=True)
-    ribasim_model.basin.area.df = pd.concat([ribasim_model.basin.area.df, basin_area], ignore_index=True)
+    ribasim_model.basin.static.df = pdt.DataFrame[BasinStaticSchema](
+        pd.concat([ribasim_model.basin.static.df, basin_static], ignore_index=True)
+    )
+    ribasim_model.basin.state.df = pdt.DataFrame[BasinStateSchema](
+        pd.concat([ribasim_model.basin.state.df, basin_state], ignore_index=True)
+    )
+    ribasim_model.basin.profile.df = pdt.DataFrame[BasinProfileSchema](
+        pd.concat([ribasim_model.basin.profile.df, basin_profile], ignore_index=True)
+    )
+    ribasim_model.basin.area.df = GeoDataFrame[BasinAreaSchema](
+        pd.concat([ribasim_model.basin.area.df, basin_area], ignore_index=True)
+    )
     # > ManningResistance-tables
-    ribasim_model.manning_resistance.static.df = pd.concat(
-        [ribasim_model.manning_resistance.static.df, manning_static], ignore_index=True
+    ribasim_model.manning_resistance.static.df = pdt.DataFrame[ManningResistanceStaticSchema](
+        pd.concat([ribasim_model.manning_resistance.static.df, manning_static], ignore_index=True)
     )
 
     # update model IDs

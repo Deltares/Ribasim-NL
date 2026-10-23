@@ -3,6 +3,7 @@
 # %% imports
 import logging
 from collections import Counter
+from typing import Any
 
 import contextily as ctx
 import geopandas as gpd
@@ -109,7 +110,7 @@ def plot_rwzi_locations(rwzi_gdf):
 
     _, ax = plt.subplots(figsize=(5, 6))
     rwzi_gdf.plot(ax=ax, color="dodgerblue", edgecolor="black", alpha=0.8, markersize=20)
-    ctx.add_basemap(ax, source=ctx.providers.CartoDB.Positron)
+    ctx.add_basemap(ax, source=ctx.providers.CartoDB.Positron)  # ty: ignore[unresolved-attribute]
     ax.set_title("RWZI locaties in Nederland", fontsize=8)
     ax.axis("off")
 
@@ -226,7 +227,7 @@ def process_rws_quantity_data(db_belasting, gdf_excluded):
         num_days = (end_of_year - start_of_year).days + 1
         date_range = pd.date_range(start=start_of_year, end=end_of_year, freq="D")
 
-        daily_row_data = {"time": date_range}
+        daily_row_data: dict[str, Any] = {"time": date_range}
 
         for col in row.index[1:]:
             yearly_val = row[col]

@@ -51,6 +51,7 @@ for authority in authorities:
     # add categorie to basin / state
     series = model.basin.node.df["meta_categorie"]  # type: ignore
     uncategorized_basins = series[series.isna()].index.values
+    assert model.node.df is not None
     if len(uncategorized_basins) > 0:
         print(f"uncategorized basins: {uncategorized_basins}, will be set to doorgaand")
         model.node.df.loc[uncategorized_basins, "meta_categorie"] = "doorgaand"
@@ -64,6 +65,8 @@ for authority in authorities:
     )
 
     # merging the RWZI model requires meta_waterbeheerder
+    assert model.basin.node is not None and model.basin.node.df is not None
+    assert model.node.df is not None
     model.node.df.loc[model.basin.node.df.index, "meta_waterbeheerder"] = authority
     model = add_inflows(model, dst_model_dir)
 

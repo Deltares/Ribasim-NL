@@ -91,7 +91,7 @@ def points2lines_delfland(cloud: CloudStorage = CloudStorage()) -> gpd.GeoDataFr
     lines = gpd.read_file(fn, layer="Dwarsprofiel_line", columns=["OBJECTID", "geometry"])
     out = pd.merge(points, lines, on="OBJECTID", how="inner", suffixes=("_points", "_lines"), validate=None)
     out = out.dropna(subset="BodemHo")
-    out["geometry"] = out.apply(
+    out["geometry"] = out.apply(  # ty: ignore[no-matching-overload]
         lambda r: shapely.LineString([(x, y, r["BodemHo"]) for x, y in r["geometry_lines"].geoms[0].coords]), axis=1
     )
     out = gpd.GeoDataFrame({"OBJECTID": out["OBJECTID"]}, geometry=out["geometry"], crs=lines.crs)

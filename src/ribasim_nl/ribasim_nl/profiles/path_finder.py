@@ -93,7 +93,7 @@ def split_hydro_objects(
             )
         else:
             new_lines = geometry.split_line(line, p, tolerance=tolerance)
-        hydro_objects.at[i, "geometry"] = shapely.MultiLineString(new_lines)  # type: ignore[assignment]
+        hydro_objects.at[i, "geometry"] = shapely.MultiLineString(new_lines)  # ty: ignore[invalid-assignment]
 
     hydro_objects = hydro_objects.explode()
     hydro_objects = hydro_objects[hydro_objects.length > 0].reset_index(drop=True)
@@ -163,7 +163,7 @@ def fully_connected_network(hydro_objects: gpd.GeoDataFrame, *, buffer: float = 
             line = union_objects.geometry.iloc[index]
             _line = [*line.coords]
             _line[0 if is_start else -1] = snap_points[i]
-            union_objects.at[index, "geometry"] = shapely.LineString(_line)  # type: ignore[assignment]
+            union_objects.at[index, "geometry"] = shapely.LineString(_line)  # ty: ignore[invalid-assignment]
 
     # return modified hydro-objects
     return union_objects
@@ -214,7 +214,7 @@ def select_crossings(
 
     # define buffered basin border(s)
     if isinstance(basin, shapely.Polygon):
-        borders = selection(basin)
+        borders = [selection(basin)]
     elif isinstance(basin, shapely.MultiPolygon):
         borders = [selection(p) for p in basin.geoms]
     else:
@@ -345,7 +345,7 @@ def _edge_weight_function(graph: nx.Graph) -> Callable[[object, object, dict], f
 
 def find_flow_routes(
     graph: nx.Graph, crossings: list[shapely.Point], *, use_full_graph: bool = False
-) -> set[tuple[tuple[int, int], tuple[int, int]]]:
+) -> set[tuple[tuple[float, float], tuple[float, float]]]:
     """Find all shortest routes between combinations of crossings.
 
     :param graph: graph
@@ -358,14 +358,14 @@ def find_flow_routes(
     :type use_full_graph: bool, optional
 
     :return: set of graph-edges that are part of at least one shortest route between crossings
-    :rtype: set[tuple[tuple[int, int], tuple[int, int]]]
+    :rtype: set[tuple[tuple[float, float], tuple[float, float]]]
     """
     if len(crossings) > graph.number_of_nodes():
         LOG.warning(f"More crossings ({len(crossings)}) than graph-nodes ({graph.number_of_nodes()})")
     desc = "Finding main routes"
 
     # initiate working variables
-    flow_routes: set[tuple[tuple[int, int], tuple[int, int]]] = set()
+    flow_routes: set[tuple[tuple[float, float], tuple[float, float]]] = set()
     mp_graph = shapely.MultiPoint(graph.nodes)
     # sorted, since the iteration order of a set of geometries differs between processes (hash randomization)
     unique_crossings = sorted(set(crossings), key=lambda point: (point.x, point.y))
@@ -382,7 +382,9 @@ def find_flow_routes(
     if use_full_graph:
         # shortest path between all nodes
         print(f"\r{desc} ({n_combinations=}): Full graph processing...", end="", flush=True)
-        paths = dict(nx.shortest_path(graph, weight="weight"))
+        paths = typing.cast(
+            dict[tuple[float, float], dict[tuple[float, float], list]], dict(nx.shortest_path(graph, weight="weight"))
+        )
 
         # select shortest paths between crossings
         for c1, c2 in tqdm.tqdm(itertools.combinations(unique_crossings, 2), f"{desc} (F)", n_combinations):
@@ -411,7 +413,7 @@ def find_flow_routes(
 
 
 def label_flow_hydro_objects(
-    hydro_objects: gpd.GeoDataFrame, graph: nx.Graph, flow_routes: set[tuple[tuple[int, int], tuple[int, int]]]
+    hydro_objects: gpd.GeoDataFrame, graph: nx.Graph, flow_routes: set[tuple[tuple[float, float], tuple[float, float]]]
 ) -> tuple[int, ...]:
     """Label hydro-objects as being part of the main flow route (or not).
 
@@ -421,7 +423,7 @@ def label_flow_hydro_objects(
 
     :type hydro_objects: geopandas.GeoDataFrame
     :type graph: networkx.Graph
-    :type flow_routes: set[tuple[tuple[int, int], tuple[int, int]]]
+    :type flow_routes: set[tuple[tuple[float, float], tuple[float, float]]]
 
     :return: indices of hydro-objects on the main-route
     :rtype: tuple[int, ...]
