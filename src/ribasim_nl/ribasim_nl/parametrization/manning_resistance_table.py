@@ -148,22 +148,20 @@ def read_manning_water(model: Model, path: Path | None = BGT_WATER) -> gpd.GeoDa
 
 
 def update_manning_resistance_reach(model: Model, water_area_df: gpd.GeoDataFrame | None) -> None:
-    """Update ManningResistances whose links were routed after `update_manning_resistance_static`.
+    """Update the BGT profiles of ManningResistances whose links were routed after `update_manning_resistance_static`.
 
     Routing the links along the waterways, see `ribasim_nl.regional_model.finish_regional_model`, changes their
-    course and can move the ManningResistance. So its `length` is taken from its links again, and the profiles that
-    depend on the course of the links, those from the BGT or the default, are determined again. Only nodes with a
-    `meta_profile_source` are updated; other ManningResistances keep the length and profile they were given.
+    course and can move the ManningResistance. So the profiles that depend on the course of the links, those from the
+    BGT or the default, are determined again. The length is kept: routing moves Basin and ManningResistance nodes
+    closer together, and shorter ManningResistances made the coupled model a third slower.
     """
     static_df = model.manning_resistance.static.df
     if static_df is None or "meta_profile_source" not in static_df.columns:
         return
     static_df = static_df.copy()
-    rows = static_df.index[static_df["meta_profile_source"].notna()]
+    rows = [row for row in static_df.index if static_df.at[row, "meta_profile_source"] in REACH_SOURCES]
     links = _links_by_node(model, static_df.loc[rows, "node_id"])
-    static_df.loc[rows, "length"] = [_reach_length(links[int(n)]) for n in static_df.loc[rows, "node_id"]]
-    reach_rows = [row for row in rows if static_df.at[row, "meta_profile_source"] in REACH_SOURCES]
-    _set_water_profiles(static_df, reach_rows, links, water_area_df)
+    _set_water_profiles(static_df, rows, links, water_area_df)
     model.manning_resistance.static.df = DataFrame[ManningResistanceStaticSchema](static_df)
 
 
@@ -181,8 +179,8 @@ def update_manning_resistance_static(
     3. The default `DEFAULT_PROFILE_WIDTH` and `DEFAULT_PROFILE_SLOPE`.
 
     Widths from the BGT are the top width at `WATER_PROFILE_DEPTH`, with sides of `WATER_PROFILE_SLOPE`, see
-    `trapezoid`. The source is written to `meta_profile_source`. As the links are routed later, the length and the
-    profiles from the BGT are updated then, see `update_manning_resistance_reach`.
+    `trapezoid`. The source is written to `meta_profile_source`. As the links are routed later, the profiles from the
+    BGT are updated then, see `update_manning_resistance_reach`.
 
     Args:
         model (Model): Ribasim Model

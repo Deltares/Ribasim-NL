@@ -108,7 +108,7 @@ def finish_regional_model(
     """Lay out, write, validate and run the model, use its final state as initial state, and check its results.
 
     The layout only changes the geometry, after all parametrization: `snap` routes the links along the waterways
-    known for the authority, after which the length and BGT profile of ManningResistances follow their new links (see
+    known for the authority, after which the BGT profile of ManningResistances follows their new links (see
     `update_manning_resistance_reach`), the RWZIs discharge on the links into their Basins (see #860), and nodes and links are
     moved apart. The results get `performance.xlsx` and `output_controle.gpkg`.
 

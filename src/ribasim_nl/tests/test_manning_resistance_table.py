@@ -135,13 +135,9 @@ def test_update_manning_resistance_reach(model, tmp_path):
     update_manning_resistance_reach(model, water_area_df)
     after = model.manning_resistance.static.df.set_index("node_id")
 
-    # 11 keeps its DAMO profile, 12 gets the length and width of its new route, 13 is not touched
-    assert after.loc[11, ["profile_width", "profile_slope", "length"]].to_list() == [
-        40.0,
-        3.0,
-        before.loc[11, "length"],
-    ]
-    assert after.loc[12, "length"] == 600.0
+    # 11 keeps its DAMO profile, 12 gets the width of its new route, 13 is not touched, and all keep their length
+    assert after.loc[11, ["profile_width", "profile_slope"]].to_list() == [40.0, 3.0]
+    assert (after["length"] == before["length"]).all()
     assert after.loc[12, ["profile_width", "profile_slope", "meta_profile_source"]].to_list() == [
         pytest.approx(0.67),
         pytest.approx(0.33),
