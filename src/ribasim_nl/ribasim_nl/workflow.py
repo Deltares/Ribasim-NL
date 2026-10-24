@@ -17,6 +17,7 @@ import ribasim_nl.ribasim_parametrization as ribasim_param
 from ribasim_nl import CloudStorage, Model, junctionify, supply
 from ribasim_nl.assign_authorities import AssignAuthorities
 from ribasim_nl.assign_parametrization import AssignMetaData
+from ribasim_nl.bgt_water import BGT_WATER
 from ribasim_nl.capacity import bound_supply_inflows
 from ribasim_nl.control import (
     add_controllers_to_connector_nodes,
@@ -113,7 +114,7 @@ class WaterBoardPaths:
 
     @property
     def bgt_water(self) -> Path:
-        return settings.ribasim_nl_data_dir / self.waterschap / "verwerkt/BGT" / f"bgt_{self.waterschap}_water.gpkg"
+        return BGT_WATER
 
     @property
     def top10nl(self) -> Path:
