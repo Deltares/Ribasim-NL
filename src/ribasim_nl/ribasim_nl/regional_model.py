@@ -18,6 +18,7 @@ from ribasim_nl.controle_output import DYNAMIC_FORCING_METRICS, Control
 from ribasim_nl.layout import tidy_layout
 from ribasim_nl.model import Model
 from ribasim_nl.observations import add_observations
+from ribasim_nl.parametrization.manning_resistance_table import read_manning_water, update_manning_resistance_reach
 from ribasim_nl.performance import write_performance
 from ribasim_nl.ribasim_parametrization import write_steady_state_regression_models
 from ribasim_nl.rwzi import attach_rwzi_junctions, merge_rwzi_model
@@ -107,7 +108,8 @@ def finish_regional_model(
     """Lay out, write, validate and run the model, use its final state as initial state, and check its results.
 
     The layout only changes the geometry, after all parametrization: `snap` routes the links along the waterways
-    known for the authority, the RWZIs discharge on the links into their Basins (see #860), and nodes and links are
+    known for the authority, after which the length and BGT profile of ManningResistances follow their new links (see
+    `update_manning_resistance_reach`), the RWZIs discharge on the links into their Basins (see #860), and nodes and links are
     moved apart. The results get `performance.xlsx` and `output_controle.gpkg`.
 
     :param model: parametrized model
@@ -118,6 +120,7 @@ def finish_regional_model(
     :return: the model with its final state as initial state
     """
     model = snap(model)
+    update_manning_resistance_reach(model, read_manning_water(model))
     model = attach_rwzi_junctions(model)
     model = add_observations(model, authority)
     model = tidy_layout(model)

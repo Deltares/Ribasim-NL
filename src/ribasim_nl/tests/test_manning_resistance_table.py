@@ -8,6 +8,7 @@ from ribasim_nl.parametrization.manning_resistance_table import (
     crosses_link,
     reach_water_width,
     trapezoid,
+    update_manning_resistance_reach,
     update_manning_resistance_static,
 )
 from shapely.geometry import LineString, Point, box
@@ -108,3 +109,42 @@ def test_update_manning_resistance_static(model, tmp_path):
         0.75,
         "BGT",
     ]
+
+
+def test_update_manning_resistance_reach(model, tmp_path):
+    profiles_gpkg = tmp_path / "profiles.gpkg"
+    gpd.GeoDataFrame(
+        {"profiel_id": ["own"], "profile_width": [40.0], "profile_slope": [3.0]},
+        geometry=[LineString([(100, -30), (100, 30)])],
+        crs=28992,
+    ).to_file(profiles_gpkg)
+    # the river, and a ditch of 2 m along the route that the links of 12 will get
+    water_area_df = gpd.GeoDataFrame(geometry=[RIVER, box(400, 99, 800, 101)], crs=28992)
+    update_manning_resistance_static(model, profiles_gpkg=profiles_gpkg, water_area_df=water_area_df)
+    static_df = model.manning_resistance.static.df
+    # a ManningResistance with a length and profile of its own, like those of bergend Basins
+    static_df.loc[static_df.node_id == 13, "meta_profile_source"] = None
+    static_df.loc[static_df.node_id == 13, ["length", "profile_width"]] = [123.0, 7.0]
+    before = static_df.set_index("node_id").copy()
+    assert before.loc[12, "meta_profile_source"] == "BGT"
+
+    # routing moves 12 and its links along the ditch, 100 m north of the river
+    link_df = model.link.df
+    link_df.loc[link_df.to_node_id == 12, "geometry"] = LineString([(400, 0), (400, 100), (600, 100)])
+    link_df.loc[link_df.from_node_id == 12, "geometry"] = LineString([(600, 100), (800, 100), (800, 0)])
+    update_manning_resistance_reach(model, water_area_df)
+    after = model.manning_resistance.static.df.set_index("node_id")
+
+    # 11 keeps its DAMO profile, 12 gets the length and width of its new route, 13 is not touched
+    assert after.loc[11, ["profile_width", "profile_slope", "length"]].to_list() == [
+        40.0,
+        3.0,
+        before.loc[11, "length"],
+    ]
+    assert after.loc[12, "length"] == 600.0
+    assert after.loc[12, ["profile_width", "profile_slope", "meta_profile_source"]].to_list() == [
+        pytest.approx(0.67),
+        pytest.approx(0.33),
+        "BGT",
+    ]
+    assert after.loc[13, ["length", "profile_width"]].to_list() == [123.0, 7.0]
