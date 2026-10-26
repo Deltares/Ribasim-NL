@@ -3,11 +3,13 @@ from typing import cast
 
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 import shapely
 from pandas import Timestamp
 from pandera.typing import DataFrame
 from ribasim.schemas import ManningResistanceStaticSchema
 
+from ribasim_nl.bgt_water import BGT_WATER, read_bgt_water
 from ribasim_nl.model import Model
 from ribasim_nl.parametrization.conversions import round_to_precision
 from ribasim_nl.parametrization.empty_table import empty_table_df
@@ -81,69 +83,123 @@ def trapezoid(top_width: float, depth: float, profile_slope: float) -> tuple[flo
     return bottom_width, (top_width - bottom_width) / 2 / depth
 
 
+# Default profile of ManningResistances without DAMO profile or BGT water, see `update_manning_resistance_static`
+DEFAULT_PROFILE_WIDTH = 25.0
+DEFAULT_PROFILE_SLOPE = 1.0
+# Depth at which BGT widths apply, that of the primary Basin profiles, and the slope of the sides of their profile
+WATER_PROFILE_DEPTH = 2.0
+WATER_PROFILE_SLOPE = 2.0
+# Sources of profiles that depend on the course of the links, see `update_manning_resistance_reach`
+REACH_SOURCES = {"BGT", "default"}
+
+
+def _links_by_node(model: Model, node_ids: pd.Series) -> dict[int, list[shapely.LineString]]:
+    """The flow links of each node."""
+    assert model.link.df is not None
+    link_df = model.link.df[model.link.df.link_type == "flow"]
+    return {
+        int(node_id): list(link_df[(link_df.from_node_id == node_id) | (link_df.to_node_id == node_id)].geometry)
+        for node_id in node_ids.unique()
+    }
+
+
+def _reach_length(links: list[shapely.LineString]) -> float:
+    """Length of the links of a ManningResistance, rounded to 10 m."""
+    return round_to_precision(sum(link.length for link in links), precision=10)
+
+
+def _set_water_profiles(
+    static_df: pd.DataFrame,
+    rows: list[int],
+    links: dict[int, list[shapely.LineString]],
+    water_area_df: gpd.GeoDataFrame | None,
+) -> None:
+    """Set the profile of `rows` from the width of the BGT water along their links, or else the default."""
+    static_df.loc[rows, ["profile_width", "profile_slope", "meta_profile_source"]] = [
+        DEFAULT_PROFILE_WIDTH,
+        DEFAULT_PROFILE_SLOPE,
+        "default",
+    ]
+    if water_area_df is None or not rows:
+        return
+    water = np.asarray(shapely.make_valid(water_area_df.geometry.to_numpy()))
+    tree = shapely.STRtree(water)
+    node_ids = static_df["node_id"].astype(int)
+    for row in rows:
+        width = reach_water_width(links[node_ids[row]], water, tree)
+        if width > 0:
+            bottom_width, slope = trapezoid(width, WATER_PROFILE_DEPTH, WATER_PROFILE_SLOPE)
+            static_df.loc[row, ["profile_width", "profile_slope", "meta_profile_source"]] = [
+                round(bottom_width, 2),
+                round(slope, 2),
+                "BGT",
+            ]
+
+
+def read_manning_water(model: Model, path: Path | None = BGT_WATER) -> gpd.GeoDataFrame | None:
+    """The BGT water around the ManningResistances of a model, or None without a path or ManningResistances."""
+    node = model.manning_resistance.node
+    if path is None or node is None or node.df is None or node.df.empty:
+        return None
+    xmin, ymin, xmax, ymax = node.df.total_bounds
+    return read_bgt_water(
+        shapely.box(xmin - 5000, ymin - 5000, xmax + 5000, ymax + 5000), path=path, columns=["geometry"]
+    )
+
+
+def update_manning_resistance_reach(model: Model, water_area_df: gpd.GeoDataFrame | None) -> None:
+    """Update the BGT profiles of ManningResistances whose links were routed after `update_manning_resistance_static`.
+
+    Routing the links along the waterways, see `ribasim_nl.regional_model.finish_regional_model`, changes their
+    course and can move the ManningResistance. So the profiles that depend on the course of the links, those from the
+    BGT or the default, are determined again. The length is kept: routing moves Basin and ManningResistance nodes
+    closer together, and shorter ManningResistances made the coupled model a third slower.
+    """
+    static_df = model.manning_resistance.static.df
+    if static_df is None or "meta_profile_source" not in static_df.columns:
+        return
+    static_df = static_df.copy()
+    rows = [row for row in static_df.index if static_df.at[row, "meta_profile_source"] in REACH_SOURCES]
+    links = _links_by_node(model, static_df.loc[rows, "node_id"])
+    _set_water_profiles(static_df, rows, links, water_area_df)
+    model.manning_resistance.static.df = DataFrame[ManningResistanceStaticSchema](static_df)
+
+
 def update_manning_resistance_static(
     model: Model,
     profiles_gpkg: Path | None = None,
-    profile_slope: float = 1,
-    profile_width: float = 25,
     manning_n: float = 0.04,
     water_area_df: gpd.GeoDataFrame | None = None,
-    depth: float = 2.0,
-    water_profile_slope: float = 2.0,
 ) -> None:
     """Generate the ManningResistance static table, with the profile from the first source that has one.
 
     1. The DAMO profile of its link, from `profiles_gpkg`, if it lies across one of the links of the node, see
        `crosses_link`. Otherwise it is of another watercourse, as watercourses can have no profiles at all.
     2. The width of the BGT water along its links, see `reach_water_width` and `ribasim_nl.bgt_water`.
-    3. The default `profile_width` and `profile_slope`.
+    3. The default `DEFAULT_PROFILE_WIDTH` and `DEFAULT_PROFILE_SLOPE`.
 
-    Widths from the BGT are the top width at `depth`, the depth of the primary Basin profiles, with sides of
-    `water_profile_slope`, see `trapezoid`. The source is written to `meta_profile_source`.
+    Widths from the BGT are the top width at `WATER_PROFILE_DEPTH`, with sides of `WATER_PROFILE_SLOPE`, see
+    `trapezoid`. The source is written to `meta_profile_source`. As the links are routed later, the profiles from the
+    BGT are updated then, see `update_manning_resistance_reach`.
 
     Args:
         model (Model): Ribasim Model
         profiles_gpkg (Path, optional): DAMO profiles with profile lines, by `profiel_id`. Defaults to None.
-        profile_slope (float, optional): Default slope of the profile, horizontal over vertical. Defaults to 1.
-        profile_width (float, optional): Default bottom width of the profile [m]. Defaults to 25.
         manning_n (float, optional): Manning roughness. Defaults to 0.04.
         water_area_df (gpd.GeoDataFrame, optional): BGT water, see `ribasim_nl.bgt_water`. Defaults to None.
-        depth (float, optional): Depth at which BGT widths apply [m]. Defaults to 2.
-        water_profile_slope (float, optional): Slope of profiles from BGT widths. Defaults to 2.
     """
     # empty dataframe
     static_df = empty_table_df(model=model, node_type="ManningResistance", table_type="Static")
 
-    # length from length links
-    assert model.link.df is not None
-    length = [
-        round_to_precision(
-            model.link.df[(model.link.df.from_node_id == node_id) | (model.link.df.to_node_id == node_id)].length.sum(),
-            precision=10,
-        )
-        for node_id in static_df.node_id
-    ]
-    static_df.loc[:, "length"] = length
+    links = _links_by_node(model, static_df["node_id"])
+    static_df.loc[:, "length"] = [_reach_length(links[int(n)]) for n in static_df["node_id"]]
+    static_df.loc[:, "meta_profile_source"] = None
 
-    static_df.loc[:, "profile_slope"] = profile_slope
-    static_df.loc[:, "profile_width"] = profile_width
-    static_df.loc[:, "meta_profile_source"] = "default"
-    link_df = model.link.df[model.link.df.link_type == "flow"]
-    links = {
-        node_id: list(link_df[(link_df.from_node_id == node_id) | (link_df.to_node_id == node_id)].geometry)
-        for node_id in static_df.node_id
-    }
-
-    def set_profile(row: int, width: float, slope: float, source: str) -> None:
-        static_df.loc[row, ["profile_width", "profile_slope", "meta_profile_source"]] = [
-            round(width, 2),
-            round(slope, 2),
-            source,
-        ]
-
-    remaining = list(static_df.index)
     # 1. DAMO profile across the links
+    remaining = list(static_df.index)
+    node_ids = static_df["node_id"].astype(int)
     if profiles_gpkg:
+        assert model.link.df is not None
         profiles_df = gpd.read_file(profiles_gpkg).set_index("profiel_id")
         profile_ids = model.link.df.set_index("to_node_id")["meta_profielid_waterbeheerder"]
         for row in list(remaining):
@@ -151,19 +207,16 @@ def update_manning_resistance_static(
             if profile_id not in profiles_df.index:
                 continue
             profile = profiles_df.loc[profile_id]
-            if any(crosses_link(profile.geometry, link) for link in links[static_df.at[row, "node_id"]]):
-                set_profile(row, profile["profile_width"], profile["profile_slope"], "DAMO")
+            if any(crosses_link(profile.geometry, link) for link in links[node_ids[row]]):
+                static_df.loc[row, ["profile_width", "profile_slope", "meta_profile_source"]] = [
+                    profile["profile_width"],
+                    profile["profile_slope"],
+                    "DAMO",
+                ]
                 remaining.remove(row)
 
-    # 2. width of the BGT water along the links
-    if water_area_df is not None and remaining:
-        water = np.asarray(shapely.make_valid(water_area_df.geometry.to_numpy()))
-        tree = shapely.STRtree(water)
-        for row in list(remaining):
-            width = reach_water_width(links[static_df.at[row, "node_id"]], water, tree)
-            if width > 0:
-                set_profile(row, *trapezoid(width, depth, water_profile_slope), "BGT")
-                remaining.remove(row)
+    # 2. width of the BGT water along the links, or else 3. the default
+    _set_water_profiles(static_df, remaining, links, water_area_df)
 
     # manning_n
     static_df.loc[:, "manning_n"] = manning_n
