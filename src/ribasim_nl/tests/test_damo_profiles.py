@@ -1,8 +1,9 @@
 import geopandas as gpd
+import numpy as np
 import pytest
 from ribasim import Node
 from ribasim.nodes import basin
-from ribasim_nl.parametrization.damo_profiles import DAMOProfiles, profile_lines_from_points
+from ribasim_nl.parametrization.damo_profiles import DAMOProfiles, fit_trapezoid, profile_lines_from_points
 from shapely.geometry import LineString, Point, Polygon
 
 from ribasim_nl import Model
@@ -50,26 +51,35 @@ def test_process_profiles(damo_profiles):
     profiles_df = damo_profiles.process_profiles().set_index("profiel_id")
     assert profiles_df.index.to_list() == ["a", "b", "c", "d", "e"]
     assert profiles_df.loc["d", "bottom_level"] == 12.29
-    assert profiles_df.loc["e", "profile_width"] == 1.0
-    assert profiles_df.loc["e", "profile_slope"] == 0.5
 
-    # width at water level 4, depth 0.5 (minimum), so the bottom width is 4 - 2 * 0.5 / 0.5
-    expected_in_water = {
-        "bottom_level": 0.0,
-        "water_level": 0.0,
-        "invert_level": 1.0,
-        "profile_slope": 0.5,
-        "profile_width": 2.0,
-    }
+    expected_levels = {"bottom_level": 0.0, "water_level": 0.0, "invert_level": 1.0}
     for profile_id in ["a", "c"]:
-        assert profiles_df.loc[profile_id, list(expected_in_water)].to_dict() == expected_in_water
-
-    # no water: width is a third of the line length, depth from the invert level
+        assert profiles_df.loc[profile_id, list(expected_levels)].to_dict() == expected_levels
     profile_b = profiles_df.loc["b"]
     assert profile_b.bottom_level == 2.0
     assert profile_b.invert_level == 3.0
-    assert profile_b.profile_width == pytest.approx(round(10 / 3 / 3, 2))
-    assert profile_b.profile_slope == pytest.approx(round(1 / (10 / 3 / 3), 2))
+
+    # the points of a, b, c and e are a trapezoid 10 m wide at the top and 4 m at the bottom, 1 m deep,
+    # whatever the points in water, their codevolgnummer or the level
+    for profile_id in ["a", "b", "c", "e"]:
+        assert profiles_df.loc[profile_id, ["profile_width", "profile_slope"]].to_dict() == {
+            "profile_width": 4.0,
+            "profile_slope": 3.0,
+        }
+
+
+def test_fit_trapezoid():
+    # a schematic profile is reproduced exactly: bottom 27.5 m, banks of 14 m over 4 m depth
+    assert fit_trapezoid(np.array([0, 14, 41.5, 55.5]), np.array([1.85, -2.15, -2.15, 1.85])) == pytest.approx(
+        (27.5, 3.5)
+    )
+    # up to the lower bank, and in any order of the points
+    assert fit_trapezoid(np.array([20, 0, 30, 10]), np.array([-1, 4, 3, -1])) == pytest.approx((10.0, 2.25))
+    # a V-shape has no bottom
+    assert fit_trapezoid(np.array([0, 5, 10]), np.array([1, 0, 1])) == pytest.approx((0.0, 5.0))
+    # no cross section: too few points, or no depth
+    assert fit_trapezoid(np.array([0, 10]), np.array([1, 1])) is None
+    assert fit_trapezoid(np.array([0, 5, 10]), np.array([1, 1, 1])) is None
 
 
 def test_get_profile_level(damo_profiles):

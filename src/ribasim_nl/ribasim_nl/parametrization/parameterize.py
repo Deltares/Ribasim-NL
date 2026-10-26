@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import geopandas as gpd
 from pydantic import BaseModel
 
 from ribasim_nl.berging import update_primary_basin_profiles
@@ -9,6 +10,10 @@ from ribasim_nl.parametrization.level_boundary_table import update_level_boundar
 from ribasim_nl.parametrization.manning_resistance_table import update_manning_resistance_static
 from ribasim_nl.parametrization.node_table import populate_function_column
 from ribasim_nl.parametrization.pump_and_outlet_tables import update_pump_outlet_static
+from ribasim_nl.settings import settings
+
+# Water areas of Top10NL, to widen ManningResistance profiles to the width of the watercourse
+TOP10NL_GPKG = settings.ribasim_nl_data_dir / "Basisgegevens/Top10NL/top10nl_Compleet.gpkg"
 
 
 class Parameterize(BaseModel):
@@ -19,6 +24,7 @@ class Parameterize(BaseModel):
     evaporation_mm_per_day: int | None = None
     max_pump_flow_rate: float | None = None
     canal_width: float = 10.0
+    water_area_gpkg: Path | None = TOP10NL_GPKG
 
     def run(self, **kwargs) -> None:
         print("Start Parameterize.run()")
@@ -74,7 +80,21 @@ class Parameterize(BaseModel):
                 print("  Geen pompen boven max_pump_flow_rate.")
 
         print("Update ManningResistance...")
-        update_manning_resistance_static(self.model, profiles_gpkg=self.profiles_gpkg)
+        water_area_df = water_line_df = None
+        manning_node = self.model.manning_resistance.node
+        if self.water_area_gpkg is not None and manning_node is not None and manning_node.df is not None:
+            xmin, ymin, xmax, ymax = manning_node.df.total_bounds
+            bbox = (xmin - 500, ymin - 500, xmax + 500, ymax + 500)
+            water_area_df = gpd.read_file(self.water_area_gpkg, layer="top10nl_waterdeel_vlak", bbox=bbox)
+            water_line_df = gpd.read_file(
+                self.water_area_gpkg, layer="top10nl_waterdeel_lijn", bbox=bbox, columns=["breedteklasse"]
+            )
+        update_manning_resistance_static(
+            self.model,
+            profiles_gpkg=self.profiles_gpkg,
+            water_area_df=water_area_df,
+            water_line_df=water_line_df,
+        )
         print("  ManningResistance bijgewerkt.")
 
         print("Update Basin-profiel en -state...")
