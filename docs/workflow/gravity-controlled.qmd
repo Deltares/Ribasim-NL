@@ -28,6 +28,8 @@ Explanation of a node's `function` in terms of upstream/downstream levels, suppl
 | flushing      | upstream level & node flow_rate   | demand [m3/s]            | capacity [m3/s]         | DiscreteControl + FlowDemand |
 
 
+ManningResistances get the DAMO profile of their link if it lies across one of their links. Without a profile of their own watercourse, they get a trapezoid with the width of the BGT water along their links, see `ribasim_nl.parametrization.manning_resistance_table`; the source is in `meta_profile_source`. When the links are routed along the waterways in the last step, their BGT width follows the routed links.
+
 Steps 5, 6 and 7 are shared between water authorities. Steps 5 and 7 are part of the pipeline, and live directly beneath the `pipeline` directory; step 6 is in the `notebooks` directory.
 
 5. `05_add_bergend.py` adds VdGaast-based storage basins (input = models are from script 4). A storage basin drains through a VdGaast-based TabulatedRatingCurve, except in the supply areas of `verwerkt/sturing/aanvoergebieden.gpkg` with `meta_aanvoer` true. There it is connected with a ManningResistance, so it can also be supplied.

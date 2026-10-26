@@ -30,6 +30,7 @@ import shapely.ops
 import tqdm
 
 from ribasim_nl import Model
+from ribasim_nl.bgt_water import read_bgt_water
 from ribasim_nl.link_geometries import MAX_STRAIGHT_LINE_RATIO, accept_length
 
 LOG = logging.getLogger(__name__)
@@ -201,6 +202,12 @@ def _dedupe(coords: list[Coord]) -> list[Coord]:
     return [c for i, c in enumerate(coords) if i == 0 or c != coords[i - 1]]
 
 
+# Maximum length of land that a route over the BGT water surfaces crosses [m]. Water surfaces end at bridges and
+# culverts, and a raster cell of 10 m more or less of water decides whether a route is found: with 50 m, removing the
+# historic versions of the BGT objects left dozens of links per polder authority straight instead of routed.
+MAX_LAND = 100.0
+
+
 def route_basin_links(
     basin_point: shapely.Point,
     connectors: dict[int, shapely.Point],
@@ -215,7 +222,7 @@ def route_basin_links(
     max_water_gap: float = 500.0,
     culvert_snap: float = 10.0,
     max_attach_distance: float = 100.0,
-    max_land: float = 50.0,
+    max_land: float = MAX_LAND,
     max_straight_line_ratio: float = MAX_STRAIGHT_LINE_RATIO,
     min_routed_fraction: float = 0.5,
 ) -> tuple[shapely.Point, dict[int, list[Coord]]]:
@@ -430,7 +437,7 @@ def route_over_water(
     area: shapely.Geometry,
     *,
     land_cost: float = 20.0,
-    max_land: float = 50.0,
+    max_land: float = MAX_LAND,
     max_cells: int = 1_000_000,
     max_straight_line_ratio: float = MAX_STRAIGHT_LINE_RATIO,
 ) -> dict[int, list[Coord]]:
@@ -713,7 +720,7 @@ def snap_model(
     :param model: Ribasim model
     :param profiles_path: directory with the network.gpkg of the profile-generation
     :param crossings_path: GeoPackage with a duikersifonhevel layer of culverts, defaults to None
-    :param water_path: GeoPackage with water surfaces, such as from the BGT, defaults to None
+    :param water_path: GeoParquet with water surfaces, see `ribasim_nl.bgt_water`, defaults to None
     :param top10nl_path: Top10NL GeoPackage, of which the water lines complement the hydro-objects, defaults to None
     :param tolerance: buffer around the basin area within which hydro-objects are used, defaults to 10.0
     """
@@ -726,7 +733,11 @@ def snap_model(
         mask = shapely.box(x0, y0, x1, y1)
         hydro_objects = pd.concat([hydro_objects, read_waterways(top10nl_path, mask)], ignore_index=True)
     culverts = None if crossings_path is None else gpd.read_file(crossings_path, layer="duikersifonhevel")
-    water = None if water_path is None else gpd.read_file(water_path)
+    water = None
+    if water_path is not None:
+        assert model.basin.area.df is not None
+        x0, y0, x1, y1 = model.basin.area.df.total_bounds
+        water = read_bgt_water(shapely.box(x0, y0, x1, y1), path=water_path, columns=["geometry"])
     model = snap_to_network(model, hydro_objects, culverts=culverts, water=water, tolerance=tolerance)
     assert model.node.df is not None
     moved = ~model.node.df.geometry.geom_equals_exact(node_geometry, tolerance=0)

@@ -8,6 +8,7 @@ from ribasim_nl.parametrization.manning_resistance_table import (
     crosses_link,
     reach_water_width,
     trapezoid,
+    update_manning_resistance_reach,
     update_manning_resistance_static,
 )
 from shapely.geometry import LineString, Point, box
@@ -42,6 +43,10 @@ def test_reach_water_width():
     assert reach_water_width([LineString([(0, 0), (100, 0), (100, 400)])], water, tree) == 0.0
     # too short for a cross section away from its ends
     assert reach_water_width([LineString([(0, 0), (50, 0)])], water, tree) == 0.0
+    # a ditch of 2 m that lies 3 m beside the link, which follows a hydro-object
+    water, tree = water_tree(box(-1000, 3, 1000, 5))
+    assert reach_water_width([LineString([(0, 0), (500, 0)])], water, tree) == pytest.approx(2.0)
+    assert reach_water_width([LineString([(0, 0), (500, 0)])], water, tree, tolerance=1.0) == 0.0
 
 
 def test_trapezoid():
@@ -86,13 +91,9 @@ def test_update_manning_resistance_static(model, tmp_path):
         geometry=[LineString([(100, -30), (100, 30)]), LineString([(500, 500), (500, 510)])],
         crs=28992,
     ).to_file(profiles_gpkg)
-    water_area_df = gpd.GeoDataFrame(geometry=[RIVER], crs=28992)
-    water_line_df = gpd.GeoDataFrame(
-        {"breedteklasse": ["3 - 6 meter"]}, geometry=[LineString([(800, 30), (800, 400)])], crs=28992
-    )
-    update_manning_resistance_static(
-        model, profiles_gpkg=profiles_gpkg, water_area_df=water_area_df, water_line_df=water_line_df
-    )
+    # the river, and a ditch of 4.5 m wide from it to Basin 4
+    water_area_df = gpd.GeoDataFrame(geometry=[RIVER, box(797.75, 30, 802.25, 400)], crs=28992)
+    update_manning_resistance_static(model, profiles_gpkg=profiles_gpkg, water_area_df=water_area_df)
     static_df = model.manning_resistance.static.df.set_index("node_id")
     # 11 keeps its own DAMO profile
     assert static_df.loc[11, ["profile_width", "profile_slope", "meta_profile_source"]].to_list() == [40.0, 3.0, "DAMO"]
@@ -100,11 +101,46 @@ def test_update_manning_resistance_static(model, tmp_path):
     assert static_df.loc[12, ["profile_width", "profile_slope", "meta_profile_source"]].to_list() == [
         52.0,
         2.0,
-        "Top10NL area",
+        "BGT",
     ]
-    # 13 on the ditch gets the middle of its width class, 4.5 m
+    # 13 on the ditch gets its width of 4.5 m
     assert static_df.loc[13, ["profile_width", "profile_slope", "meta_profile_source"]].to_list() == [
         1.5,
         0.75,
-        "Top10NL line",
+        "BGT",
     ]
+
+
+def test_update_manning_resistance_reach(model, tmp_path):
+    profiles_gpkg = tmp_path / "profiles.gpkg"
+    gpd.GeoDataFrame(
+        {"profiel_id": ["own"], "profile_width": [40.0], "profile_slope": [3.0]},
+        geometry=[LineString([(100, -30), (100, 30)])],
+        crs=28992,
+    ).to_file(profiles_gpkg)
+    # the river, and a ditch of 2 m along the route that the links of 12 will get
+    water_area_df = gpd.GeoDataFrame(geometry=[RIVER, box(400, 99, 800, 101)], crs=28992)
+    update_manning_resistance_static(model, profiles_gpkg=profiles_gpkg, water_area_df=water_area_df)
+    static_df = model.manning_resistance.static.df
+    # a ManningResistance with a length and profile of its own, like those of bergend Basins
+    static_df.loc[static_df.node_id == 13, "meta_profile_source"] = None
+    static_df.loc[static_df.node_id == 13, ["length", "profile_width"]] = [123.0, 7.0]
+    before = static_df.set_index("node_id").copy()
+    assert before.loc[12, "meta_profile_source"] == "BGT"
+
+    # routing moves 12 and its links along the ditch, 100 m north of the river
+    link_df = model.link.df
+    link_df.loc[link_df.to_node_id == 12, "geometry"] = LineString([(400, 0), (400, 100), (600, 100)])
+    link_df.loc[link_df.from_node_id == 12, "geometry"] = LineString([(600, 100), (800, 100), (800, 0)])
+    update_manning_resistance_reach(model, water_area_df)
+    after = model.manning_resistance.static.df.set_index("node_id")
+
+    # 11 keeps its DAMO profile, 12 gets the width of its new route, 13 is not touched, and all keep their length
+    assert after.loc[11, ["profile_width", "profile_slope"]].to_list() == [40.0, 3.0]
+    assert (after["length"] == before["length"]).all()
+    assert after.loc[12, ["profile_width", "profile_slope", "meta_profile_source"]].to_list() == [
+        pytest.approx(0.67),
+        pytest.approx(0.33),
+        "BGT",
+    ]
+    assert after.loc[13, ["length", "profile_width"]].to_list() == [123.0, 7.0]

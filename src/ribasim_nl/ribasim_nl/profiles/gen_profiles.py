@@ -61,7 +61,6 @@ def main(
     table = _read_hydrotope_table(cloud)
 
     # setting paths
-    fn_bgt = _bgt_path(cloud, water_authority)
     wd_int = _int_output_path(cloud, water_authority, export_intermediate_output)
     wd_out = _profiles_output_path(cloud, water_authority)
 
@@ -77,7 +76,6 @@ def main(
         hydrotope_table=table,
         target_levels=gdf_target_levels,
         cloud=cloud,
-        fn_bgt=fn_bgt,
         wd_intermediate_output=wd_int,
         wd_output=wd_out,
         water_bodies=gdf_water_bodies,
@@ -141,7 +139,6 @@ def flagged_hydro_objects(
     table = _read_hydrotope_table(cloud)
 
     # settings paths
-    fn_bgt = _bgt_path(cloud, water_authority)
     wd_int = _int_output_path(cloud, water_authority, export_intermediate_output)
     wd_out = _profiles_output_path(cloud, water_authority)
 
@@ -159,7 +156,6 @@ def flagged_hydro_objects(
         val_ho_main_route=val_flag,
         target_levels=gdf_target_levels,
         cloud=cloud,
-        fn_bgt=fn_bgt,
         wd_intermediate_output=wd_int,
         wd_output=wd_out,
         water_bodies=gdf_water_bodies,
@@ -191,7 +187,6 @@ def _sync(
     print("Syncing with the GoodCloud...", end="", flush=True)
     filepaths = [
         cloud.joinpath(water_authority, "verwerkt", "Crossings", fn_crossings),
-        cloud.joinpath(water_authority, "verwerkt", "BGT", f"bgt_{water_authority}_water.gpkg"),
     ]
     for f in extra_files:
         if f is not None:
@@ -286,17 +281,6 @@ def _read_water_bodies(
         assert len(fn_water_bodies) == 2
         return gpd.read_file(cloud.joinpath(water_authority, fn_water_bodies[0]), layer=fn_water_bodies[1])
     return gpd.read_file(cloud.joinpath(water_authority, fn_water_bodies))
-
-
-def _bgt_path(cloud: CloudStorage, water_authority: str) -> Path:
-    """Absolute file-path (GoodCloud) with BGT-data.
-
-    :param cloud: the GoodCloud
-    :param water_authority: water authority
-
-    :return: BGT-path
-    """
-    return cloud.joinpath(water_authority, "verwerkt", "BGT", f"bgt_{water_authority}_water.gpkg")
 
 
 def _int_output_path(cloud: CloudStorage, water_authority: str, export: bool) -> Path | None:

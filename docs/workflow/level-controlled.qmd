@@ -31,7 +31,7 @@ This only changes the layout, not the model results:
 
 - Connector nodes stay at the location of the structure they represent.
 - Basin nodes are moved onto the nearest main route of the longest connected part of the hydro-objects in their basin, as in the gravity controlled models.
-- Links between a Basin and a connector node follow the hydro-objects, complemented by the Top10NL water lines. Hydro-objects are only connected where there is evidence: the culverts (`duikersifonhevel`) of the crossings data, gaps of at most 2 m, and gaps across BGT water surfaces. Connector nodes far from the hydro-objects are connected over the BGT water surfaces, crossing at most 50 m of land.
+- Links between a Basin and a connector node follow the hydro-objects, complemented by the Top10NL water lines. Hydro-objects are only connected where there is evidence: the culverts (`duikersifonhevel`) of the crossings data, gaps of at most 2 m, and gaps across BGT water surfaces. Connector nodes far from the hydro-objects are connected over the BGT water surfaces, crossing at most 100 m of land.
 - Links stay straight if no such route is found, or if it is not less than `ribasim_nl.link_geometries.MAX_STRAIGHT_LINE_RATIO` times longer than the straight line, the same threshold as for the gravity controlled models.
 
 Then `ribasim_nl.junctionify` merges the shared parts of links into Junctions, and `ribasim_nl.layout.tidy_layout` makes sure no nodes are on top of each other and no links overlap:
