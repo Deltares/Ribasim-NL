@@ -272,7 +272,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <p>On a workstation with enough cores and memory, the pipeline can be reproduced in parallel with:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run repro-local</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This is the local counterpart of <a href="../dev/slurm.html"><code>repro.sh</code></a>. It runs <code>export_webmap</code> and everything upstream of it, except frozen stages: the stages that <code>repro.sh</code> runs, up to <code>koppelen</code>, and also <code>run_lhm_coupled</code> and <code>export_webmap</code>. The stages and their commands are taken from <code>dvc.yaml</code>. It:</p>
+<p>This is the local counterpart of <a href="../dev/slurm.html"><code>repro.sh</code></a>. It runs <code>validate_lhm_coupled</code> and <code>export_webmap</code> and everything upstream of them, except frozen stages: the stages that <code>repro.sh</code> runs, up to <code>koppelen</code>, and also <code>run_lhm_coupled</code>, <code>validate_lhm_coupled</code> and <code>export_webmap</code>. The stages and their commands are taken from <code>dvc.yaml</code>. It:</p>
 <ol start="0" type="1">
 <li>Removes the outputs of all stages that are run, like <code>dvc repro</code> does, and runs <code>dvc pull --force</code> for everything upstream of them; no manual pull is needed.</li>
 <li>Runs each stage as soon as the stages it depends on have succeeded, so the water authorities run in parallel. If a stage fails, the stages downstream of it are skipped, and the others continue.</li>
@@ -283,7 +283,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="options" class="level2">
 <h2 class="anchored" data-anchor-id="options">Options</h2>
 <ul>
-<li>Targets: stages to reproduce together with their upstream stages, <code>export_webmap</code> by default. For example, <code>pixi run repro-local koppelen</code> only builds the coupled model, like <code>repro.sh</code>.</li>
+<li>Targets: stages to reproduce together with their upstream stages, <code>validate_lhm_coupled</code> and <code>export_webmap</code> by default. For example, <code>pixi run repro-local koppelen</code> only builds the coupled model, like <code>repro.sh</code>.</li>
 <li><code>--jobs N</code>: the maximum number of stages that run at once, 12 by default. Each stage is a Python process that may also run Ribasim, so watch the memory use when increasing it.</li>
 <li><code>--stagger SECONDS</code>: the minimum time between stage starts, 30 by default, to not overload the GoodCloud server that some stages still download from.</li>
 <li><code>--incremental</code>: only run the stages that DVC reports as changed, and everything downstream of them, rather than all stages. Missing outputs count as changed, so this also reruns stages that failed before. Run <code>pixi run dvc pull</code> first if the workspace may be behind <code>dvc.lock</code>.</li>

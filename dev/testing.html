@@ -246,6 +246,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul>
   <li><a href="#model-input-validation" id="toc-model-input-validation" class="nav-link active" data-scroll-target="#model-input-validation">Model input validation</a></li>
   <li><a href="#result-regression-testing" id="toc-result-regression-testing" class="nav-link" data-scroll-target="#result-regression-testing">Result regression testing</a></li>
+  <li><a href="#coupled-model-result-checks" id="toc-coupled-model-result-checks" class="nav-link" data-scroll-target="#coupled-model-result-checks">Coupled model result checks</a></li>
   <li><a href="#completed-model-result-checks" id="toc-completed-model-result-checks" class="nav-link" data-scroll-target="#completed-model-result-checks">Completed-model result checks</a>
   <ul class="collapse">
   <li><a href="#allowing-a-known-exception" id="toc-allowing-a-known-exception" class="nav-link" data-scroll-target="#allowing-a-known-exception">Allowing a known exception</a></li>
@@ -287,6 +288,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>The dry and wet steady-state scenarios guard against a Basin losing its ability to maintain its water level. During the existing <code>bergend_*</code> and <code>forcing_*</code> DVC stages, and in <code>repro.sh</code>, the dry and wet models are run and checked. A Basin is steady-state when its final water level differs by at most 0.01 m from the mean of the final 24 hours and its storage remains positive throughout the simulation.</p>
 <p>Known level-instability exceptions are kept as explicit scenario-specific Basin node IDs in <code>ribasim_nl.steady_state_regression</code>. Exceptions do not bypass the positive-storage check, and an exception for a missing Basin ID fails the run.</p>
 <p>Scenario results are available for inspection in each model’s <code>results</code> directory, including <code>output_controle.gpkg</code> and <code>output_controle.qlr</code>.</p>
+</section>
+<section id="coupled-model-result-checks" class="level2">
+<h2 class="anchored" data-anchor-id="coupled-model-result-checks">Coupled model result checks</h2>
+<p>The <code>validate_lhm_coupled</code> DVC stage checks the results of <code>run_lhm_coupled</code> for large regressions, with <code>ribasim_nl.result_validation</code>. It takes a few seconds, so after pulling the results it can be run with:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc repro <span class="at">--single-item</span> validate_lhm_coupled</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>It summarizes the run in metrics, and checks them against the loose limits in <code>LIMITS</code>:</p>
+<ul>
+<li><code>solver</code>: the number of right-hand side calls, the mean timestep and the 5th percentile of the mean timestep per day, and the fraction of rejected timesteps.</li>
+<li><code>observations</code>: the number of Observation nodes that are compared with the simulated flow rate of the node they observe, and their median Nash-Sutcliffe (NSE) and Kling-Gupta efficiencies (KGE).</li>
+<li><code>discharge_kge</code>: the KGE of the discharge at key points of the main water system, such as the Rhine branches and the sluices of the Afsluitdijk.</li>
+<li><code>level_p01</code> and <code>level_p99</code>: the 1st and 99th percentile of the levels of key Basins, such as the IJsselmeer and the Noordzeekanaal.</li>
+</ul>
+<p>The metrics are written to <code>data/Rijkswaterstaat/metrics/lhm_coupled.json</code>, which is tracked by git, so a pull request shows how they changed, and the comparison per Observation node to <code>lhm_coupled_observations.csv</code> next to it. Compare the metrics with those of <code>main</code> with:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc metrics diff main</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The metrics also include the computation time in hours, but it is not checked, since it depends on the machine and its load. The other solver metrics hardly do, so they catch slowdowns more reliably. If a change of the results is intended, change <code>LIMITS</code> in the same pull request and explain why.</p>
 </section>
 <section id="completed-model-result-checks" class="level2">
 <h2 class="anchored" data-anchor-id="completed-model-result-checks">Completed-model result checks</h2>
