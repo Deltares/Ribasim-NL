@@ -5,7 +5,7 @@ water board specific edits. The steps they have in common are defined here.
 """
 
 import warnings
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -344,7 +344,7 @@ def complete_parametrization(
 
 
 @contextmanager
-def preserve_connector_meta(model: Model, method: Literal["merge", "combine_first"] = "merge") -> Iterator[None]:
+def preserve_connector_meta(model: Model, method: Literal["merge", "combine_first"] = "merge") -> Generator[None]:
     """Restore Outlet and Pump meta columns after adding controllers, which may change or add node_ids.
 
     With "merge", the meta columns are replaced by their values before the block. With "combine_first",

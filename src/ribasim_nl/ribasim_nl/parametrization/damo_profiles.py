@@ -1,10 +1,12 @@
 # %%
+from typing import Any, cast
+
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 import shapely
 from pydantic import BaseModel, ConfigDict, PrivateAttr
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point
 
 from ribasim_nl.model import Model
 from ribasim_nl.network import Network
@@ -26,6 +28,7 @@ class DAMOProfiles(BaseModel):
 
     def model_post_init(self, __context) -> None:
         if self.network is None:
+            assert self.model.link.df is not None
             self.network = Network(lines_gdf=self.model.link.df)
 
         # drop duplicated profile-lines
@@ -86,6 +89,7 @@ class DAMOProfiles(BaseModel):
         return getattr(pd.Series(z_values), statistic)()
 
     def get_profile_id(self, node_id, statistic="max"):
+        assert self.model.link.df is not None
         try:
             node_type = self.model.get_node_type(node_id)
             if node_type == "Basin":
@@ -101,6 +105,7 @@ class DAMOProfiles(BaseModel):
             raise  # eventueel doorgeven zodat je de fout ook buiten kunt afhandelen
 
     def get_node_level(self, node_id, statistic="max"):
+        assert self.model.link.df is not None
         node_type = self.model.get_node_type(node_id)
         if node_type == "Basin":
             profile_ids = self.model.link.df[
@@ -174,7 +179,7 @@ class DAMOProfiles(BaseModel):
 
         # per profile, renumbering points along the profile line if codevolgnummer is duplicated
         for profiel_id, df in points_df[is_slow].groupby("profiellijnid"):
-            geometry = profile_line_geometry.at[profiel_id]
+            geometry = cast(LineString, profile_line_geometry.at[profiel_id])
             water_level = df[df.within_water]["elevation"].max()
             df = df.copy()
             if df.codevolgnummer.duplicated().any():
@@ -184,8 +189,8 @@ class DAMOProfiles(BaseModel):
             df.set_index("codevolgnummer", inplace=True)
             has_water = df.within_water.any()
             width_at_water_level = (
-                df.at[df[df.within_water].index.min(), "geometry"].distance(
-                    df.at[df[df.within_water].index.max(), "geometry"]
+                cast(Point, df.at[df[df.within_water].index.min(), "geometry"]).distance(
+                    cast(Point, df.at[df[df.within_water].index.max(), "geometry"])
                 )
                 if has_water
                 else np.nan
@@ -252,7 +257,7 @@ def profile_lines_from_points(
     if not pd.api.types.is_numeric_dtype(codevolgnummer) or codevolgnummer.isna().any():
         ambiguous_ids = set(points_df[profile_id_col])
 
-    lines = {}
+    lines: dict[Any, LineString] = {}
     is_ambiguous = points_df[profile_id_col].isin(ambiguous_ids)
     unambiguous_df = points_df[~is_ambiguous]
     first = unambiguous_df[is_first[~is_ambiguous]].set_index(profile_id_col).geometry
@@ -260,7 +265,8 @@ def profile_lines_from_points(
     for profile_id, first_point, last_point in zip(first.index, first, last.loc[first.index], strict=True):
         lines[profile_id] = LineString([first_point, last_point])
     for profile_id, df in points_df[is_ambiguous].groupby(profile_id_col):
-        lines[profile_id] = LineString(df.sort_values("codevolgnummer")["geometry"].iloc[[0, -1]].to_numpy())
+        geometries = df.sort_values("codevolgnummer")["geometry"]
+        lines[profile_id] = LineString([geometries.iloc[0], geometries.iloc[-1]])
 
     profile_ids = sorted(lines)
     return gpd.GeoDataFrame(
@@ -274,7 +280,7 @@ def _profile_dimensions(
     bottom_level: float,
     invert_level: float,
     water_level: float,
-    has_water: bool,
+    has_water: bool | np.bool_,
     width_at_water_level: float,
     default_profile_slope: float,
     min_profile_width: float,

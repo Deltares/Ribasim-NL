@@ -53,6 +53,7 @@ profiles_df = damo_profiles.process_profiles()
 profiles_df.to_file(profiles_gpkg)
 fix_link_geometries(model, network)
 add_link_profile_ids(model, profiles=damo_profiles, id_col="globalid")
+assert model.link.df is not None
 model.link.df.reset_index().to_file(link_geometries_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
 
@@ -70,6 +71,7 @@ add_streefpeil(model=model, peilgebieden_path=peilgebieden_path, layername=None,
 # OUTLET.min_upstream_level
 # from basin streefpeil
 static_data.reset_data_frame(node_type="Outlet")
+assert static_data.outlet is not None
 min_upstream_level = upstream_target_levels(model=model, node_ids=static_data.outlet.node_id)
 min_upstream_level = min_upstream_level[min_upstream_level.notna()]
 min_upstream_level.name = "min_upstream_level"
@@ -101,6 +103,7 @@ static_data.fill_min_upstream_level_from_profiles("Outlet", profiles_df)
 # PUMP.min_upstream_level
 # from basin streefpeil
 static_data.reset_data_frame(node_type="Pump")
+assert static_data.pump is not None
 min_upstream_level = upstream_target_levels(model=model, node_ids=static_data.pump.node_id)
 min_upstream_level = min_upstream_level[min_upstream_level.notna()]
 min_upstream_level.name = "min_upstream_level"
@@ -158,6 +161,7 @@ forced_levels = {
     3096: 2.2,
 }
 
+assert static_data.basin is not None
 mask = static_data.basin["node_id"].isin(forced_levels.keys())
 static_data.basin.loc[mask, "streefpeil"] = static_data.basin.loc[mask, "node_id"].map(forced_levels)
 

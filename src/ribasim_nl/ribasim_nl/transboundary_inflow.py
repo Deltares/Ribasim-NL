@@ -38,6 +38,7 @@ def import_transboundary_inflow(
     dict[str, pd.DataFrame]
         Per-location DataFrames with columns 'time', 'flow_rate' and 'node_id'.
     """
+    assert model.flow_boundary.node is not None and model.flow_boundary.node.df is not None
     flow_boundary_df = model.flow_boundary.node.df.reset_index(drop=False)
     node_ids_by_name = flow_boundary_df.set_index("name")["node_id"]
     relevant_locations = set(node_ids_by_name.index)
@@ -144,6 +145,7 @@ def add_transboundary_inflow(model: Model, dict_flow: dict[str, pd.DataFrame]) -
         logger.info("No transboundary inflow data matched for this model; skipping.")
         return
 
+    assert model.flow_boundary.node is not None and model.flow_boundary.node.df is not None
     flowboundaries = model.flow_boundary.node.df.name
     df_flowboundaries_time = pd.concat(dict_flow.values(), axis=0)
 

@@ -1,5 +1,7 @@
 """Parameterisation of water board: Rivierenland."""
 
+from typing import cast
+
 import geopandas as gpd
 import ribasim_nl.ribasim_parametrization as ribasim_param
 import shapely
@@ -7,6 +9,7 @@ from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from ribasim_nl.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form
 from shapely import LineString, Point
+from shapely.geometry import Polygon
 
 from ribasim_nl import CloudStorage, geometry
 
@@ -62,6 +65,7 @@ gaten = gpd.read_file(gaten_path)
 
 # fix hole Wijchen
 wijchen = gaten.loc[gaten.meta_name == "Wijchen"]
+assert ribasim_model.basin.area.df is not None
 basin_195 = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 195]
 merged_geom = basin_195.geometry.iloc[0].union(wijchen.geometry.union_all())
 ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 195, "geometry"] = merged_geom
@@ -99,9 +103,9 @@ basin = shapely.union_all(
         for basin_id in basin_ids
     ]
 )
-polygons = geometry.split_basin(basin, split_line_string)
+polygons = geometry.split_basin(cast(Polygon, basin), split_line_string)
 for basin_id, polygon in zip(basin_ids, polygons.geoms, strict=True):
-    ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == basin_id, "geometry"] = polygon
+    ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == basin_id, "geometry"] = polygon  # ty: ignore[invalid-assignment]
 
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
@@ -304,6 +308,7 @@ ribasim_param.change_pump_func(ribasim_model, 1153, "aanvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, 1025, "afvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, 1025, "aanvoer", 1)
 
+assert ribasim_model.pump.static.df is not None
 for afvoer_pump in afvoer_pumps:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == afvoer_pump, "meta_func_afvoer"] = 1
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == afvoer_pump, "meta_func_aanvoer"] = 0
@@ -313,12 +318,18 @@ for aanvoer_pump in aanvoer_pumps:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == aanvoer_pump, "meta_func_afvoer"] = 0
 
 # (re)set meta_node_id
+assert ribasim_model.node.df is not None
+assert ribasim_model.level_boundary.node is not None and ribasim_model.level_boundary.node.df is not None
 ribasim_model.node.df.loc[ribasim_model.level_boundary.node.df.index, "meta_node_id"] = (
     ribasim_model.level_boundary.node.df.index
+)
+assert (
+    ribasim_model.tabulated_rating_curve.node is not None and ribasim_model.tabulated_rating_curve.node.df is not None
 )
 ribasim_model.node.df.loc[ribasim_model.tabulated_rating_curve.node.df.index, "meta_node_id"] = (
     ribasim_model.tabulated_rating_curve.node.df.index
 )
+assert ribasim_model.pump.node is not None and ribasim_model.pump.node.df is not None
 ribasim_model.node.df.loc[ribasim_model.pump.node.df.index, "meta_node_id"] = ribasim_model.pump.node.df.index
 
 # convert all boundary nodes to LevelBoundaries

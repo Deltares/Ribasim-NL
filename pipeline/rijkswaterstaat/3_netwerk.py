@@ -1,8 +1,10 @@
 # %%
+from typing import cast
+
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, Point, Polygon
 
 from ribasim_nl import CloudStorage, Network
 
@@ -73,8 +75,9 @@ network_lines_gdf.loc[:, ["original_index"]] = network_lines_gdf.index + 1
 print("osm clippen op polygonen")
 data = []
 for row in osm_basins_gdf.itertuples():
-    idx = network_lines_gdf.sindex.intersection(row.geometry.bounds)
-    select_gdf = network_lines_gdf.iloc[idx][network_lines_gdf.iloc[idx].intersects(row.geometry)]
+    basin_geometry = cast(Polygon, row.geometry)
+    idx = network_lines_gdf.sindex.intersection(basin_geometry.bounds)
+    select_gdf = network_lines_gdf.iloc[idx][network_lines_gdf.iloc[idx].intersects(basin_geometry)]
     data += [select_gdf]
 
 network_lines_gdf = pd.concat(data, ignore_index=True)

@@ -1,8 +1,9 @@
 # %%
 
 import math
+from collections.abc import Mapping
 from datetime import datetime
-from typing import Literal
+from typing import cast
 
 import geopandas as gpd
 from ribasim.nodes import flow_demand, outlet
@@ -360,7 +361,7 @@ flow_control_nodes = [
 
 
 def add_discharge_supply_nodes(
-    discharge_supply_nodes: dict[Literal["summer", "winter"] : float],
+    discharge_supply_nodes: Mapping[int, Mapping[str, float]],
     us_target_level_offset_supply: float = -0.04,
     new_nodes_offset: float = 10,
     demand_node_angle: int = 45,
@@ -368,6 +369,7 @@ def add_discharge_supply_nodes(
 ):
     # get tables and nodes
     node_table_df = get_node_table_with_from_to_node_ids(model, node_ids=list(discharge_supply_nodes.keys()))
+    assert model.node.df is not None
     node_types = model.node.df["node_type"]
 
     # demand parameters
@@ -394,11 +396,12 @@ def add_discharge_supply_nodes(
         # update static table
         us_target_level = _target_level(
             model=model,
-            node_id=node_table_df.at[node_id, "from_node_id"],
+            node_id=cast(int, node_table_df.at[node_id, "from_node_id"]),
             target_level_column="meta_streefpeil",
             node_types=node_types,
             allow_missing=False,
         )
+        assert us_target_level is not None
 
         model.update_node(
             node_id,
@@ -456,6 +459,7 @@ aanvoerpunten_layer = "Wateraanvoersysteem"
 # Read data
 model = Model.read(ribasim_toml)
 
+assert model.outlet.static.df is not None
 outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.node_id.astype(int), 10.0)
 
 # Handmatige inlaatcapaciteiten gelden ook in aanvoer; niet terugvallen op de default van 10 m3/s.
@@ -463,6 +467,7 @@ outlet_max_flow_rate_aanvoer_by_node_id.update(outlet_max_flow_rate_by_node_id)
 
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
+assert model.pump.static.df is not None
 model.pump.static.df.loc[model.pump.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0
 model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0
 
@@ -566,6 +571,7 @@ meta_codes = {
     191: "235VGZ",
 }
 
+assert model.node.df is not None
 for node_id, code in meta_codes.items():
     model.node.df.at[node_id, "meta_code_waterbeheerder"] = code
 
@@ -600,6 +606,7 @@ discharge_supply_df["winter"] = (
 node_table_df = model.node.df
 
 
+assert node_table_df is not None
 code_df = node_table_df[node_table_df["meta_code_waterbeheerder"].notna()][
     ["meta_code_waterbeheerder", "node_type"]
 ].rename(columns={"meta_code_waterbeheerder": "code"})
@@ -608,7 +615,8 @@ code_df = code_df.reset_index(drop=False).set_index("code")
 discharge_supply_df = discharge_supply_df[discharge_supply_df["code"].isin(code_df.index.to_list())]
 discharge_supply_df["node_id"] = [code_df.at[i, "node_id"] for i in discharge_supply_df.code.values]
 discharge_supply_nodes = {
-    int(row.node_id): {"summer": row.summer, "winter": row.winter} for row in discharge_supply_df.itertuples()
+    int(cast(int, row.node_id)): {"summer": cast(float, row.summer), "winter": cast(float, row.winter)}
+    for row in discharge_supply_df.itertuples()
 }
 
 # checken in laatste file Aa en Maas; dit kúnnen geen inlaten zijn
@@ -1365,6 +1373,7 @@ model.outlet.static.df.loc[mask, "min_upstream_level"] = -math.inf
 mark_level_update_protected(model.outlet.static.df, mask, model=model)
 
 boundary_ids = [9, 13, 39, 38, 53, 1958, 1568, 3085, 33, 32, 31, 59, 54, 44, 42, 64, 63]
+assert model.level_boundary.static.df is not None
 mask = model.level_boundary.static.df["node_id"].isin(boundary_ids)
 model.level_boundary.static.df.loc[mask, "level"] = model.level_boundary.static.df.loc[mask, "level"] + 0.04
 
@@ -1420,6 +1429,7 @@ for static_df, max_flow_rate_by_node_id in (
     (model.outlet.static.df, outlet_max_flow_rate_by_node_id),
     (model.pump.static.df, pump_max_flow_rate_by_node_id),
 ):
+    assert static_df is not None
     max_flow_rate = static_df["node_id"].map(max_flow_rate_by_node_id)
     aanvoer_mask = (
         static_df["control_state"].eq("aanvoer")
@@ -1431,6 +1441,7 @@ for static_df, max_flow_rate_by_node_id in (
 
 # Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
 node_type_by_id = model.node.df["node_type"].to_dict()
+assert model.link.df is not None
 flow_demand_controlled_node_ids = set(
     model.link.df.loc[
         model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),
@@ -1458,6 +1469,7 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
 # Model run
 
 
+assert model.discrete_control.condition.df is not None
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 
 # %%

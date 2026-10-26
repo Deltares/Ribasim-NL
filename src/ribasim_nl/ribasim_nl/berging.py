@@ -123,7 +123,7 @@ def get_resampled_window(src, polygon, sample_res) -> tuple[tuple[int, int], Win
 def read_resampled(
     src: rasterio.DatasetReader,
     band: int,
-    window: rasterio.windows.Window,
+    window: Window,
     out_shape: tuple[int, int],
 ) -> npt.NDArray[np.float64]:
     return src.read(band, window=window, out_shape=out_shape, resampling=Resampling.nearest).astype(float)
@@ -380,7 +380,10 @@ def get_manning_resistance(area: float) -> manning_resistance.Static:
     """
     static = bergend_manning_static(pd.Series([area])).iloc[0]
     return manning_resistance.Static(
-        **{column: [static[column]] for column in ("length", "manning_n", "profile_width", "profile_slope")}
+        length=[static["length"]],
+        manning_n=[static["manning_n"]],
+        profile_width=[static["profile_width"]],
+        profile_slope=[static["profile_slope"]],
     )
 
 
@@ -451,7 +454,7 @@ def supply_area_basin_ids(model: Model, supply_areas: GeoDataFrame, min_overlap:
             return 0.0
         return geometry.intersection(shapely.union_all(nearby)).area / geometry.area
 
-    return {int(node_id) for node_id, geometry in basin_area.items() if overlap(geometry) > min_overlap}
+    return {int(cast(int, node_id)) for node_id, geometry in basin_area.items() if overlap(geometry) > min_overlap}
 
 
 def simplify_area_level_df(
@@ -547,7 +550,7 @@ def get_basin_profile(
             df["area"] = df["area"].round(1)
             return df
 
-        mask = rasterio.features.geometry_mask(
+        mask = geometry_mask(
             [basin_polygon], out_shape=out_shape, transform=new_transform, all_touched=True, invert=True
         )
 
@@ -674,8 +677,8 @@ class VdGaastBerging:
                 raise ValueError(f"No valid ghg, glg and/or ma for basin_id {basin_id}")
 
             # define storage basin data
-            max_level = basin_area_df.at[basin_id, "maaiveld_max"]
-            min_level = basin_area_df.at[basin_id, "maaiveld_min"]
+            max_level = cast(float, basin_area_df.at[basin_id, "maaiveld_max"])
+            min_level = cast(float, basin_area_df.at[basin_id, "maaiveld_min"])
 
             if min_level == max_level:
                 min_level -= 0.1

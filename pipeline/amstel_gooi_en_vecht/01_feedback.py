@@ -125,6 +125,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(123112, 489351)), [pump.Static(flow_rate=[20])])
 # TODO: Verify setting to 'aan- & afvoergemaal'
+assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
 ribasim_model.link.add(level_boundary_node, pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[12])
@@ -170,6 +171,7 @@ ribasim_param.change_pump_func(ribasim_model, 430, "afvoer", 0)
 
 #  a multipolygon occurs in some basins (88, 62). Only retain the largest value. Update: 62 has been merged
 multipolygon_basins = [88]
+assert ribasim_model.basin.area.df is not None
 for basin_to_explode in multipolygon_basins:
     exploded_basins = ribasim_model.basin.area.df.loc[
         ribasim_model.basin.area.df["node_id"] == basin_to_explode
@@ -181,6 +183,7 @@ for basin_to_explode in multipolygon_basins:
     )
 
 # set all 'meta_node_id'-values
+assert ribasim_model.node.df is not None
 for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
     mask = ribasim_model.node.df["node_type"] == node_type
     ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index

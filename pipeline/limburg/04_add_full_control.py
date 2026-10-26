@@ -1,6 +1,6 @@
 # %%
 from datetime import datetime
-from typing import Literal
+from typing import Literal, cast
 
 import geopandas as gpd
 import pandas as pd
@@ -174,11 +174,13 @@ aanvoergebieden_gpkg = cloud.joinpath(r"Limburg/verwerkt/sturing/aanvoergebieden
 # Read data
 model = Model.read(ribasim_toml)
 
+assert model.outlet.static.df is not None
 outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.node_id.astype(int), 10.0)
 
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
 
+assert model.pump.static.df is not None
 model.pump.static.df.loc[model.pump.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0
 model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0
 
@@ -237,6 +239,7 @@ def add_discharge_supply_nodes(
         model,
         node_ids=list(discharge_supply_nodes.keys()),
     )
+    assert model.node.df is not None
     node_types = model.node.df["node_type"]
 
     # demand parameters
@@ -263,11 +266,12 @@ def add_discharge_supply_nodes(
         # bepaal upstream target level
         us_target_level = _target_level(
             model=model,
-            node_id=node_table_df.at[node_id, "from_node_id"],
+            node_id=cast(int, node_table_df.at[node_id, "from_node_id"]),
             target_level_column="meta_streefpeil",
             node_types=node_types,
             allow_missing=False,
         )
+        assert us_target_level is not None
 
         # Gemaal Beringe blijft een Pump; de andere discharge supply nodes modelleren we als Outlet.
         if node_id == 583:
@@ -462,6 +466,7 @@ if double_defined:
 supply_nodes_df = get_node_table_with_from_to_node_ids(model=model, node_ids=level_supply_nodes)
 
 all_nodes = list(discharge_supply_nodes.keys()) + level_supply_nodes
+assert model.node.df is not None
 model.node.df[IS_SUPPLY_NODE_COLUMN] = model.node.df.index.isin(all_nodes)
 
 # %% Toevoegen Peelkanaal
@@ -878,6 +883,7 @@ model.outlet.static.df.loc[afvoer_mask_683, "flow_rate"] = 0
 model.outlet.static.df.loc[afvoer_mask_683, "max_flow_rate"] = 0
 
 boundary_levels = {99: 31, 120: 31, 121: 31, 124: 31, 125: 31, 132: 31.545, 3: 31.545, 136: 32, 95: 30, 98: 30}
+assert model.level_boundary.static.df is not None
 for node_id, level in boundary_levels.items():
     model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == node_id, "level"] = level
 
@@ -893,6 +899,7 @@ helenaveen_upstream_level = _target_level(
     target_level_column="meta_streefpeil",
     allow_missing=False,
 )
+assert helenaveen_upstream_level is not None
 helenaveen_min_upstream_level = float(helenaveen_upstream_level) - 0.04
 mask = model.pump.static.df.node_id == helenaveen_pump_id
 model.pump.static.df.loc[mask, "min_upstream_level"] = helenaveen_min_upstream_level
@@ -932,6 +939,7 @@ model.outlet.static.df.loc[zero_aanvoer_mask, ["flow_rate", "max_flow_rate"]] = 
 
 # Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
 node_type_by_id = model.node.df["node_type"].to_dict()
+assert model.link.df is not None
 flow_demand_controlled_node_ids = set(
     model.link.df.loc[
         model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),
@@ -943,6 +951,7 @@ flow_demand_controlled_node_ids = set(
 manual_max_flow_rate_node_ids = {177, 616, 639, 683}
 protected_max_flow_rate_node_ids = set(EXCLUDE_NODES) | flow_demand_controlled_node_ids | manual_max_flow_rate_node_ids
 for static_df in (model.outlet.static.df, model.pump.static.df):
+    assert static_df is not None
     afvoer_mask = (
         static_df["control_state"].eq("afvoer")
         & static_df["flow_rate"].fillna(0).gt(0)
@@ -957,6 +966,7 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
 # Model run
 
 
+assert model.discrete_control.condition.df is not None
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 
 # %%

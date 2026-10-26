@@ -1,4 +1,3 @@
-import os
 from collections.abc import Callable
 from pathlib import Path
 from typing import Literal
@@ -74,7 +73,7 @@ defaults: dict[str, dict[str, object]] = {
 
 
 class StaticData(BaseModel):
-    xlsx_path: os.PathLike[str]
+    xlsx_path: Path
     model: Model
     default_dict: dict[str, dict[str, object]] = defaults
     description_list: list[dict[str, str]] = description
@@ -83,9 +82,6 @@ class StaticData(BaseModel):
     basin: pd.DataFrame | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    def __post_init__(self) -> None:
-        self.xlsx_path = Path(self.xlsx_path)
 
     @property
     def defaults(self) -> pd.DataFrame:
@@ -126,6 +122,7 @@ class StaticData(BaseModel):
             df.set_index("node_id", inplace=True)
 
             # add meta_code_waterbeheerder
+            assert self.model.basin.area.df is not None
             area_df = self.model.basin.area.df.set_index("node_id")
             if "meta_code_waterbeheerder" in area_df.columns:
                 mask = area_df.meta_code_waterbeheerder.notna()
@@ -238,9 +235,8 @@ class StaticData(BaseModel):
         ds_node_ids = ds_node_ids[ds_node_ids.isin(self.outlet.node_id) | ds_node_ids.isin(self.pump.node_id)]
         combined = pd.concat([self.outlet, self.pump])
         combined = combined.reset_index(drop=True)
-        combined["source"] = combined.apply(
-            lambda row: "pump" if row["node_id"] in self.pump.node_id.values else "outlet", axis=1
-        )
+        pump_node_ids = self.pump.node_id.values
+        combined["source"] = combined.apply(lambda row: "pump" if row["node_id"] in pump_node_ids else "outlet", axis=1)
 
         valid_ids = ds_node_ids[ds_node_ids.isin(combined["node_id"])]
         streefpeil = combined.set_index("node_id").loc[valid_ids.to_list(), ["min_upstream_level", "code", "source"]]

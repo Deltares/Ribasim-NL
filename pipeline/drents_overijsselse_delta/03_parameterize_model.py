@@ -112,6 +112,7 @@ model.remove_nodes([530, 264, 849, 1174, 1229, 266, 268, 523, 275, 537, 464, 406
 model.remove_nodes([706, 550, 548, 632, 686, 406, 650], remove_links=True)
 
 
+assert model.manning_resistance.static.df is not None
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 sync_parameterized_manning_basin_levels(
     model=model,
@@ -127,15 +128,18 @@ sync_parameterized_manning_basin_levels(
 
 # %%
 # Inlaten op False zetten
+assert model.outlet.node is not None and model.outlet.node.df is not None
 outlet_node_df = model.outlet.node.df.copy()
 outlet_gdf = gpd.GeoDataFrame(outlet_node_df, geometry="geometry", crs="EPSG:28992")
 
 if inlaten_gdf.crs != outlet_gdf.crs:
+    assert outlet_gdf.crs is not None
     inlaten_gdf = inlaten_gdf.to_crs(outlet_gdf.crs)
 
 outlet_gdf["geometry"] = outlet_gdf.geometry.buffer(0.1)
 joined = gpd.sjoin(outlet_gdf, inlaten_gdf, how="inner", predicate="intersects")
 
+assert model.outlet.static.df is not None
 if joined.empty:
     print("Geen intersectie gevonden tussen buffered outlet-punten en inlaten-lijnen.")
 else:

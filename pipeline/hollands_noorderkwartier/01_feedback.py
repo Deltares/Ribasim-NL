@@ -38,6 +38,7 @@ ribasim_param.validate_manning_basins(ribasim_model)
 
 # model specific tweaks
 # change unknown streefpeilen to a default streefpeil
+assert ribasim_model.basin.area.df is not None
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"
 ] = str(UNKNOWN_STREEFPEIL)
@@ -138,6 +139,7 @@ ribasim_model.merge_basins(node_id=148, to_node_id=2)  # convergence
 
 
 # (re)set 'meta_node_id'-values
+assert ribasim_model.node.df is not None
 for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
     mask = ribasim_model.node.df["node_type"] == node_type
     ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index

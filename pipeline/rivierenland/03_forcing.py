@@ -42,6 +42,7 @@ ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
 # hard-coded coordinates still match the original node locations (used much further below).
 _inlaat_points = [Point(174615, 440126), Point(103334, 433570), Point(103446, 433601), Point(198568, 434184)]
 inlaten = []
+assert ribasim_model.node.df is not None
 for _inlaat_point in _inlaat_points:
     _inlaat_candidates = ribasim_model.node.df.loc[ribasim_model.node.df.geometry.distance(_inlaat_point) < 1]
     if len(_inlaat_candidates) != 1:
@@ -53,10 +54,12 @@ for _inlaat_point in _inlaat_points:
 inlaat_Kuijk = inlaten[0]
 
 # reset pump capacity for each pump
+assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df["flow_rate"] = 10 / 60  # 10m3/min
 
 ribasim_model = set_boundary_conditions(ribasim_model, paths, level_boundary_levels=(-0.6, 12.4))
 
+assert ribasim_model.level_boundary.time.df is not None
 ribasim_model.level_boundary.time.df.loc[
     (ribasim_model.level_boundary.time.df.node_id.isin([963, 957]))
     & (ribasim_model.level_boundary.time.df.level == 12.4),
@@ -68,6 +71,7 @@ ribasim_param.set_aanvoer_flags(
     ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=True, basin_aanvoer_off=(204)
 )
 # change the control of the outlet at Kinderdijk
+assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 280, "meta_categorie"] = (
     "Inlaat boezem, afvoer gemaal"
 )
@@ -136,6 +140,7 @@ assign_pump_and_basin_names(ribasim_model, paths, pump_max_distance=25)
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
+assert ribasim_model.node.df is not None
 ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
 
 # lower the difference in waterlevel for each manning node, except those of storing basins
@@ -155,6 +160,7 @@ ribasim_model = complete_parametrization(
 
 # for some reason, some connector nodes of the Linge are incorrectly scaled. Keep using the original (high) values of the flow_rate to allow for better discharge of the system.
 Linge_nodes = [433, 612, 666]
+assert ribasim_model.outlet.static.df is not None
 ribasim_model.outlet.static.df.loc[
     ribasim_model.outlet.static.df["node_id"].isin(Linge_nodes), "meta_known_flow_rate"
 ] = True
@@ -165,6 +171,7 @@ ribasim_model.outlet.static.df.loc[
 ] = [20.0, True]
 
 # fix pumps from Linge to ARK
+assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 1025, "max_flow_rate"] = 8.0
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 664, "max_flow_rate"] = 16.0
 

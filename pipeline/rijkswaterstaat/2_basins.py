@@ -1,9 +1,11 @@
 # %%
+from typing import cast
+
 import geopandas as gpd
 import pandas as pd
 from ribasim_nl.geodataframe import split_basins
 from ribasim_nl.raster import sample_level_area
-from shapely.geometry import MultiLineString, MultiPolygon, Polygon
+from shapely.geometry import LineString, MultiLineString, MultiPolygon, Polygon
 
 from ribasim_nl import CloudStorage
 
@@ -70,7 +72,7 @@ basins_gdf.to_file(basins_gpkg, layer="split_basins")
 print("merge basins")
 
 for line in merge_lines_gdf.itertuples():
-    point_from, point_to = line.geometry.boundary.geoms
+    point_from, point_to = cast(LineString, line.geometry).boundary.geoms
     try:
         idx_from = basins_gdf[basins_gdf.contains(point_from)].index[0]
     except IndexError:
@@ -81,7 +83,7 @@ for line in merge_lines_gdf.itertuples():
         raise IndexError(f"line with index {line.Index} does not end in a polygon") from None
     if idx_from == idx_to:
         print(f"line with index {line.Index} is contained within a polygon")
-    basins_gdf.loc[idx_to, ["geometry"]] = basins_gdf.loc[[idx_from, idx_to]].union_all()
+    basins_gdf.loc[idx_to, ["geometry"]] = basins_gdf.loc[[idx_from, idx_to]].union_all()  # ty: ignore[invalid-assignment]
     basins_gdf = basins_gdf[basins_gdf.index != idx_from]
 
 basins_gdf.to_file(basins_gpkg, layer="merged_basins")
@@ -104,15 +106,16 @@ snap_distance = 0.1
 
 
 for basin in basins_gdf[~large_basins_mask].itertuples():
-    basin_candidates_gdf = basins_gdf[basins_gdf.distance(basin.geometry) < snap_distance]
+    basin_geometry = cast(Polygon, basin.geometry)
+    basin_candidates_gdf = basins_gdf[basins_gdf.distance(basin_geometry) < snap_distance]
     if basin_candidates_gdf.empty:
         raise ValueError(
             f"basin met naam {basin.naam} kan niet auto gemerged worden. Zorg dat er een polygon naast ligt"
         )
     else:
         idx = basin_candidates_gdf.area.sort_values(ascending=False).index[0]
-        geom = basin_candidates_gdf.at[idx, "geometry"].union(basin.geometry)
-        basins_gdf.loc[idx, "geometry"] = geom
+        geom = cast(Polygon, basin_candidates_gdf.at[idx, "geometry"]).union(basin_geometry)
+        basins_gdf.loc[idx, "geometry"] = geom  # ty: ignore[invalid-assignment]
 
 basins_gdf = basins_gdf[large_basins_mask]
 basins_gdf.to_file(basins_gpkg)
@@ -146,9 +149,10 @@ elevation_basins_gdf = gpd.read_file(basins_user_data_gpkg, layer="hoogtes", fid
 elevation_basins_gdf = elevation_basins_gdf.dropna()
 dfs = []
 for row in basins_gdf.itertuples():
-    invert_area = row.geometry.area
+    basin_geometry = cast(Polygon, row.geometry)
+    invert_area = basin_geometry.area
     try:
-        df = sample_level_area(raster_path, row.geometry, ident=row.basin_id)
+        df = sample_level_area(raster_path, basin_geometry, ident=row.basin_id)
         # if we don't cover 55% we better use an elevation point
         if df.area.max() < invert_area * 0.55:
             print(f"{df.area.max()}")
@@ -161,14 +165,14 @@ for row in basins_gdf.itertuples():
             }
         dfs += [df]
     except Exception:  # handle missing bathymetry (need new!)
-        elevation_df = elevation_basins_gdf[elevation_basins_gdf.within(row.geometry)]
+        elevation_df = elevation_basins_gdf[elevation_basins_gdf.within(basin_geometry)]
         if not elevation_df.empty:
             print(f"WARNING: profile elevation points for {row.basin_id}")
             invert_level = elevation_df.streefpeil.max()
             bottom_level = elevation_df.bodemhoogte.min()
             if bottom_level > invert_level:
                 raise ValueError(f"bottom_level > invert_level: {bottom_level} > {invert_level}") from None
-            bottom_area = row.geometry.buffer(-((invert_level - bottom_level) * 2)).area
+            bottom_area = basin_geometry.buffer(-((invert_level - bottom_level) * 2)).area
 
             df = pd.DataFrame(
                 data={

@@ -3,6 +3,7 @@
 import logging
 import math
 from pathlib import Path
+from typing import NotRequired, TypedDict, cast
 
 import geopandas as gpd
 import pandas as pd
@@ -160,8 +161,28 @@ outlet_to_manning_resistance = {
     1100600: {"profile_width": 10.0, "manning_n": 0.02},  # open water Angstel - ARK, zie #820
 }
 
+
+class UserDemandConfig(TypedDict):
+    """A UserDemand between Basins of different models, see `add_user_demands`."""
+
+    name: str
+    geometry: Point
+    from_basin_id: int
+    to_basin_id: int
+    demand: float
+    branch_towards_id: NotRequired[int]
+
+
+class RouteJunctionConfig(TypedDict):
+    """Links from a Basin to nodes, merged into a Junction on a link of that Basin, see `change_routes`."""
+
+    basin_id: int
+    node_ids: list[int]
+    link_id: int
+
+
 # UserDemands across models, added after coupling with straight links (pipelines), with the location in RD
-user_demands = [
+user_demands: list[UserDemandConfig] = [
     {
         "name": "Evides Industriewater DWP Maasvlakte",  # zie #857
         "geometry": Point(65911, 439586),
@@ -188,7 +209,7 @@ route_branches = {
 }
 
 # Links from a Basin to nodes, merged into a Junction on a link of that Basin, see `merge_inflows` and `place_on_link`
-route_junctions_on_link = [
+route_junctions_on_link: list[RouteJunctionConfig] = [
     # inlaten Boven Regge op de Schipbeek, zie #861
     {"basin_id": 700797, "node_ids": [4401049, 4401103, 4401104], "link_id": 700438},
 ]
@@ -240,21 +261,7 @@ def replace_listen_node_id(model: Model, old_node_id: int, new_node_id: int | No
     return has_control
 
 
-def get_basin_link(
-    model: Model,
-    basin_id: int,
-    boundary_geometry: Point,
-    reversed: bool = True,
-) -> LineString:
-    """Get a link-geometry from a basin to another point, possibly reversed."""
-    basin_polygon = model.basin.area[basin_id].geometry
-    links = model.link.df[(model.link.df.from_node_id == basin_id) | (model.link.df.to_node_id == basin_id)]
-    links = links[links.geometry.intersects(basin_polygon)]
-    # TODO: Complete implementation
-    return LineString()
-
-
-def initialize_models(toml_file: Path) -> tuple[Model, Network, pd.DataFrame]:
+def initialize_models(toml_file: Path) -> tuple[Model, Network, gpd.GeoDataFrame]:
     """Initialize and load the model and network data.
 
     Parameters
@@ -264,13 +271,14 @@ def initialize_models(toml_file: Path) -> tuple[Model, Network, pd.DataFrame]:
 
     Returns
     -------
-    tuple[Model, Network, pd.DataFrame]
+    tuple[Model, Network, gpd.GeoDataFrame]
         Tuple of (model, network, basin_areas_df)
     """
     # Load the model
     model = Model.read(toml_file)
 
     # Remove nodes if exists
+    assert model.node.df is not None and model.link.df is not None
     node_ids = model.node.df.index.to_numpy()
     for i in remove_nodes:
         if i not in node_ids:
@@ -286,7 +294,9 @@ def initialize_models(toml_file: Path) -> tuple[Model, Network, pd.DataFrame]:
     network = Network.from_network_gpkg(network_gpkg)
 
     # Prepare basin areas dataframe
+    assert model.basin.area.df is not None
     basin_areas_df = model.basin.area.df.set_index("node_id")
+    assert model.basin.node is not None and model.basin.node.df is not None
     waterbeheerder_df = model.basin.node.df["meta_waterbeheerder"]
     basin_areas_df.loc[waterbeheerder_df.index, "meta_waterbeheerder"] = waterbeheerder_df
 
@@ -342,12 +352,14 @@ def reverse_flow_link_ids(model: Model, from_node_id: int, to_node_id: int) -> l
     """The flow links of an existing path from `to_node_id` to `from_node_id`, directly or through Junctions."""
     assert model.link.df is not None
     flow = model.link.df[model.link.df["link_type"] == "flow"]
+    assert model.node.df is not None
     node_types = model.node.df["node_type"]
     stack: list[tuple[int, list[int]]] = [(to_node_id, [])]
     seen = {to_node_id}
     while stack:
         node_id, path = stack.pop()
         for link_id, next_node_id in flow.loc[flow["from_node_id"] == node_id, "to_node_id"].items():
+            link_id = cast(int, link_id)
             if next_node_id == from_node_id:
                 return [*path, int(link_id)]
             if node_types[next_node_id] == "Junction" and next_node_id not in seen:
@@ -401,7 +413,7 @@ def add_control(
             print(f"Failed to add control node: {e}")
 
 
-def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.DataFrame) -> list[dict]:
+def process_boundary_nodes(model: Model, network: Network, basin_areas_df: gpd.GeoDataFrame) -> list[dict]:
     """Process all boundary nodes to create coupling links.
 
     Parameters
@@ -410,7 +422,7 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
         Model to process
     network : Network
         Network for geometry creation
-    basin_areas_df : pd.DataFrame
+    basin_areas_df : gpd.GeoDataFrame
         Basin areas dataframe
 
     Returns
@@ -418,21 +430,25 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
     list[dict]
         List of link table entries
     """
+    assert model.basin.node is not None and model.basin.node.df is not None
     unique_waterbeheerders = model.basin.node.df.meta_waterbeheerder.unique()
+    assert model.level_boundary.node is not None and model.level_boundary.node.df is not None
     boundary_node_ids = model.level_boundary.node.df[
         model.level_boundary.node.df.meta_couple_authority.isin(unique_waterbeheerders)
     ].index.to_list()
 
     all_link_table = []
 
+    assert model.link.df is not None
+    assert model.node.df is not None
     for boundary_node_id in tqdm(boundary_node_ids, desc="Coupling boundary nodes"):
         # Check whether the boundary has been merged already
         if boundary_node_id not in model.level_boundary.node.df.index:
             continue
 
         boundary_node = model.level_boundary[boundary_node_id]
-        boundary_node_authority = model.level_boundary.node.df.at[boundary_node_id, "meta_waterbeheerder"]
-        couple_authority = model.level_boundary.node.df.at[boundary_node_id, "meta_couple_authority"]
+        boundary_node_authority = cast(str, model.level_boundary.node.df.at[boundary_node_id, "meta_waterbeheerder"])
+        couple_authority = cast(str, model.level_boundary.node.df.at[boundary_node_id, "meta_couple_authority"])
 
         # Some levelboundaries don't need to be coupled
         if pd.isna(couple_authority) or couple_authority in ("Noordzee", "Buitenland"):
@@ -492,7 +508,7 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: pd.Da
                 continue
 
             # Couple with closest basin area
-            couple_with_basin_id = distances.idxmin()
+            couple_with_basin_id = cast(int, distances.idxmin())
 
         # Create link table
         link_table = []
@@ -577,11 +593,13 @@ def fix_basin_profiles(model: Model) -> None:
     Args:
         model: Model to fix profiles for
     """
+    assert model.pump.static.df is not None
     for pump_id in reset_pump_min_upstream_level:
         mask = model.pump.static.df.node_id == pump_id
         if mask.any():
             model.pump.static.df.loc[mask, "min_upstream_level"] = -math.inf
 
+    assert model.outlet.static.df is not None
     for outlet_id in reset_outlet_min_upstream_level:
         mask = model.outlet.static.df.node_id == outlet_id
         if mask.any():
@@ -600,6 +618,8 @@ def fix_basin_profiles(model: Model) -> None:
                     tolerance=COUPLING_LEVEL_TOLERANCE,
                 )
 
+    assert model.outlet.node is not None and model.outlet.node.df is not None
+    assert model.basin.profile.df is not None
     for outlet in model.outlet.node.df.index:
         upstream_basin = model.upstream_node_id(outlet)
         if upstream_basin is None:
@@ -624,6 +644,7 @@ def fix_basin_profiles(model: Model) -> None:
 
 def node_in_model(model: Model, node_id: int) -> bool:
     """Check if a configured node is in the model, raising if its authority is included but the node is not."""
+    assert model.node.df is not None
     if node_id in model.node.df.index:
         return True
     authority = _prefix_to_authority.get(node_id // 10**5)
@@ -634,6 +655,7 @@ def node_in_model(model: Model, node_id: int) -> bool:
 
 def update_node_metadata(model: Model) -> None:
     """Set the configured node names and connector static metadata."""
+    assert model.node.df is not None
     for node_id, name in node_names.items():
         if node_in_model(model, node_id):
             model.node.df.loc[node_id, "name"] = name
@@ -655,13 +677,15 @@ def move_configured_nodes(model: Model) -> None:
     locations = {}
     for node_id, (dx, dy) in node_offsets.items():
         if node_in_model(model, node_id):
-            point = model.node.df.at[node_id, "geometry"]
+            point = cast(Point, model.node.df.at[node_id, "geometry"])
             locations[node_id] = Point(point.x + dx, point.y + dy)
     move_nodes(model, locations)
 
 
 def convert_outlets_to_manning_resistance(model: Model) -> None:
     """Convert the configured Outlets between two Basins to ManningResistance, removing their controllers."""
+    assert model.link.df is not None
+    assert model.node.df is not None
     for node_id, parameters in outlet_to_manning_resistance.items():
         if not node_in_model(model, node_id):
             continue
@@ -697,7 +721,9 @@ def route_links_between_models(model: Model, network: Network) -> list[int]:
     The connector nodes are often outside the area of the receiving Basin, so waterways up to 250 m around it are
     used, see `snap_to_waterways`.
     """
+    assert model.link.df is not None
     nodes, flow = model.node.df, model.link.df[model.link.df["link_type"] == "flow"]
+    assert nodes is not None
     from_authority = flow["from_node_id"].map(nodes["meta_waterbeheerder"]).to_numpy()
     to_authority = flow["to_node_id"].map(nodes["meta_waterbeheerder"]).to_numpy()
     straight = shapely.get_num_points(flow.geometry.to_numpy()) == 2
@@ -710,6 +736,7 @@ def route_links_between_models(model: Model, network: Network) -> list[int]:
 
 def add_user_demands(model: Model) -> None:
     """Add the configured UserDemands between Basins of different models, see `user_demands`."""
+    assert model.basin.profile.df is not None
     for config in user_demands:
         from_basin_id, to_basin_id = config["from_basin_id"], config["to_basin_id"]
         if not (node_in_model(model, from_basin_id) and node_in_model(model, to_basin_id)):
@@ -763,10 +790,13 @@ def tidy_coupling_layout(model: Model, link_ids: list[int]) -> None:
     The links between models share routes towards the same Basins, which are merged into Junctions, and these and
     the routed links `link_ids` are offset, such that no links overlap.
     """
+    assert model.link.df is not None
     link_ids = [i for i in link_ids if i in model.link.df.index]  # some were replaced, see `change_routes`
+    assert model.node.df is not None
     junctions = set(model.node.df.index[model.node.df["node_type"] == "Junction"])
     junctionify(model)
     nodes, flow = model.node.df, model.link.df[model.link.df["link_type"] == "flow"]
+    assert nodes is not None
     new_junctions = set(nodes.index[nodes["node_type"] == "Junction"]) - junctions
     authority = nodes["meta_waterbeheerder"]
     between = flow["from_node_id"].map(authority).to_numpy() != flow["to_node_id"].map(authority).to_numpy()
@@ -782,6 +812,7 @@ def remove_invalid_topology_nodes(model: Model) -> None:
         invalid_topology = model.invalid_topology_at_node(link_type=link_type)
         while not invalid_topology.empty:
             for node_id, row in invalid_topology.iterrows():
+                node_id = cast(int, node_id)
                 logger.warning(
                     "Invalid %s topology at node %d (%s): %s — removing node.",
                     link_type,
@@ -874,7 +905,7 @@ def get_rws_link(
     while link_geometry is None or link_geometry.is_empty:  # links can now be empty?
         try:
             idx = next(link_idx)
-            link_geom = network.links.at[idx, "geometry"]
+            link_geom = cast(LineString, network.links.at[idx, "geometry"])
             projected_point = link_geom.interpolate(link_geom.project(to_be_projected_point))
             # If the projected point is not close to any network node, add a new node
             if network.nodes.distance(projected_point).min() > SNAP_DISTANCE:
@@ -947,6 +978,7 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
         return
 
     # only merge if both nodes are controlled
+    assert model.link.df is not None
     controlled_nodes = model.link.df[model.link.df["link_type"] == "control"].to_node_id.values
     if (from_node_ids in controlled_nodes) != (to_node_ids in controlled_nodes):
         print(f"Cannot merge {boundary_node} => {neighbor_node}: One of the two is controlled, the other is not")
@@ -955,6 +987,7 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
     # Update listen references for removed boundary nodes, to the Basins behind any Junctions: the boundary
     # downstream of the upstream outlet stands for the downstream Basin, the other one for the upstream Basin
     outgoing, incoming = flow_link_graphs(model.link.df.reset_index())
+    assert model.node.df is not None
     node_types = model.node.df["node_type"].to_dict()
     upstream_basin_id, _, _ = first_non_junction(from_node_ids, incoming, node_types)
     downstream_basin_id, _, _ = first_non_junction(to_node_ids, outgoing, node_types)

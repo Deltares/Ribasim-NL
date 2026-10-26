@@ -1,5 +1,7 @@
 """Parameterisation of water board: Amstel, Gooi en Vecht."""
 
+from typing import cast
+
 import ribasim_nl.ribasim_parametrization as ribasim_param
 from ribasim_nl.control import set_flow_rate, set_node_functions
 from ribasim_nl.design_capacities import set_design_capacities
@@ -37,6 +39,7 @@ ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
 
 # capture the zeesluis node-id by its geometry before snapping relocates it (see flushing step below)
 zeesluis_point = Point(133336, 482556)
+assert ribasim_model.node.df is not None
 zeesluis_candidates = ribasim_model.node.df.loc[ribasim_model.node.df.geometry.distance(zeesluis_point) < 1]
 if len(zeesluis_candidates) != 1:
     raise ValueError(
@@ -105,8 +108,10 @@ add_controllers(ribasim_model, from_to_node_function_table, remove_duplicates=Fa
 from_to_node_function_table.loc[from_to_node_function_table.index == zeesluis_node_id, "demand"] = 5  # 5 m3/s
 
 # there are some duplicates in the discrete control? Remove them
+assert ribasim_model.link.df is not None
 control = ribasim_model.link.df[ribasim_model.link.df.link_type == "control"]
 dup_control = []
+assert ribasim_model.node.df is not None
 all_nodes = ribasim_model.node.df[["node_type"]]
 for to_node_id, group in control.groupby("to_node_id"):
     if len(group) == 1:
@@ -123,7 +128,7 @@ for to_node_id, group in control.groupby("to_node_id"):
         )
 
 for duplicate in dup_control:
-    ribasim_model.remove_node(duplicate, True)
+    ribasim_model.remove_node(cast(int, duplicate), True)
     print(f"Removed duplicate control node {duplicate}")
 
 
@@ -139,6 +144,7 @@ ribasim_model.node.df.loc[86, "name"] = "Amstel"
 increase_flow_rate_pumps = [412, 146]
 
 # presumably wrong conversion of flow capacity in the data
+assert ribasim_model.pump.static.df is not None
 for pump_id in increase_flow_rate_pumps:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_id, "flow_rate"] *= 60
 set_flow_rate(ribasim_model.pump.static.df, [475], 0.60)  # increase flow_rate of specific pump
@@ -167,6 +173,7 @@ ribasim_model = complete_parametrization(
 set_design_capacities(ribasim_model, from_to_node_function_table)
 
 # manually assign max_flow_rates (as suggested by JWV in FF)
+assert ribasim_model.outlet.static.df is not None
 ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 826, "max_flow_rate"] = 0.05
 
 # manually assign max_flow_rates to keep the lakes on target level, maybe due to large groundwater fluxes

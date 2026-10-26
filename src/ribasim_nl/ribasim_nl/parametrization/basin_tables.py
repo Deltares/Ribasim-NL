@@ -2,6 +2,8 @@
 from datetime import datetime
 
 import pandas as pd
+from pandera.typing import DataFrame
+from ribasim.schemas import BasinStateSchema, BasinStaticSchema, BasinTimeSchema
 
 from ribasim_nl.coupling_level_common import as_float, as_int, finite_levels
 from ribasim_nl.model import Model
@@ -47,7 +49,7 @@ def update_basin_static(
     )
 
     # add to static df
-    model.basin.static.df = static_df
+    model.basin.static.df = DataFrame[BasinStaticSchema](static_df)
 
 
 def update_basin_state(model: Model) -> None:
@@ -57,7 +59,9 @@ def update_basin_state(model: Model) -> None:
         model (Model): Ribasim Model
     """
     assert model.basin.profile.df is not None
-    model.basin.state.df = model.basin.profile.df.groupby("node_id").max().reset_index()[["node_id", "level"]]
+    model.basin.state.df = DataFrame[BasinStateSchema](
+        model.basin.profile.df.groupby("node_id").max().reset_index()[["node_id", "level"]]
+    )
 
 
 def apply_basin_level_overrides(
@@ -96,8 +100,8 @@ def apply_basin_level_overrides(
         model.basin.area.df.loc[mask, target_level_column] = target_level
 
     if update_state:
-        model.basin.state.df = model.basin.area.df[["node_id", target_level_column]].rename(
-            columns={target_level_column: "level"}
+        model.basin.state.df = DataFrame[BasinStateSchema](
+            model.basin.area.df[["node_id", target_level_column]].rename(columns={target_level_column: "level"})
         )
 
     return protected_basin_node_ids
@@ -232,7 +236,7 @@ def add_basin_time_synthetic(
     time_df.loc[time_df["time"] == end_time, "potential_evaporation"] = static_df["potential_evaporation"].to_numpy()
 
     model.basin.static.df = None
-    model.basin.time.df = time_df.reset_index()
+    model.basin.time.df = DataFrame[BasinTimeSchema](time_df.reset_index())
     model.starttime = start_time
     model.endtime = end_time
 

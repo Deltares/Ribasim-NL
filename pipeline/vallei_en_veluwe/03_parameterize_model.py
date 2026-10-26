@@ -30,8 +30,10 @@ model = Model.read(ribasim_toml)
 start_time = time.time()
 # %%
 # parameterize
+assert model.basin.node is not None and model.basin.node.df is not None
 series = model.basin.node.df["meta_categorie"]
 uncategorized_basins = series[series.isna()].index.values
+assert model.node.df is not None
 if len(uncategorized_basins) > 0:
     print(f"uncategorized basins: {uncategorized_basins}, will be set to doorgaand")
     model.node.df.loc[uncategorized_basins, "meta_categorie"] = "doorgaand"
@@ -40,6 +42,7 @@ model.parameterize(static_data_xlsx=static_data_xlsx, precipitation_mm_per_day=5
 print("Elapsed Time:", time.time() - start_time, "seconds")
 
 
+assert model.basin.profile.df is not None
 model.basin.profile.df.loc[(model.basin.profile.df.node_id == 1209) & (model.basin.profile.df.area > 0.1), "area"] = (
     10000
 )
@@ -54,15 +57,18 @@ basin_level_overrides = [
 apply_basin_level_overrides(model=model, basin_level_overrides=basin_level_overrides)
 
 # Inlaat de Wenden
+assert model.level_boundary.static.df is not None
 model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 1, "level"] = 0.8
 
 
+assert model.manning_resistance.static.df is not None
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 # Havensluis Elburg
 model.reverse_direction_at_node(477)
 
 # Inlaat Eektermerksluis
+assert model.outlet.static.df is not None
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 606, "meta_code"] = "KSL-8"
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 606, "meta_name"] = "Eektermerksluis"
 
@@ -72,6 +78,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 232, "meta_name"] =
 
 # %%
 # Write model
+assert model.basin.area.df is not None
 model.basin.area.df.loc[:, "meta_area_m2"] = model.basin.area.df.area
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_parameterized_model", f"{short_name}.toml")
 sync_min_upstream_levels_with_profile_bottoms(model=model)

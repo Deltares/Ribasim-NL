@@ -42,10 +42,12 @@ processor = paths.feedback_processor(work_dir=paths.model_dir("profiles"))
 ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
 
 # reset pump capacity for each pump
+assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df["flow_rate"] = 10 / 60  # 10m3/min
 
 ribasim_model = set_boundary_conditions(ribasim_model, paths, level_boundary_levels=(-0.42, 0.42))
 
+assert ribasim_model.level_boundary.time.df is not None
 ribasim_model.level_boundary.time.df.loc[ribasim_model.level_boundary.time.df["node_id"] == 583, "level"] = -2.0
 ribasim_model.level_boundary.time.df.loc[ribasim_model.level_boundary.time.df["node_id"] == 585, "level"] = -2.0
 ribasim_model.level_boundary.time.df.loc[
@@ -172,6 +174,7 @@ assert all(
 ), f"flow control:\n{from_to_node_function_table[from_to_node_function_table['function'] == 'flow_control']}\n"
 
 # restore the meta data of pumps and outlets, as adding controllers might change or add node_ids
+assert ribasim_model.pump.static.df is not None
 with preserve_connector_meta(ribasim_model):
     # flush = Flushing(ribasim_model)
     # _, df_demand = flush.add_flushing(df_function=from_to_node_function_table)
@@ -194,6 +197,7 @@ assign_pump_and_basin_names(ribasim_model, paths)
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
+assert ribasim_model.node.df is not None
 ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
 
 # lower the difference in waterlevel for each manning node, except those of storing basins
@@ -220,7 +224,9 @@ set_design_capacities(ribasim_model, from_to_node_function_table)
 # Gemaal Postweg pumps into basin 142, which aggregates peilgebieden with target levels up to -1.1 m NAP,
 # so do not limit it by the -1.8 m NAP target level of that basin, see #844
 postweg = 1189
+assert ribasim_model.node.df is not None
 assert ribasim_model.node.df.at[postweg, "name"] == "Gemaal Postweg, Kapelle", "Node ID of Gemaal Postweg changed"
+assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == postweg, "max_downstream_level"] = math.inf
 
 write_and_run_forcing_model(ribasim_model, paths)

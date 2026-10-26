@@ -1,4 +1,5 @@
 # %%
+from typing import cast
 
 import geopandas as gpd
 import pandas as pd
@@ -6,7 +7,7 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
-from shapely.geometry import Point
+from shapely.geometry import LineString, Point
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -71,20 +72,23 @@ model.merge_basins(node_id=2396, to_node_id=1669, are_connected=False)
 
 # Corrigeren ontbrekende basins en outlets nabij modelrand
 # geen kdu bij 2202
-geometry = hydroobject_gdf.at[3099, "geometry"]
+geometry = cast(LineString, hydroobject_gdf.at[3099, "geometry"])
 basin_node = model.basin.add(Node(geometry=geometry.boundary.geoms[0]), tables=basin_data)
 outlet_node = model.outlet.add(Node(geometry=geometry.interpolate(271)), tables=[outlet_data])
 model.redirect_link(link_id=2202, from_node_id=outlet_node.node_id)
 model.link.add(basin_node, outlet_node)
 
+assert model.link.df is not None
 for fid, link_id, _boundary_node_id in ((2054, 2244, 63), (9794, 2295, 103), (9260, 2297, 105), (3307, 2305, 113)):
     kdu = duiker_gdf.loc[fid]
     basin_node = model.basin.add(
-        Node(geometry=model.link.df.loc[link_id, "geometry"].boundary.geoms[0]), tables=basin_data
+        Node(geometry=cast(LineString, model.link.df.loc[link_id, "geometry"]).boundary.geoms[0]), tables=basin_data
     )
     outlet_node = model.outlet.add(
         Node(
-            name=kdu.code, geometry=kdu.geometry.interpolate(0.5, normalized=True), meta_object_type="duikersifonhevel"
+            name=kdu.code,
+            geometry=cast(Point, kdu.geometry.interpolate(0.5, normalized=True)),
+            meta_object_type="duikersifonhevel",
         ),
         tables=[outlet_data],
     )
@@ -97,9 +101,12 @@ for fid, link_id, _boundary_node_id in ((2054, 2244, 63), (9794, 2295, 103), (92
 for node_id in [276, 2003, 990, 2395, 989]:
     model.remove_node(node_id, remove_links=True)
 
-basin_node = model.basin.add(Node(geometry=model.link.df.at[2257, "geometry"].boundary.geoms[1]), tables=basin_data)
+basin_node = model.basin.add(
+    Node(geometry=cast(LineString, model.link.df.at[2257, "geometry"]).boundary.geoms[1]), tables=basin_data
+)
 outlet_node = model.outlet.add(
-    Node(geometry=hydroobject_gdf.at[2099, "geometry"].interpolate(0.9, normalized=True)), tables=[outlet_data]
+    Node(geometry=cast(LineString, hydroobject_gdf.at[2099, "geometry"]).interpolate(0.9, normalized=True)),
+    tables=[outlet_data],
 )
 model.redirect_link(link_id=2257, to_node_id=basin_node.node_id)
 model.link.add(basin_node, outlet_node)
@@ -109,7 +116,7 @@ model.link.add(outlet_node, model.level_boundary[82])
 
 # Corrigeren Snelle Loop bij Defensiekanaal
 outlet_node = model.outlet.add(
-    Node(geometry=model.link.df.at[2357, "geometry"].boundary.geoms[1]), tables=[outlet_data]
+    Node(geometry=cast(LineString, model.link.df.at[2357, "geometry"]).boundary.geoms[1]), tables=[outlet_data]
 )
 model.redirect_link(link_id=2357, to_node_id=outlet_node.node_id)
 model.link.add(outlet_node, model.basin[1452])
@@ -124,9 +131,12 @@ model.merge_basins(node_id=2465, to_node_id=1340, are_connected=False)
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426443778
 
 # Toevoegen Wellse Molenbeek
-basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[3100, "geometry"].boundary.geoms[1]), tables=basin_data)
+basin_node = model.basin.add(
+    Node(geometry=cast(LineString, hydroobject_gdf.at[3100, "geometry"]).boundary.geoms[1]), tables=basin_data
+)
 outlet_node = model.outlet.add(
-    Node(geometry=hydroobject_gdf.at[687, "geometry"].interpolate(0.9, normalized=True)), tables=[outlet_data]
+    Node(geometry=cast(LineString, hydroobject_gdf.at[687, "geometry"]).interpolate(0.9, normalized=True)),
+    tables=[outlet_data],
 )
 
 model.redirect_link(link_id=2240, to_node_id=basin_node.node_id)
@@ -138,9 +148,15 @@ model.link.add(outlet_node, model.level_boundary[59])
 # %%
 model.remove_node(node_id=1036, remove_links=True)
 kdu = duiker_gdf.loc[4664]
-basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[477, "geometry"].boundary.geoms[0]), tables=basin_data)
+basin_node = model.basin.add(
+    Node(geometry=cast(LineString, hydroobject_gdf.at[477, "geometry"]).boundary.geoms[0]), tables=basin_data
+)
 outlet_node = model.outlet.add(
-    Node(name=kdu.code, geometry=kdu.geometry.interpolate(0.5, normalized=True), meta_object_type="duikersifonhevel"),
+    Node(
+        name=kdu.code,
+        geometry=cast(Point, kdu.geometry.interpolate(0.5, normalized=True)),
+        meta_object_type="duikersifonhevel",
+    ),
     tables=[outlet_data],
 )
 model.link.add(outlet_node, model.basin[1389])
@@ -148,7 +164,11 @@ model.link.add(basin_node, outlet_node)
 
 kdu = duiker_gdf.loc[3709]
 outlet_node = model.outlet.add(
-    Node(name=kdu.code, geometry=kdu.geometry.interpolate(0.5, normalized=True), meta_object_type="duikersifonhevel"),
+    Node(
+        name=kdu.code,
+        geometry=cast(Point, kdu.geometry.interpolate(0.5, normalized=True)),
+        meta_object_type="duikersifonhevel",
+    ),
     tables=[outlet_data],
 )
 
@@ -161,9 +181,11 @@ model.link.add(outlet_node, model.level_boundary[39])
 model.remove_links(link_ids=[2316, 2309, 2307, 2308, 2310, 2312, 2315, 2317])
 model.remove_node(114, remove_links=True)
 model.reverse_link(link_id=1999)
-basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[1649, "geometry"].boundary.geoms[1]), tables=basin_data)
+basin_node = model.basin.add(
+    Node(geometry=cast(LineString, hydroobject_gdf.at[1649, "geometry"]).boundary.geoms[1]), tables=basin_data
+)
 outlet_node = model.outlet.add(
-    Node(geometry=hydroobject_gdf.at[4110, "geometry"].boundary.geoms[1]), tables=[outlet_data]
+    Node(geometry=cast(LineString, hydroobject_gdf.at[4110, "geometry"]).boundary.geoms[1]), tables=[outlet_data]
 )
 
 model.link.add(model.tabulated_rating_curve[270], basin_node)
@@ -182,16 +204,20 @@ model.reverse_link(link_id=2332)
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426763136
 
 # Opname Helenavaart
-basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[112, "geometry"].boundary.geoms[0]), tables=basin_data)
+basin_node = model.basin.add(
+    Node(geometry=cast(LineString, hydroobject_gdf.at[112, "geometry"]).boundary.geoms[0]), tables=basin_data
+)
 model.redirect_link(link_id=2329, to_node_id=basin_node.node_id)
 outlet_node = model.outlet.add(
-    Node(geometry=hydroobject_gdf.at[112, "geometry"].interpolate(0.9, normalized=True)), tables=[outlet_data]
+    Node(geometry=cast(LineString, hydroobject_gdf.at[112, "geometry"]).interpolate(0.9, normalized=True)),
+    tables=[outlet_data],
 )
 model.link.add(basin_node, outlet_node)
 model.link.add(outlet_node, model.level_boundary[123])
 
 outlet_node = model.outlet.add(
-    Node(geometry=hydroobject_gdf.at[1702, "geometry"].interpolate(0.1, normalized=True)), tables=[outlet_data]
+    Node(geometry=cast(LineString, hydroobject_gdf.at[1702, "geometry"]).interpolate(0.1, normalized=True)),
+    tables=[outlet_data],
 )
 model.redirect_link(link_id=2328, to_node_id=outlet_node.node_id)
 model.link.add(outlet_node, basin_node)
@@ -199,16 +225,20 @@ model.link.add(outlet_node, basin_node)
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426789675
 
 # Opname Oude Helenavaart/kanaal van Deurne
-basin_node = model.basin.add(Node(geometry=hydroobject_gdf.at[1565, "geometry"].boundary.geoms[0]), tables=basin_data)
+basin_node = model.basin.add(
+    Node(geometry=cast(LineString, hydroobject_gdf.at[1565, "geometry"]).boundary.geoms[0]), tables=basin_data
+)
 outlet_node = model.outlet.add(
-    Node(geometry=hydroobject_gdf.at[3277, "geometry"].interpolate(0.9, normalized=True)), tables=[outlet_data]
+    Node(geometry=cast(LineString, hydroobject_gdf.at[3277, "geometry"]).interpolate(0.9, normalized=True)),
+    tables=[outlet_data],
 )
 
 model.redirect_link(link_id=2327, from_node_id=outlet_node.node_id)
 model.link.add(basin_node, outlet_node)
 
 outlet_node = model.outlet.add(
-    Node(geometry=hydroobject_gdf.at[1565, "geometry"].interpolate(0.98, normalized=True)), tables=[outlet_data]
+    Node(geometry=cast(LineString, hydroobject_gdf.at[1565, "geometry"]).interpolate(0.98, normalized=True)),
+    tables=[outlet_data],
 )
 model.redirect_link(link_id=2323, from_node_id=outlet_node.node_id)
 model.link.add(basin_node, outlet_node)
@@ -429,8 +459,8 @@ for node_id in basin_node_edits_gdf[basin_node_edits_gdf["remove_node_id"].notna
 
 # add and connect basins
 for row in connect_basins_gdf.itertuples():
-    from_basin_id = row.node_id
-    to_basin_id = row.to_node_id
+    from_basin_id = cast(int, row.node_id)
+    to_basin_id = cast(int, row.to_node_id)
     if row.add_object == "duikersifonhevel":
         node_type = "TabulatedRatingCurve"
     model.add_and_connect_node(

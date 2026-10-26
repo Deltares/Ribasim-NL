@@ -38,6 +38,7 @@ processor = paths.feedback_processor(work_dir=paths.model_dir("profiles"))
 ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
 
 # reset pump capacity for each pump
+assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df["flow_rate"] = 10 / 60  # 10m3/min
 
 ribasim_model = set_boundary_conditions(ribasim_model, paths, level_boundary_levels=(-0.75, 0.75))
@@ -146,6 +147,7 @@ assign_pump_and_basin_names(ribasim_model, paths, param_name="HHSK.gpkg", pump_m
 #     ribasim_model.pump.static.df["node_id"].isin(increase_flow_rate_pumps), "flow_rate"
 # ] *= 60
 
+assert ribasim_model.manning_resistance.node is not None and ribasim_model.manning_resistance.node.df is not None
 ribasim_model.manning_resistance.node.df.dropna(subset="geometry", inplace=True)
 set_manning_resistance_outside_bergend(ribasim_model, length=10.0, manning_n=0.01)
 
@@ -155,6 +157,7 @@ ribasim_model = complete_parametrization(
     rws_buffer=400,  # polygons match relatively good, lower buffer
 )
 
+assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df.loc[
     ribasim_model.pump.static.df.node_id == 363,
     ("max_flow_rate", "meta_known_flow_rate"),
@@ -168,6 +171,7 @@ ribasim_model.pump.static.df.loc[
 # set the unknown capacities of Pumps and Outlets from the area they drain or supply
 set_design_capacities(ribasim_model, from_to_node_function_table)
 
+assert ribasim_model.outlet.static.df is not None
 ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 342, "max_flow_rate"] = 1.0
 
 

@@ -1,9 +1,11 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+from shapely.geometry import Point
+from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl import CloudStorage, Model
 from ribasim_nl.control import is_off_state, off_states
@@ -24,6 +26,7 @@ class AssignMetaData:
 
         # Model
         if isinstance(model_name, Model):
+            assert model_name.filepath is not None
             self.model_dir = model_name.filepath.parent
             self.model = model_name
         else:
@@ -94,6 +97,7 @@ class AssignMetaData:
             if ribasim_attr == "node":
                 # Use global node table
                 df_ribasim = self.model.node.df
+                assert df_ribasim is not None
                 mrows = self._na_or_empty(df_ribasim.loc[org_vals.index, col])
                 df_ribasim.loc[org_vals.index[mrows], col] = org_vals[mrows]
             else:
@@ -110,6 +114,7 @@ class AssignMetaData:
         if ribasim_attr == "node":
             # Use global node table
             df_ribasim = self.model.node.df
+            assert df_ribasim is not None
             matching_rows = df_ribasim.index.isin(node_id)
         else:
             df_ribasim = getattr(getattr(self.model, ribasim_type), ribasim_attr).df
@@ -157,6 +162,8 @@ class AssignMetaData:
         df_gemaal = self.get_paramfile_from_cloud(layer)
 
         # control states that switch a pump off keep their flow_rate of 0
+        assert self.model.pump.static.df is not None
+        assert self.model.pump.node is not None and self.model.pump.node.df is not None
         pump_off = off_states(self.model.pump.static.df)
 
         # Add columns which do not exist yet
@@ -168,11 +175,12 @@ class AssignMetaData:
             # A pump can already be assigned because there is logic in place
             # that checks for multiple overlapping ribasim pumps.
             # Check if this pump has been assigned for the first mapper.
-            if self._nodeid_is_assigned("pump", mapper, row.Index):
+            if self._nodeid_is_assigned("pump", mapper, cast(int, row.Index)):
                 continue
 
             # Check if there are multiple overlapping pumps (within 1cm)
-            rows = self.model.pump.node.df.sindex.query(row.geometry.buffer(0.01), predicate="intersects")
+            geometry = cast(Point, row.geometry)
+            rows = self.model.pump.node.df.sindex.query(geometry.buffer(0.01), predicate="intersects")
             node_id = self.model.pump.node.df.index[rows].tolist()
             node_id_str = ", ".join(map(str, node_id))
             if row.Index not in node_id:
@@ -184,7 +192,7 @@ class AssignMetaData:
             dfa = df_gemaal[~df_gemaal.index.isin(list(visited.keys()))].copy()
 
             # Find nearest gemaal
-            idx = dfa.sindex.nearest(row.geometry, max_distance=max_distance, return_all=True)
+            idx = dfa.sindex.nearest(geometry, max_distance=max_distance, return_all=True)
             # sorted, since the order of equidistant matches differs between platforms
             dfa = df_gemaal.iloc[np.sort(idx[1, :])].copy()
 
@@ -228,18 +236,20 @@ class AssignMetaData:
         restore_cols = self._add_unassigned_columns("basin", mapper)
 
         # Add the matching areas to the ribasim model
+        assert self.model.basin.area.df is not None
         for row in self.model.basin.area.df.itertuples():
             if hasattr(row, "meta_node_id") and row.node_id != row.meta_node_id:
                 # Skip "bergend"
                 continue
 
             # Find overlapping area(s)
-            idxs = np.sort(df_area.sindex.query(row.geometry, predicate="intersects"))
+            geometry = cast(BaseGeometry, row.geometry)
+            idxs = np.sort(df_area.sindex.query(geometry, predicate="intersects"))
             dfa = df_area.iloc[idxs].copy()
 
             # Filter out insufficient overlapping areas and order by
             # overlap area and total area.
-            dfa["i_area"] = dfa.geometry.intersection(row.geometry).area
+            dfa["i_area"] = dfa.geometry.intersection(geometry).area
             dfa["t_area"] = dfa.geometry.area
             dfa["f_area"] = dfa["i_area"] / dfa["t_area"]
             dfa = dfa[dfa.f_area >= min_overlap]
@@ -255,7 +265,7 @@ class AssignMetaData:
             matching_row = dfa.iloc[0]
             for param_col, colmap in mapper.items():
                 for ribasim_attr, ribasim_cols in colmap.items():
-                    df_ribasim, mrows = self._get_matching_rows("basin", ribasim_attr, [row.node_id])
+                    df_ribasim, mrows = self._get_matching_rows("basin", ribasim_attr, [cast(int, row.node_id)])
                     df_ribasim.loc[mrows, ribasim_cols] = matching_row[param_col]
 
         # Restore original values for those that are still NA

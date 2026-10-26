@@ -1,5 +1,7 @@
 # %%
 
+from typing import cast
+
 import geopandas as gpd
 import pandas as pd
 from ribasim import Node
@@ -55,6 +57,7 @@ tabulated_rating_curve_data = tabulated_rating_curve.Static(level=[0.0, 5], flow
 
 # %%
 # Verwijderen duplicate links
+assert model.link.df is not None
 model.link.df.drop_duplicates(inplace=True)
 
 # %%
@@ -65,7 +68,7 @@ basin_nodes_df = network_validator.node_invalid_connectivity()
 
 for row in basin_nodes_df.itertuples():
     # maak basin-node
-    basin_node = model.basin.add(Node(geometry=row.geometry), tables=basin_data)
+    basin_node = model.basin.add(Node(geometry=cast(Point, row.geometry)), tables=basin_data)
 
     # update link_table
     mask = (basin_links_df.from_node_id == row.node_id) & (basin_links_df.distance(row.geometry) < 0.1)

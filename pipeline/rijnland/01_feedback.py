@@ -42,10 +42,12 @@ pump_node = ribasim_model.pump.add(Node(geometry=Point(110884, 446307)), [pump.S
 ribasim_model.link.add(ribasim_model.basin[338], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
+assert ribasim_model.pump.static.df is not None
 for n in inlaat_pump:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_aanvoer"] = 1
 
 # (re)set 'meta_node_id'-values
+assert ribasim_model.node.df is not None
 for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
     mask = ribasim_model.node.df["node_type"] == node_type
     ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
@@ -76,6 +78,7 @@ for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
     ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
 
 # change unknown streefpeilen to a default streefpeil
+assert ribasim_model.basin.area.df is not None
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"
 ] = str(UNKNOWN_STREEFPEIL)

@@ -1,21 +1,25 @@
 import importlib
 import os
 import threading
-from collections.abc import Iterator
+from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from functools import reduce
+from typing import Any, cast
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 import shapely
 from geopandas import GeoDataFrame
+from shapely.geometry import LineString
+from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl.geometry import snap_boundaries_to_other_line, split_basin
 
-# the module, since `geopandas.tools.overlay` is shadowed by the function of that name
-gpd_overlay = importlib.import_module("geopandas.tools.overlay")
+# the module, since `geopandas.tools.overlay` is shadowed by the function of that name; `Any`, since its private
+# members are used, which are not in the type stubs
+gpd_overlay: Any = importlib.import_module("geopandas.tools.overlay")
 
 
 def sorted_sjoin(left: GeoDataFrame, right: GeoDataFrame, **kwargs) -> GeoDataFrame:
@@ -54,16 +58,17 @@ def split_basins(basins_gdf: GeoDataFrame, lines_gdf: GeoDataFrame) -> GeoDataFr
         Split basins
     """
     for line in lines_gdf.explode(index_parts=False).itertuples():
+        line_geometry = cast(LineString, line.geometry)
         # filter by spatial index
-        idx = np.sort(basins_gdf.sindex.intersection(line.geometry.bounds))
-        poly_select_gdf = basins_gdf.iloc[idx][basins_gdf.iloc[idx].intersects(line.geometry)]
+        idx = np.sort(basins_gdf.sindex.intersection(line_geometry.bounds))
+        poly_select_gdf = basins_gdf.iloc[idx][basins_gdf.iloc[idx].intersects(line_geometry)]
 
         ## filter by intersecting geometry
-        poly_select_gdf = poly_select_gdf[poly_select_gdf.intersects(line.geometry)]
+        poly_select_gdf = poly_select_gdf[poly_select_gdf.intersects(line_geometry)]
 
         ## filter polygons with two intersection-points only
         poly_select_gdf = poly_select_gdf[
-            poly_select_gdf.geometry.boundary.intersection(line.geometry).apply(lambda x: x.geom_type != "Point")
+            poly_select_gdf.geometry.boundary.intersection(line_geometry).apply(lambda x: x.geom_type != "Point")
         ]
 
         ## if there are no polygon-candidates, something is wrong
@@ -76,7 +81,7 @@ def split_basins(basins_gdf: GeoDataFrame, lines_gdf: GeoDataFrame) -> GeoDataFr
             for basin in poly_select_gdf.itertuples():
                 kwargs = basin._asdict()
                 try:
-                    for geom in split_basin(basin.geometry, line.geometry).geoms:
+                    for geom in split_basin(basin.geometry, line_geometry).geoms:
                         kwargs["geometry"] = geom
                         data += [{**kwargs}]
                 except ValueError as e:
@@ -110,7 +115,7 @@ def snap_line_boundaries(gdf: GeoDataFrame, tolerance: float) -> GeoDataFrame:
         for candidate, other_line in zip(candidates[within_tolerance], candidate_lines[within_tolerance], strict=True):
             geometry = snap_boundaries_to_other_line(line=other_line, other_line=line, tolerance=tolerance)
             # set by label, which updates all parts of exploded multi-lines
-            _gdf.loc[_gdf.index[candidate], "geometry"] = geometry
+            _gdf.loc[_gdf.index[candidate], "geometry"] = geometry  # ty: ignore[invalid-assignment, invalid-argument-type]
 
     return _gdf
 
@@ -126,8 +131,9 @@ def _threaded_overlay_difference(df1: GeoDataFrame, df2: GeoDataFrame) -> GeoDat
     neighbours_by_row = np.split(idx2, np.searchsorted(idx1, np.arange(1, len(df1))))
     geoms1, geoms2 = df1.geometry.array, df2.geometry.array
 
-    def difference(row: int) -> shapely.Geometry:
-        return reduce(lambda x, y: x.difference(y), [geoms1[row], *geoms2[neighbours_by_row[row]]])
+    def difference(row: int) -> BaseGeometry:
+        geometries = cast(list[BaseGeometry], [geoms1[row], *geoms2[neighbours_by_row[row]]])
+        return reduce(lambda x, y: x.difference(y), geometries)
 
     # submit the rows with the most neighbours first, so the slowest rows don't end up last
     rows = sorted(range(len(df1)), key=lambda row: -len(neighbours_by_row[row]))
@@ -148,7 +154,7 @@ _threaded_overlay_lock = threading.Lock()
 
 
 @contextmanager
-def _threaded_overlay() -> Iterator[None]:
+def _threaded_overlay() -> Generator[None]:
     """Let `gpd.overlay` compute differences in threads, see `_threaded_overlay_difference`."""
     with _threaded_overlay_lock:
         original = gpd_overlay._overlay_difference

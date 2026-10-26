@@ -31,6 +31,7 @@ ribasim_model = process_feedback_form(paths)
 
 # model specific tweaks
 # change unknown streefpeilen to a default streefpeil
+assert ribasim_model.basin.area.df is not None
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"
 ] = str(UNKNOWN_STREEFPEIL)
@@ -220,6 +221,7 @@ ribasim_model.link.add(pump_node, level_boundary_node)
 
 
 afvoer_pumps = [230, 387, 579, 366]
+assert ribasim_model.pump.static.df is not None
 for afvoer_pump in afvoer_pumps:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == afvoer_pump, "meta_func_afvoer"] = 1
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == afvoer_pump, "meta_func_aanvoer"] = 0
@@ -243,6 +245,7 @@ ribasim_model.link.add(ribasim_model.basin[97], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # (re)set 'meta_node_id'-values
+assert ribasim_model.node.df is not None
 for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
     mask = ribasim_model.node.df["node_type"] == node_type
     ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
@@ -260,6 +263,7 @@ ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, def
 # add outlet
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
+assert ribasim_model.outlet.static.df is not None
 for node in inlaat_structures:
     ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df["node_id"] == node, "meta_func_aanvoer"] = 1
 
