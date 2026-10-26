@@ -87,9 +87,9 @@ KEY_DISCHARGES = {
 }
 
 LIMITS: dict[str, dict[str, Limit]] = {
-    # Around 2.8 h, 1.7e6, 225 s, 160 s and 0.07 in October 2026, with 4 threads on a workstation
+    # Around 1.7e6, 225 s, 160 s and 0.07 in October 2026. The computation time is not checked, since it depends
+    # on the machine and its load, while these counts hardly do.
     "solver": {
-        "computation_time": Limit(max=4.5),  # h, which depends on the machine
         "rhs_calls": Limit(max=2.2e6),
         "mean_dt": Limit(min=175.0),  # s
         "dt_p05": Limit(min=100.0),  # s, the 5th percentile of the mean timestep per day
@@ -108,7 +108,7 @@ LIMITS: dict[str, dict[str, Limit]] = {
 
 
 def solver_metrics(solver_stats: xr.Dataset) -> dict[str, float]:
-    """Summarize the solver statistics of `solver_stats.nc`."""
+    """Summarize the solver statistics of `solver_stats.nc`, with the computation time in hours."""
     stats = solver_stats.to_dataframe()
     assert len(stats) > 0, "No solver statistics"
     accepted = stats["accepted_timesteps"].sum()
@@ -117,7 +117,8 @@ def solver_metrics(solver_stats: xr.Dataset) -> dict[str, float]:
     # dt is the mean timestep per row, so dt times the accepted timesteps is the simulated time of the row
     simulated = (stats["dt"] * stats["accepted_timesteps"]).sum()
     return {
-        "computation_time": float(stats["computation_time"].sum() / MS_PER_HOUR),
+        # rounded, since it varies between runs, and the metrics file is tracked by git
+        "computation_time": round(float(stats["computation_time"].sum() / MS_PER_HOUR), 1),
         "rhs_calls": float(stats["rhs_calls"].sum()),
         "mean_dt": float(simulated / accepted),
         "dt_p05": float(stats["dt"].quantile(0.05)),

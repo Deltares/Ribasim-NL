@@ -32,7 +32,7 @@ pixi run dvc repro --single-item validate_lhm_coupled
 
 It summarizes the run in metrics, and checks them against the loose limits in `LIMITS`:
 
-- `solver`: the computation time in hours, the number of right-hand side calls, the mean timestep and the 5th percentile of the mean timestep per day, and the fraction of rejected timesteps.
+- `solver`: the number of right-hand side calls, the mean timestep and the 5th percentile of the mean timestep per day, and the fraction of rejected timesteps.
 - `observations`: the number of Observation nodes that are compared with the simulated flow rate of the node they observe, and their median Nash-Sutcliffe (NSE) and Kling-Gupta efficiencies (KGE).
 - `discharge_kge`: the KGE of the discharge at key points of the main water system, such as the Rhine branches and the sluices of the Afsluitdijk.
 - `level_p01` and `level_p99`: the 1st and 99th percentile of the levels of key Basins, such as the IJsselmeer and the Noordzeekanaal.
@@ -43,7 +43,7 @@ The metrics are written to `data/Rijkswaterstaat/metrics/lhm_coupled.json`, whic
 pixi run dvc metrics diff main
 ```
 
-The computation time depends on the machine, so its limit leaves room for slower machines. If a change of the results is intended, change `LIMITS` in the same pull request and explain why.
+The metrics also include the computation time in hours, but it is not checked, since it depends on the machine and its load. The other solver metrics hardly do, so they catch slowdowns more reliably. If a change of the results is intended, change `LIMITS` in the same pull request and explain why.
 
 ## Completed-model result checks
 
