@@ -627,6 +627,16 @@ for row in basin_poly_gdf.itertuples():
 # Verbinden overgebleven levelBoundaries zonder kunstwerken (bijv. Westerschelde en Nieuwe Maas)
 assert model.level_boundary.node is not None and model.level_boundary.node.df is not None
 assert model.level_boundary.static.df is not None
+# Capacity [m3/s] of the Outlet from these basins to the boundary, instead of a placeholder that makes the model stiff.
+# Twice the largest flow of the coupled run of 2017-2019, or the capacity of the inflows of the basin if those are
+# larger, see https://github.com/Deltares/Ribasim-NL/issues/803
+OPEN_BOUNDARY_CAPACITY = {
+    "Nieuwe Waterweg": 6000.0,  # at most 2884 m3/s in 2017-2019
+    "Westerschelde": 300.0,  # at most 145 m3/s in 2017-2019
+    # the inflows are Kreekraksluizen (33.5 m3/s), Outlet 2500262 (100) and Gemaal Hogerwaard (0.4)
+    "Schelde - Rijnkanaal|Kreekrak": 135.0,
+}
+open_boundary_basins = []
 for boundary_node_id in model.level_boundary.node.df[
     ~model.level_boundary.node.df.index.isin(boundary_node_ids)
 ].index.to_list():
@@ -639,10 +649,12 @@ for boundary_node_id in model.level_boundary.node.df[
         .distance(cast(Polygon | MultiPolygon, basin_poly_gdf.at[us_basin_id, "geometry"]).boundary)
         .idxmin()
     )
-    # toevoegen outlet met oneindig capaciteit en een crest_level op boundary level
+    # toevoegen outlet met een crest_level op boundary level
+    basin_name = cast(str, basin_poly_gdf.at[us_basin_id, "naam"])
+    open_boundary_basins.append(basin_name)
     model.outlet.add(
         Node(node_id, network.nodes.at[node_id, "geometry"]),
-        [outlet.Static(flow_rate=[99999], min_upstream_level=[level])],
+        [outlet.Static(flow_rate=[OPEN_BOUNDARY_CAPACITY[basin_name]], min_upstream_level=[level])],
     )
 
     model.link.add(
@@ -658,6 +670,10 @@ for boundary_node_id in model.level_boundary.node.df[
     )
 
     boundary_node_ids += [boundary_node_id]
+
+assert sorted(open_boundary_basins) == sorted(OPEN_BOUNDARY_CAPACITY), (
+    f"Open boundaries from {open_boundary_basins}, expected {list(OPEN_BOUNDARY_CAPACITY)}"
+)
 
 # %%updaten manningResistances
 # Deze knopen zijn verbonden met 1 basin náást een node die wél de juiste basins verbindt.

@@ -84,11 +84,10 @@ remove_nodes = [
     6000109,  # parallel aan AaenMaas FlowDemand-inlaat 3800601
     6000800,  # parallel aan AaenMaas FlowDemand-inlaat 3800601
     6002497,  # parallel aan doorlaat 6002496 tussen hetzelfde Limburg/AaenMaas basin-paar
-    6002788,  # reparatie Helenavaart Limburg
-    6002788,  # reparatie Helenavaart Limburg
+    6002790,  # reparatie Helenavaart Limburg, DiscreteControl van 6002493
     3800052,  # forceren koppeling kanaal van Deurne
     3800447,  # forceren koppeling kanaal van Deurne
-    3803725,  # forceren koppeling kanaal van Deurne
+    3803729,  # forceren koppeling kanaal van Deurne, DiscreteControl van 3800447
     3802017,  # verwijderen rand binnenstad
     3800049,  # verwijderen rand binnenstad
     3803092,  # verwijderen zijtak Helanvaart Limburg
@@ -279,12 +278,16 @@ def initialize_models(toml_file: Path) -> tuple[Model, Network, gpd.GeoDataFrame
     model = Model.read(toml_file)
 
     # Remove nodes if exists
-    assert model.node.df is not None
+    assert model.node.df is not None and model.link.df is not None
     node_ids = model.node.df.index.to_numpy()
     for i in remove_nodes:
-        if i in node_ids:
-            replace_listen_node_id(model, i, None)
-            model.remove_node(node_id=i, remove_links=True)
+        if i not in node_ids:
+            continue
+        controlled = model.link.df.loc[model.link.df["from_node_id"] == i, "to_node_id"].tolist()
+        if model.get_node_type(i) == "DiscreteControl" and controlled:
+            raise ValueError(f"DiscreteControl {i} in remove_nodes still controls {controlled}, remove those first.")
+        replace_listen_node_id(model, i, None)
+        model.remove_node(node_id=i, remove_links=True)
 
     # Load the network
     network_gpkg = data_dir / "Rijkswaterstaat/verwerkt/netwerk.gpkg"
@@ -981,15 +984,20 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
         print(f"Cannot merge {boundary_node} => {neighbor_node}: One of the two is controlled, the other is not")
         return
 
-    # Update listen references for removed boundary nodes, to the Basins behind any Junctions
+    # Update listen references for removed boundary nodes, to the Basins behind any Junctions: the boundary
+    # downstream of the upstream outlet stands for the downstream Basin, the other one for the upstream Basin
     outgoing, incoming = flow_link_graphs(model.link.df.reset_index())
     assert model.node.df is not None
     node_types = model.node.df["node_type"].to_dict()
     upstream_basin_id, _, _ = first_non_junction(from_node_ids, incoming, node_types)
     downstream_basin_id, _, _ = first_non_junction(to_node_ids, outgoing, node_types)
-    replacement_basin = upstream_basin_id if upstream_basin_id is not None else downstream_basin_id
-    replace_listen_node_id(model, boundary_node_id, replacement_basin)
-    replace_listen_node_id(model, neighbor_id, replacement_basin)
+    for lb_id in (boundary_node_id, neighbor_id):
+        upstream_id = model.upstream_node_id(lb_id)
+        is_downstream = not isinstance(upstream_id, pd.Series) and upstream_id == from_node_ids
+        replacement_basin = downstream_basin_id if is_downstream else upstream_basin_id
+        if replacement_basin is None:
+            replacement_basin = upstream_basin_id if is_downstream else downstream_basin_id
+        replace_listen_node_id(model, lb_id, replacement_basin)
 
     # Remove boundary node from model
     model.remove_node(boundary_node_id, remove_links=True)

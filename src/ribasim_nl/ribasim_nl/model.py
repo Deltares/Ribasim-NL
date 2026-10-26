@@ -1254,13 +1254,16 @@ class Model(ribasim.Model):
         outlet_b = self.node.df.loc[outlet_b_id].copy()
         assert isinstance(outlet_a, pd.Series) and isinstance(outlet_b, pd.Series)
 
-        # Remove upstream (outlet_a) control node before link redirection, keeping the downstream one
-        upstream_ctrl_links = self.link.df[
-            (self.link.df.to_node_id == outlet_a_id) & (self.link.df.link_type == "control")
-        ]
-        for ctrl_link_id in upstream_ctrl_links.index:
-            ctrl_node_id = cast(int, self.link.df.at[ctrl_link_id, "from_node_id"])
-            self.remove_node(ctrl_node_id, remove_links=True)
+        # Remove the upstream (outlet_a) control nodes of a type that also controls outlet_b before link
+        # redirection, keeping the downstream one. Others are kept, such as the DiscreteControl of an
+        # outlet that is merged with an inlet with a FlowDemand, since an Outlet can have both.
+        control_links = self.link.df[self.link.df.link_type == "control"]
+        upstream_ctrl_ids = control_links.loc[control_links.to_node_id == outlet_a_id, "from_node_id"]
+        downstream_ctrl_ids = control_links.loc[control_links.to_node_id == outlet_b_id, "from_node_id"]
+        downstream_ctrl_types = {self.get_node_type(i) for i in downstream_ctrl_ids}
+        for ctrl_node_id in upstream_ctrl_ids:
+            if self.get_node_type(ctrl_node_id) in downstream_ctrl_types:
+                self.remove_node(ctrl_node_id, remove_links=True)
 
         # correct link from and to attributes (collect all links connected to either outlet for geometry reset)
         link_ids = self.link.df[
@@ -1277,10 +1280,18 @@ class Model(ribasim.Model):
         avg_y = (outlet_a.geometry.y + outlet_b.geometry.y) / 2
         self.node.df.loc[outlet_a_id, "geometry"] = Point(avg_x, avg_y)  # ty: ignore[invalid-assignment]
 
-        # Merge attributes
-        self.outlet.static.df.loc[self.outlet.static.df.node_id == outlet_a_id, "max_downstream_level"] = (
-            self.outlet.static.df.loc[self.outlet.static.df.node_id == outlet_b_id, "max_downstream_level"]
-        )
+        # Take the max_downstream_level of outlet_b, which belongs to the downstream model, per control state
+        static = self.outlet.static.df
+        is_a = static.node_id == outlet_a_id
+        static_b = static.loc[static.node_id == outlet_b_id]
+        if static_b["control_state"].notna().any():
+            levels_b = static_b.set_index("control_state")["max_downstream_level"]
+            levels = static.loc[is_a, "control_state"].map(levels_b)
+        else:
+            assert len(static_b) == 1, f"Outlet {outlet_b_id} should have one static row without control_state."
+            levels = pd.Series(static_b["max_downstream_level"].iloc[0], index=static.index[is_a])
+        # a missing max_downstream_level of outlet_b means no limit, so keep that of outlet_a
+        static.loc[is_a, "max_downstream_level"] = levels.fillna(static.loc[is_a, "max_downstream_level"])
 
         # Remove outlet_b
         self.remove_node(outlet_b_id)
