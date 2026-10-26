@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 from ribasim import Node
 from ribasim.nodes import basin, discrete_control, level_boundary, outlet
-from ribasim_nl.control import set_continuous_level_control
-from ribasim_nl.coupling_level_common import LEVEL_UPDATE_PROTECTION_COLUMN
+from ribasim_nl.control import set_continuous_level_control, set_discrete_level_control
+from ribasim_nl.coupling_level_common import LEVEL_UPDATE_PROTECTION_COLUMN, THRESHOLD_UPDATE_PROTECTION_COLUMN
 from shapely.geometry import MultiPolygon, Point, Polygon
 
 from ribasim_nl import Model
@@ -126,3 +126,55 @@ def test_set_continuous_level_control_to_pump(model):
 def test_set_continuous_level_control_invalid(model, listen_node_id, level, flow_rate):
     with pytest.raises(ValueError):
         set_continuous_level_control(model, 2, listen_node_id=listen_node_id, level=level, flow_rate=flow_rate)
+
+
+def test_set_discrete_level_control(model):
+    control_id = set_discrete_level_control(
+        model,
+        2,
+        listen_node_id=3,
+        level=[-0.59, -0.57],
+        flow_rate=[0.0, 34.5, 40.0],
+        hysteresis=[0.005, 0.0025],
+        min_upstream_level=-0.65,
+        name="peil boezem",
+    )
+    # the DiscreteControl is replaced, keeping its node and link IDs
+    assert control_id == 6
+    assert model.get_node_type(control_id) == "DiscreteControl"
+    assert model.node.df.at[control_id, "name"] == "peil boezem"
+    assert sorted(model.link.df.index) == [1, 2, 3, 4, 5, 6]
+    listen_links = model.link.df[model.link.df.link_type == "listen"]
+    assert listen_links[["from_node_id", "to_node_id"]].values.tolist() == [[3, control_id]]
+
+    condition = model.discrete_control.condition.df
+    assert condition.condition_id.tolist() == [1, 2]
+    np.testing.assert_allclose(condition.threshold_high, [-0.59, -0.57])
+    np.testing.assert_allclose(condition.threshold_low, [-0.595, -0.5725])
+    assert condition[THRESHOLD_UPDATE_PROTECTION_COLUMN].all()
+    logic = model.discrete_control.logic.df
+    assert logic.truth_state.tolist() == ["FF", "TF", "TT"]
+    assert logic.control_state.tolist() == ["stap 0", "stap 1", "stap 2"]
+
+    static = model.outlet.static.df[model.outlet.static.df.node_id == 2]
+    assert static.control_state.tolist() == ["stap 0", "stap 1", "stap 2"]
+    assert static.flow_rate.tolist() == [0.0, 34.5, 40.0]
+    assert (static.max_flow_rate == 40.0).all()
+    assert (static.min_upstream_level == -0.65).all()
+    assert (static.meta_from_level == 0.0).all()
+    assert static[LEVEL_UPDATE_PROTECTION_COLUMN].all()
+
+
+@pytest.mark.parametrize(
+    ("level", "flow_rate", "hysteresis"),
+    [
+        ([-0.6], [0.0], 0.0025),  # no flow rate above the level
+        ([-0.6, -0.601], [0.0, 1.0, 2.0], 0.0025),  # descending levels
+        ([-0.6, -0.599], [0.0, 1.0, 2.0], 0.0025),  # a step switches off below where the one below switches on
+        ([-0.6], [0.0, 1.0], 0.0),  # no hysteresis
+        ([-0.6], [0.0, -1.0], 0.0025),  # negative flow rate
+    ],
+)
+def test_set_discrete_level_control_invalid(model, level, flow_rate, hysteresis):
+    with pytest.raises(ValueError):
+        set_discrete_level_control(model, 2, listen_node_id=3, level=level, flow_rate=flow_rate, hysteresis=hysteresis)
