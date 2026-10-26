@@ -1,48 +1,48 @@
 {
   "solver": {
-    "computation_time": 2.8,
-    "rhs_calls": 1669000.0,
-    "mean_dt": 225.0,
-    "dt_p05": 159.9,
-    "rejected_fraction": 0.06601
+    "computation_time": 2.2,
+    "rhs_calls": 1553000.0,
+    "mean_dt": 259.7,
+    "dt_p05": 166.0,
+    "rejected_fraction": 0.0744
   },
   "observations": {
-    "compared": 639.0,
-    "median_nse": -0.04897,
-    "median_kge": 0.0581
+    "compared": 640.0,
+    "median_nse": -0.04419,
+    "median_kge": 0.05382
   },
   "discharge_kge": {
     "Lobith": 0.9997,
     "Pannerdense Kop": 0.9307,
-    "IJsselkop": 0.9218,
-    "Driel boven": 0.8594,
-    "Hagestein boven": 0.8799,
-    "Tiel Waal": 0.926,
-    "Haringvlietsluizen binnen": 0.8353,
-    "Maasmond": 0.3771,
-    "Den Oever buiten": 0.396,
-    "Kornwerderzand buiten": 0.3091,
-    "IJmuiden binnen": 0.2515
+    "IJsselkop": 0.9224,
+    "Driel boven": 0.8595,
+    "Hagestein boven": 0.8857,
+    "Tiel Waal": 0.9261,
+    "Haringvlietsluizen binnen": 0.8302,
+    "Maasmond": 0.3733,
+    "Den Oever buiten": 0.3957,
+    "Kornwerderzand buiten": 0.3089,
+    "IJmuiden binnen": 0.2383
   },
   "level_p01": {
     "IJsselmeer": -0.3946,
-    "Markermeer": -0.4055,
-    "Veluwemeer": -0.04918,
-    "Noordzeekanaal": -0.3975,
-    "Amsterdam-Rijnkanaal": -0.3988,
-    "Volkerak": -0.08621,
-    "Haringvliet": 0.01794,
+    "Markermeer": -0.4057,
+    "Veluwemeer": -0.04908,
+    "Noordzeekanaal": -0.3974,
+    "Amsterdam-Rijnkanaal": -0.3985,
+    "Volkerak": -0.0875,
+    "Haringvliet": 0.01921,
     "Twentekanaal (Kanaal Zutphen-Enschede)": 9.993,
     "Julianakanaal": 44.04
   },
   "level_p99": {
-    "IJsselmeer": -0.08319,
+    "IJsselmeer": -0.08313,
     "Markermeer": -0.1881,
-    "Veluwemeer": -0.03088,
-    "Noordzeekanaal": -0.3909,
-    "Amsterdam-Rijnkanaal": -0.3764,
-    "Volkerak": 0.002048,
-    "Haringvliet": 0.08883,
+    "Veluwemeer": -0.03054,
+    "Noordzeekanaal": -0.391,
+    "Amsterdam-Rijnkanaal": -0.3765,
+    "Volkerak": 0.02242,
+    "Haringvliet": 0.09518,
     "Twentekanaal (Kanaal Zutphen-Enschede)": 10.08,
     "Julianakanaal": 44.05
   }
