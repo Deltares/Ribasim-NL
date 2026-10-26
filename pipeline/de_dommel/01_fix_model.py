@@ -339,7 +339,7 @@ basin_node_ids = model.basin.node.df.index.intersection(upstream_node_ids)
 model.node.df.loc[basin_node_ids, "meta_gestuwd"] = True
 
 # set álle benedenstroomse outlets van gestuwde basins als gestuwd (dus ook duikers en andere objecten)
-downstream_node_ids = pd.Series([model.downstream_node_id(i) for i in basin_node_ids]).explode().to_numpy()
+downstream_node_ids = pd.Index(pd.Series([model.downstream_node_id(i) for i in basin_node_ids]).explode())
 assert model.outlet.node is not None and model.outlet.node.df is not None
 model.node.df.loc[model.outlet.node.df.index.intersection(downstream_node_ids), "meta_gestuwd"] = True
 

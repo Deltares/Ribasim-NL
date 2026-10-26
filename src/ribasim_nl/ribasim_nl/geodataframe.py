@@ -1,7 +1,7 @@
 import importlib
 import os
 import threading
-from collections.abc import Iterator
+from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from functools import reduce
@@ -154,7 +154,7 @@ _threaded_overlay_lock = threading.Lock()
 
 
 @contextmanager
-def _threaded_overlay() -> Iterator[None]:
+def _threaded_overlay() -> Generator[None]:
     """Let `gpd.overlay` compute differences in threads, see `_threaded_overlay_difference`."""
     with _threaded_overlay_lock:
         original = gpd_overlay._overlay_difference

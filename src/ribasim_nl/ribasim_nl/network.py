@@ -291,10 +291,9 @@ class Network:
         gdf_overlay = gpd.overlay(self.nodes.reset_index(), gdf, how="intersection")[cols]
         gdf_overlay = gdf_overlay[~gdf_overlay.duplicated(subset="node_id")]
 
-        for row in gdf_overlay.itertuples():
-            attrs = {k: v for k, v in row._asdict().items() if k not in ["Index", "node_id"]}
-            for k, v in attrs.items():
-                self.graph.nodes[row.node_id][k] = v
+        for attrs in cast(list[dict[str, Any]], gdf_overlay.to_dict("records")):
+            node_id = attrs.pop("node_id")
+            self.graph.nodes[node_id].update(attrs)
 
         self._graph_undirected = None
         self._node_locations = None

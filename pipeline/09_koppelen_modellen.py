@@ -508,7 +508,7 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: gpd.G
                 continue
 
             # Couple with closest basin area
-            couple_with_basin_id = distances.idxmin()
+            couple_with_basin_id = cast(int, distances.idxmin())
 
         # Create link table
         link_table = []

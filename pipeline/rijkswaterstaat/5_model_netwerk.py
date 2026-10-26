@@ -274,7 +274,7 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
         node = Node(node_id, cast(Point, point), name=row.naam, meta_code_waterbeheerder=row.code)
 
         # haal alle eigenschappen op
-        kwk_df = pd.read_excel(file_name, sheet_name=row.naam)
+        kwk_df = pd.read_excel(file_name, sheet_name=cast(str, row.naam))
         kwk_properties = read_kwk_properties(kwk_df)
 
         # check if code-value is the same in both Excels
@@ -288,7 +288,7 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
         if node_type == "TabulatedRatingCurve":
             data = [read_rating_curve(kwk_df)]
         elif node_type == "Outlet":
-            data = [read_outlet(kwk_df, name=row.naam)]
+            data = [read_outlet(kwk_df, name=cast(str, row.naam))]
         elif node_type == "Pump":
             data = [read_pump(kwk_properties)]
         else:
