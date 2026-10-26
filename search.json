@@ -34,7 +34,7 @@
     "href": "dev/index.html#sec-environment-variables",
     "title": "Contributing",
     "section": "Add your access key",
-    "text": "Add your access key\nThe project data and the Ribasim core binary are stored on Deltares MinIO (S3) storage. To access them you need an access key. Ask a repository maintainer for a read-only key.\nCopy the template .env.default in the root of the repository to .env:\ncp .env.default .env\nThen fill in your key, using single quotes around the values:\nAWS_ACCESS_KEY_ID='&lt;access key&gt;'\nAWS_SECRET_ACCESS_KEY='&lt;secret key&gt;'\nThe .env file is gitignored, since it contains secrets. Pixi loads it automatically for every pixi run command. The other variables can normally keep their defaults, see Other settings.",
+    "text": "Add your access key\nThe project data and the Ribasim core binary are stored on Deltares MinIO (S3) storage. To access them you need an access key. Ask a repository maintainer for a read-only key. Maintainers create one key per institute in the MinIO console, restricted with this policy.\nCopy the template .env.default in the root of the repository to .env:\ncp .env.default .env\nThen fill in your key, using single quotes around the values:\nAWS_ACCESS_KEY_ID='&lt;access key&gt;'\nAWS_SECRET_ACCESS_KEY='&lt;secret key&gt;'\nThe .env file is gitignored, since it contains secrets. Pixi loads it automatically for every pixi run command. The other variables can normally keep their defaults, see Other settings.",
     "crumbs": [
       "Contributing"
     ]

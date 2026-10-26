@@ -295,7 +295,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="sec-environment-variables" class="level2">
 <h2 class="anchored" data-anchor-id="sec-environment-variables">Add your access key</h2>
-<p>The project data and the Ribasim core binary are stored on Deltares MinIO (S3) storage. To access them you need an access key. <strong>Ask a repository maintainer for a read-only key.</strong></p>
+<p>The project data and the Ribasim core binary are stored on Deltares MinIO (S3) storage. To access them you need an access key. <strong>Ask a repository maintainer for a read-only key.</strong> Maintainers create one key per institute in the MinIO console, restricted with <a href="https://github.com/Deltares/Ribasim-NL/blob/main/docs/dev/minio-read-only-policy.json">this policy</a>.</p>
 <p>Copy the template <code>.env.default</code> in the root of the repository to <code>.env</code>:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cp</span> .env.default .env</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Then fill in your key, using single quotes around the values:</p>
