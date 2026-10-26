@@ -64,7 +64,7 @@ KEY_LEVELS = (
     KeyLevel(8005792, "Markermeer", -0.6, 0.0),  # -0.40 in winter, -0.10 to -0.30 in summer
     KeyLevel(8008077, "Veluwemeer", -0.4, 0.2),  # -0.05
     KeyLevel(8004210, "Noordzeekanaal", -0.6, -0.2),  # -0.40
-    KeyLevel(8005018, "Amsterdam-Rijnkanaal", -0.6, -0.2),  # -0.40, the same section as the Noordzeekanaal
+    KeyLevel(8005018, "Amsterdam-Rijnkanaal Breukelen", -0.6, -0.2),  # -0.40, the same section as the Noordzeekanaal
     KeyLevel(8002609, "Volkerak", -0.3, 0.3),  # 0.00
     KeyLevel(8001814, "Haringvliet", -0.3, 0.6),
     KeyLevel(8010592, "Twentekanaal (Kanaal Zutphen-Enschede)", 9.8, 10.4),  # 10.00 between Eefde and Delden

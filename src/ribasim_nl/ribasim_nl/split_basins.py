@@ -1,18 +1,23 @@
-"""Split basins in a Ribasim model based on pre-split basin polygons."""
+"""Split basins in a Ribasim model, based on pre-split basin polygons, or along a route."""
 
+import math
 import typing
+from collections.abc import Sequence
 from itertools import combinations
 from pathlib import Path
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
+import shapely
+import shapely.affinity
 from pandera.typing.geopandas import GeoDataFrame
 from ribasim import Node
 from ribasim.geometry.node import NodeSchema
-from ribasim.nodes import manning_resistance
-from shapely.geometry import GeometryCollection, LineString, MultiLineString, Point
+from ribasim.nodes import basin, manning_resistance
+from shapely.geometry import GeometryCollection, LineString, MultiLineString, MultiPolygon, Point
 from shapely.geometry.base import BaseGeometry
-from shapely.ops import linemerge, unary_union
+from shapely.ops import linemerge, split, substring, unary_union
 
 from ribasim_nl import Model
 
@@ -322,3 +327,229 @@ class NodeMetaCache:
             ].fillna("hoofdwater")
         model.node.df = GeoDataFrame[NodeSchema](nodes.copy())
         return model
+
+
+def _cross_section(route: LineString, distance: float, polygon: BaseGeometry, length: float) -> LineString:
+    """The line across `polygon`, perpendicular to `route` at `distance` along it, from boundary to boundary."""
+    point = route.interpolate(distance)
+    a, b = route.interpolate(max(distance - 10.0, 0.0)), route.interpolate(min(distance + 10.0, route.length))
+    norm = math.hypot(b.x - a.x, b.y - a.y)
+    assert norm > 0, f"The route has no direction at {point}"
+    across = ((a.y - b.y) / norm * length / 2, (b.x - a.x) / norm * length / 2)
+    line = LineString([(point.x - across[0], point.y - across[1]), (point.x + across[0], point.y + across[1])])
+    parts = [g for g in shapely.get_parts(line.intersection(polygon)) if g.distance(point) < 1e-6]
+    if len(parts) != 1 or not isinstance(parts[0], LineString):
+        raise ValueError(f"Cannot cut the Basin area across the route at {point}")
+    return parts[0]
+
+
+def _split_across(
+    geometry: BaseGeometry, cut: LineString, route: LineString, distance: float
+) -> tuple[BaseGeometry, BaseGeometry]:
+    """Split `geometry` with `cut` in the parts before and after `distance` along `route`.
+
+    Parts of `geometry` that the route does not pass, such as harbours, join the nearest of both.
+    """
+    # extend the cut by a meter at both ends, so it crosses the boundary
+    extended = shapely.affinity.scale(cut, xfact=1 + 2 / cut.length, yfact=1 + 2 / cut.length, origin="center")
+    pieces = typing.cast(list[BaseGeometry], list(shapely.get_parts(split(geometry, extended))))
+    before_point, after_point = route.interpolate(distance - 1.0), route.interpolate(distance + 1.0)
+    (before,) = [p for p in pieces if p.contains(before_point)]
+    (after,) = [p for p in pieces if p.contains(after_point)]
+    assert before is not after, f"The cut at {cut.centroid} does not split the Basin area"
+    groups: tuple[list[BaseGeometry], list[BaseGeometry]] = ([before], [after])
+    for piece in pieces:
+        if piece is not before and piece is not after:
+            groups[piece.distance(after) < piece.distance(before)].append(piece)
+    return shapely.union_all(groups[0]), shapely.union_all(groups[1])
+
+
+def _join(geometry: LineString, route: LineString, from_connector: bool, tolerance: float = 1.0) -> tuple[float, int]:
+    """Where a flow link of a Basin joins `route`: its first vertex from the connector within `tolerance` of it.
+
+    :param geometry: geometry of the link
+    :param from_connector: whether the link flows from the connector into the Basin, so the connector is at its start
+    :return: the distance along `route` and the index of the vertex, or of the connector if no vertex is close enough
+    """
+    points = [Point(c) for c in geometry.coords]
+    indices = range(len(points)) if from_connector else range(len(points) - 1, -1, -1)
+    index = next((i for i in indices if route.distance(points[i]) <= tolerance), indices[0])
+    return route.project(points[index]), index
+
+
+def _along_route(route: LineString, start: float, end: float) -> list[tuple[float, ...]]:
+    """The coordinates of `route` from `start` to `end` along it, also when `end` lies before `start`."""
+    return list(substring(route, start, end).coords)
+
+
+def _join_line(coords: list[tuple[float, ...]]) -> LineString:
+    """A line through `coords`, without repeated points."""
+    return LineString([c for i, c in enumerate(coords) if i == 0 or c != coords[i - 1]])
+
+
+def split_basin_along_route(
+    model: Model,
+    basin_id: int,
+    route: LineString,
+    split_points: Sequence[Point],
+    basin_names: Sequence[str],
+    manning_names: Sequence[str],
+    *,
+    manning_n: float,
+    profile_slope: float,
+    cross_section_length: float = 5000.0,
+) -> tuple[list[int], list[int]]:
+    """Split a Basin in sections along `route`, connected in the direction of `route` by ManningResistances.
+
+    `route` runs through the Basin area in the direction of flow, for instance along the links of its main channel.
+    The ManningResistances lie on it at the points nearest to `split_points`, where the Basin area is cut across it.
+    The section that contains the Basin node keeps it; the others get a new Basin node on the route, halfway between
+    where their inflows and outflows join it, so their links do not run back along the route. Each section gets the
+    profile of the Basin with its area scaled by the share of the section in the length of the route within the
+    Basin, so the volume is divided in proportion, and copies of the other tables of the Basin. The flow links of the
+    Basin, which keep their IDs, move to the section where they join the route, and run along the route to its node.
+    The ManningResistances get `manning_n`, `profile_slope`, the width of the Basin area across the route, and the
+    length of their links, which run along the route from Basin node to Basin node.
+
+    :param model: model to update in place
+    :param basin_id: Basin to split, with a single area
+    :param route: line through the Basin area in the direction of flow
+    :param split_points: where to split the Basin, in the order of the route
+    :param basin_names: names of the sections, one more than `split_points`
+    :param manning_names: names of the ManningResistances, one per split point
+    :param manning_n: Manning roughness of the ManningResistances [s/m^(1/3)]
+    :param profile_slope: profile slope of the ManningResistances [-]
+    :param cross_section_length: maximum width of the Basin area across the route [m]
+    :return: the Basin node IDs of the sections and the ManningResistance node IDs, in the order of the route
+    """
+    assert model.basin.area.df is not None and model.basin.profile.df is not None
+    assert model.link.df is not None and model.node.df is not None
+    if model.get_node_type(basin_id) != "Basin":
+        raise ValueError(f"Node {basin_id} is not a Basin")
+    if not split_points or len(basin_names) != len(split_points) + 1 or len(manning_names) != len(split_points):
+        raise ValueError("Expected split points, one more Basin name and one ManningResistance name per split point")
+    (area_fid,) = model.basin.area.df.index[model.basin.area.df.node_id == basin_id]
+    polygon = typing.cast(BaseGeometry, model.basin.area.df.at[area_fid, "geometry"])
+    cuts = [route.project(point) for point in split_points]
+    if not (np.diff(cuts) > 0).all():
+        raise ValueError(f"The split points of Basin {basin_id} are not in the order of the route")
+    for cut in cuts:
+        if not polygon.contains(route.interpolate(cut)):
+            raise ValueError(f"The split point {route.interpolate(cut)} lies outside Basin {basin_id}")
+
+    # the sections, between the cuts across the route
+    cross_sections = [_cross_section(route, cut, polygon, cross_section_length) for cut in cuts]
+    sections: list[BaseGeometry] = []
+    remaining = polygon
+    for cut, cross_section in zip(cuts, cross_sections, strict=True):
+        before, remaining = _split_across(remaining, cross_section, route, cut)
+        sections.append(before)
+    sections.append(remaining)
+    assert math.isclose(sum(s.area for s in sections), polygon.area, rel_tol=1e-6), "The sections lose area"
+    inside = [g for g in shapely.get_parts(route.intersection(polygon)) if isinstance(g, LineString)]
+    bounds = [
+        min(route.project(Point(g.coords[0])) for g in inside),
+        *cuts,
+        max(route.project(Point(g.coords[-1])) for g in inside),
+    ]
+    lengths = np.array([route.intersection(section).length for section in sections])
+    assert (lengths > 0).all(), f"The route does not pass all sections of Basin {basin_id}"
+    fractions = lengths / lengths.sum()
+
+    # the flow links of the Basin, by the section in which they join the route
+    link_df = model.link.df
+    flow = link_df[
+        (link_df.link_type == "flow") & ((link_df.from_node_id == basin_id) | (link_df.to_node_id == basin_id))
+    ]
+    joins = {}
+    for link_id, row in flow.iterrows():
+        inflow = row.to_node_id == basin_id
+        distance, vertex = _join(typing.cast(LineString, row.geometry), route, from_connector=inflow)
+        section = int(np.searchsorted(cuts, distance))
+        joins[link_id] = (inflow, distance, vertex, section)
+
+    # the Basin node of each section
+    basin_point = typing.cast(Point, model.node.df.at[basin_id, "geometry"])
+    (kept,) = [i for i, section in enumerate(sections) if section.buffer(1e-6).contains(basin_point)]
+    distances = []
+    for i in range(len(sections)):
+        if i == kept:
+            distances.append(route.project(basin_point))
+            continue
+        inflows = [d for inflow, d, _, s in joins.values() if s == i and inflow]
+        outflows = [d for inflow, d, _, s in joins.values() if s == i and not inflow]
+        low, high = max([bounds[i], *inflows]), min([bounds[i + 1], *outflows])
+        if high <= low:
+            low, high = bounds[i], bounds[i + 1]
+        distances.append((low + high) / 2)
+    if not (np.diff(distances) > 0).all() or any(not bounds[i] < d < bounds[i + 1] for i, d in enumerate(distances)):
+        raise ValueError(f"The Basin nodes of the sections of Basin {basin_id} are not in their sections")
+
+    # copy the Basin to the new sections, with the profile scaled by their length
+    node_row = model.node.df.loc[basin_id]
+    meta = {str(c): v for c, v in node_row.items() if str(c).startswith("meta_") and pd.notna(v)}
+    profile = model.basin.profile.df[model.basin.profile.df.node_id == basin_id]
+    other_tables = [t for t in model.basin._tables() if t.tablename() not in ("Basin / profile", "Basin / area")]
+    basin_ids = []
+    for i, (section, fraction, name) in enumerate(zip(sections, fractions, basin_names, strict=True)):
+        if i == kept:
+            node_id = basin_id
+        else:
+            node_id = model.next_node_id
+            model.basin.add(
+                Node(node_id, route.interpolate(distances[i]), name=name, **meta),
+                [
+                    basin.Profile(level=profile.level.to_list(), area=(profile.area * fraction).to_list()),
+                    basin.Area(geometry=[MultiPolygon(shapely.get_parts(section))]),
+                ],
+            )
+            for table in other_tables:
+                df = table.df
+                if df is None or "node_id" not in df.columns or not (df.node_id == basin_id).any():
+                    continue
+                if table.tablename().startswith("Basin / subgrid"):
+                    raise NotImplementedError(f"Basin {basin_id} has a subgrid, which cannot be split")
+                table.df = pd.concat([df, df[df.node_id == basin_id].assign(node_id=node_id)], ignore_index=True)
+        basin_ids.append(node_id)
+    # adding Basins replaces the tables, so they are updated after
+    model.node.df.loc[basin_id, "name"] = basin_names[kept]
+    area_df = model.basin.area.df
+    area_df.loc[[area_fid], "geometry"] = gpd.GeoSeries(
+        [MultiPolygon(shapely.get_parts(sections[kept]))], index=[area_fid], crs=area_df.crs
+    )
+    model.basin.profile.df.loc[profile.index, "area"] = profile.area * fractions[kept]
+
+    # move the flow links to the section where they join the route
+    for link_id, (inflow, distance, vertex, section) in joins.items():
+        if section == kept:
+            continue
+        coords = list(typing.cast(LineString, link_df.at[link_id, "geometry"]).coords)
+        if inflow:
+            geometry = _join_line(coords[: vertex + 1] + _along_route(route, distance, distances[section]))
+            link_df.loc[link_id, "to_node_id"] = basin_ids[section]
+        else:
+            geometry = _join_line(_along_route(route, distances[section], distance) + coords[vertex:])
+            link_df.loc[link_id, "from_node_id"] = basin_ids[section]
+        # the stubs of pandas do not allow geometries as values
+        typing.cast(typing.Any, link_df.loc)[link_id, "geometry"] = geometry
+
+    # connect the sections with ManningResistances
+    manning_ids = []
+    for i, (cut, cross_section, name) in enumerate(zip(cuts, cross_sections, manning_names, strict=True)):
+        upstream = LineString(_along_route(route, distances[i], cut))
+        downstream = LineString(_along_route(route, cut, distances[i + 1]))
+        node = model.manning_resistance.add(
+            Node(model.next_node_id, route.interpolate(cut), name=name),
+            [
+                manning_resistance.Static(
+                    length=[upstream.length + downstream.length],
+                    manning_n=[manning_n],
+                    profile_width=[cross_section.length],
+                    profile_slope=[profile_slope],
+                )
+            ],
+        )
+        model.link.add(model.basin[basin_ids[i]], node, geometry=upstream, name=basin_names[i])
+        model.link.add(node, model.basin[basin_ids[i + 1]], geometry=downstream, name=basin_names[i + 1])
+        manning_ids.append(node.node_id)
+    return basin_ids, manning_ids

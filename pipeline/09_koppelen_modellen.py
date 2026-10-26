@@ -149,6 +149,13 @@ forced_coupling = {
     203900: 3401931,
 }
 
+# Connector nodes whose link with a Rijkswaterstaat Basin starts straight, to be routed over its water, see
+# `route_links_between_models`, rather than from the Rijkswaterstaat waterway nearest to them, see `get_rws_link`
+straight_rws_links = {
+    1100514,  # Opvoergemaal Steenenbeer, uit het IJmeer en niet via de Muidertrekvaart en het ARK, zie #916
+    1101053,  # Zeesluis Muiden, uit het IJmeer en niet via de Muidertrekvaart en het ARK, zie #916
+}
+
 # Nodes to move after coupling, by (dx, dy) in meters
 node_offsets = {
     3401931: (10.0, 0.0),  # NZV-afvoerjunction visueel scheiden van aanvoerjunction 3402060, zie #824
@@ -337,7 +344,8 @@ def create_link_geometry(
     LineString
         LineString geometry for the link
     """
-    if couple_authority == "Rijkswaterstaat":
+    straight = {kwargs["from_node"].node_id, kwargs["to_node"].node_id} & straight_rws_links
+    if couple_authority == "Rijkswaterstaat" and not straight:
         if kwargs["meta_to_authority"] != boundary_node_authority:  # uitlaat
             geometry = get_rws_link(
                 network=network,
@@ -353,7 +361,7 @@ def create_link_geometry(
                 reversed=True,
             )
     else:
-        # For non-RWS authorities, use simple line geometry
+        # For non-RWS authorities and `straight_rws_links`, use simple line geometry
         geometry = LineString([kwargs["from_node"].geometry, kwargs["to_node"].geometry])
 
     return geometry
