@@ -221,7 +221,7 @@ for basin_fid, split_lijnen_select_df in split_lijnen_df[split_lijnen_df.opmerki
 
     for row in split_lijnen_select_df.itertuples():
         line = cast(LineString, row.geometry)
-        if not len(series[series.intersects(line)]) == 1:
+        if len(series[series.intersects(line)]) != 1:
             raise ValueError(f"line with fid {row.Index} intersects basin with fid {basin_fid} more than once")
 
         # select polygon

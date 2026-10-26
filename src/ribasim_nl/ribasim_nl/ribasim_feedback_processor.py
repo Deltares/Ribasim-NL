@@ -143,15 +143,14 @@ class RibasimFeedbackProcessor:
         print("Processed all actions")
 
     def remove_node(self, row):
+        assert self.model.node.df is not None
+        assert self.model.link.df is not None
         try:
             key = row["Node Type"]
             key = mapping[key]
             node_id = int(row["Node ID"])
             logger.info(f"Node ID: {node_id}")
             value = getattr(self.model, key, None)
-
-            assert self.model.node.df is not None
-            assert self.model.link.df is not None
 
             # Remove the Node
             if value is not None:
@@ -184,9 +183,11 @@ class RibasimFeedbackProcessor:
             logger.error(f"Error removing node {row['Node ID']}: {e}")
 
     def add_node(self, row) -> None:
+        assert self.model.node.df is not None
         try:
             key = mapping.get(row["Node Type.1"])
-            assert key is not None, f"Unknown node type {row['Node Type.1']}"
+            if key is None:
+                raise ValueError(f"Unknown node type {row['Node Type.1']}")
             max_id = self.get_current_max_nodeid()
             node_id = max_id + 1
             logger.info(f"Node ID: {node_id}")
@@ -199,7 +200,6 @@ class RibasimFeedbackProcessor:
                 x_coord = row["Coordinaat X"]
                 y_coord = row["Coordinaat Y"]
                 df_node = self.model.node.df
-                assert df_node is not None
                 template_row = df_node.iloc[-1:].copy()
                 template_row.index = pd.Index([node_id], name="node_id")
                 template_row["node_type"] = node_type_name
@@ -291,6 +291,8 @@ class RibasimFeedbackProcessor:
             logger.error(f"Error adding node at row {row.name}: {e}")
 
     def adjust_node(self, row) -> int | None:
+        assert self.model.node.df is not None
+        assert self.model.link.df is not None
         try:
             # Get the old node type and id
             key = self.df_node_types.loc[int(row["Node ID.2"])].node_type
@@ -299,9 +301,6 @@ class RibasimFeedbackProcessor:
             logger.info(f"Node ID: {node_id}")
             # node_id_old = node_id
             value = getattr(self.model, key, None)
-
-            assert self.model.node.df is not None
-            assert self.model.link.df is not None
 
             # Get old geometry and remove Node
             if value is not None:
@@ -326,7 +325,8 @@ class RibasimFeedbackProcessor:
 
             new_node_type_name = row["Nieuw Node Type"]
             key = mapping.get(new_node_type_name)
-            assert key is not None, f"Unknown node type {new_node_type_name}"
+            if key is None:
+                raise ValueError(f"Unknown node type {new_node_type_name}")
             value = getattr(self.model, key, None)
 
             if value is not None:
@@ -400,10 +400,10 @@ class RibasimFeedbackProcessor:
             return None
 
     def adjust_links(self, row, node_id_map) -> None:
+        assert self.model.link.df is not None
         try:
             node_a = int(node_id_map.get(row["Node ID A.1"], row["Node ID A.1"]))
             node_b = int(node_id_map.get(row["Node ID B.1"], row["Node ID B.1"]))
-            assert self.model.link.df is not None
 
             df_row_a_b = self.model.link.df[
                 (self.model.link.df["from_node_id"] == node_a) & (self.model.link.df["to_node_id"] == node_b)
