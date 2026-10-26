@@ -128,7 +128,7 @@ forced_coupling = {
     1301498: 1300169,  # LevelBoundary buiten de boezem van HDSR geplaatst
     1301499: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
     1301496: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
-    1301495: 1404804,  # LevelBoundary buiten de boezem van HDSR geplaatst; inlaat vanaf bovenstroomse TRC-basin
+    1301495: 1404801,  # LevelBoundary buiten de boezem van HDSR geplaatst; inlaat vanaf bovenstroomse TRC-basin
     1301492: 1402100,  # LevelBoundary buiten de boezem van HDSR geplaatst; pomp naar benedenstroomse TRC-basin
     4400015: 5903236,  # LB ligt op exact dezelfde locatie
     4402348: 5900072,  # LB ligt op exact dezelfde locatie
