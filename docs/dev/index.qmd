@@ -32,6 +32,7 @@ Pixi manages all dependencies; always run commands through it, for example `pixi
 The project data and the Ribasim core binary are stored on Deltares MinIO (S3) storage.
 To access them you need an access key.
 **Ask a repository maintainer for a read-only key.**
+Maintainers create one key per institute in the MinIO console, restricted with [this policy](https://github.com/Deltares/Ribasim-NL/blob/main/docs/dev/minio-read-only-policy.json).
 
 Copy the template `.env.default` in the root of the repository to `.env`:
 
