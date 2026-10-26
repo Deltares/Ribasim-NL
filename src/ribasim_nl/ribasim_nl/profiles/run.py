@@ -6,6 +6,7 @@ from pathlib import Path
 
 import geopandas as gpd
 import momepy
+import numpy as np
 import pandas as pd
 import shapely
 
@@ -105,8 +106,9 @@ def main(
     :param wd_intermediate_output: working directory for intermediate output files, defaults to None
         If None, no intermediate output is exported
     :param wd_output: working directory for first-class profile outputs, defaults to None
-        If provided, the hydro-object network used to derive the profiles is exported here as
-        "network.gpkg" (layer "hydro_objects"). This file is a regular profile output (always
+        If provided, the hydro-object network with its main route is exported here as
+        "network.gpkg" (layer "hydro_objects"): the hydro-objects of the main route or in BGT water,
+        including those that the profiles leave out for lack of a BGT width or depth. This file is a regular profile output (always
         written, independent of `wd_intermediate_output`) and is consumed by the network-snapping
         step (see `ribasim_nl.network_snapping.read_hydro_objects`).
 
@@ -266,6 +268,16 @@ def main(
             crossings[crossings.intersects(_temp)].to_file(wd_intermediate_output / _fn_int_output, layer="endpoints")
             del _temp
 
+    # the network for routing links: the hydro-objects of the main route or in BGT water. The profiles use fewer, as
+    # the next steps drop those without width or depth, while other hydro-objects can be loose pieces without water
+    in_water = np.zeros(len(hydro_objects), dtype=bool)
+    in_water[
+        shapely.STRtree(bgt_data.geometry.to_numpy()).query(hydro_objects.geometry.to_numpy(), "intersects")[0]
+    ] = True
+    routing_network = hydro_objects.loc[
+        hydro_objects["main-route"].to_numpy(dtype=bool) | in_water, ["main-route", "geometry"]
+    ]
+
     # BGT-coupling
     hydro_objects = width.couple_bgt_to_hydro_objects(hydro_objects, bgt_data, min_overlap=bgt_buffer)
     hydro_objects = width.estimate_width(hydro_objects, bgt_data, drop_na=True)
@@ -289,15 +301,17 @@ def main(
     if wd_intermediate_output is not None:
         hydro_objects.to_file(wd_intermediate_output / _fn_int_output, layer="hydro-objects")
 
-    # export the hydro-object network used to derive the profiles [first-class output]
+    # export the hydro-object network with its main route [first-class output]
     # This is the network consumed by the network-snapping step (ribasim_nl.network_snapping
     # .read_hydro_objects). It is written for both routing strategies (network-based and pre-flagged) and is
     # independent of `wd_intermediate_output`, so the snapping step does not rely on debug output.
+    # It holds the hydro-objects of the main route or in BGT water, also those that the profiles leave out for lack
+    # of a BGT width or depth, since links follow them too.
     # Geometries are exploded to single-part LineStrings: `momepy.gdf_to_nx` (used to rebuild the
     # graph from this file) does not support multi-part geometries, which may occur for pre-flagged
     # hydro-objects that skip the network-patching step.
     if wd_output is not None:
-        network = hydro_objects.explode(index_parts=False, ignore_index=True)
+        network = routing_network.explode(index_parts=False, ignore_index=True)
         # write a new file, as overwriting a layer gives different bytes for the same content
         (wd_output / "network.gpkg").unlink(missing_ok=True)
         network.to_file(wd_output / "network.gpkg", layer="hydro_objects")
