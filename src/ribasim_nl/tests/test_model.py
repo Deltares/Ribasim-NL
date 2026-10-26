@@ -183,3 +183,9 @@ def test_set_link_id():
     assert sorted(model.link.df.index) == [1, 2]
     with pytest.raises(AssertionError, match="already exists"):
         model.set_link_id(1, 2)
+
+
+def test_imposed_settings(model, tmp_path):
+    assert model.experimental.concentration
+    model.write(tmp_path / "model.toml")
+    assert Model.read(tmp_path / "model.toml").experimental.concentration
