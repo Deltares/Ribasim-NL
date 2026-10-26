@@ -157,6 +157,10 @@ node_offsets = {
 # Outlets that are open water connections, converted to ManningResistance after coupling, removing their control
 outlet_to_manning_resistance = {
     1100600: {"profile_width": 10.0, "manning_n": 0.02},  # open water Angstel - ARK, zie #820
+    # open water van Stichtse Rijnlanden naar andere beheerders, met de breedte van het BGT-water, zie #912
+    1400719: {"profile_width": 40.0, "manning_n": 0.03},  # OW669, naar AmstelGooienVecht
+    1400731: {"profile_width": 10.0, "manning_n": 0.03},  # OW690, naar AmstelGooienVecht
+    1400734: {"profile_width": 7.0, "manning_n": 0.04},  # OW694, vistrap naar het ARK
 }
 
 
