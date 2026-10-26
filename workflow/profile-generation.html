@@ -301,7 +301,7 @@ window.Quarto = {
 <p>Profiles are generated per water authority, as (1) data sources are available per water authority, and (2) data sources are formatted differently per water authority.</p>
 <p>Prior to generating the profiles, the data is preprocessed:</p>
 <ol start="0" type="1">
-<li>Preprocessing of data sources, which includes generating <code>LINESTRING Z</code>-objects of measured cross-sections, removing duplicate hydro-objects, repairing hydro-objects along HyDAMO-standards, downloading BGT-data from their web-API.</li>
+<li>Preprocessing of data sources, which includes generating <code>LINESTRING Z</code>-objects of measured cross-sections, removing duplicate hydro-objects, repairing hydro-objects along HyDAMO-standards, reading the current BGT water surfaces of the area from the national <code>data/Basisgegevens/BGT/bgt_water.parquet</code>, see <code>ribasim_nl.bgt_water</code>.</li>
 </ol>
 <p>Subsequently, the following steps are executed on a per-basin basis:</p>
 <ol type="1">

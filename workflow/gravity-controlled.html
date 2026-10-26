@@ -281,6 +281,7 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 </tbody>
 </table>
+<p>ManningResistances get the DAMO profile of their link if it lies across one of their links. Without a profile of their own watercourse, they get a trapezoid with the width of the BGT water along their links, see <code>ribasim_nl.parametrization.manning_resistance_table</code>; the source is in <code>meta_profile_source</code>. When the links are routed along the waterways in the last step, their BGT width follows the routed links.</p>
 <p>Steps 5, 6 and 7 are shared between water authorities. Steps 5 and 7 are part of the pipeline, and live directly beneath the <code>pipeline</code> directory; step 6 is in the <code>notebooks</code> directory.</p>
 <ol start="5" type="1">
 <li><code>05_add_bergend.py</code> adds VdGaast-based storage basins (input = models are from script 4). A storage basin drains through a VdGaast-based TabulatedRatingCurve, except in the supply areas of <code>verwerkt/sturing/aanvoergebieden.gpkg</code> with <code>meta_aanvoer</code> true. There it is connected with a ManningResistance, so it can also be supplied.</li>
