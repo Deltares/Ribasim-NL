@@ -78,7 +78,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-83714cd0e7dc9fdbafbbd371d0427816.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-d3dd72e47976c844a05ffb6b950c6ecd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -303,7 +303,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="updating-the-published-data" class="level2">
 <h2 class="anchored" data-anchor-id="updating-the-published-data">Updating the published data</h2>
 <ol type="1">
-<li><p>Run the model with the <code>run_lhm_coupled</code> DVC stage. It writes <code>runs/lhm_coupled/lhm_coupled.toml</code>, which reads the input of <code>modellen/lhm_coupled</code>, and the results next to it. It also writes the commit of the code to <code>runinfo.json</code>, which the viewer shows next to the scale bar, with the start and end time of the run from <code>results/ribasim.log</code>. For now this runs with a looser solver tolerance, see <code>pipeline/run_lhm_coupled.py</code>. This takes many hours, so normally pull the cached results instead:</p>
+<li><p>Run the model with the <code>run_lhm_coupled</code> DVC stage. It writes <code>runs/lhm_coupled/lhm_coupled.toml</code>, which reads the input of <code>modellen/lhm_coupled</code>, and the results next to it. It also writes the commit of the code to <code>runinfo.json</code>, which the viewer shows next to the scale bar, with the start and end time of the run from <code>results/ribasim.log</code>. For now this runs with a looser solver tolerance, see <code>pipeline/run_lhm_coupled.py</code>. The NetCDF results are compressed, to save space in DVC. This takes many hours, so normally pull the cached results instead:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull run_lhm_coupled</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div></li>
 <li><p>Export the model to web-friendly files with the <code>export_webmap</code> DVC stage, which takes about 10 minutes:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc repro <span class="at">--pull</span> <span class="at">--single-item</span> export_webmap</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -354,9 +354,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 </tbody>
 </table>
-<p>Results are only exported if the model’s <code>results</code> directory exists.</p></li>
-<li><p>Push the outputs and commit the updated <code>dvc.lock</code>, see <a href="../dev/dvc.html#pushing-changes">DVC</a>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc push run_lhm_coupled export_webmap</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div></li>
+<p>Results are only exported if the model’s <code>results</code> directory exists. DVC does not cache this output, since the published model on MinIO is a copy of it already. <code>dvc.lock</code> does record its hash, which names the published model.</p></li>
+<li><p>Push the run and commit the updated <code>dvc.lock</code>, see <a href="../dev/dvc.html#pushing-changes">DVC</a>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc push run_lhm_coupled</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div></li>
 <li><p>Publish the model as a preview of the pull request of the current branch. This needs credentials with write access in <code>.env</code>, and the <a href="https://cli.github.com/">GitHub CLI</a> <code>gh</code>, logged in.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run publish-webmap</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>This uploads the model of the working tree, and that of <code>origin/main</code>, which it fetches first, and their differences, see <a href="#comparing-models">Comparing models</a>. It then adds a comment to the pull request with the link <code>https://ribasim.nl/viewer?pr=&lt;number&gt;</code> and a summary of the differences, or updates that comment on later publishes. Use <code>--pr &lt;number&gt;</code> to publish for another pull request, and <code>--main</code> to only publish the model of <code>origin/main</code>.</p></li>
@@ -399,7 +399,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 </tbody>
 </table>
-<p>To show <code>main</code>, the viewer reads <code>dvc.lock</code> from <code>main</code> on GitHub, and loads the snapshot of its <code>export_webmap</code> output. So once a pull request whose model was published is merged, the viewer shows its model, without publishing again. If that snapshot is not published, for instance because a pull request changed the model without publishing it, the viewer shows the snapshot in <code>main.json</code> with a warning. For a pull request, the viewer warns if <code>main</code> changed since the model was published; publish again to compare with the latest <code>main</code>. Snapshots and files that are no longer used are not deleted.</p>
+<p>To show <code>main</code>, the viewer reads <code>dvc.lock</code> from <code>main</code> on GitHub, and loads the snapshot of its <code>export_webmap</code> output. So once a pull request whose model was published is merged, the viewer shows its model, without publishing again. If that snapshot is not published, for instance because a pull request changed the model without publishing it, the viewer shows the snapshot in <code>main.json</code> with a warning. The next <code>pixi run publish-webmap</code> then exports the run of <code>main</code> again, and publishes it. Likewise, to compare a pull request with <code>main</code>, the export of <code>main</code> is downloaded from its snapshot, or exported again from its run if it is not published. For a pull request, the viewer warns if <code>main</code> changed since the model was published; publish again to compare with the latest <code>main</code>. Snapshots and files that are no longer used are not deleted.</p>
 </section>
 </section>
 <section id="viewing-local-models" class="level2">
