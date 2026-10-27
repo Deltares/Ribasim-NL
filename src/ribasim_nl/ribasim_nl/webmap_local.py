@@ -65,8 +65,8 @@ INDEX_HTML = """<!doctype html>
 </html>
 """
 MANIFEST = "manifest.json"
-# The result files that `export_webmap` reads
-RESULT_FILES = ("basin.nc", "flow.nc", "control.nc")
+# The result files that `export_webmap` reads, the log for when the model was run
+RESULT_FILES = ("basin.nc", "flow.nc", "control.nc", "ribasim.log")
 # The characters of git revisions like main, origin/main, HEAD~2 or v1.0, without a leading dash: never an option
 REVISION = re.compile(r"[\w.@/~^{}:][\w.@/~^{}:-]*")
 RANGE = re.compile(r"bytes=(\d*)-(\d*)")
@@ -95,6 +95,15 @@ def cache_key(toml_path: Path) -> str:
     return f"{toml_path.stem}-{digest}"
 
 
+def waterboards() -> Path | None:
+    """The water board boundaries to export, or None if they are not in the data directory."""
+    path = settings.ribasim_nl_data_dir / WATERBOARDS
+    if path.is_file():
+        return path
+    print(f"Leaving out the water boards, {path} not found")
+    return None
+
+
 def export_cached(toml_path: Path, cache_dir: Path = CACHE_DIR) -> Path:
     """Export a model for the viewer, unless the cached export is up to date; return the export directory."""
     output_dir = cache_dir / cache_key(toml_path)
@@ -102,10 +111,7 @@ def export_cached(toml_path: Path, cache_dir: Path = CACHE_DIR) -> Path:
         print(f"Using the cached export of {toml_path} in {output_dir}")
         return output_dir
     print(f"Exporting {toml_path} to {output_dir}")
-    waterboards = settings.ribasim_nl_data_dir / WATERBOARDS
-    if not waterboards.is_file():
-        print(f"Leaving out the water boards, {waterboards} not found")
-    export_webmap(toml_path, waterboards if waterboards.is_file() else None, output_dir)
+    export_webmap(toml_path, waterboards(), output_dir)
     return output_dir
 
 
@@ -183,9 +189,10 @@ def checkout_model(toml_path: Path, commit: str, repo_dir: Path = REPO_DIR, cach
     for path in [input_dir / "database.gpkg", *netcdf_tables(config, input_dir).values()]:
         get(path)
     results_dir = model_results_dir(target, config)
-    for name in RESULT_FILES:
-        if fs.isfile(repo_path(results_dir / name)):
-            get(results_dir / name)
+    # The commit the model was run from is next to the TOML, see `ribasim_nl.webmap.run_info`
+    for path in [*(results_dir / name for name in RESULT_FILES), target.parent / RUN_INFO]:
+        if fs.isfile(repo_path(path)):
+            get(path)
     complete.touch()
     return target
 

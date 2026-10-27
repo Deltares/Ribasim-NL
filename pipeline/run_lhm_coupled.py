@@ -17,6 +17,9 @@ from ribasim_nl.webmap import RUN_INFO
 
 # A looser tolerance, until a run with the default tolerance is feasible
 SOLVER_OVERRIDES = {"reltol": 1e-3}
+# Deflate the NetCDF results, which are pushed to DVC for every run. This makes them about
+# 40% smaller, at the cost of about a minute of writing at the end of the run.
+RESULTS_OVERRIDES = {"compression": True}
 
 
 def git(*args: str) -> str:
@@ -34,6 +37,7 @@ input_dir = model_toml.parent / config.get("input_dir", ".")
 assert (input_dir / "database.gpkg").is_file(), f"No database in {input_dir}"
 
 config["solver"] = config.get("solver", {}) | SOLVER_OVERRIDES
+config["results"] = config.get("results", {}) | RESULTS_OVERRIDES
 config["input_dir"] = os.path.relpath(input_dir, run_dir).replace("\\", "/")
 config["results_dir"] = "results"
 

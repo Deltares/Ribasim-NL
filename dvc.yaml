@@ -1198,5 +1198,8 @@ stages:
       - data/Rijkswaterstaat/modellen/lhm_coupled
       - data/Rijkswaterstaat/runs/lhm_coupled
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+    # Not cached by DVC: `pixi run publish-webmap` stores it on MinIO, see `ribasim_nl.webmap_publish`.
+    # `dvc.lock` still records its hash, which names the published snapshot.
     outs:
-      - data/Rijkswaterstaat/webmap/lhm_coupled
+      - data/Rijkswaterstaat/webmap/lhm_coupled:
+          cache: false
