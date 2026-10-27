@@ -5,6 +5,9 @@ import xarray as xr
 
 ALLOWED_NON_STEADY_STATE_NODE_IDS = {
     "DeDommel": {"wet": {1708}},
+    # In the dry scenario Inlaatgemaal AGC supplies the boezem up to -0.61 m NAP, while Boezemgemaal Halfweg pumps
+    # from -0.615 m NAP, so the boezem keeps cycling, also with daily DiscreteControl
+    "Rijnland": {"dry": {2770, 5600}},
     "RijnenIJssel": {"wet": {835}},
     "StichtseRijnlanden": {"wet": {1877}},
 }
