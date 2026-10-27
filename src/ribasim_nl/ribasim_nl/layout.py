@@ -176,17 +176,20 @@ def offset_links(
     links.loc[flow.index, "geometry"] = gpd.GeoSeries(geometries, index=flow.index, crs=links.crs)
 
 
-def offset_junctions(model: Model, distance: float = 5.0) -> None:
+def offset_junctions(model: Model, distance: float = 5.0, junction_ids: typing.Iterable[int] | None = None) -> None:
     """Offset the Junctions to the right of the direction of the flow through them, along with their links.
 
-    The Junctions of the inflows and outflows of a Basin then no longer coincide.
+    The Junctions of the inflows and outflows of a Basin then no longer coincide. Only `junction_ids` are offset if
+    given, else all Junctions.
     """
     assert model.node.df is not None
     assert model.link.df is not None
     nodes, links = model.node.df, model.link.df
     flow = links[links["link_type"] == "flow"]
     locations: dict[int, shapely.Point] = {}
-    for junction_id in nodes.index[nodes["node_type"] == "Junction"]:
+    if junction_ids is None:
+        junction_ids = nodes.index[nodes["node_type"] == "Junction"]
+    for junction_id in junction_ids:
         outgoing = flow[flow["from_node_id"] == junction_id].geometry
         incoming = flow[flow["to_node_id"] == junction_id].geometry
         # the direction of the single side, where the flows are combined

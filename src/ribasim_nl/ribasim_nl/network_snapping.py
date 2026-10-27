@@ -29,9 +29,9 @@ import shapely.affinity
 import shapely.ops
 import tqdm
 
-from ribasim_nl import Model
 from ribasim_nl.bgt_water import read_bgt_water
 from ribasim_nl.link_geometries import MAX_STRAIGHT_LINE_RATIO, accept_length
+from ribasim_nl.model import Model
 
 LOG = logging.getLogger(__name__)
 
@@ -515,6 +515,14 @@ def _bergend_nodes(model: Model, basin_id: int) -> list[int]:
     return [*map(int, upstream.index), *map(int, upstream)]
 
 
+def lines_in(geometries: np.ndarray, tree: shapely.STRtree, area: shapely.Geometry) -> tuple[np.ndarray, np.ndarray]:
+    """Indices and LineString parts of the geometries clipped to an area."""
+    idx = tree.query(area, predicate="intersects")
+    parts, part_index = shapely.get_parts(shapely.intersection(geometries[idx], area), return_index=True)
+    is_line = shapely.get_type_id(parts) == shapely.GeometryType.LINESTRING
+    return idx[part_index[is_line]], parts[is_line]
+
+
 def snap_to_network(
     model: Model,
     hydro_objects: gpd.GeoDataFrame,
@@ -577,15 +585,6 @@ def snap_to_network(
     culvert_tree = shapely.STRtree(culvert_geometries)
     water_geometries = shapely.force_2d(water.geometry.to_numpy()) if water is not None else np.array([])
     water_tree = shapely.STRtree(water_geometries)
-
-    def lines_in(
-        geometries: np.ndarray, tree: shapely.STRtree, area: shapely.Geometry
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Indices and LineString parts of the geometries clipped to an area."""
-        idx = tree.query(area, predicate="intersects")
-        parts, part_index = shapely.get_parts(shapely.intersection(geometries[idx], area), return_index=True)
-        is_line = shapely.get_type_id(parts) == shapely.GeometryType.LINESTRING
-        return idx[part_index[is_line]], parts[is_line]
 
     new_geometries: dict[int, shapely.LineString] = {}
     new_locations: dict[int, shapely.Point] = {}
@@ -650,6 +649,31 @@ def read_waterways(top10nl_path: pathlib.Path, mask: shapely.Geometry) -> gpd.Ge
     )
 
 
+def read_main_waterways(
+    top10nl_path: pathlib.Path, mask: shapely.Geometry, main_route: gpd.GeoDataFrame | None = None
+) -> gpd.GeoDataFrame:
+    """The Top10NL water lines within a mask, and the lines of the `main_route` as its main route.
+
+    :param top10nl_path: Top10NL GeoPackage
+    :param mask: area to read
+    :param main_route: lines of the main route, such as a network of main waterways, defaults to None
+
+    :return: the waterways, with a boolean "main-route" column
+    """
+    waterways = [read_waterways(top10nl_path, mask)]
+    if main_route is not None:
+        lines = main_route.explode(ignore_index=True)
+        lines = lines[lines.geom_type == "LineString"]
+        waterways.append(
+            gpd.GeoDataFrame(
+                {"main-route": np.ones(len(lines), dtype=bool)},
+                geometry=shapely.force_2d(lines.geometry.to_numpy()),
+                crs=lines.crs,
+            )
+        )
+    return gpd.GeoDataFrame(pd.concat(waterways, ignore_index=True))
+
+
 def straight_flow_link_ids(model: Model) -> list[int]:
     """The flow links with a straight geometry."""
     assert model.link.df is not None
@@ -683,22 +707,12 @@ def snap_to_waterways(
     basin_ids = set(model.link.df.loc[link_ids, ["from_node_id", "to_node_id"]].to_numpy().ravel())
     areas = model.basin.area.df[model.basin.area.df["node_id"].isin(basin_ids)]
     mask = shapely.union_all(areas.geometry.buffer(tolerance).to_numpy())
-    waterways = [read_waterways(top10nl_path, mask)]
-    if main_route is not None:
-        lines = main_route.explode(ignore_index=True)
-        lines = lines[lines.geom_type == "LineString"]
-        waterways.append(
-            gpd.GeoDataFrame(
-                {"main-route": np.ones(len(lines), dtype=bool)},
-                geometry=shapely.force_2d(lines.geometry.to_numpy()),
-                crs=lines.crs,
-            )
-        )
+    waterways = read_main_waterways(top10nl_path, mask, main_route)
     water = gpd.read_file(top10nl_path, layer="top10nl_waterdeel_vlak", mask=mask)
     LOG.info(f"Routing {len(link_ids)} links along the Top10NL waterways")
     return snap_to_network(
         model,
-        pd.concat(waterways, ignore_index=True),
+        waterways,
         water=water,
         tolerance=tolerance,
         move_basins=False,
