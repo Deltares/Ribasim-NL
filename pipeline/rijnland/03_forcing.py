@@ -171,7 +171,7 @@ set_design_capacities(ribasim_model, from_to_node_function_table)
 
 # The boezemgemalen drain the boezem in steps of the level of Basin 2771, in the middle of the boezem, rather than of
 # the Basins next to them, see https://github.com/Deltares/Ribasim-NL/issues/906 and
-# https://github.com/Deltares/Ribasim-NL/pull/928#issuecomment-6437301792
+# https://github.com/Deltares/Ribasim-NL/pull/928#issuecomment-6443169972
 BOEZEM_BASIN = 2771  # streefpeil -0.61 m NAP
 # The Basins next to the gemalen are about 1 cm lower than Basin 2771. With the min_upstream_level of -0.61 m NAP
 # they had, the gemalen would only pump a fraction of their steps, so it is a safety limit below the streefpeil.
@@ -181,13 +181,13 @@ BOEZEMGEMALEN: tuple[tuple[int, str, list[float], list[float], float | list[floa
     (
         421,
         "Katwijk",
-        [-0.605, -0.595, -0.585, -0.58, -0.575, -0.57],
+        [-0.595, -0.585, -0.575, -0.57, -0.565, -0.56],
         [0.0, 15.0, 30.0, 45.0, 60.0, 75.0, 94.0],
         DEFAULT_LEVEL_STEP_HYSTERESIS,
     ),
-    # as the review gives them, Spaarndam switches on at a lower level, so before Halfweg
-    (834, "Spaarndam", [-0.605], [0.0, 32.0], DEFAULT_LEVEL_STEP_HYSTERESIS),
-    (1474, "Halfweg", [-0.60], [0.0, 33.0], DEFAULT_LEVEL_STEP_HYSTERESIS),
+    # Halfweg switches on before Spaarndam
+    (834, "Spaarndam", [-0.60], [0.0, 32.0], DEFAULT_LEVEL_STEP_HYSTERESIS),
+    (1474, "Halfweg", [-0.62], [0.0, 33.0], DEFAULT_LEVEL_STEP_HYSTERESIS),
     # Gouda starts at -0.59 m NAP and stops below -0.595 m NAP
     (1279, "Gouda", [-0.59, -0.57], [0.0, 34.5, 40.0], [0.005, DEFAULT_LEVEL_STEP_HYSTERESIS]),
 )
