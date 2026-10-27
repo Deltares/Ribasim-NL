@@ -23,6 +23,7 @@ All local paths are relative to `data/Rijkswaterstaat`.
     It writes `runs/lhm_coupled/lhm_coupled.toml`, which reads the input of `modellen/lhm_coupled`, and the results next to it.
     It also writes the commit of the code to `runinfo.json`, which the viewer shows next to the scale bar, with the start and end time of the run from `results/ribasim.log`.
     For now this runs with a looser solver tolerance, see `pipeline/run_lhm_coupled.py`.
+    The NetCDF results are compressed, to save space in DVC.
     This takes many hours, so normally pull the cached results instead:
 
     ```sh
@@ -49,11 +50,13 @@ All local paths are relative to `data/Rijkswaterstaat`.
     | `manifest.json` | List of the files above with their content hash and size, the color scale of each result variable, and when and from which commit the model was run |
 
     Results are only exported if the model's `results` directory exists.
+    DVC does not cache this output, since the published model on MinIO is a copy of it already.
+    `dvc.lock` does record its hash, which names the published model.
 
-3. Push the outputs and commit the updated `dvc.lock`, see [DVC](dvc.qmd#pushing-changes):
+3. Push the run and commit the updated `dvc.lock`, see [DVC](dvc.qmd#pushing-changes):
 
     ```sh
-    pixi run dvc push run_lhm_coupled export_webmap
+    pixi run dvc push run_lhm_coupled
     ```
 
 4. Publish the model as a preview of the pull request of the current branch.
@@ -85,6 +88,8 @@ Everything is uploaded to the anonymously readable `doc-image/webmap/` prefix on
 To show `main`, the viewer reads `dvc.lock` from `main` on GitHub, and loads the snapshot of its `export_webmap` output.
 So once a pull request whose model was published is merged, the viewer shows its model, without publishing again.
 If that snapshot is not published, for instance because a pull request changed the model without publishing it, the viewer shows the snapshot in `main.json` with a warning.
+The next `pixi run publish-webmap` then exports the run of `main` again, and publishes it.
+Likewise, to compare a pull request with `main`, the export of `main` is downloaded from its snapshot, or exported again from its run if it is not published.
 For a pull request, the viewer warns if `main` changed since the model was published; publish again to compare with the latest `main`.
 Snapshots and files that are no longer used are not deleted.
 

@@ -19,6 +19,10 @@ Everything is uploaded below the anonymously readable `doc-image/webmap/` prefix
   `?pr=<number>`. A pull request is compared with `main`, or in a stack of pull requests with the pull request
   of its base branch, so it only shows its own changes. That pull request must be published first.
 
+DVC does not cache the `export_webmap` output, so this is the only copy that is kept. The export of another commit,
+to compare with, is downloaded from its published snapshot. If it is not published, the model is exported again
+from its run, which DVC does keep.
+
 This needs the following environment variables to be set in `.env` (Deltares only):
 AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY
@@ -37,13 +41,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
-from dvc.api import DVCFileSystem
 from dvc.repo import Repo
 from minio import Minio
 from minio.error import S3Error
 
 from ribasim_nl.settings import settings
-from ribasim_nl.webmap_local import CACHE_DIR, REPO_DIR, checkout_model, diff_cached, resolve_commit
+from ribasim_nl.webmap import export_webmap, file_hash
+from ribasim_nl.webmap_local import CACHE_DIR, REPO_DIR, checkout_model, diff_cached, resolve_commit, waterboards
 
 MINIO_SERVER = "s3.deltares.nl"
 BUCKET_NAME = "ribasim-nl"
@@ -66,6 +70,8 @@ CONTENT_TYPES = {
 }
 IMMUTABLE = "public, max-age=31536000, immutable"
 COMMIT = re.compile(r"[0-9a-f]{40}")
+# The name of a file in the `files/` store: its content hash and extension
+STORED_FILE = re.compile(r"[0-9a-f]+\.[a-z]+")
 BRANCH = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*")
 
 
@@ -169,20 +175,9 @@ def lock_at(commit: str | None) -> dict:
     return yaml.safe_load(show.stdout)
 
 
-def checkout_export(commit: str, md5: str, cache_dir: Path = CACHE_DIR) -> Path:
-    """Get the `export_webmap` output at a commit from the DVC cache or remote; return its directory."""
-    target = cache_dir / "exports" / md5
-    complete = target.with_name(f"{md5}.complete")
-    if complete.is_file():
-        print(f"Using the cached export of {EXPORT_PATH} at {commit} in {target}")
-        return target
-    print(f"Getting {EXPORT_PATH} at {commit} into {target}")
-    fs = DVCFileSystem(str(REPO_DIR), rev=commit)
-    assert fs.isdir(EXPORT_PATH), f"{EXPORT_PATH} not found at {commit}, was `dvc push` run?"
-    fs.get(EXPORT_PATH, str(target), recursive=True)
-    assert (target / "manifest.json").is_file(), f"No manifest.json in {target}"
-    complete.touch()
-    return target
+def snapshot_name(md5: str) -> str:
+    """The name of the manifest of snapshot `md5`."""
+    return f"{MODEL}/snapshots/{md5}/manifest.json"
 
 
 class Store:
@@ -204,6 +199,27 @@ class Store:
                 return None
             raise
         return dict(stat.metadata or {})
+
+    def is_published(self, md5: str) -> bool:
+        """Whether snapshot `md5` is published."""
+        return self.metadata(snapshot_name(md5)) is not None
+
+    def download_snapshot(self, md5: str, target: Path) -> None:
+        """Download a published snapshot into a directory, as an export with the files named as in `files/`."""
+        response = self.client.get_object(BUCKET_NAME, PREFIX + snapshot_name(md5))
+        try:
+            manifest = json.loads(response.read())
+        finally:
+            response.close()
+            response.release_conn()
+        hashes = {entry["path"]: entry["hash"] for entry in manifest_entries(manifest)}
+        for name, content_hash in hashes.items():
+            assert STORED_FILE.fullmatch(name), f"Invalid file {name} in snapshot {md5}"
+            path = target / name
+            self.client.fget_object(BUCKET_NAME, PREFIX + f"files/{name}", str(path))
+            assert file_hash(path) == content_hash, f"{path} does not match its hash in snapshot {md5}"
+        # The manifest is written last, so it never points to files that are not downloaded yet
+        (target / "manifest.json").write_text(json.dumps(manifest, indent=1))
 
     def put_file(self, name: str, path: Path, content_hash: str) -> None:
         """Upload a file named by its content hash, unless it is already there."""
@@ -232,8 +248,8 @@ class Store:
 
     def publish_snapshot(self, export_dir: Path, md5: str) -> str:
         """Upload the files and manifest of an export as snapshot `md5`, unless it exists; return its name."""
-        name = f"{MODEL}/snapshots/{md5}/manifest.json"
-        if self.metadata(name) is not None:
+        name = snapshot_name(md5)
+        if self.is_published(md5):
             print(f"Snapshot {name} is already published")
             return name
         manifest = json.loads((export_dir / "manifest.json").read_text())
@@ -247,6 +263,38 @@ class Store:
         self.put_json(name, stored, IMMUTABLE)
         print(f"Published snapshot {name}")
         return name
+
+
+def checkout_export(store: Store, commit: str, md5: str, cache_dir: Path = CACHE_DIR) -> Path:
+    """Get the `export_webmap` output at a commit, whose hash in `dvc.lock` is `md5`; return its directory.
+
+    It is downloaded from its published snapshot. If that is not published, the model is exported again from
+    its run in DVC, which need not be identical to the original export byte for byte.
+    """
+    target = cache_dir / "exports" / md5
+    complete = target.with_name(f"{md5}.complete")
+    if complete.is_file():
+        print(f"Using the cached export of {EXPORT_PATH} at {commit} in {target}")
+        return target
+    if store.is_published(md5):
+        print(f"Downloading snapshot {md5} of {EXPORT_PATH} at {commit} into {target}")
+        target.mkdir(parents=True, exist_ok=True)
+        store.download_snapshot(md5, target)
+    else:
+        print(f"Snapshot {md5} of {EXPORT_PATH} at {commit} is not published, exporting its run again")
+        export_webmap(checkout_model(REPO_DIR / RUN_TOML, commit, cache_dir=cache_dir), waterboards(), target)
+    complete.touch()
+    return target
+
+
+def publish_commit(store: Store, commit: str) -> str:
+    """Publish the model of a commit as its snapshot, unless it is published; return the snapshot md5."""
+    md5 = export_hash(lock_at(commit))
+    if store.is_published(md5):
+        print(f"Snapshot {md5} of {commit} is already published")
+    else:
+        store.publish_snapshot(checkout_export(store, commit, md5), md5)
+    return md5
 
 
 def branch_name(branch: str) -> str:
@@ -297,8 +345,7 @@ def stack_base(number: int) -> tuple[str, int] | None:
 
 def publish_main(store: Store, commit: str) -> str:
     """Publish the model of a commit of main as its snapshot and as the latest main; return the snapshot md5."""
-    md5 = export_hash(lock_at(commit))
-    store.publish_snapshot(checkout_export(commit, md5), md5)
+    md5 = publish_commit(store, commit)
     store.put_json(f"{MODEL}/main.json", {"snapshot": md5, "commit": commit, "published": now()}, "no-cache")
     return md5
 
@@ -360,7 +407,7 @@ def upsert_comment(number: int, body: str) -> None:
 def publish_pr(store: Store, number: int) -> None:
     """Publish the model of the working tree for a pull request, with its differences from its base.
 
-    The base is main, or in a stack the pull request of the base branch, whose export must be pushed with DVC.
+    The base is main, or in a stack the pull request of the base branch.
     """
     head_md5 = check_working_tree()
     head_commit = commit_hash(
@@ -377,15 +424,14 @@ def publish_pr(store: Store, number: int) -> None:
     else:
         branch, base_pr = stack
         base_commit = fetch_branch(branch)
-        base_md5 = export_hash(lock_at(base_commit))
-        store.publish_snapshot(checkout_export(base_commit, base_md5), base_md5)
+        base_md5 = publish_commit(store, base_commit)
         base_label = f"#{base_pr}"
     head_dir = REPO_DIR / EXPORT_PATH
     store.publish_snapshot(head_dir, head_md5)
 
     base_toml = checkout_model(REPO_DIR / RUN_TOML, base_commit)
     labels = (f"{base_label} @ {base_commit[:7]}", f"#{number} @ {head_commit[:7]}")
-    base_dir = checkout_export(base_commit, base_md5)
+    base_dir = checkout_export(store, base_commit, base_md5)
     diff_dir = diff_cached(base_toml, REPO_DIR / RUN_TOML, base_dir, head_dir, labels)
     diff = json.loads((diff_dir / "diff.json").read_text())
     diff_name = f"{MODEL}/diffs/{base_md5}-{head_md5}.json"
