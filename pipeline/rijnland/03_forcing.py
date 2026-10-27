@@ -1,7 +1,11 @@
 """Parameterisation of water board: Rijnland."""
 
 import ribasim_nl.ribasim_parametrization as ribasim_param
+from ribasim import Node
+from ribasim.nodes import flow_demand
 from ribasim_nl.control import (
+    DEFAULT_LEVEL_STEP_HYSTERESIS,
+    set_discrete_level_control,
     set_flow_rate,
     set_node_functions,
 )
@@ -18,6 +22,7 @@ from ribasim_nl.workflow import (
     set_manning_resistance_outside_bergend,
     write_and_run_forcing_model,
 )
+from shapely.geometry import Point
 
 from ribasim_nl import CloudStorage, Model, supply
 
@@ -163,5 +168,51 @@ ribasim_model = complete_parametrization(
 
 # set the unknown capacities of Pumps and Outlets from the area they drain or supply
 set_design_capacities(ribasim_model, from_to_node_function_table)
+
+# The boezemgemalen drain the boezem in steps of the level of Basin 2771, in the middle of the boezem, rather than of
+# the Basins next to them, see https://github.com/Deltares/Ribasim-NL/issues/906 and
+# https://github.com/Deltares/Ribasim-NL/pull/928#issuecomment-6443645940
+BOEZEM_BASIN = 2771  # streefpeil -0.61 m NAP
+# The Basins next to the gemalen are about 1 cm lower than Basin 2771. With the min_upstream_level of -0.61 m NAP
+# they had, the gemalen would only pump a fraction of their steps, so it is a safety limit below the streefpeil.
+BOEZEM_MIN_UPSTREAM_LEVEL = -0.65
+# (node_id, name, levels [m+NAP] at which the steps switch on, flow rates [m3/s] below and above them, hysteresis [m])
+BOEZEMGEMALEN: tuple[tuple[int, str, list[float], list[float], float | list[float]], ...] = (
+    (
+        421,
+        "Katwijk",
+        [-0.595, -0.585, -0.575, -0.57, -0.565, -0.56],
+        [0.0, 15.0, 30.0, 45.0, 60.0, 75.0, 94.0],
+        DEFAULT_LEVEL_STEP_HYSTERESIS,
+    ),
+    # Halfweg switches on before Spaarndam
+    (834, "Spaarndam", [-0.605], [0.0, 32.0], DEFAULT_LEVEL_STEP_HYSTERESIS),
+    (1474, "Halfweg", [-0.615], [0.0, 33.0], DEFAULT_LEVEL_STEP_HYSTERESIS),
+    # Gouda starts at -0.59 m NAP and stops below -0.595 m NAP
+    (1279, "Gouda", [-0.59, -0.57], [0.0, 34.5, 40.0], [0.005, DEFAULT_LEVEL_STEP_HYSTERESIS]),
+)
+assert ribasim_model.node.df is not None
+for node_id, name, levels, flow_rates, hysteresis in BOEZEMGEMALEN:
+    pump_name = ribasim_model.node.df.at[node_id, "name"]
+    assert pump_name == f"Boezemgemaal {name}", pump_name
+    set_discrete_level_control(
+        ribasim_model,
+        node_id,
+        BOEZEM_BASIN,
+        level=levels,
+        flow_rate=flow_rates,
+        hysteresis=hysteresis,
+        min_upstream_level=BOEZEM_MIN_UPSTREAM_LEVEL,
+        name=f"peil boezem: {'/'.join(f'{level:g}' for level in levels)} [m+NAP]",
+    )
+
+# Katwijk flushes at least 1.07 m3/s, which a FlowDemand on a Pump sets as its minimum flow rate
+KATWIJK = 421
+katwijk = ribasim_model.pump[KATWIJK]
+doorspoeling = ribasim_model.flow_demand.add(
+    Node(geometry=Point(katwijk.geometry.x, katwijk.geometry.y - 20), name="doorspoeling Katwijk"),
+    [flow_demand.Static(demand=[1.07], demand_priority=[1])],
+)
+ribasim_model.link.add(doorspoeling, katwijk)
 
 write_and_run_forcing_model(ribasim_model, paths)

@@ -654,6 +654,24 @@ sanitize_node_table(
 model.node.df.loc[186, "name"] = "Westriool"
 model.node.df.loc[252, "name"] = "Inlaat Vreeswijk"
 
+
+def node_id_by_code(code: str) -> int:
+    """Return the ID of the only node with `meta_code_waterbeheerder` `code`."""
+    assert model.node.df is not None
+    node_ids = model.node.df.index[model.node.df["meta_code_waterbeheerder"] == code]
+    assert len(node_ids) == 1, f"Expected one node with code {code}, got {node_ids.tolist()}"
+    return int(node_ids[0])
+
+
+# Open water connections between Basins of Stichtse Rijnlanden are ManningResistances, not Outlets that drain their
+# upstream Basin, see https://github.com/Deltares/Ribasim-NL/issues/912. They keep their node and link IDs. Those to
+# other authorities are converted after coupling, see `outlet_to_manning_resistance` in 09_koppelen_modellen.py.
+OPEN_WATER_CODES = ["OW575", "OW663"]
+for code in OPEN_WATER_CODES:
+    model.update_node(node_id=node_id_by_code(code), node_type="ManningResistance")
+# OW713 is not open water, but stuw ST1068
+model.node.df.loc[node_id_by_code("OW713"), "meta_code_waterbeheerder"] = "ST1068"
+
 #  %% write model
 model.use_validation = True
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")

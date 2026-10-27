@@ -2180,6 +2180,108 @@ def remove_duplicate_controls(ribasim_model: ribasim_nl.Model) -> ribasim_nl.Mod
     return ribasim_model
 
 
+def _remove_discrete_control(model: Model, node_id: int) -> dict[str, int | None]:
+    """Remove the DiscreteControl of `node_id`, which should only control this node.
+
+    :return: the IDs of its node, control link and listen link, to reuse for the control that replaces it, so the IDs
+        of other nodes and links, which are referred to in issues and model viewer links, do not change. They are None
+        without a single DiscreteControl.
+    """
+    assert model.link.df is not None
+    link_df = model.link.df
+    control_links = link_df[(link_df.link_type == "control") & (link_df.to_node_id == node_id)]
+    control_ids = control_links["from_node_id"]
+    reuse: dict[str, int | None] = {"node_id": None, "link_id": None, "listen_link_id": None}
+    if len(control_ids) == 1:
+        listen_links = link_df.index[(link_df.link_type == "listen") & (link_df.to_node_id == control_ids.iloc[0])]
+        reuse = {
+            "node_id": int(control_ids.iloc[0]),
+            "link_id": int(control_links.index[0]),
+            "listen_link_id": int(listen_links[0]) if len(listen_links) == 1 else None,
+        }
+    for control_id in control_ids:
+        control_type = model.get_node_type(control_id)
+        if control_type != "DiscreteControl":
+            raise ValueError(f"Node {node_id} is controlled by {control_type} {control_id}, expected DiscreteControl")
+        n_controlled = ((link_df.link_type == "control") & (link_df.from_node_id == control_id)).sum()
+        if n_controlled != 1:
+            raise ValueError(f"DiscreteControl {control_id} controls {n_controlled} nodes, expected only {node_id}")
+        model.remove_node(control_id, remove_links=True)
+    return reuse
+
+
+def _replace_static_rows(
+    model: Model,
+    node_id: int,
+    target_type: Literal["Outlet", "Pump"],
+    static: outlet.Static | pump.Static,
+) -> None:
+    """Replace the static rows of Outlet or Pump `node_id` by `static`, keeping the metadata of its first row.
+
+    The node becomes a `target_type`, and its levels are protected from coupling-level updates.
+    """
+    assert model.link.df is not None
+    static_df = model.get_component(model.get_node_type(node_id)).static.df
+    assert static_df is not None
+    rows = static_df[static_df.node_id == node_id]
+    if rows.empty:
+        raise ValueError(f"Node {node_id} has no static rows")
+    meta = rows.iloc[0][[c for c in rows.columns if c.startswith("meta_")]].to_dict()
+    model.update_node(node_id, target_type, data=[static])
+    static_df = model.get_component(target_type).static.df
+    assert static_df is not None
+    mask = static_df.node_id == node_id
+    assert static.df is not None
+    assert mask.sum() == len(static.df), f"Expected {len(static.df)} static rows for node {node_id}"
+    for column, value in meta.items():
+        if column != LEVEL_UPDATE_PROTECTION_COLUMN:
+            static_df.loc[mask, column] = value
+    mark_level_update_protected(static_df, mask)
+    for end in ("from", "to"):
+        column = f"meta_{end}_node_type"
+        if column in model.link.df.columns:
+            model.link.df.loc[model.link.df[f"{end}_node_id"] == node_id, column] = target_type
+
+
+def _add_replacing_control_node(
+    model: Model,
+    node_id: int,
+    data: list,
+    ctrl_type: Literal["DiscreteControl", "ContinuousControl"],
+    reuse: dict[str, int | None],
+    name: str | None,
+) -> int:
+    """Add a control node to `node_id` with the IDs `reuse` of the control it replaces, see `_remove_discrete_control`."""
+    assert model.link.df is not None
+    control_id = model.next_node_id if reuse["node_id"] is None else reuse["node_id"]
+    model.add_control_node(
+        to_node_id=node_id,
+        data=data,
+        ctrl_type=ctrl_type,
+        node_offset=20,
+        node_properties={} if name is None else {"name": name},
+        node_id=control_id,
+        link_id=reuse["link_id"],
+    )
+    # The listen link is added with the control link, with a new ID
+    if reuse["listen_link_id"] is not None:
+        link_df = model.link.df
+        (listen_link_id,) = link_df.index[(link_df.link_type == "listen") & (link_df.to_node_id == control_id)]
+        if listen_link_id != reuse["listen_link_id"]:
+            model.set_link_id(listen_link_id, reuse["listen_link_id"])
+    return control_id
+
+
+def _validate_level_control_nodes(model: Model, node_id: int, listen_node_id: int) -> str:
+    """Check that `node_id` is an Outlet or Pump and `listen_node_id` a Basin, and return the type of `node_id`."""
+    current_type = model.get_node_type(node_id)
+    if current_type not in ("Outlet", "Pump"):
+        raise ValueError(f"Node {node_id} is a {current_type}, expected an Outlet or Pump")
+    if model.get_node_type(listen_node_id) != "Basin":
+        raise ValueError(f"Listen node {listen_node_id} of node {node_id} is not a Basin")
+    return current_type
+
+
 def set_continuous_level_control(
     model: Model,
     node_id: int,
@@ -2210,12 +2312,7 @@ def set_continuous_level_control(
     :param name: name of the ContinuousControl node
     :return: node ID of the ContinuousControl node
     """
-    assert model.link.df is not None
-    current_type = model.get_node_type(node_id)
-    if current_type not in ("Outlet", "Pump"):
-        raise ValueError(f"Node {node_id} is a {current_type}, expected an Outlet or Pump")
-    if model.get_node_type(listen_node_id) != "Basin":
-        raise ValueError(f"Listen node {listen_node_id} of node {node_id} is not a Basin")
+    current_type = _validate_level_control_nodes(model, node_id, listen_node_id)
     points = pd.DataFrame({"level": level, "flow_rate": flow_rate}, dtype=float).sort_values("level")
     if len(points) < 2 or not points["level"].is_unique:
         raise ValueError(f"Expected at least 2 distinct levels for node {node_id}, got {list(level)}")
@@ -2223,37 +2320,8 @@ def set_continuous_level_control(
         raise ValueError(f"Expected finite, non-negative flow rates for node {node_id}, got {list(flow_rate)}")
     max_flow_rate = float(points["flow_rate"].max())
 
-    # remove the current control, which should only control this node
-    # The new ContinuousControl reuses the node and link IDs of the DiscreteControl it replaces, so the IDs of
-    # other nodes and links, which are referred to in issues and model viewer links, do not change.
-    link_df = model.link.df
-    control_links = link_df[(link_df.link_type == "control") & (link_df.to_node_id == node_id)]
-    control_ids = control_links["from_node_id"]
-    reuse: dict[str, int | None] = {"node_id": None, "link_id": None, "listen_link_id": None}
-    if len(control_ids) == 1:
-        listen_links = link_df.index[(link_df.link_type == "listen") & (link_df.to_node_id == control_ids.iloc[0])]
-        reuse = {
-            "node_id": int(control_ids.iloc[0]),
-            "link_id": int(control_links.index[0]),
-            "listen_link_id": int(listen_links[0]) if len(listen_links) == 1 else None,
-        }
-    for control_id in control_ids:
-        control_type = model.get_node_type(control_id)
-        if control_type != "DiscreteControl":
-            raise ValueError(f"Node {node_id} is controlled by {control_type} {control_id}, expected DiscreteControl")
-        n_controlled = ((link_df.link_type == "control") & (link_df.from_node_id == control_id)).sum()
-        if n_controlled != 1:
-            raise ValueError(f"DiscreteControl {control_id} controls {n_controlled} nodes, expected only {node_id}")
-        model.remove_node(control_id, remove_links=True)
-
-    # replace the static rows by a single row, keeping the metadata
-    static_df = model.get_component(current_type).static.df
-    assert static_df is not None
-    rows = static_df[static_df.node_id == node_id]
-    if rows.empty:
-        raise ValueError(f"Node {node_id} has no static rows")
-    meta = rows.iloc[0][[c for c in rows.columns if c.startswith("meta_")]].to_dict()
-    target_type = node_type or current_type
+    reuse = _remove_discrete_control(model, node_id)
+    target_type = node_type or cast(Literal["Outlet", "Pump"], current_type)
     static = (outlet if target_type == "Outlet" else pump).Static(
         flow_rate=[max_flow_rate],
         min_flow_rate=[0.0],
@@ -2261,41 +2329,107 @@ def set_continuous_level_control(
         min_upstream_level=[min_upstream_level],
         max_downstream_level=[max_downstream_level],
     )
-    model.update_node(node_id, target_type, data=[static])
-    static_df = model.get_component(target_type).static.df
-    assert static_df is not None
-    mask = static_df.node_id == node_id
-    assert mask.sum() == 1, f"Expected one static row for node {node_id}"
-    for column, value in meta.items():
-        if column != LEVEL_UPDATE_PROTECTION_COLUMN:
-            static_df.loc[mask, column] = value
-    mark_level_update_protected(static_df, mask)
-    for end in ("from", "to"):
-        column = f"meta_{end}_node_type"
-        if column in model.link.df.columns:
-            model.link.df.loc[model.link.df[f"{end}_node_id"] == node_id, column] = target_type
+    _replace_static_rows(model, node_id, target_type, static)
+    data = [
+        continuous_control.Variable(listen_node_id=[listen_node_id], variable=["level"]),
+        continuous_control.Function(
+            input=points["level"].to_list(),
+            output=points["flow_rate"].to_list(),
+            controlled_variable=["flow_rate"] * len(points),
+        ),
+    ]
+    return _add_replacing_control_node(model, node_id, data, "ContinuousControl", reuse, name)
 
-    control_id = model.next_node_id if reuse["node_id"] is None else reuse["node_id"]
-    model.add_control_node(
-        to_node_id=node_id,
-        data=[
-            continuous_control.Variable(listen_node_id=[listen_node_id], variable=["level"]),
-            continuous_control.Function(
-                input=points["level"].to_list(),
-                output=points["flow_rate"].to_list(),
-                controlled_variable=["flow_rate"] * len(points),
-            ),
-        ],
-        ctrl_type="ContinuousControl",
-        node_offset=20,
-        node_properties={} if name is None else {"name": name},
-        node_id=control_id,
-        link_id=reuse["link_id"],
+
+# Default hysteresis of `set_discrete_level_control`: a step switches off this far below the level it switches on at
+DEFAULT_LEVEL_STEP_HYSTERESIS = 0.0025  # m
+
+
+def set_discrete_level_control(
+    model: Model,
+    node_id: int,
+    listen_node_id: int,
+    level: Sequence[float],
+    flow_rate: Sequence[float],
+    *,
+    hysteresis: float | Sequence[float] = DEFAULT_LEVEL_STEP_HYSTERESIS,
+    min_upstream_level: float = -math.inf,
+    max_downstream_level: float = math.inf,
+    name: str | None = None,
+) -> int:
+    """Set the flow rate of an Outlet or Pump in steps from the level of a Basin, replacing its DiscreteControl.
+
+    Above the i-th of the ascending `level`, the node switches to `flow_rate[i + 1]`, and below `level[0]` it has
+    `flow_rate[0]`. Each step switches off again at `hysteresis` below its level. The control states are named
+    `stap 0` to `stap n`, rather than aanvoer and afvoer, so the coupling-level synchronisation leaves them alone,
+    and the levels and thresholds are protected from coupling-level updates. The static rows keep the metadata of the
+    first static row, and have a `max_flow_rate` of max(flow_rate), which a FlowDemand on the node needs to exceed
+    the flow rate of a step.
+
+    :param model: model to update in place
+    :param node_id: Outlet or Pump to control
+    :param listen_node_id: Basin whose level sets the flow rate
+    :param level: ascending levels [m+NAP] at which the steps switch on
+    :param flow_rate: flow rates [m3/s] below the first level and above each level, one more than `level`
+    :param hysteresis: how far below its level each step switches off [m], for all steps or per step
+    :param min_upstream_level: min_upstream_level of the node
+    :param max_downstream_level: max_downstream_level of the node
+    :param name: name of the DiscreteControl node
+    :return: node ID of the DiscreteControl node
+    """
+    current_type = _validate_level_control_nodes(model, node_id, listen_node_id)
+    threshold_high = pd.Series(level, dtype=float)
+    hysteresis_series = pd.Series(
+        [hysteresis] * len(threshold_high) if isinstance(hysteresis, float | int) else hysteresis, dtype=float
     )
-    # The listen link is added with the control link, with a new ID
-    if reuse["listen_link_id"] is not None:
-        link_df = model.link.df
-        (listen_link_id,) = link_df.index[(link_df.link_type == "listen") & (link_df.to_node_id == control_id)]
-        if listen_link_id != reuse["listen_link_id"]:
-            model.set_link_id(listen_link_id, reuse["listen_link_id"])
+    flow_rates = pd.Series(flow_rate, dtype=float)
+    if threshold_high.empty or len(flow_rates) != len(threshold_high) + 1:
+        raise ValueError(f"Expected one more flow rate than levels for node {node_id}, got {list(flow_rate)}")
+    if len(hysteresis_series) != len(threshold_high) or not hysteresis_series.gt(0).all():
+        raise ValueError(f"Expected a positive hysteresis per level for node {node_id}, got {hysteresis}")
+    threshold_low = threshold_high - hysteresis_series
+    # A step can only be on while the steps below it are, so each step switches off above where the one below
+    # switches on, and the truth states are a run of T followed by F.
+    if not (
+        threshold_high.map(math.isfinite).all()
+        and (threshold_low.iloc[1:].to_numpy() >= threshold_high.iloc[:-1].to_numpy()).all()
+    ):
+        raise ValueError(
+            f"Expected finite levels for node {node_id} that ascend by more than their hysteresis, got {list(level)}"
+        )
+    if not (flow_rates.map(math.isfinite).all() and flow_rates.ge(0).all()):
+        raise ValueError(f"Expected finite, non-negative flow rates for node {node_id}, got {list(flow_rate)}")
+    max_flow_rate = float(flow_rates.max())
+    n_steps = len(flow_rates)
+    control_states = [f"stap {i}" for i in range(n_steps)]
+
+    reuse = _remove_discrete_control(model, node_id)
+    target_type = cast(Literal["Outlet", "Pump"], current_type)
+    static = (outlet if target_type == "Outlet" else pump).Static(
+        control_state=control_states,
+        flow_rate=flow_rates.to_list(),
+        min_flow_rate=[0.0] * n_steps,
+        max_flow_rate=[max_flow_rate] * n_steps,
+        min_upstream_level=[min_upstream_level] * n_steps,
+        max_downstream_level=[max_downstream_level] * n_steps,
+    )
+    _replace_static_rows(model, node_id, target_type, static)
+    n_conditions = len(threshold_high)
+    data = [
+        discrete_control.Variable(compound_variable_id=[1], listen_node_id=[listen_node_id], variable=["level"]),
+        discrete_control.Condition(
+            compound_variable_id=[1] * n_conditions,
+            condition_id=list(range(1, n_conditions + 1)),
+            threshold_high=threshold_high.to_list(),
+            threshold_low=threshold_low.to_list(),
+        ),
+        discrete_control.Logic(
+            truth_state=["T" * i + "F" * (n_conditions - i) for i in range(n_steps)],
+            control_state=control_states,
+        ),
+    ]
+    control_id = _add_replacing_control_node(model, node_id, data, "DiscreteControl", reuse, name)
+    condition_df = model.discrete_control.condition.df
+    assert condition_df is not None
+    mark_threshold_update_protected(condition_df, condition_df.node_id == control_id)
     return control_id

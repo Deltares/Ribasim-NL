@@ -128,7 +128,7 @@ forced_coupling = {
     1301498: 1300169,  # LevelBoundary buiten de boezem van HDSR geplaatst
     1301499: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
     1301496: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
-    1301495: 1404804,  # LevelBoundary buiten de boezem van HDSR geplaatst; inlaat vanaf bovenstroomse TRC-basin
+    1301495: 1404801,  # LevelBoundary buiten de boezem van HDSR geplaatst; inlaat vanaf bovenstroomse TRC-basin
     1301492: 1402100,  # LevelBoundary buiten de boezem van HDSR geplaatst; pomp naar benedenstroomse TRC-basin
     4400015: 5903236,  # LB ligt op exact dezelfde locatie
     4402348: 5900072,  # LB ligt op exact dezelfde locatie
@@ -149,6 +149,13 @@ forced_coupling = {
     203900: 3401931,
 }
 
+# Connector nodes whose link with a Rijkswaterstaat Basin starts straight, to be routed over its water, see
+# `route_links_between_models`, rather than from the Rijkswaterstaat waterway nearest to them, see `get_rws_link`
+straight_rws_links = {
+    1100514,  # Opvoergemaal Steenenbeer, uit het IJmeer en niet via de Muidertrekvaart en het ARK, zie #916
+    1101053,  # Zeesluis Muiden, uit het IJmeer en niet via de Muidertrekvaart en het ARK, zie #916
+}
+
 # Nodes to move after coupling, by (dx, dy) in meters
 node_offsets = {
     3401931: (10.0, 0.0),  # NZV-afvoerjunction visueel scheiden van aanvoerjunction 3402060, zie #824
@@ -157,6 +164,9 @@ node_offsets = {
 # Outlets that are open water connections, converted to ManningResistance after coupling, removing their control
 outlet_to_manning_resistance = {
     1100600: {"profile_width": 10.0, "manning_n": 0.02},  # open water Angstel - ARK, zie #820
+    # open water van Stichtse Rijnlanden naar AmstelGooienVecht, met de breedte van het BGT-water, zie #912. OW690 en
+    # vistrap OW694 blijven Outlets, zie https://github.com/Deltares/Ribasim-NL/pull/928#issuecomment-6437301792
+    1400719: {"profile_width": 40.0, "manning_n": 0.03},  # OW669
 }
 
 
@@ -333,7 +343,8 @@ def create_link_geometry(
     LineString
         LineString geometry for the link
     """
-    if couple_authority == "Rijkswaterstaat":
+    straight = {kwargs["from_node"].node_id, kwargs["to_node"].node_id} & straight_rws_links
+    if couple_authority == "Rijkswaterstaat" and not straight:
         if kwargs["meta_to_authority"] != boundary_node_authority:  # uitlaat
             geometry = get_rws_link(
                 network=network,
@@ -349,7 +360,7 @@ def create_link_geometry(
                 reversed=True,
             )
     else:
-        # For non-RWS authorities, use simple line geometry
+        # For non-RWS authorities and `straight_rws_links`, use simple line geometry
         geometry = LineString([kwargs["from_node"].geometry, kwargs["to_node"].geometry])
 
     return geometry

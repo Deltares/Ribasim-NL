@@ -10,7 +10,9 @@ from ribasim_nl.control import (
     supply_area_polygon,
 )
 from ribasim_nl.junctions import junctionify
+from ribasim_nl.layout import move_nodes
 from ribasim_nl.run_model import write_steady_state_scenarios
+from shapely.geometry import LineString, Point
 
 from ribasim_nl import CloudStorage, Model
 
@@ -90,14 +92,14 @@ flow_control_nodes = [
 
 supply_nodes = [
     103, 358, 424, 425, 476, 481, 486, 506, 536, 542, 543, 553, 554, 564, 581,
-    589, 593, 601, 624, 626, 627, 630, 637, 638, 639, 640, 648, 649, 650, 651,
+    589, 593, 596, 624, 626, 627, 630, 637, 638, 639, 640, 648, 649, 650, 651,
     654, 655, 742, 747, 754, 761, 772, 797, 830, 840, 855, 890, 906, 911, 924,
     962, 976, 987, 1007, 1014, 1022, 1042, 1056, 1082, 1156, 2111,
 ]
 
 drain_nodes = [
     139, 168, 173, 185, 198, 230, 298, 347, 411, 467, 477, 513, 545, 551, 554,
-    588, 591, 598, 612, 633, 634, 761, 799, 818, 844, 851, 864, 887, 893, 894,
+    588, 591, 598, 601, 612, 633, 634, 761, 799, 818, 844, 851, 864, 887, 893, 894,
     920, 944, 956, 969, 971, 975, 978, 979, 980, 993, 1033, 1077, 1126, 1145, 1168, 1203, 1223,
     2110,
 ]
@@ -220,6 +222,18 @@ model.reverse_link(link_id=2005)
 model.reverse_link(link_id=2073)
 model.reverse_link(link_id=24)
 
+# Caspergouw, see https://github.com/Deltares/Ribasim-NL/issues/913: Caspargauw (G3003) drains Basin 1728 to the ARK,
+# and Caspargauw Zemelen (G3004) supplies it, from Basin 1619
+CASPARGAUW, CASPARGAUW_ZEMELEN, CASPERGOUW_BASIN = 601, 596, 1728
+assert model.node.df.at[CASPARGAUW, "meta_code_waterbeheerder"] == "G3003"
+assert model.node.df.at[CASPARGAUW_ZEMELEN, "meta_code_waterbeheerder"] == "G3004"
+for link_id in (2643, 929, 2172, 743):  # LevelBoundary 9 -> 601 -> 1728 -> 596 -> 1619
+    model.reverse_link(link_id=link_id)
+assert model.upstream_node_id(CASPARGAUW) == CASPERGOUW_BASIN
+assert model.downstream_node_id(CASPARGAUW_ZEMELEN) == CASPERGOUW_BASIN
+model.node.df.loc[CASPARGAUW_ZEMELEN, IS_SUPPLY_NODE_COLUMN] = True
+assert CASPARGAUW_ZEMELEN in supply_nodes and CASPARGAUW in drain_nodes
+
 model.update_node(node_id=730, node_type="ManningResistance")
 
 # %%
@@ -276,8 +290,8 @@ mask = model.outlet.static.df.node_id.isin([468, 469, 470])
 model.outlet.static.df.loc[mask, "max_downstream_level"] -= 0.01
 mark_level_update_protected(model.outlet.static.df, mask, model=model)
 
-# Caspargauw gaat pas leveren als Wijk bij Duurstede aanvoer te laag is
-mask = model.pump.static.df.node_id == 601
+# Caspargouw wordt pas aangevoerd als Wijk bij Duurstede aanvoer te laag is
+mask = model.pump.static.df.node_id == CASPARGAUW_ZEMELEN
 model.pump.static.df.loc[mask, "max_downstream_level"] -= 0.01
 mark_level_update_protected(model.pump.static.df, mask, model=model)
 
@@ -342,6 +356,60 @@ model.pump.static.df.loc[mask, "max_flow_rate"] = model.pump.static.df.loc[mask,
 
 # %% Junctionfy(!)
 junctionify(model)
+
+
+def straight_link(model: Model, from_node_id: int, to_node_id: int) -> None:
+    """Make the only flow link from `from_node_id` to `to_node_id` straight.
+
+    It gets a vertex halfway, as straight links of two points are routed along the waterways later, see
+    07_add_dynamic_forcing.py.
+    """
+    assert model.link.df is not None
+    links = model.link.df
+    (link_id,) = links.index[
+        (links.link_type == "flow") & (links.from_node_id == from_node_id) & (links.to_node_id == to_node_id)
+    ]
+    start, end = model.get_node(from_node_id).geometry, model.get_node(to_node_id).geometry
+    middle = LineString([start, end]).interpolate(0.5, normalized=True)
+    model.link.df.loc[[link_id], "geometry"] = gpd.GeoSeries(
+        [LineString([start, middle, end])], index=[link_id], crs=links.crs
+    )
+
+
+# Caspergouw without crossing links, see #913: the drains of Basin 1728 branch off a Junction on the straight line to
+# Caspargouw Stuw (ST3003), and its supplies join on a Junction on the straight line from Caspargauw Zemelen. The
+# connectors are moved apart at least the minimum distance of `tidy_layout`, so it leaves them in place.
+CASPARGOUW_STUW, CASPERGOUW_INLAAT = 761, 1345
+(caspergouw_drain_junction,) = {model.upstream_node_id(CASPARGAUW), model.upstream_node_id(CASPARGOUW_STUW)}
+caspergouw_supply_junction = model.downstream_node_id(CASPARGAUW_ZEMELEN)
+assert caspergouw_supply_junction == model.downstream_node_id(CASPERGOUW_INLAAT)
+assert model.get_node_type(caspergouw_drain_junction) == model.get_node_type(caspergouw_supply_junction) == "Junction"
+assert model.upstream_node_id(caspergouw_drain_junction) == CASPERGOUW_BASIN
+assert model.downstream_node_id(caspergouw_supply_junction) == CASPERGOUW_BASIN
+caspergouw_locations = {
+    CASPARGOUW_STUW: Point(146254, 444077),
+    CASPARGAUW: Point(146262, 444089),
+    CASPARGAUW_ZEMELEN: Point(146240, 444103),
+    CASPERGOUW_INLAAT: Point(146238, 444121),
+}
+basin_point = model.get_node(CASPERGOUW_BASIN).geometry
+caspergouw_locations[caspergouw_drain_junction] = LineString(
+    [basin_point, caspergouw_locations[CASPARGOUW_STUW]]
+).interpolate(17.0)
+caspergouw_locations[caspergouw_supply_junction] = LineString(
+    [caspergouw_locations[CASPARGAUW_ZEMELEN], basin_point]
+).interpolate(0.5, normalized=True)
+move_nodes(model, caspergouw_locations)
+for from_node_id, to_node_id in (
+    (CASPERGOUW_BASIN, caspergouw_drain_junction),
+    (caspergouw_drain_junction, CASPARGOUW_STUW),
+    (caspergouw_drain_junction, CASPARGAUW),
+    (CASPARGAUW_ZEMELEN, caspergouw_supply_junction),
+    (CASPERGOUW_INLAAT, caspergouw_supply_junction),
+    (caspergouw_supply_junction, CASPERGOUW_BASIN),
+):
+    straight_link(model, from_node_id, to_node_id)
+
 aanvoer_only_node_ids = set(supply_nodes) - set(drain_nodes) - set(flow_control_nodes)
 
 # Aanvoer-cap: doorlaten/inlaten mogen in aanvoer niet de hoge afvoercapaciteit gebruiken.

@@ -1,8 +1,11 @@
 """Parameterisation of water board: Amstel, Gooi en Vecht."""
 
+import math
 from typing import cast
 
 import ribasim_nl.ribasim_parametrization as ribasim_param
+from ribasim import Node
+from ribasim.nodes import level_boundary, outlet
 from ribasim_nl.control import set_flow_rate, set_node_functions
 from ribasim_nl.design_capacities import set_design_capacities
 from ribasim_nl.workflow import (
@@ -152,6 +155,42 @@ set_flow_rate(ribasim_model.pump.static.df, [475], 0.60)  # increase flow_rate o
 # lower the difference in waterlevel for each manning node, except those of storing basins
 set_manning_resistance_outside_bergend(ribasim_model, length=100.0, manning_n=0.01)
 
+# The unused locks between the Amsterdam-Rijnkanaal and the Vecht are always open, see
+# https://github.com/Deltares/Ribasim-NL/issues/916. They are Outlets without control or level limits, which keep both
+# at the same level. The LevelBoundaries lie on the ARK, to which they are coupled in 09_koppelen_modellen.py.
+# Vechtsluis and Nieuwersluis have a capacity of 5 m3/s, see https://github.com/Deltares/Ribasim-NL/pull/928#issuecomment-6437301792
+# (name, Outlet, LevelBoundary on the ARK, Vecht Basin, whether the Outlet flows from the ARK to the Vecht, capacity [m3/s])
+ARK_VECHT_LOCKS = (
+    ("Vechtsluis", Point(132189, 459981), Point(132143, 459931), 23, True, 5.0),  # below ManningResistance 525
+    ("Nieuwersluis", Point(129006, 467646), Point(128445, 467756), 23, True, 5.0),
+    ("Sluis Nigtevecht", Point(130130, 476375), Point(129950, 476424), 206, False, 10.0),
+)
+ARK_LEVEL = -0.4  # m NAP
+ark_vecht_outlet_ids, ark_boundary_ids = [], []
+for name, outlet_point, ark_point, basin_id, to_vecht, flow_rate in ARK_VECHT_LOCKS:
+    boundary_node = ribasim_model.level_boundary.add(
+        Node(geometry=ark_point), [level_boundary.Static(level=[ARK_LEVEL])]
+    )
+    outlet_node = ribasim_model.outlet.add(
+        Node(geometry=outlet_point, name=name),
+        [outlet.Static(flow_rate=[flow_rate], max_flow_rate=[flow_rate])],
+    )
+    # `clean_tables` keeps the tables of the nodes by their meta_node_id
+    assert ribasim_model.node.df is not None
+    ribasim_model.node.df.loc[[boundary_node.node_id, outlet_node.node_id], "meta_node_id"] = [
+        boundary_node.node_id,
+        outlet_node.node_id,
+    ]
+    ark_vecht_outlet_ids.append(outlet_node.node_id)
+    ark_boundary_ids.append(boundary_node.node_id)
+    basin_node = ribasim_model.basin[basin_id]
+    if to_vecht:
+        ribasim_model.link.add(boundary_node, outlet_node)
+        ribasim_model.link.add(outlet_node, basin_node)
+    else:
+        ribasim_model.link.add(basin_node, outlet_node)
+        ribasim_model.link.add(outlet_node, boundary_node)
+
 ribasim_model = complete_parametrization(
     ribasim_model,
     paths,
@@ -171,6 +210,20 @@ ribasim_model = complete_parametrization(
 
 # set the unknown capacities of Pumps and Outlets from the area they drain or supply
 set_design_capacities(ribasim_model, from_to_node_function_table)
+
+# the locks between the ARK and the Vecht are coupled to the ARK, and keep their capacity and no level limits
+assert ribasim_model.level_boundary.node is not None and ribasim_model.level_boundary.node.df is not None
+ark_boundaries = ribasim_model.level_boundary.node.df.loc[ark_boundary_ids]
+assert (ark_boundaries["meta_couple_authority"] == "Rijkswaterstaat").all(), ark_boundaries["meta_couple_authority"]
+assert ribasim_model.outlet.static.df is not None
+ark_vecht_static = ribasim_model.outlet.static.df[ribasim_model.outlet.static.df.node_id.isin(ark_vecht_outlet_ids)]
+assert len(ark_vecht_static) == len(ark_vecht_outlet_ids), "Expected one static row per lock"
+capacities = ark_vecht_static["node_id"].map(
+    dict(zip(ark_vecht_outlet_ids, [lock[-1] for lock in ARK_VECHT_LOCKS], strict=True))
+)
+assert ark_vecht_static["flow_rate"].eq(capacities).all() and ark_vecht_static["max_flow_rate"].eq(capacities).all()
+assert ark_vecht_static["min_upstream_level"].fillna(-math.inf).eq(-math.inf).all()
+assert ark_vecht_static["max_downstream_level"].fillna(math.inf).eq(math.inf).all()
 
 # manually assign max_flow_rates (as suggested by JWV in FF)
 assert ribasim_model.outlet.static.df is not None
