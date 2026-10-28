@@ -1,48 +1,48 @@
 {
   "solver": {
-    "computation_time": 3.2,
-    "rhs_calls": 2172000.0,
-    "mean_dt": 172.6,
-    "dt_p05": 101.5,
-    "rejected_fraction": 0.07238
+    "computation_time": 3.5,
+    "rhs_calls": 2229000.0,
+    "mean_dt": 174.3,
+    "dt_p05": 101.6,
+    "rejected_fraction": 0.08323
   },
   "observations": {
     "compared": 640.0,
-    "median_nse": -0.04734,
-    "median_kge": 0.04435
+    "median_nse": -0.002088,
+    "median_kge": 0.05792
   },
   "discharge_kge": {
     "Lobith": 0.9997,
     "Pannerdense Kop": 0.9307,
-    "IJsselkop": 0.9218,
-    "Driel boven": 0.8595,
-    "Hagestein boven": 0.8857,
-    "Tiel Waal": 0.9261,
-    "Haringvlietsluizen binnen": 0.8302,
-    "Maasmond": 0.373,
-    "Den Oever buiten": 0.3944,
-    "Kornwerderzand buiten": 0.3082,
-    "IJmuiden binnen": 0.3094
+    "IJsselkop": 0.9219,
+    "Driel boven": 0.8596,
+    "Hagestein boven": 0.886,
+    "Tiel Waal": 0.9259,
+    "Haringvlietsluizen binnen": 0.8301,
+    "Maasmond": 0.3766,
+    "Den Oever buiten": 0.4197,
+    "Kornwerderzand buiten": 0.3482,
+    "IJmuiden binnen": 0.3428
   },
   "level_p01": {
-    "IJsselmeer": -0.3945,
-    "Markermeer": -0.3975,
-    "Veluwemeer": -0.04908,
-    "Noordzeekanaal": -0.4008,
-    "Amsterdam-Rijnkanaal Breukelen": -0.4037,
-    "Volkerak": -0.0875,
-    "Haringvliet": 0.01924,
+    "IJsselmeer": -0.3951,
+    "Markermeer": -0.5997,
+    "Veluwemeer": -0.1939,
+    "Noordzeekanaal": -0.424,
+    "Amsterdam-Rijnkanaal Breukelen": -0.4219,
+    "Volkerak": -0.1324,
+    "Haringvliet": 0.01923,
     "Twentekanaal (Kanaal Zutphen-Enschede)": 9.993,
     "Julianakanaal": 44.04
   },
   "level_p99": {
-    "IJsselmeer": -0.08312,
-    "Markermeer": -0.1881,
-    "Veluwemeer": -0.03037,
+    "IJsselmeer": -0.08257,
+    "Markermeer": -0.1441,
+    "Veluwemeer": -0.03003,
     "Noordzeekanaal": -0.3908,
-    "Amsterdam-Rijnkanaal Breukelen": -0.3527,
-    "Volkerak": 0.02562,
-    "Haringvliet": 0.09514,
+    "Amsterdam-Rijnkanaal Breukelen": -0.3536,
+    "Volkerak": 0.05538,
+    "Haringvliet": 0.09592,
     "Twentekanaal (Kanaal Zutphen-Enschede)": 10.08,
     "Julianakanaal": 44.05
   }
