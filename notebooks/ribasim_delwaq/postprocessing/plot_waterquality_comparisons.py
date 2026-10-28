@@ -81,6 +81,29 @@ def save_comparison_plot(
     plt.close(figure)
 
 
+def save_flow_boundary_plot(
+    output_path: Path,
+    dataset: xr.Dataset,
+    segment_index: int,
+    location_code: str,
+    location_name: str | float,
+    node_id: int,
+) -> None:
+    """Create and save the FlowBoundary discharge plot at one DELWAQ segment."""
+    discharge = dataset["ribasim_FlowBoundary"].isel(ribasim_nNodes=segment_index).load()
+    display_name = location_name if pd.notna(location_name) else location_code
+    figure, axis = plt.subplots(figsize=(10, 3.5))
+    axis.plot(discharge["nTimesDlwq"], discharge, color="#1677b8", label="FlowBoundary")
+    axis.set_title(f"FlowBoundary discharge: {display_name} ({location_code}, Ribasim node {node_id})")
+    axis.set_xlabel("Time")
+    axis.set_ylabel("FlowBoundary discharge")
+    axis.grid(alpha=0.25)
+    axis.legend(loc="upper right")
+    figure.tight_layout()
+    figure.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close(figure)
+
+
 def seasonal_means(values: pd.Series) -> pd.Series:
     """Return means for April--September and October--March periods."""
     values = pd.to_numeric(values, errors="coerce").dropna()

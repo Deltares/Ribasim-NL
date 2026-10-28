@@ -8,21 +8,23 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xarray as xr
+from quality_filter import filter_observations_by_quality
 from ribasim import Model
 from validation_factors import calculate_annual_validation_factors
 
-PARAMETER_COMPONENTS = {
-    "Ntot": ["NO3", "NH4", "OON"],
-    "Ptot": ["PO4", "AAP", "OOP"],
-}
 N_COLUMNS = 2
 
 
 def create_correction_factor_histograms(
     model_path: Path,
     validation_path: Path,
+    delwaq_map_path: Path,
+    mapping_path: Path,
     output_folder: Path,
     location_limit: int | str,
+    quality_labels_path: Path,
+    included_quality_classes: dict[str, set[str]],
+    parameter_components: dict[str, list[str]],
 ) -> list[Path]:
     """Create one annual histogram grid per parameter and return its paths.
 
@@ -33,9 +35,7 @@ def create_correction_factor_histograms(
     """
     if location_limit != "all" and (not isinstance(location_limit, int) or location_limit < 1):
         raise ValueError('location_limit must be a positive integer or "all".')
-    delwaq_map_path = model_path / "delwaq" / "delwaq_map.nc"
     toml_path = model_path / "lhm_coupled.toml"
-    mapping_path = validation_path / "output_validate" / "basins_doorgaand_joined_monlocs.shp"
     observations_path = validation_path / "KRWMeetwaarden_1990_2025_20260615_1432.parquet"
     for path, description in [
         (delwaq_map_path, "DELWAQ map output"),
@@ -53,12 +53,24 @@ def create_correction_factor_histograms(
         model = Model.read(toml_path)
         mapping = gpd.read_file(mapping_path).dropna(subset=["loc_Code", "node_id"])
         observations = pd.read_parquet(observations_path)
+        observations = filter_observations_by_quality(
+            observations,
+            quality_labels_path,
+            included_quality_classes,
+        )
         observations["datum"] = pd.to_datetime(observations["datum"], format="%d-%m-%Y", errors="coerce")
         model_start = pd.Timestamp(dataset["nTimesDlwq"].min().item())
         model_end = pd.Timestamp(dataset["nTimesDlwq"].max().item())
         observations = observations.loc[observations["datum"].between(model_start, model_end)].copy()
 
-        factors_by_parameter = _collect_annual_ratios(dataset, model, mapping, observations, location_limit)
+        factors_by_parameter = _collect_annual_ratios(
+            dataset,
+            model,
+            mapping,
+            observations,
+            location_limit,
+            parameter_components,
+        )
     finally:
         dataset.close()
 
@@ -82,9 +94,10 @@ def _collect_annual_ratios(
     mapping: gpd.GeoDataFrame,
     observations: pd.DataFrame,
     location_limit: int | str,
+    parameter_components: dict[str, list[str]],
 ) -> dict[str, dict[int, list[float]]]:
     """Collect observed-to-modelled ratios by parameter, year, and location."""
-    factors_by_parameter: dict[str, dict[int, list[float]]] = {parameter: {} for parameter in PARAMETER_COMPONENTS}
+    factors_by_parameter: dict[str, dict[int, list[float]]] = {parameter: {} for parameter in parameter_components}
     locations = mapping[["loc_Code", "node_id"]].drop_duplicates().sort_values("loc_Code")
     if location_limit != "all":
         locations = locations.head(location_limit)
@@ -97,7 +110,7 @@ def _collect_annual_ratios(
         if segment_index is None:
             continue
         location_observations = observations.loc[observations["KRW_monitoringslocatie"] == location.loc_Code]
-        for parameter, components in PARAMETER_COMPONENTS.items():
+        for parameter, components in parameter_components.items():
             observed = location_observations.loc[location_observations["parameter"] == parameter].set_index("datum")[
                 "meetwaarde"
             ]
@@ -145,9 +158,7 @@ def _plot_histogram(axis: plt.Axes, values: np.ndarray, label: str) -> None:
     """Plot one validation-factor histogram with the KRW summary statistics."""
     rmse = float(np.sqrt(np.mean((values - 1) ** 2)))
     bin_width = 0.5
-    bin_start = max(float(values.min()), np.floor(values.min() / bin_width) * bin_width)
-    bin_end = np.ceil(values.max() / bin_width) * bin_width
-    bins = np.arange(bin_start, bin_end + bin_width, bin_width)
+    bins = np.arange(0, 10 + bin_width, bin_width)
 
     axis.hist(values, bins=bins, color="#4c93bd", edgecolor="white")
     axis.axvline(1, color="#2e8b57", linewidth=1.5)

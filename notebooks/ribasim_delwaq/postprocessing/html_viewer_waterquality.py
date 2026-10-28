@@ -12,23 +12,27 @@ import plot_correction_factor_histograms
 import validation_scatterplots
 import xarray as xr
 from plot_waterquality_comparisons import save_comparison_plot, seasonal_means
+from quality_filter import filter_observations_by_quality
 from ribasim import Model
-from validation_factors import calculate_validation_factor
+from validation_factors import calculate_summer_validation_factor, calculate_validation_factor
 
-MODEL_PATH = Path(r"C:/projects/2024/LWKM/06_Ribasim/02_models/LHM/lhm_coupled_full")
-VALIDATION_PATH = Path(r"P:/11212767-lwkm2/RibasimNL/Validatie/Waterkwaliteit")
+MODEL_PATH = Path(r"c:/projects/2024/LWKM/06_Ribasim/02_models/LHM/lhm_coupled_full")
+VALIDATION_PATH = Path(r"p:/11212767-lwkm2/RibasimNL/Validatie/Waterkwaliteit")
 PARAMETER_COMPONENTS = {
-    "Ntot": ["NO3", "NH4", "OON"],
-    "Ptot": ["PO4", "AAP", "OOP"],
+    # "Ntot": ["NO3", "NH4", "OON"],
+    # "Ptot": ["PO4", "AAP", "OOP"],
+    "Ntot": ["NO3", "NH4", "PON1"],
+    "Ptot": ["PO4", "AAP", "POP1"],
 }
-LOCATION_LIMIT = None  # None
+LOCATION_LIMIT = None  # None (set to low value for testing)
 RECREATE_PLOTS = True  # Set to False to reuse existing Ntot and Ptot PNG files.
+INCLUDED_QUALITY_CLASSES = {"Ntot": {"A", "B"}, "Ptot": {"A", "B"}}
 
 
 def create_waterquality_html_viewer(
     model_path: Path = MODEL_PATH,
     validation_path: Path = VALIDATION_PATH,
-    output_subfolder: str = "html_viewer",
+    output_subfolder: str = "results_delwaq_html_viewer",
     location_limit: int | None = LOCATION_LIMIT,
     recreate_plots: bool = RECREATE_PLOTS,
 ) -> Path:
@@ -39,12 +43,13 @@ def create_waterquality_html_viewer(
     """
     if location_limit is not None and location_limit < 1:
         raise ValueError("location_limit must be at least 1 or None.")
-    delwaq_folder = model_path / "delwaq"
+    delwaq_folder = model_path / "delwaq_all_sources_incl_proc"
     delwaq_map_path = delwaq_folder / "delwaq_map.nc"
     toml_path = model_path / "lhm_coupled.toml"
     model_gpkg_path = model_path / "input" / "database.gpkg"
-    mapping_path = validation_path / "output_validate/basins_doorgaand_joined_monlocs.shp"
+    mapping_path = validation_path / "basins_selected_joined_monlocs.shp"
     observations_path = validation_path / "KRWMeetwaarden_1990_2025_20260615_1432.parquet"
+    quality_labels_path = validation_path / "KRWMeetwaarden_met_kwaliteitslabel_per_locatie.csv"
     locations_path = validation_path / "WKP_KRW-monitoringlocaties-oppervlaktewater_Nederland_2025_20250915090837.csv"
 
     for path, description in [
@@ -53,6 +58,7 @@ def create_waterquality_html_viewer(
         (model_gpkg_path, "Ribasim model GeoPackage"),
         (mapping_path, "Monitoring-to-node mapping"),
         (observations_path, "Monitoring data"),
+        (quality_labels_path, "Monitoring quality labels"),
         (locations_path, "Monitoring location metadata"),
     ]:
         if not path.is_file():
@@ -115,6 +121,27 @@ def create_waterquality_html_viewer(
     if mapping.crs is None:
         mapping = mapping.set_crs(epsg=28992)
     observations = pd.read_parquet(observations_path)
+    observations = filter_observations_by_quality(
+        observations,
+        quality_labels_path,
+        INCLUDED_QUALITY_CLASSES,
+    )
+    quality_labels = pd.read_csv(quality_labels_path, sep=";")
+    quality_class_counts = {
+        parameter: {
+            "included": int(
+                quality_labels.loc[
+                    quality_labels[f"kwaliteitsklasse_{parameter}"]
+                    .str.upper()
+                    .isin(INCLUDED_QUALITY_CLASSES[parameter]),
+                    "KRW_monitoringslocatie",
+                ].nunique()
+            ),
+            "total": int(quality_labels["KRW_monitoringslocatie"].nunique()),
+            "classes": ", ".join(sorted(INCLUDED_QUALITY_CLASSES[parameter])),
+        }
+        for parameter in PARAMETER_COMPONENTS
+    }
     location_metadata = pd.read_csv(
         locations_path,
         sep=";",
@@ -174,7 +201,7 @@ def create_waterquality_html_viewer(
         location_observations = observations.loc[
             observations["KRW_monitoringslocatie"] == location.loc_Code
         ].sort_values("datum")
-        if not all((location_observations["parameter"] == parameter).any() for parameter in PARAMETER_COMPONENTS):
+        if not any((location_observations["parameter"] == parameter).any() for parameter in PARAMETER_COMPONENTS):
             continue
 
         segment_index = segment_cache[node_id]
@@ -196,13 +223,31 @@ def create_waterquality_html_viewer(
                     "meetwaarde"
                 ],
             )
+            if (location_observations["parameter"] == parameter).any()
+            else None
+            for parameter in PARAMETER_COMPONENTS
+        }
+        summer_validation_factors = {
+            parameter: calculate_summer_validation_factor(
+                modelled_concentrations[parameter].to_series(),
+                location_observations.loc[location_observations["parameter"] == parameter].set_index("datum")[
+                    "meetwaarde"
+                ],
+            )
+            if (location_observations["parameter"] == parameter).any()
+            else None
             for parameter in PARAMETER_COMPONENTS
         }
         mean_modelled_concentrations = {
-            parameter: float(modelled_concentrations[parameter].mean().item()) for parameter in PARAMETER_COMPONENTS
+            parameter: float(modelled_concentrations[parameter].mean().item())
+            if (location_observations["parameter"] == parameter).any()
+            else None
+            for parameter in PARAMETER_COMPONENTS
         }
         figure_paths = {}
         for parameter, components in PARAMETER_COMPONENTS.items():
+            if not (location_observations["parameter"] == parameter).any():
+                continue
             figure_path = parameter_figure_folders[parameter] / f"{location.loc_Code}.png"
             if recreate_plots:
                 save_comparison_plot(
@@ -235,6 +280,7 @@ def create_waterquality_html_viewer(
                     "ntot_seasonal_bias_percent": ntot_seasonal_bias_percent,
                     "ntot_validation_factor": validation_factors["Ntot"],
                     "validation_factors": validation_factors,
+                    "summer_validation_factors": summer_validation_factors,
                     "mean_modelled_concentrations": mean_modelled_concentrations,
                     "figure_paths": figure_paths,
                 },
@@ -251,8 +297,13 @@ def create_waterquality_html_viewer(
     validation_factor_paths = histogram_module.create_correction_factor_histograms(
         model_path=model_path,
         validation_path=validation_path,
+        delwaq_map_path=delwaq_map_path,
+        mapping_path=mapping_path,
         output_folder=validation_factor_folder,
         location_limit=location_limit if location_limit is not None else "all",
+        quality_labels_path=quality_labels_path,
+        included_quality_classes=INCLUDED_QUALITY_CLASSES,
+        parameter_components=PARAMETER_COMPONENTS,
     )
     validation_factor_figures = {
         path.stem.removeprefix("correction_factors_krw_tussenevaluatie_"): path.relative_to(output_folder).as_posix()
@@ -273,13 +324,19 @@ def create_waterquality_html_viewer(
     validation_scatterplot_paths = scatterplot_module.create_validation_scatterplots(
         model_path=model_path,
         validation_path=validation_path,
+        delwaq_map_path=delwaq_map_path,
+        mapping_path=mapping_path,
         output_folder=validation_scatterplot_folder,
         location_limit=location_limit if location_limit is not None else "all",
+        quality_labels_path=quality_labels_path,
+        included_quality_classes=INCLUDED_QUALITY_CLASSES,
+        parameter_components=PARAMETER_COMPONENTS,
     )
     validation_scatterplot_figures = {
         path.stem.removeprefix("validation_scatterplots_"): path.relative_to(output_folder).as_posix()
         for path in validation_scatterplot_paths
     }
+    validation_summary = _validation_summary(features, quality_class_counts)
 
     features_path = output_folder / "locations.js"
     feature_collection = {"type": "FeatureCollection", "features": features}
@@ -297,6 +354,7 @@ def create_waterquality_html_viewer(
         validation_factor_figures,
         validation_factor_maxima,
         validation_scatterplot_figures,
+        validation_summary,
     )
     print(f"Created {len(features)} location plots in {output_folder}")
     return output_folder / "index.html"
@@ -322,6 +380,28 @@ def _mean_seasonal_relative_bias(modelled: pd.Series, observed: pd.Series) -> fl
     return float(relative_error.mean())
 
 
+def _validation_summary(
+    features: list[dict], quality_class_counts: dict[str, dict[str, int | str]]
+) -> dict[str, dict[str, dict[str, int | str]]]:
+    """Summarize locations within the plus-or-minus 50 percent validation band."""
+    summary: dict[str, dict[str, dict[str, int | str]]] = {}
+    for parameter in PARAMETER_COMPONENTS:
+        summary[parameter] = {"included_quality_classes": quality_class_counts[parameter]}
+        for period, factor_key in [("annual", "validation_factors"), ("summer", "summer_validation_factors")]:
+            factors = [
+                feature["properties"][factor_key][parameter]
+                for feature in features
+                if feature["properties"][factor_key][parameter] is not None
+            ]
+            meets_criterion = sum(0.5 <= factor <= 1.5 for factor in factors)
+            summary[parameter][period] = {
+                "meets_criterion": meets_criterion,
+                "does_not_meet": len(factors) - meets_criterion,
+                "evaluated": len(factors),
+            }
+    return summary
+
+
 def _write_html(
     output_folder: Path,
     has_local_js: bool,
@@ -333,6 +413,7 @@ def _write_html(
     validation_factor_figures: dict[str, str],
     validation_factor_maxima: dict[str, float | None],
     validation_scatterplot_figures: dict[str, str],
+    validation_summary: dict[str, dict[str, dict[str, int | str]]],
 ) -> None:
     """Write the Leaflet map and popup viewer."""
     css_ref = "resources/leaflet.css" if has_local_css else leaflet_css_url
@@ -360,11 +441,11 @@ def _write_html(
         .dot {{ width: 12px; height: 12px; border-radius: 50%; background: rgb(128 128 128 / 30%); border: 1px solid #777; }}
         .validation-factor-legend {{ margin-top: 12px; padding-top: 8px; border-top: 1px solid #ddd; }}
         .validation-factor-bullet {{ width: 12px; height: 12px; border: 1px solid #555; border-radius: 50%; }}
-        .factor-very-low {{ background: #001f6b; }}
-        .factor-low {{ background: #78c7ec; }}
+        .factor-very-low {{ background: #b0121b; }}
+        .factor-low {{ background: #ff9f1c; }}
         .factor-match {{ background: #fff; }}
-        .factor-high {{ background: #ff9f1c; }}
-        .factor-very-high {{ background: #b0121b; }}
+        .factor-high {{ background: #78c7ec; }}
+        .factor-very-high {{ background: #001f6b; }}
         .concentration-very-low {{ background: #f7fbff; }}
         .concentration-low {{ background: #c6dbef; }}
         .concentration-medium {{ background: #6baed6; }}
@@ -387,11 +468,15 @@ def _write_html(
 		.popup-image {{ width: 700px; max-width: 100%; border: 1px solid #ddd; }}
         .chart-toggle {{ position: absolute; z-index: 1001; top: 14px; right: 16px; padding: 8px 10px; background: #fff; border: 1px solid #aaa; border-radius: 4px; cursor: pointer; font-size: 13px; }}
         .scatter-toggle {{ position: absolute; z-index: 1001; top: 52px; right: 16px; padding: 8px 10px; background: #fff; border: 1px solid #aaa; border-radius: 4px; cursor: pointer; font-size: 13px; }}
-        .chart-panel {{ position: absolute; z-index: 1001; top: 90px; right: 16px; width: min(720px, calc(100% - 300px)); max-height: calc(100% - 108px); overflow: auto; padding: 12px; background: #fff; border: 1px solid #aaa; border-radius: 4px; box-shadow: 0 1px 5px #777; }}
+        .summary-toggle {{ position: absolute; z-index: 1001; top: 90px; right: 16px; padding: 8px 10px; background: #fff; border: 1px solid #aaa; border-radius: 4px; cursor: pointer; font-size: 13px; }}
+        .chart-panel {{ position: absolute; z-index: 1001; top: 128px; right: 16px; width: min(720px, calc(100% - 300px)); max-height: calc(100% - 146px); overflow: auto; padding: 12px; background: #fff; border: 1px solid #aaa; border-radius: 4px; box-shadow: 0 1px 5px #777; }}
         .chart-tabs {{ display: flex; gap: 6px; margin-bottom: 8px; }}
         .chart-tab {{ padding: 5px 10px; background: #fff; border: 1px solid #aaa; border-radius: 3px; cursor: pointer; }}
         .chart-tab.active {{ background: #1677b8; border-color: #1677b8; color: #fff; }}
         .validation-factor-image {{ display: block; width: 100%; }}
+        .validation-summary {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
+        .validation-summary th, .validation-summary td {{ padding: 6px; border: 1px solid #ccc; text-align: right; }}
+        .validation-summary th:first-child, .validation-summary td:first-child {{ text-align: left; }}
 	</style>
 </head>
 <body>
@@ -415,6 +500,7 @@ def _write_html(
     <div class="header"><b>DELWAQ Water Quality Validation</b><span>Click a location marker to see Ntot and Ptot</span></div>
     <button id="chart-toggle" class="chart-toggle" type="button" aria-expanded="false">Cobserved / Cmodelled charts</button>
     <button id="scatter-toggle" class="scatter-toggle" type="button" aria-expanded="false">Validation scatter plots</button>
+    <button id="summary-toggle" class="summary-toggle" type="button" aria-expanded="false">Acceptance criteria</button>
     <section id="chart-panel" class="chart-panel" hidden>
         <div class="chart-tabs"><button class="chart-tab active" type="button" data-parameter="Ntot">Ntot</button><button class="chart-tab" type="button" data-parameter="Ptot">Ptot</button></div>
         <img id="validation-factor-image" class="validation-factor-image" alt="Validation-factor histogram">
@@ -422,6 +508,10 @@ def _write_html(
     <section id="scatter-panel" class="chart-panel" hidden>
         <div class="chart-tabs"><button class="scatter-tab active" type="button" data-parameter="Ntot">Ntot</button><button class="scatter-tab" type="button" data-parameter="Ptot">Ptot</button></div>
         <img id="validation-scatterplot-image" class="validation-factor-image" alt="Validation scatter plot">
+    </section>
+    <section id="summary-panel" class="chart-panel" hidden>
+        <div id="quality-class-summary"></div>
+        <table id="validation-summary" class="validation-summary"></table>
     </section>
     <script src="{js_ref}"></script>
     <script src="basins.js"></script>
@@ -432,6 +522,7 @@ def _write_html(
         const validationFactorFigures = {json.dumps(validation_factor_figures)};
         const validationFactorMaxima = {json.dumps(validation_factor_maxima)};
         const validationScatterplotFigures = {json.dumps(validation_scatterplot_figures)};
+        const validationSummary = {json.dumps(validation_summary)};
         const map = L.map('map');
         L.tileLayer('https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{{z}}/{{x}}/{{y}}.png', {{
             maxZoom: 19,
@@ -455,11 +546,13 @@ def _write_html(
         const markerLayer = L.layerGroup([], {{ pane: 'markerPane' }}).addTo(map);
         function validationFactorColor(factor) {{
             if (factor === null || !Number.isFinite(factor)) return '#808080';
-            if (factor < 0.5) return '#001f6b';
-            if (factor < 0.9) return '#78c7ec';
-            if (factor <= 1.1) return '#ffffff';
-            if (factor <= 2) return '#ff9f1c';
-            return '#b0121b';
+            if (factor < 0.1) return '#b0121b';
+            if (factor < 0.5) return '#ff9f1c';
+            if (factor < 0.9) return '#ffe680';
+            if (factor <= 1.1) return '#1a9850';
+            if (factor <= 1.5) return '#c2e68f';
+            if (factor <= 1.9) return '#78c7ec';
+            return '#001f6b';
         }}
         const concentrationColors = ['#f7fbff', '#c6dbef', '#6baed6', '#2171b5', '#08306b'];
         function concentrationBreaks(parameter) {{
@@ -487,8 +580,8 @@ def _write_html(
             const showNtot = document.getElementById('toggle-ntot').checked;
             const showPtot = document.getElementById('toggle-ptot').checked;
             const figures = [];
-            if (showNtot) figures.push(`<img class="popup-image" src="${{props.figure_paths.Ntot}}" alt="Ntot comparison plot">`);
-            if (showPtot) figures.push(`<img class="popup-image" src="${{props.figure_paths.Ptot}}" alt="Ptot comparison plot">`);
+            if (showNtot && props.figure_paths.Ntot) figures.push(`<img class="popup-image" src="${{props.figure_paths.Ntot}}" alt="Ntot comparison plot">`);
+            if (showPtot && props.figure_paths.Ptot) figures.push(`<img class="popup-image" src="${{props.figure_paths.Ptot}}" alt="Ptot comparison plot">`);
             const validationFactor = (parameter) => {{
                 const factor = props.validation_factors[parameter];
                 return factor === null ? 'No comparable annual means' : factor.toFixed(3);
@@ -502,6 +595,8 @@ def _write_html(
         const chartPanel = document.getElementById('chart-panel');
         const scatterToggle = document.getElementById('scatter-toggle');
         const scatterPanel = document.getElementById('scatter-panel');
+        const summaryToggle = document.getElementById('summary-toggle');
+        const summaryPanel = document.getElementById('summary-panel');
         const validationFactorImage = document.getElementById('validation-factor-image');
         const validationScatterplotImage = document.getElementById('validation-scatterplot-image');
         const markerColouring = document.getElementById('marker-colouring');
@@ -510,7 +605,7 @@ def _write_html(
             const [kind, parameter] = markerColouring.value.split('-');
             if (kind === 'ratio') {{
                 const maximum = validationFactorMaxima[parameter];
-                markerColouringLegend.innerHTML = `<b>${{parameter}} validation factor: Cobserved / Cmodelled</b><div class="legend-row"><span class="validation-factor-bullet factor-very-low"></span> 0.07 to 0.5</div><div class="legend-row"><span class="validation-factor-bullet factor-low"></span> 0.5 to 0.9</div><div class="legend-row"><span class="validation-factor-bullet factor-match"></span> 0.9 to 1.1</div><div class="legend-row"><span class="validation-factor-bullet factor-high"></span> 1.1 to 2</div><div class="legend-row"><span class="validation-factor-bullet factor-very-high"></span> ${{maximum === null ? 'No data' : `2 to ${{maximum.toFixed(3)}}`}}</div>`;
+                markerColouringLegend.innerHTML = `<b>${{parameter}} validation factor: Cobserved / Cmodelled</b><div class="legend-row"><span class="validation-factor-bullet" style="background:#b0121b"></span> &lt; 0.1</div><div class="legend-row"><span class="validation-factor-bullet" style="background:#ff9f1c"></span> 0.1 to 0.5</div><div class="legend-row"><span class="validation-factor-bullet" style="background:#ffe680"></span> 0.5 to 0.9</div><div class="legend-row"><span class="validation-factor-bullet" style="background:#1a9850"></span> 0.9 to 1.1</div><div class="legend-row"><span class="validation-factor-bullet" style="background:#c2e68f"></span> 1.1 to 1.5</div><div class="legend-row"><span class="validation-factor-bullet" style="background:#78c7ec"></span> 1.5 to 1.9</div><div class="legend-row"><span class="validation-factor-bullet" style="background:#001f6b"></span> &gt; 1.9</div>`;
                 markers.forEach((entry) => entry.marker.setStyle({{ fillColor: validationFactorColor(entry.props.validation_factors[parameter]) }}));
                 return;
             }}
@@ -527,7 +622,7 @@ def _write_html(
         chartToggle.addEventListener('click', () => {{
             chartPanel.hidden = !chartPanel.hidden;
             chartToggle.setAttribute('aria-expanded', String(!chartPanel.hidden));
-            if (!chartPanel.hidden) {{ scatterPanel.hidden = true; scatterToggle.setAttribute('aria-expanded', 'false'); }}
+            if (!chartPanel.hidden) {{ scatterPanel.hidden = true; summaryPanel.hidden = true; scatterToggle.setAttribute('aria-expanded', 'false'); summaryToggle.setAttribute('aria-expanded', 'false'); }}
         }});
         document.querySelectorAll('.chart-tab').forEach((tab) => tab.addEventListener('click', () => showValidationFactorFigure(tab.dataset.parameter)));
         showValidationFactorFigure('Ntot');
@@ -538,10 +633,30 @@ def _write_html(
         scatterToggle.addEventListener('click', () => {{
             scatterPanel.hidden = !scatterPanel.hidden;
             scatterToggle.setAttribute('aria-expanded', String(!scatterPanel.hidden));
-            if (!scatterPanel.hidden) {{ chartPanel.hidden = true; chartToggle.setAttribute('aria-expanded', 'false'); }}
+            if (!scatterPanel.hidden) {{ chartPanel.hidden = true; summaryPanel.hidden = true; chartToggle.setAttribute('aria-expanded', 'false'); summaryToggle.setAttribute('aria-expanded', 'false'); }}
         }});
         document.querySelectorAll('.scatter-tab').forEach((tab) => tab.addEventListener('click', () => showValidationScatterplot(tab.dataset.parameter)));
         showValidationScatterplot('Ntot');
+        function summaryRows() {{
+            return ['Ntot', 'Ptot'].flatMap((parameter) => ['summer', 'annual'].map((period) => {{
+                const result = validationSummary[parameter][period];
+                const percentage = result.evaluated ? (100 * result.meets_criterion / result.evaluated).toFixed(1) : 'n/a';
+                const periodName = period === 'summer' ? 'Summer average' : 'Annual average';
+                return `<tr><td>${{parameter}}</td><td>${{periodName}}</td><td>${{result.meets_criterion}}</td><td>${{result.does_not_meet}}</td><td>${{result.evaluated}}</td><td>${{percentage}}%</td></tr>`;
+            }})).join('');
+        }}
+        const qualityClassSummary = ['Ntot', 'Ptot'].map((parameter) => {{
+            const result = validationSummary[parameter].included_quality_classes;
+            return `${{parameter}} ${{result.included}}/${{result.total}}`;
+        }}).join('<br>');
+        const qualityClasses = validationSummary.Ntot.included_quality_classes.classes;
+        document.getElementById('quality-class-summary').innerHTML = `<p><b>Number of ${{qualityClasses}}-quality locations:</b><br>${{qualityClassSummary}}</p>`;
+        document.getElementById('validation-summary').innerHTML = `<thead><tr><th>Parameter</th><th>Period</th><th>Meets 50% band</th><th>Does not meet</th><th>Evaluated</th><th>Accepted</th></tr></thead><tbody>${{summaryRows()}}</tbody>`;
+        summaryToggle.addEventListener('click', () => {{
+            summaryPanel.hidden = !summaryPanel.hidden;
+            summaryToggle.setAttribute('aria-expanded', String(!summaryPanel.hidden));
+            if (!summaryPanel.hidden) {{ chartPanel.hidden = true; scatterPanel.hidden = true; chartToggle.setAttribute('aria-expanded', 'false'); scatterToggle.setAttribute('aria-expanded', 'false'); }}
+        }});
         const authorities = [...new Set(markers.map((entry) => entry.props.water_authority))].sort();
         const authorityList = document.getElementById('authority-list');
         for (const authority of authorities) {{
@@ -574,3 +689,25 @@ def _write_html(
 
 if __name__ == "__main__":
     create_waterquality_html_viewer()
+
+
+# %% Only recreate the scatterplots
+
+# import importlib
+
+# importlib.reload(validation_scatterplots)
+
+# validation_scatterplots.create_validation_scatterplots(
+#     model_path=MODEL_PATH,
+#     validation_path=VALIDATION_PATH,
+#     delwaq_map_path=MODEL_PATH / "delwaq_all_sources" / "delwaq_map.nc",
+#     mapping_path=VALIDATION_PATH / "basins_selected_joined_monlocs.shp",
+#     output_folder=MODEL_PATH
+#     / "results_delwaq_html_viewer"
+#     / "figures"
+#     / "validation_scatterplots",
+#     location_limit=LOCATION_LIMIT if LOCATION_LIMIT is not None else "all",
+#     quality_labels_path=VALIDATION_PATH / "KRWMeetwaarden_met_kwaliteitslabel_per_locatie.csv",
+#     included_quality_classes=INCLUDED_QUALITY_CLASSES,
+# )
+# %%
