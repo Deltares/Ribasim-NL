@@ -28,7 +28,7 @@ from ribasim_nl.transboundary_inflow import add_transboundary_inflow, import_tra
 
 # simulation period and output interval of the regional models
 STARTTIME = datetime.datetime(2017, 1, 1)
-ENDTIME = datetime.datetime(2020, 1, 1)
+ENDTIME = datetime.datetime(2023, 1, 1)
 SAVEAT = 3600 * 24
 
 DATA_DIR = settings.ribasim_nl_data_dir

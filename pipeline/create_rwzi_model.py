@@ -36,7 +36,7 @@ rwzi_ligging_path = root_path_local / "aangeleverd/locaties/RWZI_coordinates.geo
 
 # %% create empty model
 starttime = "2017-01-01"
-endtime = "2020-01-01"
+endtime = "2023-01-01"
 time_range = pd.date_range(start=starttime, end=endtime, freq="D")
 logger.info(f"Setting up Ribasim-RWZI model between {starttime} and {endtime} in {model_dir}.")
 
