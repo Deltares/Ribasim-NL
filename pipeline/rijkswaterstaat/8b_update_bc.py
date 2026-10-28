@@ -4,10 +4,11 @@ from pathlib import Path
 import pandas as pd
 from pandera.typing import DataFrame
 from ribasim.schemas import FlowBoundaryTimeSchema, LevelBoundaryTimeSchema
+from ribasim_nl.flow_paths import rebuild_junction_trees_along_top10nl
 from ribasim_nl.layout import tidy_layout
 from ribasim_nl.observations import add_observations
 
-from ribasim_nl import CloudStorage, Model, merge_rwzi_model
+from ribasim_nl import CloudStorage, Model, Network, merge_rwzi_model
 
 cloud = CloudStorage()
 
@@ -17,6 +18,8 @@ model = Model.read(ribasim_toml)
 rwzi_model_path = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
 rwzi_coverage_path = rwzi_model_path.parent / "meta/RWZI_coordinates_model_coverage.geojson"
 debieten_xlsx = cloud.joinpath("Rijkswaterstaat/aangeleverd/Matroos_debieten_2017_2022_Lobith_Monsin.xlsx")
+network_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg")
+top10nl_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
 time_colname = " Timeseries retrieved from the MATROOS series database"
 
@@ -174,6 +177,10 @@ model = merge_rwzi_model(
 
 # add Observation nodes with measured discharges
 model = add_observations(model, "Rijkswaterstaat")
+# route the links of each Basin as one tree along the network, which koppelen extends with the links of other models
+assert model.basin.node is not None and model.basin.node.df is not None
+network = Network.from_network_gpkg(network_gpkg)
+rebuild_junction_trees_along_top10nl(model, model.basin.node.df.index.tolist(), top10nl_gpkg, network.links)
 model = tidy_layout(model)
 
 # %%

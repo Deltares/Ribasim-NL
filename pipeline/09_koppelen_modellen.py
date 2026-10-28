@@ -19,9 +19,16 @@ from ribasim_nl.coupling_level_apply import (
 from ribasim_nl.coupling_level_common import finite_level, finite_levels
 from ribasim_nl.coupling_level_network import first_non_junction, flow_link_graphs
 from ribasim_nl.coupling_levels import run_coupling_level_check
-from ribasim_nl.flow_paths import branch_from_route, merge_inflows, merge_outflows, place_on_link
+from ribasim_nl.flow_paths import (
+    Routes,
+    branch_from_route,
+    merge_inflows,
+    merge_outflows,
+    place_on_link,
+    rebuild_junction_trees_along_top10nl,
+)
 from ribasim_nl.junctions import junctionify
-from ribasim_nl.layout import move_nodes, offset_links, resolve_overlaps, separate_nodes
+from ribasim_nl.layout import move_nodes, offset_junctions, offset_links, resolve_overlaps, separate_nodes
 from ribasim_nl.model import find_toml
 from ribasim_nl.network_snapping import snap_to_waterways
 from ribasim_nl.observations import link_observations
@@ -62,6 +69,7 @@ COUPLING_LEVEL_APPLY_AUTHORITIES = {
 }
 # Configuration
 data_dir = settings.ribasim_nl_data_dir
+top10nl_gpkg = data_dir / "Basisgegevens/Top10NL/top10nl_Compleet.gpkg"
 couple_lhm: bool = True
 sub_models: list[str] = []
 
@@ -747,8 +755,7 @@ def route_links_between_models(model: Model, network: Network) -> list[int]:
     straight = shapely.get_num_points(flow.geometry.to_numpy()) == 2
     rws = (from_authority == "Rijkswaterstaat") & (to_authority == "Rijkswaterstaat")
     link_ids = flow.index[straight & ((from_authority != to_authority) | rws)].tolist()
-    top10nl = data_dir / "Basisgegevens/Top10NL/top10nl_Compleet.gpkg"
-    snap_to_waterways(model, top10nl, link_ids, main_route=network.links, tolerance=250.0)
+    snap_to_waterways(model, top10nl_gpkg, link_ids, main_route=network.links, tolerance=250.0)
     return link_ids
 
 
@@ -802,14 +809,32 @@ def change_routes(model: Model) -> None:
             merge_outflows(model, node_ids)
 
 
-def tidy_coupling_layout(model: Model, link_ids: list[int]) -> None:
+def rws_basins_between_models(model: Model) -> list[int]:
+    """The Rijkswaterstaat Basins that exchange water with nodes of other models, possibly through Junctions."""
+    assert model.node.df is not None
+    assert model.link.df is not None
+    nodes, flow = model.node.df, model.link.df[model.link.df["link_type"] == "flow"]
+    authority = nodes["meta_waterbeheerder"]
+    between = flow["from_node_id"].map(authority).to_numpy() != flow["to_node_id"].map(authority).to_numpy()
+    routes = Routes(model)
+    ends = {node_id for i in flow.index[between] for upstream in (False, True) for node_id in routes.ends(i, upstream)}
+    rws_basins = nodes.index[(nodes["node_type"] == "Basin") & (authority == "Rijkswaterstaat")]
+    return sorted(ends & set(rws_basins))
+
+
+def tidy_coupling_layout(model: Model, link_ids: list[int], network: Network) -> None:
     """Tidy the layout of the coupling: the layout of the models is already tidy, see `tidy_layout`.
 
-    The links between models share routes towards the same Basins, which are merged into Junctions, and these and
-    the routed links `link_ids` are offset, such that no links overlap.
+    The Rijkswaterstaat Basins with links from other models get the same routes as in the hws model, see
+    `rebuild_junction_trees_along_top10nl`, with branches to these links. The links between models that share routes
+    towards other Basins are merged into Junctions. These and the routed links `link_ids` are offset, such that no
+    links overlap.
     """
     assert model.link.df is not None
     link_ids = [i for i in link_ids if i in model.link.df.index]  # some were replaced, see `change_routes`
+    rebuilt_links, rebuilt_junctions = rebuild_junction_trees_along_top10nl(
+        model, rws_basins_between_models(model), top10nl_gpkg, network.links
+    )
     assert model.node.df is not None
     junctions = set(model.node.df.index[model.node.df["node_type"] == "Junction"])
     junctionify(model)
@@ -819,7 +844,9 @@ def tidy_coupling_layout(model: Model, link_ids: list[int]) -> None:
     authority = nodes["meta_waterbeheerder"]
     between = flow["from_node_id"].map(authority).to_numpy() != flow["to_node_id"].map(authority).to_numpy()
     at_new_junction = (flow["from_node_id"].isin(new_junctions) | flow["to_node_id"].isin(new_junctions)).to_numpy()
+    link_ids = [i for i in {*link_ids, *rebuilt_links} if i in flow.index]
     offset_links(model, link_ids={*flow.index[between | at_new_junction], *link_ids})
+    offset_junctions(model, junction_ids=[i for i in rebuilt_junctions if i in nodes.index])
     separate_nodes(model)
     resolve_overlaps(model, max_iterations=10)
 
@@ -1042,7 +1069,7 @@ def couple_model(toml_file: Path) -> None:
     change_routes(model)
     # series measured on links between models can only be observed in the coupled model
     link_observations(model)
-    tidy_coupling_layout(model, link_ids)
+    tidy_coupling_layout(model, link_ids, network)
     coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)
     run_configured_coupling_level_check(coupled_toml_file)
 

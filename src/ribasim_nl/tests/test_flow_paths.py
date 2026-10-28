@@ -1,15 +1,21 @@
+import geopandas as gpd
 import pytest
 from ribasim import Node
 from ribasim.nodes import basin, outlet
 from ribasim_nl.flow_paths import (
     Routes,
+    attach_to_tree,
     branch_from_route,
+    junction_tree,
     merge_inflows,
     merge_outflows,
     place_on_link,
     prune_junction,
+    rebuild_junction_trees,
+    simplified_links,
+    tree_links,
 )
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, Point, box
 
 from ribasim_nl import Model
 
@@ -114,3 +120,91 @@ def test_merge_inflows_and_place_on_link():
 
     with pytest.raises(ValueError, match="should have one flow link"):
         place_on_link(model, 2, 1, link_id)
+
+
+def test_tree_links():
+    routes = {
+        1: [(0.0, 0.0), (10.0, 0.0), (20.0, 0.0), (30.0, 5.0)],
+        2: [(0.0, 0.0), (10.0, 0.0), (20.0, 0.0), (30.0, -5.0)],
+        3: [(0.0, 0.0), (10.0, 0.0), (10.0, 10.0)],
+    }
+    links = tree_links(routes)
+    # name the Junctions by their location, the end of the link into them, which comes first
+    locations = {end: coords[-1] for _, end, coords in links if end[0] == "junction"}
+    links = {(locations.get(start, start), locations.get(end, end)): coords for start, end, coords in links}
+    first, second = (10.0, 0.0), (20.0, 0.0)
+    assert links == {
+        ("root", first): [(0.0, 0.0), (10.0, 0.0)],
+        (first, ("end", 3)): [(10.0, 0.0), (10.0, 10.0)],
+        (first, second): [(10.0, 0.0), (20.0, 0.0)],
+        (second, ("end", 1)): [(20.0, 0.0), (30.0, 5.0)],
+        (second, ("end", 2)): [(20.0, 0.0), (30.0, -5.0)],
+    }
+
+    # branches that pass the same coordinates, as along overlapping waterways, have their own Junctions
+    a, b = (10.0, 0.0), (20.0, 0.0)
+    overlapping = {
+        1: [(0.0, 0.0), a, b, (30.0, 5.0)],
+        2: [(0.0, 0.0), a, b, (30.0, -5.0)],
+        3: [(0.0, 0.0), (0.0, 10.0), a, b, (30.0, 6.0)],
+        4: [(0.0, 0.0), (0.0, 10.0), a, b, (30.0, -6.0)],
+    }
+    pairs = [(start, end) for start, end, _ in tree_links(overlapping)]
+    assert len(pairs) == len(set(pairs)) == 6
+    assert sum(end[0] == "junction" for _, end in pairs) == 2
+
+    # a route that is part of another one keeps its last segment, and routes split at the root without a Junction
+    links = {(start, end): coords for start, end, coords in tree_links({1: routes[3][:2], 2: routes[1]})}
+    assert links == {("root", ("end", 1)): routes[3][:2], ("root", ("end", 2)): routes[1]}
+
+
+def test_attach_to_tree():
+    """Point 2 branches off the route, and point 3, which is nearer to point 2 than to the route, off its branch."""
+    routes = attach_to_tree({1: [(0.0, 0.0), (100.0, 0.0)]}, (0.0, 0.0), {2: (50.0, 10.0), 3: (60.0, 20.0)})
+    assert routes == {
+        1: [(0.0, 0.0), (50.0, 0.0), (100.0, 0.0)],
+        2: [(0.0, 0.0), (50.0, 0.0), (50.0, 10.0)],
+        3: [(0.0, 0.0), (50.0, 0.0), (50.0, 10.0), (60.0, 20.0)],
+    }
+    # without routes, the first point is attached to the start
+    assert attach_to_tree({}, (0.0, 0.0), {1: (10.0, 0.0)}) == {1: [(0.0, 0.0), (10.0, 0.0)]}
+
+
+def rebuild_model():
+    """`route_model` with an area, and Outlet 6 that drains into Basin 1 from where Outlets 2 and 3 are fed."""
+    model = route_model()
+    model.basin.area.df = gpd.GeoDataFrame({"node_id": [1]}, geometry=[box(-150, -50, 150, 50)], crs="EPSG:28992")
+    model.outlet.add(Node(6, Point(100, 0)), [outlet.Static(flow_rate=[1.0])])
+    model.link.add(model.outlet[6], model.basin[1], geometry=LineString([(100, 0), (0, 20), (0, 0)]))
+    return model
+
+
+def test_junction_tree():
+    model = rebuild_model()
+    routes = Routes(model)
+    link_ids = model.link.df.reset_index().set_index(["from_node_id", "to_node_id"])["link_id"]
+    assert junction_tree(routes, 1) == ({4}, [link_ids[(1, 4)]], {2: link_ids[(4, 2)], 3: link_ids[(4, 3)]})
+    assert junction_tree(routes, 1, upstream=True) == (set(), [], {5: link_ids[(5, 1)], 6: link_ids[(6, 1)]})
+    # a fixed Junction, for instance an observed one, is reached instead
+    assert junction_tree(routes, 1, fixed={4}) == (set(), [], {4: link_ids[(1, 4)]})
+
+
+def test_rebuild_junction_trees():
+    model = rebuild_model()
+    links_before = simplified_links(model)
+    link_ids = model.link.df.reset_index().set_index(["from_node_id", "to_node_id"])["link_id"]
+    waterways = gpd.GeoDataFrame({"main-route": [True]}, geometry=[LineString([(-100, 0), (100, 0)])], crs="EPSG:28992")
+    changed, junction_ids = rebuild_junction_trees(model, [1], waterways)
+
+    assert simplified_links(model) == links_before
+    assert 4 not in model.node.df.index
+    # the outflows split where the waterway ends, and the inflow of Outlet 6 follows the outflows to there
+    (junction_id,) = junction_ids
+    assert model.node.df.at[junction_id, "geometry"].coords[:] == [(100, 0)]
+    geometries = model.link.df.set_index(["from_node_id", "to_node_id"])["geometry"]
+    assert geometries[(1, junction_id)].coords[:] == [(0, 0), (100, 0)]
+    assert geometries[(6, 1)].coords[:] == [(100, 0), (0, 0)]
+    assert geometries[(5, 1)].coords[:] == [(-100, 0), (0, 0)]
+    # the links to the nodes reached keep their ids
+    assert model.link.df.at[link_ids[(4, 2)], "from_node_id"] == junction_id
+    assert set(changed) >= {link_ids[(4, 2)], link_ids[(4, 3)], link_ids[(5, 1)], link_ids[(6, 1)]}
