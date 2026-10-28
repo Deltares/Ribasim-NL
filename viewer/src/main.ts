@@ -118,7 +118,7 @@ function selectionFromHash(): Selection | null {
 }
 
 /** A filter of the Basin / areas of some Basins. */
-function areaFilter(ids: number[]): maplibregl.FilterSpecification {
+function areaFilter(ids: number[]): maplibregl.ExpressionSpecification {
   return ["in", ["get", "node_id"], ["literal", ids]];
 }
 
