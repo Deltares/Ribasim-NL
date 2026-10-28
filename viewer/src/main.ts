@@ -20,6 +20,7 @@ import {
   type Comparison,
   type Manifest,
   type ModelDiff,
+  type Notice,
   type ResultKind,
   type RunInfo,
 } from "./data";
@@ -1082,6 +1083,20 @@ function diffBounds(network: Network, diff: ModelDiff): [number, number, number,
 
 const COMMIT_URL = "https://github.com/Deltares/Ribasim-NL/commit/";
 
+/** A warning about the shown model, with a link to its latest version that keeps the view and selection. */
+function noticeElement(notice: Notice): HTMLElement {
+  const element = el("div", "notice", notice.text);
+  if (notice.link) {
+    const { text, query } = notice.link;
+    const href = () => `${location.pathname}${query ? `?${query}` : ""}${location.hash}`;
+    const link = Object.assign(el("a", "", text), { href: href() });
+    // The hash has changed since if the view or selection did
+    link.addEventListener("click", () => (link.href = href()));
+    element.append(" ", link);
+  }
+  return element;
+}
+
 /** A map control next to the scale bar that says when the model was run, from which commit, and with which core. */
 function runInfoControl(run: RunInfo): maplibregl.IControl {
   const element = document.createElement("div");
@@ -1130,8 +1145,10 @@ async function main(): Promise<void> {
     maplibregl.setWorkerUrl(maplibreWorkerUrl);
     const protocol = new Protocol();
     maplibregl.addProtocol("pmtiles", protocol.tile);
-    const { manifest, comparison, notice } = await loadSource();
-    if (notice) root.append(Object.assign(document.createElement("div"), { className: "notice", textContent: notice }));
+    const { manifest, comparison, notice, pinned } = await loadSource();
+    // A copied link keeps showing this version of the model, also once it is outdated
+    if (pinned !== null) history.replaceState(history.state, "", `?${pinned}${location.hash}`);
+    if (notice) root.append(noticeElement(notice));
     const networkPromise = loadNetwork(manifest, comparison);
     // MapLibre adds its view to the hash, so check for it before creating the map
     const hasView = hashParams().has("map");

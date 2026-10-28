@@ -123,19 +123,34 @@ export interface Comparison {
   diff: ModelDiff;
 }
 
+/** A warning about the shown model, with a link to its latest version if it is outdated. */
+export interface Notice {
+  text: string;
+  /** The link text, and the query string of the latest version */
+  link?: { text: string; query: string };
+}
+
 /** What the viewer shows: a model, optionally compared with a base model, and a warning about it, if any. */
 export interface Source {
   manifest: Manifest;
   comparison: Comparison | null;
-  notice: string | null;
+  notice: Notice | null;
+  /** The query string that shows this model again once it is outdated, pinned to its commits, if it is not already */
+  pinned: string | null;
 }
 
 // The published models and their files, see `ribasim_nl.webmap_publish`
 const STORE_URL = "https://s3.deltares.nl/ribasim-nl/doc-image/webmap/";
 const MODEL_URL = new URL("lhm_coupled/", STORE_URL);
 const FILES_URL = new URL("files/", STORE_URL);
-// The model of main is the snapshot of the `export_webmap` output in its `dvc.lock`
-const DVC_LOCK_URL = "https://raw.githubusercontent.com/Deltares/Ribasim-NL/main/dvc.lock";
+// The model of a commit is the snapshot of the `export_webmap` output in its `dvc.lock`
+const RAW_URL = "https://raw.githubusercontent.com/Deltares/Ribasim-NL/";
+// The commit of main the docs are published for, or empty if the viewer was built otherwise, see vite.config.ts
+declare const __MAIN_COMMIT__: string;
+const MAIN = __MAIN_COMMIT__ || "main";
+const COMMIT = /^[0-9a-f]{7,40}$/;
+// Commits in pinned links are shortened to this length, which stays unambiguous as the repository grows
+const PINNED_COMMIT_LENGTH = 10;
 const EXPORT_STAGE = "export_webmap";
 const EXPORT_PATH = "data/Rijkswaterstaat/webmap/lhm_coupled";
 const SNAPSHOT = /^[0-9a-f]{32}$/;
@@ -147,7 +162,7 @@ const SAFE_PATH = /^[\w-]+(\/[\w-]+)*\.\w+$/;
 const SAFE_HASH = /^[0-9a-f]+$/;
 
 /** A data location from the URL; it may only point to the default host, this site or localhost. */
-function locationParam(name: "data" | "base" | "diff"): URL | null {
+function locationParam(name: "data" | "base_data" | "diff"): URL | null {
   const requested = new URLSearchParams(location.search).get(name);
   if (requested === null) return null;
   const url = new URL(requested, location.href);
@@ -241,12 +256,12 @@ async function loadDiff(url: URL): Promise<ModelDiff> {
   return { ...raw, nodes: featureDiffs(raw.nodes), links: featureDiffs(raw.links), results };
 }
 
-/** The local model to compare with, if `?base=<url>&diff=<url>` are given. */
+/** The local model to compare with, if `?base_data=<url>&diff=<url>` are given. */
 async function loadComparison(): Promise<Comparison | null> {
-  const base = locationParam("base");
+  const base = locationParam("base_data");
   const diff = locationParam("diff");
   if (!base && !diff) return null;
-  if (!base || !diff) throw new Error("Comparing models needs both ?base= and ?diff=");
+  if (!base || !diff) throw new Error("Comparing models needs both ?base_data= and ?diff=");
   const [manifest, modelDiff] = await Promise.all([loadManifest(base), loadDiff(new URL("diff.json", diff))]);
   return { base: manifest, diff: modelDiff };
 }
@@ -278,15 +293,23 @@ export function exportHash(lock: string): string | null {
   return null;
 }
 
-/** The snapshot of the current main, or null if it cannot be read from GitHub. */
-async function currentMain(): Promise<string | null> {
+/** The snapshot in `dvc.lock` of main or a commit on GitHub, or null if it cannot be read from GitHub. */
+async function snapshotAt(ref: string): Promise<string | null> {
+  if (ref !== "main" && !COMMIT.test(ref)) throw new Error(`Invalid commit ${ref}`);
   try {
-    const response = await fetch(DVC_LOCK_URL, { cache: "no-cache" });
+    // A commit does not change, main does
+    const response = await fetch(new URL(`${ref}/dvc.lock`, RAW_URL), { cache: ref === "main" ? "no-cache" : "default" });
     return response.ok ? exportHash(await response.text()) : null;
   } catch {
     return null;
   }
 }
+
+/** The snapshot of the current main, or null if it cannot be read from GitHub. */
+const currentMain = () => snapshotAt(MAIN);
+
+/** The query string that shows the model of a commit. */
+const commitQuery = (commit: string) => `commit=${commit.slice(0, PINNED_COMMIT_LENGTH)}`;
 
 interface Published {
   snapshot: string;
@@ -301,16 +324,19 @@ async function loadMain(): Promise<Source> {
   const md5 = await currentMain();
   if (md5) {
     try {
-      return { manifest: await loadSnapshot(md5), comparison: null, notice: null };
+      const manifest = await loadSnapshot(md5);
+      return { manifest, comparison: null, notice: null, pinned: MAIN === "main" ? null : commitQuery(MAIN) };
     } catch (error) {
       console.warn(`The model of main ${md5} is not published`, error);
     }
   }
   const latest = await fetchJson<Published>(new URL("main.json", MODEL_URL));
-  const notice = md5
+  const text = md5
     ? `The model of the latest main is not published yet, this is main at ${shortCommit(latest.commit)}.`
     : `Could not find the latest main on GitHub, this is main at ${shortCommit(latest.commit)}.`;
-  return { manifest: await loadSnapshot(latest.snapshot), comparison: null, notice };
+  // The snapshot of the latest published main is that of its commit
+  const manifest = await loadSnapshot(latest.snapshot);
+  return { manifest, comparison: null, notice: { text }, pinned: commitQuery(latest.commit) };
 }
 
 interface PullRequest {
@@ -329,7 +355,10 @@ async function currentBase(base: PullRequest["base"]): Promise<string | null> {
   return record?.head.snapshot ?? null;
 }
 
-/** The model of a pull request, compared with the main or the pull request below it that it was published with. */
+/**
+ * The model of a pull request, compared with the main or the pull request below it that it was published with.
+ * Its links are not pinned, since it is usually published before its `dvc.lock` is committed.
+ */
 async function loadPullRequest(number: number): Promise<Source> {
   const record = await fetchJson<PullRequest>(new URL(`prs/${number}.json`, MODEL_URL)).catch((error) => {
     throw new Error(`No model is published for pull request #${number} (${error})`);
@@ -344,25 +373,83 @@ async function loadPullRequest(number: number): Promise<Source> {
   const baseName = record.base.pr === undefined ? "main" : `pull request #${record.base.pr}`;
   const notice =
     current && current !== record.base.snapshot
-      ? `The base ${baseName} has changed since pull request #${number} was compared with it, at ${shortCommit(record.base.commit)}. Publish it again to compare with the latest ${baseName}.`
+      ? {
+          text: `The base ${baseName} has changed since pull request #${number} was compared with it, at ${shortCommit(record.base.commit)}. Publish it again to compare with the latest ${baseName}.`,
+        }
       : null;
-  return { manifest, comparison: { base, diff }, notice };
+  return { manifest, comparison: { base, diff }, notice, pinned: null };
+}
+
+/** A notice with a link to the latest main, if the model of a commit is not that of the latest main. */
+async function outdatedNotice(md5: string, commit: string): Promise<Notice | null> {
+  const latest = await currentMain();
+  if (latest === null || latest === md5) return null;
+  return {
+    text: `This is the model at ${shortCommit(commit)}, not that of the latest main.`,
+    link: { text: "Show the latest main", query: "" },
+  };
+}
+
+/** The model of a commit, optionally compared with that of a base commit. */
+async function loadCommit(commit: string, base: string | null): Promise<Source> {
+  const [md5, baseMd5] = await Promise.all([snapshotAt(commit), base === null ? null : snapshotAt(base)]);
+  const notFound = (name: string) =>
+    new Error(`No model found for commit ${name}: it is not on GitHub, or ${EXPORT_STAGE} is not in its dvc.lock`);
+  if (md5 === null) throw notFound(commit);
+  const command = `pixi run publish-webmap --commit ${commit}${base === null ? "" : ` --base ${base}`}`;
+  const unpublished = (what: string) => (error: unknown) => {
+    throw new Error(`${what} is not published, publish it with \`${command}\` (${error})`);
+  };
+  let comparison: Promise<Comparison | null> = Promise.resolve(null);
+  if (base !== null) {
+    if (baseMd5 === null) throw notFound(base);
+    if (baseMd5 === md5) throw new Error(`Commits ${base} and ${commit} have the same model`);
+    comparison = Promise.all([
+      loadSnapshot(baseMd5).catch(unpublished(`The model of ${base}`)),
+      loadDiff(new URL(`diffs/${baseMd5}-${md5}.json`, MODEL_URL)).catch(unpublished(`The comparison of ${commit} with ${base}`)),
+    ]).then(([baseManifest, diff]) => ({
+      base: baseManifest,
+      // The differences may have been published with labels for other commits with the same models
+      diff: { ...diff, base: { ...diff.base, label: shortCommit(base) }, head: { ...diff.head, label: shortCommit(commit) } },
+    }));
+  }
+  const [manifest, loaded, notice] = await Promise.all([
+    loadSnapshot(md5).catch(unpublished(`The model of ${commit}`)),
+    comparison,
+    outdatedNotice(md5, commit),
+  ]);
+  return { manifest, comparison: loaded, notice, pinned: null };
+}
+
+/** The value of a commit in the query string, or null if it is not given. */
+function commitParam(params: URLSearchParams, name: "commit" | "base"): string | null {
+  const commit = params.get(name);
+  if (commit !== null && !COMMIT.test(commit)) throw new Error(`Invalid commit ${name}=${commit}`);
+  return commit;
 }
 
 /**
- * The model to show: by default the model of main, with `?pr=<number>` that of a pull request compared with
- * main or the pull request below it in a stack, and with `?data=<url>`, optionally with `?base=<url>&diff=<url>`, a local model.
+ * The model to show, by the query string of the page:
+ * - by default the model of main, then pinned to `?commit=<commit>`
+ * - `?commit=<commit>`: the model of a commit, compared with that of another commit with `&base=<commit>`
+ * - `?pr=<number>`: the latest published model of a pull request, compared with main or the pull request below it
+ * - `?data=<url>`, optionally with `&base_data=<url>&diff=<url>`: a local model
  */
 export async function loadSource(): Promise<Source> {
   const params = new URLSearchParams(location.search);
   const pr = params.get("pr");
+  const commit = commitParam(params, "commit");
+  const base = commitParam(params, "base");
   if (pr !== null) {
     if (!/^[1-9]\d{0,5}$/.test(pr)) throw new Error(`Invalid pull request number ${pr}`);
+    if (commit !== null || base !== null) throw new Error("pr= cannot be combined with commit= or base=");
     return loadPullRequest(Number(pr));
   }
-  if (["data", "base", "diff"].some((name) => params.has(name)) || import.meta.env.DEV) {
+  if (commit !== null) return loadCommit(commit, base);
+  if (base !== null) throw new Error("Comparing with base= needs the commit= to compare");
+  if (["data", "base_data", "diff"].some((name) => params.has(name)) || import.meta.env.DEV) {
     const [manifest, comparison] = await Promise.all([loadManifest(dataUrl()), loadComparison()]);
-    return { manifest, comparison, notice: null };
+    return { manifest, comparison, notice: null, pinned: null };
   }
   return loadMain();
 }

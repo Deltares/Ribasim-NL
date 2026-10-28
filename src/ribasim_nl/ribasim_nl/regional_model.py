@@ -39,6 +39,26 @@ RWZI_COVERAGE = DATA_DIR / "Rijkswaterstaat/modellen/rwzi/meta/RWZI_coordinates_
 QLR = DATA_DIR / "Basisgegevens/QGIS_qlr/output_controle_cc.qlr"
 # LHM budget of sprinkling from surface water
 SPRINKLING_BUDGET = "bdgpssw_m3d"
+# The model time is Dutch winter time (UT+1) all year, without summer time, which would make days of 23 and 25 hours.
+# The LHM day runs from 08:00 UT to 08:00 UT the next day, like the KNMI precipitation (RD1) that forces it, as
+# the hourly precipitation of De Bilt confirms. The LHM dates a day by the date on which it starts.
+LHM_DAY_START = datetime.timedelta(hours=9)  # in model time
+
+
+def read_lhm_budgets(path: Path = LHM_BUDGETS) -> xr.Dataset:
+    """The daily LHM budgets that cover the simulation period, at the time at which their day starts.
+
+    The day before `STARTTIME` is included, since it lasts until `LHM_DAY_START` on the first day. As Basin forcing
+    is constant between its times, the forcing of an LHM day applies over the same period as in the LHM, without
+    using rain that falls later. The forcing then changes at `LHM_DAY_START` and the other forcing at midnight,
+    which made the solver of the regional models about 6% slower.
+    """
+    day = datetime.timedelta(days=1)
+    budgets = xr.open_zarr(str(path)).sel(time=slice(STARTTIME - day, ENDTIME - day))
+    time = budgets.indexes["time"]
+    assert (time.normalize() == time).all(), "LHM budgets are not dated at midnight"
+    assert time[0] == STARTTIME - day, "No LHM budgets for the day before the start time"
+    return budgets.assign_coords(time=time + LHM_DAY_START)
 
 
 def add_lhm_forcing(
@@ -62,7 +82,7 @@ def add_lhm_forcing(
     :param fraction_prefix: prefix of the fractions, the `waterbeheercode` of the authority
     :return: the model with forcing
     """
-    budgets = xr.open_zarr(str(LHM_BUDGETS)).sel(time=slice(STARTTIME, ENDTIME))
+    budgets = read_lhm_budgets()
     offline_budgets = AssignOfflineBudgets(budgets)
     primary_budgets = offline_budgets.primary_budget_keys - {SPRINKLING_BUDGET}
     secondary_budgets = offline_budgets.secondary_budget_keys - {SPRINKLING_BUDGET}
