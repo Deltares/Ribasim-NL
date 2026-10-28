@@ -62,8 +62,8 @@ stages:
       nfiles: 5
     - path: data/Rijkswaterstaat/modellen/hws_transient
       hash: md5
-      md5: 94cb19f26e55399b5a37ac62eba4bccc.dir
-      size: 50669384
+      md5: 2e96d2a00dd07822474c237cb9029375.dir
+      size: 51099536
       nfiles: 3
     - path: data/RijnenIJssel/modellen/RijnenIJssel_dynamic_model
       hash: md5
@@ -122,14 +122,14 @@ stages:
       size: 7218
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: 3153b62da25041362b8d2c8d9e7cc59c.dir
-      size: 1758897
+      md5: 03ef968db8f1d4d20914a6d005be15b4.dir
+      size: 1759209
       nfiles: 104
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: f708e43da802114ca96d6f48eb541c6d.dir
-      size: 2340270400
+      md5: bdceecc2abc5ed245b09381bfd8ec1c4.dir
+      size: 2340712768
       nfiles: 2
   bathymetry:
     cmd: pixi run python pipeline/rijkswaterstaat/1_bathymetrie.py
@@ -187,8 +187,8 @@ stages:
       size: 99155
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: f708e43da802114ca96d6f48eb541c6d.dir
-      size: 2340270400
+      md5: bdceecc2abc5ed245b09381bfd8ec1c4.dir
+      size: 2340712768
       nfiles: 2
     - path: data/Rijkswaterstaat/verwerkt/netwerk.gpkg
       hash: md5
@@ -200,14 +200,14 @@ stages:
       size: 49735
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: 3153b62da25041362b8d2c8d9e7cc59c.dir
-      size: 1758897
+      md5: 03ef968db8f1d4d20914a6d005be15b4.dir
+      size: 1759209
       nfiles: 104
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: 9b198a9ee4af3f1e739125c8201566be.dir
-      size: 1362850813
+      md5: 829a4be4c24e647f9aff422a5866e738.dir
+      size: 1363338237
       nfiles: 4
   rwzi:
     cmd: pixi run python pipeline/create_rwzi_model.py
@@ -224,22 +224,22 @@ stages:
     - path: 
         data/Basisgegevens/RWZI/aangeleverd/locaties/RWZI_coordinates.geojson
       hash: md5
-      md5: 6ef299294c5e404e60575d4b91f0bf14
-      size: 160449
+      md5: 74bb3ec94032db35286922cd3e676cb6
+      size: 160527
     - path: pipeline/create_rwzi_model.py
       hash: md5
       md5: 897330e7ee443a5c5461a98b17b23031
       size: 20868
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: 3153b62da25041362b8d2c8d9e7cc59c.dir
-      size: 1758897
+      md5: 03ef968db8f1d4d20914a6d005be15b4.dir
+      size: 1759209
       nfiles: 104
     outs:
     - path: data/Rijkswaterstaat/modellen/rwzi
       hash: md5
-      md5: f6c1c62d2400ac09296e74d0b79055e9.dir
-      size: 22623871
+      md5: fffd51ffc477df86872b6fc73e85ba06.dir
+      size: 22623949
       nfiles: 3
   dynamic@aa_en_maas:
     cmd: pixi run python pipeline/07_add_dynamic_forcing.py AaenMaas
@@ -1242,8 +1242,8 @@ stages:
       nfiles: 2
     - path: data/Rijkswaterstaat/modellen/rwzi
       hash: md5
-      md5: f6c1c62d2400ac09296e74d0b79055e9.dir
-      size: 22623871
+      md5: fffd51ffc477df86872b6fc73e85ba06.dir
+      size: 22623949
       nfiles: 3
     - path: data/Rijkswaterstaat/verwerkt/netwerk.gpkg
       hash: md5
@@ -1251,18 +1251,18 @@ stages:
       size: 3731456
     - path: pipeline/rijkswaterstaat/8b_update_bc.py
       hash: md5
-      md5: 30db26981f74cedc1ad3c8eaa1e21ade
-      size: 5915
+      md5: e2c4ce338b05caf75f33a4c5ef8af214
+      size: 6127
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: 3153b62da25041362b8d2c8d9e7cc59c.dir
-      size: 1758897
+      md5: 03ef968db8f1d4d20914a6d005be15b4.dir
+      size: 1759209
       nfiles: 104
     outs:
     - path: data/Rijkswaterstaat/modellen/hws_transient
       hash: md5
-      md5: 94cb19f26e55399b5a37ac62eba4bccc.dir
-      size: 50669384
+      md5: 2e96d2a00dd07822474c237cb9029375.dir
+      size: 51099536
       nfiles: 3
   parameterized_rijn_en_ijssel:
     cmd:
