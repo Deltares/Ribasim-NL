@@ -78,6 +78,7 @@ bin/
 *.svg
 *.tif
 *.csv
+!src/ribasim_nl/ribasim_nl/data/*.csv
 *.gml
 *.gfs
 *.xml

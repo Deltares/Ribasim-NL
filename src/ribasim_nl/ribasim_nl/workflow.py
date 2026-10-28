@@ -331,7 +331,7 @@ def complete_parametrization(
         custom_nodes=custom_nodes if custom_nodes is not None else {},
         fill_na_authority=fill_na_authority,
     ).assign_authorities()
-    model = add_inflows(model, paths.model_dir("forcing"))
+    model = add_inflows(model, paths.waterschap, paths.model_dir("forcing"))
 
     assert model.outlet.static.df is not None
     assert model.pump.static.df is not None
