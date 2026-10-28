@@ -117,6 +117,11 @@ function selectionFromHash(): Selection | null {
   return null;
 }
 
+/** A filter of the Basin / areas of some Basins. */
+function areaFilter(ids: number[]): maplibregl.FilterSpecification {
+  return ["in", ["get", "node_id"], ["literal", ids]];
+}
+
 /** The `waterbeheercode` of the authority to show in the hash, or null to show all, see `Viewer.setAuthority`. */
 function authorityFromHash(): number | null {
   const value = hashParams().get("authority");
@@ -412,18 +417,17 @@ class Viewer {
   /** Show only the Basin / areas of the Basins that are shown for the authority, or all of them. */
   private filterBasinAreas(): void {
     const { network } = this;
-    let shown: maplibregl.FilterSpecification | null = null;
+    let ids: number[] | null = null;
     if (this.authority !== null) {
       const rows = authorityRows(network, this.authority).nodes;
-      const ids = Array.from(network.nodeId).filter((_, row) => rows[row] && network.nodeType[row] === "Basin");
-      shown = ["in", ["get", "node_id"], ["literal", ids]];
+      ids = Array.from(network.nodeId).filter((_, row) => rows[row] && network.nodeType[row] === "Basin");
     }
     for (const id of ["basin_area", "basin_area_outline"]) {
-      if (this.map.getLayer(id)) this.map.setFilter(id, shown);
+      if (this.map.getLayer(id)) this.map.setFilter(id, ids ? areaFilter(ids) : null);
     }
     if (this.map.getLayer("basin_area_base")) {
-      const base: maplibregl.FilterSpecification = ["in", ["get", "node_id"], ["literal", this.baseAreaIds()]];
-      this.map.setFilter("basin_area_base", shown ? ["all", base, shown] : base);
+      const base = areaFilter(this.baseAreaIds());
+      this.map.setFilter("basin_area_base", ids ? ["all", base, areaFilter(ids)] : base);
     }
   }
 
@@ -641,7 +645,7 @@ class Viewer {
       type: "line",
       source: "basin_area_base",
       "source-layer": "basin_area",
-      filter: ["in", ["get", "node_id"], ["literal", ids]],
+      filter: areaFilter(ids),
       paint: { "line-color": DIFF_CSS.removed, "line-width": 2, "line-dasharray": [2, 1] },
     });
   }
