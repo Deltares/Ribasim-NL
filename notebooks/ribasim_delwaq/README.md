@@ -1,11 +1,59 @@
 # Ribasim-Delwaq Integration Guide
 
-The main script used in this workflow is `delwaq_tests/combined_testing.py`. This script runs as a jupyter notebook. It requires the pixi environment of Ribasim-NL to be active. This script does the following:
+The DELWAQ workflow is split into three notebook-style Python scripts. They use
+the active Pixi environment of Ribasim-NL and can be run as Jupyter notebooks
+in VS Code because they contain `# %%` cells.
 
-1. Couple emission data to Ribasim model
-2. Set up DELWAQ simulation automatically using generate.py
-3. Run DELWAQ simulation
-4. Parse and save simulation results
+Run the scripts in this order:
+
+1. `01_prepare_and_verify_inputs.py`
+2. `02_build_delwaq_model.py`
+3. `03_run_and_analyse_delwaq.py`
+
+The scripts communicate through prepared Parquet files in:
+
+```
+data/Rijkswaterstaat/modellen/lhm_coupled_full/delwaq_input/
+```
+
+### 1. Prepare and verify inputs
+
+`01_prepare_and_verify_inputs.py`:
+
+- Reads the ER, ANIMO, IM, and Zinfo input data.
+- Optionally runs the source-data conversion scripts.
+- Verifies ER and ANIMO mass loads against basin polygons.
+- Processes IM and Zinfo independently:
+  - removes invalid concentration and node values;
+  - interpolates concentrations and flow rates to the daily time grid;
+  - calculates daily boundary mass loads;
+  - verifies each source against boundary nodes and links.
+- Combines IM and Zinfo only after their separate processing and verification.
+- Combines ANIMO and ER after their separate verification.
+- Writes the prepared load and concentration data for the next script.
+
+The boundary verification plots show boundary-node loads with the Ribasim
+network links in the background. The basin verification plots use basin areas
+to calculate loads in `kg/ha/year`.
+
+### 2. Build the DELWAQ model
+
+`02_build_delwaq_model.py` reads the prepared Parquet files, assigns:
+
+- combined ANIMO/ER loads to `model.basin.mass_load`;
+- combined IM/Zinfo concentrations to `model.flow_boundary.concentration`.
+
+It then writes the updated Ribasim model TOML file.
+
+### 3. Run and analyse DELWAQ
+
+`03_run_and_analyse_delwaq.py`:
+
+1. Creates DELWAQ input files with `generate`.
+2. Runs DELWAQ through DIMR.
+3. Parses the results with `parse`.
+
+The output is written below the model's `delwaq_all_sources` directory.
 
 ### Ribasim model (hydrology)
 
@@ -29,32 +77,40 @@ The following four emission data sources are coupled to the LHM:
 - ANIMO: Diffuse emission estimates from agriculture (dry waste load)
 - EmissieRegistratie (ER): Diffuse emission estimates of other origins (dry waste load)
 
-For each data source, a separate folder containing raw data and a coupling script was created. Each script creates a dataframe that follows the ribasim data structure (node_id, datetime, substance, value). This dataframe is saved to a parquet file in the folder specific to each data source. Each parquet file containing the emissions from each data source is loaded into combined_testing.py and coupled to the Ribasim model.
+For each data source, a separate folder containing raw data and a coupling script was created. Each conversion script creates a dataframe that follows the Ribasim data
+structure (`node_id`, `time`, `substance`, and `load` or `concentration`).
+The preparation script reads these Parquet files, verifies each source, and
+writes the combined prepared inputs used by the model-building script.
 
 **For each data source, a detailed description of the raw data, the conversion scripts, and the decisions/assumptions is provided in a separate tab**
 **Each script should contain a config section with variables that can also be defined through combined_testing.py**
 **An unresolved issue is how we combine loads and concentrations from two sources with (possibly) different temporal resolutions to the same ribasim nodes**
 
-## Set up DELWAQ simulation automatically using generate.py
+## Set up DELWAQ simulation automatically using `generate`
 
-The ``generate`` function takes a ribasim model, along with emissions that were coupled in the previous step, to create all input files that are necessary to run a delwaq simulation. ``generate`` also creates two variables, `graph` (ribasim and associated delwaq network) and `substances` (list of substances that are simulated), which are necessary to run the ``parse`` function later. Right now, ``generate`` can take around 30 minutes to run.
+The `generate` function takes the written Ribasim model and creates all input
+files necessary to run a DELWAQ simulation. It can take around 30 minutes.
 
 ## Run DELWAQ simulation
 
-The delwaq simulation is run from python using the ``subprocess`` package, which takes a delwaq dimrset (which points to the right executable) and the input files that were created with ``generate.py``
+The DELWAQ simulation is run from Python using the `subprocess` package. The
+run script uses the DIMR executable and the input files created by `generate`.
 
-### DIMR_PATH Environment Variable
+### D3D_HOME Environment Variable
 
-To run delwaq from the notebook, ensure that the environment variable `DIMR_PATH` is set to the path of the DIMR executable (in .env).
+To run DELWAQ, ensure that `D3D_HOME` points to the DIMR executable used by
+the run script.
 
 Example:
 ```
-DIMR_PATH=c:\Program Files\Deltares\Delft3D FM Suite 2025.02 HMWQ\plugins\DeltaShell.Dimr\kernels\x64\bin\run_dimr.bat
+D3D_HOME=c:\Program Files\Deltares\Delft3D FM Suite 2025.02 HMWQ\plugins\DeltaShell.Dimr\kernels\x64\bin\run_dimr.bat
 ```
 
 ### Running the simulation
 
-The delwaq simulation is run for the period spanned by the LHM results, but can be adjusted. Keep in mind that any adjustments are overturned when running ``generate`` with the same output_path
+The DELWAQ simulation is run for the period configured in the generated
+inputs. Any manual changes to generated files can be overwritten when
+`generate` is run again with the same output path.
 
 ## Parse results and save simulation results
 
