@@ -78,7 +78,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-83714cd0e7dc9fdbafbbd371d0427816.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-d3dd72e47976c844a05ffb6b950c6ecd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -223,6 +223,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <div class="sidebar-item-container"> 
   <a href="../dev/slurm.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Running on SLURM</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/pull-requests.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Reproducing pull requests</span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -1389,7 +1395,7 @@ Warning
 <p>After producing new outputs (running pipeline stages or adding new data), push to the remote:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc push</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Do this before pushing the updated <code>dvc.lock</code> file to Git, so the data hashes referenced therein are available to everyone.</p>
-<p>Most MinIO access keys handed out are read-only. Reach out if you need help uploading data. In general we update all results after a full cluster run.</p>
+<p>Most MinIO access keys handed out are read-only. Reach out if you need help uploading data. See <a href="../dev/pull-requests.html">Reproducing pull requests</a> for how the full runs of pull requests and of <code>main</code> are recorded.</p>
 
 
 </section>
