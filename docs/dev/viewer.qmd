@@ -7,6 +7,10 @@ It is a static web app: the docs site serves only the JavaScript, and the browse
 The model of a pull request can be previewed too, together with its differences from `main`, at `https://ribasim.nl/viewer?pr=<number>`.
 Any other published version can be viewed, or compared with another, by its commit, see [Links to a version](#links-to-a-version).
 
+The *Water authority* choice above the layer list shows the nodes and links of one authority, by the `waterbeheercode` their node ids start with, see `ribasim_nl.aquo`.
+It also shows the links to other authorities and the nodes at their other end, such as the regional inlets and outlets of the hws, and the Basin / areas of the shown Basins.
+The choice is kept in the URL, as `#authority=<waterbeheercode>`.
+
 ```{mermaid}
 flowchart LR
   A[modellen/lhm_coupled] -->|dvc repro run_lhm_coupled| R[runs/lhm_coupled]

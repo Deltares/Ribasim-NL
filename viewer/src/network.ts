@@ -66,6 +66,71 @@ export interface Network {
   baseOutflows: Map<number, number[]>;
 }
 
+/** The water authorities by their `waterbeheercode`, see `ribasim_nl.aquo`. */
+export const AUTHORITIES: Record<number, string> = {
+  2: "Wetterskip Fryslân",
+  7: "Rijn en IJssel",
+  9: "Rivierenland",
+  11: "Amstel, Gooi en Vecht",
+  12: "Hollands Noorderkwartier",
+  13: "Rijnland",
+  14: "De Stichtse Rijnlanden",
+  15: "Delfland",
+  25: "Brabantse Delta",
+  27: "De Dommel",
+  33: "Hunze en Aa's",
+  34: "Noorderzijlvest",
+  37: "Zuiderzeeland",
+  38: "Aa en Maas",
+  39: "Schieland en de Krimpenerwaard",
+  40: "Hollandse Delta",
+  42: "Scheldestromen",
+  43: "Vallei en Veluwe",
+  44: "Vechtstromen",
+  59: "Drents Overijsselse Delta",
+  60: "Limburg",
+  80: "Rijkswaterstaat",
+};
+export const RIJKSWATERSTAAT = 80;
+
+/** The `waterbeheercode` of the authority of a node: node ids are that code times 100 000 plus its id there. */
+export function authorityOf(nodeId: number): number {
+  return Math.floor(Math.abs(nodeId) / 100_000);
+}
+
+/** The name of an authority, or its code if it is unknown. */
+export function authorityName(code: number): string {
+  return AUTHORITIES[code] ?? `Waterbeheercode ${code}`;
+}
+
+/** The authorities of the nodes of a network: Rijkswaterstaat first, then the others by name. */
+export function networkAuthorities(network: Network): number[] {
+  const codes = [...new Set(Array.from(network.nodeId, authorityOf))];
+  return codes.sort(
+    (a, b) => Number(b === RIJKSWATERSTAAT) - Number(a === RIJKSWATERSTAAT) || authorityName(a).localeCompare(authorityName(b), "nl"),
+  );
+}
+
+/**
+ * Per node and link row, 1 if it belongs to an authority or connects to it: the nodes of the authority, the links
+ * with a node of the authority, and the nodes of other authorities at their other end.
+ */
+export function authorityRows(network: Network, code: number): { nodes: Uint8Array; links: Uint8Array } {
+  const nodes = Uint8Array.from(network.nodeId, (id) => (authorityOf(id) === code ? 1 : 0));
+  const links = new Uint8Array(network.linkId.length);
+  for (let row = 0; row < links.length; row++) {
+    const from = network.fromNodeId[row];
+    const to = network.toNodeId[row];
+    if (authorityOf(from) !== code && authorityOf(to) !== code) continue;
+    links[row] = 1;
+    for (const end of [from, to]) {
+      const endRow = network.nodeRow.get(end);
+      if (endRow !== undefined) nodes[endRow] = 1;
+    }
+  }
+  return { nodes, links };
+}
+
 function rowsByType(types: string[]): Map<string, number[]> {
   const groups = new Map<string, number[]>();
   types.forEach((type, row) => {
