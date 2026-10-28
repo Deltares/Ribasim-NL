@@ -125,4 +125,4 @@ Do this before pushing the updated `dvc.lock` file to Git, so the data hashes re
 
 Most MinIO access keys handed out are read-only.
 Reach out if you need help uploading data.
-In general we update all results after a full cluster run.
+See [Reproducing pull requests](pull-requests.qmd) for how the full runs of pull requests and of `main` are recorded.

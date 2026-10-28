@@ -84,6 +84,9 @@ install = { depends-on = ["install-core", "install-prek"] }
 setup-worktree = "python scripts/setup_worktree.py"
 # Reproduce stages and their upstream in parallel on this machine: `pixi run repro-local [TARGET ...]`
 repro-local = "python scripts/repro.py"
+# Reproduce main and open a catch-up pull request, run nightly by the timer of `pixi run install-repro-main`
+repro-main = "python scripts/repro_main.py"
+install-repro-main = "python scripts/install_repro_main.py"
 check = "prek run --all-files"
 dvc-dag = { cmd = "python scripts/dvc_dag.py > docs/dev/_dvc-dag.mmd", inputs = ["dvc.yaml"], outputs = ["docs/dev/_dvc-dag.mmd"] }
 docs = { cmd = "quartodoc build && quarto preview", cwd = "docs", depends-on = ["dvc-dag", "viewer-build"] }

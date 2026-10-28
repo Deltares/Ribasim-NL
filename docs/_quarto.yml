@@ -32,6 +32,7 @@ website:
         - dev/type-checking.qmd
         - dev/local.qmd
         - dev/slurm.qmd
+        - dev/pull-requests.qmd
         - dev/viewer.qmd
         - dev/ribasim.qmd
     - title: "Workflows"
