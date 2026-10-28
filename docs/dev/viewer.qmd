@@ -5,6 +5,7 @@ title: "Model viewer"
 The [Model viewer](../viewer.qmd) shows the input and results of the coupled LHM model (`lhm_coupled`) of `main` on a web map.
 It is a static web app: the docs site serves only the JavaScript, and the browser reads the model data directly from MinIO.
 The model of a pull request can be previewed too, together with its differences from `main`, at `https://ribasim.nl/viewer?pr=<number>`.
+Any other published version can be viewed, or compared with another, by its commit, see [Links to a version](#links-to-a-version).
 
 ```{mermaid}
 flowchart LR
@@ -69,6 +70,7 @@ All local paths are relative to `data/Rijkswaterstaat`.
     This uploads the model of the working tree, and that of `origin/main`, which it fetches first, and their differences, see [Comparing models](#comparing-models).
     It then adds a comment to the pull request with the link `https://ribasim.nl/viewer?pr=<number>` and a summary of the differences, or updates that comment on later publishes.
     Use `--pr <number>` to publish for another pull request, and `--main` to only publish the model of `origin/main`.
+    Use `--commit <revision>` to publish the model of a commit on GitHub, and add `--base <revision>` to also publish its differences from another commit, see [Links to a version](#links-to-a-version).
 
 `pixi run repro-local` runs steps 1 to 4 by default, see [Running locally](local.qmd).
 The docs do not need to be rebuilt to show another model.
@@ -92,6 +94,35 @@ The next `pixi run publish-webmap` then exports the run of `main` again, and pub
 Likewise, to compare a pull request with `main`, the export of `main` is downloaded from its snapshot, or exported again from its run if it is not published.
 For a pull request, the viewer warns if `main` changed since the model was published; publish again to compare with the latest `main`.
 Snapshots and files that are no longer used are not deleted.
+
+### Links to a version
+
+Node and link IDs change between versions of the model, so a link to a node in an issue would show another node later.
+The viewer therefore puts the commit of the model it shows in the page URL, so a copied link keeps showing that version:
+
+| URL | Model |
+|:----|:------|
+| `viewer` | The latest `main`, then pinned to `viewer?commit=<commit>` |
+| `viewer?commit=<commit>` | The model of a commit on GitHub, by the snapshot in its `dvc.lock` |
+| `viewer?base=<commit>&commit=<commit>` | The model of a commit, compared with that of another commit |
+| `viewer?pr=<number>` | The latest published model of a pull request, compared with its base |
+
+Commits may be shortened; pinned links use 10 characters.
+The view and selection after `#` are kept.
+If a pinned model is no longer that of the latest `main`, the viewer says so, with a link to the latest `main` at the same place.
+The viewer knows the commit of `main` since the docs are built and published for each push to `main`, so after a merge it shows the previous `main` until that is done.
+Links to a pull request are not pinned, since it is usually published before its `dvc.lock` is committed.
+
+Two commits can be compared if their differences are published, for instance to see what changed in a month.
+Since snapshots and differences are named by the DVC hashes of the models, any two commits with the models of a published comparison can be compared, like `main` before and after a pull request.
+To compare other commits, publish their models and differences:
+
+```sh
+pixi run publish-webmap --commit origin/main --base <commit>
+```
+
+This prints the link to the comparison.
+A model that is not published is exported again from its run in DVC.
 
 ## Viewing local models
 
@@ -152,5 +183,5 @@ pixi run viewer-dev
 Changes to the TypeScript code reload the page automatically.
 `pixi run viewer-build` checks types and builds the viewer into `docs/viewer-app`.
 `pixi run docs` and `pixi run docs-render` run it before rendering the docs.
-Add `?data=<url>` to the viewer page URL to load the data from another location, for instance `?data=http://localhost:5173/` to use the development server.
+Add `?data=<url>` to the viewer page URL to load the data from another location, and `&base_data=<url>&diff=<url>` to compare it with another model, for instance `?data=http://localhost:5173/` to use the development server.
 Only the default MinIO host, the docs site itself and `localhost` are accepted.

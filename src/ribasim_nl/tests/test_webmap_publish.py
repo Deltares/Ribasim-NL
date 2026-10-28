@@ -19,6 +19,7 @@ from ribasim_nl.webmap_publish import (
     pr_number,
     snapshot_name,
     store_manifest,
+    viewer_url,
 )
 
 MD5 = "9a4179107b7b8453ffbe531376149250"
@@ -108,6 +109,14 @@ def test_command_inputs():
     for branch in ["--upload-pack=x", "-x", "a..b", "a b", ""]:
         with pytest.raises(AssertionError):
             branch_name(branch)
+
+
+def test_viewer_url():
+    head, base = "0123456789" + "a" * 30, "9876543210" + "b" * 30
+    assert viewer_url(head) == "https://ribasim.nl/viewer?commit=0123456789"
+    assert viewer_url(head, base) == "https://ribasim.nl/viewer?base=9876543210&commit=0123456789"
+    with pytest.raises(AssertionError):
+        viewer_url("main")
 
 
 class FakeResponse(io.BytesIO):

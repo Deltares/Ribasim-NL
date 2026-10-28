@@ -3,6 +3,7 @@
     pixi run publish-webmap            # the model of the pull request of this branch, compared with its base
     pixi run publish-webmap --pr 123   # the model of the working tree as that pull request
     pixi run publish-webmap --main     # only the model of origin/main
+    pixi run publish-webmap --commit REV [--base REV]  # the model of a commit, compared with another commit
 
 Everything is uploaded below the anonymously readable `doc-image/webmap/` prefix:
 
@@ -18,6 +19,10 @@ Everything is uploaded below the anonymously readable `doc-image/webmap/` prefix
 - `lhm_coupled/prs/<number>.json`: the snapshots and differences of a pull request, which the viewer shows for
   `?pr=<number>`. A pull request is compared with `main`, or in a stack of pull requests with the pull request
   of its base branch, so it only shows its own changes. That pull request must be published first.
+
+The viewer finds the model of any commit on GitHub, for `?commit=<commit>`, by the snapshot in its `dvc.lock`, and
+compares it with that of another commit, for `?base=<commit>&commit=<commit>`, if their differences are published.
+It pins the link to the latest main to its commit, so a copied link keeps showing the same model.
 
 DVC does not cache the `export_webmap` output, so this is the only copy that is kept. The export of another commit,
 to compare with, is downloaded from its published snapshot. If it is not published, the model is exported again
@@ -58,6 +63,8 @@ EXPORT_PATH = "data/Rijkswaterstaat/webmap/lhm_coupled"
 RUN_TOML = "data/Rijkswaterstaat/runs/lhm_coupled/lhm_coupled.toml"
 MAIN = "origin/main"
 VIEWER_URL = "https://ribasim.nl/viewer"
+# The length of commits in viewer links, see `PINNED_COMMIT_LENGTH` in viewer/src/data.ts
+VIEWER_COMMIT_LENGTH = 10
 GITHUB_REPO = "Deltares/Ribasim-NL"
 # Identifies the comment with the viewer link on a pull request, so it is updated instead of added again
 COMMENT_MARKER = "<!-- ribasim-nl-webmap-preview -->"
@@ -343,6 +350,69 @@ def stack_base(number: int) -> tuple[str, int] | None:
     return branch, pr_number(prs[0]["number"])
 
 
+def publish_diff(
+    store: Store,
+    base_commit: str,
+    base_md5: str,
+    head_toml: Path,
+    head_dir: Path,
+    head_md5: str,
+    labels: tuple[str, str],
+) -> tuple[dict, str]:
+    """Publish the differences of a model, exported to `head_dir`, from the model of a base commit.
+
+    Return the differences, and their name in the published model.
+    """
+    base_toml = checkout_model(REPO_DIR / RUN_TOML, base_commit)
+    base_dir = checkout_export(store, base_commit, base_md5)
+    diff_dir = diff_cached(base_toml, head_toml, base_dir, head_dir, labels)
+    diff = json.loads((diff_dir / "diff.json").read_text())
+    name = f"diffs/{base_md5}-{head_md5}.json"
+    # The labels name the commits, so the differences are uploaded again with each publish
+    store.put_json(f"{MODEL}/{name}", diff, "no-cache")
+    return diff, name
+
+
+def viewer_url(commit: str, base: str | None = None) -> str:
+    """The viewer link to the model of a commit, compared with that of a base commit if given."""
+    query = f"commit={commit_hash(commit)[:VIEWER_COMMIT_LENGTH]}"
+    if base is not None:
+        query = f"base={commit_hash(base)[:VIEWER_COMMIT_LENGTH]}&{query}"
+    return f"{VIEWER_URL}?{query}"
+
+
+def on_github(commit: str) -> str:
+    """Assert a commit is on GitHub, where the viewer reads its `dvc.lock`; return it."""
+    result = subprocess.run(
+        ["gh", "api", f"repos/{GITHUB_REPO}/commits/{commit_hash(commit)}", "--jq", ".sha"],
+        capture_output=True,
+        text=True,
+        cwd=REPO_DIR,
+        check=False,
+    )
+    assert result.stdout.strip() == commit, f"Commit {commit} is not on GitHub, push it first: {result.stderr}"
+    return commit
+
+
+def github_commit(revision: str) -> str:
+    """The commit of a git revision, asserted to be on GitHub."""
+    commit = resolve_commit(revision)
+    assert commit is not None, f"Unknown git revision {revision!r}, fetch it first"
+    return on_github(commit_hash(commit))
+
+
+def publish_commits(store: Store, commit: str, base: str | None = None) -> str:
+    """Publish the model of a commit, and with a base commit their differences; return the viewer link."""
+    md5 = publish_commit(store, commit)
+    if base is not None:
+        base_md5 = publish_commit(store, base)
+        assert base_md5 != md5, f"Commits {base} and {commit} have the same model"
+        head_toml = checkout_model(REPO_DIR / RUN_TOML, commit)
+        head_dir = checkout_export(store, commit, md5)
+        publish_diff(store, base, base_md5, head_toml, head_dir, md5, (base[:7], commit[:7]))
+    return viewer_url(commit, base)
+
+
 def publish_main(store: Store, commit: str) -> str:
     """Publish the model of a commit of main as its snapshot and as the latest main; return the snapshot md5."""
     md5 = publish_commit(store, commit)
@@ -429,20 +499,14 @@ def publish_pr(store: Store, number: int) -> None:
     head_dir = REPO_DIR / EXPORT_PATH
     store.publish_snapshot(head_dir, head_md5)
 
-    base_toml = checkout_model(REPO_DIR / RUN_TOML, base_commit)
     labels = (f"{base_label} @ {base_commit[:7]}", f"#{number} @ {head_commit[:7]}")
-    base_dir = checkout_export(store, base_commit, base_md5)
-    diff_dir = diff_cached(base_toml, REPO_DIR / RUN_TOML, base_dir, head_dir, labels)
-    diff = json.loads((diff_dir / "diff.json").read_text())
-    diff_name = f"{MODEL}/diffs/{base_md5}-{head_md5}.json"
-    # The labels name the commit, so the differences are uploaded again with each publish
-    store.put_json(diff_name, diff, "no-cache")
+    diff, diff_name = publish_diff(store, base_commit, base_md5, REPO_DIR / RUN_TOML, head_dir, head_md5, labels)
 
     pr = {
         "pr": number,
         "head": {"snapshot": head_md5, "commit": head_commit},
         "base": {"snapshot": base_md5, "commit": base_commit} | ({} if base_pr is None else {"pr": base_pr}),
-        "diff": diff_name.removeprefix(f"{MODEL}/"),
+        "diff": diff_name,
         "published": now(),
     }
     store.put_json(f"{MODEL}/prs/{number}.json", pr, "no-cache")
@@ -456,9 +520,16 @@ def main(argv: list[str] | None = None) -> None:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--pr", type=int, help="pull request to publish the model of the working tree for")
     group.add_argument("--main", action="store_true", help="only publish the model of origin/main")
+    group.add_argument("--commit", help="git revision on GitHub to publish the model of")
+    parser.add_argument("--base", help="git revision on GitHub to compare the model of --commit with")
     args = parser.parse_args(argv)
+    if args.base is not None and args.commit is None:
+        parser.error("--base needs --commit")
     store = Store()
-    if args.main:
+    if args.commit is not None:
+        base = None if args.base is None else github_commit(args.base)
+        print(f"Published {publish_commits(store, github_commit(args.commit), base)}")
+    elif args.main:
         publish_main(store, fetch_main())
         print(f"Published {VIEWER_URL}")
     else:
