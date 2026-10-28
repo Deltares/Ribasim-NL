@@ -188,6 +188,22 @@ def test_compare_tables_missing_columns(tmp_path):
     assert compare_tables(tmp_path, manifests["base"], tmp_path, manifests["head"]) == {2: ["Pump / static"]}
 
 
+def test_compare_tables_tolerance(tmp_path):
+    """Initial Basin levels within 1 cm are equal, also with other columns; added and removed rows differ."""
+    manifests = {}
+    levels = {"base": [1.0, 2.0, 3.0, 4.0], "head": [1.009, 2.02, 3.0, 4.0]}
+    for name in ("base", "head"):
+        path = tmp_path / f"{name}.parquet"
+        df = pd.DataFrame({"node_id": [1, 2, 3, 4], "level": levels[name], "meta_note": ["a", "b", "c", "d"]})
+        if name == "head":
+            df.loc[2, "meta_note"] = "changed"
+            df = pd.concat([df.iloc[[0, 1, 2]], pd.DataFrame({"node_id": [5], "level": [5.0], "meta_note": ["e"]})])
+        df.to_parquet(path)
+        manifests[name] = {"tables": [{"name": "Basin / state", "path": path.name, "hash": name}]}
+    changes = compare_tables(tmp_path, manifests["base"], tmp_path, manifests["head"])
+    assert changes == {2: ["Basin / state"], 3: ["Basin / state"], 4: ["Basin / state"], 5: ["Basin / state"]}
+
+
 def test_node_digests_across_batches(tmp_path, monkeypatch):
     df = pd.DataFrame({"node_id": np.repeat([1, 2, 3], [5, 1, 6]), "value": np.arange(12.0)})
     path = tmp_path / "table.parquet"

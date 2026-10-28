@@ -2,7 +2,7 @@
 
 Nodes are matched by node_id, and links by from_node_id and to_node_id, since links get renumbered.
 A feature in both models is changed if its geometry, an attribute, its rows in an input table or its
-Basin / area differ. If both models have results, the Basin levels and flow rates that differ are listed too.
+Basin / area differ. Initial Basin levels within 1 cm are equal, see `TABLE_TOLERANCES`. If both models have results, the Basin levels and flow rates that differ are listed too.
 """
 
 import json
@@ -27,6 +27,9 @@ IGNORED_COLUMNS = {"meta_link_id_waterbeheerder"}
 # The result variable compared per result set, with the absolute and relative tolerance below which results are
 # equal. The relative tolerance applies to the largest magnitude of a feature, and is chosen above solver noise.
 RESULT_VARIABLES = {"basin": ("level", 1e-3, 0.0), "flow": ("flow_rate", 1e-3, 1e-2)}
+# Columns of input tables that are equal within an absolute tolerance, per table. The initial Basin levels are the
+# final levels of a run, see `ribasim_nl.regional_model`, so they change slightly with every change of the model.
+TABLE_TOLERANCES = {"Basin / state": {"level": 0.01}}
 
 
 def values_equal(base: pd.Series, head: pd.Series) -> np.ndarray:
@@ -161,6 +164,34 @@ def node_digests(path: Path, columns: list[str], string_columns: Collection[str]
     )
 
 
+def nodes_differ_within(base_path: Path | None, head_path: Path | None, tolerances: dict[str, float]) -> pd.Index:
+    """The node_ids whose rows in a table differ, with the columns of `tolerances` equal within their tolerance.
+
+    Rows are matched by node_id and their order per node. The whole table is read, so this is only for small tables.
+    """
+    tables = [
+        pd.read_parquet(path) if path else pd.DataFrame({"node_id": pd.Series(dtype="int64")})
+        for path in (base_path, head_path)
+    ]
+    columns = sorted({c for df in tables for c in df.columns} - {"node_id"})
+    assert set(tolerances) <= set(columns), f"Columns {set(tolerances) - set(columns)} are not in the tables"
+    base, head = (
+        df.reindex(columns=["node_id", *columns]).assign(row=df.groupby("node_id").cumcount()) for df in tables
+    )
+    joined = base.merge(head, on=["node_id", "row"], how="outer", suffixes=("_base", "_head"), indicator=True)
+    equal = (joined["_merge"] == "both").to_numpy(copy=True)
+    for column in columns:
+        base_values, head_values = joined[f"{column}_base"], joined[f"{column}_head"]
+        if column in tolerances:
+            both_missing = (base_values.isna() & head_values.isna()).to_numpy()
+            difference = (base_values.astype("float64") - head_values.astype("float64")).abs()
+            close = difference.lt(tolerances[column]).to_numpy()
+            equal &= close | both_missing
+        else:
+            equal &= values_equal(base_values, head_values)
+    return pd.Index(joined.loc[~equal, "node_id"].unique())
+
+
 def compare_tables(base_dir: Path, base_manifest: dict, head_dir: Path, head_manifest: dict) -> dict[int, list[str]]:
     """Return the names of the exported input tables whose rows differ, per node_id."""
     base_tables = {table["name"]: table for table in base_manifest["tables"]}
@@ -174,6 +205,10 @@ def compare_tables(base_dir: Path, base_manifest: dict, head_dir: Path, head_man
             base_dir / base_table["path"] if base_table else None,
             head_dir / head_table["path"] if head_table else None,
         ]
+        if name in TABLE_TOLERANCES:
+            for node_id in nodes_differ_within(*paths, TABLE_TOLERANCES[name]):
+                changes.setdefault(int(node_id), []).append(name)
+            continue
         schemas = [pq.read_schema(path) for path in paths if path]
         columns = sorted({c for schema in schemas for c in schema.names} - {"node_id"})
         # So that a column that is missing in one table hashes like the same column without values in the other

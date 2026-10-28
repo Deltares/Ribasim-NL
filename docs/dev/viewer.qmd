@@ -154,6 +154,7 @@ Fetch first to compare with the latest `origin/main`.
 
 Nodes are matched by id, and links by their from and to node, since links get renumbered, see `ribasim_nl.webmap_diff`.
 A node or link in both models is changed if its geometry, an attribute, its rows in an input table, or its Basin / area differ.
+Initial Basin levels in `Basin / state` that differ less than 1 cm are equal, since every run of the regional models changes them slightly, see `TABLE_TOLERANCES` in `ribasim_nl.webmap_diff`.
 The map shows only the added, removed and changed features, in the colors of their status: green, orange and purple, on a grey base map.
 When zoomed out, the status rings around changed nodes become small dots.
 Removed and changed Basin / areas of the old model are drawn as dashed outlines.
