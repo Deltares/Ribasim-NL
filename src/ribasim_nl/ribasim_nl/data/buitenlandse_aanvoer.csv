@@ -1,5 +1,5 @@
 id,authority,name,hydroobject_global_id,hydroobject_code,coordinate_x,coordinate_y,timeseries,timeseries_column,constant_global,constant_summer,constant_winter,source
-BA_001,BrabantseDelta,Bovenmark 2 Belgie,{ed898192-5cb1-4937-9da5-0161b4d3ad14},OVK02133,112936.6829560916,390474.5767177542,,,0.1,0.1,0.1,
+BA_001,BrabantseDelta,Bovenmark 2 Belgie,{ed898192-5cb1-4937-9da5-0161b4d3ad14},OVK02133,112936.6829560916,390474.5767177542,verwerkt/Bovenmark_2_Belgie.csv,Bovenmark 2 Belgie,0.808,0.197,2.069,"0.92 * BlauweKamer (JCAR-ATRACE) - Bovenmark 1 Belgie, see pipeline/_preprocess_buitenlandse_aanvoer.py"
 BA_002,BrabantseDelta,Kleine Aa Belgie,{38f9c57c-eac6-4534-b6e0-467ff5ee7d89},OVK03890,91990.53700000048,387969.7580000013,aangeleverd/BrabantseDelta_uur_Molenbeek.csv,Kleine Aa Belgie,0.228,0.126,0.383,
 BA_003,BrabantseDelta,Elderse Turfvaart Belgie,{fa5a356b-5d5d-4c2b-a388-01b75bd00c01},OVK03892,93114.83769999816,388065.1871000007,,,0.1,0.1,0.1,
 BA_004,BrabantseDelta,Aa of Weerijs Belgie,{995a23fa-38ab-4f74-99ef-b6ab0733de77},OVK01462,103849.01199999824,382232.3469999992,aangeleverd/BrabantseDelta_uur_Wielhoef.csv,Aa of Weerijs Belgie,0.42,0.3,0.694,
