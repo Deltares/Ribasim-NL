@@ -1,14 +1,23 @@
+import hashlib
+import io
+import json
+from pathlib import Path
+
 import pytest
 from ribasim_nl.webmap_publish import (
     COMMENT_MARKER,
     EXPORT_PATH,
+    PREFIX,
+    Store,
     branch_name,
+    checkout_export,
     comment_body,
     commit_hash,
     diff_counts,
     export_hash,
     manifest_entries,
     pr_number,
+    snapshot_name,
     store_manifest,
 )
 
@@ -99,3 +108,82 @@ def test_command_inputs():
     for branch in ["--upload-pack=x", "-x", "a..b", "a b", ""]:
         with pytest.raises(AssertionError):
             branch_name(branch)
+
+
+class FakeResponse(io.BytesIO):
+    def release_conn(self) -> None:
+        pass
+
+
+class FakeClient:
+    """The objects of a MinIO bucket, by name."""
+
+    def __init__(self, objects: dict[str, bytes]) -> None:
+        self.objects = objects
+        self.downloads: list[str] = []
+
+    def get_object(self, bucket: str, name: str) -> FakeResponse:
+        return FakeResponse(self.objects[name])
+
+    def fget_object(self, bucket: str, name: str, path: str) -> None:
+        self.downloads.append(name)
+        Path(path).write_bytes(self.objects[name])
+
+
+def _short_hash(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()[:16]
+
+
+def _fake_store(manifest: dict, files: dict[str, bytes]) -> tuple[Store, FakeClient]:
+    """A store with one published snapshot `MD5`, without connecting to MinIO."""
+    store = Store.__new__(Store)
+    objects = {PREFIX + snapshot_name(MD5): json.dumps(manifest).encode()}
+    objects |= {PREFIX + f"files/{name}": content for name, content in files.items()}
+    client = FakeClient(objects)
+    store.client = client  # ty: ignore[invalid-assignment]
+    store.is_published = lambda md5: md5 == MD5  # ty: ignore[invalid-assignment]
+    return store, client
+
+
+def test_checkout_export(tmp_path: Path):
+    nodes, results = b"nodes", b"results"
+    nodes_name, results_name = f"{_short_hash(nodes)}.parquet", f"{_short_hash(results)}.parquet"
+    manifest = {
+        "files": {"nodes": _entry(nodes_name, _short_hash(nodes))},
+        "tables": [],
+        "results": {
+            # The same content is stored once
+            kind: {
+                "by_id": _entry(results_name, _short_hash(results)),
+                "by_time": _entry(nodes_name, _short_hash(nodes)),
+            }
+            for kind in ("basin", "flow")
+        },
+    }
+    store, client = _fake_store(manifest, {nodes_name: nodes, results_name: results})
+    export_dir = checkout_export(store, "a" * 40, MD5, cache_dir=tmp_path)
+    assert json.loads((export_dir / "manifest.json").read_text()) == manifest
+    assert (export_dir / nodes_name).read_bytes() == nodes
+    assert (export_dir / results_name).read_bytes() == results
+    assert sorted(client.downloads) == sorted(PREFIX + f"files/{name}" for name in (nodes_name, results_name))
+    # The second time the cached export is used
+    assert checkout_export(store, "a" * 40, MD5, cache_dir=tmp_path) == export_dir
+    assert len(client.downloads) == 2
+
+
+@pytest.mark.parametrize("name", ["../nodes.parquet", "nodes.parquet"])
+def test_download_snapshot_checks(tmp_path: Path, name: str):
+    content = b"nodes"
+    manifest = {"files": {"nodes": _entry(name, _short_hash(content))}, "tables": []}
+    store, _ = _fake_store(manifest, {name: content})
+    with pytest.raises(AssertionError):
+        store.download_snapshot(MD5, tmp_path)
+    assert not (tmp_path / "manifest.json").exists()
+
+
+def test_download_snapshot_hash(tmp_path: Path):
+    name = f"{_short_hash(b'nodes')}.parquet"
+    store, _ = _fake_store({"files": {"nodes": _entry(name, _short_hash(b"nodes"))}, "tables": []}, {name: b"other"})
+    with pytest.raises(AssertionError, match="does not match its hash"):
+        store.download_snapshot(MD5, tmp_path)
+    assert not (tmp_path / "manifest.json").exists()

@@ -182,7 +182,6 @@ def process_model_spec(
     model = Model.read(model_path)
     assert model.node.df is not None
     model.node.df["meta_waterbeheerder"] = model_spec["authority"]
-    # TODO reduce max_digits back to 4 after fixing #364
     model = prefix_index(model=model, max_digits=5, prefix_id=waterbeheercode[model_spec["authority"]])
     if lhm_model is None:
         lhm_model = model

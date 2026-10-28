@@ -35,8 +35,9 @@ from ribasim_nl.upstream import upstream_nodes
 if TYPE_CHECKING:
     from ribasim_nl.parametrization.parameterize import Parameterize
 
-# Evaluate DiscreteControl once a day, which is much faster than at every time step
-DISCRETE_CONTROL_INTERVAL = 86400.0  # s
+# Evaluate DiscreteControl every 6 hours, which costs 1.4x the time of once a day instead of 2.7x for every time step,
+# while far fewer Basins oscillate than with once a day, see issue #850
+DISCRETE_CONTROL_INTERVAL = 21600.0  # s
 
 manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
 level_data = level_boundary.Static(level=[0])

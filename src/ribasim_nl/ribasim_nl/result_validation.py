@@ -87,12 +87,12 @@ KEY_DISCHARGES = {
 }
 
 LIMITS: dict[str, dict[str, Limit]] = {
-    # Around 1.7e6, 225 s, 160 s and 0.07 in October 2026. The computation time is not checked, since it depends
-    # on the machine and its load, while these counts hardly do.
+    # Around 2.2e6, 173 s, 100 s and 0.07 in October 2026, with DiscreteControl evaluated every 6 hours. The
+    # computation time is not checked, since it depends on the machine and its load, while these counts hardly do.
     "solver": {
-        "rhs_calls": Limit(max=2.2e6),
-        "mean_dt": Limit(min=175.0),  # s
-        "dt_p05": Limit(min=100.0),  # s, the 5th percentile of the mean timestep per day
+        "rhs_calls": Limit(max=2.8e6),
+        "mean_dt": Limit(min=135.0),  # s
+        "dt_p05": Limit(min=65.0),  # s, the 5th percentile of the mean timestep per day
         "rejected_fraction": Limit(max=0.15),  # of the timesteps
     },
     # 639 Observations with a median NSE of -0.05 and KGE of 0.06
