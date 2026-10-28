@@ -7,6 +7,8 @@ from ribasim.schemas import FlowBoundaryTimeSchema, LevelBoundaryTimeSchema
 from ribasim_nl.flow_paths import rebuild_junction_trees_along_top10nl
 from ribasim_nl.layout import tidy_layout
 from ribasim_nl.observations import add_observations
+from ribasim_nl.regional_model import ENDTIME, STARTTIME, read_lhm_budgets
+from ribasim_nl.set_forcing import SetDynamicForcing
 
 from ribasim_nl import CloudStorage, Model, Network, merge_rwzi_model
 
@@ -163,6 +165,21 @@ level_df = pd.concat(
     ignore_index=True,
 )
 model.level_boundary.time.df = DataFrame[LevelBoundaryTimeSchema](level_df)
+
+# %% set Basin / time
+
+# The precipitation and open water evaporation of the LHM on the Basins, which are all main water. They get no
+# groundwater budgets, which the LHM computes for the land only.
+assert model.node.df is not None
+assert model.basin.node is not None and model.basin.node.df is not None
+model.node.df.loc[model.basin.node.df.index, "meta_categorie"] = "hoofdwater"
+model = SetDynamicForcing(model=model, budgets=read_lhm_budgets(), startdate=STARTTIME, enddate=ENDTIME).add()
+# Basins too narrow to contain the center of an LHM cell get no meteo, like in the regional models
+assert model.basin.time.df is not None and model.basin.area.df is not None
+area = model.basin.area.df.set_index("node_id").area
+missing = area.index.difference(pd.Index(model.basin.time.df["node_id"].unique()))
+assert area[missing].sum() < 0.001 * area.sum(), f"No meteo for a large area of Basins {missing.tolist()}"
+print(f"No meteo for Basins {missing.tolist()}, of {area[missing].sum() / 1e6:.2f} km2")
 
 # merge RWZI model, which requires meta_waterbeheerder (the hws model is fully Rijkswaterstaat)
 assert model.node.df is not None
