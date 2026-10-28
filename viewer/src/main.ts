@@ -34,7 +34,17 @@ import {
   ResultColors,
   statusColors,
 } from "./diff";
-import { ALWAYS_SHOWN_TYPES, linkLabel, loadNetwork, type Group, type LayerData, type Network } from "./network";
+import {
+  ALWAYS_SHOWN_TYPES,
+  authorityName,
+  authorityRows,
+  linkLabel,
+  loadNetwork,
+  networkAuthorities,
+  type Group,
+  type LayerData,
+  type Network,
+} from "./network";
 import { Panel, type Selection } from "./panel";
 import { ResultFrames } from "./results";
 import {
@@ -105,6 +115,18 @@ function selectionFromHash(): Selection | null {
     if (params.has(kind) && Number.isInteger(id)) return { kind, id };
   }
   return null;
+}
+
+/** A filter of the Basin / areas of some Basins. */
+function areaFilter(ids: number[]): maplibregl.ExpressionSpecification {
+  return ["in", ["get", "node_id"], ["literal", ids]];
+}
+
+/** The `waterbeheercode` of the authority to show in the hash, or null to show all, see `Viewer.setAuthority`. */
+function authorityFromHash(): number | null {
+  const value = hashParams().get("authority");
+  const code = Number(value);
+  return value !== null && Number.isInteger(code) && code > 0 ? code : null;
 }
 
 function writeHash(updates: Record<string, string | null>): void {
@@ -196,9 +218,17 @@ class Viewer {
   /** The colors of the result differences, only when comparing models that both have results */
   private readonly resultColors: Record<ResultKind, ResultColors> | null = null;
   private readonly filter = new DiffFilter();
-  /** Per node or link group, 1 for the features shown by the filter and 0 for the others */
+  /** Per node or link group, 1 for the features shown by the filter of the Differences box and 0 for the others */
+  private readonly diffValues = new Map<Group, Float32Array>();
+  private diffRingValues = new Float32Array(0);
+  /** The `waterbeheercode` of the authority whose nodes and links are shown, or null for all, see `authorityRows` */
+  private authority: number | null = authorityFromHash();
+  /** Per node or link group, 1 for the features shown by both filters, or absent if all are shown */
   private readonly filterValues = new Map<Group, Float32Array>();
-  private ringFilterValues = new Float32Array(0);
+  private ringFilterValues: Float32Array | undefined;
+  private contextFilterValues: { nodes: Float32Array; links: Float32Array } | undefined;
+  /** Increased on every change of the filter values, to update the map */
+  private filterVersion = 0;
 
   constructor(
     private readonly map: maplibregl.Map,
@@ -229,8 +259,9 @@ class Viewer {
         this.diffColors.set(group, statusColors(group, network.linkId, diff.links, flow));
       }
       this.diffRings = this.ringData();
-      this.updateFilterValues();
+      this.updateDiffValues();
     }
+    this.updateFilterValues();
 
     // Interleaved mode reads `map.transform`, which maplibre-gl 6 no longer exposes
     this.overlay = new MapboxOverlay({ interleaved: false, getTooltip: (info) => this.tooltip(info) });
@@ -252,6 +283,7 @@ class Viewer {
           network,
           this.filter,
           () => {
+            this.updateDiffValues();
             this.updateFilterValues();
             this.colorDiffAreas();
             this.render();
@@ -299,45 +331,104 @@ class Viewer {
   }
 
   /** Which features the filter of the Differences box shows, per group and for the status rings. */
-  private updateFilterValues(): void {
+  private updateDiffValues(): void {
     const { comparison, network, filter, resultColors } = this;
     if (!comparison) return;
     const { diff } = comparison;
     const shown = (id: number, diffs: typeof diff.nodes, results?: ResultColors) =>
       filter.shows(diffs.get(id), results?.diff.differences.has(id) ?? false);
-    // The unchanged features of the types that are always shown, see `ALWAYS_SHOWN_TYPES`, have no status ring
+    // The filter does not hide the types that are always shown, see `ALWAYS_SHOWN_TYPES`, only their status rings
     const values = (group: Group, ids: Int32Array, diffs: typeof diff.nodes, results?: ResultColors) =>
-      Float32Array.from(group.rows, (row) => {
-        const unchanged = !diffs.has(ids[row]) && !results?.diff.differences.has(ids[row]);
-        return shown(ids[row], diffs, results) || (unchanged && ALWAYS_SHOWN_TYPES.has(group.type)) ? 1 : 0;
-      });
+      ALWAYS_SHOWN_TYPES.has(group.type)
+        ? new Float32Array(group.rows.length).fill(1)
+        : Float32Array.from(group.rows, (row) => (shown(ids[row], diffs, results) ? 1 : 0));
     const rings: Float32Array[] = [];
     for (const group of network.nodeGroups) {
       const basin = group.type === "Basin" ? resultColors?.basin : undefined;
-      this.filterValues.set(group, values(group, network.nodeId, diff.nodes, basin));
+      this.diffValues.set(group, values(group, network.nodeId, diff.nodes, basin));
       rings.push(Float32Array.from(group.rows, (row) => (shown(network.nodeId[row], diff.nodes, basin) ? 1 : 0)));
     }
     for (const group of network.linkGroups) {
       const flow = group.type === "flow" ? resultColors?.flow : undefined;
-      this.filterValues.set(group, values(group, network.linkId, diff.links, flow));
+      this.diffValues.set(group, values(group, network.linkId, diff.links, flow));
     }
-    this.ringFilterValues = new Float32Array(rings.reduce((sum, part) => sum + part.length, 0));
+    this.diffRingValues = new Float32Array(rings.reduce((sum, part) => sum + part.length, 0));
     let offset = 0;
     for (const part of rings) {
-      this.ringFilterValues.set(part, offset);
+      this.diffRingValues.set(part, offset);
       offset += part.length;
     }
   }
 
-  /** Layer props that hide the features the filter of the Differences box leaves out, when comparing models. */
+  /** Which features are shown, by the filter of the Differences box and by the authority, see `authorityRows`. */
+  private updateFilterValues(): void {
+    const { network } = this;
+    const rows = this.authority === null ? null : authorityRows(network, this.authority);
+    const combine = (group: Group, shown: Uint8Array | undefined, diff = this.diffValues.get(group)) =>
+      shown ? Float32Array.from(group.rows, (row, i) => (shown[row] ? (diff?.[i] ?? 1) : 0)) : diff;
+    this.filterValues.clear();
+    for (const group of network.nodeGroups) {
+      const values = combine(group, rows?.nodes);
+      if (values) this.filterValues.set(group, values);
+    }
+    for (const group of network.linkGroups) {
+      const values = combine(group, rows?.links);
+      if (values) this.filterValues.set(group, values);
+    }
+    this.ringFilterValues = this.diffRings ? this.diffRingValues : undefined;
+    if (this.diffRings && rows) {
+      // The rings are in the order of the node groups
+      this.ringFilterValues = Float32Array.from(network.nodeGroups.flatMap((group) => Array.from(group.rows)), (row, i) =>
+        rows.nodes[row] ? this.diffRingValues[i] : 0,
+      );
+    }
+    const context = network.context;
+    this.contextFilterValues =
+      context && rows
+        ? {
+            nodes: Float32Array.from(context.nodes.rows, (row) => rows.nodes[row]),
+            links: Float32Array.from(context.links.rows, (row) => rows.links[row]),
+          }
+        : undefined;
+    this.filterVersion++;
+  }
+
+  /** Layer props that hide the features the filter of the Differences box or the authority leaves out. */
   private filterProps(values: Float32Array | undefined): FilterProps {
     if (!values) return { extensions: [], updateTriggers: {} };
     return {
       extensions: [FILTER],
       getFilterValue: (_: unknown, { index }: { index: number }) => values[index],
       filterRange: [0.5, 1],
-      updateTriggers: { getFilterValue: this.filter.version },
+      updateTriggers: { getFilterValue: this.filterVersion },
     };
+  }
+
+  /** Show the nodes and links of an authority and its connections, or all for null; remembered in the URL. */
+  private setAuthority(code: number | null): void {
+    this.authority = code;
+    writeHash({ authority: code === null ? null : String(code) });
+    this.updateFilterValues();
+    this.filterBasinAreas();
+    this.updateLabels();
+    this.render();
+  }
+
+  /** Show only the Basin / areas of the Basins that are shown for the authority, or all of them. */
+  private filterBasinAreas(): void {
+    const { network } = this;
+    let ids: number[] | null = null;
+    if (this.authority !== null) {
+      const rows = authorityRows(network, this.authority).nodes;
+      ids = Array.from(network.nodeId).filter((_, row) => rows[row] && network.nodeType[row] === "Basin");
+    }
+    for (const id of ["basin_area", "basin_area_outline"]) {
+      if (this.map.getLayer(id)) this.map.setFilter(id, ids ? areaFilter(ids) : null);
+    }
+    if (this.map.getLayer("basin_area_base")) {
+      const base = areaFilter(this.baseAreaIds());
+      this.map.setFilter("basin_area_base", ids ? ["all", base, areaFilter(ids)] : base);
+    }
   }
 
   /**
@@ -522,6 +613,7 @@ class Viewer {
     });
     this.addBaseAreas();
     this.colorDiffAreas();
+    this.filterBasinAreas();
     if (manifest.files.waterboards) {
       map.addSource("waterboards", { type: "geojson", data: fileUrl(manifest.files.waterboards) });
       map.addLayer({
@@ -533,12 +625,17 @@ class Viewer {
     }
   }
 
+  /** The ids of the removed and changed Basin / areas in the base model. */
+  private baseAreaIds(): number[] {
+    return [...(this.comparison?.diff.nodes ?? [])]
+      .filter(([, diff]) => diff.status === "removed" || diff.changes.includes("Basin / area"))
+      .map(([id]) => id);
+  }
+
   /** The outlines of the removed and changed Basin / areas in the base model. */
   private addBaseAreas(): void {
     if (!this.comparison) return;
-    const ids = [...this.comparison.diff.nodes]
-      .filter(([, diff]) => diff.status === "removed" || diff.changes.includes("Basin / area"))
-      .map(([id]) => id);
+    const ids = this.baseAreaIds();
     this.map.addSource("basin_area_base", {
       type: "vector",
       url: `pmtiles://${fileUrl(this.comparison.base.files.basin_area)}`,
@@ -548,7 +645,7 @@ class Viewer {
       type: "line",
       source: "basin_area_base",
       "source-layer": "basin_area",
-      filter: ["in", ["get", "node_id"], ["literal", ids]],
+      filter: areaFilter(ids),
       paint: { "line-color": DIFF_CSS.removed, "line-width": 2, "line-dasharray": [2, 1] },
     });
   }
@@ -668,7 +765,9 @@ class Viewer {
     if (coloring && flow && this.visible.get("flow") && this.map.getZoom() >= LABEL_MIN_ZOOM) {
       const bounds = this.map.getBounds();
       const positions = flow.arrows!.attributes.getPosition.value;
+      const shown = this.filterValues.get(flow);
       for (let i = 0; i < flow.rows.length && labels.length < MAX_LABELS; i++) {
+        if (shown && !shown[i]) continue;
         const position: [number, number] = [positions[2 * i], positions[2 * i + 1]];
         const value = coloring.values[i];
         if (Number.isFinite(value) && bounds.contains(position)) labels.push({ position, text: formatNumber(value) });
@@ -710,6 +809,7 @@ class Viewer {
       new PathLayer({
         id: "context-link",
         data: context.links.data,
+        ...this.filterProps(this.contextFilterValues?.links),
         _pathType: "open",
         positionFormat: "XY",
         visible,
@@ -724,6 +824,7 @@ class Viewer {
       new ScatterplotLayer({
         id: "context-node",
         data: context.nodes.data,
+        ...this.filterProps(this.contextFilterValues?.nodes),
         visible,
         getFillColor: CONTEXT_COLOR,
         radiusUnits: "meters",
@@ -965,12 +1066,26 @@ class Viewer {
     return swatch;
   }
 
+  /** A choice of the authority whose nodes and links are shown, see `setAuthority`. */
+  private authorityControl(): HTMLElement[] {
+    const select = el("select", "authority");
+    select.title = "Show the nodes and links of one authority, with the links to other authorities and their nodes";
+    select.append(
+      new Option("All", "", false, this.authority === null),
+      ...networkAuthorities(this.network).map(
+        (code) => new Option(authorityName(code), String(code), false, code === this.authority),
+      ),
+    );
+    select.addEventListener("change", () => this.setAuthority(select.value === "" ? null : Number(select.value)));
+    return [el("h4", "", "Water authority"), select];
+  }
+
   private layerControl(): HTMLDetailsElement {
     const { network } = this;
     const details = el("details", "layers");
     // On phones the list would cover most of the map
     details.open = !matchMedia("(max-width: 600px)").matches;
-    details.append(el("summary", "", "Layers"));
+    details.append(el("summary", "", "Layers"), ...this.authorityControl());
     const nodes = network.nodeGroups.map(({ type, rows }) => ({
       key: type,
       label: type,
@@ -1104,8 +1219,8 @@ function runInfoControl(run: RunInfo): maplibregl.IControl {
   // Ribasim logs local times with milliseconds, minutes are enough
   const time = (value: string) => value.slice(0, 16).replace("T", " ");
   const parts: (Node | string)[] = [];
-  if (run.start) parts.push(`Run ${time(run.start)}`);
-  if (run.end) parts.push(`${run.start ? " → " : "Run finished "}${time(run.end)}`);
+  if (run.end) parts.push(`Run finished ${time(run.end)}`);
+  else if (run.start) parts.push(`Run started ${time(run.start)}`);
   if (run.commit) {
     const link = Object.assign(document.createElement("a"), {
       href: `${COMMIT_URL}${run.commit}`,
