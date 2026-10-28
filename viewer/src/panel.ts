@@ -676,9 +676,10 @@ export class Panel {
         (_, linkRow) => network.linkType[linkRow] === "flow" && network.fromNodeId[linkRow] === observedId,
       ),
     );
-    // Links are renumbered, so the outflows of the observed node can have other ids in the base model
+    // Links are renumbered and can lead to renumbered nodes, so the outflows of the observed node, which keeps its
+    // id, are those of the base model
     const base = this.comparison?.base.results;
-    const baseOutflows = outflows.flatMap((id) => network.baseLinkId.get(id) ?? []);
+    const baseOutflows = network.baseOutflows.get(observedId) ?? [];
     const columns = ["observed", "simulated", ...(base ? [`simulated${BASE}`] : [])];
     const variables = [...new Set(observations.map((observation) => String(observation.variable)))].sort((a, b) => a.localeCompare(b));
     if (variables.length === 0) return ["No observed values."];

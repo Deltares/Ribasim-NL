@@ -359,10 +359,11 @@ async function currentBase(base: PullRequest["base"]): Promise<string | null> {
  * The model of a pull request, compared with the main or the pull request below it that it was published with.
  * Its links are not pinned, since it is usually published before its `dvc.lock` is committed.
  */
-async function loadPullRequest(number: number): Promise<Source> {
+async function loadPullRequest(number: number, compare: boolean): Promise<Source> {
   const record = await fetchJson<PullRequest>(new URL(`prs/${number}.json`, MODEL_URL)).catch((error) => {
     throw new Error(`No model is published for pull request #${number} (${error})`);
   });
+  if (!compare) return { manifest: await loadSnapshot(record.head.snapshot), comparison: null, notice: null, pinned: null };
   if (!DIFF_PATH.test(record.diff)) throw new Error(`Invalid differences ${record.diff}`);
   const [manifest, base, diff, current] = await Promise.all([
     loadSnapshot(record.head.snapshot),
@@ -421,6 +422,16 @@ async function loadCommit(commit: string, base: string | null): Promise<Source> 
   return { manifest, comparison: loaded, notice, pinned: null };
 }
 
+// The query parameter that shows a model without its comparison
+const COMPARE = "compare";
+
+/** The query string of the shown model without its comparison, see `loadSource`. */
+export function withoutComparison(search: string): string {
+  const params = new URLSearchParams(search);
+  params.set(COMPARE, "0");
+  return params.toString();
+}
+
 /** The value of a commit in the query string, or null if it is not given. */
 function commitParam(params: URLSearchParams, name: "commit" | "base"): string | null {
   const commit = params.get(name);
@@ -434,21 +445,26 @@ function commitParam(params: URLSearchParams, name: "commit" | "base"): string |
  * - `?commit=<commit>`: the model of a commit, compared with that of another commit with `&base=<commit>`
  * - `?pr=<number>`: the latest published model of a pull request, compared with main or the pull request below it
  * - `?data=<url>`, optionally with `&base_data=<url>&diff=<url>`: a local model
+ *
+ * With `&compare=0` the model is shown without its comparison, see `withoutComparison`.
  */
 export async function loadSource(): Promise<Source> {
   const params = new URLSearchParams(location.search);
   const pr = params.get("pr");
   const commit = commitParam(params, "commit");
   const base = commitParam(params, "base");
+  const compareParam = params.get(COMPARE);
+  if (compareParam !== null && compareParam !== "0") throw new Error(`Invalid ${COMPARE}=${compareParam}, only ${COMPARE}=0 is valid`);
+  const compare = compareParam === null;
   if (pr !== null) {
     if (!/^[1-9]\d{0,5}$/.test(pr)) throw new Error(`Invalid pull request number ${pr}`);
     if (commit !== null || base !== null) throw new Error("pr= cannot be combined with commit= or base=");
-    return loadPullRequest(Number(pr));
+    return loadPullRequest(Number(pr), compare);
   }
-  if (commit !== null) return loadCommit(commit, base);
+  if (commit !== null) return loadCommit(commit, compare ? base : null);
   if (base !== null) throw new Error("Comparing with base= needs the commit= to compare");
   if (["data", "base_data", "diff"].some((name) => params.has(name)) || import.meta.env.DEV) {
-    const [manifest, comparison] = await Promise.all([loadManifest(dataUrl()), loadComparison()]);
+    const [manifest, comparison] = await Promise.all([loadManifest(dataUrl()), compare ? loadComparison() : null]);
     return { manifest, comparison, notice: null, pinned: null };
   }
   return loadMain();

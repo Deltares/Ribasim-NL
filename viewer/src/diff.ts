@@ -1,5 +1,13 @@
 import { ColorScale, formatNumber, GREYS } from "./colors";
-import { DIFF_STATUSES, type DiffStatus, type FeatureDiff, type ModelDiff, type ResultDiff, type ResultKind } from "./data";
+import {
+  DIFF_STATUSES,
+  withoutComparison,
+  type DiffStatus,
+  type FeatureDiff,
+  type ModelDiff,
+  type ResultDiff,
+  type ResultKind,
+} from "./data";
 import { linkLabel, type Group, type Network } from "./network";
 import type { Selection } from "./panel";
 
@@ -233,6 +241,15 @@ function modelLine(diff: ModelDiff): HTMLElement {
   return line;
 }
 
+/** A link to the shown model without the comparison, which keeps the view and selection. */
+function withoutLink(): HTMLElement {
+  const href = () => `${location.pathname}?${withoutComparison(location.search)}${location.hash}`;
+  const link = el("a", { href: href(), title: "Show the model without its differences from the base model" }, "View without differences");
+  // The hash has changed since if the view or selection did
+  link.addEventListener("click", () => (link.href = href()));
+  return el("p", { className: "models" }, link);
+}
+
 /**
  * A box with the compared models and the number of differences by status and by what changed, with checkboxes
  * to filter the map, and lists of the differing settings, features and results.
@@ -272,7 +289,7 @@ export function diffSummary(
       );
     }),
   );
-  details.append(el("summary", {}, "Differences"), modelLine(diff), table);
+  details.append(el("summary", {}, "Differences"), modelLine(diff), withoutLink(), table);
 
   const changes = changeCounts(diff);
   if (changes.length) {

@@ -62,6 +62,8 @@ export interface Network {
   baseLinkRow: Map<number, number>;
   /** The base id of each link in both models, matched on its nodes since links get renumbered */
   baseLinkId: Map<number, number>;
+  /** The ids of the flow links out of each node in the base model, by node id */
+  baseOutflows: Map<number, number[]>;
 }
 
 function rowsByType(types: string[]): Map<string, number[]> {
@@ -230,6 +232,19 @@ export function pastJunctions(network: Network, nodeId: number, direction: "upst
   return found ?? nodeId;
 }
 
+/** The ids of the flow links out of each node, by node id. */
+function outflows(links: Columns["links"]): Map<number, number[]> {
+  const result = new Map<number, number[]>();
+  links.link_id.forEach((id, row) => {
+    if (links.link_type[row] !== "flow") return;
+    const from = Number(links.from_node_id[row]);
+    let ids = result.get(from);
+    if (!ids) result.set(from, (ids = []));
+    ids.push(Number(id));
+  });
+  return result;
+}
+
 /** The base id of each link in both models by head id, matched on the from and to node like `webmap_diff`. */
 function matchLinks(head: Columns["links"], base: Columns["links"]): Map<number, number> {
   const key = (links: Columns["links"], row: number) => `${links.from_node_id[row]}-${links.to_node_id[row]}`;
@@ -318,5 +333,6 @@ export async function loadNetwork(manifest: Manifest, comparison: Comparison | n
     baseNodeRow: base ? indexById(Int32Array.from(base.nodes.node_id as number[])) : new Map(),
     baseLinkRow: base ? indexById(Int32Array.from(base.links.link_id as number[])) : new Map(),
     baseLinkId: base ? matchLinks(head.links, base.links) : new Map(),
+    baseOutflows: base ? outflows(base.links) : new Map(),
   };
 }

@@ -305,12 +305,11 @@ class Viewer {
     const { diff } = comparison;
     const shown = (id: number, diffs: typeof diff.nodes, results?: ResultColors) =>
       filter.shows(diffs.get(id), results?.diff.differences.has(id) ?? false);
-    // The unchanged features of the types that are always shown, see `ALWAYS_SHOWN_TYPES`, have no status ring
+    // The filter does not hide the types that are always shown, see `ALWAYS_SHOWN_TYPES`, only their status rings
     const values = (group: Group, ids: Int32Array, diffs: typeof diff.nodes, results?: ResultColors) =>
-      Float32Array.from(group.rows, (row) => {
-        const unchanged = !diffs.has(ids[row]) && !results?.diff.differences.has(ids[row]);
-        return shown(ids[row], diffs, results) || (unchanged && ALWAYS_SHOWN_TYPES.has(group.type)) ? 1 : 0;
-      });
+      ALWAYS_SHOWN_TYPES.has(group.type)
+        ? new Float32Array(group.rows.length).fill(1)
+        : Float32Array.from(group.rows, (row) => (shown(ids[row], diffs, results) ? 1 : 0));
     const rings: Float32Array[] = [];
     for (const group of network.nodeGroups) {
       const basin = group.type === "Basin" ? resultColors?.basin : undefined;
@@ -1104,8 +1103,8 @@ function runInfoControl(run: RunInfo): maplibregl.IControl {
   // Ribasim logs local times with milliseconds, minutes are enough
   const time = (value: string) => value.slice(0, 16).replace("T", " ");
   const parts: (Node | string)[] = [];
-  if (run.start) parts.push(`Run ${time(run.start)}`);
-  if (run.end) parts.push(`${run.start ? " → " : "Run finished "}${time(run.end)}`);
+  if (run.end) parts.push(`Run finished ${time(run.end)}`);
+  else if (run.start) parts.push(`Run started ${time(run.start)}`);
   if (run.commit) {
     const link = Object.assign(document.createElement("a"), {
       href: `${COMMIT_URL}${run.commit}`,
