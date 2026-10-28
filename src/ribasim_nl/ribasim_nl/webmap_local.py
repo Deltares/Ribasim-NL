@@ -360,7 +360,7 @@ def main(argv: list[str] | None = None) -> None:
     diff_dir = diff_cached(base_toml, head_toml, base_dir, head_dir, (base_label, head_label))
     serve(
         {"head": head_dir, "base": base_dir, "diff": diff_dir},
-        "data=head/&base=base/&diff=diff/",
+        "data=head/&base_data=base/&diff=diff/",
         f"{args.toml.stem}: {base_label} → {head_label} - Ribasim model viewer",
         args.port,
         not args.no_browser,
