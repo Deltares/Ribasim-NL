@@ -78,7 +78,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-d3dd72e47976c844a05ffb6b950c6ecd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-83714cd0e7dc9fdbafbbd371d0427816.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -250,6 +250,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#updating-the-published-data" id="toc-updating-the-published-data" class="nav-link active" data-scroll-target="#updating-the-published-data">Updating the published data</a>
   <ul class="collapse">
   <li><a href="#how-the-published-models-are-found" id="toc-how-the-published-models-are-found" class="nav-link" data-scroll-target="#how-the-published-models-are-found">How the published models are found</a></li>
+  <li><a href="#links-to-a-version" id="toc-links-to-a-version" class="nav-link" data-scroll-target="#links-to-a-version">Links to a version</a></li>
   </ul></li>
   <li><a href="#viewing-local-models" id="toc-viewing-local-models" class="nav-link" data-scroll-target="#viewing-local-models">Viewing local models</a>
   <ul class="collapse">
@@ -281,7 +282,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>The <a href="../viewer.html">Model viewer</a> shows the input and results of the coupled LHM model (<code>lhm_coupled</code>) of <code>main</code> on a web map. It is a static web app: the docs site serves only the JavaScript, and the browser reads the model data directly from MinIO. The model of a pull request can be previewed too, together with its differences from <code>main</code>, at <code>https://ribasim.nl/viewer?pr=&lt;number&gt;</code>.</p>
+<p>The <a href="../viewer.html">Model viewer</a> shows the input and results of the coupled LHM model (<code>lhm_coupled</code>) of <code>main</code> on a web map. It is a static web app: the docs site serves only the JavaScript, and the browser reads the model data directly from MinIO. The model of a pull request can be previewed too, together with its differences from <code>main</code>, at <code>https://ribasim.nl/viewer?pr=&lt;number&gt;</code>. Any other published version can be viewed, or compared with another, by its commit, see <a href="#links-to-a-version">Links to a version</a>.</p>
 <div class="cell" data-layout-align="default">
 <div class="cell-output-display">
 <div>
@@ -359,7 +360,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc push run_lhm_coupled</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div></li>
 <li><p>Publish the model as a preview of the pull request of the current branch. This needs credentials with write access in <code>.env</code>, and the <a href="https://cli.github.com/">GitHub CLI</a> <code>gh</code>, logged in.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run publish-webmap</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This uploads the model of the working tree, and that of <code>origin/main</code>, which it fetches first, and their differences, see <a href="#comparing-models">Comparing models</a>. It then adds a comment to the pull request with the link <code>https://ribasim.nl/viewer?pr=&lt;number&gt;</code> and a summary of the differences, or updates that comment on later publishes. Use <code>--pr &lt;number&gt;</code> to publish for another pull request, and <code>--main</code> to only publish the model of <code>origin/main</code>.</p></li>
+<p>This uploads the model of the working tree, and that of <code>origin/main</code>, which it fetches first, and their differences, see <a href="#comparing-models">Comparing models</a>. It then adds a comment to the pull request with the link <code>https://ribasim.nl/viewer?pr=&lt;number&gt;</code> and a summary of the differences, or updates that comment on later publishes. Use <code>--pr &lt;number&gt;</code> to publish for another pull request, and <code>--main</code> to only publish the model of <code>origin/main</code>. Use <code>--commit &lt;revision&gt;</code> to publish the model of a commit on GitHub, and add <code>--base &lt;revision&gt;</code> to also publish its differences from another commit, see <a href="#links-to-a-version">Links to a version</a>.</p></li>
 </ol>
 <p><code>pixi run repro-local</code> runs steps 1 to 4 by default, see <a href="../dev/local.html">Running locally</a>. The docs do not need to be rebuilt to show another model.</p>
 <section id="how-the-published-models-are-found" class="level3">
@@ -401,16 +402,54 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </table>
 <p>To show <code>main</code>, the viewer reads <code>dvc.lock</code> from <code>main</code> on GitHub, and loads the snapshot of its <code>export_webmap</code> output. So once a pull request whose model was published is merged, the viewer shows its model, without publishing again. If that snapshot is not published, for instance because a pull request changed the model without publishing it, the viewer shows the snapshot in <code>main.json</code> with a warning. The next <code>pixi run publish-webmap</code> then exports the run of <code>main</code> again, and publishes it. Likewise, to compare a pull request with <code>main</code>, the export of <code>main</code> is downloaded from its snapshot, or exported again from its run if it is not published. For a pull request, the viewer warns if <code>main</code> changed since the model was published; publish again to compare with the latest <code>main</code>. Snapshots and files that are no longer used are not deleted.</p>
 </section>
+<section id="links-to-a-version" class="level3">
+<h3 class="anchored" data-anchor-id="links-to-a-version">Links to a version</h3>
+<p>Node and link IDs change between versions of the model, so a link to a node in an issue would show another node later. The viewer therefore puts the commit of the model it shows in the page URL, so a copied link keeps showing that version:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 41%">
+<col style="width: 58%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">URL</th>
+<th style="text-align: left;">Model</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>viewer</code></td>
+<td style="text-align: left;">The latest <code>main</code>, then pinned to <code>viewer?commit=&lt;commit&gt;</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>viewer?commit=&lt;commit&gt;</code></td>
+<td style="text-align: left;">The model of a commit on GitHub, by the snapshot in its <code>dvc.lock</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>viewer?base=&lt;commit&gt;&amp;commit=&lt;commit&gt;</code></td>
+<td style="text-align: left;">The model of a commit, compared with that of another commit</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>viewer?pr=&lt;number&gt;</code></td>
+<td style="text-align: left;">The latest published model of a pull request, compared with its base</td>
+</tr>
+</tbody>
+</table>
+<p>Commits may be shortened; pinned links use 10 characters. The view and selection after <code>#</code> are kept. If a pinned model is no longer that of the latest <code>main</code>, the viewer says so, with a link to the latest <code>main</code> at the same place. The viewer knows the commit of <code>main</code> since the docs are built and published for each push to <code>main</code>, so after a merge it shows the previous <code>main</code> until that is done. Links to a pull request are not pinned, since it is usually published before its <code>dvc.lock</code> is committed.</p>
+<p>Two commits can be compared if their differences are published, for instance to see what changed in a month. Since snapshots and differences are named by the DVC hashes of the models, any two commits with the models of a published comparison can be compared, like <code>main</code> before and after a pull request. To compare other commits, publish their models and differences:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run publish-webmap <span class="at">--commit</span> origin/main <span class="at">--base</span> <span class="op">&lt;</span>commit<span class="op">&gt;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This prints the link to the comparison. A model that is not published is exported again from its run in DVC.</p>
+</section>
 </section>
 <section id="viewing-local-models" class="level2">
 <h2 class="anchored" data-anchor-id="viewing-local-models">Viewing local models</h2>
 <p>The viewer can also show any local model, without publishing it:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run viewer data/Rijkswaterstaat/modellen/hws_2025_10_1/hws.toml</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run viewer data/Rijkswaterstaat/modellen/hws_2025_10_1/hws.toml</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>This exports the model with <code>ribasim_nl.webmap</code> to <code>.cache/viewer</code>, serves it with the viewer on <a href="http://localhost:8000" class="uri">http://localhost:8000</a>, and opens it in a web browser. The export is reused as long as the model, its results and the export code are unchanged, so only the first run takes long; about 10 minutes for the coupled LHM model with results. Results are shown if the model’s results directory exists. Use <code>--port</code> to serve on another port, and <code>--no-browser</code> to not open a browser.</p>
 <section id="comparing-models" class="level3">
 <h3 class="anchored" data-anchor-id="comparing-models">Comparing models</h3>
 <p>To review a pull request that changes a model, view only the differences from another version of the model. Usually that is the same model at another git revision, like <code>main</code>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run viewer data/Rijkswaterstaat/runs/lhm_coupled/lhm_coupled.toml <span class="at">--base</span> origin/main</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run viewer data/Rijkswaterstaat/runs/lhm_coupled/lhm_coupled.toml <span class="at">--base</span> origin/main</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><code>--base</code> takes a git revision or the TOML of another model. The model at a revision is read with DVC, from the DVC cache or the DVC remote, into <code>.cache/viewer/revisions</code>. Add <code>--rev</code> to also take the viewed model from a git revision instead of the working tree, for instance <code>--rev HEAD --base origin/main</code>. Fetch first to compare with the latest <code>origin/main</code>.</p>
 <p>Nodes are matched by id, and links by their from and to node, since links get renumbered, see <code>ribasim_nl.webmap_diff</code>. A node or link in both models is changed if its geometry, an attribute, its rows in an input table, or its Basin / area differ. The map shows only the added, removed and changed features, in the colors of their status: green, orange and purple, on a grey base map. When zoomed out, the status rings around changed nodes become small dots. Removed and changed Basin / areas of the old model are drawn as dashed outlines. Turn on <em>Unchanged</em> in the layer list to show the other features faintly, for context. Observation nodes and their links are always shown, also when unchanged, so their charts can be compared; the observed values are charted with the simulated values of both models.</p>
 <p>If both models have results, the Basin levels and flow rates are compared too. Basins and flow links whose results differ more than a tolerance are also shown, in shades of grey by the largest difference. Differences of up to 1 mm in level, and of up to 1 L/s plus 1% in flow rate, are ignored as solver noise.</p>
@@ -421,8 +460,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="developing-the-viewer">Developing the viewer</h2>
 <p>The viewer lives in <a href="https://github.com/Deltares/Ribasim-NL/tree/main/viewer"><code>viewer/</code></a> and is written in TypeScript, built with <a href="https://vite.dev/">Vite</a>. It uses <a href="https://maplibre.org/">MapLibre GL JS</a> for the basemap and the Basin / area tiles, <a href="https://deck.gl/">deck.gl</a> to draw the nodes and links, and <a href="https://github.com/hyparam/hyparquet">hyparquet</a> to read Parquet files with HTTP range requests.</p>
 <p>Start a development server that serves your local <code>export_webmap</code> output, and open <a href="http://localhost:5173" class="uri">http://localhost:5173</a>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run viewer-dev</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Changes to the TypeScript code reload the page automatically. <code>pixi run viewer-build</code> checks types and builds the viewer into <code>docs/viewer-app</code>. <code>pixi run docs</code> and <code>pixi run docs-render</code> run it before rendering the docs. Add <code>?data=&lt;url&gt;</code> to the viewer page URL to load the data from another location, for instance <code>?data=http://localhost:5173/</code> to use the development server. Only the default MinIO host, the docs site itself and <code>localhost</code> are accepted.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run viewer-dev</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Changes to the TypeScript code reload the page automatically. <code>pixi run viewer-build</code> checks types and builds the viewer into <code>docs/viewer-app</code>. <code>pixi run docs</code> and <code>pixi run docs-render</code> run it before rendering the docs. Add <code>?data=&lt;url&gt;</code> to the viewer page URL to load the data from another location, and <code>&amp;base_data=&lt;url&gt;&amp;diff=&lt;url&gt;</code> to compare it with another model, for instance <code>?data=http://localhost:5173/</code> to use the development server. Only the default MinIO host, the docs site itself and <code>localhost</code> are accepted.</p>
 
 
 </section>
