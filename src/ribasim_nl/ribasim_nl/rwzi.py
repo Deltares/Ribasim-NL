@@ -87,7 +87,13 @@ def create_rwzi_basin_coupling(rwzi_coupled_model: Model, max_distance=100):
         basins_reset[["couple_to_basin_id", "geometry"]],
         how="left",
         max_distance=max_distance,
+        distance_col="distance",
     )
+    for _, row in joined_nearest.dropna(subset="couple_to_basin_id").iterrows():
+        logger.info(
+            f"RWZI {row['meta_rwzi_code']} is outside the Basin areas, "
+            f"coupled to Basin {int(row['couple_to_basin_id'])} at {row['distance']:.0f} m"
+        )
 
     rwzis_combined = joined_unique.copy()
     matched_rwzis_nearest = joined_nearest[["couple_to_basin_id"]]
@@ -345,7 +351,7 @@ def merge_rwzi_model(
     rwzi_model_path: Path,
     rwzi_coverage_path: Path,
     coverage_output_path: Path,
-    max_distance: int = 100,
+    max_distance: float = 100,
     verbose: bool = False,
 ) -> Model:
     """

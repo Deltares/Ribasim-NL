@@ -185,11 +185,14 @@ print(f"No meteo for Basins {missing.tolist()}, of {area[missing].sum() / 1e6:.2
 assert model.node.df is not None
 assert model.basin.node is not None and model.basin.node.df is not None
 model.node.df.loc[model.basin.node.df.index, "meta_waterbeheerder"] = "Rijkswaterstaat"
+# RWZIs that discharge on hws water that the Basin areas do not cover, such as Vollenhove on the Vollenhover Kanaal
+# 2.8 km from the Zwarte Meer, couple to the nearest hws Basin, see #936
 model = merge_rwzi_model(
     model,
     rwzi_model_path,
     rwzi_coverage_path,
     cloud.joinpath("Rijkswaterstaat/modellen/hws_transient/meta/RWZI_coordinates_lhm_coverage.geojson"),
+    max_distance=3000,
 )
 
 # add Observation nodes with measured discharges

@@ -20,6 +20,8 @@ SOLVER_OVERRIDES = {"reltol": 1e-3}
 # Deflate the NetCDF results, which are pushed to DVC for every run. This makes them about
 # 40% smaller, at the cost of about a minute of writing at the end of the run.
 RESULTS_OVERRIDES = {"compression": True}
+# Run the first 2 of the 3 years of the model, to save time on every run
+RUN_YEARS = 2
 
 
 def git(*args: str) -> str:
@@ -38,6 +40,9 @@ assert (input_dir / "database.gpkg").is_file(), f"No database in {input_dir}"
 
 config["solver"] = config.get("solver", {}) | SOLVER_OVERRIDES
 config["results"] = config.get("results", {}) | RESULTS_OVERRIDES
+endtime = config["starttime"].replace(year=config["starttime"].year + RUN_YEARS)
+assert endtime <= config["endtime"], f"The run ends at {endtime}, after the model ends at {config['endtime']}"
+config["endtime"] = endtime
 config["input_dir"] = os.path.relpath(input_dir, run_dir).replace("\\", "/")
 config["results_dir"] = "results"
 

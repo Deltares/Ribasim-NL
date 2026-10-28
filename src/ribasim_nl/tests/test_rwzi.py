@@ -1,6 +1,6 @@
 from ribasim import Node
 from ribasim.nodes import basin, flow_boundary, outlet
-from ribasim_nl.rwzi import attach_rwzi_junctions
+from ribasim_nl.rwzi import attach_rwzi_junctions, create_rwzi_basin_coupling
 from shapely.geometry import LineString, Point
 
 from ribasim_nl import Model
@@ -98,3 +98,26 @@ def test_attach_rwzi_junctions_authorities():
     assert (6, 1) in unchanged.link.df.set_index(["from_node_id", "to_node_id"]).index
     model = attach_rwzi_junctions(model, basins={1: 2}, authorities={"B"})
     assert (6, 2) in model.link.df.set_index(["from_node_id", "to_node_id"]).index
+
+
+def test_create_rwzi_basin_coupling():
+    """RWZIs couple to the Basin they are in, or the nearest one within `max_distance`, if they have an authority."""
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    model.basin.add(
+        Node(1, Point(0, 0), meta_waterbeheerder="A", meta_categorie="doorgaand"),
+        [
+            basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]),
+            basin.State(level=[0.5]),
+            basin.Area(geometry=[Point(0, 0).buffer(100)]),
+        ],
+    )
+    for node_id, x, authority in ((2, 50, "A"), (3, 600, "A"), (4, 50, None), (5, 50, "B")):
+        model.terminal.add(
+            Node(node_id, Point(x, 0), meta_rwzi_code=float(node_id), meta_discharge_couple_authority=authority)
+        )
+    lookup, unmatched = create_rwzi_basin_coupling(model, max_distance=100)
+    assert lookup == {2.0: 1}
+    assert list(unmatched.index) == [3]
+    lookup, unmatched = create_rwzi_basin_coupling(model, max_distance=1000)
+    assert lookup == {2.0: 1, 3.0: 1}
+    assert unmatched.empty
