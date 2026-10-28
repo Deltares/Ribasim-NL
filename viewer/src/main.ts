@@ -395,10 +395,10 @@ class Viewer {
 
   /** Layer props that hide the features the filter of the Differences box or the authority leaves out. */
   private filterProps(values: Float32Array | undefined): FilterProps {
-    if (!values) return { extensions: [], updateTriggers: {} };
+    // Always with the extension, since deck.gl does not set up an extension that is added to an existing layer
     return {
       extensions: [FILTER],
-      getFilterValue: (_: unknown, { index }: { index: number }) => values[index],
+      getFilterValue: values ? (_: unknown, { index }: { index: number }) => values[index] : () => 1,
       filterRange: [0.5, 1],
       updateTriggers: { getFilterValue: this.filterVersion },
     };
