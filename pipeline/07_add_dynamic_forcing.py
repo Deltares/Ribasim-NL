@@ -68,7 +68,7 @@ for authority in authorities:
     assert model.basin.node is not None and model.basin.node.df is not None
     assert model.node.df is not None
     model.node.df.loc[model.basin.node.df.index, "meta_waterbeheerder"] = authority
-    model = add_inflows(model, dst_model_dir)
+    model = add_inflows(model, authority, dst_model_dir)
 
     # TODO add flow_boundary to the tables written to NetCDF after we can run core versions with
     # https://github.com/Deltares/Ribasim/pull/3033

@@ -76,7 +76,8 @@ def write_steady_state_scenarios(
     """Write, and optionally run and check, the dry and wet steady state scenarios, and then the full control model.
 
     The scenarios get constant forcing, in this order: evaporation in the dry scenario, 2 mm/day precipitation in the
-    wet scenario, and 1.5 mm/day precipitation in the full control model. See `run_model_and_control`.
+    wet scenario, and 1.5 mm/day precipitation in the full control model. The foreign inflows get their summer,
+    winter and overall median flow rate, see `ribasim_nl.transboundary_inflow`. See `run_model_and_control`.
 
     :param model: model of the vrij afwaterend water authority
     :param authority: water authority, the folder of its models
@@ -94,15 +95,23 @@ def write_steady_state_scenarios(
     from ribasim_nl.cloud import CloudStorage
     from ribasim_nl.parametrization.basin_tables import update_basin_static
     from ribasim_nl.topology import fill_missing_level_boundary_static_levels
+    from ribasim_nl.transboundary_inflow import set_constant_inflow
 
     model_dir = CloudStorage().joinpath(authority, "modellen")
     scenarios = (
-        ("dry", {"evaporation_mm_per_day": dry_evaporation_mm_per_day}, dry_period, "steady_state_dry"),
-        ("wet", {"precipitation_mm_per_day": 2}, wet_period, "steady_state_wet"),
-        (None, {"precipitation_mm_per_day": 1.5}, None, "full_control_model"),
+        (
+            "dry",
+            {"evaporation_mm_per_day": dry_evaporation_mm_per_day},
+            "constant_summer",
+            dry_period,
+            "steady_state_dry",
+        ),
+        ("wet", {"precipitation_mm_per_day": 2}, "constant_winter", wet_period, "steady_state_wet"),
+        (None, {"precipitation_mm_per_day": 1.5}, "constant_global", None, "full_control_model"),
     )
-    for scenario, forcing, period, post_fix in scenarios:
+    for scenario, forcing, inflow, period, post_fix in scenarios:
         update_basin_static(model=model, **forcing)
+        set_constant_inflow(model, authority, inflow)
         if period is not None:
             model.starttime, model.endtime = period
         if fill_missing_level_boundaries:

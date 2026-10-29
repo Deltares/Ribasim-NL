@@ -24,7 +24,7 @@ from ribasim_nl.ribasim_parametrization import write_steady_state_regression_mod
 from ribasim_nl.rwzi import attach_rwzi_junctions, merge_rwzi_model
 from ribasim_nl.set_forcing import SetDynamicForcing
 from ribasim_nl.settings import settings
-from ribasim_nl.transboundary_inflow import add_transboundary_inflow, import_transboundary_inflow
+from ribasim_nl.transboundary_inflow import add_transboundary_inflow
 
 # simulation period and output interval of the regional models
 STARTTIME = datetime.datetime(2017, 1, 1)
@@ -33,7 +33,6 @@ SAVEAT = 3600 * 24
 
 DATA_DIR = settings.ribasim_nl_data_dir
 LHM_BUDGETS = DATA_DIR / "Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink"
-TRANSBOUNDARY_INFLOW = DATA_DIR / "Basisgegevens/BuitenlandseAanvoer/aangeleverd/BuitenlandseAanvoer_V5.xlsx"
 RWZI_TOML = DATA_DIR / "Rijkswaterstaat/modellen/rwzi/rwzi.toml"
 RWZI_COVERAGE = DATA_DIR / "Rijkswaterstaat/modellen/rwzi/meta/RWZI_coordinates_model_coverage.geojson"
 QLR = DATA_DIR / "Basisgegevens/QGIS_qlr/output_controle_cc.qlr"
@@ -103,15 +102,15 @@ def add_lhm_forcing(
     return model
 
 
-def add_inflows(model: Model, output_dir: Path) -> Model:
-    """Add the measured foreign inflows to the FlowBoundaries named after them, the RWZIs, and the LHM fractions.
+def add_inflows(model: Model, authority: str, output_dir: Path) -> Model:
+    """Add the measured foreign inflows, the RWZIs, and the LHM fractions.
 
     :param model: model
+    :param authority: water authority, of which `ribasim_nl.transboundary_inflow` adds the foreign inflows
     :param output_dir: directory of the model, of which `meta/RWZI_coordinates_lhm_coverage.geojson` gets the RWZIs
     :return: the model with inflows
     """
-    if model.flow_boundary.node is not None and model.flow_boundary.node.df is not None:
-        add_transboundary_inflow(model, import_transboundary_inflow(TRANSBOUNDARY_INFLOW, STARTTIME, ENDTIME, model))
+    add_transboundary_inflow(model, authority, STARTTIME, ENDTIME)
     model = merge_rwzi_model(model, RWZI_TOML, RWZI_COVERAGE, output_dir / "meta/RWZI_coordinates_lhm_coverage.geojson")
     assign_lhm_fractions(model)
     return model
