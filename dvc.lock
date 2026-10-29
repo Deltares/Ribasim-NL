@@ -4790,13 +4790,13 @@ stages:
       size: 4665344
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: 9b198a9ee4af3f1e739125c8201566be.dir
-      size: 1362850813
+      md5: bdc86646d54d2ee8d3174fbb3d413fef.dir
+      size: 2290822053
       nfiles: 4
     - path: data/Rijkswaterstaat/runs/lhm_coupled
       hash: md5
-      md5: 428fdba86b958c471798e9cc0861e648.dir
-      size: 3914763990
+      md5: c58be46ab1012d825b44e339ccb0ae8c.dir
+      size: 7849978978
       nfiles: 9
     - path: pipeline/export_webmap.py
       hash: md5
@@ -4804,22 +4804,22 @@ stages:
       size: 471
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: 3153b62da25041362b8d2c8d9e7cc59c.dir
-      size: 1758897
+      md5: f1693b90354d2ec411e0dffd42c475d0.dir
+      size: 1762149
       nfiles: 104
     outs:
     - path: data/Rijkswaterstaat/webmap/lhm_coupled
       hash: md5
-      md5: f034d3cf2f97cf7ff8fd64a27e67880e.dir
-      size: 1913214006
+      md5: 5ea54429bf0e3c7c82ec8160d6e4789d.dir
+      size: 3831546991
       nfiles: 34
   run_lhm_coupled:
     cmd: pixi run python pipeline/run_lhm_coupled.py
     deps:
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: 9b198a9ee4af3f1e739125c8201566be.dir
-      size: 1362850813
+      md5: bdc86646d54d2ee8d3174fbb3d413fef.dir
+      size: 2290822053
       nfiles: 4
     - path: pipeline/run_lhm_coupled.py
       hash: md5
@@ -4831,27 +4831,27 @@ stages:
       size: 5840
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: 3153b62da25041362b8d2c8d9e7cc59c.dir
-      size: 1758897
+      md5: f1693b90354d2ec411e0dffd42c475d0.dir
+      size: 1762149
       nfiles: 104
     outs:
     - path: data/Rijkswaterstaat/runs/lhm_coupled
       hash: md5
-      md5: 428fdba86b958c471798e9cc0861e648.dir
-      size: 3914763990
+      md5: c58be46ab1012d825b44e339ccb0ae8c.dir
+      size: 7849978978
       nfiles: 9
   validate_lhm_coupled:
     cmd: pixi run python pipeline/validate_lhm_coupled.py
     deps:
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: 9b198a9ee4af3f1e739125c8201566be.dir
-      size: 1362850813
+      md5: bdc86646d54d2ee8d3174fbb3d413fef.dir
+      size: 2290822053
       nfiles: 4
     - path: data/Rijkswaterstaat/runs/lhm_coupled
       hash: md5
-      md5: 428fdba86b958c471798e9cc0861e648.dir
-      size: 3914763990
+      md5: c58be46ab1012d825b44e339ccb0ae8c.dir
+      size: 7849978978
       nfiles: 9
     - path: pipeline/validate_lhm_coupled.py
       hash: md5
@@ -4859,15 +4859,15 @@ stages:
       size: 1084
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: 3153b62da25041362b8d2c8d9e7cc59c.dir
-      size: 1758897
+      md5: f1693b90354d2ec411e0dffd42c475d0.dir
+      size: 1762149
       nfiles: 104
     outs:
     - path: data/Rijkswaterstaat/metrics/lhm_coupled.json
       hash: md5
-      md5: f616136b2660944866a25d7cc5a6cee9
-      size: 1238
+      md5: e61bace6d2a78b6b68078954fb197cf4
+      size: 1236
     - path: data/Rijkswaterstaat/metrics/lhm_coupled_observations.csv
       hash: md5
-      md5: fec7e9fd8c920c89a91ece9b8652b67e
-      size: 71809
+      md5: d50203ae5f556e1d2881bc9b8c4ef3dc
+      size: 74501
