@@ -17,6 +17,7 @@ from ribasim.schemas import (
     ManningResistanceStaticSchema,
     TabulatedRatingCurveStaticSchema,
 )
+from ribasim_nl.drainage_units import replace_basin_areas
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.model import default_tables
 from ribasim_nl.reset_static_tables import reset_static_tables
@@ -801,6 +802,15 @@ model.link.add(outlet_node, basin_node)
 model.link.add(model.level_boundary[48], outlet_node)
 # nog een basin-merge i.v.m. manning
 model.merge_basins(node_id=2016, to_node_id=1394)
+
+# %% Basin areas from the afwateringseenheden of waterlagen, see `ribasim_nl.drainage_units`
+# produced with `afwateringseenheden --waterbeheercode 38` of https://github.com/d2hydro/waterlagen
+waterlagen_dir = cloud.joinpath(authority, "verwerkt/afwateringseenheden_waterlagen")
+drainage_units_gdf = gpd.read_file(waterlagen_dir / "afwateringseenheden.gpkg", layer="afvoergebiedaanvoergebied")
+segments_gdf = gpd.read_file(waterlagen_dir / "watersysteem.gpkg", layer="hydroobject_segment")
+waterschap_gdf = gpd.read_file(cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg"))
+boundary = waterschap_gdf[waterschap_gdf.naam.str.contains("Aa en Maas")].union_all()
+replace_basin_areas(model, drainage_units_gdf, segments_gdf, boundary)
 
 # %%
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
