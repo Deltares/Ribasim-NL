@@ -6,7 +6,8 @@ out `origin/main` in a worktree dedicated to this, and then runs `pixi run repro
 1. Asserts that it runs in that worktree, at `origin/main`, without changes.
 2. Handles the open catch-up pull request, if there is one. If `dvc.lock` on `main` changed since its run, it
    is closed, since pull requests keep the `dvc.lock` of `main`. Otherwise this stops until it is merged.
-3. Stops if `pixi run repro-local` already runs on this machine, or if this commit of `main` was attempted before.
+3. Stops if another run of `pixi run repro-main` holds the lock of the worktree, or if this commit of `main` was
+   attempted before. Runs of `pixi run repro-local` for other pull requests do not stop it.
 4. Removes the data of the previous run, and runs `pixi run repro-local --incremental --push --no-publish`.
    Like in a new worktree, data that is not in the workspace does not count as changed.
 5. If `dvc.lock` changed, commits it with the metrics to a new branch, pushes it, and opens a draft pull request.
@@ -19,6 +20,7 @@ Usage: pixi run repro-main [--force] [--no-describe]
 """
 
 import argparse
+import fcntl
 import json
 import os
 import re
@@ -26,6 +28,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import TextIO
 
 LOCKED = ["dvc.lock", "data/Rijkswaterstaat/metrics/lhm_coupled.json"]
 TITLE = "Reproduce the pipeline on top of main"
@@ -33,6 +36,8 @@ TITLE = "Reproduce the pipeline on top of main"
 BRANCH_PATTERN = re.compile(r"repro-main-\d{8}-\d{4}")
 # Created by `install_repro_main.py` in the git directory of the worktree, which is not part of the work tree
 MARKER = "repro-main"
+# Held in the git directory of the worktree during a run, so that runs of main do not overlap
+LOCK = "repro-main.lock"
 STATE_FILE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "ribasim-nl/repro-main.json"
 # The optional GitHub token of the service, see `install_repro_main.py`
 TOKEN_FILE = Path.home() / ".config/ribasim-nl/repro-main.env"
@@ -141,9 +146,16 @@ def handle_open_pr(root: Path) -> bool:
     return False
 
 
-def repro_running() -> bool:
-    """Whether `pixi run repro-local` runs on this machine, in any checkout."""
-    return subprocess.run(["pgrep", "-f", "python scripts/repro.py"], capture_output=True, check=False).returncode == 0
+def lock_worktree(root: Path) -> TextIO | None:
+    """Lock the worktree until this process exits; return the lock file, or None if another run holds it."""
+    git_dir = Path(git("rev-parse", "--absolute-git-dir", cwd=root))
+    file = (git_dir / LOCK).open("w")
+    try:
+        fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        file.close()
+        return None
+    return file
 
 
 def remove_data(root: Path) -> None:
@@ -259,15 +271,17 @@ def main() -> int:
     base = check_worktree(root)
     check_private(TOKEN_FILE)
     check_private(root / ".env")
+    # Kept open until the process exits, which releases the lock
+    lock = lock_worktree(root)
+    if lock is None:
+        log("pixi run repro-main runs already, trying again next time")
+        return 0
 
     if handle_open_pr(root):
         return 0
     state = read_state()
     if state.get("commit") == base and not args.force:
         log(f"main {base[:10]} was attempted before, with outcome {state.get('status')}; use --force to rerun")
-        return 0
-    if repro_running():
-        log("pixi run repro-local runs already on this machine, trying again next time")
         return 0
 
     log(f"Reproducing main {base[:10]}")
