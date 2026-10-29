@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 import numpy as np
+import pandas as pd
 
 from ribasim_nl.profiles import MIN_PROFILE_AREA
 
@@ -237,6 +238,37 @@ def _listen_to_junction_issues(model: "Model") -> list[str]:
     return [f"Control nodes must not listen to a Junction; invalid (control, Junction) node IDs: {sorted(set(pairs))}"]
 
 
+def _flow_demand_capacity_issues(model: "Model") -> list[str]:
+    """Return FlowDemand nodes whose demand exceeds the max_flow_rate of their Pump or Outlet.
+
+    Without allocation, Ribasim clamps the demand to the max_flow_rate of the current control state, so the part
+    above it is silently ignored.
+    """
+    link_df, node_df = model.link.df, model.node.df
+    if link_df is None or node_df is None:
+        return []
+    demands = [table.df for table in (model.flow_demand.static, model.flow_demand.time) if table.df is not None]
+    if not demands:
+        return []
+    demand = pd.concat([df[["node_id", "demand"]] for df in demands]).groupby("node_id")["demand"].max()
+    static = [model.get_component(i).static.df for i in ("Pump", "Outlet")]
+    static = [df[["node_id", "max_flow_rate"]] for df in static if df is not None]
+    max_flow_rate = pd.concat(static).groupby("node_id")["max_flow_rate"].min() if static else pd.Series()
+
+    control = link_df[(link_df["link_type"] == "control") & link_df["from_node_id"].isin(demand.index)]
+    pairs = [
+        (int(from_node_id), int(to_node_id))
+        for from_node_id, to_node_id in zip(control["from_node_id"], control["to_node_id"], strict=True)
+        if demand[from_node_id] > max_flow_rate.get(to_node_id, np.inf)
+    ]
+    if not pairs:
+        return []
+    return [
+        "FlowDemand must not exceed the max_flow_rate of its Pump or Outlet in any control state; "
+        f"invalid (FlowDemand, connector) node IDs: {sorted(pairs)}"
+    ]
+
+
 def validate_model(model: "Model", layout: bool = True) -> None:
     """Validate Ribasim-NL conventions and report all issues together.
 
@@ -251,6 +283,7 @@ def validate_model(model: "Model", layout: bool = True) -> None:
         *_connector_through_junction_issues(model),
         *_manning_resistance_issues(model),
         *_listen_to_junction_issues(model),
+        *_flow_demand_capacity_issues(model),
         *(_layout_issues(model) if layout else []),
     ]
     if issues:

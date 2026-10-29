@@ -17,11 +17,10 @@ from ribasim.nodes import (
 )
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.rws_kunstwerken import (
-    read_flow_kwargs,
     read_kwk_properties,
-    read_pump,
     read_qq_curve,
     read_rating_curve,
+    read_static,
 )
 from shapely.affinity import translate
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
@@ -35,7 +34,8 @@ warnings.filterwarnings(
 )
 
 # Krammersluizen (43C-002-03) lozen van Krammer op Oosterschelde, zie issue #813
-KWK_INVERSE_FLOW_DIRECTION = ["750028686", "44D-002-03", "43C-002-03"]
+# Spuisluis Delden (34E-001-04) ligt in het stroomkanaal van Gemaal Delden, maar spuit naar beneden, zie issue #730
+KWK_INVERSE_FLOW_DIRECTION = ["750028686", "44D-002-03", "43C-002-03", "34E-001-04"]
 VERDEELSLEUTELS = ["Lobith", "Monsin"]
 RVW_IJSSELMEER = ["KOBU", "OEBU"]
 
@@ -72,7 +72,7 @@ def read_outlet(kwk_df, name: str):
             control_state=outlet_df.control_state.to_list(),
         )
     else:
-        return outlet.Static(**read_flow_kwargs(read_kwk_properties(kwk_df)))
+        return read_static(kwk_df, "Outlet")
 
 
 def read_pid(control_properties, control_basin_id):
@@ -290,7 +290,7 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
         elif node_type == "Outlet":
             data = [read_outlet(kwk_df, name=cast(str, row.naam))]
         elif node_type == "Pump":
-            data = [read_pump(kwk_properties)]
+            data = [read_static(kwk_df, "Pump")]
         else:
             raise ValueError(f"node-type {node_type} not yet implemented")
 
