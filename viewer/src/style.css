@@ -609,6 +609,15 @@
   padding: 0 4px;
 }
 
+/* Without the cursor on the chart, the legend only names the series, without the empty time and values */
+.ribasim-viewer .uplot:has(.u-cursor-x.u-off) .u-legend .u-series:first-child {
+  display: none;
+}
+
+.ribasim-viewer .uplot:has(.u-cursor-x.u-off) .u-legend th::after {
+  content: none;
+}
+
 /* Next to the scale bar, rather than above it */
 .ribasim-viewer .maplibregl-ctrl.run-info {
   clear: none;
