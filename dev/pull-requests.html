@@ -321,7 +321,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>This runs in a worktree dedicated to it, and is normally started every night by a systemd timer, see below. It:</p>
 <ol type="1">
 <li>Waits while a catch-up pull request is open, unless <code>dvc.lock</code> on <code>main</code> changed since its run. Then it closes it, since pull requests keep the <code>dvc.lock</code> of <code>main</code>.</li>
-<li>Skips a commit of <code>main</code> that it attempted before, also when that failed, unless given <code>--force</code>. It also skips while <code>pixi run repro-local</code> runs on the same machine.</li>
+<li>Skips a commit of <code>main</code> that it attempted before, also when that failed, unless given <code>--force</code>. It also skips while another catch-up run is busy, but not for runs of other pull requests, which go in the next catch-up run.</li>
 <li>Runs <code>pixi run repro-local --incremental --push</code> on <code>main</code>. Since every stage depends on the <code>ribasim_nl</code> package, this usually reruns most of the pipeline.</li>
 <li>If <code>dvc.lock</code> changed, pushes the run to a new branch <code>repro-main-&lt;date&gt;-&lt;time&gt;</code>, opens the pull request, and publishes its model viewer preview.</li>
 <li>Has Claude describe the effect with the <code>describe-run</code> skill in <code>.claude/skills</code>, which can only read files, and not the credentials. The skill is also useful to describe the run of any other pull request.</li>
