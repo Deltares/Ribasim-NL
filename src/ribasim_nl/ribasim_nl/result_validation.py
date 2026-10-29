@@ -61,7 +61,7 @@ class KeyLevel:
 # Basins of Rijkswaterstaat, with a range around the target levels of the Peilbesluiten
 KEY_LEVELS = (
     KeyLevel(8006803, "IJsselmeer", -0.6, 0.1),  # -0.40 in winter, -0.10 to -0.40 in summer
-    KeyLevel(8005792, "Markermeer", -0.6, 0.0),  # -0.40 in winter, -0.10 to -0.30 in summer
+    KeyLevel(8005792, "Markermeer", -0.65, 0.0),  # -0.40 in winter, -0.10 to -0.30 in summer
     KeyLevel(8008077, "Veluwemeer", -0.4, 0.2),  # -0.05
     KeyLevel(8004210, "Noordzeekanaal", -0.6, -0.2),  # -0.40
     KeyLevel(8005018, "Amsterdam-Rijnkanaal Breukelen", -0.6, -0.2),  # -0.40, the same section as the Noordzeekanaal
