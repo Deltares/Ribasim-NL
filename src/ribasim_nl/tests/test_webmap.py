@@ -21,6 +21,7 @@ from ribasim_nl.webmap import (
     netcdf_tables,
     run_info,
     table_slug,
+    write_table,
 )
 from shapely.geometry import MultiPolygon, Point, box
 
@@ -206,3 +207,23 @@ def test_downcast_int64():
     table = downcast_int64(pa.table({"small": pa.array([1, 2], pa.int64()), "large": pa.array([1, 2**40], pa.int64())}))
     assert table.schema.field("small").type == pa.int32()
     assert table.schema.field("large").type == pa.int64()
+
+
+def test_write_table_float_encoding(tmp_path):
+    table = pa.table(
+        {
+            "id": pa.array([1, 2], pa.int32()),
+            "x": pa.array([5.1, 5.2], pa.float32()),
+            "level": pa.array([1.0, 1.0], pa.float64()),
+            "coords": pa.array([[5.1, 52.1, 5.2, 52.2], [5.3, 52.3]], pa.list_(pa.float32())),
+        }
+    )
+    path = tmp_path / "table.parquet"
+    write_table(table, path)
+    assert pq.read_table(path).equals(table)
+    columns = pq.ParquetFile(path).metadata.row_group(0)
+    encodings = {columns.column(i).path_in_schema: columns.column(i).encodings for i in range(columns.num_columns)}
+    assert "BYTE_STREAM_SPLIT" in encodings["x"]
+    assert "BYTE_STREAM_SPLIT" in encodings["coords.list.element"]
+    assert "BYTE_STREAM_SPLIT" not in encodings["id"]
+    assert "BYTE_STREAM_SPLIT" not in encodings["level"]

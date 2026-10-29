@@ -13,7 +13,7 @@ import * as maplibregl from "maplibre-gl";
 import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { Protocol } from "pmtiles";
 import { BASEMAPS, basemapStyle, DEFAULT_BASEMAP, withOverlays } from "./basemaps";
-import { ColorScale, formatNumber, normalize } from "./colors";
+import { ColorScale, formatLabel, formatNumber, normalize } from "./colors";
 import {
   fileUrl,
   loadSource,
@@ -86,7 +86,17 @@ const NO_FLOW_WIDTH_PX = 0.5;
 const ARROW_MIN_ZOOM = 10;
 const BASIN_OUTLINE_MIN_ZOOM = 9;
 const LABEL_MIN_ZOOM = 13;
+// Zoomed out, tens of thousands of overlapping icons are unreadable, so nodes are small dots in their icon color
+const NODE_ICON_MIN_ZOOM = 10;
+// The dots grow from the minimum to the maximum size towards that zoom level
+const NODE_DOT_RADIUS_M = 250;
+const NODE_DOT_PX: [number, number] = [1, 3];
 const MAX_LABELS = 2000;
+// The flow labels in pixels, to leave out those that would overlap, see `Viewer.updateLabels`
+const LABEL_SIZE_PX = 11;
+const LABEL_CHAR_PX = 6.5;
+const LABEL_PADDING_PX: [number, number] = [2, 1];
+const LABEL_OFFSET_PX: [number, number] = [0, -12];
 // Sources and layers kept when the base map style changes
 const OVERLAY_SOURCES = new Set(["basin_area", "basin_area_base", "waterboards"]);
 // The status ring around a differing node, relative to the icon size; when zoomed out the rings of dense
@@ -117,9 +127,11 @@ function selectionFromHash(): Selection | null {
   return null;
 }
 
-/** A filter of the Basin / areas of some Basins. */
+/** A filter of the Basin / areas of some Basins; `match` looks the ids up, where `in` would search the list. */
 function areaFilter(ids: number[]): maplibregl.ExpressionSpecification {
-  return ["in", ["get", "node_id"], ["literal", ids]];
+  // `match` needs at least one label, and unique ones
+  const unique = [...new Set(ids)];
+  return unique.length ? ["match", ["get", "node_id"], unique, true, false] : ["boolean", false];
 }
 
 /** The `waterbeheercode` of the authority to show in the hash, or null to show all, see `Viewer.setAuthority`. */
@@ -185,6 +197,35 @@ interface Label {
   text: string;
 }
 
+/** Screen boxes of placed labels, in a grid of cells, to find overlaps without comparing all pairs. */
+class LabelGrid {
+  private static readonly CELL_PX = 64;
+  private readonly cells = new Map<string, [number, number, number, number][]>();
+
+  /** Place a box if it overlaps no placed box; returns whether it was placed. */
+  place(box: [number, number, number, number]): boolean {
+    const keys = this.keys(box);
+    const overlaps = (other: [number, number, number, number]) =>
+      box[0] < other[2] && other[0] < box[2] && box[1] < other[3] && other[1] < box[3];
+    if (keys.some((key) => this.cells.get(key)?.some(overlaps))) return false;
+    for (const key of keys) {
+      const cell = this.cells.get(key);
+      if (cell) cell.push(box);
+      else this.cells.set(key, [box]);
+    }
+    return true;
+  }
+
+  private keys([left, top, right, bottom]: [number, number, number, number]): string[] {
+    const size = LabelGrid.CELL_PX;
+    const keys: string[] = [];
+    for (let x = Math.floor(left / size); x <= Math.floor(right / size); x++) {
+      for (let y = Math.floor(top / size); y <= Math.floor(bottom / size); y++) keys.push(`${x},${y}`);
+    }
+    return keys;
+  }
+}
+
 /** A layer in the layer list. */
 interface LayerRow {
   key: string;
@@ -223,6 +264,8 @@ class Viewer {
   private diffRingValues = new Float32Array(0);
   /** The `waterbeheercode` of the authority whose nodes and links are shown, or null for all, see `authorityRows` */
   private authority: number | null = authorityFromHash();
+  /** The `authorityRows` of `authority`, computed once per choice */
+  private authorityRowsCache: { code: number; rows: ReturnType<typeof authorityRows> } | null = null;
   /** Per node or link group, 1 for the features shown by both filters, or absent if all are shown */
   private readonly filterValues = new Map<Group, Float32Array>();
   private ringFilterValues: Float32Array | undefined;
@@ -360,10 +403,18 @@ class Viewer {
     }
   }
 
+  /** The nodes and links shown for the chosen authority, or null if all are shown. */
+  private shownRows(): ReturnType<typeof authorityRows> | null {
+    const code = this.authority;
+    if (code === null) return null;
+    if (this.authorityRowsCache?.code !== code) this.authorityRowsCache = { code, rows: authorityRows(this.network, code) };
+    return this.authorityRowsCache.rows;
+  }
+
   /** Which features are shown, by the filter of the Differences box and by the authority, see `authorityRows`. */
   private updateFilterValues(): void {
     const { network } = this;
-    const rows = this.authority === null ? null : authorityRows(network, this.authority);
+    const rows = this.shownRows();
     const combine = (group: Group, shown: Uint8Array | undefined, diff = this.diffValues.get(group)) =>
       shown ? Float32Array.from(group.rows, (row, i) => (shown[row] ? (diff?.[i] ?? 1) : 0)) : diff;
     this.filterValues.clear();
@@ -417,11 +468,8 @@ class Viewer {
   /** Show only the Basin / areas of the Basins that are shown for the authority, or all of them. */
   private filterBasinAreas(): void {
     const { network } = this;
-    let ids: number[] | null = null;
-    if (this.authority !== null) {
-      const rows = authorityRows(network, this.authority).nodes;
-      ids = Array.from(network.nodeId).filter((_, row) => rows[row] && network.nodeType[row] === "Basin");
-    }
+    const rows = this.shownRows()?.nodes;
+    const ids = rows ? Array.from(network.nodeId).filter((_, row) => rows[row] && network.nodeType[row] === "Basin") : null;
     for (const id of ["basin_area", "basin_area_outline"]) {
       if (this.map.getLayer(id)) this.map.setFilter(id, ids ? areaFilter(ids) : null);
     }
@@ -655,7 +703,6 @@ class Viewer {
       this.selection?.kind === "node" ? this.network.nodeRow.get(this.selection.id) : undefined;
     const isSelected = selected !== undefined && this.network.nodeType[selected] === group.type;
     const common = {
-      id: `node-${group.type}`,
       data: group.data,
       visible: this.visible.get(group.type),
       ...this.filterProps(this.filterValues.get(group)),
@@ -664,9 +711,28 @@ class Viewer {
       highlightColor: HIGHLIGHT,
       highlightedObjectIndex: isSelected ? this.network.nodeLocal[selected] : -1,
     };
+    const color = NODE_STYLES[group.type] ?? DEFAULT_NODE_COLOR;
+    if (this.map.getZoom() < NODE_ICON_MIN_ZOOM) {
+      // Another id than the icons, since deck.gl would carry the state of an IconLayer over to a ScatterplotLayer
+      return new ScatterplotLayer({
+        ...common,
+        id: `dot-${group.type}`,
+        getFillColor: color,
+        // White dots, like those of LevelBoundary, need an outline on a light base map
+        stroked: color.every((c) => c > 200),
+        getLineColor: [0, 0, 0],
+        lineWidthUnits: "pixels",
+        getLineWidth: 0.5,
+        radiusUnits: "meters",
+        getRadius: NODE_DOT_RADIUS_M,
+        radiusMinPixels: NODE_DOT_PX[0],
+        radiusMaxPixels: NODE_DOT_PX[1],
+      });
+    }
     if (group.type in this.icons.mapping) {
       return new IconLayer({
         ...common,
+        id: `node-${group.type}`,
         iconAtlas: this.icons.atlas,
         iconMapping: this.icons.mapping,
         getIcon: () => group.type,
@@ -679,7 +745,8 @@ class Viewer {
     // Node types without an icon, or when the icons failed to load
     return new ScatterplotLayer({
       ...common,
-      getFillColor: NODE_STYLES[group.type] ?? DEFAULT_NODE_COLOR,
+      id: `node-${group.type}`,
+      getFillColor: color,
       getLineColor: [0, 0, 0],
       stroked: true,
       lineWidthUnits: "pixels",
@@ -757,7 +824,10 @@ class Viewer {
     });
   }
 
-  /** Flow values next to the links in view, only when zoomed in far enough to avoid clutter. */
+  /**
+   * Flow values next to the links in view, only when zoomed in far enough to avoid clutter. Labels that would
+   * overlap the label of a larger flow are left out.
+   */
   private updateLabels(): void {
     const coloring = this.flowColoring;
     const flow = this.network.linkGroups.find((group) => group.type === "flow");
@@ -766,11 +836,28 @@ class Viewer {
       const bounds = this.map.getBounds();
       const positions = flow.arrows!.attributes.getPosition.value;
       const shown = this.filterValues.get(flow);
-      for (let i = 0; i < flow.rows.length && labels.length < MAX_LABELS; i++) {
+      const candidates: number[] = [];
+      for (let i = 0; i < flow.rows.length; i++) {
         if (shown && !shown[i]) continue;
+        if (Number.isFinite(coloring.values[i]) && bounds.contains([positions[2 * i], positions[2 * i + 1]])) candidates.push(i);
+      }
+      candidates.sort((a, b) => Math.abs(coloring.values[b]) - Math.abs(coloring.values[a]));
+      const grid = new LabelGrid();
+      const [padX, padY] = LABEL_PADDING_PX;
+      for (const i of candidates) {
+        if (labels.length >= MAX_LABELS) break;
         const position: [number, number] = [positions[2 * i], positions[2 * i + 1]];
-        const value = coloring.values[i];
-        if (Number.isFinite(value) && bounds.contains(position)) labels.push({ position, text: formatNumber(value) });
+        const text = formatLabel(coloring.values[i]);
+        const { x, y } = this.map.project(position);
+        const halfWidth = (text.length * LABEL_CHAR_PX) / 2 + padX;
+        const centerY = y + LABEL_OFFSET_PX[1];
+        const box: [number, number, number, number] = [
+          x - halfWidth,
+          centerY - LABEL_SIZE_PX / 2 - padY,
+          x + halfWidth,
+          centerY + LABEL_SIZE_PX / 2 + padY,
+        ];
+        if (grid.place(box)) labels.push({ position, text });
       }
     }
     // A new array makes deck.gl rebuild the layer, so keep the old one if both are empty
@@ -783,13 +870,13 @@ class Viewer {
       data: this.labels,
       getPosition: (label) => label.position,
       getText: (label) => label.text,
-      getSize: 11,
+      getSize: LABEL_SIZE_PX,
       getColor: [20, 20, 20],
-      getPixelOffset: [0, -12],
+      getPixelOffset: LABEL_OFFSET_PX,
       fontFamily: "system-ui, sans-serif",
       background: true,
       getBackgroundColor: [255, 255, 255, 210],
-      backgroundPadding: [2, 1],
+      backgroundPadding: LABEL_PADDING_PX,
     });
   }
 
@@ -889,7 +976,7 @@ class Viewer {
 
   private zoomDetail(): string {
     const zoom = this.map.getZoom();
-    return [ARROW_MIN_ZOOM, LABEL_MIN_ZOOM, DIFF_RING_MIN_ZOOM].map((min) => zoom >= min).join();
+    return [ARROW_MIN_ZOOM, LABEL_MIN_ZOOM, DIFF_RING_MIN_ZOOM, NODE_ICON_MIN_ZOOM].map((min) => zoom >= min).join();
   }
 
   private render(): void {
@@ -929,9 +1016,9 @@ class Viewer {
       return { kind: "link", id: this.network.linkId[context.links.rows[info.index]] };
     }
     const [kind, type] = info.layer.id.split(/-(.*)/s);
-    if (kind === "node") {
+    if (kind === "node" || kind === "dot") {
       const group = this.network.nodeGroups.find((g) => g.type === type);
-      return group ? { kind, id: this.network.nodeId[group.rows[info.index]] } : null;
+      return group ? { kind: "node", id: this.network.nodeId[group.rows[info.index]] } : null;
     }
     const group = this.network.linkGroups.find((g) => g.type === type);
     return group ? { kind: "link", id: this.network.linkId[group.rows[info.index]] } : null;
@@ -998,7 +1085,13 @@ class Viewer {
     if (selection.kind === "node") {
       const row = network.nodeRow.get(selection.id);
       if (row === undefined) return;
-      this.map.flyTo({ center: [network.nodeX[row], network.nodeY[row]], zoom: Math.max(this.map.getZoom(), 14) });
+      // An offset rather than padding, which MapLibre would keep for later moves
+      const { right, bottom } = this.panelPadding();
+      this.map.flyTo({
+        center: [network.nodeX[row], network.nodeY[row]],
+        zoom: Math.max(this.map.getZoom(), 14),
+        offset: [-right / 2, -bottom / 2],
+      });
       return;
     }
     const row = network.linkRow.get(selection.id);
@@ -1008,7 +1101,20 @@ class Viewer {
       const nodeRow = network.nodeRow.get(nodeId);
       if (nodeRow !== undefined) bounds.extend([network.nodeX[nodeRow], network.nodeY[nodeRow]]);
     }
-    if (!bounds.isEmpty()) this.map.fitBounds(bounds, { padding: 80, maxZoom: 15 });
+    if (bounds.isEmpty()) return;
+    const { right, bottom } = this.panelPadding();
+    this.map.fitBounds(bounds, { padding: { top: 80, right: right + 80, bottom: bottom + 80, left: 80 }, maxZoom: 15 });
+  }
+
+  /** The part of the map the panel covers: on the right, or at the bottom on phones, so features are zoomed to beside it. */
+  private panelPadding(): { right: number; bottom: number } {
+    const panel = this.panel.rect();
+    if (!panel) return { right: 0, bottom: 0 };
+    const map = this.map.getContainer().getBoundingClientRect();
+    const right = Math.max(0, map.right - panel.left);
+    const bottom = Math.max(0, map.bottom - panel.top);
+    // The panel covers the side it is narrowest towards
+    return right <= bottom ? { right: Math.min(right, map.width / 2), bottom: 0 } : { right: 0, bottom: Math.min(bottom, map.height / 2) };
   }
 
   /** A header with a checkbox that toggles all layers below it, which follows their state. */
@@ -1260,6 +1366,11 @@ async function main(): Promise<void> {
     maplibregl.setWorkerUrl(maplibreWorkerUrl);
     const protocol = new Protocol();
     maplibregl.addProtocol("pmtiles", protocol.tile);
+    // The icons and the default base map do not depend on the model, so load them while the model is found
+    const icons = loadIconAtlas();
+    const defaultStyle = basemapStyle(DEFAULT_BASEMAP);
+    // Only awaited when no comparison is shown, so a failure would otherwise go unhandled
+    defaultStyle.catch(() => undefined);
     const { manifest, comparison, notice, pinned } = await loadSource();
     // A copied link keeps showing this version of the model, also once it is outdated
     if (pinned !== null) history.replaceState(history.state, "", `?${pinned}${location.hash}`);
@@ -1278,7 +1389,7 @@ async function main(): Promise<void> {
       dragRotate: false,
       pitchWithRotate: false,
       touchPitch: false,
-      style: await basemapStyle(comparison ? COMPARISON_BASEMAP : DEFAULT_BASEMAP),
+      style: await (comparison ? basemapStyle(COMPARISON_BASEMAP) : defaultStyle),
       // The default control collapses into an "i" button on narrow maps and once the map is moved
       attributionControl: false,
     });
@@ -1290,9 +1401,9 @@ async function main(): Promise<void> {
     if (manifest.run) map.addControl(runInfoControl(manifest.run), "bottom-left");
     map.addControl(new maplibregl.ScaleControl(), "bottom-left");
     // "load" also waits for basemap tiles and a rendered frame; the style is all we need to add layers
-    const [network, icons] = await Promise.all([networkPromise, loadIconAtlas(), map.once("style.load")]);
+    const [network, iconAtlas] = await Promise.all([networkPromise, icons, map.once("style.load")]);
     status.textContent = "Drawing the model…";
-    const viewer = new Viewer(map, root, manifest, network, icons, comparison);
+    const viewer = new Viewer(map, root, manifest, network, iconAtlas, comparison);
     const selection = selectionFromHash();
     if (selection) {
       viewer.select(selection);

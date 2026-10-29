@@ -736,6 +736,11 @@ export class Panel {
     return chart ? [el("h4", {}, "Flow rate (m³ s⁻¹)"), chart, ...cumulative, ...note] : ["No results for these links."];
   }
 
+  /** Where the panel is on the page, or null if it is hidden. */
+  rect(): DOMRect | null {
+    return this.element.hidden ? null : this.element.getBoundingClientRect();
+  }
+
   /** Width available for charts; the panel is shown first, since a hidden panel has no width. */
   private contentWidth(): number {
     this.element.hidden = false;

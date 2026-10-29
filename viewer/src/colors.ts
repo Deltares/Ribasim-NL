@@ -79,6 +79,20 @@ export function formatNumber(value: number): string {
   return magnitude >= 1e4 || magnitude < 1e-2 ? value.toExponential(1) : String(Number(value.toPrecision(3)));
 }
 
+// At most 3 significant digits and 3 decimals, so small flows read as 0.002 rather than 2.4e-3
+const LABEL_FORMAT = new Intl.NumberFormat("en-US", {
+  maximumSignificantDigits: 3,
+  maximumFractionDigits: 3,
+  roundingPriority: "lessPrecision",
+  useGrouping: false,
+});
+
+/** A short value for a map label, in decimals; values below 0.0005 read as 0, without a sign. */
+export function formatLabel(value: number): string {
+  const text = LABEL_FORMAT.format(value);
+  return text === "-0" ? "0" : text;
+}
+
 /** Tick labels with the decimals the tick spacing needs, so neighboring ticks never read the same. */
 export function formatTicks(ticks: number[], increment: number): string[] {
   const largest = Math.max(0, ...ticks.map(Math.abs));
