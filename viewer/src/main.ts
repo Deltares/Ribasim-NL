@@ -45,8 +45,9 @@ import {
   type LayerData,
   type Network,
 } from "./network";
+import { ObservationList, Observations, type ListedObservation, type ObservationChoice } from "./observations";
 import { Panel, type Selection } from "./panel";
-import { ResultFrames } from "./results";
+import { ResultFrames, type FrameKind } from "./results";
 import {
   ARROW_ICON,
   ARROW_SIZE_PX,
@@ -61,7 +62,7 @@ import {
   type Color,
   type IconAtlas,
 } from "./styles";
-import { TimeBar, type FlowStyle } from "./timebar";
+import { TimeBar, type FlowStyle, type Kind } from "./timebar";
 
 const HIDDEN_BY_DEFAULT = new Set(["ContinuousControl", "DiscreteControl", "PidControl", "control", "listen"]);
 // Slate ink for the hovered and selected feature, which leaves the status colors to the differences
@@ -106,6 +107,8 @@ const DIFF_RING_MIN_ZOOM = 10;
 const DIFF_DOT_PX = 3;
 // The ring around the selected node, relative to the icon size
 const SELECTION_RING_SCALE = 0.9;
+// The radius of the Observation nodes colored by their fit, zoomed out and in; those without a value are half as large
+const FIT_RADIUS_PX: [number, number] = [4, 7];
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text = ""): HTMLElementTagNameMap[K] {
   const element = document.createElement(tag);
@@ -167,14 +170,21 @@ interface Coloring {
   version: number;
 }
 
-function coloring(scale: ColorScale, values: Float32Array, local: Int32Array, length: number, version: number): Coloring {
+/** The coloring of a group by values whose index in the group is `local`, or their own index if null. */
+function coloring(
+  scale: ColorScale,
+  values: Float32Array,
+  local: Int32Array | null,
+  length: number,
+  version: number,
+): Coloring {
   const colors = new Uint8Array(length * 4);
   for (let i = 0; i < length; i++) colors.set(NO_DATA, i * 4);
   const widths = new Float32Array(length).fill(NO_FLOW_WIDTH_PX);
   const localValues = new Float32Array(length).fill(Number.NaN);
   const [minWidth, maxWidth] = FLOW_WIDTH_PX;
   values.forEach((value, i) => {
-    const index = local[i];
+    const index = local ? local[i] : i;
     if (index < 0) return;
     localValues[index] = value;
     if (!scale.write(value, colors, index * 4)) colors.set(NO_DATA, index * 4);
@@ -182,6 +192,15 @@ function coloring(scale: ColorScale, values: Float32Array, local: Int32Array, le
     if (!Number.isNaN(t)) widths[index] = minWidth + t ** FLOW_WIDTH_POWER * (maxWidth - minWidth);
   });
   return { colors, widths, values: localValues, version };
+}
+
+/** The index of each feature of the result frames in its node or link group, or -1. */
+interface ResultIndex {
+  flow: Int32Array;
+  basin: Int32Array;
+  /** The ids of the Basins in the frames, to color their areas */
+  basinIds: Int32Array;
+  observation: Int32Array;
 }
 
 /** Layer props of the filter of the Differences box. */
@@ -243,10 +262,15 @@ class Viewer {
   private readonly panel: Panel;
   private frames: ResultFrames | null = null;
   private timeBar: TimeBar | null = null;
-  /** Result index to the index in the "flow" link group and "Basin" node group, or -1 */
-  private resultIndex: { flow: Int32Array; basin: Int32Array; basinIds: Int32Array } | null = null;
+  private resultIndex: ResultIndex | null = null;
   private flowColoring: Coloring | null = null;
   private basinColoring: Coloring | null = null;
+  /** How well the results fit the measurements of the Observation nodes, if the model has them */
+  private observations: Observations | null = null;
+  private observationColoring: Coloring | null = null;
+  private readonly observationList: ObservationList;
+  /** What the list of Observation nodes shows, to update it only when that changes */
+  private observationListKey = "";
   private basinAreasColored = false;
   private frameToken = 0;
   private labels: Label[] = [];
@@ -338,7 +362,11 @@ class Viewer {
         ),
       );
     }
-    sidebar.append(this.layerControl());
+    this.observationList = new ObservationList((selection) => {
+      this.select(selection);
+      this.zoomTo(selection);
+    });
+    sidebar.append(this.observationList.element, this.layerControl());
     root.append(sidebar);
     map.on("click", (event: maplibregl.MapMouseEvent) => this.onClick(event));
     map.on("zoom", () => {
@@ -462,6 +490,7 @@ class Viewer {
     this.updateFilterValues();
     this.filterBasinAreas();
     this.updateLabels();
+    this.updateObservationList();
     this.render();
   }
 
@@ -504,34 +533,109 @@ class Viewer {
   }
 
   async initResults(): Promise<void> {
-    // When comparing models the map shows the differences, and the panel compares the results
-    if (!this.manifest.results || this.comparison) return;
-    const results = this.manifest.results!;
+    const results = this.manifest.results;
+    if (!results) return;
+    // When comparing models the map shows the differences, and the panel compares the results, so only the
+    // Observation nodes are colored, by how well their results fit the measurements, also compared with the base
+    const kinds: Kind[] = this.comparison ? [] : ["flow", "basin"];
+    if (results.observation) {
+      this.observations = await Observations.load(results.observation, this.comparison?.base.results?.observation);
+      kinds.push("observation");
+    }
+    if (kinds.length === 0) return;
     const frames = new ResultFrames(results);
-    const { network } = this;
-    const [flowIds, basinIds] = await Promise.all([frames.featureIds("flow"), frames.featureIds("basin")]);
-    const flow = flowIds.map((id) => {
-      const row = network.linkRow.get(id);
-      return row !== undefined && network.linkType[row] === "flow" ? network.linkLocal[row] : -1;
-    });
-    const basin = basinIds.map((id) => {
-      const row = network.nodeRow.get(id);
-      return row !== undefined && network.nodeType[row] === "Basin" ? network.nodeLocal[row] : -1;
-    });
-    this.resultIndex = { flow, basin, basinIds };
+    const none = new Int32Array(0);
+    const [[flow], [basin, basinIds], [observation]] = await Promise.all([
+      kinds.includes("flow") ? this.frameIndex(frames, "flow") : [none, none],
+      kinds.includes("basin") ? this.frameIndex(frames, "basin") : [none, none],
+      kinds.includes("observation") ? this.frameIndex(frames, "observation") : [none, none],
+    ]);
+    this.resultIndex = { flow, basin, basinIds, observation };
     this.frames = frames;
 
     const date = hashParams().get("t");
     const step = frames.times.findIndex((time) => time.toISOString().slice(0, 10) === date);
-    this.timeBar = new TimeBar(this.root, results, frames.times, { step: Math.max(step, 0) }, () =>
-      this.updateResults(),
+    this.timeBar = new TimeBar(
+      this.root,
+      results,
+      frames.times,
+      { step: Math.max(step, 0) },
+      () => this.updateResults(),
+      kinds,
+      this.observations?.groups.map(({ label, choices }) => ({
+        label,
+        variables: Object.fromEntries(choices.map((choice) => [choice.key, choice.scale])),
+      })),
     );
     await this.updateResults();
   }
 
-  private groupLength(kind: "flow" | "basin"): number {
-    const groups = kind === "flow" ? this.network.linkGroups : this.network.nodeGroups;
-    return groups.find((group) => group.type === (kind === "flow" ? "flow" : "Basin"))?.rows.length ?? 0;
+  /** The index of each feature of a frame in its node or link group, or -1, and the ids of the features. */
+  private async frameIndex(frames: ResultFrames, kind: FrameKind): Promise<[Int32Array, Int32Array]> {
+    const { network } = this;
+    const ids = await frames.featureIds(kind);
+    if (kind === "flow") {
+      const index = ids.map((id) => {
+        const row = network.linkRow.get(id);
+        return row !== undefined && network.linkType[row] === "flow" ? network.linkLocal[row] : -1;
+      });
+      return [index, ids];
+    }
+    const type = kind === "basin" ? "Basin" : "Observation";
+    const index = ids.map((id) => {
+      const row = network.nodeRow.get(id);
+      return row !== undefined && network.nodeType[row] === type ? network.nodeLocal[row] : -1;
+    });
+    return [index, ids];
+  }
+
+  /** The node or link group of a type; node types are capitalized, link types are not. */
+  private group(type: string): Group | undefined {
+    return [...this.network.nodeGroups, ...this.network.linkGroups].find((group) => group.type === type);
+  }
+
+  private groupLength(type: string): number {
+    return this.group(type)?.rows.length ?? 0;
+  }
+
+  /** The values of an observation choice at a time step, with their index in the Observation group, or null if equal. */
+  private async observationValues(
+    choice: ObservationChoice,
+    step: number,
+  ): Promise<{ values: Float32Array; local: Int32Array | null }> {
+    if (choice.metric === "difference") {
+      const values = await this.frames!.frame("observation", choice.variable, step);
+      return { values, local: this.resultIndex!.observation };
+    }
+    const group = this.group("Observation");
+    const ids = group ? Array.from(group.rows, (row) => this.network.nodeId[row]) : [];
+    return { values: Float32Array.from(ids, (id) => this.observations!.value(choice, id)), local: null };
+  }
+
+  /** List the shown Observation nodes by their values of the chosen way to color them, see `ObservationList`. */
+  private updateObservationList(): void {
+    const { observations, observationColoring: colored, timeBar } = this;
+    if (!observations || !timeBar) return;
+    const choice = observations.choice(timeBar.state.observation);
+    // While playing, only the differences change with the time step
+    const step = choice?.metric === "difference" ? timeBar.state.step : null;
+    const key = [choice?.key, step, timeBar.variable("observation")?.domain, this.filterVersion].join("/");
+    if (key === this.observationListKey) return;
+    this.observationListKey = key;
+    const group = this.group("Observation");
+    const shown = group ? this.filterValues.get(group) : undefined;
+    const entries: ListedObservation[] = [];
+    if (choice && colored && group) {
+      group.rows.forEach((row, i) => {
+        if (shown && !shown[i]) return;
+        const id = this.network.nodeId[row];
+        const value = colored.values[i];
+        const color = Number.isFinite(value) ? `rgb(${colored.colors.subarray(i * 4, i * 4 + 3).join(",")})` : null;
+        entries.push({ id, name: observations.name(id), value, color });
+      });
+    }
+    const date = this.frames?.times[timeBar.state.step].toISOString().slice(0, 10);
+    this.observationList.update(observations, choice, entries, step === null ? "" : ` on ${date}`);
   }
 
   private async updateResults(): Promise<void> {
@@ -540,9 +644,11 @@ class Viewer {
     const results = this.manifest.results!;
     const token = ++this.frameToken;
     const { step, basin, flow } = timeBar.state;
-    const [flowValues, basinValues] = await Promise.all([
+    const choice = this.observations?.choice(timeBar.state.observation) ?? null;
+    const [flowValues, basinValues, observationValues] = await Promise.all([
       flow ? frames.frame("flow", flow, step) : null,
       basin ? frames.frame("basin", basin, step) : null,
+      choice ? this.observationValues(choice, step) : null,
     ]);
     if (token !== this.frameToken) return;
 
@@ -557,8 +663,20 @@ class Viewer {
         : null;
     this.basinColoring =
       basinScale && basinValues
-        ? coloring(basinScale, basinValues, resultIndex.basin, this.groupLength("basin"), token)
+        ? coloring(basinScale, basinValues, resultIndex.basin, this.groupLength("Basin"), token)
         : null;
+    const observationVariable = timeBar.variable("observation");
+    this.observationColoring =
+      observationVariable && observationValues
+        ? coloring(
+            new ColorScale(observationVariable),
+            observationValues.values,
+            observationValues.local,
+            this.groupLength("Observation"),
+            token,
+          )
+        : null;
+    this.updateObservationList();
     this.colorBasinAreas(basinScale, basinValues);
     writeHash({ t: frames.times[step].toISOString().slice(0, 10) });
     this.panel.setStep(step);
@@ -568,6 +686,7 @@ class Viewer {
     const next = step + results.steps_per_row_group;
     if (flow) frames.prefetch("flow", flow, next);
     if (basin) frames.prefetch("basin", basin, next);
+    if (choice?.metric === "difference") frames.prefetch("observation", choice.variable, next);
   }
 
   private colorBasinAreas(scale: ColorScale | null, values: Float32Array | null): void {
@@ -974,6 +1093,39 @@ class Viewer {
     ];
   }
 
+  /** The Observation nodes colored by how well their results fit the measurements, on top of the other nodes. */
+  private observationLayer() {
+    const colored = this.observationColoring;
+    const group = this.group("Observation");
+    if (!colored || !group) return [];
+    const selected = this.selection?.kind === "node" ? this.network.nodeRow.get(this.selection.id) : undefined;
+    const isSelected = selected !== undefined && this.network.nodeType[selected] === group.type;
+    const radius = FIT_RADIUS_PX[this.map.getZoom() >= NODE_ICON_MIN_ZOOM ? 1 : 0];
+    const filter = this.filterProps(this.filterValues.get(group));
+    return [
+      new ScatterplotLayer({
+        id: "fit-Observation",
+        data: group.data,
+        visible: this.visible.get(group.type),
+        getFillColor: (_: unknown, { index }: { index: number }) =>
+          colored.colors.subarray(index * 4, index * 4 + 4) as unknown as Color,
+        stroked: true,
+        getLineColor: HIGHLIGHT,
+        lineWidthUnits: "pixels",
+        getLineWidth: 1,
+        radiusUnits: "pixels",
+        getRadius: (_: unknown, { index }: { index: number }) =>
+          Number.isFinite(colored.values[index]) ? radius : radius / 2,
+        ...filter,
+        updateTriggers: { ...filter.updateTriggers, getFillColor: colored.version, getRadius: [colored.version, radius] },
+        pickable: true,
+        autoHighlight: true,
+        highlightColor: HIGHLIGHT,
+        highlightedObjectIndex: isSelected ? this.network.nodeLocal[selected] : -1,
+      }),
+    ];
+  }
+
   private zoomDetail(): string {
     const zoom = this.map.getZoom();
     return [ARROW_MIN_ZOOM, LABEL_MIN_ZOOM, DIFF_RING_MIN_ZOOM, NODE_ICON_MIN_ZOOM].map((min) => zoom >= min).join();
@@ -983,14 +1135,17 @@ class Viewer {
     const { network } = this;
     this.detail = this.zoomDetail();
     const rings = this.showRings();
+    // The Observation nodes colored by their fit replace their icons, on top of the other nodes and status dots
+    const nodeGroups = network.nodeGroups.filter((g) => !(this.observationColoring && g.type === "Observation"));
     this.overlay.setProps({
       layers: [
         ...this.contextLayers(),
         ...network.linkGroups.map((g) => this.linkLayer(g)),
         ...network.linkGroups.map((g) => this.arrowLayer(g)),
         ...(rings ? this.ringLayer() : []),
-        ...network.nodeGroups.map((g) => this.nodeLayer(g)),
+        ...nodeGroups.map((g) => this.nodeLayer(g)),
         ...(rings ? [] : this.ringLayer()),
+        ...this.observationLayer(),
         ...this.selectionLayer(),
         this.labelLayer(),
       ],
@@ -1016,7 +1171,7 @@ class Viewer {
       return { kind: "link", id: this.network.linkId[context.links.rows[info.index]] };
     }
     const [kind, type] = info.layer.id.split(/-(.*)/s);
-    if (kind === "node" || kind === "dot") {
+    if (kind === "node" || kind === "dot" || kind === "fit") {
       const group = this.network.nodeGroups.find((g) => g.type === type);
       return group ? { kind: "node", id: this.network.nodeId[group.rows[info.index]] } : null;
     }
@@ -1040,7 +1195,12 @@ class Viewer {
     const status = (diff ? `\n${describeDiff(diff)}` : "") + (result ? `\n${result}` : "");
     if (selection.kind === "node") {
       const nodeType = network.nodeType[network.nodeRow.get(selection.id)!];
-      const extra = nodeType === "Basin" ? value(this.basinColoring, "basin") : "";
+      const extra =
+        nodeType === "Basin"
+          ? value(this.basinColoring, "basin")
+          : nodeType === "Observation"
+            ? this.observationTooltip(selection.id, info.index)
+            : "";
       return { text: `${nodeType} #${selection.id}${extra}${status}` };
     }
     const row = network.linkRow.get(selection.id)!;
@@ -1048,6 +1208,17 @@ class Viewer {
     return {
       text: `${network.linkType[row]} link ${linkLabel(selection.id)}\n${network.fromNodeId[row]} → ${network.toNodeId[row]}${extra}${status}`,
     };
+  }
+
+  /** The name of an Observation node, and its value of the chosen way to color the Observation nodes. */
+  private observationTooltip(id: number, index: number): string {
+    const { observations, observationColoring: colored } = this;
+    if (!observations) return "";
+    const name = observations.name(id);
+    const choice = observations.choice(this.timeBar?.state.observation ?? null);
+    const lines = name ? [name] : [];
+    if (choice && colored) lines.push(`${observations.label(choice)}: ${observations.describe(choice, id, colored.values[index])}`);
+    return lines.map((line) => `\n${line}`).join("");
   }
 
   private onClick(event: maplibregl.MapMouseEvent): void {

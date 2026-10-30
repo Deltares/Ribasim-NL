@@ -3,14 +3,24 @@ import type { ResultVariable, Results } from "./data";
 
 /** Flow is shown as a color ramp, or as blue links whose width grows with the magnitude */
 export type FlowStyle = "color" | "width";
-type Kind = "basin" | "flow";
+export type Kind = "basin" | "flow" | "observation";
 
 export interface TimeState {
   step: number;
   basin: string | null;
   flow: string | null;
   flowStyle: FlowStyle;
+  /** The key of an `ObservationChoice` */
+  observation: string | null;
 }
+
+/** Variables to choose from, under a label if a kind has several groups. */
+export interface VariableGroup {
+  label: string;
+  variables: Record<string, ResultVariable>;
+}
+
+const SELECTOR_LABELS: Record<Kind, string> = { flow: "Links", basin: "Basins", observation: "Observations" };
 
 const FRAME_INTERVAL_MS = 150;
 // Default limits that replace those of the export, by "<kind>/<variable>"; the exported upper limit of the
@@ -34,15 +44,26 @@ export class TimeBar {
   private readonly legends = {} as Record<Kind, HTMLDivElement>;
   /** Color scale or width limits set by the user, by "<kind>/<variable>" */
   private readonly limits = new Map<string, [number, number]>();
+  /** The variables to choose from, per kind */
+  private readonly groups: Record<Kind, VariableGroup[]>;
 
+  /** With a selection of each of `kinds`; the observation variables are in `observations`. */
   constructor(
     parent: HTMLElement,
-    private readonly results: Results,
+    results: Results,
     private readonly times: Date[],
     initial: Partial<TimeState>,
     private readonly onChange: () => Promise<void>,
+    kinds: Kind[],
+    observations: VariableGroup[] = [],
   ) {
-    this.state = { step: 0, basin: null, flow: "flow_rate", flowStyle: "width", ...initial };
+    this.groups = {
+      flow: [{ label: "", variables: results.flow.variables }],
+      basin: [{ label: "", variables: results.basin.variables }],
+      observation: observations,
+    };
+    const flow = kinds.includes("flow") ? "flow_rate" : null;
+    this.state = { step: 0, basin: null, flow, flowStyle: "width", observation: null, ...initial };
     const bar = el("div", "timebar");
     this.play = el("button", "play", "▶");
     this.play.type = "button";
@@ -58,19 +79,18 @@ export class TimeBar {
     const time = el("div", "time");
     time.append(this.play, this.slider, this.date);
     const variables = el("div", "variables");
-    variables.append(this.selector("Links", "flow"), this.selector("Basins", "basin"));
+    variables.append(...kinds.map((kind) => this.selector(kind)));
     bar.append(time, variables);
     parent.append(bar);
     this.update();
-    this.renderLegend("flow");
-    this.renderLegend("basin");
+    for (const kind of kinds) this.renderLegend(kind);
   }
 
   /** The selected variable of a kind, with the limits set by the user. */
   variable(kind: Kind): ResultVariable | null {
     const name = this.state[kind];
-    if (!name) return null;
-    const variable = this.results[kind].variables[name];
+    const variable = name ? this.groups[kind].find((group) => name in group.variables)?.variables[name] : undefined;
+    if (!variable) return null;
     const key = `${kind}/${name}`;
     const defaults = DEFAULT_LIMITS[key];
     const domain = this.limits.get(key) ?? [
@@ -80,31 +100,44 @@ export class TimeBar {
     return { ...variable, domain };
   }
 
-  /** Variable selection with its legend below; flow variables can be shown by color or by width. */
-  private selector(label: string, kind: Kind): HTMLDivElement {
+  /**
+   * Variable selection with its legend below; flow variables can be shown by color or by width, and the variables
+   * of a kind with several groups are grouped under their label.
+   */
+  private selector(kind: Kind): HTMLDivElement {
     const select = el("select");
     select.append(new Option("none", ""));
-    for (const [variable, { label }] of Object.entries(this.results[kind].variables)) {
-      if (kind === "basin") {
-        select.append(new Option(label, variable));
+    const groups = this.groups[kind];
+    for (const group of groups) {
+      const options = Object.entries(group.variables).flatMap(([variable, { label }]) =>
+        kind === "flow"
+          ? [new Option(`${label} (color)`, `${variable}:color`), new Option(`${label} (width)`, `${variable}:width`)]
+          : // The label of the only group is in each option
+            [new Option(groups.length === 1 && group.label ? `${group.label} ${label}` : label, variable)],
+      );
+      if (groups.length === 1) {
+        select.append(...options);
         continue;
       }
-      select.append(new Option(`${label} (color)`, `${variable}:color`), new Option(`${label} (width)`, `${variable}:width`));
+      const optgroup = el("optgroup");
+      optgroup.label = group.label;
+      optgroup.append(...options);
+      select.append(optgroup);
     }
     const { flow, flowStyle } = this.state;
-    select.value = kind === "basin" ? (this.state.basin ?? "") : flow ? `${flow}:${flowStyle}` : "";
+    select.value = kind === "flow" ? (flow ? `${flow}:${flowStyle}` : "") : (this.state[kind] ?? "");
     select.addEventListener("change", () => {
-      if (kind === "basin") {
-        this.state.basin = select.value || null;
-      } else {
+      if (kind === "flow") {
         const [variable, style] = select.value.split(":");
         this.state.flow = variable || null;
         if (style) this.state.flowStyle = style as FlowStyle;
+      } else {
+        this.state[kind] = select.value || null;
       }
       this.renderLegend(kind);
       void this.onChange();
     });
-    const wrapper = el("label", "", label);
+    const wrapper = el("label", "", SELECTOR_LABELS[kind]);
     wrapper.append(select);
     this.legends[kind] = el("div", "legend");
     const column = el("div", "variable");
@@ -133,6 +166,7 @@ export class TimeBar {
     };
     const units = el("span", "units", variable.units);
     if (variable.scale === "log") units.title = "Colored by the absolute value, on a log scale";
+    if (variable.scale === "symlog") units.title = "Colored by the sign, and by the absolute value on a log scale";
     const labels = el("div", "legend-labels");
     labels.append(limit(0), units);
     if (this.limits.has(key)) {
@@ -155,7 +189,11 @@ export class TimeBar {
     if (!variable) return;
     const domain: [number, number] = [...variable.domain];
     domain[i] = value;
-    const valid = Number.isFinite(value) && domain[0] < domain[1] && (variable.scale !== "log" || domain[0] > 0);
+    const valid =
+      Number.isFinite(value) &&
+      domain[0] < domain[1] &&
+      (variable.scale !== "log" || domain[0] > 0) &&
+      (variable.scale !== "symlog" || (domain[0] < 0 && domain[1] > 0));
     input.classList.toggle("invalid", !valid);
     if (!valid) return;
     this.limits.set(`${kind}/${this.state[kind]}`, domain);
