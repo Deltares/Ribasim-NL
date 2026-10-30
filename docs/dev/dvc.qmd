@@ -33,15 +33,11 @@ Prefer pulling only the data needed for the stage you are working on. To fetch a
 pixi run dvc pull rwzi --with-deps
 ```
 
-To fetch the cached coupled LHM model with its results (`run_lhm_coupled`) without pulling its dependencies:
+To fetch the cached coupled LHM model with its results, without `--with-deps`, which would pull all regional models:
 
 ```sh
 pixi run dvc pull run_lhm_coupled
 ```
-
-`data/Rijkswaterstaat/runs/lhm_coupled` holds a copy of the model input of `koppelen` next to the results, so `lhm_coupled.toml` there opens the model with its results.
-DVC stores the files of both stages by their content, so the input is stored only once in the cache and on the remote.
-Do not add `--with-deps` here; that also pulls all regional models upstream.
 
 The final cached outputs for (for example) Aa en Maas and Amstel, Gooi en Vecht can likewise be pulled directly:
 
