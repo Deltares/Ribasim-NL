@@ -72,12 +72,11 @@ The data is versioned with [DVC](https://dvc.org/), a tool that works like Git f
 You don't need to know DVC to get started: download only the data you need, for instance the latest nationwide coupled model and its results:
 
 ```sh
-pixi run dvc pull koppelen run_lhm_coupled
+pixi run dvc pull run_lhm_coupled
 ```
 
-This fills `data/Rijkswaterstaat/modellen/lhm_coupled` (input) and `data/Rijkswaterstaat/runs/lhm_coupled` (results).
+This fills `data/Rijkswaterstaat/runs/lhm_coupled` with the model input and its results.
 Open `data/Rijkswaterstaat/runs/lhm_coupled/lhm_coupled.toml` to see the model together with its results.
-Pull only `koppelen` if you just need the model input.
 
 The [DVC page](dvc.qmd) explains how to get the data for a specific step of the pipeline, and how to rerun it.
 
