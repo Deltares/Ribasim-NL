@@ -287,7 +287,10 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
             tables = flow_demand_tables(kwk_df, starttime, endtime)
             static_df = model.get_component(node_type).static.df
             assert static_df is not None
-            max_flow_rate = static_df.loc[static_df.node_id == node_id, "max_flow_rate"].min()
+            static_rows = static_df[static_df.node_id == node_id]
+            # without allocation a FlowDemand is a minimum flow, also from an empty Basin, so it needs a level to stop
+            assert static_rows["min_upstream_level"].notna().all(), f"FlowDemand of {kwk.naam} needs an upstream level"
+            max_flow_rate = static_rows["max_flow_rate"].min()
             assert all(table.df is not None for table in tables)
             demand = max(cast(pd.DataFrame, table.df)["demand"].max() for table in tables)
             assert demand <= max_flow_rate, f"FlowDemand {demand} of {kwk.naam} above its capacity {max_flow_rate}"

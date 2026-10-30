@@ -162,6 +162,9 @@ def read_static(
     The capacity, levels and minimum capacity hold in both states, the flow rate differs per state. A missing
     aanvoer or afvoer capacity is 0.
 
+    Without allocation, a FlowDemand is a minimum flow also from an empty Basin, so a structure with a FlowDemand
+    stops at `Streefpeil bovenstrooms (m +NAP)`, or else at its `Streefpeil (m +NAP)`.
+
     The levels of a structure with DiscreteControl follow from its thresholds and `listen_side`, the side of the
     structure where the listened Basin is, rather than from the Streefpeil properties. A structure that drains the
     listened Basin stops at the lowest `threshold_low`, and one that supplies it stops at the highest
@@ -170,6 +173,15 @@ def read_static(
     kwk_properties = read_kwk_properties(kwk_df)
     table = {"Outlet": outlet.Static, "Pump": pump.Static}[node_type]
     if not has_discrete_control(kwk_properties):
+        upstream_level = "Streefpeil bovenstrooms (m +NAP)"
+        if (
+            has_flow_demand(kwk_properties)
+            and upstream_level not in kwk_properties
+            and "Streefpeil (m +NAP)" in kwk_properties
+        ):
+            # the Streefpeil of a lock is its upstream level, at which its FlowDemand stops
+            kwk_properties = kwk_properties.copy()
+            kwk_properties[upstream_level] = kwk_properties["Streefpeil (m +NAP)"]
         return table(**read_flow_kwargs(kwk_properties))
 
     assert "Capaciteit (m3/s)" not in kwk_properties, "Use the aanvoer and afvoer capacities with DiscreteControl"

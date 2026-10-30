@@ -89,6 +89,26 @@ def test_read_static_local():
     assert not has_flow_demand(read_kwk_properties(df))
 
 
+def test_read_static_flow_demand_level():
+    """Like Sluis 15, a lock with a FlowDemand stops at its Streefpeil, so it does not empty the pound above it."""
+    df = sheet(
+        [
+            ["Ribasim type", "Outlet"],
+            ["Streefpeil (m +NAP)", 33.61],
+            ["Capaciteit (m3/s)", 15],
+            ["Type sturing", "lokaal"],
+            ["FlowDemand", "ja"],
+        ]
+    )
+    static = read_static(df, "Outlet").df
+    assert static is not None
+    assert static["min_upstream_level"].to_list() == [33.61]
+    # without a FlowDemand the Streefpeil is not used
+    static = read_static(df[df["Eigenschap"] != "FlowDemand"], "Outlet").df
+    assert static is not None
+    assert "min_upstream_level" not in static or static["min_upstream_level"].isna().all()
+
+
 def test_read_static_discrete_control():
     static = read_static(sluis_born(), "Outlet").df
     assert static is not None
