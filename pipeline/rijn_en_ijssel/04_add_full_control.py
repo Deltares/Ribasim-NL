@@ -175,7 +175,6 @@ max_flow_rate_aanvoer_by_node_id = {
 set_flow_rate(static_df=model.outlet.static.df, max_flow_rate_by_node_id=outlet_max_flow_rate_by_node_id)
 
 # markeer inlaten
-assert model.node.df is not None
 model.node.df[IS_SUPPLY_NODE_COLUMN] = False
 mask = model.node.df["name"].str.contains("inlaat", case=False, na=False)
 model.node.df.loc[mask, IS_SUPPLY_NODE_COLUMN] = True
@@ -345,7 +344,6 @@ for static_df, max_flow_rate_by_node_id in (
 
 # Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
 node_type_by_id = model.node.df["node_type"].to_dict()
-assert model.link.df is not None
 flow_demand_controlled_node_ids = set(
     model.link.df.loc[
         model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),

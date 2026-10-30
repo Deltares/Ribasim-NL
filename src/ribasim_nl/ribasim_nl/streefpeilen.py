@@ -38,7 +38,6 @@ def add_streefpeil(model: Model, peilgebieden_path: Path, layername: str | None,
         node_id = basin_row.node_id
         basin_geometry = basin_row.geometry
 
-        assert model.node.df is not None
         downstream_nodes = model.node.df.loc[model.downstream_node_id(node_id=cast(int, node_id))]
 
         buffer_100m_gdf = gpd.GeoDataFrame(

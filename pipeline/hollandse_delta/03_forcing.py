@@ -187,7 +187,6 @@ assign_pump_and_basin_names(ribasim_model, paths)
 
 # Manning resistance
 # there is an MR without geometry and without links for some reason
-assert ribasim_model.node.df is not None
 ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
 
 # lower the difference in waterlevel for each manning node, except those of storing basins

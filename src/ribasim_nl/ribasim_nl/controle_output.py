@@ -82,7 +82,6 @@ class Control:
     def _basin_node_df(self) -> gpd.GeoDataFrame:
         """Return the Basin node table of the loaded model."""
         _, _, model = self._loaded()
-        assert model.basin.node is not None and model.basin.node.df is not None
         return model.basin.node.df
 
     @staticmethod
@@ -232,7 +231,6 @@ class Control:
         print("MAX VALUE DF_LINK", df_link_avg["flow_rate"].max())
 
         # Merge the geometry from links_ribasim to df_link_avg to retrieve the geometries
-        assert model.link.df is not None
         links_ribasim = model.link.df.copy()
         df_link_avg = df_link_avg.merge(
             right=links_ribasim[["from_node_id", "to_node_id", "geometry"]],
@@ -290,7 +288,6 @@ class Control:
         """Retrieve the nodes (points) of the wateraan- and afvoer pumps"""
         _, _, model = self._loaded()
         assert model.pump.static.df is not None
-        assert model.pump.node is not None and model.pump.node.df is not None
         aanvoer_afvoer_pumps = model.pump.static.df.copy(deep=True)
         aanvoer_afvoer_pumps_nodes = model.pump.node.df.copy(deep=True).reset_index()
         aanvoer_afvoer_pumps = aanvoer_afvoer_pumps.merge(
@@ -316,7 +313,6 @@ class Control:
         """Retrieve the nodes (points) of the wateraan outlets"""
         _, _, model = self._loaded()
         assert model.outlet.static.df is not None
-        assert model.outlet.node is not None and model.outlet.node.df is not None
         aanvoer_outlets = model.outlet.static.df.copy(deep=True)
         outlet_nodes = model.outlet.node.df.copy(deep=True).reset_index()
         aanvoer_outlets = aanvoer_outlets.merge(
@@ -341,7 +337,6 @@ class Control:
     def flow_rate(self, control_dict):
         _, ds_link, model = self._loaded()
         flow_rate = ds_link["flow_rate"].isel(time=-1).to_dataframe().reset_index()
-        assert model.link.df is not None
         link_df = model.link.df.reset_index()
         link_df = link_df.merge(flow_rate[["link_id", "flow_rate"]], on="link_id", how="left").set_index("link_id")
         control_dict["flow_rate"] = link_df

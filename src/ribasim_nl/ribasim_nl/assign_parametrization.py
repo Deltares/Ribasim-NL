@@ -163,7 +163,6 @@ class AssignMetaData:
 
         # control states that switch a pump off keep their flow_rate of 0
         assert self.model.pump.static.df is not None
-        assert self.model.pump.node is not None and self.model.pump.node.df is not None
         pump_off = off_states(self.model.pump.static.df)
 
         # Add columns which do not exist yet

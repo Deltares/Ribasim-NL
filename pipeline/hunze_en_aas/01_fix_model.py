@@ -57,7 +57,6 @@ tabulated_rating_curve_data = tabulated_rating_curve.Static(level=[0.0, 5], flow
 
 # %%
 # Verwijderen duplicate links
-assert model.link.df is not None
 model.link.df.drop_duplicates(inplace=True)
 
 # %%

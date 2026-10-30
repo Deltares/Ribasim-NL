@@ -22,8 +22,6 @@ def link_profile_id(link_id: int, model: Model, profiles: DAMOProfiles | gpd.Geo
     if isinstance(profiles, DAMOProfiles):
         profiles = profiles.profile_line_df
 
-    assert model.link.df is not None
-    assert model.node.df is not None
     link_geometry = cast(LineString, model.link.df.at[link_id, "geometry"])
 
     # get intersecting profiles, in their original order
@@ -56,7 +54,6 @@ def link_profile_id(link_id: int, model: Model, profiles: DAMOProfiles | gpd.Geo
 
 
 def add_link_profile_ids(model: Model, profiles: DAMOProfiles | gpd.GeoDataFrame, id_col="globalid") -> None:
-    assert model.link.df is not None
     for link_id in tqdm(model.link.df.index, desc="link_profile_ids"):
         profile_id = link_profile_id(link_id, model, profiles, id_col)
         model.link.df.loc[link_id, "meta_profielid_waterbeheerder"] = profile_id

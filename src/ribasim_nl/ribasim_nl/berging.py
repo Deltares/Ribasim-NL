@@ -148,7 +148,6 @@ def basin_link_buffer_area(model: Model, node_id, buffer_distance=2.5):
     """
     links = model.link.df
 
-    assert links is not None
     mask = (links["from_node_id"] == node_id) | (links["to_node_id"] == node_id)
 
     basin_links = links.loc[mask]
@@ -222,8 +221,7 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
         assert df is not None
         return df
 
-    assert model.basin.node is not None
-    basin_node_df = cast(pd.DataFrame, model.basin.node.df)
+    basin_node_df = model.basin.node.df
     basin_area_df = cast(pd.DataFrame, model.basin.area.df)
     basin_profile_df = cast(pd.DataFrame, model.basin.profile.df)
 
@@ -436,9 +434,7 @@ def supply_area_basin_ids(model: Model, supply_areas: GeoDataFrame, min_overlap:
     supply_geometries = supply_areas.geometry.make_valid().to_numpy()
     tree = shapely.STRtree(supply_geometries)
 
-    assert model.basin.node is not None
     basin_node_df = model.basin.node.df
-    assert basin_node_df is not None
     flowing_ids = basin_node_df.index[basin_node_df["meta_categorie"] != "bergend"]
 
     basin_area_df = model.basin.area.df

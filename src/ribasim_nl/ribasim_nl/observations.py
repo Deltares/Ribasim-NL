@@ -154,8 +154,7 @@ def add_observations(model: Model, authority: str) -> Model:
     """
     coupling = read_coupling(authority)
     model = add_observation_nodes(model, coupling, read_measurements())
-    assert model.node.df is not None
-    links = model.link.df[model.link.df["link_type"] == "observation"] if model.link.df is not None else []
+    links = model.link.df[model.link.df["link_type"] == "observation"]
     LOG.info(f"{authority} has {len(coupling)} Observation nodes, of which {len(links)} are linked")
     return model
 
@@ -164,8 +163,6 @@ class _Graph:
     """Flow neighbors of the nodes of a model, to look past Junctions."""
 
     def __init__(self, model: Model) -> None:
-        assert model.node.df is not None
-        assert model.link.df is not None
         node_type = model.node.df["node_type"]
         self.node_types = dict(zip(node_type.index.astype(int), node_type.astype(str), strict=True))
         self.outgoing, self.incoming = flow_link_graphs(model.link.df.reset_index())
@@ -207,7 +204,6 @@ def _match(
     `tolerance`, the nearest node within `moved_tolerance` is used. If there is no node of the type of the koppeltabel,
     an Outlet may be a Pump instead, or the other way around, see `INTERCHANGEABLE_TYPES`.
     """
-    assert model.node.df is not None
     nodes = model.node.df
 
     def nearby(node_type: str) -> list:
@@ -266,7 +262,6 @@ def add_observation_nodes(
 
     :return: updated Ribasim model
     """
-    assert model.node.df is not None
     period = slice(pd.Timestamp(model.starttime), pd.Timestamp(model.endtime))
 
     graph = _Graph(model)
@@ -314,8 +309,6 @@ def link_observations(model: Model, tolerance: float = 1.0, moved_tolerance: flo
 
     :return: updated Ribasim model
     """
-    assert model.node.df is not None
-    assert model.link.df is not None
     nodes = model.node.df
     linked = model.link.df.loc[model.link.df["link_type"] == "observation", "from_node_id"]
     unlinked = nodes[(nodes["node_type"] == "Observation") & ~nodes.index.isin(linked)]

@@ -211,9 +211,7 @@ model.outlet.static.df.loc[aanvoer_mask, "flow_rate"] = max_flow_rate[aanvoer_ma
 model.outlet.static.df.loc[aanvoer_mask, "max_flow_rate"] = max_flow_rate[aanvoer_mask]
 
 # Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
-assert model.node.df is not None
 node_type_by_id = model.node.df["node_type"].to_dict()
-assert model.link.df is not None
 flow_demand_controlled_node_ids = set(
     model.link.df.loc[
         model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),

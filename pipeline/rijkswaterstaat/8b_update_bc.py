@@ -75,7 +75,6 @@ monsin_series = read_monsin(debieten_xlsx, model.starttime, model.endtime)
 # %% set FlowBoundary / Time
 
 # get node ids
-assert model.flow_boundary.node is not None and model.flow_boundary.node.df is not None
 lobith_node_id = (
     model.flow_boundary.node.df.reset_index(drop=False).set_index("meta_meetlocatie_code").at["LOBH", "node_id"]
 )
@@ -103,7 +102,6 @@ model.flow_boundary.static.df = model.flow_boundary.static.df[
 
 # %% update LevelBoundary / Time
 
-assert model.level_boundary.node is not None and model.level_boundary.node.df is not None
 node_ids = model.level_boundary.node.df[
     model.level_boundary.node.df["meta_meetlocatie_code"].isin(["KOBU", "OEBU"])
 ].index.to_numpy()
@@ -170,8 +168,6 @@ model.level_boundary.time.df = DataFrame[LevelBoundaryTimeSchema](level_df)
 
 # The precipitation and open water evaporation of the LHM on the Basins, which are all main water. They get no
 # groundwater budgets, which the LHM computes for the land only.
-assert model.node.df is not None
-assert model.basin.node is not None and model.basin.node.df is not None
 model.node.df.loc[model.basin.node.df.index, "meta_categorie"] = "hoofdwater"
 model = SetDynamicForcing(model=model, budgets=read_lhm_budgets(), startdate=STARTTIME, enddate=ENDTIME).add()
 # Basins too narrow to contain the center of an LHM cell get no meteo, like in the regional models
@@ -182,8 +178,6 @@ assert area[missing].sum() < 0.001 * area.sum(), f"No meteo for a large area of 
 print(f"No meteo for Basins {missing.tolist()}, of {area[missing].sum() / 1e6:.2f} km2")
 
 # merge RWZI model, which requires meta_waterbeheerder (the hws model is fully Rijkswaterstaat)
-assert model.node.df is not None
-assert model.basin.node is not None and model.basin.node.df is not None
 model.node.df.loc[model.basin.node.df.index, "meta_waterbeheerder"] = "Rijkswaterstaat"
 # RWZIs that discharge on hws water that the Basin areas do not cover, such as Vollenhove on the Vollenhover Kanaal
 # 2.8 km from the Zwarte Meer, couple to the nearest hws Basin, see #936
@@ -198,7 +192,6 @@ model = merge_rwzi_model(
 # add Observation nodes with measured discharges
 model = add_observations(model, "Rijkswaterstaat")
 # route the links of each Basin as one tree along the network, which koppelen extends with the links of other models
-assert model.basin.node is not None and model.basin.node.df is not None
 network = Network.from_network_gpkg(network_gpkg)
 rebuild_junction_trees_along_top10nl(model, model.basin.node.df.index.tolist(), top10nl_gpkg, network.links)
 model = tidy_layout(model)

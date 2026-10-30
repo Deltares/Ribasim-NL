@@ -219,8 +219,6 @@ def ensure_doorlaat_afvoer_max_downstream_level(
     """
     node_df = model.node.df
     link_df = model.link.df
-    if node_df is None or link_df is None:
-        return 0
 
     doorlaat_control_node_ids = set(
         node_df[

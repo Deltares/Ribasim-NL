@@ -2187,7 +2187,6 @@ def _remove_discrete_control(model: Model, node_id: int) -> dict[str, int | None
         of other nodes and links, which are referred to in issues and model viewer links, do not change. They are None
         without a single DiscreteControl.
     """
-    assert model.link.df is not None
     link_df = model.link.df
     control_links = link_df[(link_df.link_type == "control") & (link_df.to_node_id == node_id)]
     control_ids = control_links["from_node_id"]
@@ -2220,7 +2219,6 @@ def _replace_static_rows(
 
     The node becomes a `target_type`, and its levels are protected from coupling-level updates.
     """
-    assert model.link.df is not None
     static_df = model.get_component(model.get_node_type(node_id)).static.df
     assert static_df is not None
     rows = static_df[static_df.node_id == node_id]
@@ -2252,7 +2250,6 @@ def _add_replacing_control_node(
     name: str | None,
 ) -> int:
     """Add a control node to `node_id` with the IDs `reuse` of the control it replaces, see `_remove_discrete_control`."""
-    assert model.link.df is not None
     control_id = model.next_node_id if reuse["node_id"] is None else reuse["node_id"]
     model.add_control_node(
         to_node_id=node_id,

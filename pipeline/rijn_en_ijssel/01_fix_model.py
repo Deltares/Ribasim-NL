@@ -52,7 +52,6 @@ outlet_data = outlet.Static(flow_rate=[5.0])
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419605149
 # Verwijderen duplicate links
 
-assert model.link.df is not None
 model.link.df.drop_duplicates(inplace=True)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419620184

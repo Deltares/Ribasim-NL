@@ -38,7 +38,6 @@ def add_demand(
         outlet_basin_node = inlet_basin_node
 
     # define demand_node
-    assert model.node.df is not None
     demand_node_id = model.node.df.index.max() + 1
     demand_node = Node(demand_node_id, geometry=geometry, name=name, **kwargs)
     if min_level is None:
@@ -148,7 +147,6 @@ network = Network.from_network_gpkg(cloud.joinpath("Rijkswaterstaat/verwerkt/net
 # It runs about 59 km from the Prinses Irenesluis to ManningResistance 4695 at the Noordzeekanaal. It is split before
 # the demands are added, so they and the couplings connect to the section they are at.
 ARK, IRENESLUIS, ARK_END = 5018, 5930, 4695
-assert model.link.df is not None
 flow_df = model.link.df[model.link.df.link_type == "flow"]
 (upstream_link_id,) = flow_df.index[(flow_df.from_node_id == IRENESLUIS) & (flow_df.to_node_id == ARK)]
 (downstream_link_id,) = flow_df.index[(flow_df.from_node_id == ARK) & (flow_df.to_node_id == ARK_END)]
@@ -270,7 +268,6 @@ mask = ~industrie_inlet_gdf.naam.isin(["Avebe", "Evides Geervliet", "Evides Veer
 industrie_outlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Industrie-uitlaat")
 
 #
-assert model.link.df is not None
 maas_line = model.link.df[model.link.df.name == "Maas"].union_all()
 index = industrie_outlet_gdf[industrie_outlet_gdf["naam"] == "Chemelot"].index[0]
 point = cast(Point, industrie_outlet_gdf.at[index, "geometry"])

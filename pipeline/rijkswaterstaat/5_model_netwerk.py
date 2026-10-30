@@ -470,8 +470,6 @@ for kwk in kwk_topology.itertuples():
 
 # opbouwen basin over het netwerk
 profile_geometries = []
-assert model.manning_resistance.node is not None and model.manning_resistance.node.df is not None
-assert model.node.df is not None
 for row in basin_poly_gdf.itertuples():
     # row = next(i for i in basin_poly_gdf.itertuples() if i.Index == 1)
     print(f"{row.Index} {row.naam}")
@@ -494,10 +492,9 @@ for row in basin_poly_gdf.itertuples():
     basin_boundary_nodes = basin_boundary_nodes[~basin_boundary_nodes["upstream"].isin(connected)]
     basin_boundary_nodes = basin_boundary_nodes[~basin_boundary_nodes["downstream"].isin(connected)]
 
-    if model.manning_resistance.node.df is not None:
-        basin_boundary_nodes = basin_boundary_nodes[
-            ~basin_boundary_nodes.index.isin(model.manning_resistance.node.df.index)
-        ]
+    basin_boundary_nodes = basin_boundary_nodes[
+        ~basin_boundary_nodes.index.isin(model.manning_resistance.node.df.index)
+    ]
 
     # overige basin_boundary_nodes voorzien van een ManningResistance
     for bbn_row in basin_boundary_nodes.reset_index().itertuples():
@@ -625,7 +622,6 @@ for row in basin_poly_gdf.itertuples():
 # %%
 
 # Verbinden overgebleven levelBoundaries zonder kunstwerken (bijv. Westerschelde en Nieuwe Maas)
-assert model.level_boundary.node is not None and model.level_boundary.node.df is not None
 assert model.level_boundary.static.df is not None
 # Capacity [m3/s] of the Outlet from these basins to the boundary, instead of a placeholder that makes the model stiff.
 # Twice the largest flow of the coupled run of 2017-2019, or the capacity of the inflows of the basin if those are
@@ -681,7 +677,6 @@ assert sorted(open_boundary_basins) == sorted(OPEN_BOUNDARY_CAPACITY), (
 # Later kunnen we het stuk bij basins verbeteren
 
 assert model.manning_resistance.static.df is not None
-assert model.link.df is not None
 for row in model.manning_resistance.static.df.itertuples():
     try:
         link_to = model.link.df[model.link.df["to_node_id"] == row.node_id].iloc[0]

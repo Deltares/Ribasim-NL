@@ -254,8 +254,6 @@ def split_basin_definitions(
         secondary_values = secondary_labels if secondary_labels is not None else {"bergend"}
     if primary_values is None:
         primary_values = primary_labels if primary_labels is not None else {"hoofdwater", "doorgaand"}
-    assert ribasim_model.basin.node is not None
-    assert ribasim_model.basin.node.df is not None
     if basin_metacol in ribasim_model.basin.node.df.columns:
         nodes = ribasim_model.basin.node.df[[basin_metacol, "geometry"]].copy().reset_index(drop=False)
     else:
@@ -610,8 +608,6 @@ class AssignOfflineBudgets:
         )
         basin_definition = gpd.GeoDataFrame(pd.concat([primary_basin_definition, secondary_basin_definition]))
         # split basin_definition by meta_categorie of Ribasim model itself, to keep original nod_id's
-        assert model.basin.node is not None
-        assert model.basin.node.df is not None
         nodes = gpd.GeoDataFrame(
             {
                 "node_id": model.basin.node.df.index,

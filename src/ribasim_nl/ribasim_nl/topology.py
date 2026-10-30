@@ -40,7 +40,6 @@ def duplicate_level_boundary_for_link(
     returned. This makes repeated notebook runs idempotent.
     """
     assert model.link.df is not None
-    assert cast(Any, model.level_boundary.node).df is not None
     assert model.level_boundary.static.df is not None
     assert model.node.df is not None
     link_df = cast(Any, model.link.df)
