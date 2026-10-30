@@ -8,12 +8,50 @@ import pandas as pd
 import pydantic
 import shapely
 from pandera.typing import pandas as pdt
-from ribasim.schemas import BasinProfileSchema
+from pandera.typing.geopandas import GeoDataFrame
+from ribasim.geometry.area import BasinAreaSchema
+from ribasim.geometry.link import LinkSchema
+from ribasim.geometry.node import NodeSchema
+from ribasim.schemas import BasinProfileSchema, BasinStateSchema, BasinStaticSchema, ManningResistanceStaticSchema
 
 from ribasim_nl import CloudStorage, Model
-from ribasim_nl.profiles import MIN_PROFILE_AREA
+from ribasim_nl.profiles import MIN_GENERATED_PROFILE_AREA, MIN_PROFILE_AREA
 
 LOG = logging.getLogger(__name__)
+
+# ManningResistance between a storing ('bergend') basin and its flowing ('doorgaand') basin, which share the same
+# area A. Its discharge scales with A, since the gains and losses of the storing basin are mostly vertical. For the
+# head difference to be independent of A, the conductance should scale with A too. We represent the connections of
+# the secondary to the primary water system as parallel ditches with a fixed length, whose number scales with A.
+# Their summed cross section is a trapezoid whose bottom width and summed bank slope both scale with A. These are
+# effective values: a literal sum of all ditches would give a near-zero resistance, which makes the simulation
+# needlessly stiff.
+BERGEND_REFERENCE_AREA = 1e6  # m2
+BERGEND_REFERENCE_WIDTH = 2.0  # m
+BERGEND_REFERENCE_PROFILE_SLOPE = 4.0
+BERGEND_LENGTH = 500.0  # m
+BERGEND_MANNING_N = 0.03  # s/m^(1/3)
+
+
+def bergend_manning_static(area: pd.Series) -> pd.DataFrame:
+    """Get the ManningResistance static table between storing and flowing basins, scaled by the basin area.
+
+    :param area: basin area [m2], indexed by the ManningResistance node ID
+
+    :return: ManningResistance static table
+    """
+    assert area.index.is_unique, "ManningResistance node IDs should be unique"
+    assert area.notna().all() and (area > 0).all(), f"Invalid basin areas for nodes {area[~(area > 0)].index.tolist()}"
+    relative_area = area.to_numpy() / BERGEND_REFERENCE_AREA
+    return pd.DataFrame(
+        {
+            "node_id": area.index.to_numpy(),
+            "length": BERGEND_LENGTH,
+            "manning_n": BERGEND_MANNING_N,
+            "profile_width": BERGEND_REFERENCE_WIDTH * relative_area,
+            "profile_slope": BERGEND_REFERENCE_PROFILE_SLOPE * relative_area,
+        }
+    )
 
 
 def get_tables(water_authority: str, cloud: CloudStorage = CloudStorage()) -> tuple[pd.DataFrame, pd.DataFrame]:  # noqa: B008
@@ -52,6 +90,22 @@ def clamp_profile_area(table: pd.DataFrame) -> pd.DataFrame:
     """Set all profile areas to at least the solver-safe minimum."""
     assert all(c in table.columns for c in ["node_id", "level", "area"])
     return table.assign(area=table["area"].clip(lower=MIN_PROFILE_AREA))
+
+
+def drop_degenerate_profiles(table: pd.DataFrame) -> pd.DataFrame:
+    """Drop the profiles of basins whose area never exceeds MIN_GENERATED_PROFILE_AREA.
+
+    Such a basin barely stores water, so its level changes too fast for its structures and control.
+    Without the profile, the basin gets its other (flowing or storing) profile or a standard profile.
+    """
+    assert all(c in table.columns for c in ["node_id", "level", "area"])
+    max_area = table.groupby("node_id")["area"].transform("max")
+    degenerate = max_area < MIN_GENERATED_PROFILE_AREA
+    if degenerate.any():
+        LOG.warning(
+            f"Dropping degenerate profiles of basins: {sorted(map(int, table.loc[degenerate, 'node_id'].unique()))}"
+        )
+    return table.loc[~degenerate]
 
 
 def standard_profiles(basin_area: pd.DataFrame) -> pd.DataFrame:
@@ -167,8 +221,8 @@ def _handle_validation_error(func: typing.Callable) -> typing.Callable:
             raise BasinProfileError(
                 f"This is likely caused by a mismatch between the node IDs of the basins in the model, "
                 f"and the generated basin profiles node IDs.\n"
-                f"This might be fixed by rerunning the profile generator of {water_authority}:\n\n\t"
-                f"`pixi run python src/peilbeheerst_model/profiles/{water_authority}.py`"
+                f"This might be fixed by rerunning the profile generator of {water_authority}, "
+                f"`pipeline/<water authority>/02_profiles.py`."
             ) from e
 
     return wrapper
@@ -180,6 +234,7 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
 
     Based on the profile generation, trapezoidal profiles are set to the flowing basins. In case there are storing basin
     profiles generated, a storing basin is added to the flowing basin via a ManningResistance-node.
+    If no storing profiles survive filtering, only the existing basins' profiles are updated.
 
     :param ribasim_model: Ribasim model
     :param water_authority: water authority
@@ -195,11 +250,12 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     dy: float = kwargs.get("dy", 0.0)
     # get profile data
     tables = get_tables(water_authority, cloud=cloud)
-    storing_ids, df_flowing, df_storing = single_profile_nodes(*tables)
+    storing_ids, df_flowing, df_storing = single_profile_nodes(*map(drop_degenerate_profiles, tables))
 
     if (
         ribasim_model.node.df is None
         or ribasim_model.basin.profile.df is None
+        or ribasim_model.basin.node is None
         or ribasim_model.basin.node.df is None
         or ribasim_model.basin.static.df is None
         or ribasim_model.basin.state.df is None
@@ -228,8 +284,13 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     ribasim_model.basin.profile.df = typing.cast(pdt.DataFrame[BasinProfileSchema], basin_profile)
     del _basin_profile
 
+    if not storing_ids:
+        return ribasim_model
+
     # duplicate all basin-tables
+    assert ribasim_model.basin.node is not None
     basin_node = ribasim_model.basin.node.df
+
     basin_static = ribasim_model.basin.static.df
     basin_state = ribasim_model.basin.state.df
     basin_area = ribasim_model.basin.area.df
@@ -278,9 +339,10 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     )
 
     # create static table: ManningResistance
-    manning_static = manning_node.reset_index(drop=False)[["node_id"]]
-    manning_static = manning_static.assign(length=1000, manning_n=0.02, profile_width=2.0, profile_slope=3.0)
-    # TODO: Assign `profile_width` based on representative widths of storing basins
+    storing_area = basin_area.geometry.area.groupby(basin_area["node_id"]).sum()
+    manning_static = bergend_manning_static(
+        pd.Series(storing_area.reindex(basin_node.index).to_numpy(), index=basin_node["manning_id"].to_numpy())
+    )
 
     # create links tables
     sm_link = (
@@ -314,17 +376,27 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
 
     # concatenate all newly generated tables to Ribasim model
     # > Node-table
-    ribasim_model.node.df = pd.concat([ribasim_model.node.df, basin_node, manning_node], ignore_index=False)
+    ribasim_model.node.df = GeoDataFrame[NodeSchema](
+        pd.concat([ribasim_model.node.df, basin_node, manning_node], ignore_index=False)
+    )
     # > Link-table
-    ribasim_model.link.df = pd.concat([ribasim_model.link.df, link], ignore_index=False)
+    ribasim_model.link.df = GeoDataFrame[LinkSchema](pd.concat([ribasim_model.link.df, link], ignore_index=False))
     # > Basin-tables
-    ribasim_model.basin.static.df = pd.concat([ribasim_model.basin.static.df, basin_static], ignore_index=True)
-    ribasim_model.basin.state.df = pd.concat([ribasim_model.basin.state.df, basin_state], ignore_index=True)
-    ribasim_model.basin.profile.df = pd.concat([ribasim_model.basin.profile.df, basin_profile], ignore_index=True)
-    ribasim_model.basin.area.df = pd.concat([ribasim_model.basin.area.df, basin_area], ignore_index=True)
+    ribasim_model.basin.static.df = pdt.DataFrame[BasinStaticSchema](
+        pd.concat([ribasim_model.basin.static.df, basin_static], ignore_index=True)
+    )
+    ribasim_model.basin.state.df = pdt.DataFrame[BasinStateSchema](
+        pd.concat([ribasim_model.basin.state.df, basin_state], ignore_index=True)
+    )
+    ribasim_model.basin.profile.df = pdt.DataFrame[BasinProfileSchema](
+        pd.concat([ribasim_model.basin.profile.df, basin_profile], ignore_index=True)
+    )
+    ribasim_model.basin.area.df = GeoDataFrame[BasinAreaSchema](
+        pd.concat([ribasim_model.basin.area.df, basin_area], ignore_index=True)
+    )
     # > ManningResistance-tables
-    ribasim_model.manning_resistance.static.df = pd.concat(
-        [ribasim_model.manning_resistance.static.df, manning_static], ignore_index=True
+    ribasim_model.manning_resistance.static.df = pdt.DataFrame[ManningResistanceStaticSchema](
+        pd.concat([ribasim_model.manning_resistance.static.df, manning_static], ignore_index=True)
     )
 
     # update model IDs

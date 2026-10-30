@@ -1,6 +1,8 @@
 """Utilities for generating unique codes."""
 
+from collections.abc import Hashable
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from pandas import DataFrame
@@ -58,9 +60,10 @@ def find_codes(
     organization: str,
     administration_category: str | None = None,
     to_dict: bool = True,
-) -> dict[str, list[dict[str, str]]] | DataFrame:
+) -> dict[Hashable, Any] | list[dict[Hashable, Any]]:
     """Find codes associated with an organization"""
-    codes: dict[str, list[dict[str, str]]] | list[dict[str, str]] = {}
+    codes: dict[Hashable, Any] | list[dict[Hashable, Any]] = {}
+
     codes_df = get_codes_df()
 
     # filter on administration_category

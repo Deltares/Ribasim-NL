@@ -59,11 +59,13 @@ class NetworkValidator:
     tolerance: float = 1
 
     @property
-    def node_df(self) -> GeoDataFrame[NodeSchema] | None:
+    def node_df(self) -> GeoDataFrame[NodeSchema]:
+        assert self.model.node.df is not None
         return self.model.node.df
 
     @property
-    def link_df(self) -> GeoDataFrame[LinkSchema] | None:
+    def link_df(self) -> GeoDataFrame[LinkSchema]:
+        assert self.model.link.df is not None
         return self.model.link.df
 
     def node_overlapping(self):
@@ -79,7 +81,7 @@ class NetworkValidator:
         mask = self.node_df.apply(lambda row: check_internal_basin(row, self.link_df), axis=1)
         return self.node_df[mask]
 
-    def node_invalid_connectivity(self, tolerance: float = 1.0) -> GeoDataFrame:
+    def node_invalid_connectivity(self, tolerance: float = 1.0) -> gpd.GeoDataFrame:
         """Check if node_from and node_to are correct on link"""
         node_df = self.node_df
         invalid_links_df = self.link_incorrect_connectivity()

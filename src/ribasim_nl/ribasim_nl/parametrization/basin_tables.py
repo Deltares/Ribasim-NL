@@ -2,8 +2,10 @@
 from datetime import datetime
 
 import pandas as pd
+from pandera.typing import DataFrame
+from ribasim.schemas import BasinStateSchema, BasinStaticSchema, BasinTimeSchema
 
-from ribasim_nl.coupling_level_common import as_float, as_int
+from ribasim_nl.coupling_level_common import as_float, as_int, finite_levels
 from ribasim_nl.model import Model
 from ribasim_nl.parametrization.empty_table import empty_table_df
 
@@ -47,7 +49,7 @@ def update_basin_static(
     )
 
     # add to static df
-    model.basin.static.df = static_df
+    model.basin.static.df = DataFrame[BasinStaticSchema](static_df)
 
 
 def update_basin_state(model: Model) -> None:
@@ -56,7 +58,10 @@ def update_basin_state(model: Model) -> None:
     Args:
         model (Model): Ribasim Model
     """
-    model.basin.state.df = model.basin.profile.df.groupby("node_id").max().reset_index()[["node_id", "level"]]
+    assert model.basin.profile.df is not None
+    model.basin.state.df = DataFrame[BasinStateSchema](
+        model.basin.profile.df.groupby("node_id").max().reset_index()[["node_id", "level"]]
+    )
 
 
 def apply_basin_level_overrides(
@@ -95,8 +100,8 @@ def apply_basin_level_overrides(
         model.basin.area.df.loc[mask, target_level_column] = target_level
 
     if update_state:
-        model.basin.state.df = model.basin.area.df[["node_id", target_level_column]].rename(
-            columns={target_level_column: "level"}
+        model.basin.state.df = DataFrame[BasinStateSchema](
+            model.basin.area.df[["node_id", target_level_column]].rename(columns={target_level_column: "level"})
         )
 
     return protected_basin_node_ids
@@ -176,7 +181,7 @@ def sync_min_upstream_levels_with_profile_bottoms(
             continue
 
         for node_id, required_level in node_requirements.items():
-            mask = static_df["node_id"].eq(int(node_id)) & static_df["min_upstream_level"].notna()
+            mask = static_df["node_id"].eq(int(node_id)) & finite_levels(static_df["min_upstream_level"]).notna()
             if not mask.any():
                 continue
 
@@ -231,6 +236,27 @@ def add_basin_time_synthetic(
     time_df.loc[time_df["time"] == end_time, "potential_evaporation"] = static_df["potential_evaporation"].to_numpy()
 
     model.basin.static.df = None
-    model.basin.time.df = time_df.reset_index()
+    model.basin.time.df = DataFrame[BasinTimeSchema](time_df.reset_index())
     model.starttime = start_time
     model.endtime = end_time
+
+
+def apply_level_boundary_overrides(model: Model, level_by_node_id: dict[int, float]) -> None:
+    """Set the level of LevelBoundary nodes."""
+    static_df = model.level_boundary.static.df
+    assert static_df is not None
+    for node_id, level in level_by_node_id.items():
+        mask = static_df.node_id == node_id
+        assert mask.any(), f"LevelBoundary {node_id} not in the static table"
+        static_df.loc[mask, "level"] = level
+
+
+def clear_ungated_outlet_levels(model: Model) -> None:
+    """Remove the min_upstream_level and max_downstream_level of outlets without a weir (meta_gestuwd "False")."""
+    outlet_node_df = model.filter_nodes("Outlet")
+    static_df = model.outlet.static.df
+    assert static_df is not None
+    node_ids = outlet_node_df[outlet_node_df["meta_gestuwd"] == "False"].index
+    mask = static_df["node_id"].isin(node_ids)
+    static_df.loc[mask, "min_upstream_level"] = pd.NA
+    static_df.loc[mask, "max_downstream_level"] = pd.NA

@@ -1,7 +1,7 @@
 # %%
 """Functions to apply on a shapely.geometry"""
 
-from typing import get_type_hints
+from typing import get_type_hints, overload
 
 import numpy as np
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
@@ -40,6 +40,10 @@ def basin_to_point(basin_polygon: Polygon | MultiPolygon, tolerance: float | Non
     return point
 
 
+@overload
+def sort_basins(basin_polygons: MultiPolygon) -> MultiPolygon: ...
+@overload
+def sort_basins(basin_polygons: list[Polygon]) -> list[Polygon]: ...
 def sort_basins(basin_polygons: MultiPolygon | list[Polygon]) -> MultiPolygon | list[Polygon]:
     """Sort basins in a MultiPolygon or list of Polygons on .area in ascending order (small to large).
 
@@ -131,7 +135,15 @@ def split_basin_multi_polygon(basin_polygon: MultiPolygon, line: LineString) -> 
     return MultiPolygon(right_basin_poly), MultiPolygon(left_basin_poly)
 
 
-def drop_z(geometry: LineString | MultiPolygon | Point | Polygon) -> Point | Polygon | MultiPolygon:
+@overload
+def drop_z(geometry: LineString) -> LineString: ...
+@overload
+def drop_z(geometry: MultiPolygon) -> MultiPolygon: ...
+@overload
+def drop_z(geometry: Point) -> Point: ...
+@overload
+def drop_z(geometry: Polygon) -> Polygon: ...
+def drop_z(geometry: LineString | MultiPolygon | Point | Polygon) -> LineString | Point | Polygon | MultiPolygon:
     """Drop the z-coordinate of a geometry if it has.
 
     Parameters
@@ -141,7 +153,7 @@ def drop_z(geometry: LineString | MultiPolygon | Point | Polygon) -> Point | Pol
 
     Returns
     -------
-    Point | Polygon | MultiPolygon
+    LineString | Point | Polygon | MultiPolygon
         Output geometry
     """
     # TODO: There is a built-in method in `shapely` that does this: `shapely.force_2d(geometry)`.

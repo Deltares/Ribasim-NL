@@ -1,0 +1,115 @@
+---
+title: "Reproducing pull requests"
+---
+
+A full reproduction of the pipeline takes hours, so pull requests that change the model are often open, and reproduced, at the same time.
+Each reproduction changes `dvc.lock` and the metrics in `data/Rijkswaterstaat/metrics/lhm_coupled.json`, so two such pull requests conflict once one of them is merged.
+This page describes how to handle that without rerunning anything.
+
+The run of a pull request serves two purposes:
+
+1. It shows the effect of the pull request compared with its base: in the metrics, the [model viewer](viewer.qmd) preview, and the pull request description. This stays valid when `main` moves on, since it isolates the change of the pull request.
+2. Its `dvc.lock` records the reproduced outputs. Only one run can be recorded on `main` at a time.
+
+Therefore `dvc.lock` on `main` is *the latest reproduced state*, which may lag behind the code on `main`.
+Regular catch-up runs reproduce `main` again, for all pull requests merged since the previous run at once.
+
+## A pull request that changes the model
+
+1. Reproduce the pipeline on the branch, and push its outputs to the DVC remote, see [Running locally](local.qmd):
+
+   ```sh
+   pixi run repro-local --push
+   ```
+
+2. Commit and push `dvc.lock` and the metrics. Describe the effect in the pull request, compared with the base of the run:
+
+   ```sh
+   pixi run dvc metrics diff $(git merge-base HEAD origin/main)
+   ```
+
+3. Merge. If `dvc.lock` on `main` changed since the base of the run, merge `main` into the branch and keep the `dvc.lock` and metrics of `main`, without rerunning:
+
+   ```sh
+   git merge origin/main
+   git checkout origin/main -- dvc.lock data/Rijkswaterstaat/metrics/lhm_coupled.json
+   git commit
+   ```
+
+   Keep those of `main` even if git merges `dvc.lock` without conflicts, and never combine the two by hand: a `dvc.lock` that mixes two runs describes outputs that no run produced.
+   Always take `dvc.lock` and the metrics together, so they belong to the same run.
+
+The pull request is then merged without its run being recorded on `main`, until the next catch-up run.
+Its outputs stay on the DVC remote, and its preview in the model viewer remains available.
+
+## Push the outputs of every run
+
+Push the outputs of every run whose `dvc.lock` is committed, with `--push` or `pixi run dvc push`, also on pull requests:
+
+- The `dvc.lock` of a pull request may end up on `main`, and the outputs of `main` must always be on the remote, since every reproduction pulls its inputs from there.
+- Reviewers can pull the model of a pull request, see [Get data](index.qmd#get-data).
+- The model viewer exports the model of a commit again from its run, if that export is not published yet.
+
+Outputs that did not change are not uploaded again, since the remote stores files by their content.
+
+## Catch-up runs on main
+
+When `main` has merged pull requests that are not reproduced, a catch-up run reproduces it and opens a pull request named "Reproduce the pipeline on top of main" with the run:
+
+```sh
+pixi run repro-main
+```
+
+This runs in a worktree dedicated to it, and is normally started every night by a systemd timer, see below. It:
+
+1. Waits while a catch-up pull request is open, unless `dvc.lock` on `main` changed since its run. Then it closes it, since pull requests keep the `dvc.lock` of `main`.
+2. Skips a commit of `main` that it attempted before, also when that failed, unless given `--force`. It also skips while another catch-up run is busy, but not for runs of other pull requests, which go in the next catch-up run.
+3. Runs `pixi run repro-local --incremental --push` on `main`. Since every stage depends on the `ribasim_nl` package, this usually reruns most of the pipeline.
+4. If `dvc.lock` changed, pushes the run to a new branch `repro-main-<date>-<time>`, opens the pull request, and publishes its model viewer preview.
+5. Has Claude describe the effect with the `describe-run` skill in `.claude/skills`, which can only read files, and not the credentials. The skill is also useful to describe the run of any other pull request.
+
+Review and merge the pull request yourself, like any other one.
+
+### The nightly timer
+
+On a Linux workstation with enough cores and memory, install the timer with:
+
+```sh
+pixi run install-repro-main
+```
+
+This creates the worktree next to the main checkout, set up with `pixi run setup-worktree`, and enables a systemd user timer that runs `pixi run repro-main` there at 01:13; use `--time HH:MM` for another time, and `--uninstall` to remove it.
+The service resets the worktree to `origin/main` before each run, and refuses to do so in any other checkout.
+If it fails, it shows a desktop notification.
+Follow it with `journalctl --user -fu ribasim-nl-repro-main`, start it right away with `systemctl --user start --no-block ribasim-nl-repro-main`, and stop it with `systemctl --user stop ribasim-nl-repro-main`.
+
+The service runs the code of `main` unattended, with your credentials: the MinIO key in `.env`, `gh`, and `claude`.
+It runs without new privileges and creates files that only you can read.
+It only pushes to `repro-main-*` branches and never merges, and it checks that the description it publishes contains no credentials.
+To limit what it can do on GitHub, give it a [fine-grained token](https://github.com/settings/personal-access-tokens) for Deltares/Ribasim-NL only, with read and write access to contents and pull requests, in `~/.config/ribasim-nl/repro-main.env`, readable by you only:
+
+```sh
+GH_TOKEN=github_pat_...
+```
+
+The timer only fires while you are logged in, unless you run `loginctl enable-linger`.
+Without a session the `gh` credentials in the keyring are locked, so then the token above is needed.
+
+## Stacked pull requests
+
+Stack a pull request on top of another one when it builds on it, or to see their combined effect.
+It is often enough to reproduce only the top of the stack. The model viewer compares each pull request in a stack with the one below it, so it only shows its own changes.
+
+Pull requests are squash merged, so the commits of a pull request in the stack are not on `main` after it is merged, only a new commit with the same changes.
+Merge a stack in one of two ways:
+
+- **Top down**, as one commit on `main`: squash merge the top pull request into the branch below it, repeat until the bottom, and squash merge that into `main`. This never conflicts, and `main` gets the `dvc.lock` of the top, which belongs to the code of the whole stack.
+- **Bottom up**, as one commit per pull request: once the bottom is merged, GitHub deletes its branch and bases the next pull request on `main`. That pull request still contains the commits of the merged one, which conflict wherever it changed the same lines again, always in `dvc.lock`. Replay only its own commits on `main`, starting after the last commit of the merged pull request, here number 123:
+
+  ```sh
+  git fetch origin main
+  git rebase --onto origin/main $(gh pr view 123 --json headRefOid --jq .headRefOid)
+  git push --force-with-lease
+  ```
+
+  If the bottom pull request kept the `dvc.lock` of `main`, the rebase stops at the commit with the run of the next pull request. Then keep the `dvc.lock` and metrics of `main`, as described above.

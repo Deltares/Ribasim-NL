@@ -9,7 +9,8 @@
 # (.dvc/tmp/rwlock) on the shared checkout, which was failing many jobs.
 #
 # DVC is still used for data, but only in two serial, uncontended jobs:
-#   * "pull"   : fetches all DVC-tracked inputs once, before the pipeline runs
+#   * "clean"  : removes the stage outputs and pulls all inputs once, before the
+#                pipeline runs
 #   * "commit" : runs `dvc commit` + `dvc push` once at the end to register and
 #                upload all produced outputs
 #
@@ -33,6 +34,7 @@ submit() {
   local name=$1 dep=$2 time=$3; shift 3
   sbatch --parsable --dependency="${dep}" --begin="${BEGIN:-now}" \
     --job-name="${name}" --partition=${PARTITION} --time="${time}" \
+    --output="slurm-%j-%x.out" \
     --wrap="${PIXI}; srun bash -c $(printf '%q' "$*")"
 }
 
@@ -47,69 +49,85 @@ chain() {
 
 py() { echo "pixi run python $*"; }
 
-# Step 0: fetch all DVC-tracked inputs once (serial, no lock contention).
-# Use `afterany` (not `afterok`): `dvc pull --force` exits non-zero when an out is declared in
-# dvc.yaml but not yet in the cache/remote (e.g. a newly added output on its first pipeline run).
-# The pull is best-effort -- it fetches whatever exists, and the stages regenerate the rest -- so a
-# non-zero pull must not block the whole pipeline.
-JOB_PULL=$(submit pull singleton ${TIME} "pixi run dvc pull --force")
-DEP_PULL="afterany:${JOB_PULL}"
+# 11 dynamic chains (parameterized -> bergend -> dynamic), key:item
+DYNAMIC_PAIRS=(
+  aa_en_maas:AaenMaas
+  brabantse_delta:BrabantseDelta
+  de_dommel:DeDommel
+  drents_overijsselse_delta:DrentsOverijsselseDelta
+  hunze_en_aas:HunzeenAas
+  limburg:Limburg
+  noorderzijlvest:Noorderzijlvest
+  rijn_en_ijssel:RijnenIJssel
+  stichtse_rijnlanden:StichtseRijnlanden
+  vallei_en_veluwe:ValleienVeluwe
+  vechtstromen:Vechtstromen
+)
 
-# Step 1: shared rwzi dependency (needs pulled inputs).
-JOB_RWZI=$(submit rwzi "${DEP_PULL}" ${TIME} "$(py notebooks/create_rwzi_model.py)")
+# 10 peilbeheerst chains (feedback -> profiles -> forcing), key:item
+PEILBEHEERST_PAIRS=(
+  delfland:Delfland
+  amstel_gooi_en_vecht:AmstelGooienVecht
+  hollands_noorderkwartier:HollandsNoorderkwartier
+  hollandse_delta:HollandseDelta
+  rijnland:Rijnland
+  rivierenland:Rivierenland
+  scheldestromen:Scheldestromen
+  schieland_en_de_krimpenerwaard:SchielandendeKrimpenerwaard
+  wetterskip_fryslan:WetterskipFryslan
+  zuiderzeeland:Zuiderzeeland
+)
+
+# Step 0: prepare the workspace once (serial, no lock contention), see scripts/clean.py:
+# remove the outputs of all stages run below, like `dvc repro` does, and `dvc pull --force`
+# everything upstream of them. Those outputs are not pulled, so a newly added output that is not
+# yet in the remote does not make the pull fail.
+STAGES="rwzi hws_demand hws_transient samenvoegen koppelen"
+for pair in "${DYNAMIC_PAIRS[@]}"; do
+  key="${pair%%:*}"
+  STAGES="${STAGES} parameterized_${key} bergend_${key} dynamic@${key}"
+done
+for pair in "${PEILBEHEERST_PAIRS[@]}"; do
+  key="${pair%%:*}"
+  STAGES="${STAGES} feedback_${key} profiles_${key} forcing_${key}"
+done
+JOB_CLEAN=$(submit clean singleton ${TIME} "$(py scripts/clean.py ${STAGES})")
+
+# Step 1: shared rwzi dependency (needs the pulled inputs).
+JOB_RWZI=$(submit rwzi "afterok:${JOB_CLEAN}" ${TIME} "$(py pipeline/create_rwzi_model.py)")
 DEP="afterok:${JOB_RWZI}"
 
 # Step 2: 22 independent stage jobs
 JOBIDS=""
 
-# 11 dynamic chains (parameterized -> bergend -> dynamic), key:item
-for pair in \
-  aa_en_maas:AaenMaas \
-  brabantse_delta:BrabantseDelta \
-  de_dommel:DeDommel \
-  drents_overijsselse_delta:DrentsOverijsselseDelta \
-  hunze_en_aas:HunzeenAas \
-  limburg:Limburg \
-  noorderzijlvest:Noorderzijlvest \
-  rijn_en_ijssel:RijnenIJssel \
-  stichtse_rijnlanden:StichtseRijnlanden \
-  vallei_en_veluwe:ValleienVeluwe \
-  vechtstromen:Vechtstromen
-do
+for pair in "${DYNAMIC_PAIRS[@]}"; do
   key="${pair%%:*}"; item="${pair##*:}"
+  # only some water boards preprocess their measured profiles
+  preprocess=()
+  if [[ -f pipeline/${key}/_preprocess_profielen.py ]]; then
+    preprocess=("$(py pipeline/${key}/_preprocess_profielen.py)")
+  fi
   cmds=$(chain \
-    "$(py notebooks/${key}/_preprocess_profielen.py)" \
-    "$(py notebooks/${key}/01_fix_model.py)" \
-    "$(py notebooks/${key}/02_prepare_model.py)" \
-    "$(py notebooks/${key}/03_parameterize_model.py)" \
-    "$(py notebooks/${key}/04_add_full_control.py)" \
-    "$(py notebooks/05_add_bergend.py ${item})" \
-    "$(py notebooks/07_add_dynamic_forcing.py ${item})")
+    "${preprocess[@]}" \
+    "$(py pipeline/${key}/01_fix_model.py)" \
+    "$(py pipeline/${key}/02_prepare_model.py)" \
+    "$(py pipeline/${key}/03_parameterize_model.py)" \
+    "$(py pipeline/${key}/04_add_full_control.py)" \
+    "$(py pipeline/05_add_bergend.py ${item})" \
+    "$(py pipeline/07_add_dynamic_forcing.py ${item})")
   BEGIN="now+$((STAGGER_COUNT * STAGGER))seconds"
   JID=$(submit "${key}" "${DEP}" ${TIME} "${cmds}")
   JOBIDS="${JOBIDS}:${JID}"
   STAGGER_COUNT=$((STAGGER_COUNT + 1))
 done
 
-# 10 peilbeheerst chains (feedback -> profiles -> forcing), key:item
-for pair in \
-  delfland:Delfland \
-  amstel_gooi_en_vecht:AmstelGooienVecht \
-  hollands_noorderkwartier:HollandsNoorderkwartier \
-  hollandse_delta:HollandseDelta \
-  rijnland:Rijnland \
-  rivierenland:Rivierenland \
-  scheldestromen:Scheldestromen \
-  schieland_en_de_krimpenerwaard:SchielandendeKrimpenerwaard \
-  wetterskip_fryslan:WetterskipFryslan \
-  zuiderzeeland:Zuiderzeeland
-do
+for pair in "${PEILBEHEERST_PAIRS[@]}"; do
   key="${pair%%:*}"; item="${pair##*:}"
   cmds=$(chain \
-    "$(py src/peilbeheerst_model/feedback/${item}.py)" \
-    "$(py src/peilbeheerst_model/profiles/prep_cross_sections.py ${item})" \
-    "$(py src/peilbeheerst_model/profiles/${item}.py)" \
-    "$(py src/peilbeheerst_model/forcing/${item}.py)")
+    "$(py pipeline/${key}/01_feedback.py)" \
+    "$(py pipeline/prep_cross_sections.py ${item})" \
+    "$(py pipeline/${key}/02_profiles.py)" \
+    "$(py pipeline/${key}/03_forcing.py)")
   BEGIN="now+$((STAGGER_COUNT * STAGGER))seconds"
   JID=$(submit "${key}" "${DEP}" ${TIME} "${cmds}")
   JOBIDS="${JOBIDS}:${JID}"
@@ -118,14 +136,14 @@ done
 
 # hws (hws_demand -> hws_transient chain)
 HWS_CMDS=$(chain \
-  "$(py notebooks/rijkswaterstaat/2_basins.py)" \
-  "$(py notebooks/rijkswaterstaat/3_netwerk.py)" \
-  "$(py notebooks/rijkswaterstaat/4_kunstwerken.py)" \
-  "$(py notebooks/rijkswaterstaat/5_model_netwerk.py)" \
-  "$(py notebooks/rijkswaterstaat/6_model_sturing.py)" \
-  "$(py notebooks/rijkswaterstaat/7_model_onttrekkingen.py)" \
-  "$(py notebooks/rijkswaterstaat/8a_update_state.py)" \
-  "$(py notebooks/rijkswaterstaat/8b_update_bc.py)")
+  "$(py pipeline/rijkswaterstaat/2_basins.py)" \
+  "$(py pipeline/rijkswaterstaat/3_netwerk.py)" \
+  "$(py pipeline/rijkswaterstaat/4_kunstwerken.py)" \
+  "$(py pipeline/rijkswaterstaat/5_model_netwerk.py)" \
+  "$(py pipeline/rijkswaterstaat/6_model_sturing.py)" \
+  "$(py pipeline/rijkswaterstaat/7_model_onttrekkingen.py)" \
+  "$(py pipeline/rijkswaterstaat/8a_update_state.py)" \
+  "$(py pipeline/rijkswaterstaat/8b_update_bc.py)")
 BEGIN="now+$((STAGGER_COUNT * STAGGER))seconds"
 JID=$(submit hws "${DEP}" ${TIME} "${HWS_CMDS}")
 JOBIDS="${JOBIDS}:${JID}"
@@ -133,13 +151,15 @@ STAGGER_COUNT=$((STAGGER_COUNT + 1))
 
 # Step 3: samenvoegen (after all 22 complete)
 unset BEGIN
-JOB_SAMENVOEGEN=$(submit samenvoegen "afterok${JOBIDS}" ${TIME} "$(py notebooks/08_samenvoegen_modellen.py)")
+JOB_SAMENVOEGEN=$(submit samenvoegen "afterok${JOBIDS}" ${TIME} "$(py pipeline/08_samenvoegen_modellen.py)")
 
 # Step 4: koppelen (after samenvoegen)
-JOB_KOPPELEN=$(submit koppelen "afterok:${JOB_SAMENVOEGEN}" ${TIME} "$(py notebooks/09_koppelen_modellen.py)")
+JOB_KOPPELEN=$(submit koppelen "afterok:${JOB_SAMENVOEGEN}" ${TIME} "$(py pipeline/09_koppelen_modellen.py)")
 
-# Step 5: register + upload all produced outputs to DVC once (serial).
-JOB_COMMIT=$(submit commit "afterok:${JOB_KOPPELEN}" ${TIME} "pixi run dvc commit -f && pixi run dvc push")
+# Step 5: register outputs, check, + upload to DVC once (serial). Only commit the stages that ran,
+# an untargeted `dvc commit -f` would also record stale outputs of downstream stages as up to date.
+# The check runs again if the first run failed only because hooks fixed files, like dvc.lock.
+JOB_COMMIT=$(submit commit "afterok:${JOB_KOPPELEN}" ${TIME} "pixi run dvc commit -f ${STAGES} && (pixi run check || pixi run check) && pixi run dvc push ${STAGES}")
 
 # Log job IDs for run.sh to depend on
 echo "samenvoegen	${JOB_SAMENVOEGEN}" > repro_jobs.txt

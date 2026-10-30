@@ -1,0 +1,24 @@
+---
+pagetitle: "Model viewer"
+page-layout: custom
+toc: false
+include-in-header:
+  text: |
+    <link rel="stylesheet" href="viewer-app/viewer.css">
+    <script type="module" src="viewer-app/viewer.js"></script>
+    <style>
+      #quarto-content, main.content { margin: 0; padding: 0; max-width: none; }
+      #title-block-header { display: none; }
+      #ribasim-viewer { height: calc(100vh - var(--viewer-offset, 0px)); padding: 0; }
+      .page-footer, .nav-footer { display: none; }
+    </style>
+---
+
+```{=html}
+<div id="ribasim-viewer"></div>
+<script>
+  // Size the viewer to the space below the navbar
+  const header = document.getElementById("quarto-header");
+  document.documentElement.style.setProperty("--viewer-offset", `${header ? header.offsetHeight : 0}px`);
+</script>
+```

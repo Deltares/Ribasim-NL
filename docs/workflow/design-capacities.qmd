@@ -1,0 +1,73 @@
+---
+title: "Design capacities of outlets and pumps"
+---
+
+The polder models set the unknown capacities (`max_flow_rate`) of Outlets and Pumps from the area they drain or supply, with the same design flow rates as the parametrization of the vrij afwaterend models.
+The implementation lives in [`src/ribasim_nl/ribasim_nl/design_capacities.py`](https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/design_capacities.py), and the design flow rates in the defaults of [`ribasim_nl.parametrization.static_data_xlsx`](https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/parametrization/static_data_xlsx.py).
+
+## Design flow rates
+
+| Function | Node type | Design flow rate | Area |
+|---|---|---|---|
+| drain | Pump | 15 mm/day | its share of the drainage, see below |
+| drain | Outlet | 50 mm/day | its share of the drainage, see below |
+| supply | Pump or Outlet | 4 mm/day | Basins downstream, up to the drain nodes |
+| flow_control | Pump or Outlet | the larger of drain and supply | both |
+
+The function of each node comes from the `from_to_node_function_table`.
+A supply node that supplies no Basin, such as one out of the model, supplies the area upstream instead.
+The area of bergend Basins is left out, as it is the same as that of their doorgaand Basin.
+
+## Splitting the drainage over the outflows
+
+Basins joined by resistances or Junctions count as one water body.
+Each water body drains its own area plus what the drains into it carry, and this drainage is split over the drains out of it:
+
+- drains with a known capacity carry up to that capacity, and
+- the other drains share the rest equally.
+
+The drained area of a drain, times its design flow rate, is its design capacity.
+Each unknown drain gets at least its share of the own area of its water body, so it keeps a capacity when the known drains can carry all.
+Because the drainage is passed on from water body to water body, this repeats until the drained areas no longer change.
+Where unknown drains form a loop that no unknown drain leaves, they would pass the drainage around forever, so in the water bodies of such a loop with known drains, these carry all.
+
+In the example below, boezem B drains its own 2 km², the 6 km² of polders P1 and P2, and what comes back from polder C, over c, d and e.
+Splitting gives c = d = e = 4.5 km² and f = 5.5 km², so c and d drain together the 9 km² of land to the boundary.
+If every drain got the full area upstream instead, c and d would each get 9 km², and e and f around the loop too.
+
+```{mermaid}
+%%| label: fig-split-drainage
+%%| fig-cap: "Drained area in km² per drain when the drainage of each water body is split over its outflows."
+flowchart LR
+  P1["polder P1<br>4 km²"] -->|"a: 4"| B["boezem B<br>2 km²"]
+  P2["polder P2<br>2 km²"] -->|"b: 2"| B
+  B -->|"e: 4.5"| C["polder C<br>1 km²"]
+  C -->|"f: 5.5"| B
+  B -->|"c: 4.5"| S["boundary"]
+  B -->|"d: 4.5"| S
+```
+
+## Limits from the neighbouring nodes
+
+Finally, every unknown capacity is limited by the nodes around it.
+A node carries no more than:
+
+- the supply of the water body it flows into, plus the Pumps and Outlets out of it, and
+- the drainage of the water body it comes from, plus the Pumps and Outlets into it.
+
+Nodes straight between both water bodies are left out, so that nodes in opposite directions do not keep up each other's capacity.
+The limits are applied repeatedly until no capacity changes, so that a small known pump also limits the outlets further upstream.
+Flows from or to a boundary, or through another node without a capacity, such as a FlowBoundary, give no limit.
+
+## Known capacities
+
+Capacities with `meta_known_flow_rate` in the Pump and Outlet static tables are kept, as are those of nodes that drain or supply no Basin, such as an Outlet between two LevelBoundaries.
+For the other nodes, the design capacity is the largest `max_flow_rate` of the node, and the other control states keep their ratio to it, so closed states stay closed.
+The `flow_rate` of all nodes is set to their `max_flow_rate`, except in the control states that switch them off.
+
+## Why not scale with simulations
+
+Before, the capacities were scaled iteratively, by running design events and doubling or halving each capacity until the Basin levels stayed close to their target level.
+This drove many capacities to the maximum of 50 m³/s, also where a larger capacity could not lower the level, such as behind a small known pump or in loops.
+Such capacities on small Basins made the models stiff.
+Capacities from the drained area scale with the flow that a node carries, and need no simulations.

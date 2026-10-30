@@ -1,11 +1,12 @@
 import re
 import sqlite3
-from datetime import datetime
 from pathlib import Path
 
 import geopandas as gpd
 
 STYLES_DIR = Path(__file__).parent.joinpath("data", "styles")
+# Fixed instead of the current time, so rewriting a GeoPackage gives identical bytes
+STYLE_UPDATE_TIME = "1970-01-01T00:00:00Z"
 
 CREATE_TABLE_SQL = """
 CREATE TABLE "layer_styles" (
@@ -110,7 +111,6 @@ def add_styles_to_geopackage(gpkg_path: Path) -> None:
             # check if style exists
             if style_qml.exists() and style_sld.exists():
                 description = f"HyDAMO style for layer: {layer}"
-                update_date_time = f"{datetime.now().isoformat()}Z"
 
                 # push to GeoPackage
                 conn.execute(
@@ -119,6 +119,6 @@ def add_styles_to_geopackage(gpkg_path: Path) -> None:
                         style_qml=read_style(style_qml),
                         style_sld=read_style(style_sld),
                         description=description,
-                        update_date_time=update_date_time,
+                        update_date_time=STYLE_UPDATE_TIME,
                     )
                 )

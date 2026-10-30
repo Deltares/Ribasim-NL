@@ -11,6 +11,7 @@ repos:
       - id: end-of-file-fixer
         exclude: .teamcity
       - id: trailing-whitespace
+        exclude: ^dvc\.lock$ # written by DVC
   - repo: local
     hooks:
       - id: ruff-check

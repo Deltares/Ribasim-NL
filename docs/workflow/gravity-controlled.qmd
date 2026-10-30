@@ -5,8 +5,7 @@ title: "Gravity controlled"
 Workflow for deriving and parametizing "gravity controlled systems". They include 11 water authorities on the Eastern side of The Neterlands for which initial datasets have been prepared by SWECO.
 You need code in [`src/ribasim_nl`](https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl).
 
-Under `notebooks` you'll find 4 scripts per water authority, e.g. `notebooks\aa_en_maas`, you can run in sequence.
-These are also run in sequence in `main.py`.
+Under `pipeline` you'll find 4 scripts per water authority, e.g. `pipeline/aa_en_maas`, which the DVC pipeline runs in sequence.
 
 1. `01_fix_model.py` will "fix" the GIS-models supplied by Sweco in the directories `{authority}_2024_6_3` to valid Ribasim-models in the directory `{authority}_fix_model`
 2. `02_prepare_model.py`will read `{authority}_fix_model` and add `levels` and `flow_rate` to the model and a `static_data.xlsx` that can be reviewed. The model will be written as `{authority}_prepare_model`
@@ -29,10 +28,12 @@ Explanation of a node's `function` in terms of upstream/downstream levels, suppl
 | flushing      | upstream level & node flow_rate   | demand [m3/s]            | capacity [m3/s]         | DiscreteControl + FlowDemand |
 
 
-Steps 5, 6 and 7 are shared between water authorities, and live directly beneath the `notebooks` directory.
+ManningResistances get the DAMO profile of their link if it lies across one of their links. Without a profile of their own watercourse, they get a trapezoid with the width of the BGT water along their links, see `ribasim_nl.parametrization.manning_resistance_table`; the source is in `meta_profile_source`. When the links are routed along the waterways in the last step, their BGT width follows the routed links.
 
-5. `05_add_bergend.py` adds VdGaast-based storage basins (input = models are from script 4)
+Steps 5, 6 and 7 are shared between water authorities. Steps 5 and 7 are part of the pipeline, and live directly beneath the `pipeline` directory; step 6 is in the `notebooks` directory.
+
+5. `05_add_bergend.py` adds VdGaast-based storage basins (input = models are from script 4). A storage basin drains through a VdGaast-based TabulatedRatingCurve, except in the supply areas of `verwerkt/sturing/aanvoergebieden.gpkg` with `meta_aanvoer` true. There it is connected with a ManningResistance, so it can also be supplied.
 6. `06_add_synthetic_forcing.py` adds synthetic forcing (constant precipitation switched to constant evaporation) to the models produced by script 5
-7. `07_add_dynamic_forcing.py` adds Modflow-Metaswap drainage/infiltration and WIWB precipitation/evaporation to the models produced by script 5
+7. `07_add_dynamic_forcing.py` adds Modflow-Metaswap drainage/infiltration and WIWB precipitation/evaporation to the models produced by script 5, and the foreign inflows and RWZIs, and lays out, writes and runs them. These steps are shared with the [level controlled](level-controlled.qmd) models, see `ribasim_nl.regional_model`.
 
 Finally `uploaden_modellen.py` uploads all models produced by script 7.

@@ -53,17 +53,18 @@ shapely = ">=2.1"
 tomli = ">=2.2"
 tomli-w = ">=1.2"
 tqdm = ">=4.67"
-ty = ">=0.0.63"
+ty = ">=0.0.92"
 xarray = ">=2026.2"
 xugrid = ">=0.14"
 zarr = ">=2.17"
+nodejs = ">=22"
 
 [pypi-dependencies]
 hydamo = { path = "src/hydamo", editable = true }
 peilbeheerst_model = { path = "src/peilbeheerst_model", editable = true }
 ribasim_nl = { path = "src/ribasim_nl", editable = true }
 # sync with config in install_ribasim_core.py
-ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "c934deac5d48606ef37a4e62c9070d660f694b0b", subdirectory = "python/ribasim" }
+ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "016b54038746e60e6e645626d6c2383a591dc4a6", subdirectory = "python/ribasim" }
 # in pypi fiona is optional, and fiona held back gdal 3.13
 rasterstats = ">=0.21"
 types-geopandas = ">=1.1"
@@ -79,11 +80,25 @@ xlwings = ">=0.33"
 typecheck = "ty check"
 install-prek = "prek install -f"
 install = { depends-on = ["install-core", "install-prek"] }
-repro = "dvc repro --keep-going && prek run"
+# Share the credentials and DVC cache of the main checkout with a git worktree, see scripts/setup_worktree.py
+setup-worktree = "python scripts/setup_worktree.py"
+# Reproduce stages and their upstream in parallel on this machine: `pixi run repro-local [TARGET ...]`
+repro-local = "python scripts/repro.py"
+# Reproduce main and open a catch-up pull request, run nightly by the timer of `pixi run install-repro-main`
+repro-main = "python scripts/repro_main.py"
+install-repro-main = "python scripts/install_repro_main.py"
 check = "prek run --all-files"
 dvc-dag = { cmd = "python scripts/dvc_dag.py > docs/dev/_dvc-dag.mmd", inputs = ["dvc.yaml"], outputs = ["docs/dev/_dvc-dag.mmd"] }
-docs = { cmd = "quartodoc build && quarto preview", cwd = "docs", depends-on = ["dvc-dag"] }
-docs-render = { cmd = "quartodoc build && rm -f objects.json && quarto render --to html --execute", cwd = "docs", depends-on = ["dvc-dag"] }
+docs = { cmd = "quartodoc build && quarto preview", cwd = "docs", depends-on = ["dvc-dag", "viewer-build"] }
+docs-render = { cmd = "quartodoc build && rm -f objects.json && quarto render --to html --execute", cwd = "docs", depends-on = ["dvc-dag", "viewer-build"] }
+viewer-install = { cmd = "npm ci", cwd = "viewer", inputs = ["viewer/package.json", "viewer/package-lock.json"], outputs = ["viewer/node_modules/.package-lock.json"] }
+viewer-build = { cmd = "npm run build", cwd = "viewer", depends-on = ["viewer-install"], inputs = ["viewer/src/**", "viewer/package-lock.json", "viewer/vite.config.ts", "viewer/tsconfig.json"], outputs = ["docs/viewer-app/viewer.js"] }
+# View a local model, optionally only its differences from another: `pixi run viewer <toml> [--base <toml>]`
+viewer = { cmd = "python -m ribasim_nl.webmap_local", depends-on = ["viewer-build"] }
+# Serves the local `export_webmap` output, see viewer/vite.config.ts
+viewer-dev = { cmd = "npm run dev", cwd = "viewer", depends-on = ["viewer-install"] }
+# Publish the model for the docs viewer, see `ribasim_nl.webmap_publish`: `pixi run publish-webmap [--pr N | --main]`
+publish-webmap = "python -m ribasim_nl.webmap_publish"
 ribasim = { cmd = "bin/ribasim/bin/ribasim", depends-on = ["install-core"] }
 edit-toml = "python scripts/edit_toml.py"
 delwaq = "python -m ribasim_nl.delwaq"

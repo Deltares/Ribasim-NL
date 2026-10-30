@@ -140,7 +140,7 @@ class HydrotopeTable:
 
         # initiate hydrotopes
         hydrotypes = [
-            Hydrotope(fid, name, depths)
+            Hydrotope(fid, name, tuple(depths))
             for _, (fid, name, *depths) in data[[col_fid, col_name, *cols_depths]].iterrows()
         ]
 

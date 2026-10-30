@@ -3,22 +3,23 @@ title: "DVC (Data Version Control)"
 ---
 
 We use [DVC](https://dvc.org/) to version-control large data files (models, input datasets) without storing them in Git.
-DVC tracks file hashes in `.dvc` files committed to Git, while the actual data lives on remote storage.
+Git only stores small fingerprints of the data, in `dvc.lock` and `.dvc` files; the data itself lives on MinIO storage.
 
-## Authentication
+DVC also describes how the data is made: the pipeline in `dvc.yaml` is a list of *stages*, each a Python script with its input and output files.
+Most stages build the model of one water authority, and later stages combine them into the nationwide model.
 
-DVC uses the standard AWS credentials from the root `.env` file:
+## In short
 
-```ini
-AWS_ACCESS_KEY_ID='<MinIO access key>'
-AWS_SECRET_ACCESS_KEY='<MinIO secret key>'
-```
+You only need a few commands, always run through Pixi so your access key from `.env` is used (see [Add your access key](index.qmd#sec-environment-variables)):
 
-Pixi activation scripts use python-dotenv to load `.env` before running any task. The MinIO endpoint and region are non-secret and are committed in `.dvc/config`, so new contributors do not need to create `.dvc/config.local` for authentication. Run DVC through Pixi so the credentials are available:
+| Goal | Command |
+|:-----|:--------|
+| Download a file or folder | `pixi run dvc pull <path>` |
+| Download the inputs of a stage, e.g. `rwzi` | `pixi run dvc pull rwzi --with-deps` |
+| Rerun a stage after changing its script | `pixi run dvc repro --pull rwzi` |
+| See which stages are out of date | `pixi run dvc status` |
 
-```sh
-pixi run dvc <command>
-```
+The sections below explain these in more detail.
 
 ::: {.callout-note}
 Existing clones may still have remote credentials in `.dvc/config.local`. Remove those credential fields after migrating `.env` from `MINIO_ACCESS_KEY` and `MINIO_SECRET_KEY` to `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
@@ -30,6 +31,22 @@ Prefer pulling only the data needed for the stage you are working on. To fetch a
 
 ```sh
 pixi run dvc pull rwzi --with-deps
+```
+
+To fetch the cached coupled LHM model (`koppelen`) and its results (`run_lhm_coupled`) without pulling their dependencies:
+
+```sh
+pixi run dvc pull koppelen run_lhm_coupled
+```
+
+The results in `data/Rijkswaterstaat/runs/lhm_coupled` read their input from `data/Rijkswaterstaat/modellen/lhm_coupled`, so pull both to open `lhm_coupled.toml` with results.
+Do not add `--with-deps` here; that also pulls all regional models upstream.
+
+The final cached outputs for (for example) Aa en Maas and Amstel, Gooi en Vecht can likewise be pulled directly:
+
+```sh
+pixi run dvc pull data/AaenMaas/modellen/AaenMaas_dynamic_model/
+pixi run dvc pull data/AmstelGooienVecht/modellen/AmstelGooienVecht_forcing/
 ```
 
 Only pull all tracked data when you have enough disk space (currently ~100GB), time, and just want all data local:
@@ -50,7 +67,12 @@ The MinIO remote is configured in `.dvc/config`:
 
 ## Pipeline
 
-The DVC pipeline is defined in [`dvc.yaml`](https://github.com/Deltares/Ribasim-NL/blob/main/dvc.yaml). Dependencies determine the order in which stages run:
+The DVC pipeline is defined in [`dvc.yaml`](https://github.com/Deltares/Ribasim-NL/blob/main/dvc.yaml).
+Each stage depends on its scripts, its input data, and the `src/ribasim_nl/ribasim_nl` package as a whole.
+Every stage imports most of this package, so a change to it marks all stages as changed.
+That sometimes reruns a stage that did not need it, but never skips one whose code changed.
+
+Dependencies determine the order in which stages run:
 
 ```{mermaid}
 %%| label: fig-dvc-pipeline
@@ -88,7 +110,7 @@ pixi run dvc repro --pull rwzi
 Without `--pull`, `dvc repro` only uses data already present in the workspace or local DVC cache. Other useful options are [`--force`](https://doc.dvc.org/command-reference/repro#-f) to run a stage even when DVC considers it unchanged and [`--single-item`](https://doc.dvc.org/command-reference/repro#-s) to run only the named stage without reproducing its upstream dependencies.
 
 ::: {.callout-warning}
-A full `pixi run dvc repro` currently takes several days. We only run full reproductions in parallel on the SLURM cluster using `repro.sh`; see [Running on SLURM](slurm.qmd).
+A full `pixi run dvc repro` runs all stages one by one and takes several days. Run full reproductions in parallel instead, on a workstation with `pixi run repro-local`, see [Running locally](local.qmd), or on the SLURM cluster with `repro.sh`, see [Running on SLURM](slurm.qmd).
 :::
 
 ## Pushing changes
@@ -103,4 +125,4 @@ Do this before pushing the updated `dvc.lock` file to Git, so the data hashes re
 
 Most MinIO access keys handed out are read-only.
 Reach out if you need help uploading data.
-In general we update all results after a full cluster run.
+See [Reproducing pull requests](pull-requests.qmd) for how the full runs of pull requests and of `main` are recorded.

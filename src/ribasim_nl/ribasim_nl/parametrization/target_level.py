@@ -1,16 +1,18 @@
+from collections.abc import Iterable
+
 import pandas as pd
 
 from ribasim_nl.model import Model
 
 
 def upstream_target_levels(
-    model: Model, node_ids: list[int], target_level_column: str = "meta_streefpeil"
+    model: Model, node_ids: Iterable[int], target_level_column: str = "meta_streefpeil"
 ) -> pd.Series:
     """Return upstream target_levels for a list of node_ids if these node_ids are present in model.basin.area.df
 
     Args:
         model (Model): model (Model): Ribasim model
-        node_ids (list[int]): Ribasim node_ids for connector Nodes
+        node_ids (Iterable[int]): Ribasim node_ids for connector Nodes
         target_level_column (str, optional): column in basin.area.df containing target-level. Defaults to "meta_streefpeil".
 
     Returns
@@ -41,13 +43,13 @@ def upstream_target_levels(
 
 
 def downstream_target_levels(
-    model: Model, node_ids: list[int], target_level_column: str = "meta_streefpeil"
+    model: Model, node_ids: Iterable[int], target_level_column: str = "meta_streefpeil"
 ) -> pd.Series:
     """Return downstream target_levels for a list of node_ids if these node_ids are present in model.basin.area.df
 
     Args:
         model (Model): model (Model): Ribasim model
-        node_ids (list[int]): Ribasim node_ids for connector Nodes
+        node_ids (Iterable[int]): Ribasim node_ids for connector Nodes
         target_level_column (str, optional): column in basin.area.df containing target-level. Defaults to "meta_streefpeil".
 
     Returns

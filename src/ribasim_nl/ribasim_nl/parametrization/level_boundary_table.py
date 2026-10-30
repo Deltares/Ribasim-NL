@@ -2,6 +2,8 @@
 from pathlib import Path
 
 import pandas as pd
+from pandera.typing import DataFrame
+from ribasim.schemas import LevelBoundaryStaticSchema
 
 from ribasim_nl.model import Model
 from ribasim_nl.parametrization.conversions import round_to_precision
@@ -66,4 +68,4 @@ def update_level_boundary_static(
                 level = model.basin.area.df.set_index("node_id").loc[ds_basins]["meta_streefpeil"].max()
             static_df.loc[row.Index, "level"] = level
 
-    model.level_boundary.static.df = static_df
+    model.level_boundary.static.df = DataFrame[LevelBoundaryStaticSchema](static_df)

@@ -2,7 +2,7 @@
 title: "Main watersystem"
 ---
 
-All files are in [`notebooks/rijkswaterstaat`](https://github.com/Deltares/Ribasim-NL/tree/main/notebooks/rijkswaterstaat) are numbered in order of execution.
+All files in [`pipeline/rijkswaterstaat`](https://github.com/Deltares/Ribasim-NL/tree/main/pipeline/rijkswaterstaat) are numbered in order of execution.
 
 # 1_bathymetrie.py
 In this script we merge data from Baseline (version j23_6-v1, non-public) with grids from [bathymetrie-Nederland](https://maps.rijkswaterstaat.nl/geoweb55/index.html?viewer=Bathymetrie_Nederland) to one 5x5m GeoTiff.

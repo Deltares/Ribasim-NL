@@ -90,6 +90,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import geopandas as gpd
+import matplotlib.patches as mpatches
 import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
 import numpy as np
@@ -298,7 +299,7 @@ def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | list[str] 
             [apply_for_water_authority] if isinstance(apply_for_water_authority, str) else apply_for_water_authority
         )
         koppeltabel = koppeltabel[koppeltabel["Waterschap"].isin(authorities)]
-        koppeltabel["link_id_parsed"] = koppeltabel.apply(
+        koppeltabel["link_id_parsed"] = koppeltabel.apply(  # ty: ignore[no-matching-overload]
             lambda row: ParseList(row["new_link_id"], waterbeheercode[row["Waterschap"]]),
             axis=1,
         )
@@ -307,7 +308,9 @@ def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | list[str] 
         koppeltabel["link_id_parsed"] = koppeltabel["new_link_id"].apply(ParseList, args=(None,))
 
     # Parse the geometry
-    koppeltabel["geometry_parsed"] = koppeltabel["geometry"].apply(lambda x: wkt.loads(x))
+    koppeltabel["geometry_parsed"] = koppeltabel["geometry"].apply(  # ty: ignore[no-matching-overload]
+        lambda x: wkt.loads(x)
+    )
 
     return koppeltabel
 
@@ -429,7 +432,7 @@ def ApplySpecificOperation(data_by_link: dict[int, pd.DataFrame], link: list | i
         case "optellen":
             # Tel de links bij elkaar op wanneer de specifieke bewerking hierom vraagt
             subset_links = pd.concat([data_by_link[lid] for lid in link])
-            subset_output: pd.DataFrame = subset_links.groupby("time", as_index=False)["flow_rate"].sum()
+            subset_output = cast(pd.DataFrame, subset_links.groupby("time", as_index=False)["flow_rate"].sum())
 
         case "negatief_maken":
             # Maak de meetreeks negatief
@@ -1452,7 +1455,7 @@ def CompareOutputMeasurements(
 
     # Pre-groepeer modeloutput op link_id zodat elke iteratie een O(1) dict-lookup is
     # in plaats van een O(n) scan over het volledige data DataFrame.
-    data_by_link: dict[int, pd.DataFrame] = {int(lid): df for lid, df in data.groupby("link_id")}
+    data_by_link: dict[int, pd.DataFrame] = {int(cast(int, lid)): df for lid, df in data.groupby("link_id")}
 
     # AmstelGooienVecht: group by link_id_parsed so multiple measurement series per link are summed.
     # All other water authorities: each row is its own group so measurement series stay individual.
@@ -1849,13 +1852,13 @@ def CompareOutputMeasurements(
     # Save the results in a geopackage per waterboard
     for waterschap, results in results_measurements.items():
         results_gdf = gpd.GeoDataFrame(results, geometry="geometry")
-        results_gdf.set_crs(epsg="28992", inplace=True)
+        results_gdf.set_crs(epsg=28992, inplace=True)
         results_combined.append(results_gdf)
         results_gdf.to_file(Path(model_folder) / "results" / "Validatie_resultaten.gpkg", layer=waterschap)
 
     for waterschap, results in results_measurements_decade.items():
         results_gdf = gpd.GeoDataFrame(results, geometry="geometry")
-        results_gdf.set_crs(epsg="28992", inplace=True)
+        results_gdf.set_crs(epsg=28992, inplace=True)
         results_dec_combined.append(results_gdf)
         results_gdf.to_file(Path(model_folder) / "results" / "Validatie_resultaten_dec.gpkg", layer=waterschap)
 
@@ -2054,7 +2057,12 @@ def PlotAndSave(
     )
     (meas_line,) = ax.plot(combined_df["time"], combined_df["sum"], label="Meting", color="tab:orange", linewidth=2.0)
     ax.grid()
-    ax.set_xticks(ticks=ax.get_xticks(), labels=ax.get_xticklabels(), rotation=45, fontname=font)
+    ax.set_xticks(
+        ticks=ax.get_xticks(),
+        labels=ax.get_xticklabels(),  # ty: ignore[invalid-argument-type]
+        rotation=45,
+        fontname=font,
+    )
     ax.tick_params(axis="both", labelsize=11)
     for lbl in ax.get_xticklabels() + ax.get_yticklabels():
         lbl.set_fontweight("bold")
@@ -2083,12 +2091,12 @@ def PlotAndSave(
     for lbl in ax2.get_yticklabels():
         lbl.set_fontweight("bold")
     lines = [model_line, meas_line, model_cum_line, meas_cum_line]
-    labels = [line.get_label() for line in lines]
+    labels = [cast(str, line.get_label()) for line in lines]
     ax.legend(lines, labels, prop={"family": font}, fontsize=13, loc="best")
 
     # ── Statistieken-panel rechts ─────────────────────────────────────────────
     ax_leg.add_patch(
-        plt.matplotlib.patches.FancyBboxPatch(
+        mpatches.FancyBboxPatch(
             (0.02, 0.02),
             0.96,
             0.96,
@@ -3040,7 +3048,7 @@ def _lhm41_plot_vergelijking(
     if heeft_stats:
         regels = _lhm41_stats_regels(stats_rib, stats_lhm, categorie, p95_klasse, criteria_lhm41)
         ax_leg.add_patch(
-            plt.matplotlib.patches.FancyBboxPatch(
+            mpatches.FancyBboxPatch(
                 (0.02, 0.02),
                 0.96,
                 0.96,

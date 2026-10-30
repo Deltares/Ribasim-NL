@@ -1,0 +1,281 @@
+# %%
+from typing import cast
+
+import geopandas as gpd
+import pandas as pd
+from pandera.typing.geopandas import GeoDataFrame
+from ribasim import Node
+from ribasim.geometry.area import BasinAreaSchema
+from ribasim.nodes import basin, level_boundary, outlet
+from ribasim_nl.geodataframe import assign_node_ids_by_largest_overlap
+from ribasim_nl.geometry import drop_z
+from ribasim_nl.gkw import get_data_from_gkw
+from ribasim_nl.reset_static_tables import reset_static_tables
+from ribasim_nl.sanitize_node_table import sanitize_node_table
+from shapely.geometry import LineString
+
+from ribasim_nl import CloudStorage, Model, NetworkValidator
+
+cloud = CloudStorage()
+
+authority = "BrabantseDelta"
+short_name = "wbd"
+run_model = False
+ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
+ribasim_toml = ribasim_dir / "model.toml"
+database_gpkg = ribasim_toml.with_name("database.gpkg")
+hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
+
+ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
+ribasim_areas_bewerkt_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas_bewerkt.gpkg")
+model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
+
+# %% read model and hydroobject
+model = Model.read(ribasim_toml)
+network_validator = NetworkValidator(model)
+
+hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
+
+
+ribasim_areas_gdf = gpd.read_file(ribasim_areas_gpkg, fid_as_index=True, layer="areas")
+
+# %% some stuff we'll need again
+level_data = level_boundary.Static(level=[0])
+
+basin_data = [
+    basin.Profile(level=[0.0, 1.0], area=[0.01, 1000.0]),
+    basin.Static(
+        drainage=[0.0],
+        potential_evaporation=[0.001 / 86400],
+        infiltration=[0.0],
+        precipitation=[0.005 / 86400],
+    ),
+    basin.State(level=[0]),
+]
+outlet_data = outlet.Static(flow_rate=[5.0])
+
+# HIER KOMEN ISSUES
+# %% https://github.com/Deltares/Ribasim-NL/issues/152#issuecomment-2427492528
+
+# Herstellen verbinding Schelde-Rijnverbinding met KDU02582
+model.remove_node(2288, remove_links=True)
+model.redirect_link(link_id=2450, to_node_id=955)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/152#issue-2535747701
+# Omkeren links
+link_ids = [2470, 2468, 2469, 2465, 748, 2476, 2489, 697, 2500, 2487, 2440]
+
+for link_id in link_ids:
+    model.reverse_link(link_id=link_id)
+
+# %% https://github.com/Deltares/Ribasim-NL/issues/152#issuecomment-2428677846
+# Toevoegen Donge
+basin_node = model.basin.add(
+    Node(geometry=drop_z(cast(LineString, hydroobject_gdf.at[13091, "geometry"]).boundary.geoms[0])), tables=basin_data
+)
+outlet_node = model.outlet.add(
+    Node(geometry=drop_z(cast(LineString, hydroobject_gdf.at[13136, "geometry"]).boundary.geoms[0])),
+    tables=[outlet_data],
+)
+model.redirect_link(link_id=2477, from_node_id=basin_node.node_id, to_node_id=973)
+model.link.add(basin_node, outlet_node)
+model.link.add(outlet_node, model.level_boundary[31])
+
+outlet_node = model.outlet.add(
+    Node(geometry=drop_z(cast(LineString, hydroobject_gdf.at[13088, "geometry"]).boundary.geoms[0])),
+    tables=[outlet_data],
+)
+model.redirect_link(link_id=2497, to_node_id=outlet_node.node_id)
+model.redirect_link(link_id=2498, from_node_id=outlet_node.node_id, to_node_id=basin_node.node_id)
+
+# EINDE ISSUES
+# %%
+# corrigeren knoop-topologie
+
+# ManningResistance bovenstrooms LevelBoundary naar Outlet
+for row in network_validator.link_incorrect_type_connectivity().itertuples():
+    model.update_node(row.from_node_id, "Outlet", data=[outlet_data])
+
+# Inlaten van ManningResistance naar Outlet
+for row in network_validator.link_incorrect_type_connectivity(
+    from_node_type="LevelBoundary", to_node_type="ManningResistance"
+).itertuples():
+    model.update_node(row.to_node_id, "Outlet", data=[outlet_data])
+
+
+# %%
+model.apply_edits(model_edits_gpkg, gpd.list_layers(model_edits_gpkg).name)
+# %%
+# Toeveoegen Inlaten vanuit Volkerak door omkeren links:
+# Omkeren links
+link_ids = [2451, 2137, 2484, 2229]
+for link_id in link_ids:
+    model.reverse_link(link_id=link_id)
+# %%
+
+# %%
+# remove unassigned basin area
+model.remove_unassigned_basin_area()
+
+# %% corrigeren knoop-topologie
+# ManningResistance bovenstrooms LevelBoundary naar Outlet
+for row in network_validator.link_incorrect_type_connectivity().itertuples():
+    model.update_node(row.from_node_id, "Outlet")
+
+# Inlaten van ManningResistance naar Outlet
+for row in network_validator.link_incorrect_type_connectivity(
+    from_node_type="LevelBoundary", to_node_type="ManningResistance"
+).itertuples():
+    model.update_node(row.to_node_id, "Outlet")
+
+# %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code)
+# by overlapping the Ribasim area file based on largest overlap
+# then assign Ribasim node-ID's to areas with the same area code.
+# Many nodata areas are removed by this method
+
+# Step 1: Clean geometries
+ribasim_areas_gdf["geometry"] = ribasim_areas_gdf.buffer(-0.01).buffer(0.01)
+
+# Step 2: Overlay
+assert model.basin.area.df is not None
+combined_basin_areas_gdf = assign_node_ids_by_largest_overlap(ribasim_areas_gdf, model.basin.area.df)
+combined_basin_areas_gdf.to_file(ribasim_areas_bewerkt_gpkg, driver="GPKG")
+
+# Assign to model
+model.basin.area.df = GeoDataFrame[BasinAreaSchema](combined_basin_areas_gdf)
+
+# %%
+# fixes model
+# merge basins
+model.merge_basins(node_id=2101, to_node_id=2058, are_connected=True)
+model.merge_basins(node_id=1885, to_node_id=2114, are_connected=True)
+model.merge_basins(node_id=2239, to_node_id=1617, are_connected=True)
+model.merge_basins(node_id=1850, to_node_id=2022, are_connected=True)
+model.merge_basins(node_id=2271, to_node_id=1766, are_connected=True)
+model.merge_basins(node_id=2048, to_node_id=1412, are_connected=True)
+model.merge_basins(node_id=2300, to_node_id=2198, are_connected=True)
+model.merge_basins(node_id=2001, to_node_id=2273, are_connected=True)
+model.merge_basins(node_id=1441, to_node_id=1799, are_connected=True)
+model.merge_basins(node_id=2282, to_node_id=2120, are_connected=True)
+model.merge_basins(node_id=2120, to_node_id=1928, are_connected=True)
+model.merge_basins(node_id=1928, to_node_id=1581, are_connected=True)
+model.merge_basins(node_id=1946, to_node_id=1581, are_connected=True)
+model.merge_basins(node_id=2218, to_node_id=2311, are_connected=True)
+model.merge_basins(node_id=2022, to_node_id=2311, are_connected=True)
+model.merge_basins(node_id=1452, to_node_id=2114, are_connected=True)
+model.merge_basins(node_id=2306, to_node_id=2281, are_connected=True)
+model.merge_basins(node_id=2281, to_node_id=2176, are_connected=True)
+model.merge_basins(node_id=2143, to_node_id=1617, are_connected=True)
+model.merge_basins(node_id=2286, to_node_id=2295, are_connected=True)
+model.merge_basins(node_id=2294, to_node_id=2275, are_connected=True)
+model.merge_basins(node_id=1475, to_node_id=1689, are_connected=True)
+model.merge_basins(node_id=1574, to_node_id=2276, are_connected=True)
+model.merge_basins(node_id=2276, to_node_id=1854, are_connected=True)
+model.merge_basins(node_id=1854, to_node_id=2293, are_connected=True)
+model.merge_basins(node_id=2293, to_node_id=1858, are_connected=True)
+model.merge_basins(node_id=1939, to_node_id=1445, are_connected=True)
+model.merge_basins(node_id=1403, to_node_id=1611, are_connected=True)
+model.merge_basins(node_id=1957, to_node_id=1856, are_connected=True)
+model.merge_basins(node_id=1856, to_node_id=2289, are_connected=True)
+model.merge_basins(node_id=1573, to_node_id=1720, are_connected=True)
+model.merge_basins(node_id=1412, to_node_id=1563, are_connected=True)
+model.merge_basins(node_id=1858, to_node_id=1689, are_connected=True)
+model.merge_basins(node_id=1563, to_node_id=2280, are_connected=True)
+model.merge_basins(node_id=2280, to_node_id=1802, are_connected=True)
+model.merge_basins(node_id=1740, to_node_id=2047, are_connected=True)
+model.merge_basins(node_id=2253, to_node_id=2114, are_connected=True)
+model.merge_basins(node_id=1708, to_node_id=2129, are_connected=True)
+model.merge_basins(node_id=1878, to_node_id=2214, are_connected=True)
+model.merge_basins(node_id=2250, to_node_id=1428, are_connected=True)
+model.merge_basins(node_id=1812, to_node_id=1870, are_connected=True)
+model.merge_basins(node_id=1622, to_node_id=1780, are_connected=True)
+model.merge_basins(node_id=1780, to_node_id=1694, are_connected=True)
+model.merge_basins(node_id=1616, to_node_id=1909, are_connected=True)
+model.merge_basins(node_id=2302, to_node_id=1808, are_connected=True)
+model.merge_basins(node_id=1568, to_node_id=1909, are_connected=True)
+model.merge_basins(node_id=1611, to_node_id=1543, are_connected=True)
+model.merge_basins(node_id=1543, to_node_id=2289, are_connected=True)
+model.merge_basins(node_id=2208, to_node_id=2242, are_connected=True)
+model.merge_basins(node_id=2028, to_node_id=2242, are_connected=True)
+model.merge_basins(node_id=2201, to_node_id=1820, are_connected=True)
+model.merge_basins(node_id=2002, to_node_id=2215, are_connected=True)
+model.merge_basins(node_id=2215, to_node_id=2248, are_connected=True)
+model.merge_basins(node_id=2247, to_node_id=1998, are_connected=True)
+model.remove_node(998, remove_links=True)
+# %% Reset static tables
+
+# Reset static tables
+model = reset_static_tables(model)
+
+# Sanitize node_table
+for node_id in model.tabulated_rating_curve.node.df.index:
+    model.update_node(node_id=node_id, node_type="Outlet")
+
+# ManningResistance that are duikersifonhevel to outlet
+for node_id in model.manning_resistance.node.df[
+    model.manning_resistance.node.df["meta_object_type"] == "duikersifonhevel"
+].index:
+    model.update_node(node_id=node_id, node_type="Outlet")
+
+# nodes we've added do not have category, we fill with hoofdwater
+model.node.df.loc[model.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
+
+# name-column contains the code we want to keep, meta_name the name we want to have
+df = get_data_from_gkw(layers=["sluis", "gemaal", "stuw"], authority=authority)
+df.set_index("code", inplace=True)
+names = df["naam"]
+
+sanitize_node_table(
+    model,
+    meta_columns=["meta_code_waterbeheerder", "meta_categorie"],
+    copy_map=[
+        {"node_types": ["Outlet", "Pump"], "columns": {"name": "meta_code_waterbeheerder"}},
+        {"node_types": ["Basin", "ManningResistance"], "columns": {"name": ""}},
+        {"node_types": ["FlowBoundary", "LevelBoundary"], "columns": {"meta_name": "name"}},
+    ],
+    names=names,
+)
+
+# label flow-boundaries to buitenlandse-aanvoer
+model.node.df.loc[model.flow_boundary.node.df.index, "meta_categorie"] = "buitenlandse aanvoer"
+
+
+# %%
+
+# init gestuwd voor basins, pumps en outlets
+model.node.df.loc[model.node.df["node_type"] == "Basin", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Outlet", "meta_gestuwd"] = False
+model.node.df.loc[model.node.df["node_type"] == "Pump", "meta_gestuwd"] = True
+
+#
+node_ids = model.node.df[
+    model.node.df["meta_code_waterbeheerder"].str.startswith("KST")
+    | model.node.df["meta_code_waterbeheerder"].str.startswith("GEM_")
+].index
+
+upstream_node_ids = [model.upstream_node_id(i) for i in node_ids]
+
+basin_node_ids = model.basin.node.df.index[model.basin.node.df.index.isin(upstream_node_ids)]
+model.node.df.loc[model.node.df.index.isin(basin_node_ids), "meta_gestuwd"] = True
+
+downstream_node_ids = pd.Series([model.downstream_node_id(i) for i in basin_node_ids]).explode().to_numpy()
+model.node.df.loc[
+    (model.node.df["node_type"] == "Outlet") & model.node.df.index.isin(downstream_node_ids),
+    "meta_gestuwd",
+] = True
+
+
+#  %% write model
+model.use_validation = True
+ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{short_name}.toml")
+model.write(ribasim_toml)
+model.report_basin_area()
+model.report_internal_basins()
+
+# %%#
+# Test run model
+if run_model:
+    result = model.run()
+    assert result.exit_code == 0
+
+# %%

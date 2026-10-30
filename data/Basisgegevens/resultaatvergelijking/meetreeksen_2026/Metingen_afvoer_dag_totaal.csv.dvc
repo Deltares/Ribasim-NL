@@ -1,0 +1,5 @@
+outs:
+- md5: 87edca7409b3df7642b5c92120ccd5b2
+  size: 25518595
+  hash: md5
+  path: Metingen_afvoer_dag_totaal.csv

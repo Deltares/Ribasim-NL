@@ -1,0 +1,662 @@
+import logging
+from datetime import datetime
+from pathlib import Path
+from typing import cast
+
+import numpy as np
+import pandas as pd
+from pandera.typing.geopandas import GeoDataFrame
+from pyproj import Proj, Transformer
+from ribasim.geometry.node import NodeSchema
+from shapely.geometry import LineString, Point
+
+from ribasim_nl import Model
+
+logger = logging.getLogger(__name__)
+
+# Mapping between feedback form and model names
+mapping = {
+    "Basin": "basin",
+    "TabulatedRatingCurve": "tabulated_rating_curve",
+    "Pump": "pump",
+    "Outlet": "outlet",
+    "UserDemand": "user_demand",
+    "LevelDemand": "level_demand",
+    "FlowDemand": "flow_demand",
+    "LevelBoundary": "level_boundary",
+    "FlowBoundary": "flow_boundary",
+    "LinearResistance": "linear_resistance",
+    "ManningResistance": "manning_resistance",
+    "Terminal": "terminal",
+    "DiscreteControl": "discrete_control",
+    "PidControl": "pid_control",
+}
+
+
+class RibasimFeedbackProcessor:
+    _basin_aanvoer_on: tuple[int, ...] | None = None
+    _basin_aanvoer_off: tuple[int, ...] | None = None
+    _outlet_aanvoer_on: tuple[int, ...] | None = None
+    _outlet_aanvoer_off: tuple[int, ...] | None = None
+
+    def __init__(
+        self,
+        name,
+        waterschap,
+        versie,
+        feedback_excel,
+        ribasim_toml,
+        output_folder,
+        feedback_excel_processed=None,
+        use_validation=True,
+    ) -> None:
+        self.name = name
+        self.waterschap = waterschap
+        self.versie = versie
+        self.feedback_excel = feedback_excel
+        self.ribasim_toml = ribasim_toml
+        self.output_folder = output_folder
+        self.feedback_excel_processed = feedback_excel_processed or feedback_excel.replace(".xlsx", "_processed.xlsx")
+        self.use_validation = use_validation
+
+        self.df = self.load_feedback(feedback_excel)
+        self.df_node_types = self.load_node_type(feedback_excel)
+        self.model = self.load_ribasim_model(ribasim_toml)
+        self.log_filename = Path(output_folder) / f"{waterschap}.log"
+
+    def setup_logging(self) -> None:
+        for handler in logging.root.handlers[:]:
+            logging.root.removeHandler(handler)
+
+        self.log_filename.parent.mkdir(parents=True, exist_ok=True)
+
+        logging.basicConfig(
+            filename=self.log_filename,
+            level=logging.DEBUG,
+            format="%(asctime)s - %(levelname)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+
+    @staticmethod
+    def load_feedback(feedback_excel) -> pd.DataFrame:
+        df = pd.read_excel(feedback_excel, sheet_name="Feedback_Formulier", skiprows=7)
+        df = df[df["Actie"].notna()]
+        return df
+
+    @staticmethod
+    def load_node_type(feedback_excel) -> pd.DataFrame:
+        df = pd.read_excel(feedback_excel, sheet_name="Node_Data")
+        df = df[df["node_id"].notna()]
+        df = df.set_index("node_id")
+        return df
+
+    @staticmethod
+    def load_ribasim_model(ribasim_toml) -> Model:
+        model = Model.read(ribasim_toml)
+        return model
+
+    def get_current_max_nodeid(self) -> int:
+        node_df = self.model.node.df
+        if node_df is None or node_df.index.empty:
+            raise ValueError("No node ids found")
+        return int(node_df.index.max())
+
+    def write_ribasim_model(self) -> None:
+        outputdir = Path(self.output_folder)
+        self.model.write(outputdir / "ribasim.toml")
+
+    def update_dataframe_with_new_node_ids(self, node_id_map) -> pd.DataFrame:
+        for old_id, new_id in node_id_map.items():
+            self.df.replace(old_id, new_id, inplace=True)
+        return self.df
+
+    def process_model(self) -> None:
+        self.setup_logging()
+        node_id_map = {}
+
+        try:
+            for index, row in self.df.iterrows():
+                logger.info(f"Processing row: {cast(int, index) + 7}")
+                try:
+                    if row["Actie"] == "Verwijderen":
+                        self.remove_node(row)
+                    elif row["Actie"] == "Toevoegen":
+                        new_node_id = self.add_node(row)
+                        if new_node_id is not None:
+                            node_id_map[int(row["Node ID"])] = new_node_id
+                            self.df.at[index, "Verwerkt"] = new_node_id
+                    elif row["Actie"] == "Aanpassen":
+                        if row["Verbinding"] == "Node":
+                            new_node_id = self.adjust_node(row)
+                            if new_node_id is not None:
+                                node_id_map[int(row["Node ID.2"])] = new_node_id
+                                self.df.at[index, "Verwerkt"] = new_node_id
+                        elif row["Verbinding"] in ("Edge", "Link") and row["Aanpassing"] == "Stroomrichting Omdraaien":
+                            self.adjust_links(row, node_id_map)
+                except Exception as e:
+                    logger.error(f"Error processing {row['Actie']}, {row['Verbinding']}, at index {index}: {e}")
+        finally:
+            for handler in logging.root.handlers[:]:
+                handler.close()
+                logging.root.removeHandler(handler)
+
+        print("Processed all actions")
+
+    def remove_node(self, row):
+        assert self.model.node.df is not None
+        assert self.model.link.df is not None
+        try:
+            key = row["Node Type"]
+            key = mapping[key]
+            node_id = int(row["Node ID"])
+            logger.info(f"Node ID: {node_id}")
+            value = getattr(self.model, key, None)
+
+            # Remove the Node
+            if value is not None:
+                # Remove from global node table
+                self.model.node.df = self.model.node.df[self.model.node.df.index != node_id]
+                # Remove from type-specific tables
+                if hasattr(value, "__dict__"):
+                    for sub_value in value.__dict__.values():
+                        if (
+                            hasattr(sub_value, "df")
+                            and sub_value.df is not None
+                            and not sub_value.df.empty
+                            and "node_id" in sub_value.df.columns
+                        ):
+                            filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
+                            sub_value.df = filtered_df
+
+            # Remove the Links
+            rows_to_remove = self.model.link.df[
+                (self.model.link.df["from_node_id"] == node_id) | (self.model.link.df["to_node_id"] == node_id)
+            ].index
+            self.model.link.df = self.model.link.df.drop(rows_to_remove)
+
+            # Log status
+            logger.info(f"Successfully removed node with Node ID: {node_id}, Action: Verwijderen")
+
+            return rows_to_remove
+
+        except Exception as e:
+            logger.error(f"Error removing node {row['Node ID']}: {e}")
+
+    def add_node(self, row) -> None:
+        assert self.model.node.df is not None
+        try:
+            key = mapping.get(row["Node Type.1"])
+            if key is None:
+                raise ValueError(f"Unknown node type {row['Node Type.1']}")
+            max_id = self.get_current_max_nodeid()
+            node_id = max_id + 1
+            logger.info(f"Node ID: {node_id}")
+            value = getattr(self.model, key, None)
+
+            # Add the Node
+            if value is not None:
+                # Add to global node table
+                node_type_name = row["Node Type.1"]
+                x_coord = row["Coordinaat X"]
+                y_coord = row["Coordinaat Y"]
+                df_node = self.model.node.df
+                template_row = df_node.iloc[-1:].copy()
+                template_row.index = pd.Index([node_id], name="node_id")
+                template_row["node_type"] = node_type_name
+                template_row["geometry"] = [Point(x_coord, y_coord)]  # ty: ignore[invalid-assignment]
+                for col in template_row.columns:
+                    if col.startswith("meta_"):
+                        template_row[col] = np.nan
+                template_row["meta_node_id"] = node_id
+                self.model.node.df = GeoDataFrame[NodeSchema](pd.concat([df_node, template_row]))
+
+                # Add to type-specific tables
+                if hasattr(value, "__dict__"):
+                    for sub_key, sub_value in value.__dict__.items():
+                        if sub_key == "time" or sub_key == "subgrid":
+                            continue
+                        else:
+                            if sub_value is None or not hasattr(sub_value, "df") or sub_value.df is None:
+                                logger.warning(f"Sub value for key '{sub_key}' is None or has no pd.DataFrame")
+                                continue
+
+                            if sub_key == "static":
+                                df_value_static = sub_value.df.copy()
+                                last_row = df_value_static.iloc[-1].copy()
+
+                                last_row["node_id"] = node_id
+                                if "geometry" in last_row:
+                                    x_coord = row["Coordinaat X"]
+                                    y_coord = row["Coordinaat Y"]
+                                    last_row["geometry"] = Point(x_coord, y_coord)
+
+                                for col in last_row.index:
+                                    if col.startswith("meta_"):
+                                        last_row[col] = np.nan
+
+                                new_row_df = pd.DataFrame([last_row])
+                                new_row_df["meta_node_id"] = node_id
+                                new_row_df.index.name = "fid"
+
+                                # drop unused columns to avoid a warning
+                                df_value_static = df_value_static.dropna(axis=1, how="all")
+                                new_row_df = new_row_df.dropna(axis=1, how="all")
+
+                                df_value_static = pd.concat([df_value_static, new_row_df], ignore_index=True)
+                                df_value_static.index.name = "fid"
+                                sub_value.df = df_value_static.copy()
+
+                # Add the Links
+                if key in ["level_boundary", "flow_boundary", "terminal"]:
+                    new_node = getattr(self.model, key)[node_id]
+
+                    if pd.notna(row["Node ID A"]):
+                        node_type_a = self.df_node_types.loc[int(row["Node ID A"])].node_type
+                        node_type_a = mapping[str(node_type_a)]
+                        node_a = getattr(self.model, node_type_a)[int(row["Node ID A"])]
+                        self.model.link.add(new_node, node_a)
+                    else:
+                        logger.warning(f"'Node ID A' is NaN for node type {key} at index {row.name}")
+                else:
+                    if pd.isna(row["Node ID A"]) or pd.isna(row["Node ID B"]):
+                        logger.error(f"'Node ID A' or 'Node ID B' is NaN for node type {key} at index {row.name}")
+                        return None
+                    new_node = getattr(self.model, key)[node_id]
+                    node_type_a = self.df_node_types.loc[int(row["Node ID A"])].node_type
+                    node_type_b = self.df_node_types.loc[int(row["Node ID B"])].node_type
+                    node_type_a = mapping[str(node_type_a)]
+                    node_type_b = mapping[str(node_type_b)]
+                    node_a = getattr(self.model, node_type_a)[int(row["Node ID A"])]
+                    node_b = getattr(self.model, node_type_b)[int(row["Node ID B"])]
+                    self.model.link.add(node_a, new_node)
+                    self.model.link.add(new_node, node_b)
+
+                new_node_type_row = pd.DataFrame(
+                    [
+                        {
+                            "fid": np.nan,
+                            "name": np.nan,
+                            "node_type": key,
+                            "subnetwork_id": np.nan,
+                        }
+                    ],
+                    index=[node_id],
+                )
+
+                self.df_node_types = pd.concat([self.df_node_types, new_node_type_row])
+
+                logger.info(f"Successfully added node with Node ID: {node_id}, Action: Toevoegen")
+
+        except Exception as e:
+            logger.error(f"Error adding node at row {row.name}: {e}")
+
+    def adjust_node(self, row) -> int | None:
+        assert self.model.node.df is not None
+        assert self.model.link.df is not None
+        try:
+            # Get the old node type and id
+            key = self.df_node_types.loc[int(row["Node ID.2"])].node_type
+            key = mapping[str(key)]
+            node_id = int(row["Node ID.2"])
+            logger.info(f"Node ID: {node_id}")
+            # node_id_old = node_id
+            value = getattr(self.model, key, None)
+
+            # Get old geometry and remove Node
+            if value is not None:
+                # Get geometry from and remove from global node table
+                node_row = self.model.node.df[self.model.node.df.index == node_id]
+                if not node_row.empty and "geometry" in node_row.columns:
+                    geometry_old = node_row.geometry.iloc[0]
+                self.model.node.df = self.model.node.df[self.model.node.df.index != node_id]
+                # Remove from type-specific tables
+                if hasattr(value, "__dict__"):
+                    for sub_key, sub_value in value.__dict__.items():
+                        if sub_key == "time" or sub_key == "subgrid":
+                            continue
+                        else:
+                            if sub_value is None or not hasattr(sub_value, "df") or sub_value.df is None:
+                                logger.warning(f"Sub value for key '{sub_key}' is None or has no pd.DataFrame")
+                                continue
+
+                        if "node_id" in sub_value.df.columns:
+                            filtered_df = sub_value.df[sub_value.df["node_id"] != node_id]
+                            sub_value.df = filtered_df
+
+            new_node_type_name = row["Nieuw Node Type"]
+            key = mapping.get(new_node_type_name)
+            if key is None:
+                raise ValueError(f"Unknown node type {new_node_type_name}")
+            value = getattr(self.model, key, None)
+
+            if value is not None:
+                # Add to global node table with new type
+                df_node = self.model.node.df
+                template_row = df_node.iloc[-1:].copy()
+                template_row.index = pd.Index([node_id], name="node_id")
+                template_row["node_type"] = new_node_type_name
+                template_row["geometry"] = [geometry_old if "geometry_old" in locals() else None]
+                for col in template_row.columns:
+                    if col.startswith("meta_"):
+                        template_row[col] = np.nan
+                template_row["meta_node_id"] = node_id
+                self.model.node.df = GeoDataFrame[NodeSchema](pd.concat([df_node, template_row]))
+
+                # Add to type-specific tables
+                if hasattr(value, "__dict__"):
+                    for sub_key, sub_value in value.__dict__.items():
+                        if sub_key == "time" or sub_key == "subgrid":
+                            continue
+                        else:
+                            if sub_value is None or not hasattr(sub_value, "df") or sub_value.df is None:
+                                logger.warning(f"Sub value for key '{sub_key}' is None or has no pd.DataFrame")
+                                continue
+
+                            if sub_key == "static":
+                                df_value_static = sub_value.df.copy()
+                                last_row = df_value_static.iloc[-1].copy()
+
+                                last_row["node_id"] = node_id
+                                if "geometry" in last_row:
+                                    last_row["geometry"] = geometry_old if "geometry_old" in locals() else None
+
+                                for col in last_row.index:
+                                    if col.startswith("meta_"):
+                                        last_row[col] = np.nan
+
+                                new_row_df = pd.DataFrame([last_row])
+                                new_row_df["meta_node_id"] = node_id
+                                new_row_df.index.name = "fid"
+
+                                # drop unused columns to avoid a warning
+                                df_value_static = df_value_static.dropna(axis=1, how="all")
+                                new_row_df = new_row_df.dropna(axis=1, how="all")
+
+                                df_value_static = pd.concat([df_value_static, new_row_df], ignore_index=True)
+                                df_value_static.index.name = "fid"
+                                sub_value.df = df_value_static.copy()
+
+            # Adjust links meta_node_type
+            rows_to_update = self.model.link.df[
+                (self.model.link.df["from_node_id"] == node_id) | (self.model.link.df["to_node_id"] == node_id)
+            ]
+
+            for idx, link_row in rows_to_update.iterrows():
+                if link_row["to_node_id"] == node_id:
+                    # Update the meta_node_type for the to_node
+                    self.model.link.df.at[idx, "meta_to_node_type"] = key
+
+                if link_row["from_node_id"] == node_id:
+                    # Update the meta_node_type for the from_node
+                    self.model.link.df.at[idx, "meta_from_node_type"] = key
+
+            logger.info(f"Successfully updated meta_node_type for links related to Node ID: {node_id}")
+
+            logger.info(f"Successfully adjusted node with old Node ID: {node_id}, Action: Aanpassen")
+            return node_id
+
+        except Exception:
+            logger.error(f"Error adjusting node at row: {row}", exc_info=True)
+            return None
+
+    def adjust_links(self, row, node_id_map) -> None:
+        assert self.model.link.df is not None
+        try:
+            node_a = int(node_id_map.get(row["Node ID A.1"], row["Node ID A.1"]))
+            node_b = int(node_id_map.get(row["Node ID B.1"], row["Node ID B.1"]))
+
+            df_row_a_b = self.model.link.df[
+                (self.model.link.df["from_node_id"] == node_a) & (self.model.link.df["to_node_id"] == node_b)
+            ]
+            df_row_b_a = self.model.link.df[
+                (self.model.link.df["from_node_id"] == node_b) & (self.model.link.df["to_node_id"] == node_a)
+            ]
+
+            if df_row_a_b.empty and df_row_b_a.empty:
+                logger.error(f"Link not found between Node A: {node_a} and Node B: {node_b} at index {row}")
+                return
+            df_row = df_row_a_b if not df_row_a_b.empty else df_row_b_a
+            self.model.link.df.loc[df_row.index, ["from_node_id", "to_node_id"]] = self.model.link.df.loc[
+                df_row.index, ["to_node_id", "from_node_id"]
+            ].to_numpy()
+            if "geometry" in df_row.columns:
+                row_index = df_row.index[0]
+                line = self.model.link.df.loc[row_index].geometry
+                reversed_coords = list(line.coords)[::-1]
+                reversed_line = LineString(reversed_coords)
+                self.model.link.df.at[row_index, "geometry"] = reversed_line  # ty: ignore[invalid-assignment]
+            print(f"Swapped link direction between Node A: {node_a} and Node B: {node_b}")
+            logger.info(
+                f"Successfully swapped link direction between Node A: {node_a} and Node B: {node_b}, "
+                f"Action: Aanpassen, Adjustment: Stroomrichting Omdraaien"
+            )
+        except Exception as e:
+            logger.error(f"Error adjusting link: {e}")
+
+    def special_preprocessing_for_hollandse_delta(self) -> None:
+        p1 = Proj("epsg:4326")  # WGS84
+        p2 = Proj("epsg:28992")  # Rijksdriehoekstelsel
+        transformer = Transformer.from_proj(p1, p2)
+
+        def clean_coordinate(coord_str) -> float | None:
+            if pd.isna(coord_str):
+                return None
+            coord_str = str(coord_str).replace("°E", "").replace("°N", "").replace(",", ".")
+            return float(coord_str)
+
+        for index, row in self.df.iterrows():
+            if pd.notna(row["Coordinaat X"]) and pd.notna(row["Coordinaat Y"]):
+                lon_str = row["Coordinaat X"]
+                lat_str = row["Coordinaat Y"]
+                lon = clean_coordinate(lon_str)
+                lat = clean_coordinate(lat_str)
+                x, y = transformer.transform(lon, lat)
+                self.df.at[index, "Coordinaat X"] = x
+                self.df.at[index, "Coordinaat Y"] = y
+
+    def save_feedback(self) -> None:
+        self.df["Naam.1"] = self.name
+        self.df["Datum.1"] = datetime.now().strftime("%d-%m-%Y")
+        self.df["Versie"] = self.versie
+        self.df.to_excel(self.feedback_excel_processed, index=False)
+
+    def update_target_levels(self) -> None:
+        # read sheet with the updated the target levels
+        df_TL = pd.read_excel(self.feedback_excel, sheet_name="Streefpeilen", header=0)
+        df_TL = df_TL.sort_values(by=["Basin node_id"]).reset_index(drop=True)
+        if len(df_TL) > 0:  # if the sheet is filled in, proceed
+            assert self.model.basin.node is not None and self.model.basin.node.df is not None
+            assert self.model.basin.state.df is not None
+            assert self.model.basin.area.df is not None
+            # print warning if there are non existing basins
+            existing_basins = self.model.basin.node.df.index.to_numpy()
+            non_existing_basins = df_TL.loc[~df_TL["Basin node_id"].isin(existing_basins)]
+            if len(non_existing_basins) > 0:
+                print("Warning! Following basins do not exist:\n", non_existing_basins, "\n")
+
+            # update streefpeilen in the .state table
+            self.model.basin.state.df.loc[
+                self.model.basin.state.df.node_id.isin(df_TL["Basin node_id"].to_numpy()), "level"
+            ] = df_TL.Streefpeil.astype(float).to_numpy()
+
+            # update streefpeilen in the .area table
+            self.model.basin.area.df["meta_streefpeil"] = self.model.basin.area.df["meta_streefpeil"].astype(object)
+            self.model.basin.area.df.loc[
+                self.model.basin.area.df.node_id.isin(df_TL["Basin node_id"].to_numpy()), "meta_streefpeil"
+            ] = df_TL.Streefpeil.astype(float).to_numpy()
+            print("The target levels (streefpeilen) have been updated.")
+
+    def functie_gemalen(self) -> None:
+        # read sheet with the updated the pump functions
+        try:
+            df_FG = pd.read_excel(self.feedback_excel, sheet_name="Functie gemalen", header=0, usecols="A:B")
+        except ValueError:
+            df_FG = pd.read_excel(self.feedback_excel, sheet_name="Aan_afvoer_gemalen", header=0, usecols="A:B")
+
+        if len(df_FG) > 0:  # if the sheet is filled in, proceed
+            assert self.model.pump.node is not None and self.model.pump.node.df is not None
+            assert self.model.pump.static.df is not None
+            # print warning if there are non existing pumps
+            existing_pumps = self.model.pump.node.df.index.to_numpy()
+            non_existing_pumps = df_FG.loc[~df_FG["Pump node_id"].isin(existing_pumps)]
+            if len(non_existing_pumps) > 0:
+                print("Warning! Following pumps do not exist:\n", non_existing_pumps, "\n")
+
+            # determine the function provided in the feedback form
+            aanvoer_pumps = df_FG.loc[df_FG["Aanvoer / afvoer?"].str.lower() == "aanvoer"]
+            afvoer_pumps = df_FG.loc[df_FG["Aanvoer / afvoer?"].str.lower() == "afvoer"]
+            allround_pumps = df_FG.loc[df_FG["Aanvoer / afvoer?"].str.lower() == "aanvoer & afvoer"]
+
+            # extract pump IDs and make them unique
+            aanvoer_pump_ids = np.unique(aanvoer_pumps["Pump node_id"].to_numpy(dtype=int))
+            afvoer_pump_ids = np.unique(afvoer_pumps["Pump node_id"].to_numpy(dtype=int))
+            allround_pump_ids = np.unique(allround_pumps["Pump node_id"].to_numpy(dtype=int))
+
+            # clean up pump-IDs
+            double_ids = []
+            for i in aanvoer_pump_ids:
+                if i in afvoer_pump_ids:
+                    allround_pump_ids = np.append(allround_pump_ids, i)
+                    double_ids.append(i)
+            for i in double_ids:
+                aanvoer_pump_ids = np.delete(aanvoer_pump_ids, aanvoer_pump_ids == i)
+                afvoer_pump_ids = np.delete(afvoer_pump_ids, afvoer_pump_ids == i)
+
+            # change the meta_func_* columns
+            pump_ids = aanvoer_pump_ids, afvoer_pump_ids, allround_pump_ids
+            booleans = [0, 1], [1, 0], [1, 1]
+            for p, b in zip(pump_ids, booleans, strict=True):
+                self.model.pump.static.df.loc[
+                    self.model.pump.static.df["node_id"].isin(p), ["meta_func_afvoer", "meta_func_aanvoer"]
+                ] = b
+
+            # logging statement
+            print("The function of the pumps have been updated.")
+
+    def clean_tables(self) -> None:
+        """Clean tables after processing feedback and before writing the model."""
+
+    def run(self) -> None:
+        self.process_model()
+        self.save_feedback()
+        if not self.use_validation:
+            self.model.use_validation = self.use_validation
+
+        self.update_target_levels()
+        self.functie_gemalen()
+        if self.use_validation:
+            self.clean_tables()
+        self.write_ribasim_model()
+
+    def get_basin_aanvoer_corrections(self) -> None:
+        """Extract corrections on basin 'aanvoer'-flagging from the feedback forms."""
+        sheet_name = "Aan_afvoer_basins"
+        try:
+            df = pd.read_excel(self.feedback_excel, sheet_name=sheet_name, usecols="A:B")
+        except ValueError:
+            logger.info(f'No "{sheet_name}"-worksheet in "{self.feedback_excel}": Skipped corrections.')
+            self._basin_aanvoer_on = ()
+            self._basin_aanvoer_off = ()
+        else:
+            df.dropna(axis=0, inplace=True)
+            if len(df) == 0:
+                aanvoer_ids: list[int] = []
+                afvoer_ids: list[int] = []
+            else:
+                aanvoer_ids = (
+                    df.loc[df["Aanvoer / afvoer?"].str.lower() == "aanvoer", "Basin ID"].to_numpy(dtype=int).tolist()
+                )
+                afvoer_ids = (
+                    df.loc[df["Aanvoer / afvoer?"].str.lower() == "afvoer", "Basin ID"].to_numpy(dtype=int).tolist()
+                )
+
+            self._basin_aanvoer_on = tuple(aanvoer_ids)
+            self._basin_aanvoer_off = tuple(afvoer_ids)
+        finally:
+            logger.warning(
+                f'Catch for missing sheet-name "{sheet_name}" in "{self.feedback_excel}" will be deprecated: '
+                f'Make sure that feedback forms will have a sheet-name titled "{sheet_name}".'
+            )
+
+    def get_outlet_aanvoer_corrections(self) -> None:
+        """Extract corrections on outlet 'aanvoer'-flagging from the feedback forms."""
+        # TODO: Remove this 'missing worksheet'-catch in the future
+        sheet_name = "Aan_afvoer_outlets"
+        try:
+            df = pd.read_excel(self.feedback_excel, sheet_name=sheet_name, usecols="A:B")
+        except ValueError:
+            logger.info(f'No "{sheet_name}"-worksheet in "{self.feedback_excel}": Skipped corrections.')
+            self._outlet_aanvoer_on = ()
+            self._outlet_aanvoer_off = ()
+        else:
+            df.dropna(axis=0, inplace=True)
+            if len(df) == 0:
+                aanvoer_ids: list[int] = []
+                afvoer_ids: list[int] = []
+            else:
+                aanvoer_ids = (
+                    df.loc[df["Aanvoer / afvoer?"].str.lower() == "aanvoer", "Outlet node_id"]
+                    .to_numpy(dtype=int)
+                    .tolist()
+                )
+                afvoer_ids = (
+                    df.loc[df["Aanvoer / afvoer?"].str.lower() == "afvoer", "Outlet node_id"]
+                    .to_numpy(dtype=int)
+                    .tolist()
+                )
+
+            self._outlet_aanvoer_on = tuple(aanvoer_ids)
+            self._outlet_aanvoer_off = tuple(afvoer_ids)
+        finally:
+            logger.warning(
+                f'Catch for missing sheet-name "{sheet_name}" in "{self.feedback_excel}" will be deprecated: '
+                f'Make sure that feedback forms will have a sheet-name titled "{sheet_name}".'
+            )
+
+    @property
+    def basin_aanvoer_on(self) -> tuple[int, ...] | None:
+        """Basin 'aanvoer'-flagging: True
+
+        :return: basin-IDs
+        :rtype: tuple
+        """
+        if self._basin_aanvoer_on is None:
+            self.get_basin_aanvoer_corrections()
+
+        return self._basin_aanvoer_on
+
+    @property
+    def basin_aanvoer_off(self) -> tuple[int, ...] | None:
+        """Basin 'aanvoer'-flagging: False
+
+        :return: basin-IDs
+        :rtype: tuple
+        """
+        if self._basin_aanvoer_off is None:
+            self.get_basin_aanvoer_corrections()
+
+        return self._basin_aanvoer_off
+
+    @property
+    def outlet_aanvoer_on(self) -> tuple[int, ...] | None:
+        """Oulet 'aanvoer'-flagging: True
+
+        :return: outlet-IDs
+        :rtype: tuple
+        """
+        if self._outlet_aanvoer_on is None:
+            self.get_outlet_aanvoer_corrections()
+
+        return self._outlet_aanvoer_on
+
+    @property
+    def outlet_aanvoer_off(self) -> tuple[int, ...] | None:
+        """Outlet 'aanvoer'-flagging: False
+
+        :return: outlet-IDs
+        :rtype: tuple
+        """
+        if self._outlet_aanvoer_off is None:
+            self.get_outlet_aanvoer_corrections()
+
+        return self._outlet_aanvoer_off

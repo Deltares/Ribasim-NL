@@ -1,0 +1,274 @@
+from pathlib import Path
+from typing import Any, cast
+
+import geopandas as gpd
+import numpy as np
+import pandas as pd
+from shapely.geometry import Point
+from shapely.geometry.base import BaseGeometry
+
+from ribasim_nl import CloudStorage, Model
+from ribasim_nl.control import is_off_state, off_states
+
+
+class AssignMetaData:
+    def __init__(
+        self,
+        authority: str,
+        model_name: Model | Path | str,
+        param_name: str,
+        *,
+        sync: bool = True,
+    ) -> None:
+        # Initialize cloudstorage
+        self.cloud = CloudStorage()
+        self.sync = sync
+
+        # Model
+        if isinstance(model_name, Model):
+            assert model_name.filepath is not None
+            self.model_dir = model_name.filepath.parent
+            self.model = model_name
+        else:
+            self.model_dir = self.cloud.joinpath(authority, "modellen", model_name)
+            self.model = self._get_model_from_cloud()
+
+        # Param file
+        self.param_file = self.cloud.joinpath(authority, "verwerkt/Parametrisatie_data", param_name)
+
+    def _get_model_from_cloud(self) -> Model:
+        if self.sync:
+            self.cloud.synchronize(filepaths=[self.model_dir])
+        model = Model.read(self.model_dir / "ribasim.toml")
+
+        return model
+
+    def get_paramfile_from_cloud(
+        self,
+        layer: str,
+    ) -> gpd.GeoDataFrame:
+        # Load the paramfile
+        if self.sync:
+            self.cloud.synchronize(filepaths=[self.param_file])
+        df_object = gpd.read_file(self.param_file, layer=layer)
+        if not df_object.index.is_unique:
+            raise IndexError(f"The index of {layer=} is not unique")
+
+        return df_object
+
+    def _na_or_empty(self, series: pd.Series) -> pd.Series:
+        return pd.isna(series) | (series == "")
+
+    def _series_assigned(self, series: pd.Series) -> bool:
+        return not self._na_or_empty(series).all()
+
+    def _add_unassigned_columns(
+        self,
+        ribasim_type: str,
+        mapper: dict[str, dict[str, list[str]]],
+    ) -> dict[tuple[str, str, str], pd.Series]:
+        # Add columns which do not exist yet
+        restore_mapper = {}
+        rtype = getattr(self.model, ribasim_type)
+        for colmap in mapper.values():
+            for ribasim_attr, ribasim_cols in colmap.items():
+                if ribasim_attr == "node":
+                    # Use global node table
+                    df_ribasim = self.model.node.df
+                    assert df_ribasim is not None
+
+                    type_name = type(rtype).__name__
+                    type_mask = df_ribasim["node_type"] == type_name
+                else:
+                    df_ribasim = getattr(rtype, ribasim_attr).df
+                    type_mask = pd.Series(True, index=df_ribasim.index)
+                for col in ribasim_cols:
+                    if col in df_ribasim.columns and self._series_assigned(df_ribasim.loc[type_mask, col]):
+                        restore_mapper[(ribasim_type, ribasim_attr, col)] = df_ribasim.loc[type_mask, col].copy()
+                        df_ribasim.loc[type_mask, col] = pd.NA
+                    elif col not in df_ribasim.columns:
+                        df_ribasim[col] = pd.NA
+
+        return restore_mapper
+
+    def _restore_org_vals(self, restore_mapper: dict[tuple[str, str, str], pd.Series]) -> None:
+        # Restore original values for those that are still N
+        for (ribasim_type, ribasim_attr, col), org_vals in restore_mapper.items():
+            if ribasim_attr == "node":
+                # Use global node table
+                df_ribasim = self.model.node.df
+                assert df_ribasim is not None
+                mrows = self._na_or_empty(df_ribasim.loc[org_vals.index, col])
+                df_ribasim.loc[org_vals.index[mrows], col] = org_vals[mrows]
+            else:
+                df_ribasim = getattr(getattr(self.model, ribasim_type), ribasim_attr).df
+                mrows = self._na_or_empty(df_ribasim[col])
+                df_ribasim.loc[mrows, col] = org_vals.loc[mrows]
+
+    def _get_matching_rows(
+        self,
+        ribasim_type: str,
+        ribasim_attr: str,
+        node_id: list[int],
+    ) -> tuple[pd.DataFrame, np.ndarray]:
+        if ribasim_attr == "node":
+            # Use global node table
+            df_ribasim = self.model.node.df
+            assert df_ribasim is not None
+            matching_rows = df_ribasim.index.isin(node_id)
+        else:
+            df_ribasim = getattr(getattr(self.model, ribasim_type), ribasim_attr).df
+            matching_rows = df_ribasim.node_id.isin(node_id).to_numpy()
+
+        assert df_ribasim is not None
+        return df_ribasim, matching_rows
+
+    def _nodeid_is_assigned(
+        self,
+        ribasim_type: str,
+        mapper: dict[str, dict[str, list[str]]],
+        node_id: int,
+    ) -> bool:
+        # Get a reference to the ribasim dataframe for the first mapped column
+        colmap = next(iter(mapper.values()))
+        ribasim_attr, ribasim_cols = next(iter(colmap.items()))
+        df_ribasim = getattr(getattr(self.model, ribasim_type), ribasim_attr).df
+
+        # Get a subset for the matching node_id
+        df_ribasim, mrows = self._get_matching_rows(ribasim_type, ribasim_attr, [node_id])
+        dfsub = df_ribasim[mrows]
+
+        # Check for all columns if all values have not been assigned
+        assigned = False
+        for col in ribasim_cols:
+            if self._series_assigned(dfsub[col]):
+                assigned = True
+
+        return assigned
+
+    def add_meta_to_pumps(
+        self,
+        layer: str,
+        mapper: dict[str, dict[str, list[str]]],
+        max_distance: float = 100,
+        factor_flowrate: float = 1.0,
+    ) -> None:
+        """Assign pump metadata, keeping off-state flow zero independently of the measured capacity.
+
+        Map capacity to both ``flow_rate`` and ``max_flow_rate``: only the former
+        represents the control command and must stay zero in off states.
+        """
+        # get gemaal information
+        df_gemaal = self.get_paramfile_from_cloud(layer)
+
+        # control states that switch a pump off keep their flow_rate of 0
+        assert self.model.pump.static.df is not None
+        assert self.model.pump.node is not None and self.model.pump.node.df is not None
+        pump_off = off_states(self.model.pump.static.df)
+
+        # Add columns which do not exist yet
+        restore_cols = self._add_unassigned_columns("pump", mapper)
+
+        # Add matching unassigned pumps to the ribasim model
+        visited: dict[int, Any] = {}
+        for row in self.model.pump.node.df.itertuples():
+            # A pump can already be assigned because there is logic in place
+            # that checks for multiple overlapping ribasim pumps.
+            # Check if this pump has been assigned for the first mapper.
+            if self._nodeid_is_assigned("pump", mapper, cast(int, row.Index)):
+                continue
+
+            # Check if there are multiple overlapping pumps (within 1cm)
+            geometry = cast(Point, row.geometry)
+            rows = self.model.pump.node.df.sindex.query(geometry.buffer(0.01), predicate="intersects")
+            node_id = self.model.pump.node.df.index[rows].tolist()
+            node_id_str = ", ".join(map(str, node_id))
+            if row.Index not in node_id:
+                raise ValueError("Unexpected error: intersects does not return the buffered node_id")
+            if len(rows) > 1:
+                print(f"  - Multiple overlapping ribasim pumps for node_id={node_id_str}")
+
+            # Only use gemalen which have not been assigned yet
+            dfa = df_gemaal[~df_gemaal.index.isin(list(visited.keys()))].copy()
+
+            # Find nearest gemaal
+            idx = dfa.sindex.nearest(geometry, max_distance=max_distance, return_all=True)
+            # sorted, since the order of equidistant matches differs between platforms
+            dfa = df_gemaal.iloc[np.sort(idx[1, :])].copy()
+
+            if len(dfa) == 0:
+                print(f"  - Warning: No matching pump found for node_id={node_id_str}")
+                continue
+            elif len(dfa) > 1:
+                print(f"  - Warning: Multiple matching pumps found for node_id={node_id_str}, using the first")
+
+            # Assign metadata
+            matching_row = dfa.iloc[0]
+            for param_col, colmap in mapper.items():
+                for ribasim_attr, ribasim_cols in colmap.items():
+                    df_ribasim, mrows = self._get_matching_rows("pump", ribasim_attr, node_id)
+                    for ribasim_col in ribasim_cols:
+                        param_val = matching_row[param_col]
+                        col_rows = mrows
+                        if "flow_rate" in ribasim_col:
+                            param_val = pd.to_numeric(param_val) * factor_flowrate
+                            if not param_val > 0:  # unknown capacity, keep the original values
+                                continue
+                            if ribasim_attr == "static" and ribasim_col == "flow_rate":
+                                col_rows = mrows & ~is_off_state(df_ribasim, pump_off).to_numpy()
+                        df_ribasim.loc[col_rows, ribasim_col] = param_val
+
+        # Restore original values for those that are still NA
+        self._restore_org_vals(restore_cols)
+
+        return None
+
+    def add_meta_to_basins(
+        self,
+        layer: str,
+        mapper: dict[str, dict[str, list[str]]],
+        min_overlap: float = 0.95,
+    ) -> None:
+        # get area information
+        df_area = self.get_paramfile_from_cloud(layer)
+
+        # Add columns which do not exist yet
+        restore_cols = self._add_unassigned_columns("basin", mapper)
+
+        # Add the matching areas to the ribasim model
+        assert self.model.basin.area.df is not None
+        for row in self.model.basin.area.df.itertuples():
+            if hasattr(row, "meta_node_id") and row.node_id != row.meta_node_id:
+                # Skip "bergend"
+                continue
+
+            # Find overlapping area(s)
+            geometry = cast(BaseGeometry, row.geometry)
+            idxs = np.sort(df_area.sindex.query(geometry, predicate="intersects"))
+            dfa = df_area.iloc[idxs].copy()
+
+            # Filter out insufficient overlapping areas and order by
+            # overlap area and total area.
+            dfa["i_area"] = dfa.geometry.intersection(geometry).area
+            dfa["t_area"] = dfa.geometry.area
+            dfa["f_area"] = dfa["i_area"] / dfa["t_area"]
+            dfa = dfa[dfa.f_area >= min_overlap]
+            dfa = dfa.sort_values(["i_area", "t_area"], ascending=False, kind="stable")
+
+            if len(dfa) == 0:
+                print(f"  - Warning: Found no matching area for basin #{row.node_id}")
+                continue
+            elif len(dfa) > 1:
+                print(f"  - Warning: Multiple overlapping areas for basin #{row.node_id}, using the largest overlap")
+
+            # Assign metadata
+            matching_row = dfa.iloc[0]
+            for param_col, colmap in mapper.items():
+                for ribasim_attr, ribasim_cols in colmap.items():
+                    df_ribasim, mrows = self._get_matching_rows("basin", ribasim_attr, [cast(int, row.node_id)])
+                    df_ribasim.loc[mrows, ribasim_cols] = matching_row[param_col]
+
+        # Restore original values for those that are still NA
+        self._restore_org_vals(restore_cols)
+
+        return None

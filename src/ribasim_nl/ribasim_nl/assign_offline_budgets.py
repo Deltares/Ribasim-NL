@@ -1,6 +1,7 @@
 """Assign offline MODFLOW-MetaSWAP budgets (LHM zarr or local IDF files) to Ribasim Basin nodes."""
 
 from pathlib import Path
+from typing import Literal, cast
 
 import geopandas as gpd
 import imod
@@ -10,13 +11,11 @@ import shapely
 import xarray as xr
 from ribasim import Model
 from tqdm import tqdm
-from xarray.core.dataarray import DataArray
-from xarray.core.dataset import Dataset
 
 from ribasim_nl.assign_fractions_from_budgets import assign_fractions_from_budgets
 
 
-def _crop_to_gdf(da: "xr.DataArray | xr.Dataset", gdf: gpd.GeoDataFrame) -> DataArray | Dataset:
+def _crop_to_gdf[T: (xr.DataArray, xr.Dataset)](da: T, gdf: gpd.GeoDataFrame) -> T:
     """Crop a DataArray or Dataset to a gdf.extent (total_bounds)
 
     Why? As LHM covers NL and we often compute budgets for 1 authority only.
@@ -79,6 +78,17 @@ def _compute_budgets_per_basin(budgets: xr.Dataset, basin_mask: xr.DataArray, no
     return df
 
 
+def _sorted_query(
+    tree: shapely.STRtree, geometries: gpd.GeoSeries, predicate: Literal["intersects", "within"]
+) -> np.ndarray:
+    """`tree.query(geometries, predicate=predicate)`, sorted by input and then tree index.
+
+    The order of the tree indices per input geometry differs between platforms.
+    """
+    indices = tree.query(geometries, predicate=predicate)
+    return indices[:, np.lexsort((indices[1], indices[0]))]
+
+
 def _transpose_basin_definition_polygons(
     basin_definition_primary: gpd.GeoDataFrame, basin_definition_secundary: gpd.GeoDataFrame
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -99,7 +109,7 @@ def _transpose_basin_definition_polygons(
         polygons without any intersection for primary and secundary basins
     """
     tree = shapely.STRtree(basin_definition_secundary["geometry"])
-    index_in, index_out = tree.query(basin_definition_primary.representative_point(), predicate="intersects")
+    index_in, index_out = _sorted_query(tree, basin_definition_primary.representative_point(), predicate="intersects")
     index_in = basin_definition_primary.index[index_in]
     index_out = basin_definition_secundary.index[index_out]
     index_undefined_secundary = basin_definition_secundary.index[~np.isin(basin_definition_secundary.index, index_out)]
@@ -134,7 +144,9 @@ def _fill_basin_definition_from_points(
         basin_definition with indices derived from the underlying Ribasim basins.
     """
     tree = shapely.STRtree(basin_definition["geometry"])
-    index_nodes, index_basin_definition = tree.query(nodes["geometry"], predicate="within")
+    index_nodes, index_basin_definition = _sorted_query(
+        tree, cast(gpd.GeoSeries, nodes["geometry"]), predicate="within"
+    )
     index_basin_definition = basin_definition.index[index_basin_definition]
     index_nodes = nodes.index[index_nodes]
     basin_definition = basin_definition.loc[index_basin_definition]
@@ -449,7 +461,7 @@ class AssignOfflineBudgets:
         print("compute budgets per basin")
         primary_budgets_df = (
             _compute_budgets_per_basin(
-                _crop_to_gdf(budgets[list(self.primary_budget_keys)], primary_basin_definition),
+                _crop_to_gdf(budgets[sorted(self.primary_budget_keys)], primary_basin_definition),
                 primary_basin_mask,
             )
             / 86400
@@ -458,7 +470,7 @@ class AssignOfflineBudgets:
         secondary_budgets_df = (
             _compute_budgets_per_basin(
                 _crop_to_gdf(
-                    budgets[list(self.secondary_budget_keys | self.surface_runoff_budget_keys)],
+                    budgets[sorted(self.secondary_budget_keys | self.surface_runoff_budget_keys)],
                     secondary_basin_definition,
                 ),
                 secondary_basin_mask,
@@ -473,7 +485,7 @@ class AssignOfflineBudgets:
         # sum all budgets (columns) and create drainage and infiltration series
         # Group-sum to ensure unique (node_id, time) index before mapping
         summed_budgets = pd.Series(
-            budgets_df[list(self.primary_budget_keys | self.secondary_budget_keys)]
+            budgets_df[sorted(self.primary_budget_keys | self.secondary_budget_keys)]
             .groupby(level=["node_id", "time"])
             .sum()
             .sum(axis=1)
@@ -485,7 +497,7 @@ class AssignOfflineBudgets:
             lower=0
         )  # alles > 0 (infiltratie is in modflow, ontrekking uit ribasim, maar in ribasim positief teken)
         surface_runoff = (
-            budgets_df[list(self.surface_runoff_budget_keys)]
+            budgets_df[sorted(self.surface_runoff_budget_keys)]
             .groupby(level=["node_id", "time"])
             .sum()
             .sum(axis=1)
@@ -496,9 +508,10 @@ class AssignOfflineBudgets:
         # update basin drainage and infiltration
         assert model.basin.time.df is not None
         idx = pd.MultiIndex.from_frame(model.basin.time.df[["node_id", "time"]])
-        model.basin.time.df["drainage"] = idx.map(drainage)
-        model.basin.time.df["infiltration"] = idx.map(infiltration)
-        model.basin.time.df["surface_runoff"] = idx.map(surface_runoff)
+        # pandas-stubs does not accept mapping an Index with a Series
+        model.basin.time.df["drainage"] = idx.map(drainage)  # ty: ignore[invalid-argument-type]
+        model.basin.time.df["infiltration"] = idx.map(infiltration)  # ty: ignore[invalid-argument-type]
+        model.basin.time.df["surface_runoff"] = idx.map(surface_runoff)  # ty: ignore[invalid-argument-type]
 
         # assign fractions from budgets if user wants to
         if assign_fractions:
@@ -731,7 +744,7 @@ class AssignOfflineBudgets:
                 legend=False,
             )
             # Overlay basin boundaries
-            basin_definition.boundary.plot(ax=ax, color="grey", linewidth=0.7)
+            basin_definition.boundary.plot(ax=ax, color="grey", linewidth=0.7)  # ty: ignore[invalid-argument-type]
             ax.set_title(f"{title} - node_id")
         # Row 0 cols 2-4: budget grids mapped to node_id
         for da, ax, title in zip(
@@ -741,7 +754,7 @@ class AssignOfflineBudgets:
             strict=True,
         ):
             da.plot(ax=ax, cmap=node_cmap, norm=node_norm, add_colorbar=False)
-            basin_definition.boundary.plot(ax=ax, color="grey", linewidth=0.7)
+            basin_definition.boundary.plot(ax=ax, color="grey", linewidth=0.7)  # ty: ignore[invalid-argument-type]
             ax.set_title(title)
             ax.set_aspect("equal")
         # red-green control grids
@@ -762,7 +775,7 @@ class AssignOfflineBudgets:
             strict=True,
         ):
             da.plot(ax=ax, cmap=cmap_combined, norm=norm_combined, add_colorbar=False)
-            basin_definition.boundary.plot(ax=ax, color="grey", linewidth=0.7)
+            basin_definition.boundary.plot(ax=ax, color="grey", linewidth=0.7)  # ty: ignore[invalid-argument-type]
             ax.set_title(title)
             ax.set_aspect("equal")
             ax.legend(handles=legend_handles, loc="upper right")

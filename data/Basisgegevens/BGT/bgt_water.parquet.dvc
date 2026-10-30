@@ -1,0 +1,5 @@
+outs:
+- md5: f5342688a1cde6171a0c32276ff04728
+  size: 1516460371
+  hash: md5
+  path: bgt_water.parquet

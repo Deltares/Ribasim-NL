@@ -6,111 +6,61 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import rasterio
+import shapely
 import tqdm
 from affine import Affine
 from geopandas import GeoDataFrame
 from rasterio.enums import Resampling
 from rasterio.features import geometry_mask
+from rasterio.io import MemoryFile
 from rasterio.windows import Window, from_bounds
 from rasterstats import zonal_stats
 from ribasim import Node
-from ribasim.nodes import basin, tabulated_rating_curve
+from ribasim.nodes import basin, manning_resistance, tabulated_rating_curve
 from shapely.geometry import Point, Polygon
 
 from ribasim_nl.cloud import CloudStorage
 from ribasim_nl.model import Model
 from ribasim_nl.profiles import MIN_PROFILE_AREA
+from ribasim_nl.profiles.implement import bergend_manning_static
+from ribasim_nl.raster import with_rasterio_env
 from ribasim_nl.settings import settings
 
 LHM_RASTER_FILE = settings.ribasim_nl_data_dir / Path("Basisgegevens/LHM/4.3/input/LHM_data.tif")
 
-BANDEN = {
-    "maaiveld": 1,
-    "bodemhoogte_primair_winter": 2,
-    "bodemhoogte_primair_zomer": 3,
-    "bodemhoogte_secundair_winter": 4,
-    "bodemhoogte_secundair_zomer": 5,
-    "bodemhoogte_tertiair_winter": 6,
-    "bodemhoogte_tertiair_zomer": 7,
-    "ghg_2010-2019": 8,
-    "glg_2010-2019": 9,
-    "opp_primair": 10,
-    "opp_secundair": 11,
-    "opp_tertiair": 12,
-}
+
+def band_index(src: rasterio.DatasetReader, name: str) -> int:
+    """The 1-based index of the band in `src` whose description is `name`, such as "opp_primair" in `LHM_RASTER_FILE`."""
+    assert name in src.descriptions, f"No band {name!r} in {src.name}, only {src.descriptions}"
+    return src.descriptions.index(name) + 1
 
 
-def percentage_secundair_oppervlaktewater() -> None:
-    """Single-use function to compute percentage secondary surface water per LHM cell and write as GTIFF LHM_oppervlaktewater_percentage.tif"""
-    out_file = LHM_RASTER_FILE.with_name("LHM_oppervlaktewater_percentage_secundair.tif")
+def primary_surface_water_fraction() -> MemoryFile:
+    """The fraction of each LHM cell that is primary surface water, as a raster in memory.
+
+    It is derived from `LHM_RASTER_FILE` on each call, rather than cached next to it in a file that DVC does not track.
+    """
     with rasterio.open(LHM_RASTER_FILE) as src:
-        band11 = src.read(11).astype("float32")
-        band12 = src.read(12).astype("float32")
+        area = src.read(band_index(src, "opp_primair")).astype("float32")
         profile = src.profile.copy()
-
-        # nodata ophalen
         nodata = src.nodata
+        cell_area = src.transform.a * abs(src.transform.e)
 
-        # celoppervlak uit resolutie
-        cell_width = src.transform.a
-        cell_height = abs(src.transform.e)
-        cell_area = cell_width * cell_height
+    valid = area != nodata if nodata is not None else np.ones(area.shape, dtype=bool)
+    fraction = np.full(area.shape, np.nan, dtype="float32")
+    fraction[valid] = area[valid] / cell_area
 
-        # geldige pixels bepalen
-        valid = (band11 != nodata) & (band12 != nodata) if nodata is not None else np.ones(band11.shape, dtype=bool)
-
-        # oppervlaktes optellen
-        summed_area = np.full(band11.shape, np.nan, dtype="float32")
-        summed_area[valid] = band11[valid] + band12[valid]
-
-        # delen door celoppervlak
-        result = np.full(band11.shape, np.nan, dtype="float32")
-        result[valid] = summed_area[valid] / cell_area
-
-        # output profiel aanpassen naar 1 band
-        profile.update(dtype="float32", count=1, nodata=np.nan)
-
-        with rasterio.open(out_file, "w", **profile) as dst:
-            dst.write(result, 1)
-
-
-def percentage_primair_oppervlaktewater() -> None:
-    """Single-use function to compute percentage primary surface water per LHM cell and write as GTIFF LHM_oppervlaktewater_percentage.tif"""
-    out_file = LHM_RASTER_FILE.with_name("LHM_oppervlaktewater_percentage_primair.tif")
-    with rasterio.open(LHM_RASTER_FILE) as src:
-        band10 = src.read(11).astype("float32")
-        profile = src.profile.copy()
-
-        # nodata ophalen
-        nodata = src.nodata
-
-        # celoppervlak uit resolutie
-        cell_width = src.transform.a
-        cell_height = abs(src.transform.e)
-        cell_area = cell_width * cell_height
-
-        # geldige pixels bepalen
-        valid = band10 != nodata if nodata is not None else np.ones(band10.shape, dtype=bool)
-
-        # oppervlaktes optellen
-        summed_area = np.full(band10.shape, np.nan, dtype="float32")
-        summed_area[valid] = band10[valid]
-
-        # delen door celoppervlak
-        result = np.full(band10.shape, np.nan, dtype="float32")
-        result[valid] = summed_area[valid] / cell_area
-
-        # output profiel aanpassen naar 1 band
-        profile.update(dtype="float32", count=1, nodata=np.nan)
-
-        with rasterio.open(out_file, "w", **profile) as dst:
-            dst.write(result, 1)
+    profile.update(driver="GTiff", dtype="float32", count=1, nodata=np.nan)
+    memfile = MemoryFile()
+    with memfile.open(**profile) as dst:
+        dst.write(fraction, 1)
+    return memfile
 
 
 def sample_raster(
     raster_file: Path,
     df: GeoDataFrame,
-    band: int = 1,
+    band: int | str = 1,
     fill_value: float | None = None,
     all_touched: bool = False,
     stats: str = "mean",
@@ -121,7 +71,7 @@ def sample_raster(
     Args:
         raster_file (Path): Raster-file to sample
         df (GeoDataFrame): GeoDataFrame with polygons
-        band (int, optional): Band in raster-file to sample from. Defaults to 1.
+        band (int | str, optional): Band in raster-file to sample from, by 1-based index or description. Defaults to 1.
         fill_value (float | None, optional): Fill-value for nodata-cells. Defaults to None.
         all_touched (bool, optional): rasterize all_touched setting. Defaults to False.
         stats (str, optional): rasterstats stats setting. Defaults to "mean".
@@ -133,7 +83,7 @@ def sample_raster(
     """
     with rasterio.open(raster_file) as raster_src:
         # read band
-        data = raster_src.read(band)
+        data = raster_src.read(band if isinstance(band, int) else band_index(raster_src, band))
 
         if maaiveld_data is not None:
             data = maaiveld_data - data
@@ -173,7 +123,7 @@ def get_resampled_window(src, polygon, sample_res) -> tuple[tuple[int, int], Win
 def read_resampled(
     src: rasterio.DatasetReader,
     band: int,
-    window: rasterio.windows.Window,
+    window: Window,
     out_shape: tuple[int, int],
 ) -> npt.NDArray[np.float64]:
     return src.read(band, window=window, out_shape=out_shape, resampling=Resampling.nearest).astype(float)
@@ -216,6 +166,7 @@ def basin_link_buffer_area(model: Model, node_id, buffer_distance=2.5):
     return buffered_union.area
 
 
+@with_rasterio_env
 def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: float = 2.0, buffer_distance=2.5) -> None:
     """Surface water area of primary basin based on primair_oppervlaktewater in LHM4.3
 
@@ -271,12 +222,7 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
         assert df is not None
         return df
 
-    # generate raster_file if not existing
-    cloud = CloudStorage()
-    src_file = cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_oppervlaktewater_percentage_primair.tif")
-    if not src_file.exists():
-        percentage_primair_oppervlaktewater()
-
+    assert model.basin.node is not None
     basin_node_df = cast(pd.DataFrame, model.basin.node.df)
     basin_area_df = cast(pd.DataFrame, model.basin.area.df)
     basin_profile_df = cast(pd.DataFrame, model.basin.profile.df)
@@ -284,7 +230,7 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
     # read resampled raster average and multiply by polygon.area
     basin_ids = basin_node_df[basin_node_df.meta_categorie.isin(["hoofdwater", "doorgaand"])].index.values
     profiles: list[pd.DataFrame] = []
-    with rasterio.open(src_file) as src:
+    with primary_surface_water_fraction() as memfile, memfile.open() as src:
         for basin_id in tqdm.tqdm(basin_ids, total=len(basin_ids), desc="profiles primary basins"):
             # read basin-area table
             polygon = cast(Polygon, cast(Any, basin_area_df.set_index("node_id").at[basin_id, "geometry"]))
@@ -335,6 +281,7 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
     model.basin.profile.df = cast(Any, basin_profile_df)
 
 
+@with_rasterio_env
 def add_basin_statistics(df: GeoDataFrame, lhm_raster_file: Path, ma_raster_file: Path) -> GeoDataFrame:
     """Add Vd Gaast basin-statistics to a Polygon basin GeoDataFrame
 
@@ -349,13 +296,13 @@ def add_basin_statistics(df: GeoDataFrame, lhm_raster_file: Path, ma_raster_file
     """
     with rasterio.open(lhm_raster_file) as raster_src:
         # read band
-        maaiveld_data = raster_src.read(BANDEN["maaiveld"])
+        maaiveld_data = raster_src.read(band_index(raster_src, "maaiveld"))
 
     # sample rasters
     ghg = sample_raster(
         raster_file=lhm_raster_file,
         df=df,
-        band=BANDEN["ghg_2010-2019"],
+        band="ghg_2010-2019",
         all_touched=True,
         maaiveld_data=maaiveld_data,
     )
@@ -365,7 +312,7 @@ def add_basin_statistics(df: GeoDataFrame, lhm_raster_file: Path, ma_raster_file
     glg = sample_raster(
         raster_file=lhm_raster_file,
         df=df,
-        band=BANDEN["glg_2010-2019"],
+        band="glg_2010-2019",
         all_touched=True,
         maaiveld_data=maaiveld_data,
     )
@@ -377,7 +324,7 @@ def add_basin_statistics(df: GeoDataFrame, lhm_raster_file: Path, ma_raster_file
     df.loc[:, ["ma"]] = [i["mean"] for i in ma]
 
     maaiveld = sample_raster(
-        raster_file=lhm_raster_file, df=df, band=BANDEN["maaiveld"], stats="mean min max", all_touched=True
+        raster_file=lhm_raster_file, df=df, band="maaiveld", stats="mean min max", all_touched=True
     )
     df.loc[:, ["maaiveld"]] = pd.Series(dtype=float)
     df.loc[:, ["maaiveld"]] = [i["mean"] for i in maaiveld]
@@ -419,6 +366,95 @@ def get_rating_curve(row, min_level: float, maaiveld: float | None = None) -> ta
     df.drop_duplicates("flow_rate", keep="last", inplace=True)
 
     return tabulated_rating_curve.Static(level=df.level, flow_rate=df.flow_rate)
+
+
+def get_manning_resistance(area: float) -> manning_resistance.Static:
+    """Generate the ManningResistance static table between a storing and a flowing basin, see `bergend_manning_static`
+
+    Args:
+        area (float): area of the basin [m2]
+
+    Returns
+    -------
+        manning_resistance.Static: Static-table for ManningResistance node
+    """
+    static = bergend_manning_static(pd.Series([area])).iloc[0]
+    return manning_resistance.Static(
+        length=[static["length"]],
+        manning_n=[static["manning_n"]],
+        profile_width=[static["profile_width"]],
+        profile_slope=[static["profile_slope"]],
+    )
+
+
+def parse_meta_aanvoer(values: pd.Series) -> pd.Series:
+    """Parse the `meta_aanvoer` column of the supply areas ('aanvoergebieden') to booleans
+
+    The files store it as booleans, as 0 and 1, or as strings. A missing value means no supply.
+
+    Args:
+        values (pd.Series): Values of `meta_aanvoer`
+
+    Returns
+    -------
+        pd.Series: True where the area is supplied
+    """
+    # 1 and 0 match True and False as keys, also as floats
+    mapping = {True: True, False: False, "true": True, "false": False}
+
+    def parse(value: Any) -> bool | None:
+        if pd.isna(value):
+            return False
+        return mapping.get(value.lower() if isinstance(value, str) else value)
+
+    parsed = values.map(parse)
+    unknown = values[parsed.isna()]
+    assert unknown.empty, f"Unknown meta_aanvoer values: {sorted(map(str, unknown.unique()))}"
+    return parsed.astype(bool)
+
+
+def supply_area_basin_ids(model: Model, supply_areas: GeoDataFrame, min_overlap: float = 0.5) -> set[int]:
+    """Get the flowing (non-'bergend') basins that lie in the supplied areas ('aanvoergebieden')
+
+    Only the supply areas with `meta_aanvoer` true are used, see `parse_meta_aanvoer`.
+    Basins are selected by area rather than by node_id, since the node_ids in the supply areas can be outdated.
+
+    Args:
+        model (Model): Ribasim model
+        supply_areas (GeoDataFrame): Polygons of the supply areas, with a `meta_aanvoer` column
+        min_overlap (float, optional): Minimal fraction of the basin area within the supplied areas. Defaults to 0.5.
+
+    Returns
+    -------
+        set[int]: node_ids of the basins in the supplied areas
+    """
+    assert 0 < min_overlap <= 1, f"min_overlap should be in (0, 1], not {min_overlap}"
+    assert "meta_aanvoer" in supply_areas.columns, "Supply areas have no meta_aanvoer column"
+    supply_areas = supply_areas[supply_areas.geometry.notna() & parse_meta_aanvoer(supply_areas["meta_aanvoer"])]
+    if supply_areas.empty:
+        return set()
+    supply_geometries = supply_areas.geometry.make_valid().to_numpy()
+    tree = shapely.STRtree(supply_geometries)
+
+    assert model.basin.node is not None
+    basin_node_df = model.basin.node.df
+    assert basin_node_df is not None
+    flowing_ids = basin_node_df.index[basin_node_df["meta_categorie"] != "bergend"]
+
+    basin_area_df = model.basin.area.df
+    assert basin_area_df is not None
+    basin_area_df = basin_area_df[basin_area_df["node_id"].isin(flowing_ids) & basin_area_df.geometry.notna()]
+    basin_area = basin_area_df.dissolve("node_id").geometry
+
+    def overlap(geometry: Any) -> float:
+        # Intersect with the union of only the supply areas that touch the basin, since the intersection with the
+        # union of all of them can be wrong: Hunze en Aa's basin 1717 lies for 39% in them, but got 0% or 107%
+        nearby = supply_geometries[tree.query(geometry, predicate="intersects")]
+        if len(nearby) == 0:
+            return 0.0
+        return geometry.intersection(shapely.union_all(nearby)).area / geometry.area
+
+    return {int(cast(int, node_id)) for node_id, geometry in basin_area.items() if overlap(geometry) > min_overlap}
 
 
 def simplify_area_level_df(
@@ -514,7 +550,7 @@ def get_basin_profile(
             df["area"] = df["area"].round(1)
             return df
 
-        mask = rasterio.features.geometry_mask(
+        mask = geometry_mask(
             [basin_polygon], out_shape=out_shape, transform=new_transform, all_touched=True, invert=True
         )
 
@@ -526,8 +562,8 @@ def get_basin_profile(
 
             # 5) bandparen uitlezen
             band_pairs = [
-                (BANDEN["bodemhoogte_tertiair_zomer"], BANDEN["opp_tertiair"]),
-                (BANDEN["bodemhoogte_secundair_zomer"], BANDEN["opp_secundair"]),
+                (band_index(src, "bodemhoogte_tertiair_zomer"), band_index(src, "opp_tertiair")),
+                (band_index(src, "bodemhoogte_secundair_zomer"), band_index(src, "opp_secundair")),
             ]
 
             dfs = []
@@ -592,30 +628,46 @@ class VdGaastBerging:
         self,
         model: Model,
         cloud: CloudStorage,
-        use_add_api: bool = True,
+        manning_basin_ids: set[int] | None = None,
     ) -> None:
+        """Add a storing ('bergend') basin to every basin of the model
+
+        A storing basin drains through a TabulatedRatingCurve, based on Van der Gaast. In the basins of
+        `manning_basin_ids` it is connected with a ManningResistance instead, so it can also be supplied.
+
+        Args:
+            model (Model): Ribasim model
+            cloud (CloudStorage): Cloud storage with the LHM and Van der Gaast rasters
+            manning_basin_ids (set[int] | None, optional): Basins whose storing basin is connected with a
+                ManningResistance, see `supply_area_basin_ids`. Defaults to None.
+        """
         self.model = model
         self.cloud = cloud
-        self.use_add_api = use_add_api
+        self.manning_basin_ids = set() if manning_basin_ids is None else manning_basin_ids
 
         lhm_raster_file = self.cloud.joinpath("Basisgegevens/LHM/4.3/input/LHM_data.tif")
         ma_raster_file = self.cloud.joinpath("Basisgegevens/VanDerGaast_QH/spafvoer1.tif")
         self.lhm_raster_file = lhm_raster_file
         self.ma_raster_file = ma_raster_file
 
+    @with_rasterio_env
     def add(self) -> None:
         model = self.model
+        unknown_ids = self.manning_basin_ids - set(model.filter_nodes("Basin").index)
+        assert not unknown_ids, f"manning_basin_ids are not Basins in the model: {sorted(unknown_ids)}"
 
         # get basin_area and add statistics
         print("compute basin statistics")
+        assert model.basin.area.df is not None
         basin_area_df = model.basin.area.df.dissolve("node_id").copy()
+
         basin_area_df = add_basin_statistics(
             df=basin_area_df, lhm_raster_file=self.lhm_raster_file, ma_raster_file=self.ma_raster_file
         )
 
-        for row in tqdm.tqdm(
-            model.basin.node.df.itertuples(), total=len(model.basin.node.df), desc="add storage nodes"
-        ):
+        basin_node_df = model.filter_nodes("Basin")
+        node_pairs = []
+        for row in tqdm.tqdm(basin_node_df.itertuples(), total=len(basin_node_df), desc="add storage nodes"):
             # get basin_id and basin polygon
             basin_id = row.Index
             basin_row = basin_area_df.loc[basin_id]
@@ -625,8 +677,8 @@ class VdGaastBerging:
                 raise ValueError(f"No valid ghg, glg and/or ma for basin_id {basin_id}")
 
             # define storage basin data
-            max_level = basin_area_df.at[basin_id, "maaiveld_max"]
-            min_level = basin_area_df.at[basin_id, "maaiveld_min"]
+            max_level = cast(float, basin_area_df.at[basin_id, "maaiveld_max"])
+            min_level = cast(float, basin_area_df.at[basin_id, "maaiveld_min"])
 
             if min_level == max_level:
                 min_level -= 0.1
@@ -655,18 +707,21 @@ class VdGaastBerging:
             )
             basin_node = model.basin.add(node=node, tables=data)
 
-            # add connector
+            # connect storage basin with basin with a ManningResistance or a TabulatedRatingCurve
+            if basin_id in self.manning_basin_ids:
+                node_type = "ManningResistance"
+                data = [get_manning_resistance(area=basin_polygon.area)]
+            else:
+                node_type = "TabulatedRatingCurve"
+                data = [get_rating_curve(row=basin_row, min_level=basin_profile.df.level.min())]
 
-            # get data for TabulatedRatingCurve or Outlet
-            data = [get_rating_curve(row=basin_row, min_level=basin_profile.df.level.min())]
-
-            # connect storage basin with basin with a tabulated rating curve
-            model.add_and_connect_node(
-                basin_node.node_id,
-                to_basin_id=basin_id,
+            # links are added at once after the loop, which is much faster
+            connector_node = model.add_node(
+                node_type=node_type,
                 geometry=Point(row.geometry.x + 5, row.geometry.y),
-                node_type="TabulatedRatingCurve",
                 tables=data,
-                use_add_api=self.use_add_api,
                 meta_categorie="bergend",
             )
+            node_pairs += [(basin_node, connector_node), (connector_node, model.get_node(basin_id))]
+
+        model.add_links(node_pairs)

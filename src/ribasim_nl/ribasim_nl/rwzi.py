@@ -5,13 +5,19 @@ Replaces the Terminals with Junctions and connects them to the underlying Basin.
 """
 
 import logging
+import math
+import typing
+from collections.abc import Mapping
 from pathlib import Path
+from typing import cast
 
 import geopandas as gpd
 import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
+from shapely.geometry import LineString, Point
 
 from ribasim_nl import Model, concat
+from ribasim_nl.flow_paths import Routes, place_on_link, prune_junction, split_distance, split_link
 from ribasim_nl.reset_index import reset_index
 
 # %%
@@ -32,9 +38,12 @@ def create_rwzi_basin_coupling(rwzi_coupled_model: Model, max_distance=100):
         coupling_lookup (dict): Lookup table of RWZI codes and basin IDs.
         unmatched_rwzi_df (GeoDataFrame): RWZI locations that have not yet been matched with basins.
     """
+    assert rwzi_coupled_model.terminal.node is not None
     terminals_all = rwzi_coupled_model.terminal.node.df
     basins = rwzi_coupled_model.basin.area.df
     nodes = rwzi_coupled_model.node.df
+    assert terminals_all is not None and basins is not None and nodes is not None
+    assert basins.crs is not None
 
     unique_waterbeheerders = nodes["meta_waterbeheerder"].dropna().unique()
 
@@ -78,7 +87,13 @@ def create_rwzi_basin_coupling(rwzi_coupled_model: Model, max_distance=100):
         basins_reset[["couple_to_basin_id", "geometry"]],
         how="left",
         max_distance=max_distance,
+        distance_col="distance",
     )
+    for _, row in joined_nearest.dropna(subset="couple_to_basin_id").iterrows():
+        logger.info(
+            f"RWZI {row['meta_rwzi_code']} is outside the Basin areas, "
+            f"coupled to Basin {int(row['couple_to_basin_id'])} at {row['distance']:.0f} m"
+        )
 
     rwzis_combined = joined_unique.copy()
     matched_rwzis_nearest = joined_nearest[["couple_to_basin_id"]]
@@ -115,7 +130,9 @@ def remove_unmatched_rwzi(rwzi_coupled_model: Model, unmatched_rwzi_df: GeoDataF
         terminals_removed += 1
 
     #  2. bijbehorende flow boundaries verwijderen
+    assert rwzi_coupled_model.flow_boundary.node is not None
     fb_df = rwzi_coupled_model.flow_boundary.node.df
+    assert fb_df is not None
     flow_boundary_to_remove = fb_df[fb_df["meta_rwzi_code"].isin(unmatched_rwzi_df["meta_rwzi_code"])]
 
     flow_boundaries_removed = 0
@@ -195,12 +212,146 @@ def terminal2junction(rwzi_coupled_model, coupling_lookup, *, verbose=False):
     return rwzi_coupled_model
 
 
+# Basins that RWZIs discharge into by RWZI code, instead of the Basin they are in, see #871
+RWZI_BASINS = {
+    12001: 1202759,  # Hollands Noorderkwartier, on the hoofdwater next to doorgaand Basin 1200195
+    17041: 4000278,  # Hollandse Delta, on the hoofdwater next to doorgaand Basin 4000362
+    28002: 3801735,  # Asten, on the hoofdwater next to doorgaand Basin 3801747
+    28003: 3801473,  # Aa en Maas, on the hoofdwater 2.4 km from doorgaand Basin 3801602
+    30021: 8008147,  # Stein, on the Julianakanaal instead of Limburg Basin 6001469
+    30022: 6001422,  # Limburg, on the doorgaand next to hoofdwater Basin 6001434
+}
+
+
+def _is_bergend(nodes: pd.DataFrame, node_ids: typing.Iterable[int]) -> bool:
+    return "meta_categorie" in nodes.columns and bool((nodes.loc[list(node_ids), "meta_categorie"] == "bergend").any())
+
+
+def _attach_rwzi_junction(model: Model, junction_id: int, basin_id: int, max_distance: float) -> bool:
+    """Attach an RWZI Junction to the route of `basin_id`, see `attach_rwzi_junctions`. Returns whether it did."""
+    assert model.node.df is not None
+    assert model.link.df is not None
+    nodes = model.node.df  # the nodes used below are not removed
+    routes = Routes(model)
+    inflow = routes.links_at(junction_id, upstream=True)
+    outflow = routes.links_at(junction_id, upstream=False)
+    # an RWZI Junction that is attached already has more inflow than its FlowBoundary
+    if len(outflow) != 1 or [routes.node_types[routes.next_node(i, True)] for i in inflow] != ["FlowBoundary"]:
+        return False
+    current = routes.ends(outflow[0])
+    if len(current) != 1 or routes.node_types[next(iter(current))] != "Basin":
+        return False
+
+    def candidates(routes: Routes) -> dict[int, bool]:
+        """The links of the routes into (True) and out of (False) the Basin, except of RWZIs and bergend Basins."""
+        result = {}
+        for upstream in (True, False):
+            for link_id in routes.paths(basin_id, upstream):
+                from_node_id = cast(int, routes.flow.at[link_id, "from_node_id"])
+                to_node_id = cast(int, routes.flow.at[link_id, "to_node_id"])
+                if junction_id in (from_node_id, to_node_id) or routes.node_types[from_node_id] == "FlowBoundary":
+                    continue
+                if _is_bergend(nodes, [from_node_id, to_node_id, *routes.ends(link_id, upstream)]):
+                    continue
+                result[link_id] = upstream
+        return result
+
+    point = cast(Point, nodes.at[junction_id, "geometry"])
+    distances = routes.flow.loc[list(candidates(routes))].distance(point)
+    if distances.empty or distances.min() > max_distance:
+        return False
+
+    name = cast(str, model.link.df.at[outflow[0], "name"])
+    model.remove_links(outflow)
+    prune_junction(model, routes.next_node(outflow[0], upstream=False))
+    routes = Routes(model)
+    options = candidates(routes)
+    link_id = cast(int, routes.flow.loc[list(options)].distance(point).idxmin())
+    upstream = options[link_id]
+    geometry = cast(LineString, routes.flow.at[link_id, "geometry"])
+    distance = split_distance(geometry, point)
+    if upstream:
+        # on a link into the Basin, which is split there
+        split_link(model, link_id, distance, junction_id)
+    else:
+        # on a link out of the Basin: the RWZI cannot discharge there, since a FlowBoundary cannot be connected
+        # to its connector node, so its link to the Basin runs along the route instead
+        model.link.add(model.get_node(junction_id), model.get_node(basin_id), name=name)
+        place_on_link(model, junction_id, basin_id, link_id)
+    location = cast(Point, model.node.df.at[junction_id, "geometry"])
+    model.link.df.loc[inflow, "geometry"] = gpd.GeoSeries(
+        [LineString([cast(Point, nodes.at[routes.next_node(i, True), "geometry"]), location]) for i in inflow],
+        index=inflow,
+        crs=model.link.df.crs,
+    )
+    return True
+
+
+def attach_rwzi_junctions(
+    model: Model,
+    max_distance: float = 1000.0,
+    basins: Mapping[int, int] = RWZI_BASINS,
+    authorities: set[str] | None = None,
+) -> Model:
+    """Move each RWZI Junction onto the nearest route into or out of its Basin, along the flow links and Junctions.
+
+    An RWZI Junction, see `terminal2junction`, is located at the discharge point, with a straight link to the
+    Basin it is in, or to `basins[meta_rwzi_code]` if given. Instead, it is moved onto the nearest flow link into
+    or out of this Basin, directly or through Junctions only, such as the routed links of the doorgaand and
+    hoofdwater Basins, except links of bergend Basins. A link into the Basin is split there; along a link out of the
+    Basin runs the new link to the Basin. RWZI Junctions without such a link within `max_distance` are left as is,
+    and so are those of `basins` whose Basin is not in the model, or which are attached already.
+
+    Parameters
+    ----------
+        model (Model): model with RWZI Junctions, which have a meta_rwzi_code.
+        max_distance (float): maximum distance in meters between the RWZI Junction and the link, except for `basins`.
+        basins (Mapping[int, int]): Basin node ids by RWZI code, for RWZIs that do not discharge in the Basin they are in.
+        authorities (set[str] | None): if given, only attach RWZIs of these authorities, and RWZIs of `basins`, whose
+            global Basin ids are only in the model after coupling.
+
+    Returns
+    -------
+        Model: the model with the RWZI Junctions on the links.
+    """
+    assert model.node.df is not None
+    nodes = model.node.df
+    if "meta_rwzi_code" not in nodes.columns:
+        return model
+    rwzi_junctions = nodes.loc[(nodes["node_type"] == "Junction") & nodes["meta_rwzi_code"].notna(), "meta_rwzi_code"]
+
+    attached = 0
+    for junction_id, code in rwzi_junctions.items():
+        junction_id = cast(int, junction_id)
+        if (
+            authorities is not None
+            and nodes.at[junction_id, "meta_waterbeheerder"] not in authorities
+            and int(code) not in basins
+        ):
+            continue
+        routes = Routes(model)
+        outflow = routes.links_at(junction_id, upstream=False)
+        ends = routes.ends(outflow[0]) if len(outflow) == 1 else frozenset()
+        basin_id = basins.get(int(code), next(iter(ends)) if len(ends) == 1 else None)
+        if basin_id is None or basin_id not in model.node.df.index:
+            continue
+        if model.get_node_type(basin_id) != "Basin":
+            raise ValueError(
+                f"RWZI {code} should discharge into Basin {basin_id}, not a {model.get_node_type(basin_id)}."
+            )
+        limit = math.inf if int(code) in basins else max_distance
+        attached += _attach_rwzi_junction(model, int(junction_id), basin_id, limit)
+
+    logger.info(f"Attached {attached} of {len(rwzi_junctions)} RWZI Junctions to a flow link of their Basin")
+    return model
+
+
 def merge_rwzi_model(
     base_model: Model,
     rwzi_model_path: Path,
     rwzi_coverage_path: Path,
     coverage_output_path: Path,
-    max_distance: int = 100,
+    max_distance: float = 100,
     verbose: bool = False,
 ) -> Model:
     """
@@ -234,6 +385,8 @@ def merge_rwzi_model(
     rwzi_model.node.df.loc[rwzi_model.node.df.node_type == "FlowBoundary", "meta_categorie"] = "RWZI"
 
     # index rwzi model with nodes >1 higher than of base model
+    assert base_model.node.df is not None
+    assert base_model.link.df is not None
     node_start = base_model.node.df.index.max() + 1
     link_start = base_model.link.df.index.max() + 1
     rwzi_model = reset_index(rwzi_model, node_start=node_start, link_start=link_start)
@@ -283,8 +436,9 @@ def export_rwzi_coverage_geojson(
     """
     rwzi_gdf = gpd.read_file(rwzi_coverage_path)
 
-    assert rwzi_coupled_model.junction.node.df is not None
+    assert rwzi_coupled_model.junction.node is not None
     junction_df = rwzi_coupled_model.junction.node.df
+    assert junction_df is not None
     rwzi_junction_names = junction_df[junction_df["meta_rwzi_code"].notna()]["name"].str.replace("_out", "")
     duplicate_rwzi_names = set(rwzi_junction_names[rwzi_junction_names.duplicated(keep=False)])
 

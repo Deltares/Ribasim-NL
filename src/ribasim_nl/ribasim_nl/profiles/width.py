@@ -2,6 +2,7 @@
 
 import itertools
 import logging
+from typing import cast
 
 import geopandas as gpd
 import numpy as np
@@ -26,7 +27,7 @@ def couple_bgt_to_hydro_objects(
     :param bgt_data: geospatial data with BGT-polygons
     :param kwargs: optional arguments
 
-    :key bgt_id: column-name with ID-information of the BGT-data, defaults to 'gml_id'
+    :key bgt_id: column-name with ID-information of the BGT-data, defaults to 'lokaalID'
     :key min_overlap: minimum required overlap (fraction of line-length) to couple BGT-polygon to hydro-object,
         defaults to None
 
@@ -39,7 +40,7 @@ def couple_bgt_to_hydro_objects(
     :raises ValueError: if the main routing of the hydro-objects is not yet determined
     """
     # optional arguments
-    bgt_id: str = kwargs.get("bgt_id", "gml_id")
+    bgt_id: str = kwargs.get("bgt_id", "lokaalID")
     min_overlap: float | None = kwargs.get("min_overlap")
 
     # verify preprocessing
@@ -49,6 +50,7 @@ def couple_bgt_to_hydro_objects(
 
     # align CRSs
     if hydro_objects.crs != bgt_data.crs:
+        assert hydro_objects.crs is not None
         bgt_data.to_crs(hydro_objects.crs)
         LOG.warning(f"BGT-data' CRS changed to {bgt_data.crs=}")
 
@@ -57,14 +59,16 @@ def couple_bgt_to_hydro_objects(
 
         def overlap_with_bgt(line: shapely.LineString, polygon_index: int) -> bool:
             """Verify minimum overlap of hydro-object with BGT-polygon to be coupled."""
-            polygon = bgt_data.loc[polygon_index, "geometry"]
+            polygon = cast(shapely.Polygon, bgt_data.loc[polygon_index, "geometry"])
+            assert min_overlap is not None
             return (line.intersection(polygon).length / line.length) > min_overlap
 
         # TODO: Decide on method: No intersection results in discarding the hydro-object (how='inner'); or keep it (how='left')
         out = network_selection.sjoin(bgt_selection[[bgt_id, "geometry"]], how="inner", predicate="intersects")
         if min_overlap is not None:
             out = out[out.apply(lambda row: overlap_with_bgt(row["geometry"], row["index_right"]), axis=1)]
-        out = out.groupby(level=0)["index_right"].apply(list)
+        # sort the matches, since the order of sjoin matches depends on the spatial index (platform)
+        out = out.groupby(level=0)["index_right"].apply(sorted)
         return out
 
     # couple BGT-data to hydro-objects

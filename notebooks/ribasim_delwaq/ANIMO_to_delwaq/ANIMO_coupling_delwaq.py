@@ -1,5 +1,3 @@
-"""TODO: @Gijs Include docstring here"""
-
 # %%
 import calendar
 from datetime import date
@@ -354,12 +352,12 @@ imod.idf.write(ANIMO_INTERIM_DIR / "natuurzones.idf", da_natuurzones)
 
 # %% Read LHM hydrology, align with WENR grid convention
 da_afvoer_lhm_m3_day = imod.idf.open(
-    str(ANIMO_INTERIM_DIR / "LHM_fluxen" / "LHM_433" / "total_flux_m3_per_day_*.idf")
+    str(ANIMO_INTERIM_DIR / "LHM_fluxen" / "LHM_351" / "total_flux_m3_per_day_*.idf")
 ).squeeze("layer")
 da_afvoer_lhm_m3_day, da_landbouwzones = xr.align(da_afvoer_lhm_m3_day, da_landbouwzones, join="right")
 
 da_deep_seepage_correction_lhm_m3_day = imod.idf.open(
-    str(ANIMO_INTERIM_DIR / "LHM_fluxen" / "LHM_433" / "deep_seepage_correction_m3_per_day_*.idf")
+    str(ANIMO_INTERIM_DIR / "LHM_fluxen" / "LHM_351" / "deep_seepage_correction_m3_per_day_*.idf")
 ).squeeze("layer")
 da_deep_seepage_correction_lhm_m3_day, da_landbouwzones = xr.align(
     da_deep_seepage_correction_lhm_m3_day, da_landbouwzones, join="right"

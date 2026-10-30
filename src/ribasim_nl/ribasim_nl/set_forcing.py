@@ -1,9 +1,13 @@
 """Assign dynamic precipitation and evaporation forcing from LHM zarr budgets to Ribasim Basin nodes."""
 
+from datetime import datetime
+
 import imod
 import numpy as np
 import pandas as pd
 import xarray as xr
+from pandera.typing import DataFrame
+from ribasim.schemas import BasinTimeSchema
 
 from ribasim_nl import Model
 from ribasim_nl.assign_offline_budgets import _compute_budgets_per_basin, _crop_to_gdf, split_basin_definitions
@@ -70,8 +74,8 @@ class SetDynamicForcing:
         self,
         model: Model,
         budgets: xr.Dataset,
-        startdate: str,
-        enddate: str,
+        startdate: datetime,
+        enddate: datetime,
     ) -> None:
         """Set up dynamic precipitation and evaporation forcing for a Ribasim model.
 
@@ -81,9 +85,9 @@ class SetDynamicForcing:
             Ribasim model to add forcing to. Note: ``basin.time.df`` will be cleared on ``add()``.
         budgets : xr.Dataset
             LHM zarr dataset containing precipitation and evaporation variables.
-        startdate : str
+        startdate : datetime
             Model start date (ISO format, e.g. "2000-01-01").
-        enddate : str
+        enddate : datetime
             Model end date (ISO format, e.g. "2001-01-01").
         """
         self.model = model
@@ -200,8 +204,10 @@ class SetDynamicForcing:
                 meteo_means["drainage"] = 0
                 meteo_means["infiltration"] = 0
                 final_time_df = meteo_means.copy()
-            model.basin.time.df = final_time_df
+            model.basin.time.df = DataFrame[BasinTimeSchema](final_time_df)
+            assert model.basin.time.df is not None
             model.basin.time.df.fillna(0, inplace=True)
+
         else:
             current_df = model.basin.time.df
             current_df["conv_time"] = pd.to_datetime(current_df["time"])

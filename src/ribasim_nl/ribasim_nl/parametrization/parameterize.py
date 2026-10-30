@@ -3,10 +3,11 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from ribasim_nl.berging import update_primary_basin_profiles
+from ribasim_nl.bgt_water import BGT_WATER
 from ribasim_nl.model import Model
 from ribasim_nl.parametrization.basin_tables import update_basin_state, update_basin_static
 from ribasim_nl.parametrization.level_boundary_table import update_level_boundary_static
-from ribasim_nl.parametrization.manning_resistance_table import update_manning_resistance_static
+from ribasim_nl.parametrization.manning_resistance_table import read_manning_water, update_manning_resistance_static
 from ribasim_nl.parametrization.node_table import populate_function_column
 from ribasim_nl.parametrization.pump_and_outlet_tables import update_pump_outlet_static
 
@@ -19,6 +20,8 @@ class Parameterize(BaseModel):
     evaporation_mm_per_day: int | None = None
     max_pump_flow_rate: float | None = None
     canal_width: float = 10.0
+    # BGT water, for the width of ManningResistances without a DAMO profile of their own
+    water_area_path: Path | None = BGT_WATER
 
     def run(self, **kwargs) -> None:
         print("Start Parameterize.run()")
@@ -37,8 +40,10 @@ class Parameterize(BaseModel):
             print("  static_data_xlsx bestaat lokaal.")
 
         # add meta_function as we will need that for further parametrization
+        assert self.model.node.df is not None
         if "meta_function" not in self.model.node.df.columns:
             print("meta_function kolom ontbreekt -> wordt toegevoegd via populate_function_column()")
+            assert self.static_data_xlsx is not None, "static_data_xlsx is needed to populate meta_function"
             for node_type in ["Pump", "Outlet"]:
                 print(f"  Populeer meta_function voor {node_type}...")
                 populate_function_column(model=self.model, static_data_xlsx=self.static_data_xlsx, node_type=node_type)
@@ -62,7 +67,9 @@ class Parameterize(BaseModel):
 
         if self.max_pump_flow_rate is not None:
             print(f"max_pump_flow_rate: {self.max_pump_flow_rate}")
+            assert self.model.pump.static.df is not None
             mask = self.model.pump.static.df.flow_rate > self.max_pump_flow_rate
+
             if mask.any():
                 print(f"  {mask.sum()} pompen beperkt tot {self.max_pump_flow_rate}")
                 self.model.pump.static.df.loc[mask, "flow_rate"] = self.max_pump_flow_rate
@@ -70,7 +77,8 @@ class Parameterize(BaseModel):
                 print("  Geen pompen boven max_pump_flow_rate.")
 
         print("Update ManningResistance...")
-        update_manning_resistance_static(self.model, profiles_gpkg=self.profiles_gpkg)
+        water_area_df = read_manning_water(self.model, self.water_area_path)
+        update_manning_resistance_static(self.model, profiles_gpkg=self.profiles_gpkg, water_area_df=water_area_df)
         print("  ManningResistance bijgewerkt.")
 
         print("Update Basin-profiel en -state...")

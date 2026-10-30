@@ -209,10 +209,14 @@ def ensure_doorlaat_afvoer_max_downstream_level(
     model: Model,
     *,
     max_downstream_level: float = float("inf"),
-    tolerance: float = 1e-6,
     apply_authorities: set[str] | None = None,
 ) -> int:
-    """Keep afvoer states of doorlaat controls unconstrained downstream."""
+    """Set missing max_downstream_level values in afvoer states of doorlaat controls.
+
+    Ribasim keeps the previous control state's value for a missing parameter, so a missing value
+    would keep the aanvoer limit. Explicit values, such as a maalstop, are kept, and nodes without
+    a max_downstream_level in any control state are skipped.
+    """
     node_df = model.node.df
     link_df = model.link.df
     if node_df is None or link_df is None:
@@ -255,12 +259,16 @@ def ensure_doorlaat_afvoer_max_downstream_level(
         if static_df is None or "max_downstream_level" not in static_df.columns:
             continue
 
-        mask = static_df["node_id"].astype(int).eq(target_node_id) & static_df["control_state"].eq("afvoer")
+        node_mask = static_df["node_id"].astype(int).eq(target_node_id)
+        mask = node_mask & static_df["control_state"].eq("afvoer")
         if not mask.any():
+            continue
+        # a value missing in all control states is Ribasim's default (no limit), nothing is inherited
+        if pd.to_numeric(static_df.loc[node_mask, "max_downstream_level"], errors="coerce").isna().all():
             continue
 
         current = pd.to_numeric(static_df.loc[mask, "max_downstream_level"], errors="coerce")
-        needs_update = current.isna() | ~current.sub(max_downstream_level).abs().le(tolerance)
+        needs_update = current.isna()
         update_index = current.loc[needs_update].index
         if update_index.empty:
             continue

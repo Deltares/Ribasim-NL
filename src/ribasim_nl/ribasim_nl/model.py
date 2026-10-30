@@ -1,7 +1,9 @@
 # %%
+import inspect
+from collections.abc import Iterable, Sequence
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, ClassVar, Literal, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast
 
 import geopandas as gpd
 import networkx as nx
@@ -10,13 +12,15 @@ import pandas as pd
 import ribasim
 import shapely
 import xarray as xr
+from pandera.typing import DataFrame
 from pandera.typing.geopandas import GeoDataFrame
 from pydantic import BaseModel
 from ribasim import Node
 from ribasim.geometry.area import BasinAreaSchema
 from ribasim.geometry.node import NodeSchema
-from ribasim.input_base import NodeData
+from ribasim.input_base import NodeData, TableModel
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pump, tabulated_rating_curve
+from ribasim.schemas import BasinStateSchema
 from ribasim.utils import _concat
 from ribasim.validation import link_neighbor_amount as link_amount
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
@@ -24,9 +28,16 @@ from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.downstream import downstream_nodes
-from ribasim_nl.geometry import split_basin
+from ribasim_nl.geometry import split_basin, split_line
 from ribasim_nl.run_model import RunSpecs, parse_computation_time, run
 from ribasim_nl.upstream import upstream_nodes
+
+if TYPE_CHECKING:
+    from ribasim_nl.parametrization.parameterize import Parameterize
+
+# Evaluate DiscreteControl every 6 hours, which costs 1.4x the time of once a day instead of 2.7x for every time step,
+# while far fewer Basins oscillate than with once a day, see issue #850
+DISCRETE_CONTROL_INTERVAL = 21600.0  # s
 
 manning_data = manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
 level_data = level_boundary.Static(level=[0])
@@ -34,7 +45,7 @@ level_data = level_boundary.Static(level=[0])
 
 class default_tables:
     basin: ClassVar = [
-        basin.Profile(level=[0.0, 1.0], area=[0.01, 1000.0]),
+        basin.Profile(level=[0.0, 1.0], area=[100.0, 1000.0]),
         basin.Static(
             drainage=[0.0],
             potential_evaporation=[0.001 / 86400],
@@ -43,7 +54,7 @@ class default_tables:
         ),
         basin.State(level=[0]),
     ]
-    outlet: ClassVar = [outlet.Static(flow_rate=[100])]
+    outlet: ClassVar = [outlet.Static(flow_rate=[5.0])]
     pump: ClassVar = [pump.Static(flow_rate=[1])]
     manning_resistance: ClassVar = [
         manning_resistance.Static(length=[100], manning_n=[0.04], profile_width=[10], profile_slope=[1])
@@ -55,6 +66,16 @@ class default_tables:
 DEFAULT_TABLES = default_tables()
 
 
+def find_toml(model_dir: Path) -> Path:
+    """The TOML file of a model directory, which should contain exactly one."""
+    tomls = list(model_dir.glob("*.toml"))
+    if len(tomls) == 0:
+        raise ValueError(f"No TOML file found at: {model_dir}")
+    elif len(tomls) > 1:
+        raise ValueError(f"User provided more than one toml-file: {len(tomls)}, remove one! {tomls}")
+    return tomls[0]
+
+
 def read_results(filepath: Path) -> pd.DataFrame:
     df = xr.open_dataset(filepath).to_dataframe().reset_index()
     if "time" in df.columns:
@@ -63,10 +84,27 @@ def read_results(filepath: Path) -> pd.DataFrame:
 
 
 def node_properties_to_table(table, node_properties, node_id) -> None:
-    # update pd.DataFrame
+    """Set node properties (columns) of one node in the model's Node table."""
     node_df = table._parent.node.df
     for column, value in node_properties.items():
-        node_df.loc[node_id, [column]] = value
+        # `.at` is much faster than `.loc[node_id, [column]]` and falls back to `.loc` for new columns
+        node_df.at[node_id, column] = value
+
+
+def set_df_unvalidated(table: Any, df: pd.DataFrame | None) -> None:
+    """Assign `df` to a Ribasim table without pandera validation.
+
+    Only use this for row subsets of the current (already validated) table, which keep the schema and dtypes.
+    The other effects of a validated assignment are kept: marking the table as set on its parent, and
+    updating the used node or link ids, which determine the ids of nodes and links added later.
+    """
+    if df is not None and table.df is not None:
+        assert list(df.columns) == list(table.df.columns), "only row subsets may skip validation"
+    with table._no_validate():
+        table.df = df
+    table.check_parent()
+    if hasattr(table, "_update_used_ids"):
+        table._update_used_ids()
 
 
 class Results(BaseModel):
@@ -84,9 +122,8 @@ class Model(ribasim.Model):
     _basin_results: Results | None = None
     _basin_outstate: Results | None = None
     _flow_results: Results | None = None
-    _link_results: Results | None = None
     _graph: nx.Graph | None = None
-    _parameterize: object | None = None
+    _parameterize: "Parameterize | None" = None
 
     def __init__(self, **data) -> None:
         super().__init__(**data)
@@ -96,31 +133,27 @@ class Model(ribasim.Model):
         self._impose_settings()
 
     def parameterize(self, **kwargs) -> None:
+        assert self._parameterize is not None
         self._parameterize.run(**kwargs)
 
-    def validate_ribasim_nl(self) -> None:
-        """Validate Ribasim-NL-specific model conventions."""
+    def validate_ribasim_nl(self, layout: bool = True) -> None:
+        """Validate Ribasim-NL-specific model conventions, see `ribasim_nl.validation.validate_model`."""
         from ribasim_nl.validation import validate_model
 
-        validate_model(self)
+        validate_model(self, layout=layout)
 
     @property
     def basin_results(self) -> Results:
         if self._basin_results is None:
+            assert self.filepath is not None
             filepath = self.filepath.parent.joinpath(self.results_dir, "basin.nc").absolute().resolve()
             self._basin_results = Results(filepath=filepath)
         return self._basin_results
 
     @property
-    def link_results(self) -> Results:
-        if self._link_results is None:
-            filepath = self.filepath.parent.joinpath(self.results_dir, "flow.nc").absolute().resolve()
-            self._link_results = Results(filepath=filepath)
-        return self._link_results
-
-    @property
     def flow_results(self) -> Results:
         if self._flow_results is None:
+            assert self.filepath is not None
             filepath = self.filepath.parent.joinpath(self.results_dir, "flow.nc").absolute().resolve()
             self._flow_results = Results(filepath=filepath)
         return self._flow_results
@@ -128,64 +161,30 @@ class Model(ribasim.Model):
     @property
     def basin_outstate(self) -> Results:
         if self._basin_outstate is None:
+            assert self.filepath is not None
             filepath = self.filepath.parent.joinpath(self.results_dir, "basin_state.nc").absolute().resolve()
             self._basin_outstate = Results(filepath=filepath)
         return self._basin_outstate
-
-    def basin_static_discharge(self):
-        return self.basin.static.df.drainage
-
-    def total_flow_boundary_static_inflow(self):
-        return self.flow_boundary.static.df.flow_rate
-
-    def upstream_connection_node_ids(self, node_type="Outlet"):
-        """Get all most upstream connection node ids that are connected to a LevelBoundary on upstream side."""
-        # get all possible node_ids
-        node_ids = getattr(self, pascal_to_snake_case(node_type)).node.df.index.to_numpy()
-
-        # get all downstream nodes of level-boundaries
-        level_boundary_ds_node_ids = [self.downstream_node_id(i) for i in self.level_boundary.node.df.index]
-        level_boundary_ds_node_ids_df = (
-            pd.Series([i.to_numpy() if isinstance(i, pd.Series) else i for i in level_boundary_ds_node_ids])
-            .explode()
-            .dropna()
-            .sort_values()
-        )
-
-        return level_boundary_ds_node_ids_df[level_boundary_ds_node_ids_df.isin(node_ids)].to_list()
-
-    def downstream_connection_node_ids(self, node_type="Outlet"):
-        """Get all most upstream connection node ids that are connected to a LevelBoundary on upstream side."""
-        # get all possible node_ids
-        node_ids = getattr(self, pascal_to_snake_case(node_type)).node.df.index.to_numpy()
-
-        # get all downstream nodes of level-boundaries
-        level_boundary_ds_node_ids = [self.upstream_node_id(i) for i in self.level_boundary.node.df.index]
-        level_boundary_ds_node_ids_df = (
-            pd.Series([i.to_numpy() if isinstance(i, pd.Series) else i for i in level_boundary_ds_node_ids])
-            .explode()
-            .dropna()
-            .sort_values()
-        )
-
-        return level_boundary_ds_node_ids_df[level_boundary_ds_node_ids_df.isin(node_ids)].to_list()
 
     @property
     def graph(self):
         # create a DiGraph from link-table
         if self._graph is None:
+            assert self.link.df is not None
+            assert self.node.df is not None
             graph = nx.from_pandas_edgelist(
                 df=self.link.df[["from_node_id", "to_node_id"]],
                 source="from_node_id",
                 target="to_node_id",
                 create_using=nx.DiGraph,
             )
-            node_table_df = self.node.df.copy()
-            if "meta_function" not in node_table_df.columns:
-                node_table_df.loc[:, "meta_function"] = ""
-            node_attributes = node_table_df.rename(columns={"meta_function": "function"})[
-                ["function", "node_type"]
-            ].to_dict(orient="index")
+            node_df = self.node.df
+            node_types = node_df["node_type"].tolist()
+            functions = node_df["meta_function"].tolist() if "meta_function" in node_df.columns else [""] * len(node_df)
+            node_attributes = {
+                node_id: {"function": function, "node_type": node_type}
+                for node_id, function, node_type in zip(node_df.index.tolist(), functions, node_types, strict=True)
+            }
             nx.set_node_attributes(graph, node_attributes)
 
             self._graph = graph
@@ -199,6 +198,7 @@ class Model(ribasim.Model):
 
     @property
     def next_node_id(self):
+        assert self.node.df is not None
         return self.node.df.index.max() + 1
 
     @property
@@ -221,7 +221,6 @@ class Model(ribasim.Model):
         self._basin_results = None
         self._basin_outstate = None
         self._flow_results = None
-        self._link_results = None
         return result
 
     def update_state(self, time_stamp: pd.Timestamp | None = None) -> None:
@@ -248,12 +247,12 @@ class Model(ribasim.Model):
         df.index += 1
         df.index.name = "fid"
 
-        basin_node_df = self.basin.node.df
+        basin_node_df = self.filter_nodes("Basin")
         assert basin_node_df is not None
-        if set(df["node_id"]) != set(basin_node_df.index):  # type: ignore[arg-type]
+        if set(df["node_id"]) != set(basin_node_df.index):
             raise ValueError("Basin ID mismatch, cannot use results as model state.")
 
-        self.basin.state.df = df
+        self.basin.state.df = DataFrame[BasinStateSchema](df)
 
     # methods relying on networkx. Discuss making this all in a subclass of Model
     def _upstream_nodes(self, node_id, stop_at_inlet: bool = False, stop_at_node_type: str | None = None) -> set[int]:
@@ -291,20 +290,6 @@ class Model(ribasim.Model):
         )
         assert self.basin.area.df is not None
         return self.basin.area.df[self.basin.area.df.node_id.isin(downstream_node_ids)]
-
-    def get_upstream_links(self, node_id, **kwargs):
-        # get upstream links
-        upstream_node_ids = self._upstream_nodes(node_id, **kwargs)
-        mask = self.link.df.from_node_id.isin(upstream_node_ids[1:]) & self.link.df.to_node_id.isin(upstream_node_ids)
-        return self.link.df[mask]
-
-    def get_downstream_links(self, node_id, **kwargs):
-        # get upstream links
-        downstream_node_ids = self._downstream_nodes(node_id, **kwargs)
-        mask = self.link.df.from_node_id.isin(downstream_node_ids) & self.link.df.to_node_id.isin(
-            downstream_node_ids[1:]
-        )
-        return self.link.df[mask]
 
     def find_node_id(self, ds_node_id=None, us_node_id=None, **kwargs) -> int:
         """Find a node_id by it's properties"""
@@ -344,17 +329,14 @@ class Model(ribasim.Model):
     def unassigned_basin_area(self) -> GeoDataFrame[BasinAreaSchema]:
         """Get unassigned basin area"""
         assert self.basin.area.df is not None
-        assert self.basin.node is not None
-        assert self.basin.node.df is not None
-        return self.basin.area.df[~self.basin.area.df.node_id.isin(self.basin.node.df.index)]
+        return self.basin.area.df[~self.basin.area.df.node_id.isin(self.filter_nodes("Basin").index)]
 
     @property
     def basin_node_without_area(self) -> GeoDataFrame[NodeSchema]:
         """Get basin node without area"""
-        assert self.basin.node is not None
-        assert self.basin.node.df is not None
         assert self.basin.area.df is not None
-        return self.basin.node.df[~self.basin.node.df.index.isin(self.basin.area.df.node_id)]
+        basin_node_df = self.filter_nodes("Basin")
+        return basin_node_df[~basin_node_df.index.isin(self.basin.area.df.node_id)]
 
     def upstream_node_id(self, node_id: int, link_type: Literal["flow", "control"] = "flow"):
         """Get upstream node_id(s)"""
@@ -394,6 +376,14 @@ class Model(ribasim.Model):
         else:
             return self.basin.profile[downstream_node_id]
 
+    def filter_nodes(self, node_type: str) -> GeoDataFrame[NodeSchema]:
+        """Return the rows of the Node table of one node type.
+
+        Cheaper than `model.<node_type>.node.df`, which builds and validates a new NodeTable on every access.
+        """
+        assert self.node.df is not None
+        return self.node.df[self.node.df["node_type"] == node_type]
+
     def get_node_type(self, node_id: int):
         assert self.node.df is not None
         return self.node.df.at[node_id, "node_type"]
@@ -414,63 +404,68 @@ class Model(ribasim.Model):
         if node_id in self.node.df.index:
             node_type = self.get_node_type(node_id)
             # Remove from node table
-            self.node.df = self.node.df.drop(node_id)
+            set_df_unvalidated(self.node, self.node.df.drop(node_id))
 
         if node_id in self.node._used_node_ids:
             self.node._used_node_ids.node_ids.remove(node_id)
 
         # remove from sub-tables (static, time, area, subgrid, etc)
-        sub = (
-            next((i for i in self._nodes() if i.__repr_name__() == node_type), None) if node_type is not None else None
-        )
-        if sub is not None:
-            for table in sub._tables():
+        if node_type is not None:
+            for table in self.get_component(node_type)._tables():
                 if table.df is not None and "node_id" in table.df.columns:
-                    table.df = table.df[table.df["node_id"] != node_id]
-                    if table.df.empty:
-                        table.df = None
+                    df = table.df[table.df["node_id"] != node_id]
+                    set_df_unvalidated(table, None if df.empty else df)
         # remove links
         if remove_links and (self.link.df is not None):
             for row in self.link.df[self.link.df.from_node_id == node_id].itertuples():
                 self.remove_link(
-                    from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=False
+                    from_node_id=cast(int, row.from_node_id),
+                    to_node_id=cast(int, row.to_node_id),
+                    remove_disconnected_nodes=False,
                 )
             for row in self.link.df[self.link.df.to_node_id == node_id].itertuples():
                 self.remove_link(
-                    from_node_id=row.from_node_id, to_node_id=row.to_node_id, remove_disconnected_nodes=False
+                    from_node_id=cast(int, row.from_node_id),
+                    to_node_id=cast(int, row.to_node_id),
+                    remove_disconnected_nodes=False,
                 )
 
     def update_node(
-        self, node_id, node_type, data: list[object] | None = None, node_properties: dict[str, object] | None = None
+        self,
+        node_id,
+        node_type,
+        data: Sequence[TableModel] | None = None,
+        node_properties: dict[str, object] | None = None,
     ) -> None:
         if node_properties is None:
             node_properties = {}
         assert self.node.df is not None
-        existing_node_type = self.node.df.at[node_id, "node_type"]
+        existing_node_type = cast(str, self.node.df.at[node_id, "node_type"])
 
         # read existing table
-        table = getattr(self, pascal_to_snake_case(existing_node_type))
+        table = self.get_component(existing_node_type)
 
         # save node, so we can add it later
-        node_dict = table.node.df.loc[node_id].to_dict()
+        node_dict = self.node.df.loc[node_id].to_dict()
         node_dict.pop("node_type")
         node_dict["node_id"] = node_id
 
         # remove node from all tables
-        for attr in table.model_fields:
-            df = getattr(table, attr).df
+        for attr in type(table).model_fields:
+            sub_table = getattr(table, attr)
+            df = sub_table.df
             if df is not None:
                 if "node_id" in df.columns:
-                    getattr(table, attr).df = df[df.node_id != node_id]
+                    set_df_unvalidated(sub_table, df[df.node_id != node_id])
                 else:
-                    getattr(table, attr).df = df[df.index != node_id]
+                    set_df_unvalidated(sub_table, df[df.index != node_id])
 
         # remove from used node-ids so we can add it again in the same table
-        if node_id in table._parent.node._used_node_ids:
-            table._parent.node._used_node_ids.node_ids.remove(node_id)
+        if node_id in self.node._used_node_ids:
+            self.node._used_node_ids.node_ids.remove(node_id)
 
         # remove from global node table before re-adding to avoid duplicate index
-        self.node.df = self.node.df[self.node.df.index != node_id]
+        set_df_unvalidated(self.node, self.node.df[self.node.df.index != node_id])
 
         # add to table
         table = getattr(self, pascal_to_snake_case(node_type))
@@ -486,14 +481,62 @@ class Model(ribasim.Model):
         node_properties = {**node_properties, **node_dict}
         node_properties_to_table(table, node_properties, node_id)
 
+    def apply_edits(
+        self,
+        edits_gpkg: Path,
+        actions: Iterable[str],
+        *,
+        sort_by_order: bool = False,
+        drop_na: bool = False,
+    ) -> None:
+        """Apply model edits stored in a GeoPackage, with a layer per edit method (action).
+
+        Every row of the layer is a call of the method with the columns that are arguments of the method.
+
+        Args:
+            edits_gpkg: GeoPackage with a layer per action, e.g. "merge_basins" or "remove_node"
+            actions: names of the methods to apply, in this order
+            sort_by_order: apply the rows in the order of an "order" column, if the layer has one
+            drop_na: don't pass missing values, so the method's defaults are used
+        """
+        for action in actions:
+            print(action)
+            method = getattr(self, action)
+            keywords = inspect.getfullargspec(method).args
+            df = gpd.read_file(edits_gpkg, layer=action, fid_as_index=True)
+            if sort_by_order and "order" in df.columns:
+                df.sort_values("order", inplace=True)
+            for row in df.itertuples():
+                # itertuples rows are namedtuples, whose `_asdict` ty sees as a column
+                kwargs = {k: v for k, v in cast(Any, row)._asdict().items() if k in keywords}
+                if drop_na:
+                    kwargs = {k: v for k, v in kwargs.items() if pd.notna(v)}
+                try:
+                    method(**kwargs)
+                except Exception as e:
+                    e.add_note(f"in model edit {action}({kwargs})")
+                    raise
+
+    def update_nodes(self, node_ids: Iterable[int], node_type: str) -> None:
+        """Change the node type of nodes with `update_node`, updating duplicated node_ids once."""
+        for node_id in dict.fromkeys(node_ids):
+            self.update_node(node_id=node_id, node_type=node_type)
+
+    def remove_nodes(self, node_ids: Iterable[int], remove_links: bool = False) -> None:
+        """Remove nodes with `remove_node`, removing duplicated node_ids once."""
+        for node_id in dict.fromkeys(node_ids):
+            self.remove_node(node_id, remove_links=remove_links)
+
     def add_control_node(
         self,
         to_node_id: int | list[int],
         data,
-        ctrl_type: Literal["DiscreteControl", "PidControl"] = "DiscreteControl",
+        ctrl_type: Literal["DiscreteControl", "ContinuousControl", "PidControl"] = "DiscreteControl",
         node_geom: Point | None = None,
         node_offset: int = 100,
         node_properties: dict[str, object] | None = None,
+        node_id: int | None = None,
+        link_id: int | None = None,
     ) -> None:
         """Add a control_node to the network
 
@@ -514,6 +557,10 @@ class Model(ribasim.Model):
             By default 100
         node_properties: dict, optional
             extra properties to add to the control node id.
+        node_id: int, optional
+            ID of the control node, by default `next_node_id`. Reuse the ID of a node it replaces to keep IDs stable.
+        link_id: int, optional
+            ID of the control link, only with a single to_node_id. By default a new ID.
 
         """
         # define node
@@ -532,7 +579,10 @@ class Model(ribasim.Model):
                     node_geom = Point(lo.coords[-1])
                 to_node_id = [to_node_id]
 
-        node_id = self.next_node_id
+        if node_id is None:
+            node_id = self.next_node_id
+        assert self.node.df is not None
+        assert node_id not in self.node.df.index, f"Node {node_id} already exists"
         node = Node(node_id=node_id, geometry=node_geom)
 
         # add node
@@ -545,8 +595,9 @@ class Model(ribasim.Model):
         # add links
         if isinstance(to_node_id, int):
             to_node_id = [to_node_id]
+        assert link_id is None or len(to_node_id) == 1, f"A link_id needs a single to_node_id, got {to_node_id}"
         for _to_node_id in to_node_id:
-            self.link.add(table[node_id], self.get_node(_to_node_id))
+            self.link.add(table[node_id], self.get_node(_to_node_id), link_id=link_id)
 
     def reverse_link(
         self,
@@ -584,7 +635,7 @@ class Model(ribasim.Model):
             ].index
 
             # remove link from link-table
-            self.link.df = self.link.df[~self.link.df.index.isin(indices)]
+            self.remove_links(list(indices))
 
             # remove disconnected nodes
             if remove_disconnected_nodes:
@@ -592,9 +643,20 @@ class Model(ribasim.Model):
                     if node_id not in self.link.df[["from_node_id", "to_node_id"]].to_numpy().ravel():
                         self.remove_node(node_id)
 
+    def set_link_id(self, link_id: int, new_link_id: int) -> None:
+        """Change the ID of a link, for instance to reuse the ID of a link it replaces"""
+        assert self.link.df is not None
+        assert link_id in self.link.df.index, f"Link {link_id} does not exist"
+        assert new_link_id not in self.link.df.index, f"Link {new_link_id} already exists"
+        set_df_unvalidated(self.link, self.link.df.rename(index={link_id: new_link_id}))
+        self.link._used_link_ids.node_ids.discard(link_id)
+        self.link._used_link_ids.add(new_link_id)
+
     def remove_links(self, link_ids: list[int]) -> None:
+        """Remove links, and release their IDs so they can be reused"""
         if self.link.df is not None:
-            self.link.df = self.link.df[~self.link.df.index.isin(link_ids)]
+            set_df_unvalidated(self.link, self.link.df[~self.link.df.index.isin(link_ids)])
+            self.link._used_link_ids.node_ids.difference_update(link_ids)
 
     def add_basin(self, node_id, geometry, tables=None, **kwargs) -> None:
         # define node properties
@@ -627,9 +689,11 @@ class Model(ribasim.Model):
             **kwargs,
         )
 
-    def add_and_connect_node(
-        self, from_basin_id, to_basin_id, geometry, node_type, name="", tables=None, use_add_api: bool = True, **kwargs
-    ) -> None:
+    def add_node(self, node_type: str, geometry: Point, name="", tables=None, **kwargs) -> NodeData:
+        """Add a node with a new node_id, using default tables if none are given.
+
+        Keyword arguments are added as node properties, prefixed with `meta_` if they aren't already.
+        """
         if pd.isna(name):
             name = ""
 
@@ -640,23 +704,26 @@ class Model(ribasim.Model):
         if tables is None:
             tables = getattr(DEFAULT_TABLES, pascal_to_snake_case(node_type))
 
-        # add node
-        node = getattr(self, pascal_to_snake_case(node_type)).add(
-            Node(geometry=geometry, name=name, **node_properties), tables=tables
-        )
+        return self.get_component(node_type).add(Node(geometry=geometry, name=name, **node_properties), tables=tables)
+
+    def add_and_connect_node(
+        self, from_basin_id, to_basin_id, geometry, node_type, name="", tables=None, use_add_api: bool = True, **kwargs
+    ) -> None:
+        node = self.add_node(node_type=node_type, geometry=geometry, name=name, tables=tables, **kwargs)
 
         # add links from and to node
-        for from_node, to_node in [(self.get_node(from_basin_id), node), (node, self.get_node(to_basin_id))]:
-            if use_add_api:
-                try:
-                    self.link.add(from_node=from_node, to_node=to_node)
-                except AttributeError as e:
-                    print(
-                        f"Error in connecting {from_node.node_type} #{from_node.node_id} to {to_node.node_type} #{to_node.node_id}"
-                    )
-                    raise e
-            else:
-                self.add_link(from_node, to_node)
+        node_pairs = [(self.get_node(from_basin_id), node), (node, self.get_node(to_basin_id))]
+        if not use_add_api:
+            self.add_links(node_pairs)
+            return
+        for from_node, to_node in node_pairs:
+            try:
+                self.link.add(from_node=from_node, to_node=to_node)
+            except AttributeError as e:
+                print(
+                    f"Error in connecting {from_node.node_type} #{from_node.node_id} to {to_node.node_type} #{to_node.node_id}"
+                )
+                raise e
 
     def add_link(self, from_node, to_node, link_type="flow", name="", **kwargs) -> None:
         """Alternative method to add links to the model.
@@ -672,23 +739,35 @@ class Model(ribasim.Model):
             name (str, optional): link name. Defaults to "".
             kwargs: additional attributes that will be passed as meta-values to the row in the dataframe
         """
-        geometry_to_append = [LineString([from_node.geometry, to_node.geometry])]
-        link_id = self.link.df.index.max() + 1
+        self.add_links([(from_node, to_node)], link_type=link_type, name=name, **kwargs)
+
+    def add_links(self, node_pairs: list[tuple[NodeData, NodeData]], link_type="flow", name="", **kwargs) -> None:
+        """Add straight links between pairs of (from_node, to_node), like `add_link`.
+
+        Adding many links at once is much faster than calling `add_link` repeatedly, since the
+        link table is validated once.
+        """
+        if len(node_pairs) == 0:
+            return
+        assert self.link.df is not None
+        start_link_id = self.link.df.index.max() + 1
+        link_ids = pd.RangeIndex(start_link_id, start_link_id + len(node_pairs), name="link_id")
         df = gpd.GeoDataFrame(
             data={
-                "from_node_id": [from_node.node_id],
-                "to_node_id": [to_node.node_id],
-                "link_type": [link_type],
-                "name": [name],
+                "from_node_id": [from_node.node_id for from_node, _ in node_pairs],
+                "to_node_id": [to_node.node_id for _, to_node in node_pairs],
+                "link_type": link_type,
+                "name": name,
                 **kwargs,
             },
-            geometry=geometry_to_append,
+            geometry=[LineString([from_node.geometry, to_node.geometry]) for from_node, to_node in node_pairs],
             crs=self.crs,
-            index=pd.Index([link_id], name="link_id"),
+            index=link_ids,
         )
 
         self.link.df = _concat([self.link.df, df])
-        self.link._used_link_ids.add(link_id)
+        for link_id in link_ids:
+            self.link._used_link_ids.add(link_id)
         self.link._used_link_ids.max_node_id = self.link.df.index.max()
 
     def add_basin_outlet(self, basin_id, geometry, node_type="Outlet", tables=None, **kwargs) -> None:
@@ -714,7 +793,10 @@ class Model(ribasim.Model):
 
         # add links from and to node
         self.link.add(self.basin[basin_id], node)
-        link_geometry = self.link.df.set_index(["from_node_id", "to_node_id"]).at[(basin_id, node.node_id), "geometry"]
+        assert self.link.df is not None
+        link_geometry = cast(
+            LineString, self.link.df.set_index(["from_node_id", "to_node_id"]).at[(basin_id, node.node_id), "geometry"]
+        )
 
         # add boundary
         geometry = shapely.affinity.scale(link_geometry, xfact=1.05, yfact=1.05, origin="center").boundary.geoms[1]
@@ -722,7 +804,43 @@ class Model(ribasim.Model):
         boundary_node = self.level_boundary.add(Node(geometry=geometry), tables=DEFAULT_TABLES.level_boundary)
         self.link.add(node, boundary_node)
 
+    def replace_flow_boundaries_by_level_boundaries(self) -> None:
+        """Replace each FlowBoundary by a LevelBoundary, with an Outlet on its link to the node downstream.
+
+        The Outlet is placed 10 m from the boundary, or at 10% of links of at most 20 m.
+        """
+        assert self.flow_boundary.node is not None and self.flow_boundary.node.df is not None
+        assert self.link.df is not None
+        for row in self.flow_boundary.node.df.itertuples():
+            node_id = cast(int, row.Index)
+            basin_node_id = self.downstream_node_id(node_id)
+
+            # get link geometry and remove link
+            link_id = self.link.df[self.link.df["from_node_id"] == node_id].index[0]
+            link_geometry = cast(LineString, self.link.df.at[link_id, "geometry"])
+            self.link.df = self.link.df[self.link.df.index != link_id]
+
+            # outlet node.geometry 10m from upstream or at 10% of link.geometry
+            if link_geometry.length > 20:
+                outlet_node_geometry = link_geometry.interpolate(10)
+            else:
+                outlet_node_geometry = link_geometry.interpolate(0.1, normalized=True)
+
+            # change flow_boundary to level_boundary and add outlet_node
+            self.update_node(node_id, node_type="LevelBoundary")
+            outlet_node = self.outlet.add(
+                node=Node(geometry=outlet_node_geometry, name=row.name), tables=default_tables.outlet
+            )
+
+            # remove old links and add 2 new
+            split_link_geometries = split_line(link_geometry, outlet_node_geometry)
+            assert len(split_link_geometries) == 2, f"Outlet of {node_id} does not split its link"
+            left_link_geometry, right_link_geometry = split_link_geometries
+            self.link.add(self.level_boundary[node_id], outlet_node, geometry=left_link_geometry)
+            self.link.add(outlet_node, self.basin[basin_node_id], geometry=right_link_geometry)
+
     def reverse_direction_at_node(self, node_id) -> None:
+        assert self.link.df is not None
         for link_id in self.link.df[
             (self.link.df.from_node_id == node_id) | (self.link.df.to_node_id == node_id)
         ].index:
@@ -737,6 +855,7 @@ class Model(ribasim.Model):
         else:
             raise TypeError("geometry cannot be used for selection, is not a (Multi)Polygon")
 
+        assert self.basin.area.df is not None
         mask = self.basin.area.df.geometry.apply(lambda x: any(x.equals(i) for i in polygons))
 
         if not mask.any():
@@ -758,11 +877,10 @@ class Model(ribasim.Model):
         self, geometry: MultiPolygon, node_id: int | None = None, meta_streefpeil: float | None = None
     ) -> None:
         # if node_id is None, get an available node_id
-        assert self.basin.node is not None
-        assert self.basin.node.df is not None
         assert self.basin.area.df is not None
+        basin_node_df = self.filter_nodes("Basin")
         if pd.isna(node_id):
-            basin_df = self.basin.node.df[self.basin.node.df.within(geometry)]
+            basin_df = basin_node_df[basin_node_df.within(geometry)]
             if basin_df.empty:
                 raise ValueError("No basin-node within basin area, specify node_id explicitly")
             elif len(basin_df) > 1:
@@ -771,7 +889,7 @@ class Model(ribasim.Model):
                 )
             else:
                 node_id = basin_df.index[0]
-        elif node_id not in self.basin.node.df.index:
+        elif node_id not in basin_node_df.index:
             raise ValueError(f"Node_id {node_id} is not a basin")
 
         # check geometry and promote to mulitpolygon
@@ -788,13 +906,13 @@ class Model(ribasim.Model):
         area_df = gpd.GeoDataFrame(data, crs=self.crs)
         area_df.index.name = "fid"
         area_df.index += self.basin.area.df.index.max() + 1
-        self.basin.area.df = pd.concat([self.basin.area.df, area_df])
+        self.basin.area.df = GeoDataFrame[BasinAreaSchema](pd.concat([self.basin.area.df, area_df]))
 
     def move_node(self, node_id: int, geometry: Point) -> None:
         # update geometry
         assert self.node.df is not None
         assert self.link.df is not None
-        self.node.df.loc[node_id, ["geometry"]] = geometry
+        self.node.df.loc[node_id, ["geometry"]] = geometry  # ty: ignore[invalid-assignment]
 
         # reset all links
         link_ids = self.link.df[
@@ -803,15 +921,18 @@ class Model(ribasim.Model):
         self.reset_link_geometry(link_ids=link_ids)
 
     def report_basin_area(self) -> None:
+        assert self.filepath is not None
         gpkg = self.filepath.with_name("basin_node_area_errors.gpkg")
         self.unassigned_basin_area.to_file(gpkg, layer="unassigned_basin_area")
 
-        unassigned_basin_node = self.basin.node.df[~self.basin.node.df.index.isin(self.basin.area.df.node_id)]
-        unassigned_basin_node.to_file(gpkg, layer="unassigned_basin_node")
+        self.basin_node_without_area.to_file(gpkg, layer="unassigned_basin_node")
 
     def report_internal_basins(self):
+        assert self.filepath is not None
+        assert self.link.df is not None
         gpkg = self.filepath.with_name("internal_basins.gpkg")
-        df = self.basin.node.df[~self.basin.node.df.index.isin(self.link.df.from_node_id)]
+        basin_node_df = self.filter_nodes("Basin")
+        df = basin_node_df[~basin_node_df.index.isin(self.link.df.from_node_id)]
         df.to_file(gpkg)
         return df
 
@@ -825,7 +946,7 @@ class Model(ribasim.Model):
         distance_to_model_df = self.basin.area.df.distance(geometry)
 
         # get basin node-id
-        basin_node_id = self.basin.area.df.at[distance_to_model_df.idxmin(), "node_id"]
+        basin_node_id = cast(int, self.basin.area.df.at[distance_to_model_df.idxmin(), "node_id"])
 
         # check if distance isn't too large
         if max_distance is not None and distance_to_model_df.min() > max_distance:
@@ -842,21 +963,22 @@ class Model(ribasim.Model):
             method (str): method to find basin node_id; `within` or `closest`. First start with `within`. Default is `within`
             distance (float, optional): for method closest, the distance to find an unassigned basin node_id. Defaults to 100.
         """
-        assert self.basin.node is not None
-        if self.basin.node.df is not None:
+        if self.node.df is not None:
+            basin_node_df = self.filter_nodes("Basin")
             if self.basin.area.df is not None:
-                basin_area_df = self.basin.area.df[~self.basin.area.df.node_id.isin(self.basin.node.df.index)]
+                basin_area_df = self.basin.area.df[~self.basin.area.df.node_id.isin(basin_node_df.index)]
 
                 for row in basin_area_df.itertuples():
+                    area_geometry = cast(BaseGeometry, row.geometry)
                     if method == "within":
                         # check if area contains basin-nodes
-                        basin_df = self.basin.node.df[self.basin.node.df.within(row.geometry)]
+                        basin_df = basin_node_df[basin_node_df.within(area_geometry)]
 
                     elif method == "closest":
-                        basin_df = self.basin.node.df[self.basin.node.df.within(row.geometry)]
+                        basin_df = basin_node_df[basin_node_df.within(area_geometry)]
                         # if method is `distance` and basin_df is emtpy we create a new basin_df
                         if basin_df.empty:
-                            basin_df = self.basin.node.df[self.basin.node.df.distance(row.geometry) < distance]
+                            basin_df = basin_node_df[basin_node_df.distance(area_geometry) < distance]
 
                     else:
                         raise ValueError(f"Supported methods are 'within' or 'closest', got '{method}'.")
@@ -879,10 +1001,12 @@ class Model(ribasim.Model):
         df = self.link.df[self.link.df.index.isin(link_ids)] if link_ids is not None else self.link.df
 
         for row in df.itertuples():
-            from_point = Point(node_df.at[row.from_node_id, "geometry"].x, node_df.at[row.from_node_id, "geometry"].y)
-            to_point = Point(node_df.at[row.to_node_id, "geometry"].x, node_df.at[row.to_node_id, "geometry"].y)
+            from_geometry = cast(Point, node_df.at[row.from_node_id, "geometry"])
+            to_geometry = cast(Point, node_df.at[row.to_node_id, "geometry"])
+            from_point = Point(from_geometry.x, from_geometry.y)
+            to_point = Point(to_geometry.x, to_geometry.y)
             geometry = LineString([from_point, to_point])
-            self.link.df.loc[row.Index, ["geometry"]] = geometry
+            self.link.df.loc[row.Index, ["geometry"]] = geometry  # ty: ignore[invalid-assignment]
 
     @property
     def link_from_node_type(self) -> pd.Series:
@@ -937,7 +1061,7 @@ class Model(ribasim.Model):
             raise ValueError("Multiple Overlapping basin-areas intersecting cut_line")
 
         # get all we need and remove area from basin.area.df
-        basin_fid = int(basin_area_df.iloc[0].name)
+        basin_fid = int(cast(int, basin_area_df.iloc[0].name))
         basin_geometry = basin_area_df.iloc[0].geometry
         self.basin.area.df = self.basin.area.df[self.basin.area.df.index != basin_fid]
 
@@ -972,14 +1096,14 @@ class Model(ribasim.Model):
 
             # we override node_id to a unique basin-node within area if that is specified
             if assign_unique_node:
-                assert self.basin.node is not None
-                assert self.basin.node.df is not None
-                if self.basin.node.df.geometry.within(poly).any():
-                    node_ids = self.basin.node.df[self.basin.node.df.geometry.within(poly)].index.to_list()
+                basin_node_df = self.filter_nodes("Basin")
+                within = basin_node_df.geometry.within(poly)
+                if within.any():
+                    node_ids = basin_node_df[within].index.to_list()
                     if node_ids[0] not in self.basin.area.df.node_id.to_numpy():
                         kwargs["node_id"] = node_ids[0]
 
-            self.basin.area.df.loc[self.basin.area.df.index.max() + 1] = kwargs
+            self.basin.area.df.loc[self.basin.area.df.index.max() + 1] = kwargs  # ty: ignore[invalid-assignment]
 
         if self.basin.area.df.crs is None:
             self.basin.area.df.crs = self.crs
@@ -1006,24 +1130,27 @@ class Model(ribasim.Model):
             raise ValueError(f"Cannot deactivate node of type {node_type}: no 'flow_rate' or 'manning_n' column found")
 
     def remove_unassigned_basin_area(self) -> None:
+        assert self.basin.area.df is not None
         df = self.basin.area.df[~self.basin.area.df.index.isin(self.unassigned_basin_area.index)]
         if self.basin.area.df.node_id.duplicated().any():
             df = df.dissolve(by="node_id").reset_index()
             df.index.name = "fid"
-        self.basin.area.df = df
+        self.basin.area.df = GeoDataFrame[BasinAreaSchema](df)
 
     def explode_basin_area(self, remove_z=True) -> None:
+        assert self.basin.area.df is not None
         df = self.basin.area.df.explode().reset_index(drop=True)
         df.index.name = "fid"
-        self.basin.area.df = df
+        self.basin.area.df = GeoDataFrame[BasinAreaSchema](df)
 
         if remove_z:
             self.basin.area.df.loc[:, "geometry"] = gpd.GeoSeries(
-                shapely.force_2d(self.basin.area.df.geometry.array), crs=self.basin.area.df.crs
+                shapely.force_2d(self.basin.area.df.geometry.to_numpy()), crs=self.basin.area.df.crs
             )
 
     def remove_basin_area(self, geometry) -> None:
         mask = self.select_basin_area(geometry)
+        assert self.basin.area.df is not None
         self.basin.area.df = self.basin.area.df[~mask]
 
     def merge_basins(
@@ -1032,11 +1159,11 @@ class Model(ribasim.Model):
         to_node_id: int | None = None,
         are_connected=True,
     ) -> None:
-        assert self.basin.node is not None
-        assert self.basin.node.df is not None
-        if node_id not in self.basin.node.df.index:
-            raise ValueError(f"{node_id} is not a basin")
         assert self.node.df is not None
+        if node_id not in self.node.df.index or self.node.df.at[node_id, "node_type"] != "Basin":
+            raise ValueError(f"{node_id} is not a basin")
+        assert node_id is not None
+        assert to_node_id is not None
         assert self.link.df is not None
         assert self.basin.area.df is not None
         to_node_type = self.node.df.at[to_node_id, "node_type"]
@@ -1047,14 +1174,18 @@ class Model(ribasim.Model):
 
         if are_connected and (to_node_type != "FlowBoundary"):
             self._graph = None  # set self._graph to None, so it will regenerate on currend link-table
-            paths = [i for i in nx.all_shortest_paths(nx.Graph(self.graph), node_id, to_node_id) if len(i) == 3]
+            graph = self.graph.to_undirected(as_view=True)
+            # connecting flow-nodes are the common neighbors, provided the basins are not linked directly
+            connecting_node_ids = (
+                [] if graph.has_edge(node_id, to_node_id) else sorted(nx.common_neighbors(graph, node_id, to_node_id))
+            )
 
-            if len(paths) == 0:
+            if len(connecting_node_ids) == 0:
                 raise ValueError(f"basin {node_id} not a direct neighbor of basin {to_node_id}")
 
             # remove flow-node and connected links
-            for path in paths:
-                self.remove_node(path[1], remove_links=True)
+            for connecting_node_id in connecting_node_ids:
+                self.remove_node(connecting_node_id, remove_links=True)
 
         # get a complete link-list to modify
         link_ids = self.link.df[self.link.df.from_node_id == node_id].index.to_list()
@@ -1080,6 +1211,7 @@ class Model(ribasim.Model):
                 # polygon could be a series op polygons
                 if isinstance(poly, pd.Series):
                     poly = poly.union_all()
+                poly = cast(BaseGeometry, poly)
 
                 # if it is a polygon we convert it to multipolygon
                 if isinstance(poly, Polygon):
@@ -1087,13 +1219,15 @@ class Model(ribasim.Model):
 
                 # if to_node_id has area we union both areas
                 if len(self.basin.area.df.loc[self.basin.area.df.node_id == to_node_id]) == 1:
-                    poly = poly.union(self.basin.area.df.set_index("node_id").at[to_node_id, "geometry"])
+                    poly = poly.union(
+                        cast(BaseGeometry, self.basin.area.df.set_index("node_id").at[to_node_id, "geometry"])
+                    )
 
-                    self.basin.area.df.loc[self.basin.area.df.node_id == to_node_id, ["geometry"]] = poly
+                    self.basin.area.df.loc[self.basin.area.df.node_id == to_node_id, ["geometry"]] = poly  # ty: ignore[invalid-assignment]
 
                 # else we add a record to basin
                 else:
-                    self.basin.area.df.loc[self.basin.area.df.index.max() + 1] = {
+                    self.basin.area.df.loc[self.basin.area.df.index.max() + 1] = {  # ty: ignore[invalid-assignment]
                         "node_id": to_node_id,
                         "geometry": poly,
                     }
@@ -1106,32 +1240,31 @@ class Model(ribasim.Model):
             self.update_node(to_node_id, "LevelBoundary", data=[level_boundary.Static(level=[0.0])])
 
         # finally we remove the basin
-        assert node_id is not None
         self.remove_node(node_id)
 
-    def merge_outlets(
-        self, outlet_a_id: int | None = None, outlet_b_id: int | None = None
-    ) -> GeoDataFrame[NodeSchema] | pd.Series:
+    def merge_outlets(self, outlet_a_id: int | None = None, outlet_b_id: int | None = None) -> pd.Series:
         """Merge outlet_b into outlet_a. Outlet a is considered upstream, and b donwstream."""
         assert outlet_a_id is not None
         assert outlet_b_id is not None
         assert self.get_node_type(outlet_a_id) == "Outlet" and self.get_node_type(outlet_b_id) == "Outlet"
 
-        assert self.outlet.node is not None
-        assert self.outlet.node.df is not None
         assert self.node.df is not None
         assert self.link.df is not None
         assert self.outlet.static.df is not None
-        outlet_a = self.outlet.node.df.loc[outlet_a_id]
-        outlet_b = self.outlet.node.df.loc[outlet_b_id]
+        outlet_a = self.node.df.loc[outlet_a_id].copy()
+        outlet_b = self.node.df.loc[outlet_b_id].copy()
+        assert isinstance(outlet_a, pd.Series) and isinstance(outlet_b, pd.Series)
 
-        # Remove upstream (outlet_a) control node before link redirection, keeping the downstream one
-        upstream_ctrl_links = self.link.df[
-            (self.link.df.to_node_id == outlet_a_id) & (self.link.df.link_type == "control")
-        ]
-        for ctrl_link_id in upstream_ctrl_links.index:
-            ctrl_node_id: int = self.link.df.at[ctrl_link_id, "from_node_id"]
-            self.remove_node(ctrl_node_id, remove_links=True)
+        # Remove the upstream (outlet_a) control nodes of a type that also controls outlet_b before link
+        # redirection, keeping the downstream one. Others are kept, such as the DiscreteControl of an
+        # outlet that is merged with an inlet with a FlowDemand, since an Outlet can have both.
+        control_links = self.link.df[self.link.df.link_type == "control"]
+        upstream_ctrl_ids = control_links.loc[control_links.to_node_id == outlet_a_id, "from_node_id"]
+        downstream_ctrl_ids = control_links.loc[control_links.to_node_id == outlet_b_id, "from_node_id"]
+        downstream_ctrl_types = {self.get_node_type(i) for i in downstream_ctrl_ids}
+        for ctrl_node_id in upstream_ctrl_ids:
+            if self.get_node_type(ctrl_node_id) in downstream_ctrl_types:
+                self.remove_node(ctrl_node_id, remove_links=True)
 
         # correct link from and to attributes (collect all links connected to either outlet for geometry reset)
         link_ids = self.link.df[
@@ -1146,12 +1279,20 @@ class Model(ribasim.Model):
         # Merge geometry
         avg_x = (outlet_a.geometry.x + outlet_b.geometry.x) / 2
         avg_y = (outlet_a.geometry.y + outlet_b.geometry.y) / 2
-        self.node.df.loc[outlet_a_id, "geometry"] = Point(avg_x, avg_y)
+        self.node.df.loc[outlet_a_id, "geometry"] = Point(avg_x, avg_y)  # ty: ignore[invalid-assignment]
 
-        # Merge attributes
-        self.outlet.static.df.loc[self.outlet.static.df.node_id == outlet_a_id, "max_downstream_level"] = (
-            self.outlet.static.df.loc[self.outlet.static.df.node_id == outlet_b_id, "max_downstream_level"]
-        )
+        # Take the max_downstream_level of outlet_b, which belongs to the downstream model, per control state
+        static = self.outlet.static.df
+        is_a = static.node_id == outlet_a_id
+        static_b = static.loc[static.node_id == outlet_b_id]
+        if static_b["control_state"].notna().any():
+            levels_b = static_b.set_index("control_state")["max_downstream_level"]
+            levels = static.loc[is_a, "control_state"].map(levels_b)
+        else:
+            assert len(static_b) == 1, f"Outlet {outlet_b_id} should have one static row without control_state."
+            levels = pd.Series(static_b["max_downstream_level"].iloc[0], index=static.index[is_a])
+        # a missing max_downstream_level of outlet_b means no limit, so keep that of outlet_a
+        static.loc[is_a, "max_downstream_level"] = levels.fillna(static.loc[is_a, "max_downstream_level"])
 
         # Remove outlet_b
         self.remove_node(outlet_b_id)
@@ -1244,6 +1385,7 @@ class Model(ribasim.Model):
         """Check if links exist with reversed source-destination"""
         # remove function when this is available: https://github.com/Deltares/Ribasim/issues/2140
         df = self.link.df
+        assert df is not None
 
         # on tuples we can easily check duplicates irrespective of order
         duplicated_links = pd.Series(
@@ -1268,8 +1410,9 @@ class Model(ribasim.Model):
         # "input" is the default, but we read models with the old default ".",
         # causing it to stay there unless we change it here.
         self.input_dir = Path("input")
-        # self.solver.abstol = 1e-6
-        # self.solver.reltol = 1e-6
         # Avoid large databases by writing some tables to NetCDF
         if self.basin.time.df is not None:
             self.basin.time.filepath = Path("basin_time.nc")
+        self.solver.discrete_control_interval = DISCRETE_CONTROL_INTERVAL
+        # Track where the water comes from, which costs little with the tracer transport of the core
+        self.experimental.concentration = True

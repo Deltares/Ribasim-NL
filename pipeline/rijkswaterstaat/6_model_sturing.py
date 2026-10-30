@@ -1,0 +1,199 @@
+# %%
+import warnings
+from typing import cast
+
+import openpyxl
+import pandas as pd
+from ribasim.nodes import (
+    continuous_control,
+    outlet,
+    pid_control,
+)
+from ribasim_nl.rws_kunstwerken import (
+    read_flow_kwargs,
+    read_kwk_properties,
+    read_pump,
+    read_qq_curve,
+    read_rating_curve,
+)
+
+from ribasim_nl import CloudStorage, Model
+
+warnings.filterwarnings(
+    action="ignore",
+    module="geopandas",
+    message="CRS not set for some of the concatenation inputs.",
+)
+
+warnings.filterwarnings(
+    action="ignore",
+    module="openpyxl",
+    message="Data Validation extension is not supported and will be removed",
+)
+
+
+cloud = CloudStorage()
+
+UPDATE_KWK_DATA = True
+
+
+# %% functies
+def read_outlet(kwk_df, name=None):
+    if "QQ relatie" in kwk_df["Eigenschap"].to_numpy():
+        qq_properties = read_qq_curve(kwk_df)
+        return outlet.Static(
+            flow_rate=[max(qq_properties["flow_rate"].to_list())],
+        )
+    else:
+        return outlet.Static(**read_flow_kwargs(read_kwk_properties(kwk_df)))
+
+
+def read_pid(control_properties, control_basin_id):
+    if control_properties["Controle benedenstrooms"]:
+        p = 500000
+        i = 1e-07
+    else:
+        p = -500000
+        i = -1e-07
+
+    return [
+        pid_control.Static(
+            listen_node_id=[control_basin_id],
+            target=[control_properties["Streefpeil bovenstrooms (m +NAP)"]],
+            listen_node_type="Basin",
+            proportional=[p],
+            integral=[i],
+            derivative=[0.0],
+        )
+    ]
+
+
+# %% Paden
+ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_netwerk/hws.toml")
+kwk_dir = cloud.joinpath("Rijkswaterstaat/verwerkt/kunstwerken")
+kwk_xlsx = kwk_dir.joinpath("kunstwerken.xlsx")
+
+# %%Inlezen
+all_kwk_df = pd.read_excel(kwk_xlsx, sheet_name="kunstwerken")
+all_kwk_df.loc[:, "code"] = all_kwk_df["code"].astype(str)
+model = Model.read(ribasim_toml)
+
+# %% Itereren over kunstwerken
+
+all_kwk_df = all_kwk_df[all_kwk_df.in_model]
+for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
+    # get sheet-names
+    file_name = kwk_dir / f"{gebied}.xlsx"
+    workbook = openpyxl.open(file_name)
+    sheet_names = workbook.sheetnames
+    workbook.close()
+
+    # kwk = next(i for i in kwks_df.itertuples() if i.naam == "Pr. Bernhardsluis")
+    for kwk in kwks_df.itertuples():
+        print(f"updating {kwk.naam}")
+        # check if naam column exists as sheet in xlsx and read sheet
+        if kwk.naam not in sheet_names:
+            raise ValueError(f"{kwk.naam} not a sheet in {file_name}")
+
+        kwk_df = pd.read_excel(file_name, sheet_name=cast(str, kwk.naam))
+
+        # get properties
+        kwk_properties = read_kwk_properties(kwk_df)
+
+        # check if code-value is the same in both Excels
+        if kwk_properties["Kunstwerkcode"] != kwk.code:
+            raise ValueError(
+                f"code for {kwk.naam} do not match in `{file_name.name}` and `{kwk_xlsx.name}`: {kwk_properties['Kunstwerkcode']} != {kwk.code}"
+            )
+
+        # find existing node_id in model
+        node_id = model.find_node_id(meta_code_waterbeheerder=str(kwk_properties["Kunstwerkcode"]))
+
+        if UPDATE_KWK_DATA:
+            # prepare static-data for updating node
+            node_type = kwk_properties["Ribasim type"]
+            if node_type == "TabulatedRatingCurve":
+                data = [read_rating_curve(kwk_df)]
+            elif node_type == "Outlet":
+                data = [read_outlet(kwk_df, name=kwk.naam)]
+            elif node_type == "Pump":
+                data = [read_pump(kwk_properties)]
+            else:
+                raise ValueError(f"node-type {node_type} not yet implemented")
+
+            # update model
+            model.update_node(
+                node_id=node_id,
+                node_type=node_type,
+                data=data,
+                node_properties={"name": kwk.naam},
+            )
+
+        # check if structure has pid control
+        if "PidControl" in kwk_df["Eigenschap"].to_numpy():
+            control_properties = kwk_df.loc[kwk_df.Eigenschap.to_list().index("PidControl") + 1 :][
+                ["Eigenschap", "Waarde"]
+            ].set_index("Eigenschap")["Waarde"]
+
+            if control_properties["Controle benedenstrooms"]:
+                # waterlichaam should be upstream
+                control_basin_id = model.find_node_id(
+                    us_node_id=node_id,
+                    name=control_properties["Waterlichaam"],
+                )
+            else:  # waterlichaam should be donstream
+                control_basin_id = model.find_node_id(
+                    ds_node_id=node_id,
+                    name=control_properties["Waterlichaam"],
+                )
+
+            # add control node to network
+            model.add_control_node(
+                to_node_id=node_id,
+                data=read_pid(control_properties, control_basin_id),
+                ctrl_type="PidControl",
+                node_offset=20,
+            )
+            # check if network-direction is correct with control-parameters
+
+        # check if structure has qq control
+        if "QQ relatie" in kwk_df["Eigenschap"].to_numpy():
+            qq_properties = read_qq_curve(kwk_df)
+
+            listen_node_id = model.find_node_id(meta_meetlocatie_code=str(kwk_properties["Meetlocatiecode"]))
+
+            data = [
+                continuous_control.Function(
+                    input=qq_properties["condition_flow_rate"].to_list(),
+                    output=qq_properties["flow_rate"].to_list(),
+                    controlled_variable="flow_rate",
+                ),
+                continuous_control.Variable(
+                    listen_node_id=[listen_node_id],
+                    variable=["flow_rate"],
+                ),
+            ]
+
+            model.add_control_node(
+                to_node_id=node_id,
+                data=data,
+                ctrl_type="ContinuousControl",
+                node_offset=20,
+            )
+
+# %% Nijkerkersluis drains the Veluwerandmeren into the Eemmeer, see https://github.com/Deltares/Ribasim-NL/issues/887
+node_id = model.find_node_id(meta_code_waterbeheerder="32E-001-04")
+assert model.node.df is not None
+assert model.node.df.at[node_id, "node_type"] == "Pump", model.node.df.at[node_id, "node_type"]
+upstream_name = model.node.df.at[model.upstream_node_id(node_id), "name"]
+assert upstream_name == "Nuldernauw", upstream_name
+model.update_node(
+    node_id=node_id,
+    node_type="Outlet",
+    data=[outlet.Static(flow_rate=[100.0], max_flow_rate=[150.0], min_upstream_level=[-0.05])],
+)
+
+# %% write
+ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_sturing/hws.toml")
+
+model.write(ribasim_toml)

@@ -6,10 +6,12 @@ from pathlib import Path
 
 import geopandas as gpd
 import momepy
+import numpy as np
 import pandas as pd
 import shapely
 
 from ribasim_nl import CloudStorage
+from ribasim_nl.bgt_water import BGT_WATER, read_bgt_water
 from ribasim_nl.profiles import bgt, cross_section, depth, path_finder, width
 from ribasim_nl.profiles import hydrotopes as ht
 
@@ -104,10 +106,11 @@ def main(
     :param wd_intermediate_output: working directory for intermediate output files, defaults to None
         If None, no intermediate output is exported
     :param wd_output: working directory for first-class profile outputs, defaults to None
-        If provided, the hydro-object network used to derive the profiles is exported here as
-        "network.gpkg" (layer "hydro_objects"). This file is a regular profile output (always
+        If provided, the hydro-object network with its main route is exported here as
+        "network.gpkg" (layer "hydro_objects"): the hydro-objects of the main route or in BGT water,
+        including those that the profiles leave out for lack of a BGT width or depth. This file is a regular profile output (always
         written, independent of `wd_intermediate_output`) and is consumed by the network-snapping
-        step (see `peilbeheerst_model.network_snapping.get_graph`).
+        step (see `ribasim_nl.network_snapping.read_hydro_objects`).
 
     :key debug: flag for debug-mode, defaults to False
     :key epsg: EPSG to which all geospatial data is projected, defaults to 28992
@@ -116,7 +119,7 @@ def main(
     :key create_depth_profile_lines: create depth profile lines of the cross-sections from point-data, defaults to False
     :key kw_make_depth_profile: optional arguments for making depth profile lines, defaults to {}
     :key simplify_geometries: simplify geometries by removing duplicates, defaults to True
-    :key fn_bgt: geospatial file with previously downloaded BGT-data, or where to export the newly downloaded BGT-data
+    :key fn_bgt: GeoParquet with BGT water, defaults to `ribasim_nl.bgt_water.BGT_WATER`
         to for future use, defaults to None
     :key bgt_buffer: minimum overlap between BGT-polygon and hydro-object to be coupled, defaults to 0.1 [m]
     :key bgt_full_coverage: consider BGT-data not intersecting any hydro-objects as part of the storing capacity of the
@@ -259,11 +262,21 @@ def main(
         if not main_route_from_hydro_objects:
             assert crossings is not None
             if internal_crossings:
-                _temp = shapely.MultiPolygon(basins.explode().geometry.values).buffer(selection_buffer)
+                _temp = shapely.MultiPolygon(list(basins.explode().geometry.values)).buffer(selection_buffer)
             else:
-                _temp = shapely.MultiPolygon(basins.explode().exterior.buffer(selection_buffer))
+                _temp = shapely.MultiPolygon(list(basins.explode().exterior.buffer(selection_buffer)))
             crossings[crossings.intersects(_temp)].to_file(wd_intermediate_output / _fn_int_output, layer="endpoints")
             del _temp
+
+    # the network for routing links: the hydro-objects of the main route or in BGT water. The profiles use fewer, as
+    # the next steps drop those without width or depth, while other hydro-objects can be loose pieces without water
+    in_water = np.zeros(len(hydro_objects), dtype=bool)
+    in_water[
+        shapely.STRtree(bgt_data.geometry.to_numpy()).query(hydro_objects.geometry.to_numpy(), "intersects")[0]
+    ] = True
+    routing_network = hydro_objects.loc[
+        hydro_objects["main-route"].to_numpy(dtype=bool) | in_water, ["main-route", "geometry"]
+    ]
 
     # BGT-coupling
     hydro_objects = width.couple_bgt_to_hydro_objects(hydro_objects, bgt_data, min_overlap=bgt_buffer)
@@ -288,39 +301,43 @@ def main(
     if wd_intermediate_output is not None:
         hydro_objects.to_file(wd_intermediate_output / _fn_int_output, layer="hydro-objects")
 
-    # export the hydro-object network used to derive the profiles [first-class output]
-    # This is the network consumed by the network-snapping step (peilbeheerst_model.network_snapping
-    # .get_graph). It is written for both routing strategies (network-based and pre-flagged) and is
+    # export the hydro-object network with its main route [first-class output]
+    # This is the network consumed by the network-snapping step (ribasim_nl.network_snapping
+    # .read_hydro_objects). It is written for both routing strategies (network-based and pre-flagged) and is
     # independent of `wd_intermediate_output`, so the snapping step does not rely on debug output.
+    # It holds the hydro-objects of the main route or in BGT water, also those that the profiles leave out for lack
+    # of a BGT width or depth, since links follow them too.
     # Geometries are exploded to single-part LineStrings: `momepy.gdf_to_nx` (used to rebuild the
     # graph from this file) does not support multi-part geometries, which may occur for pre-flagged
     # hydro-objects that skip the network-patching step.
     if wd_output is not None:
-        network = hydro_objects.explode(index_parts=False, ignore_index=True)
+        network = routing_network.explode(index_parts=False, ignore_index=True)
+        # write a new file, as overwriting a layer gives different bytes for the same content
+        (wd_output / "network.gpkg").unlink(missing_ok=True)
         network.to_file(wd_output / "network.gpkg", layer="hydro_objects")
 
     # basin profiles
-    main_route = hydro_objects["main-route"].values
+    main_route = hydro_objects["main-route"].to_numpy()
     flowing_profiles = cross_section.assign_basin_profiles(basins, hydro_objects[main_route], as_geo_dataframe=True)
     storing_profiles = cross_section.assign_basin_profiles(basins, hydro_objects[~main_route], as_geo_dataframe=True)
 
     # NaN-valued basin profiles
-    if sum(flowing_profiles["area"].isna()) > 0:
+    if flowing_profiles["area"].isna().sum() > 0:
         if debug:
             LOG.warning(
                 f"NaN-values present in profile-table (flowing/'doorgaand'):"
                 f"\n{flowing_profiles[flowing_profiles.isna()]}"
             )
         else:
-            msg = f"Abort profile table generation with NaN-values: {sum(flowing_profiles.isna())} NaN-values found"
+            msg = f"Abort profile table generation with NaN-values: {flowing_profiles.isna().sum().sum()} NaN-values found"
             raise ValueError(msg)
-    if sum(storing_profiles["area"].isna()) > 0:
+    if storing_profiles["area"].isna().sum() > 0:
         if debug:
             LOG.warning(
                 f"NaN-values present in profile-table (storing/'bergend')\n{storing_profiles[storing_profiles.isna()]}"
             )
         else:
-            msg = f"Abort profile table generation with NaN-values: {sum(storing_profiles.isna())} NaN-values found"
+            msg = f"Abort profile table generation with NaN-values: {storing_profiles.isna().sum().sum()} NaN-values found"
             raise ValueError(msg)
 
     # fill storing basins with BGT-data
@@ -331,10 +348,10 @@ def main(
 
     # assure no zero area-values
     assert all(flowing_profiles["area"] > 0), (
-        f"Not all profile areas are larger than zero: {flowing_profiles[~flowing_profiles['area'] > 0]}"
+        f"Not all profile areas are larger than zero: {flowing_profiles[~(flowing_profiles['area'] > 0)]}"
     )
     assert all(storing_profiles["area"] > 0), (
-        f"Not all profile areas are larger than zero: {storing_profiles[~storing_profiles['area'] > 0]}"
+        f"Not all profile areas are larger than zero: {storing_profiles[~(storing_profiles['area'] > 0)]}"
     )
 
     # export basin profiles
@@ -440,22 +457,13 @@ def _validate_hydro_objects_main_routing(hydro_objects: gpd.GeoDataFrame, col: s
 
 
 def _get_bgt_data(fn_bgt: Path | str | None, basins: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    """Get BGT-data.
+    """Get the BGT water within the convex hull of the basins, so that all basins are fully covered.
 
-    Define the geospatial filter for the BGT-data based on the convex hull of the basins. This ensures that all basins
-    are fully covered by the BGT-data.
-
-    If no filename with BGT-data is provided, the BGT-data is downloaded from the server. This may take a while. Using a
-    pre-downloaded BGT-dataset is recommended.
-
-    :param fn_bgt: filename of BGT-data
+    :param fn_bgt: GeoParquet with BGT water, defaults to `ribasim_nl.bgt_water.BGT_WATER`
     :param basins: geospatial dataset of basins (polygons)
     """
-    geo_filter = typing.cast(shapely.Polygon, shapely.MultiPolygon(basins.convex_hull.values).convex_hull)
-    if fn_bgt is None:
-        return bgt.download_bgt_water(geo_filter=geo_filter)
-    fn_bgt = Path(fn_bgt)
-    return bgt.get_water_surfaces(fn_bgt.parent, fn=fn_bgt.name, geo_filter=geo_filter, write=True)
+    geo_filter = shapely.MultiPolygon(list(basins.convex_hull.values)).convex_hull
+    return read_bgt_water(geo_filter, path=BGT_WATER if fn_bgt is None else Path(fn_bgt))
 
 
 def _label_main_routing_from_flags(hydro_objects: gpd.GeoDataFrame, col: str, val: typing.Any) -> set[int]:

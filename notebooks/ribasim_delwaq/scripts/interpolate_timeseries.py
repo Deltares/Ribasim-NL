@@ -1,4 +1,12 @@
-"""Helpers for preparing daily flow and concentration time series."""
+"""Helpers for preparing daily flow and concentration time series.
+
+This interpolation mimics the way in which the used models interpret input data
+
+Ribasim: flow timeseries at flowboundaries
+Delwaq: concentration timeseries at flowboundaries
+
+This is done in order to verify the total mass loads that is added to the system before running the delwaq simulation
+"""
 
 from collections.abc import Sequence
 

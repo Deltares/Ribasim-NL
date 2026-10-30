@@ -1,5 +1,8 @@
 """Network helpers for coupling-level checks."""
 
+from collections.abc import Mapping
+from typing import Any
+
 import pandas as pd
 
 from ribasim_nl.coupling_level_common import as_int
@@ -8,7 +11,7 @@ from ribasim_nl.coupling_level_common import as_int
 def first_non_junction(
     node_id: int,
     graph: dict[int, list[tuple[int, int]]],
-    node_type_by_id: dict[int, str],
+    node_type_by_id: Mapping[Any, str],
     max_iter: int = 50,
 ) -> tuple[int | None, int | None, str | None]:
     """Follow one flow branch through Junction nodes until a real node is found."""

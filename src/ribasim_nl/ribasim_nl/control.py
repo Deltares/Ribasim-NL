@@ -1,13 +1,15 @@
 # %%
 import logging
 import math
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from datetime import datetime
 from typing import Literal, cast
 
 import geopandas as gpd
 import pandas as pd
 from ribasim import Node, nodes
-from ribasim.nodes import discrete_control, flow_demand
+from ribasim.input_base import TableModel
+from ribasim.nodes import continuous_control, discrete_control, flow_demand, outlet, pump
 from shapely.geometry import MultiPolygon, Point, Polygon
 from shapely.ops import unary_union
 
@@ -16,6 +18,7 @@ from ribasim_nl import Model
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.control_layout import (
     DEFAULT_LEVEL_THRESHOLD_RANGE,
+    MAALSTOP_LEVEL_OFFSET,
     control_condition_thresholds,
     control_logic,
     flow_rate_threshold_pair,
@@ -62,6 +65,42 @@ def mark_threshold_update_protected(condition_df: pd.DataFrame, mask: pd.Series)
     condition_df.loc[mask, THRESHOLD_UPDATE_PROTECTION_COLUMN] = True
 
 
+def off_state_mask(static_df: pd.DataFrame) -> pd.Series:
+    """Return the rows of control states that switch their node off.
+
+    DiscreteControl switches supply and drain nodes off with a `flow_rate` of 0 in one
+    control state. A row is an off state if its `flow_rate` is 0 while another row of the
+    same node has a positive `flow_rate`.
+    """
+    flow_rate = static_df["flow_rate"].fillna(0.0)
+    assert (flow_rate >= 0.0).all(), "flow_rate must be non-negative"
+    node_flows = flow_rate.gt(0.0).groupby(static_df["node_id"]).transform("any")
+    return flow_rate.eq(0.0) & node_flows
+
+
+def off_states(static_df: pd.DataFrame) -> pd.MultiIndex:
+    """Return the (node_id, control_state) pairs of control states that switch their node off.
+
+    Unlike the row mask of `off_state_mask`, these keys stay valid when the table is reordered or re-indexed,
+    for instance by writing the model.
+    """
+    off = static_df.loc[off_state_mask(static_df), ["node_id", "control_state"]]
+    return pd.MultiIndex.from_frame(off)
+
+
+def is_off_state(static_df: pd.DataFrame, keys: pd.MultiIndex) -> pd.Series:
+    """Return the rows of `static_df` whose (node_id, control_state) is in `keys` from `off_states`."""
+    rows = pd.MultiIndex.from_frame(static_df[["node_id", "control_state"]])
+    return pd.Series(rows.isin(keys), index=static_df.index)
+
+
+def set_flow_rate(static_df: pd.DataFrame, node_ids: list[int], flow_rate: float) -> None:
+    """Set the flow_rate of nodes, except in control states that switch them off (see `off_state_mask`)."""
+    mask = static_df["node_id"].isin(node_ids)
+    assert mask.any(), f"None of the node IDs {node_ids} are in the static table"
+    static_df.loc[mask & ~off_state_mask(static_df), "flow_rate"] = flow_rate
+
+
 def _node_flow_rate(flow_rate: float | dict[int, float] | None, node_id: int, default: float = 20.0) -> float:
     if flow_rate is None:
         return default
@@ -76,13 +115,6 @@ def _node_max_flow_rate(flow_rate: float | dict[int, float] | None, node_id: int
     if isinstance(flow_rate, dict):
         return float(flow_rate.get(node_id, default))
     return float(flow_rate)
-
-
-class InvalidTable(Exception):
-    """Basin.Area table is invalid."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
 
 
 class MissingTable(Exception):
@@ -195,7 +227,29 @@ def _target_level(
             msg = f"Target level missing in Basin.Area table for node_id={node_id} in column '{target_level_column}'"
             raise ValueError(msg)
     else:
-        return target_level
+        return cast(float, target_level)
+
+
+def _maalstop_level(
+    model: Model, node_types: pd.Series, node_type: str, ds_node_id: int, target_level_column: str
+) -> float:
+    """Return the max_downstream_level of a state that drains without a downstream target.
+
+    Pumps stop pumping into a Basin above its target level plus MAALSTOP_LEVEL_OFFSET. Outlets are
+    limited by gravity, and a LevelBoundary cannot overflow, so these are not limited.
+    """
+    if node_type != "Pump" or node_types[ds_node_id] != "Basin":
+        return math.inf
+    ds_target_level = _target_level(
+        model=model,
+        node_types=node_types,
+        node_id=ds_node_id,
+        target_level_column=target_level_column,
+        allow_missing=True,
+    )
+    if ds_target_level is None:
+        return math.inf
+    return ds_target_level + MAALSTOP_LEVEL_OFFSET
 
 
 def _update_meta_info(model: Model, nodes_df: gpd.GeoDataFrame, supply: bool = True, drain: bool = True) -> None:
@@ -269,7 +323,7 @@ def discrete_control_tables_single_basin(
     threshold_high: float,
     threshold_low: float | None = None,
     level_threshold_range: float = DEFAULT_LEVEL_THRESHOLD_RANGE,
-) -> list[object]:
+) -> list[TableModel]:
     """Create discrete_control tables for a single-basin (upstream or downstream) control-node: drain and supply.
 
     Parameters
@@ -321,7 +375,7 @@ def discrete_control_tables_single_basin(
 
 
 def add_and_connect_discrete_control_node(
-    model: Model, node_id: int, offset: float, angle: int, tables: list[object], **kwargs
+    model: Model, node_id: int, offset: float, angle: int, tables: Sequence[TableModel], **kwargs
 ) -> None:
     """Add and connect a DiscreteControl Node to an existing node.
 
@@ -439,13 +493,23 @@ def get_node_table_with_from_to_node_ids(
     return selected_node_df
 
 
+def _reversed_node_ids(node_df: pd.DataFrame, node_ids: Iterable[int], other_ids: Iterable[int]) -> set[int]:
+    """Get the nodes of `node_ids` that connect the same nodes as a node of `other_ids`, in the opposite direction.
+
+    `node_df` has the `from_node_id` and `to_node_id` of each node, see `get_node_table_with_from_to_node_ids`.
+    """
+    others = node_df.loc[list(other_ids)]
+    pairs = set(zip(others["from_node_id"], others["to_node_id"], strict=True))
+    return {i for i in node_ids if (node_df.at[i, "to_node_id"], node_df.at[i, "from_node_id"]) in pairs}
+
+
 def add_control_functions_to_connector_nodes(
     model: Model,
     node_positions: pd.Series,
     drain_nodes: list[int],
     supply_nodes: list[int],
     flow_control_nodes: list[int],
-    flushing_nodes: dict[int, float | dict[str, float]],
+    flushing_nodes: Mapping[int, float | Mapping[str, float]],
     is_supply_node_column: str = "meta_supply_node",
 ) -> gpd.GeoDataFrame:
     """Add control functions `drain`, `supply`, `flusing` or `flow_control` to nodes
@@ -473,7 +537,7 @@ def add_control_functions_to_connector_nodes(
         Table with columns `node_id`, `from_node_id`, `to_node_id`, `function` and `demand` that can be used in `add_controllers_to_connector_nodes` function
     """
 
-    def parse_flushing_values(flushing_nodes: dict[int, float | dict[str, float]]):
+    def parse_flushing_values(flushing_nodes: Mapping[int, float | Mapping[str, float]]):
         def value_to_list(value):
             if isinstance(value, (int, float)):
                 return [value, value, value]
@@ -538,16 +602,10 @@ def add_control_functions_to_connector_nodes(
     # expand user_defined drain_nodes with outflow_nodes
     drain_nodes = sorted(set(drain_nodes + outflow_nodes))
 
-    # expand drain_nodes based on reverse connections to supply nodes
+    # expand drain_nodes based on reverse connections to supply and flow_control nodes, which pass water the other way
     candidates = [i for i in all_nodes if i not in supply_nodes + drain_nodes + flow_control_nodes]
-    supply_nodes_df = selected_nodes_df.loc[supply_nodes]
     drain_nodes = sorted(
-        [
-            i.Index
-            for i in selected_nodes_df.loc[candidates].itertuples()
-            if ((supply_nodes_df.from_node_id == i.to_node_id) & (supply_nodes_df.to_node_id == i.from_node_id)).any()
-        ]
-        + drain_nodes
+        _reversed_node_ids(selected_nodes_df, candidates, supply_nodes + flow_control_nodes) | set(drain_nodes)
     )
 
     # list all flow_control_nodes
@@ -561,9 +619,11 @@ def add_control_functions_to_connector_nodes(
 
     flow_control_nodes = sorted(set(flow_control_nodes))
 
-    # list all drain_nodes again
+    # list all drain_nodes again. The other nodes drain by default, except the reverse of a drain node, which supplies
     skip_nodes = flow_control_nodes + supply_nodes + list(flushing_nodes.keys())
-    drain_nodes = sorted([i for i in all_nodes if i not in skip_nodes])
+    default_nodes = [i for i in all_nodes if i not in skip_nodes + drain_nodes]
+    supply_nodes = sorted(_reversed_node_ids(selected_nodes_df, default_nodes, drain_nodes) | set(supply_nodes))
+    drain_nodes = sorted(i for i in all_nodes if i not in skip_nodes and i not in supply_nodes)
 
     # Step: populate function column
     selected_nodes_df["function"] = pd.Series(dtype="string")
@@ -591,11 +651,36 @@ def add_control_functions_to_connector_nodes(
     return selected_nodes_df
 
 
+def supply_area_polygon(supply_areas_df: gpd.GeoDataFrame, area_name: str) -> Polygon:
+    """Polygon of a supply area (aanvoergebied), the largest part if it consists of multiple parts.
+
+    `supply_areas_df` is indexed by area name, possibly with multiple rows per area.
+    """
+    polygon = supply_areas_df.loc[[area_name], "geometry"].union_all()
+    polygon = polygon.buffer(0).buffer(0)
+
+    if isinstance(polygon, MultiPolygon):
+        polygon = max(polygon.geoms, key=lambda g: g.area)
+
+    return polygon
+
+
+def print_node_list_diff(label: str, before_nodes: list[int], after_nodes: list[int]) -> None:
+    """Print the node_ids added to and removed from a list of nodes."""
+    before, after = set(before_nodes), set(after_nodes)
+    added_nodes = sorted(after - before)
+    removed_nodes = sorted(before - after)
+
+    print(f"{label}: {len(added_nodes)} toegevoegd, {len(removed_nodes)} verwijderd t.o.v. handmatig")
+    print(f"{label} toegevoegd: {added_nodes}")
+    print(f"{label} verwijderd: {removed_nodes}")
+
+
 def get_control_nodes_position_from_supply_area(
     model: Model,
     polygon: Polygon | MultiPolygon,
-    exclude_nodes: list[int] | None = None,
-    control_node_types: list[Literal["Outlet", "Pump"]] | None = None,
+    exclude_nodes: Collection[int] | None = None,
+    control_node_types: Sequence[str] | None = None,
     ignore_intersecting_links: list[int] | None = None,
 ) -> gpd.GeoDataFrame:
     """Get control nodes with nodes position relative to a supply area defined by a polygon.
@@ -655,10 +740,14 @@ def get_control_nodes_position_from_supply_area(
     # read node_table for further use
     node_df = _read_node_table(model=model)
 
-    # intersecting links and direction (if not outflow, then inward)
+    # links that cross the boundary, with one node inside and one outside, and their direction (if not outflow,
+    # then inward). Links follow watercourses, so a link can pass through the area with both nodes outside it.
     link_df = _read_link_table(model=model, link_type="flow")
     link_intersect_df = link_df[link_df.intersects(boundary)].copy()
-    link_intersect_df.loc[:, ["outflow"]] = node_df.loc[link_intersect_df["from_node_id"]].within(polygon).to_numpy()
+    from_inside = node_df.loc[link_intersect_df["from_node_id"]].within(polygon).to_numpy()
+    to_inside = node_df.loc[link_intersect_df["to_node_id"]].within(polygon).to_numpy()
+    link_intersect_df = link_intersect_df[from_inside != to_inside].copy()
+    link_intersect_df.loc[:, ["outflow"]] = from_inside[from_inside != to_inside]
     link_intersect_df.loc[:, ["from_node_type"]] = node_df.loc[
         link_intersect_df["from_node_id"], "node_type"
     ].to_numpy()
@@ -788,10 +877,10 @@ def add_controllers_to_drain_nodes(
     node_types = _read_node_table(model=model)["node_type"]
 
     for connector_node in drain_nodes_df.itertuples():
-        node_id = connector_node.Index
+        node_id = cast(int, connector_node.Index)
         node_type = str(connector_node.node_type)
         # get targed_level and define min_upstream_level; [target_level, target_level]
-        us_node_id = connector_node.from_node_id
+        us_node_id = cast(int, connector_node.from_node_id)
         us_target_level = _target_level(
             model=model,
             node_types=node_types,
@@ -808,7 +897,6 @@ def add_controllers_to_drain_nodes(
 
         # update static table
         control_state = ["aanvoer", "afvoer"]
-        node_id_int = cast(int, node_id)
         static_df = model.get_component(node_type).static.df.set_index("node_id").loc[[node_id]]
         original_max_flow_rate = static_df["flow_rate"].max()
         if "max_flow_rate" in static_df.columns and pd.notna(static_df["max_flow_rate"].max()):
@@ -822,7 +910,7 @@ def add_controllers_to_drain_nodes(
         if afvoer_flow_rate_source is None:
             afvoer_flow_rate = max_flow_capacity
         else:
-            afvoer_flow_rate = _node_flow_rate(afvoer_flow_rate_source, node_id=node_id_int, default=max_flow_capacity)
+            afvoer_flow_rate = _node_flow_rate(afvoer_flow_rate_source, node_id=node_id, default=max_flow_capacity)
         if afvoer_max_flow_rate_source is None:
             afvoer_max_flow_rate = original_max_flow_rate
         elif node_type == "Pump" and not isinstance(afvoer_max_flow_rate_source, dict):
@@ -830,10 +918,14 @@ def add_controllers_to_drain_nodes(
             afvoer_max_flow_rate = original_max_flow_rate
         else:
             afvoer_max_flow_rate = _node_max_flow_rate(
-                afvoer_max_flow_rate_source, node_id=node_id_int, default=original_max_flow_rate
+                afvoer_max_flow_rate_source, node_id=node_id, default=original_max_flow_rate
             )
         if not isinstance(afvoer_flow_rate_source, dict) and isinstance(afvoer_max_flow_rate_source, dict):
             afvoer_flow_rate = max(afvoer_flow_rate, afvoer_max_flow_rate)
+        max_downstream_level = [
+            math.inf,
+            _maalstop_level(model, node_types, node_type, cast(int, connector_node.to_node_id), target_level_column),
+        ]
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
         model.update_node(
             node_id,
@@ -841,6 +933,7 @@ def add_controllers_to_drain_nodes(
             [
                 static_table(
                     min_upstream_level=min_upstream_level,
+                    max_downstream_level=max_downstream_level,
                     flow_rate=[0, afvoer_flow_rate],
                     max_flow_rate=[0, afvoer_max_flow_rate],
                     control_state=control_state,
@@ -917,10 +1010,10 @@ def add_controllers_to_supply_nodes(
 
     node_types = _read_node_table(model=model)["node_type"]
     for connector_node in supply_nodes_df.itertuples():
-        node_id = connector_node.Index
+        node_id = cast(int, connector_node.Index)
         node_type = str(connector_node.node_type)
         # get downstream target level, cannot be None (!)
-        ds_node_id = connector_node.to_node_id
+        ds_node_id = cast(int, connector_node.to_node_id)
         ds_target_level = _target_level(
             model=model,
             node_types=node_types,
@@ -929,10 +1022,10 @@ def add_controllers_to_supply_nodes(
             allow_missing=False,
         )
 
-        max_downstream_level = [ds_target_level, float("nan")]
+        max_downstream_level = [ds_target_level, math.inf]
 
         # get upstream target_level and define min_upstream_level;
-        us_node_id = connector_node.from_node_id
+        us_node_id = cast(int, connector_node.from_node_id)
         us_target_level = _target_level(
             model=model,
             node_types=node_types,
@@ -941,7 +1034,9 @@ def add_controllers_to_supply_nodes(
             allow_missing=True,
         )
         min_upstream_level = (
-            None if us_target_level is None else [us_target_level + us_target_level_offset_supply, us_target_level]
+            [-math.inf, -math.inf]
+            if us_target_level is None
+            else [us_target_level + us_target_level_offset_supply, us_target_level]
         )
 
         # Print so we can see what happens
@@ -950,10 +1045,9 @@ def add_controllers_to_supply_nodes(
         )
 
         # update static table
-        node_id = connector_node.Index
+        node_id = cast(int, connector_node.Index)
         node_type = str(connector_node.node_type)
         control_state = ["aanvoer", "afvoer"]
-        node_id_int = cast(int, node_id)
         static_df = model.get_component(node_type).static.df.set_index("node_id").loc[[node_id]]
         original_max_flow_rate = static_df["flow_rate"].max()
         if "max_flow_rate" in static_df.columns and pd.notna(static_df["max_flow_rate"].max()):
@@ -964,7 +1058,7 @@ def add_controllers_to_supply_nodes(
 
         aanvoer_flow_rate_source = flow_rate_aanvoer if flow_rate_aanvoer is not None else supply_flow_rate
         aanvoer_max_flow_rate_source = max_flow_rate_aanvoer if max_flow_rate_aanvoer is not None else supply_flow_rate
-        aanvoer_flow_rate = _node_flow_rate(aanvoer_flow_rate_source, node_id=node_id_int)
+        aanvoer_flow_rate = _node_flow_rate(aanvoer_flow_rate_source, node_id=node_id)
         if aanvoer_max_flow_rate_source is None:
             aanvoer_max_flow_rate = original_max_flow_rate
         elif node_type == "Pump" and not isinstance(aanvoer_max_flow_rate_source, dict):
@@ -972,7 +1066,7 @@ def add_controllers_to_supply_nodes(
             aanvoer_max_flow_rate = original_max_flow_rate
         else:
             aanvoer_max_flow_rate = _node_max_flow_rate(
-                aanvoer_max_flow_rate_source, node_id=node_id_int, default=original_max_flow_rate
+                aanvoer_max_flow_rate_source, node_id=node_id, default=original_max_flow_rate
             )
         static_table = getattr(nodes, pascal_to_snake_case(node_type)).Static
         model.update_node(
@@ -1084,10 +1178,10 @@ def add_controllers_to_flow_control_nodes(
 
     node_types = _read_node_table(model=model)["node_type"]
     for connector_node in flow_control_nodes_df.itertuples():
-        node_id = connector_node.Index
+        node_id = cast(int, connector_node.Index)
         node_type = str(connector_node.node_type)
         # get downstream target level, cannot be None (!)
-        ds_node_id = connector_node.to_node_id
+        ds_node_id = cast(int, connector_node.to_node_id)
         ds_target_level = _target_level(
             model=model,
             node_types=node_types,
@@ -1095,11 +1189,14 @@ def add_controllers_to_flow_control_nodes(
             target_level_column=target_level_column,
             allow_missing=False,
         )
-        max_downstream_level = [ds_target_level, 9999]
+        max_downstream_level = [
+            ds_target_level,
+            _maalstop_level(model, node_types, node_type, ds_node_id, target_level_column),
+        ]
 
         # get upstream target_level and define min_upstream_level;
         # None if LevelBoundary, else [us_target_level + target_level_offset_supply, us_target_level]
-        us_node_id = connector_node.from_node_id
+        us_node_id = cast(int, connector_node.from_node_id)
         us_target_level = _target_level(
             model=model,
             node_types=node_types,
@@ -1116,7 +1213,6 @@ def add_controllers_to_flow_control_nodes(
 
         # update static table
         control_state = ["aanvoer", "afvoer"]
-        node_id_int = cast(int, node_id)
         static_df = model.get_component(node_type).static.df.set_index("node_id").loc[[node_id]]
         original_max_flow_rate = static_df["flow_rate"].max()
         if "max_flow_rate" in static_df.columns and pd.notna(static_df["max_flow_rate"].max()):
@@ -1129,7 +1225,7 @@ def add_controllers_to_flow_control_nodes(
         aanvoer_max_flow_rate_source = max_flow_rate_aanvoer if max_flow_rate_aanvoer is not None else supply_flow_rate
         afvoer_flow_rate_source = flow_rate_afvoer if flow_rate_afvoer is not None else drain_flow_rate
         afvoer_max_flow_rate_source = max_flow_rate_afvoer if max_flow_rate_afvoer is not None else drain_flow_rate
-        aanvoer_flow_rate = _node_flow_rate(aanvoer_flow_rate_source, node_id=node_id_int)
+        aanvoer_flow_rate = _node_flow_rate(aanvoer_flow_rate_source, node_id=node_id)
         if aanvoer_max_flow_rate_source is None:
             aanvoer_max_flow_rate = original_max_flow_rate
         elif node_type == "Pump" and not isinstance(aanvoer_max_flow_rate_source, dict):
@@ -1137,12 +1233,12 @@ def add_controllers_to_flow_control_nodes(
             aanvoer_max_flow_rate = original_max_flow_rate
         else:
             aanvoer_max_flow_rate = _node_max_flow_rate(
-                aanvoer_max_flow_rate_source, node_id=node_id_int, default=original_max_flow_rate
+                aanvoer_max_flow_rate_source, node_id=node_id, default=original_max_flow_rate
             )
         if afvoer_flow_rate_source is None:
             afvoer_flow_rate = 20
         else:
-            afvoer_flow_rate = _node_flow_rate(afvoer_flow_rate_source, node_id=node_id_int, default=100)
+            afvoer_flow_rate = _node_flow_rate(afvoer_flow_rate_source, node_id=node_id, default=100)
         if afvoer_max_flow_rate_source is None:
             afvoer_max_flow_rate = original_max_flow_rate
         elif node_type == "Pump" and not isinstance(afvoer_max_flow_rate_source, dict):
@@ -1150,7 +1246,7 @@ def add_controllers_to_flow_control_nodes(
             afvoer_max_flow_rate = original_max_flow_rate
         else:
             afvoer_max_flow_rate = _node_max_flow_rate(
-                afvoer_max_flow_rate_source, node_id=node_id_int, default=original_max_flow_rate
+                afvoer_max_flow_rate_source, node_id=node_id, default=original_max_flow_rate
             )
         if not isinstance(afvoer_flow_rate_source, dict) and isinstance(afvoer_max_flow_rate_source, dict):
             afvoer_flow_rate = max(afvoer_flow_rate, afvoer_max_flow_rate)
@@ -1292,12 +1388,12 @@ def add_controllers_and_demand_to_flushing_nodes(
     ]
 
     for connector_node in flushing_nodes_df.itertuples():
-        node_id = connector_node.Index
+        node_id = cast(int, connector_node.Index)
         node_type = str(connector_node.node_type)
         demand_flow_rate_summer = float(cast(float, connector_node.demand_flow_rate_summer))
         demand_flow_rate_winter = float(cast(float, connector_node.demand_flow_rate_winter))
         # get upstream target_level and define min_upstream_level;
-        us_node_id = connector_node.from_node_id
+        us_node_id = cast(int, connector_node.from_node_id)
         us_target_level = _target_level(
             model=model,
             node_id=us_node_id,
@@ -1334,8 +1430,14 @@ def add_controllers_and_demand_to_flushing_nodes(
             [
                 static_table(
                     min_upstream_level=min_upstream_level,
+                    max_downstream_level=[
+                        _maalstop_level(
+                            model, node_types, node_type, cast(int, connector_node.to_node_id), target_level_column
+                        )
+                    ]
+                    * 2,
                     flow_rate=[0, 20],
-                    max_flow_rate=[float("nan"), original_max_flow_rate],
+                    max_flow_rate=[original_max_flow_rate, original_max_flow_rate],
                     control_state=control_state,
                 )
             ],
@@ -1413,7 +1515,7 @@ def add_controllers_and_demand_to_flushing_nodes(
             demand_node_name = f"{demand_name_prefix} {connector_node.demand_flow_rate_summer} [m3/s]"
             demand_tables = [
                 flow_demand.Static(
-                    demand=[float(connector_node.demand_flow_rate_summer)],
+                    demand=[float(cast(float, connector_node.demand_flow_rate_summer))],
                     demand_priority=[1],
                 )
             ]
@@ -1566,12 +1668,12 @@ def add_controllers_to_supply_area(
     polygon: Polygon | MultiPolygon,
     ignore_intersecting_links: list[int],
     drain_nodes: list[int],
-    flushing_nodes: dict[int, float | dict[str, float]],
+    flushing_nodes: Mapping[int, float | Mapping[str, float]],
     supply_nodes: list[int],
     level_difference_threshold: float = 0.02,
     flow_control_nodes: list[int] | None = None,
-    exclude_nodes: list[int] | None = None,
-    control_node_types: list[Literal["Pump", "Outlet"]] | None = None,
+    exclude_nodes: Collection[int] | None = None,
+    control_node_types: Sequence[str] | None = None,
     is_supply_node_column: str = "meta_supply_node",
     target_level_column: str = "meta_streefpeil",
     add_supply_nodes: bool = True,
@@ -1704,12 +1806,12 @@ def add_controllers_to_supply_area(
 def add_controllers_to_uncontrolled_connector_nodes(
     model: "Model",
     us_threshold_offset: float = 0.02,
-    exclude_nodes: list[int] | None = None,
+    exclude_nodes: Collection[int] | None = None,
     supply_nodes: list[int] | None = None,
     drain_nodes: list[int] | None = None,
     flow_control_nodes: list[int] | None = None,
-    flushing_nodes: dict[int, float] | None = None,
-    control_node_types: list[Literal["Pump", "Outlet"]] | None = None,
+    flushing_nodes: Mapping[int, float] | None = None,
+    control_node_types: Sequence[str] | None = None,
     us_target_level_offset_supply: float = -0.04,
     level_difference_threshold: float = 0.02,
     flow_rate_aanvoer: float | dict[int, float] | None = None,
@@ -1819,10 +1921,11 @@ def add_controllers_to_uncontrolled_connector_nodes(
 
     supply_set = supply_set_manual | supply_set_auto
 
-    # --- 6) alles wat overblijft -> drain ---
+    # --- 6) alles wat overblijft -> drain, behalve het omgekeerde van een drain node: dat is supply ---
     used = flushing_set | flow_control_set | drain_set | supply_set
     remaining = eligible - used
-    drain_set = drain_set | remaining
+    supply_set = supply_set | _reversed_node_ids(connector_df, remaining, drain_set)
+    drain_set = drain_set | (remaining - supply_set)
 
     # --- 7) uitvoer: controllers toevoegen ---
     # Flushing
@@ -2075,3 +2178,258 @@ def remove_duplicate_controls(ribasim_model: ribasim_nl.Model) -> ribasim_nl.Mod
 
     # return update Ribasim model
     return ribasim_model
+
+
+def _remove_discrete_control(model: Model, node_id: int) -> dict[str, int | None]:
+    """Remove the DiscreteControl of `node_id`, which should only control this node.
+
+    :return: the IDs of its node, control link and listen link, to reuse for the control that replaces it, so the IDs
+        of other nodes and links, which are referred to in issues and model viewer links, do not change. They are None
+        without a single DiscreteControl.
+    """
+    assert model.link.df is not None
+    link_df = model.link.df
+    control_links = link_df[(link_df.link_type == "control") & (link_df.to_node_id == node_id)]
+    control_ids = control_links["from_node_id"]
+    reuse: dict[str, int | None] = {"node_id": None, "link_id": None, "listen_link_id": None}
+    if len(control_ids) == 1:
+        listen_links = link_df.index[(link_df.link_type == "listen") & (link_df.to_node_id == control_ids.iloc[0])]
+        reuse = {
+            "node_id": int(control_ids.iloc[0]),
+            "link_id": int(control_links.index[0]),
+            "listen_link_id": int(listen_links[0]) if len(listen_links) == 1 else None,
+        }
+    for control_id in control_ids:
+        control_type = model.get_node_type(control_id)
+        if control_type != "DiscreteControl":
+            raise ValueError(f"Node {node_id} is controlled by {control_type} {control_id}, expected DiscreteControl")
+        n_controlled = ((link_df.link_type == "control") & (link_df.from_node_id == control_id)).sum()
+        if n_controlled != 1:
+            raise ValueError(f"DiscreteControl {control_id} controls {n_controlled} nodes, expected only {node_id}")
+        model.remove_node(control_id, remove_links=True)
+    return reuse
+
+
+def _replace_static_rows(
+    model: Model,
+    node_id: int,
+    target_type: Literal["Outlet", "Pump"],
+    static: outlet.Static | pump.Static,
+) -> None:
+    """Replace the static rows of Outlet or Pump `node_id` by `static`, keeping the metadata of its first row.
+
+    The node becomes a `target_type`, and its levels are protected from coupling-level updates.
+    """
+    assert model.link.df is not None
+    static_df = model.get_component(model.get_node_type(node_id)).static.df
+    assert static_df is not None
+    rows = static_df[static_df.node_id == node_id]
+    if rows.empty:
+        raise ValueError(f"Node {node_id} has no static rows")
+    meta = rows.iloc[0][[c for c in rows.columns if c.startswith("meta_")]].to_dict()
+    model.update_node(node_id, target_type, data=[static])
+    static_df = model.get_component(target_type).static.df
+    assert static_df is not None
+    mask = static_df.node_id == node_id
+    assert static.df is not None
+    assert mask.sum() == len(static.df), f"Expected {len(static.df)} static rows for node {node_id}"
+    for column, value in meta.items():
+        if column != LEVEL_UPDATE_PROTECTION_COLUMN:
+            static_df.loc[mask, column] = value
+    mark_level_update_protected(static_df, mask)
+    for end in ("from", "to"):
+        column = f"meta_{end}_node_type"
+        if column in model.link.df.columns:
+            model.link.df.loc[model.link.df[f"{end}_node_id"] == node_id, column] = target_type
+
+
+def _add_replacing_control_node(
+    model: Model,
+    node_id: int,
+    data: list,
+    ctrl_type: Literal["DiscreteControl", "ContinuousControl"],
+    reuse: dict[str, int | None],
+    name: str | None,
+) -> int:
+    """Add a control node to `node_id` with the IDs `reuse` of the control it replaces, see `_remove_discrete_control`."""
+    assert model.link.df is not None
+    control_id = model.next_node_id if reuse["node_id"] is None else reuse["node_id"]
+    model.add_control_node(
+        to_node_id=node_id,
+        data=data,
+        ctrl_type=ctrl_type,
+        node_offset=20,
+        node_properties={} if name is None else {"name": name},
+        node_id=control_id,
+        link_id=reuse["link_id"],
+    )
+    # The listen link is added with the control link, with a new ID
+    if reuse["listen_link_id"] is not None:
+        link_df = model.link.df
+        (listen_link_id,) = link_df.index[(link_df.link_type == "listen") & (link_df.to_node_id == control_id)]
+        if listen_link_id != reuse["listen_link_id"]:
+            model.set_link_id(listen_link_id, reuse["listen_link_id"])
+    return control_id
+
+
+def _validate_level_control_nodes(model: Model, node_id: int, listen_node_id: int) -> str:
+    """Check that `node_id` is an Outlet or Pump and `listen_node_id` a Basin, and return the type of `node_id`."""
+    current_type = model.get_node_type(node_id)
+    if current_type not in ("Outlet", "Pump"):
+        raise ValueError(f"Node {node_id} is a {current_type}, expected an Outlet or Pump")
+    if model.get_node_type(listen_node_id) != "Basin":
+        raise ValueError(f"Listen node {listen_node_id} of node {node_id} is not a Basin")
+    return current_type
+
+
+def set_continuous_level_control(
+    model: Model,
+    node_id: int,
+    listen_node_id: int,
+    level: Sequence[float],
+    flow_rate: Sequence[float],
+    *,
+    node_type: Literal["Outlet", "Pump"] | None = None,
+    min_upstream_level: float = -math.inf,
+    max_downstream_level: float = math.inf,
+    name: str | None = None,
+) -> int:
+    """Set the flow rate of an Outlet or Pump from the level of a Basin, replacing its DiscreteControl.
+
+    The flow rate follows a ContinuousControl function through the (level, flow_rate) points, and is limited to
+    [0, max(flow_rate)] by the static table, so beyond the outer points the curve does not exceed these bounds.
+    The node keeps a single static row with the metadata of its first static row, and its levels are protected from
+    coupling-level updates.
+
+    :param model: model to update in place
+    :param node_id: Outlet or Pump to control
+    :param listen_node_id: Basin whose level sets the flow rate
+    :param level: levels [m+NAP] of the function points
+    :param flow_rate: flow rates [m3/s] at these levels
+    :param node_type: convert the node to this type, by default keep its type
+    :param min_upstream_level: min_upstream_level of the node
+    :param max_downstream_level: max_downstream_level of the node
+    :param name: name of the ContinuousControl node
+    :return: node ID of the ContinuousControl node
+    """
+    current_type = _validate_level_control_nodes(model, node_id, listen_node_id)
+    points = pd.DataFrame({"level": level, "flow_rate": flow_rate}, dtype=float).sort_values("level")
+    if len(points) < 2 or not points["level"].is_unique:
+        raise ValueError(f"Expected at least 2 distinct levels for node {node_id}, got {list(level)}")
+    if not (points.map(math.isfinite).all(axis=None) and points["flow_rate"].ge(0).all()):
+        raise ValueError(f"Expected finite, non-negative flow rates for node {node_id}, got {list(flow_rate)}")
+    max_flow_rate = float(points["flow_rate"].max())
+
+    reuse = _remove_discrete_control(model, node_id)
+    target_type = node_type or cast(Literal["Outlet", "Pump"], current_type)
+    static = (outlet if target_type == "Outlet" else pump).Static(
+        flow_rate=[max_flow_rate],
+        min_flow_rate=[0.0],
+        max_flow_rate=[max_flow_rate],
+        min_upstream_level=[min_upstream_level],
+        max_downstream_level=[max_downstream_level],
+    )
+    _replace_static_rows(model, node_id, target_type, static)
+    data = [
+        continuous_control.Variable(listen_node_id=[listen_node_id], variable=["level"]),
+        continuous_control.Function(
+            input=points["level"].to_list(),
+            output=points["flow_rate"].to_list(),
+            controlled_variable=["flow_rate"] * len(points),
+        ),
+    ]
+    return _add_replacing_control_node(model, node_id, data, "ContinuousControl", reuse, name)
+
+
+# Default hysteresis of `set_discrete_level_control`: a step switches off this far below the level it switches on at
+DEFAULT_LEVEL_STEP_HYSTERESIS = 0.0025  # m
+
+
+def set_discrete_level_control(
+    model: Model,
+    node_id: int,
+    listen_node_id: int,
+    level: Sequence[float],
+    flow_rate: Sequence[float],
+    *,
+    hysteresis: float | Sequence[float] = DEFAULT_LEVEL_STEP_HYSTERESIS,
+    min_upstream_level: float = -math.inf,
+    max_downstream_level: float = math.inf,
+    name: str | None = None,
+) -> int:
+    """Set the flow rate of an Outlet or Pump in steps from the level of a Basin, replacing its DiscreteControl.
+
+    Above the i-th of the ascending `level`, the node switches to `flow_rate[i + 1]`, and below `level[0]` it has
+    `flow_rate[0]`. Each step switches off again at `hysteresis` below its level. The control states are named
+    `stap 0` to `stap n`, rather than aanvoer and afvoer, so the coupling-level synchronisation leaves them alone,
+    and the levels and thresholds are protected from coupling-level updates. The static rows keep the metadata of the
+    first static row, and have a `max_flow_rate` of max(flow_rate), which a FlowDemand on the node needs to exceed
+    the flow rate of a step.
+
+    :param model: model to update in place
+    :param node_id: Outlet or Pump to control
+    :param listen_node_id: Basin whose level sets the flow rate
+    :param level: ascending levels [m+NAP] at which the steps switch on
+    :param flow_rate: flow rates [m3/s] below the first level and above each level, one more than `level`
+    :param hysteresis: how far below its level each step switches off [m], for all steps or per step
+    :param min_upstream_level: min_upstream_level of the node
+    :param max_downstream_level: max_downstream_level of the node
+    :param name: name of the DiscreteControl node
+    :return: node ID of the DiscreteControl node
+    """
+    current_type = _validate_level_control_nodes(model, node_id, listen_node_id)
+    threshold_high = pd.Series(level, dtype=float)
+    hysteresis_series = pd.Series(
+        [hysteresis] * len(threshold_high) if isinstance(hysteresis, float | int) else hysteresis, dtype=float
+    )
+    flow_rates = pd.Series(flow_rate, dtype=float)
+    if threshold_high.empty or len(flow_rates) != len(threshold_high) + 1:
+        raise ValueError(f"Expected one more flow rate than levels for node {node_id}, got {list(flow_rate)}")
+    if len(hysteresis_series) != len(threshold_high) or not hysteresis_series.gt(0).all():
+        raise ValueError(f"Expected a positive hysteresis per level for node {node_id}, got {hysteresis}")
+    threshold_low = threshold_high - hysteresis_series
+    # A step can only be on while the steps below it are, so each step switches off above where the one below
+    # switches on, and the truth states are a run of T followed by F.
+    if not (
+        threshold_high.map(math.isfinite).all()
+        and (threshold_low.iloc[1:].to_numpy() >= threshold_high.iloc[:-1].to_numpy()).all()
+    ):
+        raise ValueError(
+            f"Expected finite levels for node {node_id} that ascend by more than their hysteresis, got {list(level)}"
+        )
+    if not (flow_rates.map(math.isfinite).all() and flow_rates.ge(0).all()):
+        raise ValueError(f"Expected finite, non-negative flow rates for node {node_id}, got {list(flow_rate)}")
+    max_flow_rate = float(flow_rates.max())
+    n_steps = len(flow_rates)
+    control_states = [f"stap {i}" for i in range(n_steps)]
+
+    reuse = _remove_discrete_control(model, node_id)
+    target_type = cast(Literal["Outlet", "Pump"], current_type)
+    static = (outlet if target_type == "Outlet" else pump).Static(
+        control_state=control_states,
+        flow_rate=flow_rates.to_list(),
+        min_flow_rate=[0.0] * n_steps,
+        max_flow_rate=[max_flow_rate] * n_steps,
+        min_upstream_level=[min_upstream_level] * n_steps,
+        max_downstream_level=[max_downstream_level] * n_steps,
+    )
+    _replace_static_rows(model, node_id, target_type, static)
+    n_conditions = len(threshold_high)
+    data = [
+        discrete_control.Variable(compound_variable_id=[1], listen_node_id=[listen_node_id], variable=["level"]),
+        discrete_control.Condition(
+            compound_variable_id=[1] * n_conditions,
+            condition_id=list(range(1, n_conditions + 1)),
+            threshold_high=threshold_high.to_list(),
+            threshold_low=threshold_low.to_list(),
+        ),
+        discrete_control.Logic(
+            truth_state=["T" * i + "F" * (n_conditions - i) for i in range(n_steps)],
+            control_state=control_states,
+        ),
+    ]
+    control_id = _add_replacing_control_node(model, node_id, data, "DiscreteControl", reuse, name)
+    condition_df = model.discrete_control.condition.df
+    assert condition_df is not None
+    mark_threshold_update_protected(condition_df, condition_df.node_id == control_id)
+    return control_id

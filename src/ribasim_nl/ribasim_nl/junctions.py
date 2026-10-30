@@ -1,8 +1,15 @@
+import logging
 from collections import defaultdict
+from typing import Any, cast
 
 import geopandas as gpd
+import pandas as pd
 import shapely
 from ribasim import Model, Node
+from ribasim.input_base import NodeData
+from ribasim.validation import can_connect
+
+LOG = logging.getLogger(__name__)
 
 
 def find_common_linestring(
@@ -47,9 +54,10 @@ def find_common_linestring(
                 else:
                     break
 
-            if common_length >= 2 and (
-                common_length != len(coords_i) and common_length != len(coords_j)
-            ):  # Need at least 2 points to form a line, and skip identical lines
+            # If a linestring is fully part of the other one, or identical to it, keep its first segment
+            # separate, such that the linestrings can still be joined.
+            common_length = min(common_length, len(coords_i) - 1, len(coords_j) - 1)
+            if common_length >= 2:  # Need at least 2 points to form a line
                 overlap_lengths[(i, j)] = common_length
 
     # Process overlaps to find groups of overlapping linestrings
@@ -114,62 +122,70 @@ def find_common_linestring(
 
 def _junctionify(model: Model, links: gpd.GeoDataFrame, converging: bool = True) -> list[int]:
     assert model.link.df is not None  # suppressing type-checking None option for .df
+    assert model.node.df is not None
     junction_ids = []
     field = "to_node_id" if converging else "from_node_id"
-    grouped_links = links.groupby(field)
-    for node_id, group in grouped_links:
+    node_type = model.node.df["node_type"]
+    # only merge where the node can be connected to a Junction
+    mergeable = [can_connect("Junction", t) if converging else can_connect(t, "Junction") for t in node_type]
+    links = links[links[field].map(pd.Series(mergeable, index=node_type.index))]
+    for node_id, group in links.groupby(field):
         assert isinstance(node_id, int)
         if len(group) == 1:
             continue
-        print(f"Processing links with {field} #{node_id} with {len(group)} links")
+        LOG.debug(f"Processing links with {field} #{node_id} with {len(group)} links")
         common_linestrings, linestring_mapping, stripped_linestrings = find_common_linestring(
             group["geometry"].tolist(), converging
         )
         # Introduce Junction for each overlapping part
         # And change the to_node_id of the lines to that junction
-        group.geometry = stripped_linestrings
+
         for i, common_linestring in enumerate(common_linestrings):
             idx = 0 if converging else -1
             junction = model.junction.add(Node(geometry=shapely.Point(common_linestring.coords[idx])))
             junction_ids.append(junction.node_id)
-            # TODO: `to_node`/`from_node`-arguments expect `NodeData` instead of `Node`?
+            node = NodeData(node_id, node_type[node_id], cast(shapely.Point, model.node.df.at[node_id, "geometry"]))
             if converging:
-                model.link.add(
-                    from_node=junction,
-                    to_node=Node(node_id, shapely.Point(0, 0), node_type="Junction"),
-                    geometry=common_linestring,
-                )
+                model.link.add(from_node=junction, to_node=node, geometry=common_linestring)
             else:
-                model.link.add(
-                    from_node=Node(node_id, shapely.Point(0, 0), node_type="Junction"),
-                    to_node=junction,
-                    geometry=common_linestring,
-                )
-            print(
+                model.link.add(from_node=node, to_node=junction, geometry=common_linestring)
+            LOG.debug(
                 f"  Added Junction #{junction.node_id} for common linestring {i} with {len(common_linestring.coords)} points"
             )
             for idx, mapping in enumerate(linestring_mapping):
                 if mapping == i:
-                    print(f"    Updating link #{group.index[idx]} to new {field} Junction #{junction.node_id}")
+                    LOG.debug(f"    Updating link #{group.index[idx]} to new {field} Junction #{junction.node_id}")
                     model.link.df.loc[group.index[idx], field] = junction.node_id
-                    model.link.df.loc[group.index[idx], "geometry"] = stripped_linestrings[idx]
+                    # the stubs of pandas do not allow geometries as values
+                    cast(Any, model.link.df.loc)[group.index[idx], "geometry"] = stripped_linestrings[idx]
 
     return junction_ids
 
 
-def junctionify(model: Model) -> Model:
+def junctionify[M: Model](model: M) -> M:
     """Add Junction nodes in a model inplace where flow links share common geometry.
 
     Useful for model visualization and debugging, as otherwise there will be many
     overlapping line segments that are hard to distinguish.
 
-    Currently assumes that all links have a geometry, and that all link geometries
-    between node a and b start with point a and end with point b.
+    Assumes that all flow link geometries between node a and b start with point a and end with point b.
     """
     # ensure available LinkTable
-    if model.link.df is None:
-        msg = f"No LinkTable available: {model.link.df=}"
+    if model.link.df is None or model.node.df is None:
+        msg = f"No LinkTable or NodeTable available: {model.link.df=}, {model.node.df=}"
         raise ValueError(msg)
+    flow = model.link.df[model.link.df.link_type == "flow"]
+    geometries = flow.geometry.to_numpy()
+    disconnected = ~(
+        shapely.equals_exact(
+            shapely.get_point(geometries, 0), model.node.df.geometry.reindex(flow.from_node_id).to_numpy(), 1e-6
+        )
+        & shapely.equals_exact(
+            shapely.get_point(geometries, -1), model.node.df.geometry.reindex(flow.to_node_id).to_numpy(), 1e-6
+        )
+    )
+    if disconnected.any():
+        LOG.warning(f"{disconnected.sum()} flow link geometries do not connect their nodes: {flow.index[disconnected]}")
 
     # starting from common end points
     links = model.link.df[model.link.df.link_type == "flow"]
@@ -177,7 +193,7 @@ def junctionify(model: Model) -> Model:
     new_junctions = _junctionify(model, links, converging=True)
     iteration = 0
     while len(new_junctions) > 0:
-        print("Iteration", iteration, "with", len(new_junctions), "new junctions")
+        LOG.debug(f"Iteration {iteration} with {len(new_junctions)} new junctions")
         nlinks = model.link.df[model.link.df.to_node_id.isin(new_junctions)]
         new_junctions = _junctionify(model, nlinks, converging=True)
         iteration += 1
@@ -188,7 +204,7 @@ def junctionify(model: Model) -> Model:
     new_junctions = _junctionify(model, links, converging=False)
     iteration = 0
     while len(new_junctions) > 0:
-        print("Iteration", iteration, "with", len(new_junctions), "new junctions")
+        LOG.debug(f"Iteration {iteration} with {len(new_junctions)} new junctions")
         nlinks = model.link.df[model.link.df.from_node_id.isin(new_junctions)]
         new_junctions = _junctionify(model, nlinks, converging=False)
         iteration += 1

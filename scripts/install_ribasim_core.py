@@ -6,17 +6,17 @@ depending on the SOURCE setting below. By default it is installed into
 ``/p/ribasim-nl/bin/<NAME>``.
 """
 
-from __future__ import annotations
-
 import argparse
 import os
 import platform
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
 import urllib.request
 import zipfile
+from collections.abc import Callable
 from pathlib import Path
 
 from minio import Minio
@@ -26,9 +26,11 @@ from ribasim_nl.settings import settings
 # SOURCE: "github" to download from GitHub releases, "minio" to download from S3.
 # NAME: For github, a release tag like "v2026.1.0".
 #       For minio, a folder name like "storage-formulation".
+#       Never overwrite a folder: name a new build after its branch and commit, so a NAME is one build.
 # Make sure the version is compatible with the Ribasim Python version in pixi.toml.
+# `run_lhm_coupled` depends on this script, so changing NAME reruns the coupled model.
 SOURCE = "minio"
-NAME = "storage-continuous"
+NAME = "ribasim-nl-016b540"
 # ───────────────────────────────────────────────────────────────────────────────
 
 GITHUB_RELEASE_URL = "https://github.com/Deltares/Ribasim/releases/download/{name}/{asset}"
@@ -85,6 +87,14 @@ def _extract(zip_path: Path, dest: Path) -> None:
             zf.extractall(dest)
 
 
+def _clear_readonly_and_retry(func: Callable[[str], object], path: str, exc: BaseException) -> None:
+    """Retry a failed removal after clearing the read-only flag, which Julia sets on artifact files."""
+    if not isinstance(exc, PermissionError):
+        raise exc
+    Path(path).chmod(stat.S_IWRITE)
+    func(path)
+
+
 def _install(ribasim_home: Path) -> None:
     ribasim_home.parent.mkdir(parents=True, exist_ok=True)
     asset = _asset_name()
@@ -104,7 +114,7 @@ def _install(ribasim_home: Path) -> None:
             raise RuntimeError(f"Archive does not contain the expected 'ribasim' directory: {asset}")
 
         if ribasim_home.exists():
-            shutil.rmtree(ribasim_home)
+            shutil.rmtree(ribasim_home, onexc=_clear_readonly_and_retry)
         shutil.move(str(extracted_home), ribasim_home)
 
 

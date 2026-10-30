@@ -1,0 +1,208 @@
+# %%
+from pathlib import Path
+
+import pandas as pd
+from pandera.typing import DataFrame
+from ribasim.schemas import FlowBoundaryTimeSchema, LevelBoundaryTimeSchema
+from ribasim_nl.flow_paths import rebuild_junction_trees_along_top10nl
+from ribasim_nl.layout import tidy_layout
+from ribasim_nl.observations import add_observations
+from ribasim_nl.regional_model import ENDTIME, STARTTIME, read_lhm_budgets
+from ribasim_nl.set_forcing import SetDynamicForcing
+
+from ribasim_nl import CloudStorage, Model, Network, merge_rwzi_model
+
+cloud = CloudStorage()
+
+ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_demand/hws.toml")
+model = Model.read(ribasim_toml)
+
+rwzi_model_path = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
+rwzi_coverage_path = rwzi_model_path.parent / "meta/RWZI_coordinates_model_coverage.geojson"
+debieten_xlsx = cloud.joinpath("Rijkswaterstaat/aangeleverd/Matroos_debieten_2017_2022_Lobith_Monsin.xlsx")
+network_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg")
+top10nl_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
+
+time_colname = " Timeseries retrieved from the MATROOS series database"
+
+
+def read_lobith(debieten_xlsx: Path, starttime, endtime) -> pd.Series:
+    df = pd.read_excel(
+        debieten_xlsx,
+        sheet_name="10min",
+        parse_dates=[time_colname],
+        date_format="%Y/%m/%d %H:%M",
+    )
+    df.set_index(time_colname, inplace=True)
+    df.index.name = "time"
+    df = df.loc[starttime:endtime]
+
+    lobith_series = df["Lobith"]
+
+    if lobith_series.isna().sum():
+        raise ValueError("Lobith series contains missings.")
+    # resample to daily values
+    lobith_series = lobith_series.resample("D").mean()
+    lobith_series.name = "flow_rate"
+    return lobith_series
+
+
+def read_monsin(debieten_xlsx: Path, starttime, endtime) -> pd.Series:
+    df = pd.read_excel(
+        debieten_xlsx,
+        sheet_name="hourly",
+        parse_dates=[time_colname],
+        date_format="%Y/%m/%d %H:%M",
+    )
+    df.set_index(time_colname, inplace=True)
+    df.index.name = "time"
+    df = df.loc[starttime:endtime]
+
+    monsin_series = df["Monsin"]
+
+    if monsin_series.isna().sum():
+        raise ValueError("Monsin series contains missings.")
+    # resample to daily values
+    monsin_series = monsin_series.resample("D").mean()
+    monsin_series.name = "flow_rate"
+
+    return monsin_series
+
+
+lobith_series = read_lobith(debieten_xlsx, model.starttime, model.endtime)
+monsin_series = read_monsin(debieten_xlsx, model.starttime, model.endtime)
+
+# %% set FlowBoundary / Time
+
+# get node ids
+assert model.flow_boundary.node is not None and model.flow_boundary.node.df is not None
+lobith_node_id = (
+    model.flow_boundary.node.df.reset_index(drop=False).set_index("meta_meetlocatie_code").at["LOBH", "node_id"]
+)
+monsin_node_id = (
+    model.flow_boundary.node.df.reset_index(drop=False).set_index("meta_meetlocatie_code").at["MONS", "node_id"]
+)
+
+# set flow boundary timeseries
+lobith_df = pd.DataFrame(lobith_series).reset_index()
+lobith_df.loc[:, "node_id"] = lobith_node_id
+
+monsin_df = pd.DataFrame(monsin_series).reset_index()
+monsin_df.loc[:, "node_id"] = monsin_node_id
+
+# TODO fill the gaps before so we don't need dropna here
+# the resample introduces missing from gaps in the timeseries
+bc_time_df = pd.concat([lobith_df, monsin_df]).dropna(subset=["flow_rate"])
+model.flow_boundary.time.df = DataFrame[FlowBoundaryTimeSchema](bc_time_df)
+
+# remove fixed values from static
+assert model.flow_boundary.static.df is not None
+model.flow_boundary.static.df = model.flow_boundary.static.df[
+    ~model.flow_boundary.static.df.node_id.isin([lobith_node_id, monsin_node_id])
+]
+
+# %% update LevelBoundary / Time
+
+assert model.level_boundary.node is not None and model.level_boundary.node.df is not None
+node_ids = model.level_boundary.node.df[
+    model.level_boundary.node.df["meta_meetlocatie_code"].isin(["KOBU", "OEBU"])
+].index.to_numpy()
+
+day_of_year = [
+    "01-01",
+    "03-01",
+    "03-11",
+    "03-21",
+    "04-01",
+    "04-10",
+    "04-15",
+    "08-11",
+    "08-15",
+    "08-21",
+    "08-31",
+    "09-11",
+    "09-15",
+    "09-21",
+    "10-01",
+    "10-11",
+    "10-21",
+    "10-31",
+    "12-31",
+]
+
+level = [
+    -0.4,
+    -0.1,
+    -0.1,
+    -0.1,
+    -0.2,
+    -0.2,
+    -0.2,
+    -0.2,
+    -0.3,
+    -0.3,
+    -0.3,
+    -0.3,
+    -0.3,
+    -0.3,
+    -0.4,
+    -0.4,
+    -0.4,
+    -0.4,
+    -0.4,
+]
+years = range(model.starttime.year, model.endtime.year + 1)
+level_df = pd.DataFrame(
+    {
+        "time": [pd.Timestamp(f"{year}-{d}") for year in years for d in day_of_year],
+        "level": level * len(years),
+    }
+)
+level_df = level_df[(level_df["time"] >= model.starttime) & (level_df["time"] <= model.endtime)]
+
+level_df = pd.concat(
+    [pd.concat([level_df, pd.DataFrame({"node_id": [node_id] * len(level_df)})], axis=1) for node_id in node_ids],
+    ignore_index=True,
+)
+model.level_boundary.time.df = DataFrame[LevelBoundaryTimeSchema](level_df)
+
+# %% set Basin / time
+
+# The precipitation and open water evaporation of the LHM on the Basins, which are all main water. They get no
+# groundwater budgets, which the LHM computes for the land only.
+assert model.node.df is not None
+assert model.basin.node is not None and model.basin.node.df is not None
+model.node.df.loc[model.basin.node.df.index, "meta_categorie"] = "hoofdwater"
+model = SetDynamicForcing(model=model, budgets=read_lhm_budgets(), startdate=STARTTIME, enddate=ENDTIME).add()
+# Basins too narrow to contain the center of an LHM cell get no meteo, like in the regional models
+assert model.basin.time.df is not None and model.basin.area.df is not None
+area = model.basin.area.df.set_index("node_id").area
+missing = area.index.difference(pd.Index(model.basin.time.df["node_id"].unique()))
+assert area[missing].sum() < 0.001 * area.sum(), f"No meteo for a large area of Basins {missing.tolist()}"
+print(f"No meteo for Basins {missing.tolist()}, of {area[missing].sum() / 1e6:.2f} km2")
+
+# merge RWZI model, which requires meta_waterbeheerder (the hws model is fully Rijkswaterstaat)
+assert model.node.df is not None
+assert model.basin.node is not None and model.basin.node.df is not None
+model.node.df.loc[model.basin.node.df.index, "meta_waterbeheerder"] = "Rijkswaterstaat"
+# RWZIs that discharge on hws water that the Basin areas do not cover, such as Vollenhove on the Vollenhover Kanaal
+# 2.8 km from the Zwarte Meer, couple to the nearest hws Basin, see #936
+model = merge_rwzi_model(
+    model,
+    rwzi_model_path,
+    rwzi_coverage_path,
+    cloud.joinpath("Rijkswaterstaat/modellen/hws_transient/meta/RWZI_coordinates_lhm_coverage.geojson"),
+    max_distance=3000,
+)
+
+# add Observation nodes with measured discharges
+model = add_observations(model, "Rijkswaterstaat")
+# route the links of each Basin as one tree along the network, which koppelen extends with the links of other models
+assert model.basin.node is not None and model.basin.node.df is not None
+network = Network.from_network_gpkg(network_gpkg)
+rebuild_junction_trees_along_top10nl(model, model.basin.node.df.index.tolist(), top10nl_gpkg, network.links)
+model = tidy_layout(model)
+
+# %%
+ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_transient/hws.toml")
+model.write(ribasim_toml)

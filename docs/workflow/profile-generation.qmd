@@ -22,7 +22,7 @@ Prior to generating the profiles, the data is preprocessed:
     generating `LINESTRING Z`-objects of measured cross-sections,
     removing duplicate hydro-objects,
     repairing hydro-objects along HyDAMO-standards,
-    downloading BGT-data from their web-API.
+    reading the current BGT water surfaces of the area from the national `data/Basisgegevens/BGT/bgt_water.parquet`, see `ribasim_nl.bgt_water`.
 
 Subsequently, the following steps are executed on a per-basin basis:
 
@@ -38,9 +38,12 @@ Subsequently, the following steps are executed on a per-basin basis:
 10. Correct the $A(h)$-relation of _bergend_ by including non-intersecting BGT-polygons' surface areas (as preluded to in 5.);
 11. Write two basin profile tables with $A(h)$-relations: one for _doorgaand_, and one for _bergend_.
 
-During model implementation, every profile area is clamped to at least $10\,\mathrm{m^2}$.
-When a basin has no generated profile, the model receives a two-point fallback profile with an area of $10\%$ of its basin polygon, subject to that minimum, at both $2\ \mathrm{m}$ below its target level and at its target level.
-This prevents dummy profiles from reaching the solver while keeping all available generated $A(h)$-information.
+During model implementation, generated profiles whose maximum area is below $100\,\mathrm{m^2}$ are discarded.
+Every retained profile area is then clamped to at least $10\,\mathrm{m^2}$.
+If only one of the _doorgaand_ or _bergend_ profiles survives for a basin, it is used for the existing basin without adding a separate storing basin.
+When neither profile survives, the model receives a two-point fallback profile with an area of $10\%$ of its basin polygon, subject to the $10\,\mathrm{m^2}$ minimum, at both $2\ \mathrm{m}$ below its target level and at its target level.
+If no storing basins remain, implementation still updates the existing basins' profiles and leaves the network unchanged.
+This prevents dummy and very small generated profiles from reaching the solver.
 
 # Profile generation code
 
@@ -48,7 +51,7 @@ The profile generation is coded as standalone and intended to be executed prior 
 Therefore, all relevant code is grouped inside a `profiles`-module:
 
  -  source-code: [`src/ribasim_nl/ribasim_nl/profiles`](https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/profiles), and
- -  implementation-code: [`src/peilbeheerst_model/profiles`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/profiles).
+ -  implementation-code: [`pipeline`](https://github.com/Deltares/Ribasim-NL/tree/main/pipeline).
 
 This results in the following structures:
 
@@ -60,25 +63,24 @@ src/ribasim_nl/ribasim_nl/profiles/
 ```
 - For the implementation-code:
 ```
-src/peilbeheerst_model/profiles/
- -  __init__.py
+pipeline/
  -  prep_cross_sections.py
- -  <water-authority>.py
+ -  <water-authority>/02_profiles.py
 ```
 
-As part of the implementation code, there is the preprocessing of cross-sections ([`prep_cross_sections.py`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/profiles/prep_cross_sections.py)),
-which should be executed prior to running any of the [`<water-authority>.py`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model/profiles) scripts.
+As part of the implementation code, there is the preprocessing of cross-sections ([`prep_cross_sections.py`](https://github.com/Deltares/Ribasim-NL/tree/main/pipeline/prep_cross_sections.py)),
+which should be executed prior to running any of the `pipeline/<water-authority>/02_profiles.py` scripts.
 This way, the measured cross-sections are preprocessed so they are presented as `LINESTRING Z`-objects.
 Preprocessing of the measured cross-sections must be done per water authority:
 ```bash
-pixi run python src/peilbeheerst_model/profiles/prep_cross_sections.py <water-authority>
+pixi run python pipeline/prep_cross_sections.py <water-authority>
 ```
 This call has to be done only once per water authority
 (or when changes are made to the data sources and/or source code).
 
 Subsequently, the profile tables (_doorgaand_ and _bergend_) are generated/updated per water authority as well:
 ```bash
-pixi run python src/peilbeheerst_model/profiles/<water-authority>.py
+pixi run python pipeline/<water-authority>/02_profiles.py
 ```
 Again, this call has to be done only once per water authority
 (or when changes are mode to the data sources and/or source code).

@@ -19,6 +19,8 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 
+from ribasim_nl.geodataframe import sorted_sjoin
+
 LOG = logging.getLogger(__name__)
 
 
@@ -119,14 +121,18 @@ def assign_basin_profiles(
         LOG.critical("Basin profiles assigned without distinction in profile-type")
 
     # couple hydro-objects to basins
-    gdf_joined = gpd.sjoin(basins, hydro_objects, how="left", predicate="intersects", lsuffix="basin", rsuffix="ho")
+    gdf_joined = sorted_sjoin(basins, hydro_objects, how="left", predicate="intersects", lsuffix="basin", rsuffix="ho")
     gdf_joined = gdf_joined.dropna(subset="index_ho")
 
     # weighted average of profile dimensions
     gdf_joined["length"] = hydro_objects.geometry.loc[gdf_joined["index_ho"]].length.values
     grouped = gdf_joined.groupby("node_id")
-    width = grouped.apply(lambda row: weighted_average(row["width"], row["length"]), include_groups=False)
-    depth = grouped.apply(lambda row: weighted_average(row["depth"], row["length"]), include_groups=False)
+    width = grouped.apply(  # ty: ignore[no-matching-overload]
+        lambda row: weighted_average(row["width"].to_numpy(), row["length"].to_numpy()), include_groups=False
+    )
+    depth = grouped.apply(  # ty: ignore[no-matching-overload]
+        lambda row: weighted_average(row["depth"].to_numpy(), row["length"].to_numpy()), include_groups=False
+    )
     length = grouped["length"].agg("sum")
 
     # concatenate profile-data

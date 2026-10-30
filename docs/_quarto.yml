@@ -2,9 +2,12 @@ project:
   type: website
   resources:
     - CNAME
+    - viewer-app/**
 website:
   title: "Ribasim-NL"
+  favicon: assets/favicon.ico
   navbar:
+    logo: assets/logo.png
     left:
       - reference/index.qmd
       - cloudstorage.qmd
@@ -12,6 +15,8 @@ website:
         file: workflow/main-watersystem.qmd
       - text: "Watersystems"
         file: watersystems/main.qmd
+      - text: "Model viewer"
+        file: viewer.qmd
     right:
       - text: "Contributing"
         file: dev/index.qmd
@@ -25,13 +30,17 @@ website:
         - dev/testing.qmd
         - dev/dvc.qmd
         - dev/type-checking.qmd
+        - dev/local.qmd
         - dev/slurm.qmd
+        - dev/pull-requests.qmd
+        - dev/viewer.qmd
+        - dev/ribasim.qmd
     - title: "Workflows"
       contents:
         - workflow/main-watersystem.qmd
         - workflow/level-controlled.qmd
         - workflow/gravity-controlled.qmd
-        - workflow/scale-outlets-pumps.qmd
+        - workflow/design-capacities.qmd
         - workflow/split-basins.qmd
         - workflow/couple.qmd
         - workflow/profile-generation.qmd

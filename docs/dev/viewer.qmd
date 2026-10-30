@@ -1,0 +1,195 @@
+---
+title: "Model viewer"
+---
+
+The [Model viewer](../viewer.qmd) shows the input and results of the coupled LHM model (`lhm_coupled`) of `main` on a web map.
+It is a static web app: the docs site serves only the JavaScript, and the browser reads the model data directly from MinIO.
+The model of a pull request can be previewed too, together with its differences from `main`, at `https://ribasim.nl/viewer?pr=<number>`.
+Any other published version can be viewed, or compared with another, by its commit, see [Links to a version](#links-to-a-version).
+
+The *Water authority* choice above the layer list shows the nodes and links of one authority, by the `waterbeheercode` their node ids start with, see `ribasim_nl.aquo`.
+It also shows the links to other authorities and the nodes at their other end, such as the regional inlets and outlets of the hws, and the Basin / areas of the shown Basins.
+The choice is kept in the URL, as `#authority=<waterbeheercode>`.
+
+```{mermaid}
+flowchart LR
+  A[modellen/lhm_coupled] -->|dvc repro run_lhm_coupled| R[runs/lhm_coupled]
+  R -->|dvc repro export_webmap| B[webmap/lhm_coupled]
+  B -->|pixi run publish-webmap| C[MinIO doc-image/webmap]
+  C --> D[Model viewer page]
+  L[dvc.lock on GitHub main] --> D
+```
+
+All local paths are relative to `data/Rijkswaterstaat`.
+
+## Updating the published data
+
+1. Run the model with the `run_lhm_coupled` DVC stage.
+    It writes `runs/lhm_coupled/lhm_coupled.toml`, which reads the input of `modellen/lhm_coupled`, and the results next to it.
+    It also writes the commit of the code to `runinfo.json`, which the viewer shows next to the scale bar, with the time the run finished from `results/ribasim.log`.
+    For now this runs with a looser solver tolerance, see `pipeline/run_lhm_coupled.py`.
+    The NetCDF results are compressed, to save space in DVC.
+    This takes many hours, so normally pull the cached results instead:
+
+    ```sh
+    pixi run dvc pull run_lhm_coupled
+    ```
+
+2. Export the model to web-friendly files with the `export_webmap` DVC stage, which takes about 10 minutes:
+
+    ```sh
+    pixi run dvc repro --pull --single-item export_webmap
+    ```
+
+    This writes `data/Rijkswaterstaat/webmap/lhm_coupled`, see `ribasim_nl.webmap` for details:
+
+    | File | Content |
+    |:-----|:--------|
+    | `nodes.parquet` | Node table with all attributes and lon/lat |
+    | `links.parquet` | Link table with all attributes and simplified geometry |
+    | `basin_area.pmtiles` | Basin / area polygons as vector tiles |
+    | `waterboards.geojson` | Simplified water board boundaries |
+    | `tables/*.parquet` | All other input tables, including those in NetCDF, sorted by `node_id` |
+    | `results/*_by_id.parquet` | Basin and flow results sorted by id, for the time series charts |
+    | `results/*_by_time.parquet` | Basin level and storage, and flow rate, ordered by time step, for coloring the map |
+    | `manifest.json` | List of the files above with their content hash and size, the color scale of each result variable, and when and from which commit the model was run |
+
+    Results are only exported if the model's `results` directory exists.
+    DVC does not cache this output, since the published model on MinIO is a copy of it already.
+    `dvc.lock` does record its hash, which names the published model.
+
+3. Push the run and commit the updated `dvc.lock`, see [DVC](dvc.qmd#pushing-changes):
+
+    ```sh
+    pixi run dvc push run_lhm_coupled
+    ```
+
+4. Publish the model as a preview of the pull request of the current branch.
+    This needs credentials with write access in `.env`, and the [GitHub CLI](https://cli.github.com/) `gh`, logged in.
+
+    ```sh
+    pixi run publish-webmap
+    ```
+
+    This uploads the model of the working tree, and that of `origin/main`, which it fetches first, and their differences, see [Comparing models](#comparing-models).
+    It then adds a comment to the pull request with the link `https://ribasim.nl/viewer?pr=<number>` and a summary of the differences, or updates that comment on later publishes.
+    Use `--pr <number>` to publish for another pull request, and `--main` to only publish the model of `origin/main`.
+    Use `--commit <revision>` to publish the model of a commit on GitHub, and add `--base <revision>` to also publish its differences from another commit, see [Links to a version](#links-to-a-version).
+
+`pixi run repro-local` runs steps 1 to 4 by default, see [Running locally](local.qmd).
+The docs do not need to be rebuilt to show another model.
+
+### How the published models are found
+
+Everything is uploaded to the anonymously readable `doc-image/webmap/` prefix on MinIO, see `ribasim_nl.webmap_publish`:
+
+| Object | Content |
+|:-------|:--------|
+| `files/<hash>.<ext>` | The exported files, named by their content hash, so unchanged files are uploaded once and shared by all models |
+| `lhm_coupled/snapshots/<md5>/manifest.json` | The manifest of an export, named by the DVC hash of the `export_webmap` output in `dvc.lock` |
+| `lhm_coupled/main.json` | The snapshot of the latest published `main` |
+| `lhm_coupled/diffs/<base md5>-<head md5>.json` | The differences between two snapshots |
+| `lhm_coupled/prs/<number>.json` | The snapshots of a pull request and the `main` it was compared with, and their differences |
+
+To show `main`, the viewer reads `dvc.lock` from `main` on GitHub, and loads the snapshot of its `export_webmap` output.
+So once a pull request whose model was published is merged, the viewer shows its model, without publishing again.
+If that snapshot is not published, for instance because a pull request changed the model without publishing it, the viewer shows the snapshot in `main.json` with a warning.
+The next `pixi run publish-webmap` then exports the run of `main` again, and publishes it.
+Likewise, to compare a pull request with `main`, the export of `main` is downloaded from its snapshot, or exported again from its run if it is not published.
+For a pull request, the viewer warns if `main` changed since the model was published; publish again to compare with the latest `main`.
+Snapshots and files that are no longer used are not deleted.
+
+### Links to a version
+
+Node and link IDs change between versions of the model, so a link to a node in an issue would show another node later.
+The viewer therefore puts the commit of the model it shows in the page URL, so a copied link keeps showing that version:
+
+| URL | Model |
+|:----|:------|
+| `viewer` | The latest `main`, then pinned to `viewer?commit=<commit>` |
+| `viewer?commit=<commit>` | The model of a commit on GitHub, by the snapshot in its `dvc.lock` |
+| `viewer?base=<commit>&commit=<commit>` | The model of a commit, compared with that of another commit |
+| `viewer?pr=<number>` | The latest published model of a pull request, compared with its base |
+| `&compare=0` | Added to a comparison: only the model, without its comparison |
+
+Commits may be shortened; pinned links use 10 characters.
+The view and selection after `#` are kept.
+If a pinned model is no longer that of the latest `main`, the viewer says so, with a link to the latest `main` at the same place.
+The viewer knows the commit of `main` since the docs are built and published for each push to `main`, so after a merge it shows the previous `main` until that is done.
+Links to a pull request are not pinned, since it is usually published before its `dvc.lock` is committed.
+
+Two commits can be compared if their differences are published, for instance to see what changed in a month.
+Since snapshots and differences are named by the DVC hashes of the models, any two commits with the models of a published comparison can be compared, like `main` before and after a pull request.
+To compare other commits, publish their models and differences:
+
+```sh
+pixi run publish-webmap --commit origin/main --base <commit>
+```
+
+This prints the link to the comparison.
+A model that is not published is exported again from its run in DVC.
+
+## Viewing local models
+
+The viewer can also show any local model, without publishing it:
+
+```sh
+pixi run viewer data/Rijkswaterstaat/modellen/hws_2025_10_1/hws.toml
+```
+
+This exports the model with `ribasim_nl.webmap` to `.cache/viewer`, serves it with the viewer on <http://localhost:8000>, and opens it in a web browser.
+The export is reused as long as the model, its results and the export code are unchanged, so only the first run takes long; about 10 minutes for the coupled LHM model with results.
+Results are shown if the model's results directory exists.
+Use `--port` to serve on another port, and `--no-browser` to not open a browser.
+
+### Comparing models
+
+To review a pull request that changes a model, view only the differences from another version of the model.
+Usually that is the same model at another git revision, like `main`:
+
+```sh
+pixi run viewer data/Rijkswaterstaat/runs/lhm_coupled/lhm_coupled.toml --base origin/main
+```
+
+`--base` takes a git revision or the TOML of another model.
+The model at a revision is read with DVC, from the DVC cache or the DVC remote, into `.cache/viewer/revisions`.
+Add `--rev` to also take the viewed model from a git revision instead of the working tree, for instance `--rev HEAD --base origin/main`.
+Fetch first to compare with the latest `origin/main`.
+
+Nodes are matched by id, and links by their from and to node, since links get renumbered, see `ribasim_nl.webmap_diff`.
+A node or link in both models is changed if its geometry, an attribute, its rows in an input table, or its Basin / area differ.
+Initial Basin levels in `Basin / state` that differ less than 1 cm are equal, since every run of the regional models changes them slightly, see `TABLE_TOLERANCES` in `ribasim_nl.webmap_diff`.
+The map shows only the added, removed and changed features, in the colors of their status: green, orange and purple, on a grey base map.
+When zoomed out, the status rings around changed nodes become small dots.
+Removed and changed Basin / areas of the old model are drawn as dashed outlines.
+Turn on *Unchanged* in the layer list to show the other features faintly, for context.
+Observation nodes and their links are always shown, also when unchanged or filtered out in the *Differences* box, so their charts can be compared; the observed values are charted with the simulated values of both models.
+The simulated values of the base model are those of the observed node in the base model, also if its links were renumbered or lead to renumbered nodes.
+
+If both models have results, the Basin levels and flow rates are compared too.
+Basins and flow links whose results differ more than a tolerance are also shown, in shades of grey by the largest difference.
+Differences of up to 1 mm in level, and of up to 1 L/s plus 1% in flow rate, are ignored as solver noise.
+
+The *Differences* box counts the differences by status and by what changed, for instance `Basin / state` or `geometry`.
+Its *View without differences* link shows the model normally, at the same place, by adding `&compare=0` to the URL.
+Uncheck a status or a change to hide those features from the map, for instance to look past the many changed initial states.
+It also lists the changed TOML settings, all differing features, and the features whose results differ, largest first; click one to zoom to it.
+The panel of a changed feature lists what changed, shows the old value of changed attributes struck through, and shows both versions of changed tables.
+The result charts show the old model as dashed lines in a lighter tint.
+
+## Developing the viewer
+
+The viewer lives in [`viewer/`](https://github.com/Deltares/Ribasim-NL/tree/main/viewer) and is written in TypeScript, built with [Vite](https://vite.dev/).
+It uses [MapLibre GL JS](https://maplibre.org/) for the basemap and the Basin / area tiles, [deck.gl](https://deck.gl/) to draw the nodes and links, and [hyparquet](https://github.com/hyparam/hyparquet) to read Parquet files with HTTP range requests.
+
+Start a development server that serves your local `export_webmap` output, and open <http://localhost:5173>:
+
+```sh
+pixi run viewer-dev
+```
+
+Changes to the TypeScript code reload the page automatically.
+`pixi run viewer-build` checks types and builds the viewer into `docs/viewer-app`.
+`pixi run docs` and `pixi run docs-render` run it before rendering the docs.
+Add `?data=<url>` to the viewer page URL to load the data from another location, and `&base_data=<url>&diff=<url>` to compare it with another model, for instance `?data=http://localhost:5173/` to use the development server.
+Only the default MinIO host, the docs site itself and `localhost` are accepted.
