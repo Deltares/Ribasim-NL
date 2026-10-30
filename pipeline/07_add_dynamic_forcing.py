@@ -49,7 +49,7 @@ for authority in authorities:
     model = Model.read(toml_file)
 
     # add categorie to basin / state
-    series = model.basin.node.df["meta_categorie"]  # type: ignore
+    series = model.basin.node.df["meta_categorie"]
     uncategorized_basins = series[series.isna()].index.values
     assert model.node.df is not None
     if len(uncategorized_basins) > 0:

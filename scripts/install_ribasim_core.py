@@ -30,7 +30,7 @@ from ribasim_nl.settings import settings
 # Make sure the version is compatible with the Ribasim Python version in pixi.toml.
 # `run_lhm_coupled` depends on this script, so changing NAME reruns the coupled model.
 SOURCE = "minio"
-NAME = "ribasim-nl-016b540"
+NAME = "ribasim-nl-932df78"
 # ───────────────────────────────────────────────────────────────────────────────
 
 GITHUB_RELEASE_URL = "https://github.com/Deltares/Ribasim/releases/download/{name}/{asset}"
