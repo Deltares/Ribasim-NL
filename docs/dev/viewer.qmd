@@ -22,6 +22,19 @@ flowchart LR
 
 All local paths are relative to `data/Rijkswaterstaat`.
 
+## Fit to the measurements
+
+The *Observations* choice in the time bar colors the Observation nodes by how well the simulated values fit their measurements, see `ribasim_nl.goodness_of_fit`:
+
+- *KGE* and *NSE*: the Kling-Gupta and Nash-Sutcliffe efficiencies over the whole run, from purple at -1 to green at 1. At 0 the results are as good as the mean of the measurements.
+- *bias*: the difference of the mean simulated and measured value, relative to the mean absolute measurement. It is green within 25%, the limit of a satisfactory bias of discharges of Moriasi et al. (2007), grey at 50%, and purple from 100% either way.
+- *simulated − observed*: the difference at the time of the time bar, from red for too low to blue for too high. It is colored on a symmetric log scale, since the differences of large rivers and small ditches span orders of magnitude.
+
+The efficiencies and bias need 365 days with both a measured and a simulated value, so Observation nodes with fewer days, or without a measurement at the time of the time bar, are small grey dots.
+Change the limits of a color scale in its legend.
+The *Observations* box above the layer list lists the shown Observation nodes by their fit, the best or the worst first, with the median, and zooms to one when clicked.
+The panel of an Observation node shows its fit above the chart of its observed and simulated values.
+
 ## Updating the published data
 
 1. Run the model with the `run_lhm_coupled` DVC stage.
@@ -52,6 +65,8 @@ All local paths are relative to `data/Rijkswaterstaat`.
     | `tables/*.parquet` | All other input tables, including those in NetCDF, sorted by `node_id` |
     | `results/*_by_id.parquet` | Basin and flow results sorted by id, for the time series charts |
     | `results/*_by_time.parquet` | Basin level and storage, and flow rate, ordered by time step, for coloring the map |
+    | `results/observation_metrics.parquet` | How well the results fit the measurements of each Observation node, see [Fit to the measurements](#fit-to-the-measurements) |
+    | `results/observation_by_time.parquet` | The difference simulated − observed of each Observation node, ordered by time step, for coloring the map |
     | `manifest.json` | List of the files above with their content hash and size, the color scale of each result variable, and when and from which commit the model was run |
 
     Results are only exported if the model's `results` directory exists.
@@ -176,6 +191,9 @@ Uncheck a status or a change to hide those features from the map, for instance t
 It also lists the changed TOML settings, all differing features, and the features whose results differ, largest first; click one to zoom to it.
 The panel of a changed feature lists what changed, shows the old value of changed attributes struck through, and shows both versions of changed tables.
 The result charts show the old model as dashed lines in a lighter tint.
+
+If both models have the fit to the measurements, the time bar has the *Observations* choice only, which can also color the Observation nodes by the change of their KGE, NSE or absolute bias, from purple for a worse to green for a better fit.
+The panel of an Observation node shows the fit of both models.
 
 ## Developing the viewer
 

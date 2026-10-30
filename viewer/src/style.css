@@ -267,7 +267,7 @@
   /* Centered in the map space left of the panel */
   left: calc((100% - var(--panel-space)) / 2);
   transform: translateX(-50%);
-  width: min(560px, max(320px, calc(100% - var(--panel-space) - 140px)));
+  width: min(720px, max(320px, calc(100% - var(--panel-space) - 140px)));
   padding: 6px 10px 8px;
 }
 
@@ -301,7 +301,8 @@
 
 .ribasim-viewer .timebar .variables {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* The selections wrap to a second row on phones */
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
   margin-top: 6px;
 }
@@ -478,6 +479,39 @@
 
 .ribasim-viewer .layers label.section h4 {
   margin: 0;
+}
+
+/* The Observation nodes by how well they fit the measurements, like the Differences box */
+.ribasim-viewer .observation-list {
+  flex-shrink: 0;
+  max-height: 35%;
+  overflow-y: auto;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.ribasim-viewer .observation-list[hidden] {
+  display: none;
+}
+
+.ribasim-viewer .observation-list > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.ribasim-viewer .observation-list select {
+  width: 100%;
+  margin: 4px 0 2px;
+  font: inherit;
+}
+
+/* Round like the colored Observation nodes */
+.ribasim-viewer .observation-list .diff-list .swatch {
+  box-sizing: border-box;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
 }
 
 .ribasim-viewer .diff-summary {

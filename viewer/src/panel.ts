@@ -12,6 +12,7 @@ import {
 import { describeResult, statusLabel } from "./diff";
 import { LevelDiagram, type LevelSeries, type LevelSide } from "./levels";
 import { linkLabel, type Network, pastJunctions } from "./network";
+import { fitFacts, loadFits, type Fits } from "./observations";
 
 export type Selection = { kind: "node" | "link"; id: number };
 
@@ -661,16 +662,21 @@ export class Panel {
   }
 
   /**
-   * Per observed variable, a chart of the observed values and the simulated values of the observed node,
-   * also of the base model when comparing models.
+   * Per observed variable, how well the results fit, and a chart of the observed values and the simulated values of
+   * the observed node, also of the base model when comparing models.
    */
   private async observedSimulated(nodeId: number, observedId: number, width: number): Promise<(Node | string)[]> {
     const { network } = this;
     const row = network.nodeRow.get(observedId);
     if (row === undefined) return ["The observed node is not in the model."];
     const observedType = network.nodeType[row];
-    const observations = await this.tableRows("Observation", "time", nodeId);
     const results = this.manifest.results;
+    const base = this.comparison?.base.results;
+    const [observations, fits, baseFits] = await Promise.all([
+      this.tableRows("Observation", "time", nodeId),
+      results?.observation ? loadFits(results.observation) : null,
+      base?.observation ? loadFits(base.observation) : null,
+    ]);
     const outflows = Array.from(
       network.linkId.filter(
         (_, linkRow) => network.linkType[linkRow] === "flow" && network.fromNodeId[linkRow] === observedId,
@@ -678,7 +684,6 @@ export class Panel {
     );
     // Links are renumbered and can lead to renumbered nodes, so the outflows of the observed node, which keeps its
     // id, are those of the base model
-    const base = this.comparison?.base.results;
     const baseOutflows = network.baseOutflows.get(observedId) ?? [];
     const columns = ["observed", "simulated", ...(base ? [`simulated${BASE}`] : [])];
     const variables = [...new Set(observations.map((observation) => String(observation.variable)))].sort((a, b) => a.localeCompare(b));
@@ -708,8 +713,15 @@ export class Panel {
         const rows = [...byTime.values()].sort((a, b) => (a.time as Date).getTime() - (b.time as Date).getTime());
         const chart = timeChart(rows, width, columns);
         const title = `${variable} of ${observedType} #${observedId}`;
-        if (!chart) return [el("h4", {}, title), "Too few values to chart."];
-        return [el("h4", {}, title), chart, ...(variable === "flow_rate" ? cumulativeChart(rows, width, columns) : [])];
+        const fit = (model: Fits | null) => model?.get(variable)?.get(nodeId);
+        const facts = fits ? [fitFacts(fit(fits), fit(baseFits), results!.observation!.min_days, baseFits !== null)] : [];
+        if (!chart) return [el("h4", {}, title), ...facts, "Too few values to chart."];
+        return [
+          el("h4", {}, title),
+          ...facts,
+          chart,
+          ...(variable === "flow_rate" ? cumulativeChart(rows, width, columns) : []),
+        ];
       }),
     );
     return [...sections.flat(), ...(results ? [] : [el("p", { className: "note" }, "No simulation results.")])];
