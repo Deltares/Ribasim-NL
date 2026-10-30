@@ -138,7 +138,7 @@ def _set_water_profiles(
 def read_manning_water(model: Model, path: Path | None = BGT_WATER) -> gpd.GeoDataFrame | None:
     """The BGT water around the ManningResistances of a model, or None without a path or ManningResistances."""
     node = model.manning_resistance.node
-    if path is None or node is None or node.df is None or node.df.empty:
+    if path is None or node.df.empty:
         return None
     xmin, ymin, xmax, ymax = node.df.total_bounds
     return read_bgt_water(

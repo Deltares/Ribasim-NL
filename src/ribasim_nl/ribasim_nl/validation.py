@@ -122,11 +122,9 @@ def _uncontrolled_control_state_issues(model: "Model") -> list[str]:
     """
     link = model.link.df
     node = model.node.df
-    discrete_controlled = set()
-    if link is not None and node is not None:
-        control = link.loc[link["link_type"] == "control"]
-        from_discrete_control = control["from_node_id"].map(node["node_type"]).eq("DiscreteControl")
-        discrete_controlled = set(control.loc[from_discrete_control, "to_node_id"])
+    control = link.loc[link["link_type"] == "control"]
+    from_discrete_control = control["from_node_id"].map(node["node_type"]).eq("DiscreteControl")
+    discrete_controlled = set(control.loc[from_discrete_control, "to_node_id"])
 
     issues = []
     for node_type in CONTROL_STATE_NODE_TYPES:

@@ -117,26 +117,9 @@ def _node_max_flow_rate(flow_rate: float | dict[int, float] | None, node_id: int
     return float(flow_rate)
 
 
-class MissingTable(Exception):
-    """Table is missing."""
-
-    def __init__(self, table: str) -> None:
-        super().__init__(f"{table} table is missing!")
-
-
-def _read_node_table(model: Model) -> gpd.GeoDataFrame:
-    """Read node_table model from model."""
-    df = model.node.df
-    if df is None:
-        raise MissingTable(table="Node table")
-    return df
-
-
 def _read_link_table(model: Model, link_type: Literal["flow", "control"] = "flow") -> gpd.GeoDataFrame:
     """Read link_table model from model."""
     df = model.link.df
-    if df is None:
-        raise MissingTable(table="Link table")
     return df[df.link_type == link_type]
 
 
@@ -439,7 +422,7 @@ def get_node_table_with_from_to_node_ids(
     _to_node_id = _df.set_index("from_node_id")["to_node_id"]
 
     # select nodes from model node_table
-    node_df = _read_node_table(model=model)
+    node_df = model.node.df
     _node_type = node_df["node_type"]
     selected_node_df = node_df.loc[node_df.node_type.isin(node_types)]
 
@@ -738,7 +721,7 @@ def get_control_nodes_position_from_supply_area(
         raise TypeError(f"`polygon` must be Polygon or MultiPolygon, got {type(polygon).__name__}")
 
     # read node_table for further use
-    node_df = _read_node_table(model=model)
+    node_df = model.node.df
 
     # links that cross the boundary, with one node inside and one outside, and their direction (if not outflow,
     # then inward). Links follow watercourses, so a link can pass through the area with both nodes outside it.
@@ -874,7 +857,7 @@ def add_controllers_to_drain_nodes(
     if update_meta_info:
         _update_meta_info(model=model, nodes_df=drain_nodes_df, supply=False, drain=True)
 
-    node_types = _read_node_table(model=model)["node_type"]
+    node_types = model.node.df["node_type"]
 
     for connector_node in drain_nodes_df.itertuples():
         node_id = cast(int, connector_node.Index)
@@ -1008,7 +991,7 @@ def add_controllers_to_supply_nodes(
     if update_meta_info:
         _update_meta_info(model=model, nodes_df=supply_nodes_df, supply=True, drain=False)
 
-    node_types = _read_node_table(model=model)["node_type"]
+    node_types = model.node.df["node_type"]
     for connector_node in supply_nodes_df.itertuples():
         node_id = cast(int, connector_node.Index)
         node_type = str(connector_node.node_type)
@@ -1176,7 +1159,7 @@ def add_controllers_to_flow_control_nodes(
     # validate if drain_nodes_df does not contain reversed flow directions
     validate_nodes_on_reversed_direction(flow_control_nodes_df, node_function="flow_control")
 
-    node_types = _read_node_table(model=model)["node_type"]
+    node_types = model.node.df["node_type"]
     for connector_node in flow_control_nodes_df.itertuples():
         node_id = cast(int, connector_node.Index)
         node_type = str(connector_node.node_type)
@@ -1373,7 +1356,7 @@ def add_controllers_and_demand_to_flushing_nodes(
     solver_threshold = model.solver.level_difference_threshold
     assert us_threshold_offset >= solver_threshold, "incompatible thresholds"
 
-    node_types = _read_node_table(model=model)["node_type"]
+    node_types = model.node.df["node_type"]
 
     # make sure we have a demand_flow_rate_summer and demand_flow_rate_winter
     for col in ["demand_flow_rate_summer", "demand_flow_rate_winter"]:

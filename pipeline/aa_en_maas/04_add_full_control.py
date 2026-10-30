@@ -602,9 +602,6 @@ discharge_supply_df["winter"] = (
 
 # make code (and node type) table
 node_table_df = model.node.df
-
-
-assert node_table_df is not None
 code_df = node_table_df[node_table_df["meta_code_waterbeheerder"].notna()][
     ["meta_code_waterbeheerder", "node_type"]
 ].rename(columns={"meta_code_waterbeheerder": "code"})

@@ -40,7 +40,6 @@ def get_current_max_node_id(ribasim_model: Model) -> int:
         warnings.simplefilter(action="ignore", category=FutureWarning)
         df_all_nodes = ribasim_model.node.df
 
-    assert df_all_nodes is not None
     max_id = 1 if len(df_all_nodes) == 0 else int(df_all_nodes.meta_node_id.max())
 
     return max_id

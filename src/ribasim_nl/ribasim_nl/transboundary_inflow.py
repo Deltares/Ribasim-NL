@@ -102,7 +102,7 @@ def match_flow_boundaries(model: Model, inflows: pd.DataFrame) -> pd.Series:
     :return: the node IDs of the FlowBoundaries, by inflow id
     """
     nodes = model.flow_boundary.node.df
-    if nodes is None or "meta_categorie" not in nodes:
+    if "meta_categorie" not in nodes:
         nodes = gpd.GeoDataFrame({"name": [], "meta_categorie": []}, geometry=[], crs=model.crs)
     nodes = nodes.loc[nodes["meta_categorie"] == CATEGORY]
     assert nodes["name"].is_unique, f"Names of the {CATEGORY} FlowBoundaries are not unique"
