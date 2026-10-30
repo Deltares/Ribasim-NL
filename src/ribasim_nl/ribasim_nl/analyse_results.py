@@ -2335,7 +2335,7 @@ def _build_model_graph(model) -> dict:
     node_type_map: dict[int, str] = {}
     try:
         nodes_df = model.node.df
-        if nodes_df is not None and "node_type" in nodes_df.columns:
+        if "node_type" in nodes_df.columns:
             if nodes_df.index.name == "node_id":
                 node_type_map = nodes_df["node_type"].astype(str).to_dict()
             elif "node_id" in nodes_df.columns:

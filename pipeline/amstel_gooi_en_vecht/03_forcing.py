@@ -42,7 +42,6 @@ ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
 
 # capture the zeesluis node-id by its geometry before snapping relocates it (see flushing step below)
 zeesluis_point = Point(133336, 482556)
-assert ribasim_model.node.df is not None
 zeesluis_candidates = ribasim_model.node.df.loc[ribasim_model.node.df.geometry.distance(zeesluis_point) < 1]
 if len(zeesluis_candidates) != 1:
     raise ValueError(
@@ -111,10 +110,8 @@ add_controllers(ribasim_model, from_to_node_function_table, remove_duplicates=Fa
 from_to_node_function_table.loc[from_to_node_function_table.index == zeesluis_node_id, "demand"] = 5  # 5 m3/s
 
 # there are some duplicates in the discrete control? Remove them
-assert ribasim_model.link.df is not None
 control = ribasim_model.link.df[ribasim_model.link.df.link_type == "control"]
 dup_control = []
-assert ribasim_model.node.df is not None
 all_nodes = ribasim_model.node.df[["node_type"]]
 for to_node_id, group in control.groupby("to_node_id"):
     if len(group) == 1:
@@ -176,7 +173,6 @@ for name, outlet_point, ark_point, basin_id, to_vecht, flow_rate in ARK_VECHT_LO
         [outlet.Static(flow_rate=[flow_rate], max_flow_rate=[flow_rate])],
     )
     # `clean_tables` keeps the tables of the nodes by their meta_node_id
-    assert ribasim_model.node.df is not None
     ribasim_model.node.df.loc[[boundary_node.node_id, outlet_node.node_id], "meta_node_id"] = [
         boundary_node.node_id,
         outlet_node.node_id,
@@ -212,7 +208,6 @@ ribasim_model = complete_parametrization(
 set_design_capacities(ribasim_model, from_to_node_function_table)
 
 # the locks between the ARK and the Vecht are coupled to the ARK, and keep their capacity and no level limits
-assert ribasim_model.level_boundary.node is not None and ribasim_model.level_boundary.node.df is not None
 ark_boundaries = ribasim_model.level_boundary.node.df.loc[ark_boundary_ids]
 assert (ark_boundaries["meta_couple_authority"] == "Rijkswaterstaat").all(), ark_boundaries["meta_couple_authority"]
 assert ribasim_model.outlet.static.df is not None

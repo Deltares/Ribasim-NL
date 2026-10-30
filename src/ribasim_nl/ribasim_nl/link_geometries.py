@@ -66,8 +66,6 @@ def fix_link_geometries(
          If the new line is `max_straight_line_ratio` times longer than straight line distance we don't accept the geometry.
          Defaults to MAX_STRAIGHT_LINE_RATIO.
     """
-    assert model.node.df is not None
-    assert model.link.df is not None
     node_df = model.node.df
     if node_ids is None:
         node_ids = node_df[node_df.node_type.isin(["LevelBoundary", "Basin"])].index.to_list()

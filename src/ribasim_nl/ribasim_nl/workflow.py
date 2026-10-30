@@ -167,7 +167,6 @@ def check_basin_meta_categorie(model: Model) -> None:
 
 def keep_model_supply_basins(processor: RibasimFeedbackProcessor, model: Model) -> None:
     """Keep only the Basins of the model in the aanvoer settings of the feedback form, for `set_aanvoer_flags`."""
-    assert model.basin.node is not None and model.basin.node.df is not None
     basin_ids = set(model.basin.node.df.index)
     processor._basin_aanvoer_on = tuple(n for n in (processor.basin_aanvoer_on or ()) if n in basin_ids)
     processor._basin_aanvoer_off = tuple(n for n in (processor.basin_aanvoer_off or ()) if n in basin_ids)
@@ -217,7 +216,7 @@ def set_manning_resistance_outside_bergend(model: Model, length: float, manning_
     The ManningResistance nodes of storing basins are parametrized by their area in `set_basin_profiles`.
     """
     static_df = model.manning_resistance.static.df
-    assert static_df is not None and model.link.df is not None
+    assert static_df is not None
     basin_node_df = model.filter_nodes("Basin")
     bergend_basin_ids = basin_node_df.index[basin_node_df["meta_categorie"] == "bergend"]
     link_df = model.link.df

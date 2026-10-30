@@ -173,7 +173,6 @@ aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).diss
 
 # aanmaken node_df en specificeren supply_nodes
 # knopen die beginnen met INL, i of eindigen op i, maar niet op fictief
-assert model.node.df is not None
 for node_type in CONTROL_NODE_TYPES:
     node_df = model.get_component(node_type).node.df
 
@@ -364,7 +363,6 @@ def straight_link(model: Model, from_node_id: int, to_node_id: int) -> None:
     It gets a vertex halfway, as straight links of two points are routed along the waterways later, see
     07_add_dynamic_forcing.py.
     """
-    assert model.link.df is not None
     links = model.link.df
     (link_id,) = links.index[
         (links.link_type == "flow") & (links.from_node_id == from_node_id) & (links.to_node_id == to_node_id)
@@ -425,7 +423,6 @@ model.outlet.static.df.loc[zero_aanvoer_mask, ["flow_rate", "max_flow_rate"]] = 
 
 # Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
 node_type_by_id = model.node.df["node_type"].to_dict()
-assert model.link.df is not None
 flow_demand_controlled_node_ids = set(
     model.link.df.loc[
         model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),
@@ -470,7 +467,6 @@ def set_flow_regime_control(
 
     Regime i applies while the flow exceeds i of the ascending `thresholds`. The levels of the aanvoer state are kept.
     """
-    assert model.link.df is not None
     assert len(flow_rates) == len(thresholds) + 1, "Expected one flow rate per regime"
     assert thresholds == sorted(thresholds), "Expected ascending thresholds"
     assert model.get_node_type(node_id) == "Outlet", f"Expected Outlet for node {node_id}"
@@ -547,7 +543,6 @@ def set_flow_regime_control(
             ignore_index=True,
         )
     )
-    assert model.node.df is not None
     model.node.df.loc[control_node_id, "name"] = name
 
 

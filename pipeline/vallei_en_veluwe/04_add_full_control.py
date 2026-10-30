@@ -51,7 +51,6 @@ def remove_basin_with_level_boundaries(
     remove_neighbor_node_ids: set[int] | None = None,
 ) -> list[int]:
     remove_neighbor_node_ids = remove_neighbor_node_ids or set()
-    assert model.link.df is not None
     links_to_basin = model.link.df[(model.link.df.from_node_id == basin_id) | (model.link.df.to_node_id == basin_id)]
 
     if links_to_basin.empty:
@@ -75,7 +74,6 @@ def remove_basin_with_level_boundaries(
 
     boundary_data = [level_boundary.Static(level=[boundary_level])]
     link_ids_to_remove = links_to_basin.index.to_list()
-    assert model.node.df is not None
     next_boundary_node_id = max(int(model.node.df.index.max()) + 1, 10000)
     boundary_connector_node_ids = []
     model.remove_links(link_ids_to_remove)
@@ -204,7 +202,6 @@ aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).diss
 # Linkrichting fixes
 reverse_link_ids = [244, 875, 926, 422, 351, 853, 605, 1018, 378, 1055, 536]
 
-assert model.link.df is not None
 missing_reverse_link_ids = [link_id for link_id in reverse_link_ids if link_id not in model.link.df.index]
 if missing_reverse_link_ids:
     print(f"Skipping missing reverse_link_ids: {missing_reverse_link_ids}")
@@ -217,7 +214,6 @@ for link_id in reverse_link_ids:
 model.redirect_link(278, to_node_id=936)
 
 # Rijkswaterstaat Basin 1134 verwijderen en alle aangrenzende kunstwerken op een boundary zetten.
-assert model.level_boundary.node is not None and model.level_boundary.node.df is not None
 assert model.level_boundary.node.df.meta_couple_authority.notna().all(), (
     "Zorg dat eerst je LevelBoundaries overal meta_couple_authority hebben"
 )
@@ -228,7 +224,6 @@ basin_1134_boundary_connector_node_ids = remove_basin_with_level_boundaries(
     remove_neighbor_node_ids={691},
 )
 
-assert model.node.df is not None
 model.node.df.loc[
     model.node.df.meta_couple_authority.isna() & (model.node.df.node_type == "LevelBoundary"),
     "meta_couple_authority",
@@ -400,10 +395,8 @@ manual_drain_nodes = list(drain_nodes)
 
 
 def get_node_df(model: Model, node_type: str):
-    assert model.outlet.node is not None and model.outlet.node.df is not None
     if node_type == "Outlet":
         return model.outlet.node.df
-    assert model.pump.node is not None and model.pump.node.df is not None
     if node_type == "Pump":
         return model.pump.node.df
 
@@ -659,9 +652,7 @@ for static_df, max_flow_rate_by_node_id in (
     static_df.loc[aanvoer_mask, "max_flow_rate"] = max_flow_rate[aanvoer_mask]
 
 # Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
-assert model.node.df is not None
 node_type_by_id = model.node.df["node_type"].to_dict()
-assert model.link.df is not None
 flow_demand_controlled_node_ids = set(
     model.link.df.loc[
         model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),

@@ -46,7 +46,6 @@ lines_gdf = gpd.read_file(
     fid_as_index=True,
 )
 
-assert model.node.df is not None
 points = model.node.df[model.node.df.node_type.isin(["TabulatedRatingCurve", "Outlet", "Pump"])].geometry
 
 for row in lines_gdf.itertuples():
@@ -86,7 +85,6 @@ pump_data = pump.Static(flow_rate=[10])
 # %% https://github.com/Deltares/Ribasim-NL/issues/155#issuecomment-2454955046
 
 # 76 links bij opgeheven nodes verwijderen
-assert model.link.df is not None
 mask = model.link.df.to_node_id.isin(model.node.df.index) & model.link.df.from_node_id.isin(model.node.df.index)
 missing_links_df = model.link.df[~mask]
 

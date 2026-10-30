@@ -38,8 +38,6 @@ MOVABLE_NODE_TYPES = (
 
 def _set_link_ends(model: Model, node_ids: typing.Iterable[int]) -> None:
     """Make the links of nodes start and end at the current node locations, keeping their other coordinates."""
-    assert model.node.df is not None
-    assert model.link.df is not None
     links = model.link.df
     node_ids = set(node_ids)
     affected = links.index[links["from_node_id"].isin(node_ids) | links["to_node_id"].isin(node_ids)]
@@ -55,7 +53,6 @@ def _set_link_ends(model: Model, node_ids: typing.Iterable[int]) -> None:
 
 def move_nodes(model: Model, locations: dict[int, shapely.Point]) -> None:
     """Move nodes, and the ends of their links along."""
-    assert model.node.df is not None
     if not locations:
         return
     model.node.df.loc[list(locations), "geometry"] = gpd.GeoSeries(locations, crs=model.node.df.crs)
@@ -73,8 +70,6 @@ def place_bergend_nodes(model: Model, distance: float = 100.0, directions: int =
     :param distance: distance between the bergend and the doorgaand Basin
     :param directions: number of directions to try
     """
-    assert model.node.df is not None
-    assert model.link.df is not None
     nodes, links = model.node.df, model.link.df
     if "meta_categorie" not in nodes.columns or model.basin.area.df is None:
         return
@@ -161,7 +156,6 @@ def offset_links(
     overlap, while links that share a route in the same direction stay together. With `bend`, straight links get a
     point halfway that is offset as well.
     """
-    assert model.link.df is not None
     links = model.link.df
     # the given links, which may also be observation links, or else all flow links
     flow = links[links.index.isin(list(link_ids))] if link_ids is not None else links[links["link_type"] == "flow"]
@@ -182,8 +176,6 @@ def offset_junctions(model: Model, distance: float = 5.0, junction_ids: typing.I
     The Junctions of the inflows and outflows of a Basin then no longer coincide. Only `junction_ids` are offset if
     given, else all Junctions.
     """
-    assert model.node.df is not None
-    assert model.link.df is not None
     nodes, links = model.node.df, model.link.df
     flow = links[links["link_type"] == "flow"]
     locations: dict[int, shapely.Point] = {}
@@ -214,7 +206,6 @@ def separate_nodes(model: Model, min_distance: float = 10.0) -> None:
     Of two such nodes, the most movable one is moved, see `MOVABLE_NODE_TYPES`; Basins are never moved. It is moved to
     the first free location around the other node, starting in the direction away from it.
     """
-    assert model.node.df is not None
     nodes = model.node.df
     ids = nodes.index.to_numpy()
     xy = shapely.get_coordinates(nodes.geometry.to_numpy())[:, :2].copy()
@@ -308,7 +299,6 @@ def tidy_layout(
 
 def coincident_nodes(model: Model, distance: float) -> np.ndarray:
     """Pairs of node ids that are within `distance` of each other, as an array of shape (2, n)."""
-    assert model.node.df is not None
     points = model.node.df.geometry.to_numpy()
     pairs = shapely.STRtree(points).query(points, predicate="dwithin", distance=distance)
     pairs = pairs[:, pairs[0] < pairs[1]]
@@ -317,7 +307,6 @@ def coincident_nodes(model: Model, distance: float) -> np.ndarray:
 
 def overlapping_links(model: Model, min_length: float) -> np.ndarray:
     """Pairs of flow and observation link ids that overlap over more than `min_length`, as an array of shape (2, n)."""
-    assert model.link.df is not None
     links = model.link.df[model.link.df["link_type"].isin(["flow", "observation"])]
     geometries = links.geometry.to_numpy()
     pairs = shapely.STRtree(geometries).query(geometries, predicate="intersects")

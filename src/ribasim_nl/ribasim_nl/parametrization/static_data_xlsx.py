@@ -176,7 +176,6 @@ class StaticData(BaseModel):
         df = getattr(self, pascal_to_snake_case(node_type))
         assert df is not None, f"reset the {node_type} data frame first"
         link_df = self.model.link.df
-        assert link_df is not None
         node_ids = df[df.min_upstream_level.isna()].node_id.to_numpy()
         profile_ids = [
             link_df[link_df.to_node_id == node_id].iloc[0]["meta_profielid_waterbeheerder"] for node_id in node_ids
@@ -218,7 +217,6 @@ class StaticData(BaseModel):
         """
         assert self.basin is not None and self.outlet is not None and self.pump is not None, "reset the data frames"
         model = self.model
-        assert model.link.df is not None
         node_ids = self.basin[self.basin.streefpeil.isna()].node_id.to_numpy()
         ds_node_ids = []
         for node_id in node_ids:

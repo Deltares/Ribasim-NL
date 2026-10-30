@@ -124,7 +124,6 @@ aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).diss
 
 # aanmaken node_df en specificeren supply_nodes
 # knopen die beginnen met INL, i of eindigen op i, maar niet op fictief
-assert model.node.df is not None
 for node_type in CONTROL_NODE_TYPES:
     # set is supply
     node_df = model.get_component(node_type).node.df

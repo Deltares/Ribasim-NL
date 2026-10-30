@@ -162,7 +162,6 @@ class SupplyBasin:
     @property
     def basin_nodes(self) -> gpd.GeoDataFrame:
         """Ribasim basin nodes."""
-        assert self.model.basin.node is not None and self.model.basin.node.df is not None
         return self.model.basin.node.df.copy(deep=True)
 
     @property
@@ -316,7 +315,6 @@ class SupplyWork(abc.ABC):
     @property
     def level_boundaries(self) -> gpd.GeoDataFrame:
         """Ribasim level boundary nodes."""
-        assert self.model.level_boundary.node is not None and self.model.level_boundary.node.df is not None
         return self.model.level_boundary.node.df.copy(deep=True)
 
     def get_statics(self) -> pd.DataFrame:
@@ -363,9 +361,7 @@ class SupplyWork(abc.ABC):
         if overruling_enabled:
             remove_nodes = set()
             # collect all nodes that are considered part of the 'hoofdwatersysteem'
-            assert self.model.basin.node is not None
             basin_node_df = self.model.basin.node.df
-            assert basin_node_df is not None
             if "meta_categorie" in basin_node_df.columns:
                 main_water_system_node_ids = (
                     basin_node_df[basin_node_df["meta_categorie"] == "hoofdwater"].index.to_list()

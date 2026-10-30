@@ -64,7 +64,6 @@ def read_outlet(kwk_df, listen_side: Literal["upstream", "downstream"] | None = 
 
 def free_flow_basin_ids(model: Model, basin_id: int) -> set[int]:
     """Basins connected to `basin_id` without a structure that controls the flow in between."""
-    assert model.link.df is not None and model.node.df is not None
     links = model.link.df[model.link.df.link_type == "flow"]
     node_type = model.node.df["node_type"]
     found, front = {basin_id}, [basin_id]
@@ -86,7 +85,6 @@ def listen_basin(model: Model, kwk_df: pd.DataFrame, node_id: int) -> tuple[int,
     Basin upstream, and an aanvoer structure to the Basin downstream. The Basin should be connected to the Basin on
     one side of the structure, possibly through other Basins without structures in between, like the Veluwerandmeren.
     """
-    assert model.node.df is not None
     kwk_properties = read_kwk_properties(kwk_df)
     upstream = model.upstream_node_id(node_id)
     downstream = model.downstream_node_id(node_id)
@@ -115,7 +113,6 @@ def listen_basin(model: Model, kwk_df: pd.DataFrame, node_id: int) -> tuple[int,
 
 def add_flow_demand(model: Model, node_id: int, tables: list, name: str) -> None:
     """Add a FlowDemand node next to structure `node_id`, as the minimum flow through it."""
-    assert model.flow_demand.node is not None and model.node.df is not None
     point = cast(Point, model.node.df.at[node_id, "geometry"])
     demand_node = model.flow_demand.add(
         Node(model.next_node_id, Point(point.x + 20, point.y - 20), name=name),

@@ -97,7 +97,7 @@ class RibasimFeedbackProcessor:
 
     def get_current_max_nodeid(self) -> int:
         node_df = self.model.node.df
-        if node_df is None or node_df.index.empty:
+        if node_df.index.empty:
             raise ValueError("No node ids found")
         return int(node_df.index.max())
 
@@ -143,8 +143,6 @@ class RibasimFeedbackProcessor:
         print("Processed all actions")
 
     def remove_node(self, row):
-        assert self.model.node.df is not None
-        assert self.model.link.df is not None
         try:
             key = row["Node Type"]
             key = mapping[key]
@@ -183,7 +181,6 @@ class RibasimFeedbackProcessor:
             logger.error(f"Error removing node {row['Node ID']}: {e}")
 
     def add_node(self, row) -> None:
-        assert self.model.node.df is not None
         try:
             key = mapping.get(row["Node Type.1"])
             if key is None:
@@ -291,8 +288,6 @@ class RibasimFeedbackProcessor:
             logger.error(f"Error adding node at row {row.name}: {e}")
 
     def adjust_node(self, row) -> int | None:
-        assert self.model.node.df is not None
-        assert self.model.link.df is not None
         try:
             # Get the old node type and id
             key = self.df_node_types.loc[int(row["Node ID.2"])].node_type
@@ -400,7 +395,6 @@ class RibasimFeedbackProcessor:
             return None
 
     def adjust_links(self, row, node_id_map) -> None:
-        assert self.model.link.df is not None
         try:
             node_a = int(node_id_map.get(row["Node ID A.1"], row["Node ID A.1"]))
             node_b = int(node_id_map.get(row["Node ID B.1"], row["Node ID B.1"]))
@@ -465,7 +459,6 @@ class RibasimFeedbackProcessor:
         df_TL = pd.read_excel(self.feedback_excel, sheet_name="Streefpeilen", header=0)
         df_TL = df_TL.sort_values(by=["Basin node_id"]).reset_index(drop=True)
         if len(df_TL) > 0:  # if the sheet is filled in, proceed
-            assert self.model.basin.node is not None and self.model.basin.node.df is not None
             assert self.model.basin.state.df is not None
             assert self.model.basin.area.df is not None
             # print warning if there are non existing basins
@@ -494,7 +487,6 @@ class RibasimFeedbackProcessor:
             df_FG = pd.read_excel(self.feedback_excel, sheet_name="Aan_afvoer_gemalen", header=0, usecols="A:B")
 
         if len(df_FG) > 0:  # if the sheet is filled in, proceed
-            assert self.model.pump.node is not None and self.model.pump.node.df is not None
             assert self.model.pump.static.df is not None
             # print warning if there are non existing pumps
             existing_pumps = self.model.pump.node.df.index.to_numpy()

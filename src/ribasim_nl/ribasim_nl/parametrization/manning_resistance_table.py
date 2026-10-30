@@ -95,7 +95,6 @@ REACH_SOURCES = {"BGT", "default"}
 
 def _links_by_node(model: Model, node_ids: pd.Series) -> dict[int, list[shapely.LineString]]:
     """The flow links of each node."""
-    assert model.link.df is not None
     link_df = model.link.df[model.link.df.link_type == "flow"]
     return {
         int(node_id): list(link_df[(link_df.from_node_id == node_id) | (link_df.to_node_id == node_id)].geometry)
@@ -139,7 +138,7 @@ def _set_water_profiles(
 def read_manning_water(model: Model, path: Path | None = BGT_WATER) -> gpd.GeoDataFrame | None:
     """The BGT water around the ManningResistances of a model, or None without a path or ManningResistances."""
     node = model.manning_resistance.node
-    if path is None or node is None or node.df is None or node.df.empty:
+    if path is None or node.df.empty:
         return None
     xmin, ymin, xmax, ymax = node.df.total_bounds
     return read_bgt_water(
@@ -199,7 +198,6 @@ def update_manning_resistance_static(
     remaining = list(static_df.index)
     node_ids = static_df["node_id"].astype(int)
     if profiles_gpkg:
-        assert model.link.df is not None
         profiles_df = gpd.read_file(profiles_gpkg).set_index("profiel_id")
         profile_ids = model.link.df.set_index("to_node_id")["meta_profielid_waterbeheerder"]
         for row in list(remaining):

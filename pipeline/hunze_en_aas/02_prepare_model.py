@@ -58,7 +58,6 @@ profiles_df = damo_profiles.process_profiles()
 profiles_df.to_file(profiles_gpkg)
 fix_link_geometries(model, network)
 add_link_profile_ids(model, profiles=damo_profiles, id_col="code")
-assert model.link.df is not None
 model.link.df.reset_index().to_file(link_geometries_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
 

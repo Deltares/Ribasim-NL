@@ -82,7 +82,6 @@ profiles_df.to_file(profiles_gpkg)
 
 fix_link_geometries(model, network)
 add_link_profile_ids(model, profiles=profiles_df, id_col="profiel_id")
-assert model.link.df is not None
 model.link.df.reset_index().to_file(link_geometries_gpkg)
 
 profiles_df.set_index("profiel_id", inplace=True)

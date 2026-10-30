@@ -147,9 +147,7 @@ def assign_lhm_fractions(
     # ---
     # Basin fractions
     # ---
-    assert model.basin.node is not None
     basin_nodes = model.basin.node.df
-    assert basin_nodes is not None
 
     primary_basin_node_ids = basin_nodes[basin_nodes[metacol].isin(list(primary_values))].index.to_numpy()
 
@@ -211,8 +209,6 @@ def assign_lhm_fractions(
     # ---
     # Flow boundary fractions
     # ---
-    assert model.flow_boundary.node is not None
-    assert model.flow_boundary.node.df is not None
     flow_boundary_df = model.flow_boundary.node.df.reset_index()[["node_id", "meta_categorie"]].rename(
         columns={"meta_categorie": "substance"}
     )
@@ -227,9 +223,6 @@ def assign_lhm_fractions(
     # ---
     # Level boundary fractions
     # ---
-
-    assert model.level_boundary.node is not None
-    assert model.level_boundary.node.df is not None
 
     # validate meta_couple_authority
     if model.level_boundary.node.df["meta_couple_authority"].isna().any():

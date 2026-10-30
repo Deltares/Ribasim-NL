@@ -66,7 +66,6 @@ profiles_df.to_file(profiles_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
 add_link_profile_ids(model, profiles=damo_profiles, id_col="code")
 fix_link_geometries(model, network)
-assert model.link.df is not None
 model.link.df.reset_index().to_file(link_geometries_gpkg)
 
 
@@ -140,7 +139,6 @@ def add_min_upstream_level_from_peilenkaart(node_type):
     node_ids = node_df.node_id.to_numpy()
     levels = []
 
-    assert model.link.df is not None
     for node_id in node_ids:
         node = getattr(model, node_type.lower())[node_id]
         tolerance = 30  # afstand voor zoeken bovenstrooms
