@@ -1,0 +1,50 @@
+---
+title: "Summer and winter levels"
+---
+
+Many water boards keep a higher target level (streefpeil) in summer than in winter, see [issue #893](https://github.com/Deltares/Ribasim-NL/issues/893).
+The models are built with one target level per Basin, `meta_streefpeil`, from which their control is derived.
+At the end of their pipeline, the regional models get the summer and winter levels of the peilgebieden of their water board, in `ribasim_nl.regional_model.finish_regional_model`.
+`koppelen` removes them before coupling, since the coupling and its coupling-level check work with the fixed levels, and applies them again to the coupled model at the end.
+
+## Level management per peilgebied
+
+The `peilbeheer` stage, [`pipeline/peilbeheer.py`](https://github.com/Deltares/Ribasim-NL/tree/main/pipeline/peilbeheer.py), reads the peilgebieden of the water boards into `data/Rijkswaterstaat/verwerkt/peilbeheer.gpkg`.
+For each water board, `SOURCES` in [`ribasim_nl.peilbeheer`](https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/peilbeheer.py) lists the attributes of its dataset per type of level management, as described in the issue.
+This gives each peilgebied a target level and its lower and upper bound (ondergrens and bovengrens) in summer and winter, and the dates of the transitions between summer and winter.
+Where the dataset does not give these:
+
+- Without a target level, the target level is the mean of the bounds.
+- A season without a target level gets the levels of the other season, as for a fixed level.
+- A target level without bounds gets bounds 2.5 cm below and above it, the band of the DiscreteControl thresholds of the model.
+  Bounds on the wrong side of the target level, or more than 0.5 m away from it, are replaced in the same way.
+- The transition from winter to summer begins on 1 April, and back on 1 October.
+  The end of a transition is 10 days later, if the dataset does not give it.
+
+Levels of 99 m NAP or more are unknown, and so are levels of 0 in the datasets that use 0 for unknown values, those of Hollands Noorderkwartier, Vechtstromen and De Dommel.
+Peilgebieden of which the summer and winter level differ more than 1 m are left out as data errors, see [this list](https://github.com/Deltares/Ribasim-NL/issues/893#issuecomment-6531213423).
+De Dommel has no peilgebieden, but its weirs have a high and a low target level, `WS_STREEFPEILHOOG` and `WS_STREEFPEILLAAG`, which are used as the summer and winter level.
+Its model already takes the target levels of its Basins from `WS_STREEFPEILHOOG`.
+Limburg, Rijn en IJssel, Schieland en de Krimpenerwaard and Vallei en Veluwe have no level management yet.
+
+## Summer and winter in the model
+
+[`ribasim_nl.seasonal_levels`](https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/seasonal_levels.py) applies the level management to the Basins with a target level:
+
+1. A Basin gets the peilgebied of its water board that covers most of it, at least half, or else the weir within 100 m of it with the closest target level.
+   Its target level stays the same in the season of which the target level of the peilgebied is closest to it, since the target levels of the model are checked with the water boards.
+   The peilgebied gives the difference with the other season, and the bounds.
+   If both target levels of the peilgebied are more than 0.5 m from that of the Basin, the peilgebied does not describe its water, and the Basin keeps its fixed level.
+2. The thresholds of the DiscreteControl conditions on the level of the Basin follow its target level.
+   Thresholds with the default band of 5 cm around a level get the bounds of the target level instead.
+3. The Outlets and Pumps that a DiscreteControl node controls get a winter and a summer variant of each control state, such as `afvoer winter` and `afvoer zomer`, with the `min_upstream_level` and `max_downstream_level` of that season.
+   An extra condition on the season, on a variable with weight 0, switches between them.
+4. The initial level of the Basin follows its target level at the start of the model.
+
+The levels change at once, at the begin of each transition.
+A gradual transition needs Ribasim to support parameters of control states that change over time.
+The DiscreteControl nodes that change over the year have cyclic timeseries over the first year of the model.
+The fixed levels and thresholds are kept in the `meta_fixed_` columns, from which `remove_seasonal_levels` restores them.
+The level management of each Basin is in the `meta_` columns of the `Basin / area` table, with the levels as applied to the model.
+
+Uncontrolled Outlets and Pumps keep their fixed levels, and so do the rating curves of the bergend Basins of the gravity controlled models.

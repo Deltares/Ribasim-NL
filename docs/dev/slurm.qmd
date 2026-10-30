@@ -18,7 +18,7 @@ Submits the DVC pipeline as individual SLURM jobs. Each `foreach` stage gets its
 This submits jobs in these waves:
 
 0. `clean`: removes the outputs of all stages that are run, like `dvc repro` does, and runs `dvc pull --force` for everything upstream of them; no manual pull is needed
-1. `rwzi` (shared dependency)
+1. `rwzi` and `peilbeheer` (shared dependencies)
 2. 22 parallel jobs: 11 `dynamic@*`, 10 `forcing@*`, 1 `hws_transient`
 3. `samenvoegen` → `koppelen`
 

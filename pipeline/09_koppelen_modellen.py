@@ -33,6 +33,7 @@ from ribasim_nl.model import find_toml
 from ribasim_nl.network_snapping import snap_to_waterways
 from ribasim_nl.observations import link_observations
 from ribasim_nl.rwzi import attach_rwzi_junctions
+from ribasim_nl.seasonal_levels import PEILBEHEER, apply_seasonal_levels, remove_seasonal_levels
 from ribasim_nl.settings import settings
 from shapely.geometry import LineString, Point
 from tqdm import tqdm
@@ -298,8 +299,9 @@ def initialize_models(toml_file: Path) -> tuple[Model, Network, gpd.GeoDataFrame
     tuple[Model, Network, gpd.GeoDataFrame]
         Tuple of (model, network, basin_areas_df)
     """
-    # Load the model
+    # Load the model, with the fixed levels of the regional models, which `apply_peilbeheer` varies again after coupling
     model = Model.read(toml_file)
+    remove_seasonal_levels(model)
 
     # Remove nodes if exists, with the control nodes that only control them, since their ids are not stable
     for i in remove_nodes:
@@ -904,6 +906,18 @@ def run_configured_coupling_level_check(toml_file: Path) -> None:
         model.validate_ribasim_nl()
 
 
+def apply_peilbeheer(toml_file: Path) -> None:
+    """Vary the target levels and their control between summer and winter, see `ribasim_nl.seasonal_levels`.
+
+    This comes after the coupling-level check, which aligns the fixed levels of the control between the models. The
+    initial levels are the final levels of the regional models, which already follow the seasons.
+    """
+    model = Model.read(toml_file)
+    apply_seasonal_levels(model, gpd.read_file(PEILBEHEER), shift_state=False)
+    model.write(toml_file)
+    model.validate_ribasim_nl()
+
+
 def get_rws_link(
     network: Network,
     on_network_point: Point,
@@ -1050,6 +1064,7 @@ def couple_model(toml_file: Path) -> None:
     tidy_coupling_layout(model, link_ids, network)
     coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)
     run_configured_coupling_level_check(coupled_toml_file)
+    apply_peilbeheer(coupled_toml_file)
 
 
 # %% Process lhm_parts model

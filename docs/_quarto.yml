@@ -43,6 +43,7 @@ website:
         - workflow/design-capacities.qmd
         - workflow/split-basins.qmd
         - workflow/couple.qmd
+        - workflow/seasonal-levels.qmd
         - workflow/profile-generation.qmd
     - title: "Watersystems"
       contents:
