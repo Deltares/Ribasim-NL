@@ -662,7 +662,7 @@ environments:
       - pypi: ./src/hydamo
       - pypi: ./src/peilbeheerst_model
       - pypi: ./src/ribasim_nl
-      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=016b54038746e60e6e645626d6c2383a591dc4a6#016b54038746e60e6e645626d6c2383a591dc4a6
+      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=932df7883b8358df412ab3195d21b9e7f61e4c7e#932df7883b8358df412ab3195d21b9e7f61e4c7e
       - pypi: https://files.pythonhosted.org/packages/05/2e/7c85f00260aa332fbab9caba209290a07be645ee1d5691415ae635a7382a/rasterstats-0.21.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/09/a9/630671072a482afc8e75fd1a4ffdecc400fd70846e197f3ce2cc6cfe628b/types_pycurl-7.48.0.20260923-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/15/c0/fc0644b7ddcfb969e95845837143cb5173ddd6e06ee4ba5fc493cd9329b7/types_pyyaml-6.0.12.20260906-py3-none-any.whl
@@ -1247,7 +1247,7 @@ environments:
       - pypi: ./src/hydamo
       - pypi: ./src/peilbeheerst_model
       - pypi: ./src/ribasim_nl
-      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=016b54038746e60e6e645626d6c2383a591dc4a6#016b54038746e60e6e645626d6c2383a591dc4a6
+      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=932df7883b8358df412ab3195d21b9e7f61e4c7e#932df7883b8358df412ab3195d21b9e7f61e4c7e
       - pypi: https://files.pythonhosted.org/packages/05/2e/7c85f00260aa332fbab9caba209290a07be645ee1d5691415ae635a7382a/rasterstats-0.21.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/09/a9/630671072a482afc8e75fd1a4ffdecc400fd70846e197f3ce2cc6cfe628b/types_pycurl-7.48.0.20260923-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/15/c0/fc0644b7ddcfb969e95845837143cb5173ddd6e06ee4ba5fc493cd9329b7/types_pyyaml-6.0.12.20260906-py3-none-any.whl
@@ -1806,7 +1806,7 @@ environments:
       - pypi: ./src/hydamo
       - pypi: ./src/peilbeheerst_model
       - pypi: ./src/ribasim_nl
-      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=016b54038746e60e6e645626d6c2383a591dc4a6#016b54038746e60e6e645626d6c2383a591dc4a6
+      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=932df7883b8358df412ab3195d21b9e7f61e4c7e#932df7883b8358df412ab3195d21b9e7f61e4c7e
       - pypi: https://files.pythonhosted.org/packages/05/2e/7c85f00260aa332fbab9caba209290a07be645ee1d5691415ae635a7382a/rasterstats-0.21.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/09/a9/630671072a482afc8e75fd1a4ffdecc400fd70846e197f3ce2cc6cfe628b/types_pycurl-7.48.0.20260923-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/15/c0/fc0644b7ddcfb969e95845837143cb5173ddd6e06ee4ba5fc493cd9329b7/types_pyyaml-6.0.12.20260906-py3-none-any.whl
@@ -10221,7 +10221,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/jsonschema?source=compressed-mapping
+  - pkg:pypi/jsonschema?source=hash-mapping
   run_exports: {}
   size: 82084
   timestamp: 1787579299493
@@ -11205,7 +11205,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/pydantic-settings?source=compressed-mapping
+  - pkg:pypi/pydantic-settings?source=hash-mapping
   run_exports: {}
   size: 60984
   timestamp: 1786146776076
@@ -22430,7 +22430,7 @@ packages:
   - geopandas
   - pytest ; extra == 'tests'
   requires_python: '>=3.13'
-- pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=016b54038746e60e6e645626d6c2383a591dc4a6#016b54038746e60e6e645626d6c2383a591dc4a6
+- pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=932df7883b8358df412ab3195d21b9e7f61e4c7e#932df7883b8358df412ab3195d21b9e7f61e4c7e
   name: ribasim
   version: 2026.1.2
   requires_dist:
@@ -22442,31 +22442,33 @@ packages:
   - pandas>=2.2
   - pandera>=0.25
   - pyarrow>=17.0
-  - pydantic>=2.0
-  - pyogrio>=0.8
-  - shapely>=2.0
+  - pydantic>=2.10
+  - pyogrio>=0.9
+  - shapely>=2.0.4
   - tomli-w>=1.0
   - tomli>=2.0
   - xarray>=2023.11
   - datacompy>=0.16 ; extra == 'all'
-  - jinja2 ; extra == 'all'
-  - networkx ; extra == 'all'
-  - pytest ; extra == 'all'
-  - pytest-cov ; extra == 'all'
-  - pytest-xdist ; extra == 'all'
+  - jinja2>=3.1 ; extra == 'all'
+  - lxml>=5.0 ; extra == 'all'
+  - networkx>=3.3 ; extra == 'all'
+  - pytest-cov>=5.0 ; extra == 'all'
+  - pytest-xdist>=3.5 ; extra == 'all'
+  - pytest>=8.0 ; extra == 'all'
   - ribasim-testmodels ; extra == 'all'
-  - teamcity-messages ; extra == 'all'
-  - xugrid ; extra == 'all'
-  - jinja2 ; extra == 'delwaq'
-  - networkx ; extra == 'delwaq'
-  - xugrid ; extra == 'delwaq'
+  - teamcity-messages>=1.32 ; extra == 'all'
+  - xugrid>=0.13.0 ; extra == 'all'
+  - jinja2>=3.1 ; extra == 'delwaq'
+  - networkx>=3.3 ; extra == 'delwaq'
+  - xugrid>=0.13.0 ; extra == 'delwaq'
   - datacompy>=0.16 ; extra == 'diff'
-  - xugrid ; extra == 'netcdf'
-  - pytest ; extra == 'tests'
-  - pytest-cov ; extra == 'tests'
-  - pytest-xdist ; extra == 'tests'
+  - xugrid>=0.13.0 ; extra == 'netcdf'
+  - lxml>=5.0 ; extra == 'tests'
+  - pytest-cov>=5.0 ; extra == 'tests'
+  - pytest-xdist>=3.5 ; extra == 'tests'
+  - pytest>=8.0 ; extra == 'tests'
   - ribasim-testmodels ; extra == 'tests'
-  - teamcity-messages ; extra == 'tests'
+  - teamcity-messages>=1.32 ; extra == 'tests'
   requires_python: '>=3.12'
 - pypi: https://files.pythonhosted.org/packages/05/2e/7c85f00260aa332fbab9caba209290a07be645ee1d5691415ae635a7382a/rasterstats-0.21.0-py3-none-any.whl
   name: rasterstats
