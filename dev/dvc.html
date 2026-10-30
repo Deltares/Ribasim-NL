@@ -338,9 +338,8 @@ Note
 <h2 class="anchored" data-anchor-id="pull-data">Pull data</h2>
 <p>Prefer pulling only the data needed for the stage you are working on. To fetch a stage and its dependencies without reproducing it, use <a href="https://doc.dvc.org/command-reference/pull"><code>dvc pull</code></a>:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull rwzi <span class="at">--with-deps</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>To fetch the cached coupled LHM model (<code>koppelen</code>) and its results (<code>run_lhm_coupled</code>) without pulling their dependencies:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull koppelen run_lhm_coupled</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>The results in <code>data/Rijkswaterstaat/runs/lhm_coupled</code> read their input from <code>data/Rijkswaterstaat/modellen/lhm_coupled</code>, so pull both to open <code>lhm_coupled.toml</code> with results. Do not add <code>--with-deps</code> here; that also pulls all regional models upstream.</p>
+<p>To fetch the cached coupled LHM model with its results, without <code>--with-deps</code>, which would pull all regional models:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull run_lhm_coupled</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The final cached outputs for (for example) Aa en Maas and Amstel, Gooi en Vecht can likewise be pulled directly:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull data/AaenMaas/modellen/AaenMaas_dynamic_model/</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull data/AmstelGooienVecht/modellen/AmstelGooienVecht_forcing/</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1296,9 +1295,7 @@ Note
     node257--&gt;node258
     node257--&gt;node259
     node258--&gt;node283
-    node259--&gt;node236
     node259--&gt;node281
-    node259--&gt;node284
     node260--&gt;node2
     node261--&gt;node3
     node262--&gt;node4

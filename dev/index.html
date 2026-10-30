@@ -320,8 +320,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="get-data" class="level2">
 <h2 class="anchored" data-anchor-id="get-data">Get data</h2>
 <p>The data is versioned with <a href="https://dvc.org/">DVC</a>, a tool that works like Git for large data files. You don’t need to know DVC to get started: download only the data you need, for instance the latest nationwide coupled model and its results:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull koppelen run_lhm_coupled</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This fills <code>data/Rijkswaterstaat/modellen/lhm_coupled</code> (input) and <code>data/Rijkswaterstaat/runs/lhm_coupled</code> (results). Open <code>data/Rijkswaterstaat/runs/lhm_coupled/lhm_coupled.toml</code> to see the model together with its results. Pull only <code>koppelen</code> if you just need the model input.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull run_lhm_coupled</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This fills <code>data/Rijkswaterstaat/runs/lhm_coupled</code> with the model input and its results. Open <code>data/Rijkswaterstaat/runs/lhm_coupled/lhm_coupled.toml</code> to see the model together with its results.</p>
 <p>The <a href="../dev/dvc.html">DVC page</a> explains how to get the data for a specific step of the pipeline, and how to rerun it.</p>
 </section>
 <section id="git-hooks" class="level2">
