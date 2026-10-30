@@ -9,7 +9,6 @@ from ribasim_nl.model import Model
 
 def reverse_existing_links(model: Model, link_ids: Iterable[int]) -> None:
     """Reverse only links that are present in the model."""
-    assert model.link.df is not None
     link_df = cast(Any, model.link.df)
 
     for link_id in link_ids:
@@ -39,9 +38,7 @@ def duplicate_level_boundary_for_link(
     If the link is already connected to another LevelBoundary, that node_id is
     returned. This makes repeated notebook runs idempotent.
     """
-    assert model.link.df is not None
     assert model.level_boundary.static.df is not None
-    assert model.node.df is not None
     link_df = cast(Any, model.link.df)
     level_boundary_node_df = cast(Any, model.level_boundary.node).df
     level_boundary_static_df = cast(Any, model.level_boundary.static.df)
