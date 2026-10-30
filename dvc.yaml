@@ -1186,7 +1186,6 @@ stages:
     deps:
       - pipeline/validate_lhm_coupled.py
       - src/ribasim_nl/ribasim_nl
-      - data/Rijkswaterstaat/modellen/lhm_coupled
       - data/Rijkswaterstaat/runs/lhm_coupled
     outs:
       - data/Rijkswaterstaat/metrics/lhm_coupled_observations.csv
@@ -1198,7 +1197,6 @@ stages:
     deps:
       - pipeline/export_webmap.py
       - src/ribasim_nl/ribasim_nl
-      - data/Rijkswaterstaat/modellen/lhm_coupled
       - data/Rijkswaterstaat/runs/lhm_coupled
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
     # Not cached by DVC: `pixi run publish-webmap` stores it on MinIO, see `ribasim_nl.webmap_publish`.

@@ -25,7 +25,7 @@ All local paths are relative to `data/Rijkswaterstaat`.
 ## Updating the published data
 
 1. Run the model with the `run_lhm_coupled` DVC stage.
-    It writes `runs/lhm_coupled/lhm_coupled.toml`, which reads the input of `modellen/lhm_coupled`, and the results next to it.
+    It copies the model of `modellen/lhm_coupled` to `runs/lhm_coupled`, and writes the results next to it.
     It also writes the commit of the code to `runinfo.json`, which the viewer shows next to the scale bar, with the time the run finished from `results/ribasim.log`.
     For now this runs with a looser solver tolerance, see `pipeline/run_lhm_coupled.py`.
     The NetCDF results are compressed, to save space in DVC.
