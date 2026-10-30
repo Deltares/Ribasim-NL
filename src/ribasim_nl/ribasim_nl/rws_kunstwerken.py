@@ -10,7 +10,7 @@ them. The `Toestand (control_state)` column of the thresholds names the function
 change this. A pump that supplies a canal therefore pumps while the canal is below its thresholds.
 """
 
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -154,11 +154,18 @@ def repeat_yearly(time: pd.Series, starttime: pd.Timestamp, endtime: pd.Timestam
     return pd.DataFrame(rows)
 
 
-def read_static(kwk_df: pd.DataFrame, node_type: str) -> outlet.Static | pump.Static:
+def read_static(
+    kwk_df: pd.DataFrame, node_type: str, listen_side: Literal["upstream", "downstream"] | None = None
+) -> outlet.Static | pump.Static:
     """Static table of an Outlet or Pump, with the aanvoer and afvoer states if it has DiscreteControl.
 
     The capacity, levels and minimum capacity hold in both states, the flow rate differs per state. A missing
     aanvoer or afvoer capacity is 0.
+
+    The levels of a structure with DiscreteControl follow from its thresholds and `listen_side`, the side of the
+    structure where the listened Basin is, rather than from the Streefpeil properties. A structure that drains the
+    listened Basin stops at the lowest `threshold_low`, and one that supplies it stops at the highest
+    `threshold_high`. This holds the level between the evaluations of the DiscreteControl, also against a FlowDemand.
     """
     kwk_properties = read_kwk_properties(kwk_df)
     table = {"Outlet": outlet.Static, "Pump": pump.Static}[node_type]
@@ -167,18 +174,27 @@ def read_static(kwk_df: pd.DataFrame, node_type: str) -> outlet.Static | pump.St
 
     assert "Capaciteit (m3/s)" not in kwk_properties, "Use the aanvoer and afvoer capacities with DiscreteControl"
     # a missing capacity is 0, like the aanvoer of a sluice that only drains
-    flow_rate = [float(kwk_properties.get(i, 0.0)) for i in CONTROL_STATES.values()]
-    assert max(flow_rate) > 0, f"DiscreteControl needs a positive {' or '.join(CONTROL_STATES.values())}"
-    max_flow_rate = float(kwk_properties.get("Maximale capaciteit (m3/s)", max(flow_rate)))
-    assert all(0 <= i <= max_flow_rate for i in flow_rate), f"Flow rates {flow_rate} above {max_flow_rate}"
+    flow_rate = dict.fromkeys(CONTROL_STATES, 0.0) | {
+        state: float(kwk_properties[key]) for state, key in CONTROL_STATES.items() if key in kwk_properties
+    }
+    assert max(flow_rate.values()) > 0, f"DiscreteControl needs a positive {' or '.join(CONTROL_STATES.values())}"
+    max_flow_rate = float(kwk_properties.get("Maximale capaciteit (m3/s)", max(flow_rate.values())))
+    assert all(0 <= i <= max_flow_rate for i in flow_rate.values()), f"Flow rates {flow_rate} above {max_flow_rate}"
     kwargs: dict[str, Any] = {
-        "control_state": list(CONTROL_STATES),
-        "flow_rate": flow_rate,
+        "control_state": list(flow_rate),
+        "flow_rate": list(flow_rate.values()),
         "max_flow_rate": [max_flow_rate] * 2,
     }
-    for key in ("Minimale capaciteit (m3/s)", "Streefpeil bovenstrooms (m +NAP)", "Streefpeil benedenstrooms (m +NAP)"):
-        if key in kwk_properties:
-            kwargs[FLOW_KWARGS[key]] = [float(kwk_properties[key])] * 2
+    if "Minimale capaciteit (m3/s)" in kwk_properties:
+        kwargs["min_flow_rate"] = [float(kwk_properties["Minimale capaciteit (m3/s)"])] * 2
+
+    thresholds = read_control_thresholds(kwk_df)
+    # above the thresholds a structure is in the afvoer state, so it drains an upstream Basin in that state, and it
+    # supplies a downstream Basin in the aanvoer state
+    if listen_side == "upstream" and flow_rate["afvoer"] > 0:
+        kwargs["min_upstream_level"] = [thresholds["threshold_low"].min()] * 2
+    elif listen_side == "downstream" and flow_rate["aanvoer"] > 0:
+        kwargs["max_downstream_level"] = [thresholds["threshold_high"].max()] * 2
     return table(**kwargs)
 
 

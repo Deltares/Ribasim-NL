@@ -1,6 +1,6 @@
 # %%
 import warnings
-from typing import cast
+from typing import Literal, cast
 
 import numpy as np
 import openpyxl
@@ -52,14 +52,14 @@ RWS_NODE_ID_OFFSET = waterbeheercode["Rijkswaterstaat"] * 100_000
 
 
 # %% functies
-def read_outlet(kwk_df):
+def read_outlet(kwk_df, listen_side: Literal["upstream", "downstream"] | None = None):
     if "QQ relatie" in kwk_df["Eigenschap"].to_numpy():
         qq_properties = read_qq_curve(kwk_df)
         return outlet.Static(
             flow_rate=[max(qq_properties["flow_rate"].to_list())],
         )
     else:
-        return read_static(kwk_df, "Outlet")
+        return read_static(kwk_df, "Outlet", listen_side)
 
 
 def free_flow_basin_ids(model: Model, basin_id: int) -> set[int]:
@@ -79,12 +79,12 @@ def free_flow_basin_ids(model: Model, basin_id: int) -> set[int]:
     return {i for i in found if node_type[i] == "Basin"}
 
 
-def listen_basin_id(model: Model, kwk_df: pd.DataFrame, node_id: int) -> int:
-    """The Basin whose level switches the DiscreteControl of structure `node_id`.
+def listen_basin(model: Model, kwk_df: pd.DataFrame, node_id: int) -> tuple[int, Literal["upstream", "downstream"]]:
+    """The Basin whose level switches the DiscreteControl of structure `node_id`, and its side of the structure.
 
     The Meetlocatiecode is the ID of that Basin in the coupled model. Without it, an afvoer structure listens to the
-    Basin upstream, and an aanvoer structure to the Basin downstream. The Basin should be connected to the
-    structure, possibly through other Basins without structures in between, like the Veluwerandmeren.
+    Basin upstream, and an aanvoer structure to the Basin downstream. The Basin should be connected to the Basin on
+    one side of the structure, possibly through other Basins without structures in between, like the Veluwerandmeren.
     """
     assert model.node.df is not None
     kwk_properties = read_kwk_properties(kwk_df)
@@ -100,11 +100,17 @@ def listen_basin_id(model: Model, kwk_df: pd.DataFrame, node_id: int) -> int:
         label = read_control_thresholds(kwk_df)["control_state"].iloc[0]
         basin_id = int(upstream if label == "afvoer" else downstream)
     assert model.node.df.at[basin_id, "node_type"] == "Basin", f"DiscreteControl listens to {basin_id}, not a Basin"
-    neighbors = {int(i) for i in (upstream, downstream) if model.node.df.at[i, "node_type"] == "Basin"}
-    assert any(basin_id in free_flow_basin_ids(model, i) for i in neighbors), (
-        f"Basin {basin_id} {model.node.df.at[basin_id, 'name']!r} is not connected to structure {node_id}"
-    )
-    return basin_id
+    neighbors: list[tuple[Literal["upstream", "downstream"], int]] = [
+        ("upstream", int(upstream)),
+        ("downstream", int(downstream)),
+    ]
+    sides = [
+        side
+        for side, neighbor in neighbors
+        if model.node.df.at[neighbor, "node_type"] == "Basin" and basin_id in free_flow_basin_ids(model, neighbor)
+    ]
+    assert len(sides) == 1, f"Basin {basin_id} {model.node.df.at[basin_id, 'name']!r} not on one side of {node_id}"
+    return basin_id, sides[0]
 
 
 def add_flow_demand(model: Model, node_id: int, tables: list, name: str) -> None:
@@ -181,15 +187,19 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
         # find existing node_id in model
         node_id = model.find_node_id(meta_code_waterbeheerder=str(kwk_properties["Kunstwerkcode"]))
 
+        listen_basin_id = None
         if UPDATE_KWK_DATA:
             # prepare static-data for updating node
             node_type = kwk_properties["Ribasim type"]
+            listen_basin_id, listen_side = (
+                listen_basin(model, kwk_df, node_id) if has_discrete_control(kwk_properties) else (None, None)
+            )
             if node_type == "TabulatedRatingCurve":
                 data = [read_rating_curve(kwk_df)]
             elif node_type == "Outlet":
-                data = [read_outlet(kwk_df)]
+                data = [read_outlet(kwk_df, listen_side)]
             elif node_type == "Pump":
-                data = [read_static(kwk_df, "Pump")]
+                data = [read_static(kwk_df, "Pump", listen_side)]
             else:
                 raise ValueError(f"node-type {node_type} not yet implemented")
 
@@ -255,6 +265,7 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
 
         # check if structure has a DiscreteControl between aanvoer and afvoer
         if has_discrete_control(kwk_properties):
+            assert listen_basin_id is not None, f"DiscreteControl of {kwk.naam} needs UPDATE_KWK_DATA"
             assert model.upstream_node_id(node_id, link_type="control") is None, f"{kwk.naam} has another control"
             thresholds = read_control_thresholds(kwk_df)
             label = thresholds["control_state"].iloc[0]
@@ -265,7 +276,7 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
             )
             model.add_control_node(
                 to_node_id=node_id,
-                data=discrete_control_tables(kwk_df, listen_basin_id(model, kwk_df, node_id), starttime, endtime),
+                data=discrete_control_tables(kwk_df, listen_basin_id, starttime, endtime),
                 ctrl_type="DiscreteControl",
                 node_offset=20,
                 node_properties={"name": f"{label}: {levels} [m+NAP]"},

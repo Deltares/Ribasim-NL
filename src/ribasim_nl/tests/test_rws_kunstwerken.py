@@ -98,6 +98,46 @@ def test_read_static_discrete_control():
     assert static["min_flow_rate"].to_list() == [0.5, 0.5]
 
 
+@pytest.mark.parametrize(
+    ("node_type", "listen_side", "levels"),
+    [
+        # Sluis Born drains the Julianakanaal it listens to, down to the lower threshold
+        ("Outlet", "upstream", {"min_upstream_level": [44.025] * 2}),
+        # a structure that only drains does not limit the level of the Basin downstream
+        ("Outlet", "downstream", {}),
+        ("Outlet", None, {}),
+    ],
+)
+def test_read_static_levels(node_type, listen_side, levels):
+    static = read_static(sluis_born(), node_type, listen_side).df
+    assert static is not None
+    for column in ("min_upstream_level", "max_downstream_level"):
+        if column in levels:
+            assert static[column].to_list() == levels[column]
+        else:
+            assert column not in static or static[column].isna().all()
+
+
+def test_read_static_supply_levels():
+    """Like Gemaal Born, a pump that supplies the Basin downstream stops at the upper threshold."""
+    df = sheet(
+        [
+            ["Ribasim type", "Pump"],
+            ["Aanvoer Capaciteit (m3/s)", 12],
+            ["Afvoer Capaciteit (m3/s)", 0],
+            ["Streefpeil benedenstrooms (m +NAP)", 44.05],
+            ["Type sturing", "DiscreteControl"],
+            [np.nan],
+            ["Toestand (control_state)", "Bovengrens (threshold_high)", "Ondergrens (threshold_low)"],
+            ["aanvoer", 44.075, 44.025],
+        ]
+    )
+    static = read_static(df, "Pump", "downstream").df
+    assert static is not None
+    assert static["flow_rate"].to_list() == [12.0, 0.0]
+    assert static["max_downstream_level"].to_list() == [44.075, 44.075]
+
+
 def test_discrete_control_tables():
     variable, condition, logic = discrete_control_tables(sluis_born(), 8147, STARTTIME, ENDTIME)
     assert variable.df["listen_node_id"].to_list() == [8147]
