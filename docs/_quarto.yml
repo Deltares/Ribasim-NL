@@ -35,6 +35,7 @@ website:
         - dev/pull-requests.qmd
         - dev/viewer.qmd
         - dev/ribasim.qmd
+        - dev/reproducing-models.qmd
     - title: "Workflows"
       contents:
         - workflow/main-watersystem.qmd

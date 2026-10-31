@@ -75,6 +75,8 @@ types-pyyaml = ">=6"
 types-requests = ">=2.32"
 pandas-stubs = ">=3"
 xlwings = ">=0.33"
+# reads the D-HYDRO model that the input model of Noorderzijlvest is lumped from, see ribasim_nl.lumping.dhydro
+hydrolib-core = ">=1.5"
 
 [tasks]
 typecheck = "ty check"

@@ -1,0 +1,5 @@
+outs:
+- md5: 8c79376fca3cdf1f4e21aa4e44605bf1
+  size: 376832
+  hash: md5
+  path: ribasim_input.gpkg

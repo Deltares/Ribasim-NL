@@ -30,7 +30,6 @@ run_model = False
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
-database_gpkg = ribasim_toml.with_name("database.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 fix_user_data_gpkg = cloud.joinpath(authority, "verwerkt/fix_user_data.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
