@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from shapely.geometry import LineString
-from shapely.ops import nearest_points
 
 from ribasim_nl.lumping.network import Network
 from ribasim_nl.lumping.utils import extract_segment_from_linestring, merge_grouped
@@ -24,7 +23,9 @@ def read_ini_sections(path: Path, section: str) -> pd.DataFrame:
     class NumberedSections(dict):
         """Number the sections, so repeated sections are kept."""
 
-        count: dict[str, int] = {}  # noqa: RUF012
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            super().__init__(*args, **kwargs)
+            self.count: dict[str, int] = {}
 
         def __setitem__(self, key: str, value: object) -> None:
             if isinstance(value, dict):
@@ -36,7 +37,7 @@ def read_ini_sections(path: Path, section: str) -> pd.DataFrame:
     config.read(path)
     # the section proxies have the names before numbering
     sections = config._sections  # ty: ignore[unresolved-attribute]
-    return pd.DataFrame([dict(v) for k, v in sections.items() if k.startswith(section)])
+    return pd.DataFrame([dict(v) for k, v in sections.items() if k.rstrip("0123456789") == section])
 
 
 def read_mdu_files(mdu_file: Path) -> dict[str, Path]:
@@ -160,7 +161,8 @@ def read_boundaries_and_laterals(
     boundaries = network_nodes[["network_node_id", "geometry"]].merge(boundaries, how="right", on="network_node_id")
     nearest_node_no = []
     for index, point in zip(boundaries.index, boundaries.geometry, strict=True):
-        nearest = nearest_points(point, nodes.drop(index=index).geometry.union_all())[1]
+        nearest = nodes.geometry[nodes.geometry.drop(index=index).distance(point).idxmin()]
+        # the first of the grid nodes at this location, which can be the excluded one
         nearest_node_no.append(nodes.loc[nodes.geometry == nearest, "node_no"].iloc[0])
     nearest_nodes = gpd.GeoDataFrame({"node_no": nearest_node_no}, geometry=boundaries.geometry, crs=nodes.crs)
     boundaries = boundaries.sjoin(nearest_nodes).drop(columns="index_right").reset_index(drop=True)

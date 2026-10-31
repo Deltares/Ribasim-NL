@@ -12,6 +12,7 @@ import geopandas as gpd
 import networkx as nx
 import numpy as np
 import pandas as pd
+import shapely
 from shapely.geometry import GeometryCollection, LineString, MultiPolygon, Polygon
 
 from ribasim_nl.lumping.utils import merge_grouped, overlay_intersection, quicksort_order, remove_holes
@@ -203,18 +204,18 @@ def create_basin_areas(
         edges_sel = edges.loc[edges["basin"] != -1].copy()
         areas_orig = areas.copy()
         # only keep the (multi)polygon of the collections that make_valid can return
-        areas["geometry"] = [
-            next(g for g in valid.geoms if isinstance(g, Polygon | MultiPolygon))
-            if isinstance(valid, GeometryCollection)
-            else valid
-            for valid in areas.make_valid()
-        ]
+        valid_areas = []
+        for code, valid in zip(areas["code"], areas.make_valid(), strict=True):
+            if isinstance(valid, GeometryCollection):
+                valid = next((g for g in valid.geoms if isinstance(g, Polygon | MultiPolygon)), None)
+            assert isinstance(valid, Polygon | MultiPolygon), f"area {code} is not a polygon when made valid"
+            valid_areas.append(valid)
+        areas["geometry"] = valid_areas
         areas = areas.sjoin(edges_sel[["basin", "geometry"]])
         # the length of each edge within each area
-        areas["edge_length"] = [
-            gpd.GeoSeries([edges_sel.at[index_right, "geometry"]], crs=edges.crs).clip(area).length.iloc[0]
-            for area, index_right in zip(areas.geometry, areas["index_right"], strict=True)
-        ]
+        assert edges_sel.index.is_unique
+        area_edges = edges_sel.geometry.loc[areas["index_right"]].to_numpy()
+        areas["edge_length"] = shapely.length(shapely.intersection(area_edges, areas.geometry.to_numpy()))
         lengths = areas.groupby(by=["area", "basin"], as_index=False).agg({"edge_length": "sum"})
         # the basin with the longest edges in each area
         lengths = lengths.sort_values(by=["area", "edge_length"], ascending=[True, False]).drop_duplicates(
@@ -471,7 +472,8 @@ def remove_isolated_basins(
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """Remove the basins without connections.
 
-    Their basin areas go to a connected basin in the same basin area, or are removed. Their areas lose their basin.
+    Their basin areas go to a connected basin in the same basin area, or are removed. As in 2024, their areas get NaN
+    as basin, not -1, so `assign_unassigned_areas` does not assign them to a neighbouring basin area.
     """
     connected = np.unique(basin_connections["basin"].tolist() + boundary_connections["basin"].tolist())
     isolated = basins.loc[~basins["basin"].isin(connected), "basin"].to_numpy()

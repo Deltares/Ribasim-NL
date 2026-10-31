@@ -193,7 +193,7 @@ def read_layer(
 ) -> gpd.GeoDataFrame | None:
     """Read a layer of a GeoPackage, or a file with one layer. Returns None if the GeoPackage lacks the layer.
 
-    Optionally explode multi-part geometries, remove the Z coordinate of points and lines, and keep only the
+    Optionally explode multi-part geometries, remove the Z coordinates, and keep only the
     column `code_column` (case insensitive, else the row number), as `code`.
     """
     if not path.exists():
@@ -207,11 +207,7 @@ def read_layer(
     if explode:
         gdf = gdf.explode(ignore_index=True)
     if remove_z:
-        geometry = [
-            Point(g.coords[0][:2]) if isinstance(g, Point) else LineString([c[:2] for c in g.coords])
-            for g in gdf.geometry.to_numpy()
-        ]
-        gdf = gdf.set_geometry(gpd.GeoSeries(geometry, index=gdf.index, crs=gdf.crs))
+        gdf = gdf.set_geometry(gdf.geometry.force_2d())
     if code_column is not None:
         for column in (code_column, code_column.lower(), code_column.upper()):
             if column in gdf.columns:

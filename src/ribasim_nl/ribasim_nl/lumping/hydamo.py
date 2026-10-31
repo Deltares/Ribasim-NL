@@ -200,6 +200,8 @@ def read_boundaries(path: Path, layer: str, nodes: gpd.GeoDataFrame, buffer_dist
     boundaries = snap_points_to_nodes_and_edges(boundaries, nodes=nodes, nodes_bufdist=buffer_distance)
     boundaries = get_node_no_and_edge_no_for_points(boundaries, nodes=nodes)
     boundaries["boundary_id"] = boundaries.index + 1
+    if "boundary_type" not in boundaries.columns:
+        boundaries["boundary_type"] = None
     boundaries["boundary_type"] = boundaries["boundary_type"].fillna("LevelBoundary")
     not_on_network = boundaries["node_no"] == -1
     logger.info(f"Removing {not_on_network.sum()} boundaries that are not on a node")

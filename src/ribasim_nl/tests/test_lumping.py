@@ -13,8 +13,8 @@ from ribasim_nl.lumping.hydamo import (
     read_hydamo_network,
     read_split_nodes,
 )
-from ribasim_nl.lumping.model import lumped_model
-from ribasim_nl.lumping.network import lump_network
+from ribasim_nl.lumping.model import lumped_model, read_krw
+from ribasim_nl.lumping.network import create_basin_areas, lump_network
 from ribasim_nl.lumping.utils import (
     merge_grouped,
     overlay_intersection,
@@ -22,7 +22,7 @@ from ribasim_nl.lumping.utils import (
     read_layer,
     split_edges_by_dx,
 )
-from shapely.geometry import LineString, Point, Polygon, box
+from shapely.geometry import LineString, MultiLineString, Point, Polygon, box
 
 CRS = "EPSG:28992"
 
@@ -114,9 +114,42 @@ def test_read_ini_sections(tmp_path: Path):
     path = tmp_path / "boundaries.ext"
     path.write_text(
         "[General]\nfileVersion = 2.01\n\n[Boundary]\nnodeId = N1\n\n[Lateral]\nid = L1\n\n[Boundary]\nnodeId = N2\n"
+        "\n[Boundaries]\nnodeId = N3\n"
     )
+    # only the sections with exactly this name
     assert read_ini_sections(path, "Boundary")["nodeid"].tolist() == ["N1", "N2"]
     assert read_ini_sections(path, "Lateral")["id"].tolist() == ["L1"]
+
+
+def test_read_layer_remove_z(tmp_path: Path):
+    path = tmp_path / "lines.gpkg"
+    lines = gpd.GeoDataFrame(
+        {"code": ["L1"]}, geometry=[MultiLineString([[(0, 0, 1), (1, 0, 1)], [(2, 0, 1), (3, 0, 1)]])], crs=CRS
+    )
+    lines.to_file(path, layer="lines")
+    read = read_layer(path, "lines", explode=False, remove_z=True)
+    assert read is not None
+    assert not read.has_z.any()
+    assert read.geometry[0].equals(MultiLineString([[(0, 0), (1, 0)], [(2, 0), (3, 0)]]))
+    assert read_layer(path, "other") is None
+
+
+def test_read_krw_without_layers(tmp_path: Path):
+    path = tmp_path / "krw.gpkg"
+    gpd.GeoDataFrame({"owmident": ["K1"]}, geometry=[box(0, 0, 1, 1)], crs=CRS).to_file(path, layer="krw_polygon")
+    with pytest.raises(AssertionError, match="no layer krw_line or krw_vlak"):
+        read_krw(path)
+
+
+def test_create_basin_areas_degenerate_area():
+    edges = gpd.GeoDataFrame({"basin": [0]}, geometry=[LineString([(0, 0), (100, 0)])], crs=CRS)
+    areas = gpd.GeoDataFrame(
+        {"code": ["A1", "A2"], "area": [1, 2]},
+        geometry=[box(0, -10, 50, 10), Polygon([(50, 0), (100, 0), (150, 0)])],
+        crs=CRS,
+    )
+    with pytest.raises(AssertionError, match="area A2 is not a polygon"):
+        create_basin_areas(edges, areas)
 
 
 def test_apply_hydamo_changes(tmp_path: Path):
@@ -178,6 +211,16 @@ def lumping_input(tmp_path: Path) -> Path:
         areas, layer="drainage_areas"
     )
     return tmp_path
+
+
+def test_read_boundaries_without_type(lumping_input: Path):
+    network = read_hydamo_network(lumping_input / "hydamo.gpkg", dx=250.0)
+    ribasim_input = lumping_input / "ribasim_input.gpkg"
+    gpd.GeoDataFrame({"boundary_name": ["in", "out"]}, geometry=[Point(0, 0), Point(2000, 0)], crs=CRS).to_file(
+        ribasim_input, layer="boundaries_untyped"
+    )
+    boundaries = read_boundaries(ribasim_input, "boundaries_untyped", network.nodes, buffer_distance=1.0)
+    assert boundaries["boundary_type"].tolist() == ["LevelBoundary", "LevelBoundary"]
 
 
 def test_lumped_model(lumping_input: Path):

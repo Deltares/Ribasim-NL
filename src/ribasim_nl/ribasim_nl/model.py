@@ -836,12 +836,14 @@ class Model(ribasim.Model):
         assert self.basin.area.df is not None
         selected = self._basin_areas_equal(geometry, tolerance)
         if selected.empty:
-            for polygon in shapely.get_parts(geometry):
+            for i, polygon in enumerate(shapely.get_parts(geometry).tolist()):
                 fids = self._basin_areas_equal(polygon, tolerance)
                 if fids.empty:
                     fids = self._basin_areas_within(polygon, tolerance)
                 if fids.empty:
                     fids = self._split_basin_area(polygon, tolerance)
+                if fids.empty:
+                    raise ValueError(f"Not any basin area equals, makes up or contains polygon {i} of input geometry")
                 selected = selected.append(fids)
         mask = pd.Series(self.basin.area.df.index.isin(selected), index=self.basin.area.df.index)
 
@@ -891,6 +893,9 @@ class Model(ribasim.Model):
         new_fid = self.basin.area.df.index.max() + 1
         self.basin.area.df.loc[new_fid] = self.basin.area.df.loc[fid]
         self.basin.area.df.loc[[fid, new_fid], "geometry"] = [MultiPolygon(rest), MultiPolygon(part)]  # ty: ignore[invalid-assignment]
+        # enlarging the table drops its CRS
+        if self.basin.area.df.crs is None:
+            self.basin.area.df.crs = self.crs
         return pd.Index([new_fid])
 
     def update_basin_area(

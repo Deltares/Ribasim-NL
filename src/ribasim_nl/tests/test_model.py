@@ -153,11 +153,15 @@ def test_select_basin_area_parts(model):
     assert model.select_basin_area(inner).tolist() == [False] * 5 + [True]
     # the areas that together make up the polygon, without the sliver against it
     assert model.select_basin_area(square(20)).tolist() == [False, True, True, False, False, False]
+    # a polygon that no basin area equals, makes up or contains is an error, also next to a polygon that is
+    with pytest.raises(ValueError, match="polygon 1 of input geometry"):
+        model.select_basin_area(MultiPolygon([left, Polygon([(60, -5), (70, -5), (70, 5), (60, 5)])]))
     # the polygon is split from the area that contains it
     model.remove_basin_area(Polygon([(35, -5), (40, -5), (40, 5), (35, 5)]))
     assert model.basin.area.df is not None
     assert model.basin.area.df["node_id"].tolist() == [1, 2, 2, 3, 3, 1]
     assert model.basin.area.df.at[4, "geometry"].equals(Polygon([(40, -5), (45, -5), (45, 5), (40, 5)]))
+    assert model.basin.area.df.crs == model.crs
 
 
 def test_apply_edits(model, tmp_path):

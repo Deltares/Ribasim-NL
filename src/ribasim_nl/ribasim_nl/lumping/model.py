@@ -87,6 +87,7 @@ def read_krw(path: Path) -> gpd.GeoDataFrame:
         parts.append(lines)
     if "krw_vlak" in layers:
         parts.append(gpd.read_file(path, layer="krw_vlak").explode(index_parts=True))
+    assert parts, f"no layer krw_line or krw_vlak in {path}"
     krw = pd.concat(parts)[["owmident", "owmnaam", "owmtype", "geometry"]].reset_index(drop=True)
     krw.columns = ["meta_krw_id", "meta_krw_name", "meta_krw_type", "geometry"]
     return gpd.GeoDataFrame(krw, geometry="geometry")
