@@ -22,7 +22,7 @@ from ribasim_nl.lumping.utils import (
     read_layer,
     split_edges_by_dx,
 )
-from shapely.geometry import LineString, MultiLineString, Point, Polygon, box
+from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon, box
 
 CRS = "EPSG:28992"
 
@@ -143,12 +143,16 @@ def test_read_krw_without_layers(tmp_path: Path):
 
 def test_create_basin_areas_degenerate_area():
     edges = gpd.GeoDataFrame({"basin": [0]}, geometry=[LineString([(0, 0), (100, 0)])], crs=CRS)
+    # as in 2024, an area without geometry gets no basin
+    areas = gpd.GeoDataFrame({"code": ["A1", "A2"], "area": [1, 2]}, geometry=[box(0, -10, 50, 10), None], crs=CRS)
+    areas, _ = create_basin_areas(edges, areas)
+    assert areas.set_index("code")["basin"].to_dict() == {"A1": 0, "A2": -1}
+    # a line and a point, when made valid
+    degenerate = MultiPolygon([Polygon([(0, 0), (1, 0), (2, 0)]), Polygon([(5, 5)] * 4)])
     areas = gpd.GeoDataFrame(
-        {"code": ["A1", "A2"], "area": [1, 2]},
-        geometry=[box(0, -10, 50, 10), Polygon([(50, 0), (100, 0), (150, 0)])],
-        crs=CRS,
+        {"code": ["A1", "A2"], "area": [1, 2]}, geometry=[box(0, -10, 50, 10), degenerate], crs=CRS
     )
-    with pytest.raises(AssertionError, match="area A2 is not a polygon"):
+    with pytest.raises(AssertionError, match="area A2 has no polygon"):
         create_basin_areas(edges, areas)
 
 

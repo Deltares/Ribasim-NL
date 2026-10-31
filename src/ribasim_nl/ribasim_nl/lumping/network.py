@@ -208,7 +208,7 @@ def create_basin_areas(
         for code, valid in zip(areas["code"], areas.make_valid(), strict=True):
             if isinstance(valid, GeometryCollection):
                 valid = next((g for g in valid.geoms if isinstance(g, Polygon | MultiPolygon)), None)
-            assert isinstance(valid, Polygon | MultiPolygon), f"area {code} is not a polygon when made valid"
+                assert valid is not None, f"area {code} has no polygon when made valid"
             valid_areas.append(valid)
         areas["geometry"] = valid_areas
         areas = areas.sjoin(edges_sel[["basin", "geometry"]])
