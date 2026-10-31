@@ -29,6 +29,7 @@ This path will work if you clone Ribasim next to Ribasim-NL.
 After you are done modifying `pixi.toml`, run `pixi install` to ensure the dependencies are installed.
 
 The Ribasim core binary is installed separately by `pixi run install-core`, see `scripts/install_ribasim_core.py`.
+`pixi run repro-local` runs it first, so a run always uses the core configured there.
 Make sure its version is compatible with the Ribasim Python package.
 
 For Ribasim developer documentation see [ribasim.org/dev](https://ribasim.org/dev/).

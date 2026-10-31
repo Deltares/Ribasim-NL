@@ -83,7 +83,8 @@ install = { depends-on = ["install-core", "install-prek"] }
 # Share the credentials and DVC cache of the main checkout with a git worktree, see scripts/setup_worktree.py
 setup-worktree = "python scripts/setup_worktree.py"
 # Reproduce stages and their upstream in parallel on this machine: `pixi run repro-local [TARGET ...]`
-repro-local = "python scripts/repro.py"
+# Installs the Ribasim core of scripts/install_ribasim_core.py first, which Pixi skips if it is up to date
+repro-local = { cmd = "python scripts/repro.py", depends-on = ["install-core"] }
 # Reproduce main and open a catch-up pull request, run nightly by the timer of `pixi run install-repro-main`
 repro-main = "python scripts/repro_main.py"
 install-repro-main = "python scripts/install_repro_main.py"
