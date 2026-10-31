@@ -284,7 +284,8 @@ def split_line_in_multiple(line: LineString, distances: Sequence[float]) -> list
                 new_line = parts[1]
         else:
             new_distance = distance - distances[i - 1]
-            if new_distance == 0.0:
+            # the distances are sorted, so this skips a repeated distance
+            if new_distance <= 0.0:
                 continue
             parts = split_line_in_two(new_line, new_distance)
             if i == len(distances) - 1:
@@ -372,7 +373,7 @@ def snap_points_to_nodes_and_edges(
         along = [min(d, line.length - 0.5) if d > 0.5 else 0.5 for line, d in zip(lines, along, strict=True)]
         candidates = np.array([line.interpolate(d) for line, d in zip(lines, along, strict=True)], dtype=object)
         distances = np.array([c.distance(point) for c in candidates])
-        within = np.where(distances <= edges_bufdist)[0]
+        within = np.nonzero(distances <= edges_bufdist)[0]
         if len(within) >= 1:
             new_points[i] = candidates[within][np.argmin(distances[within])]
     points["geometry"] = new_points
