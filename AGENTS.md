@@ -25,4 +25,5 @@ Build and maintain a reproducible [DVC (Data Version Control)](https://dvc.org/)
 ## Model conventions
 
 - Node IDs in the coupled LHM model, and in the model viewer, are the `waterbeheercode` of the authority (`ribasim_nl.aquo`) times 100 000 plus the node ID in the model of that authority. For instance, 203892 is node 3892 of Wetterskip Fryslân. Fix an authority's nodes in its own stages where possible, rather than in `koppelen`.
+- Scripts and edit files refer to nodes, links and basin areas by ID, so code that numbers them must give the same IDs on every run, with any library version or CPU: sort with `kind="stable"`. See `docs/dev/reproducing-models.qmd`.
 - Analyse model behavior with the results of the latest coupled run in `data/Rijkswaterstaat/runs/lhm_coupled/results` before changing the model; a new coupled run takes about 1.5 hours.

@@ -28,7 +28,7 @@ from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.downstream import downstream_nodes
-from ribasim_nl.geometry import split_basin, split_line
+from ribasim_nl.geometry import polygon_parts, split_basin, split_line
 from ribasim_nl.run_model import RunSpecs, parse_computation_time, run
 from ribasim_nl.upstream import upstream_nodes
 
@@ -821,21 +821,82 @@ class Model(ribasim.Model):
         ].index:
             self.reverse_link(link_id=link_id)
 
-    def select_basin_area(self, geometry):
+    def select_basin_area(self, geometry: Polygon | MultiPolygon, tolerance: float = 0.001) -> pd.Series:
+        """Select the basin areas that equal `geometry`, or else each of its polygons.
+
+        Geometries are taken as equal if their boundaries are on average at most `tolerance` m apart. That allows for
+        the differences between the results of versions of GEOS, which can also merge or separate adjacent parts of an
+        area. So without a basin area that equals a polygon, the basin areas that together make it up are selected, or
+        else the polygon is split from the basin area that contains it, as a basin area of the same node.
+        """
         geometry = shapely.force_2d(geometry)
-        if isinstance(geometry, MultiPolygon):
-            polygons = list(geometry.geoms)
-        elif isinstance(geometry, Polygon):
-            polygons = [geometry]
-        else:
+        if not isinstance(geometry, Polygon | MultiPolygon):
             raise TypeError("geometry cannot be used for selection, is not a (Multi)Polygon")
 
         assert self.basin.area.df is not None
-        mask = self.basin.area.df.geometry.apply(lambda x: any(x.equals(i) for i in polygons))
+        selected = self._basin_areas_equal(geometry, tolerance)
+        if selected.empty:
+            for i, polygon in enumerate(shapely.get_parts(geometry).tolist()):
+                fids = self._basin_areas_equal(polygon, tolerance)
+                if fids.empty:
+                    fids = self._basin_areas_within(polygon, tolerance)
+                if fids.empty:
+                    fids = self._split_basin_area(polygon, tolerance)
+                if fids.empty:
+                    raise ValueError(f"Not any basin area equals, makes up or contains polygon {i} of input geometry")
+                selected = selected.append(fids)
+        mask = pd.Series(self.basin.area.df.index.isin(selected), index=self.basin.area.df.index)
 
         if not mask.any():
             raise ValueError("Not any basin area equals input geometry")
         return mask
+
+    def _basin_areas_equal(self, geometry: Polygon | MultiPolygon, tolerance: float) -> pd.Index:
+        """The fids of the basin areas that equal `geometry`."""
+        assert self.basin.area.df is not None
+        areas = self.basin.area.df.geometry
+        areas = areas[areas.intersects(geometry)]
+        return areas.index[areas.symmetric_difference(geometry).area <= tolerance * geometry.length]
+
+    def _basin_areas_within(self, geometry: Polygon | MultiPolygon, tolerance: float) -> pd.Index:
+        """The fids of the basin areas within `geometry` that together equal it, or none."""
+        assert self.basin.area.df is not None
+        areas = self.basin.area.df.geometry
+        areas = areas[areas.intersects(geometry)]
+        # mostly within, so not a neighbour with a sliver across the boundary
+        within = areas[
+            (areas.difference(geometry).area <= tolerance * areas.length)
+            & (areas.intersection(geometry).area >= areas.area / 2)
+        ]
+        if within.empty or within.union_all().symmetric_difference(geometry).area > tolerance * geometry.length:
+            return pd.Index([])
+        return within.index
+
+    def _split_basin_area(self, polygon: Polygon, tolerance: float) -> pd.Index:
+        """Split `polygon` from the basin area that contains it, as a new basin area of the same node.
+
+        Returns the fid of the new basin area, or none if no single basin area contains the polygon.
+        """
+        assert self.basin.area.df is not None
+        areas = self.basin.area.df.geometry
+        areas = areas[areas.intersects(polygon)]
+        containing = areas.index[
+            (shapely.area(shapely.difference(polygon, areas.to_numpy())) <= tolerance * polygon.length)
+            & (areas.intersection(polygon).area >= polygon.area / 2)
+        ]
+        if len(containing) != 1:
+            return pd.Index([])
+        fid = containing[0]
+        rest = polygon_parts(areas[fid].difference(polygon), tolerance)
+        part = polygon_parts(areas[fid].intersection(polygon), tolerance)
+        assert rest and part, f"polygon cannot be split from basin area {fid}"
+        new_fid = self.basin.area.df.index.max() + 1
+        self.basin.area.df.loc[new_fid] = self.basin.area.df.loc[fid]
+        self.basin.area.df.loc[[fid, new_fid], "geometry"] = [MultiPolygon(rest), MultiPolygon(part)]  # ty: ignore[invalid-assignment]
+        # enlarging the table drops its CRS
+        if self.basin.area.df.crs is None:
+            self.basin.area.df.crs = self.crs
+        return pd.Index([new_fid])
 
     def update_basin_area(
         self, node_id: int, geometry: Polygon | MultiPolygon, basin_area_fid: int | None = None

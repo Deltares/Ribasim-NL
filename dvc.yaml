@@ -21,6 +21,60 @@ stages:
       - data/Basisgegevens/RWZI/aangeleverd/locaties/RWZI_coordinates.geojson
     outs:
       - data/Rijkswaterstaat/modellen/rwzi
+  # The input models of the gravity controlled models, see docs/dev/reproducing-models.qmd
+  hydamo:
+    foreach:
+      brabantse_delta: BrabantseDelta
+      drents_overijsselse_delta: DrentsOverijsselseDelta
+      hunze_en_aas: HunzeenAas
+      limburg: Limburg
+      rijn_en_ijssel: RijnenIJssel
+      stichtse_rijnlanden: StichtseRijnlanden
+      vechtstromen: Vechtstromen
+    do:
+      cmd: pixi run python pipeline/00a_process_hydamo.py ${item}
+      deps:
+        - pipeline/00a_process_hydamo.py
+        - src/ribasim_nl/ribasim_nl
+        - data/${item}/verwerkt/2_voorbewerking/hydamo.gpkg
+        - data/${item}/verwerkt/3_input/hydamo_verwijderen.gpkg
+        - data/${item}/verwerkt/3_input/hydamo_toevoegen.gpkg
+      outs:
+        - data/${item}/verwerkt/4_ribasim/hydamo.gpkg
+  lumped:
+    foreach:
+      aa_en_maas: AaenMaas
+      brabantse_delta: BrabantseDelta
+      de_dommel: DeDommel
+      drents_overijsselse_delta: DrentsOverijsselseDelta
+      hunze_en_aas: HunzeenAas
+      limburg: Limburg
+      rijn_en_ijssel: RijnenIJssel
+      stichtse_rijnlanden: StichtseRijnlanden
+      vallei_en_veluwe: ValleienVeluwe
+      vechtstromen: Vechtstromen
+    do:
+      cmd: pixi run python pipeline/00b_lump_model.py ${item}
+      deps:
+        - pipeline/00b_lump_model.py
+        - src/ribasim_nl/ribasim_nl
+        - data/${item}/verwerkt/4_ribasim/hydamo.gpkg
+        - data/${item}/verwerkt/3_input/areas.gpkg
+        - data/${item}/verwerkt/3_input/ribasim_input.gpkg
+        - data/${item}/verwerkt/4_ribasim/krw.gpkg
+      outs:
+        - data/${item}/modellen/${item}_2024_6_3
+  lumped_noorderzijlvest:
+    cmd: pixi run python pipeline/noorderzijlvest/00_lump_model.py
+    deps:
+      - pipeline/noorderzijlvest/00_lump_model.py
+      - src/ribasim_nl/ribasim_nl
+      - data/Noorderzijlvest/verwerkt/2_voorbewerking/2_dhydro/basis/winter/nzv_boezemmodel/dflowfm
+      - data/Noorderzijlvest/verwerkt/2_voorbewerking/1_areas
+      - data/Noorderzijlvest/verwerkt/3_input/openwater.gpkg
+      - data/Noorderzijlvest/verwerkt/4_ribasim/krw.gpkg
+    outs:
+      - data/Noorderzijlvest/modellen/Noorderzijlvest_2024_6_3
   parameterized_aa_en_maas:
     cmd:
       - pixi run python pipeline/aa_en_maas/01_fix_model.py
