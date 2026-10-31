@@ -520,6 +520,7 @@ stages:
         - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
         - data/Basisgegevens/BuitenlandseAanvoer
         - data/Basisgegevens/QGIS_qlr/output_controle_cc.qlr
+        - data/Rijkswaterstaat/verwerkt/peilbeheer.gpkg
       outs:
         - data/${item}/modellen/${item}_dynamic_model
   feedback_delfland:
@@ -816,6 +817,7 @@ stages:
       - data/Basisgegevens/BuitenlandseAanvoer
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
+      - data/Rijkswaterstaat/verwerkt/peilbeheer.gpkg
     outs:
       - data/Delfland/modellen/Delfland_forcing
   forcing_amstel_gooi_en_vecht:
@@ -844,6 +846,7 @@ stages:
       - data/Basisgegevens/BuitenlandseAanvoer
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
+      - data/Rijkswaterstaat/verwerkt/peilbeheer.gpkg
     outs:
       - data/AmstelGooienVecht/modellen/AmstelGooienVecht_forcing
   forcing_hollands_noorderkwartier:
@@ -872,6 +875,7 @@ stages:
       - data/Basisgegevens/BuitenlandseAanvoer
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
+      - data/Rijkswaterstaat/verwerkt/peilbeheer.gpkg
     outs:
       - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_forcing
   forcing_hollandse_delta:
@@ -900,6 +904,7 @@ stages:
       - data/Basisgegevens/BuitenlandseAanvoer
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
+      - data/Rijkswaterstaat/verwerkt/peilbeheer.gpkg
     outs:
       - data/HollandseDelta/modellen/HollandseDelta_forcing
   forcing_rijnland:
@@ -928,6 +933,7 @@ stages:
       - data/Basisgegevens/BuitenlandseAanvoer
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
+      - data/Rijkswaterstaat/verwerkt/peilbeheer.gpkg
     outs:
       - data/Rijnland/modellen/Rijnland_forcing
   forcing_rivierenland:
@@ -956,6 +962,7 @@ stages:
       - data/Basisgegevens/BuitenlandseAanvoer
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
+      - data/Rijkswaterstaat/verwerkt/peilbeheer.gpkg
     outs:
       - data/Rivierenland/modellen/Rivierenland_forcing
   forcing_scheldestromen:
@@ -984,6 +991,7 @@ stages:
       - data/Basisgegevens/BuitenlandseAanvoer
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
+      - data/Rijkswaterstaat/verwerkt/peilbeheer.gpkg
     outs:
       - data/Scheldestromen/modellen/Scheldestromen_forcing
   forcing_schieland_en_de_krimpenerwaard:
@@ -1012,6 +1020,7 @@ stages:
       - data/Basisgegevens/BuitenlandseAanvoer
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
+      - data/Rijkswaterstaat/verwerkt/peilbeheer.gpkg
     outs:
       - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_forcing
   forcing_wetterskip_fryslan:
@@ -1040,6 +1049,7 @@ stages:
       - data/Basisgegevens/BuitenlandseAanvoer
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
+      - data/Rijkswaterstaat/verwerkt/peilbeheer.gpkg
     outs:
       - data/WetterskipFryslan/modellen/WetterskipFryslan_forcing
   forcing_zuiderzeeland:
@@ -1068,6 +1078,7 @@ stages:
       - data/Basisgegevens/BuitenlandseAanvoer
       - data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       - data/Rijkswaterstaat/modellen/rwzi
+      - data/Rijkswaterstaat/verwerkt/peilbeheer.gpkg
     outs:
       - data/Zuiderzeeland/modellen/Zuiderzeeland_forcing
   hws_demand:
@@ -1131,6 +1142,30 @@ stages:
       - data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_afvoer_dag_totaal.csv
     outs:
       - data/Rijkswaterstaat/modellen/hws_transient
+  peilbeheer:
+    cmd: pixi run python pipeline/peilbeheer.py
+    deps:
+      - pipeline/peilbeheer.py
+      - src/ribasim_nl/ribasim_nl
+      - data/AaenMaas/verwerkt/downloads
+      - data/AmstelGooienVecht/aangeleverd/Na_levering/vigerende_peilgebieden.gpkg
+      - data/BrabantseDelta/verwerkt/4_ribasim/hydamo.gpkg
+      - data/DeDommel/verwerkt/4_ribasim/hydamo.gpkg
+      - data/Delfland/aangeleverd/Na_levering/Watersysteem.gdb
+      - data/DrentsOverijsselseDelta/verwerkt/4_ribasim/hydamo.gpkg
+      - data/HollandseDelta/aangeleverd/Na_levering/Peilgebieden_HD_nalevering
+      - data/HollandsNoorderkwartier/aangeleverd/Na_levering/20240618_peilgebieden_en_polders
+      - data/HunzeenAas/verwerkt/1_ontvangen_data/peilgebieden.gpkg
+      - data/Noorderzijlvest/verwerkt/5_D_HYDRO_export/peilgebieden
+      - data/Rijnland/aangeleverd/PeilgebiedPraktijk Afwatering
+      - data/Rivierenland/aangeleverd/Eerste_levering/OverigeGegevens.zip
+      - data/Scheldestromen/aangeleverd/Na_levering/Praktijkpeilgebieden_20231204
+      - data/StichtseRijnlanden/verwerkt/4_ribasim/peilgebieden.gpkg
+      - data/Vechtstromen/verwerkt/1_ontvangen_data/aanvulling feb 24
+      - data/WetterskipFryslan/aangeleverd/Na_levering/20241205_verwerkte_peilgebieden_en_boezem
+      - data/Zuiderzeeland/aangeleverd/Na_levering/peilgebieden.gpkg
+    outs:
+      - data/Rijkswaterstaat/verwerkt/peilbeheer.gpkg
   samenvoegen:
     cmd: pixi run python pipeline/08_samenvoegen_modellen.py
     deps:
@@ -1170,6 +1205,7 @@ stages:
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
       - data/Rijkswaterstaat/modellen/lhm_parts
       - data/Rijkswaterstaat/verwerkt/netwerk.gpkg
+      - data/Rijkswaterstaat/verwerkt/peilbeheer.gpkg
     outs:
       - data/Rijkswaterstaat/modellen/lhm_coupled
   run_lhm_coupled:
