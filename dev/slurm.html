@@ -292,7 +292,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>This submits jobs in these waves:</p>
 <ol start="0" type="1">
 <li><code>clean</code>: removes the outputs of all stages that are run, like <code>dvc repro</code> does, and runs <code>dvc pull --force</code> for everything upstream of them; no manual pull is needed</li>
-<li><code>rwzi</code> (shared dependency)</li>
+<li><code>rwzi</code> and <code>peilbeheer</code> (shared dependencies)</li>
 <li>22 parallel jobs: 11 <code>dynamic@*</code>, 10 <code>forcing@*</code>, 1 <code>hws_transient</code></li>
 <li><code>samenvoegen</code> → <code>koppelen</code></li>
 </ol>
