@@ -58,6 +58,9 @@ A union with slivers can also go wrong, in GEOS 3.12 as well as 3.14: it can los
 In Hunze en Aas, a union of 25 pieces of a basin area lost 2.1 km², and the union of a basin area of 61 vertices with a sliver of 1e-9 m² gained 0.066 km².
 `ribasim_nl.geometry.union_polygons` checks that a union is not larger than the polygons together, and contains a point inside each polygon. If not, it takes the union again with a fixed precision of 1 mm, or without the slivers.
 `ribasim_nl.geodataframe.assign_node_ids_by_largest_overlap` uses it.
+That check does not catch a part lost within a large polygon, though.
+Overlays with a fixed precision (`grid_size`), on geometries made valid at that precision with `shapely.set_precision`, are robust.
+`ribasim_nl.berging.supply_area_basin_ids` overlays basin areas with supply areas that way, since a floating point overlay found no overlap for 3 basins of Drents Overijsselse Delta that lie entirely in a supply area.
 
 Some results remain sensitive to slivers.
 `assign_node_ids_by_largest_overlap` gives the holes in an area code to the basin area it overlaps most, also when that overlap is a sliver.
@@ -69,6 +72,7 @@ An area code that lies in a hole may then go to another basin area, or to none, 
 - Do not rely on the order of rows after a merge, a `groupby` or a spatial join; sort explicitly where the order sets IDs.
 - Refer to objects by a stable key, such as their code, rather than by row number. `gpd.read_file(..., fid_as_index=True)` makes a script depend on the order of the rows in the file, so keep that order when such a file is rewritten.
 - Select geometries with a tolerance, and do not rely on the order or number of the parts of geometries from geometric operations.
+- Where the result of an overlay decides something, overlay with a fixed precision, on geometries made valid at that precision.
 - The DVC pipeline records the code, data and environment of every output, in git, `dvc.lock` and `pixi.lock`, so an output can always be reproduced.
 
 ## Moving fixes into the lumping
