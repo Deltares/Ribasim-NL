@@ -40,3 +40,5 @@ There are several other coupling connections that could happen which require fur
 - [ ] Investigate whether other connections happen
 
 Currently these cases are automatically handled as the `Connector` | `Basin`, which leaves duplicate Connector Nodes in place, and might duplicate a flow.
+
+The regional models come with [summer and winter levels](seasonal-levels.qmd), which are removed before coupling and applied again to the coupled model at the end.
