@@ -9,14 +9,15 @@ out `origin/main` in a worktree dedicated to this, and then runs `pixi run repro
 3. Stops if another run of `pixi run repro-main` holds the lock of the worktree, or if this commit of `main` was
    attempted before. Runs of `pixi run repro-local` for other pull requests do not stop it.
 4. Removes the data of the previous run, and runs `pixi run repro-local --incremental --push --no-publish`.
-   Like in a new worktree, data that is not in the workspace does not count as changed.
+   Like in a new worktree, data that is not in the workspace does not count as changed. With `--full` it runs
+   all stages instead, for instance when the previous run used the wrong environment.
 5. If `dvc.lock` changed, commits it with the metrics to a new branch, pushes it, and opens a draft pull request.
    Then it publishes the model viewer preview, and has Claude describe the effect of the run with the
    `describe-run` skill, using only tools that read files. The pull request is then marked as ready for review.
 
 Merging the pull request is left to a person.
 
-Usage: pixi run repro-main [--force] [--no-describe]
+Usage: pixi run repro-main [--force] [--full] [--no-describe]
 """
 
 import argparse
@@ -170,14 +171,19 @@ def changed_files(root: Path) -> list[str]:
     return changed + untracked
 
 
-def context(root: Path, base: str, branch: str) -> str:
+def repro_command(full: bool) -> list[str]:
+    """The command of the run: only the changed stages and their downstream, or with `full` all stages."""
+    return ["pixi", "run", "repro-local", *([] if full else ["--incremental"]), "--push", "--no-publish"]
+
+
+def context(root: Path, base: str, branch: str, command: str) -> str:
     """The inputs for the description of the run: the pull requests it adds, and the metrics diff."""
     previous = git("log", "-1", "--format=%H", base, "--", "dvc.lock", cwd=root)
     added = git("log", "--format=- %s", f"{previous}..{base}", cwd=root) or "(none)"
     metrics = run("pixi", "run", "dvc", "metrics", "diff", "--md", "--all", base, cwd=root)
     return (
         f"# Catch-up run {branch}\n\n"
-        f"Branch `{branch}` reproduces `main` at commit {base} with `pixi run repro-local --incremental`.\n"
+        f"Branch `{branch}` reproduces `main` at commit {base} with `{command}`.\n"
         f"The previous run on `main` was recorded in commit {previous}.\n\n"
         f"## Commits on `main` since the previous run\n\n{added}\n\n"
         f"## Metrics compared with the previous run\n\n"
@@ -220,7 +226,7 @@ def check_no_secrets(text: str) -> None:
         assert len(value) < 8 or value not in text, f"The text contains the value of {name}"
 
 
-def publish(root: Path, base: str, branch: str, describe_run: bool) -> int:
+def publish(root: Path, base: str, branch: str, command: str, describe_run: bool) -> int:
     """Commit and push the run, open its pull request and describe it; return its number."""
     unexpected = set(changed_files(root)) - set(LOCKED)
     assert not unexpected, f"The run changed other files than {LOCKED}: {sorted(unexpected)}"
@@ -231,7 +237,7 @@ def publish(root: Path, base: str, branch: str, describe_run: bool) -> int:
     git("commit", "--quiet", "--message", f"{TITLE}\n\nA catch-up run of main at {base}.", cwd=root)
     git("push", "--quiet", "--set-upstream", "origin", branch, cwd=root)
 
-    context_text = context(root, base, branch)
+    context_text = context(root, base, branch, command)
     body = f"{context_text}\nThe description of the effect follows."
     url = run(
         "gh", "pr", "create", "--draft", "--base", "main", "--head", branch, "--title", TITLE,
@@ -264,6 +270,7 @@ def main() -> int:
     """Reproduce main if needed, and return the exit code."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--force", action="store_true", help="also run if this commit of main was attempted before")
+    parser.add_argument("--full", action="store_true", help="run all stages, not only the changed ones")
     parser.add_argument("--no-describe", action="store_true", help="do not have Claude describe the run")
     args = parser.parse_args()
 
@@ -287,7 +294,7 @@ def main() -> int:
     log(f"Reproducing main {base[:10]}")
     branch = branch_name(datetime.now())
     remove_data(root)
-    repro = ["pixi", "run", "repro-local", "--incremental", "--push", "--no-publish"]
+    repro = repro_command(args.full)
     if subprocess.run(repro, cwd=root, check=False).returncode != 0:
         write_state(base, "failed")
         log(f"The run failed, see the logs in {root / 'logs/repro'}")
@@ -298,7 +305,9 @@ def main() -> int:
         return 0
 
     try:
-        number = publish(root, base, branch, describe_run=not args.no_describe)
+        # Without --no-publish, since this publishes the preview itself
+        command = " ".join(arg for arg in repro if arg != "--no-publish")
+        number = publish(root, base, branch, command, describe_run=not args.no_describe)
     except BaseException:
         # Not run again for this commit, since the outputs may already be pushed
         write_state(base, f"publishing {branch} failed")

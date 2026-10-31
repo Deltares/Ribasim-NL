@@ -26,7 +26,7 @@ When you cannot run commands, as in the unattended catch-up runs, the prompt nam
 
 Write in the style of the earlier pull requests, such as #927 and #933: short, factual, in plain sentences, with numbers rather than adjectives.
 
-1. For a catch-up run, start with one sentence that it reproduces `main` with `pixi run repro-local --incremental`, followed by the pull requests it adds, as a list of their titles with their numbers. Then add the link to the model viewer, `**[View the model of this pull request](https://ribasim.nl/viewer?pr=<number>)**, compared with \`main\`.`, if the number of the pull request is known.
+1. For a catch-up run, start with one sentence that it reproduces `main` with the command it ran, such as `pixi run repro-local --incremental`, followed by the pull requests it adds, as a list of their titles with their numbers. Then add the link to the model viewer, `**[View the model of this pull request](https://ribasim.nl/viewer?pr=<number>)**, compared with \`main\`.`, if the number of the pull request is known.
 2. Add a section `## Effect on the coupled model` with a table of the base and this run, with the columns `` `main` `` and `this PR` for a pull request, and the previous run and this run for a catch-up run. Include the computation time, right-hand side calls, mean timestep, 5th percentile of the daily mean timestep, rejected timesteps, and the median NSE and KGE of the compared Observations, with their number. Format the values for reading: `2.2 h`, `1.55M`, `260 s`, `7.4%`.
 3. Follow it with bullets on what changed most:
    - the key discharge whose KGE changed most, with its old and new value, and the largest change of the others;
