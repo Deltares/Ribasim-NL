@@ -1,0 +1,6 @@
+outs:
+- md5: 98a2d98b8e6c177ab4abd3e7708b95b0.dir
+  size: 5499907
+  nfiles: 4
+  hash: md5
+  path: dflowfm

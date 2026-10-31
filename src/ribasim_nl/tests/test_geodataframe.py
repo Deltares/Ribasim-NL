@@ -1,6 +1,12 @@
 import geopandas as gpd
 from geopandas.testing import assert_geodataframe_equal
-from ribasim_nl.geodataframe import gpd_overlay, snap_line_boundaries, sorted_sjoin, threaded_overlay
+from ribasim_nl.geodataframe import (
+    assign_node_ids_by_largest_overlap,
+    gpd_overlay,
+    snap_line_boundaries,
+    sorted_sjoin,
+    threaded_overlay,
+)
 from shapely.geometry import LineString, Point, box
 
 
@@ -58,3 +64,15 @@ def test_threaded_overlay():
         assert_geodataframe_equal(result, expected)
         assert result.geometry.geom_equals_exact(expected.geometry, tolerance=0).all()
     assert gpd_overlay._overlay_difference is original
+
+
+def test_assign_node_ids_by_largest_overlap():
+    areas = gpd.GeoDataFrame({"code": ["A", "B"]}, geometry=[box(0, 0, 10, 10), box(10, 0, 20, 10)], crs=28992)
+    # Basin 2 crosses into area A by a sliver
+    basin_areas = gpd.GeoDataFrame(
+        {"node_id": [1, 2]}, geometry=[box(0, 0, 8, 10), box(10 - 1e-6, 0, 20, 4)], crs=28992
+    )
+    result = assign_node_ids_by_largest_overlap(areas, basin_areas)
+    assert result["node_id"].tolist() == [1, 2]
+    # the rest of each area goes to the basin that overlaps it most
+    assert all(abs(area - 100) < 1e-3 for area in result.area)

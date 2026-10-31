@@ -118,6 +118,48 @@ def test_merge_basins_not_neighbors(model):
         model.merge_basins(node_id=4, to_node_id=3)
 
 
+def test_select_basin_area(model):
+    # the area of Basin 2 with another vertex, and a corner moved 1e-9 m, as another version of GEOS can give
+    polygon = Polygon([(15, -5), (20, -5), (25, -5), (25, 5), (15, 5 + 1e-9)])
+    assert model.select_basin_area(polygon).tolist() == [False, True, False]
+    model.remove_basin_area(MultiPolygon([polygon]))
+    assert model.basin.area.df is not None
+    assert model.basin.area.df["node_id"].tolist() == [1, 3]
+    with pytest.raises(ValueError, match="Not any basin area"):
+        model.select_basin_area(Polygon([(-5, -5), (5, -5), (5, 6), (-5, 6)]))
+
+
+def test_select_basin_area_parts(model):
+    """Basin areas that another version of GEOS could have merged or separated, and slivers."""
+    far = Polygon([(95, -5), (105, -5), (105, 5), (95, 5)])
+    left, right = Polygon([(15, -5), (20, -5), (20, 5), (15, 5)]), Polygon([(20, -5), (25, -5), (25, 5), (20, 5)])
+    # a sliver against Basin 2, and one within Basin 1
+    outer = Polygon([(25, -5), (25 + 1e-6, -5), (25 + 1e-6, 5), (25, 5)])
+    inner = Polygon([(4, -5), (4 + 1e-6, -5), (4 + 1e-6, 5), (4, 5)])
+    area = gpd.GeoDataFrame(
+        {"node_id": [1, 2, 2, 3, 3, 1]},
+        geometry=[
+            MultiPolygon([*square(0).geoms, far]),
+            *(MultiPolygon([p]) for p in (left, right, outer)),
+            square(40),
+            MultiPolygon([inner]),
+        ],
+        crs=model.crs,
+    )
+    area.index.name = "fid"
+    model.basin.area.df = area
+    # an area of two parts
+    assert model.select_basin_area(MultiPolygon([*square(0).geoms, far])).tolist() == [True] + [False] * 5
+    assert model.select_basin_area(inner).tolist() == [False] * 5 + [True]
+    # the areas that together make up the polygon, without the sliver against it
+    assert model.select_basin_area(square(20)).tolist() == [False, True, True, False, False, False]
+    # the polygon is split from the area that contains it
+    model.remove_basin_area(Polygon([(35, -5), (40, -5), (40, 5), (35, 5)]))
+    assert model.basin.area.df is not None
+    assert model.basin.area.df["node_id"].tolist() == [1, 2, 2, 3, 3, 1]
+    assert model.basin.area.df.at[4, "geometry"].equals(Polygon([(40, -5), (45, -5), (45, 5), (40, 5)]))
+
+
 def test_apply_edits(model, tmp_path):
     edits_gpkg = tmp_path / "model_edits.gpkg"
     gpd.GeoDataFrame(

@@ -15,7 +15,7 @@ from geopandas import GeoDataFrame
 from shapely.geometry import LineString
 from shapely.geometry.base import BaseGeometry
 
-from ribasim_nl.geometry import snap_boundaries_to_other_line, split_basin
+from ribasim_nl.geometry import snap_boundaries_to_other_line, split_basin, union_polygons
 
 # the module, since `geopandas.tools.overlay` is shadowed by the function of that name; `Any`, since its private
 # members are used, which are not in the type stubs
@@ -181,7 +181,7 @@ def assign_node_ids_by_largest_overlap(
     """Basin areas from detailed areas, giving each area code the node_id of the basin area it overlaps most.
 
     Parts of the union of both that don't overlap a basin area also get the node_id of their area code.
-    The result is dissolved by node_id.
+    The result is dissolved by node_id, with `union_polygons`, since GEOS can get a union with slivers wrong.
 
     Args:
         areas_gdf: detailed areas, with an area code
@@ -202,6 +202,7 @@ def assign_node_ids_by_largest_overlap(
     combined_gdf = combined_gdf.merge(largest_area_node_ids, on=code_col, how="left", suffixes=("", "_largest"))
     combined_gdf["node_id"] = combined_gdf["node_id"].fillna(combined_gdf["node_id_largest"])
     combined_gdf = combined_gdf.drop(columns=["node_id_largest"]).drop_duplicates()
-    combined_gdf = combined_gdf.dissolve(by="node_id").reset_index()[["node_id", "geometry"]]
+    unions = combined_gdf.groupby("node_id")["geometry"].apply(lambda parts: union_polygons(parts.to_numpy()))
+    combined_gdf = GeoDataFrame({"node_id": unions.index}, geometry=unions.to_numpy(), crs=combined_gdf.crs)
     combined_gdf.index.name = "fid"
     return combined_gdf
