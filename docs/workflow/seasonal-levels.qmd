@@ -41,6 +41,7 @@ Limburg, Rijn en IJssel, Schieland en de Krimpenerwaard and Vallei en Veluwe hav
    Thresholds with the default band of 5 cm around a level get the bounds of the target level instead.
 4. The Outlets and Pumps that a DiscreteControl node controls get a winter and a summer variant of each control state, such as `afvoer winter` and `afvoer zomer`, with the `min_upstream_level` and `max_downstream_level` of that season.
    An extra condition on the season, on a variable with weight 0, switches between them.
+   It follows the transitions of a Basin around the controlled nodes of which the level changes, preferably one that the DiscreteControl node listens to.
 5. The initial level of the Basin follows its target level at the start of the model.
 
 The levels change at once, at the begin of each transition.
