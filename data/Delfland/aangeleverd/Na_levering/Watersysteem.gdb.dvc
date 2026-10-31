@@ -1,0 +1,6 @@
+outs:
+- md5: 9dd9b14c29aeb295f72b684a5185acf8.dir
+  size: 150840604
+  nfiles: 122
+  hash: md5
+  path: Watersysteem.gdb

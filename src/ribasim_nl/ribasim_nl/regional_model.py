@@ -1,8 +1,8 @@
 """Steps shared by the regional models of all water authorities, vrij afwaterend and peilbeheerst alike.
 
 `add_lhm_forcing` sets the forcing, `add_inflows` adds the foreign inflows and the RWZIs, and `finish_regional_model`
-lays out, writes, runs and checks the model. The pipelines of both kinds of water authorities call them, see
-`pipeline/07_add_dynamic_forcing.py` and `ribasim_nl.workflow`.
+lays out the model, gives it the summer and winter levels, and writes, runs and checks it. The pipelines of both kinds
+of water authorities call them, see `pipeline/07_add_dynamic_forcing.py` and `ribasim_nl.workflow`.
 """
 
 import datetime
@@ -10,6 +10,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Literal
 
+import geopandas as gpd
 import xarray as xr
 
 from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
@@ -22,6 +23,7 @@ from ribasim_nl.parametrization.manning_resistance_table import read_manning_wat
 from ribasim_nl.performance import write_performance
 from ribasim_nl.ribasim_parametrization import write_steady_state_regression_models
 from ribasim_nl.rwzi import attach_rwzi_junctions, merge_rwzi_model
+from ribasim_nl.seasonal_levels import PEILBEHEER, apply_seasonal_levels
 from ribasim_nl.set_forcing import SetDynamicForcing
 from ribasim_nl.settings import settings
 from ribasim_nl.transboundary_inflow import add_transboundary_inflow
@@ -129,7 +131,8 @@ def finish_regional_model(
     The layout only changes the geometry, after all parametrization: `snap` routes the links along the waterways
     known for the authority, after which the BGT profile of ManningResistances follows their new links (see
     `update_manning_resistance_reach`), the RWZIs discharge on the links into their Basins (see #860), and nodes and links are
-    moved apart. The results get `performance.xlsx` and `output_controle.gpkg`.
+    moved apart. Then the model gets the summer and winter levels of the peilgebieden of the authority, see
+    `ribasim_nl.seasonal_levels`. The results get `performance.xlsx` and `output_controle.gpkg`.
 
     :param model: parametrized model
     :param toml_file: TOML file to write the model to
@@ -148,6 +151,7 @@ def finish_regional_model(
     model.starttime = STARTTIME
     model.endtime = ENDTIME
     model.solver.saveat = SAVEAT
+    apply_seasonal_levels(model, gpd.read_file(PEILBEHEER), authority=authority)
     if model.basin.time.df is not None:
         model.basin.time.filepath = Path("basin_time.nc")
     model.write(toml_file)
