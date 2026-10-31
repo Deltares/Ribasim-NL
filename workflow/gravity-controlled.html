@@ -230,9 +230,10 @@ ul.task-list li input[type="checkbox"] {
 
 
 <p>Workflow for deriving and parametizing “gravity controlled systems”. They include 11 water authorities on the Eastern side of The Neterlands for which initial datasets have been prepared by SWECO. You need code in <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl"><code>src/ribasim_nl</code></a>.</p>
+<p>The input models <code>{authority}_2024_6_3</code> are lumped from the source data, as Sweco did in 2024, see <code>ribasim_nl.lumping</code> and <a href="../dev/reproducing-models.html">Reproducing models</a>. <code>pipeline/00a_process_hydamo.py</code> applies the manual changes to the HyDAMO data, and <code>pipeline/00b_lump_model.py</code> lumps the HyDAMO network into basins, or <code>pipeline/noorderzijlvest/00_lump_model.py</code> the D-HYDRO model of Noorderzijlvest.</p>
 <p>Under <code>pipeline</code> you’ll find 4 scripts per water authority, e.g.&nbsp;<code>pipeline/aa_en_maas</code>, which the DVC pipeline runs in sequence.</p>
 <ol type="1">
-<li><code>01_fix_model.py</code> will “fix” the GIS-models supplied by Sweco in the directories <code>{authority}_2024_6_3</code> to valid Ribasim-models in the directory <code>{authority}_fix_model</code></li>
+<li><code>01_fix_model.py</code> will “fix” the input models in the directories <code>{authority}_2024_6_3</code> to valid Ribasim-models in the directory <code>{authority}_fix_model</code></li>
 <li><code>02_prepare_model.py</code>will read <code>{authority}_fix_model</code> and add <code>levels</code> and <code>flow_rate</code> to the model and a <code>static_data.xlsx</code> that can be reviewed. The model will be written as <code>{authority}_prepare_model</code></li>
 <li><code>03_parameterized_model.py</code> will read <code>{authority}_prepare_model</code> and <code>static_data.xlsx</code> to a model <code>{authority}_parameterized_model</code></li>
 <li><code>04_add_full_control.py</code> adds control.</li>
