@@ -325,6 +325,31 @@ def test_apply_transitions(model):
     assert drain["threshold_high"].tolist() == pytest.approx([-0.675, -0.475, -0.675, -0.675])
 
 
+def test_season_of_changing_basin(model):
+    # DiscreteControl 6 listens to Basin 8 with a fixed level, while the level of its inlet follows Basin 3
+    model.basin.add(
+        Node(AAM + 8, Point(5000, 0)),
+        [
+            basin.Profile(level=[-2.0, 1.0], area=[100.0, 100.0]),
+            basin.State(level=[-0.3]),
+            basin.Area(geometry=[square(5000)], meta_streefpeil=[-0.3]),
+        ],
+    )
+    variable = model.discrete_control.variable.df
+    variable.loc[variable["node_id"] == AAM + 6, "listen_node_id"] = AAM + 8
+    seasonal = peilgebied(summer=-0.5, winter=-0.7, transitions=("01-03", "01-05", "01-09", "01-11"))
+    fixed = peilgebied(summer=-0.3, winter=-0.3, geometry=box(4500, -500, 5500, 500)).assign(code="P2")
+    apply_seasonal_levels(model, pd.concat([seasonal, fixed]))
+    # the inlet switches season with Basin 3, not with Basin 8 and its default transitions
+    condition = model.discrete_control.condition.df.set_index(["node_id", "compound_variable_id"])
+    assert condition.loc[(AAM + 6, 2), "time"].tolist() == [
+        datetime(2017, 1, 1),
+        datetime(2017, 3, 1),
+        datetime(2017, 9, 1),
+        datetime(2018, 1, 1),
+    ]
+
+
 def test_apply_fixed_levels(model):
     # a fixed level with wider bounds only widens the band of the thresholds
     apply_seasonal_levels(model, peilgebied(summer=-0.5, winter=-0.5, ondergrens_zomer=-0.6, ondergrens_winter=-0.6))

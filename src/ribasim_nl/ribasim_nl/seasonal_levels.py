@@ -569,11 +569,15 @@ def apply_seasonal_levels(
     max_compound_variable_id = variable_df.groupby("node_id")["compound_variable_id"].max()
     listen_basins = variable.loc[on_basin].groupby("node_id")["listen_node_id"].agg(list)
     controlled_ids = pd.Series(controller.index, index=controller.to_numpy()).groupby(level=0).agg(list)
+    changing_basins = set(differences.index[differences["delta_zomer"].ne(differences["delta_winter"])])
     for control_id in sorted(season_states):
-        # The season follows the transitions of a Basin it listens to, or else of a Basin around its nodes
-        neighbor_basins = neighbors.loc[controlled_ids[control_id], ["upstream", "downstream"]]
-        candidates = [*listen_basins.get(control_id, []), *neighbor_basins.stack().dropna()]
-        basin_id = next(as_int(basin_id) for basin_id in candidates if basin_id in regimes.index)
+        # The season follows the transitions of a Basin around its nodes of which the target level changes over the
+        # year, since the levels of its control states follow it, preferably one that it listens to
+        neighbor_basins = neighbors.loc[controlled_ids[control_id], ["upstream", "downstream"]].stack().dropna()
+        seasonal = [as_int(basin_id) for basin_id in neighbor_basins if as_int(basin_id) in changing_basins]
+        candidates = [basin_id for basin_id in listen_basins.get(control_id, []) if basin_id in seasonal] + seasonal
+        assert candidates, f"DiscreteControl #{control_id} has seasonal control states without a seasonal Basin"
+        basin_id = candidates[0]
         compound_variable_id = as_int(max_compound_variable_id[control_id]) + 1
         season_variables.append(
             {
