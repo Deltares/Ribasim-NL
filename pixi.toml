@@ -64,7 +64,7 @@ hydamo = { path = "src/hydamo", editable = true }
 peilbeheerst_model = { path = "src/peilbeheerst_model", editable = true }
 ribasim_nl = { path = "src/ribasim_nl", editable = true }
 # sync with config in install_ribasim_core.py
-ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "016b54038746e60e6e645626d6c2383a591dc4a6", subdirectory = "python/ribasim" }
+ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "932df7883b8358df412ab3195d21b9e7f61e4c7e", subdirectory = "python/ribasim" }
 # in pypi fiona is optional, and fiona held back gdal 3.13
 rasterstats = ">=0.21"
 types-geopandas = ">=1.1"
@@ -83,7 +83,8 @@ install = { depends-on = ["install-core", "install-prek"] }
 # Share the credentials and DVC cache of the main checkout with a git worktree, see scripts/setup_worktree.py
 setup-worktree = "python scripts/setup_worktree.py"
 # Reproduce stages and their upstream in parallel on this machine: `pixi run repro-local [TARGET ...]`
-repro-local = "python scripts/repro.py"
+# Installs the Ribasim core of scripts/install_ribasim_core.py first, which Pixi skips if it is up to date
+repro-local = { cmd = "python scripts/repro.py", depends-on = ["install-core"] }
 # Reproduce main and open a catch-up pull request, run nightly by the timer of `pixi run install-repro-main`
 repro-main = "python scripts/repro_main.py"
 install-repro-main = "python scripts/install_repro_main.py"

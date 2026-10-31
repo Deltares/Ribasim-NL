@@ -479,8 +479,6 @@ def straight_link_geometries(model: Model, tolerance: float = 1.0) -> Model:
 
     :return: updated Ribasim model
     """
-    assert model.node.df is not None
-    assert model.link.df is not None
     link_df = model.link.df
     from_points = model.node.df.geometry.reindex(link_df["from_node_id"]).to_numpy()
     to_points = model.node.df.geometry.reindex(link_df["to_node_id"]).to_numpy()
@@ -502,8 +500,6 @@ def straight_link_geometries(model: Model, tolerance: float = 1.0) -> Model:
 
 def _bergend_nodes(model: Model, basin_id: int) -> list[int]:
     """The ManningResistance and Basin nodes of the bergend part connected to a doorgaand Basin node."""
-    assert model.link.df is not None
-    assert model.node.df is not None
     if "meta_categorie" not in model.node.df.columns:
         return []
     links = model.link.df[model.link.df["link_type"] == "flow"]
@@ -554,8 +550,6 @@ def snap_to_network(
     :return: updated Ribasim model
     """
     model = straight_link_geometries(model)
-    assert model.node.df is not None
-    assert model.link.df is not None
     assert model.basin.area.df is not None
     nodes = model.node.df
     links = model.link.df
@@ -676,7 +670,6 @@ def read_main_waterways(
 
 def straight_flow_link_ids(model: Model) -> list[int]:
     """The flow links with a straight geometry."""
-    assert model.link.df is not None
     flow = model.link.df[model.link.df["link_type"] == "flow"]
     return flow.index[shapely.get_num_points(flow.geometry.to_numpy()) == 2].tolist()
 
@@ -702,7 +695,6 @@ def snap_to_waterways(
 
     :return: updated Ribasim model
     """
-    assert model.link.df is not None
     assert model.basin.area.df is not None
     basin_ids = set(model.link.df.loc[link_ids, ["from_node_id", "to_node_id"]].to_numpy().ravel())
     areas = model.basin.area.df[model.basin.area.df["node_id"].isin(basin_ids)]
@@ -738,7 +730,6 @@ def snap_model(
     :param top10nl_path: Top10NL GeoPackage, of which the water lines complement the hydro-objects, defaults to None
     :param tolerance: buffer around the basin area within which hydro-objects are used, defaults to 10.0
     """
-    assert model.node.df is not None
     node_geometry = model.node.df.geometry.copy()
     hydro_objects = read_hydro_objects(profiles_path)
     if top10nl_path is not None:
@@ -753,7 +744,6 @@ def snap_model(
         x0, y0, x1, y1 = model.basin.area.df.total_bounds
         water = read_bgt_water(shapely.box(x0, y0, x1, y1), path=water_path, columns=["geometry"])
     model = snap_to_network(model, hydro_objects, culverts=culverts, water=water, tolerance=tolerance)
-    assert model.node.df is not None
     moved = ~model.node.df.geometry.geom_equals_exact(node_geometry, tolerance=0)
     moved_types = set(model.node.df.loc[moved, "node_type"])
     assert moved_types <= {"Basin", "ManningResistance"}, f"Only Basin nodes may move, not {moved_types}"

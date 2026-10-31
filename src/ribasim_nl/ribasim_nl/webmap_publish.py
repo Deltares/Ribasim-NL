@@ -96,6 +96,8 @@ def manifest_entries(manifest: dict) -> list[dict]:
     entries = list(manifest["files"].values()) + manifest["tables"]
     if results := manifest.get("results"):
         entries += [results[name][key] for name in ("basin", "flow") for key in ("by_id", "by_time")]
+        if "observation" in results:
+            entries += [results["observation"][key] for key in ("by_time", "metrics")]
         if "control" in results:
             entries.append(results["control"])
     return entries

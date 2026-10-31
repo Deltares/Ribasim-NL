@@ -1,23 +1,28 @@
-import { readNumbers, type ResultSet, type Results } from "./data";
+import { readNumbers, type FrameSet, type Results } from "./data";
 
 const MAX_CACHED_GROUPS = 24;
+
+/** The result sets with values per time step for the map; the observation set is optional. */
+export type FrameKind = "basin" | "flow" | "observation";
 
 /** Loads per-time-step values of result variables, cached per Parquet row group. */
 export class ResultFrames {
   readonly times: Date[];
-  private readonly ids = new Map<"basin" | "flow", Promise<Int32Array>>();
+  private readonly ids = new Map<FrameKind, Promise<Int32Array>>();
   private readonly cache = new Map<string, Promise<Float32Array>>();
 
   constructor(readonly results: Results) {
     this.times = results.times.map((time) => new Date(`${time}Z`));
   }
 
-  private set(kind: "basin" | "flow"): ResultSet {
-    return this.results[kind];
+  private set(kind: FrameKind): FrameSet {
+    const set = this.results[kind];
+    if (!set) throw new Error(`The results have no ${kind} frames`);
+    return set;
   }
 
   /** Feature ids in the order of the values in a frame. */
-  featureIds(kind: "basin" | "flow"): Promise<Int32Array> {
+  featureIds(kind: FrameKind): Promise<Int32Array> {
     let ids = this.ids.get(kind);
     if (!ids) {
       const set = this.set(kind);
@@ -27,7 +32,7 @@ export class ResultFrames {
     return ids;
   }
 
-  private group(kind: "basin" | "flow", variable: string, group: number): Promise<Float32Array> {
+  private group(kind: FrameKind, variable: string, group: number): Promise<Float32Array> {
     const key = `${kind}/${variable}/${group}`;
     let values = this.cache.get(key);
     if (values) {
@@ -46,7 +51,7 @@ export class ResultFrames {
     return values;
   }
 
-  private async raw(kind: "basin" | "flow", variable: string, step: number): Promise<Float32Array> {
+  private async raw(kind: FrameKind, variable: string, step: number): Promise<Float32Array> {
     const { count } = this.set(kind);
     const steps = this.results.steps_per_row_group;
     const group = Math.floor(step / steps);
@@ -56,7 +61,7 @@ export class ResultFrames {
   }
 
   /** Values of a variable at a time step, in the order of `featureIds(kind)`. */
-  async frame(kind: "basin" | "flow", variable: string, step: number): Promise<Float32Array> {
+  async frame(kind: FrameKind, variable: string, step: number): Promise<Float32Array> {
     const source = this.set(kind).variables[variable].source;
     if (!source) return this.raw(kind, variable, step);
     const [values, initial] = await Promise.all([this.raw(kind, source, step), this.raw(kind, source, 0)]);
@@ -64,7 +69,7 @@ export class ResultFrames {
   }
 
   /** Start loading the row group of a later time step, to play smoothly. */
-  prefetch(kind: "basin" | "flow", variable: string, step: number): void {
+  prefetch(kind: FrameKind, variable: string, step: number): void {
     const source = this.set(kind).variables[variable].source ?? variable;
     if (step >= this.times.length) return;
     // A failed prefetch is retried when the frame is shown

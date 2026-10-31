@@ -78,7 +78,6 @@ outlet_node = model.outlet.add(Node(geometry=geometry.interpolate(271)), tables=
 model.redirect_link(link_id=2202, from_node_id=outlet_node.node_id)
 model.link.add(basin_node, outlet_node)
 
-assert model.link.df is not None
 for fid, link_id, _boundary_node_id in ((2054, 2244, 63), (9794, 2295, 103), (9260, 2297, 105), (3307, 2305, 113)):
     kdu = duiker_gdf.loc[fid]
     basin_node = model.basin.add(

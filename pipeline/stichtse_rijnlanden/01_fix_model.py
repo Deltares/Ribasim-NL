@@ -55,7 +55,6 @@ tabulated_rating_curve_data = tabulated_rating_curve.Static(level=[0.0, 5], flow
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2455143137
 
 # verwijderen duplicated links
-assert model.link.df is not None
 model.link.df.drop_duplicates(inplace=True)
 
 
@@ -142,7 +141,6 @@ model.update_node(1965, "LevelBoundary", data=[level_data])
 # opheffen ST3122
 geometry = Point(117995, 443062.5)
 model.move_node(node_id=889, geometry=geometry)
-assert model.node.df is not None
 model.node.df.loc[889, "name"] = "ST1985"
 
 for link_id in [359, 360, 361]:
@@ -214,7 +212,6 @@ model.basin.area.df = model.basin.area.df[~model.basin.area.df.index.isin([501, 
 #     0
 # ]
 new_basin_area_df = gpd.GeoSeries([], crs=model.crs)
-assert model.basin.node is not None and model.basin.node.df is not None
 for basin_fid, split_lijnen_select_df in split_lijnen_df[split_lijnen_df.opmerkingen.isna()].groupby("basin_area_fid"):
     # iterate trough split_lines per basin creating a series with geometries
     series = gpd.GeoSeries([model.basin.area.df.at[basin_fid, "geometry"]], crs=model.crs)
@@ -657,7 +654,6 @@ model.node.df.loc[252, "name"] = "Inlaat Vreeswijk"
 
 def node_id_by_code(code: str) -> int:
     """Return the ID of the only node with `meta_code_waterbeheerder` `code`."""
-    assert model.node.df is not None
     node_ids = model.node.df.index[model.node.df["meta_code_waterbeheerder"] == code]
     assert len(node_ids) == 1, f"Expected one node with code {code}, got {node_ids.tolist()}"
     return int(node_ids[0])

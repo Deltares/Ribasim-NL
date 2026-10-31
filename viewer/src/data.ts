@@ -26,20 +26,37 @@ export interface TableEntry extends FileEntry {
 export interface ResultVariable {
   label: string;
   units: string;
-  scale: "linear" | "log" | "diverging";
+  /** "symlog" colors signed values by their magnitude on a log scale, see `normalize` */
+  scale: "linear" | "log" | "diverging" | "symlog";
   domain: [number, number];
   /** Derived variables are differences from the first time step of this variable */
   source?: string;
+  /** Colors from the lower to the upper limit, instead of those of the scale */
+  palette?: string[];
 }
 
-export interface ResultSet {
+/** Values per time step of a set of features, ordered by time step then id, for map frames. */
+export interface FrameSet {
   id: "node_id" | "link_id";
   count: number;
   variables: Record<string, ResultVariable>;
+  by_time: FileEntry;
+}
+
+export interface ResultSet extends FrameSet {
   /** Sorted by id, for time series of one feature */
   by_id: FileEntry;
-  /** Ordered by time step then id, for map frames */
-  by_time: FileEntry;
+}
+
+/**
+ * How well the results fit the measurements of the Observation nodes, see `ribasim_nl.webmap.export_observations`.
+ * The frames are the differences simulated - observed of each observed variable.
+ */
+export interface ObservationResults extends FrameSet {
+  /** The number of days with both values needed for the efficiencies and bias */
+  min_days: number;
+  /** The fit over the whole run: node_id, name, variable, days, nse, kge and bias */
+  metrics: FileEntry;
 }
 
 export interface Results {
@@ -47,6 +64,8 @@ export interface Results {
   steps_per_row_group: number;
   basin: ResultSet;
   flow: ResultSet;
+  /** Only if the model has Observation nodes with measurements */
+  observation?: ObservationResults;
   /** Control state changes, sorted by control_node_id and time */
   control?: FileEntry;
 }
@@ -199,6 +218,7 @@ function fileEntries(manifest: Manifest): FileEntry[] {
   const results = manifest.results;
   if (results) {
     entries.push(results.basin.by_id, results.basin.by_time, results.flow.by_id, results.flow.by_time);
+    if (results.observation) entries.push(results.observation.by_time, results.observation.metrics);
     if (results.control) entries.push(results.control);
   }
   return entries;
@@ -214,7 +234,9 @@ async function fetchJson<T>(url: URL): Promise<T> {
 async function loadManifest(base: URL, files: URL = base): Promise<Manifest> {
   const manifest = await fetchJson<Manifest>(new URL("manifest.json", base));
   for (const entry of fileEntries(manifest)) entry.url = resolveFile(files, entry);
-  for (const set of manifest.results ? [manifest.results.basin, manifest.results.flow] : []) {
+  const results = manifest.results;
+  const sets = results ? [results.basin, results.flow, ...(results.observation ? [results.observation] : [])] : [];
+  for (const set of sets) {
     for (const variable of Object.values(set.variables)) {
       // NetCDF long names like "water flow rate" are verbose in the variable dropdowns
       variable.label = variable.label.replace(/^water /, "");

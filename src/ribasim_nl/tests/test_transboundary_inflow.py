@@ -130,7 +130,6 @@ def test_add_transboundary_inflow(overview):
 
 def test_unmatched_inflows(overview):
     model = inflow_model()
-    assert model.node.df is not None
     model.node.df.loc[2, "name"] = "Renamed"
     with pytest.raises(ValueError, match=r"inflows without FlowBoundary: \['Constant'\].*\{2: 'Renamed'\}"):
         set_constant_inflow(model, "A")
@@ -145,7 +144,6 @@ def test_unmatched_inflows(overview):
 
 def test_no_inflows(overview):
     model = inflow_model()
-    assert model.node.df is not None
     model.node.df.loc[[1, 2], "meta_categorie"] = "RWZI"
     add_transboundary_inflow(model, "C", model.starttime, model.endtime)
     set_constant_inflow(model, "C")

@@ -369,7 +369,6 @@ def add_discharge_supply_nodes(
 ):
     # get tables and nodes
     node_table_df = get_node_table_with_from_to_node_ids(model, node_ids=list(discharge_supply_nodes.keys()))
-    assert model.node.df is not None
     node_types = model.node.df["node_type"]
 
     # demand parameters
@@ -571,7 +570,6 @@ meta_codes = {
     191: "235VGZ",
 }
 
-assert model.node.df is not None
 for node_id, code in meta_codes.items():
     model.node.df.at[node_id, "meta_code_waterbeheerder"] = code
 
@@ -604,9 +602,6 @@ discharge_supply_df["winter"] = (
 
 # make code (and node type) table
 node_table_df = model.node.df
-
-
-assert node_table_df is not None
 code_df = node_table_df[node_table_df["meta_code_waterbeheerder"].notna()][
     ["meta_code_waterbeheerder", "node_type"]
 ].rename(columns={"meta_code_waterbeheerder": "code"})
@@ -1441,7 +1436,6 @@ for static_df, max_flow_rate_by_node_id in (
 
 # Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
 node_type_by_id = model.node.df["node_type"].to_dict()
-assert model.link.df is not None
 flow_demand_controlled_node_ids = set(
     model.link.df.loc[
         model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),

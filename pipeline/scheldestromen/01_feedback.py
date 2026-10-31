@@ -59,7 +59,6 @@ level_boundary_node = ribasim_model.level_boundary.add(
 )
 
 pump_node = ribasim_model.pump.add(Node(geometry=Point(74504, 382443)), [pump.Static(flow_rate=[0.1])])
-assert ribasim_model.node.df is not None
 ribasim_model.node.df.loc[pump_node.node_id, "meta_node_id"] = pump_node.node_id
 ribasim_model.link.add(level_boundary_node, pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[133])

@@ -19,6 +19,7 @@ import shapely
 import xarray as xr
 
 from ribasim_nl.case_conversions import pascal_to_snake_case, snake_to_pascal_case
+from ribasim_nl.goodness_of_fit import MIN_COMPARED_DAYS, compare, observed_and_simulated
 
 WEB_CRS = "EPSG:4326"
 # Simplification tolerances in model CRS units (m)
@@ -329,6 +330,63 @@ def export_results(results_dir: Path, output_dir: Path) -> dict:
     return results
 
 
+def observed_variable_attrs(results_dir: Path, variable: str) -> dict:
+    """The attributes of the simulated values of an observed variable: the flow rate of links, or a Basin variable."""
+    with xr.open_dataset(results_dir / ("flow.nc" if variable == "flow_rate" else "basin.nc")) as ds:
+        return dict(ds[variable].attrs)
+
+
+def export_observations(database: Path, results_dir: Path, times: pd.DatetimeIndex, output_dir: Path) -> dict | None:
+    """Export how well the results fit the measurements of the Observation nodes, see `ribasim_nl.goodness_of_fit`.
+
+    The fit of each observed variable over the whole run is written as a table, and the difference simulated -
+    observed at each of the `times` for the map, which is NaN where either value is missing. Returns None if no
+    Observation node is compared.
+    """
+    series = observed_and_simulated(database, results_dir)
+    if not series:
+        return None
+    metrics = pd.DataFrame(
+        [
+            {"node_id": s.node_id, "name": s.name, "variable": s.variable} | compare(s.observed, s.simulated)
+            for s in series
+        ]
+    )
+    metrics["days"] = metrics["days"].astype("int32")
+    metrics_path = output_dir / "results" / "observation_metrics.parquet"
+    write_parquet(metrics, metrics_path)
+
+    ids = np.unique([s.node_id for s in series]).astype("int32")
+    rows = {node_id: row for row, node_id in enumerate(ids)}
+    variables = sorted({s.variable for s in series})
+    differences = {variable: np.full((len(ids), len(times)), np.nan, dtype="float32") for variable in variables}
+    for s in series:
+        differences[s.variable][rows[s.node_id]] = (s.simulated - s.observed).reindex(times).to_numpy(dtype="float32")
+    by_time = output_dir / "results" / "observation_by_time.parquet"
+    write_by_time(ids, differences, "node_id", by_time)
+
+    scales = {}
+    for variable, values in differences.items():
+        attrs = observed_variable_attrs(results_dir, variable)
+        # Without differences the scale would be empty
+        high = color_domain(values, "diverging")[1] if np.isfinite(values).any() else 0.0
+        scales[variable] = {
+            "label": attrs.get("long_name", variable),
+            "units": attrs.get("units", ""),
+            # The differences of large rivers and small ditches span orders of magnitude
+            "scale": "symlog",
+            "domain": [-high, high] if high > 0 else [-1.0, 1.0],
+        }
+    return {
+        "id": "node_id",
+        "count": len(ids),
+        "min_days": MIN_COMPARED_DAYS,
+        "variables": scales,
+        "by_time": by_time,
+        "metrics": metrics_path,
+    }
+
+
 def export_control(source: Path, path: Path) -> Path:
     """Export the control state changes per DiscreteControl node, sorted by control_node_id and time."""
     with xr.open_dataset(source) as ds:
@@ -439,6 +497,11 @@ def export_webmap(toml_path: Path, waterboards_path: Path | None, output_dir: Pa
         for name in ("basin", "flow"):
             results[name]["by_id"] = entry(results[name]["by_id"])
             results[name]["by_time"] = entry(results[name]["by_time"])
+        times = pd.DatetimeIndex(results["times"])
+        if observation := export_observations(database, results_dir, times, output_dir):
+            observation["by_time"] = entry(observation["by_time"])
+            observation["metrics"] = entry(observation["metrics"])
+            results["observation"] = observation
         if "control" in results:
             results["control"] = entry(results["control"])
         manifest["results"] = results

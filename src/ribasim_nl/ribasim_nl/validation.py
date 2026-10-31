@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 import numpy as np
+import pandas as pd
 
 from ribasim_nl.profiles import MIN_PROFILE_AREA
 
@@ -121,11 +122,9 @@ def _uncontrolled_control_state_issues(model: "Model") -> list[str]:
     """
     link = model.link.df
     node = model.node.df
-    discrete_controlled = set()
-    if link is not None and node is not None:
-        control = link.loc[link["link_type"] == "control"]
-        from_discrete_control = control["from_node_id"].map(node["node_type"]).eq("DiscreteControl")
-        discrete_controlled = set(control.loc[from_discrete_control, "to_node_id"])
+    control = link.loc[link["link_type"] == "control"]
+    from_discrete_control = control["from_node_id"].map(node["node_type"]).eq("DiscreteControl")
+    discrete_controlled = set(control.loc[from_discrete_control, "to_node_id"])
 
     issues = []
     for node_type in CONTROL_STATE_NODE_TYPES:
@@ -173,8 +172,6 @@ def _connector_through_junction_issues(model: "Model") -> list[str]:
     Ribasim treats Junctions as transparent, so it rejects such links as connecting e.g. a Pump to a Pump.
     """
     link_df, node_df = model.link.df, model.node.df
-    if link_df is None or node_df is None:
-        return []
     flow = link_df[link_df["link_type"] == "flow"]
     node_type = node_df["node_type"]
     downstream = flow.groupby("from_node_id")["to_node_id"].agg(list).to_dict()
@@ -208,8 +205,6 @@ def _layout_issues(model: "Model") -> list[str]:
     """Return nodes on top of each other and overlapping links, which make the model hard to read on a map."""
     from ribasim_nl.layout import coincident_nodes, overlapping_links
 
-    if model.node.df is None or model.link.df is None:
-        return []
     issues = []
     nodes = coincident_nodes(model, MIN_NODE_DISTANCE)
     if nodes.shape[1]:
@@ -224,8 +219,6 @@ def _layout_issues(model: "Model") -> list[str]:
 
 def _listen_to_junction_issues(model: "Model") -> list[str]:
     """Return control nodes that listen to a Junction, which has no level or flow rate of its own."""
-    if model.node.df is None:
-        return []
     node_type = model.node.df["node_type"]
     pairs = []
     for table in (model.discrete_control.variable.df, model.continuous_control.variable.df):
@@ -235,6 +228,35 @@ def _listen_to_junction_issues(model: "Model") -> list[str]:
     if not pairs:
         return []
     return [f"Control nodes must not listen to a Junction; invalid (control, Junction) node IDs: {sorted(set(pairs))}"]
+
+
+def _flow_demand_capacity_issues(model: "Model") -> list[str]:
+    """Return FlowDemand nodes whose demand exceeds the max_flow_rate of their Pump or Outlet.
+
+    Without allocation, Ribasim clamps the demand to the max_flow_rate of the current control state, so the part
+    above it is silently ignored.
+    """
+    link_df = model.link.df
+    demands = [table.df for table in (model.flow_demand.static, model.flow_demand.time) if table.df is not None]
+    if not demands:
+        return []
+    demand = pd.concat([df[["node_id", "demand"]] for df in demands]).groupby("node_id")["demand"].max()
+    static = [model.get_component(i).static.df for i in ("Pump", "Outlet")]
+    static = [df[["node_id", "max_flow_rate"]] for df in static if df is not None]
+    max_flow_rate = pd.concat(static).groupby("node_id")["max_flow_rate"].min() if static else pd.Series()
+
+    control = link_df[(link_df["link_type"] == "control") & link_df["from_node_id"].isin(demand.index)]
+    pairs = [
+        (int(from_node_id), int(to_node_id))
+        for from_node_id, to_node_id in zip(control["from_node_id"], control["to_node_id"], strict=True)
+        if demand[from_node_id] > max_flow_rate.get(to_node_id, np.inf)
+    ]
+    if not pairs:
+        return []
+    return [
+        "FlowDemand must not exceed the max_flow_rate of its Pump or Outlet in any control state; "
+        f"invalid (FlowDemand, connector) node IDs: {sorted(pairs)}"
+    ]
 
 
 def validate_model(model: "Model", layout: bool = True) -> None:
@@ -251,6 +273,7 @@ def validate_model(model: "Model", layout: bool = True) -> None:
         *_connector_through_junction_issues(model),
         *_manning_resistance_issues(model),
         *_listen_to_junction_issues(model),
+        *_flow_demand_capacity_issues(model),
         *(_layout_issues(model) if layout else []),
     ]
     if issues:

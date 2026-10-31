@@ -277,7 +277,6 @@ model.reverse_link(link_id=1685)
 ## Tijdelijk als pomp modelleren, omdat afwatering anders vastloopt op hoge RWS-waterstanden.
 temporary_rws_pump_node_id = 1056
 model.update_node(node_id=temporary_rws_pump_node_id, node_type="Pump")
-assert model.node.df is not None
 model.node.df.loc[temporary_rws_pump_node_id, "name"] = (
     "Dintelsas Volkerak tijdelijke pomp naar RWS (eigenlijk uitlaat)"
 )
@@ -383,7 +382,6 @@ model.outlet.static.df.loc[zero_aanvoer_mask, ["flow_rate", "max_flow_rate"]] = 
 
 # Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
 node_type_by_id = model.node.df["node_type"].to_dict()
-assert model.link.df is not None
 flow_demand_controlled_node_ids = set(
     model.link.df.loc[
         model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),

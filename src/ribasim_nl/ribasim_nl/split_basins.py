@@ -187,8 +187,6 @@ class SplitBasins:
     def redirect_connectors_to_new_basins(self, newly_created_basins: list[int]):
         """Redirect links connected to the original basin to the nearest new split basin."""
         # find all connectors that are connected to the original basin
-        assert self.model.link.df is not None
-        assert self.model.node.df is not None
         assert self.model.basin.area.df is not None
 
         for connector_column, basin_column in [("to_node_id", "from_node_id"), ("from_node_id", "to_node_id")]:
@@ -309,7 +307,6 @@ class NodeMetaCache:
     @staticmethod
     def get_meta_category(model: Model) -> pd.Series:
         """Get the 'meta_categorie'-data."""
-        assert model.node.df is not None
         nodes = model.node.df.copy(deep=True)
         return nodes["meta_categorie"]
 
@@ -318,7 +315,6 @@ class NodeMetaCache:
 
         Optionally set all non-cached 'meta_categorie'-data to 'hoofdwater' (default).
         """
-        assert model.node.df is not None
         nodes = model.node.df
         nodes["meta_categorie"] = self.meta_category.copy(deep=True)
         if fill_nan:
@@ -423,7 +419,6 @@ def split_basin_along_route(
     :return: the Basin node IDs of the sections and the ManningResistance node IDs, in the order of the route
     """
     assert model.basin.area.df is not None and model.basin.profile.df is not None
-    assert model.link.df is not None and model.node.df is not None
     if model.get_node_type(basin_id) != "Basin":
         raise ValueError(f"Node {basin_id} is not a Basin")
     if not split_points or len(basin_names) != len(split_points) + 1 or len(manning_names) != len(split_points):

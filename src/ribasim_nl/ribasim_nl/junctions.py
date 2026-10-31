@@ -121,8 +121,6 @@ def find_common_linestring(
 
 
 def _junctionify(model: Model, links: gpd.GeoDataFrame, converging: bool = True) -> list[int]:
-    assert model.link.df is not None  # suppressing type-checking None option for .df
-    assert model.node.df is not None
     junction_ids = []
     field = "to_node_id" if converging else "from_node_id"
     node_type = model.node.df["node_type"]
@@ -170,10 +168,6 @@ def junctionify[M: Model](model: M) -> M:
 
     Assumes that all flow link geometries between node a and b start with point a and end with point b.
     """
-    # ensure available LinkTable
-    if model.link.df is None or model.node.df is None:
-        msg = f"No LinkTable or NodeTable available: {model.link.df=}, {model.node.df=}"
-        raise ValueError(msg)
     flow = model.link.df[model.link.df.link_type == "flow"]
     geometries = flow.geometry.to_numpy()
     disconnected = ~(

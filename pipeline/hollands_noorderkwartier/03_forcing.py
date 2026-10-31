@@ -46,7 +46,6 @@ level_boundary_node = ribasim_model.level_boundary.add(
 pump_node = ribasim_model.pump.add(Node(geometry=Point(122475, 491317)), [pump.Static(flow_rate=[11.67])])
 ribasim_model.link.add(ribasim_model.basin[2], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
-assert ribasim_model.node.df is not None
 ribasim_model.node.df.loc[level_boundary_node.node_id, "meta_node_id"] = level_boundary_node.node_id
 ribasim_model.node.df.loc[pump_node.node_id, "meta_node_id"] = pump_node.node_id
 
@@ -76,7 +75,6 @@ basin_aanvoer_off = (
 
 # add control, based on the meta_categorie
 keep_model_supply_basins(processor, ribasim_model)
-assert ribasim_model.basin.node is not None and ribasim_model.basin.node.df is not None
 basin_ids = set(ribasim_model.basin.node.df.index)
 basin_aanvoer_off = tuple(n for n in basin_aanvoer_off if n in basin_ids)
 
@@ -215,7 +213,6 @@ ribasim_model.pump.static.df.loc[
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
-assert ribasim_model.node.df is not None
 ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
 
 # lower the difference in waterlevel for each manning node, except those of storing basins

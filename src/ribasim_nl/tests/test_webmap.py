@@ -9,12 +9,14 @@ import pytest
 import xarray as xr
 from ribasim import Model, Node
 from ribasim.nodes import basin, level_boundary, tabulated_rating_curve
+from ribasim_nl.goodness_of_fit import MIN_COMPARED_DAYS
 from ribasim_nl.webmap import (
     NETCDF_NODES_PER_ROW_GROUP,
     TIME_STEPS_PER_ROW_GROUP,
     color_domain,
     downcast_int64,
     export_netcdf_table,
+    export_observations,
     export_results,
     export_webmap,
     file_hash,
@@ -183,6 +185,43 @@ def test_export_results(tmp_path):
     assert control["control_node_id"].tolist() == [7, 8, 8]
     assert control["control_state"].tolist() == ["on", "off", "on"]
     assert control["control_node_id"].dtype == "int32"
+
+
+def test_export_observations(tmp_path, observation_run, observed):
+    database, results_dir = observation_run
+    output = tmp_path / "webmap"
+    (output / "results").mkdir(parents=True)
+    # The times of the results as in the manifest, with one more at which nothing is measured
+    times = pd.DatetimeIndex([str(t) for t in np.append(observed.index.to_numpy(), np.datetime64("2021-01-01"))])
+    observation = export_observations(database, results_dir, times, output)
+
+    assert observation is not None
+    assert observation["count"] == 2
+    assert observation["min_days"] == MIN_COMPARED_DAYS
+    assert observation["variables"]["level"]["units"] == "m"
+    assert observation["variables"]["level"]["scale"] == "symlog"
+    assert observation["variables"]["level"]["domain"] == pytest.approx([-0.5, 0.5])
+    # The flow rate is simulated exactly, which would make an empty scale
+    assert observation["variables"]["flow_rate"]["domain"] == [-1.0, 1.0]
+
+    metrics = pd.read_parquet(observation["metrics"])
+    assert metrics.columns.tolist() == ["node_id", "name", "variable", "days", "nse", "kge", "bias"]
+    assert metrics["node_id"].tolist() == [4, 5]
+    assert metrics["name"].tolist() == ["afvoer", "peil"]
+    assert metrics["days"].tolist() == [len(observed)] * 2
+    assert metrics["nse"].iloc[0] == 1.0
+
+    by_time = pd.read_parquet(observation["by_time"])
+    assert by_time.columns.tolist() == ["node_id", "flow_rate", "level"]
+    assert by_time["node_id"].tolist()[:2] == [4, 5]
+    # Ordered by time, then by node
+    flow_rate = by_time["flow_rate"].to_numpy().reshape(len(times), 2)
+    level = by_time["level"].to_numpy().reshape(len(times), 2)
+    np.testing.assert_array_equal(flow_rate[:-1, 0], 0.0)
+    np.testing.assert_allclose(level[:-1, 1], 0.5)
+    # Observation 4 measures no level and 5 no flow rate, and neither measures at the last time
+    assert np.isnan(flow_rate[:, 1]).all() and np.isnan(level[:, 0]).all()
+    assert np.isnan(flow_rate[-1, 0]) and np.isnan(level[-1, 1])
 
 
 def test_color_domain():
