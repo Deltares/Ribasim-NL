@@ -64,11 +64,19 @@ This runs in a worktree dedicated to it, and is normally started every night by 
 
 1. Waits while a catch-up pull request is open, unless `dvc.lock` on `main` changed since its run. Then it closes it, since pull requests keep the `dvc.lock` of `main`.
 2. Skips a commit of `main` that it attempted before, also when that failed, unless given `--force`. It also skips while another catch-up run is busy, but not for runs of other pull requests, which go in the next catch-up run.
-3. Runs `pixi run repro-local --incremental --push` on `main`, which first installs the Ribasim core of `scripts/install_ribasim_core.py` if that changed. Since every stage depends on the `ribasim_nl` package, this usually reruns most of the pipeline.
+3. Runs `pixi run repro-local --incremental --push` on `main`, which first installs the Ribasim core of `scripts/install_ribasim_core.py` if that changed. Since every stage depends on the `ribasim_nl` package, this usually reruns most of the pipeline. With `--full` it runs all stages, see below.
 4. If `dvc.lock` changed, pushes the run to a new branch `repro-main-<date>-<time>`, opens the pull request, and publishes its model viewer preview.
 5. Has Claude describe the effect with the `describe-run` skill in `.claude/skills`, which can only read files, and not the credentials. The skill is also useful to describe the run of any other pull request.
 
 Review and merge the pull request yourself, like any other one.
+
+To redo the catch-up run of a commit, for instance when it ran with the wrong environment, run all stages in the worktree of the timer:
+
+```sh
+git fetch origin main
+git checkout --detach origin/main
+pixi run repro-main --force --full
+```
 
 ### The nightly timer
 
