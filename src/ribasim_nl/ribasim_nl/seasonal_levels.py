@@ -175,7 +175,6 @@ def joined_basins(model: Model) -> pd.Series:
     :return: the number of the group per Basin node_id
     """
     node_df, link_df = model.node.df, model.link.df
-    assert node_df is not None and link_df is not None
     node_type = node_df["node_type"]
     joining = node_type.index[node_type.isin(["Basin", "Junction", *JOINING_NODE_TYPES])]
     links = link_df.loc[
@@ -325,7 +324,6 @@ def _over_year(rows: pd.DataFrame, times: pd.Index) -> pd.DataFrame:
 
 def _neighbors(model: Model, node_ids: Sequence[int]) -> pd.DataFrame:
     """The first nodes upstream and downstream of connector nodes that are not a Junction."""
-    assert model.link.df is not None and model.node.df is not None
     outgoing, incoming = flow_link_graphs(model.link.df.rename_axis("link_id").reset_index())
     node_type = model.node.df["node_type"].to_dict()
     neighbors = {
@@ -375,7 +373,6 @@ def remove_seasonal_levels(model: Model) -> None:
     condition_df = model.discrete_control.condition.df
     logic_df = model.discrete_control.logic.df
     node_df = model.node.df
-    assert node_df is not None
     area_df = model.basin.area.df
     if area_df is not None:
         model.basin.area.df = area_df.drop(columns=list(META_COLUMNS.values()), errors="ignore")
@@ -462,7 +459,6 @@ def apply_seasonal_levels(
     condition_df = model.discrete_control.condition.df
     logic_df = model.discrete_control.logic.df
     node_df, link_df = model.node.df, model.link.df
-    assert node_df is not None and link_df is not None
     if regimes.empty or variable_df is None or condition_df is None or logic_df is None:
         return regimes
 
