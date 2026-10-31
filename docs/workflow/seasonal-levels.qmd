@@ -35,11 +35,13 @@ Limburg, Rijn en IJssel, Schieland en de Krimpenerwaard and Vallei en Veluwe hav
    Its target level stays the same in the season of which the target level of the peilgebied is closest to it, since the target levels of the model are checked with the water boards.
    The peilgebied gives the difference with the other season, and the bounds.
    If both target levels of the peilgebied are more than 0.5 m from that of the Basin, the peilgebied does not describe its water, and the Basin keeps its fixed level.
-2. The thresholds of the DiscreteControl conditions on the level of the Basin follow its target level.
+2. Basins that are joined by ManningResistance or LinearResistance nodes are one water in the model, since the flow between them follows their difference in level.
+   So they all get the level management of the largest area of them, also when that is a fixed level, relative to their own target level.
+3. The thresholds of the DiscreteControl conditions on the level of the Basin follow its target level.
    Thresholds with the default band of 5 cm around a level get the bounds of the target level instead.
-3. The Outlets and Pumps that a DiscreteControl node controls get a winter and a summer variant of each control state, such as `afvoer winter` and `afvoer zomer`, with the `min_upstream_level` and `max_downstream_level` of that season.
+4. The Outlets and Pumps that a DiscreteControl node controls get a winter and a summer variant of each control state, such as `afvoer winter` and `afvoer zomer`, with the `min_upstream_level` and `max_downstream_level` of that season.
    An extra condition on the season, on a variable with weight 0, switches between them.
-4. The initial level of the Basin follows its target level at the start of the model.
+5. The initial level of the Basin follows its target level at the start of the model.
 
 The levels change at once, at the begin of each transition.
 A gradual transition needs Ribasim to support parameters of control states that change over time.

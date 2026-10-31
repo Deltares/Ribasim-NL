@@ -5,11 +5,13 @@ import numpy as np
 import pandas as pd
 import pytest
 from ribasim import Node
-from ribasim.nodes import basin, discrete_control, level_boundary, outlet
+from ribasim.nodes import basin, discrete_control, level_boundary, manning_resistance, outlet
 from ribasim_nl.peilbeheer import DEFAULT_TRANSITIONS, SEASONS, TRANSITION_COLUMNS, complete_peilbeheer
 from ribasim_nl.seasonal_levels import (
     apply_seasonal_levels,
     assign_peilbeheer,
+    join_peilbeheer,
+    joined_basins,
     remove_seasonal_levels,
     season_switch,
     seasonal_differences,
@@ -98,6 +100,31 @@ def model() -> Model:
     return build_model(AAM)
 
 
+def join_basin(model: Model, size: float, target_level: float = TARGET_LEVEL) -> int:
+    """Add Basin 8 of `size` by `size` m outside the peilgebied, joined to Basin 3 by a ManningResistance and Junction."""
+    half = size / 2
+    model.basin.add(
+        Node(AAM + 8, Point(2000, 2000)),
+        [
+            basin.Profile(level=[-2.0, 1.0], area=[100.0, 100.0]),
+            basin.State(level=[target_level]),
+            basin.Area(
+                geometry=[MultiPolygon([box(2000 - half, 2000 - half, 2000 + half, 2000 + half)])],
+                meta_streefpeil=[target_level],
+            ),
+        ],
+    )
+    model.manning_resistance.add(
+        Node(AAM + 9, Point(2000, 1000)),
+        [manning_resistance.Static(length=[1000.0], manning_n=[0.04], profile_width=[10.0], profile_slope=[1.0])],
+    )
+    model.junction.add(Node(AAM + 10, Point(2000, 1500)))
+    model.link.add(model.basin[AAM + 3], model.manning_resistance[AAM + 9])
+    model.link.add(model.manning_resistance[AAM + 9], model.junction[AAM + 10])
+    model.link.add(model.junction[AAM + 10], model.basin[AAM + 8])
+    return AAM + 8
+
+
 def peilgebied(
     summer: float, winter: float, transitions: tuple = (pd.NA,) * 4, geometry=None, **bounds: float
 ) -> gpd.GeoDataFrame:
@@ -180,6 +207,27 @@ def test_assign_weirs(model):
     assert regime["peilgebied"] == "W2"
     assert regime[["streefpeil_zomer", "streefpeil_winter"]].tolist() == pytest.approx([-0.5, -0.6])
     assert assign_peilbeheer(model, peilgebied(-0.52, -0.62, geometry=Point(2650, 0))).empty
+
+
+def test_join_peilbeheer(model):
+    joined = join_basin(model, size=500, target_level=-0.4)
+    groups = joined_basins(model)
+    assert groups[AAM + 3] == groups[joined]
+    # the smaller joined Basin gets the level management of Basin 3, relative to its own target level
+    apply_seasonal_levels(model, peilgebied(summer=-0.5, winter=-0.7))
+    area = model.basin.area.df.set_index("node_id")
+    assert area.at[joined, "meta_peilgebied"] == "P1"
+    assert area.loc[joined, ["meta_streefpeil_zomer", "meta_streefpeil_winter", "meta_ondergrens_winter"]].tolist() == (
+        pytest.approx([-0.4, -0.6, -0.625])
+    )
+    assert model.basin.state.df.set_index("node_id").at[joined, "level"] == pytest.approx(-0.6)
+
+    # a larger joined Basin without level management keeps both at a fixed level
+    model = build_model(AAM)
+    join_basin(model, size=1500)
+    regimes = assign_peilbeheer(model, peilgebied(summer=-0.5, winter=-0.7))
+    assert len(regimes) == 1
+    assert join_peilbeheer(model, regimes).empty
 
 
 def test_seasonal_thresholds():

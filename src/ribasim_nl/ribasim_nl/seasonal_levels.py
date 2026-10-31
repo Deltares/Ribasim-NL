@@ -11,6 +11,8 @@ https://github.com/Deltares/Ribasim-NL/issues/893:
    level of the peilgebied is closest to it, since the target levels of the models are checked with the water boards.
    The peilgebied gives the difference with the other season, and the bounds of the target level. A peilgebied of
    which both target levels are far from that of the Basin does not describe its water, and is not assigned.
+   `join_peilbeheer` gives the Basins that are joined by resistance nodes, and so are one water in the model, the
+   level management of the largest area of them, also none.
 2. The thresholds of the DiscreteControl conditions on the level of a Basin follow its target level. Thresholds with
    the default band of `DEFAULT_LEVEL_THRESHOLD_RANGE` around a level get the bounds of the target level instead.
 3. The Outlets and Pumps controlled by a DiscreteControl node get a winter and a summer variant of each control state,
@@ -31,6 +33,7 @@ from collections.abc import Sequence
 from datetime import datetime
 
 import geopandas as gpd
+import networkx as nx
 import numpy as np
 import pandas as pd
 import shapely
@@ -62,6 +65,8 @@ MIN_OVERLAP = 0.5
 MAX_OFFSET = 0.5  # m
 # Peilgebieden that are points, such as weirs, belong to the Basins within this distance
 POINT_DISTANCE = 100.0  # m
+# The Basins joined by these nodes get the same level management, see `join_peilbeheer`
+JOINING_NODE_TYPES = ["ManningResistance", "LinearResistance"]
 LEVEL_LIMITS = ["min_upstream_level", "max_downstream_level"]
 THRESHOLDS = ["threshold_low", "threshold_high"]
 # The fixed levels and thresholds, to remove the seasons again
@@ -162,6 +167,83 @@ def assign_peilbeheer(
     regimes[LEVEL_COLUMNS] = regimes[LEVEL_COLUMNS].add(regimes["offset"], axis=0).round(4)
     regimes.index.name = "node_id"
     return regimes.loc[regimes["offset"].abs() <= max_offset]
+
+
+def joined_basins(model: Model) -> pd.Series:
+    """Group the Basins that are joined by ManningResistance or LinearResistance nodes, also through Junctions.
+
+    :return: the number of the group per Basin node_id
+    """
+    node_df, link_df = model.node.df, model.link.df
+    assert node_df is not None and link_df is not None
+    node_type = node_df["node_type"]
+    joining = node_type.index[node_type.isin(["Basin", "Junction", *JOINING_NODE_TYPES])]
+    links = link_df.loc[
+        link_df["link_type"].fillna("flow").eq("flow")
+        & link_df["from_node_id"].isin(joining)
+        & link_df["to_node_id"].isin(joining)
+    ]
+    graph = nx.Graph()
+    basins = node_type.index[node_type.eq("Basin")]
+    graph.add_nodes_from(basins)
+    graph.add_edges_from(zip(links["from_node_id"], links["to_node_id"], strict=True))
+    group = {node_id: i for i, component in enumerate(nx.connected_components(graph)) for node_id in component}
+    return pd.Series(group).loc[basins].rename_axis("node_id")
+
+
+def join_peilbeheer(model: Model, regimes: pd.DataFrame) -> pd.DataFrame:
+    """Give the Basins that are joined by resistance nodes the same level management.
+
+    The flow between these Basins follows their difference in level, so they are one water in the model, of which the
+    seasons should not change the levels relative to each other. Of their level management, also none, the one of the
+    largest area applies to all of them, relative to their own target level.
+
+    :param model: model
+    :param regimes: the level management of the Basins, see `assign_peilbeheer`
+    :return: the level management of the Basins, see `assign_peilbeheer`, with `overlap` and `offset` NaN for the
+        Basins that get it from the Basins they are joined to
+    """
+    if regimes.empty:
+        return regimes
+    area_df = model.basin.area.df
+    assert area_df is not None
+    area_df = area_df.loc[np.isfinite(area_df["meta_streefpeil"].astype(float))]
+    node_ids = area_df["node_id"].to_numpy()
+    basins = pd.DataFrame(
+        {
+            "area": pd.Series(shapely.area(area_df["geometry"].to_numpy()), index=node_ids).groupby(level=0).sum(),
+            "meta_streefpeil": area_df.groupby("node_id")["meta_streefpeil"].first().astype(float),
+        }
+    ).rename_axis("node_id")
+    basins["group"] = joined_basins(model).loc[basins.index]
+    # The level management of a Basin relative to its target level, which is empty for a Basin without one
+    relative = pd.concat([seasonal_differences(regimes).round(4), regimes[TRANSITION_COLUMNS]], axis=1)
+    basins["key"] = relative.astype(str).agg("|".join, axis=1).reindex(basins.index, fill_value="")
+
+    largest = basins.groupby(["group", "key"])["area"].sum().sort_values(ascending=False, kind="stable")
+    winner = largest.reset_index().drop_duplicates("group").set_index("group")["key"]
+    changed = basins.loc[basins["key"].ne(basins["group"].map(winner))]
+    # The largest Basin with the level management of its group, from which the changed Basins get it
+    winning = basins.loc[basins["key"].eq(basins["group"].map(winner))].sort_values(
+        "area", ascending=False, kind="stable"
+    )
+    source = changed["group"].map(winning.reset_index().drop_duplicates("group").set_index("group")["node_id"])
+    source = source.loc[source.isin(regimes.index)]
+
+    joined = regimes.loc[source.to_numpy()].set_axis(source.index)
+    shift = basins.loc[source.index, "meta_streefpeil"] - joined["meta_streefpeil"]
+    joined[LEVEL_COLUMNS] = joined[LEVEL_COLUMNS].add(shift, axis=0).round(4)
+    joined["meta_streefpeil"] = basins.loc[source.index, "meta_streefpeil"]
+    joined[["overlap", "offset"]] = np.nan
+    lost = changed.index.isin(regimes.index) & ~changed.index.isin(source.index)
+    LOG.info(
+        "Of the Basins joined by resistance nodes, %d get the level management of the others, %d lose theirs",
+        len(joined),
+        lost.sum(),
+    )
+    result = pd.concat([regimes.drop(index=changed.index, errors="ignore"), joined]).sort_index()
+    result.index.name = "node_id"
+    return result
 
 
 def season_switch(transitions: Sequence[str], year: int) -> pd.Series:
@@ -372,6 +454,7 @@ def apply_seasonal_levels(
     regimes = assign_peilbeheer(
         model, peilgebieden, authority=authority, min_overlap=min_overlap, max_offset=max_offset
     )
+    regimes = join_peilbeheer(model, regimes)
     LOG.info(
         "Assigned the level management of %d peilgebieden to %d Basins", regimes["peilgebied"].nunique(), len(regimes)
     )
