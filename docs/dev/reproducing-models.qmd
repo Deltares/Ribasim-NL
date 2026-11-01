@@ -54,6 +54,7 @@ Other findings:
 `ribasim_nl.crossings.renumber` numbers the nodes and links of the input models after those of 2024, `verwerkt/boezemmodel_ids.gpkg`, to which the feedback forms, the feedback scripts and the coupling refer.
 Basins match by the overlap of their areas, the other nodes by type and location, first those that connect the same Basins; nodes that are left match a node of the same type between the same Basins within 250 m.
 Unmatched nodes get IDs after the highest of 2024; links get the ID of the link between the same nodes.
+The feedback step numbers the links anew, in their order, so a link that is added or removed before it shifts the IDs of the links after it; the scripts that follow refer to links by their nodes.
 
 With exactly the same postprocessed data, the input models have the same IDs, but the coordinate noise above swaps a few nodes at the same place: the renumbering changes 6 nodes of Amstel, Gooi en Vecht and 8 of Zuiderzeeland back.
 The crossings of Wetterskip Fryslân of May 2025 cannot be reproduced: the same code on the same data finds some stacked crossings in another order, with numpy 2.2 and GEOS 3.13, with or without AVX2 and AVX-512, and so does the port.
