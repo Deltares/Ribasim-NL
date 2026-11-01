@@ -5635,3 +5635,737 @@ stages:
       md5: 8bac365888da058debfc9428bc347604.dir
       size: 3236077
       nfiles: 2
+  postprocessed_wetterskip_fryslan:
+    cmd: pixi run python pipeline/wetterskip_fryslan/00_postprocess.py
+    deps:
+    - path: 
+        data/WetterskipFryslan/aangeleverd/Na_levering/20250404_nieuwe_schematisatie
+      hash: md5
+      md5: 90be0cfa7c13b2cc1ce0bf0404717947.dir
+      size: 53464900
+      nfiles: 91
+    - path: pipeline/wetterskip_fryslan/00_postprocess.py
+      hash: md5
+      md5: 799ec524ef758639dbcabf30658f33a9
+      size: 11415
+    - path: src/peilbeheerst_model/peilbeheerst_model/general_functions.py
+      hash: md5
+      md5: 753a6af56278e08982b0596a6353e32d
+      size: 9812
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/WetterskipFryslan/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: 7bb9822384f1b85786fd16e8a5adff3c
+      size: 121282560
+  crossings@amstel_gooi_en_vecht:
+    cmd: pixi run python pipeline/00c_parse_crossings.py AmstelGooienVecht
+    deps:
+    - path: data/AmstelGooienVecht/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: 2172ecb6f09f3472b6d52c624bfa3aa4
+      size: 22945792
+    - path: pipeline/00c_parse_crossings.py
+      hash: md5
+      md5: 6d0f83b8dfe49cbd5854012f036bca9e
+      size: 1938
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/AmstelGooienVecht/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 40e9203be092d63ef8c56d5369f21822
+      size: 25350144
+  crossings@delfland:
+    cmd: pixi run python pipeline/00c_parse_crossings.py Delfland
+    deps:
+    - path: data/Delfland/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: 89452c289a0751016d261f17fb3cfc75
+      size: 20779008
+    - path: pipeline/00c_parse_crossings.py
+      hash: md5
+      md5: 6d0f83b8dfe49cbd5854012f036bca9e
+      size: 1938
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/Delfland/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 52608bf68ccbede77c929a9c8ead6e1b
+      size: 26705920
+  crossings@hollands_noorderkwartier:
+    cmd: pixi run python pipeline/00c_parse_crossings.py HollandsNoorderkwartier
+    deps:
+    - path: data/HollandsNoorderkwartier/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: 141e9799b5d602df8cb547db4dbeefb8
+      size: 81125376
+    - path: pipeline/00c_parse_crossings.py
+      hash: md5
+      md5: 6d0f83b8dfe49cbd5854012f036bca9e
+      size: 1938
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/HollandsNoorderkwartier/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 7c80fb84af069d96ad15c3f84d6af051
+      size: 90497024
+  crossings@hollandse_delta:
+    cmd: pixi run python pipeline/00c_parse_crossings.py HollandseDelta
+    deps:
+    - path: data/HollandseDelta/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: 3d943429050d9a9c25a820130885217f
+      size: 22532096
+    - path: pipeline/00c_parse_crossings.py
+      hash: md5
+      md5: 6d0f83b8dfe49cbd5854012f036bca9e
+      size: 1938
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/HollandseDelta/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 21181c270add6d44968faba662e6f194
+      size: 26501120
+  crossings@rijnland:
+    cmd: pixi run python pipeline/00c_parse_crossings.py Rijnland
+    deps:
+    - path: data/Rijnland/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: cda983b3e018b890125601b34116ee80
+      size: 133926912
+    - path: pipeline/00c_parse_crossings.py
+      hash: md5
+      md5: 6d0f83b8dfe49cbd5854012f036bca9e
+      size: 1938
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/Rijnland/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 2c09c2c7b26b03b2bc447b0626d5bb79
+      size: 144281600
+  crossings@rivierenland:
+    cmd: pixi run python pipeline/00c_parse_crossings.py Rivierenland
+    deps:
+    - path: data/Rivierenland/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: 658ab545296aa2654f4f08847a44a9e2
+      size: 105492480
+    - path: pipeline/00c_parse_crossings.py
+      hash: md5
+      md5: 6d0f83b8dfe49cbd5854012f036bca9e
+      size: 1938
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/Rivierenland/verwerkt/crossings.gpkg
+      hash: md5
+      md5: d7bfacce44a85e0bb5f5fac62f60bffb
+      size: 108015616
+  crossings@scheldestromen:
+    cmd: pixi run python pipeline/00c_parse_crossings.py Scheldestromen
+    deps:
+    - path: data/Scheldestromen/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: 67969f6907be1ece9ebcbc270500f24c
+      size: 50032640
+    - path: pipeline/00c_parse_crossings.py
+      hash: md5
+      md5: 6d0f83b8dfe49cbd5854012f036bca9e
+      size: 1938
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/Scheldestromen/verwerkt/crossings.gpkg
+      hash: md5
+      md5: ae591c66bf52f8516336332b3eb0fea5
+      size: 52355072
+  crossings@schieland_en_de_krimpenerwaard:
+    cmd: pixi run python pipeline/00c_parse_crossings.py 
+      SchielandendeKrimpenerwaard
+    deps:
+    - path: data/SchielandendeKrimpenerwaard/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: 3816cec8977dea4f6b52b2da3aed201c
+      size: 11853824
+    - path: pipeline/00c_parse_crossings.py
+      hash: md5
+      md5: 6d0f83b8dfe49cbd5854012f036bca9e
+      size: 1938
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/SchielandendeKrimpenerwaard/verwerkt/crossings.gpkg
+      hash: md5
+      md5: ea94fe8eea9d4c0b1d1e96f28e313b1c
+      size: 14270464
+  crossings@zuiderzeeland:
+    cmd: pixi run python pipeline/00c_parse_crossings.py Zuiderzeeland
+    deps:
+    - path: data/Zuiderzeeland/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: 9e50e1f2317a5218fcff9bcd4ccd61e1
+      size: 19054592
+    - path: pipeline/00c_parse_crossings.py
+      hash: md5
+      md5: 6d0f83b8dfe49cbd5854012f036bca9e
+      size: 1938
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/Zuiderzeeland/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 4ff8173efa6490242bb299a388ae785e
+      size: 21176320
+  shortest_paths@amstel_gooi_en_vecht:
+    cmd: pixi run python pipeline/00d_shortest_paths.py AmstelGooienVecht
+    deps:
+    - path: data/AmstelGooienVecht/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 40e9203be092d63ef8c56d5369f21822
+      size: 25350144
+    - path: pipeline/00d_shortest_paths.py
+      hash: md5
+      md5: 5060b192823f1f32a97cee84da4021e5
+      size: 1031
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/AmstelGooienVecht/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: c3ac02597a069268891599cb97db2727
+      size: 11980800
+  shortest_paths@delfland:
+    cmd: pixi run python pipeline/00d_shortest_paths.py Delfland
+    deps:
+    - path: data/Delfland/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 52608bf68ccbede77c929a9c8ead6e1b
+      size: 26705920
+    - path: pipeline/00d_shortest_paths.py
+      hash: md5
+      md5: 5060b192823f1f32a97cee84da4021e5
+      size: 1031
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/Delfland/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: a6add739e697d31f8db46af910cda4b7
+      size: 9867264
+  shortest_paths@hollands_noorderkwartier:
+    cmd: pixi run python pipeline/00d_shortest_paths.py HollandsNoorderkwartier
+    deps:
+    - path: data/HollandsNoorderkwartier/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 7c80fb84af069d96ad15c3f84d6af051
+      size: 90497024
+    - path: pipeline/00d_shortest_paths.py
+      hash: md5
+      md5: 5060b192823f1f32a97cee84da4021e5
+      size: 1031
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/HollandsNoorderkwartier/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: 0b9cc05e26ce95eb3d129c3f532376b6
+      size: 29331456
+  shortest_paths@hollandse_delta:
+    cmd: pixi run python pipeline/00d_shortest_paths.py HollandseDelta
+    deps:
+    - path: data/HollandseDelta/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 21181c270add6d44968faba662e6f194
+      size: 26501120
+    - path: pipeline/00d_shortest_paths.py
+      hash: md5
+      md5: 5060b192823f1f32a97cee84da4021e5
+      size: 1031
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/HollandseDelta/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: 99d9063c470dd759ce44e7268ed80abb
+      size: 774144
+  shortest_paths@rijnland:
+    cmd: pixi run python pipeline/00d_shortest_paths.py Rijnland
+    deps:
+    - path: data/Rijnland/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 2c09c2c7b26b03b2bc447b0626d5bb79
+      size: 144281600
+    - path: pipeline/00d_shortest_paths.py
+      hash: md5
+      md5: 5060b192823f1f32a97cee84da4021e5
+      size: 1031
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/Rijnland/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: 6a15f7e2d616190b83d6916e9bf3cb49
+      size: 60252160
+  shortest_paths@rivierenland:
+    cmd: pixi run python pipeline/00d_shortest_paths.py Rivierenland
+    deps:
+    - path: data/Rivierenland/verwerkt/crossings.gpkg
+      hash: md5
+      md5: d7bfacce44a85e0bb5f5fac62f60bffb
+      size: 108015616
+    - path: pipeline/00d_shortest_paths.py
+      hash: md5
+      md5: 5060b192823f1f32a97cee84da4021e5
+      size: 1031
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/Rivierenland/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: 42c8351c6dce98de39cbe30c3a58535f
+      size: 12468224
+  shortest_paths@scheldestromen:
+    cmd: pixi run python pipeline/00d_shortest_paths.py Scheldestromen
+    deps:
+    - path: data/Scheldestromen/verwerkt/crossings.gpkg
+      hash: md5
+      md5: ae591c66bf52f8516336332b3eb0fea5
+      size: 52355072
+    - path: pipeline/00d_shortest_paths.py
+      hash: md5
+      md5: 5060b192823f1f32a97cee84da4021e5
+      size: 1031
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/Scheldestromen/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: 6a5bc8a63b374424edd834a028e48076
+      size: 172032
+  shortest_paths@schieland_en_de_krimpenerwaard:
+    cmd: pixi run python pipeline/00d_shortest_paths.py 
+      SchielandendeKrimpenerwaard
+    deps:
+    - path: data/SchielandendeKrimpenerwaard/verwerkt/crossings.gpkg
+      hash: md5
+      md5: ea94fe8eea9d4c0b1d1e96f28e313b1c
+      size: 14270464
+    - path: pipeline/00d_shortest_paths.py
+      hash: md5
+      md5: 5060b192823f1f32a97cee84da4021e5
+      size: 1031
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/SchielandendeKrimpenerwaard/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: 527a0337596bfd84ffb73f6a3ec0d201
+      size: 1519616
+  shortest_paths@wetterskip_fryslan:
+    cmd: pixi run python pipeline/00d_shortest_paths.py WetterskipFryslan
+    deps:
+    - path: data/WetterskipFryslan/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 30eead937b432994cd2f7e7a4c536c9e
+      size: 154771456
+    - path: pipeline/00d_shortest_paths.py
+      hash: md5
+      md5: 5060b192823f1f32a97cee84da4021e5
+      size: 1031
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/WetterskipFryslan/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: 10eca90b43ddee18c57794eb125c7908
+      size: 59658240
+  shortest_paths@zuiderzeeland:
+    cmd: pixi run python pipeline/00d_shortest_paths.py Zuiderzeeland
+    deps:
+    - path: data/Zuiderzeeland/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 4ff8173efa6490242bb299a388ae785e
+      size: 21176320
+    - path: pipeline/00d_shortest_paths.py
+      hash: md5
+      md5: 5060b192823f1f32a97cee84da4021e5
+      size: 1031
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/Zuiderzeeland/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: 00f666baec682a1c98419f8f62e71bed
+      size: 9064448
+  boezemmodel@amstel_gooi_en_vecht:
+    cmd: pixi run python pipeline/00e_crossings_to_ribasim.py AmstelGooienVecht
+    deps:
+    - path: data/AmstelGooienVecht/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 40e9203be092d63ef8c56d5369f21822
+      size: 25350144
+    - path: data/AmstelGooienVecht/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: 2172ecb6f09f3472b6d52c624bfa3aa4
+      size: 22945792
+    - path: data/AmstelGooienVecht/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: c3ac02597a069268891599cb97db2727
+      size: 11980800
+    - path: pipeline/00e_crossings_to_ribasim.py
+      hash: md5
+      md5: 6ab70bf63efd6c0686f86078ff012326
+      size: 2576
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: 
+        data/AmstelGooienVecht/modellen/AmstelGooienVecht_boezemmodel_2024_12_0
+      hash: md5
+      md5: c5a4dd58f62026c9e7c36f33c63b239f.dir
+      size: 38516803
+      nfiles: 6
+  boezemmodel@delfland:
+    cmd: pixi run python pipeline/00e_crossings_to_ribasim.py Delfland
+    deps:
+    - path: data/Delfland/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 52608bf68ccbede77c929a9c8ead6e1b
+      size: 26705920
+    - path: data/Delfland/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: 89452c289a0751016d261f17fb3cfc75
+      size: 20779008
+    - path: data/Delfland/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: a6add739e697d31f8db46af910cda4b7
+      size: 9867264
+    - path: pipeline/00e_crossings_to_ribasim.py
+      hash: md5
+      md5: 6ab70bf63efd6c0686f86078ff012326
+      size: 2576
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/Delfland/modellen/Delfland_boezemmodel_2024_12_0
+      hash: md5
+      md5: 24a795576faa97f32f86f3f8bb9c6784.dir
+      size: 28407875
+      nfiles: 6
+  boezemmodel@hollands_noorderkwartier:
+    cmd: pixi run python pipeline/00e_crossings_to_ribasim.py 
+      HollandsNoorderkwartier
+    deps:
+    - path: data/HollandsNoorderkwartier/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 7c80fb84af069d96ad15c3f84d6af051
+      size: 90497024
+    - path: data/HollandsNoorderkwartier/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: 141e9799b5d602df8cb547db4dbeefb8
+      size: 81125376
+    - path: data/HollandsNoorderkwartier/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: 0b9cc05e26ce95eb3d129c3f532376b6
+      size: 29331456
+    - path: pipeline/00e_crossings_to_ribasim.py
+      hash: md5
+      md5: 6ab70bf63efd6c0686f86078ff012326
+      size: 2576
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: 
+        data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_boezemmodel_2024_12_0
+      hash: md5
+      md5: 8f4f2f880d62690b641a7735eb266e24.dir
+      size: 97568835
+      nfiles: 6
+  boezemmodel@hollandse_delta:
+    cmd: pixi run python pipeline/00e_crossings_to_ribasim.py HollandseDelta
+    deps:
+    - path: data/HollandseDelta/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 21181c270add6d44968faba662e6f194
+      size: 26501120
+    - path: data/HollandseDelta/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: 3d943429050d9a9c25a820130885217f
+      size: 22532096
+    - path: data/HollandseDelta/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: 99d9063c470dd759ce44e7268ed80abb
+      size: 774144
+    - path: pipeline/00e_crossings_to_ribasim.py
+      hash: md5
+      md5: 6ab70bf63efd6c0686f86078ff012326
+      size: 2576
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/HollandseDelta/modellen/HollandseDelta_boezemmodel_2024_12_3
+      hash: md5
+      md5: 07b8f5e5c4fc8812690468fabd65512e.dir
+      size: 30529603
+      nfiles: 6
+  boezemmodel@rijnland:
+    cmd: pixi run python pipeline/00e_crossings_to_ribasim.py Rijnland
+    deps:
+    - path: data/Rijnland/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 2c09c2c7b26b03b2bc447b0626d5bb79
+      size: 144281600
+    - path: data/Rijnland/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: cda983b3e018b890125601b34116ee80
+      size: 133926912
+    - path: data/Rijnland/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: 6a15f7e2d616190b83d6916e9bf3cb49
+      size: 60252160
+    - path: pipeline/00e_crossings_to_ribasim.py
+      hash: md5
+      md5: 6ab70bf63efd6c0686f86078ff012326
+      size: 2576
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/Rijnland/modellen/Rijnland_boezemmodel_2024_12_3
+      hash: md5
+      md5: 76924c88b00b2016b7a41df7ff54d146.dir
+      size: 146221123
+      nfiles: 6
+  boezemmodel@rivierenland:
+    cmd: pixi run python pipeline/00e_crossings_to_ribasim.py Rivierenland
+    deps:
+    - path: data/Rivierenland/verwerkt/crossings.gpkg
+      hash: md5
+      md5: d7bfacce44a85e0bb5f5fac62f60bffb
+      size: 108015616
+    - path: data/Rivierenland/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: 658ab545296aa2654f4f08847a44a9e2
+      size: 105492480
+    - path: data/Rivierenland/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: 42c8351c6dce98de39cbe30c3a58535f
+      size: 12468224
+    - path: pipeline/00e_crossings_to_ribasim.py
+      hash: md5
+      md5: 6ab70bf63efd6c0686f86078ff012326
+      size: 2576
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/Rivierenland/modellen/Rivierenland_boezemmodel_2024_12_0
+      hash: md5
+      md5: ca43cb13ca15ad0f9a31c4e93afbf9e4.dir
+      size: 120858691
+      nfiles: 6
+  boezemmodel@scheldestromen:
+    cmd: pixi run python pipeline/00e_crossings_to_ribasim.py Scheldestromen
+    deps:
+    - path: data/Scheldestromen/verwerkt/crossings.gpkg
+      hash: md5
+      md5: ae591c66bf52f8516336332b3eb0fea5
+      size: 52355072
+    - path: data/Scheldestromen/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: 67969f6907be1ece9ebcbc270500f24c
+      size: 50032640
+    - path: data/Scheldestromen/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: 6a5bc8a63b374424edd834a028e48076
+      size: 172032
+    - path: pipeline/00e_crossings_to_ribasim.py
+      hash: md5
+      md5: 6ab70bf63efd6c0686f86078ff012326
+      size: 2576
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/Scheldestromen/modellen/Scheldestromen_boezemmodel_2024_12_0
+      hash: md5
+      md5: f6f3437b563a1a4c0606d31cdc1de810.dir
+      size: 54093891
+      nfiles: 6
+  boezemmodel@schieland_en_de_krimpenerwaard:
+    cmd: pixi run python pipeline/00e_crossings_to_ribasim.py 
+      SchielandendeKrimpenerwaard
+    deps:
+    - path: data/SchielandendeKrimpenerwaard/verwerkt/crossings.gpkg
+      hash: md5
+      md5: ea94fe8eea9d4c0b1d1e96f28e313b1c
+      size: 14270464
+    - path: data/SchielandendeKrimpenerwaard/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: 3816cec8977dea4f6b52b2da3aed201c
+      size: 11853824
+    - path: data/SchielandendeKrimpenerwaard/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: 527a0337596bfd84ffb73f6a3ec0d201
+      size: 1519616
+    - path: pipeline/00e_crossings_to_ribasim.py
+      hash: md5
+      md5: 6ab70bf63efd6c0686f86078ff012326
+      size: 2576
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: 
+        data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_boezemmodel_2024_12_1
+      hash: md5
+      md5: ccdac96767bac1195dbbb84248178d66.dir
+      size: 16402499
+      nfiles: 6
+  boezemmodel@wetterskip_fryslan:
+    cmd: pixi run python pipeline/00e_crossings_to_ribasim.py WetterskipFryslan
+    deps:
+    - path: data/WetterskipFryslan/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 30eead937b432994cd2f7e7a4c536c9e
+      size: 154771456
+    - path: data/WetterskipFryslan/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: 7bb9822384f1b85786fd16e8a5adff3c
+      size: 121282560
+    - path: data/WetterskipFryslan/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: 10eca90b43ddee18c57794eb125c7908
+      size: 59658240
+    - path: pipeline/00e_crossings_to_ribasim.py
+      hash: md5
+      md5: 6ab70bf63efd6c0686f86078ff012326
+      size: 2576
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: 
+        data/WetterskipFryslan/modellen/WetterskipFryslan_boezemmodel_2025_5_1
+      hash: md5
+      md5: 1699d57bca457d87e3fd6fcbf0fd1f3f.dir
+      size: 153720899
+      nfiles: 6
+  boezemmodel@zuiderzeeland:
+    cmd: pixi run python pipeline/00e_crossings_to_ribasim.py Zuiderzeeland
+    deps:
+    - path: data/Zuiderzeeland/verwerkt/crossings.gpkg
+      hash: md5
+      md5: 4ff8173efa6490242bb299a388ae785e
+      size: 21176320
+    - path: data/Zuiderzeeland/verwerkt/postprocessed.gpkg
+      hash: md5
+      md5: 9e50e1f2317a5218fcff9bcd4ccd61e1
+      size: 19054592
+    - path: data/Zuiderzeeland/verwerkt/shortest_path.gpkg
+      hash: md5
+      md5: 00f666baec682a1c98419f8f62e71bed
+      size: 9064448
+    - path: pipeline/00e_crossings_to_ribasim.py
+      hash: md5
+      md5: 6ab70bf63efd6c0686f86078ff012326
+      size: 2576
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: 6853bbde2036b17ea0ea1a1a7214ad2f.dir
+      size: 2075878
+      nfiles: 118
+    outs:
+    - path: data/Zuiderzeeland/modellen/Zuiderzeeland_boezemmodel_2024_12_0
+      hash: md5
+      md5: 341b0ef772ca1d359aa3287c2fa26fe1.dir
+      size: 28678211
+      nfiles: 6

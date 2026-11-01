@@ -75,7 +75,9 @@ root = [
 replace-imports-with-any = ["tqdm", "tqdm.*", "openpyxl", "openpyxl.*"]
 
 # Keep type checking enabled by default. These overrides ignore only the named
-# diagnostic for the listed files, which are pre-pipeline peilbeheerst and hydamo code.
+# diagnostic for the listed files, which are pre-pipeline peilbeheerst and hydamo code,
+# and the port of its parse_crossings, which works on the values of pandas rows that
+# pandas-stubs types as any scalar.
 [[tool.ty.overrides]]
 include = [
     "src/peilbeheerst_model/peilbeheerst_model/assign_flushing.py",
@@ -87,9 +89,8 @@ call-non-callable = "ignore"
 [[tool.ty.overrides]]
 include = [
     "src/peilbeheerst_model/peilbeheerst_model/assign_flushing.py",
-    "src/peilbeheerst_model/peilbeheerst_model/parse_crossings.py",
     "src/peilbeheerst_model/peilbeheerst_model/postprocess_data/post-processing_HHNK.py",
-    "src/peilbeheerst_model/peilbeheerst_model/shortest_path.py",
+    "src/ribasim_nl/ribasim_nl/crossings/parse.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -97,8 +98,7 @@ invalid-argument-type = "ignore"
 
 [[tool.ty.overrides]]
 include = [
-    "src/peilbeheerst_model/peilbeheerst_model/crossings_to_ribasim.py",
-    "src/peilbeheerst_model/peilbeheerst_model/parse_crossings.py",
+    "src/ribasim_nl/ribasim_nl/crossings/parse.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -107,7 +107,6 @@ invalid-assignment = "ignore"
 [[tool.ty.overrides]]
 include = [
     "src/peilbeheerst_model/peilbeheerst_model/assign_flushing.py",
-    "src/peilbeheerst_model/peilbeheerst_model/parse_crossings.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -116,8 +115,7 @@ invalid-return-type = "ignore"
 [[tool.ty.overrides]]
 include = [
     "src/hydamo/hydamo/datamodel.py",
-    "src/peilbeheerst_model/peilbeheerst_model/crossings_to_ribasim.py",
-    "src/peilbeheerst_model/peilbeheerst_model/parse_crossings.py",
+    "src/ribasim_nl/ribasim_nl/crossings/parse.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -125,17 +123,8 @@ no-matching-overload = "ignore"
 
 [[tool.ty.overrides]]
 include = [
-    "src/peilbeheerst_model/peilbeheerst_model/crossings_to_ribasim.py",
-]
-
-[tool.ty.overrides.rules]
-not-iterable = "ignore"
-
-[[tool.ty.overrides]]
-include = [
     "src/peilbeheerst_model/peilbeheerst_model/assign_flushing.py",
-    "src/peilbeheerst_model/peilbeheerst_model/crossings_to_ribasim.py",
-    "src/peilbeheerst_model/peilbeheerst_model/parse_crossings.py",
+    "src/ribasim_nl/ribasim_nl/crossings/parse.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -143,19 +132,9 @@ not-subscriptable = "ignore"
 
 [[tool.ty.overrides]]
 include = [
-    "src/peilbeheerst_model/peilbeheerst_model/shortest_path.py",
-]
-
-[tool.ty.overrides.rules]
-possibly-missing-submodule = "ignore"
-
-[[tool.ty.overrides]]
-include = [
     "src/peilbeheerst_model/peilbeheerst_model/assign_flushing.py",
-    "src/peilbeheerst_model/peilbeheerst_model/crossings_to_ribasim.py",
-    "src/peilbeheerst_model/peilbeheerst_model/parse_crossings.py",
     "src/peilbeheerst_model/peilbeheerst_model/preprocess_data/Rivierenland.py",
-    "src/peilbeheerst_model/peilbeheerst_model/shortest_path.py",
+    "src/ribasim_nl/ribasim_nl/crossings/parse.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -163,7 +142,7 @@ unresolved-attribute = "ignore"
 
 [[tool.ty.overrides]]
 include = [
-    "src/peilbeheerst_model/peilbeheerst_model/parse_crossings.py",
+    "src/ribasim_nl/ribasim_nl/crossings/parse.py",
 ]
 
 [tool.ty.overrides.rules]
