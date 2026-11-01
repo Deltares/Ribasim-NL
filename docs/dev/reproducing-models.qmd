@@ -4,8 +4,7 @@ title: "Reproducing models"
 
 Many scripts refer to the nodes, links and areas of a model by their ID, row number or geometry: the `01_fix_model.py` scripts and `model_edits.gpkg` files of the [gravity controlled](../workflow/gravity-controlled.qmd) models, and the feedback forms of the [level controlled](../workflow/level-controlled.qmd) models.
 A model that is rebuilt from its source data must therefore get the same IDs, or all these references break.
-This page describes how the input models of the gravity controlled models were reproduced ([#903](https://github.com/Deltares/Ribasim-NL/issues/903)), and the differences between library versions that were found on the way.
-They apply as well when the level controlled models are rebuilt.
+This page describes how the input models of the gravity controlled ([#903](https://github.com/Deltares/Ribasim-NL/issues/903)) and level controlled models were reproduced, and the differences between library versions that were found on the way.
 
 ## The input models of the gravity controlled models
 
@@ -20,6 +19,33 @@ All node IDs and link IDs of the 11 input models are reproduced, and so are the 
 There, 3 basin areas are not assigned to a Basin, which shifts the fids of the others, so its fix script now selects basin areas by geometry, and 4 nodes get another name.
 The geometries of the basin areas differ slightly, see [GEOS](#sec-geos).
 
+## The input models of the level controlled models {#sec-level-controlled}
+
+HKV made the input models `<authority>_boezemmodel_<version>` of the 10 level controlled water authorities with `peilbeheerst_model`, in three steps: `parse_crossings` found the crossings of the hydro-objects with the boundaries of the peilgebieden in spring 2024, notebooks found the shortest paths through the boezems, and `crossings_to_ribasim` made the models on 4 December 2024, at commit `91b23140` of [#244](https://github.com/Deltares/Ribasim-NL/pull/244).
+Wetterskip Fryslân followed on 19 and 20 May 2025, at commit `50638080` of [#331](https://github.com/Deltares/Ribasim-NL/pull/331).
+This code is ported to `ribasim_nl.crossings`, and the DVC stages `crossings`, `shortest_paths` and `boezemmodel` run it, see [Level controlled](../workflow/level-controlled.qmd).
+
+All node IDs, link IDs and tables of the 10 input models are reproduced.
+Only 17 links to and from the boezems of Rijnland, Scheldestromen, Schieland en de Krimpenerwaard and Wetterskip Fryslân get another geometry: they follow the shortest paths, of which a few now take another route of the same length or have their vertices in another order, see [GEOS](#sec-geos).
+
+The source data is the postprocessed data, `verwerkt/postprocessed.gpkg`.
+For Wetterskip Fryslân, `pipeline/wetterskip_fryslan/00_postprocess.py` makes it from the delivery of April 2025, which reproduces it byte for byte.
+For the others, `scripts/extract_postprocessed.py` extracted it from the crossings files of 2024, which hold a copy of the data they were made from:
+
+- Rijnland from `rijnland_crossings_v04.gpkg`. Version 5 added the connections of the inlets to the boezem that Rijnland delivered in April 2026, which its profiles now add themselves.
+- Schieland en de Krimpenerwaard from `hhsk_crossings_v04.gpkg`. Its profiles used a copy with all hydro-objects, rather than the primary ones, which they now read from `verwerkt/Parametrisatie_data/HHSK.gpkg`.
+- Hollandse Delta: its postprocessed data changed after the crossings were made. Its 26 peilgebieden `KRW_body_*` became 22, and the aggregation area `P-V03.005` was left out. The extraction restores the 26 from the layer `peilgebied_met_streefpeil` of the `database_checks.gpkg` of the input model, and `P-V03.005` from its basin area. Its shortest paths of 2024 were made with older boezems, so 8 links get another geometry, and one basin area has its vertices in another order.
+
+The scripts that made the postprocessed data, in `src/peilbeheerst_model`, could not become stages.
+For Amstel, Gooi en Vecht, they were made reproducible in [#170](https://github.com/Deltares/Ribasim-NL/pull/170), but their result of December 2024 differs from the data of its crossings: 15 streefpeilen were rounded to float32, such as -2.0999999 instead of -2.1, the columns `meta_name` and `meta_capaciteit` are missing, and there is a layer `afsluitmiddel`.
+The others read files that HKV had and the cloud storage does not, such as `Data_overig/HWS/hws_buffer_<authority>.gpkg` and the preprocessed data in `Data_preprocessed`.
+
+The crossings of Wetterskip Fryslân are source data.
+Its crossings of May 2025 cannot be reproduced: the same code on the same data with numpy 2.2 and GEOS 3.13, with or without AVX2 and AVX-512, finds the crossings in another order, and so does the port.
+
+In Hollandse Delta, a hydro-object crosses the boundary between peilgebieden 94 and 95 almost in parallel, so the direction of the crossing depends on rounding: GEOS 3.12 found it from 95 to 94, GEOS 3.14 also from 94 to 95.
+`pipeline/00c_parse_crossings.py` excludes the second, and checks that it is found.
+
 ## Process
 
 1. Find the code and the data as they were. The git history has the code, and the cloud storage has the data with its modification dates. Compare the dates of the inputs with those of the outputs: an input that changed after the run cannot reproduce it.
@@ -31,16 +57,25 @@ The geometries of the basin areas differ slightly, see [GEOS](#sec-geos).
 For the input models, the reference environment was a separate Pixi project with Python 3.12, pandas 2.1.4, numpy 1.26.4, geopandas 0.14.4, shapely 2.0.4 with GEOS 3.12.2, fiona 1.9.6, pyogrio 0.7 and networkx 3.3.
 The environment Sweco used is not known, but this one reproduces its IDs.
 
+For the level controlled input models, three reference environments followed the lock files of then.
+The crossings: Python 3.12.2, numpy 1.26.4, pandas 2.2.1, geopandas 0.14.3, shapely 2.0.3 with GEOS 3.12.1, fiona 1.9.6, pyogrio 0.7.2 and networkx 3.3, without AVX-512, which `NPY_DISABLE_CPU_FEATURES` turns off.
+The input models of December 2024: Python 3.12.7, numpy 2.0.2, pandas 2.2.3, geopandas 1.0.1, shapely 2.0.6 with GEOS 3.13.0, ribasim 2024.11.0, pandera 0.20.4 and pydantic 2.9.2.
+That of May 2025: Python 3.13.3, numpy 2.2.5, pandas 2.2.3, shapely 2.1.0 with GEOS 3.13.1, networkx 3.4.2 and ribasim 2025.3.0.
+
 ## Library differences
 
-| Library | Old behaviour | Effect | In `ribasim_nl.lumping` |
-|:--------|:--------------|:-------|:------------------------|
-| pandas < 2.2 | An inner merge groups the rows by key, in order of first appearance in the left table. Since pandas 2.2 it keeps the order of the left table. | The order of the nodes and links, and so their IDs | `utils.merge_grouped` |
-| numpy < 2 | `argsort(kind="quicksort")`, also used by `sort_values`, is an unstable introsort, which decides the order of equal values. With AVX-512, numpy 1.26 used another algorithm, and numpy 2 uses yet others, which depend on the CPU as well. The 2024 models were made without AVX-512. | The link IDs of the boundaries, and the order of the basin areas | `utils.quicksort_order`, the introsort of numpy 1.26 in Python |
-| Ribasim 2024.9 | Wrote the tables sorted by node ID with that unstable sort | The row numbers of the basin areas | `utils.quicksort_order` |
-| geopandas < 1 | `overlay` fixes invalid polygons with `buffer(0)`, keeps the polygonal parts of collections, and with pandas < 2.2 groups the intersections by the polygon of the second table | Which basin gets an unassigned area | `utils.overlay_intersection` |
-| pandas < 3 | Formats a missing string in an f-string as `None` | The IDs of edges that are split | In `utils.split_edges_by_dx` |
-| GEOS | See [below](#sec-geos) | The geometry of the basin areas | Not emulated |
+| Library | Old behaviour | Effect | Emulated in `ribasim_nl` |
+|:--------|:--------------|:-------|:-------------------------|
+| pandas < 2.2 | An inner merge groups the rows by key, in order of first appearance in the left table. Since pandas 2.2 it keeps the order of the left table. | The order of the nodes and links, and so their IDs | `lumping.utils.merge_grouped` |
+| numpy < 2 | `argsort(kind="quicksort")`, also used by `sort_values` and `sort_index`, is an unstable introsort, which decides the order of equal values. With AVX-512, numpy 1.26 used another algorithm, and numpy 2 uses yet others, which depend on the CPU as well. The 2024 models were made without AVX-512. | The link IDs of the boundaries, the order of the basin areas, and the order of the crossings | `lumping.utils.quicksort_order`, the introsort of numpy 1.26 in Python, and with it `crossings.parse.sort_index_2024` and `sort_values_2024` |
+| Ribasim 2024.9 | Wrote the tables sorted by node ID with that unstable sort | The row numbers of the basin areas | `lumping.utils.quicksort_order` |
+| Ribasim 2024.11 | Kept the index of a table assigned to a model, on which some joins of `crossings_to_ribasim` aligned the rows | The metadata of the level controlled input models | `crossings.model` keeps the tables as then until the model is written |
+| Ribasim 2025.3 | Changed the geometries of the basin areas when assigned, so their names were not set | No names for the basins of Wetterskip Fryslân | `crossings.model.Options.add_names` names the pumps only |
+| geopandas < 1 | `overlay` fixes invalid polygons with `buffer(0)`, keeps the polygonal parts of collections, and with pandas < 2.2 groups the intersections by the polygon of the second table | Which basin gets an unassigned area | `lumping.utils.overlay_intersection` |
+| pandas < 3 | Formats a missing string in an f-string as `None` | The IDs of edges that are split | In `lumping.utils.split_edges_by_dx` |
+| pandas < 3 | Strings are objects with `None` for missing values, which are equal. In pandas 3 they are `NaN`, which are not. | Extra crossings between two missing peilgebieden | `crossings.parse.pandas2_strings` and `crossings.model.to_object` |
+| Python | The order of a `set` of strings differs per process | The order of the IDs in the columns `stuw` and `gemaal` of the crossings, but not the model | They are sorted |
+| GEOS | See [below](#sec-geos) | The geometry of the basin areas, and of links along shortest paths, and one crossing | Not emulated |
 
 ## GEOS {#sec-geos}
 
@@ -48,7 +83,11 @@ The results of geometric operations such as union, intersection, `buffer(0)` and
 Coordinates differ by about 1e-9 m, the results get other slivers and tiny holes, and adjacent parts of a union may or may not be merged.
 That cannot be emulated: GEOS 3.12.2 reproduces 858 of the 859 basin areas of De Dommel topologically, but only 190 of the 543 of Stichtse Rijnlanden.
 
-The IDs do not depend on it, but scripts that select geometries do.
+The IDs of the level controlled models depend on it in one place: a crossing in Hollandse Delta that GEOS 3.14 finds in both directions, see [above](#sec-level-controlled).
+Their shortest paths through the boezems depend on it as well: a few take another route of the same length, or merge their lines with the vertices in another order, which gives their links another geometry.
+And in Rijnland, 56 peilgebieden without crossings get another aggregation area in the column `agg_area` of the peilgebieden of the crossings, since GEOS 3.14 computes other overlaps with the aggregation areas; nothing uses it.
+
+The IDs of the gravity controlled models do not depend on it, but scripts that select geometries do.
 They now allow for these differences:
 
 - `Model.select_basin_area`, used by `remove_basin_area` and `update_basin_area`, takes geometries as equal if their boundaries are on average at most 1 mm apart. Without a basin area that equals a polygon, it selects the basin areas that together make it up, or else splits the polygon from the basin area that contains it. So it works whether adjacent parts are merged or not.

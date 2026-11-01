@@ -1,10 +1,10 @@
 {
   "solver": {
     "computation_time": 2.3,
-    "rhs_calls": 1564000.0,
-    "mean_dt": 167.9,
-    "dt_p05": 96.09,
-    "rejected_fraction": 0.08215
+    "rhs_calls": 1577000.0,
+    "mean_dt": 161.8,
+    "dt_p05": 96.68,
+    "rejected_fraction": 0.07706
   },
   "observations": {
     "compared": 628.0,
@@ -22,16 +22,16 @@
     "Maasmond": 0.4526,
     "Den Oever buiten": 0.4608,
     "Kornwerderzand buiten": 0.3987,
-    "IJmuiden binnen": 0.3565
+    "IJmuiden binnen": 0.3561
   },
   "level_p01": {
     "IJsselmeer": -0.3952,
-    "Markermeer": -0.5583,
+    "Markermeer": -0.5582,
     "Veluwemeer": -0.3362,
-    "Noordzeekanaal": -0.4077,
-    "Amsterdam-Rijnkanaal Breukelen": -0.4091,
+    "Noordzeekanaal": -0.4044,
+    "Amsterdam-Rijnkanaal Breukelen": -0.4073,
     "Volkerak": -0.1336,
-    "Haringvliet": 0.02094,
+    "Haringvliet": 0.0209,
     "Twentekanaal (Kanaal Zutphen-Enschede)": 9.977,
     "Julianakanaal": 44.04
   },
@@ -41,8 +41,8 @@
     "Veluwemeer": -0.03651,
     "Noordzeekanaal": -0.3906,
     "Amsterdam-Rijnkanaal Breukelen": -0.3534,
-    "Volkerak": 0.1132,
-    "Haringvliet": 0.08442,
+    "Volkerak": 0.1129,
+    "Haringvliet": 0.08453,
     "Twentekanaal (Kanaal Zutphen-Enschede)": 9.985,
     "Julianakanaal": 44.07
   }

@@ -1,17 +1,22 @@
 """Generation of profiles table for Schieland en de Krimpenerwaard."""
 
+import geopandas as gpd
 from ribasim_nl.profiles import gen_profiles, implement
 
-from ribasim_nl import Model
+from ribasim_nl import CloudStorage, Model
 
 if __name__ == "__main__":
     waterschap = "SchielandendeKrimpenerwaard"
+    cloud = CloudStorage()
+    # all hydro-objects, rather than the primary hydro-objects and culverts of the crossings
+    hydro_objects = gpd.read_file(
+        cloud.joinpath(waterschap, "verwerkt/Parametrisatie_data/HHSK.gpkg"), layer="hydroobject_original"
+    )
     gen_profiles.main(
         waterschap,
-        "hhsk_crossings_voor_profielen_met_OG_hydroobjecten.gpkg",
+        hydro_objects=hydro_objects,
         export_profile_tables=True,
         export_intermediate_output=True,
-        sync=False,
     )
     src_toml = f"data/{waterschap}/modellen/{waterschap}_feedback/ribasim.toml"
     dst_toml = f"data/{waterschap}/modellen/{waterschap}_profiles/ribasim.toml"

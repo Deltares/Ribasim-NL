@@ -8,11 +8,9 @@ if __name__ == "__main__":
     waterschap = "HollandsNoorderkwartier"
     gen_profiles.main(
         waterschap,
-        "hhnk_crossings_v26.gpkg",
         cross_sections_available=False,
         export_profile_tables=True,
         export_intermediate_output=True,
-        sync=False,
     )
     src_toml = f"data/{waterschap}/modellen/{waterschap}_feedback/ribasim.toml"
     dst_toml = f"data/{waterschap}/modellen/{waterschap}_profiles/ribasim.toml"
