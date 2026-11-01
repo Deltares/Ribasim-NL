@@ -9,5 +9,6 @@ see `docs/dev/reproducing-models.qmd`.
 1. `ribasim_nl.lumping.hydamo.apply_hydamo_changes` applies the manual changes to the HyDAMO data.
 2. `ribasim_nl.lumping.hydamo.read_hydamo_network` or `ribasim_nl.lumping.dhydro.read_dhydro_network` reads the network.
 3. `ribasim_nl.lumping.network.lump_network` splits it at the split nodes into basins.
-4. `ribasim_nl.lumping.model.lumped_model` converts the lumped network into a Ribasim model.
+4. `ribasim_nl.lumping.model.lumped_model` converts the lumped network into a Ribasim model, giving every area to a
+   basin.
 """

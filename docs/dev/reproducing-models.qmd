@@ -16,9 +16,9 @@ This code is ported to `ribasim_nl.lumping`, and the DVC pipeline runs it:
 - `pipeline/00b_lump_model.py` lumps the HyDAMO network of 10 water authorities into their input model.
 - `pipeline/noorderzijlvest/00_lump_model.py` lumps the D-HYDRO model of Noorderzijlvest.
 
-All node IDs and link IDs of the 11 input models are reproduced, and so are the row numbers (fids) of their basin areas, except in Limburg, whose input data differs from the data of the run in 2024.
-There, 3 basin areas are not assigned to a Basin, which shifts the fids of the others, so its fix script now selects basin areas by geometry, and 4 nodes get another name.
-The geometries of the basin areas differ slightly, see [GEOS](#sec-geos).
+All node IDs and link IDs of the 11 input models are reproduced.
+In Limburg, whose input data differs from the data of the run in 2024, 4 nodes get another name.
+The basin areas are no longer reproduced, since the lumping now gives every area to a basin, see [Moving fixes into the lumping](#sec-moving-fixes).
 
 ## Process
 
@@ -36,9 +36,9 @@ The environment Sweco used is not known, but this one reproduces its IDs.
 | Library | Old behaviour | Effect | In `ribasim_nl.lumping` |
 |:--------|:--------------|:-------|:------------------------|
 | pandas < 2.2 | An inner merge groups the rows by key, in order of first appearance in the left table. Since pandas 2.2 it keeps the order of the left table. | The order of the nodes and links, and so their IDs | `utils.merge_grouped` |
-| numpy < 2 | `argsort(kind="quicksort")`, also used by `sort_values`, is an unstable introsort, which decides the order of equal values. With AVX-512, numpy 1.26 used another algorithm, and numpy 2 uses yet others, which depend on the CPU as well. The 2024 models were made without AVX-512. | The link IDs of the boundaries, and the order of the basin areas | `utils.quicksort_order`, the introsort of numpy 1.26 in Python |
-| Ribasim 2024.9 | Wrote the tables sorted by node ID with that unstable sort | The row numbers of the basin areas | `utils.quicksort_order` |
-| geopandas < 1 | `overlay` fixes invalid polygons with `buffer(0)`, keeps the polygonal parts of collections, and with pandas < 2.2 groups the intersections by the polygon of the second table | Which basin gets an unassigned area | `utils.overlay_intersection` |
+| numpy < 2 | `argsort(kind="quicksort")`, also used by `sort_values`, is an unstable introsort, which decides the order of equal values. With AVX-512, numpy 1.26 used another algorithm, and numpy 2 uses yet others, which depend on the CPU as well. The 2024 models were made without AVX-512. | The link IDs of the boundaries, and the order of the basin areas | `utils.quicksort_order`, the introsort of numpy 1.26 in Python, for the link IDs |
+| Ribasim 2024.9 | Wrote the tables sorted by node ID with that unstable sort | The row numbers of the basin areas | No longer emulated |
+| geopandas < 1 | `overlay` fixes invalid polygons with `buffer(0)`, keeps the polygonal parts of collections, and with pandas < 2.2 groups the intersections by the polygon of the second table | Which basin gets an unassigned area | No longer emulated |
 | pandas < 3 | Formats a missing string in an f-string as `None` | The IDs of edges that are split | In `utils.split_edges_by_dx` |
 | GEOS | See [below](#sec-geos) | The geometry of the basin areas | Not emulated |
 
@@ -51,20 +51,16 @@ That cannot be emulated: GEOS 3.12.2 reproduces 858 of the 859 basin areas of De
 The IDs do not depend on it, but scripts that select geometries do.
 They now allow for these differences:
 
-- `Model.select_basin_area`, used by `remove_basin_area` and `update_basin_area`, takes geometries as equal if their boundaries are on average at most 1 mm apart. Without a basin area that equals a polygon, it selects the basin areas that together make it up, or else splits the polygon from the basin area that contains it. So it works whether adjacent parts are merged or not.
+- `Model.select_basin_area`, used by `remove_basin_area` and `update_basin_area`, takes geometries as equal if their boundaries are on average at most 1 mm apart. Without a basin area that equals a polygon, it selects the basin areas that together make it up, or else splits the polygon from the basin areas that cover it. So it works whether adjacent parts are merged or not. It skips slivers.
 - `ribasim_nl.geometry.connected_parts` splits a (Multi)Polygon in the parts connected to the part with a given point, and the other parts, instead of taking the parts by position.
 
 A union with slivers can also go wrong, in GEOS 3.12 as well as 3.14: it can lose or add whole parts.
 In Hunze en Aas, a union of 25 pieces of a basin area lost 2.1 km², and the union of a basin area of 61 vertices with a sliver of 1e-9 m² gained 0.066 km².
 `ribasim_nl.geometry.union_polygons` checks that a union is not larger than the polygons together, and contains a point inside each polygon. If not, it takes the union again with a fixed precision of 1 mm, or without the slivers.
-`ribasim_nl.geodataframe.assign_node_ids_by_largest_overlap` uses it.
+The lumping and `Model.dissolve_basin_area` use it.
 That check does not catch a part lost within a large polygon, though.
 Overlays with a fixed precision (`grid_size`), on geometries made valid at that precision with `shapely.set_precision`, are robust.
 `ribasim_nl.berging.supply_area_basin_ids` overlays basin areas with supply areas that way, since a floating point overlay found no overlap for 3 basins of Drents Overijsselse Delta that lie entirely in a supply area.
-
-Some results remain sensitive to slivers.
-`assign_node_ids_by_largest_overlap` gives the holes in an area code to the basin area it overlaps most, also when that overlap is a sliver.
-An area code that lies in a hole may then go to another basin area, or to none, with the regenerated input model: this changes 5 basin areas of Rijn en IJssel by up to 0.6 km².
 
 ## Writing reproducible code
 
@@ -75,12 +71,16 @@ An area code that lies in a hole may then go to another basin area, or to none, 
 - Where the result of an overlay decides something, overlay with a fixed precision, on geometries made valid at that precision.
 - The DVC pipeline records the code, data and environment of every output, in git, `dvc.lock` and `pixi.lock`, so an output can always be reproduced.
 
-## Moving fixes into the lumping
+## Moving fixes into the lumping {#sec-moving-fixes}
 
 The `01_fix_model.py` scripts correct the input models afterwards.
-Now that the pipeline makes the input models, most of these fixes can move into the lumping or its inputs, or the lumping algorithm can change, so that the input models are right from the start:
+Now that the pipeline makes the input models, most of these fixes can move into the lumping or its inputs, or the lumping algorithm can change, so that the input models are right from the start.
+These have moved:
 
-- **Holes in the basin areas.** `ribasim_nl.lumping.network.assign_unassigned_areas` gives areas without a basin to the neighbouring basin area they share most with, but only within their drainage area, and not for Vallei en Veluwe. The fix scripts of 6 authorities fill the remaining holes from `verwerkt/4_ribasim/areas.gpkg`: Brabantse Delta, Hunze en Aas, Rijn en IJssel and Vechtstromen with `assign_node_ids_by_largest_overlap`, Aa en Maas and De Dommel with code of their own. They overlay the areas with the basin areas again, so slivers can decide where an area goes. The lumping knows the basin of each area directly. Choose a rule there for areas without a neighbour in their drainage area, for instance the neighbour with the longest shared boundary, and keep exclusions, such as the Twentekanaal areas of Vechtstromen, as source data. Then the hole filling, `fix_unassigned_basin_area` and `remove_unassigned_basin_area` can go from the fix scripts.
-- **One areas file.** For Brabantse Delta, De Dommel and Hunze en Aas, `verwerkt/4_ribasim/areas.gpkg` differs from the `verwerkt/3_input/areas.gpkg` of the lumping.
-- **Edits of the lumping inputs.** Splitting basin areas with lines, or removing and renaming them with `model_edits.gpkg`, can become edits of the split nodes, boundaries and areas that the lumping reads, which have stable codes. The tolerant `Model.select_basin_area` only bridges until then.
+- **Lost basins.** The lumping of 2024 left out the basins whose ID was taken by a split node, and those at a LevelBoundary without split node, while links still referred to them. The fix scripts added them again, and removed the duplicate links. `ribasim_nl.lumping.model.number_lost_basins` now does that, with the IDs the fix scripts gave them.
+- **Basin areas.** Every area of `verwerkt/3_input/areas.gpkg` goes to a basin, see `ribasim_nl.lumping.network.assign_areas`: the basin it drains to, or else the basin with whose areas it shares the longest border, preferably in its drainage area. Each basin gets one MultiPolygon, and gaps between them up to 5000 m² are filled. The fix scripts no longer fill holes from `verwerkt/4_ribasim/areas.gpkg`, which differed from it for 3 authorities. As their last step, they fill the holes that their own edits leave with `Model.fill_basin_area_holes`, by the same rules, which also checks that every Basin has a basin area. A Basin that a fix script adds gets its areas by their code, since the area that its node lies in can be far too small. Parts outside the model are excluded there, such as the Twentekanaal of the Rijkswaterstaat model in Vechtstromen.
+
+These remain:
+
+- **Edits of the lumping inputs.** Splitting basin areas with lines, or removing and renaming them with `model_edits.gpkg`, can become edits of the split nodes, boundaries and areas that the lumping reads, which have stable codes. The tolerant `Model.select_basin_area` only bridges until then. The area split lines of Stichtse Rijnlanden, for instance, were drawn on the basin areas of 2024. Splitting `areas.gpkg` along them before the lumping gives 20 of the 28 basins that need them an area by drainage.
 - **Node IDs.** They follow from the order of the boundaries, split nodes and basins, so a new split node renumbers all basins after it. That breaks the references to node IDs in the remaining fix scripts, in `model_edits.gpkg`, and in `pipeline/09_koppelen_modellen.py`. Move the fixes of an authority together, and where references remain, refer to nodes by a stable key, such as their code.

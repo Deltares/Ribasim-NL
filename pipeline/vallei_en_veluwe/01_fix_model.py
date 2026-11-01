@@ -4,12 +4,11 @@ from typing import Any, cast
 
 import geopandas as gpd
 import pandas as pd
-from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
-from shapely.geometry import LineString, MultiPolygon, Point
+from shapely.geometry import LineString, MultiPolygon
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -22,6 +21,7 @@ name = "venv"
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 fix_user_data_gpkg = cloud.joinpath(authority, "verwerkt/fix_user_data.gpkg")
+areas_gpkg = cloud.joinpath(authority, "verwerkt/3_input/areas.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt/model_edits_aanvoer.gpkg")
 
@@ -46,30 +46,6 @@ basin_data = [
 outlet_data = outlet.Static(flow_rate=[5.0])
 
 
-# %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2401873626
-# Verwijderen duplicate links
-
-model.link.df.drop_duplicates(inplace=True)
-
-# %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2401876430
-
-# Toevoegen ontbrekende basins (oplossen topologie)
-basin_links_df = network_validator.link_incorrect_connectivity()
-basin_nodes_df = network_validator.node_invalid_connectivity()
-
-for row in basin_nodes_df.itertuples():
-    # maak basin-node
-    basin_node = model.basin.add(Node(geometry=cast(Point, row.geometry)), tables=basin_data)
-
-    # update link_table
-    model.link.df.loc[basin_links_df[basin_links_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
-        basin_node.node_id
-    )
-    model.link.df.loc[basin_links_df[basin_links_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
-        basin_node.node_id
-    )
-
-
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2401959032
 
 # Oplossen verkeerde takrichting
@@ -90,10 +66,6 @@ for node_id in [24, 694]:
 # Veluwemeer at Elburg verwijderen
 for node_id in [3, 1277]:
     model.remove_node(node_id, remove_links=True)
-
-# %% https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2402257101
-
-model.fix_unassigned_basin_area()
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2402281396
 
@@ -145,10 +117,7 @@ model.remove_node(644, remove_links=True)
 model.remove_node(736, remove_links=True)
 model.merge_basins(node_id=1139, to_node_id=959, are_connected=False)
 model.merge_basins(node_id=1086, to_node_id=1137, are_connected=True)
-
-model.fix_unassigned_basin_area()
 assert model.basin.area.df is not None
-model.basin.area.df = model.basin.area.df[~model.basin.area.df.index.isin(model.unassigned_basin_area.index)]
 
 # %%
 # corrigeren knoop-topologie
@@ -198,9 +167,6 @@ actions = [
 ]
 actions = [i for i in actions if i in gpd.list_layers(model_edits_gpkg).name.to_list()]
 model.apply_edits(model_edits_gpkg, actions, sort_by_order=True)
-
-# remove unassigned basin area
-model.remove_unassigned_basin_area()
 
 # Valleikanaal verkeerd geschematiseerd
 model.redirect_link(link_id=138, to_node_id=1095)
@@ -354,6 +320,9 @@ sanitize_node_table(
     names=names,
 )
 
+
+# %% give the holes that the edits left in the basin areas to a basin
+model.fill_basin_area_holes(areas_gpkg)
 
 #  %% write model
 model.use_validation = True

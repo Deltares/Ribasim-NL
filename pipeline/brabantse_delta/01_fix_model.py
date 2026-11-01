@@ -3,11 +3,8 @@ from typing import cast
 
 import geopandas as gpd
 import pandas as pd
-from pandera.typing.geopandas import GeoDataFrame
 from ribasim import Node
-from ribasim.geometry.area import BasinAreaSchema
 from ribasim.nodes import basin, level_boundary, outlet
-from ribasim_nl.geodataframe import assign_node_ids_by_largest_overlap
 from ribasim_nl.geometry import drop_z
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
@@ -24,9 +21,7 @@ run_model = False
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
-
-ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
-ribasim_areas_bewerkt_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas_bewerkt.gpkg")
+areas_gpkg = cloud.joinpath(authority, "verwerkt/3_input/areas.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
 # %% read model and hydroobject
@@ -34,9 +29,6 @@ model = Model.read(ribasim_toml)
 network_validator = NetworkValidator(model)
 
 hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
-
-
-ribasim_areas_gdf = gpd.read_file(ribasim_areas_gpkg, fid_as_index=True, layer="areas")
 
 # %% some stuff we'll need again
 level_data = level_boundary.Static(level=[0])
@@ -110,11 +102,6 @@ model.apply_edits(model_edits_gpkg, gpd.list_layers(model_edits_gpkg).name)
 link_ids = [2451, 2137, 2484, 2229]
 for link_id in link_ids:
     model.reverse_link(link_id=link_id)
-# %%
-
-# %%
-# remove unassigned basin area
-model.remove_unassigned_basin_area()
 
 # %% corrigeren knoop-topologie
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
@@ -126,22 +113,6 @@ for row in network_validator.link_incorrect_type_connectivity(
     from_node_type="LevelBoundary", to_node_type="ManningResistance"
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet")
-
-# %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code)
-# by overlapping the Ribasim area file based on largest overlap
-# then assign Ribasim node-ID's to areas with the same area code.
-# Many nodata areas are removed by this method
-
-# Step 1: Clean geometries
-ribasim_areas_gdf["geometry"] = ribasim_areas_gdf.buffer(-0.01).buffer(0.01)
-
-# Step 2: Overlay
-assert model.basin.area.df is not None
-combined_basin_areas_gdf = assign_node_ids_by_largest_overlap(ribasim_areas_gdf, model.basin.area.df)
-combined_basin_areas_gdf.to_file(ribasim_areas_bewerkt_gpkg, driver="GPKG")
-
-# Assign to model
-model.basin.area.df = GeoDataFrame[BasinAreaSchema](combined_basin_areas_gdf)
 
 # %%
 # fixes model
@@ -263,6 +234,9 @@ model.node.df.loc[
     "meta_gestuwd",
 ] = True
 
+
+# %% give the holes that the edits left in the basin areas to a basin
+model.fill_basin_area_holes(areas_gpkg)
 
 #  %% write model
 model.use_validation = True

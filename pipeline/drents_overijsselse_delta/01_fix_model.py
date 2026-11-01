@@ -5,7 +5,7 @@ import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet
-from ribasim_nl.geometry import split_basin_multi_polygon
+from ribasim_nl.geometry import polygon_parts, split_basin_multi_polygon
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
@@ -27,6 +27,21 @@ duikersifonhevel_gpkg = cloud.joinpath(authority, "aangeleverd/Aanlevering_20231
 
 model_edits_path = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 fix_user_data_path = cloud.joinpath(authority, "verwerkt/fix_user_data.gpkg")
+areas_gpkg = cloud.joinpath(authority, "verwerkt/3_input/areas.gpkg")
+
+# the areas of the NW boezem, the basin of LevelBoundary 28, which the lumping gives to its neighbours
+NW_BOEZEM = [f"peilgebiedpraktijk.{i}" for i in (252, 580, 1245, 1355, 1437, 1451)]
+# the areas of the basins that this script adds, or that share their area with basin 2576, which it removes
+BASIN_AREAS = {
+    83: [259, 1146, 1243],
+    2240: [
+        *(198, 199, 200, 202, 428, 794, 857, 870, 922, 1352, 1381, 1396, 1397, 1398, 1422, 1461, 1477, 1478, 1507),
+        *(1552, 1553, 1575, 1661, 1662, 1934, 1936),
+    ],
+    2577: [1134],
+    2581: [1602],
+    2583: [1196, 1464],
+}
 
 duikersifonhevel_gdf = gpd.read_file(
     duikersifonhevel_gpkg,
@@ -59,30 +74,11 @@ basin_data = [
 outlet_data = outlet.Static(flow_rate=[5.0])
 
 
-# %% see: https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2393424844
-# Verwijderen duplicate links
-
-model.link.df.drop_duplicates(inplace=True)
-
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2393458802
-
-# Toevoegen ontbrekende basins (oplossen topologie)
 model.remove_node(7, remove_links=True)
 model.remove_node(84, remove_links=True)
-basin_links_df = network_validator.link_incorrect_connectivity()
-basin_nodes_df = network_validator.node_invalid_connectivity()
-
-for row in basin_nodes_df.itertuples():
-    # maak basin-node
-    basin_node = model.basin.add(Node(geometry=cast(Point, row.geometry)), tables=basin_data)
-
-    # update link_table
-    model.link.df.loc[basin_links_df[basin_links_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
-        basin_node.node_id
-    )
-    model.link.df.loc[basin_links_df[basin_links_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
-        basin_node.node_id
-    )
+# the basin of LevelBoundary 7, which the lumping adds back, but the old fix script removed with its link first
+model.remove_node(2576)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2393672367
 
@@ -157,8 +153,6 @@ model.link.add(model.pump[701], basin_node)
 
 # Aansluiten NW boezem op Fryslan
 
-# basin /area 1681 op te knippen nabij basin 1717 (rode lijn)
-model.split_basin(geometry=cast(LineString, split_line_gdf.at[14, "geometry"]))
 assert model.basin.area.df is not None
 model.basin.area.df = model.basin.area.df[model.basin.area.df.node_id != 1717]
 
@@ -201,22 +195,22 @@ for link_id in [1081, 518]:
 # %% https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2399425885
 # Opknippen NW boezem
 
-poly1, poly2 = split_basin_multi_polygon(
-    cast(MultiPolygon, model.basin.area.df.at[598, "geometry"]), cast(LineString, split_line_gdf.at[15, "geometry"])
-)
-model.basin.area.df.loc[model.basin.area.df.node_id == 1681, ["geometry"]] = poly1  # ty: ignore[invalid-assignment]
+areas_gdf = gpd.read_file(areas_gpkg, layer="areas")
+nw_boezem = MultiPolygon(polygon_parts(areas_gdf[areas_gdf["code"].isin(NW_BOEZEM)].union_all()))
+poly1, poly2 = split_basin_multi_polygon(nw_boezem, cast(LineString, split_line_gdf.at[15, "geometry"]))
+model.basin.area.df = model.basin.area.df[model.basin.area.df.node_id != 1681]
+model.add_basin_area(poly1, node_id=1681)
 
 poly1, poly2 = split_basin_multi_polygon(poly2, cast(LineString, split_line_gdf.at[16, "geometry"]))
-model.basin.area.df.loc[598] = {"node_id": 1686, "geometry": poly1}  # ty: ignore[invalid-assignment]
+model.add_basin_area(poly1, node_id=1686)
 
 poly1, poly2 = split_basin_multi_polygon(poly2, cast(LineString, split_line_gdf.at[17, "geometry"]))
-model.basin.area.df.loc[model.basin.area.df.index.max() + 1] = {"geometry": poly1, "node_id": 1695}  # ty: ignore[invalid-assignment]
-model.basin.area.df.crs = model.crs
+model.add_basin_area(poly1, node_id=1695)
 
-tables = [*basin_data, basin.Area(geometry=[poly2])]
 basin_node = model.basin.add(
-    Node(geometry=cast(LineString, hydroobject_gdf.at[19608, "geometry"]).boundary.geoms[1]), tables=tables
+    Node(geometry=cast(LineString, hydroobject_gdf.at[19608, "geometry"]).boundary.geoms[1]), tables=basin_data
 )
+model.add_basin_area(poly2, node_id=basin_node.node_id)
 
 
 model.move_node(1686, cast(LineString, hydroobject_gdf.at[19566, "geometry"]).boundary.geoms[1])
@@ -488,9 +482,10 @@ model.merge_basins(node_id=2004, to_node_id=2377, are_connected=True)
 
 model.remove_link(from_node_id=281, to_node_id=2554)
 
-# remove unassigned basin area
-model.fix_unassigned_basin_area()
-model.remove_unassigned_basin_area()
+for node_id, numbers in BASIN_AREAS.items():
+    codes = [f"peilgebiedpraktijk.{i}" for i in numbers]
+    model.add_basin_area(areas_gdf[areas_gdf["code"].isin(codes)].union_all(), node_id=node_id)
+
 
 model = reset_static_tables(model)
 
@@ -566,6 +561,9 @@ sanitize_node_table(
 # %% set flow-boundaries to level-boundaries (plus outlet)
 model.replace_flow_boundaries_by_level_boundaries()
 
+
+# %% give the holes that the edits left in the basin areas to a basin
+model.fill_basin_area_holes(areas_gpkg)
 
 #  %% write model
 model.use_validation = True
