@@ -558,7 +558,6 @@ ribasim_model.remove_node(2125, True)
 ribasim_model.remove_node(2747, True)
 
 # (re) set 'meta_node_id'
-assert ribasim_model.node.df is not None
 for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
     mask = ribasim_model.node.df["node_type"] == node_type
     ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index

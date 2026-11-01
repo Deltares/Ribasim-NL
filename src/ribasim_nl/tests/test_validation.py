@@ -3,6 +3,7 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, pump
 from ribasim_nl.validation import (
     _connector_through_junction_issues,
+    _flow_demand_capacity_issues,
     _listen_to_junction_issues,
     _manning_resistance_issues,
     _uncontrolled_control_state_issues,
@@ -140,6 +141,17 @@ def test_uncontrolled_control_states(controlled_outlet_model):
     issues = _uncontrolled_control_state_issues(model)
     assert len(issues) == 1
     assert "Outlet" in issues[0] and "[2]" in issues[0]
+
+
+def test_flow_demand_capacity(controlled_outlet_model):
+    model = controlled_outlet_model
+    assert _flow_demand_capacity_issues(model) == []
+    # without allocation, Ribasim ignores the part of a demand above max_flow_rate
+    model.outlet.static.df.loc[model.outlet.static.df.node_id == 6, "max_flow_rate"] = 0.4
+    assert _flow_demand_capacity_issues(model) == [
+        "FlowDemand must not exceed the max_flow_rate of its Pump or Outlet in any control state; "
+        "invalid (FlowDemand, connector) node IDs: [(7, 6)]"
+    ]
 
 
 def test_merge_outlets_keeps_discrete_control(controlled_outlet_model):

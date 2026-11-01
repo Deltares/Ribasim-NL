@@ -34,7 +34,6 @@ name = "aam"
 # %% Check if model exist, otherwise download
 ribasim_dir = cloud.joinpath(authority, f"modellen/{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
-database_gpkg = ribasim_toml.with_name("database.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 afwateringseenheden_shp = cloud.joinpath(
     authority, "verwerkt/1_ontvangen_data/Na_levering_202404/afwateringseenheden_WAM/Afwateringseenheden.shp"
@@ -69,7 +68,6 @@ outlet_data = outlet.Static(flow_rate=[5.0])
 # %% https://github.com/Deltares/Ribasim-NL/issues/149#issuecomment-2421617819
 
 # Verwijderen duplicate links
-assert model.link.df is not None
 model.link.df.drop_duplicates(inplace=True)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/149#issuecomment-2421959240
@@ -250,7 +248,6 @@ for row in network_validator.link_incorrect_type_connectivity(
 
 # %%
 # basin-profielen/state updaten
-assert model.basin.node is not None and model.basin.node.df is not None
 df = pd.DataFrame(
     {
         "node_id": np.repeat(model.basin.node.df.index.to_numpy(), 2),
@@ -268,7 +265,6 @@ model.basin.state.df = DataFrame[BasinStateSchema](df)
 
 # %%
 # tabulated_rating_curves updaten
-assert model.tabulated_rating_curve.node is not None and model.tabulated_rating_curve.node.df is not None
 df = pd.DataFrame(
     {
         "node_id": np.repeat(model.tabulated_rating_curve.node.df.index.to_numpy(), 2),
@@ -290,7 +286,6 @@ model.tabulated_rating_curve.static.df.loc[
 # %%
 
 # level_boundaries updaten
-assert model.level_boundary.node is not None and model.level_boundary.node.df is not None
 df = pd.DataFrame(
     {
         "node_id": model.level_boundary.node.df.index.to_list(),
@@ -302,7 +297,6 @@ model.level_boundary.static.df = DataFrame[LevelBoundaryStaticSchema](df)
 
 # %%
 # manning_resistance updaten
-assert model.manning_resistance.node is not None and model.manning_resistance.node.df is not None
 length = len(model.manning_resistance.node.df)
 df = pd.DataFrame(
     {
@@ -318,7 +312,6 @@ model.manning_resistance.static.df = DataFrame[ManningResistanceStaticSchema](df
 
 # %%
 # flow boundaries updaten
-assert model.flow_boundary.node is not None and model.flow_boundary.node.df is not None
 length = len(model.flow_boundary.node.df)
 df = pd.DataFrame(
     {
@@ -675,7 +668,6 @@ for row in network_validator.link_incorrect_type_connectivity(
 
 # %% sanitize node-table
 # TabulatedRatingCurve to Outlet
-assert model.node.df is not None
 for row in model.node.df[model.node.df.node_type == "TabulatedRatingCurve"].itertuples():
     node_id = row.Index
     model.update_node(node_id=node_id, node_type="Outlet")
@@ -684,7 +676,6 @@ for row in model.node.df[model.node.df.node_type == "TabulatedRatingCurve"].iter
 model.node.df.loc[model.basin.node.df.index[model.basin.node.df["meta_categorie"].isna()], "meta_categorie"] = (
     "hoofdwater"
 )
-assert model.outlet.node is not None and model.outlet.node.df is not None
 model.node.df.loc[model.outlet.node.df.index[model.outlet.node.df["meta_categorie"].isna()], "meta_categorie"] = (
     "hoofdwater"
 )

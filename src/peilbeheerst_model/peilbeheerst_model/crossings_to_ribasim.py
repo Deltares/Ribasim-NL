@@ -1463,9 +1463,8 @@ class RibasimNetwork:
         ]
 
         # add the outlets if this code is already ran before
-        if model.outlet.node.df is not None:
-            inlaten_outlet = model.outlet.node.df.loc[model.outlet.node.df.node_id.isin(inlaten_TRC)]
-            inlaten_TRC = pd.concat([inlaten_TRC, inlaten_outlet])
+        inlaten_outlet = model.outlet.node.df.loc[model.outlet.node.df.node_id.isin(inlaten_TRC)]
+        inlaten_TRC = pd.concat([inlaten_TRC, inlaten_outlet])
 
         inlaten_TRC["meta_type_verbinding"] = "Inlaat"
 
@@ -1504,9 +1503,8 @@ class RibasimNetwork:
         uitlaten_gemalen["meta_type_verbinding"] = "Uitlaat"
 
         # add the outlets if this code is already ran before
-        if model.outlet.node.df is not None:
-            uitlaten_outlet = model.outlet.node.df.loc[model.outlet.node.df.node_id.isin(uitlaten_TRC)]
-            uitlaten_TRC = pd.concat([uitlaten_TRC, uitlaten_outlet])
+        uitlaten_outlet = model.outlet.node.df.loc[model.outlet.node.df.node_id.isin(uitlaten_TRC)]
+        uitlaten_TRC = pd.concat([uitlaten_TRC, uitlaten_outlet])
 
         uitlaten_TRC["meta_type_verbinding"] = "Uitlaat"
 
@@ -1576,13 +1574,8 @@ class RibasimNetwork:
             model.pump.node.df.index.isin(BCN_from.from_node_id)
         ]  # df.node_id --> df.index
 
-        if model.outlet.node.df is not None:
-            BCN_from_outlet = model.outlet.node.df.loc[
-                model.outlet.node.df.index.isin(BCN_from)
-            ]  # df.node_id --> df.index
-            BCN_from = pd.concat([BCN_from_TRC, BCN_from_pump, BCN_from_outlet])
-        else:
-            BCN_from = pd.concat([BCN_from_TRC, BCN_from_pump])
+        BCN_from_outlet = model.outlet.node.df.loc[model.outlet.node.df.index.isin(BCN_from)]  # df.node_id --> df.index
+        BCN_from = pd.concat([BCN_from_TRC, BCN_from_pump, BCN_from_outlet])
         BCN_from["meta_type_verbinding"] = "Uitlaat boundary"
 
         # BCN_TO
@@ -1605,11 +1598,8 @@ class RibasimNetwork:
             model.pump.node.df.index.isin(BCN_to.to_node_id)
         ]  # df.node_id --> df.index
 
-        if model.outlet.node.df is not None:
-            BCN_to_outlet = model.outlet.node.df.loc[model.outlet.node.df.index.isin(BCN_to)]  # df.node_id --> df.index
-            BCN_to = pd.concat([BCN_to_TRC, BCN_to_pump, BCN_to_outlet])
-        else:
-            BCN_to = pd.concat([BCN_to_TRC, BCN_to_pump])
+        BCN_to_outlet = model.outlet.node.df.loc[model.outlet.node.df.index.isin(BCN_to)]  # df.node_id --> df.index
+        BCN_to = pd.concat([BCN_to_TRC, BCN_to_pump, BCN_to_outlet])
         BCN_to["meta_type_verbinding"] = "Inlaat boundary"
 
         inlaten_uitlaten = pd.concat([inlaten_uitlaten, BCN_from, BCN_to])

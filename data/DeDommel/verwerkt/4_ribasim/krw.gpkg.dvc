@@ -1,0 +1,5 @@
+outs:
+- md5: 9ecf35dcf3beef4632a810e076e162b1
+  size: 1900544
+  hash: md5
+  path: krw.gpkg

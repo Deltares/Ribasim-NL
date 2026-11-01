@@ -148,7 +148,6 @@ def basin_link_buffer_area(model: Model, node_id, buffer_distance=2.5):
     """
     links = model.link.df
 
-    assert links is not None
     mask = (links["from_node_id"] == node_id) | (links["to_node_id"] == node_id)
 
     basin_links = links.loc[mask]
@@ -222,8 +221,7 @@ def update_primary_basin_profiles(model: Model, sample_res: int = 25, depth: flo
         assert df is not None
         return df
 
-    assert model.basin.node is not None
-    basin_node_df = cast(pd.DataFrame, model.basin.node.df)
+    basin_node_df = model.basin.node.df
     basin_area_df = cast(pd.DataFrame, model.basin.area.df)
     basin_profile_df = cast(pd.DataFrame, model.basin.profile.df)
 
@@ -433,12 +431,14 @@ def supply_area_basin_ids(model: Model, supply_areas: GeoDataFrame, min_overlap:
     supply_areas = supply_areas[supply_areas.geometry.notna() & parse_meta_aanvoer(supply_areas["meta_aanvoer"])]
     if supply_areas.empty:
         return set()
-    supply_geometries = supply_areas.geometry.make_valid().to_numpy()
+    # Overlay with a fixed precision of 1 mm, on geometries made valid at that precision, since GEOS can get floating
+    # point overlays wrong: Drents Overijsselse Delta's basin 2378 lies in a supply area of its own shape, but its
+    # intersection with the union of the supply areas was empty, see test_supply_area_basin_ids_precision.
+    precision = 0.001
+    supply_geometries = shapely.set_precision(supply_areas.geometry.make_valid().to_numpy(), precision)
     tree = shapely.STRtree(supply_geometries)
 
-    assert model.basin.node is not None
     basin_node_df = model.basin.node.df
-    assert basin_node_df is not None
     flowing_ids = basin_node_df.index[basin_node_df["meta_categorie"] != "bergend"]
 
     basin_area_df = model.basin.area.df
@@ -447,12 +447,11 @@ def supply_area_basin_ids(model: Model, supply_areas: GeoDataFrame, min_overlap:
     basin_area = basin_area_df.dissolve("node_id").geometry
 
     def overlap(geometry: Any) -> float:
-        # Intersect with the union of only the supply areas that touch the basin, since the intersection with the
-        # union of all of them can be wrong: Hunze en Aa's basin 1717 lies for 39% in them, but got 0% or 107%
         nearby = supply_geometries[tree.query(geometry, predicate="intersects")]
         if len(nearby) == 0:
             return 0.0
-        return geometry.intersection(shapely.union_all(nearby)).area / geometry.area
+        parts = shapely.intersection(shapely.set_precision(geometry, precision), nearby, grid_size=precision)
+        return shapely.union_all(parts, grid_size=precision).area / geometry.area
 
     return {int(cast(int, node_id)) for node_id, geometry in basin_area.items() if overlap(geometry) > min_overlap}
 

@@ -17,11 +17,10 @@ from ribasim.nodes import (
 )
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.rws_kunstwerken import (
-    read_flow_kwargs,
     read_kwk_properties,
-    read_pump,
     read_qq_curve,
     read_rating_curve,
+    read_static,
 )
 from shapely.affinity import translate
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
@@ -35,7 +34,8 @@ warnings.filterwarnings(
 )
 
 # Krammersluizen (43C-002-03) lozen van Krammer op Oosterschelde, zie issue #813
-KWK_INVERSE_FLOW_DIRECTION = ["750028686", "44D-002-03", "43C-002-03"]
+# Spuisluis Delden (34E-001-04) ligt in het stroomkanaal van Gemaal Delden, maar spuit naar beneden, zie issue #730
+KWK_INVERSE_FLOW_DIRECTION = ["750028686", "44D-002-03", "43C-002-03", "34E-001-04"]
 VERDEELSLEUTELS = ["Lobith", "Monsin"]
 RVW_IJSSELMEER = ["KOBU", "OEBU"]
 
@@ -72,7 +72,7 @@ def read_outlet(kwk_df, name: str):
             control_state=outlet_df.control_state.to_list(),
         )
     else:
-        return outlet.Static(**read_flow_kwargs(read_kwk_properties(kwk_df)))
+        return read_static(kwk_df, "Outlet")
 
 
 def read_pid(control_properties, control_basin_id):
@@ -290,7 +290,7 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
         elif node_type == "Outlet":
             data = [read_outlet(kwk_df, name=cast(str, row.naam))]
         elif node_type == "Pump":
-            data = [read_pump(kwk_properties)]
+            data = [read_static(kwk_df, "Pump")]
         else:
             raise ValueError(f"node-type {node_type} not yet implemented")
 
@@ -470,8 +470,6 @@ for kwk in kwk_topology.itertuples():
 
 # opbouwen basin over het netwerk
 profile_geometries = []
-assert model.manning_resistance.node is not None and model.manning_resistance.node.df is not None
-assert model.node.df is not None
 for row in basin_poly_gdf.itertuples():
     # row = next(i for i in basin_poly_gdf.itertuples() if i.Index == 1)
     print(f"{row.Index} {row.naam}")
@@ -494,10 +492,9 @@ for row in basin_poly_gdf.itertuples():
     basin_boundary_nodes = basin_boundary_nodes[~basin_boundary_nodes["upstream"].isin(connected)]
     basin_boundary_nodes = basin_boundary_nodes[~basin_boundary_nodes["downstream"].isin(connected)]
 
-    if model.manning_resistance.node.df is not None:
-        basin_boundary_nodes = basin_boundary_nodes[
-            ~basin_boundary_nodes.index.isin(model.manning_resistance.node.df.index)
-        ]
+    basin_boundary_nodes = basin_boundary_nodes[
+        ~basin_boundary_nodes.index.isin(model.manning_resistance.node.df.index)
+    ]
 
     # overige basin_boundary_nodes voorzien van een ManningResistance
     for bbn_row in basin_boundary_nodes.reset_index().itertuples():
@@ -625,7 +622,6 @@ for row in basin_poly_gdf.itertuples():
 # %%
 
 # Verbinden overgebleven levelBoundaries zonder kunstwerken (bijv. Westerschelde en Nieuwe Maas)
-assert model.level_boundary.node is not None and model.level_boundary.node.df is not None
 assert model.level_boundary.static.df is not None
 # Capacity [m3/s] of the Outlet from these basins to the boundary, instead of a placeholder that makes the model stiff.
 # Twice the largest flow of the coupled run of 2017-2019, or the capacity of the inflows of the basin if those are
@@ -681,7 +677,6 @@ assert sorted(open_boundary_basins) == sorted(OPEN_BOUNDARY_CAPACITY), (
 # Later kunnen we het stuk bij basins verbeteren
 
 assert model.manning_resistance.static.df is not None
-assert model.link.df is not None
 for row in model.manning_resistance.static.df.itertuples():
     try:
         link_to = model.link.df[model.link.df["to_node_id"] == row.node_id].iloc[0]

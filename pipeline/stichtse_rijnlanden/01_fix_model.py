@@ -5,7 +5,7 @@ import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet, tabulated_rating_curve
-from ribasim_nl.geometry import split_basin_multi_polygon
+from ribasim_nl.geometry import connected_parts, split_basin_multi_polygon
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
 from shapely.geometry import LineString, MultiPolygon, Point
@@ -20,7 +20,6 @@ name = "hdsr"
 # Define the path to the Ribasim model configuration file
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
-database_gpkg = ribasim_toml.with_name("database.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 verbeteringen_gpkg = cloud.joinpath("StichtseRijnlanden/verwerkt/modelfouten_met_verbeter_acties_BD_311024.gpkg")
@@ -55,7 +54,6 @@ tabulated_rating_curve_data = tabulated_rating_curve.Static(level=[0.0, 5], flow
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2455143137
 
 # verwijderen duplicated links
-assert model.link.df is not None
 model.link.df.drop_duplicates(inplace=True)
 
 
@@ -142,7 +140,6 @@ model.update_node(1965, "LevelBoundary", data=[level_data])
 # opheffen ST3122
 geometry = Point(117995, 443062.5)
 model.move_node(node_id=889, geometry=geometry)
-assert model.node.df is not None
 model.node.df.loc[889, "name"] = "ST1985"
 
 for link_id in [359, 360, 361]:
@@ -214,7 +211,6 @@ model.basin.area.df = model.basin.area.df[~model.basin.area.df.index.isin([501, 
 #     0
 # ]
 new_basin_area_df = gpd.GeoSeries([], crs=model.crs)
-assert model.basin.node is not None and model.basin.node.df is not None
 for basin_fid, split_lijnen_select_df in split_lijnen_df[split_lijnen_df.opmerkingen.isna()].groupby("basin_area_fid"):
     # iterate trough split_lines per basin creating a series with geometries
     series = gpd.GeoSeries([model.basin.area.df.at[basin_fid, "geometry"]], crs=model.crs)
@@ -310,14 +306,14 @@ model.merge_basins(node_id=1382, to_node_id=2090, are_connected=False)
 
 
 # 2x een basin area met niet aansluitende vlakken "exploden" en toekennen aan de juiste nodes (gelijk aan Nieuwegein Geinoord)
+# de delen die niet aansluiten op het deel met de basin-knoop worden losse vlakken
 missing_geoms = []
-geoms = list(model.basin.area.df.at[91, "geometry"].geoms)
-model.basin.area.df.loc[91, "geometry"] = geoms[0]
-
-missing_geoms += [geoms[1]]
-geoms = list(model.basin.area.df.at[259, "geometry"].geoms)
-model.basin.area.df.loc[259, "geometry"] = geoms[1]
-missing_geoms += [geoms[0]]
+for fid in [91, 259]:
+    geometry, detached = connected_parts(
+        model.basin.area.df.at[fid, "geometry"], model.basin[model.basin.area.df.at[fid, "node_id"]].geometry
+    )
+    model.basin.area.df.loc[fid, "geometry"] = geometry
+    missing_geoms += detached
 
 df = gpd.GeoDataFrame(data=[], geometry=gpd.GeoSeries(missing_geoms, crs=model.crs))
 df.index.name = "fid"
@@ -657,7 +653,6 @@ model.node.df.loc[252, "name"] = "Inlaat Vreeswijk"
 
 def node_id_by_code(code: str) -> int:
     """Return the ID of the only node with `meta_code_waterbeheerder` `code`."""
-    assert model.node.df is not None
     node_ids = model.node.df.index[model.node.df["meta_code_waterbeheerder"] == code]
     assert len(node_ids) == 1, f"Expected one node with code {code}, got {node_ids.tolist()}"
     return int(node_ids[0])

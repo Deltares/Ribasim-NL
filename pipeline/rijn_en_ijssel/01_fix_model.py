@@ -19,7 +19,6 @@ name = "wrij"
 run_model = False
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
-database_gpkg = ribasim_toml.with_name("database.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
@@ -52,7 +51,6 @@ outlet_data = outlet.Static(flow_rate=[5.0])
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419605149
 # Verwijderen duplicate links
 
-assert model.link.df is not None
 model.link.df.drop_duplicates(inplace=True)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419620184

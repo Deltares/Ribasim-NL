@@ -18,6 +18,7 @@ from repro_main import (
     check_no_secrets,
     check_private,
     check_worktree,
+    repro_command,
     superseded,
 )
 
@@ -57,6 +58,11 @@ def test_branch_name():
     assert BRANCH_PATTERN.fullmatch(name)
     assert not BRANCH_PATTERN.fullmatch("repro-main")
     assert not BRANCH_PATTERN.fullmatch("main")
+
+
+def test_repro_command():
+    assert repro_command(full=False) == ["pixi", "run", "repro-local", "--incremental", "--push", "--no-publish"]
+    assert repro_command(full=True) == ["pixi", "run", "repro-local", "--push", "--no-publish"]
 
 
 def test_superseded(repo: Path):

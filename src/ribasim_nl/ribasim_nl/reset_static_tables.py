@@ -5,34 +5,33 @@ import pandas as pd
 
 def reset_static_tables(model):
     # basin / profile
-    if model.basin.node.df is not None:
-        df = pd.DataFrame(
-            {
-                "node_id": np.repeat(model.basin.node.df.index.to_numpy(), 2),
-                "level": [0.0, 1.0] * len(model.basin.node.df),
-                "area": [100.0, 1000.0] * len(model.basin.node.df),
-            }
-        )
-        df.index.name = "fid"
-        model.basin.profile.df = df
+    df = pd.DataFrame(
+        {
+            "node_id": np.repeat(model.basin.node.df.index.to_numpy(), 2),
+            "level": [0.0, 1.0] * len(model.basin.node.df),
+            "area": [100.0, 1000.0] * len(model.basin.node.df),
+        }
+    )
+    df.index.name = "fid"
+    model.basin.profile.df = df
 
-        # basin / state
-        df = model.basin.profile.df.groupby("node_id")[["level"]].max().reset_index()
-        df.index.name = "fid"
-        model.basin.state.df = df
+    # basin / state
+    df = model.basin.profile.df.groupby("node_id")[["level"]].max().reset_index()
+    df.index.name = "fid"
+    model.basin.state.df = df
 
-        # basin / static
-        df = pd.DataFrame(
-            {
-                "node_id": model.basin.node.df.index.to_numpy(),
-                "precipitation": [0] * model.basin.node.df.index.to_numpy(),
-                "potential_evaporation": [0] * model.basin.node.df.index.to_numpy(),
-                "drainage": [0] * model.basin.node.df.index.to_numpy(),
-                "infiltration": [0] * model.basin.node.df.index.to_numpy(),
-            }
-        )
-        df.index.name = "fid"
-        model.basin.static.df = df
+    # basin / static
+    df = pd.DataFrame(
+        {
+            "node_id": model.basin.node.df.index.to_numpy(),
+            "precipitation": [0] * model.basin.node.df.index.to_numpy(),
+            "potential_evaporation": [0] * model.basin.node.df.index.to_numpy(),
+            "drainage": [0] * model.basin.node.df.index.to_numpy(),
+            "infiltration": [0] * model.basin.node.df.index.to_numpy(),
+        }
+    )
+    df.index.name = "fid"
+    model.basin.static.df = df
 
     # tabulated_rating_curves / static
     if model.tabulated_rating_curve.static.df is not None:

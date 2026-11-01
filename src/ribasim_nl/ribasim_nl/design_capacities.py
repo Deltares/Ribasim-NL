@@ -43,7 +43,6 @@ PASSING_NODE_TYPES = {"Junction", "ManningResistance", "LinearResistance"}
 
 def _flow_graph(model: Model, functions: pd.Series) -> nx.DiGraph:
     """Build the graph of the flow links, with the node type and search function of each node."""
-    assert model.link.df is not None and model.node.df is not None
     flow_link_df = model.link.df[model.link.df["link_type"] == "flow"]
     graph = nx.from_pandas_edgelist(flow_link_df, "from_node_id", "to_node_id", create_using=nx.DiGraph)
     node_types = model.node.df["node_type"]
@@ -78,7 +77,7 @@ def design_capacities(model: Model, function_table: pd.DataFrame) -> pd.DataFram
         By node_id, the drained and supplied area in m2, the design capacity from that area, and the capacity limited
         by the nodes around it, in m3/s.
     """
-    assert model.basin.area.df is not None and model.node.df is not None
+    assert model.basin.area.df is not None
     functions = function_table["function"]
     unknown = set(functions) - set(SEARCH_FUNCTION)
     assert not unknown, f"Unknown functions {unknown}, expected {set(SEARCH_FUNCTION)}"

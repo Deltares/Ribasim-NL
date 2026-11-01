@@ -7,7 +7,7 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, MultiPolygon, Point
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -21,7 +21,6 @@ run_model = False
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
-database_gpkg = ribasim_toml.with_name("database.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
@@ -78,7 +77,6 @@ outlet_node = model.outlet.add(Node(geometry=geometry.interpolate(271)), tables=
 model.redirect_link(link_id=2202, from_node_id=outlet_node.node_id)
 model.link.add(basin_node, outlet_node)
 
-assert model.link.df is not None
 for fid, link_id, _boundary_node_id in ((2054, 2244, 63), (9794, 2295, 103), (9260, 2297, 105), (3307, 2305, 113)):
     kdu = duiker_gdf.loc[fid]
     basin_node = model.basin.add(
@@ -280,9 +278,9 @@ for row in network_validator.link_incorrect_type_connectivity(
 model = reset_static_tables(model)
 model.fix_unassigned_basin_area()
 # %%
-# rename node-ids
-df = rename_basin_area_gdf.set_index("ribasim_fid")
-model.basin.area.df.loc[df.index, ["node_id"]] = df["to_node_id"].astype("int32")
+# rename node-ids, by geometry, since the fids of the basin areas in the input model can change
+for row in rename_basin_area_gdf.itertuples():
+    model.update_basin_area(node_id=cast(int, row.to_node_id), geometry=cast(MultiPolygon, row.geometry))
 
 # %%add basin area
 for row in add_basin_area_gdf.itertuples():

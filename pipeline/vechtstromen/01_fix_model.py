@@ -30,7 +30,6 @@ run_model = False
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
-database_gpkg = ribasim_toml.with_name("database.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 fix_user_data_gpkg = cloud.joinpath(authority, "verwerkt/fix_user_data.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
@@ -136,7 +135,6 @@ def get_manning_nodes_near_structures(
     structure_gdf: gpd.GeoDataFrame,
     max_distance: float = 5,
 ) -> tuple[list[int], list[int], pd.DataFrame]:
-    assert model.node.df is not None
     manning_gdf = model.node.df.loc[model.node.df["node_type"] == "ManningResistance"].copy()
     manning_gdf.index.name = "node_id"
     manning_gdf = manning_gdf.reset_index()
@@ -203,7 +201,6 @@ def first_meta_streefpeil(area_df: gpd.GeoDataFrame) -> float | None:
 
 
 # # drop z in basin.nodes, zodat we hieronder geen crashes meer krijgen.
-assert model.node.df is not None
 basin_mask = model.node.df["node_type"] == "Basin"
 model.node.df.loc[basin_mask, "geometry"] = model.node.df.loc[basin_mask, "geometry"].apply(drop_z)  # ty: ignore[no-matching-overload]
 
@@ -211,7 +208,6 @@ model.node.df.loc[basin_mask, "geometry"] = model.node.df.loc[basin_mask, "geome
 
 # Verwijderen duplicate links
 
-assert model.link.df is not None
 model.link.df.drop_duplicates(inplace=True)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2352686763
@@ -237,7 +233,6 @@ model.reset_link_geometry(link_ids=link_ids)
 
 
 # verbind basins met level_boundaries
-assert model.basin.node is not None and model.basin.node.df is not None
 for fid, node_id in [(1, 1375), (2, 1624)]:
     boundary_node_geometry = cast(Point, level_boundary_gdf.at[fid, "geometry"])
 
@@ -281,7 +276,6 @@ for row in link_df.itertuples():
 
 # add level_boundaries at twentekanaal for later coupling
 hws_model = Model.read(hws_model_toml)
-assert hws_model.node.df is not None
 basin_ids = hws_model.node.df[hws_model.node.df.name.str.contains("Twentekanaal")].index.to_list()
 assert hws_model.basin.area.df is not None
 twentekanaal_poly = hws_model.basin.area.df[hws_model.basin.area.df.node_id.isin(basin_ids)].union_all()

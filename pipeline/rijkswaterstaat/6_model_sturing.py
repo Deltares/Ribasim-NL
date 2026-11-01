@@ -1,21 +1,29 @@
 # %%
 import warnings
-from typing import cast
+from typing import Literal, cast
 
+import numpy as np
 import openpyxl
 import pandas as pd
+from ribasim import Node
 from ribasim.nodes import (
     continuous_control,
     outlet,
     pid_control,
 )
+from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.rws_kunstwerken import (
-    read_flow_kwargs,
+    discrete_control_tables,
+    flow_demand_tables,
+    has_discrete_control,
+    has_flow_demand,
+    read_control_thresholds,
     read_kwk_properties,
-    read_pump,
     read_qq_curve,
     read_rating_curve,
+    read_static,
 )
+from shapely.geometry import Point
 
 from ribasim_nl import CloudStorage, Model
 
@@ -35,17 +43,82 @@ warnings.filterwarnings(
 cloud = CloudStorage()
 
 UPDATE_KWK_DATA = True
+# Structures of a verdeelsleutel, which 5_model_netwerk adds, that are replaced by their own sheet
+# Keersluis Limmel gets a DiscreteControl that closes it at a high Maas, see https://github.com/Deltares/Ribasim-NL/issues/922
+VERDEELSLEUTEL_KWK_FROM_SHEET = ["61F-001-01"]
+# Node types between Basins that do not control the flow, so a DiscreteControl may listen across them
+FREE_FLOW_NODE_TYPES = {"Basin", "ManningResistance", "LinearResistance", "Junction"}
+RWS_NODE_ID_OFFSET = waterbeheercode["Rijkswaterstaat"] * 100_000
 
 
 # %% functies
-def read_outlet(kwk_df, name=None):
+def read_outlet(kwk_df, listen_side: Literal["upstream", "downstream"] | None = None):
     if "QQ relatie" in kwk_df["Eigenschap"].to_numpy():
         qq_properties = read_qq_curve(kwk_df)
         return outlet.Static(
             flow_rate=[max(qq_properties["flow_rate"].to_list())],
         )
     else:
-        return outlet.Static(**read_flow_kwargs(read_kwk_properties(kwk_df)))
+        return read_static(kwk_df, "Outlet", listen_side)
+
+
+def free_flow_basin_ids(model: Model, basin_id: int) -> set[int]:
+    """Basins connected to `basin_id` without a structure that controls the flow in between."""
+    links = model.link.df[model.link.df.link_type == "flow"]
+    node_type = model.node.df["node_type"]
+    found, front = {basin_id}, [basin_id]
+    while front:
+        node_id = front.pop()
+        neighbors = links.loc[links.from_node_id == node_id, "to_node_id"].to_list()
+        neighbors += links.loc[links.to_node_id == node_id, "from_node_id"].to_list()
+        for neighbor in neighbors:
+            if neighbor not in found and node_type[neighbor] in FREE_FLOW_NODE_TYPES:
+                found.add(neighbor)
+                front.append(neighbor)
+    return {i for i in found if node_type[i] == "Basin"}
+
+
+def listen_basin(model: Model, kwk_df: pd.DataFrame, node_id: int) -> tuple[int, Literal["upstream", "downstream"]]:
+    """The Basin whose level switches the DiscreteControl of structure `node_id`, and its side of the structure.
+
+    The Meetlocatiecode is the ID of that Basin in the coupled model. Without it, an afvoer structure listens to the
+    Basin upstream, and an aanvoer structure to the Basin downstream. The Basin should be connected to the Basin on
+    one side of the structure, possibly through other Basins without structures in between, like the Veluwerandmeren.
+    """
+    kwk_properties = read_kwk_properties(kwk_df)
+    upstream = model.upstream_node_id(node_id)
+    downstream = model.downstream_node_id(node_id)
+    assert isinstance(upstream, int | np.integer) and isinstance(downstream, int | np.integer), (
+        f"Expected one node up- and downstream of {node_id}, got {upstream} and {downstream}"
+    )
+    if "Meetlocatiecode" in kwk_properties:
+        basin_id = int(kwk_properties["Meetlocatiecode"]) - RWS_NODE_ID_OFFSET
+        assert basin_id in model.node.df.index, f"Meetlocatiecode {kwk_properties['Meetlocatiecode']} not in the model"
+    else:
+        label = read_control_thresholds(kwk_df)["control_state"].iloc[0]
+        basin_id = int(upstream if label == "afvoer" else downstream)
+    assert model.node.df.at[basin_id, "node_type"] == "Basin", f"DiscreteControl listens to {basin_id}, not a Basin"
+    neighbors: list[tuple[Literal["upstream", "downstream"], int]] = [
+        ("upstream", int(upstream)),
+        ("downstream", int(downstream)),
+    ]
+    sides = [
+        side
+        for side, neighbor in neighbors
+        if model.node.df.at[neighbor, "node_type"] == "Basin" and basin_id in free_flow_basin_ids(model, neighbor)
+    ]
+    assert len(sides) == 1, f"Basin {basin_id} {model.node.df.at[basin_id, 'name']!r} not on one side of {node_id}"
+    return basin_id, sides[0]
+
+
+def add_flow_demand(model: Model, node_id: int, tables: list, name: str) -> None:
+    """Add a FlowDemand node next to structure `node_id`, as the minimum flow through it."""
+    point = cast(Point, model.node.df.at[node_id, "geometry"])
+    demand_node = model.flow_demand.add(
+        Node(model.next_node_id, Point(point.x + 20, point.y - 20), name=name),
+        tables,
+    )
+    model.link.add(demand_node, model.get_node(node_id))
 
 
 def read_pid(control_properties, control_basin_id):
@@ -77,10 +150,12 @@ kwk_xlsx = kwk_dir.joinpath("kunstwerken.xlsx")
 all_kwk_df = pd.read_excel(kwk_xlsx, sheet_name="kunstwerken")
 all_kwk_df.loc[:, "code"] = all_kwk_df["code"].astype(str)
 model = Model.read(ribasim_toml)
+starttime, endtime = pd.Timestamp(model.starttime), pd.Timestamp(model.endtime)
 
 # %% Itereren over kunstwerken
 
-all_kwk_df = all_kwk_df[all_kwk_df.in_model]
+assert set(VERDEELSLEUTEL_KWK_FROM_SHEET) <= set(all_kwk_df.loc[~all_kwk_df.in_model, "code"])
+all_kwk_df = all_kwk_df[all_kwk_df.in_model | all_kwk_df.code.isin(VERDEELSLEUTEL_KWK_FROM_SHEET)]
 for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
     # get sheet-names
     file_name = kwk_dir / f"{gebied}.xlsx"
@@ -109,15 +184,19 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
         # find existing node_id in model
         node_id = model.find_node_id(meta_code_waterbeheerder=str(kwk_properties["Kunstwerkcode"]))
 
+        listen_basin_id = None
         if UPDATE_KWK_DATA:
             # prepare static-data for updating node
             node_type = kwk_properties["Ribasim type"]
+            listen_basin_id, listen_side = (
+                listen_basin(model, kwk_df, node_id) if has_discrete_control(kwk_properties) else (None, None)
+            )
             if node_type == "TabulatedRatingCurve":
                 data = [read_rating_curve(kwk_df)]
             elif node_type == "Outlet":
-                data = [read_outlet(kwk_df, name=kwk.naam)]
+                data = [read_outlet(kwk_df, listen_side)]
             elif node_type == "Pump":
-                data = [read_pump(kwk_properties)]
+                data = [read_static(kwk_df, "Pump", listen_side)]
             else:
                 raise ValueError(f"node-type {node_type} not yet implemented")
 
@@ -181,17 +260,38 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
                 node_offset=20,
             )
 
-# %% Nijkerkersluis drains the Veluwerandmeren into the Eemmeer, see https://github.com/Deltares/Ribasim-NL/issues/887
-node_id = model.find_node_id(meta_code_waterbeheerder="32E-001-04")
-assert model.node.df is not None
-assert model.node.df.at[node_id, "node_type"] == "Pump", model.node.df.at[node_id, "node_type"]
-upstream_name = model.node.df.at[model.upstream_node_id(node_id), "name"]
-assert upstream_name == "Nuldernauw", upstream_name
-model.update_node(
-    node_id=node_id,
-    node_type="Outlet",
-    data=[outlet.Static(flow_rate=[100.0], max_flow_rate=[150.0], min_upstream_level=[-0.05])],
-)
+        # check if structure has a DiscreteControl between aanvoer and afvoer
+        if has_discrete_control(kwk_properties):
+            assert listen_basin_id is not None, f"DiscreteControl of {kwk.naam} needs UPDATE_KWK_DATA"
+            assert model.upstream_node_id(node_id, link_type="control") is None, f"{kwk.naam} has another control"
+            thresholds = read_control_thresholds(kwk_df)
+            label = thresholds["control_state"].iloc[0]
+            levels = (
+                f"{thresholds.threshold_high.iloc[0]:.3f}/{thresholds.threshold_low.iloc[0]:.3f}"
+                if len(thresholds) == 1
+                else "jaarpatroon"
+            )
+            model.add_control_node(
+                to_node_id=node_id,
+                data=discrete_control_tables(kwk_df, listen_basin_id, starttime, endtime),
+                ctrl_type="DiscreteControl",
+                node_offset=20,
+                node_properties={"name": f"{label}: {levels} [m+NAP]"},
+            )
+
+        # check if structure has a minimum flow, such as the losses of a lock
+        if has_flow_demand(kwk_properties):
+            tables = flow_demand_tables(kwk_df, starttime, endtime)
+            static_df = model.get_component(node_type).static.df
+            assert static_df is not None
+            static_rows = static_df[static_df.node_id == node_id]
+            # without allocation a FlowDemand is a minimum flow, also from an empty Basin, so it needs a level to stop
+            assert static_rows["min_upstream_level"].notna().all(), f"FlowDemand of {kwk.naam} needs an upstream level"
+            max_flow_rate = static_rows["max_flow_rate"].min()
+            assert all(table.df is not None for table in tables)
+            demand = max(cast(pd.DataFrame, table.df)["demand"].max() for table in tables)
+            assert demand <= max_flow_rate, f"FlowDemand {demand} of {kwk.naam} above its capacity {max_flow_rate}"
+            add_flow_demand(model, node_id, tables, name=f"minimum debiet {kwk.naam}: {demand} [m3/s]")
 
 # %% write
 ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_sturing/hws.toml")

@@ -79,7 +79,6 @@ def node_list(*groups: list[int]) -> list[int]:
 
 
 def reverse_existing_links(model: Model, link_ids: list[int]) -> None:
-    assert model.link.df is not None
     for link_id in link_ids:
         if link_id in model.link.df.index:
             model.reverse_link(link_id=link_id)
@@ -93,8 +92,6 @@ def validate_file_gdb(gdb_path: Path) -> None:
 
 
 def lower_outlet_max_downstream_level(model: Model, node_id: int, offset: float = 0.01) -> None:
-    assert model.basin.node is not None and model.basin.node.df is not None
-    assert model.link.df is not None
     downstream_basin_ids = model.link.df.loc[
         (model.link.df.from_node_id == node_id) & model.link.df.to_node_id.isin(model.basin.node.df.index),
         "to_node_id",
@@ -123,13 +120,11 @@ def lower_outlet_max_downstream_level(model: Model, node_id: int, offset: float 
 
 
 def duplicate_level_boundary_for_link(model: Model, source_node_id: int, link_id: int) -> int | None:
-    assert model.link.df is not None
     if link_id not in model.link.df.index:
         return None
 
     current_from_node_id = int(cast(int, model.link.df.at[link_id, "from_node_id"]))
     current_to_node_id = int(cast(int, model.link.df.at[link_id, "to_node_id"]))
-    assert model.level_boundary.node is not None and model.level_boundary.node.df is not None
     if current_from_node_id != source_node_id:
         if current_from_node_id in model.level_boundary.node.df.index:
             return current_from_node_id
@@ -141,7 +136,6 @@ def duplicate_level_boundary_for_link(model: Model, source_node_id: int, link_id
         raise ValueError(f"Node {source_node_id} is geen level boundary in dit model.")
 
     source_node = model.level_boundary[source_node_id]
-    assert model.node.df is not None
     source_name = model.node.df.at[source_node_id, "name"] if "name" in model.node.df.columns else ""
     if not isinstance(source_name, str):
         source_name = ""
@@ -446,7 +440,6 @@ model.pump.static.df.loc[mask, "max_flow_rate"] = model.pump.static.df.loc[mask,
 )
 
 # %%Duikers voor nu op 1m3/s
-assert model.outlet.node is not None and model.outlet.node.df is not None
 node_ids = model.outlet.node.df[model.outlet.node.df["meta_object_type"] == "duikersifonhevel"].index
 mask = model.outlet.static.df["node_id"].isin(node_ids)
 
@@ -518,7 +511,6 @@ def get_lhm_gemaal_supply_nodes(
     inlaat_mask = normalize_name_series(gemaal_df[name_column]).str.startswith(name_prefix.lower(), na=False)
     inlaat_names = set(normalize_name_series(gemaal_df.loc[inlaat_mask, name_column]).dropna())
 
-    assert model.node.df is not None
     control_node_df = model.node.df[model.node.df["node_type"].isin(node_types)].copy()
     control_node_df["_match_name"] = normalize_name_series(control_node_df["name"])
     matched_node_df = control_node_df[control_node_df["_match_name"].isin(inlaat_names)]
@@ -611,7 +603,6 @@ manual_drain_nodes = list(drain_nodes)
 
 lhm_gemaal_supply_nodes = get_lhm_gemaal_supply_nodes(model=model, lhm_gemaal_gdb=lhm_gemaal_gdb)
 
-assert model.node.df is not None
 if IS_SUPPLY_NODE_COLUMN not in model.node.df.columns:
     model.node.df[IS_SUPPLY_NODE_COLUMN] = False
 model.node.df.loc[lhm_gemaal_supply_nodes, IS_SUPPLY_NODE_COLUMN] = True
@@ -753,9 +744,7 @@ zero_pump_mask = model.pump.static.df.node_id.isin(zero_pump_node_ids)
 model.pump.static.df.loc[zero_pump_mask, ["flow_rate", "max_flow_rate"]] = 0.0
 
 # Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
-assert model.node.df is not None
 node_type_by_id = model.node.df["node_type"].to_dict()
-assert model.link.df is not None
 flow_demand_controlled_node_ids = set(
     model.link.df.loc[
         model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),

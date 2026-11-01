@@ -197,7 +197,6 @@ assign_pump_and_basin_names(ribasim_model, paths)
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
-assert ribasim_model.node.df is not None
 ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
 
 # lower the difference in waterlevel for each manning node, except those of storing basins
@@ -224,7 +223,6 @@ set_design_capacities(ribasim_model, from_to_node_function_table)
 # Gemaal Postweg pumps into basin 142, which aggregates peilgebieden with target levels up to -1.1 m NAP,
 # so do not limit it by the -1.8 m NAP target level of that basin, see #844
 postweg = 1189
-assert ribasim_model.node.df is not None
 assert ribasim_model.node.df.at[postweg, "name"] == "Gemaal Postweg, Kapelle", "Node ID of Gemaal Postweg changed"
 assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == postweg, "max_downstream_level"] = math.inf

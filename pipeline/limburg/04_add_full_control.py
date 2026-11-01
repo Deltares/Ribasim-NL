@@ -239,7 +239,6 @@ def add_discharge_supply_nodes(
         model,
         node_ids=list(discharge_supply_nodes.keys()),
     )
-    assert model.node.df is not None
     node_types = model.node.df["node_type"]
 
     # demand parameters
@@ -466,7 +465,6 @@ if double_defined:
 supply_nodes_df = get_node_table_with_from_to_node_ids(model=model, node_ids=level_supply_nodes)
 
 all_nodes = list(discharge_supply_nodes.keys()) + level_supply_nodes
-assert model.node.df is not None
 model.node.df[IS_SUPPLY_NODE_COLUMN] = model.node.df.index.isin(all_nodes)
 
 # %% Toevoegen Peelkanaal
@@ -939,7 +937,6 @@ model.outlet.static.df.loc[zero_aanvoer_mask, ["flow_rate", "max_flow_rate"]] = 
 
 # Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
 node_type_by_id = model.node.df["node_type"].to_dict()
-assert model.link.df is not None
 flow_demand_controlled_node_ids = set(
     model.link.df.loc[
         model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),

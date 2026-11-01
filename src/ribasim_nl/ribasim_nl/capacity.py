@@ -20,7 +20,6 @@ def _static_dfs(model: Model) -> list[pd.DataFrame]:
 
 def _controllers(model: Model) -> pd.Series:
     """Get the DiscreteControl node IDs of each controlled node."""
-    assert model.link.df is not None
     link_df = model.link.df
     control_link_df = link_df[link_df["link_type"] == "control"]
     discrete_control_ids = model.filter_nodes("DiscreteControl").index
@@ -42,7 +41,6 @@ def _listened_nodes(model: Model) -> dict[int, set[int]]:
 
 
 def _flow_link_df(model: Model) -> pd.DataFrame:
-    assert model.link.df is not None
     return model.link.df[model.link.df["link_type"] == "flow"]
 
 

@@ -21,7 +21,6 @@ run_model = False
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
-database_gpkg = ribasim_toml.with_name("database.gpkg")
 hydroobject_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 duikersifonhevel_gpkg = cloud.joinpath(authority, "aangeleverd/Aanlevering_202311/HyDAMO_WM_20231117.gpkg")
 
@@ -63,7 +62,6 @@ outlet_data = outlet.Static(flow_rate=[5.0])
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2393424844
 # Verwijderen duplicate links
 
-assert model.link.df is not None
 model.link.df.drop_duplicates(inplace=True)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/147#issuecomment-2393458802

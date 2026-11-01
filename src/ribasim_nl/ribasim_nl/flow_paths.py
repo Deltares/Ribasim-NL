@@ -29,12 +29,10 @@ Coord = tuple[float, float]
 
 
 def _line(model: Model, link_id: int) -> LineString:
-    assert model.link.df is not None
     return typing.cast(LineString, model.link.df.at[link_id, "geometry"])
 
 
 def _point(model: Model, node_id: int) -> Point:
-    assert model.node.df is not None
     return typing.cast(Point, model.node.df.at[node_id, "geometry"])
 
 
@@ -55,7 +53,6 @@ def _coord(model: Model, node_id: int) -> Coord:
 
 
 def _name(model: Model, link_id: int) -> str:
-    assert model.link.df is not None
     return str(model.link.df.at[link_id, "name"])
 
 
@@ -63,8 +60,6 @@ class Routes:
     """The routes of the flow links of a model, as they are when the Routes are made."""
 
     def __init__(self, model: Model) -> None:
-        assert model.node.df is not None
-        assert model.link.df is not None
         self.flow = model.link.df[model.link.df["link_type"] == "flow"]
         self.node_types = model.node.df["node_type"]
         self._out: dict[int, list[int]] = defaultdict(list)
@@ -151,7 +146,6 @@ def split_link(model: Model, link_id: int, distance: float, node_id: int | None 
 
     Returns the node id of the Junction. Other links of an existing `node_id` move their ends along.
     """
-    assert model.link.df is not None
     links = model.link.df
     geometry = _line(model, link_id)
     assert 0.0 < distance < geometry.length, f"Cannot split link {link_id} at its end"
@@ -176,8 +170,6 @@ def prune_junction(model: Model, junction_id: int) -> None:
 
     Neighboring Junctions are pruned in turn. A Junction with other links, such as observation links, is kept.
     """
-    assert model.link.df is not None
-    assert model.node.df is not None
     if junction_id not in model.node.df.index or model.get_node_type(junction_id) != "Junction":
         return
     links = model.link.df
@@ -203,7 +195,6 @@ def prune_junction(model: Model, junction_id: int) -> None:
 
 def remove_flow_link(model: Model, link_id: int) -> None:
     """Remove a flow link, and prune the Junctions at its ends, see `prune_junction`."""
-    assert model.link.df is not None
     ends = [_end(model.link.df, link_id, upstream) for upstream in (True, False)]
     model.remove_links([link_id])
     for node_id in ends:
@@ -216,8 +207,6 @@ def branch_from_route(model: Model, node_id: int, basin_id: int, towards_id: int
     The branch starts at a Junction at the point of that route nearest to `node_id`, or at the existing Junction if
     that point is within `margin` of one, and runs straight to `node_id`. Returns the node id of that Junction.
     """
-    assert model.link.df is not None
-    assert model.node.df is not None
     flow = model.link.df[model.link.df["link_type"] == "flow"]
     inflow = flow[flow["to_node_id"] == node_id]
     if inflow["from_node_id"].tolist() != [basin_id]:
@@ -249,7 +238,6 @@ def merge_outflows(model: Model, node_ids: list[int]) -> int:
 
     The Junctions they passed before are pruned. Returns the node id of the Junction.
     """
-    assert model.link.df is not None
     routes = Routes(model)
 
     def downstream_junctions(node_id: int) -> list[int]:
@@ -286,8 +274,6 @@ def merge_inflows(model: Model, basin_id: int, node_ids: list[int]) -> int:
 
     The Junction is at the centroid of `node_ids`, see `place_on_link` to move it. Returns its node id.
     """
-    assert model.link.df is not None
-    assert model.node.df is not None
     flow = model.link.df[model.link.df["link_type"] == "flow"]
     links = flow[(flow["from_node_id"] == basin_id) & flow["to_node_id"].isin(node_ids)]
     if sorted(links["to_node_id"]) != sorted(node_ids):
@@ -307,8 +293,6 @@ def place_on_link(model: Model, node_id: int, basin_id: int, link_id: int) -> No
     `link_id` is on the route of `basin_id` in either direction, see `Routes.paths`, and `node_id` has a single flow
     link with `basin_id`. Its other links move their ends along.
     """
-    assert model.link.df is not None
-    assert model.node.df is not None
     flow = model.link.df[model.link.df["link_type"] == "flow"]
     from_basin = flow[(flow["from_node_id"] == basin_id) & (flow["to_node_id"] == node_id)]
     to_basin = flow[(flow["from_node_id"] == node_id) & (flow["to_node_id"] == basin_id)]
@@ -489,8 +473,6 @@ def rebuild_junction_trees(
 
     :return: the ids of the links and of the Junctions that are new or changed
     """
-    assert model.node.df is not None
-    assert model.link.df is not None
     assert model.basin.area.df is not None
     before = simplified_links(model)
     routes = Routes(model)

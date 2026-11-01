@@ -44,7 +44,6 @@ network_validator = NetworkValidator(model)
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2288780504
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291081244
-assert model.link.df is not None
 model.link.df = model.link.df.drop_duplicates(subset=["from_node_id", "to_node_id"])
 
 if not network_validator.link_duplicated().empty:
@@ -110,7 +109,6 @@ if not network_validator.link_incorrect_connectivity().empty:
 # %% verwijderen internal basins
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291271525
-assert model.node.df is not None
 for row in network_validator.node_internal_basin().itertuples():
     if row.Index not in model.basin.area.df.node_id.to_numpy():  # remove or change to level-boundary
         link_select_df = model.link.df[model.link.df.to_node_id == row.Index]
@@ -297,12 +295,10 @@ for row in network_validator.link_incorrect_type_connectivity().itertuples():
 
 # %%
 # Sanitize node_table
-assert model.tabulated_rating_curve.node is not None and model.tabulated_rating_curve.node.df is not None
 for node_id in model.tabulated_rating_curve.node.df.index:
     model.update_node(node_id=node_id, node_type="Outlet")
 
 # ManningResistance that are duikersifonhevel to outlet
-assert model.manning_resistance.node is not None and model.manning_resistance.node.df is not None
 for node_id in model.manning_resistance.node.df[
     model.manning_resistance.node.df["meta_object_type"] == "duikersifonhevel"
 ].index:
@@ -334,13 +330,11 @@ model.node.df.loc[
 node_df = model.node.df[model.node.df["meta_gestuwd"] & model.node.df["node_type"].isin(["Outlet", "Pump"])]
 
 upstream_node_ids = [model.upstream_node_id(i) for i in node_df.index]
-assert model.basin.node is not None and model.basin.node.df is not None
 basin_node_ids = model.basin.node.df.index.intersection(upstream_node_ids)
 model.node.df.loc[basin_node_ids, "meta_gestuwd"] = True
 
 # set álle benedenstroomse outlets van gestuwde basins als gestuwd (dus ook duikers en andere objecten)
 downstream_node_ids = pd.Index(pd.Series([model.downstream_node_id(i) for i in basin_node_ids]).explode())
-assert model.outlet.node is not None and model.outlet.node.df is not None
 model.node.df.loc[model.outlet.node.df.index.intersection(downstream_node_ids), "meta_gestuwd"] = True
 
 
@@ -367,7 +361,6 @@ model.link.add(level_boundary_node, outlet_node)
 model.link.add(outlet_node, model.basin[1609])
 
 # label flow-boundaries to buitenlandse-aanvoer
-assert model.flow_boundary.node is not None and model.flow_boundary.node.df is not None
 model.node.df.loc[model.flow_boundary.node.df.index, "meta_categorie"] = "buitenlandse aanvoer"
 
 # fix Dommel en Aa
