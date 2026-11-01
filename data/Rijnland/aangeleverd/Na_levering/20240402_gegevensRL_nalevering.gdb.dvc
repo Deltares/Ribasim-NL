@@ -1,0 +1,6 @@
+outs:
+- md5: 3dc3c98eb031f7d3644332d0a885d2ac.dir
+  size: 10341457
+  nfiles: 58
+  hash: md5
+  path: 20240402_gegevensRL_nalevering.gdb

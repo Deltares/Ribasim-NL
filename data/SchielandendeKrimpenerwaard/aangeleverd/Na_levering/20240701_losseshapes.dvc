@@ -1,0 +1,6 @@
+outs:
+- md5: 9d3ff64172c58e3be222fc0ec344cabd.dir
+  size: 1127538
+  nfiles: 8
+  hash: md5
+  path: 20240701_losseshapes

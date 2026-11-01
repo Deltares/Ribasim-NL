@@ -1,0 +1,6 @@
+outs:
+- md5: fd3216aed15f0c387c5df580211dd74b.dir
+  size: 23927906
+  nfiles: 68
+  hash: md5
+  path: Oplevering_20240328.gdb
