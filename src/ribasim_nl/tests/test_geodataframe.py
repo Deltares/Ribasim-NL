@@ -1,12 +1,5 @@
 import geopandas as gpd
-from geopandas.testing import assert_geodataframe_equal
-from ribasim_nl.geodataframe import (
-    assign_node_ids_by_largest_overlap,
-    gpd_overlay,
-    snap_line_boundaries,
-    sorted_sjoin,
-    threaded_overlay,
-)
+from ribasim_nl.geodataframe import snap_line_boundaries, sorted_sjoin
 from shapely.geometry import LineString, Point, box
 
 
@@ -46,33 +39,3 @@ def test_sorted_sjoin():
     assert joined["code"].tolist()[:20] == polygons["code"].tolist()
     assert joined["code"].tolist()[21:] == polygons["code"].tolist()
     assert joined.loc[10, "index_right"] != joined.loc[10, "index_right"]  # NaN for no match
-
-
-def test_threaded_overlay():
-    # grids of overlapping squares, so rows intersect several geometries of the other frame
-    df1 = gpd.GeoDataFrame(
-        {"code": range(25)}, geometry=[box(x, y, x + 1.3, y + 1.3) for x in range(5) for y in range(5)]
-    )
-    df2 = gpd.GeoDataFrame(
-        {"node_id": range(9)},
-        geometry=[box(x * 1.7 + 0.2, y * 1.7 + 0.2, x * 1.7 + 2.1, y * 1.7 + 2.1) for x in range(3) for y in range(3)],
-    )
-    original = gpd_overlay._overlay_difference
-    for how in ("union", "difference", "symmetric_difference", "identity"):
-        expected = gpd.overlay(df1, df2, how=how, keep_geom_type=True)
-        result = threaded_overlay(df1, df2, how=how, keep_geom_type=True)
-        assert_geodataframe_equal(result, expected)
-        assert result.geometry.geom_equals_exact(expected.geometry, tolerance=0).all()
-    assert gpd_overlay._overlay_difference is original
-
-
-def test_assign_node_ids_by_largest_overlap():
-    areas = gpd.GeoDataFrame({"code": ["A", "B"]}, geometry=[box(0, 0, 10, 10), box(10, 0, 20, 10)], crs=28992)
-    # Basin 2 crosses into area A by a sliver
-    basin_areas = gpd.GeoDataFrame(
-        {"node_id": [1, 2]}, geometry=[box(0, 0, 8, 10), box(10 - 1e-6, 0, 20, 4)], crs=28992
-    )
-    result = assign_node_ids_by_largest_overlap(areas, basin_areas)
-    assert result["node_id"].tolist() == [1, 2]
-    # the rest of each area goes to the basin that overlaps it most
-    assert all(abs(area - 100) < 1e-3 for area in result.area)

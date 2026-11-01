@@ -1,8 +1,8 @@
 """Lump a detailed network into basins, by splitting it at split nodes.
 
 The detailed network is a directed graph of edges and nodes. Splitting it at the split nodes gives connected
-subnetworks, the basins. Each basin gets an area, from the areas its edges cross, and connections to its split nodes
-and boundaries. The node IDs follow from the order of these steps, see `ribasim_nl.lumping`.
+subnetworks, the basins. Each basin gets connections to its split nodes and boundaries, and an area, from the areas
+that drain to it or border its other areas. The node IDs follow from the order of these steps, see `ribasim_nl.lumping`.
 """
 
 import logging
@@ -14,14 +14,19 @@ import numpy as np
 import pandas as pd
 import shapely
 from shapely.geometry import GeometryCollection, LineString, MultiPolygon, Polygon
+from shapely.geometry.base import BaseGeometry
 
-from ribasim_nl.lumping.utils import merge_grouped, overlay_intersection, quicksort_order, remove_holes
+from ribasim_nl.geometry import polygon_parts, union_polygons
+from ribasim_nl.lumping.utils import merge_grouped, quicksort_order
 
 logger = logging.getLogger(__name__)
 
 # offsets of the graph nodes that replace a split node, or that split an edge
 SPLIT_NODE_OFFSET = 999_000_000_000
 SPLIT_EDGE_OFFSET = 998_000_000_000
+
+# the distance within which areas border each other, in m, see `_neighbouring_basins`
+NEIGHBOUR_DISTANCE = 1.0
 
 
 @dataclass
@@ -35,10 +40,12 @@ class Network:
 
 @dataclass
 class LumpedNetwork:
-    """The lumped network: the basins with their areas, the split nodes and boundaries, and their connections."""
+    """The lumped network: the basins, split nodes and boundaries, their connections, and the areas with their basin.
+
+    The `basin` of an area is the one it drains to, see `area_basins`, or -1. `assign_areas` assigns the others.
+    """
 
     basins: gpd.GeoDataFrame
-    basin_areas: gpd.GeoDataFrame
     split_nodes: gpd.GeoDataFrame
     boundaries: gpd.GeoDataFrame
     basin_connections: gpd.GeoDataFrame
@@ -174,16 +181,31 @@ def check_split_nodes_used(
     return split_nodes
 
 
-def create_basin_areas(
-    edges: gpd.GeoDataFrame, areas: gpd.GeoDataFrame, laterals: gpd.GeoDataFrame | None = None
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """Assign each area to a basin, and dissolve the areas of each basin into its basin area.
+def _valid_polygon(code: object, geometry: BaseGeometry | None) -> Polygon | MultiPolygon | None:
+    """The geometry of area `code` made valid, without the lines and points that `make_valid` can add."""
+    if geometry is None:
+        return None
+    valid = shapely.make_valid(geometry)
+    if isinstance(valid, GeometryCollection):
+        valid = next((g for g in valid.geoms if isinstance(g, Polygon | MultiPolygon)), None)
+    assert isinstance(valid, Polygon | MultiPolygon), f"area {code} has no polygon when made valid"
+    return valid
 
-    With `laterals`, an area gets the basin of the first lateral that includes the area code in its ID, and the basin
-    areas are exploded. Otherwise it gets the basin with the longest length of edges in the area.
+
+def area_basins(
+    edges: gpd.GeoDataFrame, areas: gpd.GeoDataFrame, laterals: gpd.GeoDataFrame | None = None
+) -> gpd.GeoDataFrame:
+    """The areas, made valid, with the `basin` that each drains to, or -1.
+
+    With `laterals`, an area drains to the basin of the first lateral that includes the area code in its ID. Otherwise
+    it drains to the basin with the longest length of edges in the area, the lowest basin of equal lengths.
     """
     areas = areas[["code", "area", "geometry"]].copy()
-    edges = edges.copy()
+    areas["geometry"] = gpd.GeoSeries(
+        [_valid_polygon(c, g) for c, g in zip(areas["code"], areas.geometry, strict=True)],
+        index=areas.index,
+        crs=areas.crs,
+    )
 
     if laterals is not None:
         laterals = laterals.copy()
@@ -199,41 +221,20 @@ def create_basin_areas(
         area_basin = laterals_join.dropna(subset=["area_code_included"]).groupby("area_code_included", sort=False)
         first_basin = area_basin["basin"].first()
         areas["basin"] = [first_basin.get(code, -1) for code in areas["code"]]
-        basin_areas = areas.dissolve(by="basin").explode(index_parts=True).reset_index().drop(columns=["level_1"])
     else:
-        edges_sel = edges.loc[edges["basin"] != -1].copy()
-        areas_orig = areas.copy()
-        # only keep the (multi)polygon of the collections that make_valid can return
-        valid_areas = []
-        for code, valid in zip(areas["code"], areas.make_valid(), strict=True):
-            if isinstance(valid, GeometryCollection):
-                valid = next((g for g in valid.geoms if isinstance(g, Polygon | MultiPolygon)), None)
-                assert valid is not None, f"area {code} has no polygon when made valid"
-            valid_areas.append(valid)
-        areas["geometry"] = valid_areas
-        areas = areas.sjoin(edges_sel[["basin", "geometry"]])
-        # the length of each edge within each area
+        edges_sel = edges.loc[edges["basin"] != -1]
         assert edges_sel.index.is_unique
-        area_edges = edges_sel.geometry.loc[areas["index_right"]].to_numpy()
-        areas["edge_length"] = shapely.length(shapely.intersection(area_edges, areas.geometry.to_numpy()))
-        lengths = areas.groupby(by=["area", "basin"], as_index=False).agg({"edge_length": "sum"})
-        # the basin with the longest edges in each area
-        lengths = lengths.sort_values(by=["area", "edge_length"], ascending=[True, False]).drop_duplicates(
-            subset=["area"], keep="first"
-        )
-        areas = gpd.GeoDataFrame(
-            lengths[["area", "basin", "edge_length"]]
-            .sort_values(by="area", kind="stable")
-            .merge(areas_orig, how="outer", on="area"),
-            geometry="geometry",
-            crs=edges.crs,
-        ).sort_values(by="area", kind="stable")
-        areas["geometry"] = areas.make_valid()
-        basin_areas = areas.dissolve(by="basin").reset_index().drop(columns=["area"])
+        joined = areas.sjoin(edges_sel[["basin", "geometry"]])
+        # the length of each edge within each area
+        area_edges = edges_sel.geometry.loc[joined["index_right"]].to_numpy()
+        joined["edge_length"] = shapely.length(shapely.intersection(area_edges, joined.geometry.to_numpy()))
+        lengths = joined.groupby(by=["area", "basin"], as_index=False).agg({"edge_length": "sum"})
+        lengths = lengths.sort_values(by=["area", "edge_length", "basin"], ascending=[True, False, True], kind="stable")
+        basin = lengths.drop_duplicates(subset="area").set_index("area")["basin"]
+        areas["basin"] = areas["area"].map(basin)
 
     areas["basin"] = areas["basin"].fillna(-1).astype(int)
-    basin_areas["basin"] = basin_areas["basin"].fillna(-1).astype(int)
-    return areas, basin_areas
+    return areas
 
 
 def create_basins(graph: nx.DiGraph, nodes: gpd.GeoDataFrame, edges: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -294,30 +295,6 @@ def create_basins(graph: nx.DiGraph, nodes: gpd.GeoDataFrame, edges: gpd.GeoData
 
     basins = gpd.GeoDataFrame(pd.concat([basins1, basins2]), geometry="geometry", crs=nodes.crs)
     return basins[basins.geometry.notna()]
-
-
-def check_nodes_edges_within_basin_areas(
-    nodes: gpd.GeoDataFrame, edges: gpd.GeoDataFrame, basin_areas: gpd.GeoDataFrame
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """Add the `basin_area` that each node intersects and each edge lies within, or -1."""
-    nodes = gpd.sjoin(
-        nodes.drop(columns=["basin_area"], errors="ignore"), basin_areas[["geometry", "basin"]], how="left"
-    )
-    nodes = nodes.drop(columns=["index_right"])
-    nodes["basin_right"] = nodes["basin_right"].fillna(-1).astype(int)
-    nodes = nodes.rename(columns={"basin_left": "basin", "basin_right": "basin_area"})
-    nodes["basin_check"] = nodes["basin"] == nodes["basin_area"]
-
-    edges = gpd.sjoin(
-        edges.drop(columns=["basin_area"], errors="ignore"),
-        basin_areas[["geometry", "basin"]],
-        how="left",
-        predicate="within",
-    ).drop(columns=["index_right"])
-    edges = edges.rename(columns={"basin_left": "basin", "basin_right": "basin_area"})
-    edges["basin_area"] = edges["basin_area"].fillna(-1).astype(int)
-    edges["basin_check"] = edges["basin"] == edges["basin_area"]
-    return nodes, edges
 
 
 def _lines(df: pd.DataFrame, start: str, end: str) -> gpd.GeoSeries:
@@ -407,13 +384,18 @@ def remove_basins_from_boundary(
     basins: gpd.GeoDataFrame,
     nodes: gpd.GeoDataFrame,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """Remove the basins of boundaries that have split nodes, and connect these boundaries to the split nodes."""
+    """Remove the basins of boundaries that have split nodes, and connect these boundaries to the split nodes.
+
+    The basins of boundaries without split node are kept, with `boundary_without_split_node`. The 2024 lumping
+    removed them too, leaving their boundary connected to no node, and the fix scripts added them back.
+    """
     conn = boundary_connections.merge(
         basin_connections[["basin", "split_node", "geom_split_node"]], how="left", on="basin"
     )
     conn["split_node"] = conn["split_node"].fillna(-1).astype(int)
     excluded = conn[conn["split_node"] == -1]
-    nodes = nodes.copy()
+    nodes, basins = nodes.copy(), basins.copy()
+    basins["boundary_without_split_node"] |= basins["basin"].isin(excluded["basin"])
 
     out = conn[(conn["split_node"] != -1) & (conn["connection"] == "basin_to_boundary")].copy()
     if not out.empty:
@@ -427,9 +409,10 @@ def remove_basins_from_boundary(
         into["geometry"] = _lines(into, "geom_boundary", "geom_split_node")
         nodes.loc[nodes["basin"].isin(into["basin"]), "basin"] = -1
 
+    removed = pd.concat([into, out])["basin"]
     conn = pd.concat([excluded, into, out])
-    basin_connections = basin_connections[~basin_connections["basin"].isin(conn["basin"])]
-    basins = basins[~basins["basin"].isin(conn["basin"])]
+    basin_connections = basin_connections[~basin_connections["basin"].isin(removed)]
+    basins = basins[~basins["basin"].isin(removed)]
     return conn, basin_connections, basins, nodes
 
 
@@ -441,9 +424,13 @@ def remove_boundary_basins(
     include_flow_boundary_basins: bool = True,
     include_level_boundary_basins: bool = False,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """Remove the basins between boundaries and their split nodes, unless they are included."""
+    """Remove the basins between boundaries and their split nodes, unless they are included.
+
+    The basins of boundaries without split node are kept, see `remove_basins_from_boundary`.
+    """
     flow = boundary_connections[boundary_connections["boundary_type"] == "FlowBoundary"]
     level = boundary_connections[boundary_connections["boundary_type"] == "LevelBoundary"]
+    basins = basins.assign(boundary_without_split_node=False)
     if not include_flow_boundary_basins and not flow.empty:
         flow, basin_connections, basins, nodes = remove_basins_from_boundary(flow, basin_connections, basins, nodes)
     if not include_level_boundary_basins and not level.empty:
@@ -464,43 +451,12 @@ def remove_boundary_basins(
 
 
 def remove_isolated_basins(
-    basins: gpd.GeoDataFrame,
-    basin_areas: gpd.GeoDataFrame,
-    areas: gpd.GeoDataFrame,
-    basin_connections: gpd.GeoDataFrame,
-    boundary_connections: gpd.GeoDataFrame,
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """Remove the basins without connections.
-
-    Their basin areas go to a connected basin in the same basin area, or are removed. As in 2024, their areas get NaN
-    as basin, not -1, so `assign_unassigned_areas` does not assign them to a neighbouring basin area.
-    """
-    connected = np.unique(basin_connections["basin"].tolist() + boundary_connections["basin"].tolist())
-    isolated = basins.loc[~basins["basin"].isin(connected), "basin"].to_numpy()
-    logger.info(f"Removing {len(isolated)} isolated basins")
-    if len(isolated) == 0:
-        return basins, basin_areas, areas
-
-    # the basins within each basin area
-    joined = basin_areas.sjoin(basins, how="left")
-    area_basins = {k: joined.loc[[k], "basin_right"].to_numpy() for k in joined.index.unique()}
-    area_basins = {k: v for k, v in area_basins.items() if not np.isnan(v).all()}
-    basin_area = {b: k for k, v in area_basins.items() for b in v}
-    connected_basins = basins.loc[basins["basin"].isin(connected), "basin"]
-    new_basin = {b: area_basins[basin_area[b]] for b in isolated if b in basin_area}
-    new_basin = {b: v[np.isin(v, connected_basins)] for b, v in new_basin.items()}
-    new_basin = {b: int(v[0]) if len(v) > 0 else -(1000 + b) for b, v in new_basin.items()}
-
-    basins = basins.loc[basins["basin"].isin(connected)]
-    basin_areas = basin_areas.copy()
-    basin_areas["basin"] = [new_basin.get(b, b) for b in basin_areas["basin"]]
-    basin_areas = basin_areas.loc[basin_areas["basin"] >= 0]
-    areas = areas.copy()
-    isolated_areas = areas["basin"].isin(isolated)
-    if isolated_areas.any():
-        areas["basin"] = areas["basin"].astype(float)
-        areas.loc[isolated_areas, "basin"] = np.nan
-    return basins, basin_areas, areas
+    basins: gpd.GeoDataFrame, basin_connections: gpd.GeoDataFrame, boundary_connections: gpd.GeoDataFrame
+) -> gpd.GeoDataFrame:
+    """Remove the basins without connections."""
+    connected = basins["basin"].isin(basin_connections["basin"]) | basins["basin"].isin(boundary_connections["basin"])
+    logger.info(f"Removing {(~connected).sum()} isolated basins")
+    return basins.loc[connected]
 
 
 def regenerate_node_ids(
@@ -509,12 +465,12 @@ def regenerate_node_ids(
     basins: gpd.GeoDataFrame,
     basin_connections: gpd.GeoDataFrame,
     boundary_connections: gpd.GeoDataFrame,
-    basin_areas: gpd.GeoDataFrame,
-    areas: gpd.GeoDataFrame,
-) -> LumpedNetwork:
+) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """Number the boundaries, then the split nodes, then the basins, and connect them by these node IDs.
 
     As in 2024, the split nodes are numbered from their number, so a split node and a basin can get the same node ID.
+    `ribasim_nl.lumping.model.lumped_model` gives these basins another node ID. Returns the boundaries, split nodes,
+    basins, basin connections and boundary connections.
     """
     boundaries, split_nodes, basins = boundaries.copy(), split_nodes.copy(), basins.copy()
     basin_connections, boundary_connections = basin_connections.copy(), boundary_connections.copy()
@@ -551,83 +507,216 @@ def regenerate_node_ids(
         )
         boundary_connections[end] = pd.Series(node_id, index=boundary_connections.index).fillna(-1).astype(int)
 
+    return (
+        boundaries.drop_duplicates(keep="first"),
+        split_nodes,
+        basins.drop_duplicates(keep="first"),
+        basin_connections.drop_duplicates(keep="first"),
+        boundary_connections.drop_duplicates(keep="first"),
+    )
+
+
+def _drainage_area_codes(areas: gpd.GeoDataFrame, drainage_areas: gpd.GeoDataFrame | None) -> np.ndarray:
+    """The code of the drainage area that each area overlaps most, or None."""
+    codes = np.full(len(areas), None, dtype=object)
+    if drainage_areas is None:
+        return codes
+    drainage = shapely.make_valid(drainage_areas.geometry.to_numpy())
+    i_area, i_drainage = shapely.STRtree(drainage).query(areas.geometry.to_numpy(), predicate="intersects")
+    overlap = shapely.area(shapely.intersection(areas.geometry.to_numpy()[i_area], drainage[i_drainage]))
+    # the largest overlap of each area, the first drainage area of equal overlaps
+    order = np.lexsort((i_drainage, -overlap, i_area))
+    first = order[np.r_[True, np.diff(i_area[order]) != 0]] if len(order) else order
+    codes[i_area[first]] = drainage_areas["code"].to_numpy()[i_drainage[first]]
+    return codes
+
+
+def _neighbouring_basins(areas: gpd.GeoDataFrame, unassigned: np.ndarray) -> pd.DataFrame:
+    """The basins that the `unassigned` areas border, with how long a border they share, in m.
+
+    The length of the border is measured as the overlap of the area within `NEIGHBOUR_DISTANCE`, divided by that
+    distance, which allows for small gaps and overlaps between the areas. Returns the area number, the basin, the
+    length of the border, and that of the border within the drainage area of the area.
+    """
+    geometry = areas.geometry.to_numpy()
+    assigned = np.flatnonzero(areas["basin"].to_numpy() != -1)
+    buffered = shapely.buffer(geometry[unassigned], NEIGHBOUR_DISTANCE)
+    i_unassigned, i_assigned = shapely.STRtree(geometry[assigned]).query(buffered, predicate="intersects")
+    rows, neighbours = unassigned[i_unassigned], assigned[i_assigned]
+    border = shapely.area(shapely.intersection(buffered[i_unassigned], geometry[neighbours])) / NEIGHBOUR_DISTANCE
+    drainage = areas["drainage_area"].to_numpy()
+    same_drainage = (drainage[rows] == drainage[neighbours]) & pd.notna(drainage[rows])
+    pairs = pd.DataFrame(
+        {
+            "row": rows,
+            "basin": areas["basin"].to_numpy()[neighbours],
+            "border": border,
+            "drainage_border": np.where(same_drainage, border, 0.0),
+        }
+    )
+    return pairs.groupby(["row", "basin"], as_index=False)[["border", "drainage_border"]].sum()
+
+
+def _basin_of_longest_border(pairs: pd.DataFrame) -> pd.Series:
+    """The basin with the longest border within the drainage area for each row, else the longest border."""
+    pairs = pairs[pairs["border"] > 0]
+    pairs = pairs.assign(in_drainage=pairs.groupby("row")["drainage_border"].transform("max") > 0)
+    pairs = pairs.assign(length=np.where(pairs["in_drainage"], pairs["drainage_border"], pairs["border"]))
+    pairs = pairs.sort_values(["row", "length", "basin"], ascending=[True, False, True], kind="stable")
+    return pairs.drop_duplicates(subset="row").set_index("row")["basin"]
+
+
+def _fill_gaps(basin_areas: gpd.GeoDataFrame, max_gap_area: float) -> gpd.GeoDataFrame:
+    """Give each gap of at most `max_gap_area` m² between the basin areas to the one sharing the longest border."""
+    union = union_polygons(basin_areas.geometry.to_numpy())
+    gaps = [Polygon(ring) for part in shapely.get_parts(union) for ring in part.interiors]
+    gaps = [gap for gap in gaps if gap.area <= max_gap_area]
+    if not gaps:
+        return basin_areas
+    geometry = basin_areas.geometry.to_numpy()
+    buffered = shapely.buffer(np.array(gaps), NEIGHBOUR_DISTANCE)
+    i_gap, i_basin = shapely.STRtree(geometry).query(buffered, predicate="intersects")
+    border = shapely.area(shapely.intersection(buffered[i_gap], geometry[i_basin]))
+    order = np.lexsort((i_basin, -border, i_gap))
+    first = order[np.r_[True, np.diff(i_gap[order]) != 0]]
+    gaps_of_row: dict[int, list[Polygon]] = {}
+    for gap, row in zip(i_gap[first], i_basin[first], strict=True):
+        gaps_of_row.setdefault(int(row), []).append(gaps[gap])
+    filled = list(geometry)
+    for row, gap_polygons in gaps_of_row.items():
+        filled[row] = MultiPolygon(polygon_parts(union_polygons(np.array([geometry[row], *gap_polygons]))))
+    basin_areas = basin_areas.set_geometry(gpd.GeoSeries(filled, index=basin_areas.index, crs=basin_areas.crs))
+    logger.info(f"Filled {len(gaps)} gaps between basin areas")
+    return basin_areas
+
+
+def _assign_areas_to_basins_within(areas: gpd.GeoDataFrame, basins: gpd.GeoDataFrame, drained: np.ndarray) -> None:
+    """Give groups of areas without basin that contain the location of one basin without area to that basin, in place.
+
+    The areas that drain to the same basin, which is not in `basins`, form a group, and each other area a group of its
+    own. `drained` holds the basin that each area drains to, or -1.
+    """
+    unassigned = np.flatnonzero(areas["basin"].to_numpy() == -1)
+    group = np.where(drained[unassigned] == -1, -2 - unassigned, drained[unassigned])
+    without_area = basins[~basins["basin"].isin(areas["basin"])]
+    i_basin, i_area = shapely.STRtree(areas.geometry.to_numpy()[unassigned]).query(
+        without_area.geometry.to_numpy(), predicate="within"
+    )
+    candidates = pd.DataFrame({"group": group[i_area], "basin": without_area["basin"].to_numpy()[i_basin]})
+    candidates = candidates.drop_duplicates()
+    one = candidates.groupby("group")["basin"].transform("size") == 1
+    basin_of_group = candidates[one].set_index("group")["basin"]
+    assign = np.isin(group, basin_of_group.index)
+    logger.info(f"Assigning {assign.sum()} areas to the basin without area within them")
+    basin = areas["basin"].to_numpy().copy()
+    basin[unassigned[assign]] = basin_of_group.loc[group[assign]].to_numpy()
+    areas["basin"] = basin
+
+
+def assign_areas(
+    areas: gpd.GeoDataFrame,
+    basins: pd.DataFrame,
+    drainage_areas: gpd.GeoDataFrame | None = None,
+    max_gap_area: float = 0.0,
+) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+    """Assign every area to a basin, and make the basin areas from the areas of each basin.
+
+    An area keeps the basin it drains to, see `area_basins`, if that basin is in `basins`. With the geometry of
+    `basins`, the areas that drain to the same other basin, or to none, go to the one basin without area within them.
+    The other areas go to the basin with whose areas they share the longest border, see `_neighbouring_basins`,
+    counting only the areas in the same drainage area if they border any. This repeats, so areas also reach a basin
+    through other areas. Areas that border no area of a basin go to the nearest. The gaps between the basin areas up to
+    `max_gap_area` m² go to the basin area they share the longest border with.
+
+    Returns the areas with their `basin`, and the basin areas, with their `basin`, as MultiPolygons.
+    """
+    areas = areas[areas.geometry.notna()].reset_index(drop=True)
+    drained = areas["basin"].to_numpy()
+    areas["basin"] = areas["basin"].where(areas["basin"].isin(basins["basin"]), -1)
+    areas["drainage_area"] = _drainage_area_codes(areas, drainage_areas)
+    assert areas["basin"].ne(-1).any(), "no area drains to a basin"
+    if isinstance(basins, gpd.GeoDataFrame):
+        _assign_areas_to_basins_within(areas, basins, drained)
+
+    while (unassigned := np.flatnonzero(areas["basin"].to_numpy() == -1)).size > 0:
+        basin = _basin_of_longest_border(_neighbouring_basins(areas, unassigned))
+        if basin.empty:
+            break
+        logger.info(f"Assigning {len(basin)} of {len(unassigned)} areas to the basin they border")
+        areas.loc[basin.index, "basin"] = basin.to_numpy()
+
+    if unassigned.size > 0:
+        geometry = areas.geometry.to_numpy()
+        assigned = np.flatnonzero(areas["basin"].to_numpy() != -1)
+        i_unassigned, i_assigned = shapely.STRtree(geometry[assigned]).query_nearest(geometry[unassigned])
+        # the first of equally near areas
+        order = np.lexsort((i_assigned, i_unassigned))
+        nearest = pd.Series(
+            areas["basin"].to_numpy()[assigned[i_assigned[order]]], index=unassigned[i_unassigned[order]]
+        )
+        nearest = nearest[~nearest.index.duplicated()]
+        logger.warning(f"Assigning {len(nearest)} areas that border no area of a basin to the nearest")
+        areas.loc[nearest.index, "basin"] = nearest.to_numpy()
+
+    basin_areas = areas.groupby("basin")["geometry"].apply(lambda parts: union_polygons(parts.to_numpy()))
     basin_areas = gpd.GeoDataFrame(
-        merge_grouped(basin_areas, basins[["basin", "basin_node_id"]], on="basin"),
-        geometry="geometry",
+        {"basin": basin_areas.index.to_numpy()},
+        geometry=[MultiPolygon(polygon_parts(g)) for g in basin_areas.to_numpy()],
+        crs=areas.crs,
+    )
+    if max_gap_area > 0:
+        basin_areas = _fill_gaps(basin_areas, max_gap_area)
+    return areas, basin_areas
+
+
+def fill_holes(
+    basin_areas: gpd.GeoDataFrame,
+    areas: gpd.GeoDataFrame,
+    drainage_areas: gpd.GeoDataFrame | None = None,
+    tolerance: float = 0.001,
+) -> gpd.GeoDataFrame:
+    """Give the parts of `areas` that no basin area covers to a basin area.
+
+    The uncovered part of an area goes to the basin area that covers most of that area. The areas that no basin area
+    covers are assigned as in `assign_areas`, to the basin area they share the longest border with, preferably in the
+    same drainage area. Slivers, polygons on average narrower than `tolerance`, are left out. Returns one basin area
+    per `node_id`, as MultiPolygons.
+    """
+    areas = areas[areas.geometry.notna()]
+    geometry = np.array([_valid_polygon(c, g) for c, g in zip(areas["code"], areas.geometry, strict=True)])
+    basin_geometry = basin_areas.geometry.to_numpy()
+    node_ids = basin_areas["node_id"].to_numpy()
+
+    # the node covering most of each area
+    i_area, i_basin = shapely.STRtree(basin_geometry).query(geometry, predicate="intersects")
+    cover = pd.DataFrame(
+        {
+            "area": i_area,
+            "node_id": node_ids[i_basin],
+            "overlap": shapely.area(shapely.intersection(geometry[i_area], basin_geometry[i_basin])),
+        }
+    )
+    cover = cover.groupby(["area", "node_id"], as_index=False)["overlap"].sum()
+    cover = cover[cover["overlap"] > tolerance * shapely.length(geometry[cover["area"]])]
+    cover = cover.sort_values(["area", "overlap", "node_id"], ascending=[True, False, True], kind="stable")
+    covering_node = cover.drop_duplicates(subset="area").set_index("area")["node_id"]
+
+    # the uncovered parts of the areas, with that node, or -1
+    uncovered = shapely.difference(geometry, union_polygons(basin_geometry))
+    holes = [(i, part) for i, g in enumerate(uncovered.tolist()) for part in polygon_parts(g, tolerance)]
+    logger.info(f"Filling {len(holes)} holes of {sum(p.area for _, p in holes) / 1e6:.2f} km2")
+    parts = basin_areas[["node_id", "geometry"]].explode(index_parts=False)
+    frame = gpd.GeoDataFrame(
+        {
+            "basin": [*parts["node_id"], *(covering_node.get(i, -1) for i, _ in holes)],
+            "code": None,
+        },
+        geometry=[*parts.geometry, *(p for _, p in holes)],
         crs=basin_areas.crs,
     )
-    basin_areas["basin_node_id"] = basin_areas["basin_node_id"].astype(int)
-    areas = areas.copy()
-    areas["basin_node_id"] = [b + n_split_nodes + n_boundaries if b > 0 else -1 for b in areas["basin"]]
-
-    return LumpedNetwork(
-        basins=basins.drop_duplicates(keep="first"),
-        basin_areas=basin_areas.drop_duplicates(keep="first"),
-        split_nodes=split_nodes,
-        boundaries=boundaries.drop_duplicates(keep="first"),
-        basin_connections=basin_connections.drop_duplicates(keep="first"),
-        boundary_connections=boundary_connections.drop_duplicates(keep="first"),
-        areas=areas.drop_duplicates(keep="first"),
-    )
-
-
-def assign_unassigned_areas(
-    areas: gpd.GeoDataFrame, basin_areas: gpd.GeoDataFrame, drainage_areas: gpd.GeoDataFrame | None = None
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """Assign the areas without basin to the neighbouring basin area they share most with, in the same drainage area.
-
-    This repeats while it assigns areas. As in 2024, the areas are intersected with `overlay_intersection` and sorted
-    with `quicksort_order`, and a basin area that gains areas gets the `basin_node_id` of its smallest area, which is
-    -1 if that area had no basin before.
-    """
-    areas, basin_areas = areas.copy(), basin_areas.copy()
-    areas["geometry"] = areas.make_valid()
-    if drainage_areas is None:
-        areas["drainage_area_code"] = -1
-        basin_areas["drainage_area_code"] = -1
-    else:
-        drainage = drainage_areas[["code", "geometry"]].rename(columns={"code": "drainage_area_code"})
-        areas = overlay_intersection(areas, drainage)
-        areas["geom_area"] = areas.geometry.area
-        areas = areas.iloc[quicksort_order(areas["geom_area"])].drop_duplicates(subset="area", keep="last")
-        areas = areas.drop(columns=["geom_area"])
-        basin_areas = overlay_intersection(basin_areas, drainage)
-        basin_areas["geom_area"] = basin_areas.geometry.area
-        basin_areas = basin_areas.iloc[quicksort_order(basin_areas["geom_area"])].drop_duplicates(
-            subset="basin", keep="last"
-        )
-        basin_areas = basin_areas.drop(columns=["geom_area"])
-
-    unassigned = areas.loc[areas["basin"] == -1]
-    while len(unassigned) > 0:
-        n_unassigned = len(unassigned)
-        neighbours = unassigned.copy()
-        neighbours["geometry"] = neighbours.geometry.buffer(1)
-        neighbours = overlay_intersection(
-            neighbours.drop(columns=["basin"]),
-            basin_areas[["basin", "drainage_area_code", "geometry"]].rename(
-                columns={"basin": "new_basin", "drainage_area_code": "new_drainage_area_code"}
-            ),
-        )
-        neighbours = neighbours[neighbours["drainage_area_code"] == neighbours["new_drainage_area_code"]].copy()
-        neighbours["geom_area"] = neighbours.geometry.area
-        neighbours = neighbours.iloc[quicksort_order(neighbours["geom_area"])].drop_duplicates(
-            subset="area", keep="last"
-        )
-        logger.info(f"Assigning {len(neighbours)} of {n_unassigned} unassigned areas")
-
-        areas = areas.merge(neighbours[["area", "new_basin"]], how="left", on="area")
-        areas["new_basin"] = areas["new_basin"].fillna(-1).astype(int)
-        areas.loc[areas["basin"] == -1, "basin"] = areas.loc[areas["basin"] == -1, "new_basin"]
-        areas = areas.drop(columns=["new_basin"])
-        basin_areas = areas[areas["basin"] != -1].dissolve(by="basin").reset_index().drop(columns=["area"])
-        basin_areas["basin"] = basin_areas["basin"].astype(int)
-
-        unassigned = areas.loc[areas["basin"] == -1]
-        if len(unassigned) == n_unassigned:
-            break
-    basin_areas["basin"] = basin_areas["basin"].fillna(-1).astype(int)
-    return areas, basin_areas
+    frame["area"] = np.arange(len(frame))
+    _, filled = assign_areas(frame, pd.DataFrame({"basin": np.unique(node_ids)}), drainage_areas)
+    return filled.rename(columns={"basin": "node_id"})
 
 
 def lump_network(
@@ -635,13 +724,10 @@ def lump_network(
     split_nodes: gpd.GeoDataFrame,
     boundaries: gpd.GeoDataFrame,
     areas: gpd.GeoDataFrame,
-    drainage_areas: gpd.GeoDataFrame | None = None,
     laterals: gpd.GeoDataFrame | None = None,
     remove_isolated: bool = False,
     include_flow_boundary_basins: bool = True,
     include_level_boundary_basins: bool = False,
-    remove_holes_min_area: float = 10.0,
-    assign_unassigned: bool = True,
 ) -> LumpedNetwork:
     """Lump the network into basins at the split nodes, and connect them with the split nodes and boundaries.
 
@@ -655,18 +741,12 @@ def lump_network(
         The boundaries, with their `boundary_id`, `boundary_name` and `boundary_type`.
     areas : gpd.GeoDataFrame
         The areas that make up the basin areas, with their `code` and number `area`.
-    drainage_areas : gpd.GeoDataFrame | None
-        The drainage areas, with their `code`, within which unassigned areas are assigned.
     laterals : gpd.GeoDataFrame | None
         The laterals, to assign areas to basins with, instead of the edges in each area.
     remove_isolated : bool
         Remove the basins without connections.
     include_flow_boundary_basins, include_level_boundary_basins : bool
         Keep the basins between a boundary and its split nodes.
-    remove_holes_min_area : float
-        Remove the holes in the basin areas with an area up to this, in m².
-    assign_unassigned : bool
-        Assign the areas without basin to a neighbouring basin area.
     """
     graph = create_graph(network.nodes, network.edges)
     graph, split_nodes = split_graph(graph, split_nodes, network.edges)
@@ -674,8 +754,7 @@ def lump_network(
     split_nodes = check_split_nodes_used(split_nodes, nodes, edges)
     basins = create_basins(graph, nodes, edges)
     logger.info(f"{len(basins)} basins")
-    areas, basin_areas = create_basin_areas(edges, areas, laterals)
-    nodes, edges = check_nodes_edges_within_basin_areas(nodes, edges, basin_areas)
+    areas = area_basins(edges, areas, laterals)
     basin_connections = create_basin_connections(split_nodes, edges, nodes, basins)
     boundary_connections = create_boundary_connections(boundaries, nodes, edges, basins)
     # only the used split nodes are numbered
@@ -689,13 +768,15 @@ def lump_network(
         include_level_boundary_basins=include_level_boundary_basins,
     )
     if remove_isolated:
-        basins, basin_areas, areas = remove_isolated_basins(
-            basins, basin_areas, areas, basin_connections, boundary_connections
-        )
-    basin_areas = remove_holes(basin_areas, min_area=remove_holes_min_area)
-    lumped = regenerate_node_ids(
-        boundaries, split_nodes, basins, basin_connections, boundary_connections, basin_areas, areas
+        basins = remove_isolated_basins(basins, basin_connections, boundary_connections)
+    boundaries, split_nodes, basins, basin_connections, boundary_connections = regenerate_node_ids(
+        boundaries, split_nodes, basins, basin_connections, boundary_connections
     )
-    if assign_unassigned:
-        lumped.areas, lumped.basin_areas = assign_unassigned_areas(lumped.areas, lumped.basin_areas, drainage_areas)
-    return lumped
+    return LumpedNetwork(
+        basins=basins,
+        split_nodes=split_nodes,
+        boundaries=boundaries,
+        basin_connections=basin_connections,
+        boundary_connections=boundary_connections,
+        areas=areas,
+    )

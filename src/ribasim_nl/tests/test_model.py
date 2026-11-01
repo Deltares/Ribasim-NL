@@ -164,6 +164,81 @@ def test_select_basin_area_parts(model):
     assert model.basin.area.df.crs == model.crs
 
 
+def test_select_basin_area_covering(model):
+    """A polygon that several basin areas cover is split from each, and slivers are not selected."""
+    assert model.basin.area.df is not None
+    model.basin.area.df.loc[model.basin.area.df["node_id"] == 2, "geometry"] = square(10)
+    # the right half of Basin 1 and the left half of Basin 2, around Outlet 4
+    polygon = Polygon([(0, -5), (15, -5), (15, 5), (0, 5)])
+    selected = model.select_basin_area(polygon)
+    assert model.basin.area.df is not None
+    assert sorted(model.basin.area.df.loc[selected, "node_id"]) == [1, 2]
+    assert model.basin.area.df.loc[selected].area.sum() == pytest.approx(polygon.area)
+    # a sliver within Basin 3 selects nothing
+    sliver = Polygon([(40, -5), (40 + 1e-6, -5), (40 + 1e-6, 5), (40, 5)])
+    assert not model.select_basin_area(sliver).any()
+
+
+def test_add_basin_area(model):
+    """An added basin area is taken from the other basin areas."""
+    model.add_basin_area(Polygon([(0, -5), (15, -5), (15, 5), (0, 5)]), node_id=2)
+    model.dissolve_basin_area()
+    area = model.basin.area.df
+    assert area is not None
+    assert area.set_index("node_id").area.to_dict() == {1: 50.0, 2: 250.0, 3: 100.0}
+    # a sliver is not added
+    model.add_basin_area(Polygon([(40, -5), (40 + 1e-6, -5), (40 + 1e-6, 5), (40, 5)]), node_id=2)
+    assert len(model.basin.area.df) == 3
+
+
+def test_dissolve_basin_area(model):
+    model.dissolve_basin_area()
+    area = model.basin.area.df
+    assert area is not None
+    assert area["node_id"].tolist() == [1, 2, 3]
+    assert (area.geom_type == "MultiPolygon").all()
+    area.loc[area["node_id"] == 3, "node_id"] = 6
+    with pytest.raises(AssertionError, match="no Basin: \\[6\\]"):
+        model.dissolve_basin_area()
+
+
+def test_fill_basin_area_holes(model, tmp_path):
+    """Uncovered parts of areas go to the basin covering most of the area, uncovered areas to their neighbour."""
+    areas_gpkg = tmp_path / "areas.gpkg"
+    gpd.GeoDataFrame(
+        # A around Basin 1, B against Basin 3, C beyond Basin 3, D within the excluded part
+        {"code": ["A", "B", "C", "D"]},
+        geometry=[
+            Polygon([(-5, -5), (5, -5), (5, 8), (-5, 8)]),
+            Polygon([(27, -5), (35, -5), (35, 5), (27, 5)]),
+            Polygon([(45, -5), (55, -5), (55, 5), (45, 5)]),
+            Polygon([(55, -5), (65, -5), (65, 5), (55, 5)]),
+        ],
+        crs=model.crs,
+    ).to_file(areas_gpkg, layer="areas")
+    gpd.GeoDataFrame(
+        {"CODE": ["X"]}, geometry=[Polygon([(-10, -10), (70, -10), (70, 10), (-10, 10)])], crs=model.crs
+    ).to_file(areas_gpkg, layer="drainage_areas")
+    model.fill_basin_area_holes(areas_gpkg, excluded=Polygon([(55, -5), (65, -5), (65, 5), (55, 5)]))
+    area = model.basin.area.df
+    assert area is not None
+    # Basin 1 gets the uncovered part of A, Basin 3 the rest of B and C, which it borders, and nothing gets D
+    assert area.set_index("node_id").area.round(6).to_dict() == {1: 130.0, 2: 100.0, 3: 280.0}
+
+    # a Basin without basin area is an error
+    model.basin.area.df = area[area["node_id"] != 2]
+    with pytest.raises(AssertionError, match=r"Basins without basin area: \[2\]"):
+        model.fill_basin_area_holes(areas_gpkg)
+
+
+def test_split_basin(model):
+    """The parts of a split basin area keep its node, but for one with a Basin without area."""
+    model.split_basin(geometry=LineString([(0, -10), (0, 10)]))
+    area = model.basin.area.df
+    assert area is not None
+    assert area.loc[area.intersects(Point(-2, 0)) | area.intersects(Point(2, 0)), "node_id"].tolist() == [1, 1]
+
+
 def test_apply_edits(model, tmp_path):
     edits_gpkg = tmp_path / "model_edits.gpkg"
     gpd.GeoDataFrame(

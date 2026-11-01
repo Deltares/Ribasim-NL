@@ -2,8 +2,9 @@
 """Lump the HyDAMO network of a water authority into its input model, `modellen/<authority>_2024_6_3`.
 
 The hydroobjects of `verwerkt/4_ribasim/hydamo.gpkg` are split in edges of about 250 m, and lumped into basins at the
-split nodes of `verwerkt/3_input/ribasim_input.gpkg`, with the areas of `verwerkt/3_input/areas.gpkg`. Nodes on the KRW
-water bodies of `verwerkt/4_ribasim/krw.gpkg` are hoofdwater. See `ribasim_nl.lumping`.
+split nodes of `verwerkt/3_input/ribasim_input.gpkg`. Every area of `verwerkt/3_input/areas.gpkg` goes to a basin,
+preferably one in its drainage area, and the gaps between them up to 5000 m² are filled. Nodes on the KRW water bodies
+of `verwerkt/4_ribasim/krw.gpkg` are hoofdwater. See `ribasim_nl.lumping`.
 
 Usage: pixi run python pipeline/00b_lump_model.py <authority>
 """
@@ -33,6 +34,14 @@ CODES = {
     "Vechtstromen": "NL44",
 }
 
+# the node IDs that fix scripts gave basins that the 2024 lumping left out, by their 2024 node ID, where these are not
+# the next node IDs of the input model, see `ribasim_nl.lumping.model.number_lost_basins`
+LOST_BASIN_NODE_IDS = {
+    "DeDommel": {1278: 1278, 1446: 1446},
+    "Limburg": {1743: 2472, 2286: 2474, 1957: 2476, 2151: 2478, 2014: 2480},
+    "Vechtstromen": {node_id: node_id + 947 for node_id in range(1356, 1371)},
+}
+
 authorities = sys.argv[1:]
 assert authorities, "pass the authorities as arguments"
 
@@ -46,16 +55,14 @@ for authority in authorities:
     ribasim_input = verwerkt / "3_input/ribasim_input.gpkg"
     split_nodes, network = read_split_nodes(ribasim_input, "split_nodes", network, buffer_distance=1.0)
     boundaries = read_boundaries(ribasim_input, "boundaries", network.nodes, buffer_distance=1.0)
-    lumped = lump_network(
-        network,
-        split_nodes,
-        boundaries,
-        areas,
+    lumped = lump_network(network, split_nodes, boundaries, areas, remove_isolated=True)
+    krw = read_krw(verwerkt / "4_ribasim/krw.gpkg")
+    model = lumped_model(
+        lumped,
+        CODES[authority],
+        krw,
         drainage_areas=drainage_areas,
-        remove_isolated=True,
-        remove_holes_min_area=5000.0,
-        # in 2024, the areas of Vallei en Veluwe were not assigned
-        assign_unassigned=authority != "ValleienVeluwe",
+        max_gap_area=5000.0,
+        lost_basin_node_ids=LOST_BASIN_NODE_IDS.get(authority),
     )
-    model = lumped_model(lumped, CODES[authority], read_krw(verwerkt / "4_ribasim/krw.gpkg"))
     model.write(cloud.model_dir(authority, "2024_6_3") / "model.toml")

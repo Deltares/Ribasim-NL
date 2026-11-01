@@ -1,12 +1,8 @@
 # %%
 
-from typing import cast
-
 import geopandas as gpd
 import pandas as pd
-from ribasim import Node
-from ribasim.nodes import basin, level_boundary, outlet, tabulated_rating_curve
-from ribasim_nl.geodataframe import assign_node_ids_by_largest_overlap
+from ribasim.nodes import level_boundary, outlet, tabulated_rating_curve
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
@@ -22,60 +18,18 @@ run_model = False
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
-ribasim_areas_path = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
+areas_gpkg = cloud.joinpath(authority, "verwerkt/3_input/areas.gpkg")
 model_edits_path = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
 # %% read model
 model = Model.read(ribasim_toml)
 network_validator = NetworkValidator(model)
 
-# Load node edit data
-# Load area file to fill basin area holes
-
-ribasim_areas_gdf = gpd.read_file(ribasim_areas_path, fid_as_index=True, layer="areas")
-
-
 # %% some stuff we'll need again
 level_data = level_boundary.Static(level=[0])
-
-basin_data = [
-    basin.Profile(level=[0.0, 1.0], area=[0.01, 1000.0]),
-    basin.Static(
-        drainage=[0.0],
-        potential_evaporation=[0.001 / 86400],
-        infiltration=[0.0],
-        precipitation=[0.005 / 86400],
-    ),
-    basin.State(level=[0]),
-]
 outlet_data = outlet.Static(flow_rate=[5.0])
 
 tabulated_rating_curve_data = tabulated_rating_curve.Static(level=[0.0, 5], flow_rate=[0, 0.1])
-
-# HIER KOMEN ISSUES
-
-# %%
-# Verwijderen duplicate links
-model.link.df.drop_duplicates(inplace=True)
-
-# %%
-# toevoegen ontbrekende basins
-
-basin_links_df = network_validator.link_incorrect_connectivity()
-basin_nodes_df = network_validator.node_invalid_connectivity()
-
-for row in basin_nodes_df.itertuples():
-    # maak basin-node
-    basin_node = model.basin.add(Node(geometry=cast(Point, row.geometry)), tables=basin_data)
-
-    # update link_table
-    mask = (basin_links_df.from_node_id == row.node_id) & (basin_links_df.distance(row.geometry) < 0.1)
-    model.link.df.loc[basin_links_df[mask].index, ["from_node_id"]] = basin_node.node_id
-    mask = (basin_links_df.to_node_id == row.node_id) & (basin_links_df.distance(row.geometry) < 0.1)
-    model.link.df.loc[basin_links_df[mask].index, ["to_node_id"]] = basin_node.node_id
-
-
-# EINDE ISSUES
 
 
 # %%
@@ -96,8 +50,6 @@ for row in network_validator.link_incorrect_type_connectivity(
 
 # Reset static tables
 model = reset_static_tables(model)
-# fix unassigned basin area
-model.fix_unassigned_basin_area()
 model.explode_basin_area()
 
 # %% edits on Sweco model
@@ -120,16 +72,6 @@ actions = [i for i in actions if i in gpd.list_layers(model_edits_path).name.to_
 model.apply_edits(model_edits_path, actions)
 model.remove_node(node_id=2019, remove_links=True)
 model.remove_node(node_id=17, remove_links=True)
-
-
-# %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code) by overlapping the Ribasim area file baed on largest overlap
-# then assign Ribasim node-ID's to areas with the same area code. Many nodata areas disappear by this method
-# Create the overlay of areas
-combined_basin_areas_gdf = assign_node_ids_by_largest_overlap(ribasim_areas_gdf, model.basin.area.df)
-
-model.basin.area.df = combined_basin_areas_gdf
-
-model.remove_unassigned_basin_area()
 
 # %%
 
@@ -199,6 +141,9 @@ sanitize_node_table(
     names=names,
 )
 
+
+# %% give the holes that the edits left in the basin areas to a basin
+model.fill_basin_area_holes(areas_gpkg)
 
 #  %% write model
 model.use_validation = True

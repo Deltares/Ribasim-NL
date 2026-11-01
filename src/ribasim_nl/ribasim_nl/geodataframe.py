@@ -1,11 +1,4 @@
-import importlib
-import os
-import threading
-from collections.abc import Generator
-from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
-from functools import reduce
-from typing import Any, cast
+from typing import cast
 
 import geopandas as gpd
 import numpy as np
@@ -13,13 +6,8 @@ import pandas as pd
 import shapely
 from geopandas import GeoDataFrame
 from shapely.geometry import LineString
-from shapely.geometry.base import BaseGeometry
 
-from ribasim_nl.geometry import snap_boundaries_to_other_line, split_basin, union_polygons
-
-# the module, since `geopandas.tools.overlay` is shadowed by the function of that name; `Any`, since its private
-# members are used, which are not in the type stubs
-gpd_overlay: Any = importlib.import_module("geopandas.tools.overlay")
+from ribasim_nl.geometry import snap_boundaries_to_other_line, split_basin
 
 
 def sorted_sjoin(left: GeoDataFrame, right: GeoDataFrame, **kwargs) -> GeoDataFrame:
@@ -118,91 +106,3 @@ def snap_line_boundaries(gdf: GeoDataFrame, tolerance: float) -> GeoDataFrame:
             _gdf.loc[_gdf.index[candidate], "geometry"] = geometry  # ty: ignore[invalid-assignment, invalid-argument-type]
 
     return _gdf
-
-
-def _threaded_overlay_difference(df1: GeoDataFrame, df2: GeoDataFrame) -> GeoDataFrame:
-    """`geopandas.tools.overlay._overlay_difference`, with the differences of the rows computed in threads.
-
-    The geometry operations and their order per row are the same, so the result is identical. Each row subtracts
-    its intersecting geometries one by one, which can take minutes for a row with hundreds of them.
-    Shapely releases the GIL, so threads run these in parallel.
-    """
-    idx1, idx2 = df2.sindex.query(df1.geometry, predicate="intersects", sort=True)
-    neighbours_by_row = np.split(idx2, np.searchsorted(idx1, np.arange(1, len(df1))))
-    geoms1, geoms2 = df1.geometry.array, df2.geometry.array
-
-    def difference(row: int) -> BaseGeometry:
-        geometries = cast(list[BaseGeometry], [geoms1[row], *geoms2[neighbours_by_row[row]]])
-        return reduce(lambda x, y: x.difference(y), geometries)
-
-    # submit the rows with the most neighbours first, so the slowest rows don't end up last
-    rows = sorted(range(len(df1)), key=lambda row: -len(neighbours_by_row[row]))
-    with ThreadPoolExecutor(max_workers=os.process_cpu_count()) as executor:
-        futures = {row: executor.submit(difference, row) for row in rows}
-        new_g = [futures[row].result() for row in range(len(df1))]
-
-    differences = gpd.GeoSeries(new_g, index=df1.index, crs=df1.crs)
-    poly_ix = differences.geom_type.isin(gpd_overlay.POLYGON_GEOM_TYPES)
-    differences.loc[poly_ix] = differences[poly_ix].make_valid()
-    geom_diff = differences[~differences.is_empty].copy()
-    dfdiff = df1[~differences.is_empty].copy()
-    dfdiff[dfdiff._geometry_column_name] = geom_diff
-    return dfdiff
-
-
-_threaded_overlay_lock = threading.Lock()
-
-
-@contextmanager
-def _threaded_overlay() -> Generator[None]:
-    """Let `gpd.overlay` compute differences in threads, see `_threaded_overlay_difference`."""
-    with _threaded_overlay_lock:
-        original = gpd_overlay._overlay_difference
-        gpd_overlay._overlay_difference = _threaded_overlay_difference
-        try:
-            yield
-        finally:
-            gpd_overlay._overlay_difference = original
-
-
-def threaded_overlay(df1: GeoDataFrame, df2: GeoDataFrame, **kwargs) -> GeoDataFrame:
-    """`gpd.overlay(df1, df2, **kwargs)` with identical results, computing the differences of rows in threads.
-
-    This is much faster for `how` "union", "difference", "symmetric_difference" or "identity" when rows intersect
-    many geometries of the other frame.
-    """
-    with _threaded_overlay():
-        return gpd.overlay(df1, df2, **kwargs)
-
-
-def assign_node_ids_by_largest_overlap(
-    areas_gdf: GeoDataFrame, basin_area_gdf: GeoDataFrame, code_col: str = "code"
-) -> GeoDataFrame:
-    """Basin areas from detailed areas, giving each area code the node_id of the basin area it overlaps most.
-
-    Parts of the union of both that don't overlap a basin area also get the node_id of their area code.
-    The result is dissolved by node_id, with `union_polygons`, since GEOS can get a union with slivers wrong.
-
-    Args:
-        areas_gdf: detailed areas, with an area code
-        basin_area_gdf: basin areas, with a node_id
-        code_col: column in `areas_gdf` with the area code
-
-    Returns
-    -------
-        GeoDataFrame with columns node_id and geometry
-    """
-    combined_gdf = threaded_overlay(areas_gdf, basin_area_gdf, how="union", keep_geom_type=True).explode()
-    combined_gdf["area"] = combined_gdf.geometry.area
-
-    # node_id of the largest overlap per area code
-    non_null_gdf = combined_gdf[combined_gdf["node_id"].notna()]
-    largest_area_node_ids = non_null_gdf.loc[non_null_gdf.groupby(code_col)["area"].idxmax(), [code_col, "node_id"]]
-
-    combined_gdf = combined_gdf.merge(largest_area_node_ids, on=code_col, how="left", suffixes=("", "_largest"))
-    combined_gdf["node_id"] = combined_gdf["node_id"].fillna(combined_gdf["node_id_largest"])
-    combined_gdf = combined_gdf.drop(columns=["node_id_largest"]).drop_duplicates()
-    unions = combined_gdf.groupby("node_id")["geometry"].apply(lambda parts: union_polygons(parts.to_numpy()))
-    combined_gdf = GeoDataFrame({"node_id": unions.index}, geometry=unions.to_numpy(), crs=combined_gdf.crs)
-    combined_gdf.index.name = "fid"
-    return combined_gdf
