@@ -61,8 +61,9 @@ for node_id in (3064, 3065, 15882, 8125, 340, 1001):
     ribasim_model.remove_node(node_id, remove_links=True)
 # Basin 554 (AP-141, AP-142) drains via outlets 2018 and 2236 into Drents Overijsselse Delta, instead of being supplied
 APPELSCHA_OUTLETS = (2018, 2236)
-for link_id in (4907, 918, 4912, 1120):  # LevelBoundary -> Outlet -> Basin 554
-    ribasim_model.reverse_link(link_id=link_id)
+# LevelBoundary -> Outlet -> Basin 554, by their nodes, since the feedback form numbers the links anew
+for from_node_id, to_node_id in ((3782, 2018), (2018, 554), (3789, 2236), (2236, 554)):
+    ribasim_model.reverse_link(from_node_id=from_node_id, to_node_id=to_node_id)
 
 # Read outlet_aanvoer_on BEFORE set_boundary_conditions, of which find_upstream_downstream_target_levels strips meta columns
 assert ribasim_model.outlet.static.df is not None
