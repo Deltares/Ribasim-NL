@@ -75,17 +75,125 @@ stages:
       - data/Noorderzijlvest/verwerkt/4_ribasim/krw.gpkg
     outs:
       - data/Noorderzijlvest/modellen/Noorderzijlvest_2024_6_3
-  # The input models of the level controlled models, see docs/dev/reproducing-models.qmd.
-  # The postprocessed data of the others, and the crossings of Wetterskip Fryslân, are source data.
+  # The input models of the level controlled models, see docs/dev/reproducing-models.qmd
   postprocessed_wetterskip_fryslan:
     cmd: pixi run python pipeline/wetterskip_fryslan/00_postprocess.py
     deps:
       - pipeline/wetterskip_fryslan/00_postprocess.py
-      - src/peilbeheerst_model/peilbeheerst_model/general_functions.py
       - src/ribasim_nl/ribasim_nl
       - data/WetterskipFryslan/aangeleverd/Na_levering/20250404_nieuwe_schematisatie
     outs:
       - data/WetterskipFryslan/verwerkt/postprocessed.gpkg
+  postprocessed_zuiderzeeland:
+    cmd: pixi run python pipeline/zuiderzeeland/00_postprocess.py
+    deps:
+      - pipeline/zuiderzeeland/00_postprocess.py
+      - src/ribasim_nl/ribasim_nl
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Rijkswaterstaat/verwerkt/krw_basins_vlakken.gpkg
+      - data/Zuiderzeeland/aangeleverd/Na_levering/gemalen.gpkg
+      - data/Zuiderzeeland/aangeleverd/Na_levering/overigekunstwerken.gpkg
+      - data/Zuiderzeeland/aangeleverd/Na_levering/peilvakken_nalevering.gpkg
+      - data/Zuiderzeeland/aangeleverd/Na_levering/Duikers.gpkg
+      - data/Zuiderzeeland/aangeleverd/Na_levering/zzl_watergangen_nalevering
+      - data/Zuiderzeeland/verwerkt/corrections.gpkg
+    outs:
+      - data/Zuiderzeeland/verwerkt/postprocessed.gpkg
+  postprocessed_delfland:
+    cmd: pixi run python pipeline/delfland/00_postprocess.py
+    deps:
+      - pipeline/delfland/00_postprocess.py
+      - src/ribasim_nl/ribasim_nl
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Rijkswaterstaat/verwerkt/krw_basins_vlakken.gpkg
+      - data/Delfland/aangeleverd/Na_levering/Watersysteem.gdb
+      - data/Delfland/aangeleverd/Na_levering/Wateraanvoer/Aanvoergebied_Afvoergebied_polders.gpkg
+      - data/Delfland/verwerkt/aggregation_area.gpkg
+    outs:
+      - data/Delfland/verwerkt/postprocessed.gpkg
+  postprocessed_schieland_en_de_krimpenerwaard:
+    cmd: pixi run python pipeline/schieland_en_de_krimpenerwaard/00_postprocess.py
+    deps:
+      - pipeline/schieland_en_de_krimpenerwaard/00_postprocess.py
+      - src/ribasim_nl/ribasim_nl
+      - data/SchielandendeKrimpenerwaard/aangeleverd/Na_levering/Wateraanvoer/HyDamo_metWasverzachter_20230905.gpkg
+      - data/SchielandendeKrimpenerwaard/aangeleverd/Na_levering/poldergebieden_en_duikersifonhevels_persleidingen/LHM_06052024_hhsk.gpkg
+      - data/SchielandendeKrimpenerwaard/aangeleverd/Na_levering/hhsklevering_07032024.gpkg
+      - data/SchielandendeKrimpenerwaard/aangeleverd/Na_levering/20240701_losseshapes
+    outs:
+      - data/SchielandendeKrimpenerwaard/verwerkt/postprocessed.gpkg
+  postprocessed_amstel_gooi_en_vecht:
+    cmd: pixi run python pipeline/amstel_gooi_en_vecht/00_postprocess.py
+    deps:
+      - pipeline/amstel_gooi_en_vecht/00_postprocess.py
+      - src/ribasim_nl/ribasim_nl
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Rijkswaterstaat/verwerkt/krw_basins_vlakken.gpkg
+      - data/AmstelGooienVecht/aangeleverd/aanlevering_6maart24/data dump 6 maart LHM AGV.zip
+      - data/AmstelGooienVecht/aangeleverd/verbeterde_LHM_gebieden_geactualiseerd
+    outs:
+      - data/AmstelGooienVecht/verwerkt/postprocessed.gpkg
+  postprocessed_rivierenland:
+    cmd: pixi run python pipeline/rivierenland/00_postprocess.py
+    deps:
+      - pipeline/rivierenland/00_postprocess.py
+      - src/ribasim_nl/ribasim_nl
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Rijkswaterstaat/verwerkt/krw_basins_vlakken.gpkg
+      - data/Rivierenland/aangeleverd/Eerste_levering/WSRL_HyDAMO.zip
+      - data/Rivierenland/aangeleverd/Eerste_levering/OverigeGegevens.zip
+      - data/Rivierenland/aangeleverd/Na_levering/Wateraanvoer
+      - data/Rivierenland/verwerkt/corrections.gpkg
+    outs:
+      - data/Rivierenland/verwerkt/postprocessed.gpkg
+  postprocessed_scheldestromen:
+    cmd: pixi run python pipeline/scheldestromen/00_postprocess.py
+    deps:
+      - pipeline/scheldestromen/00_postprocess.py
+      - src/ribasim_nl/ribasim_nl
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Rijkswaterstaat/verwerkt/krw_basins_vlakken.gpkg
+      - data/Scheldestromen/aangeleverd/Eerste_levering/Levering_20230323.zip
+      - data/Scheldestromen/aangeleverd/Na_levering/Oplevering_Scheldestromen_20240328/Oplevering_20240328.gdb
+      - data/Scheldestromen/aangeleverd/Na_levering/Praktijkpeilgebieden_20231204
+    outs:
+      - data/Scheldestromen/verwerkt/postprocessed.gpkg
+  postprocessed_hollandse_delta:
+    cmd: pixi run python pipeline/hollandse_delta/00_postprocess.py
+    deps:
+      - pipeline/hollandse_delta/00_postprocess.py
+      - src/ribasim_nl/ribasim_nl
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Rijkswaterstaat/verwerkt/krw_basins_vlakken.gpkg
+      - data/HollandseDelta/aangeleverd/Na_levering/Peilgebieden_HD_nalevering
+      - data/HollandseDelta/aangeleverd/Na_levering/Nalvering_tweede/Shapefiles
+      - data/HollandseDelta/verwerkt/corrections.gpkg
+    outs:
+      - data/HollandseDelta/verwerkt/postprocessed.gpkg
+  postprocessed_hollands_noorderkwartier:
+    cmd: pixi run python pipeline/hollands_noorderkwartier/00_postprocess.py
+    deps:
+      - pipeline/hollands_noorderkwartier/00_postprocess.py
+      - src/ribasim_nl/ribasim_nl
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Rijkswaterstaat/verwerkt/krw_basins_vlakken.gpkg
+      - data/HollandsNoorderkwartier/aangeleverd/Eerste_levering/20230413_aanlevering_hyDAMO_HHNK.zip
+      - data/HollandsNoorderkwartier/aangeleverd/Na_levering/Na_levering_HHNK_gemalen_stuwen_20240321.gdb - Copy
+      - data/HollandsNoorderkwartier/aangeleverd/Na_levering/20240618_peilgebieden_en_polders
+    outs:
+      - data/HollandsNoorderkwartier/verwerkt/postprocessed.gpkg
+  postprocessed_rijnland:
+    cmd: pixi run python pipeline/rijnland/00_postprocess.py
+    deps:
+      - pipeline/rijnland/00_postprocess.py
+      - src/ribasim_nl/ribasim_nl
+      - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
+      - data/Rijkswaterstaat/verwerkt/krw_basins_vlakken.gpkg
+      - data/Rijnland/aangeleverd/Eerste_levering/DataRijnland.zip
+      - data/Rijnland/aangeleverd/Na_levering/20240402_gegevensRL_nalevering.gdb
+      - data/Rijnland/verwerkt/corrections.gpkg
+    outs:
+      - data/Rijnland/verwerkt/postprocessed.gpkg
   crossings:
     foreach:
       amstel_gooi_en_vecht: AmstelGooienVecht
@@ -96,6 +204,7 @@ stages:
       rivierenland: Rivierenland
       scheldestromen: Scheldestromen
       schieland_en_de_krimpenerwaard: SchielandendeKrimpenerwaard
+      wetterskip_fryslan: WetterskipFryslan
       zuiderzeeland: Zuiderzeeland
     do:
       cmd: pixi run python pipeline/00c_parse_crossings.py ${item}
@@ -165,6 +274,7 @@ stages:
         - data/${item.authority}/verwerkt/postprocessed.gpkg
         - data/${item.authority}/verwerkt/crossings.gpkg
         - data/${item.authority}/verwerkt/shortest_path.gpkg
+        - data/${item.authority}/verwerkt/boezemmodel_ids.gpkg
       outs:
         - data/${item.authority}/modellen/${item.authority}_boezemmodel_${item.version}
   parameterized_aa_en_maas:

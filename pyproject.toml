@@ -89,7 +89,6 @@ call-non-callable = "ignore"
 [[tool.ty.overrides]]
 include = [
     "src/peilbeheerst_model/peilbeheerst_model/assign_flushing.py",
-    "src/peilbeheerst_model/peilbeheerst_model/postprocess_data/post-processing_HHNK.py",
     "src/ribasim_nl/ribasim_nl/crossings/parse.py",
 ]
 
@@ -133,7 +132,6 @@ not-subscriptable = "ignore"
 [[tool.ty.overrides]]
 include = [
     "src/peilbeheerst_model/peilbeheerst_model/assign_flushing.py",
-    "src/peilbeheerst_model/peilbeheerst_model/preprocess_data/Rivierenland.py",
     "src/ribasim_nl/ribasim_nl/crossings/parse.py",
 ]
 

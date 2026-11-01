@@ -9,7 +9,6 @@ authorities. This reproduces the data with which the crossings and the input mod
 
 import geopandas as gpd
 import pandas as pd
-from peilbeheerst_model.general_functions import read_gpkg_layers
 
 from ribasim_nl import CloudStorage
 
@@ -29,7 +28,7 @@ def store_data(waterschap, output_gpkg_path):
         waterschap[str(key)].to_file(output_gpkg_path, layer=str(key), driver="GPKG")
 
 
-Wetterskip = read_gpkg_layers(gpkg_path=data_delivery)
+Wetterskip = {layer: gpd.read_file(data_delivery, layer=layer) for layer in gpd.list_layers(data_delivery)["name"]}
 
 Wetterskip["peilgebied"] = Wetterskip["peilenbeheerkaart"][
     ["PBHIDENT", "HOOGPEIL", "LAAGPEIL", "WATERSYSTEEM", "ORDECODE", "GLOBALID", "geometry"]
