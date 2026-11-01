@@ -3,18 +3,16 @@ title: "Level controlled"
 ---
 
 Workflow for deriving the level controlled (peilbeheerst) regional models of 10 water authorities.
-The DVC pipeline makes their input models from the postprocessed data of each water authority, `verwerkt/postprocessed.gpkg`, with the code in `ribasim_nl.crossings`:
+The DVC pipeline makes their input models from the data the water authorities delivered, in `aangeleverd`, with the code in `ribasim_nl.crossings`:
 
-1. `pipeline/00c_parse_crossings.py` finds the crossings of the hydro-objects with the boundaries of the peilgebieden, with the stuwen and gemalen at them, and writes them to `verwerkt/crossings.gpkg`.
-2. `pipeline/00d_shortest_paths.py` finds the shortest paths along the hydro-objects through each boezem, from each of its crossings to its centre, and writes them to `verwerkt/shortest_path.gpkg`.
-3. `pipeline/00e_crossings_to_ribasim.py` makes the input model `modellen/<water board>_boezemmodel_<version>`: the peilgebieden, or their aggregation areas, become Basins, and the crossings connector nodes.
+1. `pipeline/<water board>/00_postprocess.py` makes the postprocessed data, `verwerkt/postprocessed.gpkg`: the peilgebieden with their streefpeilen and aggregation areas, the hydro-objects, culverts, stuwen and gemalen. Where HKV corrected the delivered data by hand, it applies these corrections, `verwerkt/corrections.gpkg`.
+2. `pipeline/00c_parse_crossings.py` finds the crossings of the hydro-objects with the boundaries of the peilgebieden, with the stuwen and gemalen at them, and writes them to `verwerkt/crossings.gpkg`.
+3. `pipeline/00d_shortest_paths.py` finds the shortest paths along the hydro-objects through each boezem, from each of its crossings to its centre, and writes them to `verwerkt/shortest_path.gpkg`.
+4. `pipeline/00e_crossings_to_ribasim.py` makes the input model `modellen/<water board>_boezemmodel_<version>`: the aggregation areas become Basins, and the crossings connector nodes. It numbers the nodes and links after the input model of 2024, `verwerkt/boezemmodel_ids.gpkg`, to which the feedback forms and scripts refer, by matching the nodes by type and location, see `ribasim_nl.crossings.renumber`.
 
-This code is a port of the code that made the input models in 2024 and 2025, and reproduces their node IDs, to which the feedback forms refer, see [Reproducing models](../dev/reproducing-models.qmd#sec-level-controlled).
-The crossings of Wetterskip Fryslân are source data, since they cannot be reproduced.
-
-The postprocessed data was made from the data of the water authorities with the preprocessing and postprocessing scripts in [`src/peilbeheerst_model`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model), one per water board in `peilbeheerst_model/preprocess_data/` and `peilbeheerst_model/postprocess_data/`.
-They are not part of the pipeline, since most need files that are not available.
-These scripts grew over 1.5 years, and not every line is needed anymore; changing them risks changing the networks, after which the feedback forms can no longer be used.
+This code is a port of the code that made the input models in 2024 and 2025, see [Reproducing models](../dev/reproducing-models.qmd#sec-level-controlled).
+Since the nodes are numbered after the input models of 2024, the deliveries, the aggregation areas and the algorithms can change, while the feedback forms keep referring to the right nodes, as long as these can be matched.
+The corrections refer to the delivered rows by their code, and `apply_edits` stops at corrections of rows that a new delivery lacks, so check them when the delivery changes.
 
 The DVC pipeline then builds the model of each water board with `pipeline/<water board>/01_feedback.py`, `02_profiles.py` and `03_forcing.py`.
 The steps the forcing scripts have in common are in `ribasim_nl.workflow`. The forcing, the foreign inflows and RWZIs, and the final steps that lay out, write and run the model are shared with the [gravity controlled](gravity-controlled.qmd) models, see `ribasim_nl.regional_model`.

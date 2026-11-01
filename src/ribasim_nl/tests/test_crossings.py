@@ -7,6 +7,8 @@ import pandas as pd
 import pytest
 from ribasim_nl.crossings.model import Options, boezem_model, to_object
 from ribasim_nl.crossings.parse import ParseCrossings, pandas2_strings, sort_index_2024, sort_values_2024
+from ribasim_nl.crossings.postprocess import apply_edits, derive_edits
+from ribasim_nl.crossings.renumber import Reference, renumber_nodes
 from ribasim_nl.crossings.shortest_path import connect_components, shortest_paths
 from shapely.geometry import LineString, Point, box
 
@@ -157,3 +159,75 @@ def test_excluded_crossings(postprocessed: Path):
     cross = ParseCrossings(postprocessed, excluded_crossings=[("pB", "pA", 100.0, 50.0)], **kwargs)
     with pytest.raises(AssertionError, match="were not found"):
         cross.find_crossings_with_peilgebieden("hydroobject", "duikersifonhevel")
+
+
+def test_derive_and_apply_edits():
+    original = gpd.GeoDataFrame(
+        {"code": ["A", "B", "C", "B", "D"], "level": [1.0, 2.0, 3.0, 4.0, 5.0]},
+        geometry=[box(i, 0, i + 1, 1) for i in range(5)],
+        crs=CRS,
+    )
+    # B is split in two in place, C changes level, the second B is removed and E is added after D
+    target = gpd.GeoDataFrame(
+        {"code": ["A", "B", "B", "C", "D", "E"], "level": [1.0, 2.0, 2.0, 30.0, 5.0, 6.0]},
+        geometry=[
+            box(0, 0, 1, 1),
+            box(1, 0, 1.5, 1),
+            box(1.5, 0, 2, 1),
+            box(2, 0, 3, 1),
+            box(4, 0, 5, 1),
+            box(5, 0, 6, 1),
+        ],
+        crs=CRS,
+    )
+    edits = derive_edits(original, target, "code", ["level"])
+    # only the edited rows: B (twice), C, the second B, and D with E
+    assert edits["edit_of"].tolist() == ["B", "B", "C", "B", "D", "D"]
+    result = apply_edits(original, edits, "code")
+    assert result["code"].tolist() == target["code"].tolist()
+    assert result["level"].tolist() == target["level"].tolist()
+    assert all(a.equals(b) for a, b in zip(result.geometry, target.geometry, strict=True))
+    with pytest.raises(AssertionError, match="not in the data"):
+        apply_edits(original.iloc[:2], edits, "code")
+
+
+def test_renumber_nodes(tmp_path: Path, postprocessed: Path):
+    cross = ParseCrossings(postprocessed, agg_peilgebieden_layer="aggregation_area", agg_peilgebieden_column="code")
+    crossings_path = tmp_path / "crossings.gpkg"
+    cross.write_crossings(crossings_path, *_crossings(cross))
+    shortest_path_path = tmp_path / "shortest_path.gpkg"
+    shortest_paths(crossings_path).to_file(shortest_path_path, layer="shortest_path")
+
+    def model():
+        return boezem_model(postprocessed, crossings_path, shortest_path_path, Options())[0]
+
+    # a reference with other IDs: the nodes + 10, and the links in reverse order
+    reference = Reference.from_model(model())
+    reference.nodes["node_id"] += 10
+    reference.areas["node_id"] += 10
+    reference.links[["from_node_id", "to_node_id"]] += 10
+    reference.links["link_id"] = reference.links["link_id"].to_numpy()[::-1]
+    reference.write(tmp_path / "ids.gpkg")
+    reference = Reference.read(tmp_path / "ids.gpkg")
+
+    renumbered = model()
+    mapping = renumber_nodes(renumbered, reference)
+    assert mapping == {1: 11, 2: 12, 3: 13}
+    assert renumbered.node.df.index.tolist() == [11, 12, 13]
+    assert renumbered.link.df[["from_node_id", "to_node_id"]].to_numpy().tolist() == [[13, 12], [11, 13]]
+    assert renumbered.basin.state.df["node_id"].tolist() == [11, 12]
+    assert renumbered.pump.static.df["node_id"].tolist() == [13]
+
+    # a pump 10 m away between the same Basins still matches, one 1 km away gets an ID after those of the reference
+    pump = reference.nodes["node_type"] == "Pump"
+    geometry = reference.nodes.loc[pump, "geometry"]
+    reference.nodes.loc[pump, "geometry"] = geometry.translate(xoff=10.0)
+    assert renumber_nodes(model(), reference) == {1: 11, 2: 12, 3: 13}
+    reference.nodes.loc[pump, "geometry"] = geometry.translate(xoff=1000.0)
+    assert renumber_nodes(model(), reference) == {1: 11, 2: 12, 3: 14}
+
+
+def _crossings(cross: ParseCrossings) -> tuple:
+    """The arguments of `write_crossings`, from `find_crossings_with_peilgebieden`."""
+    df_hydro, df_culverts, df_crossings = cross.find_crossings_with_peilgebieden("hydroobject", "duikersifonhevel")
+    return df_hydro, "duikersifonhevel", df_culverts, df_crossings

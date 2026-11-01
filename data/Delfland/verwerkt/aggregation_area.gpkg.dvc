@@ -1,0 +1,5 @@
+outs:
+- md5: d3adcd4b86f42e4f058d4d51f52acf15
+  size: 958464
+  hash: md5
+  path: aggregation_area.gpkg

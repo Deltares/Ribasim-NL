@@ -1,0 +1,5 @@
+outs:
+- md5: bb63a74ed407d8894f4207eb09cc2790
+  size: 6631424
+  hash: md5
+  path: krw_basins_vlakken.gpkg
