@@ -699,7 +699,10 @@ class Viewer {
       if (this.selection?.kind === "node") this.map.setFeatureState({ ...target, id: this.selection.id }, { selected: true });
       return;
     }
-    this.resultIndex!.basinIds.forEach((id, i) => this.map.setFeatureState({ ...target, id }, { color: scale.css(values[i]) }));
+    // The areas of storing Basins stay uncolored, since they would show through the flowing Basins they overlap
+    this.resultIndex!.basinIds.forEach((id, i) => {
+      if (!this.network.storingBasins.has(id)) this.map.setFeatureState({ ...target, id }, { color: scale.css(values[i]) });
+    });
     this.basinAreasColored = true;
   }
 

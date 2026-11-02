@@ -11,6 +11,9 @@ The *Water authority* choice above the layer list shows the nodes and links of o
 It also shows the links to other authorities and the nodes at their other end, such as the regional inlets and outlets of the hws, and the Basin / areas of the shown Basins.
 The choice is kept in the URL, as `#authority=<waterbeheercode>`.
 
+The *Basins* choice in the time bar colors the Basins and their Basin / areas by a result.
+The areas of `bergend` Basins stay uncolored, since they overlap those of the `doorgaand` Basins; only their nodes are colored.
+
 ```{mermaid}
 flowchart LR
   A[modellen/lhm_coupled] -->|dvc repro run_lhm_coupled| R[runs/lhm_coupled]
@@ -60,7 +63,7 @@ The panel of an Observation node shows its fit above the chart of its observed a
     |:-----|:--------|
     | `nodes.parquet` | Node table with all attributes and lon/lat |
     | `links.parquet` | Link table with all attributes and simplified geometry |
-    | `basin_area.pmtiles` | Basin / area polygons as vector tiles |
+    | `basin_area.pmtiles` | Basin / area polygons as vector tiles, the `bergend` Basins first, so that the map selects the overlapping `doorgaand` Basins; click its node to select a `bergend` Basin |
     | `waterboards.geojson` | Simplified water board boundaries |
     | `tables/*.parquet` | All other input tables, including those in NetCDF, sorted by `node_id` |
     | `results/*_by_id.parquet` | Basin and flow results sorted by id, for the time series charts |

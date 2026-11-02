@@ -544,6 +544,12 @@ export async function readColumns<K extends string>(
   return result;
 }
 
+/** Whether a Parquet file has a column. */
+export async function hasColumn(entry: FileEntry, column: string): Promise<boolean> {
+  const { metadata } = await openParquet(entry);
+  return metadata.schema.some((element) => element.name === column);
+}
+
 export async function readRow(entry: FileEntry, row: number): Promise<Row> {
   const { file, metadata } = await openParquet(entry);
   const rows = await parquetReadObjects({ file, metadata, rowStart: row, rowEnd: row + 1, compressors });

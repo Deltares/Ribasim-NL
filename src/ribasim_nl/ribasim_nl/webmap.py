@@ -152,10 +152,18 @@ def export_links(database: Path, path: Path) -> None:
     write_table(table, path)
 
 
-def export_basin_area(database: Path, path: Path) -> None:
-    """Export Basin / area polygons as vector tiles; attributes are looked up by node_id."""
+def export_basin_area(database: Path, nodes: pd.DataFrame, path: Path) -> None:
+    """Export Basin / area polygons as vector tiles; attributes are looked up by node_id.
+
+    The areas of the storing ('bergend') Basins overlap those of the flowing Basins they belong to. The tiles keep this
+    order and the viewer draws and picks the last feature on top, so the storing Basins come first, to show and select
+    the flowing Basins by default.
+    """
     area = gpd.read_file(database, layer="Basin / area", columns=["node_id"], use_arrow=True)
     assert area.node_id.notna().all(), "Basin / area has missing node_id"
+    if "meta_categorie" in nodes.columns:
+        storing = nodes.loc[nodes["meta_categorie"] == "bergend", "node_id"]
+        area = area.sort_values("node_id", key=lambda node_id: ~node_id.isin(storing), kind="stable")
     pyogrio.write_dataframe(
         area[["node_id", "geometry"]],
         path,
@@ -465,7 +473,7 @@ def export_webmap(toml_path: Path, waterboards_path: Path | None, output_dir: Pa
 
     nodes = export_nodes(database, output_dir / "nodes.parquet")
     export_links(database, output_dir / "links.parquet")
-    export_basin_area(database, output_dir / "basin_area.pmtiles")
+    export_basin_area(database, nodes, output_dir / "basin_area.pmtiles")
     exported = [("nodes", "nodes.parquet"), ("links", "links.parquet"), ("basin_area", "basin_area.pmtiles")]
     if waterboards_path is not None:
         export_waterboards(waterboards_path, output_dir / "waterboards.geojson")
