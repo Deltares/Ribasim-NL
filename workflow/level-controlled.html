@@ -33,6 +33,8 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
+<link href="../workflow/profile-generation.html" rel="next">
+<link href="../workflow/lumping.html" rel="prev">
 <link href="../assets/favicon.ico" rel="icon">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -44,6 +46,9 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../site_libs/bootstrap/bootstrap-d3dd72e47976c844a05ffb6b950c6ecd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -71,9 +76,13 @@ ul.task-list li input[type="checkbox"] {
     "search-label": "Search"
   }
 }</script>
+<meta name="mermaid-theme" content="neutral">
+<script src="../site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="../site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="../site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
 
 
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 </head>
 
 <body class="nav-sidebar floating nav-fixed quarto-light">
@@ -98,20 +107,12 @@ ul.task-list li input[type="checkbox"] {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../reference/index.html"> 
-<span class="menu-text">API Reference</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../cloudstorage.html"> 
-<span class="menu-text">Cloud storage</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link active" href="../workflow/main-watersystem.html" aria-current="page"> 
-<span class="menu-text">Workflows</span></a>
+    <a class="nav-link active" href="../workflow/index.html" aria-current="page"> 
+<span class="menu-text">Model derivation</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../watersystems/main.html"> 
-<span class="menu-text">Watersystems</span></a>
+<span class="menu-text">Water systems</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../viewer.html"> 
@@ -122,6 +123,10 @@ ul.task-list li input[type="checkbox"] {
   <li class="nav-item">
     <a class="nav-link" href="../dev/index.html"> 
 <span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">API reference</span></a>
   </li>  
   <li class="nav-item compact">
     <a class="nav-link" href="https://github.com/Deltares/Ribasim-NL"> <i class="bi bi-github" role="img" aria-label="GitHub">
@@ -139,7 +144,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/level-controlled.html">Level controlled</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/level-controlled.html">Level controlled models</a></li><li class="breadcrumb-item"><a href="../workflow/level-controlled.html">Level controlled</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -153,52 +158,132 @@ ul.task-list li input[type="checkbox"] {
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../workflow/main-watersystem.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Main watersystem</span></a>
+  <a href="../workflow/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Model derivation</span></a>
   </div>
 </li>
         <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/main-watersystem.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Main water system</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Gravity controlled models</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/gravity-controlled.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Gravity controlled models</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/lumping.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Lumping</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Level controlled models</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../workflow/level-controlled.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Level controlled</span></a>
   </div>
 </li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/gravity-controlled.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Gravity controlled</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/design-capacities.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Design capacities of outlets and pumps</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/split-basins.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Split basins based on pre-split basin polygons</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/couple.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Coupling</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/seasonal-levels.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Summer and winter levels</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../workflow/profile-generation.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Profile generation</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/split-basins.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Split basins based on pre-split basin polygons</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Shared steps</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/control.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Control</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/storage-basins.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Storage basins</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/design-capacities.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Design capacities of outlets and pumps</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/forcing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Forcing</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/seasonal-levels.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Summer and winter levels</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/layout.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Layout</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">The nationwide model</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/couple.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Coupling</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
     </ul>
     </div>
 </nav>
@@ -209,14 +294,15 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#layout" id="toc-layout" class="nav-link active" data-scroll-target="#layout">Layout</a></li>
+  <li><a href="#the-input-model" id="toc-the-input-model" class="nav-link active" data-scroll-target="#the-input-model">The input model</a></li>
+  <li><a href="#the-regional-model" id="toc-the-regional-model" class="nav-link" data-scroll-target="#the-regional-model">The regional model</a></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/level-controlled.html">Level controlled models</a></li><li class="breadcrumb-item"><a href="../workflow/level-controlled.html">Level controlled</a></li></ol></nav>
 <div class="quarto-title">
 <h1 class="title">Level controlled</h1>
 </div>
@@ -235,25 +321,113 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>Workflow for deriving the level controlled (peilbeheerst) regional models of 10 water authorities. The DVC pipeline makes their input models from the data the water authorities delivered, in <code>aangeleverd</code>, with the code in <code>ribasim_nl.crossings</code>:</p>
-<ol type="1">
-<li><code>pipeline/&lt;water board&gt;/00_postprocess.py</code> makes the postprocessed data, <code>verwerkt/postprocessed.gpkg</code>: the peilgebieden with their streefpeilen and aggregation areas, the hydro-objects, culverts, stuwen and gemalen. Where HKV corrected the delivered data by hand, it applies these corrections, <code>verwerkt/corrections.gpkg</code>.</li>
-<li><code>pipeline/00c_parse_crossings.py</code> finds the crossings of the hydro-objects with the boundaries of the peilgebieden, with the stuwen and gemalen at them, and writes them to <code>verwerkt/crossings.gpkg</code>.</li>
-<li><code>pipeline/00d_shortest_paths.py</code> finds the shortest paths along the hydro-objects through each boezem, from each of its crossings to its centre, and writes them to <code>verwerkt/shortest_path.gpkg</code>.</li>
-<li><code>pipeline/00e_crossings_to_ribasim.py</code> makes the input model <code>modellen/&lt;water board&gt;_boezemmodel_&lt;version&gt;</code>: the aggregation areas become Basins, and the crossings connector nodes. It numbers the nodes and links after the input model of 2024, <code>verwerkt/boezemmodel_ids.gpkg</code>, to which the feedback forms and scripts refer, by matching the nodes by type and location, see <code>ribasim_nl.crossings.renumber</code>.</li>
-</ol>
+<p>The level controlled (peilbeheerst) models cover 10 water authorities: Amstel, Gooi en Vecht, Delfland, Hollands Noorderkwartier, Hollandse Delta, Rijnland, Rivierenland, Scheldestromen, Schieland en de Krimpenerwaard, Wetterskip Fryslân and Zuiderzeeland. These authorities keep target levels in many small level areas (peilgebieden), so their model follows the areas and the structures between them. HKV made their first input models in 2024 and 2025, and the pipeline now makes these from the data the water authorities delivered, in <code>aangeleverd</code>.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart LR
+  subgraph input["Input model"]
+    direction TB
+    a["00_postprocess.py&lt;br&gt;verwerkt/postprocessed.gpkg"] --&gt; b["00c_parse_crossings.py&lt;br&gt;verwerkt/crossings.gpkg"]
+    b --&gt; c["00d_shortest_paths.py&lt;br&gt;verwerkt/shortest_path.gpkg"]
+    c --&gt; d["00e_crossings_to_ribasim.py&lt;br&gt;_boezemmodel_&amp;lt;version&amp;gt;"]
+  end
+  subgraph model["Regional model"]
+    direction TB
+    e["01_feedback.py&lt;br&gt;_feedback"] --&gt; f["02_profiles.py&lt;br&gt;_profiles"]
+    f --&gt; g["03_forcing.py&lt;br&gt;_forcing"]
+  end
+  input --&gt; model --&gt; merge["samenvoegen"]
+</pre>
+</div>
+<p></p><figcaption> The stages of a level controlled model, with the result of each.</figcaption> </figure><p></p>
+</div>
+</div>
+</div>
+<p>The maps below show the same 5 × 5 km of Delfland near Delft, at each step.</p>
+<section id="the-input-model" class="level2">
+<h2 class="anchored" data-anchor-id="the-input-model">The input model</h2>
+<p>The code is in <code>ribasim_nl.crossings</code>.</p>
+<div class="grid step">
+<section id="the-delivery" class="level3 g-col-12 g-col-lg-5">
+<h3 class="anchored" data-anchor-id="the-delivery">1. The delivery</h3>
+<p><code>pipeline/&lt;water board&gt;/00_postprocess.py</code> makes the postprocessed data, <code>verwerkt/postprocessed.gpkg</code>: the peilgebieden with their streefpeilen and aggregation areas, the hydro-objects, culverts, stuwen and gemalen. Where HKV corrected the delivered data by hand, it applies these corrections, <code>verwerkt/corrections.gpkg</code>.</p>
+</section>
+<div class="g-col-12 g-col-lg-7">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><a href="https://s3.deltares.nl/ribasim-nl/doc-image/figures/level-1-delivery.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="The postprocessed data. Grey lines are the hydro-objects, with stuwen in orange and gemalen in black. Thin lines are the boundaries of the peilgebieden, and the boezem is blue."><img src="https://s3.deltares.nl/ribasim-nl/doc-image/figures/level-1-delivery.png" class="img-fluid figure-img" alt="A dense network of grey ditches with orange squares at weirs and black dots at pumping stations. A few narrow blue canals are the boezem."></a></p>
+<figcaption>The postprocessed data. Grey lines are the hydro-objects, with stuwen in orange and gemalen in black. Thin lines are the boundaries of the peilgebieden, and the boezem is blue.</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="grid step">
+<section id="crossings-and-shortest-paths" class="level3 g-col-12 g-col-lg-5">
+<h3 class="anchored" data-anchor-id="crossings-and-shortest-paths">2. Crossings and shortest paths</h3>
+<p><code>pipeline/00c_parse_crossings.py</code> finds the crossings of the hydro-objects with the boundaries of the peilgebieden, with the stuwen and gemalen at them, and writes them to <code>verwerkt/crossings.gpkg</code>.</p>
+<p><code>pipeline/00d_shortest_paths.py</code> finds the shortest paths along the hydro-objects through each boezem, from each of its crossings to its centre, and writes them to <code>verwerkt/shortest_path.gpkg</code>.</p>
+</section>
+<div class="g-col-12 g-col-lg-7">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><a href="https://s3.deltares.nl/ribasim-nl/doc-image/figures/level-2-crossings.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="The crossings with a structure in black, and those without in grey. Blue lines are the shortest paths through the boezems."><img src="https://s3.deltares.nl/ribasim-nl/doc-image/figures/level-2-crossings.png" class="img-fluid figure-img" alt="The network in light grey, with black dots where a structure crosses a boundary, and blue lines along the canals."></a></p>
+<figcaption>The crossings with a structure in black, and those without in grey. Blue lines are the shortest paths through the boezems.</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="grid step">
+<section id="the-input-model-1" class="level3 g-col-12 g-col-lg-5">
+<h3 class="anchored" data-anchor-id="the-input-model-1">3. The input model</h3>
+<p><code>pipeline/00e_crossings_to_ribasim.py</code> makes the input model <code>modellen/&lt;water board&gt;_boezemmodel_&lt;version&gt;</code>: the aggregation areas become Basins, and the crossings connector nodes. It numbers the nodes and links after the input model of 2024, <code>verwerkt/boezemmodel_ids.gpkg</code>, to which the feedback forms and scripts refer, by matching the nodes by type and location, see <code>ribasim_nl.crossings.renumber</code>.</p>
+</section>
+<div class="g-col-12 g-col-lg-7">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><a href="https://s3.deltares.nl/ribasim-nl/doc-image/figures/level-3-input-model.png" class="lightbox" data-gallery="quarto-lightbox-gallery-3" title="The input model. Each aggregation area is one Basin, in its own colour, with straight links to the structures on its boundary."><img src="https://s3.deltares.nl/ribasim-nl/doc-image/figures/level-3-input-model.png" class="img-fluid figure-img" alt="Coloured Basin areas each with a blue Basin node, and straight links to black connector nodes on their boundaries."></a></p>
+<figcaption>The input model. Each aggregation area is one Basin, in its own colour, with straight links to the structures on its boundary.</figcaption>
+</figure>
+</div>
+</div>
+</div>
 <p>This code is a port of the code that made the input models in 2024 and 2025, see <a href="../dev/reproducing-models.html#sec-level-controlled">Reproducing models</a>. Since the nodes are numbered after the input models of 2024, the deliveries, the aggregation areas and the algorithms can change, while the feedback forms keep referring to the right nodes, as long as these can be matched. The corrections refer to the delivered rows by their code, and <code>apply_edits</code> stops at corrections of rows that a new delivery lacks, so check them when the delivery changes.</p>
-<p>The DVC pipeline then builds the model of each water board with <code>pipeline/&lt;water board&gt;/01_feedback.py</code>, <code>02_profiles.py</code> and <code>03_forcing.py</code>. The steps the forcing scripts have in common are in <code>ribasim_nl.workflow</code>. The forcing, the foreign inflows and RWZIs, and the final steps that lay out, write and run the model are shared with the <a href="../workflow/gravity-controlled.html">gravity controlled</a> models, see <code>ribasim_nl.regional_model</code>.</p>
-<section id="layout" class="level2">
-<h2 class="anchored" data-anchor-id="layout">Layout</h2>
-<p>At the end of the forcing stage, <code>ribasim_nl.network_snapping.snap_model</code> aligns the layout of the model with the hydro-objects in <code>verwerkt/profielen/network.gpkg</code>, which are written by the <a href="../workflow/profile-generation.html">profile generation</a>. This only changes the layout, not the model results:</p>
+</section>
+<section id="the-regional-model" class="level2">
+<h2 class="anchored" data-anchor-id="the-regional-model">The regional model</h2>
+<p>The DVC pipeline then builds the model of each water board with three stages:</p>
 <ul>
-<li>Connector nodes stay at the location of the structure they represent.</li>
-<li>Basin nodes are moved onto the nearest main route of the longest connected part of the hydro-objects in their basin, as in the gravity controlled models.</li>
-<li>Links between a Basin and a connector node follow the hydro-objects, complemented by the Top10NL water lines. Hydro-objects are only connected where there is evidence: the culverts (<code>duikersifonhevel</code>) of the crossings data, gaps of at most 2 m, and gaps across BGT water surfaces. Connector nodes far from the hydro-objects are connected over the BGT water surfaces, crossing at most 100 m of land.</li>
-<li>Links stay straight if no such route is found, or if it is not less than <code>ribasim_nl.link_geometries.MAX_STRAIGHT_LINE_RATIO</code> times longer than the straight line, the same threshold as for the gravity controlled models.</li>
+<li><code>feedback_&lt;water board&gt;</code> runs <code>pipeline/&lt;water board&gt;/01_feedback.py</code>, which applies the feedback form of the water board with <code>RibasimFeedbackProcessor</code>, followed by edits by hand. In 5 water boards it finally <a href="../workflow/split-basins.html">splits large Basins</a>.</li>
+<li><code>profiles_&lt;water board&gt;</code> runs <code>pipeline/prep_cross_sections.py</code> and <code>pipeline/&lt;water board&gt;/02_profiles.py</code>, the <a href="../workflow/profile-generation.html">profile generation</a>, which gives each Basin a profile and adds its <a href="../workflow/storage-basins.html">storage basin</a>.</li>
+<li><code>forcing_&lt;water board&gt;</code> runs <code>pipeline/&lt;water board&gt;/03_forcing.py</code>, with the steps below.</li>
 </ul>
-<p>Then <code>ribasim_nl.junctionify</code> merges the shared parts of links into Junctions, and <code>ribasim_nl.layout.tidy_layout</code> makes sure no nodes are on top of each other and no links overlap: bergend Basins are placed 100 m from their doorgaand Basin, links are offset 5 m to the right of their direction, such that inflows and outflows along the same waterway are drawn side by side, and nodes that are still within 10 m of each other are moved apart. The gravity controlled models get the same layout step at the end of their dynamic stage, and <code>ribasim_nl.validation.validate_model</code> checks it.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart TD
+  a["set_boundary_conditions&lt;br&gt;forcing, boundary levels"] --&gt; b["set_aanvoer_flags&lt;br&gt;which Basins can be supplied"]
+  b --&gt; c["categorize_nodes&lt;br&gt;which nodes supply and drain"]
+  c --&gt; d["add_controllers&lt;br&gt;control per function"]
+  d --&gt; e["complete_parametrization&lt;br&gt;authorities, inflows, known capacities"]
+  e --&gt; f["set_design_capacities&lt;br&gt;capacity from the drained area"]
+  f --&gt; g["write_and_run_forcing_model&lt;br&gt;layout, levels, write, run, check"]
+</pre>
+</div>
+<p></p><figcaption> The steps of a typical forcing script, mostly in <code>ribasim_nl.workflow</code>.</figcaption> </figure><p></p>
+</div>
+</div>
+</div>
+<p>The steps the forcing scripts have in common are in <code>ribasim_nl.workflow</code>. See <a href="../workflow/control.html">control</a>, <a href="../workflow/forcing.html">forcing</a>, <a href="../workflow/design-capacities.html">design capacities</a> and <a href="../workflow/layout.html">layout</a>. The forcing, the foreign inflows and RWZIs, and the final steps that lay out, write and run the model are shared with the <a href="../workflow/gravity-controlled.html">gravity controlled</a> models, see <code>ribasim_nl.regional_model</code>. Unlike those, the forcing stage also runs and checks a dry and a wet steady state model, see <a href="../dev/testing.html#result-regression-testing">Testing</a>.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><a href="https://s3.deltares.nl/ribasim-nl/doc-image/figures/level-4-forcing.png" class="lightbox" data-gallery="quarto-lightbox-gallery-4" title="The final model of the same area, Delfland_forcing. Basins come in pairs of a through-flow and a storage Basin, and the links follow the watercourses, with Junctions where they join."><img src="https://s3.deltares.nl/ribasim-nl/doc-image/figures/level-4-forcing.png" class="img-fluid figure-img" style="width:70.0%" alt="Coloured Basin areas with pairs of blue Basin nodes, links that follow the watercourses, and connector nodes on the boundaries."></a></p>
+<figcaption>The final model of the same area, <code>Delfland_forcing</code>. Basins come in pairs of a through-flow and a storage Basin, and the links follow the watercourses, with Junctions where they join.</figcaption>
+</figure>
+</div>
 
 
 </section>
@@ -659,7 +833,51 @@ ul.task-list li input[type="checkbox"] {
     }
   });
   </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../workflow/lumping.html" class="pagination-link" aria-label="Lumping">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Lumping</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../workflow/profile-generation.html" class="pagination-link" aria-label="Profile generation">
+        <span class="nav-page-text">Profile generation</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
 </div> <!-- /content -->
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox","skin":"fullscreen-lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
 
 
 

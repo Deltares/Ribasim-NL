@@ -44,6 +44,9 @@ ul.task-list li input[type="checkbox"] {
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="site_libs/bootstrap/bootstrap-d3dd72e47976c844a05ffb6b950c6ecd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -71,12 +74,16 @@ ul.task-list li input[type="checkbox"] {
     "search-label": "Search"
   }
 }</script>
+<meta name="mermaid-theme" content="neutral">
+<script src="site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
 
 
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="assets/styles.css">
 </head>
 
-<body class="nav-fixed quarto-light">
+<body class="nav-fixed fullcontent quarto-light">
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top">
@@ -98,20 +105,12 @@ ul.task-list li input[type="checkbox"] {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="./reference/index.html"> 
-<span class="menu-text">API Reference</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="./cloudstorage.html"> 
-<span class="menu-text">Cloud storage</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="./workflow/main-watersystem.html"> 
-<span class="menu-text">Workflows</span></a>
+    <a class="nav-link" href="./workflow/index.html"> 
+<span class="menu-text">Model derivation</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="./watersystems/main.html"> 
-<span class="menu-text">Watersystems</span></a>
+<span class="menu-text">Water systems</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="./viewer.html"> 
@@ -122,6 +121,10 @@ ul.task-list li input[type="checkbox"] {
   <li class="nav-item">
     <a class="nav-link" href="./dev/index.html"> 
 <span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./reference/index.html"> 
+<span class="menu-text">API reference</span></a>
   </li>  
   <li class="nav-item compact">
     <a class="nav-link" href="https://github.com/Deltares/Ribasim-NL"> <i class="bi bi-github" role="img" aria-label="GitHub">
@@ -139,15 +142,14 @@ ul.task-list li input[type="checkbox"] {
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
-    </div>
+    
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
 <h1 class="title">Ribasim-NL</h1>
+<p class="subtitle lead">A nationwide water model of the Netherlands, built from source data by a reproducible pipeline</p>
 </div>
 
 
@@ -164,9 +166,81 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>Ribasim-NL facilitates Ribasim water resources modeling in the Netherlands. For more informantion on Ribasim itself please see the <a href="https://ribasim.org/">Ribasim documentation</a>.</p>
+<p>Ribasim-NL builds the Dutch national water model LHM with <a href="https://ribasim.org/">Ribasim</a>, a water resources model. It combines a model of the main water system of Rijkswaterstaat with the regional models of 21 water authorities, from their source data, into one model of about 20 000 Basins. A <a href="https://dvc.org/">DVC</a> pipeline in this repository makes every step reproducible, so a change to the data or the code gives a new model that can be compared with the previous one.</p>
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><a href="https://s3.deltares.nl/ribasim-nl/doc-image/figures/national-models.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="The models that make up the nationwide model. See water systems for the authorities."><img src="https://s3.deltares.nl/ribasim-nl/doc-image/figures/national-models.png" class="img-fluid figure-img" alt="Map of the Netherlands with the main water system in blue, 11 gravity controlled water authorities in the east and south in orange, and 10 level controlled water authorities in the west and north in green."></a></p>
+<figcaption>The models that make up the nationwide model. See <a href="./watersystems/main.html">water systems</a> for the authorities.</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><a href="https://s3.deltares.nl/ribasim-nl/doc-image/figures/national-flow.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="The simulated flow through the model, 2017 and 2018. Explore it in the model viewer."><img src="https://s3.deltares.nl/ribasim-nl/doc-image/figures/national-flow.png" class="img-fluid figure-img" alt="Map of the links of the model, thicker and darker with more flow. The Rhine branches, the Meuse and the IJsselmeer stand out, with a dense network of small regional waters."></a></p>
+<figcaption>The simulated flow through the model, 2017 and 2018. <a href="./viewer.html">Explore it in the model viewer</a>.</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<section id="from-source-data-to-a-nationwide-model" class="level2">
+<h2 class="anchored" data-anchor-id="from-source-data-to-a-nationwide-model">From source data to a nationwide model</h2>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart LR
+  rws["Rijkswaterstaat data&lt;br&gt;bathymetry, structures"] --&gt; hws["Main water system&lt;br&gt;model"]
+  sweco["Watercourses, structures&lt;br&gt;11 water authorities"] --&gt; gravity["Gravity controlled&lt;br&gt;regional models"]
+  hkv["Level areas, structures&lt;br&gt;10 water authorities"] --&gt; level["Level controlled&lt;br&gt;regional models"]
+  forcing["LHM forcing, foreign inflows,&lt;br&gt;wastewater, target levels"] --&gt; gravity
+  forcing --&gt; level
+  forcing --&gt; hws
+  hws --&gt; coupled["Merged and coupled&lt;br&gt;LHM"]
+  gravity --&gt; coupled
+  level --&gt; coupled
+  coupled --&gt; run["Model run"]
+  run --&gt; check["Checks and metrics"]
+  run --&gt; viewer["Model viewer"]
+
+  classDef model fill:#dfedef,stroke:#0c6a77
+  class hws,gravity,level,coupled model
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<p><a href="./workflow/index.html">Model derivation</a> explains each step, with maps of real examples.</p>
+</section>
+<section id="where-to-go" class="level2">
+<h2 class="anchored" data-anchor-id="where-to-go">Where to go</h2>
+<div class="grid cards">
+<div class="g-col-12 g-col-md-6">
+<p><strong><a href="./viewer.html">Model viewer</a></strong></p>
+<p>Browse the input and results of the latest model on a map, and compare them with the measurements.</p>
+</div>
+<div class="g-col-12 g-col-md-6">
+<p><strong><a href="./workflow/index.html">Model derivation</a></strong></p>
+<p>The pipeline step by step, from source data to the nationwide model.</p>
+</div>
+<div class="g-col-12 g-col-md-6">
+<p><strong><a href="./watersystems/main.html">Water systems</a></strong></p>
+<p>Per water authority: how the water system works and how that is schematized (in Dutch).</p>
+</div>
+<div class="g-col-12 g-col-md-6">
+<p><strong><a href="./dev/index.html">Contributing</a></strong></p>
+<p>Set up the development environment, get the data, and run the pipeline. The <a href="./reference/index.html">API reference</a> covers the Python package <code>ribasim_nl</code>.</p>
+</div>
+</div>
 
 
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
@@ -570,6 +644,38 @@ ul.task-list li input[type="checkbox"] {
   });
   </script>
 </div> <!-- /content -->
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox","skin":"fullscreen-lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
 
 
 

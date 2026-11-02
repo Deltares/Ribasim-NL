@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Main watersystem – Ribasim-NL</title>
+<title>Main water system – Ribasim-NL</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -33,6 +33,8 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
+<link href="../workflow/gravity-controlled.html" rel="next">
+<link href="../workflow/index.html" rel="prev">
 <link href="../assets/favicon.ico" rel="icon">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -74,9 +76,13 @@ ul.task-list li input[type="checkbox"] {
     "search-label": "Search"
   }
 }</script>
+<meta name="mermaid-theme" content="neutral">
+<script src="../site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="../site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="../site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
 
 
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 </head>
 
 <body class="nav-sidebar floating nav-fixed quarto-light">
@@ -101,20 +107,12 @@ ul.task-list li input[type="checkbox"] {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../reference/index.html"> 
-<span class="menu-text">API Reference</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../cloudstorage.html"> 
-<span class="menu-text">Cloud storage</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link active" href="../workflow/main-watersystem.html" aria-current="page"> 
-<span class="menu-text">Workflows</span></a>
+    <a class="nav-link active" href="../workflow/index.html" aria-current="page"> 
+<span class="menu-text">Model derivation</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../watersystems/main.html"> 
-<span class="menu-text">Watersystems</span></a>
+<span class="menu-text">Water systems</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../viewer.html"> 
@@ -125,6 +123,10 @@ ul.task-list li input[type="checkbox"] {
   <li class="nav-item">
     <a class="nav-link" href="../dev/index.html"> 
 <span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">API reference</span></a>
   </li>  
   <li class="nav-item compact">
     <a class="nav-link" href="https://github.com/Deltares/Ribasim-NL"> <i class="bi bi-github" role="img" aria-label="GitHub">
@@ -142,7 +144,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/main-watersystem.html">Main watersystem</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/main-watersystem.html">Main water system</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -156,52 +158,132 @@ ul.task-list li input[type="checkbox"] {
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../workflow/main-watersystem.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Main watersystem</span></a>
+  <a href="../workflow/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Model derivation</span></a>
   </div>
 </li>
         <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/main-watersystem.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Main water system</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Gravity controlled models</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/gravity-controlled.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Gravity controlled models</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/lumping.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Lumping</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Level controlled models</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../workflow/level-controlled.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Level controlled</span></a>
   </div>
 </li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/gravity-controlled.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Gravity controlled</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/design-capacities.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Design capacities of outlets and pumps</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/split-basins.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Split basins based on pre-split basin polygons</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/couple.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Coupling</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/seasonal-levels.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Summer and winter levels</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../workflow/profile-generation.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Profile generation</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/split-basins.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Split basins based on pre-split basin polygons</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Shared steps</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/control.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Control</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/storage-basins.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Storage basins</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/design-capacities.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Design capacities of outlets and pumps</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/forcing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Forcing</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/seasonal-levels.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Summer and winter levels</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/layout.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Layout</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">The nationwide model</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/couple.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Coupling</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
     </ul>
     </div>
 </nav>
@@ -212,14 +294,10 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#bathymetrie.py" id="toc-bathymetrie.py" class="nav-link active" data-scroll-target="#bathymetrie.py">1_bathymetrie.py</a></li>
-  <li><a href="#basins.py" id="toc-basins.py" class="nav-link" data-scroll-target="#basins.py">2_basins.py</a></li>
-  <li><a href="#netwerk.py" id="toc-netwerk.py" class="nav-link" data-scroll-target="#netwerk.py">3_netwerk.py</a></li>
-  <li><a href="#kunstwerken.py" id="toc-kunstwerken.py" class="nav-link" data-scroll-target="#kunstwerken.py">4_kunstwerken.py</a></li>
-  <li><a href="#model_netwerk.py" id="toc-model_netwerk.py" class="nav-link" data-scroll-target="#model_netwerk.py">5_model_netwerk.py</a></li>
-  <li><a href="#model_sturing.py" id="toc-model_sturing.py" class="nav-link" data-scroll-target="#model_sturing.py">6_model_sturing.py</a></li>
-  <li><a href="#model_onttrekkingen.py" id="toc-model_onttrekkingen.py" class="nav-link" data-scroll-target="#model_onttrekkingen.py">7_model_onttrekkingen.py</a></li>
-  <li><a href="#update-bc-state-etc." id="toc-update-bc-state-etc." class="nav-link" data-scroll-target="#update-bc-state-etc.">8 update bc, state, etc.</a></li>
+  <li><a href="#bathymetry" id="toc-bathymetry" class="nav-link active" data-scroll-target="#bathymetry">Bathymetry</a></li>
+  <li><a href="#from-data-to-a-network" id="toc-from-data-to-a-network" class="nav-link" data-scroll-target="#from-data-to-a-network">From data to a network</a></li>
+  <li><a href="#control-and-demands" id="toc-control-and-demands" class="nav-link" data-scroll-target="#control-and-demands">Control and demands</a></li>
+  <li><a href="#boundaries-and-forcing" id="toc-boundaries-and-forcing" class="nav-link" data-scroll-target="#boundaries-and-forcing">Boundaries and forcing</a></li>
   </ul>
 </nav>
     </div>
@@ -228,7 +306,7 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Main watersystem</h1>
+<h1 class="title">Main water system</h1>
 </div>
 
 
@@ -245,17 +323,52 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>All files in <a href="https://github.com/Deltares/Ribasim-NL/tree/main/pipeline/rijkswaterstaat"><code>pipeline/rijkswaterstaat</code></a> are numbered in order of execution.</p>
-<section id="bathymetrie.py" class="level1">
-<h1>1_bathymetrie.py</h1>
-<p>In this script we merge data from Baseline (version j23_6-v1, non-public) with grids from <a href="https://maps.rijkswaterstaat.nl/geoweb55/index.html?viewer=Bathymetrie_Nederland">bathymetrie-Nederland</a> to one 5x5m GeoTiff.</p>
-<p>We combine both sources as the Midden Limburgse en Noord Brabantse (MLNB) kanalen are not in Baseline and the IJsselmeer is not completely covered in bathymetrie-Nederland. For the mask we use Top10NL waterdelen and manually filled a boolean column <code>baseline</code>.</p>
+<p>The model of the main water system holds the rivers, canals and lakes of Rijkswaterstaat. The scripts are in <a href="https://github.com/Deltares/Ribasim-NL/tree/main/pipeline/rijkswaterstaat"><code>pipeline/rijkswaterstaat</code></a>, numbered in order of execution, and run in three DVC stages.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><a href="https://s3.deltares.nl/ribasim-nl/doc-image/figures/main-water-system.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="The model of the main water system on the map."><img src="https://s3.deltares.nl/ribasim-nl/doc-image/figures/main-water-system.png" class="img-fluid figure-img" style="width:70.0%" alt="Map of the Netherlands with the Basin areas of the IJsselmeer, the rivers, the delta and the canals in blue, links between them, and small markers for the structures and boundaries."></a></p>
+<figcaption>The model of the main water system on the map.</figcaption>
+</figure>
+</div>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart TD
+  subgraph frozen["bathymetry, frozen"]
+    s1["1_bathymetrie.py&lt;br&gt;verwerkt/bathymetrie"]
+  end
+  subgraph demand["hws_demand"]
+    direction TB
+    s2["2_basins.py&lt;br&gt;Basins and profiles"] --&gt; s3["3_netwerk.py&lt;br&gt;verwerkt/netwerk.gpkg"]
+    s3 --&gt; s4["4_kunstwerken.py&lt;br&gt;verwerkt/hydamo.gpkg"]
+    s4 --&gt; s5["5_model_netwerk.py&lt;br&gt;modellen/hws_netwerk"]
+    s5 --&gt; s6["6_model_sturing.py&lt;br&gt;modellen/hws_sturing"]
+    s6 --&gt; s7["7_model_onttrekkingen.py&lt;br&gt;modellen/hws_demand"]
+    s7 --&gt; s8a["8a_update_state.py&lt;br&gt;modellen/hws_demand"]
+  end
+  subgraph transient["hws_transient"]
+    s8b["8b_update_bc.py&lt;br&gt;modellen/hws_transient"]
+  end
+  frozen --&gt; demand --&gt; transient --&gt; merge["samenvoegen"]
+  rwzi["rwzi"] --&gt; transient
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<section id="bathymetry" class="level2">
+<h2 class="anchored" data-anchor-id="bathymetry">Bathymetry</h2>
+<p><code>1_bathymetrie.py</code> merges data from Baseline (version j23_6-v1, non-public) with grids from <a href="https://maps.rijkswaterstaat.nl/geoweb55/index.html?viewer=Bathymetrie_Nederland">bathymetrie-Nederland</a> into one 5 × 5 m GeoTIFF. Both are needed, since the Midden Limburgse en Noord Brabantse kanalen are not in Baseline, and the IJsselmeer is not completely covered in bathymetrie-Nederland. For the mask we use Top10NL waterdelen and manually filled a boolean column <code>baseline</code>.</p>
+<p>This stage is frozen, so it is not run again in a reproduction, since the source data does not change.</p>
 <div class="quarto-layout-panel" data-layout-ncol="2">
 <div class="quarto-layout-row">
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><a href="https://s3.deltares.nl/ribasim-nl/doc-image/bathymetrie_mask.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Bathymetry mask"><img src="https://s3.deltares.nl/ribasim-nl/doc-image/bathymetrie_mask.png" class="img-fluid figure-img" alt="Bathymetry mask"></a></p>
+<p><a href="https://s3.deltares.nl/ribasim-nl/doc-image/bathymetrie_mask.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="Bathymetry mask"><img src="https://s3.deltares.nl/ribasim-nl/doc-image/bathymetrie_mask.png" class="img-fluid figure-img" alt="Bathymetry mask"></a></p>
 <figcaption>Bathymetry mask</figcaption>
 </figure>
 </div>
@@ -263,7 +376,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><a href="https://s3.deltares.nl/ribasim-nl/doc-image/bathymetrie_result.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="Bathymetry"><img src="https://s3.deltares.nl/ribasim-nl/doc-image/bathymetrie_result.png" class="img-fluid figure-img" alt="Bathymetry"></a></p>
+<p><a href="https://s3.deltares.nl/ribasim-nl/doc-image/bathymetrie_result.png" class="lightbox" data-gallery="quarto-lightbox-gallery-3" title="Bathymetry"><img src="https://s3.deltares.nl/ribasim-nl/doc-image/bathymetrie_result.png" class="img-fluid figure-img" alt="Bathymetry"></a></p>
 <figcaption>Bathymetry</figcaption>
 </figure>
 </div>
@@ -271,33 +384,61 @@ ul.task-list li input[type="checkbox"] {
 </div>
 </div>
 </section>
-<section id="basins.py" class="level1">
-<h1>2_basins.py</h1>
-<p>We derive Ribasim Basins (areas) for the RWS-watersystem. Using the resulting bathymetry of <code>1_bathymetry.py</code> we write a CSV-file with a Basin profile.</p>
+<section id="from-data-to-a-network" class="level2">
+<h2 class="anchored" data-anchor-id="from-data-to-a-network">From data to a network</h2>
+<ul>
+<li><code>2_basins.py</code> derives the Basin areas of the main water system. From the bathymetry it writes a CSV file with the profile of each Basin, <code>verwerkt/basins_level_area.csv</code>.</li>
+<li><code>3_netwerk.py</code> derives a <code>ribasim_nl.Network</code> (not a Ribasim network yet!) from OpenStreetMap, with modifications mainly in the IJsselmeer, to build the model network with in <code>5_model_netwerk.py</code>. It needs the Basins of <code>2_basins.py</code>, since a network node goes at each intersection of a Basin area with the network. This network, <code>verwerkt/netwerk.gpkg</code>, also guides the links in the <a href="../workflow/couple.html">coupling</a>.</li>
+<li><code>4_kunstwerken.py</code> combines the structures from NIS (Netwerk Informatie Systeem) of Rijkswaterstaat, Baseline, OpenStreetMap, the structures in the primary flood defences, and the abstractions, into a HyDAMO-based format, from which the Ribasim network is derived.</li>
+<li><code>5_model_netwerk.py</code> combines the results of steps 2 to 4 into a first Ribasim model, <code>modellen/hws_netwerk/hws.toml</code>. It includes the distribution keys (verdeelsleutels) of Lobith and Monsin as structures, but no control nodes, and no demands.</li>
+</ul>
 </section>
-<section id="netwerk.py" class="level1">
-<h1>3_netwerk.py</h1>
-<p>We derive a <code>ribasim_nl.Network</code> (not a Ribasim network yet!) we can use to build a model_network with <code>5_model_netwerk.py</code>. The network is taken from OpenStreetMap (OSM) with modifications made, mainly in the IJsselmeer. You need the Basins from <code>2_basins.py</code> as a network node will be put at the intersect of a Basin-polygon and the network.</p>
+<section id="control-and-demands" class="level2">
+<h2 class="anchored" data-anchor-id="control-and-demands">Control and demands</h2>
+<ul>
+<li><code>6_model_sturing.py</code> adds control, with ContinuousControl, DiscreteControl and FlowDemand nodes, into <code>modellen/hws_sturing/hws.toml</code>.</li>
+<li><code>7_model_onttrekkingen.py</code> adds the demands of drinking water, industry and energy as UserDemands, splits Basins along a route where needed, and adds Junctions, into <code>modellen/hws_demand/hws.toml</code>.</li>
+<li><code>8a_update_state.py</code> runs this model, and writes its final state back as its initial state.</li>
+</ul>
 </section>
-<section id="kunstwerken.py" class="level1">
-<h1>4_kunstwerken.py</h1>
-<p>We combine structures from RWS NIS (Netwerk Informatie Systeem) Baseline and OSM and combine everything to a HyDAMO-based format we can use to derive our Ribasim network (<code>model_netwerk.py</code>).</p>
-</section>
-<section id="model_netwerk.py" class="level1">
-<h1>5_model_netwerk.py</h1>
-<p>We combine the result of step 2 till 4 to derive a first ribasim-network that will be stored in a <code>.\modellen\hws_netwerk\hws.toml</code> file. This excludes control (e.g.&nbsp;bifurcations of Monsin and Pannerden) and demand/supply.</p>
-</section>
-<section id="model_sturing.py" class="level1">
-<h1>6_model_sturing.py</h1>
-<p>We take the model of 5 (<code>.\modellen\hws_netwerk\hws.toml</code>), add control and write it to (<code>.\modellen\hws_sturing\hws.toml</code>)</p>
-</section>
-<section id="model_onttrekkingen.py" class="level1">
-<h1>7_model_onttrekkingen.py</h1>
-<p>We take the model of 6 (<code>.\modellen\hws_sturing\hws.toml</code>), add drinking water, industry and energy demands. Then we add junctions and write it to (<code>.\modellen\hws_demand\hws.toml</code>)</p>
-</section>
-<section id="update-bc-state-etc." class="level1">
-<h1>8 update bc, state, etc.</h1>
-<p>Scripts to provide boundary/initial conditions to the model in <code>.\modellen\hws_demand\hws.toml</code> and write it in another location.</p>
+<section id="boundaries-and-forcing" class="level2">
+<h2 class="anchored" data-anchor-id="boundaries-and-forcing">Boundaries and forcing</h2>
+<p><code>8b_update_bc.py</code> makes the model that goes into the coupling, <code>modellen/hws_transient</code>, for 2017 up to 2020:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: left;">What</th>
+<th style="text-align: left;">Source</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Discharges of the Rhine at Lobith and the Meuse at Monsin</td>
+<td style="text-align: left;">Daily means, <code>aangeleverd/Matroos_debieten_2017_2022_Lobith_Monsin.xlsx</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Levels at Kornwerderzand and Den Oever</td>
+<td style="text-align: left;">A seasonal table of −0.4 to −0.1 m, repeated every year</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Level at IJmuiden</td>
+<td style="text-align: left;">Constant −0.4 m</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Precipitation and evaporation</td>
+<td style="text-align: left;">LHM, as in the <a href="../workflow/forcing.html">forcing</a> of the regional models</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Wastewater</td>
+<td style="text-align: left;">The <a href="../workflow/forcing.html#sec-rwzi">RWZI model</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Measurements</td>
+<td style="text-align: left;">Observation nodes, see <code>ribasim_nl.observations</code></td>
+</tr>
+</tbody>
+</table>
+<p>The other model in this folder that is tracked, <code>hws_2025_10_1</code>, is a fixed earlier version, from which the fix script of Vechtstromen reads the polygon of the Twentekanaal.</p>
 
 
 </section>
@@ -703,6 +844,18 @@ ul.task-list li input[type="checkbox"] {
     }
   });
   </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../workflow/index.html" class="pagination-link" aria-label="Model derivation">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Model derivation</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../workflow/gravity-controlled.html" class="pagination-link" aria-label="Gravity controlled models">
+        <span class="nav-page-text">Gravity controlled models</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
 </div> <!-- /content -->
 <script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox","skin":"fullscreen-lightbox"});
 (function() {

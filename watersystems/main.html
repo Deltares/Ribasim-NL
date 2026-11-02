@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Watersystemen (NL) – Ribasim-NL</title>
+<title>Water systems – Ribasim-NL</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -33,6 +33,7 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
+<link href="../watersystems/AaenMaas.html" rel="next">
 <link href="../assets/favicon.ico" rel="icon">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -44,6 +45,9 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../site_libs/bootstrap/bootstrap-d3dd72e47976c844a05ffb6b950c6ecd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -73,7 +77,7 @@ ul.task-list li input[type="checkbox"] {
 }</script>
 
 
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 </head>
 
 <body class="nav-sidebar floating nav-fixed quarto-light">
@@ -98,20 +102,12 @@ ul.task-list li input[type="checkbox"] {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../reference/index.html"> 
-<span class="menu-text">API Reference</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../cloudstorage.html"> 
-<span class="menu-text">Cloud storage</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../workflow/main-watersystem.html"> 
-<span class="menu-text">Workflows</span></a>
+    <a class="nav-link" href="../workflow/index.html"> 
+<span class="menu-text">Model derivation</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link active" href="../watersystems/main.html" aria-current="page"> 
-<span class="menu-text">Watersystems</span></a>
+<span class="menu-text">Water systems</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../viewer.html"> 
@@ -122,6 +118,10 @@ ul.task-list li input[type="checkbox"] {
   <li class="nav-item">
     <a class="nav-link" href="../dev/index.html"> 
 <span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">API reference</span></a>
   </li>  
   <li class="nav-item compact">
     <a class="nav-link" href="https://github.com/Deltares/Ribasim-NL"> <i class="bi bi-github" role="img" aria-label="GitHub">
@@ -139,7 +139,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../watersystems/main.html">Watersystemen (NL)</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../watersystems/main.html">Water systems</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -154,7 +154,7 @@ ul.task-list li input[type="checkbox"] {
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../watersystems/main.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Watersystemen (NL)</span></a>
+ <span class="menu-text">Water systems</span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -236,7 +236,7 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Watersystemen (NL)</h1>
+<h1 class="title">Water systems</h1>
 </div>
 
 
@@ -253,7 +253,158 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>Onder deze pagina staan beknopte beschrijvingen van regionale Ribasim modellen.</p>
+<p>The nationwide model is made of the models of 22 authorities. The pages below are concise descriptions of the regional Ribasim models of the gravity controlled water authorities, in Dutch: how the water system works, with its main structures and capacities. <a href="../workflow/index.html">Model derivation</a> says how it is schematized. The level controlled water authorities have no description yet.</p>
+<p>Each link opens the part of the <a href="../viewer.html">model viewer</a> with the model of that authority.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><a href="https://s3.deltares.nl/ribasim-nl/doc-image/figures/authorities.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="The number of nodes per authority in the coupled model, without control nodes and Junctions."><img src="https://s3.deltares.nl/ribasim-nl/doc-image/figures/authorities.png" class="img-fluid figure-img" alt="Bar chart of the number of Basins and connector nodes per authority, sorted by their total."></a></p>
+<figcaption>The number of nodes per authority in the coupled model, without control nodes and Junctions.</figcaption>
+</figure>
+</div>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: left;">Authority</th>
+<th style="text-align: left;">Kind of model</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Model viewer</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Rijkswaterstaat</td>
+<td style="text-align: left;"><a href="../workflow/main-watersystem.html">Main water system</a></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=80">80</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Aa en Maas</td>
+<td style="text-align: left;"><a href="../workflow/gravity-controlled.html">Gravity controlled</a></td>
+<td style="text-align: left;"><a href="../watersystems/AaenMaas.html">Beschrijving</a></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=38">38</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Brabantse Delta</td>
+<td style="text-align: left;">Gravity controlled</td>
+<td style="text-align: left;"><a href="../watersystems/BrabantseDelta.html">Beschrijving</a></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=25">25</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">De Dommel</td>
+<td style="text-align: left;">Gravity controlled</td>
+<td style="text-align: left;"><a href="../watersystems/DeDommel.html">Beschrijving</a></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=27">27</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Drents Overijsselse Delta</td>
+<td style="text-align: left;">Gravity controlled</td>
+<td style="text-align: left;"><a href="../watersystems/DrentsOverijsselseDelta.html">Beschrijving</a></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=59">59</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Hunze en Aas</td>
+<td style="text-align: left;">Gravity controlled</td>
+<td style="text-align: left;"><a href="../watersystems/HunzeenAas.html">Beschrijving</a></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=33">33</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Limburg</td>
+<td style="text-align: left;">Gravity controlled</td>
+<td style="text-align: left;"><a href="../watersystems/Limburg.html">Beschrijving</a></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=60">60</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Noorderzijlvest</td>
+<td style="text-align: left;">Gravity controlled</td>
+<td style="text-align: left;"><a href="../watersystems/Noorderzijlvest.html">Beschrijving</a></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=34">34</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Rijn en IJssel</td>
+<td style="text-align: left;">Gravity controlled</td>
+<td style="text-align: left;"><a href="../watersystems/RijnenIJssel.html">Beschrijving</a></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=7">7</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Stichtse Rijnlanden</td>
+<td style="text-align: left;">Gravity controlled</td>
+<td style="text-align: left;"><a href="../watersystems/StichtseRijnlanden.html">Beschrijving</a></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=14">14</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Vallei en Veluwe</td>
+<td style="text-align: left;">Gravity controlled</td>
+<td style="text-align: left;"><a href="../watersystems/ValleienVeluwe.html">Beschrijving</a></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=43">43</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Vechtstromen</td>
+<td style="text-align: left;">Gravity controlled</td>
+<td style="text-align: left;"><a href="../watersystems/Vechtstromen.html">Beschrijving</a></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=44">44</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Amstel, Gooi en Vecht</td>
+<td style="text-align: left;"><a href="../workflow/level-controlled.html">Level controlled</a></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=11">11</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Delfland</td>
+<td style="text-align: left;">Level controlled</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=15">15</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Hollands Noorderkwartier</td>
+<td style="text-align: left;">Level controlled</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=12">12</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Hollandse Delta</td>
+<td style="text-align: left;">Level controlled</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=40">40</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Rijnland</td>
+<td style="text-align: left;">Level controlled</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=13">13</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Rivierenland</td>
+<td style="text-align: left;">Level controlled</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=9">9</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Scheldestromen</td>
+<td style="text-align: left;">Level controlled</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=42">42</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Schieland en de Krimpenerwaard</td>
+<td style="text-align: left;">Level controlled</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=39">39</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Wetterskip Fryslân</td>
+<td style="text-align: left;">Level controlled</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=2">2</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Zuiderzeeland</td>
+<td style="text-align: left;">Level controlled</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><a href="../viewer.html#authority=37">37</a></td>
+</tr>
+</tbody>
+</table>
 
 
 
@@ -658,7 +809,48 @@ ul.task-list li input[type="checkbox"] {
     }
   });
   </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../watersystems/AaenMaas.html" class="pagination-link" aria-label="Aa en Maas">
+        <span class="nav-page-text">Aa en Maas</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
 </div> <!-- /content -->
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox","skin":"fullscreen-lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
 
 
 

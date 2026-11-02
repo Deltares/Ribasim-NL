@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>webmap_publish – Ribasim-NL</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../assets/favicon.ico" rel="icon">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-d3dd72e47976c844a05ffb6b950c6ecd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a href="../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="../assets/logo.png" alt="" class="navbar-logo light-content">
+    <img src="../assets/logo.png" alt="" class="navbar-logo dark-content">
+    </a>
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">Ribasim-NL</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../workflow/index.html"> 
+<span class="menu-text">Model derivation</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../watersystems/main.html"> 
+<span class="menu-text">Water systems</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../viewer.html"> 
+<span class="menu-text">Model viewer</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../dev/index.html"> 
+<span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">API reference</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/Deltares/Ribasim-NL"> <i class="bi bi-github" role="img" aria-label="GitHub">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#ribasim_nl.webmap_publish" id="toc-ribasim_nl.webmap_publish" class="nav-link active" data-scroll-target="#ribasim_nl.webmap_publish">webmap_publish</a>
+  <ul class="collapse">
+  <li><a href="#classes" id="toc-classes" class="nav-link" data-scroll-target="#classes">Classes</a>
+  <ul class="collapse">
+  <li><a href="#ribasim_nl.webmap_publish.Store" id="toc-ribasim_nl.webmap_publish.Store" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.Store">Store</a></li>
+  </ul></li>
+  <li><a href="#functions" id="toc-functions" class="nav-link" data-scroll-target="#functions">Functions</a>
+  <ul class="collapse">
+  <li><a href="#ribasim_nl.webmap_publish.branch_name" id="toc-ribasim_nl.webmap_publish.branch_name" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.branch_name">branch_name</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.check_working_tree" id="toc-ribasim_nl.webmap_publish.check_working_tree" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.check_working_tree">check_working_tree</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.checkout_export" id="toc-ribasim_nl.webmap_publish.checkout_export" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.checkout_export">checkout_export</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.comment_body" id="toc-ribasim_nl.webmap_publish.comment_body" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.comment_body">comment_body</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.commit_hash" id="toc-ribasim_nl.webmap_publish.commit_hash" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.commit_hash">commit_hash</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.diff_counts" id="toc-ribasim_nl.webmap_publish.diff_counts" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.diff_counts">diff_counts</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.export_hash" id="toc-ribasim_nl.webmap_publish.export_hash" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.export_hash">export_hash</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.fetch_branch" id="toc-ribasim_nl.webmap_publish.fetch_branch" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.fetch_branch">fetch_branch</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.fetch_main" id="toc-ribasim_nl.webmap_publish.fetch_main" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.fetch_main">fetch_main</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.find_pr" id="toc-ribasim_nl.webmap_publish.find_pr" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.find_pr">find_pr</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.gh_json" id="toc-ribasim_nl.webmap_publish.gh_json" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.gh_json">gh_json</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.github_commit" id="toc-ribasim_nl.webmap_publish.github_commit" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.github_commit">github_commit</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.lock_at" id="toc-ribasim_nl.webmap_publish.lock_at" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.lock_at">lock_at</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.main" id="toc-ribasim_nl.webmap_publish.main" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.main">main</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.manifest_entries" id="toc-ribasim_nl.webmap_publish.manifest_entries" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.manifest_entries">manifest_entries</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.now" id="toc-ribasim_nl.webmap_publish.now" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.now">now</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.on_github" id="toc-ribasim_nl.webmap_publish.on_github" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.on_github">on_github</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.pr_number" id="toc-ribasim_nl.webmap_publish.pr_number" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.pr_number">pr_number</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.publish_commit" id="toc-ribasim_nl.webmap_publish.publish_commit" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.publish_commit">publish_commit</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.publish_commits" id="toc-ribasim_nl.webmap_publish.publish_commits" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.publish_commits">publish_commits</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.publish_diff" id="toc-ribasim_nl.webmap_publish.publish_diff" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.publish_diff">publish_diff</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.publish_main" id="toc-ribasim_nl.webmap_publish.publish_main" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.publish_main">publish_main</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.publish_pr" id="toc-ribasim_nl.webmap_publish.publish_pr" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.publish_pr">publish_pr</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.snapshot_name" id="toc-ribasim_nl.webmap_publish.snapshot_name" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.snapshot_name">snapshot_name</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.stack_base" id="toc-ribasim_nl.webmap_publish.stack_base" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.stack_base">stack_base</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.store_manifest" id="toc-ribasim_nl.webmap_publish.store_manifest" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.store_manifest">store_manifest</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.upsert_comment" id="toc-ribasim_nl.webmap_publish.upsert_comment" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.upsert_comment">upsert_comment</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.viewer_url" id="toc-ribasim_nl.webmap_publish.viewer_url" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.viewer_url">viewer_url</a></li>
+  </ul></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"></header>
+
+
+
+
+<section id="ribasim_nl.webmap_publish" class="level1">
+<h1>webmap_publish</h1>
+<p><code>webmap_publish</code></p>
+<p>Publish the <code>export_webmap</code> output to MinIO for the model viewer on the documentation site.</p>
+<pre><code>pixi run publish-webmap            # the model of the pull request of this branch, compared with its base
+pixi run publish-webmap --pr 123   # the model of the working tree as that pull request
+pixi run publish-webmap --main     # only the model of origin/main
+pixi run publish-webmap --commit REV [--base REV]  # the model of a commit, compared with another commit</code></pre>
+<p>Everything is uploaded below the anonymously readable <code>doc-image/webmap/</code> prefix:</p>
+<ul>
+<li><code>files/&lt;hash&gt;.&lt;ext&gt;</code>: the exported files, named by their content hash, so files that did not change are uploaded once and shared by all models.</li>
+<li><code>lhm_coupled/snapshots/&lt;md5&gt;/manifest.json</code>: the manifest of an export, with the paths of the files in <code>files/</code>. The snapshot is named by the DVC hash of the <code>export_webmap</code> output in <code>dvc.lock</code>, which is how the viewer finds the model of <code>main</code>: it reads <code>dvc.lock</code> from GitHub.</li>
+<li><code>lhm_coupled/main.json</code>: the snapshot of the latest published <code>main</code>, for when the snapshot of the current <code>main</code> is not published.</li>
+<li><code>lhm_coupled/diffs/&lt;base md5&gt;-&lt;head md5&gt;.json</code>: the differences between two snapshots, see <code>ribasim_nl.webmap_diff</code>.</li>
+<li><code>lhm_coupled/prs/&lt;number&gt;.json</code>: the snapshots and differences of a pull request, which the viewer shows for <code>?pr=&lt;number&gt;</code>. A pull request is compared with <code>main</code>, or in a stack of pull requests with the pull request of its base branch, so it only shows its own changes. That pull request must be published first.</li>
+</ul>
+<p>The viewer finds the model of any commit on GitHub, for <code>?commit=&lt;commit&gt;</code>, by the snapshot in its <code>dvc.lock</code>, and compares it with that of another commit, for <code>?base=&lt;commit&gt;&amp;commit=&lt;commit&gt;</code>, if their differences are published. It pins the link to the latest main to its commit, so a copied link keeps showing the same model.</p>
+<p>DVC does not cache the <code>export_webmap</code> output, so this is the only copy that is kept. The export of another commit, to compare with, is downloaded from its published snapshot. If it is not published, the model is exported again from its run, which DVC does keep.</p>
+<p>This needs the following environment variables to be set in <code>.env</code> (Deltares only): AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY They need to have write permission. A pull request is found and commented on with the GitHub CLI <code>gh</code>.</p>
+<section id="classes" class="level2">
+<h2 class="anchored" data-anchor-id="classes">Classes</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="#ribasim_nl.webmap_publish.Store">Store</a></td>
+<td>The objects below <code>PREFIX</code> in the MinIO bucket.</td>
+</tr>
+</tbody>
+</table>
+<section id="ribasim_nl.webmap_publish.Store" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.Store">Store</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.Store()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The objects below <code>PREFIX</code> in the MinIO bucket.</p>
+<section id="methods" class="level4">
+<h4 class="anchored" data-anchor-id="methods">Methods</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="#ribasim_nl.webmap_publish.Store.download_snapshot">download_snapshot</a></td>
+<td>Download a published snapshot into a directory, as an export with the files named as in <code>files/</code>.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.webmap_publish.Store.is_published">is_published</a></td>
+<td>Whether snapshot <code>md5</code> is published.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.webmap_publish.Store.metadata">metadata</a></td>
+<td>The metadata of an object, or None if it does not exist.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.webmap_publish.Store.publish_snapshot">publish_snapshot</a></td>
+<td>Upload the files and manifest of an export as snapshot <code>md5</code>, unless it exists; return its name.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.webmap_publish.Store.put_file">put_file</a></td>
+<td>Upload a file named by its content hash, unless it is already there.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.webmap_publish.Store.put_json">put_json</a></td>
+<td>Upload a JSON object.</td>
+</tr>
+</tbody>
+</table>
+<section id="ribasim_nl.webmap_publish.Store.download_snapshot" class="level5">
+<h5 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.Store.download_snapshot">download_snapshot</h5>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.Store.download_snapshot(md5, target)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Download a published snapshot into a directory, as an export with the files named as in <code>files/</code>.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.Store.is_published" class="level5">
+<h5 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.Store.is_published">is_published</h5>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.Store.is_published(md5)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Whether snapshot <code>md5</code> is published.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.Store.metadata" class="level5">
+<h5 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.Store.metadata">metadata</h5>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.Store.metadata(name)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The metadata of an object, or None if it does not exist.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.Store.publish_snapshot" class="level5">
+<h5 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.Store.publish_snapshot">publish_snapshot</h5>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.Store.publish_snapshot(export_dir, md5)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Upload the files and manifest of an export as snapshot <code>md5</code>, unless it exists; return its name.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.Store.put_file" class="level5">
+<h5 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.Store.put_file">put_file</h5>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.Store.put_file(name, path, content_hash)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Upload a file named by its content hash, unless it is already there.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.Store.put_json" class="level5">
+<h5 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.Store.put_json">put_json</h5>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.Store.put_json(name, data, cache_control)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Upload a JSON object.</p>
+</section>
+</section>
+</section>
+</section>
+<section id="functions" class="level2">
+<h2 class="anchored" data-anchor-id="functions">Functions</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="#ribasim_nl.webmap_publish.branch_name">branch_name</a></td>
+<td>Assert a branch name is valid, so it is never read as an option; return it.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.webmap_publish.check_working_tree">check_working_tree</a></td>
+<td>Assert the <code>export_webmap</code> output in the working tree is up to date; return its md5 in <code>dvc.lock</code>.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.webmap_publish.checkout_export">checkout_export</a></td>
+<td>Get the <code>export_webmap</code> output at a commit, whose hash in <code>dvc.lock</code> is <code>md5</code>; return its directory.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.webmap_publish.comment_body">comment_body</a></td>
+<td>The pull request comment with the viewer link and a summary of the differences with its base.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.webmap_publish.commit_hash">commit_hash</a></td>
+<td>Assert a commit is a full commit hash, so it is never read as an option; return it.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.webmap_publish.diff_counts">diff_counts</a></td>
+<td>The number of differing nodes and links by status, and of features with differing results.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.webmap_publish.export_hash">export_hash</a></td>
+<td>The DVC hash of the <code>export_webmap</code> output in a parsed <code>dvc.lock</code>, without the <code>.dir</code> suffix.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.webmap_publish.fetch_branch">fetch_branch</a></td>
+<td>Fetch a branch from GitHub and return its commit.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.webmap_publish.fetch_main">fetch_main</a></td>
+<td>Fetch main from GitHub and return its commit.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.webmap_publish.find_pr">find_pr</a></td>
+<td>The number of the pull request of the current branch.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.webmap_publish.gh_json">gh_json</a></td>
+<td>Run a GitHub CLI command with JSON output and return the parsed result.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.webmap_publish.github_commit">github_commit</a></td>
+<td>The commit of a git revision, asserted to be on GitHub.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.webmap_publish.lock_at">lock_at</a></td>
+<td>The parsed <code>dvc.lock</code> of the working tree, or at a commit.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.webmap_publish.main">main</a></td>
+<td>Command line entry point, see the module docstring.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.webmap_publish.manifest_entries">manifest_entries</a></td>
+<td>All file entries of a manifest, see <code>ribasim_nl.webmap.export_webmap</code>.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.webmap_publish.now">now</a></td>
+<td>The current time in UTC, to the minute.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.webmap_publish.on_github">on_github</a></td>
+<td>Assert a commit is on GitHub, where the viewer reads its <code>dvc.lock</code>; return it.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.webmap_publish.pr_number">pr_number</a></td>
+<td>Assert a pull request number is valid; return it.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.webmap_publish.publish_commit">publish_commit</a></td>
+<td>Publish the model of a commit as its snapshot, unless it is published; return the snapshot md5.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.webmap_publish.publish_commits">publish_commits</a></td>
+<td>Publish the model of a commit, and with a base commit their differences; return the viewer link.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.webmap_publish.publish_diff">publish_diff</a></td>
+<td>Publish the differences of a model, exported to <code>head_dir</code>, from the model of a base commit.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.webmap_publish.publish_main">publish_main</a></td>
+<td>Publish the model of a commit of main as its snapshot and as the latest main; return the snapshot md5.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.webmap_publish.publish_pr">publish_pr</a></td>
+<td>Publish the model of the working tree for a pull request, with its differences from its base.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.webmap_publish.snapshot_name">snapshot_name</a></td>
+<td>The name of the manifest of snapshot <code>md5</code>.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.webmap_publish.stack_base">stack_base</a></td>
+<td>The base branch of a pull request and the open pull request of that branch, or None if it is based on main.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.webmap_publish.store_manifest">store_manifest</a></td>
+<td>A copy of a manifest with the paths of its files in the shared <code>files/</code> store, and the original paths.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.webmap_publish.upsert_comment">upsert_comment</a></td>
+<td>Update the viewer comment on a pull request, or add it if there is none.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.webmap_publish.viewer_url">viewer_url</a></td>
+<td>The viewer link to the model of a commit, compared with that of a base commit if given.</td>
+</tr>
+</tbody>
+</table>
+<section id="ribasim_nl.webmap_publish.branch_name" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.branch_name">branch_name</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.branch_name(branch)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Assert a branch name is valid, so it is never read as an option; return it.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.check_working_tree" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.check_working_tree">check_working_tree</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.check_working_tree()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Assert the <code>export_webmap</code> output in the working tree is up to date; return its md5 in <code>dvc.lock</code>.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.checkout_export" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.checkout_export">checkout_export</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.checkout_export(store, commit, md5, cache_dir<span class="op">=</span>CACHE_DIR)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Get the <code>export_webmap</code> output at a commit, whose hash in <code>dvc.lock</code> is <code>md5</code>; return its directory.</p>
+<p>It is downloaded from its published snapshot. If that is not published, the model is exported again from its run in DVC, which need not be identical to the original export byte for byte.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.comment_body" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.comment_body">comment_body</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.comment_body(</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    number,</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    diff,</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    base_commit,</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    head_commit,</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    base_pr<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The pull request comment with the viewer link and a summary of the differences with its base.</p>
+<p>The base is <code>main</code>, or pull request <code>base_pr</code> in a stack.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.commit_hash" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.commit_hash">commit_hash</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.commit_hash(commit)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Assert a commit is a full commit hash, so it is never read as an option; return it.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.diff_counts" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.diff_counts">diff_counts</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.diff_counts(diff)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The number of differing nodes and links by status, and of features with differing results.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.export_hash" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.export_hash">export_hash</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.export_hash(lock)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The DVC hash of the <code>export_webmap</code> output in a parsed <code>dvc.lock</code>, without the <code>.dir</code> suffix.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.fetch_branch" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.fetch_branch">fetch_branch</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.fetch_branch(branch)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Fetch a branch from GitHub and return its commit.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.fetch_main" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.fetch_main">fetch_main</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.fetch_main()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Fetch main from GitHub and return its commit.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.find_pr" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.find_pr">find_pr</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.find_pr()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The number of the pull request of the current branch.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.gh_json" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.gh_json">gh_json</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.gh_json(<span class="op">*</span>args)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Run a GitHub CLI command with JSON output and return the parsed result.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.github_commit" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.github_commit">github_commit</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.github_commit(revision)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The commit of a git revision, asserted to be on GitHub.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.lock_at" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.lock_at">lock_at</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.lock_at(commit)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The parsed <code>dvc.lock</code> of the working tree, or at a commit.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.main" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.main">main</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.main(argv<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Command line entry point, see the module docstring.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.manifest_entries" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.manifest_entries">manifest_entries</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.manifest_entries(manifest)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>All file entries of a manifest, see <code>ribasim_nl.webmap.export_webmap</code>.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.now" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.now">now</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.now()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The current time in UTC, to the minute.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.on_github" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.on_github">on_github</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.on_github(commit)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Assert a commit is on GitHub, where the viewer reads its <code>dvc.lock</code>; return it.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.pr_number" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.pr_number">pr_number</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.pr_number(number)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Assert a pull request number is valid; return it.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.publish_commit" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.publish_commit">publish_commit</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.publish_commit(store, commit)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Publish the model of a commit as its snapshot, unless it is published; return the snapshot md5.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.publish_commits" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.publish_commits">publish_commits</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.publish_commits(store, commit, base<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Publish the model of a commit, and with a base commit their differences; return the viewer link.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.publish_diff" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.publish_diff">publish_diff</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.publish_diff(</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>    store,</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>    base_commit,</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>    base_md5,</span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>    head_toml,</span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>    head_dir,</span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>    head_md5,</span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>    labels,</span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Publish the differences of a model, exported to <code>head_dir</code>, from the model of a base commit.</p>
+<p>Return the differences, and their name in the published model.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.publish_main" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.publish_main">publish_main</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.publish_main(store, commit)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Publish the model of a commit of main as its snapshot and as the latest main; return the snapshot md5.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.publish_pr" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.publish_pr">publish_pr</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.publish_pr(store, number)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Publish the model of the working tree for a pull request, with its differences from its base.</p>
+<p>The base is main, or in a stack the pull request of the base branch.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.snapshot_name" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.snapshot_name">snapshot_name</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.snapshot_name(md5)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The name of the manifest of snapshot <code>md5</code>.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.stack_base" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.stack_base">stack_base</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.stack_base(number)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The base branch of a pull request and the open pull request of that branch, or None if it is based on main.</p>
+<p>In a stack of pull requests, a pull request is based on the branch of the one below it.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.store_manifest" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.store_manifest">store_manifest</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb34"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.store_manifest(manifest)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>A copy of a manifest with the paths of its files in the shared <code>files/</code> store, and the original paths.</p>
+<p>Files are named by their content hash, so the second result maps each new path to the exported file.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.upsert_comment" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.upsert_comment">upsert_comment</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.upsert_comment(number, body)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Update the viewer comment on a pull request, or add it if there is none.</p>
+</section>
+<section id="ribasim_nl.webmap_publish.viewer_url" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.viewer_url">viewer_url</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb36"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.viewer_url(commit, base<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The viewer link to the model of a commit, compared with that of a base commit if given.</p>
+
+
+</section>
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

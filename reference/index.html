@@ -73,7 +73,7 @@ ul.task-list li input[type="checkbox"] {
 }</script>
 
 
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 </head>
 
 <body class="nav-fixed quarto-light">
@@ -98,20 +98,12 @@ ul.task-list li input[type="checkbox"] {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link active" href="../reference/index.html" aria-current="page"> 
-<span class="menu-text">API Reference</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../cloudstorage.html"> 
-<span class="menu-text">Cloud storage</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../workflow/main-watersystem.html"> 
-<span class="menu-text">Workflows</span></a>
+    <a class="nav-link" href="../workflow/index.html"> 
+<span class="menu-text">Model derivation</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../watersystems/main.html"> 
-<span class="menu-text">Watersystems</span></a>
+<span class="menu-text">Water systems</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../viewer.html"> 
@@ -122,6 +114,10 @@ ul.task-list li input[type="checkbox"] {
   <li class="nav-item">
     <a class="nav-link" href="../dev/index.html"> 
 <span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link active" href="../reference/index.html" aria-current="page"> 
+<span class="menu-text">API reference</span></a>
   </li>  
   <li class="nav-item compact">
     <a class="nav-link" href="https://github.com/Deltares/Ribasim-NL"> <i class="bi bi-github" role="img" aria-label="GitHub">
@@ -144,10 +140,13 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#api-reference" id="toc-api-reference" class="nav-link active" data-scroll-target="#api-reference">API Reference</a>
+  <li><a href="#api-reference" id="toc-api-reference" class="nav-link active" data-scroll-target="#api-reference">API reference</a>
   <ul class="collapse">
-  <li><a href="#hydamo" id="toc-hydamo" class="nav-link" data-scroll-target="#hydamo">HyDAMO</a></li>
-  <li><a href="#ribasim-nl" id="toc-ribasim-nl" class="nav-link" data-scroll-target="#ribasim-nl">Ribasim-NL</a></li>
+  <li><a href="#model" id="toc-model" class="nav-link" data-scroll-target="#model">Model</a></li>
+  <li><a href="#regional-models" id="toc-regional-models" class="nav-link" data-scroll-target="#regional-models">Regional models</a></li>
+  <li><a href="#geometry-and-layout" id="toc-geometry-and-layout" class="nav-link" data-scroll-target="#geometry-and-layout">Geometry and layout</a></li>
+  <li><a href="#validation-and-results" id="toc-validation-and-results" class="nav-link" data-scroll-target="#validation-and-results">Validation and results</a></li>
+  <li><a href="#model-viewer" id="toc-model-viewer" class="nav-link" data-scroll-target="#model-viewer">Model viewer</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -159,47 +158,159 @@ ul.task-list li input[type="checkbox"] {
 
 
 <section id="api-reference" class="level1 doc doc-index">
-<h1 class="doc doc-index">API Reference</h1>
-<section id="hydamo" class="level2">
-<h2 class="anchored" data-anchor-id="hydamo">HyDAMO</h2>
-<p>The HyDAMO class represents the HyDAMO data model.</p>
+<h1 class="doc doc-index">API reference</h1>
+<section id="model" class="level2">
+<h2 class="anchored" data-anchor-id="model">Model</h2>
+<p>The model class, and building a model from parts.</p>
 <table class="caption-top table">
 <tbody>
 <tr class="odd">
-<td><a href="../reference/HyDAMO.html#hydamo.HyDAMO">HyDAMO</a></td>
-<td>Definition of the HyDAMO datamodel.</td>
+<td><a href="../reference/Model.html#ribasim_nl.Model">Model</a></td>
+<td></td>
 </tr>
 <tr class="even">
-<td><a href="../reference/ExtendedGeoDataFrame.html#hydamo.ExtendedGeoDataFrame">ExtendedGeoDataFrame</a></td>
-<td>A GeoPandas GeoDataFrame with extended properties and methods.</td>
+<td><a href="../reference/Network.html#ribasim_nl.Network">Network</a></td>
+<td>Create a network from a GeoDataFrame with lines.</td>
 </tr>
 <tr class="odd">
-<td><a href="../reference/find_nearest_branch.html#hydamo.find_nearest_branch">find_nearest_branch</a></td>
-<td>Determine nearest branch for each geometry.</td>
+<td><a href="../reference/NetworkValidator.html#ribasim_nl.NetworkValidator">NetworkValidator</a></td>
+<td>Contains some methods for validating a Ribasim-model</td>
 </tr>
 <tr class="even">
-<td><a href="../reference/possibly_intersecting.html#hydamo.possibly_intersecting">possibly_intersecting</a></td>
-<td>Efficiently determine possibly intersecting geometries using a bounding box.</td>
+<td><a href="../reference/concat.html#ribasim_nl.concat">concat</a></td>
+<td></td>
 </tr>
 <tr class="odd">
-<td><a href="../reference/add_styles_to_geopackage.html#hydamo.add_styles_to_geopackage">add_styles_to_geopackage</a></td>
-<td>Add styles to a HyDAMO GeoPackage</td>
+<td><a href="../reference/prefix_index.html#ribasim_nl.prefix_index">prefix_index</a></td>
+<td>Reindex node-tables and links with a prefix and a max number of digits</td>
 </tr>
 <tr class="even">
-<td><a href="../reference/read_style.html#hydamo.read_style">read_style</a></td>
-<td>To make style-text sql-compatible, we need to replace single ’ to ’’.</td>
+<td><a href="../reference/reset_index.html#ribasim_nl.reset_index">reset_index</a></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><a href="../reference/CloudStorage.html#ribasim_nl.CloudStorage">CloudStorage</a></td>
+<td>Connect a local ’data_dir` to cloud-storage.</td>
 </tr>
 </tbody>
 </table>
 </section>
-<section id="ribasim-nl" class="level2">
-<h2 class="anchored" data-anchor-id="ribasim-nl">Ribasim-NL</h2>
-<p>Ribasim-NL code.</p>
+<section id="regional-models" class="level2">
+<h2 class="anchored" data-anchor-id="regional-models">Regional models</h2>
+<p>Steps shared by the regional models.</p>
 <table class="caption-top table">
 <tbody>
 <tr class="odd">
-<td><a href="../reference/CloudStorage.html#ribasim_nl.CloudStorage">CloudStorage</a></td>
-<td>Connect a local ’data_dir` to cloud-storage.</td>
+<td><a href="../reference/regional_model.html#ribasim_nl.regional_model">regional_model</a></td>
+<td>Steps shared by the regional models of all water authorities, vrij afwaterend and peilbeheerst alike.</td>
+</tr>
+<tr class="even">
+<td><a href="../reference/design_capacities.html#ribasim_nl.design_capacities">design_capacities</a></td>
+<td>Set the unknown capacities of Pumps and Outlets from the area they drain or supply.</td>
+</tr>
+<tr class="odd">
+<td><a href="../reference/capacity.html#ribasim_nl.capacity">capacity</a></td>
+<td>Level limits of the DiscreteControl-controlled Outlets and Pumps.</td>
+</tr>
+<tr class="even">
+<td><a href="../reference/seasonal_levels.html#ribasim_nl.seasonal_levels">seasonal_levels</a></td>
+<td>Summer and winter target levels (zomer- en winterpeil) in a model with one target level per Basin.</td>
+</tr>
+<tr class="odd">
+<td><a href="../reference/peilbeheer.html#ribasim_nl.peilbeheer">peilbeheer</a></td>
+<td>The level management (peilbeheer) of the peilgebieden of the water boards, in summer and winter.</td>
+</tr>
+<tr class="even">
+<td><a href="../reference/supply.html#ribasim_nl.supply">supply</a></td>
+<td>Labelling Ribasim-basins as “aanvoer”-basins, i.e., water can (and should) be supplied to these basins during shortages.</td>
+</tr>
+<tr class="odd">
+<td><a href="../reference/transboundary_inflow.html#ribasim_nl.transboundary_inflow">transboundary_inflow</a></td>
+<td>Foreign inflows (buitenlandse aanvoer) on the FlowBoundaries of the regional models.</td>
+</tr>
+<tr class="even">
+<td><a href="../reference/observations.html#ribasim_nl.observations">observations</a></td>
+<td>Add Observation nodes with measured discharges to a model.</td>
+</tr>
+<tr class="odd">
+<td><a href="../reference/split_basins.html#ribasim_nl.split_basins">split_basins</a></td>
+<td>Split basins in a Ribasim model, based on pre-split basin polygons, or along a route.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="geometry-and-layout" class="level2">
+<h2 class="anchored" data-anchor-id="geometry-and-layout">Geometry and layout</h2>
+<p>The layout of a model on the map, which does not change its results.</p>
+<table class="caption-top table">
+<tbody>
+<tr class="odd">
+<td><a href="../reference/layout.html#ribasim_nl.layout">layout</a></td>
+<td>Layout of a model on the map: nodes not on top of each other, and links without overlapping segments.</td>
+</tr>
+<tr class="even">
+<td><a href="../reference/network_snapping.html#ribasim_nl.network_snapping">network_snapping</a></td>
+<td>Route link geometries of a Ribasim-scheme along the network of hydro-objects.</td>
+</tr>
+<tr class="odd">
+<td><a href="../reference/flow_paths.html#ribasim_nl.flow_paths">flow_paths</a></td>
+<td>Routes of flow links through Junctions, and changes to them that only change the layout.</td>
+</tr>
+<tr class="even">
+<td><a href="../reference/geometry.html#ribasim_nl.geometry">geometry</a></td>
+<td>Functions to apply on a shapely.geometry</td>
+</tr>
+<tr class="odd">
+<td><a href="../reference/junctionify.html#ribasim_nl.junctionify">junctionify</a></td>
+<td>Add Junction nodes in a model inplace where flow links share common geometry.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="validation-and-results" class="level2">
+<h2 class="anchored" data-anchor-id="validation-and-results">Validation and results</h2>
+<p>Checks on the model input and on the results of a run.</p>
+<table class="caption-top table">
+<tbody>
+<tr class="odd">
+<td><a href="../reference/validation.html#ribasim_nl.validation">validation</a></td>
+<td>Ribasim-NL-specific validations that supplement Ribasim validation.</td>
+</tr>
+<tr class="even">
+<td><a href="../reference/result_validation.html#ribasim_nl.result_validation">result_validation</a></td>
+<td>Regression checks on the results of a model run, which supplement the input checks of <code>ribasim_nl.validation</code>.</td>
+</tr>
+<tr class="odd">
+<td><a href="../reference/goodness_of_fit.html#ribasim_nl.goodness_of_fit">goodness_of_fit</a></td>
+<td>How well the simulated values of a model run fit the measurements of its Observation nodes.</td>
+</tr>
+<tr class="even">
+<td><a href="../reference/steady_state_regression.html#ribasim_nl.steady_state_regression">steady_state_regression</a></td>
+<td>Regression checks for Basin water-level steady state.</td>
+</tr>
+<tr class="odd">
+<td><a href="../reference/write_performance.html#ribasim_nl.write_performance">write_performance</a></td>
+<td>Write performance.xlsx to the results directory of a model.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="model-viewer" class="level2">
+<h2 class="anchored" data-anchor-id="model-viewer">Model viewer</h2>
+<p>Exporting and publishing a model for the model viewer.</p>
+<table class="caption-top table">
+<tbody>
+<tr class="odd">
+<td><a href="../reference/webmap.html#ribasim_nl.webmap">webmap</a></td>
+<td>Export a Ribasim model to web-friendly files for the documentation model viewer.</td>
+</tr>
+<tr class="even">
+<td><a href="../reference/webmap_diff.html#ribasim_nl.webmap_diff">webmap_diff</a></td>
+<td>Compare two Ribasim models for the model viewer, to review the changes of a pull request.</td>
+</tr>
+<tr class="odd">
+<td><a href="../reference/webmap_publish.html#ribasim_nl.webmap_publish">webmap_publish</a></td>
+<td>Publish the <code>export_webmap</code> output to MinIO for the model viewer on the documentation site.</td>
 </tr>
 </tbody>
 </table>

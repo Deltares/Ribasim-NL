@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>find_nearest_branch – Ribasim-NL</title>
+<title>capacity – Ribasim-NL</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -108,7 +108,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 }</script>
 
 
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 </head>
 
 <body class="nav-fixed quarto-light">
@@ -133,20 +133,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../reference/index.html"> 
-<span class="menu-text">API Reference</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../cloudstorage.html"> 
-<span class="menu-text">Cloud storage</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../workflow/main-watersystem.html"> 
-<span class="menu-text">Workflows</span></a>
+    <a class="nav-link" href="../workflow/index.html"> 
+<span class="menu-text">Model derivation</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../watersystems/main.html"> 
-<span class="menu-text">Watersystems</span></a>
+<span class="menu-text">Water systems</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../viewer.html"> 
@@ -157,6 +149,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li class="nav-item">
     <a class="nav-link" href="../dev/index.html"> 
 <span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">API reference</span></a>
   </li>  
   <li class="nav-item compact">
     <a class="nav-link" href="https://github.com/Deltares/Ribasim-NL"> <i class="bi bi-github" role="img" aria-label="GitHub">
@@ -179,9 +175,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#hydamo.find_nearest_branch" id="toc-hydamo.find_nearest_branch" class="nav-link active" data-scroll-target="#hydamo.find_nearest_branch">find_nearest_branch</a>
+  <li><a href="#ribasim_nl.capacity" id="toc-ribasim_nl.capacity" class="nav-link active" data-scroll-target="#ribasim_nl.capacity">capacity</a>
   <ul class="collapse">
-  <li><a href="#parameters" id="toc-parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
+  <li><a href="#functions" id="toc-functions" class="nav-link" data-scroll-target="#functions">Functions</a>
+  <ul class="collapse">
+  <li><a href="#ribasim_nl.capacity.bound_supply_inflows" id="toc-ribasim_nl.capacity.bound_supply_inflows" class="nav-link" data-scroll-target="#ribasim_nl.capacity.bound_supply_inflows">bound_supply_inflows</a></li>
+  </ul></li>
   </ul></li>
   </ul>
 </nav>
@@ -192,19 +191,39 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<section id="hydamo.find_nearest_branch" class="level1">
-<h1>find_nearest_branch</h1>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>find_nearest_branch(branches, geometries, method<span class="op">=</span><span class="st">'overall'</span>, maxdist<span class="op">=</span><span class="dv">5</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Determine nearest branch for each geometry.</p>
-<p>The nearest branch can be found by finding t from both ends (ends) or the nearest branch from the geometry as a whole (overall), the centroid (centroid), or intersecting (intersect).</p>
-<section id="parameters" class="level2 doc-section doc-section-parameters">
-<h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
+<section id="ribasim_nl.capacity" class="level1">
+<h1>capacity</h1>
+<p><code>capacity</code></p>
+<p>Level limits of the DiscreteControl-controlled Outlets and Pumps.</p>
+<section id="functions" class="level2">
+<h2 class="anchored" data-anchor-id="functions">Functions</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="#ribasim_nl.capacity.bound_supply_inflows">bound_supply_inflows</a></td>
+<td>Limit the <code>aanvoer</code> control state of inflows into a controlled Basin to the target level of that Basin.</td>
+</tr>
+</tbody>
+</table>
+<section id="ribasim_nl.capacity.bound_supply_inflows" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.capacity.bound_supply_inflows">bound_supply_inflows</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>capacity.bound_supply_inflows(model, target_level_column<span class="op">=</span><span class="st">'meta_streefpeil'</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Limit the <code>aanvoer</code> control state of inflows into a controlled Basin to the target level of that Basin.</p>
+<p>A supplying Outlet or Pump without a <code>max_downstream_level</code> can fill the Basin it supplies far above its target level, as long as its DiscreteControl does not switch, which is up to a day with a daily control interval.</p>
+<section id="parameters" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 12%">
-<col style="width: 25%">
-<col style="width: 48%">
-<col style="width: 13%">
+<col style="width: 19%">
+<col style="width: 7%">
+<col style="width: 53%">
+<col style="width: 19%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -216,33 +235,47 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td>branches</td>
-<td>geopandas.GeoDataFrame</td>
-<td>Geodataframe with branches</td>
+<td>model</td>
+<td>Model</td>
+<td>model with DiscreteControl-controlled Outlets and Pumps</td>
 <td><em>required</em></td>
 </tr>
 <tr class="even">
-<td>geometries</td>
-<td>geopandas.GeoDataFrame</td>
-<td>Geodataframe with geometries to snap</td>
-<td><em>required</em></td>
+<td>target_level_column</td>
+<td>str</td>
+<td>column of the Basin / area table with the target level</td>
+<td><code>'meta_streefpeil'</code></td>
 </tr>
+</tbody>
+</table>
+</section>
+<section id="returns" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns">Returns</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 11%">
+<col style="width: 18%">
+<col style="width: 69%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
 <tr class="odd">
-<td>method</td>
 <td></td>
-<td>Method for determine branch</td>
-<td><code>'overall'</code></td>
-</tr>
-<tr class="even">
-<td>maxdist</td>
-<td></td>
-<td>Maximum distance for finding nearest geometry</td>
-<td><code>5</code></td>
+<td>list[int]</td>
+<td>the node IDs that got a <code>max_downstream_level</code></td>
 </tr>
 </tbody>
 </table>
 
 
+</section>
+</section>
 </section>
 </section>
 

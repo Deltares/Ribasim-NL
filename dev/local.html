@@ -68,6 +68,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
+<link href="../dev/slurm.html" rel="next">
+<link href="../dev/dvc.html" rel="prev">
 <link href="../assets/favicon.ico" rel="icon">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -108,7 +110,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 }</script>
 
 
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 </head>
 
 <body class="nav-sidebar floating nav-fixed quarto-light">
@@ -133,20 +135,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../reference/index.html"> 
-<span class="menu-text">API Reference</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../cloudstorage.html"> 
-<span class="menu-text">Cloud storage</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../workflow/main-watersystem.html"> 
-<span class="menu-text">Workflows</span></a>
+    <a class="nav-link" href="../workflow/index.html"> 
+<span class="menu-text">Model derivation</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../watersystems/main.html"> 
-<span class="menu-text">Watersystems</span></a>
+<span class="menu-text">Water systems</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../viewer.html"> 
@@ -157,6 +151,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li class="nav-item">
     <a class="nav-link active" href="../dev/index.html" aria-current="page"> 
 <span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">API reference</span></a>
   </li>  
   <li class="nav-item compact">
     <a class="nav-link" href="https://github.com/Deltares/Ribasim-NL"> <i class="bi bi-github" role="img" aria-label="GitHub">
@@ -174,7 +172,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/local.html">Running locally</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/dvc.html">Running the pipeline</a></li><li class="breadcrumb-item"><a href="../dev/local.html">Running locally</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -200,52 +198,86 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../dev/dvc.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">DVC (Data Version Control)</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
   <a href="../dev/type-checking.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Type checking</span></a>
   </div>
 </li>
-        <li class="sidebar-item">
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Running the pipeline</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/dvc.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">DVC (Data Version Control)</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../dev/local.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Running locally</span></a>
   </div>
 </li>
-        <li class="sidebar-item">
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../dev/slurm.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Running on SLURM</span></a>
   </div>
 </li>
-        <li class="sidebar-item">
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../dev/pull-requests.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Reproducing pull requests</span></a>
   </div>
 </li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../dev/viewer.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Model viewer</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../dev/ribasim.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Co-development with Ribasim</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../dev/reproducing-models.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Reproducing models</span></a>
   </div>
 </li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Tools</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/viewer.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Model viewer</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/ribasim.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Co-development with Ribasim</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/docs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Documentation</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../cloudstorage.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Cloud storage</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
     </ul>
     </div>
 </nav>
@@ -263,7 +295,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/dvc.html">Running the pipeline</a></li><li class="breadcrumb-item"><a href="../dev/local.html">Running locally</a></li></ol></nav>
 <div class="quarto-title">
 <h1 class="title">Running locally</h1>
 </div>
@@ -284,21 +316,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <p>On a workstation with enough cores and memory, the pipeline can be reproduced in parallel with:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run repro-local</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This is the local counterpart of <a href="../dev/slurm.html"><code>repro.sh</code></a>. It runs <code>validate_lhm_coupled</code> and <code>export_webmap</code> and everything upstream of them, except frozen stages: the stages that <code>repro.sh</code> runs, up to <code>koppelen</code>, and also <code>run_lhm_coupled</code>, <code>validate_lhm_coupled</code> and <code>export_webmap</code>. The stages and their commands are taken from <code>dvc.yaml</code>. It:</p>
+<p>This is the local counterpart of <a href="../dev/slurm.html"><code>repro.sh</code></a>. It runs <code>validate_lhm_coupled</code> and <code>export_webmap</code> and everything upstream of them, except frozen stages. So beyond the stages that <code>repro.sh</code> runs, it also makes the input models, and runs <code>run_lhm_coupled</code>, <code>validate_lhm_coupled</code> and <code>export_webmap</code>. The stages and their commands are taken from <code>dvc.yaml</code>. It:</p>
 <ol start="0" type="1">
 <li>Removes the outputs of all stages that are run, like <code>dvc repro</code> does, and runs <code>dvc pull --force</code> for everything upstream of them; no manual pull is needed.</li>
 <li>Runs each stage as soon as the stages it depends on have succeeded, so the water authorities run in parallel. If a stage fails, the stages downstream of it are skipped, and the others continue.</li>
 <li>Runs <code>dvc commit</code> for the stages that succeeded. If all succeeded, it runs <code>pixi run check</code>, a second time if hooks fixed files such as <code>dvc.lock</code>, and with <code>--push</code> also <code>dvc push</code>.</li>
 <li>If <code>export_webmap</code> ran, publishes the model to the <a href="../dev/viewer.html#updating-the-published-data">model viewer</a> as a preview of the pull request of the current branch, compared with <code>main</code>. This needs a pull request for the branch, MinIO credentials with write access in <code>.env</code>, and a logged in <code>gh</code>.</li>
 </ol>
-<p>Like <code>repro.sh</code>, it runs the stage commands directly, since parallel <code>dvc repro</code> processes would contend for the DVC lock. The output of each stage is written to <code>logs/repro/&lt;timestamp&gt;/&lt;stage&gt;.log</code>, and a summary with the status and duration of each stage is printed at the end.</p>
+<p>Like <code>repro.sh</code>, it runs the stage commands directly, not with <code>dvc repro</code>, since parallel <code>dvc repro</code> processes would contend for the DVC lock. The output of each stage is written to <code>logs/repro/&lt;timestamp&gt;/&lt;stage&gt;.log</code>, and a summary with the status and duration of each stage is printed at the end.</p>
 <section id="options" class="level2">
 <h2 class="anchored" data-anchor-id="options">Options</h2>
 <ul>
 <li>Targets: stages to reproduce together with their upstream stages, <code>validate_lhm_coupled</code> and <code>export_webmap</code> by default. For example, <code>pixi run repro-local koppelen</code> only builds the coupled model, like <code>repro.sh</code>.</li>
 <li><code>--jobs N</code>: the maximum number of stages that run at once, 12 by default. Each stage is a Python process that may also run Ribasim, so watch the memory use when increasing it.</li>
-<li><code>--stagger SECONDS</code>: the minimum time between stage starts, 30 by default, to not overload the GoodCloud server that some stages still download from.</li>
-<li><code>--incremental</code>: only run the stages that DVC reports as changed, and everything downstream of them, rather than all stages. Missing outputs count as changed, so this also reruns stages that failed before. Run <code>pixi run dvc pull</code> first if the workspace may be behind <code>dvc.lock</code>.</li>
+<li><code>--stagger SECONDS</code>: the minimum time between stage starts, 30 by default, to not overload the GoodCloud server from which <code>parameterized</code> stages download GKW data that is not local.</li>
+<li><code>--incremental</code>: only run the stages that DVC reports as changed, and everything downstream of them, rather than all stages. Data that is not in the workspace does not count as changed, so a fresh worktree does not rerun everything. A stage that failed before only runs again if the outputs it left differ from <code>dvc.lock</code>. Run <code>pixi run dvc pull</code> first if the workspace may be behind <code>dvc.lock</code>.</li>
 <li><code>--push</code>: run <code>dvc push</code> for the reproduced stages if they all succeeded.</li>
 <li><code>--no-publish</code>: do not publish the model to the model viewer.</li>
 </ul>
@@ -708,6 +740,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     }
   });
   </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../dev/dvc.html" class="pagination-link" aria-label="DVC (Data Version Control)">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">DVC (Data Version Control)</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../dev/slurm.html" class="pagination-link" aria-label="Running on SLURM">
+        <span class="nav-page-text">Running on SLURM</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
 </div> <!-- /content -->
 
 

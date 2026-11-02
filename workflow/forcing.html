@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>extendedgeodataframe – Ribasim-NL</title>
+<title>Forcing – Ribasim-NL</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -23,41 +23,6 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
-/* CSS for syntax highlighting */
-html { -webkit-text-size-adjust: 100%; }
-pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
-pre > code.sourceCode > span:empty { height: 1.2em; }
-.sourceCode { overflow: visible; }
-code.sourceCode > span { color: inherit; text-decoration: inherit; }
-div.sourceCode { margin: 1em 0; }
-pre.sourceCode { margin: 0; }
-@media screen {
-div.sourceCode { overflow: auto; }
-}
-@media print {
-pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
-}
-pre.numberSource code
-  { counter-reset: source-line 0; }
-pre.numberSource code > span
-  { position: relative; left: -4em; counter-increment: source-line; }
-pre.numberSource code > span > a:first-child::before
-  { content: counter(source-line);
-    position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; display: inline-block;
-    -webkit-touch-callout: none; -webkit-user-select: none;
-    -khtml-user-select: none; -moz-user-select: none;
-    -ms-user-select: none; user-select: none;
-    padding: 0 4px; width: 4em;
-  }
-pre.numberSource { margin-left: 3em;  padding-left: 4px; }
-div.sourceCode
-  {   }
-@media screen {
-pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
-}
 </style>
 
 
@@ -68,6 +33,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
+<link href="../workflow/seasonal-levels.html" rel="next">
+<link href="../workflow/design-capacities.html" rel="prev">
 <link href="../assets/favicon.ico" rel="icon">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -79,6 +46,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../site_libs/bootstrap/bootstrap-d3dd72e47976c844a05ffb6b950c6ecd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -106,12 +76,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script>
+<meta name="mermaid-theme" content="neutral">
+<script src="../site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="../site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="../site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
 
 
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 </head>
 
-<body class="nav-fixed quarto-light">
+<body class="nav-sidebar floating nav-fixed quarto-light">
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top">
@@ -133,20 +107,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../reference/index.html"> 
-<span class="menu-text">API Reference</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../cloudstorage.html"> 
-<span class="menu-text">Cloud storage</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../workflow/main-watersystem.html"> 
-<span class="menu-text">Workflows</span></a>
+    <a class="nav-link active" href="../workflow/index.html" aria-current="page"> 
+<span class="menu-text">Model derivation</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../watersystems/main.html"> 
-<span class="menu-text">Watersystems</span></a>
+<span class="menu-text">Water systems</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../viewer.html"> 
@@ -157,6 +123,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li class="nav-item">
     <a class="nav-link" href="../dev/index.html"> 
 <span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">API reference</span></a>
   </li>  
   <li class="nav-item compact">
     <a class="nav-link" href="https://github.com/Deltares/Ribasim-NL"> <i class="bi bi-github" role="img" aria-label="GitHub">
@@ -169,274 +139,286 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
       </div> <!-- /container-fluid -->
     </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/control.html">Shared steps</a></li><li class="breadcrumb-item"><a href="../workflow/forcing.html">Forcing</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
 </header>
 <!-- content -->
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Model derivation</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/main-watersystem.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Main water system</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Gravity controlled models</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/gravity-controlled.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Gravity controlled models</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/lumping.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Lumping</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Level controlled models</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/level-controlled.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Level controlled</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/profile-generation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Profile generation</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/split-basins.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Split basins based on pre-split basin polygons</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Shared steps</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/control.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Control</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/storage-basins.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Storage basins</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/design-capacities.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Design capacities of outlets and pumps</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/forcing.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Forcing</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/seasonal-levels.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Summer and winter levels</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/layout.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Layout</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">The nationwide model</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/couple.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Coupling</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
         <nav id="TOC" role="doc-toc" class="toc-active">
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#hydamo.ExtendedGeoDataFrame" id="toc-hydamo.ExtendedGeoDataFrame" class="nav-link active" data-scroll-target="#hydamo.ExtendedGeoDataFrame">ExtendedGeoDataFrame</a>
-  <ul class="collapse">
-  <li><a href="#methods" id="toc-methods" class="nav-link" data-scroll-target="#methods">Methods</a>
-  <ul class="collapse">
-  <li><a href="#hydamo.ExtendedGeoDataFrame.copy" id="toc-hydamo.ExtendedGeoDataFrame.copy" class="nav-link" data-scroll-target="#hydamo.ExtendedGeoDataFrame.copy">copy</a></li>
-  <li><a href="#hydamo.ExtendedGeoDataFrame.delete_all" id="toc-hydamo.ExtendedGeoDataFrame.delete_all" class="nav-link" data-scroll-target="#hydamo.ExtendedGeoDataFrame.delete_all">delete_all</a></li>
-  <li><a href="#hydamo.ExtendedGeoDataFrame.set_data" id="toc-hydamo.ExtendedGeoDataFrame.set_data" class="nav-link" data-scroll-target="#hydamo.ExtendedGeoDataFrame.set_data">set_data</a></li>
-  <li><a href="#hydamo.ExtendedGeoDataFrame.snap_to_branch" id="toc-hydamo.ExtendedGeoDataFrame.snap_to_branch" class="nav-link" data-scroll-target="#hydamo.ExtendedGeoDataFrame.snap_to_branch">snap_to_branch</a></li>
-  </ul></li>
-  </ul></li>
+  <li><a href="#precipitation-and-evaporation" id="toc-precipitation-and-evaporation" class="nav-link active" data-scroll-target="#precipitation-and-evaporation">Precipitation and evaporation</a></li>
+  <li><a href="#sec-budgets" id="toc-sec-budgets" class="nav-link" data-scroll-target="#sec-budgets">Drainage, infiltration and runoff</a></li>
+  <li><a href="#foreign-inflows" id="toc-foreign-inflows" class="nav-link" data-scroll-target="#foreign-inflows">Foreign inflows</a></li>
+  <li><a href="#sec-rwzi" id="toc-sec-rwzi" class="nav-link" data-scroll-target="#sec-rwzi">Wastewater</a></li>
+  <li><a href="#fractions" id="toc-fractions" class="nav-link" data-scroll-target="#fractions">Fractions</a></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"></header>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/control.html">Shared steps</a></li><li class="breadcrumb-item"><a href="../workflow/forcing.html">Forcing</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">Forcing</h1>
+</div>
 
 
 
+<div class="quarto-title-meta">
 
-<section id="hydamo.ExtendedGeoDataFrame" class="level1">
-<h1>ExtendedGeoDataFrame</h1>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>ExtendedGeoDataFrame(</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    validation_schema<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    geotype<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    layer_name<span class="op">=</span><span class="st">''</span>,</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    required_columns<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    logger<span class="op">=</span>logging,</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>args,</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>A GeoPandas GeoDataFrame with extended properties and methods.</p>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<table class="caption-top table">
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><a href="#hydamo.ExtendedGeoDataFrame.copy">copy</a></td>
-<td>Make a copy of this ExtendedGeoDataFrame object’s indices and data.</td>
-</tr>
-<tr class="even">
-<td><a href="#hydamo.ExtendedGeoDataFrame.delete_all">delete_all</a></td>
-<td>Empty the dataframe</td>
-</tr>
-<tr class="odd">
-<td><a href="#hydamo.ExtendedGeoDataFrame.set_data">set_data</a></td>
-<td>Set data to the ExtendedGeoDataFrame.</td>
-</tr>
-<tr class="even">
-<td><a href="#hydamo.ExtendedGeoDataFrame.snap_to_branch">snap_to_branch</a></td>
-<td>Snap the geometries to the branch.</td>
-</tr>
-</tbody>
-</table>
-<section id="hydamo.ExtendedGeoDataFrame.copy" class="level3">
-<h3 class="anchored" data-anchor-id="hydamo.ExtendedGeoDataFrame.copy">copy</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>ExtendedGeoDataFrame.copy(deep<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Make a copy of this ExtendedGeoDataFrame object’s indices and data.</p>
-<p>This method overrides the default copy method to properly handle the custom constructor parameters required by ExtendedGeoDataFrame.</p>
-<section id="parameters" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h4>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>The regional models and the main water system share their forcing, in <code>ribasim_nl.regional_model</code>, for 2017 up to 2020. The run of the coupled model covers the first 2 of these 3 years.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart LR
+  lhm["LHM 4.3 results&lt;br&gt;LHM_433_budgets_update_makkink"] --&gt; meteo["Precipitation,&lt;br&gt;evaporation"]
+  lhm --&gt; budgets["Drainage, infiltration,&lt;br&gt;surface runoff, sprinkling"]
+  meteo --&gt; basin["Basin / time"]
+  budgets --&gt; basin
+  foreign["Measured foreign inflows&lt;br&gt;BuitenlandseAanvoer"] --&gt; flow["FlowBoundary / time"]
+  rwzi["RWZI model&lt;br&gt;Z-info, RwziBase"] --&gt; flow
+  flow --&gt; model["Regional model"]
+  basin --&gt; model
+  model --&gt; fractions["LHM fractions&lt;br&gt;for tracing water"]
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><a href="https://s3.deltares.nl/ribasim-nl/doc-image/figures/forcing-basin.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="The forcing of a Basin of Delfland in the coupled run. Precipitation and evaporation act on the water surface, and drainage and infiltration exchange with the groundwater."><img src="https://s3.deltares.nl/ribasim-nl/doc-image/figures/forcing-basin.png" class="img-fluid figure-img" alt="Four charts over 2017 and 2018: precipitation with sharp peaks, evaporation peaking in summer, drainage in winter, and infiltration in summer."></a></p>
+<figcaption>The forcing of a Basin of Delfland in the coupled run. Precipitation and evaporation act on the water surface, and drainage and infiltration exchange with the groundwater.</figcaption>
+</figure>
+</div>
+<section id="precipitation-and-evaporation" class="level2">
+<h2 class="anchored" data-anchor-id="precipitation-and-evaporation">Precipitation and evaporation</h2>
+<p>Both come from the results of LHM 4.3, averaged per Basin, see <code>ribasim_nl.set_forcing</code>. Evaporation is the Makkink reference evaporation times the open water factor of Mozart, by month and decade. An LHM day starts at 09:00 in model time, so the forcing starts on the day before the start of the model.</p>
+</section>
+<section id="sec-budgets" class="level2">
+<h2 class="anchored" data-anchor-id="sec-budgets">Drainage, infiltration and runoff</h2>
+<p><code>ribasim_nl.assign_offline_budgets</code> adds the MODFLOW-MetaSWAP budgets of the LHM, summed per Basin: negative values become drainage, and positive values infiltration.</p>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 5%">
-<col style="width: 5%">
-<col style="width: 82%">
-<col style="width: 7%">
+<col style="width: 47%">
+<col style="width: 52%">
 </colgroup>
 <thead>
 <tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-<th>Default</th>
+<th style="text-align: left;">Budget</th>
+<th style="text-align: left;">Goes to</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td>deep</td>
-<td>bool</td>
-<td>Make a deep copy, including a copy of the data and the indices. With <code>deep=False</code> neither the indices nor the data are copied.</td>
-<td><code>True</code></td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="returns" class="level4 doc-section doc-section-returns">
-<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns">Returns</h4>
-<table class="caption-top table">
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td></td>
-<td>ExtendedGeoDataFrame</td>
-<td>Copy of ExtendedGeoDataFrame.</td>
-</tr>
-</tbody>
-</table>
-</section>
-</section>
-<section id="hydamo.ExtendedGeoDataFrame.delete_all" class="level3">
-<h3 class="anchored" data-anchor-id="hydamo.ExtendedGeoDataFrame.delete_all">delete_all</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>ExtendedGeoDataFrame.delete_all()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Empty the dataframe</p>
-</section>
-<section id="hydamo.ExtendedGeoDataFrame.set_data" class="level3">
-<h3 class="anchored" data-anchor-id="hydamo.ExtendedGeoDataFrame.set_data">set_data</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>ExtendedGeoDataFrame.set_data(</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    gdf,</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    layer<span class="op">=</span><span class="st">''</span>,</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    index_col<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    check_columns<span class="op">=</span><span class="va">True</span>,</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    check_geotype<span class="op">=</span><span class="va">True</span>,</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    extra_attributes<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Set data to the ExtendedGeoDataFrame.</p>
-<section id="parameters-1" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-1">Parameters</h4>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 11%">
-<col style="width: 11%">
-<col style="width: 67%">
-<col style="width: 9%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-<th>Default</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>gdf</td>
-<td>GeoDataFrame</td>
-<td>GeoDataFrame with a HyDAMO object-layer</td>
-<td><em>required</em></td>
+<td style="text-align: left;"><code>bdgriv_sys1</code>, <code>4</code>, <code>5</code></td>
+<td style="text-align: left;">doorgaand and hoofdwater Basins</td>
 </tr>
 <tr class="even">
-<td>index_col</td>
-<td>str</td>
-<td>Column to be used as index. The default is None.</td>
-<td><code>None</code></td>
+<td style="text-align: left;"><code>bdgriv_sys2</code>, <code>3</code>, <code>6</code>, <code>bdgdrn_sys1</code>, <code>2</code>, <code>3</code></td>
+<td style="text-align: left;">bergend Basins</td>
 </tr>
 <tr class="odd">
-<td>check_columns</td>
-<td>bool</td>
-<td>Check if all required columns are present in the GeoDataFrame. The default is True.</td>
-<td><code>True</code></td>
+<td style="text-align: left;"><code>bdgqrun</code></td>
+<td style="text-align: left;"><code>surface_runoff</code></td>
 </tr>
 <tr class="even">
-<td>check_geotype</td>
-<td>bool</td>
-<td>Check if the geometry is of the required type. The default is True.</td>
-<td><code>True</code></td>
+<td style="text-align: left;"><code>bdgpssw</code>, sprinkling</td>
+<td style="text-align: left;">hoofdwater and doorgaand Basins in the gravity controlled models, bergend Basins in the level controlled models</td>
 </tr>
 </tbody>
 </table>
+<p>The script writes the budgets to <code>mfms_budgets.arrow</code>, and a check of the assignment to <code>results/assign_validation.png</code> in the model folder.</p>
 </section>
-<section id="returns-1" class="level4 doc-section doc-section-returns">
-<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-1">Returns</h4>
-<table class="caption-top table">
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td></td>
-<td>None.</td>
-<td></td>
-</tr>
-</tbody>
-</table>
+<section id="foreign-inflows" class="level2">
+<h2 class="anchored" data-anchor-id="foreign-inflows">Foreign inflows</h2>
+<p>Streams from Germany and Belgium enter as FlowBoundaries with <code>meta_categorie</code> “buitenlandse aanvoer”. <code>src/ribasim_nl/ribasim_nl/data/buitenlandse_aanvoer.csv</code> lists the 55 inflows, all in Brabantse Delta, De Dommel, Limburg, Rijn en IJssel and Vechtstromen. <code>ribasim_nl.transboundary_inflow</code> matches them to the boundaries by name and location, and sets measured daily values from <code>Basisgegevens/BuitenlandseAanvoer</code>, with gaps interpolated. Outside the measurements, or without any, the inflow is the constant in that table.</p>
 </section>
+<section id="sec-rwzi" class="level2">
+<h2 class="anchored" data-anchor-id="sec-rwzi">Wastewater</h2>
+<p>The stage <code>rwzi</code> makes a separate model with <code>pipeline/create_rwzi_model.py</code>, of one FlowBoundary per treatment plant, linked to a Terminal at its discharge point. The flow rates are daily influent from Z-info, or else the yearly values of RwziBase, spread evenly over the days.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart LR
+  a["RWZI FlowBoundary"] --&gt; b["Junction, was the Terminal"]
+  b --&gt; c["Route into or&lt;br&gt;out of the Basin"]
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<p><code>merge_rwzi_model</code> adds the plants that discharge in the model, within 100 m of a Basin that is not bergend, or 3000 m in the main water system, and removes the others. <code>attach_rwzi_junctions</code> then moves each Junction onto the nearest route into or out of its Basin.</p>
 </section>
-<section id="hydamo.ExtendedGeoDataFrame.snap_to_branch" class="level3">
-<h3 class="anchored" data-anchor-id="hydamo.ExtendedGeoDataFrame.snap_to_branch">snap_to_branch</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>ExtendedGeoDataFrame.snap_to_branch(branches, snap_method, maxdist<span class="op">=</span><span class="dv">5</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Snap the geometries to the branch.</p>
-<section id="parameters-2" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 13%">
-<col style="width: 15%">
-<col style="width: 58%">
-<col style="width: 12%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-<th>Default</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>branches</td>
-<td>GeoDataFrame</td>
-<td>GeoDataFrame with branches</td>
-<td><em>required</em></td>
-</tr>
-<tr class="even">
-<td>snap_method</td>
-<td>str</td>
-<td>Options for snapping</td>
-<td><em>required</em></td>
-</tr>
-<tr class="odd">
-<td>maxdist</td>
-<td>float</td>
-<td>The maximal distance for snapping. The default is 5.</td>
-<td><code>5</code></td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="returns-2" class="level4 doc-section doc-section-returns">
-<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-2">Returns</h4>
-<table class="caption-top table">
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td></td>
-<td>None.</td>
-<td></td>
-</tr>
-</tbody>
-</table>
+<section id="fractions" class="level2">
+<h2 class="anchored" data-anchor-id="fractions">Fractions</h2>
+<p><code>ribasim_nl.assign_lhm_fractions</code> labels the water by its origin, such as precipitation, drainage, or the neighbouring authority. The model then tracks these fractions through the network, and <code>ribasim_nl.delwaq</code> can use them for water quality with Delwaq.</p>
 
 
-</section>
-</section>
-</section>
 </section>
 
 </main> <!-- /main -->
@@ -840,7 +822,51 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     }
   });
   </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../workflow/design-capacities.html" class="pagination-link" aria-label="Design capacities of outlets and pumps">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Design capacities of outlets and pumps</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../workflow/seasonal-levels.html" class="pagination-link" aria-label="Summer and winter levels">
+        <span class="nav-page-text">Summer and winter levels</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
 </div> <!-- /content -->
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox","skin":"fullscreen-lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
 
 
 

@@ -33,6 +33,7 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
+<link href="../workflow/layout.html" rel="prev">
 <link href="../assets/favicon.ico" rel="icon">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -44,6 +45,9 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../site_libs/bootstrap/bootstrap-d3dd72e47976c844a05ffb6b950c6ecd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -71,9 +75,13 @@ ul.task-list li input[type="checkbox"] {
     "search-label": "Search"
   }
 }</script>
+<meta name="mermaid-theme" content="neutral">
+<script src="../site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="../site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="../site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
 
 
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 </head>
 
 <body class="nav-sidebar floating nav-fixed quarto-light">
@@ -98,20 +106,12 @@ ul.task-list li input[type="checkbox"] {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../reference/index.html"> 
-<span class="menu-text">API Reference</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../cloudstorage.html"> 
-<span class="menu-text">Cloud storage</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link active" href="../workflow/main-watersystem.html" aria-current="page"> 
-<span class="menu-text">Workflows</span></a>
+    <a class="nav-link active" href="../workflow/index.html" aria-current="page"> 
+<span class="menu-text">Model derivation</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../watersystems/main.html"> 
-<span class="menu-text">Watersystems</span></a>
+<span class="menu-text">Water systems</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../viewer.html"> 
@@ -122,6 +122,10 @@ ul.task-list li input[type="checkbox"] {
   <li class="nav-item">
     <a class="nav-link" href="../dev/index.html"> 
 <span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">API reference</span></a>
   </li>  
   <li class="nav-item compact">
     <a class="nav-link" href="https://github.com/Deltares/Ribasim-NL"> <i class="bi bi-github" role="img" aria-label="GitHub">
@@ -139,7 +143,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/couple.html">Coupling</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/couple.html">The nationwide model</a></li><li class="breadcrumb-item"><a href="../workflow/couple.html">Coupling</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -153,52 +157,132 @@ ul.task-list li input[type="checkbox"] {
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../workflow/main-watersystem.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Main watersystem</span></a>
+  <a href="../workflow/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Model derivation</span></a>
   </div>
 </li>
         <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/main-watersystem.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Main water system</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Gravity controlled models</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/gravity-controlled.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Gravity controlled models</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/lumping.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Lumping</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Level controlled models</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../workflow/level-controlled.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Level controlled</span></a>
   </div>
 </li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/gravity-controlled.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Gravity controlled</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/design-capacities.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Design capacities of outlets and pumps</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/split-basins.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Split basins based on pre-split basin polygons</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/couple.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Coupling</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/seasonal-levels.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Summer and winter levels</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../workflow/profile-generation.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Profile generation</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/split-basins.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Split basins based on pre-split basin polygons</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Shared steps</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/control.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Control</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/storage-basins.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Storage basins</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/design-capacities.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Design capacities of outlets and pumps</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/forcing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Forcing</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/seasonal-levels.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Summer and winter levels</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/layout.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Layout</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">The nationwide model</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/couple.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Coupling</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
     </ul>
     </div>
 </nav>
@@ -209,20 +293,18 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#pipeline08_samenvoegen_modellen.py" id="toc-pipeline08_samenvoegen_modellen.py" class="nav-link active" data-scroll-target="#pipeline08_samenvoegen_modellen.py"><code>pipeline/08_samenvoegen_modellen.py</code></a></li>
-  <li><a href="#pipeline09_koppelen_modellen.py" id="toc-pipeline09_koppelen_modellen.py" class="nav-link" data-scroll-target="#pipeline09_koppelen_modellen.py"><code>pipeline/09_koppelen_modellen.py</code></a>
-  <ul class="collapse">
-  <li><a href="#connector-levelboundary-replaced-by-connector-basin" id="toc-connector-levelboundary-replaced-by-connector-basin" class="nav-link" data-scroll-target="#connector-levelboundary-replaced-by-connector-basin"><code>Connector</code> | <code>LevelBoundary</code> replaced by <code>Connector</code> | <code>Basin</code></a></li>
-  <li><a href="#outlet-levelboundary-.-levelboundary-outlet-replaced-by-outlet" id="toc-outlet-levelboundary-.-levelboundary-outlet-replaced-by-outlet" class="nav-link" data-scroll-target="#outlet-levelboundary-.-levelboundary-outlet-replaced-by-outlet"><code>Outlet</code> | <code>LevelBoundary</code> . <code>LevelBoundary</code> | <code>Outlet</code> replaced by <code>Outlet</code></a></li>
-  <li><a href="#other-connections" id="toc-other-connections" class="nav-link" data-scroll-target="#other-connections">Other connections</a></li>
-  </ul></li>
+  <li><a href="#merging" id="toc-merging" class="nav-link active" data-scroll-target="#merging">Merging</a></li>
+  <li><a href="#connecting-the-models" id="toc-connecting-the-models" class="nav-link" data-scroll-target="#connecting-the-models">Connecting the models</a></li>
+  <li><a href="#the-other-steps-of-koppelen" id="toc-the-other-steps-of-koppelen" class="nav-link" data-scroll-target="#the-other-steps-of-koppelen">The other steps of <code>koppelen</code></a></li>
+  <li><a href="#coupling-levels" id="toc-coupling-levels" class="nav-link" data-scroll-target="#coupling-levels">Coupling levels</a></li>
+  <li><a href="#after-coupling" id="toc-after-coupling" class="nav-link" data-scroll-target="#after-coupling">After coupling</a></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/couple.html">The nationwide model</a></li><li class="breadcrumb-item"><a href="../workflow/couple.html">Coupling</a></li></ol></nav>
 <div class="quarto-title">
 <h1 class="title">Coupling</h1>
 </div>
@@ -241,42 +323,151 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>To create the LHM model the individual models of the waterboards and the HWS model need to be coupled.</p>
-<p>This procedure assumes there’s a <code>meta_couple_authority</code> column in the <code>LevelBoundary / Static</code> table, which is currently the case for (at least) the level controlled models.</p>
-<ul class="task-list">
-<li><label><input type="checkbox">Ensure all models have a <code>meta_couple_authority</code>.</label></li>
-</ul>
-<section id="pipeline08_samenvoegen_modellen.py" class="level1">
-<h1><code>pipeline/08_samenvoegen_modellen.py</code></h1>
-<p>First we determine which models we want to couple. Currently this is tested for <code>Rijkswaterstaat</code>, <code>AmstelGooienVecht</code>, <code>Rijnland</code>, <code>HollandseDelta</code>, <code>Delfland</code>, although the model should scale. This script will concat all models by prefixing local ids with a unique model number (Aquo waterbeheercode), e.g.&nbsp;<code>80</code> for <code>Rijkswaterstaat</code>. This will result in an <code>lhm</code> model.</p>
+<p>The nationwide model is made in two stages. <code>samenvoegen</code> merges the 22 models into one model file in which they are still separate, <code>lhm_parts</code>. <code>koppelen</code> connects them where they meet, into <code>lhm_coupled</code>.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart LR
+  hws["hws_transient"] --&gt; merge
+  gravity["11 &amp;lt;authority&amp;gt;_dynamic_model"] --&gt; merge
+  level["10 &amp;lt;authority&amp;gt;_forcing"] --&gt; merge
+  merge(["samenvoegen&lt;br&gt;08_samenvoegen_modellen.py"]) --&gt; parts["lhm_parts"]
+  parts --&gt; couple(["koppelen&lt;br&gt;09_koppelen_modellen.py"])
+  netwerk["netwerk.gpkg, Top10NL"] --&gt; couple
+  peilbeheer["peilbeheer.gpkg"] --&gt; couple
+  couple --&gt; coupled["lhm_coupled"]
+
+  classDef step fill:#dfedef,stroke:#0c6a77
+  class merge,couple step
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<section id="merging" class="level2">
+<h2 class="anchored" data-anchor-id="merging">Merging</h2>
+<p><code>pipeline/08_samenvoegen_modellen.py</code> reads each model, makes its IDs unique with <code>prefix_index</code>, see <a href="../workflow/index.html#sec-node-ids">Node IDs</a>, and appends all its tables with <code>concat</code>. The original IDs stay available in <code>meta_node_id_waterbeheerder</code> and <code>meta_link_id_waterbeheerder</code>, and <code>meta_waterbeheerder</code> holds the authority. The merged model starts with the settings of the model of the main water system, and the solver settings are set here.</p>
 </section>
-<section id="pipeline09_koppelen_modellen.py" class="level1">
-<h1><code>pipeline/09_koppelen_modellen.py</code></h1>
-<p>Secondly, we can use this <code>lhm</code> model to actually couple the individual models in there. To do so, each <code>LevelBoundary</code> with a filled in <code>meta_couple_authority</code> in their <code>Static</code> table is replaced by another node from the <code>meta_couple_authority</code>s model.</p>
-<p>There are several combinations possible:</p>
-<section id="connector-levelboundary-replaced-by-connector-basin" class="level3">
-<h3 class="anchored" data-anchor-id="connector-levelboundary-replaced-by-connector-basin"><code>Connector</code> | <code>LevelBoundary</code> replaced by <code>Connector</code> | <code>Basin</code></h3>
-<p>The easiest and most common option is to replace the LevelBoundary with the nearest Basin (determined by the <code>Basin / area</code> polygon). This will relink the connector node (i.e.&nbsp;an <code>Outlet</code>) to the Basin. Any Control nodes referring to the LevelBoundary will be edited to point to the <code>Basin</code> instead.</p>
-<p>For the <code>Rijkswaterstaat</code> Basins, the new link follows the <code>Rijkswataerstaat/verwerkt/netwerk.gpkg</code> topology, instead of a direct line.</p>
+<section id="connecting-the-models" class="level2">
+<h2 class="anchored" data-anchor-id="connecting-the-models">Connecting the models</h2>
+<p>In each regional model, a LevelBoundary stands for the water on the other side of its border. <code>AssignAuthorities</code> records whose water that is in the column <code>meta_couple_authority</code> of the node table, with <code>Noordzee</code> or <code>Buitenland</code> where it leaves the model. The boundaries of the main water system have none, so they stay boundaries.</p>
+<p><code>process_boundary_nodes</code> then goes through the boundaries of the regional models:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart TD
+  start["LevelBoundary"] --&gt; own{"Couples to its own authority,&lt;br&gt;Noordzee or Buitenland?"}
+  own --&gt;|yes| stays["Stays a boundary"]
+  own --&gt;|no| forced{"In forced_coupling?"}
+  forced --&gt;|yes| target["Connect to the given&lt;br&gt;Basin or Junction"]
+  forced --&gt;|no| near{"Boundaries of the other authority&lt;br&gt;within 20 m?"}
+  near --&gt;|"more than one"| stays
+  near --&gt;|one| pair{"Two Outlets in opposite directions,&lt;br&gt;both with or both without control?"}
+  pair --&gt;|yes| merged["Merge into one Outlet"]
+  pair --&gt;|no| basin
+  near --&gt;|none| basin["Connect to the nearest Basin / area&lt;br&gt;of the other authority"]
+</pre>
+</div>
+<p></p><figcaption> What happens to a LevelBoundary with a <code>meta_couple_authority</code>.</figcaption> </figure><p></p>
+</div>
+</div>
+</div>
+<p>Connecting to the nearest Basin is the easiest and most common case. It relinks the connector nodes of the boundary, for instance an Outlet, so an inflow into the boundary becomes an outlet into the Basin, and an outflow becomes an inlet from it. If a path in the opposite direction already exists, that path and the connector are removed instead, to avoid a cycle. <code>replace_listen_node_id</code> points control nodes that listened to the boundary to the node that replaces it. For the Basins of Rijkswaterstaat, the new link follows the topology of <code>Rijkswaterstaat/verwerkt/netwerk.gpkg</code>, instead of a direct line. No new control nodes are added.</p>
+<p>Two LevelBoundaries close to one another, especially between two water boards, are treated as duplicates, and merged if they meet the conditions above.</p>
+<p>Where two Pumps, or an Outlet and a Pump, meet at a border, or Outlets do not meet these conditions, they are handled as a connector to a Basin. That leaves duplicate connector nodes in place, and might duplicate a flow. Still to do are couplings for <code>Pump | LevelBoundary . LevelBoundary | Pump</code> and <code>Pump | LevelBoundary . LevelBoundary | Outlet</code>, and investigating whether other connections happen.</p>
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><a href="https://s3.deltares.nl/ribasim-nl/doc-image/figures/coupling-before.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Before coupling, in lhm_parts. Rijnland (green) and Amstel, Gooi en Vecht (blue) both end in LevelBoundaries (triangles) along their border."><img src="https://s3.deltares.nl/ribasim-nl/doc-image/figures/coupling-before.png" class="img-fluid figure-img" alt="Two authorities with several pairs of triangles along their border, each with links on one side."></a></p>
+<figcaption>Before coupling, in <code>lhm_parts</code>. Rijnland (green) and Amstel, Gooi en Vecht (blue) both end in LevelBoundaries (triangles) along their border.</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><a href="https://s3.deltares.nl/ribasim-nl/doc-image/figures/coupling-after.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="After coupling, in lhm_coupled. Each pair of LevelBoundaries with the Outlets next to it is now one Outlet (square) with links to both sides."><img src="https://s3.deltares.nl/ribasim-nl/doc-image/figures/coupling-after.png" class="img-fluid figure-img" alt="The same area with squares on the border where the triangles were, and links that cross the border."></a></p>
+<figcaption>After coupling, in <code>lhm_coupled</code>. Each pair of LevelBoundaries with the Outlets next to it is now one Outlet (square) with links to both sides.</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<p><code>forced_coupling</code> lists the exceptions, usually with an issue that explains them. For instance, LevelBoundary 1500551 of Delfland couples to Basin 4000298, the Brielse Meer, rather than to the nearest Basin in the Hartelkanaal.</p>
 </section>
-<section id="outlet-levelboundary-.-levelboundary-outlet-replaced-by-outlet" class="level3">
-<h3 class="anchored" data-anchor-id="outlet-levelboundary-.-levelboundary-outlet-replaced-by-outlet"><code>Outlet</code> | <code>LevelBoundary</code> . <code>LevelBoundary</code> | <code>Outlet</code> replaced by <code>Outlet</code></h3>
-<p>In some cases, especially when coupling between two waterboards, there are two <code>LevelBoundary</code>s close to one another, which are treated as duplicates.</p>
+<section id="the-other-steps-of-koppelen" class="level2">
+<h2 class="anchored" data-anchor-id="the-other-steps-of-koppelen">The other steps of <code>koppelen</code></h2>
+<p><code>couple_model</code> in <code>pipeline/09_koppelen_modellen.py</code> runs these steps in order:</p>
+<ol type="1">
+<li><strong>Remove the summer and winter levels</strong>, since the coupling and its level check work with fixed levels, and the nodes listed in <code>remove_nodes</code>, mostly structures that belong to the neighbouring model and boundaries without a link.</li>
+<li><strong>Replace the boundaries</strong>, as above.</li>
+<li><strong>Set names and levels</strong> of the nodes where a boundary was a placeholder.</li>
+<li><strong>Convert open connections</strong>: <code>convert_outlets_to_manning_resistance</code> turns Outlets on open water, such as 1100600 Angstel-ARK (<a href="https://github.com/Deltares/Ribasim-NL/issues/820">#820</a>), into ManningResistances.</li>
+<li><strong>Fix profiles</strong>: where an Outlet has a <code>min_upstream_level</code> below the bottom of the Basin upstream of it, the bottom of the Basin moves down.</li>
+<li><strong>Remove invalid nodes</strong>, with a warning: <code>remove_invalid_topology_nodes</code> removes nodes that the coupling left without a valid topology.</li>
+<li><strong>Route the links</strong> between models over Top10NL, with <code>netwerk.gpkg</code> as the main route. A link stays straight if it is listed in <code>straight_rws_links</code>, such as those of the Zeesluis Muiden (<a href="https://github.com/Deltares/Ribasim-NL/issues/916">#916</a>).</li>
+<li><strong>Add user demands</strong> that cross models, such as the Evides drinking water of the Maasvlakte (<a href="https://github.com/Deltares/Ribasim-NL/issues/857">#857</a>).</li>
+<li><strong>Attach RWZIs</strong> to the routes of Basins that only exist after coupling. For instance, RWZI Stein discharges to the Julianakanaal instead of a Basin of Limburg.</li>
+<li><strong>Link observations</strong> that measure on links between models, which need the coupled network, see <code>ribasim_nl.observations</code>.</li>
+<li><strong>Tidy the layout</strong>, see <a href="../workflow/layout.html">Layout</a>.</li>
+<li><strong>Write the model</strong>, validate it with <code>validate_ribasim_nl</code>, and write the links that were added to <code>link.gpkg</code>.</li>
+<li><strong>Correct the coupling levels</strong>, see below.</li>
+<li><strong>Apply the <a href="../workflow/seasonal-levels.html">summer and winter levels</a></strong> again, without changing the initial state, since the final state of the regional models already follows the seasons.</li>
+</ol>
 </section>
-<section id="other-connections" class="level3">
-<h3 class="anchored" data-anchor-id="other-connections">Other connections</h3>
-<p>There are several other coupling connections that could happen which require further attention:</p>
-<ul class="task-list">
-<li><label><input type="checkbox">Create a coupling for <code>Pump</code> | <code>LevelBoundary</code> . <code>LevelBoundary</code> | <code>Pump</code></label></li>
-<li><label><input type="checkbox">Create a coupling for <code>Pump</code> | <code>LevelBoundary</code> . <code>LevelBoundary</code> | <code>Outlet</code></label></li>
-<li><label><input type="checkbox">Fix Control nodes when merging duplicates</label></li>
-<li><label><input type="checkbox">Investigate whether other connections happen</label></li>
-</ul>
-<p>Currently these cases are automatically handled as the <code>Connector</code> | <code>Basin</code>, which leaves duplicate Connector Nodes in place, and might duplicate a flow.</p>
-<p>The regional models come with <a href="../workflow/seasonal-levels.html">summer and winter levels</a>, which are removed before coupling and applied again to the coupled model at the end.</p>
+<section id="coupling-levels" class="level2">
+<h2 class="anchored" data-anchor-id="coupling-levels">Coupling levels</h2>
+<p>The connectors at a border must respect the target level of the Basin on the other side, which the regional model did not know. <code>run_configured_coupling_level_check</code> corrects <code>min_upstream_level</code> and <code>max_downstream_level</code> of the Outlets and Pumps on links between authorities, and the thresholds of their DiscreteControl nodes. The function of a connector follows from its capacity per control state.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 44%">
+<col style="width: 29%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Limit</th>
+<th style="text-align: left;">Applies to</th>
+<th style="text-align: left;">Set to</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>min_upstream_level</code></td>
+<td style="text-align: left;">outlet, or drain state of an inlet or flow control node</td>
+<td style="text-align: left;">target level upstream</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>min_upstream_level</code></td>
+<td style="text-align: left;">supply state of an inlet or flow control node</td>
+<td style="text-align: left;">target level upstream − 0.04 m</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>min_upstream_level</code></td>
+<td style="text-align: left;">inlet from Rijkswaterstaat</td>
+<td style="text-align: left;">lowest level of the profile of the Basin + 0.1 m</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>max_downstream_level</code></td>
+<td style="text-align: left;">supply state with capacity</td>
+<td style="text-align: left;">target level downstream</td>
+</tr>
+</tbody>
+</table>
+<p>This is done for connectors of the 11 gravity controlled authorities (<code>COUPLING_LEVEL_APPLY_AUTHORITIES</code>), not for those of the level controlled authorities or Rijkswaterstaat, and rows with <code>meta_level_update_protected</code> or <code>meta_threshold_update_protected</code> opt out. FlowDemand-controlled inlets stay untouched, with exceptions in Aa en Maas, De Dommel and Limburg. See <code>ribasim_nl.coupling_levels</code>.</p>
+</section>
+<section id="after-coupling" class="level2">
+<h2 class="anchored" data-anchor-id="after-coupling">After coupling</h2>
+<p><code>koppelen</code> does not run the model. <code>run_lhm_coupled</code> copies the model to <code>runs/lhm_coupled</code> and runs the first 2 of its 3 years, and <code>validate_lhm_coupled</code> <a href="../dev/testing.html#coupled-model-result-checks">checks the results</a>. The <a href="../viewer.html">model viewer</a> shows them, with the fit to the measurements.</p>
 
 
-</section>
 </section>
 
 </main> <!-- /main -->
@@ -680,7 +871,48 @@ ul.task-list li input[type="checkbox"] {
     }
   });
   </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../workflow/layout.html" class="pagination-link" aria-label="Layout">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Layout</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+  </div>
+</nav>
 </div> <!-- /content -->
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox","skin":"fullscreen-lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
 
 
 

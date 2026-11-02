@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>possibly_intersecting – Ribasim-NL</title>
+<title>validation – Ribasim-NL</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -108,7 +108,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 }</script>
 
 
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 </head>
 
 <body class="nav-fixed quarto-light">
@@ -133,20 +133,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../reference/index.html"> 
-<span class="menu-text">API Reference</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../cloudstorage.html"> 
-<span class="menu-text">Cloud storage</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../workflow/main-watersystem.html"> 
-<span class="menu-text">Workflows</span></a>
+    <a class="nav-link" href="../workflow/index.html"> 
+<span class="menu-text">Model derivation</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../watersystems/main.html"> 
-<span class="menu-text">Watersystems</span></a>
+<span class="menu-text">Water systems</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../viewer.html"> 
@@ -157,6 +149,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li class="nav-item">
     <a class="nav-link" href="../dev/index.html"> 
 <span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">API reference</span></a>
   </li>  
   <li class="nav-item compact">
     <a class="nav-link" href="https://github.com/Deltares/Ribasim-NL"> <i class="bi bi-github" role="img" aria-label="GitHub">
@@ -179,9 +175,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#hydamo.possibly_intersecting" id="toc-hydamo.possibly_intersecting" class="nav-link active" data-scroll-target="#hydamo.possibly_intersecting">possibly_intersecting</a>
+  <li><a href="#ribasim_nl.validation" id="toc-ribasim_nl.validation" class="nav-link active" data-scroll-target="#ribasim_nl.validation">validation</a>
   <ul class="collapse">
-  <li><a href="#parameters" id="toc-parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
+  <li><a href="#functions" id="toc-functions" class="nav-link" data-scroll-target="#functions">Functions</a>
+  <ul class="collapse">
+  <li><a href="#ribasim_nl.validation.validate_model" id="toc-ribasim_nl.validation.validate_model" class="nav-link" data-scroll-target="#ribasim_nl.validation.validate_model">validate_model</a></li>
+  </ul></li>
   </ul></li>
   </ul>
 </nav>
@@ -192,45 +191,34 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<section id="hydamo.possibly_intersecting" class="level1">
-<h1>possibly_intersecting</h1>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>possibly_intersecting(dataframebounds, geometry, <span class="bu">buffer</span><span class="op">=</span><span class="dv">0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Efficiently determine possibly intersecting geometries using a bounding box.</p>
-<p>Finding intersecting profiles for each branch is a slow process in case of large datasets To speed this up, we first determine which profile intersect a square box around the branch With the selection, the intersecting profiles can be determines much faster.</p>
-<section id="parameters" class="level2 doc-section doc-section-parameters">
-<h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
+<section id="ribasim_nl.validation" class="level1">
+<h1>validation</h1>
+<p><code>validation</code></p>
+<p>Ribasim-NL-specific validations that supplement Ribasim validation.</p>
+<section id="functions" class="level2">
+<h2 class="anchored" data-anchor-id="functions">Functions</h2>
 <table class="caption-top table">
-<colgroup>
-<col style="width: 24%">
-<col style="width: 37%">
-<col style="width: 21%">
-<col style="width: 17%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>Name</th>
-<th>Type</th>
 <th>Description</th>
-<th>Default</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td>dataframebounds</td>
-<td>numpy.array</td>
-<td></td>
-<td><em>required</em></td>
-</tr>
-<tr class="even">
-<td>geometry</td>
-<td>shapely.geometry.Polygon</td>
-<td></td>
-<td><em>required</em></td>
+<td><a href="#ribasim_nl.validation.validate_model">validate_model</a></td>
+<td>Validate Ribasim-NL conventions and report all issues together.</td>
 </tr>
 </tbody>
 </table>
+<section id="ribasim_nl.validation.validate_model" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.validation.validate_model">validate_model</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>validation.validate_model(model, layout<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Validate Ribasim-NL conventions and report all issues together.</p>
+<p>With <code>layout</code>, also check that nodes are not on top of each other and links do not overlap.</p>
 
 
+</section>
 </section>
 </section>
 

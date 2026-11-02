@@ -68,6 +68,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
+<link href="../dev/ribasim.html" rel="next">
+<link href="../dev/reproducing-models.html" rel="prev">
 <link href="../assets/favicon.ico" rel="icon">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -106,12 +108,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script>
+<meta name="mermaid-theme" content="neutral">
 <script src="../site_libs/quarto-diagram/mermaid.min.js"></script>
 <script src="../site_libs/quarto-diagram/mermaid-init.js"></script>
 <link href="../site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
 
 
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 </head>
 
 <body class="nav-sidebar floating nav-fixed quarto-light">
@@ -136,20 +139,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../reference/index.html"> 
-<span class="menu-text">API Reference</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../cloudstorage.html"> 
-<span class="menu-text">Cloud storage</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../workflow/main-watersystem.html"> 
-<span class="menu-text">Workflows</span></a>
+    <a class="nav-link" href="../workflow/index.html"> 
+<span class="menu-text">Model derivation</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../watersystems/main.html"> 
-<span class="menu-text">Watersystems</span></a>
+<span class="menu-text">Water systems</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../viewer.html"> 
@@ -160,6 +155,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li class="nav-item">
     <a class="nav-link active" href="../dev/index.html" aria-current="page"> 
 <span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">API reference</span></a>
   </li>  
   <li class="nav-item compact">
     <a class="nav-link" href="https://github.com/Deltares/Ribasim-NL"> <i class="bi bi-github" role="img" aria-label="GitHub">
@@ -177,7 +176,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/viewer.html">Model viewer</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/viewer.html">Tools</a></li><li class="breadcrumb-item"><a href="../dev/viewer.html">Model viewer</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -203,52 +202,86 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../dev/dvc.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">DVC (Data Version Control)</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
   <a href="../dev/type-checking.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Type checking</span></a>
   </div>
 </li>
-        <li class="sidebar-item">
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Running the pipeline</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/dvc.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">DVC (Data Version Control)</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../dev/local.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Running locally</span></a>
   </div>
 </li>
-        <li class="sidebar-item">
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../dev/slurm.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Running on SLURM</span></a>
   </div>
 </li>
-        <li class="sidebar-item">
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../dev/pull-requests.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Reproducing pull requests</span></a>
   </div>
 </li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../dev/viewer.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Model viewer</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../dev/ribasim.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Co-development with Ribasim</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../dev/reproducing-models.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Reproducing models</span></a>
   </div>
 </li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Tools</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/viewer.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Model viewer</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/ribasim.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Co-development with Ribasim</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/docs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Documentation</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../cloudstorage.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Cloud storage</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
     </ul>
     </div>
 </nav>
@@ -276,7 +309,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/viewer.html">Tools</a></li><li class="breadcrumb-item"><a href="../dev/viewer.html">Model viewer</a></li></ol></nav>
 <div class="quarto-title">
 <h1 class="title">Model viewer</h1>
 </div>
@@ -328,7 +361,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="updating-the-published-data" class="level2">
 <h2 class="anchored" data-anchor-id="updating-the-published-data">Updating the published data</h2>
 <ol type="1">
-<li><p>Run the model with the <code>run_lhm_coupled</code> DVC stage. It copies the model of <code>modellen/lhm_coupled</code> to <code>runs/lhm_coupled</code>, and writes the results next to it. It also writes the commit of the code to <code>runinfo.json</code>, which the viewer shows next to the scale bar, with the time the run finished from <code>results/ribasim.log</code>. For now this runs with a looser solver tolerance, see <code>pipeline/run_lhm_coupled.py</code>. The NetCDF results are compressed, to save space in DVC. This takes many hours, so normally pull the cached results instead:</p>
+<li><p>Run the model with the <code>run_lhm_coupled</code> DVC stage. It copies the model of <code>modellen/lhm_coupled</code> to <code>runs/lhm_coupled</code>, and writes the results of the first 2 of its 3 years next to it. It also writes the commit of the code to <code>runinfo.json</code>, which the viewer shows next to the scale bar, with the time the run finished from <code>results/ribasim.log</code>. For now this runs with a looser solver tolerance, see <code>pipeline/run_lhm_coupled.py</code>. The NetCDF results are compressed, to save space in DVC. This takes about 1.5 hours, so normally pull the cached results instead:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc pull run_lhm_coupled</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div></li>
 <li><p>Export the model to web-friendly files with the <code>export_webmap</code> DVC stage, which takes about 10 minutes:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc repro <span class="at">--pull</span> <span class="at">--single-item</span> export_webmap</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -390,7 +423,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run publish-webmap</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>This uploads the model of the working tree, and that of <code>origin/main</code>, which it fetches first, and their differences, see <a href="#comparing-models">Comparing models</a>. It then adds a comment to the pull request with the link <code>https://ribasim.nl/viewer?pr=&lt;number&gt;</code> and a summary of the differences, or updates that comment on later publishes. Use <code>--pr &lt;number&gt;</code> to publish for another pull request, and <code>--main</code> to only publish the model of <code>origin/main</code>. Use <code>--commit &lt;revision&gt;</code> to publish the model of a commit on GitHub, and add <code>--base &lt;revision&gt;</code> to also publish its differences from another commit, see <a href="#links-to-a-version">Links to a version</a>.</p></li>
 </ol>
-<p><code>pixi run repro-local</code> runs steps 1 to 4 by default, see <a href="../dev/local.html">Running locally</a>. The docs do not need to be rebuilt to show another model.</p>
+<p><code>pixi run repro-local</code> runs steps 1, 2 and 4 by default, and with <code>--push</code> it also pushes the run, see <a href="../dev/local.html">Running locally</a>. The docs do not need to be rebuilt to show another model.</p>
 <section id="how-the-published-models-are-found" class="level3">
 <h3 class="anchored" data-anchor-id="how-the-published-models-are-found">How the published models are found</h3>
 <p>Everything is uploaded to the anonymously readable <code>doc-image/webmap/</code> prefix on MinIO, see <code>ribasim_nl.webmap_publish</code>:</p>
@@ -900,6 +933,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     }
   });
   </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../dev/reproducing-models.html" class="pagination-link" aria-label="Reproducing models">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Reproducing models</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../dev/ribasim.html" class="pagination-link" aria-label="Co-development with Ribasim">
+        <span class="nav-page-text">Co-development with Ribasim</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
 </div> <!-- /content -->
 
 

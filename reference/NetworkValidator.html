@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>template – Ribasim-NL</title>
+<title>networkvalidator – Ribasim-NL</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -22,6 +22,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -44,9 +79,6 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../site_libs/bootstrap/bootstrap-d3dd72e47976c844a05ffb6b950c6ecd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
-<script src="../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
-<link href="../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
-<link href="../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -76,7 +108,7 @@ ul.task-list li input[type="checkbox"] {
 }</script>
 
 
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 </head>
 
 <body class="nav-fixed quarto-light">
@@ -101,20 +133,12 @@ ul.task-list li input[type="checkbox"] {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../reference/index.html"> 
-<span class="menu-text">API Reference</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../cloudstorage.html"> 
-<span class="menu-text">Cloud storage</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../workflow/main-watersystem.html"> 
-<span class="menu-text">Workflows</span></a>
+    <a class="nav-link" href="../workflow/index.html"> 
+<span class="menu-text">Model derivation</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../watersystems/main.html"> 
-<span class="menu-text">Watersystems</span></a>
+<span class="menu-text">Water systems</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../viewer.html"> 
@@ -125,6 +149,10 @@ ul.task-list li input[type="checkbox"] {
   <li class="nav-item">
     <a class="nav-link" href="../dev/index.html"> 
 <span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">API reference</span></a>
   </li>  
   <li class="nav-item compact">
     <a class="nav-link" href="https://github.com/Deltares/Ribasim-NL"> <i class="bi bi-github" role="img" aria-label="GitHub">
@@ -147,11 +175,22 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#waterschap" id="toc-waterschap" class="nav-link active" data-scroll-target="#waterschap">{waterschap}</a>
+  <li><a href="#ribasim_nl.NetworkValidator" id="toc-ribasim_nl.NetworkValidator" class="nav-link active" data-scroll-target="#ribasim_nl.NetworkValidator">NetworkValidator</a>
   <ul class="collapse">
-  <li><a href="#systeembeschrijving" id="toc-systeembeschrijving" class="nav-link" data-scroll-target="#systeembeschrijving">Systeembeschrijving</a></li>
-  <li><a href="#capaciteiten" id="toc-capaciteiten" class="nav-link" data-scroll-target="#capaciteiten">Capaciteiten</a></li>
-  <li><a href="#bronnen" id="toc-bronnen" class="nav-link" data-scroll-target="#bronnen">Bronnen</a></li>
+  <li><a href="#parameters" id="toc-parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
+  <li><a href="#methods" id="toc-methods" class="nav-link" data-scroll-target="#methods">Methods</a>
+  <ul class="collapse">
+  <li><a href="#ribasim_nl.NetworkValidator.link_duplicated" id="toc-ribasim_nl.NetworkValidator.link_duplicated" class="nav-link" data-scroll-target="#ribasim_nl.NetworkValidator.link_duplicated">link_duplicated</a></li>
+  <li><a href="#ribasim_nl.NetworkValidator.link_incorrect_connectivity" id="toc-ribasim_nl.NetworkValidator.link_incorrect_connectivity" class="nav-link" data-scroll-target="#ribasim_nl.NetworkValidator.link_incorrect_connectivity">link_incorrect_connectivity</a></li>
+  <li><a href="#ribasim_nl.NetworkValidator.link_incorrect_from_node" id="toc-ribasim_nl.NetworkValidator.link_incorrect_from_node" class="nav-link" data-scroll-target="#ribasim_nl.NetworkValidator.link_incorrect_from_node">link_incorrect_from_node</a></li>
+  <li><a href="#ribasim_nl.NetworkValidator.link_incorrect_to_node" id="toc-ribasim_nl.NetworkValidator.link_incorrect_to_node" class="nav-link" data-scroll-target="#ribasim_nl.NetworkValidator.link_incorrect_to_node">link_incorrect_to_node</a></li>
+  <li><a href="#ribasim_nl.NetworkValidator.link_incorrect_type_connectivity" id="toc-ribasim_nl.NetworkValidator.link_incorrect_type_connectivity" class="nav-link" data-scroll-target="#ribasim_nl.NetworkValidator.link_incorrect_type_connectivity">link_incorrect_type_connectivity</a></li>
+  <li><a href="#ribasim_nl.NetworkValidator.link_missing_nodes" id="toc-ribasim_nl.NetworkValidator.link_missing_nodes" class="nav-link" data-scroll-target="#ribasim_nl.NetworkValidator.link_missing_nodes">link_missing_nodes</a></li>
+  <li><a href="#ribasim_nl.NetworkValidator.node_duplicated" id="toc-ribasim_nl.NetworkValidator.node_duplicated" class="nav-link" data-scroll-target="#ribasim_nl.NetworkValidator.node_duplicated">node_duplicated</a></li>
+  <li><a href="#ribasim_nl.NetworkValidator.node_internal_basin" id="toc-ribasim_nl.NetworkValidator.node_internal_basin" class="nav-link" data-scroll-target="#ribasim_nl.NetworkValidator.node_internal_basin">node_internal_basin</a></li>
+  <li><a href="#ribasim_nl.NetworkValidator.node_invalid_connectivity" id="toc-ribasim_nl.NetworkValidator.node_invalid_connectivity" class="nav-link" data-scroll-target="#ribasim_nl.NetworkValidator.node_invalid_connectivity">node_invalid_connectivity</a></li>
+  <li><a href="#ribasim_nl.NetworkValidator.node_overlapping" id="toc-ribasim_nl.NetworkValidator.node_overlapping" class="nav-link" data-scroll-target="#ribasim_nl.NetworkValidator.node_overlapping">node_overlapping</a></li>
+  </ul></li>
   </ul></li>
   </ul>
 </nav>
@@ -162,33 +201,121 @@ ul.task-list li input[type="checkbox"] {
 
 
 
-<section id="waterschap" class="level1">
-<h1>{waterschap}</h1>
-<ul>
-<li>Laatst bijgewerkt: {datum}</li>
-<li>Laatste modelversie: <a href="{check cloudstorage.qmd}">{modelversie}</a></li>
-</ul>
-<section id="systeembeschrijving" class="level2">
-<h2 class="anchored" data-anchor-id="systeembeschrijving">Systeembeschrijving</h2>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><a href="png/{png_naam}.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Systeembeschrijving {waterschap}"><img src="png/{png_naam}.png" class="img-fluid figure-img" alt="Systeembeschrijving {waterschap}"></a></p>
-<figcaption>Systeembeschrijving {waterschap}</figcaption>
-</figure>
-</div>
+<section id="ribasim_nl.NetworkValidator" class="level1">
+<h1>NetworkValidator</h1>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>NetworkValidator(model, tolerance<span class="op">=</span><span class="dv">1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Contains some methods for validating a Ribasim-model</p>
+<section id="parameters" class="level2 doc-section doc-section-parameters">
+<h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
+<p>model: Model Ribasim model tolerance: float (default=1) Tolerance to use for snapping. Should be in the units of the model.crs</p>
 </section>
-<section id="capaciteiten" class="level2">
-<h2 class="anchored" data-anchor-id="capaciteiten">Capaciteiten</h2>
-<p>Per kunstwerk, gespecificeerd op <code>naam</code>, <code>code</code> (waterbeheerder), <code>node_id</code> (v.h. Ribasim model) zijn hieronder de functie (<code>inlaat</code>, <code>doorlaat</code>, <code>uitlaat</code>, <code>uitlaat (doorspoeling))</code>) en de capaciteiten onder <code>aanvoer</code> en <code>afvoer</code> condities opgegeven.</p>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="#ribasim_nl.NetworkValidator.link_duplicated">link_duplicated</a></td>
+<td>Check if the <code>from_node_id</code> and <code>to_node_id</code> in the link-table is duplicated</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.NetworkValidator.link_incorrect_connectivity">link_incorrect_connectivity</a></td>
+<td>Check if the geometries of the <code>from_node_id</code> and <code>to_node_id</code> are on the start and end vertices of the link-geometry within tolerance (default=1m)</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.NetworkValidator.link_incorrect_from_node">link_incorrect_from_node</a></td>
+<td>Check if the <code>from_node_type</code> in link-table in matches the <code>node_type</code> of the corresponding node in the node-table</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.NetworkValidator.link_incorrect_to_node">link_incorrect_to_node</a></td>
+<td>Check if the <code>to_node_type</code> in link-table in matches the <code>node_type</code> of the corresponding node in the node-table</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.NetworkValidator.link_incorrect_type_connectivity">link_incorrect_type_connectivity</a></td>
+<td>Check links that contain wrong connectivity</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.NetworkValidator.link_missing_nodes">link_missing_nodes</a></td>
+<td>Check if the <code>from_node_id</code> and <code>to_node_id</code> in the link-table are both as node-id in the node-table</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.NetworkValidator.node_duplicated">node_duplicated</a></td>
+<td>Check if node_id is duplicated</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.NetworkValidator.node_internal_basin">node_internal_basin</a></td>
+<td>Check if a Node with node_type Basin is not connected to another node</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.NetworkValidator.node_invalid_connectivity">node_invalid_connectivity</a></td>
+<td>Check if node_from and node_to are correct on link</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.NetworkValidator.node_overlapping">node_overlapping</a></td>
+<td>Check if the node-geometry overlaps another node within tolerance (default=1m)</td>
+</tr>
+</tbody>
+</table>
+<section id="ribasim_nl.NetworkValidator.link_duplicated" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.NetworkValidator.link_duplicated">link_duplicated</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>NetworkValidator.link_duplicated()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Check if the <code>from_node_id</code> and <code>to_node_id</code> in the link-table is duplicated</p>
 </section>
-<section id="bronnen" class="level2">
-<h2 class="anchored" data-anchor-id="bronnen">Bronnen</h2>
-<p>Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze <a href="../workflow/gravity-controlled.html">workflow</a>. Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:</p>
-<ul>
-<li><a href="https://deltares.thegood.cloud/s/sxEjeCbTt47X7x3">Documentatie Distributiemodel (Deel {DM_deel}, hoofdstuk {DM_hoofdstuk})</a></li>
-</ul>
+<section id="ribasim_nl.NetworkValidator.link_incorrect_connectivity" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.NetworkValidator.link_incorrect_connectivity">link_incorrect_connectivity</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>NetworkValidator.link_incorrect_connectivity()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Check if the geometries of the <code>from_node_id</code> and <code>to_node_id</code> are on the start and end vertices of the link-geometry within tolerance (default=1m)</p>
+</section>
+<section id="ribasim_nl.NetworkValidator.link_incorrect_from_node" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.NetworkValidator.link_incorrect_from_node">link_incorrect_from_node</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>NetworkValidator.link_incorrect_from_node()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Check if the <code>from_node_type</code> in link-table in matches the <code>node_type</code> of the corresponding node in the node-table</p>
+</section>
+<section id="ribasim_nl.NetworkValidator.link_incorrect_to_node" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.NetworkValidator.link_incorrect_to_node">link_incorrect_to_node</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>NetworkValidator.link_incorrect_to_node()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Check if the <code>to_node_type</code> in link-table in matches the <code>node_type</code> of the corresponding node in the node-table</p>
+</section>
+<section id="ribasim_nl.NetworkValidator.link_incorrect_type_connectivity" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.NetworkValidator.link_incorrect_type_connectivity">link_incorrect_type_connectivity</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>NetworkValidator.link_incorrect_type_connectivity(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    from_node_type<span class="op">=</span><span class="st">'ManningResistance'</span>,</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    to_node_type<span class="op">=</span><span class="st">'LevelBoundary'</span>,</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Check links that contain wrong connectivity</p>
+</section>
+<section id="ribasim_nl.NetworkValidator.link_missing_nodes" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.NetworkValidator.link_missing_nodes">link_missing_nodes</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>NetworkValidator.link_missing_nodes()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Check if the <code>from_node_id</code> and <code>to_node_id</code> in the link-table are both as node-id in the node-table</p>
+</section>
+<section id="ribasim_nl.NetworkValidator.node_duplicated" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.NetworkValidator.node_duplicated">node_duplicated</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>NetworkValidator.node_duplicated()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Check if node_id is duplicated</p>
+</section>
+<section id="ribasim_nl.NetworkValidator.node_internal_basin" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.NetworkValidator.node_internal_basin">node_internal_basin</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>NetworkValidator.node_internal_basin()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Check if a Node with node_type Basin is not connected to another node</p>
+</section>
+<section id="ribasim_nl.NetworkValidator.node_invalid_connectivity" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.NetworkValidator.node_invalid_connectivity">node_invalid_connectivity</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>NetworkValidator.node_invalid_connectivity(tolerance<span class="op">=</span><span class="fl">1.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Check if node_from and node_to are correct on link</p>
+</section>
+<section id="ribasim_nl.NetworkValidator.node_overlapping" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.NetworkValidator.node_overlapping">node_overlapping</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>NetworkValidator.node_overlapping()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Check if the node-geometry overlaps another node within tolerance (default=1m)</p>
 
 
+</section>
 </section>
 </section>
 
@@ -594,38 +721,6 @@ ul.task-list li input[type="checkbox"] {
   });
   </script>
 </div> <!-- /content -->
-<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox","skin":"fullscreen-lightbox"});
-(function() {
-  let previousOnload = window.onload;
-  window.onload = () => {
-    if (previousOnload) {
-      previousOnload();
-    }
-    lightboxQuarto.on('slide_before_load', (data) => {
-      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
-      const href = trigger.getAttribute('href');
-      if (href !== null) {
-        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
-        if (imgEl !== null) {
-          const srcAttr = imgEl.getAttribute("src");
-          if (srcAttr && srcAttr.startsWith("data:")) {
-            slideConfig.href = srcAttr;
-          }
-        }
-      } 
-    });
-  
-    lightboxQuarto.on('slide_after_load', (data) => {
-      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
-      if (window.Quarto?.typesetMath) {
-        window.Quarto.typesetMath(slideNode);
-      }
-    });
-  
-  };
-  
-})();
-          </script>
 
 
 

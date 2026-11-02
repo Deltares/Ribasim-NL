@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>read_style – Ribasim-NL</title>
+<title>geometry – Ribasim-NL</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -108,7 +108,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 }</script>
 
 
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 </head>
 
 <body class="nav-fixed quarto-light">
@@ -133,20 +133,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../reference/index.html"> 
-<span class="menu-text">API Reference</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../cloudstorage.html"> 
-<span class="menu-text">Cloud storage</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../workflow/main-watersystem.html"> 
-<span class="menu-text">Workflows</span></a>
+    <a class="nav-link" href="../workflow/index.html"> 
+<span class="menu-text">Model derivation</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../watersystems/main.html"> 
-<span class="menu-text">Watersystems</span></a>
+<span class="menu-text">Water systems</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../viewer.html"> 
@@ -157,6 +149,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li class="nav-item">
     <a class="nav-link" href="../dev/index.html"> 
 <span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">API reference</span></a>
   </li>  
   <li class="nav-item compact">
     <a class="nav-link" href="https://github.com/Deltares/Ribasim-NL"> <i class="bi bi-github" role="img" aria-label="GitHub">
@@ -179,10 +175,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#hydamo.read_style" id="toc-hydamo.read_style" class="nav-link active" data-scroll-target="#hydamo.read_style">read_style</a>
+  <li><a href="#ribasim_nl.geometry" id="toc-ribasim_nl.geometry" class="nav-link active" data-scroll-target="#ribasim_nl.geometry">geometry</a>
   <ul class="collapse">
-  <li><a href="#parameters" id="toc-parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
-  <li><a href="#returns" id="toc-returns" class="nav-link" data-scroll-target="#returns">Returns</a></li>
+  <li><a href="#functions" id="toc-functions" class="nav-link" data-scroll-target="#functions">Functions</a>
+  <ul class="collapse">
+  <li><a href="#ribasim_nl.geometry.basin_to_point" id="toc-ribasim_nl.geometry.basin_to_point" class="nav-link" data-scroll-target="#ribasim_nl.geometry.basin_to_point">basin_to_point</a></li>
+  <li><a href="#ribasim_nl.geometry.connected_parts" id="toc-ribasim_nl.geometry.connected_parts" class="nav-link" data-scroll-target="#ribasim_nl.geometry.connected_parts">connected_parts</a></li>
+  <li><a href="#ribasim_nl.geometry.drop_z" id="toc-ribasim_nl.geometry.drop_z" class="nav-link" data-scroll-target="#ribasim_nl.geometry.drop_z">drop_z</a></li>
+  <li><a href="#ribasim_nl.geometry.link" id="toc-ribasim_nl.geometry.link" class="nav-link" data-scroll-target="#ribasim_nl.geometry.link">link</a></li>
+  <li><a href="#ribasim_nl.geometry.polygon_parts" id="toc-ribasim_nl.geometry.polygon_parts" class="nav-link" data-scroll-target="#ribasim_nl.geometry.polygon_parts">polygon_parts</a></li>
+  <li><a href="#ribasim_nl.geometry.snap_boundaries_to_other_line" id="toc-ribasim_nl.geometry.snap_boundaries_to_other_line" class="nav-link" data-scroll-target="#ribasim_nl.geometry.snap_boundaries_to_other_line">snap_boundaries_to_other_line</a></li>
+  <li><a href="#ribasim_nl.geometry.sort_basins" id="toc-ribasim_nl.geometry.sort_basins" class="nav-link" data-scroll-target="#ribasim_nl.geometry.sort_basins">sort_basins</a></li>
+  <li><a href="#ribasim_nl.geometry.split_basin" id="toc-ribasim_nl.geometry.split_basin" class="nav-link" data-scroll-target="#ribasim_nl.geometry.split_basin">split_basin</a></li>
+  <li><a href="#ribasim_nl.geometry.split_line" id="toc-ribasim_nl.geometry.split_line" class="nav-link" data-scroll-target="#ribasim_nl.geometry.split_line">split_line</a></li>
+  <li><a href="#ribasim_nl.geometry.union_polygons" id="toc-ribasim_nl.geometry.union_polygons" class="nav-link" data-scroll-target="#ribasim_nl.geometry.union_polygons">union_polygons</a></li>
+  </ul></li>
   </ul></li>
   </ul>
 </nav>
@@ -193,52 +200,162 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<section id="hydamo.read_style" class="level1">
-<h1>read_style</h1>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>read_style(style_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>To make style-text sql-compatible, we need to replace single ’ to ’’.</p>
-<p>Example ‘http://mrcc.com/qgis.dtd -&gt;’‘http://mrcc.com/qgis.dtd’’</p>
-<section id="parameters" class="level2 doc-section doc-section-parameters">
-<h2 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h2>
+<section id="ribasim_nl.geometry" class="level1">
+<h1>geometry</h1>
+<p><code>geometry</code></p>
+<p>Functions to apply on a shapely.geometry</p>
+<section id="functions" class="level2">
+<h2 class="anchored" data-anchor-id="functions">Functions</h2>
 <table class="caption-top table">
 <thead>
 <tr class="header">
 <th>Name</th>
-<th>Type</th>
 <th>Description</th>
-<th>Default</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td>style_path</td>
-<td>Path</td>
-<td>Path to sld-file</td>
-<td><em>required</em></td>
+<td><a href="#ribasim_nl.geometry.basin_to_point">basin_to_point</a></td>
+<td>Return a representative point for the basin; centroid if it is within (Multi)Polygon or polylabel if not.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.geometry.connected_parts">connected_parts</a></td>
+<td>Split a (Multi)Polygon in the parts connected to the part that contains <code>point</code>, and the other parts.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.geometry.drop_z">drop_z</a></td>
+<td>Drop the z-coordinate of a geometry if it has.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.geometry.link">link</a></td>
+<td>Create a LineString geometry between two Point geometries, dropping z-coordinate if any</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.geometry.polygon_parts">polygon_parts</a></td>
+<td>The polygons of a geometry that are on average wider than <code>tolerance</code>, so without slivers.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.geometry.snap_boundaries_to_other_line">snap_boundaries_to_other_line</a></td>
+<td>Snap the boundaries of line to the boundary or link/vertice of other_line if boundaries are within tolerance</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.geometry.sort_basins">sort_basins</a></td>
+<td>Sort basins in a MultiPolygon or list of Polygons on .area in ascending order (small to large).</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.geometry.split_basin">split_basin</a></td>
+<td>Split a polygon with a line into two polygons.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.geometry.split_line">split_line</a></td>
+<td>Split a line into two lines based on a point.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.geometry.union_polygons">union_polygons</a></td>
+<td>The union of polygons, as <code>shapely.union_all</code>, but checked.</td>
 </tr>
 </tbody>
 </table>
+<section id="ribasim_nl.geometry.basin_to_point" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.geometry.basin_to_point">basin_to_point</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>geometry.basin_to_point(basin_polygon, tolerance<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Return a representative point for the basin; centroid if it is within (Multi)Polygon or polylabel if not.</p>
+<section id="parameters" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h4>
+<p>basin_polygon : Polygon | MultiPolygon (Multi)Polygon to get representative point for tolerance: None | float Enforce a tolerance by which the point is to be within the polygon</p>
 </section>
-<section id="returns" class="level2 doc-section doc-section-returns">
-<h2 class="doc-section doc-section-returns anchored" data-anchor-id="returns">Returns</h2>
-<table class="caption-top table">
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td></td>
-<td>str</td>
-<td>style-string for SQL</td>
-</tr>
-</tbody>
-</table>
+<section id="returns" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns">Returns</h4>
+<p>Point Representative point for the basin</p>
+</section>
+</section>
+<section id="ribasim_nl.geometry.connected_parts" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.geometry.connected_parts">connected_parts</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>geometry.connected_parts(geometry, point, tolerance<span class="op">=</span><span class="fl">0.001</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Split a (Multi)Polygon in the parts connected to the part that contains <code>point</code>, and the other parts.</p>
+<p>Parts at most <code>tolerance</code> apart are connected, also through other parts. That joins parts that versions of GEOS leave touching or a sliver apart. The connected parts are returned as Polygon if there is one.</p>
+</section>
+<section id="ribasim_nl.geometry.drop_z" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.geometry.drop_z">drop_z</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>geometry.drop_z(geometry)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Drop the z-coordinate of a geometry if it has.</p>
+<section id="parameters-1" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-1">Parameters</h4>
+<p>geometry : LineString | MultiPolygon | Point | Polygon Input geometry</p>
+</section>
+<section id="returns-1" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-1">Returns</h4>
+<p>LineString | Point | Polygon | MultiPolygon Output geometry</p>
+</section>
+</section>
+<section id="ribasim_nl.geometry.link" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.geometry.link">link</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>geometry.link(point_from, point_to)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Create a LineString geometry between two Point geometries, dropping z-coordinate if any</p>
+<p>Args: point_from (Point): <em>description</em> point_to (Point): <em>description</em></p>
+<section id="returns-2" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-2">Returns</h4>
+<pre><code>LineString: LineString without z-coordinate</code></pre>
+</section>
+</section>
+<section id="ribasim_nl.geometry.polygon_parts" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.geometry.polygon_parts">polygon_parts</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>geometry.polygon_parts(geometry, tolerance<span class="op">=</span><span class="fl">0.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The polygons of a geometry that are on average wider than <code>tolerance</code>, so without slivers.</p>
+<p>The average width of a polygon is taken as its area divided by its perimeter.</p>
+</section>
+<section id="ribasim_nl.geometry.snap_boundaries_to_other_line" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.geometry.snap_boundaries_to_other_line">snap_boundaries_to_other_line</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>geometry.snap_boundaries_to_other_line(line, other_line, tolerance<span class="op">=</span><span class="fl">0.1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Snap the boundaries of line to the boundary or link/vertice of other_line if boundaries are within tolerance</p>
+</section>
+<section id="ribasim_nl.geometry.sort_basins" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.geometry.sort_basins">sort_basins</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>geometry.sort_basins(basin_polygons)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Sort basins in a MultiPolygon or list of Polygons on .area in ascending order (small to large).</p>
+<section id="parameters-2" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
+<p>basin_polygons : MultiPolygon | list[Polygon] MultiPolygon or list of polygons to be sorted</p>
+</section>
+<section id="returns-3" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-3">Returns</h4>
+<p>MultiPolygon | list[Polygon] MultiPolygon with sorted polygons</p>
+</section>
+</section>
+<section id="ribasim_nl.geometry.split_basin" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.geometry.split_basin">split_basin</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>geometry.split_basin(basin_polygon, line)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Split a polygon with a line into two polygons.</p>
+<p>Credits to https://kuanbutts.com/2020/07/07/subdivide-polygon-with-linestring/</p>
+<section id="parameters-3" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-3">Parameters</h4>
+<p>basin_polygon : Polygon Polygon to cut into two line : LineString Cutline fro the Polygon</p>
+</section>
+<section id="returns-4" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-4">Returns</h4>
+<p>MultiPolygon Multipolygon with two polygons</p>
+</section>
+</section>
+<section id="ribasim_nl.geometry.split_line" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.geometry.split_line">split_line</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>geometry.split_line(line, point, <span class="op">*</span>, tolerance<span class="op">=</span><span class="fl">0.1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Split a line into two lines based on a point.</p>
+<p>As the built-in <code>shapely.ops.split</code> is not designed to do this splitting, its use should be avoided.</p>
+<p>This line-splitting function uses the splitting point as part of the newly generated lines.</p>
+<p>Args: line (LineString): line to be split point (Point): point to mark split-location tolerance (float, optional): tolerance of distance from point to line, defaults to 0.1.</p>
+<section id="returns-5" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-5">Returns</h4>
+<pre><code>tuple[LineString] | tuple[LineString, LineString]: a tuple of one or two LineString-objects</code></pre>
+</section>
+</section>
+<section id="ribasim_nl.geometry.union_polygons" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.geometry.union_polygons">union_polygons</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>geometry.union_polygons(polygons, tolerance<span class="op">=</span><span class="fl">0.001</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The union of polygons, as <code>shapely.union_all</code>, but checked.</p>
+<p>GEOS can lose or add whole parts in a union with slivers. A union is wrong if it exceeds the area of the polygons together by more than <code>tolerance</code> times their perimeter, or is further than <code>tolerance</code> from a point inside a polygon that is not a sliver, on average wider than 100 times <code>tolerance</code>. Then the union is taken again with a fixed precision of <code>tolerance</code>, or if that fails, without slivers.</p>
 
 
+</section>
 </section>
 </section>
 

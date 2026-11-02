@@ -68,6 +68,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
+<link href="../workflow/split-basins.html" rel="next">
+<link href="../workflow/level-controlled.html" rel="prev">
 <link href="../assets/favicon.ico" rel="icon">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -79,6 +81,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../site_libs/bootstrap/bootstrap-d3dd72e47976c844a05ffb6b950c6ecd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -106,6 +111,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script>
+<meta name="mermaid-theme" content="neutral">
+<script src="../site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="../site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="../site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
 
   <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
   <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
@@ -137,7 +146,7 @@ window.Quarto = {
 };
 </script>
 
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 </head>
 
 <body class="nav-sidebar floating nav-fixed quarto-light">
@@ -162,20 +171,12 @@ window.Quarto = {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../reference/index.html"> 
-<span class="menu-text">API Reference</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../cloudstorage.html"> 
-<span class="menu-text">Cloud storage</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link active" href="../workflow/main-watersystem.html" aria-current="page"> 
-<span class="menu-text">Workflows</span></a>
+    <a class="nav-link active" href="../workflow/index.html" aria-current="page"> 
+<span class="menu-text">Model derivation</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../watersystems/main.html"> 
-<span class="menu-text">Watersystems</span></a>
+<span class="menu-text">Water systems</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../viewer.html"> 
@@ -186,6 +187,10 @@ window.Quarto = {
   <li class="nav-item">
     <a class="nav-link" href="../dev/index.html"> 
 <span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">API reference</span></a>
   </li>  
   <li class="nav-item compact">
     <a class="nav-link" href="https://github.com/Deltares/Ribasim-NL"> <i class="bi bi-github" role="img" aria-label="GitHub">
@@ -203,7 +208,7 @@ window.Quarto = {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/profile-generation.html">Profile generation</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/level-controlled.html">Level controlled models</a></li><li class="breadcrumb-item"><a href="../workflow/profile-generation.html">Profile generation</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -217,52 +222,132 @@ window.Quarto = {
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../workflow/main-watersystem.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Main watersystem</span></a>
+  <a href="../workflow/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Model derivation</span></a>
   </div>
 </li>
         <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/main-watersystem.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Main water system</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Gravity controlled models</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/gravity-controlled.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Gravity controlled models</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/lumping.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Lumping</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Level controlled models</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../workflow/level-controlled.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Level controlled</span></a>
   </div>
 </li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/gravity-controlled.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Gravity controlled</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/design-capacities.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Design capacities of outlets and pumps</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/split-basins.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Split basins based on pre-split basin polygons</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/couple.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Coupling</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/seasonal-levels.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Summer and winter levels</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../workflow/profile-generation.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Profile generation</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/split-basins.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Split basins based on pre-split basin polygons</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Shared steps</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/control.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Control</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/storage-basins.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Storage basins</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/design-capacities.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Design capacities of outlets and pumps</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/forcing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Forcing</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/seasonal-levels.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Summer and winter levels</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/layout.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Layout</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">The nationwide model</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/couple.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Coupling</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
     </ul>
     </div>
 </nav>
@@ -281,7 +366,7 @@ window.Quarto = {
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/level-controlled.html">Level controlled models</a></li><li class="breadcrumb-item"><a href="../workflow/profile-generation.html">Profile generation</a></li></ol></nav>
 <div class="quarto-title">
 <h1 class="title">Profile generation</h1>
 </div>
@@ -300,10 +385,49 @@ window.Quarto = {
 </header>
 
 
-<p>The generation of representative profiles is mainly relevant for water quality simulations. The profiles – represented by <span class="math inline">\(A(h)\)</span>-relations – largely determine the retention time of water in a basin, where the distinction between <em>doorgaand</em> and <em>bergend</em> is crucial: <em>doorgaand</em> represents flowing water bodies, while <em>bergend</em> represents stagnant water bodies.</p>
-<p>These profiles also form the basis for the coupling with the groundwater modelling.</p>
+<p>The <a href="../workflow/level-controlled.html">level controlled models</a> get representative profiles of their water bodies in the <code>profiles_&lt;water board&gt;</code> stages. The profiles – represented by <span class="math inline">\(A(h)\)</span>-relations – largely determine the retention time of water in a basin, where the distinction between <em>doorgaand</em> and <em>bergend</em> is crucial: <em>doorgaand</em> represents flowing water bodies, while <em>bergend</em> represents stagnant water bodies. This makes them mainly relevant for water quality simulations.</p>
+<p>These profiles also form the basis for the coupling with the groundwater modelling, and their hydro-objects, <code>verwerkt/profielen/network.gpkg</code>, guide the <a href="../workflow/layout.html">layout</a> of the model. The <a href="../workflow/gravity-controlled.html">gravity controlled models</a> get their profiles in other ways, see <a href="../workflow/storage-basins.html">storage basins</a>.</p>
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><a href="https://s3.deltares.nl/ribasim-nl/doc-image/figures/profiles-map.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="The hydro-objects of Delfland near Delft. Those on the shortest paths between the crossings of a Basin are doorgaand, and the others bergend."><img src="https://s3.deltares.nl/ribasim-nl/doc-image/figures/profiles-map.png" class="img-fluid figure-img" alt="Map of a network of ditches in which the main routes are thick and blue and the side ditches thin and orange, with one Basin area in grey."></a></p>
+<figcaption>The hydro-objects of Delfland near Delft. Those on the shortest paths between the crossings of a Basin are doorgaand, and the others bergend.</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><a href="https://s3.deltares.nl/ribasim-nl/doc-image/figures/profiles-area.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="The resulting area by level of that Basin, and of its storage Basin."><img src="https://s3.deltares.nl/ribasim-nl/doc-image/figures/profiles-area.png" class="img-fluid figure-img" alt="Chart of level against area with two lines: doorgaand from about 23 to 27 ha and bergend from about 16 to 17 ha."></a></p>
+<figcaption>The resulting area by level of that Basin, and of its storage Basin.</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
 <section id="profile-generation-workflow" class="level1">
 <h1>Profile generation workflow</h1>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart LR
+  bgt["BGT water surfaces"] --&gt; width
+  hydro["hydro-objects,&lt;br&gt;crossings"] --&gt; paths["doorgaand or bergend,&lt;br&gt;by shortest paths"]
+  paths --&gt; width["Width from the&lt;br&gt;BGT surface"]
+  width --&gt; depth["Depth from hydrotype,&lt;br&gt;or measured"]
+  xs["measured cross-sections"] --&gt; depth
+  depth --&gt; ah["A(h) of doorgaand&lt;br&gt;and bergend"]
+  ah --&gt; model["Basin / profile,&lt;br&gt;storage Basins"]
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
 <p>Profiles are generated per water authority, as (1) data sources are available per water authority, and (2) data sources are formatted differently per water authority.</p>
 <p>Prior to generating the profiles, the data is preprocessed:</p>
 <ol start="0" type="1">
@@ -324,33 +448,51 @@ window.Quarto = {
 <li>Write two basin profile tables with <span class="math inline">\(A(h)\)</span>-relations: one for <em>doorgaand</em>, and one for <em>bergend</em>.</li>
 </ol>
 <p>During model implementation, generated profiles whose maximum area is below <span class="math inline">\(100\,\mathrm{m^2}\)</span> are discarded. Every retained profile area is then clamped to at least <span class="math inline">\(10\,\mathrm{m^2}\)</span>. If only one of the <em>doorgaand</em> or <em>bergend</em> profiles survives for a basin, it is used for the existing basin without adding a separate storing basin. When neither profile survives, the model receives a two-point fallback profile with an area of <span class="math inline">\(10\%\)</span> of its basin polygon, subject to the <span class="math inline">\(10\,\mathrm{m^2}\)</span> minimum, at both <span class="math inline">\(2\ \mathrm{m}\)</span> below its target level and at its target level. If no storing basins remain, implementation still updates the existing basins’ profiles and leaves the network unchanged. This prevents dummy and very small generated profiles from reaching the solver.</p>
+<p>Some water boards differ from these steps. Hollandse Delta and Scheldestromen flag a predefined main route, <code>gen_profiles.flagged_hydro_objects</code>, instead of searching shortest paths. Hollands Noorderkwartier has no measured cross-sections, and Rijnland overrides the depths of its water bodies.</p>
 </section>
 <section id="profile-generation-code" class="level1">
 <h1>Profile generation code</h1>
-<p>The profile generation is coded as standalone and intended to be executed prior to model generation, ideally once. Therefore, all relevant code is grouped inside a <code>profiles</code>-module:</p>
-<ul>
-<li>source-code: <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/profiles"><code>src/ribasim_nl/ribasim_nl/profiles</code></a>, and</li>
-<li>implementation-code: <a href="https://github.com/Deltares/Ribasim-NL/tree/main/pipeline"><code>pipeline</code></a>.</li>
-</ul>
-<p>This results in the following structures:</p>
-<ul>
-<li>For the source-code:</li>
-</ul>
-<pre><code>src/ribasim_nl/ribasim_nl/profiles/
- -  __init__.py
- -  &lt;source-code&gt;.py</code></pre>
-<ul>
-<li>For the implementation-code:</li>
-</ul>
-<pre><code>pipeline/
- -  prep_cross_sections.py
- -  &lt;water-authority&gt;/02_profiles.py</code></pre>
-<p>As part of the implementation code, there is the preprocessing of cross-sections (<a href="https://github.com/Deltares/Ribasim-NL/tree/main/pipeline/prep_cross_sections.py"><code>prep_cross_sections.py</code></a>), which should be executed prior to running any of the <code>pipeline/&lt;water-authority&gt;/02_profiles.py</code> scripts. This way, the measured cross-sections are preprocessed so they are presented as <code>LINESTRING Z</code>-objects. Preprocessing of the measured cross-sections must be done per water authority:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run python pipeline/prep_cross_sections.py <span class="op">&lt;</span>water-authority<span class="op">&gt;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This call has to be done only once per water authority (or when changes are made to the data sources and/or source code).</p>
-<p>Subsequently, the profile tables (<em>doorgaand</em> and <em>bergend</em>) are generated/updated per water authority as well:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run python pipeline/<span class="op">&lt;</span>water-authority<span class="op">&gt;</span>/02_profiles.py</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Again, this call has to be done only once per water authority (or when changes are mode to the data sources and/or source code).</p>
+<p>The source code is in <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/profiles"><code>src/ribasim_nl/ribasim_nl/profiles</code></a>. The <code>profiles_&lt;water board&gt;</code> DVC stages run the two scripts, for instance:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run dvc repro <span class="at">--pull</span> <span class="at">--single-item</span> profiles_delfland</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<ol type="1">
+<li><a href="https://github.com/Deltares/Ribasim-NL/tree/main/pipeline/prep_cross_sections.py"><code>pipeline/prep_cross_sections.py</code></a> preprocesses the measured cross-sections into <code>LINESTRING Z</code>-objects.</li>
+<li><code>pipeline/&lt;water board&gt;/02_profiles.py</code> generates the profile tables, and <code>implement.set_basin_profiles</code> sets them in the model, and adds the storage Basins with their ManningResistances.</li>
+</ol>
+<p>To run them yourself, per water authority, with the cross-sections first:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run python pipeline/prep_cross_sections.py <span class="op">&lt;</span>water board<span class="op">&gt;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run python pipeline/<span class="op">&lt;</span>water board<span class="op">&gt;</span>/02_profiles.py</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The results are in <code>verwerkt/profielen</code>:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: left;">File</th>
+<th style="text-align: left;">Content</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>network.gpkg</code></td>
+<td style="text-align: left;">The hydro-objects with their <code>main-route</code>, used for the <a href="../workflow/layout.html">layout</a>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>profielen_doorgaand.csv</code>, <code>profielen_bergend.csv</code></td>
+<td style="text-align: left;">The tables with the <span class="math inline">\(A(h)\)</span>-relations.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>intermediate/lines_z.gpkg</code></td>
+<td style="text-align: left;">The preprocessed cross-sections.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>intermediate/int_output.gpkg</code></td>
+<td style="text-align: left;">For inspection: <code>main-route</code>, <code>endpoints</code>, <code>bgt</code>, <code>hydro-objects</code>, <code>basin_profiles_doorgaand</code> and <code>basin_profiles_bergend</code>.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>intermediate/graph.gpkg</code></td>
+<td style="text-align: left;">For inspection: the graph of the network.</td>
+</tr>
+</tbody>
+</table>
+<p>Only <code>network.gpkg</code> is an output of DVC, so the others are there after running the stage yourself.</p>
 
 
 </section>
@@ -756,7 +898,51 @@ window.Quarto = {
     }
   });
   </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../workflow/level-controlled.html" class="pagination-link" aria-label="Level controlled">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Level controlled</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../workflow/split-basins.html" class="pagination-link" aria-label="Split basins based on pre-split basin polygons">
+        <span class="nav-page-text">Split basins based on pre-split basin polygons</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
 </div> <!-- /content -->
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox","skin":"fullscreen-lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
 
 
 

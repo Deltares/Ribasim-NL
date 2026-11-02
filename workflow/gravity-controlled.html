@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Gravity controlled – Ribasim-NL</title>
+<title>Gravity controlled models – Ribasim-NL</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -33,6 +33,8 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
+<link href="../workflow/lumping.html" rel="next">
+<link href="../workflow/main-watersystem.html" rel="prev">
 <link href="../assets/favicon.ico" rel="icon">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -71,9 +73,13 @@ ul.task-list li input[type="checkbox"] {
     "search-label": "Search"
   }
 }</script>
+<meta name="mermaid-theme" content="neutral">
+<script src="../site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="../site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="../site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
 
 
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 </head>
 
 <body class="nav-sidebar floating nav-fixed quarto-light">
@@ -98,20 +104,12 @@ ul.task-list li input[type="checkbox"] {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../reference/index.html"> 
-<span class="menu-text">API Reference</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../cloudstorage.html"> 
-<span class="menu-text">Cloud storage</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link active" href="../workflow/main-watersystem.html" aria-current="page"> 
-<span class="menu-text">Workflows</span></a>
+    <a class="nav-link active" href="../workflow/index.html" aria-current="page"> 
+<span class="menu-text">Model derivation</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../watersystems/main.html"> 
-<span class="menu-text">Watersystems</span></a>
+<span class="menu-text">Water systems</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../viewer.html"> 
@@ -122,6 +120,10 @@ ul.task-list li input[type="checkbox"] {
   <li class="nav-item">
     <a class="nav-link" href="../dev/index.html"> 
 <span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">API reference</span></a>
   </li>  
   <li class="nav-item compact">
     <a class="nav-link" href="https://github.com/Deltares/Ribasim-NL"> <i class="bi bi-github" role="img" aria-label="GitHub">
@@ -139,7 +141,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/gravity-controlled.html">Gravity controlled</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/gravity-controlled.html">Gravity controlled models</a></li><li class="breadcrumb-item"><a href="../workflow/gravity-controlled.html">Gravity controlled models</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -153,66 +155,158 @@ ul.task-list li input[type="checkbox"] {
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../workflow/main-watersystem.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Main watersystem</span></a>
+  <a href="../workflow/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Model derivation</span></a>
   </div>
 </li>
         <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/main-watersystem.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Main water system</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Gravity controlled models</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/gravity-controlled.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Gravity controlled models</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/lumping.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Lumping</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Level controlled models</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../workflow/level-controlled.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Level controlled</span></a>
   </div>
 </li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/gravity-controlled.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Gravity controlled</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/design-capacities.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Design capacities of outlets and pumps</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/split-basins.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Split basins based on pre-split basin polygons</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/couple.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Coupling</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../workflow/seasonal-levels.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Summer and winter levels</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../workflow/profile-generation.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Profile generation</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/split-basins.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Split basins based on pre-split basin polygons</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Shared steps</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/control.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Control</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/storage-basins.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Storage basins</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/design-capacities.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Design capacities of outlets and pumps</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/forcing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Forcing</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/seasonal-levels.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Summer and winter levels</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/layout.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Layout</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">The nationwide model</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/couple.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Coupling</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
     </ul>
     </div>
 </nav>
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#the-input-model" id="toc-the-input-model" class="nav-link active" data-scroll-target="#the-input-model">1. The input model</a></li>
+  <li><a href="#fix" id="toc-fix" class="nav-link" data-scroll-target="#fix">2. Fix</a></li>
+  <li><a href="#prepare-and-parameterize" id="toc-prepare-and-parameterize" class="nav-link" data-scroll-target="#prepare-and-parameterize">3. Prepare and parameterize</a></li>
+  <li><a href="#control" id="toc-control" class="nav-link" data-scroll-target="#control">4. Control</a></li>
+  <li><a href="#storage-basins" id="toc-storage-basins" class="nav-link" data-scroll-target="#storage-basins">5. Storage basins</a></li>
+  <li><a href="#forcing" id="toc-forcing" class="nav-link" data-scroll-target="#forcing">6. Forcing</a></li>
+  <li><a href="#scripts-outside-the-pipeline" id="toc-scripts-outside-the-pipeline" class="nav-link" data-scroll-target="#scripts-outside-the-pipeline">Scripts outside the pipeline</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../workflow/gravity-controlled.html">Gravity controlled models</a></li><li class="breadcrumb-item"><a href="../workflow/gravity-controlled.html">Gravity controlled models</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">Gravity controlled</h1>
+<h1 class="title">Gravity controlled models</h1>
 </div>
 
 
@@ -229,75 +323,92 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>Workflow for deriving and parametizing “gravity controlled systems”. They include 11 water authorities on the Eastern side of The Neterlands for which initial datasets have been prepared by SWECO. You need code in <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl"><code>src/ribasim_nl</code></a>.</p>
-<p>The input models <code>{authority}_2024_6_3</code> are lumped from the source data, as Sweco did in 2024, see <code>ribasim_nl.lumping</code> and <a href="../dev/reproducing-models.html">Reproducing models</a>. <code>pipeline/00a_process_hydamo.py</code> applies the manual changes to the HyDAMO data, and <code>pipeline/00b_lump_model.py</code> lumps the HyDAMO network into basins, or <code>pipeline/noorderzijlvest/00_lump_model.py</code> the D-HYDRO model of Noorderzijlvest.</p>
-<p>Under <code>pipeline</code> you’ll find 4 scripts per water authority, e.g.&nbsp;<code>pipeline/aa_en_maas</code>, which the DVC pipeline runs in sequence.</p>
-<ol type="1">
-<li><code>01_fix_model.py</code> will “fix” the input models in the directories <code>{authority}_2024_6_3</code> to valid Ribasim-models in the directory <code>{authority}_fix_model</code></li>
-<li><code>02_prepare_model.py</code>will read <code>{authority}_fix_model</code> and add <code>levels</code> and <code>flow_rate</code> to the model and a <code>static_data.xlsx</code> that can be reviewed. The model will be written as <code>{authority}_prepare_model</code></li>
-<li><code>03_parameterized_model.py</code> will read <code>{authority}_prepare_model</code> and <code>static_data.xlsx</code> to a model <code>{authority}_parameterized_model</code></li>
-<li><code>04_add_full_control.py</code> adds control.</li>
-</ol>
-<p>In this step control-nodes will get one of these 4 functions: - <code>drain</code>: outlet draining an area - <code>supply</code>: inlet supplying an area - <code>flow_control</code>: flow through an area in supply (drought) and drain conditions - <code>flushing</code>: an outlet with a specific flow to be maintained at any conditions (supply or drain)</p>
-<p>Explanation of a node’s <code>function</code> in terms of upstream/downstream levels, supply (aanvoer) or drain (afvoer) state:</p>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 11%">
-<col style="width: 26%">
-<col style="width: 19%">
-<col style="width: 19%">
-<col style="width: 22%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>function</th>
-<th>state determined by</th>
-<th>flow_rate @ supply-state</th>
-<th>flow_rate @ drain-state</th>
-<th>Nodes added</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>supply</td>
-<td>downstream level</td>
-<td>capacity [m3/s]</td>
-<td>0 [m3/s]</td>
-<td>DiscreteControl</td>
-</tr>
-<tr class="even">
-<td>drain</td>
-<td>upstream level</td>
-<td>0 [m3/s]</td>
-<td>capacity [m3/s]</td>
-<td>DiscreteControl</td>
-</tr>
-<tr class="odd">
-<td>flow control</td>
-<td>upstream &amp; downstream level</td>
-<td>capacity [m3/s]</td>
-<td>capacity [m3/s]</td>
-<td>DiscreteControl</td>
-</tr>
-<tr class="even">
-<td>flushing</td>
-<td>upstream level &amp; node flow_rate</td>
-<td>demand [m3/s]</td>
-<td>capacity [m3/s]</td>
-<td>DiscreteControl + FlowDemand</td>
-</tr>
-</tbody>
-</table>
+<p>The gravity controlled (vrij afwaterend) models cover 11 water authorities: Aa en Maas, Brabantse Delta, De Dommel, Drents Overijsselse Delta, Hunze en Aas, Limburg, Noorderzijlvest, Rijn en IJssel, Stichtse Rijnlanden, Vallei en Veluwe and Vechtstromen. Most of their water drains freely, over weirs and through streams, and their model is built from a detailed network. Sweco made their first input models in 2024, and the pipeline now makes these from the source data.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart LR
+  subgraph lumped["lumped"]
+    direction TB
+    lump["00b_lump_model.py&lt;br&gt;&amp;lt;authority&amp;gt;_2024_6_3"]
+  end
+  subgraph parameterized["parameterized_&amp;lt;authority&amp;gt;"]
+    direction TB
+    fix["01_fix_model.py&lt;br&gt;_fix_model"] --&gt; prepare["02_prepare_model.py&lt;br&gt;_prepare_model"]
+    prepare --&gt; param["03_parameterize_model.py&lt;br&gt;_parameterized_model"]
+  end
+  subgraph bergend["bergend_&amp;lt;authority&amp;gt;"]
+    direction TB
+    control["04_add_full_control.py&lt;br&gt;_full_control_model"] --&gt; storage["05_add_bergend.py&lt;br&gt;_bergend_model"]
+  end
+  subgraph dynamic["dynamic"]
+    direction TB
+    forcing["07_add_dynamic_forcing.py&lt;br&gt;_dynamic_model"]
+  end
+  lumped --&gt; parameterized --&gt; bergend --&gt; dynamic --&gt; merge["samenvoegen"]
+</pre>
+</div>
+<p></p><figcaption> The stages of a gravity controlled model, with the model that each script writes.</figcaption> </figure><p></p>
+</div>
+</div>
+</div>
+<p>The code is in <a href="https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl"><code>src/ribasim_nl</code></a>. The scripts numbered 01 to 04 are per authority, for instance in <code>pipeline/aa_en_maas</code>, and the others are shared. Only the last model of each stage is an output of DVC.</p>
+<section id="the-input-model" class="level2">
+<h2 class="anchored" data-anchor-id="the-input-model">1. The input model</h2>
+<p><code>pipeline/00a_process_hydamo.py</code> applies the manual changes to the HyDAMO data of 7 water authorities, and <code>pipeline/00b_lump_model.py</code> lumps the data of 10 into an input model. <code>pipeline/noorderzijlvest/00_lump_model.py</code> lumps the D-HYDRO model of Noorderzijlvest. <a href="../workflow/lumping.html">Lumping</a> shows this step by step, and <a href="../dev/reproducing-models.html">Reproducing models</a> how they keep the IDs of the models that Sweco made in 2024.</p>
+</section>
+<section id="fix" class="level2">
+<h2 class="anchored" data-anchor-id="fix">2. Fix</h2>
+<p><code>01_fix_model.py</code> corrects the input model <code>{authority}_2024_6_3</code> by node ID, into a valid Ribasim model <code>{authority}_fix_model</code>. It is the same step as in <a href="../workflow/lumping.html#correct-the-model-in-the-fix-script">Lumping</a>, and most of the edits are in <code>verwerkt/model_edits.gpkg</code>.</p>
+</section>
+<section id="prepare-and-parameterize" class="level2">
+<h2 class="anchored" data-anchor-id="prepare-and-parameterize">3. Prepare and parameterize</h2>
+<p><code>02_prepare_model.py</code> reads <code>{authority}_fix_model</code>, adds <code>levels</code> and <code>flow_rate</code>, and writes the model as <code>{authority}_prepare_model</code>, and a template for the parameters to review, <code>verwerkt/parameters/static_data_template.xlsx</code>. <code>03_parameterize_model.py</code> reads <code>{authority}_prepare_model</code> and the reviewed <code>static_data.xlsx</code>, and writes <code>{authority}_parameterized_model</code>.</p>
 <p>ManningResistances get the DAMO profile of their link if it lies across one of their links. Without a profile of their own watercourse, they get a trapezoid with the width of the BGT water along their links, see <code>ribasim_nl.parametrization.manning_resistance_table</code>; the source is in <code>meta_profile_source</code>. When the links are routed along the waterways in the last step, their BGT width follows the routed links.</p>
-<p>Steps 5, 6 and 7 are shared between water authorities. Steps 5 and 7 are part of the pipeline, and live directly beneath the <code>pipeline</code> directory; step 6 is in the <code>notebooks</code> directory.</p>
-<ol start="5" type="1">
-<li><code>05_add_bergend.py</code> adds VdGaast-based storage basins (input = models are from script 4). A storage basin drains through a VdGaast-based TabulatedRatingCurve, except in the supply areas of <code>verwerkt/sturing/aanvoergebieden.gpkg</code> with <code>meta_aanvoer</code> true. There it is connected with a ManningResistance, so it can also be supplied.</li>
-<li><code>06_add_synthetic_forcing.py</code> adds synthetic forcing (constant precipitation switched to constant evaporation) to the models produced by script 5</li>
-<li><code>07_add_dynamic_forcing.py</code> adds Modflow-Metaswap drainage/infiltration and WIWB precipitation/evaporation to the models produced by script 5, and the foreign inflows and RWZIs, and lays out, writes and runs them. These steps are shared with the <a href="../workflow/level-controlled.html">level controlled</a> models, see <code>ribasim_nl.regional_model</code>.</li>
-</ol>
-<p>Finally <code>uploaden_modellen.py</code> uploads all models produced by script 7.</p>
+</section>
+<section id="control" class="level2">
+<h2 class="anchored" data-anchor-id="control">4. Control</h2>
+<p><code>04_add_full_control.py</code> gives the Outlets and Pumps one of the <a href="../workflow/control.html">functions</a> <code>drain</code>, <code>supply</code>, <code>flow_control</code> or <code>flushing</code>, and adds its DiscreteControl node.</p>
+<p>It also writes steady state variants of the model, <code>&lt;authority&gt;_steady_state_dry</code> and <code>_wet</code>, with constant forcing. Each script has a flag <code>MODEL_EXEC</code> to run and check these while working on the model, which is off in the pipeline.</p>
+</section>
+<section id="storage-basins" class="level2">
+<h2 class="anchored" data-anchor-id="storage-basins">5. Storage basins</h2>
+<p><code>pipeline/05_add_bergend.py</code> limits the supply to the target level, and adds a <a href="../workflow/storage-basins.html">storage basin</a> to each Basin, based on Van der Gaast.</p>
+</section>
+<section id="forcing" class="level2">
+<h2 class="anchored" data-anchor-id="forcing">6. Forcing</h2>
+<p><code>pipeline/07_add_dynamic_forcing.py</code> adds the <a href="../workflow/forcing.html">forcing, foreign inflows and wastewater</a>, and finishes the model with <code>ribasim_nl.regional_model.finish_regional_model</code>:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart LR
+  layout["Route links,&lt;br&gt;tidy the layout"] --&gt; levels["Summer and&lt;br&gt;winter levels"]
+  levels --&gt; write["Write and&lt;br&gt;validate"]
+  write --&gt; run["Run"]
+  run --&gt; state["Use the final state&lt;br&gt;as initial state"]
+  state --&gt; check["performance.xlsx,&lt;br&gt;output_controle.gpkg"]
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<p>These steps are shared with the <a href="../workflow/level-controlled.html">level controlled models</a>. The result, <code>&lt;authority&gt;_dynamic_model</code>, goes on to the <a href="../workflow/couple.html">coupling</a>.</p>
+</section>
+<section id="scripts-outside-the-pipeline" class="level2">
+<h2 class="anchored" data-anchor-id="scripts-outside-the-pipeline">Scripts outside the pipeline</h2>
+<p>Two scripts in the <code>notebooks</code> folder are run by hand, and are not part of the DVC pipeline:</p>
+<ul>
+<li><code>06_add_synthetic_forcing.py</code> adds synthetic forcing (constant precipitation switched to constant evaporation) to <code>{authority}_full_control_model</code>, into <code>{authority}_synthetic_forcing_model</code>.</li>
+<li><code>uploaden_modellen.py</code> copies the selected <code>{authority}_dynamic_model</code>, runs it, runs Delwaq on it, and uploads it to <a href="../cloudstorage.html">The Good Cloud</a>.</li>
+</ul>
 
 
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
@@ -700,6 +811,18 @@ ul.task-list li input[type="checkbox"] {
     }
   });
   </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../workflow/main-watersystem.html" class="pagination-link" aria-label="Main water system">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Main water system</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../workflow/lumping.html" class="pagination-link" aria-label="Lumping">
+        <span class="nav-page-text">Lumping</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
 </div> <!-- /content -->
 
 

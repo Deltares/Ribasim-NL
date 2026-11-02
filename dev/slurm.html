@@ -68,6 +68,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
+<link href="../dev/pull-requests.html" rel="next">
+<link href="../dev/local.html" rel="prev">
 <link href="../assets/favicon.ico" rel="icon">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -108,7 +110,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 }</script>
 
 
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 </head>
 
 <body class="nav-sidebar floating nav-fixed quarto-light">
@@ -133,20 +135,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../reference/index.html"> 
-<span class="menu-text">API Reference</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../cloudstorage.html"> 
-<span class="menu-text">Cloud storage</span></a>
-  </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="../workflow/main-watersystem.html"> 
-<span class="menu-text">Workflows</span></a>
+    <a class="nav-link" href="../workflow/index.html"> 
+<span class="menu-text">Model derivation</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../watersystems/main.html"> 
-<span class="menu-text">Watersystems</span></a>
+<span class="menu-text">Water systems</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="../viewer.html"> 
@@ -157,6 +151,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li class="nav-item">
     <a class="nav-link active" href="../dev/index.html" aria-current="page"> 
 <span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">API reference</span></a>
   </li>  
   <li class="nav-item compact">
     <a class="nav-link" href="https://github.com/Deltares/Ribasim-NL"> <i class="bi bi-github" role="img" aria-label="GitHub">
@@ -174,7 +172,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/slurm.html">Running on SLURM</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/dvc.html">Running the pipeline</a></li><li class="breadcrumb-item"><a href="../dev/slurm.html">Running on SLURM</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -200,52 +198,86 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../dev/dvc.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">DVC (Data Version Control)</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
   <a href="../dev/type-checking.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Type checking</span></a>
   </div>
 </li>
-        <li class="sidebar-item">
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Running the pipeline</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/dvc.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">DVC (Data Version Control)</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../dev/local.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Running locally</span></a>
   </div>
 </li>
-        <li class="sidebar-item">
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../dev/slurm.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Running on SLURM</span></a>
   </div>
 </li>
-        <li class="sidebar-item">
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../dev/pull-requests.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Reproducing pull requests</span></a>
   </div>
 </li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../dev/viewer.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Model viewer</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../dev/ribasim.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Co-development with Ribasim</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../dev/reproducing-models.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Reproducing models</span></a>
   </div>
 </li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Tools</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/viewer.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Model viewer</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/ribasim.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Co-development with Ribasim</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/docs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Documentation</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../cloudstorage.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Cloud storage</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
     </ul>
     </div>
 </nav>
@@ -267,7 +299,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/dvc.html">Running the pipeline</a></li><li class="breadcrumb-item"><a href="../dev/slurm.html">Running on SLURM</a></li></ol></nav>
 <div class="quarto-title">
 <h1 class="title">Running on SLURM</h1>
 </div>
@@ -286,27 +318,29 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>The full pipeline can be reproduced on an HPC cluster using two scripts:</p>
+<p>The pipeline up to <code>koppelen</code> can be reproduced on an HPC cluster using two scripts:</p>
 <ul>
 <li><code>repro.sh</code> — submits DVC pipeline stages as SLURM jobs with correct dependencies</li>
 <li><code>run.sh</code> — submits isolated Ribasim simulation runs</li>
 </ul>
 <section id="repro.sh-pipeline-reproduction" class="level2">
 <h2 class="anchored" data-anchor-id="repro.sh-pipeline-reproduction">repro.sh: pipeline reproduction</h2>
-<p>Submits the DVC pipeline as individual SLURM jobs. Each <code>foreach</code> stage gets its own job, and SLURM <code>--dependency=afterok</code> ensures correct ordering.</p>
+<p>Submits the DVC pipeline as individual SLURM jobs. Each authority gets one job that runs its stages in order, and SLURM <code>--dependency=afterok</code> ensures correct ordering.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./repro.sh</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>This submits jobs in these waves:</p>
 <ol start="0" type="1">
 <li><code>clean</code>: removes the outputs of all stages that are run, like <code>dvc repro</code> does, and runs <code>dvc pull --force</code> for everything upstream of them; no manual pull is needed</li>
 <li><code>rwzi</code> and <code>peilbeheer</code> (shared dependencies)</li>
-<li>22 parallel jobs: 11 <code>dynamic@*</code>, 10 <code>forcing@*</code>, 1 <code>hws_transient</code></li>
+<li>22 parallel jobs: 11 from <code>parameterized</code> to <code>dynamic</code>, 10 from <code>feedback</code> to <code>forcing</code>, and 1 with <code>hws_demand</code> and <code>hws_transient</code></li>
 <li><code>samenvoegen</code> → <code>koppelen</code></li>
+<li><code>commit</code>: <code>dvc commit</code>, <code>pixi run check</code> and <code>dvc push</code></li>
 </ol>
-<p>On completion, job IDs are written to <code>repro_jobs.txt</code> for use with <code>run.sh</code>.</p>
+<p>It does not run the input-model stages (such as <code>lumped</code> and <code>boezemmodel</code>), whose outputs <code>clean</code> pulls, nor the frozen <code>bathymetry</code>, nor the stages after <code>koppelen</code>. To also run those, use <a href="../dev/local.html"><code>pixi run repro-local</code></a>.</p>
+<p>The job IDs of <code>samenvoegen</code>, <code>koppelen</code> and <code>commit</code> are written to <code>repro_jobs.txt</code> when submitting, for use with <code>run.sh</code>.</p>
 </section>
 <section id="run.sh-isolated-simulation-runs" class="level2">
 <h2 class="anchored" data-anchor-id="run.sh-isolated-simulation-runs">run.sh: isolated simulation runs</h2>
-<p>Copies a model to <code>runs/&lt;name&gt;/</code> and submits a SLURM job using the named Ribasim core configured in <code>scripts/install_ribasim_core.py</code>.</p>
+<p>Copies a model to <code>/p/ribasim-nl/runs/&lt;name&gt;/</code> and submits a SLURM job using the named Ribasim core configured in <code>scripts/install_ribasim_core.py</code>.</p>
 <p>As an immediate preparation step, <code>run.sh</code> runs the <code>archive-core</code> Pixi task. This task depends on <code>install-core</code>, then archives <code>bin/ribasim</code> at <code>/p/ribasim-nl/bin/&lt;NAME&gt;</code>. Pixi skips the copy when the input directory and installer configuration are unchanged.</p>
 <p>Named archives are immutable: <code>archive-core</code> does not replace an existing <code>/p/ribasim-nl/bin/&lt;NAME&gt;</code> directory. Change <code>NAME</code> when archiving a different core.</p>
 <p>The submitted SLURM job runs this archived executable, not <code>bin/ribasim</code> in the repository. The repository and its installed core can therefore change while simulations are queued or running without changing the executable used by those simulations. The exact Ribasim version is written to each SLURM log before the model starts.</p>
@@ -329,7 +363,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="ex">./run.sh</span> lhm_coupled_qndf data/Rijkswaterstaat/modellen/lhm_coupled <span class="dt">\</span></span>
 <span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--after</span><span class="op">=</span><span class="va">$(</span><span class="fu">grep</span> koppelen repro_jobs.txt <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-f2</span><span class="va">)</span> <span class="dt">\</span></span>
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  solver.algorithm=QNDF solver.abstol=1e-5</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>All submissions are logged to <code>runs/jobs.txt</code>. Run directories and job logs are gitignored.</p>
+<p>All submissions are logged to <code>/p/ribasim-nl/runs/jobs.txt</code>. The job logs of <code>repro.sh</code> are gitignored.</p>
 
 
 </section>
@@ -736,6 +770,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     }
   });
   </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../dev/local.html" class="pagination-link" aria-label="Running locally">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Running locally</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../dev/pull-requests.html" class="pagination-link" aria-label="Reproducing pull requests">
+        <span class="nav-page-text">Reproducing pull requests</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
 </div> <!-- /content -->
 
 
