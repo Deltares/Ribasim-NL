@@ -660,7 +660,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zict-3.0.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
       - pypi: ./src/hydamo
-      - pypi: ./src/peilbeheerst_model
       - pypi: ./src/ribasim_nl
       - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=932df7883b8358df412ab3195d21b9e7f61e4c7e#932df7883b8358df412ab3195d21b9e7f61e4c7e
       - pypi: https://files.pythonhosted.org/packages/05/2e/7c85f00260aa332fbab9caba209290a07be645ee1d5691415ae635a7382a/rasterstats-0.21.0-py3-none-any.whl
@@ -1249,7 +1248,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.3.3-h31dac16_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hf451053_7.conda
       - pypi: ./src/hydamo
-      - pypi: ./src/peilbeheerst_model
       - pypi: ./src/ribasim_nl
       - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=932df7883b8358df412ab3195d21b9e7f61e4c7e#932df7883b8358df412ab3195d21b9e7f61e4c7e
       - pypi: https://files.pythonhosted.org/packages/05/2e/7c85f00260aa332fbab9caba209290a07be645ee1d5691415ae635a7382a/rasterstats-0.21.0-py3-none-any.whl
@@ -1811,7 +1809,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_7.conda
       - pypi: ./src/hydamo
-      - pypi: ./src/peilbeheerst_model
       - pypi: ./src/ribasim_nl
       - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=932df7883b8358df412ab3195d21b9e7f61e4c7e#932df7883b8358df412ab3195d21b9e7f61e4c7e
       - pypi: https://files.pythonhosted.org/packages/05/2e/7c85f00260aa332fbab9caba209290a07be645ee1d5691415ae635a7382a/rasterstats-0.21.0-py3-none-any.whl
@@ -22420,19 +22417,6 @@ packages:
   name: hydamo
   requires_dist:
   - geopandas
-  - pytest ; extra == 'tests'
-  requires_python: '>=3.13'
-- pypi: ./src/peilbeheerst_model
-  name: peilbeheerst-model
-  requires_dist:
-  - geopandas
-  - matplotlib
-  - networkx
-  - numpy
-  - pandas
-  - pydantic
-  - shapely
-  - tqdm
   - pytest ; extra == 'tests'
   requires_python: '>=3.13'
 - pypi: ./src/ribasim_nl
