@@ -25,6 +25,14 @@ flowchart LR
 
 All local paths are relative to `data/Rijkswaterstaat`.
 
+## Concentrations
+
+Choose *concentration* in the *Basins* choice of the time bar to color the Basins by the concentration of a substance, chosen in a second list that then appears.
+It lists the substances of the model input first, then the tracers of the Ribasim core; type the first letters of a substance to jump to it.
+The color scale starts at zero and goes up to the highest value, so a fraction of the water goes up to about 1, except for the residence time, which goes up to its 98th percentile and is shown in days.
+Each substance has its own limits, which can be changed in the legend.
+The panel of a Basin charts the concentration of one substance, with its own list, which also changes the substance on the map.
+
 ## Fit to the measurements
 
 The *Observations* choice in the time bar colors the Observation nodes by how well the simulated values fit their measurements, see `ribasim_nl.goodness_of_fit`:
@@ -68,6 +76,8 @@ The panel of an Observation node shows its fit above the chart of its observed a
     | `tables/*.parquet` | All other input tables, including those in NetCDF, sorted by `node_id` |
     | `results/*_by_id.parquet` | Basin and flow results sorted by id, for the time series charts |
     | `results/*_by_time.parquet` | Basin level and storage, and flow rate, ordered by time step, for coloring the map |
+    | `results/concentration_by_id.parquet` | Basin concentrations with a column per substance, sorted by id, for the charts; only if the model tracks them |
+    | `results/concentration_by_time.parquet` | The same ordered by time step, for coloring the map |
     | `results/observation_metrics.parquet` | How well the results fit the measurements of each Observation node, see [Fit to the measurements](#fit-to-the-measurements) |
     | `results/observation_by_time.parquet` | The difference simulated − observed of each Observation node, ordered by time step, for coloring the map |
     | `manifest.json` | List of the files above with their content hash and size, the color scale of each result variable, and when and from which commit the model was run |

@@ -337,6 +337,10 @@ class Viewer {
       select: (selection) => this.select(selection),
       zoomTo: (selection) => this.zoomTo(selection),
       close: () => this.select(null),
+      chooseSubstance: (substance) => {
+        this.panel.setSubstance(substance);
+        this.timeBar?.setSubstance(substance);
+      },
     });
     this.addMapLayers();
     // Search and layer list share a column, so the search choices push the list down
@@ -643,11 +647,12 @@ class Viewer {
     if (!frames || !timeBar || !resultIndex) return;
     const results = this.manifest.results!;
     const token = ++this.frameToken;
-    const { step, basin, flow } = timeBar.state;
+    const { step, flow } = timeBar.state;
+    const basin = timeBar.frames("basin");
     const choice = this.observations?.choice(timeBar.state.observation) ?? null;
     const [flowValues, basinValues, observationValues] = await Promise.all([
       flow ? frames.frame("flow", flow, step) : null,
-      basin ? frames.frame("basin", basin, step) : null,
+      basin ? frames.frame(basin.kind, basin.variable, step) : null,
       choice ? this.observationValues(choice, step) : null,
     ]);
     if (token !== this.frameToken) return;
@@ -680,12 +685,13 @@ class Viewer {
     this.colorBasinAreas(basinScale, basinValues);
     writeHash({ t: frames.times[step].toISOString().slice(0, 10) });
     this.panel.setStep(step);
+    if (timeBar.state.substance) this.panel.setSubstance(timeBar.state.substance);
     this.updateLabels();
     this.render();
 
     const next = step + results.steps_per_row_group;
     if (flow) frames.prefetch("flow", flow, next);
-    if (basin) frames.prefetch("basin", basin, next);
+    if (basin) frames.prefetch(basin.kind, basin.variable, next);
     if (choice?.metric === "difference") frames.prefetch("observation", choice.variable, next);
   }
 
@@ -1187,10 +1193,9 @@ class Viewer {
     if (!selection) return null;
     const { network } = this;
     const value = (coloring: Coloring | null, kind: "flow" | "basin") => {
-      const variable = this.timeBar?.state[kind];
+      const variable = this.timeBar?.variable(kind);
       if (!coloring || !variable) return "";
-      const { label, units } = this.manifest.results![kind].variables[variable];
-      return `\n${label}: ${formatNumber(coloring.values[info.index])} ${units}`;
+      return `\n${variable.label}: ${formatNumber(coloring.values[info.index])} ${variable.units}`;
     };
     const diffs = selection.kind === "node" ? this.comparison?.diff.nodes : this.comparison?.diff.links;
     const diff = diffs?.get(selection.id);

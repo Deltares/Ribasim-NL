@@ -67,7 +67,7 @@ INDEX_HTML = """<!doctype html>
 """
 MANIFEST = "manifest.json"
 # The result files that `export_webmap` reads, the log for when the model was run
-RESULT_FILES = ("basin.nc", "flow.nc", "control.nc", "ribasim.log")
+RESULT_FILES = ("basin.nc", "flow.nc", "concentration.nc", "control.nc", "ribasim.log")
 # The characters of git revisions like main, origin/main, HEAD~2 or v1.0, without a leading dash: never an option
 REVISION = re.compile(r"[\w.@/~^{}:][\w.@/~^{}:-]*")
 RANGE = re.compile(r"bytes=(\d*)-(\d*)")

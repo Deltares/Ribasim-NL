@@ -2,8 +2,8 @@ import { readNumbers, type FrameSet, type Results } from "./data";
 
 const MAX_CACHED_GROUPS = 24;
 
-/** The result sets with values per time step for the map; the observation set is optional. */
-export type FrameKind = "basin" | "flow" | "observation";
+/** The result sets with values per time step for the map; the concentration and observation sets are optional. */
+export type FrameKind = "basin" | "flow" | "concentration" | "observation";
 
 /** Loads per-time-step values of result variables, cached per Parquet row group. */
 export class ResultFrames {
