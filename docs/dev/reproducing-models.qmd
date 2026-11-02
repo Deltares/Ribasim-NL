@@ -125,6 +125,8 @@ Overlays with a fixed precision (`grid_size`), on geometries made valid at that 
 - Do not rely on the order of rows after a merge, a `groupby` or a spatial join; sort explicitly where the order sets IDs.
 - Refer to objects by a stable key, such as their code, rather than by row number. `gpd.read_file(..., fid_as_index=True)` makes a script depend on the order of the rows in the file, so keep that order when such a file is rewritten.
 - Select geometries with a tolerance, and do not rely on the order or number of the parts of geometries from geometric operations.
+- Do not let a result depend on whether geometries touch. Whether the end of a line on a boundary reaches into a polygon by 1e-9 m depends on coordinate noise. The profiles counted a hydro-object with its whole length in every basin it intersected, so noise of at most 1e-8 m changed 185 of the 215 Basin profiles of Zuiderzeeland, with bottoms up to 4.85 m apart, while its network hardly changed. `ribasim_nl.profiles.path_finder.overlaps` requires an overlap of 1 mm. Rounding the coordinates also removes the noise, but lines then still count in polygons they only touch, decided by the rounding.
+- Of the shortest paths of equal length, `networkx` takes the one it reaches first, which depends on the order in which the graph was built. Build graphs from geometries in an order that follows from them, as `ribasim_nl.profiles.path_finder.canonical` does.
 - Where the result of an overlay decides something, overlay with a fixed precision, on geometries made valid at that precision.
 - The DVC pipeline records the code, data and environment of every output, in git, `dvc.lock` and `pixi.lock`, so an output can always be reproduced.
 
