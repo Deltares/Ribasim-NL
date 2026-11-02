@@ -742,9 +742,8 @@ def add_meta_data(
     boezems = state.loc[state["meta_categorie"] == "hoofdwater", "node_id"]
     link.loc[link["from_node_id"].isin(boezems) | link["to_node_id"].isin(boezems), "meta_categorie"] = "hoofdwater"
 
-    color_cycle = itertools.cycle(Category10[10])
     area = tables.tables["Basin / area"]
-    area["meta_color"] = [next(color_cycle) for _ in range(len(area))]
+    area["meta_color"] = colors(len(area))
 
     # as in 2024, joined by index rather than by node ID
     verbinding = check["inlaten_uitlaten_boezems"][["meta_type_verbinding"]]
@@ -771,6 +770,11 @@ def add_relevant_names(
         pumps[["meta_name"]], left_index=True, right_index=True, how="left"
     )
     tables.nodes["Pump"] = pump_node.rename(columns={"meta_name": "name"}).drop_duplicates()
+
+
+def colors(n: int) -> list[str]:
+    """The colors of `n` Basin areas, in their order."""
+    return list(itertools.islice(itertools.cycle(Category10[10]), n))
 
 
 def sorted_table(df: pd.DataFrame, keys: list[str]) -> pd.DataFrame:

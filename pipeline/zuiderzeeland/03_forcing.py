@@ -140,18 +140,6 @@ ribasim_model.node.df = ribasim_model.node.df.drop(mr_null_geom)
 # lower the difference in waterlevel for each manning node, except those of storing basins
 set_manning_resistance_outside_bergend(ribasim_model, length=100.0, manning_n=0.01)
 
-# increase aanslagpeil for gemaal Wortman
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 2436, "min_upstream_level"] += (
-    0.05  # 5 cm higher than streefpeil
-)
-assert ribasim_model.discrete_control.condition.df is not None
-ribasim_model.discrete_control.condition.df.loc[
-    ribasim_model.discrete_control.condition.df.node_id == 14970, "threshold_high"
-] += 0.05
-ribasim_model.discrete_control.condition.df.loc[
-    ribasim_model.discrete_control.condition.df.node_id == 14970, "threshold_low"
-] += 0.05
-
 ribasim_model = complete_parametrization(
     ribasim_model,
     paths,
