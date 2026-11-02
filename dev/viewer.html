@@ -330,6 +330,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <p>The <a href="../viewer.html">Model viewer</a> shows the input and results of the coupled LHM model (<code>lhm_coupled</code>) of <code>main</code> on a web map. It is a static web app: the docs site serves only the JavaScript, and the browser reads the model data directly from MinIO. The model of a pull request can be previewed too, together with its differences from <code>main</code>, at <code>https://ribasim.nl/viewer?pr=&lt;number&gt;</code>. Any other published version can be viewed, or compared with another, by its commit, see <a href="#links-to-a-version">Links to a version</a>.</p>
 <p>The <em>Water authority</em> choice above the layer list shows the nodes and links of one authority, by the <code>waterbeheercode</code> their node ids start with, see <code>ribasim_nl.aquo</code>. It also shows the links to other authorities and the nodes at their other end, such as the regional inlets and outlets of the hws, and the Basin / areas of the shown Basins. The choice is kept in the URL, as <code>#authority=&lt;waterbeheercode&gt;</code>.</p>
+<p>The <em>Basins</em> choice in the time bar colors the Basins and their Basin / areas by a result. The areas of <code>bergend</code> Basins stay uncolored, since they overlap those of the <code>doorgaand</code> Basins; only their nodes are colored.</p>
 <div class="cell" data-layout-align="default">
 <div class="cell-output-display">
 <div>
@@ -384,7 +385,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><code>basin_area.pmtiles</code></td>
-<td style="text-align: left;">Basin / area polygons as vector tiles</td>
+<td style="text-align: left;">Basin / area polygons as vector tiles, the <code>bergend</code> Basins first, so that the map selects the overlapping <code>doorgaand</code> Basins; click its node to select a <code>bergend</code> Basin</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><code>waterboards.geojson</code></td>

@@ -378,8 +378,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.webmap.export_basin_area" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.export_basin_area">export_basin_area</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>webmap.export_basin_area(database, path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>webmap.export_basin_area(database, nodes, path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Export Basin / area polygons as vector tiles; attributes are looked up by node_id.</p>
+<p>The areas of the storing (‘bergend’) Basins overlap those of the flowing Basins they belong to. The tiles keep this order and the viewer draws and picks the last feature on top, so the storing Basins come first, to show and select the flowing Basins by default.</p>
 </section>
 <section id="ribasim_nl.webmap.export_control" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.export_control">export_control</h3>
