@@ -20,14 +20,14 @@ Prior to generating the profiles, the data is preprocessed:
 
 0. Preprocessing of data sources, which includes
     generating `LINESTRING Z`-objects of measured cross-sections,
-    rounding the coordinates of the hydro-objects and crossings to millimetres and sorting them by their geometry, so that the shortest paths, and with them the profiles, do not depend on the order of the rows or on coordinate noise, see `path_finder.canonical`,
+    sorting the hydro-objects and crossings by their geometry, so that the shortest paths, and with them the profiles, do not depend on the order of the rows, see `path_finder.canonical`,
     removing duplicate hydro-objects,
     repairing hydro-objects along HyDAMO-standards,
     reading the current BGT water surfaces of the area from the national `data/Basisgegevens/BGT/bgt_water.parquet`, see `ribasim_nl.bgt_water`.
 
 Subsequently, the following steps are executed on a per-basin basis:
 
-1.  Select relevant hydro-objects and crossings (i.e., within a basin);
+1.  Select relevant hydro-objects and crossings (i.e., within a basin). Hydro-objects count with their whole length in the basins they overlap by more than $1\,\mathrm{mm}$, and not in those they only touch, see `path_finder.overlaps`;
 2.  Generate graph (or network) from hydro-objects (using `networkx`);
 3.  Determine the shortest path(s) between crossings, which separates the hydro-objects as _doorgaand_ versus _bergend_;
 4.  Couple BGT-polygons to hydro-objects (non-intersecting BGT-polygons will be classified as _bergend_ at a later stage);
