@@ -4,6 +4,7 @@ from pathlib import Path
 import pandas as pd
 from pandera.typing import DataFrame
 from ribasim.schemas import FlowBoundaryTimeSchema, LevelBoundaryTimeSchema
+from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.flow_paths import rebuild_junction_trees_along_top10nl
 from ribasim_nl.layout import tidy_layout
 from ribasim_nl.observations import add_observations
@@ -188,6 +189,18 @@ model = merge_rwzi_model(
     cloud.joinpath("Rijkswaterstaat/modellen/hws_transient/meta/RWZI_coordinates_lhm_coverage.geojson"),
     max_distance=3000,
 )
+
+# %% label the water by its origin
+# The two rivers, and the two FlowBoundaries from Belgium, without a flow: the Kanaal van Gent naar Terneuzen and the
+# Schelde. The RWZIs have their label from merge_rwzi_model.
+model.node.df.loc[lobith_node_id, "meta_categorie"] = "Rijn"
+model.node.df.loc[monsin_node_id, "meta_categorie"] = "Maas"
+model.node.df.loc[[358, 2302], "meta_categorie"] = "buitenlandse aanvoer"
+# All LevelBoundaries lie on the sea, except the one on the Schelde at the Belgian border. koppelen keeps these labels
+# as boundaries.
+model.node.df.loc[model.level_boundary.node.df.index, "meta_couple_authority"] = "Noordzee"
+model.node.df.loc[2309, "meta_couple_authority"] = "Buitenland"
+assign_lhm_fractions(model)
 
 # add Observation nodes with measured discharges
 model = add_observations(model, "Rijkswaterstaat")

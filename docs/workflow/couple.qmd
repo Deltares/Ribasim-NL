@@ -31,7 +31,7 @@ The merged model starts with the settings of the model of the main water system,
 
 In each regional model, a LevelBoundary stands for the water on the other side of its border.
 `AssignAuthorities` records whose water that is in the column `meta_couple_authority` of the node table, with `Noordzee` or `Buitenland` where it leaves the model.
-The boundaries of the main water system have none, so they stay boundaries.
+The boundaries of the main water system have `Noordzee` or `Buitenland` as well, so they stay boundaries.
 
 `process_boundary_nodes` then goes through the boundaries of the regional models:
 
