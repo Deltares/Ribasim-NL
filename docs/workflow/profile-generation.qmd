@@ -13,9 +13,9 @@ These profiles also form the basis for the coupling with the groundwater modelli
 The [gravity controlled models](gravity-controlled.qmd) get their profiles in other ways, see [storage basins](storage-basins.qmd).
 
 ::: {layout-ncol=2}
-![The hydro-objects of Delfland near Delft. Those on the shortest paths between the crossings of a Basin are doorgaand, and the others bergend.](../figures/profiles-map.png){fig-alt="Map of a network of ditches in which the main routes are thick and blue and the side ditches thin and orange, with one Basin area in grey."}
+![The hydro-objects of Delfland near Delft. Those on the shortest paths between the crossings of a Basin are doorgaand, and the others bergend.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/profiles-map.png){fig-alt="Map of a network of ditches in which the main routes are thick and blue and the side ditches thin and orange, with one Basin area in grey."}
 
-![The resulting area by level of that Basin, and of its storage Basin.](../figures/profiles-area.png){fig-alt="Chart of level against area with two lines: doorgaand from about 23 to 27 ha and bergend from about 16 to 17 ha."}
+![The resulting area by level of that Basin, and of its storage Basin.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/profiles-area.png){fig-alt="Chart of level against area with two lines: doorgaand from about 23 to 27 ha and bergend from about 16 to 17 ha."}
 :::
 
 # Profile generation workflow

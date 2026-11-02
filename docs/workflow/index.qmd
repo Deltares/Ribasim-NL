@@ -9,7 +9,7 @@ Each authority starts from its own kind of data, so there are three routes to a 
 - The [gravity controlled](gravity-controlled.qmd) models of 11 water authorities, which mostly drain freely (vrij afwaterend), lumped from their watercourses.
 - The [level controlled](level-controlled.qmd) models of 10 water authorities, which keep target levels in their polders (peilbeheerst), built from the crossings of their watercourses with the boundaries of their level areas.
 
-![The authorities by the route of their model.](../figures/national-models.png){width=60% fig-alt="Map of the Netherlands with the main water system in blue, gravity controlled water authorities in orange and level controlled water authorities in green."}
+![The authorities by the route of their model.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/national-models.png){width=60% fig-alt="Map of the Netherlands with the main water system in blue, gravity controlled water authorities in orange and level controlled water authorities in green."}
 
 ## The stages
 

@@ -1,11 +1,20 @@
-"""Make the figures of the documentation in `docs/figures` from the model data.
+"""Make the figures of the documentation from the model data, and optionally upload them to MinIO.
 
-The documentation is rendered on CI, which has no access to the data, so the figures are committed. Pull the data that
-a figure reads first, as listed in `docs/dev/docs.qmd`, and run: `pixi run docs-figures [FIGURE ...]`.
+The pages link to the figures at `doc-image/figures` on MinIO, since they are not in Git and CI has no access to the
+data. Catch-up runs of main publish them, see `docs/dev/docs.qmd`.
+
+    pixi run docs-figures [FIGURE ...]     # make them in data/docs_figures, from the data that is there
+    pixi run docs-figures --pull           # pull the data that they read first
+    pixi run docs-figures --pull --publish # also upload them, which needs write access in `.env`
 """
 
 import argparse
+import shlex
+import subprocess
+import sys
+import traceback
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 from pathlib import Path
 
 import geopandas as gpd
@@ -24,15 +33,20 @@ from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch, Rectangle
 from matplotlib.patheffects import withStroke
+from minio import Minio
 from PIL import Image
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.lumping.hydamo import read_areas, read_boundaries, read_hydamo_network, read_split_nodes
 from ribasim_nl.lumping.network import add_basins_to_nodes_and_edges, check_split_nodes_used, create_graph, split_graph
 from ribasim_nl.lumping.utils import read_layer
 from ribasim_nl.settings import settings
+from ribasim_nl.webmap_publish import BUCKET_NAME, MINIO_SERVER
 
-OUT = Path(__file__).parents[1] / "docs" / "figures"
 DATA = settings.ribasim_nl_data_dir
+OUT = DATA / "docs_figures"
+PREFIX = "doc-image/figures/"
+# Figures are overwritten by each catch-up run, so browsers should not keep them for long
+CACHE_CONTROL = "public, max-age=3600"
 RWS = DATA / "Rijkswaterstaat"
 
 SURFACE = "#fcfcfb"
@@ -97,17 +111,32 @@ plt.rcParams.update(
     }
 )
 
-FIGURES: dict[str, Callable[[], None]] = {}
+
+@dataclass(frozen=True)
+class FigureGroup:
+    """A function that makes figures, the names of its figures, and the arguments of `dvc pull` for its data."""
+
+    make: Callable[[], None]
+    outputs: tuple[str, ...]
+    pull: tuple[str, ...]
 
 
-def figure(function: Callable[[], None]) -> Callable[[], None]:
-    """Register a function that makes figures, by its name."""
-    FIGURES[function.__name__] = function
-    return function
+FIGURES: dict[str, FigureGroup] = {}
+
+
+def figure(outputs: tuple[str, ...], pull: tuple[str, ...]) -> Callable[[Callable[[], None]], Callable[[], None]]:
+    """Register a function that makes the figures `outputs` from the data that the `pull` arguments get."""
+
+    def register(function: Callable[[], None]) -> Callable[[], None]:
+        FIGURES[function.__name__] = FigureGroup(function, outputs, pull)
+        return function
+
+    return register
 
 
 def save(fig: Figure, name: str) -> None:
     """Save a figure as a PNG with a reduced palette, which makes maps with flat colours much smaller."""
+    OUT.mkdir(parents=True, exist_ok=True)
     path = OUT / f"{name}.png"
     fig.savefig(path)
     plt.close(fig)
@@ -206,7 +235,10 @@ def coupled_areas() -> gpd.GeoDataFrame:
     return areas
 
 
-@figure
+@figure(
+    outputs=("national-models", "national-flow"),
+    pull=("run_lhm_coupled",),
+)
 def national() -> None:
     """Map of the models the coupled model is made of, and of its links by their mean flow rate."""
     areas = coupled_areas()
@@ -341,7 +373,10 @@ def window(
     return nodes, links, areas
 
 
-@figure
+@figure(
+    outputs=("main-water-system",),
+    pull=("hws_transient", "data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg"),
+)
 def main_water_system() -> None:
     """Map of the model of the main water system, with its Basins and nodes."""
     database = RWS / "modellen/hws_transient/input/database.gpkg"
@@ -392,7 +427,10 @@ def main_water_system() -> None:
 COUPLING_WINDOW = (115_800.0, 476_900.0, 119_200.0, 480_300.0)
 
 
-@figure
+@figure(
+    outputs=("coupling-before", "coupling-after"),
+    pull=("samenvoegen", "run_lhm_coupled"),
+)
 def coupling() -> None:
     """Map of the border between two water authorities, before and after coupling."""
     before = window(RWS / "modellen/lhm_parts/input/database.gpkg", COUPLING_WINDOW)
@@ -425,7 +463,10 @@ def coupling() -> None:
         save(fig, name)
 
 
-@figure
+@figure(
+    outputs=("seasonal-map", "seasonal-level"),
+    pull=("run_lhm_coupled",),
+)
 def seasonal() -> None:
     """Map of the difference of the summer and winter levels, and the levels of one Basin."""
     run = RWS / "runs/lhm_coupled"
@@ -490,7 +531,10 @@ def seasonal() -> None:
     save(fig, "seasonal-level")
 
 
-@figure
+@figure(
+    outputs=("forcing-basin",),
+    pull=("run_lhm_coupled",),
+)
 def forcing() -> None:
     """The forcing of one Basin of Delfland over the first two years."""
     results = xr.open_dataset(RWS / "runs/lhm_coupled/results/basin.nc")
@@ -551,7 +595,16 @@ def colors_by_neighbours(polygons: gpd.GeoDataFrame, key: str, palette: list[str
 TINTS = ["#b7d3f6", "#f5b89f", "#93d9bf", "#f8d68a", "#f4bdd2", "#a8d5a8", "#c4bcf0", "#f1a4a3"]
 
 
-@figure
+@figure(
+    outputs=("level-1-delivery", "level-2-crossings", "level-3-input-model", "level-4-forcing"),
+    pull=(
+        "postprocessed_delfland",
+        "crossings@delfland",
+        "shortest_paths@delfland",
+        "boezemmodel@delfland",
+        "forcing_delfland",
+    ),
+)
 def level_controlled() -> None:
     """Maps of one window of Delfland, for each step from the deliveries to the model."""
     data = level_inputs()
@@ -673,12 +726,18 @@ def lumping_steps() -> dict[str, gpd.GeoDataFrame]:
     }
 
 
-@figure
+@figure(
+    outputs=("lumping-1-inputs", "lumping-2-basins", "lumping-3-areas", "lumping-4-input-model", "lumping-5-fix-model"),
+    pull=("parameterized_drents_overijsselse_delta --with-deps",),
+)
 def lumping() -> None:
     """Maps of one window of Drents Overijsselse Delta, for each step of the lumping and the fix script."""
     steps = lumping_steps()
     edges, areas, split_nodes, boundaries = steps["edges"], steps["areas"], steps["split_nodes"], steps["boundaries"]
     models = DATA / LUMPING / "modellen"
+    if not (models / f"{LUMPING}_fix_model/input/database.gpkg").is_file():
+        # not an output of DVC
+        subprocess.run([sys.executable, "pipeline/drents_overijsselse_delta/01_fix_model.py"], check=True)
     inp = window(models / f"{LUMPING}_2024_6_3/input/database.gpkg", LUMPING_WINDOW)
     fix = window(models / f"{LUMPING}_fix_model/input/database.gpkg", LUMPING_WINDOW)
 
@@ -795,7 +854,10 @@ def lumping() -> None:
         save(fig, name)
 
 
-@figure
+@figure(
+    outputs=("profiles-map", "profiles-area"),
+    pull=("profiles_delfland",),
+)
 def profiles() -> None:
     """Map of the doorgaand and bergend hydro-objects of Delfland, and the area of one pair of Basins by level."""
     network = gpd.read_file(DATA / "Delfland/verwerkt/profielen/network.gpkg", layer="hydro_objects", bbox=LEVEL_WINDOW)
@@ -869,7 +931,10 @@ def profiles() -> None:
     save(fig, "profiles-area")
 
 
-@figure
+@figure(
+    outputs=("authorities",),
+    pull=("run_lhm_coupled",),
+)
 def authorities() -> None:
     """Bar chart of the number of Basins and connector nodes per authority in the coupled model."""
     nodes = gpd.read_file(
@@ -909,16 +974,53 @@ def authorities() -> None:
     save(fig, "authorities")
 
 
-def main() -> None:
-    """Make the figures that are selected on the command line, or all figures."""
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("figures", nargs="*", help="the figures to make, all by default")
+def upload(names: Iterable[str]) -> None:
+    """Upload figures to the prefix on MinIO that the pages link to, overwriting the previous ones."""
+    if not settings.aws_access_key_id or not settings.aws_secret_access_key:
+        raise OSError("AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set in the environment or .env file.")
+    client = Minio(MINIO_SERVER, access_key=settings.aws_access_key_id, secret_key=settings.aws_secret_access_key)
+    for name in names:
+        client.fput_object(
+            BUCKET_NAME,
+            f"{PREFIX}{name}.png",
+            str(OUT / f"{name}.png"),
+            content_type="image/png",
+            metadata={"Cache-Control": CACHE_CONTROL},
+        )
+        print(f"Uploaded {PREFIX}{name}.png")
+
+
+def main() -> int:
+    """Make the figures that are selected on the command line, or all, and return the exit code."""
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("figures", nargs="*", help=f"the groups to make, all by default: {', '.join(FIGURES)}")
+    parser.add_argument("--pull", action="store_true", help="pull the data of the figures first")
+    parser.add_argument("--publish", action="store_true", help="upload the figures to MinIO")
     args = parser.parse_args()
-    OUT.mkdir(exist_ok=True)
+    unknown = set(args.figures) - set(FIGURES)
+    assert not unknown, f"Unknown figures {sorted(unknown)}, choose from {list(FIGURES)}"
+
+    failed = []
     for name in args.figures or FIGURES:
         print(name)
-        FIGURES[name]()
+        group = FIGURES[name]
+        # A figure that fails does not keep the others from being updated
+        try:
+            if args.pull:
+                for target in group.pull:
+                    subprocess.run(["dvc", "pull", *shlex.split(target)], check=True)
+            group.make()
+            missing = [output for output in group.outputs if not (OUT / f"{output}.png").is_file()]
+            assert not missing, f"{name} did not make {missing}"
+            if args.publish:
+                upload(group.outputs)
+        except Exception:
+            traceback.print_exc()
+            failed.append(name)
+    if failed:
+        print(f"Failed: {', '.join(failed)}")
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -37,7 +37,7 @@ The code is in `ribasim_nl.crossings`.
 Where HKV corrected the delivered data by hand, it applies these corrections, `verwerkt/corrections.gpkg`.
 :::
 ::: {.g-col-12 .g-col-lg-7}
-![The postprocessed data. Grey lines are the hydro-objects, with stuwen in orange and gemalen in black. Thin lines are the boundaries of the peilgebieden, and the boezem is blue.](../figures/level-1-delivery.png){fig-alt="A dense network of grey ditches with orange squares at weirs and black dots at pumping stations. A few narrow blue canals are the boezem."}
+![The postprocessed data. Grey lines are the hydro-objects, with stuwen in orange and gemalen in black. Thin lines are the boundaries of the peilgebieden, and the boezem is blue.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/level-1-delivery.png){fig-alt="A dense network of grey ditches with orange squares at weirs and black dots at pumping stations. A few narrow blue canals are the boezem."}
 :::
 ::::
 
@@ -50,7 +50,7 @@ Where HKV corrected the delivered data by hand, it applies these corrections, `v
 `pipeline/00d_shortest_paths.py` finds the shortest paths along the hydro-objects through each boezem, from each of its crossings to its centre, and writes them to `verwerkt/shortest_path.gpkg`.
 :::
 ::: {.g-col-12 .g-col-lg-7}
-![The crossings with a structure in black, and those without in grey. Blue lines are the shortest paths through the boezems.](../figures/level-2-crossings.png){fig-alt="The network in light grey, with black dots where a structure crosses a boundary, and blue lines along the canals."}
+![The crossings with a structure in black, and those without in grey. Blue lines are the shortest paths through the boezems.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/level-2-crossings.png){fig-alt="The network in light grey, with black dots where a structure crosses a boundary, and blue lines along the canals."}
 :::
 ::::
 
@@ -62,7 +62,7 @@ Where HKV corrected the delivered data by hand, it applies these corrections, `v
 It numbers the nodes and links after the input model of 2024, `verwerkt/boezemmodel_ids.gpkg`, to which the feedback forms and scripts refer, by matching the nodes by type and location, see `ribasim_nl.crossings.renumber`.
 :::
 ::: {.g-col-12 .g-col-lg-7}
-![The input model. Each aggregation area is one Basin, in its own colour, with straight links to the structures on its boundary.](../figures/level-3-input-model.png){fig-alt="Coloured Basin areas each with a blue Basin node, and straight links to black connector nodes on their boundaries."}
+![The input model. Each aggregation area is one Basin, in its own colour, with straight links to the structures on its boundary.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/level-3-input-model.png){fig-alt="Coloured Basin areas each with a blue Basin node, and straight links to black connector nodes on their boundaries."}
 :::
 ::::
 
@@ -94,4 +94,4 @@ See [control](control.qmd), [forcing](forcing.qmd), [design capacities](design-c
 The forcing, the foreign inflows and RWZIs, and the final steps that lay out, write and run the model are shared with the [gravity controlled](gravity-controlled.qmd) models, see `ribasim_nl.regional_model`.
 Unlike those, the forcing stage also runs and checks a dry and a wet steady state model, see [Testing](../dev/testing.qmd#result-regression-testing).
 
-![The final model of the same area, `Delfland_forcing`. Basins come in pairs of a through-flow and a storage Basin, and the links follow the watercourses, with Junctions where they join.](../figures/level-4-forcing.png){width=70% fig-alt="Coloured Basin areas with pairs of blue Basin nodes, links that follow the watercourses, and connector nodes on the boundaries."}
+![The final model of the same area, `Delfland_forcing`. Basins come in pairs of a through-flow and a storage Basin, and the links follow the watercourses, with Junctions where they join.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/level-4-forcing.png){width=70% fig-alt="Coloured Basin areas with pairs of blue Basin nodes, links that follow the watercourses, and connector nodes on the boundaries."}

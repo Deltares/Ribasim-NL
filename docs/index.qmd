@@ -9,9 +9,9 @@ It combines a model of the main water system of Rijkswaterstaat with the regiona
 A [DVC](https://dvc.org/) pipeline in this repository makes every step reproducible, so a change to the data or the code gives a new model that can be compared with the previous one.
 
 ::: {layout-ncol=2}
-![The models that make up the nationwide model. See [water systems](watersystems/main.qmd) for the authorities.](figures/national-models.png){fig-alt="Map of the Netherlands with the main water system in blue, 11 gravity controlled water authorities in the east and south in orange, and 10 level controlled water authorities in the west and north in green."}
+![The models that make up the nationwide model. See [water systems](watersystems/main.qmd) for the authorities.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/national-models.png){fig-alt="Map of the Netherlands with the main water system in blue, 11 gravity controlled water authorities in the east and south in orange, and 10 level controlled water authorities in the west and north in green."}
 
-![The simulated flow through the model, 2017 and 2018. [Explore it in the model viewer](viewer.qmd).](figures/national-flow.png){fig-alt="Map of the links of the model, thicker and darker with more flow. The Rhine branches, the Meuse and the IJsselmeer stand out, with a dense network of small regional waters."}
+![The simulated flow through the model, 2017 and 2018. [Explore it in the model viewer](viewer.qmd).](https://s3.deltares.nl/ribasim-nl/doc-image/figures/national-flow.png){fig-alt="Map of the links of the model, thicker and darker with more flow. The Rhine branches, the Meuse and the IJsselmeer stand out, with a dense network of small regional waters."}
 :::
 
 ## From source data to a nationwide model

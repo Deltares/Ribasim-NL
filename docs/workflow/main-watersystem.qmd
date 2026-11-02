@@ -5,7 +5,7 @@ title: "Main water system"
 The model of the main water system holds the rivers, canals and lakes of Rijkswaterstaat.
 The scripts are in [`pipeline/rijkswaterstaat`](https://github.com/Deltares/Ribasim-NL/tree/main/pipeline/rijkswaterstaat), numbered in order of execution, and run in three DVC stages.
 
-![The model of the main water system on the map.](../figures/main-water-system.png){width=70% fig-alt="Map of the Netherlands with the Basin areas of the IJsselmeer, the rivers, the delta and the canals in blue, links between them, and small markers for the structures and boundaries."}
+![The model of the main water system on the map.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/main-water-system.png){width=70% fig-alt="Map of the Netherlands with the Basin areas of the IJsselmeer, the rivers, the delta and the canals in blue, links between them, and small markers for the structures and boundaries."}
 
 ```{mermaid}
 flowchart TD

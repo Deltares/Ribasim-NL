@@ -19,27 +19,31 @@ The theme is set in `docs/_quarto.yml`.
 
 ## Figures
 
-CI has no access to the data, so the maps and charts of real examples are committed as small PNGs in `docs/figures`, with the script that made them, `scripts/docs_figures.py`.
-They show a state of the model, and do not change by themselves.
-Remake them when a change makes them wrong, after pulling the data they read.
-Stages that are not yet in `dvc.lock` have to run first, by their scripts.
-The figures are not stages in DVC, because any change to the `ribasim_nl` package would otherwise mark them as changed.
+The maps and charts of real examples are not in Git, and CI has no access to the data they are made from.
+`scripts/docs_figures.py` makes them, and uploads them to `doc-image/figures` on MinIO, next to the other images of the docs.
+The pages link to them there, so the docs do not need to be rebuilt to show new figures.
+
+Every [catch-up run](pull-requests.qmd#catch-up-runs-on-main) publishes them after it has opened its pull request, so they follow the code of `main`:
 
 ```sh
-pixi run docs-figures              # all figures
-pixi run docs-figures lumping      # one group
+pixi run docs-figures --pull --publish
 ```
 
-| Group | Pull first |
-|:------|:-----------|
-| `national`, `seasonal`, `forcing`, `authorities` | `run_lhm_coupled` |
-| `main_water_system` | `hws_transient`, `data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg` |
-| `coupling` | `samenvoegen`, `run_lhm_coupled` |
-| `lumping` | `parameterized_drents_overijsselse_delta --with-deps`, and run its `01_fix_model.py`, whose model is not an output of DVC |
-| `level_controlled` | `postprocessed_delfland`, `crossings@delfland`, `shortest_paths@delfland`, `boezemmodel@delfland`, `forcing_delfland` |
-| `profiles` | `profiles_delfland` |
+If that fails, the catch-up run continues and logs it, and the docs keep the previous figures.
+A figure that fails does not stop the others.
 
-Keep each figure below 700 kB, the limit of the Git hooks, by using flat colours; `save` reduces the palette of the PNG.
+To work on a figure, make it locally in `data/docs_figures`, without uploading it:
+
+```sh
+pixi run docs-figures lumping         # one group, from the data you have
+pixi run docs-figures --pull lumping  # pull its data first, as listed in the script
+```
+
+`--publish` needs credentials with write access in `.env`, and overwrites the figures on the live site, so only use it for a run of `main`.
+A new figure needs its name in the `outputs` of its group; `scripts/test_docs_figures.py` checks that the pages only link to figures that are made.
+
+Captions are written by hand, and do not follow the figures.
+Keep them general where the figure can change, and check the numbers in those of [Lumping](../workflow/lumping.qmd) when its data changes.
 
 ## API reference
 

@@ -63,9 +63,9 @@ That leaves duplicate connector nodes in place, and might duplicate a flow.
 Still to do are couplings for `Pump | LevelBoundary . LevelBoundary | Pump` and `Pump | LevelBoundary . LevelBoundary | Outlet`, and investigating whether other connections happen.
 
 ::: {layout-ncol=2}
-![Before coupling, in `lhm_parts`. Rijnland (green) and Amstel, Gooi en Vecht (blue) both end in LevelBoundaries (triangles) along their border.](../figures/coupling-before.png){fig-alt="Two authorities with several pairs of triangles along their border, each with links on one side."}
+![Before coupling, in `lhm_parts`. Rijnland (green) and Amstel, Gooi en Vecht (blue) both end in LevelBoundaries (triangles) along their border.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/coupling-before.png){fig-alt="Two authorities with several pairs of triangles along their border, each with links on one side."}
 
-![After coupling, in `lhm_coupled`. Each pair of LevelBoundaries with the Outlets next to it is now one Outlet (square) with links to both sides.](../figures/coupling-after.png){fig-alt="The same area with squares on the border where the triangles were, and links that cross the border."}
+![After coupling, in `lhm_coupled`. Each pair of LevelBoundaries with the Outlets next to it is now one Outlet (square) with links to both sides.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/coupling-after.png){fig-alt="The same area with squares on the border where the triangles were, and links that cross the border."}
 :::
 
 `forced_coupling` lists the exceptions, usually with an issue that explains them.

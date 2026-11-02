@@ -18,7 +18,7 @@ flowchart LR
   model --> fractions["LHM fractions<br>for tracing water"]
 ```
 
-![The forcing of a Basin of Delfland in the coupled run. Precipitation and evaporation act on the water surface, and drainage and infiltration exchange with the groundwater.](../figures/forcing-basin.png){fig-alt="Four charts over 2017 and 2018: precipitation with sharp peaks, evaporation peaking in summer, drainage in winter, and infiltration in summer."}
+![The forcing of a Basin of Delfland in the coupled run. Precipitation and evaporation act on the water surface, and drainage and infiltration exchange with the groundwater.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/forcing-basin.png){fig-alt="Four charts over 2017 and 2018: precipitation with sharp peaks, evaporation peaking in summer, drainage in winter, and infiltration in summer."}
 
 ## Precipitation and evaporation
 

@@ -7,9 +7,9 @@ But a model that follows the real water system is much easier to review, on the 
 None of this changes the results.
 
 ::: {layout-ncol=2}
-![The input model, with straight links.](../figures/level-3-input-model.png){fig-alt="Coloured Basin areas with straight links."}
+![The input model, with straight links.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/level-3-input-model.png){fig-alt="Coloured Basin areas with straight links."}
 
-![The final model, with links along the watercourses, and Junctions where they join.](../figures/level-4-forcing.png){fig-alt="The same area, with links that follow the watercourses."}
+![The final model, with links along the watercourses, and Junctions where they join.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/level-4-forcing.png){fig-alt="The same area, with links that follow the watercourses."}
 :::
 
 ## Routing the links

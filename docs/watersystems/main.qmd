@@ -9,7 +9,7 @@ The level controlled water authorities have no description yet.
 
 Each link opens the part of the [model viewer](../viewer.qmd) with the model of that authority.
 
-![The number of nodes per authority in the coupled model, without control nodes and Junctions.](../figures/authorities.png){fig-alt="Bar chart of Basins and connector nodes per authority, with the most in Rijnland, Stichtse Rijnlanden and Hollands Noorderkwartier."}
+![The number of nodes per authority in the coupled model, without control nodes and Junctions.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/authorities.png){fig-alt="Bar chart of the number of Basins and connector nodes per authority, sorted by their total."}
 
 | Authority | Kind of model | Description | Model viewer |
 |:----------|:--------------|:------------|:-------------|
