@@ -14,8 +14,10 @@ from ribasim_nl.webmap import (
     NETCDF_NODES_PER_ROW_GROUP,
     TIME_STEPS_PER_ROW_GROUP,
     color_domain,
+    concentration_variable,
     downcast_int64,
     export_basin_area,
+    export_concentration,
     export_netcdf_table,
     export_nodes,
     export_observations,
@@ -167,6 +169,7 @@ def test_export_results(tmp_path):
         },
         coords={"time": time, "link_id": link_ids},
     ).to_netcdf(results_dir / "flow.nc")
+    write_concentration(results_dir / "concentration.nc", node_ids, time, ["Continuity"])
     # Ribasim writes one row per control state change
     xr.Dataset(
         {
@@ -186,6 +189,9 @@ def test_export_results(tmp_path):
     assert results["basin"]["variables"]["level"]["units"] == "m"
     assert results["basin"]["variables"]["level_change"]["source"] == "level"
     assert set(results["flow"]["variables"]) == {"flow_rate"}
+    assert list(results["concentration"]["variables"]) == ["Continuity"]
+    assert pd.read_parquet(results["concentration"]["by_time"])["node_id"].tolist()[:3] == [1, 2, 3]
+    assert pd.read_parquet(results["concentration"]["by_id"])["node_id"].iloc[0] == 1
 
     by_time = pq.ParquetFile(results["basin"]["by_time"])
     assert by_time.metadata.num_row_groups == int(np.ceil(10 / TIME_STEPS_PER_ROW_GROUP))
@@ -203,6 +209,87 @@ def test_export_results(tmp_path):
     assert control["control_node_id"].tolist() == [7, 8, 8]
     assert control["control_state"].tolist() == ["on", "off", "on"]
     assert control["control_node_id"].dtype == "int32"
+
+
+def write_concentration(path, node_ids, time, substances):
+    """Write a Ribasim `concentration.nc` where each value is the sum of the indices of its substance, time and node."""
+    shape = (len(time), len(substances), len(node_ids))
+    values = np.fromfunction(lambda t, s, n: s + t + n, shape, dtype="float64")
+    xr.Dataset(
+        {"concentration": (("time", "substance", "node_id"), values, {"units": "g m-3"})},
+        coords={"time": time, "substance": substances, "node_id": node_ids},
+    ).to_netcdf(path)
+    return values
+
+
+def test_export_concentration(tmp_path):
+    source = tmp_path / "concentration.nc"
+    time = pd.date_range("2020-01-01", periods=9, freq="D")
+    substances = ["Continuity", "ResidenceTime", "Neerslag", "Cl"]
+    values = write_concentration(source, np.array([3, 1, 2], dtype="int32"), time, substances)
+
+    ids = np.array([1, 2, 3], dtype="int32")
+    by_id = tmp_path / "concentration_by_id.parquet"
+    path = tmp_path / "concentration_by_time.parquet"
+    set_ = export_concentration(source, ids, time.to_numpy().astype("datetime64[ms]"), by_id, path)
+
+    assert set_["count"] == 3
+    # The substances of the model first and sorted, then the tracers of the core
+    assert list(set_["variables"]) == ["Cl", "Neerslag", "Continuity", "ResidenceTime"]
+    variables = set_["variables"]
+    assert variables["Cl"]["group"] == "Model substances"
+    assert variables["Cl"]["units"] == "g m-3"
+    assert variables["Continuity"]["group"] == "Ribasim tracers"
+    assert variables["Continuity"]["units"] == "-"
+    assert variables["ResidenceTime"]["units"] == "d"
+    # Up to the highest value: the last time step and substance, and the last of the three nodes in the file
+    assert variables["Cl"]["domain"] == [0.0, values[:, 3].max()]
+    assert all(variable["scale"] == "linear" for variable in variables.values())
+
+    by_time = pq.ParquetFile(path)
+    assert by_time.metadata.num_row_groups == int(np.ceil(9 / TIME_STEPS_PER_ROW_GROUP))
+    df = by_time.read().to_pandas()
+    assert df["node_id"].tolist()[:3] == [1, 2, 3]
+    assert df["Cl"].dtype == "float32"
+    # Second time step, node 1 is the second column in the NetCDF
+    assert df["Neerslag"].iloc[3] == values[1, 2, 1]
+    # The residence time is written in seconds, and shown in days
+    assert df["ResidenceTime"].iloc[3] == pytest.approx(values[1, 1, 1] / 86400)
+
+    per_basin = pd.read_parquet(by_id)
+    assert per_basin.columns.tolist() == ["node_id", "time", "Continuity", "ResidenceTime", "Neerslag", "Cl"]
+    assert per_basin["node_id"].is_monotonic_increasing
+    # Node 1 is the second column in the NetCDF
+    np.testing.assert_array_equal(per_basin.loc[per_basin.node_id == 1, "Neerslag"], values[:, 2, 1].astype("float32"))
+    # Only the id column has the statistics that find the row group of a Basin
+    columns = pq.ParquetFile(by_id).metadata.row_group(0).to_dict()["columns"]
+    assert [column["path_in_schema"] for column in columns if column["is_stats_set"]] == ["node_id"]
+
+
+def test_concentration_variable_without_values_above_zero():
+    """A substance that nothing reaches, or without values, still has a scale that can be drawn."""
+    for values in (np.zeros(4, dtype="float32"), np.full(4, np.nan, dtype="float32")):
+        assert concentration_variable("Cl", values, "g m-3")["domain"] == [0.0, 1.0]
+
+
+def test_concentration_variable_keeps_sparse_substances_apart():
+    """A fraction that reaches few Basins goes up to its highest value, not to a percentile near zero."""
+    values = np.zeros(1000, dtype="float32")
+    values[0] = 0.99
+    assert concentration_variable("Noordzee", values, "g m-3")["domain"] == [0.0, pytest.approx(0.99)]
+
+
+def test_export_concentration_needs_the_basins_and_times_of_the_results(tmp_path):
+    source = tmp_path / "concentration.nc"
+    time = pd.date_range("2020-01-01", periods=3, freq="D")
+    write_concentration(source, np.array([1, 2], dtype="int32"), time, ["Cl"])
+    times = time.to_numpy().astype("datetime64[ms]")
+    paths = tmp_path / "by_id.parquet", tmp_path / "by_time.parquet"
+
+    with pytest.raises(AssertionError, match="Basins"):
+        export_concentration(source, np.array([1, 3], dtype="int32"), times, *paths)
+    with pytest.raises(AssertionError, match="time steps"):
+        export_concentration(source, np.array([1, 2], dtype="int32"), times[:2], *paths)
 
 
 def test_export_observations(tmp_path, observation_run, observed):

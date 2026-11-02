@@ -33,6 +33,8 @@ export interface ResultVariable {
   source?: string;
   /** Colors from the lower to the upper limit, instead of those of the scale */
   palette?: string[];
+  /** The heading of this variable in a long list of choices */
+  group?: string;
 }
 
 /** Values per time step of a set of features, ordered by time step then id, for map frames. */
@@ -64,6 +66,8 @@ export interface Results {
   steps_per_row_group: number;
   basin: ResultSet;
   flow: ResultSet;
+  /** The concentration of each substance in the Basins, in the order of the Basin results; only if the model tracks them */
+  concentration?: ResultSet;
   /** Only if the model has Observation nodes with measurements */
   observation?: ObservationResults;
   /** Control state changes, sorted by control_node_id and time */
@@ -218,6 +222,7 @@ function fileEntries(manifest: Manifest): FileEntry[] {
   const results = manifest.results;
   if (results) {
     entries.push(results.basin.by_id, results.basin.by_time, results.flow.by_id, results.flow.by_time);
+    if (results.concentration) entries.push(results.concentration.by_id, results.concentration.by_time);
     if (results.observation) entries.push(results.observation.by_time, results.observation.metrics);
     if (results.control) entries.push(results.control);
   }
@@ -235,7 +240,8 @@ async function loadManifest(base: URL, files: URL = base): Promise<Manifest> {
   const manifest = await fetchJson<Manifest>(new URL("manifest.json", base));
   for (const entry of fileEntries(manifest)) entry.url = resolveFile(files, entry);
   const results = manifest.results;
-  const sets = results ? [results.basin, results.flow, ...(results.observation ? [results.observation] : [])] : [];
+  const optional = [results?.concentration, results?.observation].filter((set) => set !== undefined);
+  const sets = results ? [results.basin, results.flow, ...optional] : [];
   for (const set of sets) {
     for (const variable of Object.values(set.variables)) {
       // NetCDF long names like "water flow rate" are verbose in the variable dropdowns
@@ -587,8 +593,8 @@ export async function readNumbers<T extends Float32Array | Int32Array>(
   return values;
 }
 
-/** Rows for one feature; files are sorted by the id column so statistics skip other row groups. */
-export async function readRowsById(entry: FileEntry, idColumn: string, id: number): Promise<Row[]> {
+/** Rows for one feature, with some or all columns; files are sorted by the id column so statistics skip other row groups. */
+export async function readRowsById(entry: FileEntry, idColumn: string, id: number, columns?: string[]): Promise<Row[]> {
   const { file, metadata } = await openParquet(entry);
-  return parquetReadObjects({ file, metadata, filter: { [idColumn]: { $eq: id } }, compressors });
+  return parquetReadObjects({ file, metadata, columns, filter: { [idColumn]: { $eq: id } }, compressors });
 }

@@ -253,6 +253,11 @@
   background: #f5f5f5;
 }
 
+.ribasim-viewer .panel .substance select {
+  max-width: 100%;
+  font: inherit;
+}
+
 .ribasim-viewer .panel h4 {
   margin: 8px 0 2px;
   font-size: 12px;
@@ -315,6 +320,14 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.ribasim-viewer .timebar .variable label + label {
+  margin-top: 4px;
+}
+
+.ribasim-viewer .timebar .variable label[hidden] {
+  display: none;
 }
 
 .ribasim-viewer .timebar select {

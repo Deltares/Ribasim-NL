@@ -261,6 +261,7 @@ def test_checkout_model(tmp_path):
     subprocess.run(["dvc", "init", "--quiet"], cwd=repo, check=True)
     toml = _write_model(repo / "model", changed=False)
     _write_results(toml, [10, 11], changed=False, level_offset=0.0, flow_scale=1.0)
+    (toml.parent / "results" / "concentration.nc").touch()
     subprocess.run(["dvc", "add", "--quiet", "model"], cwd=repo, check=True)
     _git(repo, "add", ".")
     _git(repo, "-c", "user.name=test", "-c", "user.email=test@example.com", "commit", "--quiet", "-m", "model")
@@ -276,7 +277,11 @@ def test_checkout_model(tmp_path):
     assert target == cache / "revisions" / commit / "model" / "model.toml"
     assert target.read_text() == original
     assert (target.parent / "input" / "database.gpkg").is_file()
-    assert sorted(path.name for path in (target.parent / "results").iterdir()) == ["basin.nc", "flow.nc"]
+    assert sorted(path.name for path in (target.parent / "results").iterdir()) == [
+        "basin.nc",
+        "concentration.nc",
+        "flow.nc",
+    ]
     # A second time the cached files are used
     (target.parent / "input" / "database.gpkg").unlink()
     assert checkout_model(toml, commit, repo, cache) == target
