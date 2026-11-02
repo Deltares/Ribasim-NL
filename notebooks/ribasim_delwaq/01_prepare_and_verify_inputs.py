@@ -13,7 +13,7 @@ from scripts.verify_mass_loads import verify_mass_loads
 
 # %%
 ROOT = Path(__file__).resolve().parents[2]
-MODEL_NAME = "lhm_coupled_full"
+MODEL_NAME = "lhm_coupled_full_BU"
 TOML_NAME = "lhm_coupled.toml"
 model_path = ROOT / "data" / "Rijkswaterstaat" / "modellen" / MODEL_NAME
 toml_path = model_path / TOML_NAME
@@ -26,7 +26,7 @@ IM_DATA_DIR = DELWAQ_DATA_DIR / "IM"
 ZINFO_DATA_DIR = DELWAQ_DATA_DIR / "Zinfo"
 PREPARED_DATA_DIR = model_path / "delwaq_input"
 
-RUN_CONVERSION_SCRIPTS = False
+RUN_CONVERSION_SCRIPTS = True
 START_DATE = "2017-01-01"
 END_DATE = "2019-12-31"
 
@@ -114,6 +114,7 @@ def prepare_boundary_data(boundary_data: pd.DataFrame, source_name: str) -> dict
 ER_loads_df_script = Path(__file__).resolve().parent / "ER_to_delwaq" / "ER_coupling_delwaq.py"
 ER_loads_df_path = ER_DATA_DIR / "output" / "ER_loads_g_s_df.parquet"
 if RUN_CONVERSION_SCRIPTS:
+    print("coupling ER emission data to ribasim model (basins)...")
     run_conversion_script(ER_loads_df_script, "ER data coupling script")
 ER_loads_df = read_required_parquet(ER_loads_df_path, "ER loads file")
 verification_ER = verify_mass_loads(
@@ -128,6 +129,7 @@ verification_ER = verify_mass_loads(
 ANIMO_loads_df_script = Path(__file__).resolve().parent / "ANIMO_to_delwaq" / "ANIMO_coupling_delwaq.py"
 ANIMO_loads_df_path = ANIMO_DATA_DIR / "output" / "ANIMO_loads_g_s_df.parquet"
 if RUN_CONVERSION_SCRIPTS:
+    print("coupling ANIMO emission data to ribasim model (basins)...")
     run_conversion_script(ANIMO_loads_df_script, "ANIMO data coupling script")
 ANIMO_loads_df = read_required_parquet(ANIMO_loads_df_path, "ANIMO loads file")
 verification_ANIMO = verify_mass_loads(
@@ -143,6 +145,7 @@ boundwq_df_script = Path(__file__).resolve().parent / "IM_Zinfo_to_delwaq" / "wr
 IM_boundaries_df_path = IM_DATA_DIR / "output" / "IM_boundaries_mg_L_df.parquet"
 Zinfo_boundaries_df_path = ZINFO_DATA_DIR / "output" / "Zinfo_boundaries_mg_L_df.parquet"
 if RUN_CONVERSION_SCRIPTS:
+    print("coupling IM and Z-info concentration observation data to ribasim model (flow boundaries)...")
     run_conversion_script(boundwq_df_script, "Boundary data coupling script")
 IM_boundaries_df = read_required_parquet(IM_boundaries_df_path, "IM boundary file")
 Zinfo_boundaries_df = read_required_parquet(Zinfo_boundaries_df_path, "Zinfo boundary file")

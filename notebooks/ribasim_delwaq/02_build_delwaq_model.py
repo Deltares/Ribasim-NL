@@ -8,7 +8,7 @@ from ribasim import Model
 
 # %%
 ROOT = Path(__file__).resolve().parents[2]
-MODEL_NAME = "lhm_coupled_full"
+MODEL_NAME = "lhm_coupled"
 TOML_NAME = "lhm_coupled.toml"
 model_path = ROOT / "data" / "Rijkswaterstaat" / "modellen" / MODEL_NAME
 toml_path = model_path / TOML_NAME

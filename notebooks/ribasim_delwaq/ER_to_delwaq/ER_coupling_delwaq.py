@@ -93,7 +93,7 @@ OE_bedrijven_path = ER_INPUT_DIR / "OverigeEmissies_bedrijven__2024_01_24.csv"
 gaf_path = ER_INPUT_DIR / "gaf_90.shp"
 
 # model-dependent
-model_name = "lhm_coupled_full"
+model_name = "lhm_coupled"
 toml_name = "lhm_coupled.toml"
 model_path = ROOT / "data" / "Rijkswaterstaat" / "modellen" / model_name
 toml_path = model_path / toml_name

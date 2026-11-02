@@ -134,7 +134,7 @@ def load_model_from_spec(model_spec):
 
 # %%
 # hardcoded model paths
-model_name = "lhm_coupled_full"
+model_name = "lhm_coupled"
 toml_name = "lhm_coupled.toml"
 model_path = ROOT / "data" / "Rijkswaterstaat" / "modellen" / model_name
 toml_path = model_path / toml_name

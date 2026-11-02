@@ -6,7 +6,7 @@ import geopandas as gpd
 # %% CONFIG
 # select basin polygons (or other selection) and save shapefiles
 basin_types = ["bergend"]  # ,  "hoofdwater"]
-model_name = "lhm_coupled_full"
+model_name = "lhm_coupled"
 
 # %%
 
@@ -52,3 +52,5 @@ print(f"total area covered by LHM: {total_area_dissolved_sel_km2:.2f} km²")
 print(f"Total area of selected polygons: {total_area_km2:.2f} km²")
 print(f"Areal coverage of selected basin polygons: {total_area_km2 / total_area_dissolved_km2 * 100:.2f}%")
 print("if this exceeds 100%, there is overlap among the selected polygons")
+
+# %%
