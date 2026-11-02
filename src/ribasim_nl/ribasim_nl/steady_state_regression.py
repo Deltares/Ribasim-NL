@@ -11,6 +11,10 @@ ALLOWED_NON_STEADY_STATE_NODE_IDS = {
     # cycling, also with daily DiscreteControl
     "Rijnland": {"dry": {2770, 5600}, "wet": {2770, 5600}},
     "RijnenIJssel": {"wet": {835}},
+    # Basin 98 of about 4000 m2 receives about 0.35 m3/s from RWZI Arnhem, with Pump 490 as its only way out. If its off
+    # state is chosen, the level rises up to 2 m until DiscreteControl is next evaluated 6 hours later. It also has
+    # short dips of 2 cm or more, which fail this check if they land on the second-to-last day
+    "Rivierenland": {"wet": {98}},
     "StichtseRijnlanden": {"wet": {1877}},
 }
 
