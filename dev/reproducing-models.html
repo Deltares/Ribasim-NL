@@ -222,6 +222,11 @@ ul.task-list li input[type="checkbox"] {
    
   <ul>
   <li><a href="#the-input-models-of-the-gravity-controlled-models" id="toc-the-input-models-of-the-gravity-controlled-models" class="nav-link active" data-scroll-target="#the-input-models-of-the-gravity-controlled-models">The input models of the gravity controlled models</a></li>
+  <li><a href="#sec-level-controlled" id="toc-sec-level-controlled" class="nav-link" data-scroll-target="#sec-level-controlled">The input models of the level controlled models</a>
+  <ul class="collapse">
+  <li><a href="#the-postprocessed-data" id="toc-the-postprocessed-data" class="nav-link" data-scroll-target="#the-postprocessed-data">The postprocessed data</a></li>
+  <li><a href="#the-node-ids" id="toc-the-node-ids" class="nav-link" data-scroll-target="#the-node-ids">The node IDs</a></li>
+  </ul></li>
   <li><a href="#process" id="toc-process" class="nav-link" data-scroll-target="#process">Process</a></li>
   <li><a href="#library-differences" id="toc-library-differences" class="nav-link" data-scroll-target="#library-differences">Library differences</a></li>
   <li><a href="#sec-geos" id="toc-sec-geos" class="nav-link" data-scroll-target="#sec-geos">GEOS</a></li>
@@ -252,7 +257,7 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>Many scripts refer to the nodes, links and areas of a model by their ID, row number or geometry: the <code>01_fix_model.py</code> scripts and <code>model_edits.gpkg</code> files of the <a href="../workflow/gravity-controlled.html">gravity controlled</a> models, and the feedback forms of the <a href="../workflow/level-controlled.html">level controlled</a> models. A model that is rebuilt from its source data must therefore get the same IDs, or all these references break. This page describes how the input models of the gravity controlled models were reproduced (<a href="https://github.com/Deltares/Ribasim-NL/issues/903">#903</a>), and the differences between library versions that were found on the way. They apply as well when the level controlled models are rebuilt.</p>
+<p>Many scripts refer to the nodes, links and areas of a model by their ID, row number or geometry: the <code>01_fix_model.py</code> scripts and <code>model_edits.gpkg</code> files of the <a href="../workflow/gravity-controlled.html">gravity controlled</a> models, and the feedback forms of the <a href="../workflow/level-controlled.html">level controlled</a> models. A model that is rebuilt from its source data must therefore get the same IDs, or all these references break. This page describes how the input models of the gravity controlled (<a href="https://github.com/Deltares/Ribasim-NL/issues/903">#903</a>) and level controlled models were reproduced, and the differences between library versions that were found on the way.</p>
 <section id="the-input-models-of-the-gravity-controlled-models" class="level2">
 <h2 class="anchored" data-anchor-id="the-input-models-of-the-gravity-controlled-models">The input models of the gravity controlled models</h2>
 <p>In July 2024, Sweco made the input models <code>&lt;authority&gt;_2024_6_3</code> of the 11 gravity controlled water authorities with <code>ribasim_lumping</code>, at commit <code>65c7ef53</code> of <a href="https://github.com/Deltares/Ribasim-NL/pull/118">#118</a>, in four notebooks: apply manual changes to the HyDAMO data, lump the network into basins, and convert the result into a Ribasim model. This code is ported to <code>ribasim_nl.lumping</code>, and the DVC pipeline runs it:</p>
@@ -262,6 +267,33 @@ ul.task-list li input[type="checkbox"] {
 <li><code>pipeline/noorderzijlvest/00_lump_model.py</code> lumps the D-HYDRO model of Noorderzijlvest.</li>
 </ul>
 <p>All node IDs and link IDs of the 11 input models are reproduced. In Limburg, whose input data differs from the data of the run in 2024, 4 nodes get another name. The basin areas are no longer reproduced, since the lumping now gives every area to a basin, see <a href="#sec-moving-fixes">Moving fixes into the lumping</a>.</p>
+</section>
+<section id="sec-level-controlled" class="level2">
+<h2 class="anchored" data-anchor-id="sec-level-controlled">The input models of the level controlled models</h2>
+<p>HKV made the input models <code>&lt;authority&gt;_boezemmodel_&lt;version&gt;</code> of the 10 level controlled water authorities with <code>peilbeheerst_model</code>, in three steps: <code>parse_crossings</code> found the crossings of the hydro-objects with the boundaries of the peilgebieden in spring 2024, notebooks found the shortest paths through the boezems, and <code>crossings_to_ribasim</code> made the models on 4 December 2024, at commit <code>91b23140</code> of <a href="https://github.com/Deltares/Ribasim-NL/pull/244">#244</a>. Wetterskip Fryslân followed on 19 and 20 May 2025, at commit <code>50638080</code> of <a href="https://github.com/Deltares/Ribasim-NL/pull/331">#331</a>. This code is ported to <code>ribasim_nl.crossings</code>, together with the scripts that turned the data the water authorities delivered into the postprocessed data, see <a href="../workflow/level-controlled.html">Level controlled</a>.</p>
+<p>All node IDs, link IDs and tables of the 10 input models are reproduced from the deliveries, but for one pump of Wetterskip Fryslân, see below. Some links to and from the boezems get another geometry, since they follow shortest paths, of which a few now take another route of the same length or have their vertices in another order, and some nodes and areas differ by less than a centimetre, see <a href="#sec-geos">GEOS</a>.</p>
+<section id="the-postprocessed-data" class="level3">
+<h3 class="anchored" data-anchor-id="the-postprocessed-data">The postprocessed data</h3>
+<p><code>pipeline/&lt;authority&gt;/00_postprocess.py</code> ports the preprocessing and postprocessing scripts of <code>peilbeheerst_model</code>, which are removed; see them at commit <code>1115d284</code>. These scripts were not the version that made the data of 2024, which HKV ran locally: some no longer ran, others read other deliveries, or kept other rows. The ports reconstruct that version from the data of 2024, the deliveries on the cloud storage, and the notebooks of HKV in the git history, and reproduce the postprocessed data of 2024 exactly, but for:</p>
+<ul>
+<li>the columns <code>meta_name</code> and <code>meta_capaciteit</code>, which nothing uses;</li>
+<li>coordinates that differ by less than 1e-6 m, from reprojections with another PROJ and unions with another GEOS;</li>
+<li>4 peilgebieden of Hollands Noorderkwartier, which HKV clipped by water board boundaries that are not on the cloud storage, and which differ by 1 to 4 m².</li>
+</ul>
+<p>HKV corrected some of the delivered data by hand, such as gaps between the peilgebieden of Zuiderzeeland, and the KRW water bodies that became peilgebieden in Hollandse Delta. <code>verwerkt/corrections.gpkg</code> holds these corrections as edits of the delivered layers, which <code>ribasim_nl.crossings.postprocess.derive_edits</code> derived from the data of 2024, and which <code>apply_edits</code> applies in place, keeping the order of the rows. For Rijnland, it also holds the results of 2024 where GEOS 3.14 differs, see <a href="#sec-geos">GEOS</a>. The aggregation areas follow from the deliveries: copies of the peilgebieden, or polders, supply areas or drainage units that the peilgebieden are joined with. Only the 12 parts into which HKV split the boezem of Delfland are source data, <code>verwerkt/aggregation_area.gpkg</code>.</p>
+<p>Other findings:</p>
+<ul>
+<li>The delivered levels of Amstel, Gooi en Vecht and Rivierenland are float32 values such as -2.0999999 in the files themselves; HKV rounded them to centimetres, and so do the ports.</li>
+<li>GDAL 3.13 splits a self-touching ring of a shapefile into an outer ring and a hole. Hollands Noorderkwartier reads its peilgebieden as stored, as GDAL 3.10 did.</li>
+<li>ruff’s fix of 2024 changed comparisons of columns such as <code>df.col == False</code> into <code>df.col is False</code>, which is always false; the ports compare as before.</li>
+</ul>
+</section>
+<section id="the-node-ids" class="level3">
+<h3 class="anchored" data-anchor-id="the-node-ids">The node IDs</h3>
+<p><code>ribasim_nl.crossings.renumber</code> numbers the nodes and links of the input models after those of 2024, <code>verwerkt/boezemmodel_ids.gpkg</code>, to which the feedback forms, the feedback scripts and the coupling refer. Basins match by the overlap of their areas, the other nodes by type and location, first those that connect the same Basins; nodes that are left match a node of the same type between the same Basins within 250 m. Unmatched nodes get IDs after the highest of 2024; links get the ID of the link between the same nodes. The feedback step numbers the links anew, in their order, so a link that is added or removed before it shifts the IDs of the links after it; the scripts that follow refer to links by their nodes.</p>
+<p>With exactly the same postprocessed data, the input models have the same IDs, but the coordinate noise above swaps a few nodes at the same place: the renumbering changes 6 nodes of Amstel, Gooi en Vecht and 8 of Zuiderzeeland back. The crossings of Wetterskip Fryslân of May 2025 cannot be reproduced: the same code on the same data finds some stacked crossings in another order, with numpy 2.2 and GEOS 3.13, with or without AVX2 and AVX-512, and so does the port. After the renumbering, 3852 of its 3853 nodes keep their ID; 9 of them, crossings that moved along the boundary of their peilgebied, are 4 to 134 m from where they were, and one pump that the feedback form does not use is gone.</p>
+<p>In Hollandse Delta, a hydro-object crosses the boundary between peilgebieden 94 and 95 almost in parallel, so the direction of the crossing depends on rounding: GEOS 3.12 found it from 95 to 94, GEOS 3.14 also from 94 to 95. <code>pipeline/00c_parse_crossings.py</code> excludes the second, and checks that it is found.</p>
+</section>
 </section>
 <section id="process" class="level2">
 <h2 class="anchored" data-anchor-id="process">Process</h2>
@@ -273,6 +305,7 @@ ul.task-list li input[type="checkbox"] {
 <li>Run the downstream scripts on the original and on the reproduced model, and compare their results.</li>
 </ol>
 <p>For the input models, the reference environment was a separate Pixi project with Python 3.12, pandas 2.1.4, numpy 1.26.4, geopandas 0.14.4, shapely 2.0.4 with GEOS 3.12.2, fiona 1.9.6, pyogrio 0.7 and networkx 3.3. The environment Sweco used is not known, but this one reproduces its IDs.</p>
+<p>For the level controlled input models, three reference environments followed the lock files of then. The crossings: Python 3.12.2, numpy 1.26.4, pandas 2.2.1, geopandas 0.14.3, shapely 2.0.3 with GEOS 3.12.1, fiona 1.9.6, pyogrio 0.7.2 and networkx 3.3, without AVX-512, which <code>NPY_DISABLE_CPU_FEATURES</code> turns off. The input models of December 2024: Python 3.12.7, numpy 2.0.2, pandas 2.2.3, geopandas 1.0.1, shapely 2.0.6 with GEOS 3.13.0, ribasim 2024.11.0, pandera 0.20.4 and pydantic 2.9.2. That of May 2025: Python 3.13.3, numpy 2.2.5, pandas 2.2.3, shapely 2.1.0 with GEOS 3.13.1, networkx 3.4.2 and ribasim 2025.3.0.</p>
 </section>
 <section id="library-differences" class="level2">
 <h2 class="anchored" data-anchor-id="library-differences">Library differences</h2>
@@ -282,7 +315,7 @@ ul.task-list li input[type="checkbox"] {
 <th style="text-align: left;">Library</th>
 <th style="text-align: left;">Old behaviour</th>
 <th style="text-align: left;">Effect</th>
-<th style="text-align: left;">In <code>ribasim_nl.lumping</code></th>
+<th style="text-align: left;">Emulated in <code>ribasim_nl</code></th>
 </tr>
 </thead>
 <tbody>
@@ -290,19 +323,31 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: left;">pandas &lt; 2.2</td>
 <td style="text-align: left;">An inner merge groups the rows by key, in order of first appearance in the left table. Since pandas 2.2 it keeps the order of the left table.</td>
 <td style="text-align: left;">The order of the nodes and links, and so their IDs</td>
-<td style="text-align: left;"><code>utils.merge_grouped</code></td>
+<td style="text-align: left;"><code>lumping.utils.merge_grouped</code></td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">numpy &lt; 2</td>
-<td style="text-align: left;"><code>argsort(kind="quicksort")</code>, also used by <code>sort_values</code>, is an unstable introsort, which decides the order of equal values. With AVX-512, numpy 1.26 used another algorithm, and numpy 2 uses yet others, which depend on the CPU as well. The 2024 models were made without AVX-512.</td>
-<td style="text-align: left;">The link IDs of the boundaries, and the order of the basin areas</td>
-<td style="text-align: left;"><code>utils.quicksort_order</code>, the introsort of numpy 1.26 in Python, for the link IDs</td>
+<td style="text-align: left;"><code>argsort(kind="quicksort")</code>, also used by <code>sort_values</code> and <code>sort_index</code>, is an unstable introsort, which decides the order of equal values. With AVX-512, numpy 1.26 used another algorithm, and numpy 2 uses yet others, which depend on the CPU as well. The 2024 models were made without AVX-512.</td>
+<td style="text-align: left;">The link IDs of the boundaries, the order of the basin areas, and the order of the crossings</td>
+<td style="text-align: left;"><code>lumping.utils.quicksort_order</code>, the introsort of numpy 1.26 in Python, and with it <code>crossings.parse.sort_index_2024</code> and <code>sort_values_2024</code></td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Ribasim 2024.9</td>
 <td style="text-align: left;">Wrote the tables sorted by node ID with that unstable sort</td>
 <td style="text-align: left;">The row numbers of the basin areas</td>
 <td style="text-align: left;">No longer emulated</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Ribasim 2024.11</td>
+<td style="text-align: left;">Kept the index of a table assigned to a model, on which some joins of <code>crossings_to_ribasim</code> aligned the rows</td>
+<td style="text-align: left;">The metadata of the level controlled input models</td>
+<td style="text-align: left;"><code>crossings.model</code> keeps the tables as then until the model is written</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Ribasim 2025.3</td>
+<td style="text-align: left;">Changed the geometries of the basin areas when assigned, so their names were not set</td>
+<td style="text-align: left;">No names for the basins of Wetterskip Fryslân</td>
+<td style="text-align: left;"><code>crossings.model.Options.add_names</code> names the pumps only</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">geopandas &lt; 1</td>
@@ -314,12 +359,24 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: left;">pandas &lt; 3</td>
 <td style="text-align: left;">Formats a missing string in an f-string as <code>None</code></td>
 <td style="text-align: left;">The IDs of edges that are split</td>
-<td style="text-align: left;">In <code>utils.split_edges_by_dx</code></td>
+<td style="text-align: left;">In <code>lumping.utils.split_edges_by_dx</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">pandas &lt; 3</td>
+<td style="text-align: left;">Strings are objects with <code>None</code> for missing values, which are equal. In pandas 3 they are <code>NaN</code>, which are not.</td>
+<td style="text-align: left;">Extra crossings between two missing peilgebieden</td>
+<td style="text-align: left;"><code>crossings.parse.pandas2_strings</code> and <code>crossings.model.to_object</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Python</td>
+<td style="text-align: left;">The order of a <code>set</code> of strings differs per process</td>
+<td style="text-align: left;">The order of the IDs in the columns <code>stuw</code> and <code>gemaal</code> of the crossings, but not the model</td>
+<td style="text-align: left;">They are sorted</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">GEOS</td>
 <td style="text-align: left;">See <a href="#sec-geos">below</a></td>
-<td style="text-align: left;">The geometry of the basin areas</td>
+<td style="text-align: left;">The geometry of the basin areas, and of links along shortest paths, and one crossing</td>
 <td style="text-align: left;">Not emulated</td>
 </tr>
 </tbody>
@@ -328,7 +385,8 @@ ul.task-list li input[type="checkbox"] {
 <section id="sec-geos" class="level2">
 <h2 class="anchored" data-anchor-id="sec-geos">GEOS</h2>
 <p>The results of geometric operations such as union, intersection, <code>buffer(0)</code> and <code>make_valid</code> differ between versions and builds of GEOS. Coordinates differ by about 1e-9 m, the results get other slivers and tiny holes, and adjacent parts of a union may or may not be merged. That cannot be emulated: GEOS 3.12.2 reproduces 858 of the 859 basin areas of De Dommel topologically, but only 190 of the 543 of Stichtse Rijnlanden.</p>
-<p>The IDs do not depend on it, but scripts that select geometries do. They now allow for these differences:</p>
+<p>The IDs of the level controlled models depend on it in one place: a crossing in Hollandse Delta that GEOS 3.14 finds in both directions, see <a href="#sec-level-controlled">above</a>. Their shortest paths through the boezems depend on it as well: a few take another route of the same length, or merge their lines with the vertices in another order, which gives their links another geometry. And in Rijnland, 56 peilgebieden without crossings get another aggregation area in the column <code>agg_area</code> of the peilgebieden of the crossings, since GEOS 3.14 computes other overlaps with the aggregation areas; nothing uses it. Its postprocessing takes the praktijk peilgebieden off the vigerend ones, which leaves mostly slivers along their boundaries, and adds a margin of 1 m to the parts of its boezem. GEOS 3.14 makes other slivers and margins than GEOS 3.12 did, so <code>verwerkt/corrections.gpkg</code> holds those of 2024 where they differ, in the layers <code>remnants</code> and <code>boezem</code>.</p>
+<p>The IDs of the gravity controlled models do not depend on it, but scripts that select geometries do. They now allow for these differences:</p>
 <ul>
 <li><code>Model.select_basin_area</code>, used by <code>remove_basin_area</code> and <code>update_basin_area</code>, takes geometries as equal if their boundaries are on average at most 1 mm apart. Without a basin area that equals a polygon, it selects the basin areas that together make it up, or else splits the polygon from the basin areas that cover it. So it works whether adjacent parts are merged or not. It skips slivers.</li>
 <li><code>ribasim_nl.geometry.connected_parts</code> splits a (Multi)Polygon in the parts connected to the part with a given point, and the other parts, instead of taking the parts by position.</li>
@@ -342,6 +400,8 @@ ul.task-list li input[type="checkbox"] {
 <li>Do not rely on the order of rows after a merge, a <code>groupby</code> or a spatial join; sort explicitly where the order sets IDs.</li>
 <li>Refer to objects by a stable key, such as their code, rather than by row number. <code>gpd.read_file(..., fid_as_index=True)</code> makes a script depend on the order of the rows in the file, so keep that order when such a file is rewritten.</li>
 <li>Select geometries with a tolerance, and do not rely on the order or number of the parts of geometries from geometric operations.</li>
+<li>Do not let a result depend on whether geometries touch. Whether the end of a line on a boundary reaches into a polygon by 1e-9 m depends on coordinate noise. The profiles counted a hydro-object with its whole length in every basin it intersected, so noise of at most 1e-8 m changed 185 of the 215 Basin profiles of Zuiderzeeland, with bottoms up to 4.85 m apart, while its network hardly changed. <code>ribasim_nl.profiles.path_finder.overlaps</code> requires an overlap of 1 mm. Rounding the coordinates also removes the noise, but lines then still count in polygons they only touch, decided by the rounding.</li>
+<li>Of the shortest paths of equal length, <code>networkx</code> takes the one it reaches first, which depends on the order in which the graph was built. Build graphs from geometries in an order that follows from them, as <code>ribasim_nl.profiles.path_finder.canonical</code> does.</li>
 <li>Where the result of an overlay decides something, overlay with a fixed precision, on geometries made valid at that precision.</li>
 <li>The DVC pipeline records the code, data and environment of every output, in git, <code>dvc.lock</code> and <code>pixi.lock</code>, so an output can always be reproduced.</li>
 </ul>
