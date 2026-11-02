@@ -15,6 +15,7 @@ import geopandas as gpd
 import momepy
 import networkx as nx
 import numpy as np
+import pandas as pd
 import shapely
 import tqdm
 from shapely.ops import nearest_points
@@ -24,6 +25,40 @@ from ribasim_nl import geometry
 from ribasim_nl.geodataframe import sorted_sjoin
 
 LOG = logging.getLogger(__name__)
+
+
+def canonical(gdf: gpd.GeoDataFrame, decimals: int | None = 3) -> gpd.GeoDataFrame:
+    """The rows in the order of their geometry and then their other columns, with their coordinates rounded.
+
+    Of the shortest paths of equal length, networkx finds the one it reaches first, which depends on the order in which
+    the graph was built, and of crossings within a tolerance of each other the first is kept. In this order, the main
+    routes do not depend on the order of the rows. Rounded, they do not depend on coordinate noise either, such as that of
+    another version of PROJ, unless a coordinate lies within the noise of a rounding boundary.
+
+    :param gdf: geospatial data
+    :param decimals: the number of decimals to round the coordinates to, defaults to 3 (millimetres); None keeps them
+    :return: the sorted data, in 2D if rounded, with a new index, and the rows without geometry last
+    """
+    if decimals is not None:
+        rounded = shapely.transform(gdf.geometry.to_numpy(), lambda coords: np.round(coords, decimals))
+        gdf = gdf.set_geometry(gpd.GeoSeries(rounded, index=gdf.index, crs=gdf.crs))
+    missing = gdf.geometry.isna().to_numpy()
+    wkb = shapely.to_wkb(gdf.geometry.to_numpy())
+    wkb[missing] = b""
+    # by position, since the index need not be unique
+    keys = pd.DataFrame(
+        {
+            "missing": missing,
+            "geometry": wkb,
+            **{
+                f"column_{i}": gdf[c].astype(object).map(str).to_numpy()
+                for i, c in enumerate(gdf.columns)
+                if c != gdf.geometry.name
+            },
+        }
+    )
+    order = keys.sort_values(list(keys.columns), kind="stable").index.to_numpy()
+    return gdf.iloc[order].reset_index(drop=True)
 
 
 def simplify_geodata(

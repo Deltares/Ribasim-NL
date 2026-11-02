@@ -211,6 +211,12 @@ def main(
         *data, flagged_main_route=main_route_from_hydro_objects
     )
 
+    # the main routes depend on the order of the hydro-objects and crossings, and on their coordinates up to noise, so
+    # round and sort them, see `path_finder.canonical`
+    hydro_objects = path_finder.canonical(hydro_objects)
+    if crossings is not None:
+        crossings = path_finder.canonical(crossings)
+
     # main route data available in hydro-objects [optional]
     if main_route_from_hydro_objects:
         assert col_ho_main_route is not None
@@ -243,6 +249,8 @@ def main(
             .explode()
             .reset_index(drop=True)
         )
+    # the order of the parts of a union depends on GEOS
+    hydro_objects = path_finder.canonical(hydro_objects, decimals=None)
 
     if main_route_from_hydro_objects:
         # get all user-defined hydro-objects on the main-route (i.e., 'doorgaand')

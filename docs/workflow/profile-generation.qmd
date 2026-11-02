@@ -20,6 +20,7 @@ Prior to generating the profiles, the data is preprocessed:
 
 0. Preprocessing of data sources, which includes
     generating `LINESTRING Z`-objects of measured cross-sections,
+    rounding the coordinates of the hydro-objects and crossings to millimetres and sorting them by their geometry, so that the shortest paths, and with them the profiles, do not depend on the order of the rows or on coordinate noise, see `path_finder.canonical`,
     removing duplicate hydro-objects,
     repairing hydro-objects along HyDAMO-standards,
     reading the current BGT water surfaces of the area from the national `data/Basisgegevens/BGT/bgt_water.parquet`, see `ribasim_nl.bgt_water`.
