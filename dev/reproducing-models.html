@@ -226,7 +226,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#library-differences" id="toc-library-differences" class="nav-link" data-scroll-target="#library-differences">Library differences</a></li>
   <li><a href="#sec-geos" id="toc-sec-geos" class="nav-link" data-scroll-target="#sec-geos">GEOS</a></li>
   <li><a href="#writing-reproducible-code" id="toc-writing-reproducible-code" class="nav-link" data-scroll-target="#writing-reproducible-code">Writing reproducible code</a></li>
-  <li><a href="#moving-fixes-into-the-lumping" id="toc-moving-fixes-into-the-lumping" class="nav-link" data-scroll-target="#moving-fixes-into-the-lumping">Moving fixes into the lumping</a></li>
+  <li><a href="#sec-moving-fixes" id="toc-sec-moving-fixes" class="nav-link" data-scroll-target="#sec-moving-fixes">Moving fixes into the lumping</a></li>
   </ul>
 </nav>
     </div>
@@ -261,7 +261,7 @@ ul.task-list li input[type="checkbox"] {
 <li><code>pipeline/00b_lump_model.py</code> lumps the HyDAMO network of 10 water authorities into their input model.</li>
 <li><code>pipeline/noorderzijlvest/00_lump_model.py</code> lumps the D-HYDRO model of Noorderzijlvest.</li>
 </ul>
-<p>All node IDs and link IDs of the 11 input models are reproduced, and so are the row numbers (fids) of their basin areas, except in Limburg, whose input data differs from the data of the run in 2024. There, 3 basin areas are not assigned to a Basin, which shifts the fids of the others, so its fix script now selects basin areas by geometry, and 4 nodes get another name. The geometries of the basin areas differ slightly, see <a href="#sec-geos">GEOS</a>.</p>
+<p>All node IDs and link IDs of the 11 input models are reproduced. In Limburg, whose input data differs from the data of the run in 2024, 4 nodes get another name. The basin areas are no longer reproduced, since the lumping now gives every area to a basin, see <a href="#sec-moving-fixes">Moving fixes into the lumping</a>.</p>
 </section>
 <section id="process" class="level2">
 <h2 class="anchored" data-anchor-id="process">Process</h2>
@@ -296,19 +296,19 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: left;">numpy &lt; 2</td>
 <td style="text-align: left;"><code>argsort(kind="quicksort")</code>, also used by <code>sort_values</code>, is an unstable introsort, which decides the order of equal values. With AVX-512, numpy 1.26 used another algorithm, and numpy 2 uses yet others, which depend on the CPU as well. The 2024 models were made without AVX-512.</td>
 <td style="text-align: left;">The link IDs of the boundaries, and the order of the basin areas</td>
-<td style="text-align: left;"><code>utils.quicksort_order</code>, the introsort of numpy 1.26 in Python</td>
+<td style="text-align: left;"><code>utils.quicksort_order</code>, the introsort of numpy 1.26 in Python, for the link IDs</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Ribasim 2024.9</td>
 <td style="text-align: left;">Wrote the tables sorted by node ID with that unstable sort</td>
 <td style="text-align: left;">The row numbers of the basin areas</td>
-<td style="text-align: left;"><code>utils.quicksort_order</code></td>
+<td style="text-align: left;">No longer emulated</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">geopandas &lt; 1</td>
 <td style="text-align: left;"><code>overlay</code> fixes invalid polygons with <code>buffer(0)</code>, keeps the polygonal parts of collections, and with pandas &lt; 2.2 groups the intersections by the polygon of the second table</td>
 <td style="text-align: left;">Which basin gets an unassigned area</td>
-<td style="text-align: left;"><code>utils.overlay_intersection</code></td>
+<td style="text-align: left;">No longer emulated</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">pandas &lt; 3</td>
@@ -330,11 +330,10 @@ ul.task-list li input[type="checkbox"] {
 <p>The results of geometric operations such as union, intersection, <code>buffer(0)</code> and <code>make_valid</code> differ between versions and builds of GEOS. Coordinates differ by about 1e-9 m, the results get other slivers and tiny holes, and adjacent parts of a union may or may not be merged. That cannot be emulated: GEOS 3.12.2 reproduces 858 of the 859 basin areas of De Dommel topologically, but only 190 of the 543 of Stichtse Rijnlanden.</p>
 <p>The IDs do not depend on it, but scripts that select geometries do. They now allow for these differences:</p>
 <ul>
-<li><code>Model.select_basin_area</code>, used by <code>remove_basin_area</code> and <code>update_basin_area</code>, takes geometries as equal if their boundaries are on average at most 1 mm apart. Without a basin area that equals a polygon, it selects the basin areas that together make it up, or else splits the polygon from the basin area that contains it. So it works whether adjacent parts are merged or not.</li>
+<li><code>Model.select_basin_area</code>, used by <code>remove_basin_area</code> and <code>update_basin_area</code>, takes geometries as equal if their boundaries are on average at most 1 mm apart. Without a basin area that equals a polygon, it selects the basin areas that together make it up, or else splits the polygon from the basin areas that cover it. So it works whether adjacent parts are merged or not. It skips slivers.</li>
 <li><code>ribasim_nl.geometry.connected_parts</code> splits a (Multi)Polygon in the parts connected to the part with a given point, and the other parts, instead of taking the parts by position.</li>
 </ul>
-<p>A union with slivers can also go wrong, in GEOS 3.12 as well as 3.14: it can lose or add whole parts. In Hunze en Aas, a union of 25 pieces of a basin area lost 2.1 km², and the union of a basin area of 61 vertices with a sliver of 1e-9 m² gained 0.066 km². <code>ribasim_nl.geometry.union_polygons</code> checks that a union is not larger than the polygons together, and contains a point inside each polygon. If not, it takes the union again with a fixed precision of 1 mm, or without the slivers. <code>ribasim_nl.geodataframe.assign_node_ids_by_largest_overlap</code> uses it. That check does not catch a part lost within a large polygon, though. Overlays with a fixed precision (<code>grid_size</code>), on geometries made valid at that precision with <code>shapely.set_precision</code>, are robust. <code>ribasim_nl.berging.supply_area_basin_ids</code> overlays basin areas with supply areas that way, since a floating point overlay found no overlap for 3 basins of Drents Overijsselse Delta that lie entirely in a supply area.</p>
-<p>Some results remain sensitive to slivers. <code>assign_node_ids_by_largest_overlap</code> gives the holes in an area code to the basin area it overlaps most, also when that overlap is a sliver. An area code that lies in a hole may then go to another basin area, or to none, with the regenerated input model: this changes 5 basin areas of Rijn en IJssel by up to 0.6 km².</p>
+<p>A union with slivers can also go wrong, in GEOS 3.12 as well as 3.14: it can lose or add whole parts. In Hunze en Aas, a union of 25 pieces of a basin area lost 2.1 km², and the union of a basin area of 61 vertices with a sliver of 1e-9 m² gained 0.066 km². <code>ribasim_nl.geometry.union_polygons</code> checks that a union is not larger than the polygons together, and contains a point inside each polygon. If not, it takes the union again with a fixed precision of 1 mm, or without the slivers. The lumping and <code>Model.dissolve_basin_area</code> use it. That check does not catch a part lost within a large polygon, though. Overlays with a fixed precision (<code>grid_size</code>), on geometries made valid at that precision with <code>shapely.set_precision</code>, are robust. <code>ribasim_nl.berging.supply_area_basin_ids</code> overlays basin areas with supply areas that way, since a floating point overlay found no overlap for 3 basins of Drents Overijsselse Delta that lie entirely in a supply area.</p>
 </section>
 <section id="writing-reproducible-code" class="level2">
 <h2 class="anchored" data-anchor-id="writing-reproducible-code">Writing reproducible code</h2>
@@ -347,13 +346,16 @@ ul.task-list li input[type="checkbox"] {
 <li>The DVC pipeline records the code, data and environment of every output, in git, <code>dvc.lock</code> and <code>pixi.lock</code>, so an output can always be reproduced.</li>
 </ul>
 </section>
-<section id="moving-fixes-into-the-lumping" class="level2">
-<h2 class="anchored" data-anchor-id="moving-fixes-into-the-lumping">Moving fixes into the lumping</h2>
-<p>The <code>01_fix_model.py</code> scripts correct the input models afterwards. Now that the pipeline makes the input models, most of these fixes can move into the lumping or its inputs, or the lumping algorithm can change, so that the input models are right from the start:</p>
+<section id="sec-moving-fixes" class="level2">
+<h2 class="anchored" data-anchor-id="sec-moving-fixes">Moving fixes into the lumping</h2>
+<p>The <code>01_fix_model.py</code> scripts correct the input models afterwards. Now that the pipeline makes the input models, most of these fixes can move into the lumping or its inputs, or the lumping algorithm can change, so that the input models are right from the start. These have moved:</p>
 <ul>
-<li><strong>Holes in the basin areas.</strong> <code>ribasim_nl.lumping.network.assign_unassigned_areas</code> gives areas without a basin to the neighbouring basin area they share most with, but only within their drainage area, and not for Vallei en Veluwe. The fix scripts of 6 authorities fill the remaining holes from <code>verwerkt/4_ribasim/areas.gpkg</code>: Brabantse Delta, Hunze en Aas, Rijn en IJssel and Vechtstromen with <code>assign_node_ids_by_largest_overlap</code>, Aa en Maas and De Dommel with code of their own. They overlay the areas with the basin areas again, so slivers can decide where an area goes. The lumping knows the basin of each area directly. Choose a rule there for areas without a neighbour in their drainage area, for instance the neighbour with the longest shared boundary, and keep exclusions, such as the Twentekanaal areas of Vechtstromen, as source data. Then the hole filling, <code>fix_unassigned_basin_area</code> and <code>remove_unassigned_basin_area</code> can go from the fix scripts.</li>
-<li><strong>One areas file.</strong> For Brabantse Delta, De Dommel and Hunze en Aas, <code>verwerkt/4_ribasim/areas.gpkg</code> differs from the <code>verwerkt/3_input/areas.gpkg</code> of the lumping.</li>
-<li><strong>Edits of the lumping inputs.</strong> Splitting basin areas with lines, or removing and renaming them with <code>model_edits.gpkg</code>, can become edits of the split nodes, boundaries and areas that the lumping reads, which have stable codes. The tolerant <code>Model.select_basin_area</code> only bridges until then.</li>
+<li><strong>Lost basins.</strong> The lumping of 2024 left out the basins whose ID was taken by a split node, and those at a LevelBoundary without split node, while links still referred to them. The fix scripts added them again, and removed the duplicate links. <code>ribasim_nl.lumping.model.number_lost_basins</code> now does that, with the IDs the fix scripts gave them.</li>
+<li><strong>Basin areas.</strong> Every area of <code>verwerkt/3_input/areas.gpkg</code> goes to a basin, see <code>ribasim_nl.lumping.network.assign_areas</code>: the basin it drains to, or else the basin with whose areas it shares the longest border, preferably in its drainage area. Each basin gets one MultiPolygon, and gaps between them up to 5000 m² are filled. The fix scripts no longer fill holes from <code>verwerkt/4_ribasim/areas.gpkg</code>, which differed from it for 3 authorities. As their last step, they fill the holes that their own edits leave with <code>Model.fill_basin_area_holes</code>, by the same rules, which also checks that every Basin has a basin area. A Basin that a fix script adds gets its areas by their code, since the area that its node lies in can be far too small. Parts outside the model are excluded there, such as the Twentekanaal of the Rijkswaterstaat model in Vechtstromen.</li>
+</ul>
+<p>These remain:</p>
+<ul>
+<li><strong>Edits of the lumping inputs.</strong> Splitting basin areas with lines, or removing and renaming them with <code>model_edits.gpkg</code>, can become edits of the split nodes, boundaries and areas that the lumping reads, which have stable codes. The tolerant <code>Model.select_basin_area</code> only bridges until then. The area split lines of Stichtse Rijnlanden, for instance, were drawn on the basin areas of 2024. Splitting <code>areas.gpkg</code> along them before the lumping gives 20 of the 28 basins that need them an area by drainage.</li>
 <li><strong>Node IDs.</strong> They follow from the order of the boundaries, split nodes and basins, so a new split node renumbers all basins after it. That breaks the references to node IDs in the remaining fix scripts, in <code>model_edits.gpkg</code>, and in <code>pipeline/09_koppelen_modellen.py</code>. Move the fixes of an authority together, and where references remain, refer to nodes by a stable key, such as their code.</li>
 </ul>
 
