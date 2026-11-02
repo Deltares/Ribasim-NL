@@ -1,6 +1,5 @@
 # Vechtstromen
 - Laatst bijgewerkt: 07-04-2026
-- [Laatste modelversie](https://deltares.thegood.cloud/s/XCGc7Cy4L4t7WGT)
 - [Bekijk het model in de modelviewer](/viewer.qmd#authority=44)
 
 ## Systeembeschrijving

@@ -1,6 +1,5 @@
 # Drents Overijsselse Delta
 - Laatst bijgewerkt: 07-04-2026
-- [Laatste modelversie](https://deltares.thegood.cloud/s/TLtTk3xmgk2SAW8)
 - [Bekijk het model in de modelviewer](/viewer.qmd#authority=59)
 
 ## Systeembeschrijving

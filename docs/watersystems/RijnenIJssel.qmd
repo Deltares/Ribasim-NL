@@ -1,7 +1,6 @@
 # Rijn en IJssel
 
 - Laatst bijgewerkt: 27-4-2026
-- [Laatste modelversie](https://deltares.thegood.cloud/s/e8LbgZrgjsetPYn)
 - [Bekijk het model in de modelviewer](/viewer.qmd#authority=7)
 
 ## Systeembeschrijving

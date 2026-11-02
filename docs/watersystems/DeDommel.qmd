@@ -2,7 +2,6 @@
 # De Dommel
 
 - Laatst bijgewerkt: 07-04-2026
-- [Laatste modelversie](https://deltares.thegood.cloud/s/4ozjqW39eJakmao)
 - [Bekijk het model in de modelviewer](/viewer.qmd#authority=27)
 
 ## Systeembeschrijving

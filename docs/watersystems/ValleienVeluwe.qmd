@@ -1,7 +1,6 @@
 # Vallei en Veluwe
 
 - Laatst bijgewerkt: 25-04-2026
-- [Laatste modelversie](https://deltares.thegood.cloud/s/YgWfw7AEWLSbcGa)
 - [Bekijk het model in de modelviewer](/viewer.qmd#authority=43)
 
 ## Systeembeschrijving oppervlaktewater

@@ -1,7 +1,6 @@
 # Aa en Maas
 
 - Laatst bijgewerkt: 07-04-2026
-- [Laatste modelversie](https://deltares.thegood.cloud/s/2tRGidQ5daqWJ9J)
 - [Bekijk het model in de modelviewer](/viewer.qmd#authority=38)
 
 ## Systeembeschrijving
