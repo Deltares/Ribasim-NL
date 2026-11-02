@@ -16,7 +16,7 @@ import geopandas as gpd
 import numpy as np
 import shapely
 from ribasim_nl.crossings.postprocess import main_water_system, with_main_water_system_levels, write_layers
-from ribasim_nl.lumping.utils import overlay_intersection
+from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl import CloudStorage
 
@@ -35,6 +35,7 @@ peilgebieden_polders = delivery / "Na_levering/20240618_peilgebieden_en_polders"
 REMOVED = ["8071-01", "8071-02", "2040-2060", "2040-2030-02", "2040-2700", "2040-2020"]
 # the peilgebieden of the boezems, as in 2024: Schermerboezem, Schagerkogge, Amstelmeer and Raaksmaats- en Niedorperkogge
 BOEZEMS = ["1000-01", "03010-01", "1700-01", "1800-01"]
+POLYGONS = ["Polygon", "MultiPolygon"]
 
 
 def polygons_as_stored(path: Path) -> list[shapely.Polygon | shapely.MultiPolygon]:
@@ -66,6 +67,22 @@ def polygons_as_stored(path: Path) -> list[shapely.Polygon | shapely.MultiPolygo
         shapes = [shapely.Polygon(part[0], part[1:]) for part in parts]
         polygons.append(shapes[0] if len(shapes) == 1 else shapely.MultiPolygon(shapes))
     return polygons
+
+
+def within_boundary(polygons: gpd.GeoDataFrame, boundary: BaseGeometry) -> gpd.GeoDataFrame:
+    """The polygons within a boundary, as `geopandas.overlay` made them before geopandas 1.
+
+    The intersections are fixed with `buffer(0)`, and only the polygonal parts of collections are kept.
+    """
+
+    def polygonal(geometry: BaseGeometry) -> BaseGeometry:
+        if isinstance(geometry, shapely.GeometryCollection):
+            return shapely.union_all([part for part in geometry.geoms if part.geom_type in POLYGONS])
+        return geometry.buffer(0) if geometry.geom_type in POLYGONS else geometry
+
+    polygons = polygons[polygons.intersects(boundary)].reset_index(drop=True)
+    within = polygons.set_geometry([polygonal(geometry) for geometry in polygons.intersection(boundary)])
+    return within[within.geom_type.isin(POLYGONS)].reset_index(drop=True)
 
 
 # %% preprocessing
@@ -154,14 +171,13 @@ aggregation_area["polder_id"] = aggregation_area["meta_name"]
 aggregation_area = aggregation_area[["polder_id", "code", "nen3610id", "globalid", "meta_name", "geometry"]]
 
 # %% postprocessing
-# the peilgebieden clipped by the boundary of the water authority, with the overlay of geopandas < 1. The boundary of
-# 2024, `Waterschapsgrenzen.geojson`, is not available; this one differs by up to 3 cm from it north of Amsterdam.
+# the peilgebieden clipped by the boundary of the water authority. The boundary of 2024, `Waterschapsgrenzen.geojson`,
+# is not available; this one differs by up to 3 cm from it north of Amsterdam.
 boundaries = gpd.read_file(cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg"))
 name = "Hoogheemraadschap Hollands Noorderkwartier"
 boundary = boundaries.loc[boundaries["naam"].str.strip() == name, ["geometry"]]
 assert len(boundary) == 1, f"no single boundary named {name}"
-boundary = boundary.set_geometry(boundary.geometry.force_2d().buffer(0))
-peilgebied = overlay_intersection(peilgebied.set_geometry(peilgebied.buffer(0)), boundary)
+peilgebied = within_boundary(peilgebied.set_geometry(peilgebied.buffer(0)), boundary.force_2d().buffer(0).iloc[0])
 assert peilgebied["globalid"].tolist() == streefpeil["globalid"].tolist(), "peilgebieden outside the boundary"
 
 # the boezems, of category 1
