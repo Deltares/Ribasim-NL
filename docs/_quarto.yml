@@ -3,50 +3,74 @@ project:
   resources:
     - CNAME
     - viewer-app/**
+  render:
+    - "*.qmd"
+    - "!watersystems/template.qmd"
 website:
   title: "Ribasim-NL"
   favicon: assets/favicon.ico
+  page-navigation: true
   navbar:
     logo: assets/logo.png
     left:
-      - reference/index.qmd
-      - cloudstorage.qmd
-      - text: "Workflows"
-        file: workflow/main-watersystem.qmd
-      - text: "Watersystems"
+      - text: "Model derivation"
+        file: workflow/index.qmd
+      - text: "Water systems"
         file: watersystems/main.qmd
       - text: "Model viewer"
         file: viewer.qmd
     right:
       - text: "Contributing"
         file: dev/index.qmd
+      - text: "API reference"
+        file: reference/index.qmd
       - icon: github
         href: https://github.com/Deltares/Ribasim-NL
         aria-label: GitHub
   sidebar:
+    - title: "Model derivation"
+      contents:
+        - workflow/index.qmd
+        - workflow/main-watersystem.qmd
+        - section: "Gravity controlled models"
+          contents:
+            - workflow/gravity-controlled.qmd
+            - workflow/lumping.qmd
+        - section: "Level controlled models"
+          contents:
+            - workflow/level-controlled.qmd
+            - workflow/profile-generation.qmd
+            - workflow/split-basins.qmd
+        - section: "Shared steps"
+          contents:
+            - workflow/control.qmd
+            - workflow/storage-basins.qmd
+            - workflow/design-capacities.qmd
+            - workflow/forcing.qmd
+            - workflow/seasonal-levels.qmd
+            - workflow/layout.qmd
+        - section: "The nationwide model"
+          contents:
+            - workflow/couple.qmd
     - title: "Contributing"
       contents:
         - dev/index.qmd
         - dev/testing.qmd
-        - dev/dvc.qmd
         - dev/type-checking.qmd
-        - dev/local.qmd
-        - dev/slurm.qmd
-        - dev/pull-requests.qmd
-        - dev/viewer.qmd
-        - dev/ribasim.qmd
-        - dev/reproducing-models.qmd
-    - title: "Workflows"
-      contents:
-        - workflow/main-watersystem.qmd
-        - workflow/level-controlled.qmd
-        - workflow/gravity-controlled.qmd
-        - workflow/design-capacities.qmd
-        - workflow/split-basins.qmd
-        - workflow/couple.qmd
-        - workflow/seasonal-levels.qmd
-        - workflow/profile-generation.qmd
-    - title: "Watersystems"
+        - section: "Running the pipeline"
+          contents:
+            - dev/dvc.qmd
+            - dev/local.qmd
+            - dev/slurm.qmd
+            - dev/pull-requests.qmd
+            - dev/reproducing-models.qmd
+        - section: "Tools"
+          contents:
+            - dev/viewer.qmd
+            - dev/ribasim.qmd
+            - dev/docs.qmd
+            - cloudstorage.qmd
+    - title: "Water systems"
       contents:
         - watersystems/main.qmd
         - watersystems/AaenMaas.qmd
@@ -63,8 +87,10 @@ website:
 format:
   html:
     theme: cosmo
-    css: styles.css
+    css: assets/styles.css
     toc: true
+    mermaid:
+      theme: neutral
 lightbox:
   match: auto
   effect: zoom
@@ -73,21 +99,51 @@ lightbox:
 quartodoc:
   style: pkgdown
   dir: reference
-  title: API Reference
-  package: null
+  title: API reference
+  parser: sphinx
+  package: ribasim_nl
   sections:
-    - title: HyDAMO
-      package: hydamo
-      desc: The HyDAMO class represents the HyDAMO data model.
+    - title: Model
+      desc: The model class, and building a model from parts.
       contents:
-        - HyDAMO
-        - ExtendedGeoDataFrame
-        - find_nearest_branch
-        - possibly_intersecting
-        - add_styles_to_geopackage
-        - read_style
-    - title: Ribasim-NL
-      package: ribasim_nl
-      desc: Ribasim-NL code.
-      contents:
+        - Model
+        - Network
+        - NetworkValidator
+        - concat
+        - prefix_index
+        - reset_index
         - CloudStorage
+    - title: Regional models
+      desc: Steps shared by the regional models.
+      contents:
+        - regional_model
+        - design_capacities
+        - capacity
+        - seasonal_levels
+        - peilbeheer
+        - supply
+        - transboundary_inflow
+        - observations
+        - split_basins
+    - title: Geometry and layout
+      desc: The layout of a model on the map, which does not change its results.
+      contents:
+        - layout
+        - network_snapping
+        - flow_paths
+        - geometry
+        - junctionify
+    - title: Validation and results
+      desc: Checks on the model input and on the results of a run.
+      contents:
+        - validation
+        - result_validation
+        - goodness_of_fit
+        - steady_state_regression
+        - write_performance
+    - title: Model viewer
+      desc: Exporting and publishing a model for the model viewer.
+      contents:
+        - webmap
+        - webmap_diff
+        - webmap_publish

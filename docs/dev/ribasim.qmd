@@ -2,8 +2,7 @@
 title: "Co-development with Ribasim"
 ---
 
-Ribasim-NL pins to a specific Ribasim version in `pixi.toml`.
-Generally this will be the latest release.
+Ribasim-NL pins to a specific commit of Ribasim in `pixi.toml`, often of a branch for this project, with a matching build of the core in `scripts/install_ribasim_core.py`.
 During development sometimes you may want to test out the latest unreleased development version of Ribasim.
 
 To do so, open `pixi.toml` in your editor.

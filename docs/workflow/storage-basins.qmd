@@ -1,0 +1,36 @@
+---
+title: "Storage basins"
+---
+
+A Basin in a regional model stands for a whole network of waterways.
+To represent that water does not all flow at once, most Basins come in a pair, with the same area:
+
+- a _doorgaand_ Basin for the flowing water, on the main route through the area, and
+- a _bergend_ Basin for the stagnant water, in the ditches and small watercourses.
+
+Precipitation, evaporation and groundwater reach them differently, see [Forcing](forcing.qmd#sec-budgets).
+In the coupled model, about 9800 of the 20 200 Basins are bergend, and 2300 are hoofdwater, the main water system and the KRW water bodies.
+
+```{mermaid}
+%%| fig-cap: "The two ways in which a storage Basin connects to its doorgaand Basin."
+flowchart LR
+  subgraph drain["Drains only"]
+    b1["bergend"] -->|"TabulatedRatingCurve<br>Van der Gaast"| d1["doorgaand"]
+  end
+  subgraph both["Can also be supplied"]
+    b2["bergend"] <-->|ManningResistance| d2["doorgaand"]
+  end
+```
+
+## Gravity controlled models
+
+`pipeline/05_add_bergend.py` adds a storage Basin to each Basin with `ribasim_nl.berging.VdGaastBerging`, from the rasters of the LHM and of Van der Gaast.
+It drains through a TabulatedRatingCurve.
+
+In the supply areas of `verwerkt/sturing/aanvoergebieden.gpkg` with `meta_aanvoer` true, the storage Basin connects with a ManningResistance instead, so it can also be supplied.
+A Basin counts as supplied if at least half of its area lies in a supply area, see `ribasim_nl.berging.supply_area_basin_ids`.
+
+## Level controlled models
+
+The [profile generation](profile-generation.qmd) derives both profiles from the hydro-objects and the BGT, and adds the storage Basins, always with a ManningResistance.
+Without any usable profile, the Basin keeps one Basin with a fallback profile.

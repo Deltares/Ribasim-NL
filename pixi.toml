@@ -91,6 +91,8 @@ repro-main = "python scripts/repro_main.py"
 install-repro-main = "python scripts/install_repro_main.py"
 check = "prek run --all-files"
 dvc-dag = { cmd = "python scripts/dvc_dag.py > docs/dev/_dvc-dag.mmd", inputs = ["dvc.yaml"], outputs = ["docs/dev/_dvc-dag.mmd"] }
+# Remake the figures of the docs from the model data, see docs/dev/docs.qmd: `pixi run docs-figures [FIGURE ...]`
+docs-figures = "python scripts/docs_figures.py"
 docs = { cmd = "quartodoc build && quarto preview", cwd = "docs", depends-on = ["dvc-dag", "viewer-build"] }
 docs-render = { cmd = "quartodoc build && rm -f objects.json && quarto render --to html --execute", cwd = "docs", depends-on = ["dvc-dag", "viewer-build"] }
 viewer-install = { cmd = "npm ci", cwd = "viewer", inputs = ["viewer/package.json", "viewer/package-lock.json"], outputs = ["viewer/node_modules/.package-lock.json"] }

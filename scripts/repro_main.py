@@ -12,7 +12,7 @@ out `origin/main` in a worktree dedicated to this, and then runs `pixi run repro
    Like in a new worktree, data that is not in the workspace does not count as changed. With `--full` it runs
    all stages instead, for instance when the previous run used the wrong environment.
 5. If `dvc.lock` changed, commits it with the metrics to a new branch, pushes it, and opens a draft pull request.
-   Then it publishes the model viewer preview, and has Claude describe the effect of the run with the
+   Then it publishes the model viewer preview and the figures of the docs, and has Claude describe the effect of the run with the
    `describe-run` skill, using only tools that read files. The pull request is then marked as ready for review.
 
 Merging the pull request is left to a person.
@@ -226,6 +226,12 @@ def check_no_secrets(text: str) -> None:
         assert len(value) < 8 or value not in text, f"The text contains the value of {name}"
 
 
+def publish_figures(root: Path) -> None:
+    """Remake the figures of the docs from this run and upload them, see `docs/dev/docs.qmd`; a failure only logs."""
+    if subprocess.run(["pixi", "run", "docs-figures", "--pull", "--publish"], cwd=root, check=False).returncode != 0:
+        log("Publishing the figures of the docs failed, run `pixi run docs-figures --pull --publish`")
+
+
 def publish(root: Path, base: str, branch: str, command: str, describe_run: bool) -> int:
     """Commit and push the run, open its pull request and describe it; return its number."""
     unexpected = set(changed_files(root)) - set(LOCKED)
@@ -248,6 +254,7 @@ def publish(root: Path, base: str, branch: str, command: str, describe_run: bool
 
     if subprocess.run(["pixi", "run", "publish-webmap"], cwd=root, check=False).returncode != 0:
         log("Publishing the model viewer preview failed, run `pixi run publish-webmap` on the branch")
+    publish_figures(root)
 
     if describe_run:
         context_file = root / "logs/repro-main" / f"{branch}.md"

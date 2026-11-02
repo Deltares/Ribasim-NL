@@ -2,15 +2,34 @@
 title: "Profile generation"
 ---
 
-The generation of representative profiles is mainly relevant for water quality simulations.
+The [level controlled models](level-controlled.qmd) get representative profiles of their water bodies in the `profiles_<water board>` stages.
 The profiles -- represented by $A(h)$-relations -- largely determine the retention time of water in a basin,
 where the distinction between _doorgaand_ and _bergend_ is crucial:
 _doorgaand_ represents flowing water bodies, while
 _bergend_ represents stagnant water bodies.
+This makes them mainly relevant for water quality simulations.
 
-These profiles also form the basis for the coupling with the groundwater modelling.
+These profiles also form the basis for the coupling with the groundwater modelling, and their hydro-objects, `verwerkt/profielen/network.gpkg`, guide the [layout](layout.qmd) of the model.
+The [gravity controlled models](gravity-controlled.qmd) get their profiles in other ways, see [storage basins](storage-basins.qmd).
+
+::: {layout-ncol=2}
+![The hydro-objects of Delfland near Delft. Those on the shortest paths between the crossings of a Basin are doorgaand, and the others bergend.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/profiles-map.png){fig-alt="Map of a network of ditches in which the main routes are thick and blue and the side ditches thin and orange, with one Basin area in grey."}
+
+![The resulting area by level of that Basin, and of its storage Basin.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/profiles-area.png){fig-alt="Chart of level against area with two lines: doorgaand from about 23 to 27 ha and bergend from about 16 to 17 ha."}
+:::
 
 # Profile generation workflow
+
+```{mermaid}
+flowchart LR
+  bgt["BGT water surfaces"] --> width
+  hydro["hydro-objects,<br>crossings"] --> paths["doorgaand or bergend,<br>by shortest paths"]
+  paths --> width["Width from the<br>BGT surface"]
+  width --> depth["Depth from hydrotype,<br>or measured"]
+  xs["measured cross-sections"] --> depth
+  depth --> ah["A(h) of doorgaand<br>and bergend"]
+  ah --> model["Basin / profile,<br>storage Basins"]
+```
 
 Profiles are generated per water authority, as
 (1) data sources are available per water authority, and
@@ -46,42 +65,37 @@ When neither profile survives, the model receives a two-point fallback profile w
 If no storing basins remain, implementation still updates the existing basins' profiles and leaves the network unchanged.
 This prevents dummy and very small generated profiles from reaching the solver.
 
+Some water boards differ from these steps.
+Hollandse Delta and Scheldestromen flag a predefined main route, `gen_profiles.flagged_hydro_objects`, instead of searching shortest paths.
+Hollands Noorderkwartier has no measured cross-sections, and Rijnland overrides the depths of its water bodies.
+
 # Profile generation code
 
-The profile generation is coded as standalone and intended to be executed prior to model generation, ideally once.
-Therefore, all relevant code is grouped inside a `profiles`-module:
+The source code is in [`src/ribasim_nl/ribasim_nl/profiles`](https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/profiles).
+The `profiles_<water board>` DVC stages run the two scripts, for instance:
 
- -  source-code: [`src/ribasim_nl/ribasim_nl/profiles`](https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/profiles), and
- -  implementation-code: [`pipeline`](https://github.com/Deltares/Ribasim-NL/tree/main/pipeline).
-
-This results in the following structures:
-
-- For the source-code:
-```
-src/ribasim_nl/ribasim_nl/profiles/
- -  __init__.py
- -  <source-code>.py
-```
-- For the implementation-code:
-```
-pipeline/
- -  prep_cross_sections.py
- -  <water-authority>/02_profiles.py
-```
-
-As part of the implementation code, there is the preprocessing of cross-sections ([`prep_cross_sections.py`](https://github.com/Deltares/Ribasim-NL/tree/main/pipeline/prep_cross_sections.py)),
-which should be executed prior to running any of the `pipeline/<water-authority>/02_profiles.py` scripts.
-This way, the measured cross-sections are preprocessed so they are presented as `LINESTRING Z`-objects.
-Preprocessing of the measured cross-sections must be done per water authority:
 ```bash
-pixi run python pipeline/prep_cross_sections.py <water-authority>
+pixi run dvc repro --pull --single-item profiles_delfland
 ```
-This call has to be done only once per water authority
-(or when changes are made to the data sources and/or source code).
 
-Subsequently, the profile tables (_doorgaand_ and _bergend_) are generated/updated per water authority as well:
+1. [`pipeline/prep_cross_sections.py`](https://github.com/Deltares/Ribasim-NL/tree/main/pipeline/prep_cross_sections.py) preprocesses the measured cross-sections into `LINESTRING Z`-objects.
+2. `pipeline/<water board>/02_profiles.py` generates the profile tables, and `implement.set_basin_profiles` sets them in the model, and adds the storage Basins with their ManningResistances.
+
+To run them yourself, per water authority, with the cross-sections first:
+
 ```bash
-pixi run python pipeline/<water-authority>/02_profiles.py
+pixi run python pipeline/prep_cross_sections.py <water board>
+pixi run python pipeline/<water board>/02_profiles.py
 ```
-Again, this call has to be done only once per water authority
-(or when changes are mode to the data sources and/or source code).
+
+The results are in `verwerkt/profielen`:
+
+| File | Content |
+|:-----|:--------|
+| `network.gpkg` | The hydro-objects with their `main-route`, used for the [layout](layout.qmd). |
+| `profielen_doorgaand.csv`, `profielen_bergend.csv` | The tables with the $A(h)$-relations. |
+| `intermediate/lines_z.gpkg` | The preprocessed cross-sections. |
+| `intermediate/int_output.gpkg` | For inspection: `main-route`, `endpoints`, `bgt`, `hydro-objects`, `basin_profiles_doorgaand` and `basin_profiles_bergend`. |
+| `intermediate/graph.gpkg` | For inspection: the graph of the network. |
+
+Only `network.gpkg` is an output of DVC, so the others are there after running the stage yourself.

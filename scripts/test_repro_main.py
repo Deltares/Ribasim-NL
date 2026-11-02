@@ -18,6 +18,7 @@ from repro_main import (
     check_no_secrets,
     check_private,
     check_worktree,
+    publish_figures,
     repro_command,
     superseded,
 )
@@ -109,6 +110,22 @@ def test_check_private(tmp_path: Path):
         check_private(path)
     path.chmod(0o600)
     check_private(path)
+
+
+@pytest.mark.parametrize("returncode", [0, 1])
+def test_publish_figures_does_not_stop_the_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], returncode: int
+):
+    commands = []
+
+    def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+        commands.append(args)
+        return subprocess.CompletedProcess(args, returncode)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    publish_figures(tmp_path)
+    assert commands == [["pixi", "run", "docs-figures", "--pull", "--publish"]]
+    assert ("failed" in capsys.readouterr().out) == (returncode != 0)
 
 
 def test_check_no_secrets(monkeypatch: pytest.MonkeyPatch):

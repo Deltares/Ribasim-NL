@@ -38,11 +38,11 @@ The panel of an Observation node shows its fit above the chart of its observed a
 ## Updating the published data
 
 1. Run the model with the `run_lhm_coupled` DVC stage.
-    It copies the model of `modellen/lhm_coupled` to `runs/lhm_coupled`, and writes the results next to it.
+    It copies the model of `modellen/lhm_coupled` to `runs/lhm_coupled`, and writes the results of the first 2 of its 3 years next to it.
     It also writes the commit of the code to `runinfo.json`, which the viewer shows next to the scale bar, with the time the run finished from `results/ribasim.log`.
     For now this runs with a looser solver tolerance, see `pipeline/run_lhm_coupled.py`.
     The NetCDF results are compressed, to save space in DVC.
-    This takes many hours, so normally pull the cached results instead:
+    This takes about 1.5 hours, so normally pull the cached results instead:
 
     ```sh
     pixi run dvc pull run_lhm_coupled
@@ -91,7 +91,7 @@ The panel of an Observation node shows its fit above the chart of its observed a
     Use `--pr <number>` to publish for another pull request, and `--main` to only publish the model of `origin/main`.
     Use `--commit <revision>` to publish the model of a commit on GitHub, and add `--base <revision>` to also publish its differences from another commit, see [Links to a version](#links-to-a-version).
 
-`pixi run repro-local` runs steps 1 to 4 by default, see [Running locally](local.qmd).
+`pixi run repro-local` runs steps 1, 2 and 4 by default, and with `--push` it also pushes the run, see [Running locally](local.qmd).
 The docs do not need to be rebuilt to show another model.
 
 ### How the published models are found
