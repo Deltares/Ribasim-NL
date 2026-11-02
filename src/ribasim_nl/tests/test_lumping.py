@@ -13,15 +13,9 @@ from ribasim_nl.lumping.hydamo import (
     read_hydamo_network,
     read_split_nodes,
 )
-from ribasim_nl.lumping.model import lumped_model, read_krw
-from ribasim_nl.lumping.network import create_basin_areas, lump_network
-from ribasim_nl.lumping.utils import (
-    merge_grouped,
-    overlay_intersection,
-    quicksort_order,
-    read_layer,
-    split_edges_by_dx,
-)
+from ribasim_nl.lumping.model import lumped_model, number_lost_basins, read_krw
+from ribasim_nl.lumping.network import area_basins, assign_areas, fill_holes, lump_network
+from ribasim_nl.lumping.utils import merge_grouped, quicksort_order, read_layer, split_edges_by_dx
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon, box
 
 CRS = "EPSG:28992"
@@ -75,29 +69,6 @@ def test_quicksort_order_nan():
         quicksort_order([1.0, np.nan, 0.0])
 
 
-def test_overlay_intersection():
-    df1 = gpd.GeoDataFrame({"name": ["A", "B"]}, geometry=[box(0, 0, 2, 2), box(2, 0, 4, 2)], crs=CRS)
-    df2 = gpd.GeoDataFrame({"name": ["C", "D"]}, geometry=[box(1, 0, 3, 1), box(1, 1, 3, 2)], crs=CRS)
-    result = overlay_intersection(df1, df2)
-    # grouped by the polygon of df2, as in geopandas < 1
-    assert result[["name_1", "name_2"]].to_numpy().tolist() == [["A", "C"], ["B", "C"], ["A", "D"], ["B", "D"]]
-    assert result.area.tolist() == [1.0, 1.0, 1.0, 1.0]
-    assert result.crs == CRS
-
-
-def test_overlay_intersection_polygons_only():
-    df1 = gpd.GeoDataFrame({"a": [1]}, geometry=[box(0, 0, 2, 2)], crs=CRS)
-    # overlaps the right half of the square and touches its top, which gives a polygon and a line
-    l_shape = Polygon([(1, 0), (3, 0), (3, 3), (0, 3), (0, 2), (1, 2)])
-    # only touches the square
-    touching = box(0, 2, 2, 3)
-    df2 = gpd.GeoDataFrame({"b": [1, 2]}, geometry=[l_shape, touching], crs=CRS)
-    result = overlay_intersection(df1, df2)
-    assert result["b"].tolist() == [1]
-    assert result.geom_type.tolist() == ["Polygon"]
-    assert result.area.tolist() == [2.0]
-
-
 def test_split_edges_by_dx():
     edges = gpd.GeoDataFrame(
         {"branch_id": ["long", "short"]},
@@ -141,11 +112,11 @@ def test_read_krw_without_layers(tmp_path: Path):
         read_krw(path)
 
 
-def test_create_basin_areas_degenerate_area():
+def test_area_basins_degenerate_area():
     edges = gpd.GeoDataFrame({"basin": [0]}, geometry=[LineString([(0, 0), (100, 0)])], crs=CRS)
-    # as in 2024, an area without geometry gets no basin
+    # an area without geometry drains to no basin
     areas = gpd.GeoDataFrame({"code": ["A1", "A2"], "area": [1, 2]}, geometry=[box(0, -10, 50, 10), None], crs=CRS)
-    areas, _ = create_basin_areas(edges, areas)
+    areas = area_basins(edges, areas)
     assert areas.set_index("code")["basin"].to_dict() == {"A1": 0, "A2": -1}
     # a line and a point, when made valid
     degenerate = MultiPolygon([Polygon([(0, 0), (1, 0), (2, 0)]), Polygon([(5, 5)] * 4)])
@@ -153,7 +124,120 @@ def test_create_basin_areas_degenerate_area():
         {"code": ["A1", "A2"], "area": [1, 2]}, geometry=[box(0, -10, 50, 10), degenerate], crs=CRS
     )
     with pytest.raises(AssertionError, match="area A2 has no polygon"):
-        create_basin_areas(edges, areas)
+        area_basins(edges, areas)
+
+
+def areas_of(boxes: dict[str, tuple[float, float, float, float]], basins: dict[str, int]) -> gpd.GeoDataFrame:
+    """Areas with codes, numbers and the basin they drain to, from boxes."""
+    codes = list(boxes)
+    return gpd.GeoDataFrame(
+        {"code": codes, "area": range(1, len(codes) + 1), "basin": [basins.get(c, -1) for c in codes]},
+        geometry=[box(*b) for b in boxes.values()],
+        crs=CRS,
+    )
+
+
+def test_assign_areas():
+    """Areas that drain to no kept basin go to the basin they border longest, preferably in their drainage area."""
+    areas = areas_of(
+        {
+            # A and B drain to basins 1 and 2, C to basin 3, which is not kept
+            "A": (0, 0, 10, 10),
+            "B": (10, 0, 20, 10),
+            "C": (0, 10, 20, 12),
+            # D borders only C, so it reaches a basin through C
+            "D": (0, 12, 10, 13),
+            # E borders A longest, but B in its drainage area
+            "E": (0, -6, 12, 0),
+            # F borders no area, so it goes to the nearest
+            "F": (30, 0, 31, 1),
+        },
+        {"A": 1, "B": 2, "C": 3},
+    )
+    # A, C and D in drainage area X, B, E and F in Y
+    drainage_areas = gpd.GeoDataFrame(
+        {"code": ["X", "Y"]},
+        geometry=[box(0, 0, 10, 20), box(10, -10, 40, 20).union(box(0, -10, 10, 0))],
+        crs=CRS,
+    )
+    basins = pd.DataFrame({"basin": [1, 2]})
+    areas, basin_areas = assign_areas(areas, basins, drainage_areas)
+    assert areas.set_index("code")["basin"].to_dict() == {"A": 1, "B": 2, "C": 1, "D": 1, "E": 2, "F": 2}
+    assert basin_areas["basin"].tolist() == [1, 2]
+    assert (basin_areas.geom_type == "MultiPolygon").all()
+    assert basin_areas.area.sum() == pytest.approx(areas.area.sum())
+
+
+def test_assign_areas_to_basins_within():
+    """The areas of a basin that is not kept go together to the one basin without area within them."""
+    areas = areas_of({"A": (0, 0, 10, 10), "B": (10, 0, 20, 10), "C": (20, 0, 30, 10)}, {"A": 1, "B": 3, "C": 3})
+    basins = gpd.GeoDataFrame({"basin": [1, 2]}, geometry=[Point(5, 5), Point(15, 5)], crs=CRS)
+    areas, _ = assign_areas(areas, basins)
+    assert areas.set_index("code")["basin"].to_dict() == {"A": 1, "B": 2, "C": 2}
+
+
+def test_assign_areas_fills_gaps():
+    """Gaps between the basin areas up to the maximum area go to the basin area they border longest."""
+    areas = areas_of({"A": (0, 0, 30, 10), "B": (0, 11, 30, 20), "C": (0, 10, 3, 11), "D": (4, 10, 30, 11)}, {})
+    areas["basin"] = [1, 2, 2, 2]
+    _, basin_areas = assign_areas(areas, pd.DataFrame({"basin": [1, 2]}), max_gap_area=2.0)
+    # the gap between C and D, of 1 m², goes to basin 2, which borders it on three sides
+    assert basin_areas.set_index("basin").area.to_dict() == {1: 300.0, 2: 300.0}
+    _, basin_areas = assign_areas(areas, pd.DataFrame({"basin": [1, 2]}), max_gap_area=0.5)
+    assert basin_areas.set_index("basin").area.to_dict() == {1: 300.0, 2: 299.0}
+
+
+def test_number_lost_basins():
+    """Lost basins get the next node IDs where the validator of the fix scripts finds them, in its order."""
+    nodes = gpd.GeoDataFrame(
+        {"node_id": [1, 2, 3, 4], "node_type": ["LevelBoundary", "ManningResistance", "Basin", "Pump"]},
+        geometry=[Point(0, 0), Point(10, 0), Point(20, 0), Point(30, 0)],
+        crs=CRS,
+    )
+    # the node ID of basin L1 is that of ManningResistance 2, L2 and L3 have no node
+    lost = gpd.GeoDataFrame(
+        {"node_id": [2, 9, 7], "node_type": "Basin", "meta_id": [11, 12, 13]},
+        geometry=[Point(15, 5), Point(40, 0), Point(50, 0)],
+        crs=CRS,
+    )
+    links = gpd.GeoDataFrame(
+        {"from_node_id": [2, 2, 2, 1, 9, 1], "to_node_id": [3, 4, 4, 9, 1, 7], "link_type": "flow"},
+        geometry=[
+            LineString([(10, 0), (20, 0)]),
+            LineString([(15, 5), (30, 0)]),
+            # a duplicate of the previous link
+            LineString([(15, 5), (30, 0)]),
+            # the validator does not check the end of a link whose start is at its node, if that has no node
+            LineString([(0, 0), (40, 0)]),
+            LineString([(40, 0), (0, 0)]),
+            LineString([(0, 0), (50, 0)]),
+        ],
+        crs=CRS,
+    )
+    links.index = pd.RangeIndex(1, 7, name="link_id")
+    new_nodes, new_links = number_lost_basins(nodes, links, lost)
+    assert new_nodes["node_id"].tolist() == [1, 2, 3, 4, 5, 6]
+    assert new_nodes.set_index("node_id").loc[[5, 6], "meta_id"].tolist() == [11, 12]
+    assert new_links.index.tolist() == [1, 2, 4, 5, 6]
+    assert list(zip(new_links["from_node_id"], new_links["to_node_id"], strict=True)) == [
+        (2, 3),
+        (5, 4),
+        (1, 6),
+        (6, 1),
+        # L3 is not found, so it stays out, and its link as it was
+        (1, 7),
+    ]
+    # node IDs that a fix script gave
+    new_nodes, _ = number_lost_basins(nodes, links, lost, node_ids={9: 100})
+    assert new_nodes.set_index("meta_id").loc[[11, 12], "node_id"].tolist() == [5, 100]
+
+
+def test_fill_holes():
+    basin_areas = gpd.GeoDataFrame({"node_id": [1, 2]}, geometry=[box(0, 0, 10, 10), box(20, 0, 30, 10)], crs=CRS)
+    # the uncovered part of A goes to basin 1, which covers most of A, and B to basin 2, which it borders longest
+    areas = gpd.GeoDataFrame({"code": ["A", "B"]}, geometry=[box(0, 0, 10, 12), box(12, 0, 20, 10)], crs=CRS)
+    filled = fill_holes(basin_areas, areas)
+    assert filled.set_index("node_id").area.to_dict() == {1: 120.0, 2: 180.0}
 
 
 def test_apply_hydamo_changes(tmp_path: Path):
@@ -240,17 +324,9 @@ def test_lumped_model(lumping_input: Path):
     boundaries = read_boundaries(ribasim_input, "boundaries", network.nodes, buffer_distance=1.0)
     assert boundaries["boundary_type"].tolist() == ["FlowBoundary", "LevelBoundary"]
 
-    lumped = lump_network(
-        network,
-        split_nodes,
-        boundaries,
-        areas,
-        drainage_areas=drainage_areas,
-        remove_isolated=True,
-        remove_holes_min_area=5000.0,
-    )
+    lumped = lump_network(network, split_nodes, boundaries, areas, remove_isolated=True)
     krw = gpd.GeoDataFrame({"meta_krw_id": ["K1"]}, geometry=[box(900, -50, 1100, 50)], crs=CRS)
-    model = lumped_model(lumped, "NL99", krw)
+    model = lumped_model(lumped, "NL99", krw, drainage_areas=drainage_areas, max_gap_area=5000.0)
 
     # the boundaries, the split nodes and the basins, without the basin between the open water and the LevelBoundary
     nodes = model.node.df

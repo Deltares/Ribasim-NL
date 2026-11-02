@@ -143,6 +143,7 @@ forced_coupling = {
     4402348: 5900072,  # LB ligt op exact dezelfde locatie
     6000124: 6002492,  # Reparatie Helenavaart
     6000125: 3801280,  # Forceren Kanaal van Deurne
+    3800038: 6002495,  # Helenavaart Limburg neemt water uit het Kanaal van Deurne, niet uit de nabije De Beulen
     3800053: 3801280,  # Forceren Kanaal van Deurne
     2700009: 3801394,  # Vuchterstuw naar Binnenstad
     3800048: 3801394,  # Aansluiten Drongelens kanaal op Binnenstad

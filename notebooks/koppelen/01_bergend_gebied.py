@@ -25,7 +25,7 @@ model = Model.read(toml_file)
 basin_polygon = model.basin.area.df[model.basin.area.df.node_id != 1228].union_all()
 
 drainage_area = gpd.read_file(
-    cloud.joinpath("DeDommel/verwerkt/4_ribasim/areas.gpkg"), layer="drainage_areas"
+    cloud.joinpath("DeDommel/verwerkt/3_input/areas.gpkg"), layer="drainage_areas"
 ).union_all()
 
 
