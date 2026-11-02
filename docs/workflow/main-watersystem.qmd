@@ -51,7 +51,7 @@ This stage is frozen, so it is not run again in a reproduction, since the source
 
 ## Control and demands
 
-- `6_model_sturing.py` adds control, with PidControl, ContinuousControl, DiscreteControl and FlowDemand nodes, into `modellen/hws_sturing/hws.toml`.
+- `6_model_sturing.py` adds control, with ContinuousControl, DiscreteControl and FlowDemand nodes, into `modellen/hws_sturing/hws.toml`.
 - `7_model_onttrekkingen.py` adds the demands of drinking water, industry and energy as UserDemands, splits Basins along a route where needed, and adds Junctions, into `modellen/hws_demand/hws.toml`.
 - `8a_update_state.py` runs this model, and writes its final state back as its initial state.
 

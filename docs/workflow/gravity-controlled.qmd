@@ -55,7 +55,7 @@ When the links are routed along the waterways in the last step, their BGT width 
 
 ## 4. Control
 
-`04_add_full_control.py` gives every Outlet and Pump one of the [functions](control.qmd) `drain`, `supply`, `flow_control` or `flushing`, and adds its DiscreteControl node.
+`04_add_full_control.py` gives the Outlets and Pumps one of the [functions](control.qmd) `drain`, `supply`, `flow_control` or `flushing`, and adds its DiscreteControl node.
 
 It also writes steady state variants of the model, `<authority>_steady_state_dry` and `_wet`, with constant forcing.
 Each script has a flag `MODEL_EXEC` to run and check these while working on the model, which is off in the pipeline.
