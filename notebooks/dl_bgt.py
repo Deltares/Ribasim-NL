@@ -59,7 +59,7 @@ for objecttype in verdeelpunten_df[mask].objecttype.unique():
 
 
 # hydroobject filteren
-areas_gpkg = cloud.joinpath("Limburg/verwerkt/4_ribasim/areas.gpkg")
+areas_gpkg = cloud.joinpath("Limburg/verwerkt/3_input/areas.gpkg")
 hydroobject_df = gpd.read_file(hydamo_gpkg, layer="hydroobject")
 supply_df = gpd.read_file(areas_gpkg, layer="supply_areas")
 

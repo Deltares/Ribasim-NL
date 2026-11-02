@@ -5,10 +5,11 @@ import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet, tabulated_rating_curve
-from ribasim_nl.geometry import connected_parts, split_basin_multi_polygon
+from ribasim_nl.geometry import connected_parts, polygon_parts, split_basin_multi_polygon
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
 from shapely.geometry import LineString, MultiPolygon, Point
+from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -23,6 +24,7 @@ ribasim_toml = ribasim_dir / "model.toml"
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 verbeteringen_gpkg = cloud.joinpath("StichtseRijnlanden/verwerkt/modelfouten_met_verbeter_acties_BD_311024.gpkg")
+areas_gpkg = cloud.joinpath(authority, "verwerkt/3_input/areas.gpkg")
 
 # %% read
 model = Model.read(ribasim_toml)
@@ -31,6 +33,7 @@ split_lijnen_df = gpd.read_file(verbeteringen_gpkg, layer="area_split_lijnen", f
 extra_area_df = gpd.read_file(verbeteringen_gpkg, layer="nieuwe_areas_voor_opvulling", fid_as_index=True)
 hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
 afsluitmiddel_gdf = gpd.read_file(hydamo_gpkg, layer="afsluitmiddel", fid_as_index=True)
+areas_gdf = gpd.read_file(areas_gpkg, layer="areas")
 
 # %% some stuff we'll need again
 level_data = level_boundary.Static(level=[0])
@@ -51,39 +54,19 @@ tabulated_rating_curve_data = tabulated_rating_curve.Static(level=[0.0, 5], flow
 
 # HIER KOMEN ISSUES
 
-# %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2455143137
-
-# verwijderen duplicated links
-model.link.df.drop_duplicates(inplace=True)
-
-
 # %%
 model.remove_links(link_ids=[2677])
 for node_id in [52, 53, 2056, 2053, 2042, 749]:
+    model.remove_node(node_id, remove_links=True)
+# the basins of LevelBoundaries 38, 52 and 53, which the lumping adds back, but the old fix script removed with their
+# links first
+for node_id in [2102, 2103, 2104]:
     model.remove_node(node_id, remove_links=True)
 
 model.link.add(model.tabulated_rating_curve[924], model.level_boundary[51])
 model.link.add(model.tabulated_rating_curve[937], model.level_boundary[51])
 model.link.add(model.level_boundary[38], model.outlet[85])
 
-
-# %% see: https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2444112017
-# toevoegen ontbrekende basins
-
-basin_links_df = network_validator.link_incorrect_connectivity()
-basin_nodes_df = network_validator.node_invalid_connectivity()
-
-for row in basin_nodes_df.itertuples():
-    # maak basin-node
-    basin_node = model.basin.add(Node(geometry=cast(Point, row.geometry)), tables=basin_data)
-
-    # update link_table
-    model.link.df.loc[basin_links_df[basin_links_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
-        basin_node.node_id
-    )
-    model.link.df.loc[basin_links_df[basin_links_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
-        basin_node.node_id
-    )
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2456843484
 
@@ -147,21 +130,21 @@ for link_id in [359, 360, 361]:
 
 assert model.basin.area.df is not None
 result = split_basin_multi_polygon(
-    MultiPolygon([cast(MultiPolygon, model.basin.area.df.at[1, "geometry"]).buffer(0.1).buffer(-0.1)]),
+    MultiPolygon([model.basin.area[1572].geometry.union_all().buffer(0.1).buffer(-0.1)]),
     line=cast(LineString, split_lijnen_df.at[28, "geometry"]),
 )
-model.basin.area.df.loc[1, "geometry"] = result[1]  # ty: ignore[invalid-assignment]
-model.basin.area.df.loc[480, "geometry"] = cast(MultiPolygon, model.basin.area.df.at[480, "geometry"]).union(result[0])  # ty: ignore[invalid-assignment]
-
+model.basin.area.df = model.basin.area.df[model.basin.area.df.node_id != 1572]
+model.add_basin_area(result[1], node_id=1572)
+model.add_basin_area(result[0], node_id=1914)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2457283397
 
 # oplossen Loperiksingel/Nassaukade bij rand HHSK
-geometry, _ = split_basin_multi_polygon(
-    cast(MultiPolygon, model.basin.area.df.at[135, "geometry"]),
+# the western part of area AW0838, across the line, is of Schieland en de Krimpenerwaard
+loperiksingel, schieland = split_basin_multi_polygon(
+    MultiPolygon(polygon_parts(areas_gdf.loc[areas_gdf["code"] == "AW0838"].union_all())),
     line=cast(LineString, split_lijnen_df.at[1, "geometry"]),
 )
-model.basin.area.df.loc[135, "geometry"] = geometry  # ty: ignore[invalid-assignment]
 boundary_node = model.level_boundary.add(Node(geometry=model.level_boundary[75].geometry), tables=[level_data])
 
 outlet_geom, basin_geom = cast(LineString, hydroobject_gdf.at[10466, "geometry"]).boundary.geoms
@@ -171,6 +154,7 @@ model.update_node(node_id=75, node_type="Basin", data=basin_data)
 outlet_node = model.outlet.add(Node(geometry=outlet_geom), tables=[outlet_data])
 model.link.add(model.basin[75], outlet_node)
 model.link.add(outlet_node, boundary_node)
+model.add_basin_area(loperiksingel, node_id=75)
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2457334403
@@ -193,32 +177,27 @@ basin_node = model.basin.add(
 model.redirect_link(link_id=2721, from_node_id=basin_node.node_id)
 model.link.add(model.level_boundary[74], outlet_node)
 model.link.add(outlet_node, basin_node)
-
-# %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2457385390
-
-# Basin / Area Rijnsweerd mergen met Utrecht Centrum
-geometry = cast(MultiPolygon, model.basin.area.df.at[501, "geometry"])
-model.basin.area.df.loc[194, "geometry"] = cast(MultiPolygon, model.basin.area.df.at[194, "geometry"]).union(geometry)  # ty: ignore[invalid-assignment]
-model.basin.area.df = model.basin.area.df[~model.basin.area.df.index.isin([501, 541])]
+# the area around it, which the lumping gives to a neighbouring basin
+model.add_basin_area(areas_gdf.loc[areas_gdf["code"] == "AW0657"].union_all(), node_id=basin_node.node_id)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2457447764
 
 # Split Basin / Area met area_split_lijnen
 
 
-# group split_lines by basin_fid
-# basin_fid, split_lijnen_select_df = list(split_lijnen_df[split_lijnen_df.opmerkingen.isna()].groupby("basin_area_fid"))[
-#     0
-# ]
-new_basin_area_df = gpd.GeoSeries([], crs=model.crs)
-for basin_fid, split_lijnen_select_df in split_lijnen_df[split_lijnen_df.opmerkingen.isna()].groupby("basin_area_fid"):
+# the pieces that split lines cut off a basin area, by basin and number, and the areas without basin yet
+pieces: dict[tuple[int, int], BaseGeometry] = {}
+for basin_node_id, split_lijnen_select_df in split_lijnen_df[split_lijnen_df.opmerkingen.isna()].groupby("node_id"):
     # iterate trough split_lines per basin creating a series with geometries
-    series = gpd.GeoSeries([model.basin.area.df.at[basin_fid, "geometry"]], crs=model.crs)
+    basin_node_id = int(cast(float, basin_node_id))
+    series = gpd.GeoSeries(
+        [MultiPolygon(polygon_parts(model.basin.area[basin_node_id].geometry.union_all()))], crs=model.crs
+    )
 
     for row in split_lijnen_select_df.itertuples():
         line = cast(LineString, row.geometry)
         if len(series[series.intersects(line)]) != 1:
-            raise ValueError(f"line with fid {row.Index} intersects basin with fid {basin_fid} more than once")
+            raise ValueError(f"line with fid {row.Index} intersects basin {basin_node_id} more than once")
 
         # select polygon
         fid = series[series.intersects(line)].index[0]
@@ -230,72 +209,40 @@ for basin_fid, split_lijnen_select_df in split_lijnen_df[split_lijnen_df.opmerki
         series.loc[fid] = result[0]
         series = pd.concat([series, gpd.GeoSeries([result[1]], crs=series.crs)], ignore_index=True)
 
-    # update existing basin / area if basin / node is within
-    basin_row = model.basin.area.df.loc[basin_fid]
-    basin_node_id = cast(int, basin_row.node_id)
-    drop_fid = True
-    if (
-        basin_node_id in model.basin.node.df.index.to_numpy()
-        and series.contains(model.basin[basin_node_id].geometry).any()
-    ):  # check is valid node and any of series is contained by node-geometry
-        model.basin.area.df.loc[basin_fid, "geometry"] = series[
-            series.contains(model.basin[basin_node_id].geometry)
-        ].iloc[0]
-        series = series[~series.contains(model.basin[basin_node_id].geometry)]
-        drop_fid = False
-
-    if drop_fid:  # if we haven't updated existing record, we drop it
-        model.basin.area.df = model.basin.area.df[model.basin.area.df.index != basin_fid]
-
-    new_basin_area_df = pd.concat([new_basin_area_df, series], ignore_index=True)
-
-
-# concat new_basin_area_df with existing model.basin.area.df
-new_basin_area_df = gpd.GeoDataFrame(geometry=new_basin_area_df)
-new_basin_area_df["node_id"] = None
-
-new_basin_area_df.index += model.basin.area.df.index.max() + 1
-new_basin_area_df.index.name = "fid"
-
-model.basin.area.df = pd.concat([model.basin.area.df, new_basin_area_df])
+    # the piece with the basin node remains its basin area, the others have no basin yet
+    model.basin.area.df = model.basin.area.df[model.basin.area.df.node_id != basin_node_id]
+    with_node = series.contains(model.basin[basin_node_id].geometry)
+    if with_node.any():
+        model.add_basin_area(series[with_node].iloc[0], node_id=basin_node_id)
+    pieces |= {(basin_node_id, k): geometry for k, geometry in enumerate(series[~with_node])}
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/153#issuecomment-2457597461
 
 # Basins toevoegen met nieuwe_areas_voor_opvulling
-new_basin_area_df = extra_area_df[extra_area_df.samenvoegen_met_basin_area_fid.isna()].reset_index()[["geometry"]]
-new_basin_area_df["node_id"] = None
-new_basin_area_df.index += model.basin.area.df.index.max() + 1
-new_basin_area_df.index.name = "fid"
-model.basin.area.df = pd.concat([model.basin.area.df, new_basin_area_df])
+extra_areas = extra_area_df[extra_area_df.samenvoegen_met_node_id.isna()].geometry
 
-# Mergen van nieuwe basin / area's met de toegewezen basin / area fid
-for basin_id, df in extra_area_df[extra_area_df.samenvoegen_met_basin_area_fid.notna()].groupby(
-    "samenvoegen_met_basin_area_fid"
+# Mergen van nieuwe basin / area's met de toegewezen basin
+for basin_node_id, df in extra_area_df[extra_area_df.samenvoegen_met_node_id.notna()].groupby(
+    "samenvoegen_met_node_id"
 ):
-    basin_fid = int(cast(float, basin_id))
-    model.basin.area.df.loc[basin_fid, "geometry"] = cast(
-        MultiPolygon, model.basin.area.df.at[basin_fid, "geometry"]
-    ).union(cast(gpd.GeoDataFrame, df).union_all())
+    model.add_basin_area(cast(gpd.GeoDataFrame, df).union_all(), node_id=int(cast(float, basin_node_id)))
 
 # Vlakken zonder node mergen met de juiste vlakken mét node
-for merge_fid, with_fid in [[591, 589], [599, 364], [300, 74], [611, 605], [28, 20]]:
-    model.basin.area.df.loc[with_fid, "geometry"] = model.basin.area.df.at[with_fid, "geometry"].union(
-        model.basin.area.df.at[merge_fid, "geometry"]
-    )
-    model.basin.area.df = model.basin.area.df[model.basin.area.df.index != merge_fid]
+pieces[(2019, 2)] = pieces[(2019, 2)].union(pieces.pop((2021, 1)))
+model.add_basin_area(extra_areas.pop(1), node_id=1772)
+model.add_basin_area(model.basin.area[1698].geometry.union_all(), node_id=1434)
+extra_areas[17] = extra_areas[17].union(extra_areas.pop(50))
+model.add_basin_area(model.basin.area[1382].geometry.union_all(), node_id=2090)
 
-# 2 niet aansluitende vlakken "exploden" toekennen aan de juiste nodes bij Nieuwegein geinoord
-geoms = [i for i in model.basin.area.df.at[154, "geometry"].geoms if i.area > 100]
-model.basin.area.df.loc[606, "geometry"] = model.basin.area.df.at[606, "geometry"].union(geoms[0])
-model.basin.area.df.at[154, "geometry"] = MultiPolygon([geoms[1]])
+# 2 niet aansluitende vlakken toekennen aan de juiste nodes bij Nieuwegein geinoord
+model.add_basin_area(areas_gdf.loc[areas_gdf["code"] == "AW1134"].union_all(), node_id=1944)
+model.add_basin_area(extra_areas.pop(29), node_id=1524)
 
 # Handmatig fixen van verkeerd toegewezen node_ids aan areas
-model.basin.area.df.loc[9, "node_id"] = 2084
-model.basin.area.df.loc[604, "node_id"] = 1855
-model.basin.area.df.loc[436, "node_id"] = 1854
-model.basin.area.df.loc[244, "node_id"] = 2075
-model.basin.area.df.loc[289, "node_id"] = 1518
-model.basin.area.df.loc[154, "node_id"] = 1944
+model.add_basin_area(model.basin.area[1855].geometry.union_all(), node_id=1854)
+model.add_basin_area(extra_areas.pop(14), node_id=1855)
+model.add_basin_area(model.basin.area[1630].geometry.union_all(), node_id=2075)
+model.add_basin_area(model.basin.area[1684].geometry.union_all(), node_id=1518)
 model.remove_node(node_id=1031, remove_links=True)
 
 # Een aantal basins mergen
@@ -308,22 +255,29 @@ model.merge_basins(node_id=1382, to_node_id=2090, are_connected=False)
 # 2x een basin area met niet aansluitende vlakken "exploden" en toekennen aan de juiste nodes (gelijk aan Nieuwegein Geinoord)
 # de delen die niet aansluiten op het deel met de basin-knoop worden losse vlakken
 missing_geoms = []
-for fid in [91, 259]:
+for basin_node_id in [1452, 1647]:
     geometry, detached = connected_parts(
-        model.basin.area.df.at[fid, "geometry"], model.basin[model.basin.area.df.at[fid, "node_id"]].geometry
+        model.basin.area[basin_node_id].geometry.union_all(), model.basin[basin_node_id].geometry
     )
-    model.basin.area.df.loc[fid, "geometry"] = geometry
+    model.basin.area.df = model.basin.area.df[model.basin.area.df.node_id != basin_node_id]
+    model.add_basin_area(geometry, node_id=basin_node_id)
     missing_geoms += detached
 
-df = gpd.GeoDataFrame(data=[], geometry=gpd.GeoSeries(missing_geoms, crs=model.crs))
-df.index.name = "fid"
-df.index += model.basin.area.df.index.max() + 1
+# the pieces, extra areas and detached parts get the basin within or near them, as basin areas without basin first
+geometries = [*pieces.values(), *extra_areas, *missing_geoms]
+df = gpd.GeoDataFrame({"node_id": [None] * len(geometries)}, geometry=geometries, crs=model.crs)
+df.index = pd.RangeIndex(model.basin.area.df.index.max() + 1, model.basin.area.df.index.max() + 1 + len(df), name="fid")
 model.basin.area.df = pd.concat([model.basin.area.df, df])
-
-# automatisch geometetrisch toekennen van knoop-ids aan area op basis van geometrie (within, closest witin)
 model.fix_unassigned_basin_area()
 model.fix_unassigned_basin_area(method="closest")
 model.fix_unassigned_basin_area()
+# the ones that got a basin take their area from the other basin areas
+assigned = model.basin.area.df[
+    model.basin.area.df.index.isin(df.index) & model.basin.area.df.node_id.isin(model.basin.node.df.index)
+]
+model.basin.area.df = model.basin.area.df.drop(index=assigned.index)
+for row in assigned.itertuples():
+    model.add_basin_area(cast(MultiPolygon, row.geometry), node_id=int(cast(int, row.node_id)))
 
 # bufferen met 0.1 en -0.1 om slivers op te lossen
 model.basin.area.df.loc[:, "geometry"] = model.basin.area.df.buffer(0.1).buffer(-0.1)
@@ -531,7 +485,7 @@ actions = [
 actions = [i for i in actions if i in gpd.list_layers(model_edits_gpkg).name.to_list()]
 model.apply_edits(model_edits_gpkg, actions, sort_by_order=True)
 
-# remove unassigned basin area
+# the pieces, extra areas and detached parts that got no basin
 model.remove_unassigned_basin_area()
 
 # %% corrigeren knoop-topologie
@@ -666,6 +620,9 @@ for code in OPEN_WATER_CODES:
     model.update_node(node_id=node_id_by_code(code), node_type="ManningResistance")
 # OW713 is not open water, but stuw ST1068
 model.node.df.loc[node_id_by_code("OW713"), "meta_code_waterbeheerder"] = "ST1068"
+
+# %% give the holes that the edits left in the basin areas to a basin
+model.fill_basin_area_holes(areas_gpkg, excluded=schieland)
 
 #  %% write model
 model.use_validation = True

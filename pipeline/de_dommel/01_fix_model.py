@@ -7,7 +7,7 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, outlet
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.sanitize_node_table import sanitize_node_table
-from shapely.geometry import LineString, MultiPolygon, Point, Polygon
+from shapely.geometry import LineString, Point
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -18,7 +18,7 @@ run_model = False
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 
-areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
+areas_gpkg = cloud.joinpath(authority, "verwerkt/3_input/areas.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 q_data_gpkg = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/Geodata/data_Q42018.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
@@ -40,44 +40,23 @@ model = Model.read(ribasim_toml)
 network_validator = NetworkValidator(model)
 
 
-# %% verwijder duplicated links
-
-# see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2288780504
-# see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291081244
-model.link.df = model.link.df.drop_duplicates(subset=["from_node_id", "to_node_id"])
-
-if not network_validator.link_duplicated().empty:
-    raise Exception("nog steeds duplicated links")
-
 # %% toevoegen bovenstroomse knopen
 
-# see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291091067
-node_id = model.next_node_id
-link_id = model.link.df.loc[model.link.df.to_node_id == 251].index[0]
-model.link.df.loc[link_id, ["from_node_id"]] = node_id
-
-node = Node(node_id, cast(LineString, model.link.df.at[link_id, "geometry"]).boundary.geoms[0])
-assert model.basin.area.df is not None
-model.basin.area.df.loc[model.basin.area.df.node_id == 1009, ["node_id"]] = node_id
-area = basin.Area(geometry=model.basin.area[node_id].geometry.to_list())
-model.basin.add(node, [*basin_data, area])
-
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291111647
-for row in network_validator.link_incorrect_connectivity().itertuples():
+# an outlet between the basins 1278 and 1446 and their LevelBoundaries
+outlet_data = outlet.Static(flow_rate=[5.0])
+for row in model.link.df[model.link.df.from_node_id.isin([1278, 1446])].itertuples():
+    from_node_id, to_node_id = cast(int, row.from_node_id), cast(int, row.to_node_id)
     # drop link from model
-    model.remove_link(row.from_node_id, row.to_node_id, remove_disconnected_nodes=False)
-
-    # add basin_node
-    area = basin.Area(geometry=model.basin.area[row.from_node_id].geometry.to_list())
-    basin_node = Node(row.from_node_id, row.geometry.boundary.geoms[0])
-    model.basin.add(basin_node, [*basin_data, area])
+    model.remove_link(from_node_id, to_node_id, remove_disconnected_nodes=False)
 
     # eindhovensch kanaal we need to add manning a 99% of the length
-    if row.to_node_id == 2:
-        geometry = row.geometry.interpolate(0.99, normalized=True)
+    if to_node_id == 2:
+        geometry = cast(LineString, row.geometry).interpolate(0.99, normalized=True)
         name = ""
         meta_object_type = "openwater"
-    if row.to_node_id == 14:
+    else:
+        assert to_node_id == 14, f"basin {from_node_id} drains to {to_node_id}, not LevelBoundary 2 or 14"
         gdf = gpd.read_file(
             hydamo_gpkg,
             layer="duikersifonhevel",
@@ -92,15 +71,14 @@ for row in network_validator.link_incorrect_connectivity().itertuples():
 
     # add manning-node
     outlet_node_id = model.next_node_id
-    outlet_data = outlet.Static(flow_rate=[5.0])
     model.outlet.add(
         Node(node_id=outlet_node_id, geometry=geometry, name=name, meta_object_type=meta_object_type),
         [outlet_data],
     )
 
     # add links
-    model.link.add(model.basin[row.from_node_id], model.outlet[outlet_node_id])
-    model.link.add(model.outlet[outlet_node_id], model.level_boundary[row.to_node_id])
+    model.link.add(model.basin[from_node_id], model.outlet[outlet_node_id])
+    model.link.add(model.outlet[outlet_node_id], model.level_boundary[to_node_id])
 
 
 if not network_validator.link_incorrect_connectivity().empty:
@@ -109,6 +87,7 @@ if not network_validator.link_incorrect_connectivity().empty:
 # %% verwijderen internal basins
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291271525
+assert model.basin.area.df is not None
 for row in network_validator.node_internal_basin().itertuples():
     if row.Index not in model.basin.area.df.node_id.to_numpy():  # remove or change to level-boundary
         link_select_df = model.link.df[model.link.df.to_node_id == row.Index]
@@ -218,59 +197,9 @@ df = network_validator.link_incorrect_type_connectivity(
 for node_id in df.from_node_id:
     model.update_node(node_id, "Outlet", [outlet.Static(flow_rate=[5.0])])
 
-# see: https://github.com/Deltares/Ribasim-NL/issues/132
-model.basin.area.df.loc[model.basin.area.df.duplicated("node_id"), ["node_id"]] = -1
-model.basin.area.df.reset_index(drop=True, inplace=True)
-model.basin.area.df.index.name = "fid"
-model.fix_unassigned_basin_area()
-model.fix_unassigned_basin_area(method="closest", distance=100)
-model.fix_unassigned_basin_area()
-
-model.basin.area.df = model.basin.area.df[~model.basin.area.df.node_id.isin(model.unassigned_basin_area.node_id)]
-
-
-# fix basin area
-
-# see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2370880128
-basin_polygon = model.basin.area.df.union_all()
-holes = [
-    Polygon(interior)
-    for polygon in cast(MultiPolygon, basin_polygon.buffer(10).buffer(-10)).geoms
-    for interior in polygon.interiors
-]
-geoseries = gpd.GeoSeries(holes, crs=28992)
-
-drainage_areas_df = gpd.read_file(areas_gpkg, layer="drainage_areas")
-
-drainage_areas_df = drainage_areas_df[drainage_areas_df.buffer(-10).intersects(basin_polygon)]
-
-# negatively buffered basin areas, only updated for the basin area that changes in the loop below
-basin_area_buffered = model.basin.area.df.buffer(-10)
-
-for _idx, geometry in enumerate(geoseries):
-    # select drainage-area
-    drainage_area_select = drainage_areas_df[drainage_areas_df.contains(geometry.buffer(-10))]
-    if not drainage_area_select.empty:
-        if not len(drainage_area_select) == 1:
-            raise ValueError("hole contained by multiple drainage areas, can't fix that yet")
-
-        drainage_area = drainage_area_select.iloc[0].geometry
-
-        # find basin_id to merge to
-        selected_basins_df = model.basin.area.df[basin_area_buffered.within(drainage_area)].set_index("node_id")
-        assigned_basin_id = selected_basins_df.intersection(geometry.buffer(10)).area.idxmax()
-
-        # clip and merge geometry
-        geometry = geometry.buffer(10).difference(basin_polygon)
-        geometry = (
-            cast(MultiPolygon, model.basin.area.df.set_index("node_id").at[assigned_basin_id, "geometry"])
-            .union(geometry)
-            .buffer(0.1)
-            .buffer(-0.1)
-        )
-        mask = model.basin.area.df.node_id == assigned_basin_id
-        model.basin.area.df.loc[mask, "geometry"] = geometry
-        basin_area_buffered[mask] = model.basin.area.df.loc[mask].buffer(-10)
+# the areas around the basin at the Witte Loop, which the lumping gives to its neighbours
+areas_gdf = gpd.read_file(areas_gpkg, layer="areas")
+model.add_basin_area(areas_gdf[areas_gdf["code"].isin([2348, 3499, 4273])].union_all(), node_id=basin_node_id)
 
 # %% Verplaats boundary ruimtelijk van Vugtherstuw (afvoerpijl juiste richting in schematics, cosmetisch!)
 
@@ -369,6 +298,9 @@ model.merge_basins(node_id=1557, to_node_id=1140)
 # no culvert between basins 1859 and 1747 near Soerendonk, this connection caused circular pumping
 # see: https://github.com/Deltares/Ribasim-NL/issues/825
 model.remove_node(643, remove_links=True)
+
+# %% give the holes that the edits left in the basin areas to a basin
+model.fill_basin_area_holes(areas_gpkg)
 
 # %%
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{short_name}.toml")

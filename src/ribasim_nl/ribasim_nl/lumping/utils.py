@@ -11,7 +11,7 @@ import numpy.typing as npt
 import pandas as pd
 import pyogrio
 import shapely
-from shapely.geometry import LineString, MultiPolygon, Point, Polygon
+from shapely.geometry import LineString, Point
 
 logger = logging.getLogger(__name__)
 
@@ -135,53 +135,6 @@ def quicksort_order(values: npt.ArrayLike) -> np.ndarray:
         if not stack:
             return np.array(t, dtype=int)
         pl, pr, depth = stack.pop()
-
-
-POLYGON_TYPES = ["Polygon", "MultiPolygon"]
-
-
-def overlay_intersection(df1: gpd.GeoDataFrame, df2: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    """The intersections of two layers of polygons, as `geopandas.overlay` made them before geopandas 1.
-
-    Invalid polygons and intersections are fixed with `buffer(0)`, and the intersections are grouped by the polygon of
-    `df2`, in order of first appearance, see `merge_grouped`. The polygonal parts of collections are kept. The 2024
-    input models were made with it, and the areas of their basins depend on it.
-    """
-
-    def fix(df: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-        df = df.reset_index(drop=True)
-        if df.geom_type.isin(POLYGON_TYPES).all():
-            geometry = df.geometry.copy()
-            invalid = ~geometry.is_valid
-            geometry[invalid] = geometry[invalid].buffer(0)
-            df = df.set_geometry(geometry)
-        return df
-
-    df1, df2 = fix(df1), fix(df2)
-    # as in geopandas < 1, the type of the first geometry decides which intersections are kept
-    assert df1.geom_type.iloc[0] in POLYGON_TYPES, "only intersections of polygons are supported"
-    idx1, idx2 = df2.sindex.query(df1.geometry, predicate="intersects", sort=True)
-    intersections = (
-        df1.geometry.take(idx1).reset_index(drop=True).intersection(df2.geometry.take(idx2).reset_index(drop=True))
-    )
-    polygons = intersections.geom_type.isin(POLYGON_TYPES)
-    intersections[polygons] = intersections[polygons].buffer(0)
-
-    pairs = pd.DataFrame({"__idx1": idx1, "__idx2": idx2})
-    result = merge_grouped(pairs, df1.drop(columns=df1.geometry.name), left_on="__idx1", right_index=True)
-    result = merge_grouped(
-        result, df2.drop(columns=df2.geometry.name), left_on="__idx2", right_index=True, suffixes=("_1", "_2")
-    )
-    result = gpd.GeoDataFrame(result, geometry=intersections, crs=df1.crs).drop(columns=["__idx1", "__idx2"])
-
-    # keep the polygonal parts of collections, and only polygons
-    collections = result.geom_type == "GeometryCollection"
-    if collections.any():
-        parts = result.loc[collections, ["geometry"]].reset_index(drop=True).explode(index_parts=True)
-        parts = parts.reset_index(level=0)
-        parts.loc[~parts.geom_type.isin(POLYGON_TYPES), "geometry"] = None
-        result.loc[collections, "geometry"] = parts.dissolve(by="level_0").geometry.to_numpy()
-    return result.loc[result.geom_type.isin(POLYGON_TYPES)].reset_index(drop=True)
 
 
 def read_layer(
@@ -451,25 +404,6 @@ def split_edges_by_split_nodes(
     edges, nodes = generate_nodes_from_edges(edges)
     split_nodes = get_node_no_and_edge_no_for_points(split_nodes, nodes=nodes, edges=edges)
     return split_nodes, edges, nodes
-
-
-def remove_holes(gdf: gpd.GeoDataFrame, min_area: float) -> gpd.GeoDataFrame:
-    """Remove the holes of (multi)polygons with an area up to `min_area`."""
-
-    def remove_polygon_holes(polygon: Polygon) -> Polygon:
-        holes = [i for i in polygon.interiors if not Polygon(i).area > min_area]
-        return Polygon(shell=polygon.exterior, holes=holes)
-
-    def remove_geometry_holes(geometry: Any) -> Any:
-        if isinstance(geometry, Polygon):
-            return remove_polygon_holes(geometry)
-        if isinstance(geometry, MultiPolygon):
-            return MultiPolygon([remove_polygon_holes(p) for p in geometry.geoms])
-        return geometry
-
-    gdf = gdf.copy()
-    gdf["geometry"] = gdf.geometry.apply(remove_geometry_holes)
-    return gdf
 
 
 def extract_segment_from_linestring(line: LineString, point1: Point, point2: Point) -> LineString:

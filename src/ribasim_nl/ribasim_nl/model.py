@@ -28,7 +28,10 @@ from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.downstream import downstream_nodes
-from ribasim_nl.geometry import polygon_parts, split_basin, split_line
+from ribasim_nl.geometry import polygon_parts, split_basin, split_line, union_polygons
+from ribasim_nl.lumping.hydamo import read_areas
+from ribasim_nl.lumping.network import fill_holes
+from ribasim_nl.lumping.utils import read_layer
 from ribasim_nl.run_model import RunSpecs, parse_computation_time, run
 from ribasim_nl.upstream import upstream_nodes
 
@@ -827,7 +830,8 @@ class Model(ribasim.Model):
         Geometries are taken as equal if their boundaries are on average at most `tolerance` m apart. That allows for
         the differences between the results of versions of GEOS, which can also merge or separate adjacent parts of an
         area. So without a basin area that equals a polygon, the basin areas that together make it up are selected, or
-        else the polygon is split from the basin area that contains it, as a basin area of the same node.
+        else the polygon is split from the basin areas that cover it, as basin areas of the same nodes. Polygons on
+        average narrower than `tolerance` are slivers, which differ between versions of GEOS, and are not selected.
         """
         geometry = shapely.force_2d(geometry)
         if not isinstance(geometry, Polygon | MultiPolygon):
@@ -837,19 +841,17 @@ class Model(ribasim.Model):
         selected = self._basin_areas_equal(geometry, tolerance)
         if selected.empty:
             for i, polygon in enumerate(shapely.get_parts(geometry).tolist()):
+                if not polygon_parts(polygon, tolerance):
+                    continue
                 fids = self._basin_areas_equal(polygon, tolerance)
                 if fids.empty:
                     fids = self._basin_areas_within(polygon, tolerance)
                 if fids.empty:
-                    fids = self._split_basin_area(polygon, tolerance)
+                    fids = self._split_basin_areas(polygon, tolerance)
                 if fids.empty:
-                    raise ValueError(f"Not any basin area equals, makes up or contains polygon {i} of input geometry")
+                    raise ValueError(f"Not any basin area equals, makes up or covers polygon {i} of input geometry")
                 selected = selected.append(fids)
-        mask = pd.Series(self.basin.area.df.index.isin(selected), index=self.basin.area.df.index)
-
-        if not mask.any():
-            raise ValueError("Not any basin area equals input geometry")
-        return mask
+        return pd.Series(self.basin.area.df.index.isin(selected), index=self.basin.area.df.index)
 
     def _basin_areas_equal(self, geometry: Polygon | MultiPolygon, tolerance: float) -> pd.Index:
         """The fids of the basin areas that equal `geometry`."""
@@ -872,48 +874,62 @@ class Model(ribasim.Model):
             return pd.Index([])
         return within.index
 
-    def _split_basin_area(self, polygon: Polygon, tolerance: float) -> pd.Index:
-        """Split `polygon` from the basin area that contains it, as a new basin area of the same node.
+    def _split_basin_areas(self, polygon: Polygon, tolerance: float) -> pd.Index:
+        """Split `polygon` from the basin areas that cover it, as new basin areas of the same nodes.
 
-        Returns the fid of the new basin area, or none if no single basin area contains the polygon.
+        A basin area within the polygon, but for slivers, is taken whole. Returns the fids of the basin areas that make
+        up the polygon, or none if the basin areas do not cover it.
         """
         assert self.basin.area.df is not None
         areas = self.basin.area.df.geometry
         areas = areas[areas.intersects(polygon)]
-        containing = areas.index[
-            (shapely.area(shapely.difference(polygon, areas.to_numpy())) <= tolerance * polygon.length)
-            & (areas.intersection(polygon).area >= polygon.area / 2)
-        ]
-        if len(containing) != 1:
+        if areas.empty or polygon.difference(areas.union_all()).area > tolerance * polygon.length:
             return pd.Index([])
-        fid = containing[0]
-        rest = polygon_parts(areas[fid].difference(polygon), tolerance)
-        part = polygon_parts(areas[fid].intersection(polygon), tolerance)
-        assert rest and part, f"polygon cannot be split from basin area {fid}"
-        new_fid = self.basin.area.df.index.max() + 1
-        self.basin.area.df.loc[new_fid] = self.basin.area.df.loc[fid]
-        self.basin.area.df.loc[[fid, new_fid], "geometry"] = [MultiPolygon(rest), MultiPolygon(part)]  # ty: ignore[invalid-assignment]
+        fids = []
+        for fid, area in zip(areas.index.to_numpy(), areas.to_numpy(), strict=True):
+            part = polygon_parts(area.intersection(polygon), tolerance)
+            if not part:
+                continue
+            rest = polygon_parts(area.difference(polygon), tolerance)
+            if not rest:
+                fids.append(fid)
+                continue
+            new_fid = self.basin.area.df.index.max() + 1
+            self.basin.area.df.loc[new_fid] = self.basin.area.df.loc[fid]
+            self.basin.area.df.loc[[fid, new_fid], "geometry"] = [MultiPolygon(rest), MultiPolygon(part)]  # ty: ignore[invalid-assignment]
+            fids.append(new_fid)
         # enlarging the table drops its CRS
         if self.basin.area.df.crs is None:
             self.basin.area.df.crs = self.crs
-        return pd.Index([new_fid])
+        return pd.Index(fids)
 
-    def update_basin_area(
-        self, node_id: int, geometry: Polygon | MultiPolygon, basin_area_fid: int | None = None
-    ) -> None:
+    def update_basin_area(self, node_id: int, geometry: Polygon | MultiPolygon) -> None:
+        """Give the basin areas that `geometry` selects to `node_id`, see `select_basin_area`."""
         assert self.basin.area.df is not None
-        if pd.isna(basin_area_fid):
-            mask = self.select_basin_area(geometry)
-        else:
-            mask = self.basin.area.df.index == basin_area_fid
-
+        mask = self.select_basin_area(geometry)
         self.basin.area.df.loc[mask, ["node_id"]] = node_id
 
     def add_basin_area(
-        self, geometry: MultiPolygon, node_id: int | None = None, meta_streefpeil: float | None = None
+        self,
+        geometry: BaseGeometry,
+        node_id: int | None = None,
+        meta_streefpeil: float | None = None,
+        tolerance: float = 0.001,
     ) -> None:
-        # if node_id is None, get an available node_id
+        """Add `geometry` to the basin area of Basin `node_id`, taking it from the other basin areas.
+
+        Without `node_id`, it is added to the one Basin within `geometry`. The polygons on average narrower than
+        `tolerance` are slivers, which are not added, see `select_basin_area`.
+        """
         assert self.basin.area.df is not None
+        if geometry.geom_type not in ("Polygon", "MultiPolygon"):
+            raise ValueError(f"geometry-type {geometry.geom_type} is not valid. Provide (Multi)Polygon instead")
+        polygons = polygon_parts(geometry, tolerance)
+        if not polygons:
+            return
+        geometry = MultiPolygon(polygons)
+
+        # if node_id is None, get an available node_id
         basin_node_df = self.filter_nodes("Basin")
         if pd.isna(node_id):
             basin_df = basin_node_df[basin_node_df.within(geometry)]
@@ -928,14 +944,7 @@ class Model(ribasim.Model):
         elif node_id not in basin_node_df.index:
             raise ValueError(f"Node_id {node_id} is not a basin")
 
-        # check geometry and promote to mulitpolygon
-        if geometry.geom_type != "MultiPolygon":
-            if geometry.geom_type == "Polygon":
-                geometry = MultiPolygon([geometry])
-            else:
-                raise ValueError(f"geometry-type {geometry.geom_type} is not valid. Provide (Multi)Polygon instead")
-
-        # if all correct, assign
+        self._remove_from_basin_areas(geometry, tolerance)
         data = {"node_id": [node_id], "geometry": [geometry]}
         if meta_streefpeil is not None:
             data = {**data, "meta_streefpeil": [meta_streefpeil]}
@@ -943,6 +952,20 @@ class Model(ribasim.Model):
         area_df.index.name = "fid"
         area_df.index += self.basin.area.df.index.max() + 1
         self.basin.area.df = GeoDataFrame[BasinAreaSchema](pd.concat([self.basin.area.df, area_df]))
+
+    def _remove_from_basin_areas(self, geometry: MultiPolygon, tolerance: float) -> None:
+        """Remove `geometry` from the basin areas, leaving out the slivers that remain, and the empty basin areas."""
+        df = self.basin.area.df
+        assert df is not None
+        hit = df.index[df.intersects(geometry)]
+        if hit.empty:
+            return
+        rests = {fid: polygon_parts(df.geometry[fid].difference(geometry), tolerance) for fid in hit}
+        remaining = [MultiPolygon(rests[fid]) if rests.get(fid) else g for fid, g in df.geometry.items()]
+        df = df.set_geometry(gpd.GeoSeries(remaining, index=df.index, crs=df.crs))
+        self.basin.area.df = GeoDataFrame[BasinAreaSchema](
+            df[[fid not in rests or bool(rests[fid]) for fid in df.index]]
+        )
 
     def move_node(self, node_id: int, geometry: Point) -> None:
         # update geometry
@@ -1052,6 +1075,11 @@ class Model(ribasim.Model):
         geometry: LineString | None = None,
         assign_unique_node: bool = True,
     ) -> None:
+        """Split the basin area that `geometry` crosses in two parts along it.
+
+        The basin area is the one of `basin_id` that the line crosses, or else the one that contains its middle. The
+        parts keep its node, or with `assign_unique_node`, go to the one Basin within them that has no basin area.
+        """
         if geometry is None:
             if line is None:
                 raise ValueError("geometry cannot be None")
@@ -1086,6 +1114,7 @@ class Model(ribasim.Model):
         # get all we need and remove area from basin.area.df
         basin_fid = int(cast(int, basin_area_df.iloc[0].name))
         basin_geometry = basin_area_df.iloc[0].geometry
+        basin_node_id = basin_area_df.iloc[0].node_id
         self.basin.area.df = self.basin.area.df[self.basin.area.df.index != basin_fid]
 
         # get the polygon to cut
@@ -1111,13 +1140,13 @@ class Model(ribasim.Model):
 
         # add polygons to area
         for poly in [right_basin_poly, left_basin_poly]:
-            # by default we assign provided basin_id
+            # by default the polygons keep the node of the basin area
             kwargs = {
-                "node_id": basin_id,
+                "node_id": basin_node_id,
                 "geometry": poly,
             }
 
-            # we override node_id to a unique basin-node within area if that is specified
+            # we override node_id to a unique basin-node within area, without basin area, if that is specified
             if assign_unique_node:
                 basin_node_df = self.filter_nodes("Basin")
                 within = basin_node_df.geometry.within(poly)
@@ -1158,6 +1187,59 @@ class Model(ribasim.Model):
             df = df.dissolve(by="node_id").reset_index()
             df.index.name = "fid"
         self.basin.area.df = GeoDataFrame[BasinAreaSchema](df)
+
+    def dissolve_basin_area(self) -> None:
+        """Make one basin area per Basin, the union of its basin areas, keeping the first values of other columns.
+
+        Raises if a basin area belongs to no Basin.
+        """
+        df = self.basin.area.df
+        assert df is not None
+        unassigned = self.unassigned_basin_area
+        assert unassigned.empty, (
+            f"basin areas of nodes that are no Basin: {sorted(map(int, unassigned.node_id.unique()))}"
+        )
+        geometry = df.groupby("node_id")["geometry"].apply(lambda parts: union_polygons(parts.to_numpy()))
+        df = df.drop(columns="geometry").groupby("node_id", as_index=False).first()
+        df = gpd.GeoDataFrame(
+            df,
+            geometry=[MultiPolygon(polygon_parts(g)) for g in geometry.loc[df["node_id"]]],
+            crs=self.crs,
+        )
+        df.index.name = "fid"
+        self.basin.area.df = GeoDataFrame[BasinAreaSchema](df)
+
+    def fill_basin_area_holes(self, areas_gpkg: Path, excluded: Polygon | MultiPolygon | None = None) -> None:
+        """Give the parts of the areas of `areas_gpkg` that no basin area covers to a Basin, one basin area per Basin.
+
+        The uncovered part of an area goes to the Basin that covers most of that area, and an area that none covers to
+        the Basin it shares the longest border with, preferably in the same drainage area, as in the lumping, see
+        `ribasim_nl.lumping.network.fill_holes`. What lies within `excluded` is not part of the model: it is removed
+        from the basin areas, and not filled. Raises if a basin area belongs to no Basin, or a Basin has no basin area.
+        """
+        self.dissolve_basin_area()
+        areas = read_areas(areas_gpkg, "areas").to_crs(self.crs)
+        if excluded is not None:
+            excluded = MultiPolygon(polygon_parts(excluded))
+            self._remove_from_basin_areas(excluded, tolerance=0.001)
+            areas["geometry"] = gpd.GeoSeries(
+                [
+                    MultiPolygon(parts) if (parts := polygon_parts(g.difference(excluded), 0.001)) else None
+                    for g in shapely.make_valid(areas.geometry.to_numpy())
+                ],
+                index=areas.index,
+                crs=areas.crs,
+            )
+        drainage_areas = read_layer(areas_gpkg, "drainage_areas", explode=False, code_column="CODE")
+        assert drainage_areas is not None, f"no layer drainage_areas in {areas_gpkg}"
+        df = self.basin.area.df
+        assert df is not None
+        filled = fill_holes(df[["node_id", "geometry"]], areas, drainage_areas.to_crs(self.crs))
+        df = gpd.GeoDataFrame(df.drop(columns="geometry").merge(filled, on="node_id"), crs=self.crs)
+        df.index.name = "fid"
+        self.basin.area.df = GeoDataFrame[BasinAreaSchema](df)
+        without_area = self.basin.node.df.index.difference(pd.Index(df["node_id"]))
+        assert without_area.empty, f"Basins without basin area: {sorted(map(int, without_area))}"
 
     def explode_basin_area(self, remove_z=True) -> None:
         assert self.basin.area.df is not None

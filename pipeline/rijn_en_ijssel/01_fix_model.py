@@ -5,7 +5,6 @@ import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet
-from ribasim_nl.geodataframe import assign_node_ids_by_largest_overlap
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
 from shapely.geometry import LineString, Point
@@ -20,7 +19,7 @@ run_model = False
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
-ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
+areas_gpkg = cloud.joinpath(authority, "verwerkt/3_input/areas.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
 # %% read model
@@ -28,7 +27,6 @@ model = Model.read(ribasim_toml)
 
 network_validator = NetworkValidator(model)
 
-ribasim_areas_gdf = gpd.read_file(ribasim_areas_gpkg, fid_as_index=True, layer="areas")
 hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
 duiker_gdf = gpd.read_file(hydamo_gpkg, layer="duikersifonhevel", fid_as_index=True)
 
@@ -47,29 +45,6 @@ basin_data = [
 ]
 outlet_data = outlet.Static(flow_rate=[5.0])
 
-
-# %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419605149
-# Verwijderen duplicate links
-
-model.link.df.drop_duplicates(inplace=True)
-
-# %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419620184
-# toevoegen ontbrekende basins
-
-basin_links_df = network_validator.link_incorrect_connectivity()
-basin_nodes_df = network_validator.node_invalid_connectivity()
-
-for row in basin_nodes_df.itertuples():
-    # maak basin-node
-    basin_node = model.basin.add(Node(geometry=cast(Point, row.geometry)), tables=basin_data)
-
-    # update link_table
-    model.link.df.loc[basin_links_df[basin_links_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
-        basin_node.node_id
-    )
-    model.link.df.loc[basin_links_df[basin_links_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
-        basin_node.node_id
-    )
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419649171
 # update link administratie
@@ -174,24 +149,6 @@ actions = [
 ]
 actions = [i for i in actions if i in gpd.list_layers(model_edits_gpkg).name.to_list()]
 model.apply_edits(model_edits_gpkg, actions)
-
-# remove unassigned basin area
-model.remove_unassigned_basin_area()
-
-
-# %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code) by overlapping the Ribasim area file baed on largest overlap
-# then assign Ribasim node-ID's to areas with the same area code. Many nodata areas disappear by this method
-# Create the overlay of areas
-ribasim_areas_gdf = ribasim_areas_gdf.to_crs(model.basin.area.df.crs)
-combined_basin_areas_gdf = assign_node_ids_by_largest_overlap(ribasim_areas_gdf, model.basin.area.df)
-
-# %%
-model.basin.area.df = combined_basin_areas_gdf
-
-
-#  %% write model
-# model.use_validation = False
-model.fix_unassigned_basin_area()
 
 
 # %% merge basins
@@ -307,6 +264,9 @@ sanitize_node_table(
 
 # %%
 model.node.df.loc[model.flow_boundary.node.df.index, "meta_categorie"] = "buitenlandse aanvoer"
+
+# %% give the holes that the edits left in the basin areas to a basin
+model.fill_basin_area_holes(areas_gpkg)
 
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
 model.write(ribasim_toml)

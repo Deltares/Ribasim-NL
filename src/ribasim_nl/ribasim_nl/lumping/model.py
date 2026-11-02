@@ -1,24 +1,28 @@
 """Convert a lumped network into a Ribasim model with default tables, the input model of a water authority."""
 
+import itertools
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pyogrio
+import shapely
 from pandera.typing.geopandas import GeoDataFrame
 from ribasim.geometry.area import BasinAreaSchema
 from ribasim.geometry.link import LinkSchema
 from ribasim.geometry.node import NodeSchema
 from ribasim.input_base import TableModel
 
-from ribasim_nl.lumping.network import LumpedNetwork
-from ribasim_nl.lumping.utils import quicksort_order
+from ribasim_nl.lumping.network import LumpedNetwork, assign_areas
 from ribasim_nl.model import Model
 
 logger = logging.getLogger(__name__)
+
+# the distance within which a link ends at its node, in m, as in `ribasim_nl.NetworkValidator`
+LINK_END_TOLERANCE = 1.0
 
 # the node type of the split nodes on each type of HyDAMO object, with each function
 HYDAMO_NODE_TYPES = pd.DataFrame(
@@ -98,21 +102,14 @@ def nodes_and_links(lumped: LumpedNetwork, harde_knip: Sequence[str] = ()) -> tu
 
     The node type of a split node follows from its object type and, for HyDAMO, its object function. The split nodes
     with an ID in `harde_knip` are left out. As in 2024, the links are merged with each node of their node ID, so a
-    link to an ID of both a split node and a basin is duplicated.
+    link to an ID of both a split node and a basin is duplicated, but not with the basins that were left out in 2024,
+    with `boundary_without_split_node`. That gives the links the IDs they got in 2024.
     """
     crs = lumped.basins.crs
-    basins = lumped.basins[["basin", "basin_node_id", "geometry"]].rename(
+    basins = lumped.basins[["basin", "basin_node_id", "boundary_without_split_node", "geometry"]].rename(
         columns={"basin": "meta_id", "basin_node_id": "node_id"}
     )
     basins["node_type"] = "Basin"
-    basin_areas = lumped.basin_areas[["basin_node_id", "geometry"]].copy()
-    basin_areas["basin_node_id"] = basin_areas["basin_node_id"].astype(int)
-    basin_areas["meta_area"] = basin_areas.geometry.area
-    basins = basins.merge(
-        basin_areas[["basin_node_id", "meta_area"]].rename(columns={"basin_node_id": "node_id"}),
-        how="left",
-        on="node_id",
-    )
     basins["name"] = "Basin"
 
     boundaries = lumped.boundaries.copy()
@@ -149,10 +146,11 @@ def nodes_and_links(lumped: LumpedNetwork, harde_knip: Sequence[str] = ()) -> tu
 
     nodes = gpd.GeoDataFrame(pd.concat([boundaries, split_nodes, basins]), geometry="geometry", crs=crs)
     nodes = nodes.reset_index(drop=True)
+    nodes["boundary_without_split_node"] = nodes["boundary_without_split_node"].fillna(False).astype(bool)
 
     columns = ["from_node_id", "to_node_id", "geometry"]
     links = pd.concat([lumped.basin_connections[columns], lumped.boundary_connections[columns]])
-    node_types = nodes[["node_id", "node_type"]]
+    node_types = nodes.loc[~nodes["boundary_without_split_node"], ["node_id", "node_type"]]
     links = links.merge(
         node_types.rename(columns={"node_id": "from_node_id", "node_type": "from_node_type"}),
         how="left",
@@ -165,41 +163,127 @@ def nodes_and_links(lumped: LumpedNetwork, harde_knip: Sequence[str] = ()) -> tu
     return nodes.drop_duplicates(keep="first"), links.drop_duplicates(keep="first")
 
 
+def _at_nodes(node_ids: np.ndarray, points: np.ndarray, node_geometry: gpd.GeoSeries) -> np.ndarray:
+    """Whether each point is within `LINK_END_TOLERANCE` of the node with its node ID in `node_geometry`."""
+    exists = np.isin(node_ids, node_geometry.index)
+    at_node = np.zeros(len(node_ids), dtype=bool)
+    at_node[exists] = (
+        shapely.distance(points[exists], node_geometry.loc[node_ids[exists]].to_numpy()) <= LINK_END_TOLERANCE
+    )
+    return at_node
+
+
+def number_lost_basins(
+    nodes: gpd.GeoDataFrame,
+    links: gpd.GeoDataFrame,
+    lost: gpd.GeoDataFrame,
+    node_ids: Mapping[int, int] | None = None,
+) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+    """Give the basins that were left out in 2024 the node IDs that the fix scripts gave them, and connect them.
+
+    In 2024, a basin was left out of the input model if a boundary or split node had its node ID, or if it was the
+    basin of a LevelBoundary without split node. Its links then ended at another node, or at none, and links to a node
+    ID of two nodes were duplicated. The fix scripts dropped the duplicated links, and added a basin with the next node
+    ID at each end of a link that `ribasim_nl.NetworkValidator.node_invalid_connectivity` finds further than
+    `LINK_END_TOLERANCE` from its node, in the order of the links, from end before to end. Like that validator, this
+    checks the end of a link whose start is at its node only if the node of the end exists. The lost basins found are
+    added with these node IDs, so the references to them remain valid, and connected to all links that end on them.
+    The others remain left out, and their links as they were. `lost` holds the basins with their 2024 node ID.
+    `node_ids` maps the 2024 node ID of lost basins that a fix script numbered otherwise to the node ID it gave them.
+    """
+    node_ids = dict(node_ids or {})
+    assert lost["node_id"].is_unique
+    links = links.drop_duplicates(subset=["from_node_id", "to_node_id", "link_type", "geometry"])
+    geometry = links.geometry.to_numpy()
+    columns = ("from_node_id", "to_node_id")
+    end_node_ids = [links[c].to_numpy() for c in columns]
+    points = [shapely.get_point(geometry, 0), shapely.get_point(geometry, -1)]
+    node_geometry = nodes.set_index("node_id").geometry
+    at_node = [_at_nodes(n, p, node_geometry) for n, p in zip(end_node_ids, points, strict=True)]
+    on_lost = [_at_nodes(n, p, lost.set_index("node_id").geometry) for n, p in zip(end_node_ids, points, strict=True)]
+    invalid = ~at_node[0] | (np.isin(end_node_ids[1], node_geometry.index) & ~at_node[1])
+
+    # the lost basins at the ends that the validator finds, in the order of the links, from end before to end
+    found = invalid[:, None] & ~np.column_stack(at_node) & np.column_stack(on_lost)
+    position, end = np.nonzero(found)
+    found_ids = pd.unique(np.column_stack(end_node_ids)[position, end])
+    assert set(node_ids) <= set(found_ids), f"no lost basins {sorted(set(node_ids) - set(found_ids))} to number"
+    assert not set(node_ids.values()) & set(nodes["node_id"]), "a lost basin gets the node ID of another node"
+    next_node_ids = (i for i in itertools.count(nodes["node_id"].max() + 1) if i not in node_ids.values())
+    new_node_id = {i: node_ids[i] if i in node_ids else next(next_node_ids) for i in found_ids}
+
+    links = links.copy()
+    for column, ids, on_basin in zip(columns, end_node_ids, on_lost, strict=True):
+        connect = on_basin & np.isin(ids, found_ids)
+        new_ids = ids.copy()
+        new_ids[connect] = [new_node_id[i] for i in ids[connect]]
+        links[column] = new_ids
+    lost = lost[lost["node_id"].isin(found_ids)]
+    lost = lost.assign(node_id=lost["node_id"].map(new_node_id))
+    logger.info(f"Adding {len(lost)} basins that were left out in 2024")
+    nodes = gpd.GeoDataFrame(pd.concat([nodes, lost], ignore_index=True), geometry="geometry", crs=nodes.crs)
+    return nodes, links
+
+
 def lumped_model(
     lumped: LumpedNetwork,
     waterbeheercode: str,
     krw: gpd.GeoDataFrame,
+    drainage_areas: gpd.GeoDataFrame | None = None,
+    max_gap_area: float = 0.0,
     harde_knip: Sequence[str] = (),
+    lost_basin_node_ids: Mapping[int, int] | None = None,
 ) -> Model:
     """A Ribasim model of a lumped network, with default tables.
 
-    Nodes on a KRW water body have `meta_categorie` hoofdwater, the others doorgaand. Each node ID is used once, for
-    the first node with it, and each link once for the node types at its ends. The links are numbered in their order.
+    Nodes on a KRW water body have `meta_categorie` hoofdwater, the others doorgaand. The links are numbered in their
+    order, as in 2024, see `nodes_and_links`. Each node ID is used once, for the first node with it. The basins that
+    were left out in 2024 are numbered after the other nodes, or with `lost_basin_node_ids`, see `number_lost_basins`.
+    Every area goes to a basin, preferably one in its drainage area, and the gaps between the basin areas up to
+    `max_gap_area` m² are filled, see `ribasim_nl.lumping.network.assign_areas`.
     """
     crs = "EPSG:28992"
     nodes, links = nodes_and_links(lumped, harde_knip=harde_knip)
     assert nodes.crs == crs, f"the lumped network is not in {crs}"
     nodes["meta_code"] = waterbeheercode
     nodes = nodes.sjoin(krw.to_crs(crs), how="left").drop(columns=["index_right"])
-    nodes = nodes.drop_duplicates(subset="node_id", keep="first")
+    # a node on several KRW water bodies is on the first
+    nodes = nodes.loc[~nodes.index.duplicated(keep="first")]
     nodes["meta_categorie"] = "doorgaand"
     nodes.loc[nodes["meta_krw_id"].notna(), "meta_categorie"] = "hoofdwater"
+    lost = (nodes["node_type"] == "Basin") & (
+        nodes["node_id"].duplicated(keep="first") | nodes["boundary_without_split_node"]
+    )
+    nodes, lost_basins = nodes.loc[~lost], nodes.loc[lost]
+    assert nodes["node_id"].is_unique
     nodes = nodes[nodes["node_type"].isin(NODE_TYPES)]
 
     links.index = pd.RangeIndex(1, len(links) + 1, name="link_id")
     links = links.drop_duplicates(subset=["from_node_id", "from_node_type", "to_node_id", "to_node_type"])
     links["link_type"] = "flow"
+    nodes, links = number_lost_basins(nodes, links, lost_basins, lost_basin_node_ids)
+    nodes = nodes.drop(columns=["boundary_without_split_node"])
+
+    # the basin areas of the basins in the model
+    basin_nodes = nodes.loc[nodes["node_type"] == "Basin"]
+    basin_node_id = pd.Series(basin_nodes["node_id"].to_numpy(), index=basin_nodes["meta_id"].astype(int))
+    assert basin_node_id.index.is_unique, "basins of the same lumped basin"
+    _, basin_areas = assign_areas(
+        lumped.areas.to_crs(crs),
+        gpd.GeoDataFrame({"basin": basin_node_id.index}, geometry=basin_nodes.geometry.to_numpy(), crs=crs),
+        None if drainage_areas is None else drainage_areas.to_crs(crs),
+        max_gap_area=max_gap_area,
+    )
+    basin_areas["node_id"] = basin_areas["basin"].map(basin_node_id)
+    nodes["meta_area"] = nodes["node_id"].map(basin_areas.set_index("node_id").area)
+    basin_areas = basin_areas.sort_values("node_id", kind="stable")[["node_id", "geometry"]].reset_index(drop=True)
 
     model = Model(starttime="2020-01-01", endtime="2021-01-01", crs=crs)
     # the input models are not valid yet, their `01_fix_model.py` makes them valid
     model.use_validation = False
     model.node.df = GeoDataFrame[NodeSchema](nodes.set_index("node_id"))
     model.link.df = GeoDataFrame[LinkSchema](links[["from_node_id", "to_node_id", "link_type", "geometry"]])
-    # sorted by node ID, with the unstable sort with which ribasim wrote the table in 2024
-    areas = lumped.basin_areas[["basin_node_id", "geometry"]].rename(columns={"basin_node_id": "node_id"})
-    model.basin.area.df = GeoDataFrame[BasinAreaSchema](
-        areas.iloc[quicksort_order(areas["node_id"])].reset_index(drop=True)
-    )
+    model.basin.area.df = GeoDataFrame[BasinAreaSchema](basin_areas)
 
     # the default tables of each node type, two rows for the profiles and rating curves
     defaults: list[tuple[str, TableModel, dict[str, list[float]]]] = [
