@@ -22,7 +22,7 @@ pixi run pytest src/ribasim_nl/tests
 
 ## Result regression testing
 
-The dry and wet steady-state scenarios guard against a Basin losing its ability to maintain its water level. The `forcing_*` DVC stages of the level controlled models run and check the dry and wet models. The `bergend_*` stages of the gravity controlled models write them, and run and check them only with `MODEL_EXEC = True` in their `04_add_full_control.py`, which is off in the pipeline. A Basin is steady-state when its final water level differs by at most 0.01 m from the mean of the final 24 hours and its storage remains positive throughout the simulation.
+The dry and wet steady-state scenarios guard against a Basin losing its ability to maintain its water level. The `forcing_*` DVC stages of the level controlled models, also in `repro.sh`, run and check the dry and wet models. The `bergend_*` stages of the gravity controlled models write them, and run and check them only with `MODEL_EXEC = True` in their `04_add_full_control.py`, which is off in the pipeline. A Basin is steady-state when its final water level differs by at most 0.01 m from the mean of the final 24 hours and its storage remains positive throughout the simulation.
 
 Known level-instability exceptions are kept as explicit scenario-specific Basin node IDs in `ribasim_nl.steady_state_regression`. Exceptions do not bypass the positive-storage check, and an exception for a missing Basin ID fails the run.
 

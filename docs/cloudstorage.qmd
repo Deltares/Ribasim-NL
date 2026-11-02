@@ -21,10 +21,36 @@ model_dir = cloud.model_dir("Delfland", "forcing")
 ## The Good Cloud
 
 ::: {.callout-warning}
-The rest of this page is about the legacy storage. Use [DVC](dev/dvc.qmd) for current workflows.
+The rest of this page is about the legacy storage. It is not the main storage method for current workflows: use MinIO through [DVC](dev/dvc.qmd) instead, with the credentials of the [developer setup](dev/index.qmd#sec-environment-variables).
 :::
 
 The Good Cloud needs the password `RIBASIM_NL_CLOUD_PASS` in `.env`, which is only shared among project collaborators, since not all input data is public.
+
+The output models, both nationwide (folder Rijkswaterstaat) and per water board, are public.
+These are the share links of the models. Sort on "Modified" to find the latest versions. Models only get here by hand, with `notebooks/uploaden_modellen.py`, so they may be older than the [model viewer](viewer.qmd).
+
+- [Rijkswaterstaat](https://deltares.thegood.cloud/s/7gNBzyFmi66iTjX)
+- [AaenMaas](https://deltares.thegood.cloud/s/2tRGidQ5daqWJ9J)
+- [AmstelGooienVecht](https://deltares.thegood.cloud/s/wko9RjGAYAsj6dG)
+- [BrabantseDelta](https://deltares.thegood.cloud/s/KHieyrrZZdcBBHo)
+- [DeDommel](https://deltares.thegood.cloud/s/4ozjqW39eJakmao)
+- [Delfland](https://deltares.thegood.cloud/s/2XjDdsHqPYkepHt)
+- [DrentsOverijsselseDelta](https://deltares.thegood.cloud/s/TLtTk3xmgk2SAW8)
+- [HollandsNoorderkwartier](https://deltares.thegood.cloud/s/CxJLoxSnzySJHTt)
+- [HollandseDelta](https://deltares.thegood.cloud/s/ZBJSH7mJsdxbsMr)
+- [HunzeenAas](https://deltares.thegood.cloud/s/3Q2eGKqwpqdLkE8)
+- [Limburg](https://deltares.thegood.cloud/s/MW2kiQMyXwFM4xw)
+- [Noorderzijlvest](https://deltares.thegood.cloud/s/LEcDeSTPq8M3itz)
+- [RijnenIJssel](https://deltares.thegood.cloud/s/e8LbgZrgjsetPYn)
+- [Rijnland](https://deltares.thegood.cloud/s/H4jtGLYiccMLeYH)
+- [Rivierenland](https://deltares.thegood.cloud/s/TTri9ZqGXWcXHaW)
+- [Scheldestromen](https://deltares.thegood.cloud/s/GJBcCL3wwNjMNty)
+- [SchielandendeKrimpenerwaard](https://deltares.thegood.cloud/s/Sjb98JNdSErRJir)
+- [StichtseRijnlanden](https://deltares.thegood.cloud/s/RczyFnYKiCeYojW)
+- [ValleienVeluwe](https://deltares.thegood.cloud/s/YgWfw7AEWLSbcGa)
+- [Vechtstromen](https://deltares.thegood.cloud/s/XCGc7Cy4L4t7WGT)
+- [WetterskipFryslan](https://deltares.thegood.cloud/s/pDGmwTriotLCpxz)
+- [Zuiderzeeland](https://deltares.thegood.cloud/s/9mRsdEGrXWQfBgN)
 
 The pipeline still has one use for it: if `data/Basisgegevens/GKW` is not local, which is not versioned with DVC, the `parameterized` stages of 9 water authorities download it from there, see `ribasim_nl.gkw`.
 
@@ -41,8 +67,10 @@ cloud.download_aangeleverd("Rijkswaterstaat")
 cloud.download_verwerkt("Rijkswaterstaat")
 cloud.download_all("Rijkswaterstaat")
 
-# upload processed data and models
+# upload processed data
 cloud.upload_verwerkt("Rijkswaterstaat", overwrite=True)
+
+# see which models have been uploaded, and upload a new version of the `ijsselmeer` model
 cloud.uploaded_models("Rijkswaterstaat")
 cloud.upload_model("Rijkswaterstaat", model="ijsselmeer")
 ```

@@ -101,7 +101,7 @@ This includes available rows in:
 - `model.basin.state`
 - `model.basin.area`
 
-After copying, the geometry in `model.basin.area.df` is replaced by the corresponding split basin polygon. The profiles follow in the profile stage, which generates them for the new basins.
+After copying, the geometry in `model.basin.area.df` is replaced by the corresponding split basin polygon. Note that the user may need to update the profile and static/time table, as the surface area of the polygons has changed. In the level controlled models, the later profile and forcing stages set these for the new basins.
 
 ### 3. Redirect existing connectors
 

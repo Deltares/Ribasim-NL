@@ -21,7 +21,7 @@ flowchart LR
   class lump,fix step
 ```
 
-The code is in `ribasim_nl.lumping`, a port of the `ribasim_lumping` code with which Sweco made these models in 2024.
+The code is in `ribasim_nl.lumping`, a port of the `ribasim_lumping` code with which Sweco made these models in 2024, see [Reproducing models](../dev/reproducing-models.qmd).
 Noorderzijlvest is lumped from its D-HYDRO model instead, with `pipeline/noorderzijlvest/00_lump_model.py`.
 
 :::: {.grid .step}

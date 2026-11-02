@@ -7,6 +7,7 @@ The profiles -- represented by $A(h)$-relations -- largely determine the retenti
 where the distinction between _doorgaand_ and _bergend_ is crucial:
 _doorgaand_ represents flowing water bodies, while
 _bergend_ represents stagnant water bodies.
+This makes them mainly relevant for water quality simulations.
 
 These profiles also form the basis for the coupling with the groundwater modelling, and their hydro-objects, `verwerkt/profielen/network.gpkg`, guide the [layout](layout.qmd) of the model.
 The [gravity controlled models](gravity-controlled.qmd) get their profiles in other ways, see [storage basins](storage-basins.qmd).
@@ -79,6 +80,13 @@ pixi run dvc repro --pull --single-item profiles_delfland
 
 1. [`pipeline/prep_cross_sections.py`](https://github.com/Deltares/Ribasim-NL/tree/main/pipeline/prep_cross_sections.py) preprocesses the measured cross-sections into `LINESTRING Z`-objects.
 2. `pipeline/<water board>/02_profiles.py` generates the profile tables, and `implement.set_basin_profiles` sets them in the model, and adds the storage Basins with their ManningResistances.
+
+To run them yourself, per water authority, with the cross-sections first:
+
+```bash
+pixi run python pipeline/prep_cross_sections.py <water board>
+pixi run python pipeline/<water board>/02_profiles.py
+```
 
 The results are in `verwerkt/profielen`:
 

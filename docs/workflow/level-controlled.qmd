@@ -89,6 +89,7 @@ flowchart TD
   f --> g["write_and_run_forcing_model<br>layout, levels, write, run, check"]
 ```
 
+The steps the forcing scripts have in common are in `ribasim_nl.workflow`.
 See [control](control.qmd), [forcing](forcing.qmd), [design capacities](design-capacities.qmd) and [layout](layout.qmd).
 The forcing, the foreign inflows and RWZIs, and the final steps that lay out, write and run the model are shared with the [gravity controlled](gravity-controlled.qmd) models, see `ribasim_nl.regional_model`.
 Unlike those, the forcing stage also runs and checks a dry and a wet steady state model, see [Testing](../dev/testing.qmd#result-regression-testing).

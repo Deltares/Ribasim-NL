@@ -72,4 +72,4 @@ Compare solver settings:
   solver.algorithm=QNDF solver.abstol=1e-5
 ```
 
-All submissions are logged to `/p/ribasim-nl/runs/jobs.txt`.
+All submissions are logged to `/p/ribasim-nl/runs/jobs.txt`. The job logs of `repro.sh` are gitignored.

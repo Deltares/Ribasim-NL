@@ -1,6 +1,7 @@
 # Hunze en Aas
 
 - Laatst bijgewerkt: 20-4-2026
+- [Laatste modelversie](https://deltares.thegood.cloud/s/3Q2eGKqwpqdLkE8)
 - [Bekijk het model in de modelviewer](/viewer.qmd#authority=33)
 
 ## Systeembeschrijving

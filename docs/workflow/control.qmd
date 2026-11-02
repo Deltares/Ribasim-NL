@@ -3,9 +3,16 @@ title: "Control"
 ---
 
 Most Outlets and Pumps in the regional models are controlled by a DiscreteControl node.
-Each has a function, which decides when it lets water through, and the code that adds them is in `ribasim_nl.control`.
+Each has one of these functions, which decides when it lets water through, and the code that adds them is in `ribasim_nl.control`:
 
-| Function | Dutch | State determined by | Flow in supply state | Flow in drain state | Nodes added |
+- `drain`: outlet draining an area
+- `supply`: inlet supplying an area
+- `flow_control`: flow through an area in supply (drought) and drain conditions
+- `flushing`: an outlet with a specific flow to be maintained at any conditions (supply or drain)
+
+This is what they do in terms of upstream and downstream levels, in the supply (aanvoer) or drain (afvoer) state:
+
+| Function | Dutch | State determined by | `flow_rate` in supply state [m³/s] | `flow_rate` in drain state [m³/s] | Nodes added |
 |:---------|:------|:--------------------|:---------------------|:--------------------|:------------|
 | `drain` | uitlaat | upstream level | 0 | capacity | DiscreteControl |
 | `supply` | inlaat | downstream level | capacity | 0 | DiscreteControl |

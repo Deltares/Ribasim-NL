@@ -3,8 +3,8 @@ title: "Water systems"
 ---
 
 The nationwide model is made of the models of 22 authorities.
-The pages below describe the water systems of the gravity controlled water authorities, in Dutch, with their main structures and capacities.
-They were written while checking these models with the water authorities, so they say how the water system works, while [model derivation](../workflow/index.qmd) says how it is schematized.
+The pages below are concise descriptions of the regional Ribasim models of the gravity controlled water authorities, in Dutch: how the water system works, with its main structures and capacities.
+[Model derivation](../workflow/index.qmd) says how it is schematized.
 The level controlled water authorities have no description yet.
 
 Each link opens the part of the [model viewer](../viewer.qmd) with the model of that authority.

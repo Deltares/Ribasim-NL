@@ -1,6 +1,7 @@
 # {waterschap}
 
 - Laatst bijgewerkt: {datum}
+- Laatste modelversie: [{modelversie}]({check cloudstorage.qmd})
 - [Bekijk het model in de modelviewer](/viewer.qmd#authority={waterbeheercode})
 
 ## Systeembeschrijving

@@ -2,6 +2,7 @@
 # Noorderzijlvest
 
 - Laatst bijgewerkt: 07-04-2026
+- [Laatste modelversie](https://deltares.thegood.cloud/s/LEcDeSTPq8M3itz)
 - [Bekijk het model in de modelviewer](/viewer.qmd#authority=34)
 
 ## Systeembeschrijving

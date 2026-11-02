@@ -50,12 +50,17 @@ flowchart TD
   near -->|none| basin["Connect to the nearest Basin / area<br>of the other authority"]
 ```
 
-Connecting to a Basin relinks the connector nodes of the boundary, so an inflow into the boundary becomes an outlet into the Basin, and an outflow becomes an inlet from it.
+Connecting to the nearest Basin is the easiest and most common case. It relinks the connector nodes of the boundary, for instance an Outlet, so an inflow into the boundary becomes an outlet into the Basin, and an outflow becomes an inlet from it.
 If a path in the opposite direction already exists, that path and the connector are removed instead, to avoid a cycle.
 `replace_listen_node_id` points control nodes that listened to the boundary to the node that replaces it.
+For the Basins of Rijkswaterstaat, the new link follows the topology of `Rijkswaterstaat/verwerkt/netwerk.gpkg`, instead of a direct line.
 No new control nodes are added.
 
-Where two Pumps, or an Outlet and a Pump, meet at a border, they are not merged, and two parallel connectors between the authorities remain.
+Two LevelBoundaries close to one another, especially between two water boards, are treated as duplicates, and merged if they meet the conditions above.
+
+Where two Pumps, or an Outlet and a Pump, meet at a border, or Outlets do not meet these conditions, they are handled as a connector to a Basin.
+That leaves duplicate connector nodes in place, and might duplicate a flow.
+Still to do are couplings for `Pump | LevelBoundary . LevelBoundary | Pump` and `Pump | LevelBoundary . LevelBoundary | Outlet`, and investigating whether other connections happen.
 
 ::: {layout-ncol=2}
 ![Before coupling, in `lhm_parts`. Rijnland (green) and Amstel, Gooi en Vecht (blue) both end in LevelBoundaries (triangles) along their border.](../figures/coupling-before.png){fig-alt="Two authorities with several pairs of triangles along their border, each with links on one side."}
