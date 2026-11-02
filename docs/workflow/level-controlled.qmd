@@ -2,24 +2,19 @@
 title: "Level controlled"
 ---
 
-Workflow for deriving level controlled (peilbeheerst) regional models.
-All code can be found under [`src/peilbeheerst_model`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model).
-The paths below are relative to this path.
+Workflow for deriving the level controlled (peilbeheerst) regional models of 10 water authorities.
+The DVC pipeline makes their input models from the postprocessed data of each water authority, `verwerkt/postprocessed.gpkg`, with the code in `ribasim_nl.crossings`:
 
-1. Run the preprocessing scripts. One script per water board, path: `peilbeheerst_model/preprocess_data/`
-2. Run the postprocessing script. One script per water board, path: `peilbeheerst_model/postprocess_data/`
-3. Run the crossings script. One script, path: `01_parse_crossings.ipynb`. Moving to one script per water board under `peilbeheerst_model/parse_crossings/`.
-4. Run shortest paths scripts. One script per water board, path: `Shortest_path/`
-5. Run crossings to Ribasim script. One script, all water boards are below each other, path: `02_crossings_to_ribasim_notebook.ipynb`. Moving to one script per water board under `peilbeheerst_model/crossings_to_ribasim/`.
-6. Run parametrize scripts. One script per water board, for now only Amstel, Gooi en Vecht (AGV), path: `Parametrize/AmstelGooienVecht_parametrize.ipynb`
+1. `pipeline/00c_parse_crossings.py` finds the crossings of the hydro-objects with the boundaries of the peilgebieden, with the stuwen and gemalen at them, and writes them to `verwerkt/crossings.gpkg`.
+2. `pipeline/00d_shortest_paths.py` finds the shortest paths along the hydro-objects through each boezem, from each of its crossings to its centre, and writes them to `verwerkt/shortest_path.gpkg`.
+3. `pipeline/00e_crossings_to_ribasim.py` makes the input model `modellen/<water board>_boezemmodel_<version>`: the peilgebieden, or their aggregation areas, become Basins, and the crossings connector nodes.
 
-We originally had more parametrize scripts, but because so much has changed I have now saved these in our backup.
-We will only use these to see if there were any additional manual adjustments.
-For the rest, it follows the same workflow as `AmstelGooienVecht_parametrize.ipynb`.
+This code is a port of the code that made the input models in 2024 and 2025, and reproduces their node IDs, to which the feedback forms refer, see [Reproducing models](../dev/reproducing-models.qmd#sec-level-controlled).
+The crossings of Wetterskip Fryslân are source data, since they cannot be reproduced.
 
-Finally: step 1 started with a clear script per water board.
-During the process of 1.5 years, these scripts have become increasingly larger and more confusing, whereby not every line is needed anymore.
-For now, there is no priority to clean this up, partly because this is a major risk that the data will (unintentionally) change, which will change the networks and the feedback forms can no longer be used.
+The postprocessed data was made from the data of the water authorities with the preprocessing and postprocessing scripts in [`src/peilbeheerst_model`](https://github.com/Deltares/Ribasim-NL/tree/main/src/peilbeheerst_model), one per water board in `peilbeheerst_model/preprocess_data/` and `peilbeheerst_model/postprocess_data/`.
+They are not part of the pipeline, since most need files that are not available.
+These scripts grew over 1.5 years, and not every line is needed anymore; changing them risks changing the networks, after which the feedback forms can no longer be used.
 
 The DVC pipeline then builds the model of each water board with `pipeline/<water board>/01_feedback.py`, `02_profiles.py` and `03_forcing.py`.
 The steps the forcing scripts have in common are in `ribasim_nl.workflow`. The forcing, the foreign inflows and RWZIs, and the final steps that lay out, write and run the model are shared with the [gravity controlled](gravity-controlled.qmd) models, see `ribasim_nl.regional_model`.

@@ -54,22 +54,6 @@ PUMP_META_COLUMNS = [
 ]
 
 
-# GeoPackage per water board in verwerkt/Crossings, with the hydro-objects, culverts and crossings, as also used in
-# pipeline/<water board>/02_profiles.py
-CROSSINGS = {
-    "AmstelGooienVecht": "agv_crossings_v05.gpkg",
-    "Delfland": "delfland_crossings_v08.gpkg",
-    "HollandsNoorderkwartier": "hhnk_crossings_v26.gpkg",
-    "HollandseDelta": "hd_crossings_v06.gpkg",
-    "Rijnland": "rijnland_crossings_v05.gpkg",
-    "Rivierenland": "wsrl_crossings_v06.gpkg",
-    "Scheldestromen": "scheldestromen_crossings_v02.gpkg",
-    "SchielandendeKrimpenerwaard": "hhsk_crossings_voor_profielen_met_OG_hydroobjecten.gpkg",
-    "WetterskipFryslan": "wetterskip_crossings_v06.gpkg",
-    "Zuiderzeeland": "zzl_crossings_v05.gpkg",
-}
-
-
 @dataclass(frozen=True)
 class WaterBoardPaths:
     """Paths of the input and output of one water board in the peilbeheerst pipeline."""
@@ -110,7 +94,8 @@ class WaterBoardPaths:
 
     @property
     def crossings(self) -> Path:
-        return settings.ribasim_nl_data_dir / self.waterschap / "verwerkt/Crossings" / CROSSINGS[self.waterschap]
+        """The crossings, with the culverts, see `pipeline/00c_parse_crossings.py`."""
+        return settings.ribasim_nl_data_dir / self.waterschap / "verwerkt/crossings.gpkg"
 
     @property
     def bgt_water(self) -> Path:
