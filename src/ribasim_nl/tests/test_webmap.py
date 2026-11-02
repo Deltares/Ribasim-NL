@@ -15,7 +15,9 @@ from ribasim_nl.webmap import (
     TIME_STEPS_PER_ROW_GROUP,
     color_domain,
     downcast_int64,
+    export_basin_area,
     export_netcdf_table,
+    export_nodes,
     export_observations,
     export_results,
     export_webmap,
@@ -85,6 +87,22 @@ def test_export_webmap(tmp_path):
 
     boards = gpd.read_file(output / "waterboards.geojson")
     assert boards["naam"].tolist() == ["Waterschap Test"]
+
+
+def test_export_basin_area_storing_basins_first(tmp_path):
+    """A storing Basin is below the flowing Basin it overlaps, whatever the order of the Basin / area table."""
+    model = Model(starttime="2020-01-01", endtime="2020-01-03", crs="EPSG:28992")
+    area = basin.Area(geometry=[MultiPolygon([box(149_900, 449_900, 150_050, 450_100)])])
+    tables = [basin.Profile(area=[10.0, 100.0], level=[0.0, 1.0]), basin.State(level=[0.5]), area]
+    for node_id, categorie in [(1, "doorgaand"), (2, "bergend"), (3, "hoofdwater"), (4, "bergend")]:
+        model.basin.add(Node(node_id, Point(150_000 + node_id, 450_000), meta_categorie=categorie), tables)
+    toml = tmp_path / "model.toml"
+    model.write(toml)
+    database = tmp_path / "input" / "database.gpkg"
+
+    path = tmp_path / "basin_area.pmtiles"
+    export_basin_area(database, export_nodes(database, tmp_path / "nodes.parquet"), path)
+    assert gpd.read_file(path, layer="basin_area")["node_id"].tolist() == [2, 4, 1, 3]
 
 
 def test_run_info(tmp_path):
