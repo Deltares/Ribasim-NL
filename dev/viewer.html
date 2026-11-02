@@ -292,7 +292,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#fit-to-the-measurements" id="toc-fit-to-the-measurements" class="nav-link active" data-scroll-target="#fit-to-the-measurements">Fit to the measurements</a></li>
+  <li><a href="#concentrations" id="toc-concentrations" class="nav-link active" data-scroll-target="#concentrations">Concentrations</a></li>
+  <li><a href="#fit-to-the-measurements" id="toc-fit-to-the-measurements" class="nav-link" data-scroll-target="#fit-to-the-measurements">Fit to the measurements</a></li>
   <li><a href="#updating-the-published-data" id="toc-updating-the-published-data" class="nav-link" data-scroll-target="#updating-the-published-data">Updating the published data</a>
   <ul class="collapse">
   <li><a href="#how-the-published-models-are-found" id="toc-how-the-published-models-are-found" class="nav-link" data-scroll-target="#how-the-published-models-are-found">How the published models are found</a></li>
@@ -349,6 +350,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>All local paths are relative to <code>data/Rijkswaterstaat</code>.</p>
+<section id="concentrations" class="level2">
+<h2 class="anchored" data-anchor-id="concentrations">Concentrations</h2>
+<p>Choose <em>concentration</em> in the <em>Basins</em> choice of the time bar to color the Basins by the concentration of a substance, chosen in a second list that then appears. It lists the substances of the model input first, then the tracers of the Ribasim core; type the first letters of a substance to jump to it. The color scale starts at zero and goes up to the highest value, so a fraction of the water goes up to about 1, except for the residence time, which goes up to its 98th percentile and is shown in days. Each substance has its own limits, which can be changed in the legend. The panel of a Basin charts the concentration of one substance, with its own list, which also changes the substance on the map.</p>
+</section>
 <section id="fit-to-the-measurements" class="level2">
 <h2 class="anchored" data-anchor-id="fit-to-the-measurements">Fit to the measurements</h2>
 <p>The <em>Observations</em> choice in the time bar colors the Observation nodes by how well the simulated values fit their measurements, see <code>ribasim_nl.goodness_of_fit</code>:</p>
@@ -402,6 +407,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td style="text-align: left;"><code>results/*_by_time.parquet</code></td>
 <td style="text-align: left;">Basin level and storage, and flow rate, ordered by time step, for coloring the map</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>results/concentration_by_id.parquet</code></td>
+<td style="text-align: left;">Basin concentrations with a column per substance, sorted by id, for the charts; only if the model tracks them</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>results/concentration_by_time.parquet</code></td>
+<td style="text-align: left;">The same ordered by time step, for coloring the map</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><code>results/observation_metrics.parquet</code></td>

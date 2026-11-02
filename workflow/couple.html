@@ -353,7 +353,7 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="connecting-the-models" class="level2">
 <h2 class="anchored" data-anchor-id="connecting-the-models">Connecting the models</h2>
-<p>In each regional model, a LevelBoundary stands for the water on the other side of its border. <code>AssignAuthorities</code> records whose water that is in the column <code>meta_couple_authority</code> of the node table, with <code>Noordzee</code> or <code>Buitenland</code> where it leaves the model. The boundaries of the main water system have none, so they stay boundaries.</p>
+<p>In each regional model, a LevelBoundary stands for the water on the other side of its border. <code>AssignAuthorities</code> records whose water that is in the column <code>meta_couple_authority</code> of the node table, with <code>Noordzee</code> or <code>Buitenland</code> where it leaves the model. The boundaries of the main water system have <code>Noordzee</code> or <code>Buitenland</code> as well, so they stay boundaries.</p>
 <p><code>process_boundary_nodes</code> then goes through the boundaries of the regional models:</p>
 <div class="cell" data-layout-align="default">
 <div class="cell-output-display">
