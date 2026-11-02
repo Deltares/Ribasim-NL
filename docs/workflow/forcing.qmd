@@ -63,4 +63,5 @@ flowchart LR
 ## Fractions
 
 `ribasim_nl.assign_lhm_fractions` labels the water by its origin, such as precipitation, drainage, or the neighbouring authority.
+The main water system has the same fractions, with the Rhine at Lobith and the Meuse at Monsin as `Rijn` and `Maas`.
 The model then tracks these fractions through the network, and `ribasim_nl.delwaq` can use them for water quality with Delwaq.
