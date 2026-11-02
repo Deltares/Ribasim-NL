@@ -1,7 +1,7 @@
 # Vallei en Veluwe
 
 - Laatst bijgewerkt: 25-04-2026
-- [Laatste modelversie](https://deltares.thegood.cloud/s/YgWfw7AEWLSbcGa)
+- [Bekijk het model in de modelviewer](/viewer.qmd#authority=43)
 
 ## Systeembeschrijving oppervlaktewater
 ![Systeembeschrijving Vallei en Veluwe](https://s3.deltares.nl/ribasim-nl/doc-image/watersystems/ValleienVeluwe.svg){.lightbox}
@@ -51,7 +51,7 @@ Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h
 | Stuw inlaatwerk Bruinerburgersluis      | KST-2118                |       530 | inlaat    |                1 |           0     |
 
 ## Bronnen
-Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](/workflow/gravity-controlled.qmd). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
+Bovenstaand model is afgeleid van het invoermodel `ValleienVeluwe_2024_6_3`, dat de pipeline uit de brongegevens maakt, op de manier waarop Sweco dat in 2024 deed. Dit is bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](/workflow/gravity-controlled.qmd). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
 
 - [Documentatie Distributiemodel (Deel {DM_deel}, hoofdstuk {DM_hoofdstuk})](https://deltares.thegood.cloud/s/sxEjeCbTt47X7x3)
 - [BOP 2022-207: Kracht en kwetsbaarheid IJsselvallei](https://bovi2050.nl/kracht-en-kwetsbaarheid-ijsselvallei/)

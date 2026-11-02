@@ -2,31 +2,95 @@
 title: "Level controlled"
 ---
 
-Workflow for deriving the level controlled (peilbeheerst) regional models of 10 water authorities.
-The DVC pipeline makes their input models from the data the water authorities delivered, in `aangeleverd`, with the code in `ribasim_nl.crossings`:
+The level controlled (peilbeheerst) models cover 10 water authorities: Amstel, Gooi en Vecht, Delfland, Hollands Noorderkwartier, Hollandse Delta, Rijnland, Rivierenland, Scheldestromen, Schieland en de Krimpenerwaard, Wetterskip Fryslân and Zuiderzeeland.
+These authorities keep target levels in many small level areas (peilgebieden), so their model follows the areas and the structures between them.
+HKV made their first input models in 2024 and 2025, and the pipeline now makes these from the data the water authorities delivered, in `aangeleverd`.
 
-1. `pipeline/<water board>/00_postprocess.py` makes the postprocessed data, `verwerkt/postprocessed.gpkg`: the peilgebieden with their streefpeilen and aggregation areas, the hydro-objects, culverts, stuwen and gemalen. Where HKV corrected the delivered data by hand, it applies these corrections, `verwerkt/corrections.gpkg`.
-2. `pipeline/00c_parse_crossings.py` finds the crossings of the hydro-objects with the boundaries of the peilgebieden, with the stuwen and gemalen at them, and writes them to `verwerkt/crossings.gpkg`.
-3. `pipeline/00d_shortest_paths.py` finds the shortest paths along the hydro-objects through each boezem, from each of its crossings to its centre, and writes them to `verwerkt/shortest_path.gpkg`.
-4. `pipeline/00e_crossings_to_ribasim.py` makes the input model `modellen/<water board>_boezemmodel_<version>`: the aggregation areas become Basins, and the crossings connector nodes. It numbers the nodes and links after the input model of 2024, `verwerkt/boezemmodel_ids.gpkg`, to which the feedback forms and scripts refer, by matching the nodes by type and location, see `ribasim_nl.crossings.renumber`.
+```{mermaid}
+%%| fig-cap: "The stages of a level controlled model, with the result of each."
+flowchart LR
+  subgraph input["Input model"]
+    direction TB
+    a["00_postprocess.py<br>verwerkt/postprocessed.gpkg"] --> b["00c_parse_crossings.py<br>verwerkt/crossings.gpkg"]
+    b --> c["00d_shortest_paths.py<br>verwerkt/shortest_path.gpkg"]
+    c --> d["00e_crossings_to_ribasim.py<br>_boezemmodel_&lt;version&gt;"]
+  end
+  subgraph model["Regional model"]
+    direction TB
+    e["01_feedback.py<br>_feedback"] --> f["02_profiles.py<br>_profiles"]
+    f --> g["03_forcing.py<br>_forcing"]
+  end
+  input --> model --> merge["samenvoegen"]
+```
+
+The maps below show the same 5 × 5 km of Delfland near Delft, at each step.
+
+## The input model
+
+The code is in `ribasim_nl.crossings`.
+
+:::: {.grid .step}
+::: {.g-col-12 .g-col-lg-5}
+### 1. The delivery
+
+`pipeline/<water board>/00_postprocess.py` makes the postprocessed data, `verwerkt/postprocessed.gpkg`: the peilgebieden with their streefpeilen and aggregation areas, the hydro-objects, culverts, stuwen and gemalen.
+Where HKV corrected the delivered data by hand, it applies these corrections, `verwerkt/corrections.gpkg`.
+:::
+::: {.g-col-12 .g-col-lg-7}
+![The postprocessed data. Grey lines are the hydro-objects, with stuwen in orange and gemalen in black. Thin lines are the boundaries of the peilgebieden, and the boezem is blue.](../figures/level-1-delivery.png){fig-alt="A dense network of grey ditches with orange squares at weirs and black dots at pumping stations. A few narrow blue canals are the boezem."}
+:::
+::::
+
+:::: {.grid .step}
+::: {.g-col-12 .g-col-lg-5}
+### 2. Crossings and shortest paths
+
+`pipeline/00c_parse_crossings.py` finds the crossings of the hydro-objects with the boundaries of the peilgebieden, with the stuwen and gemalen at them, and writes them to `verwerkt/crossings.gpkg`.
+
+`pipeline/00d_shortest_paths.py` finds the shortest paths along the hydro-objects through each boezem, from each of its crossings to its centre, and writes them to `verwerkt/shortest_path.gpkg`.
+:::
+::: {.g-col-12 .g-col-lg-7}
+![The crossings with a structure in black, and those without in grey. Blue lines are the shortest paths through the boezems.](../figures/level-2-crossings.png){fig-alt="The network in light grey, with black dots where a structure crosses a boundary, and blue lines along the canals."}
+:::
+::::
+
+:::: {.grid .step}
+::: {.g-col-12 .g-col-lg-5}
+### 3. The input model
+
+`pipeline/00e_crossings_to_ribasim.py` makes the input model `modellen/<water board>_boezemmodel_<version>`: the aggregation areas become Basins, and the crossings connector nodes.
+It numbers the nodes and links after the input model of 2024, `verwerkt/boezemmodel_ids.gpkg`, to which the feedback forms and scripts refer, by matching the nodes by type and location, see `ribasim_nl.crossings.renumber`.
+:::
+::: {.g-col-12 .g-col-lg-7}
+![The input model. Each aggregation area is one Basin, in its own colour, with straight links to the structures on its boundary.](../figures/level-3-input-model.png){fig-alt="Coloured Basin areas each with a blue Basin node, and straight links to black connector nodes on their boundaries."}
+:::
+::::
 
 This code is a port of the code that made the input models in 2024 and 2025, see [Reproducing models](../dev/reproducing-models.qmd#sec-level-controlled).
 Since the nodes are numbered after the input models of 2024, the deliveries, the aggregation areas and the algorithms can change, while the feedback forms keep referring to the right nodes, as long as these can be matched.
 The corrections refer to the delivered rows by their code, and `apply_edits` stops at corrections of rows that a new delivery lacks, so check them when the delivery changes.
 
-The DVC pipeline then builds the model of each water board with `pipeline/<water board>/01_feedback.py`, `02_profiles.py` and `03_forcing.py`.
-The steps the forcing scripts have in common are in `ribasim_nl.workflow`. The forcing, the foreign inflows and RWZIs, and the final steps that lay out, write and run the model are shared with the [gravity controlled](gravity-controlled.qmd) models, see `ribasim_nl.regional_model`.
+## The regional model
 
-## Layout
+The DVC pipeline then builds the model of each water board with three stages:
 
-At the end of the forcing stage, `ribasim_nl.network_snapping.snap_model` aligns the layout of the model with the hydro-objects in `verwerkt/profielen/network.gpkg`, which are written by the [profile generation](profile-generation.qmd).
-This only changes the layout, not the model results:
+- `feedback_<water board>` runs `pipeline/<water board>/01_feedback.py`, which applies the feedback form of the water board with `RibasimFeedbackProcessor`, followed by edits by hand. In 5 water boards it finally [splits large Basins](split-basins.qmd).
+- `profiles_<water board>` runs `pipeline/prep_cross_sections.py` and `pipeline/<water board>/02_profiles.py`, the [profile generation](profile-generation.qmd), which gives each Basin a profile and adds its [storage basin](storage-basins.qmd).
+- `forcing_<water board>` runs `pipeline/<water board>/03_forcing.py`, with the steps below.
 
-- Connector nodes stay at the location of the structure they represent.
-- Basin nodes are moved onto the nearest main route of the longest connected part of the hydro-objects in their basin, as in the gravity controlled models.
-- Links between a Basin and a connector node follow the hydro-objects, complemented by the Top10NL water lines. Hydro-objects are only connected where there is evidence: the culverts (`duikersifonhevel`) of the crossings data, gaps of at most 2 m, and gaps across BGT water surfaces. Connector nodes far from the hydro-objects are connected over the BGT water surfaces, crossing at most 100 m of land.
-- Links stay straight if no such route is found, or if it is not less than `ribasim_nl.link_geometries.MAX_STRAIGHT_LINE_RATIO` times longer than the straight line, the same threshold as for the gravity controlled models.
+```{mermaid}
+%%| fig-cap: "The steps of a typical forcing script, mostly in `ribasim_nl.workflow`."
+flowchart TD
+  a["set_boundary_conditions<br>forcing, boundary levels"] --> b["set_aanvoer_flags<br>which Basins can be supplied"]
+  b --> c["categorize_nodes<br>which nodes supply and drain"]
+  c --> d["add_controllers<br>control per function"]
+  d --> e["complete_parametrization<br>authorities, inflows, known capacities"]
+  e --> f["set_design_capacities<br>capacity from the drained area"]
+  f --> g["write_and_run_forcing_model<br>layout, levels, write, run, check"]
+```
 
-Then `ribasim_nl.junctionify` merges the shared parts of links into Junctions, and `ribasim_nl.layout.tidy_layout` makes sure no nodes are on top of each other and no links overlap:
-bergend Basins are placed 100 m from their doorgaand Basin, links are offset 5 m to the right of their direction, such that inflows and outflows along the same waterway are drawn side by side, and nodes that are still within 10 m of each other are moved apart.
-The gravity controlled models get the same layout step at the end of their dynamic stage, and `ribasim_nl.validation.validate_model` checks it.
+See [control](control.qmd), [forcing](forcing.qmd), [design capacities](design-capacities.qmd) and [layout](layout.qmd).
+The forcing, the foreign inflows and RWZIs, and the final steps that lay out, write and run the model are shared with the [gravity controlled](gravity-controlled.qmd) models, see `ribasim_nl.regional_model`.
+Unlike those, the forcing stage also runs and checks a dry and a wet steady state model, see [Testing](../dev/testing.qmd#result-regression-testing).
+
+![The final model of the same area, `Delfland_forcing`. Basins come in pairs of a through-flow and a storage Basin, and the links follow the watercourses, with Junctions where they join.](../figures/level-4-forcing.png){width=70% fig-alt="Coloured Basin areas with pairs of blue Basin nodes, links that follow the watercourses, and connector nodes on the boundaries."}

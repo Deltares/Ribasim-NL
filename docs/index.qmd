@@ -1,6 +1,68 @@
 ---
 title: "Ribasim-NL"
+subtitle: "A nationwide water model of the Netherlands, built from source data by a reproducible pipeline"
+toc: false
 ---
 
-Ribasim-NL facilitates Ribasim water resources modeling in the Netherlands.
-For more informantion on Ribasim itself please see the [Ribasim documentation](https://ribasim.org/).
+Ribasim-NL builds the Dutch national water model LHM with [Ribasim](https://ribasim.org/), a water resources model.
+It combines a model of the main water system of Rijkswaterstaat with the regional models of 21 water authorities, from their source data, into one model of about 20 000 Basins.
+A [DVC](https://dvc.org/) pipeline in this repository makes every step reproducible, so a change to the data or the code gives a new model that can be compared with the previous one.
+
+::: {layout-ncol=2}
+![The models that make up the nationwide model. See [water systems](watersystems/main.qmd) for the authorities.](figures/national-models.png){fig-alt="Map of the Netherlands with the main water system in blue, 11 gravity controlled water authorities in the east and south in orange, and 10 level controlled water authorities in the west and north in green."}
+
+![The simulated flow through the model, 2017 and 2018. [Explore it in the model viewer](viewer.qmd).](figures/national-flow.png){fig-alt="Map of the links of the model, thicker and darker with more flow. The Rhine branches, the Meuse and the IJsselmeer stand out, with a dense network of small regional waters."}
+:::
+
+## From source data to a nationwide model
+
+```{mermaid}
+flowchart LR
+  rws["Rijkswaterstaat data<br>bathymetry, structures"] --> hws["Main water system<br>model"]
+  sweco["Watercourses, structures<br>11 water authorities"] --> gravity["Gravity controlled<br>regional models"]
+  hkv["Level areas, structures<br>10 water authorities"] --> level["Level controlled<br>regional models"]
+  forcing["LHM forcing, foreign inflows,<br>wastewater, target levels"] --> gravity
+  forcing --> level
+  forcing --> hws
+  hws --> coupled["Merged and coupled<br>LHM"]
+  gravity --> coupled
+  level --> coupled
+  coupled --> run["Model run"]
+  run --> check["Checks and metrics"]
+  run --> viewer["Model viewer"]
+
+  classDef model fill:#dfedef,stroke:#0c6a77
+  class hws,gravity,level,coupled model
+```
+
+[Model derivation](workflow/index.qmd) explains each step, with maps of real examples.
+
+## Where to go
+
+:::: {.grid .cards}
+
+::: {.g-col-12 .g-col-md-6}
+**[Model viewer](viewer.qmd)**
+
+Browse the input and results of the latest model on a map, and compare them with the measurements.
+:::
+
+::: {.g-col-12 .g-col-md-6}
+**[Model derivation](workflow/index.qmd)**
+
+The pipeline step by step, from source data to the nationwide model.
+:::
+
+::: {.g-col-12 .g-col-md-6}
+**[Water systems](watersystems/main.qmd)**
+
+Per water authority: how the water system works and how that is schematized (in Dutch).
+:::
+
+::: {.g-col-12 .g-col-md-6}
+**[Contributing](dev/index.qmd)**
+
+Set up the development environment, get the data, and run the pipeline. The [API reference](reference/index.qmd) covers the Python package `ribasim_nl`.
+:::
+
+::::

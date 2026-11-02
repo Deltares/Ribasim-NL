@@ -1,6 +1,6 @@
 # Vechtstromen
 - Laatst bijgewerkt: 07-04-2026
-- [Laatste modelversie](https://deltares.thegood.cloud/s/XCGc7Cy4L4t7WGT)
+- [Bekijk het model in de modelviewer](/viewer.qmd#authority=44)
 
 ## Systeembeschrijving
 ![Systeembeschrijving Vechtstromen](https://s3.deltares.nl/ribasim-nl/doc-image/watersystems/Vechtstromen.svg){.lightbox}
@@ -128,7 +128,7 @@ Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h
 
 
 ## Bronnen
-Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](/workflow/gravity-controlled.qmd).
+Bovenstaand model is afgeleid van het invoermodel `Vechtstromen_2024_6_3`, dat de pipeline uit de brongegevens maakt, op de manier waarop Sweco dat in 2024 deed. Dit is bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](/workflow/gravity-controlled.qmd).
 
 - Documentatie Distributiemodel (Deel D, hoofdstuk 8)
 - basiskaartwateraanvoer_giho_wateraanvoer_2009.pdf

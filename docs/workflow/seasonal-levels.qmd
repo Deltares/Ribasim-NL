@@ -7,6 +7,8 @@ The models are built with one target level per Basin, `meta_streefpeil`, from wh
 At the end of their pipeline, the regional models get the summer and winter levels of the peilgebieden of their water board, in `ribasim_nl.regional_model.finish_regional_model`.
 `koppelen` removes them before coupling, since the coupling and its coupling-level check work with the fixed levels, and applies them again to the coupled model at the end.
 
+![Where the summer level differs from the winter level. Limburg, Rijn en IJssel, Schieland en de Krimpenerwaard and Vallei en Veluwe have no level management yet.](../figures/seasonal-map.png){width=60% fig-alt="Map of the Netherlands in which many level areas in the north, east, south and southwest are shaded by the difference between summer and winter level, up to more than 0.3 m."}
+
 ## Level management per peilgebied
 
 The `peilbeheer` stage, [`pipeline/peilbeheer.py`](https://github.com/Deltares/Ribasim-NL/tree/main/pipeline/peilbeheer.py), reads the peilgebieden of the water boards into `data/Rijkswaterstaat/verwerkt/peilbeheer.gpkg`.
@@ -43,6 +45,8 @@ Limburg, Rijn en IJssel, Schieland en de Krimpenerwaard and Vallei en Veluwe hav
    An extra condition on the season, on a variable with weight 0, switches between them.
    It follows the transitions of a Basin around the controlled nodes of which the level changes, preferably one that the DiscreteControl node listens to.
 5. The initial level of the Basin follows its target level at the start of the model.
+
+![A Basin of Rijnland in the coupled run, with a median fit to its levels among the Basins with 0.2 to 0.4 m difference. The levels change at once, on 1 April and 1 October, and the Basin mostly stays between its bounds.](../figures/seasonal-level.png){fig-alt="Chart of the level of one Basin over 2017 and 2018, following a target level that steps up in April and down in October, within a band of the lower and upper bound."}
 
 The levels change at once, at the begin of each transition.
 A gradual transition needs Ribasim to support parameters of control states that change over time.

@@ -1,14 +1,40 @@
 ---
-title: "Main watersystem"
+title: "Main water system"
 ---
 
-All files in [`pipeline/rijkswaterstaat`](https://github.com/Deltares/Ribasim-NL/tree/main/pipeline/rijkswaterstaat) are numbered in order of execution.
+The model of the main water system holds the rivers, canals and lakes of Rijkswaterstaat.
+The scripts are in [`pipeline/rijkswaterstaat`](https://github.com/Deltares/Ribasim-NL/tree/main/pipeline/rijkswaterstaat), numbered in order of execution, and run in three DVC stages.
 
-# 1_bathymetrie.py
-In this script we merge data from Baseline (version j23_6-v1, non-public) with grids from [bathymetrie-Nederland](https://maps.rijkswaterstaat.nl/geoweb55/index.html?viewer=Bathymetrie_Nederland) to one 5x5m GeoTiff.
+![The model of the main water system on the map.](../figures/main-water-system.png){width=70% fig-alt="Map of the Netherlands with the Basin areas of the IJsselmeer, the rivers, the delta and the canals in blue, links between them, and small markers for the structures and boundaries."}
 
-We combine both sources as the Midden Limburgse en Noord Brabantse (MLNB) kanalen are not in Baseline and the IJsselmeer is not completely covered in bathymetrie-Nederland.
+```{mermaid}
+flowchart TD
+  subgraph frozen["bathymetry, frozen"]
+    s1["1_bathymetrie.py<br>verwerkt/bathymetrie"]
+  end
+  subgraph demand["hws_demand"]
+    direction TB
+    s2["2_basins.py<br>Basins and profiles"] --> s3["3_netwerk.py<br>verwerkt/netwerk.gpkg"]
+    s3 --> s4["4_kunstwerken.py<br>verwerkt/hydamo.gpkg"]
+    s4 --> s5["5_model_netwerk.py<br>modellen/hws_netwerk"]
+    s5 --> s6["6_model_sturing.py<br>modellen/hws_sturing"]
+    s6 --> s7["7_model_onttrekkingen.py<br>modellen/hws_demand"]
+    s7 --> s8a["8a_update_state.py<br>modellen/hws_demand"]
+  end
+  subgraph transient["hws_transient"]
+    s8b["8b_update_bc.py<br>modellen/hws_transient"]
+  end
+  frozen --> demand --> transient --> merge["samenvoegen"]
+  rwzi["rwzi"] --> transient
+```
+
+## Bathymetry
+
+`1_bathymetrie.py` merges data from Baseline (version j23_6-v1, non-public) with grids from [bathymetrie-Nederland](https://maps.rijkswaterstaat.nl/geoweb55/index.html?viewer=Bathymetrie_Nederland) into one 5 × 5 m GeoTIFF.
+Both are needed, since the Midden Limburgse en Noord Brabantse kanalen are not in Baseline, and the IJsselmeer is not completely covered in bathymetrie-Nederland.
 For the mask we use Top10NL waterdelen and manually filled a boolean column `baseline`.
+
+This stage is frozen, so it is not run again in a reproduction, since the source data does not change.
 
 ::: {layout-ncol=2}
 ![Bathymetry mask](https://s3.deltares.nl/ribasim-nl/doc-image/bathymetrie_mask.png)
@@ -16,23 +42,30 @@ For the mask we use Top10NL waterdelen and manually filled a boolean column `bas
 ![Bathymetry](https://s3.deltares.nl/ribasim-nl/doc-image/bathymetrie_result.png)
 :::
 
-# 2_basins.py
-We derive Ribasim Basins (areas) for the RWS-watersystem. Using the resulting bathymetry of `1_bathymetry.py` we write a CSV-file with a Basin profile.
+## From data to a network
 
-# 3_netwerk.py
-We derive a `ribasim_nl.Network` (not a Ribasim network yet!) we can use to build a model_network with `5_model_netwerk.py`. The network is taken from OpenStreetMap (OSM) with modifications made, mainly in the IJsselmeer. You need the Basins from `2_basins.py` as a network node will be put at the intersect of a Basin-polygon and the network.
+- `2_basins.py` derives the Basin areas of the main water system. From the bathymetry it writes a table with the profile of each Basin.
+- `3_netwerk.py` derives a `ribasim_nl.Network` from OpenStreetMap, with modifications mainly in the IJsselmeer. A network node goes at each intersection of a Basin area with the network. This network, `verwerkt/netwerk.gpkg`, also guides the links in the [coupling](couple.qmd).
+- `4_kunstwerken.py` combines the structures from NIS (Netwerk Informatie Systeem) of Rijkswaterstaat, Baseline, OpenStreetMap, the structures in the primary flood defences, and the abstractions, into a HyDAMO-based format.
+- `5_model_netwerk.py` combines these into a first Ribasim model, `modellen/hws_netwerk`. It includes the distribution of the rivers at the Rhine and Meuse as TabulatedRatingCurves named after Lobith and Monsin.
 
-# 4_kunstwerken.py
-We combine structures from RWS NIS (Netwerk Informatie Systeem) Baseline and OSM and combine everything to a HyDAMO-based format we can use to derive our Ribasim network (`model_netwerk.py`).
+## Control and demands
 
-# 5_model_netwerk.py
-We combine the result of step 2 till 4 to derive a first ribasim-network that will be stored in a `.\modellen\hws_netwerk\hws.toml` file. This excludes control (e.g. bifurcations of Monsin and Pannerden) and demand/supply.
+- `6_model_sturing.py` adds control, with PidControl, ContinuousControl, DiscreteControl and FlowDemand nodes, into `modellen/hws_sturing`.
+- `7_model_onttrekkingen.py` adds the demands of drinking water, industry and energy as UserDemands, splits Basins along a route where needed, and adds Junctions, into `modellen/hws_demand`.
+- `8a_update_state.py` runs this model, and writes its final state back as its initial state.
 
-# 6_model_sturing.py
-We take the model of 5 (`.\modellen\hws_netwerk\hws.toml`), add control and write it to (`.\modellen\hws_sturing\hws.toml`)
+## Boundaries and forcing
 
-# 7_model_onttrekkingen.py
-We take the model of 6 (`.\modellen\hws_sturing\hws.toml`), add drinking water, industry and energy demands. Then we add junctions and write it to (`.\modellen\hws_demand\hws.toml`)
+`8b_update_bc.py` makes the model that goes into the coupling, `modellen/hws_transient`, for 2017 up to 2020:
 
-# 8 update bc, state, etc.
-Scripts to provide boundary/initial conditions to the model in `.\modellen\hws_demand\hws.toml` and write it in another location.
+| What | Source |
+|:-----|:-------|
+| Discharges of the Rhine at Lobith and the Meuse at Monsin | Daily means, `aangeleverd/Matroos_debieten_2017_2022_Lobith_Monsin.xlsx` |
+| Levels at Kornwerderzand and Den Oever | A seasonal table of −0.4 to −0.1 m, repeated every year |
+| Level at IJmuiden | Constant −0.4 m |
+| Precipitation and evaporation | LHM, as in the [forcing](forcing.qmd) of the regional models |
+| Wastewater | The [RWZI model](forcing.qmd#sec-rwzi) |
+| Measurements | Observation nodes, see `ribasim_nl.observations` |
+
+The other model in this folder that is tracked, `hws_2025_10_1`, is a fixed earlier version, from which the fix script of Vechtstromen reads the polygon of the Twentekanaal.

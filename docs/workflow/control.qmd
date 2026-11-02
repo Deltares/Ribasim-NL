@@ -1,0 +1,58 @@
+---
+title: "Control"
+---
+
+Most Outlets and Pumps in the regional models are controlled by a DiscreteControl node.
+Each has a function, which decides when it lets water through, and the code that adds them is in `ribasim_nl.control`.
+
+| Function | Dutch | State determined by | Flow in supply state | Flow in drain state | Nodes added |
+|:---------|:------|:--------------------|:---------------------|:--------------------|:------------|
+| `drain` | uitlaat | upstream level | 0 | capacity | DiscreteControl |
+| `supply` | inlaat | downstream level | capacity | 0 | DiscreteControl |
+| `flow_control` | doorlaat | upstream and downstream level | capacity | capacity | DiscreteControl |
+| `flushing` | doorspoeling | upstream level and flow rate | demand | capacity | DiscreteControl and FlowDemand |
+
+Each controlled node gets two rows in its static table, for the control states `aanvoer` (supply) and `afvoer` (drain), and one DiscreteControl node with a control link.
+Flushing nodes also get a FlowDemand node, which sets the flow to maintain, seasonal if it differs between summer and winter.
+
+```{mermaid}
+%%| fig-cap: "A drain node between two Basins. The DiscreteControl node listens to the level upstream and switches the state of the Outlet."
+flowchart LR
+  up["Basin upstream"] -->|flow| outlet["Outlet<br>afvoer: capacity<br>aanvoer: 0"]
+  outlet -->|flow| down["Basin downstream"]
+  dc["DiscreteControl"] -.->|control| outlet
+  up -.->|listens to level| dc
+```
+
+## Levels and thresholds
+
+The target level of a Basin is its `meta_streefpeil` in `Basin / area`.
+From it follow the thresholds of the DiscreteControl nodes and the level limits of the nodes:
+
+- The thresholds have a band of 5 cm around the level (`DEFAULT_LEVEL_THRESHOLD_RANGE`), so a node does not keep switching.
+- In the supply state, the upstream target level is lowered by 4 cm, so water can flow towards a Basin that is short of water.
+- Pumps stop pumping into a Basin 20 cm above its target level (`MAALSTOP_LEVEL_OFFSET`).
+
+The [summer and winter levels](seasonal-levels.qmd) later split each state into a winter and a summer variant, such as `afvoer zomer`.
+
+## How nodes get their function
+
+The two kinds of models get their function differently.
+
+- **Gravity controlled**: `04_add_full_control.py` calls `add_controllers_to_supply_area` for each supply area, `verwerkt/sturing/aanvoergebieden.gpkg`. The inlets and outlets of the polygon, and lists by hand, give the function: downstream of supply nodes it is `flow_control`, and the rest drains. Then `add_controllers_to_uncontrolled_connector_nodes` handles the remaining Outlets and Pumps. The priority is flushing, flow control, drain, supply; the rest drains, except the reverse of a drain node, which supplies.
+- **Level controlled**: the `meta_categorie` of a node maps to a function, with exceptions in `set_node_functions`. These models have no flushing nodes.
+
+## Exceptions
+
+Some systems need more than a DiscreteControl node per connector:
+
+- Noorderzijlvest and Wetterskip Fryslân use `set_continuous_level_control` in places.
+- Rijnland uses `set_discrete_level_control`, with control states `stap n`.
+- Aa en Maas and Limburg have FlowDemand nodes of their own.
+- The main water system has its own control with PidControl and ContinuousControl nodes, see [Main water system](main-watersystem.qmd#control-and-demands).
+
+## Capacities
+
+The capacity of a node is its `flow_rate` per state.
+In the gravity controlled models they come from the reviewed `static_data.xlsx`.
+The level controlled models set the unknown ones from the area they drain or supply, see [design capacities](design-capacities.qmd).

@@ -1,42 +1,80 @@
 ---
-title: "Gravity controlled"
+title: "Gravity controlled models"
 ---
 
-Workflow for deriving and parametizing "gravity controlled systems". They include 11 water authorities on the Eastern side of The Neterlands for which initial datasets have been prepared by SWECO.
-You need code in [`src/ribasim_nl`](https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl).
+The gravity controlled (vrij afwaterend) models cover 11 water authorities: Aa en Maas, Brabantse Delta, De Dommel, Drents Overijsselse Delta, Hunze en Aas, Limburg, Noorderzijlvest, Rijn en IJssel, Stichtse Rijnlanden, Vallei en Veluwe and Vechtstromen.
+Most of their water drains freely, over weirs and through streams, and their model is built from a detailed network.
+Sweco made their first input models in 2024, and the pipeline now makes these from the source data.
 
-The input models `{authority}_2024_6_3` are lumped from the source data, as Sweco did in 2024, see `ribasim_nl.lumping` and [Reproducing models](../dev/reproducing-models.qmd).
-`pipeline/00a_process_hydamo.py` applies the manual changes to the HyDAMO data, and `pipeline/00b_lump_model.py` lumps the HyDAMO network into basins, or `pipeline/noorderzijlvest/00_lump_model.py` the D-HYDRO model of Noorderzijlvest.
+```{mermaid}
+%%| fig-cap: "The stages of a gravity controlled model, with the model that each script writes."
+flowchart LR
+  subgraph lumped["lumped"]
+    direction TB
+    lump["00b_lump_model.py<br>&lt;authority&gt;_2024_6_3"]
+  end
+  subgraph parameterized["parameterized_&lt;authority&gt;"]
+    direction TB
+    fix["01_fix_model.py<br>_fix_model"] --> prepare["02_prepare_model.py<br>_prepare_model"]
+    prepare --> param["03_parameterize_model.py<br>_parameterized_model"]
+  end
+  subgraph bergend["bergend_&lt;authority&gt;"]
+    direction TB
+    control["04_add_full_control.py<br>_full_control_model"] --> storage["05_add_bergend.py<br>_bergend_model"]
+  end
+  subgraph dynamic["dynamic"]
+    direction TB
+    forcing["07_add_dynamic_forcing.py<br>_dynamic_model"]
+  end
+  lumped --> parameterized --> bergend --> dynamic --> merge["samenvoegen"]
+```
 
-Under `pipeline` you'll find 4 scripts per water authority, e.g. `pipeline/aa_en_maas`, which the DVC pipeline runs in sequence.
+The scripts numbered 01 to 04 are per authority, for instance in `pipeline/aa_en_maas`, and the others are shared.
+Only the last model of each stage is an output of DVC.
 
-1. `01_fix_model.py` will "fix" the input models in the directories `{authority}_2024_6_3` to valid Ribasim-models in the directory `{authority}_fix_model`
-2. `02_prepare_model.py`will read `{authority}_fix_model` and add `levels` and `flow_rate` to the model and a `static_data.xlsx` that can be reviewed. The model will be written as `{authority}_prepare_model`
-3. `03_parameterized_model.py` will read `{authority}_prepare_model` and `static_data.xlsx` to a model `{authority}_parameterized_model`
-4. `04_add_full_control.py` adds control.
+## 1. The input model
 
-In this step control-nodes will get one of these 4 functions:
-- `drain`: outlet draining an area
-- `supply`: inlet supplying an area
-- `flow_control`: flow through an area in supply (drought) and drain conditions
-- `flushing`: an outlet with a specific flow to be maintained at any conditions (supply or drain)
+`pipeline/00a_process_hydamo.py` applies the manual changes to the HyDAMO data of 7 water authorities, and `pipeline/00b_lump_model.py` lumps the data of 10 into an input model.
+`pipeline/noorderzijlvest/00_lump_model.py` lumps the D-HYDRO model of Noorderzijlvest.
+[Lumping](lumping.qmd) shows this step by step.
 
-Explanation of a node's `function` in terms of upstream/downstream levels, supply (aanvoer) or drain (afvoer) state:
+## 2. Fix
 
-| function      | state determined by               | flow_rate @ supply-state | flow_rate @ drain-state | Nodes added                  |
-|---------------|-----------------------------------|--------------------------|-------------------------|------------------------------|
-| supply        | downstream level                  | capacity [m3/s]          | 0 [m3/s]                | DiscreteControl              |
-| drain         | upstream level                    | 0 [m3/s]                 | capacity [m3/s]         | DiscreteControl              |
-| flow control  | upstream & downstream level       | capacity [m3/s]          | capacity [m3/s]         | DiscreteControl              |
-| flushing      | upstream level & node flow_rate   | demand [m3/s]            | capacity [m3/s]         | DiscreteControl + FlowDemand |
+`01_fix_model.py` corrects the input model by node ID, into a valid Ribasim model.
+It is the same step as in [Lumping](lumping.qmd#correct-the-model-in-the-fix-script), and most of the edits are in `verwerkt/model_edits.gpkg`.
 
+## 3. Prepare and parameterize
 
-ManningResistances get the DAMO profile of their link if it lies across one of their links. Without a profile of their own watercourse, they get a trapezoid with the width of the BGT water along their links, see `ribasim_nl.parametrization.manning_resistance_table`; the source is in `meta_profile_source`. When the links are routed along the waterways in the last step, their BGT width follows the routed links.
+`02_prepare_model.py` adds levels and flow rates, and writes a template for the parameters to review, `verwerkt/parameters/static_data_template.xlsx`.
+`03_parameterize_model.py` reads the reviewed `static_data.xlsx` and sets the parameters of the nodes.
 
-Steps 5, 6 and 7 are shared between water authorities. Steps 5 and 7 are part of the pipeline, and live directly beneath the `pipeline` directory; step 6 is in the `notebooks` directory.
+ManningResistances get the DAMO profile of their link if it lies across one of their links.
+Without a profile of their own watercourse, they get a trapezoid with the width of the BGT water along their links, see `ribasim_nl.parametrization.manning_resistance_table`; the source is in `meta_profile_source`.
+When the links are routed along the waterways in the last step, their BGT width follows the routed links.
 
-5. `05_add_bergend.py` adds VdGaast-based storage basins (input = models are from script 4). A storage basin drains through a VdGaast-based TabulatedRatingCurve, except in the supply areas of `verwerkt/sturing/aanvoergebieden.gpkg` with `meta_aanvoer` true. There it is connected with a ManningResistance, so it can also be supplied.
-6. `06_add_synthetic_forcing.py` adds synthetic forcing (constant precipitation switched to constant evaporation) to the models produced by script 5
-7. `07_add_dynamic_forcing.py` adds Modflow-Metaswap drainage/infiltration and WIWB precipitation/evaporation to the models produced by script 5, and the foreign inflows and RWZIs, and lays out, writes and runs them. These steps are shared with the [level controlled](level-controlled.qmd) models, see `ribasim_nl.regional_model`.
+## 4. Control
 
-Finally `uploaden_modellen.py` uploads all models produced by script 7.
+`04_add_full_control.py` gives every Outlet and Pump one of the [functions](control.qmd) `drain`, `supply`, `flow_control` or `flushing`, and adds its DiscreteControl node.
+
+It also writes steady state variants of the model, `<authority>_steady_state_dry` and `_wet`, with constant forcing.
+Each script has a flag `MODEL_EXEC` to run and check these while working on the model, which is off in the pipeline.
+
+## 5. Storage basins
+
+`pipeline/05_add_bergend.py` limits the supply to the target level, and adds a [storage basin](storage-basins.qmd) to each Basin, based on Van der Gaast.
+
+## 6. Forcing
+
+`pipeline/07_add_dynamic_forcing.py` adds the [forcing, foreign inflows and wastewater](forcing.qmd), and finishes the model with `ribasim_nl.regional_model.finish_regional_model`:
+
+```{mermaid}
+flowchart LR
+  layout["Route links,<br>tidy the layout"] --> levels["Summer and<br>winter levels"]
+  levels --> write["Write and<br>validate"]
+  write --> run["Run"]
+  run --> state["Use the final state<br>as initial state"]
+  state --> check["performance.xlsx,<br>output_controle.gpkg"]
+```
+
+These steps are shared with the [level controlled models](level-controlled.qmd).
+The result, `<authority>_dynamic_model`, goes on to the [coupling](couple.qmd).

@@ -1,7 +1,7 @@
 # Stichtse Rijnlanden
 
 - Laatst bijgewerkt: 07-04-2026
-- [Laatste modelversie](https://deltares.thegood.cloud/s/RczyFnYKiCeYojW)
+- [Bekijk het model in de modelviewer](/viewer.qmd#authority=14)
 
 ## Systeembeschrijving
 ![Systeembeschrijving Stichtse Rijnlanden](https://s3.deltares.nl/ribasim-nl/doc-image/watersystems/StichtseRijnlanden.svg){.lightbox}
@@ -105,6 +105,6 @@ Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h
 | Zuidersluis               | SL0016 |       758 | uitlaat                |              0   |            0    |
 
 ## Bronnen
-Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van `Kunstwerken hoofdsysteem HDSR - Bespreking Ribasim HDSR (Sweco)` en:
+Bovenstaand model is afgeleid van het invoermodel `StichtseRijnlanden_2024_6_3`, dat de pipeline uit de brongegevens maakt, op de manier waarop Sweco dat in 2024 deed. Dit is bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](/workflow/gravity-controlled.qmd). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van `Kunstwerken hoofdsysteem HDSR - Bespreking Ribasim HDSR (Sweco)` en:
 
 - Documentatie Distributiemodel (Deel B, hoofdstuk 8)

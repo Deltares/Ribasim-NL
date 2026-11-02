@@ -1,0 +1,46 @@
+---
+title: "Documentation"
+---
+
+This website is made with [Quarto](https://quarto.org/) from the `docs` folder, and published to [ribasim.nl](https://ribasim.nl/) from `main` by the workflow `.github/workflows/docs.yml`.
+
+```sh
+pixi run docs         # preview, with the viewer and the API reference
+pixi run docs-render  # render as on CI
+```
+
+Quarto silently finds no pages if the repository is below a hidden folder, such as a worktree in `.claude/worktrees`. Render a copy elsewhere in that case.
+
+## Diagrams
+
+Use [Mermaid](https://mermaid.js.org/) for diagrams of steps and flows, in a `{mermaid}` code block, with short labels.
+The theme is set in `docs/_quarto.yml`.
+`pixi run dvc-dag` makes the full graph of the pipeline in `docs/dev/_dvc-dag.mmd`.
+
+## Figures
+
+CI has no access to the data, so the maps and charts of real examples are committed as small PNGs in `docs/figures`, with the script that made them, `scripts/docs_figures.py`.
+They show a state of the model, and do not change by themselves.
+Remake them when a change makes them wrong, after pulling the data they read.
+Stages that are not yet in `dvc.lock` have to run first, by their scripts.
+The figures are not stages in DVC, because any change to the `ribasim_nl` package would otherwise mark them as changed.
+
+```sh
+pixi run docs-figures              # all figures
+pixi run docs-figures lumping      # one group
+```
+
+| Group | Pull first |
+|:------|:-----------|
+| `national`, `seasonal`, `forcing`, `authorities` | `run_lhm_coupled` |
+| `main_water_system` | `hws_transient`, `data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg` |
+| `coupling` | `samenvoegen`, `run_lhm_coupled` |
+| `lumping` | `parameterized_drents_overijsselse_delta --with-deps`, and run its `01_fix_model.py`, whose model is not an output of DVC |
+| `level_controlled` | `postprocessed_delfland`, `crossings@delfland`, `shortest_paths@delfland`, `boezemmodel@delfland`, `forcing_delfland` |
+| `profiles` | `profiles_delfland` |
+
+Keep each figure below 700 kB, the limit of the Git hooks, by using flat colours; `save` reduces the palette of the PNG.
+
+## API reference
+
+[quartodoc](https://machow.github.io/quartodoc/) builds the [API reference](../reference/index.qmd) from the docstrings, in the sections of `docs/_quarto.yml`.

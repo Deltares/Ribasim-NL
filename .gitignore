@@ -62,6 +62,7 @@ bin/
 *.geojson
 *.qlr
 *.png
+!docs/figures/*.png
 !docs/assets/logo.png
 *.bat
 !scripts/load-env.bat

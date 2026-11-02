@@ -1,0 +1,86 @@
+---
+title: "Model derivation"
+---
+
+The nationwide model `lhm_coupled` is built in stages, which the [DVC pipeline](../dev/dvc.qmd) runs in order.
+Each authority starts from its own kind of data, so there are three routes to a model that are merged at the end:
+
+- The [main water system](main-watersystem.qmd) of Rijkswaterstaat.
+- The [gravity controlled](gravity-controlled.qmd) models of 11 water authorities, which mostly drain freely (vrij afwaterend), lumped from their watercourses.
+- The [level controlled](level-controlled.qmd) models of 10 water authorities, which keep target levels in their polders (peilbeheerst), built from the crossings of their watercourses with the boundaries of their level areas.
+
+![The authorities by the route of their model.](../figures/national-models.png){width=60% fig-alt="Map of the Netherlands with the main water system in blue, gravity controlled water authorities in orange and level controlled water authorities in green."}
+
+## The stages
+
+```{mermaid}
+%%| fig-cap: "The stages of the pipeline, grouped. Blue stages run per authority. The [full graph](../dev/dvc.qmd#fig-dvc-pipeline) has 79 stages."
+flowchart TB
+  subgraph main["Main water system"]
+    direction TB
+    bathymetry --> hws_demand --> hws_transient
+  end
+  subgraph gravity["Gravity controlled, 11 authorities"]
+    direction TB
+    hydamo --> lumped --> parameterized --> bergend --> dynamic
+  end
+  subgraph level["Level controlled, 10 authorities"]
+    direction TB
+    postprocessed --> crossings --> shortest_paths --> boezemmodel --> feedback --> profiles --> forcing
+  end
+  rwzi --> hws_transient
+  rwzi --> dynamic
+  rwzi --> forcing
+  peilbeheer --> dynamic
+  peilbeheer --> forcing
+  peilbeheer --> koppelen
+  hws_transient --> samenvoegen
+  dynamic --> samenvoegen
+  forcing --> samenvoegen
+  samenvoegen --> koppelen --> run_lhm_coupled
+  run_lhm_coupled --> validate_lhm_coupled
+  run_lhm_coupled --> export_webmap
+
+  classDef perauthority fill:#cde2fb,stroke:#2a78d6
+  class hydamo,lumped,parameterized,bergend,dynamic,postprocessed,crossings,shortest_paths,boezemmodel,feedback,profiles,forcing perauthority
+```
+
+| Stage | What it does | See |
+|:------|:-------------|:----|
+| `bathymetry`, `hws_demand`, `hws_transient` | The model of the main water system. | [Main water system](main-watersystem.qmd) |
+| `hydamo`, `lumped` | Lump the watercourses and structures into an input model. | [Lumping](lumping.qmd) |
+| `parameterized`, `bergend`, `dynamic` | Fix and parameterize the model, add control, storage basins and forcing. | [Gravity controlled](gravity-controlled.qmd) |
+| `postprocessed`, `crossings`, `shortest_paths`, `boezemmodel` | Make an input model from the deliveries. | [Level controlled](level-controlled.qmd) |
+| `feedback`, `profiles`, `forcing` | Process the feedback of the water board, add profiles, control and forcing. | [Level controlled](level-controlled.qmd), [Profile generation](profile-generation.qmd) |
+| `rwzi` | The wastewater treatment plants, as a model to merge. | [Forcing](forcing.qmd#sec-rwzi) |
+| `peilbeheer` | The summer and winter levels of the level areas. | [Summer and winter levels](seasonal-levels.qmd) |
+| `samenvoegen`, `koppelen` | Merge all models, and connect them where they meet. | [Coupling](couple.qmd) |
+| `run_lhm_coupled`, `validate_lhm_coupled` | Run the model and check its results. | [Testing](../dev/testing.qmd#coupled-model-result-checks) |
+| `export_webmap` | Export the run for the model viewer. | [Model viewer](../dev/viewer.qmd) |
+
+## Where the data is
+
+Everything is under `data`, with a folder per authority, named as in `ribasim_nl.aquo`, and `Basisgegevens` for national data:
+
+| Folder | Content |
+|:-------|:--------|
+| `<authority>/aangeleverd` | Data as delivered by the authority |
+| `<authority>/verwerkt` | Processed data, including hand-made edits such as `model_edits.gpkg` |
+| `<authority>/modellen` | The models of each stage, such as `<authority>_dynamic_model` |
+| `Rijkswaterstaat/modellen` | Also the merged `lhm_parts` and coupled `lhm_coupled` models |
+| `Rijkswaterstaat/runs/lhm_coupled` | The latest run of the coupled model, with its `results` |
+
+[Get data](../dev/index.qmd#get-data) explains how to download these.
+
+## Node IDs {#sec-node-ids}
+
+Scripts and edit files refer to nodes by their ID, in the model of the authority.
+Merging keeps these unique by prefixing them with the `waterbeheercode` of the authority, see `ribasim_nl.aquo`:
+
+$$\text{node ID in the coupled model} = \text{waterbeheercode} \times 100\,000 + \text{node ID in the regional model}$$
+
+So 203892 is node 3892 of Wetterskip Fryslân, with code 2, and 8009406 is node 9406 of Rijkswaterstaat, with code 80.
+The model viewer shows the same IDs.
+Fix a problem in the stages of the authority where possible, rather than in the coupling, so that the regional model and the nationwide model stay alike.
+
+The IDs must stay the same on every run, or all these references break, see [Reproducing models](../dev/reproducing-models.qmd).

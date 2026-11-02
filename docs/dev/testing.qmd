@@ -8,7 +8,13 @@ Run the repository checks before submitting changes:
 pixi run check
 ```
 
-This also runs on CI.
+This also runs on CI. It runs the linter, the formatter, the [type checker](type-checking.qmd) and other hooks.
+
+The tests are in `src/ribasim_nl/tests`, `src/hydamo/tests` and `scripts/test_*.py`, and also run on CI:
+
+```sh
+pixi run pytest src/ribasim_nl/tests
+```
 
 ## Model input validation
 
@@ -16,7 +22,7 @@ This also runs on CI.
 
 ## Result regression testing
 
-The dry and wet steady-state scenarios guard against a Basin losing its ability to maintain its water level. During the existing `bergend_*` and `forcing_*` DVC stages, and in `repro.sh`, the dry and wet models are run and checked. A Basin is steady-state when its final water level differs by at most 0.01 m from the mean of the final 24 hours and its storage remains positive throughout the simulation.
+The dry and wet steady-state scenarios guard against a Basin losing its ability to maintain its water level. The `forcing_*` DVC stages of the level controlled models run and check the dry and wet models. The `bergend_*` stages of the gravity controlled models write them, and run and check them only with `MODEL_EXEC = True` in their `04_add_full_control.py`, which is off in the pipeline. A Basin is steady-state when its final water level differs by at most 0.01 m from the mean of the final 24 hours and its storage remains positive throughout the simulation.
 
 Known level-instability exceptions are kept as explicit scenario-specific Basin node IDs in `ribasim_nl.steady_state_regression`. Exceptions do not bypass the positive-storage check, and an exception for a missing Basin ID fails the run.
 
