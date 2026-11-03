@@ -1211,6 +1211,7 @@ stages:
       - data/Rivierenland/modellen/Rivierenland_profiles
       - data/Rivierenland/verwerkt/profielen/network.gpkg
       - data/Rivierenland/verwerkt/crossings.gpkg
+      - data/Basisgegevens/GSK3E/gsk3e_EPSG25832_Shape.zip
       - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Rivierenland/modellen/Rivierenland_boezemmodel_2024_12_0

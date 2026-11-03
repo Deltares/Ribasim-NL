@@ -98,3 +98,37 @@ def test_snap_to_network():
     links = model.link.df.geometry.tolist()
     assert list(links[0].coords) == [(50, 0), (100, 0), (100, 5)]
     assert list(links[1].coords) == [(100, 5), (100, 0), (150, 0)]
+
+
+def test_snap_to_network_extra_waterways():
+    """Outlets 3 and 4 drain into Basin 1 over waterways far outside its basin area, which come together at (500, 0)."""
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    area = shapely.MultiPolygon([box(0, -50, 100, 50)])
+    model.basin.add(
+        Node(1, Point(50, 0)),
+        [
+            basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]),
+            basin.State(level=[0.5]),
+            basin.Area(geometry=[area]),
+        ],
+    )
+    for node_id, point in ((3, Point(900, 300)), (4, Point(900, -300))):
+        model.outlet.add(Node(node_id, point), [outlet.Static(flow_rate=[1.0])])
+        model.link.add(model.outlet[node_id], model.basin[1])
+    hydro_objects = gpd.GeoDataFrame({"main-route": [True]}, geometry=[LineString([(0, 0), (100, 0)])], crs=model.crs)
+    waterways = gpd.GeoDataFrame(
+        geometry=[
+            LineString([(100, 0), (500, 0)]),
+            LineString([(500, 0), (900, 300)]),
+            LineString([(500, 0), (900, -300)]),
+        ],
+        crs=model.crs,
+    )
+
+    unrouted = snap_to_network(model.model_copy(deep=True), hydro_objects, route_water=False)
+    assert all(len(line.coords) == 2 for line in unrouted.link.df.geometry), "Outside the area without extra waterways"
+
+    routed = snap_to_network(model, hydro_objects, route_water=False, extra_waterways={1: waterways})
+    from_3, from_4 = routed.link.df.geometry.tolist()
+    assert list(from_3.coords) == [(900, 300), (500, 0), (100, 0), (50, 0)]
+    assert list(from_4.coords) == [(900, -300), (500, 0), (100, 0), (50, 0)]

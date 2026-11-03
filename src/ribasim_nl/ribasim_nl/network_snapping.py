@@ -529,6 +529,7 @@ def snap_to_network(
     move_basins: bool = True,
     route_water: bool = True,
     link_ids: list[int] | None = None,
+    extra_waterways: dict[int, gpd.GeoDataFrame] | None = None,
 ) -> Model:
     """Route flow links between a Basin and a connector node along the hydro-objects, and move Basin nodes onto them.
 
@@ -546,9 +547,12 @@ def snap_to_network(
     :param route_water: route links that cannot be routed along the hydro-objects over the water surface, see
         `route_basin_links`, defaults to True
     :param link_ids: only route these links, defaults to None (all)
+    :param extra_waterways: per Basin, waterways outside its basin area, for connector nodes that are connected to it
+        over a long distance, for instance through Germany. They are not clipped, and are never its main route.
 
     :return: updated Ribasim model
     """
+    extra_waterways = {} if extra_waterways is None else extra_waterways
     model = straight_link_geometries(model)
     assert model.basin.area.df is not None
     nodes = model.node.df
@@ -598,11 +602,12 @@ def snap_to_network(
             int(typing.cast(int, link_id)): typing.cast(shapely.Point, nodes.at[cid, "geometry"])
             for link_id, cid in group["connector_id"].items()
         }
+        extra_lines = list(extra_waterways[basin_id].geometry) if basin_id in extra_waterways else []
         location, routes = route_basin_links(
             basin_point,
             connectors,
-            list(lines),
-            list(main_route[idx]),
+            [*lines, *extra_lines],
+            [*main_route[idx], *[False] * len(extra_lines)],
             culverts=list(basin_culverts),
             water=None if basin_water.is_empty else basin_water,
             area=area if route_water else None,
@@ -720,6 +725,7 @@ def snap_model(
     water_path: pathlib.Path | None = None,
     top10nl_path: pathlib.Path | None = None,
     tolerance: float = 10.0,
+    extra_waterways: dict[int, gpd.GeoDataFrame] | None = None,
 ) -> Model:
     """Snap a model to the hydro-objects of the profile-generation, see `snap_to_network`.
 
@@ -729,6 +735,7 @@ def snap_model(
     :param water_path: GeoParquet with water surfaces, see `ribasim_nl.bgt_water`, defaults to None
     :param top10nl_path: Top10NL GeoPackage, of which the water lines complement the hydro-objects, defaults to None
     :param tolerance: buffer around the basin area within which hydro-objects are used, defaults to 10.0
+    :param extra_waterways: per Basin, waterways outside its basin area, see `snap_to_network`
     """
     node_geometry = model.node.df.geometry.copy()
     hydro_objects = read_hydro_objects(profiles_path)
@@ -743,7 +750,9 @@ def snap_model(
         assert model.basin.area.df is not None
         x0, y0, x1, y1 = model.basin.area.df.total_bounds
         water = read_bgt_water(shapely.box(x0, y0, x1, y1), path=water_path, columns=["geometry"])
-    model = snap_to_network(model, hydro_objects, culverts=culverts, water=water, tolerance=tolerance)
+    model = snap_to_network(
+        model, hydro_objects, culverts=culverts, water=water, tolerance=tolerance, extra_waterways=extra_waterways
+    )
     moved = ~model.node.df.geometry.geom_equals_exact(node_geometry, tolerance=0)
     moved_types = set(model.node.df.loc[moved, "node_type"])
     assert moved_types <= {"Basin", "ManningResistance"}, f"Only Basin nodes may move, not {moved_types}"

@@ -7,14 +7,16 @@ https://www.opengeodata.nrw.de/produkte/umwelt_klima/wasser/oberflaechengewaesse
 import typing
 
 import geopandas as gpd
+import pandas as pd
 import shapely
 import shapely.ops
 
 from ribasim_nl.settings import settings
 
 GSK3E_ZIP = settings.ribasim_nl_data_dir / "Basisgegevens/GSK3E/gsk3e_EPSG25832_Shape.zip"
-# the named waterways, with a code
+# the named waterways, with a code, and all other waterways
 NAMED_WATERWAYS = "gsk3e_gewkz_line_name"
+OTHER_WATERWAYS = "gsk3e_sonstige_line_basisdlm"
 
 
 def read_layer(layer: str, *, mask: shapely.Geometry | None = None, where: str | None = None) -> gpd.GeoDataFrame:
@@ -29,6 +31,18 @@ def read_layer(layer: str, *, mask: shapely.Geometry | None = None, where: str |
     mask_series = None if mask is None else gpd.GeoSeries([mask], crs="EPSG:28992")
     gdf = gpd.read_file(f"zip://{GSK3E_ZIP}!Eingangsdaten/shapefile/{layer}.shp", mask=mask_series, where=where)
     return gdf.to_crs("EPSG:28992")
+
+
+def read_waterways(mask: shapely.Geometry) -> gpd.GeoDataFrame:
+    """Read all waterways that intersect a mask, for `extra_waterways` of `ribasim_nl.network_snapping`.
+
+    :param mask: area to read
+    :return: single-part 2D lines
+    """
+    frames = [read_layer(layer, mask=mask)[["geometry"]] for layer in (NAMED_WATERWAYS, OTHER_WATERWAYS)]
+    lines = gpd.GeoDataFrame(pd.concat(frames, ignore_index=True), crs=frames[0].crs).explode(ignore_index=True)
+    lines = lines[lines.geom_type == "LineString"].reset_index(drop=True)
+    return lines.set_geometry(shapely.force_2d(lines.geometry.to_numpy()), crs=lines.crs)
 
 
 def read_reach(code: str, name: str) -> shapely.LineString:

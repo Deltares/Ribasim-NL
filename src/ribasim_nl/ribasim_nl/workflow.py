@@ -358,10 +358,16 @@ def preserve_connector_meta(model: Model, method: Literal["merge", "combine_firs
         )
 
 
-def write_and_run_forcing_model(model: Model, paths: WaterBoardPaths) -> None:
+def write_and_run_forcing_model(
+    model: Model, paths: WaterBoardPaths, *, extra_waterways: dict[int, gpd.GeoDataFrame] | None = None
+) -> None:
     """Write and run the forcing model and its steady state regression variants, and check the results.
 
     See `finish_regional_model`, which snaps the model to the hydro-objects of the profile generation.
+
+    :param model: model with forcing
+    :param paths: paths of the water board
+    :param extra_waterways: per Basin, waterways outside its basin area, see `snap_to_network`
     """
     check_basin_meta_categorie(model)
     bound_supply_inflows(model)
@@ -374,6 +380,7 @@ def write_and_run_forcing_model(model: Model, paths: WaterBoardPaths) -> None:
             crossings_path=paths.crossings,
             water_path=paths.bgt_water,
             top10nl_path=paths.top10nl,
+            extra_waterways=extra_waterways,
         )
         return junctionify(model)
 

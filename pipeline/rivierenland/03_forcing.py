@@ -6,6 +6,7 @@ from ribasim_nl.control import (
     set_node_functions,
 )
 from ribasim_nl.design_capacities import set_design_capacities
+from ribasim_nl.gsk3e import read_waterways
 from ribasim_nl.workflow import (
     WaterBoardPaths,
     add_controllers,
@@ -17,7 +18,7 @@ from ribasim_nl.workflow import (
     set_manning_resistance_outside_bergend,
     write_and_run_forcing_model,
 )
-from shapely.geometry import Point
+from shapely.geometry import Point, box
 
 from ribasim_nl import CloudStorage, Model
 
@@ -178,4 +179,6 @@ set_design_capacities(ribasim_model, from_to_node_function_table)
 
 set_flow_rate(ribasim_model.pump.static.df, [664], 8.0)  # average flow rate in the winter
 
-write_and_run_forcing_model(ribasim_model, paths)
+# the outlets near Groesbeek drain via Germany into the Ooijpolder, route their links along the waterways there, see #995
+groesbeek_to_ooijpolder = box(192500, 420500, 199500, 428500)
+write_and_run_forcing_model(ribasim_model, paths, extra_waterways={161: read_waterways(groesbeek_to_ooijpolder)})
