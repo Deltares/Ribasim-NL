@@ -5,16 +5,16 @@ import os
 import subprocess
 from pathlib import Path
 
+from config import load_delwaq_config
 from ribasim.delwaq import generate, parse
 
 # %%
 ROOT = Path(__file__).resolve().parents[2]
-MODEL_NAME = "lhm_coupled_full"
-TOML_NAME = "lhm_coupled.toml"
 OUTPUT_FOLDER = "delwaq_all_sources"
 
-model_path = ROOT / "data" / "Rijkswaterstaat" / "modellen" / MODEL_NAME
-toml_path = model_path / TOML_NAME
+delwaq_config = load_delwaq_config(Path(__file__).resolve().parent / "config.toml")
+model_path = delwaq_config.model_path
+toml_path = delwaq_config.model_toml
 output_path = model_path / OUTPUT_FOLDER
 assert toml_path.is_file()
 

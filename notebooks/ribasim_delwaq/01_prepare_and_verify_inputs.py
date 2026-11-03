@@ -8,27 +8,27 @@ from pathlib import Path
 import pandas as pd
 import scripts.interpolate_timeseries as timeseries_helpers
 import xarray as xr
+from config import load_delwaq_config
 from ribasim import Model
 from scripts.verify_mass_loads import verify_mass_loads
 
 # %%
 ROOT = Path(__file__).resolve().parents[2]
-MODEL_NAME = "lhm_coupled_full_BU"
-TOML_NAME = "lhm_coupled.toml"
-model_path = ROOT / "data" / "Rijkswaterstaat" / "modellen" / MODEL_NAME
-toml_path = model_path / TOML_NAME
+delwaq_config = load_delwaq_config(Path(__file__).resolve().parent / "config.toml")
+model_path = delwaq_config.model_path
+toml_path = delwaq_config.model_toml
 model = Model.read(toml_path)
 
-DELWAQ_DATA_DIR = ROOT / "data" / "Basisgegevens" / "Delwaq"
-ANIMO_DATA_DIR = DELWAQ_DATA_DIR / "ANIMO"
-ER_DATA_DIR = DELWAQ_DATA_DIR / "Emissieregistratie"
-IM_DATA_DIR = DELWAQ_DATA_DIR / "IM"
-ZINFO_DATA_DIR = DELWAQ_DATA_DIR / "Zinfo"
+DELWAQ_DATA_DIR = delwaq_config.delwaq_data
+ANIMO_DATA_DIR = delwaq_config.animo_data
+ER_DATA_DIR = delwaq_config.er_data
+IM_DATA_DIR = delwaq_config.im_data
+ZINFO_DATA_DIR = delwaq_config.zinfo_data
 PREPARED_DATA_DIR = model_path / "delwaq_input"
 
 RUN_CONVERSION_SCRIPTS = True
-START_DATE = "2017-01-01"
-END_DATE = "2019-12-31"
+START_DATE = "2017-01-01"  # for verification
+END_DATE = "2019-12-31"  # for verification, current setup still prepares all available emission data, regardless of LHM results range
 
 
 def run_conversion_script(script_path: Path, description: str) -> None:
@@ -55,7 +55,7 @@ def read_required_parquet(path: Path, description: str) -> pd.DataFrame:
 
 
 def prepare_boundary_data(boundary_data: pd.DataFrame, source_name: str) -> dict[str, pd.DataFrame]:
-    """Clean, interpolate, and calculate mass loads for one boundary source."""
+    """Clean, interpolate, and calculate mass loads for one boundary data source (IM or Zinfo)."""
     concentration = boundary_data["concentration"]
     node_id = boundary_data["node_id"]
 
@@ -126,6 +126,7 @@ verification_ER = verify_mass_loads(
     make_plot=True,
 )
 
+# %%
 ANIMO_loads_df_script = Path(__file__).resolve().parent / "ANIMO_to_delwaq" / "ANIMO_coupling_delwaq.py"
 ANIMO_loads_df_path = ANIMO_DATA_DIR / "output" / "ANIMO_loads_g_s_df.parquet"
 if RUN_CONVERSION_SCRIPTS:
@@ -141,6 +142,7 @@ verification_ANIMO = verify_mass_loads(
     make_plot=True,
 )
 
+# %%
 boundwq_df_script = Path(__file__).resolve().parent / "IM_Zinfo_to_delwaq" / "write_boundwq_files.py"
 IM_boundaries_df_path = IM_DATA_DIR / "output" / "IM_boundaries_mg_L_df.parquet"
 Zinfo_boundaries_df_path = ZINFO_DATA_DIR / "output" / "Zinfo_boundaries_mg_L_df.parquet"

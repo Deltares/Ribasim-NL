@@ -9,6 +9,19 @@ Run the scripts in this order:
 1. `01_prepare_and_verify_inputs.py`
 2. `02_build_delwaq_model.py`
 3. `03_run_and_analyse_delwaq.py`
+4. `04_visualise_delwaq_results.py`
+
+The active model is configured in `config.toml`. The preparation, build, run,
+and source conversion scripts all read the model name and TOML filename from
+this file. The basin polygon script must be rerun when changing the configured
+model so that its output is available to the ANIMO conversion script.
+
+### 4. Visualise existing DELWAQ results
+
+`04_visualise_delwaq_results.py` only reads an existing DELWAQ run. By
+default, it uses the configured model's `delwaq_all_sources` directory. Set
+`OUTPUT_PATH_OVERRIDE` in the script to a copied model's result directory when
+analysing results outside the repository.
 
 The scripts communicate through prepared Parquet files in:
 

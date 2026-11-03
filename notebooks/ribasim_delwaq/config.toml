@@ -1,0 +1,5 @@
+[model]
+toml_path = "data/Rijkswaterstaat/modellen/lhm_coupled/lhm_coupled.toml"
+
+[paths]
+delwaq_data = "data/Basisgegevens/Delwaq"

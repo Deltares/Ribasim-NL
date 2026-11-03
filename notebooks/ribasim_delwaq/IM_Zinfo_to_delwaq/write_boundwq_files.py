@@ -1,12 +1,19 @@
 # %%
+# ruff: noqa: E402
+
 import json
 import logging
+import sys
 from pathlib import Path
 from typing import Any
 
+CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.toml"
+ROOT = CONFIG_PATH.resolve().parents[2]
+sys.path.insert(0, str(CONFIG_PATH.parent))
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from config import load_delwaq_config
 
 from ribasim_nl import Model
 
@@ -24,17 +31,16 @@ def setup_logging():
 setup_logging()
 
 # %% Set directories
-ROOT = Path(__file__).resolve().parents[3]
+delwaq_config = load_delwaq_config(CONFIG_PATH)
+DELWAQ_DATA_DIR = delwaq_config.delwaq_data
 
-DELWAQ_DATA_DIR = ROOT / "data" / "Basisgegevens" / "Delwaq"
-
-IM_DATA_DIR = DELWAQ_DATA_DIR / "IM"
+IM_DATA_DIR = delwaq_config.im_data
 IM_INPUT_DIR = IM_DATA_DIR / "aangeleverd"
 # IM_INTERIM_DIR = IM_DATA_DIR / "interim" # currently not used
 IM_FIGURES_DIR = IM_DATA_DIR / "figures"  # replaces figures_path for IM derived boundaries
 IM_OUTPUT_DIR = IM_DATA_DIR / "output"  # replaces boundwq_path for IM derived boundaries
 
-ZINFO_DATA_DIR = DELWAQ_DATA_DIR / "Zinfo"
+ZINFO_DATA_DIR = delwaq_config.zinfo_data
 ZINFO_INPUT_DIR = ZINFO_DATA_DIR / "aangeleverd"
 # ZINFO_INTERIM_DIR = ZINFO_DATA_DIR / "interim" # currently not used
 ZINFO_FIGURES_DIR = ZINFO_DATA_DIR / "figures"  # replaces figures_path for Zinfo derived boundaries
@@ -68,14 +74,6 @@ OOP_notPO4_fractie = 0.25
 
 parameters_IM = ["NKj", "NO3", "NOx", "sNO3NO2", "Ntot", "PO4", "Ptot"]
 parameters_Zinfo = ["NKj", "NO3", "NOx", "sNO3NO2", "Ntot", "PO4", "Ptot"]
-
-
-# %% Laad het gewenste Ribasim model in
-model_spec = {
-    "authority": "Rijkswaterstaat",
-    "model": "lhm_coupled",
-    "model_version": "2025_9_0",
-}
 
 
 # %% Log hard coded parameters
@@ -130,14 +128,9 @@ def load_model_from_spec(model_spec):
     return model
 
 
-# model = load_model_from_spec(model_spec)
-
 # %%
-# hardcoded model paths
-model_name = "lhm_coupled"
-toml_name = "lhm_coupled.toml"
-model_path = ROOT / "data" / "Rijkswaterstaat" / "modellen" / model_name
-toml_path = model_path / toml_name
+model_path = delwaq_config.model_path
+toml_path = delwaq_config.model_toml
 assert toml_path.is_file()
 logger.info(f"reading model from hard-coded path: {toml_path}")
 

@@ -4,14 +4,14 @@
 from pathlib import Path
 
 import pandas as pd
+from config import load_delwaq_config
 from ribasim import Model
 
 # %%
 ROOT = Path(__file__).resolve().parents[2]
-MODEL_NAME = "lhm_coupled"
-TOML_NAME = "lhm_coupled.toml"
-model_path = ROOT / "data" / "Rijkswaterstaat" / "modellen" / MODEL_NAME
-toml_path = model_path / TOML_NAME
+delwaq_config = load_delwaq_config(Path(__file__).resolve().parent / "config.toml")
+model_path = delwaq_config.model_path
+toml_path = delwaq_config.model_toml
 prepared_data_path = model_path / "delwaq_input"
 
 model = Model.read(toml_path)

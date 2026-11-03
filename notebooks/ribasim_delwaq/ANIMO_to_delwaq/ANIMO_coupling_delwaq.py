@@ -1,13 +1,20 @@
 """TODO: @Gijs Include docstring here"""
 
+# ruff: noqa: E402
+
 # %%
 import calendar
+import sys
 from datetime import date
 from pathlib import Path
 
+CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.toml"
+ROOT = CONFIG_PATH.resolve().parents[2]
+sys.path.insert(0, str(CONFIG_PATH.parent))
 import geopandas as gpd
 import imod
 import matplotlib
+from config import load_delwaq_config
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -168,9 +175,9 @@ def build_year_decade_lookup(df, zone_col, value_cols):
 
 ### new directories:
 
-ROOT = Path(__file__).resolve().parents[3]
+delwaq_config = load_delwaq_config(CONFIG_PATH)
 
-ANIMO_DATA_DIR = ROOT / "data" / "Basisgegevens" / "Delwaq" / "ANIMO"
+ANIMO_DATA_DIR = delwaq_config.animo_data
 
 ANIMO_INPUT_DIR = ANIMO_DATA_DIR / "aangeleverd"  # vervangt "data\1-external" of /
 ANIMO_INTERIM_DIR = ANIMO_DATA_DIR / "interim"  # vervangt "data\2-interim" of /
@@ -212,7 +219,10 @@ da_afvoer_lhm_timeseries = []
 species_list = ["cNorg", "cNH4N", "cNO3N", "cNtot", "cPorg", "cPort", "cPtot"]
 write_intermediate_output = False
 apply_correction_deep_seepage = False
-gdf_basins = gpd.read_file(ANIMO_INPUT_DIR / "shapes" / "lhm_coupled_full" / "basin_polygons_lhm_coupled_full.shp")
+gdf_basins = gpd.read_file(ANIMO_INPUT_DIR
+/ "shapes"
+/ delwaq_config.model_path.name
+/ f"basin_polygons_{delwaq_config.model_path.name}.shp")
 da_lgn = imod.idf.open(ANIMO_INPUT_DIR / "LGN250.IDF")
 da_lgn = da_lgn.rio.write_crs("EPSG:28992", inplace=False)
 da_landbouwzones = (
