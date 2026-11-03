@@ -8,9 +8,12 @@ A structure with `Type sturing` DiscreteControl switches between the control sta
 state while the level of the listened Basin is above the thresholds, and in the aanvoer state while it is below
 them. The `Toestand (control_state)` column of the thresholds names the function of the structure, and does not
 change this. A pump that supplies a canal therefore pumps while the canal is below its thresholds.
+
+A structure in `PARALLEL_KWK` is next to another structure, between the same Basins, so it has no place of its own in
+the network. `5_model_netwerk` leaves it out, and `6_model_sturing` adds it.
 """
 
-from typing import Any, Literal
+from typing import Any, Literal, NamedTuple
 
 import numpy as np
 import pandas as pd
@@ -41,6 +44,23 @@ USED_PROPERTIES = {
 # `Type sturing` values without a control node
 LOCAL_CONTROL = {"lokaal", "geen"}
 YES_NO = {"ja": True, "nee": False}
+
+
+class ParallelKwk(NamedTuple):
+    """A structure next to the structure with code `main`, flowing the other way with `reverse`, at `offset` or `xy`."""
+
+    main: str
+    reverse: bool = False
+    offset: float = 30.0  # m
+    xy: tuple[float, float] | None = None
+
+
+# The structures of a complex that is one place in the network, by their code
+PARALLEL_KWK = {
+    "14E-001-27": ParallelKwk("14E-001-33"),  # Gemaal Den Oever, next to the Stevinsluizen
+    "20A-001-04": ParallelKwk("20A-001-02", reverse=True),  # Krabbersgatsluis, supply of the Markermeer
+    "20D-001-04": ParallelKwk("20D-001-08", reverse=True),  # Houtribsluizen, supply of the Markermeer
+}
 
 
 def read_rating_curve(kwk_df: pd.DataFrame) -> tabulated_rating_curve.Static:

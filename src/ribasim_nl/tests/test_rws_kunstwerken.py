@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from ribasim_nl.rws_kunstwerken import (
+    PARALLEL_KWK,
     discrete_control_tables,
     flow_demand_tables,
     has_discrete_control,
@@ -215,3 +216,8 @@ def test_repeat_yearly_sorts_by_day_of_year():
     repeated = repeat_yearly(time, STARTTIME, pd.Timestamp("2017-12-31"))
     assert repeated["index"].to_list() == [1, 0]
     assert repeated["time"].to_list() == [pd.Timestamp("2017-04-01"), pd.Timestamp("2017-10-01")]
+
+
+def test_parallel_kwk_next_to_a_structure_in_the_network():
+    """A structure next to another one needs that one in the network, so it cannot be next to such a structure itself."""
+    assert not {parallel.main for parallel in PARALLEL_KWK.values()} & set(PARALLEL_KWK)

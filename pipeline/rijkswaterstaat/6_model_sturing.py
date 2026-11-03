@@ -10,9 +10,11 @@ from ribasim.nodes import (
     continuous_control,
     outlet,
     pid_control,
+    pump,
 )
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.rws_kunstwerken import (
+    PARALLEL_KWK,
     discrete_control_tables,
     flow_demand_tables,
     has_discrete_control,
@@ -49,6 +51,8 @@ VERDEELSLEUTEL_KWK_FROM_SHEET = ["61F-001-01"]
 # Node types between Basins that do not control the flow, so a DiscreteControl may listen across them
 FREE_FLOW_NODE_TYPES = {"Basin", "ManningResistance", "LinearResistance", "Junction"}
 RWS_NODE_ID_OFFSET = waterbeheercode["Rijkswaterstaat"] * 100_000
+# New structures and their control in these areas get free IDs, so the IDs of the nodes added after them stay the same
+GEBIEDEN_WITH_FREE_IDS = {"IJsselmeer-Markermeer"}
 
 
 # %% functies
@@ -111,14 +115,36 @@ def listen_basin(model: Model, kwk_df: pd.DataFrame, node_id: int) -> tuple[int,
     return basin_id, sides[0]
 
 
-def add_flow_demand(model: Model, node_id: int, tables: list, name: str) -> None:
+def add_flow_demand(model: Model, node_id: int, tables: list, name: str, demand_node_id: int | None = None) -> None:
     """Add a FlowDemand node next to structure `node_id`, as the minimum flow through it."""
     point = cast(Point, model.node.df.at[node_id, "geometry"])
     demand_node = model.flow_demand.add(
-        Node(model.next_node_id, Point(point.x + 20, point.y - 20), name=name),
+        Node(
+            model.next_node_id if demand_node_id is None else demand_node_id,
+            Point(point.x + 20, point.y - 20),
+            name=name,
+        ),
         tables,
     )
     model.link.add(demand_node, model.get_node(node_id))
+
+
+def add_parallel_kwk(model: Model, code: str, name: str, node_type: str, node_id: int) -> None:
+    """Add the structure with `code` next to its main structure, see `PARALLEL_KWK`, with a Static table to replace."""
+    parallel = PARALLEL_KWK[code]
+    main_id = model.find_node_id(meta_code_waterbeheerder=parallel.main)
+    upstream, downstream = model.upstream_node_id(main_id), model.downstream_node_id(main_id)
+    assert isinstance(upstream, int | np.integer) and isinstance(downstream, int | np.integer), (
+        f"Expected one node up- and downstream of {main_id}, got {upstream} and {downstream}"
+    )
+    if parallel.reverse:
+        upstream, downstream = downstream, upstream
+    main_point = cast(Point, model.node.df.at[main_id, "geometry"])
+    point = Point(parallel.xy) if parallel.xy else Point(main_point.x + parallel.offset, main_point.y + parallel.offset)
+    static = {"Outlet": outlet.Static, "Pump": pump.Static}[node_type](flow_rate=[0.0])
+    node = model.get_component(node_type).add(Node(node_id, point, name=name, meta_code_waterbeheerder=code), [static])
+    model.link.add(model.get_node(int(upstream)), node)
+    model.link.add(node, model.get_node(int(downstream)))
 
 
 def read_pid(control_properties, control_basin_id):
@@ -152,10 +178,14 @@ all_kwk_df.loc[:, "code"] = all_kwk_df["code"].astype(str)
 model = Model.read(ribasim_toml)
 starttime, endtime = pd.Timestamp(model.starttime), pd.Timestamp(model.endtime)
 
+# %% IDs that no node has
+free_node_ids = iter(sorted(set(range(1, model.next_node_id)) - set(model.node.df.index)))
+
 # %% Itereren over kunstwerken
 
 assert set(VERDEELSLEUTEL_KWK_FROM_SHEET) <= set(all_kwk_df.loc[~all_kwk_df.in_model, "code"])
 all_kwk_df = all_kwk_df[all_kwk_df.in_model | all_kwk_df.code.isin(VERDEELSLEUTEL_KWK_FROM_SHEET)]
+assert set(PARALLEL_KWK) <= set(all_kwk_df.code), "Expected the structures next to another one in kunstwerken.xlsx"
 for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
     # get sheet-names
     file_name = kwk_dir / f"{gebied}.xlsx"
@@ -174,12 +204,17 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
 
         # get properties
         kwk_properties = read_kwk_properties(kwk_df)
+        assert kwk.code not in PARALLEL_KWK or gebied in GEBIEDEN_WITH_FREE_IDS, f"{kwk.naam} needs a free ID"
 
         # check if code-value is the same in both Excels
         if kwk_properties["Kunstwerkcode"] != kwk.code:
             raise ValueError(
                 f"code for {kwk.naam} do not match in `{file_name.name}` and `{kwk_xlsx.name}`: {kwk_properties['Kunstwerkcode']} != {kwk.code}"
             )
+
+        # a structure next to another one is not in the network yet
+        if kwk.code in PARALLEL_KWK:
+            add_parallel_kwk(model, str(kwk.code), str(kwk.naam), kwk_properties["Ribasim type"], next(free_node_ids))
 
         # find existing node_id in model
         node_id = model.find_node_id(meta_code_waterbeheerder=str(kwk_properties["Kunstwerkcode"]))
@@ -277,6 +312,7 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
                 ctrl_type="DiscreteControl",
                 node_offset=20,
                 node_properties={"name": f"{label}: {levels} [m+NAP]"},
+                node_id=next(free_node_ids) if gebied in GEBIEDEN_WITH_FREE_IDS else None,
             )
 
         # check if structure has a minimum flow, such as the losses of a lock
@@ -291,7 +327,13 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
             assert all(table.df is not None for table in tables)
             demand = max(cast(pd.DataFrame, table.df)["demand"].max() for table in tables)
             assert demand <= max_flow_rate, f"FlowDemand {demand} of {kwk.naam} above its capacity {max_flow_rate}"
-            add_flow_demand(model, node_id, tables, name=f"minimum debiet {kwk.naam}: {demand} [m3/s]")
+            add_flow_demand(
+                model,
+                node_id,
+                tables,
+                name=f"minimum debiet {kwk.naam}: {demand} [m3/s]",
+                demand_node_id=next(free_node_ids) if gebied in GEBIEDEN_WITH_FREE_IDS else None,
+            )
 
 # %% write
 ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_sturing/hws.toml")
