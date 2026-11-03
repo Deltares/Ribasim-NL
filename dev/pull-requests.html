@@ -360,7 +360,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li>Skips a commit of <code>main</code> that it attempted before, also when that failed, unless given <code>--force</code>. It also skips while another catch-up run is busy, but not for runs of other pull requests, which go in the next catch-up run.</li>
 <li>Runs <code>pixi run repro-local --incremental --push</code> on <code>main</code>, which first installs the Ribasim core of <code>scripts/install_ribasim_core.py</code> if that changed. Since every stage depends on the <code>ribasim_nl</code> package, this usually reruns most of the pipeline. With <code>--full</code> it runs all stages, see below.</li>
 <li>If <code>dvc.lock</code> changed, pushes the run to a new branch <code>repro-main-&lt;date&gt;-&lt;time&gt;</code>, opens the pull request, publishes its model viewer preview, and the <a href="../dev/docs.html#figures">figures of the docs</a>.</li>
-<li>Has Claude describe the effect with the <code>describe-run</code> skill in <code>.claude/skills</code>, which can only read files, and not the credentials. The skill is also useful to describe the run of any other pull request.</li>
+<li>Compares the results with those of the previous run with <code>pixi run compare-runs</code>, and has Claude describe the effect with the <code>describe-run</code> skill in <code>.claude/skills</code>, which can only read files, and not the credentials. The skill is also useful to describe the run of any other pull request.</li>
 </ol>
 <p>Review and merge the pull request yourself, like any other one.</p>
 <p>To redo the catch-up run of a commit, for instance when it ran with the wrong environment, run all stages in the worktree of the timer:</p>
