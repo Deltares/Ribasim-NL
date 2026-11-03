@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 from ribasim_nl.rws_kunstwerken import (
     PARALLEL_KWK,
+    SUBTRACT_PROPERTY,
     discrete_control_tables,
     flow_demand_tables,
     has_discrete_control,
@@ -221,3 +222,31 @@ def test_repeat_yearly_sorts_by_day_of_year():
 def test_parallel_kwk_next_to_a_structure_in_the_network():
     """A structure next to another one needs that one in the network, so it cannot be next to such a structure itself."""
     assert not {parallel.main for parallel in PARALLEL_KWK.values()} & set(PARALLEL_KWK)
+
+
+def test_discrete_control_on_level_difference():
+    """A threshold on a difference between two Basins, which says nothing about the level to stop at."""
+    kwk_df = sheet(
+        [
+            ["Ribasim type", "Outlet"],
+            ["Kunstwerkcode", "44F-002-01"],
+            ["Aanvoer Capaciteit (m3/s)", 0.1],
+            ["Afvoer Capaciteit (m3/s)", 0],
+            ["Meetlocatiecode", 8004941],
+            [SUBTRACT_PROPERTY, 8005265],
+            ["Type sturing", "DiscreteControl"],
+            [np.nan],
+            ["Toestand (control_state)", "Bovengrens (threshold_high)", "Ondergrens (threshold_low)"],
+            ["aanvoer", 1.8, 1.75],
+        ]
+    )
+    variable, condition, logic = discrete_control_tables(kwk_df, 4941, STARTTIME, ENDTIME, 5265)
+    assert variable.df["listen_node_id"].to_list() == [4941, 5265]
+    assert variable.df["weight"].to_list() == [1.0, -1.0]
+    assert variable.df["compound_variable_id"].to_list() == [1, 1]
+    assert len(condition.df) == 1
+    # no flow above the threshold, in the afvoer state
+    static = read_static(kwk_df, "Outlet", "upstream").df
+    assert static.set_index("control_state")["flow_rate"].to_dict() == {"aanvoer": 0.1, "afvoer": 0.0}
+    assert static["min_upstream_level"].isna().all() and static["max_downstream_level"].isna().all()
+    assert dict(zip(logic.df["truth_state"], logic.df["control_state"], strict=True)) == {"T": "afvoer", "F": "aanvoer"}

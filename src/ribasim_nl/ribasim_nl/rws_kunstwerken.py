@@ -7,7 +7,8 @@ A structure with `Type sturing` DiscreteControl switches between the control sta
 (drainage), with the flow rates `Aanvoer Capaciteit (m3/s)` and `Afvoer Capaciteit (m3/s)`. It is in the afvoer
 state while the level of the listened Basin is above the thresholds, and in the aanvoer state while it is below
 them. The `Toestand (control_state)` column of the thresholds names the function of the structure, and does not
-change this. A pump that supplies a canal therefore pumps while the canal is below its thresholds.
+change this. A pump that supplies a canal therefore pumps while the canal is below its thresholds. With
+`Meetlocatiecode aftrek` the structure switches on the level difference with that Basin, rather than on a level.
 
 A structure in `PARALLEL_KWK` is next to another structure, between the same Basins, so it has no place of its own in
 the network. `5_model_netwerk` leaves it out, and `6_model_sturing` adds it.
@@ -30,6 +31,8 @@ CONTROL_STATES = {"aanvoer": "Aanvoer Capaciteit (m3/s)", "afvoer": "Afvoer Capa
 CONTROL_TABLE = "Toestand (control_state)"
 FLOW_DEMAND_TABLE = "FlowDemand (m3/s)"
 TABLE_HEADERS = {CONTROL_TABLE, FLOW_DEMAND_TABLE, "QQ relatie", "Q(h) relatie", "QHQ relatie", "PidControl"}
+# The Basin of which the level is subtracted from that of the Meetlocatiecode, in a DiscreteControl on a difference
+SUBTRACT_PROPERTY = "Meetlocatiecode aftrek"
 # properties that are read, and so cannot have conflicting duplicates in a sheet
 USED_PROPERTIES = {
     *FLOW_KWARGS,
@@ -37,6 +40,7 @@ USED_PROPERTIES = {
     "Ribasim type",
     "Kunstwerkcode",
     "Meetlocatiecode",
+    SUBTRACT_PROPERTY,
     "Meetlocatievariabele",
     "Type sturing",
     "FlowDemand",
@@ -60,6 +64,10 @@ PARALLEL_KWK = {
     "14E-001-27": ParallelKwk("14E-001-33"),  # Gemaal Den Oever, next to the Stevinsluizen
     "20A-001-04": ParallelKwk("20A-001-02", reverse=True),  # Krabbersgatsluis, supply of the Markermeer
     "20D-001-04": ParallelKwk("20D-001-08", reverse=True),  # Houtribsluizen, supply of the Markermeer
+    "46A-001-01": ParallelKwk("46A-001-06"),  # Schutsluis Heumen, next to the Keersluis
+    "46A-001-02": ParallelKwk("46A-001-06", reverse=True, offset=-30.0),  # Gemaal Heumen, from the canal to the Maas
+    # Dunea pumps Maas water to the Waal side of the Wilhelminasluis, see #979
+    "Brakel, Maaswaterbel": ParallelKwk("44F-002-01", reverse=True, xy=(131922.0, 423045.0)),
 }
 
 
@@ -220,6 +228,10 @@ def read_static(
     if "Minimale capaciteit (m3/s)" in kwk_properties:
         kwargs["min_flow_rate"] = [float(kwk_properties["Minimale capaciteit (m3/s)"])] * 2
 
+    # a threshold on a level difference says nothing about the level to stop at
+    if SUBTRACT_PROPERTY in kwk_properties:
+        return table(**kwargs)
+
     thresholds = read_control_thresholds(kwk_df)
     # above the thresholds a structure is in the afvoer state, so it drains an upstream Basin in that state, and it
     # supplies a downstream Basin in the aanvoer state
@@ -245,11 +257,16 @@ def read_control_thresholds(kwk_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def discrete_control_tables(
-    kwk_df: pd.DataFrame, listen_node_id: int, starttime: pd.Timestamp, endtime: pd.Timestamp
+    kwk_df: pd.DataFrame,
+    listen_node_id: int,
+    starttime: pd.Timestamp,
+    endtime: pd.Timestamp,
+    subtract_node_id: int | None = None,
 ) -> list[Any]:
     """DiscreteControl tables that switch a structure to afvoer above the thresholds, and to aanvoer below them.
 
-    Dated thresholds are a yearly pattern, repeated over the simulation period.
+    Dated thresholds are a yearly pattern, repeated over the simulation period. With `subtract_node_id`, the thresholds
+    are on the level of `listen_node_id` minus that of this Basin.
     """
     kwk_properties = read_kwk_properties(kwk_df)
     variable = kwk_properties.get("Meetlocatievariabele", "level")
@@ -263,8 +280,14 @@ def discrete_control_tables(
         assert len(thresholds) == 1, "Give a date with each of multiple thresholds"
         thresholds = thresholds.assign(time=starttime)
     n = len(thresholds)
+    listen_node_ids = [listen_node_id] if subtract_node_id is None else [listen_node_id, subtract_node_id]
     return [
-        discrete_control.Variable(compound_variable_id=[1], listen_node_id=[listen_node_id], variable=["level"]),
+        discrete_control.Variable(
+            compound_variable_id=[1] * len(listen_node_ids),
+            listen_node_id=listen_node_ids,
+            variable=["level"] * len(listen_node_ids),
+            weight=[1.0, -1.0][: len(listen_node_ids)],
+        ),
         discrete_control.Condition(
             compound_variable_id=[1] * n,
             condition_id=[1] * n,

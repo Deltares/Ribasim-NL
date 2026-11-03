@@ -15,6 +15,7 @@ from ribasim.nodes import (
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.rws_kunstwerken import (
     PARALLEL_KWK,
+    SUBTRACT_PROPERTY,
     discrete_control_tables,
     flow_demand_tables,
     has_discrete_control,
@@ -52,7 +53,7 @@ VERDEELSLEUTEL_KWK_FROM_SHEET = ["61F-001-01"]
 FREE_FLOW_NODE_TYPES = {"Basin", "ManningResistance", "LinearResistance", "Junction"}
 RWS_NODE_ID_OFFSET = waterbeheercode["Rijkswaterstaat"] * 100_000
 # New structures and their control in these areas get free IDs, so the IDs of the nodes added after them stay the same
-GEBIEDEN_WITH_FREE_IDS = {"IJsselmeer-Markermeer"}
+GEBIEDEN_WITH_FREE_IDS = {"IJsselmeer-Markermeer", "Waal"}
 
 
 # %% functies
@@ -86,8 +87,9 @@ def listen_basin(model: Model, kwk_df: pd.DataFrame, node_id: int) -> tuple[int,
     """The Basin whose level switches the DiscreteControl of structure `node_id`, and its side of the structure.
 
     The Meetlocatiecode is the ID of that Basin in the coupled model. Without it, an afvoer structure listens to the
-    Basin upstream, and an aanvoer structure to the Basin downstream. The Basin should be connected to the Basin on
-    one side of the structure, possibly through other Basins without structures in between, like the Veluwerandmeren.
+    Basin upstream, and an aanvoer structure to the Basin downstream. The Basin should be next to the structure, or
+    connected to the Basin on one side of it, possibly through other Basins without structures in between, like the
+    Veluwerandmeren.
     """
     kwk_properties = read_kwk_properties(kwk_df)
     upstream = model.upstream_node_id(node_id)
@@ -106,7 +108,8 @@ def listen_basin(model: Model, kwk_df: pd.DataFrame, node_id: int) -> tuple[int,
         ("upstream", int(upstream)),
         ("downstream", int(downstream)),
     ]
-    sides = [
+    # both sides can be connected further away, like the Waal and the Maas through the Merwede and the Hollandsch Diep
+    sides = [side for side, neighbor in neighbors if neighbor == basin_id] or [
         side
         for side, neighbor in neighbors
         if model.node.df.at[neighbor, "node_type"] == "Basin" and basin_id in free_flow_basin_ids(model, neighbor)
@@ -306,12 +309,16 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
                 if len(thresholds) == 1
                 else "jaarpatroon"
             )
+            subtract_node_id = None
+            if SUBTRACT_PROPERTY in kwk_properties:
+                subtract_node_id = int(kwk_properties[SUBTRACT_PROPERTY]) - RWS_NODE_ID_OFFSET
+                assert model.node.df.at[subtract_node_id, "node_type"] == "Basin", f"{subtract_node_id} not a Basin"
             model.add_control_node(
                 to_node_id=node_id,
-                data=discrete_control_tables(kwk_df, listen_basin_id, starttime, endtime),
+                data=discrete_control_tables(kwk_df, listen_basin_id, starttime, endtime, subtract_node_id),
                 ctrl_type="DiscreteControl",
                 node_offset=20,
-                node_properties={"name": f"{label}: {levels} [m+NAP]"},
+                node_properties={"name": f"{label}: {levels} [m{'' if subtract_node_id else '+NAP'}]"},
                 node_id=next(free_node_ids) if gebied in GEBIEDEN_WITH_FREE_IDS else None,
             )
 
