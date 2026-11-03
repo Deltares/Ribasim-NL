@@ -80,6 +80,15 @@ def read_rating_curve(kwk_df: pd.DataFrame) -> tabulated_rating_curve.Static:
     return tabulated_rating_curve.Static(level=qh_df["level"].to_list(), flow_rate=qh_df["flow_rate"].to_list())
 
 
+def rating_curve_from_bottom(qh: pd.DataFrame, bottom: float) -> tabulated_rating_curve.Static:
+    """Rating curve from a table with columns `H` and `Q` that does not reach no flow, which starts at `bottom`."""
+    assert qh[["H", "Q"]].notna().all(axis=None), "Missing values in the Q(h) table"
+    assert qh["H"].is_monotonic_increasing and qh["H"].is_unique, "H should increase"
+    assert qh["Q"].is_monotonic_increasing and qh["Q"].iloc[0] > 0, "Q should be positive and not decrease"
+    assert bottom < qh["H"].iloc[0], f"Bottom {bottom} should be below the lowest level {qh['H'].iloc[0]}"
+    return tabulated_rating_curve.Static(level=[bottom, *qh["H"]], flow_rate=[0.0, *qh["Q"]])
+
+
 def read_qq_curve(kwk_df: pd.DataFrame) -> pd.DataFrame:
     """QQ relation of a structure: flow rate as function of a condition flow rate."""
     return kwk_df.loc[kwk_df.Eigenschap.to_list().index("QQ relatie") + 2 :][["Eigenschap", "Waarde"]].rename(

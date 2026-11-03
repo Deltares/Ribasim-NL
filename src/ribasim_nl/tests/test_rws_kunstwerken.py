@@ -8,6 +8,7 @@ from ribasim_nl.rws_kunstwerken import (
     flow_demand_tables,
     has_discrete_control,
     has_flow_demand,
+    rating_curve_from_bottom,
     read_control_thresholds,
     read_kwk_properties,
     read_static,
@@ -48,6 +49,30 @@ def sluis_born() -> pd.DataFrame:
             [15, 9, np.nan, "Schut+Lekverlies"],
         ]
     )
+
+
+def test_rating_curve_from_bottom():
+    """Like the Waal at Tiel, a calculated Q(h) table gets a first row without flow at the bottom of the Basin."""
+    qh = pd.DataFrame({"Q": [347.7, 370.1, 394.8], "H": [1.0, 1.1, 1.2]})
+    static = rating_curve_from_bottom(qh, bottom=-3.7).df
+    assert static is not None
+    assert static["level"].to_list() == [-3.7, 1.0, 1.1, 1.2]
+    assert static["flow_rate"].to_list() == [0.0, 347.7, 370.1, 394.8]
+
+
+@pytest.mark.parametrize(
+    ("q", "h", "bottom"),
+    [
+        ([1.0, 2.0], [1.0, 1.0], 0.0),  # repeated level
+        ([2.0, 1.0], [1.0, 2.0], 0.0),  # decreasing flow
+        ([0.0, 1.0], [1.0, 2.0], 0.0),  # no flow already in the table
+        ([1.0, 2.0], [1.0, 2.0], 1.0),  # bottom not below the table
+        ([1.0, np.nan], [1.0, 2.0], 0.0),  # missing flow
+    ],
+)
+def test_rating_curve_from_bottom_invalid(q: list[float], h: list[float], bottom: float):
+    with pytest.raises(AssertionError):
+        rating_curve_from_bottom(pd.DataFrame({"Q": q, "H": h}), bottom)
 
 
 def test_read_kwk_properties():
