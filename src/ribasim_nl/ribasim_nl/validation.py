@@ -33,6 +33,31 @@ def _basin_profile_issues(model: "Model") -> list[str]:
     return issues
 
 
+# The largest range between the bottom and top of a Basin profile that is real, per `meta_categorie` of the Basin.
+# Bergend Basins follow the terrain within their area, up to 136 m in Limburg. Other Basins follow their water: the main
+# water system up to 67 m in the Westerschelde, and elsewhere up to 18 m. Basins without a category have the largest
+# limit of the water, since the category is not known yet.
+MAX_PROFILE_RANGE = {"bergend": 150.0, "hoofdwater": 80.0, "doorgaand": 30.0}  # m
+DEFAULT_MAX_PROFILE_RANGE = MAX_PROFILE_RANGE["hoofdwater"]
+
+
+def _deep_basin_profile_issues(model: "Model") -> list[str]:
+    """Return Basins with an unreasonable range in their profile, which typically comes from a no-data level."""
+    basin_profile = model.basin.profile.df
+    if basin_profile is None or basin_profile.empty:
+        return []
+    levels = basin_profile.groupby("node_id")["level"]
+    profile_range = levels.max() - levels.min()
+    node_df = model.node.df
+    category = node_df["meta_categorie"] if "meta_categorie" in node_df.columns else pd.Series(index=node_df.index)
+    limit = category.reindex(profile_range.index).map(MAX_PROFILE_RANGE).fillna(DEFAULT_MAX_PROFILE_RANGE)
+    invalid = profile_range[profile_range > limit]
+    if invalid.empty:
+        return []
+    ranges = invalid.round(1).to_dict()
+    return [f"Basin profiles must not be deeper than {MAX_PROFILE_RANGE} m; invalid node IDs and ranges: {ranges}"]
+
+
 def _discrete_control_condition_issues(model: "Model") -> list[str]:
     """Return issues with DiscreteControl condition thresholds."""
     condition = model.discrete_control.condition.df
@@ -266,6 +291,7 @@ def validate_model(model: "Model", layout: bool = True) -> None:
     """
     issues = [
         *_basin_profile_issues(model),
+        *_deep_basin_profile_issues(model),
         *_discrete_control_condition_issues(model),
         *_partially_missing_control_state_issues(model),
         *_inert_control_state_issues(model),
