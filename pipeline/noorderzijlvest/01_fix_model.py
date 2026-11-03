@@ -111,10 +111,10 @@ he_snap_df.loc[mask, "Kunstwerk"] = he_snap_df[mask].Kunstwerk.str[3:]
 he_outlet_df = gpd.GeoDataFrame(geometry=gpd.GeoSeries(), crs=he_snap_df.crs, index=he_df.index)
 
 mask = he_df["KWKuit"].notna()
-he_outlet_df.loc[mask, "geometry"] = he_df[mask]["KWKuit"].apply(
+he_outlet_df.loc[mask, "geometry"] = he_df[mask]["KWKuit"].apply(  # ty: ignore[no-matching-overload]
     lambda x: he_snap_df.set_index("Kunstwerk").at[x, "geometry"]
 )
-he_outlet_df.loc[~mask, "geometry"] = he_df[~mask]["HEIDENT"].apply(
+he_outlet_df.loc[~mask, "geometry"] = he_df[~mask]["HEIDENT"].apply(  # ty: ignore[no-matching-overload]
     lambda x: he_snap_df.set_index("HEIDENT").at[x, "geometry"]
 )
 
@@ -271,7 +271,7 @@ for row in he_df[he_df["node_id"].isna()].itertuples():
     network_node = get_network_node(point)
 
     basin_node_id = network.find_downstream(network_node, attribute="node_id")
-    he_df.loc[row.Index, ["node_id"]] = basin_node_id
+    he_df.loc[row.Index, ["node_id"]] = basin_node_id  # ty: ignore[invalid-assignment]
 
 
 data = []

@@ -303,7 +303,7 @@ for row in add_basin_area_gdf.itertuples():
 # merge basins
 selection_df = basin_node_edits_gdf[basin_node_edits_gdf["to_node_id"].notna()]
 for row in selection_df.itertuples():
-    are_connected = True if pd.isna(row.connected) else row.connected
+    are_connected = True if pd.isna(row.connected) else row.connected  # ty: ignore[no-matching-overload]
     model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=are_connected)
 
 # %% reverse links

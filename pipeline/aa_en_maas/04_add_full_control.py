@@ -608,7 +608,7 @@ code_df = node_table_df[node_table_df["meta_code_waterbeheerder"].notna()][
 code_df = code_df.reset_index(drop=False).set_index("code")
 
 discharge_supply_df = discharge_supply_df[discharge_supply_df["code"].isin(code_df.index.to_list())]
-discharge_supply_df["node_id"] = [code_df.at[i, "node_id"] for i in discharge_supply_df.code.values]
+discharge_supply_df["node_id"] = [code_df.at[i, "node_id"] for i in discharge_supply_df.code.values]  # ty: ignore[invalid-assignment]
 discharge_supply_nodes = {
     int(cast(int, row.node_id)): {"summer": cast(float, row.summer), "winter": cast(float, row.winter)}
     for row in discharge_supply_df.itertuples()

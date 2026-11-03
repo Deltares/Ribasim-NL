@@ -309,14 +309,14 @@ for row in basin_node_edits_gdf[basin_node_edits_gdf["to_area_code"].notna()].it
 
 # %% merge_basins
 for row in basin_node_edits_gdf[basin_node_edits_gdf["to_node_id"].notna()].itertuples():
-    are_connected = True if pd.isna(row.connected) else row.connected
+    are_connected = True if pd.isna(row.connected) else row.connected  # ty: ignore[no-matching-overload]
     model.merge_basins(
         node_id=cast(int, row.node_id), to_node_id=cast(int, row.to_node_id), are_connected=are_connected
     )
 
 mask = internal_basin_edits_gdf["to_node_id"].notna() & internal_basin_edits_gdf["add_object"].isna()
 for row in internal_basin_edits_gdf[mask].itertuples():
-    are_connected = True if pd.isna(row.connected) else row.connected
+    are_connected = True if pd.isna(row.connected) else row.connected  # ty: ignore[no-matching-overload]
     model.merge_basins(
         node_id=cast(int, row.node_id), to_node_id=cast(int, row.to_node_id), are_connected=are_connected
     )
@@ -632,7 +632,7 @@ model.redirect_link(link_id=2073, from_node_id=1922, to_node_id=997)
 # Fix Drongelens kanaal
 df = gpd.read_file(model_edits_gpkg, layer="add_basin_area", fid_as_index=True)
 assert model.basin.area.df is not None
-model.basin.area.df.loc[model.basin.area.df.node_id == 1276, "geometry"] = df.at[154, "geometry"]
+model.basin.area.df.loc[model.basin.area.df.node_id == 1276, "geometry"] = df.at[154, "geometry"]  # ty: ignore[invalid-assignment]
 # add new basin
 basin_node = model.basin.add(
     Node(geometry=cast(Point, model.outlet.node.df.loc[1067].geometry), meta_categorie="doorgaand"),
