@@ -12,8 +12,9 @@ out `origin/main` in a worktree dedicated to this, and then runs `pixi run repro
    Like in a new worktree, data that is not in the workspace does not count as changed. With `--full` it runs
    all stages instead, for instance when the previous run used the wrong environment.
 5. If `dvc.lock` changed, commits it with the metrics to a new branch, pushes it, and opens a draft pull request.
-   Then it publishes the model viewer preview and the figures of the docs, and has Claude describe the effect of the run with the
-   `describe-run` skill, using only tools that read files. The pull request is then marked as ready for review.
+   Then it publishes the model viewer preview and the figures of the docs, compares the results with those of the previous
+   run, and has Claude describe the effect of the run with the `describe-run` skill, using only tools that read files. The
+   pull request is then marked as ready for review.
 
 Merging the pull request is left to a person.
 
@@ -58,6 +59,7 @@ CLAUDE_SETTINGS = {
     }
 }
 CLAUDE_TIMEOUT = 30 * 60
+COMPARE_TIMEOUT = 30 * 60
 
 
 def log(message: str) -> None:
@@ -191,12 +193,26 @@ def context(root: Path, base: str, branch: str, command: str) -> str:
     )
 
 
+def compare_results(root: Path, base: str, output: Path) -> str:
+    """The comparison of the results of the run with those of commit `base`, or a note that it failed.
+
+    A failure does not stop the run, since Claude can still describe it from the metrics.
+    """
+    args = ["pixi", "run", "compare-runs", "--base", base, "--output", str(output)]
+    try:
+        subprocess.run(args, cwd=root, check=True, capture_output=True, text=True, timeout=COMPARE_TIMEOUT)
+    except subprocess.SubprocessError as e:
+        log(f"Comparing the results failed: {e!r}")
+        return "The results were not compared, since the comparison failed.\n"
+    return f"# Comparison of the results with the previous run\n\n{output.read_text()}"
+
+
 def describe(root: Path, context_file: Path) -> str:
     """Have Claude describe the run with the `describe-run` skill, allowing it only to read files."""
     prompt = (
         "/describe-run This is an unattended catch-up run on main, without access to commands. "
-        f"The pull requests it adds and the metrics are in {context_file}, the results in "
-        "data/Rijkswaterstaat/runs/lhm_coupled. Print only the pull request description."
+        f"The pull requests it adds, the metrics and the comparison of the results are in {context_file}. "
+        "Print only the pull request description."
     )
     args = [
         "claude",
@@ -259,7 +275,8 @@ def publish(root: Path, base: str, branch: str, command: str, describe_run: bool
     if describe_run:
         context_file = root / "logs/repro-main" / f"{branch}.md"
         context_file.parent.mkdir(parents=True, exist_ok=True)
-        context_file.write_text(f"{context_text}\nThe pull request of the run is #{number}.\n")
+        comparison = compare_results(root, base, context_file.with_name(f"{branch}-comparison.md"))
+        context_file.write_text(f"{context_text}\nThe pull request of the run is #{number}.\n\n{comparison}")
         try:
             description = describe(root, context_file)
             assert description, "Claude returned an empty description"
