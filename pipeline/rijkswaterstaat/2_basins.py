@@ -184,8 +184,7 @@ for row in basins_gdf.itertuples():
             print(f"WARNING: default-profile for {row.basin_id}. Check data!")
             df = DEFAULT_PROFILE.copy()
 
-        df["id"] = row.basin_id  # ty: ignore[invalid-assignment]
-        dfs += [df]
+        dfs += [df.assign(id=cast(int, row.basin_id))]
 
 df = pd.concat(dfs)
 
