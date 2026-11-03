@@ -130,17 +130,15 @@ def test_publish_figures_does_not_stop_the_run(
 
 
 def test_compare_results(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    output = tmp_path / "comparison.md"
     commands = []
 
     def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess:
         commands.append(args)
-        output.write_text("| node_id |\n")
-        return subprocess.CompletedProcess(args, 0)
+        return subprocess.CompletedProcess(args, 0, stdout="| node_id |\n")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
-    assert "| node_id |" in compare_results(tmp_path, "abc", output)
-    assert commands == [["pixi", "run", "compare-runs", "--base", "abc", "--output", str(output)]]
+    assert "| node_id |" in compare_results(tmp_path, "abc")
+    assert commands == [["pixi", "run", "compare-runs", "--base", "abc"]]
 
 
 @pytest.mark.parametrize(
@@ -153,7 +151,7 @@ def test_compare_results_does_not_stop_the_run(
         raise error
 
     monkeypatch.setattr(subprocess, "run", fake_run)
-    assert "not compared" in compare_results(tmp_path, "abc", tmp_path / "comparison.md")
+    assert "not compared" in compare_results(tmp_path, "abc")
 
 
 def test_check_no_secrets(monkeypatch: pytest.MonkeyPatch):

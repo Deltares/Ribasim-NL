@@ -116,15 +116,17 @@ def test_renumber_hides_shifted_ids():
     head = make_run(head_rows, [(1, 5, 1.0), (5, 3, 1.0)], levels)
     renumbered = renumber(base, node_mapping(base.nodes, head.nodes))
     matched = match_links(renumbered, head)
-    assert matched["mean_base"].notna().all() and matched["mean_head"].notna().all()
+    assert matched["mean_base"].notna().all()
+    assert matched["mean_head"].notna().all()
     assert top_flows(matched).empty
     assert compare_network(renumbered, head).empty
 
 
 def test_renumber_asserts_nodes_are_known():
     run = make_run({1: ("Basin", 0.0)}, [(1, 2, 1.0)], {1: [1.0, 1.0, 1.0]})
+    mapping = pd.Series({1: 1})
     with pytest.raises(AssertionError, match="not in the Node table"):
-        renumber(run, pd.Series({1: 1}))
+        renumber(run, mapping)
 
 
 def test_compare_levels():

@@ -1,6 +1,6 @@
 """Compare the results of two runs of the coupled model, Basin by Basin and link by link.
 
-    pixi run compare-runs --base <commit> [--head <commit>] [--output <file>]
+    pixi run compare-runs --base <commit> [--head <commit>] > comparison.md
 
 The metrics of `ribasim_nl.result_validation` are aggregates, which can hide large local changes. This writes the
 largest differences as Markdown, for the `describe-run` skill: the network, levels, flows, exchange between
@@ -14,8 +14,9 @@ its cause. Runs at a commit are read with DVC, from the DVC cache or remote, int
 import argparse
 import shutil
 import sqlite3
+import sys
 from contextlib import closing
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 
 import geopandas as gpd
@@ -88,7 +89,7 @@ def fetch(path: Path, commit: str | None, cache_dir: Path = CACHE_DIR) -> Path:
     # The same place as `checkout_model`, so the files of a preview of the model viewer are reused
     target = cache_dir / "revisions" / commit / path
     if not target.is_file():
-        print(f"Getting {path} at {commit}")
+        print(f"Getting {path} at {commit}", file=sys.stderr)
         target.parent.mkdir(parents=True, exist_ok=True)
         partial = target.with_name(f"{target.name}.partial")
         DVCFileSystem(str(REPO_DIR), rev=commit).get_file(path.as_posix(), str(partial))
@@ -192,23 +193,23 @@ def renumber(run: Run, mapping: pd.Series) -> Run:
         return pd.Index(mapping.reindex(index).to_numpy(), name=index.name)
 
     def series(table: pd.Series) -> pd.Series:
-        return table.set_axis(nodes_of(table.index))
+        return table.set_axis(nodes_of(table.index), axis=0)
 
     links = run.links.assign(
         from_node_id=nodes_of(pd.Index(run.links["from_node_id"])),
         to_node_id=nodes_of(pd.Index(run.links["to_node_id"])),
     )
-    return replace(
-        run,
-        nodes=run.nodes.set_axis(nodes_of(run.nodes.index)),
+    return Run(
+        nodes=run.nodes.set_axis(nodes_of(run.nodes.index), axis=0),
         links=links,
         levels=run.levels.set_axis(nodes_of(run.levels.columns), axis=1),
-        balance=run.balance.set_axis(nodes_of(run.balance.index)),
+        balance=run.balance.set_axis(nodes_of(run.balance.index), axis=0),
         bottom=series(run.bottom),
         streefpeil=series(run.streefpeil),
         area=series(run.area),
         profile=series(run.profile),
-        observations=run.observations.set_axis(nodes_of(run.observations.index)),
+        observations=run.observations.set_axis(nodes_of(run.observations.index), axis=0),
+        solver=run.solver,
     )
 
 
@@ -613,7 +614,6 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--base", required=True, help="git revision of the run to compare with")
     parser.add_argument("--head", help="git revision of the run to compare, instead of the working tree")
-    parser.add_argument("--output", type=Path, help="Markdown file to write, instead of printing it")
     args = parser.parse_args(argv)
 
     base_commit = resolve_commit(args.base)
@@ -622,13 +622,7 @@ def main(argv: list[str] | None = None) -> None:
     assert args.head is None or head_commit is not None, f"Unknown git revision {args.head}"
 
     labels = (base_commit[:7], "working tree" if head_commit is None else head_commit[:7])
-    text = report(read_run(base_commit), read_run(head_commit), labels)
-    if args.output is None:
-        print(text)
-    else:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(text)
-        print(f"Wrote {args.output}")
+    print(report(read_run(base_commit), read_run(head_commit), labels))
 
 
 if __name__ == "__main__":

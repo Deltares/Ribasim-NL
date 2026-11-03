@@ -193,18 +193,18 @@ def context(root: Path, base: str, branch: str, command: str) -> str:
     )
 
 
-def compare_results(root: Path, base: str, output: Path) -> str:
+def compare_results(root: Path, base: str) -> str:
     """The comparison of the results of the run with those of commit `base`, or a note that it failed.
 
     A failure does not stop the run, since Claude can still describe it from the metrics.
     """
-    args = ["pixi", "run", "compare-runs", "--base", base, "--output", str(output)]
+    args = ["pixi", "run", "compare-runs", "--base", base]
     try:
-        subprocess.run(args, cwd=root, check=True, capture_output=True, text=True, timeout=COMPARE_TIMEOUT)
+        result = subprocess.run(args, cwd=root, check=True, capture_output=True, text=True, timeout=COMPARE_TIMEOUT)
     except subprocess.SubprocessError as e:
         log(f"Comparing the results failed: {e!r}")
         return "The results were not compared, since the comparison failed.\n"
-    return f"# Comparison of the results with the previous run\n\n{output.read_text()}"
+    return f"# Comparison of the results with the previous run\n\n{result.stdout}"
 
 
 def describe(root: Path, context_file: Path) -> str:
@@ -275,7 +275,7 @@ def publish(root: Path, base: str, branch: str, command: str, describe_run: bool
     if describe_run:
         context_file = root / "logs/repro-main" / f"{branch}.md"
         context_file.parent.mkdir(parents=True, exist_ok=True)
-        comparison = compare_results(root, base, context_file.with_name(f"{branch}-comparison.md"))
+        comparison = compare_results(root, base)
         context_file.write_text(f"{context_text}\nThe pull request of the run is #{number}.\n\n{comparison}")
         try:
             description = describe(root, context_file)
