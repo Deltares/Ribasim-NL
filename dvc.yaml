@@ -487,6 +487,7 @@ stages:
       - data/RijnenIJssel/verwerkt/1_ontvangen_data/wrij_profielen.gpkg
       - data/RijnenIJssel/verwerkt/sturing/aanvoergebieden.gpkg
       - data/RijnenIJssel/verwerkt/parameters/static_data.xlsx
+      - data/Basisgegevens/GSK3E/gsk3e_EPSG25832_Shape.zip
     outs:
       - data/RijnenIJssel/modellen/RijnenIJssel_parameterized_model
   parameterized_stichtse_rijnlanden:

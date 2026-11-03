@@ -42,7 +42,7 @@ The script writes the budgets to `mfms_budgets.arrow`, and a check of the assign
 ## Foreign inflows
 
 Streams from Germany and Belgium enter as FlowBoundaries with `meta_categorie` "buitenlandse aanvoer".
-`src/ribasim_nl/ribasim_nl/data/buitenlandse_aanvoer.csv` lists the 55 inflows, all in Brabantse Delta, De Dommel, Limburg, Rijn en IJssel and Vechtstromen.
+`src/ribasim_nl/ribasim_nl/data/buitenlandse_aanvoer.csv` lists the 54 inflows, all in Brabantse Delta, De Dommel, Limburg, Rijn en IJssel and Vechtstromen.
 `ribasim_nl.transboundary_inflow` matches them to the boundaries by name and location, and sets measured daily values from `Basisgegevens/BuitenlandseAanvoer`, with gaps interpolated.
 Outside the measurements, or without any, the inflow is the constant in that table.
 

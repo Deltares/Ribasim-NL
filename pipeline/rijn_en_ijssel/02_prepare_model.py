@@ -28,6 +28,9 @@ hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 profielen_gpkg = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/wrij_profielen.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
+DIE_WILD_LEVEL_UPSTREAM = 11.6  # upstream of the Hoher Absturz [m NAP]
+DIE_WILD_LEVEL_DOWNSTREAM = 11.2  # downstream of the Hoher Absturz [m NAP]
+
 # %% init things
 model = Model.read(ribasim_toml)
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
@@ -105,6 +108,9 @@ min_upstream_level.index.name = "node_id"
 
 static_data.outlet.loc[static_data.outlet.node_id == 119, "min_upstream_level"] = 10.0  # here profiles are messed-up
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
+# Die Wild has no levels in Germany: split the drop between 's Heerenberg (12.04) and the Oude Rijn (11.19) over its two
+# structures, see 01_fix_model.py and https://github.com/Deltares/Ribasim-NL/issues/992
+static_data.outlet.loc[static_data.outlet.node_id == 514, "min_upstream_level"] = DIE_WILD_LEVEL_UPSTREAM
 
 
 # %%
@@ -121,6 +127,9 @@ static_data.fill_min_upstream_level_from_profiles("Pump", profiles_df, divisor=3
 
 # BASIN
 static_data.reset_data_frame(node_type="Basin")
+
+assert static_data.basin is not None
+static_data.basin.loc[static_data.basin.node_id == 49, "streefpeil"] = DIE_WILD_LEVEL_DOWNSTREAM
 
 # Vind Basin nodes zonder streefpeil
 static_data.fill_streefpeil_from_downstream_levels(include_pumps=True)
@@ -141,7 +150,6 @@ assign = AssignAuthorities(
     waterschap=authority,
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
-    custom_nodes={837: "Buitenland"},
 )
 model = assign.assign_authorities()
 

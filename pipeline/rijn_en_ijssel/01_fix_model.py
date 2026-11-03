@@ -5,6 +5,8 @@ import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet
+from ribasim_nl.gsk3e import line_between, read_reach
+from ribasim_nl.model import DEFAULT_TABLES
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
 from shapely.geometry import LineString, Point
@@ -21,6 +23,10 @@ ribasim_toml = ribasim_dir / "model.toml"
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 areas_gpkg = cloud.joinpath(authority, "verwerkt/3_input/areas.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
+
+HOHER_ABSTURZ_NODE_ID = 514
+DIE_WILD_MANNING_NODE_ID = 1101
+DIE_WILD_BASIN_AREA_BUFFER = 25.0  # half the width of the strip along Die Wild [m]
 
 # %% read model
 model = Model.read(ribasim_toml)
@@ -154,6 +160,53 @@ model.apply_edits(model_edits_gpkg, actions)
 # %% merge basins
 model.merge_basins(node_id=944, to_node_id=1028)
 model.merge_basins(node_id=788, to_node_id=1150)
+
+# %% connect 's Heerenberg (286) with the Oude Rijn (1036) along Die Wild in Germany, instead of over two boundaries
+# see https://github.com/Deltares/Ribasim-NL/issues/992
+# LevelBoundary 837 and FlowBoundary 49 are this waterway, so they become Basins. Between them is the Hoher Absturz, and
+# downstream of them a ManningResistance. The new nodes reuse IDs that were removed above, to keep the IDs of later nodes.
+die_wild = read_reach(code="279982", name="Die Wild")
+hoher_absturz = cast(Point, gpd.GeoSeries([Point(307305.41, 5750171.41)], crs="EPSG:25832").to_crs(model.crs).iloc[0])
+model.update_node(node_id=837, node_type="Basin", data=basin_data)
+model.update_node(node_id=49, node_type="Basin", data=basin_data)
+model.node.df.loc[[837, 49], "meta_categorie"] = pd.NA
+outlet_node = model.outlet.add(
+    Node(
+        node_id=HOHER_ABSTURZ_NODE_ID,
+        name="qbw_9638",
+        geometry=hoher_absturz,
+        meta_object_type="stuw",
+    ),
+    tables=[outlet_data],
+)
+model.remove_links([1372])
+manning_node = model.manning_resistance.add(
+    Node(
+        node_id=DIE_WILD_MANNING_NODE_ID,
+        geometry=die_wild.interpolate(
+            (die_wild.project(model.basin[49].geometry) + die_wild.project(model.basin[1036].geometry)) / 2
+        ),
+        meta_categorie="hoofdwater",
+    ),
+    tables=DEFAULT_TABLES.manning_resistance,
+)
+for from_node, to_node in (
+    (model.basin[837], outlet_node),
+    (outlet_node, model.basin[49]),
+    (model.basin[49], manning_node),
+    (manning_node, model.basin[1036]),
+):
+    model.link.add(from_node, to_node, geometry=line_between(die_wild, from_node.geometry, to_node.geometry))
+
+# Germany has no peilgebieden: their basin areas are a strip along Die Wild, outside of the existing basin areas
+assert model.basin.area.df is not None
+existing_areas = model.basin.area.df.union_all()
+for node_id, reach in (
+    (837, line_between(die_wild, model.outlet[286].geometry, outlet_node.geometry)),
+    (49, line_between(die_wild, outlet_node.geometry, manning_node.geometry)),
+):
+    model.add_basin_area(reach.buffer(DIE_WILD_BASIN_AREA_BUFFER).difference(existing_areas), node_id=node_id)
+
 # %%
 # Sanitize node_table
 for node_id in model.tabulated_rating_curve.node.df.index:
@@ -194,6 +247,7 @@ df = pd.concat(
 )
 df.set_index("code", inplace=True)
 names = df["naam"]
+names.loc["qbw_9638"] = "Hoher Absturz"
 
 # set meta_gestuwd in basins
 model.node.df.loc[model.node.df["node_type"] == "Basin", "meta_gestuwd"] = False
