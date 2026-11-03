@@ -92,6 +92,7 @@ to_drain = (
     279,
     588,
     781,
+    1420,  # spui Oostoever, drains under the same condition as pump 1242 next to it, see #998
     1422,
 )
 to_flow_control = (
