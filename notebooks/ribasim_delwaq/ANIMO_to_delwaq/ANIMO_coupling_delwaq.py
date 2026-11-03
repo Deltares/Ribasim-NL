@@ -219,10 +219,9 @@ da_afvoer_lhm_timeseries = []
 species_list = ["cNorg", "cNH4N", "cNO3N", "cNtot", "cPorg", "cPort", "cPtot"]
 write_intermediate_output = False
 apply_correction_deep_seepage = False
-gdf_basins = gpd.read_file(ANIMO_INPUT_DIR
-/ "shapes"
-/ delwaq_config.model_path.name
-/ f"basin_polygons_{delwaq_config.model_path.name}.shp")
+gdf_basins = gpd.read_file(
+    ANIMO_INPUT_DIR / "shapes" / delwaq_config.model_path.name / f"basin_polygons_{delwaq_config.model_path.name}.shp"
+)
 da_lgn = imod.idf.open(ANIMO_INPUT_DIR / "LGN250.IDF")
 da_lgn = da_lgn.rio.write_crs("EPSG:28992", inplace=False)
 da_landbouwzones = (

@@ -38,6 +38,9 @@ bekend en wordt er tussen deze jaren geinterpoleerd.
 # import os
 # import sys
 
+# ruff: noqa: E402
+
+
 # print(sys.executable)
 # print(os.environ.get("GDAL_DATA"))
 # %%
@@ -45,11 +48,16 @@ bekend en wordt er tussen deze jaren geinterpoleerd.
 
 import logging
 import re
+import sys
 from pathlib import Path
 
+CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.toml"
+ROOT = CONFIG_PATH.resolve().parents[2]
+sys.path.insert(0, str(CONFIG_PATH.parent))
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+from config import load_delwaq_config
 from ER_GAF_fractions_func import compute_overlap_df
 from matplotlib.figure import Figure
 
@@ -75,9 +83,8 @@ conv_ton2g = 10**6
 
 # fixed
 
-ROOT = Path(__file__).resolve().parents[3]
-
-ER_DATA_DIR = ROOT / "data" / "Basisgegevens" / "Delwaq" / "Emissieregistratie"
+delwaq_config = load_delwaq_config(CONFIG_PATH)
+ER_DATA_DIR = delwaq_config.er_data
 
 ER_INPUT_DIR = ER_DATA_DIR / "aangeleverd"  # vervangt "data\1-external" of /
 ER_INTERIM_DIR = ER_DATA_DIR / "interim"  # vervangt "data\2-interim" of /
@@ -92,11 +99,8 @@ ER_export_path = ER_INPUT_DIR / "ER_DataExport-2026-09-16-103931.xlsx"
 OE_bedrijven_path = ER_INPUT_DIR / "OverigeEmissies_bedrijven__2024_01_24.csv"
 gaf_path = ER_INPUT_DIR / "gaf_90.shp"
 
-# model-dependent
-model_name = "lhm_coupled"
-toml_name = "lhm_coupled.toml"
-model_path = ROOT / "data" / "Rijkswaterstaat" / "modellen" / model_name
-toml_path = model_path / toml_name
+model_path = delwaq_config.model_path
+toml_path = delwaq_config.model_toml
 basin_path = model_path / "input/database.gpkg"
 
 # %%
