@@ -67,7 +67,7 @@ peilgebied["nen3610id"] = "dummy_nen3610id_peilgebiedpraktijk_" + peilgebied.ind
 parts = gpd.read_file(cloud.joinpath(authority, "verwerkt/aggregation_area.gpkg"))
 boezem = peilgebied["code"] == "BZM 1"
 assert boezem.sum() == 1, "no single boezem BZM 1"
-parts["streefpeil"] = peilgebied.loc[boezem, "streefpeil"].iat[0]
+parts["streefpeil"] = float(peilgebied.loc[boezem, "streefpeil"].to_numpy()[0])
 peilgebied = pd.concat([peilgebied[~boezem], parts[peilgebied.columns]], ignore_index=True)
 assert peilgebied["code"].notna().all(), "peilgebieden without code"
 assert peilgebied["globalid"].is_unique, "peilgebieden with the same globalid"

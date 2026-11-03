@@ -1,7 +1,9 @@
 import geopandas as gpd
+import pandas as pd
 import pytest
 from ribasim import Node
 from ribasim.nodes import basin, flow_boundary, level_boundary, outlet
+from ribasim_nl.check_basin_level import check_basin_level
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 
 from ribasim_nl import Model
@@ -310,3 +312,24 @@ def test_imposed_settings(model, tmp_path):
     assert model.experimental.concentration
     model.write(tmp_path / "model.toml")
     assert Model.read(tmp_path / "model.toml").experimental.concentration
+
+
+def test_link_node_types(model):
+    link = model.link.df.iloc[0]
+    assert model.link_from_node_type[link.name] == model.node.df.at[link.from_node_id, "node_type"]
+    assert model.link_to_node_type[link.name] == model.node.df.at[link.to_node_id, "node_type"]
+    assert model.link_from_node_type.index.equals(model.link.df.index)
+
+    # A link to a node that is not in the Node table has no type
+    model.node.df = model.node.df.drop(index=link.to_node_id)
+    assert model.link_to_node_type.isna()[link.name]
+
+
+def test_check_basin_level(model):
+    node_id = model.basin.node.df.index[0]
+    downstream = model.downstream_node_id(node_id)
+    downstream = downstream.to_list() if isinstance(downstream, pd.Series) else [downstream]
+    node_df = model.node.df.assign(check=None)
+    assert not check_basin_level(node_id, model, node_df, check_column="check")
+    node_df.loc[downstream[-1], "check"] = "code"
+    assert check_basin_level(node_id, model, node_df, check_column="check") is True

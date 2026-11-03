@@ -111,12 +111,13 @@ he_snap_df.loc[mask, "Kunstwerk"] = he_snap_df[mask].Kunstwerk.str[3:]
 he_outlet_df = gpd.GeoDataFrame(geometry=gpd.GeoSeries(), crs=he_snap_df.crs, index=he_df.index)
 
 mask = he_df["KWKuit"].notna()
-he_outlet_df.loc[mask, "geometry"] = he_df[mask]["KWKuit"].apply(
-    lambda x: he_snap_df.set_index("Kunstwerk").at[x, "geometry"]
+he_outlet_df.loc[mask, "geometry"] = he_df.loc[mask, "KWKuit"].map(
+    he_snap_df.dropna(subset="Kunstwerk").set_index("Kunstwerk").geometry
 )
-he_outlet_df.loc[~mask, "geometry"] = he_df[~mask]["HEIDENT"].apply(
-    lambda x: he_snap_df.set_index("HEIDENT").at[x, "geometry"]
+he_outlet_df.loc[~mask, "geometry"] = he_df.loc[~mask, "HEIDENT"].map(
+    he_snap_df.dropna(subset="HEIDENT").set_index("HEIDENT").geometry
 )
+assert he_outlet_df.geometry.notna().all(), "not every he has an outlet"
 
 he_outlet_df.loc[:, "HEIDENT"] = he_df["HEIDENT"]
 he_outlet_df.set_index("HEIDENT", inplace=True)
@@ -271,7 +272,7 @@ for row in he_df[he_df["node_id"].isna()].itertuples():
     network_node = get_network_node(point)
 
     basin_node_id = network.find_downstream(network_node, attribute="node_id")
-    he_df.loc[row.Index, ["node_id"]] = basin_node_id
+    he_df.at[cast(str, row.Index), "node_id"] = basin_node_id
 
 
 data = []

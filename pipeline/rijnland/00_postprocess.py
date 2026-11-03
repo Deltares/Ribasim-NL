@@ -12,6 +12,8 @@ praktijk ones, which GEOS 3.14 makes otherwise than GEOS 3.12 did in 2024; its l
 results of 2024 where they differ. See `docs/dev/reproducing-models.qmd`.
 """
 
+from typing import cast
+
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -132,7 +134,9 @@ boezem = boezem.assign(kind="boezem", number=boezem.index, waterhoogte=0.61)
 boezem = apply_edits(boezem, gpd.read_file(corrections, layer="Peilgebiedenpraktijk_aggregatie_RL"), "CODE_AFW")
 gouwe = aggregation_area.index[aggregation_area["CODE_AFW"] == "Gouwe"]
 assert len(gouwe) == 1
-boezem.loc[boezem["CODE_AFW"] == "Gouwe", ["code", "number"]] = [aggregation_area.at[gouwe[0], "code"], gouwe[0]]
+is_gouwe = boezem["CODE_AFW"] == "Gouwe"
+boezem.loc[is_gouwe, "code"] = cast(str, aggregation_area.at[gouwe[0], "code"])
+boezem.loc[is_gouwe, "number"] = gouwe[0]
 
 # the aanvullingen of the boezem and its parts get a margin of 1 m, and come first; HKV took their symmetric
 # difference with the other peilgebieden by position, which joins the first 21 of these to them, as duplicates. They get

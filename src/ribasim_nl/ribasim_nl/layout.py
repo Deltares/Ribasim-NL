@@ -42,11 +42,13 @@ def _set_link_ends(model: Model, node_ids: typing.Iterable[int]) -> None:
     node_ids = set(node_ids)
     affected = links.index[links["from_node_id"].isin(node_ids) | links["to_node_id"].isin(node_ids)]
     nodes = model.node.df.geometry
+    starts = shapely.get_coordinates(nodes.loc[links.loc[affected, "from_node_id"]].to_numpy())
+    ends = shapely.get_coordinates(nodes.loc[links.loc[affected, "to_node_id"]].to_numpy())
     geometries = []
-    for link_id in affected:
-        coords = np.array(typing.cast(shapely.LineString, links.at[link_id, "geometry"]).coords)[:, :2]
-        coords[0] = nodes[links.at[link_id, "from_node_id"]].coords[0][:2]
-        coords[-1] = nodes[links.at[link_id, "to_node_id"]].coords[0][:2]
+    for line, start, end in zip(links.loc[affected, "geometry"], starts, ends, strict=True):
+        coords = np.array(typing.cast(shapely.LineString, line).coords)[:, :2]
+        coords[0] = start
+        coords[-1] = end
         geometries.append(shapely.LineString(coords))
     links.loc[affected, "geometry"] = gpd.GeoSeries(geometries, index=affected, crs=links.crs)
 

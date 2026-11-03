@@ -23,7 +23,7 @@ def check_basin_level(
     ds_node_ids = ds_node_id.to_list() if isinstance(ds_node_id, pd.Series) else [ds_node_id]
     ds_node_ids = [i for i in ds_node_ids if i is not None]
 
-    return any((not pd.isna(node_df.at[i, check_column])) for i in ds_node_ids)
+    return bool(node_df.loc[ds_node_ids, check_column].notna().any())
 
 
 def add_check_basin_level(model: Model, check_column: str = "meta_code_waterbeheerder") -> None:

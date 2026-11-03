@@ -222,6 +222,7 @@ energie_outlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Energiecentrales-u
 priority = 2
 return_factor = 0.95
 
+energie_by_osm_id = energie_gdf.set_index("osm_id")
 for row in energie_inlet_gdf[mask].itertuples():
     # inlet geometry and reference to osm_id, and demand
     inlet_geometry = row.geometry
@@ -229,7 +230,7 @@ for row in energie_inlet_gdf[mask].itertuples():
     demand = float(cast(float, row.capaciteit))
 
     # from plant name and (demand-)geometry and
-    plant = energie_gdf.set_index("osm_id").loc[osm_id]
+    plant = energie_by_osm_id.loc[cast(str, osm_id)]
     name = cast(str, plant["name"])
     print(name)
     beheerder = plant.operator
@@ -281,6 +282,7 @@ noordzee_plants = ["Crown van Gelder", "Tata Steel"]
 
 priority = 3
 
+industrie_by_osm_id = industrie_gdf.set_index("osm_id")
 for row in industrie_inlet_gdf[mask].itertuples():
     # row = next(industrie_inlet_gdf[mask].itertuples())
     # inlet geometry and reference to osm_id, and demand
@@ -289,7 +291,7 @@ for row in industrie_inlet_gdf[mask].itertuples():
     demand = float(cast(float, row.demand))
 
     # from plant name and (demand-)geometry and
-    plant = industrie_gdf.set_index("osm_id").loc[osm_id]
+    plant = industrie_by_osm_id.loc[cast(str, osm_id)]
     name = cast(str, plant["name"])
     print(name)
     geometry = plant.geometry.centroid

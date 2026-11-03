@@ -1,5 +1,6 @@
 # %%
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 from pandera.typing import DataFrame
@@ -84,11 +85,9 @@ monsin_node_id = (
 )
 
 # set flow boundary timeseries
-lobith_df = pd.DataFrame(lobith_series).reset_index()
-lobith_df.loc[:, "node_id"] = lobith_node_id
+lobith_df = pd.DataFrame(lobith_series).reset_index().assign(node_id=cast(int, lobith_node_id))
 
-monsin_df = pd.DataFrame(monsin_series).reset_index()
-monsin_df.loc[:, "node_id"] = monsin_node_id
+monsin_df = pd.DataFrame(monsin_series).reset_index().assign(node_id=cast(int, monsin_node_id))
 
 # TODO fill the gaps before so we don't need dropna here
 # the resample introduces missing from gaps in the timeseries
