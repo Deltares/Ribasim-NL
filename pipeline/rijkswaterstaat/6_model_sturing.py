@@ -53,7 +53,7 @@ VERDEELSLEUTEL_KWK_FROM_SHEET = ["61F-001-01"]
 FREE_FLOW_NODE_TYPES = {"Basin", "ManningResistance", "LinearResistance", "Junction"}
 RWS_NODE_ID_OFFSET = waterbeheercode["Rijkswaterstaat"] * 100_000
 # New structures and their control in these areas get free IDs, so the IDs of the nodes added after them stay the same
-GEBIEDEN_WITH_FREE_IDS = {"IJsselmeer-Markermeer", "Waal"}
+GEBIEDEN_WITH_FREE_IDS = {"IJsselmeer-Markermeer", "Rijn-Maasmonding", "Waal"}
 
 
 # %% functies

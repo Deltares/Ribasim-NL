@@ -136,6 +136,30 @@ def test_read_static_flow_demand_level():
     assert "min_upstream_level" not in static or static["min_upstream_level"].isna().all()
 
 
+def test_read_static_flow_demand_at_sea_level():
+    """Like the Goereese sluis, a level of 0 m NAP is a level, and the afvoer capacity without control is the flow."""
+    df = sheet(
+        [
+            ["Ribasim type", "Outlet"],
+            ["Kunstwerkcode", "37C-001-01"],
+            ["Aanvoer Capaciteit (m3/s)", 0],
+            ["Afvoer Capaciteit (m3/s)", 5],
+            ["Streefpeil bovenstrooms (m +NAP)", 0],
+            ["FlowDemand", "ja"],
+            [np.nan],
+            ["FlowDemand (m3/s)", "Prioriteit"],
+            [5, 2],
+        ]
+    )
+    static = read_static(df, "Outlet").df
+    assert static is not None
+    assert static[["flow_rate", "min_upstream_level"]].iloc[0].to_list() == [5, 0]
+    assert has_flow_demand(read_kwk_properties(df))
+    demand = flow_demand_tables(df, STARTTIME, ENDTIME)[0].df
+    assert demand is not None
+    assert demand[["demand", "demand_priority"]].iloc[0].to_list() == [5, 2]
+
+
 def test_read_static_discrete_control():
     static = read_static(sluis_born(), "Outlet").df
     assert static is not None

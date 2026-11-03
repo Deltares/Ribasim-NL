@@ -62,6 +62,7 @@ class ParallelKwk(NamedTuple):
 # The structures of a complex that is one place in the network, by their code
 PARALLEL_KWK = {
     "14E-001-27": ParallelKwk("14E-001-33"),  # Gemaal Den Oever, next to the Stevinsluizen
+    "37C-001-01": ParallelKwk("37C-350-09", xy=(62091.0, 426984.0)),  # Goereese sluis, next to the Haringvlietsluizen
     "20A-001-04": ParallelKwk("20A-001-02", reverse=True),  # Krabbersgatsluis, supply of the Markermeer
     "20D-001-04": ParallelKwk("20D-001-08", reverse=True),  # Houtribsluizen, supply of the Markermeer
     "46A-001-01": ParallelKwk("46A-001-06"),  # Schutsluis Heumen, next to the Keersluis
