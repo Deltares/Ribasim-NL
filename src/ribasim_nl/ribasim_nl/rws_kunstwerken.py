@@ -19,6 +19,7 @@ from typing import Any, Literal, NamedTuple
 import numpy as np
 import pandas as pd
 from ribasim.nodes import discrete_control, flow_demand, outlet, pump, tabulated_rating_curve
+from shapely.geometry import LineString, Point
 
 FLOW_KWARGS = {
     "Capaciteit (m3/s)": "flow_rate",
@@ -51,12 +52,17 @@ YES_NO = {"ja": True, "nee": False}
 
 
 class ParallelKwk(NamedTuple):
-    """A structure next to the structure with code `main`, flowing the other way with `reverse`, at `offset` or `xy`."""
+    """A structure next to the structure with code `main`, flowing the other way with `reverse`, at `offset` or `xy`.
+
+    With `follow_main` its links follow those of the main structure, so Junctions combine the flow of both, which is
+    what is measured upstream of a weir with a lock next to it.
+    """
 
     main: str
     reverse: bool = False
     offset: float = 30.0  # m
     xy: tuple[float, float] | None = None
+    follow_main: bool = False
 
 
 # The structures of a complex that is one place in the network, by their code
@@ -65,11 +71,26 @@ PARALLEL_KWK = {
     "37C-001-01": ParallelKwk("37C-350-09", xy=(62091.0, 426984.0)),  # Goereese sluis, next to the Haringvlietsluizen
     "20A-001-04": ParallelKwk("20A-001-02", reverse=True),  # Krabbersgatsluis, supply of the Markermeer
     "20D-001-04": ParallelKwk("20D-001-08", reverse=True),  # Houtribsluizen, supply of the Markermeer
+    # The locks and fish passages next to the weirs of the Nederrijn and the Lek, see #996
+    "38F-001-02": ParallelKwk("38F-001-01", xy=(137631.0, 444946.0), follow_main=True),  # Sluis Hagestein
+    "39B-003-01": ParallelKwk("39B-003-02", xy=(156499.0, 443114.0), follow_main=True),  # Sluis Amerongen
+    "40A-004-01": ParallelKwk("40A-004-02", xy=(183700.0, 442130.0), follow_main=True),  # Sluis Driel
     "46A-001-01": ParallelKwk("46A-001-06"),  # Schutsluis Heumen, next to the Keersluis
     "46A-001-02": ParallelKwk("46A-001-06", reverse=True, offset=-30.0),  # Gemaal Heumen, from the canal to the Maas
     # Dunea pumps Maas water to the Waal side of the Wilhelminasluis, see #979
     "Brakel, Maaswaterbel": ParallelKwk("44F-002-01", reverse=True, xy=(131922.0, 423045.0)),
 }
+
+
+def parallel_lines(
+    upstream_line: LineString, downstream_line: LineString, point: Point
+) -> tuple[LineString, LineString]:
+    """Lines of the links of a structure at `point`, along the links of the structure next to it, except at the ends."""
+    assert len(upstream_line.coords) > 2 and len(downstream_line.coords) > 2, "Links should have shared vertices"
+    return (
+        LineString([*upstream_line.coords[:-1], *point.coords]),
+        LineString([*point.coords, *downstream_line.coords[1:]]),
+    )
 
 
 def read_rating_curve(kwk_df: pd.DataFrame) -> tabulated_rating_curve.Static:

@@ -20,13 +20,14 @@ from ribasim_nl.rws_kunstwerken import (
     flow_demand_tables,
     has_discrete_control,
     has_flow_demand,
+    parallel_lines,
     read_control_thresholds,
     read_kwk_properties,
     read_qq_curve,
     read_rating_curve,
     read_static,
 )
-from shapely.geometry import Point
+from shapely.geometry import LineString, Point
 
 from ribasim_nl import CloudStorage, Model
 
@@ -53,7 +54,7 @@ VERDEELSLEUTEL_KWK_FROM_SHEET = ["61F-001-01"]
 FREE_FLOW_NODE_TYPES = {"Basin", "ManningResistance", "LinearResistance", "Junction"}
 RWS_NODE_ID_OFFSET = waterbeheercode["Rijkswaterstaat"] * 100_000
 # New structures and their control in these areas get free IDs, so the IDs of the nodes added after them stay the same
-GEBIEDEN_WITH_FREE_IDS = {"IJsselmeer-Markermeer", "Rijn-Maasmonding", "Waal"}
+GEBIEDEN_WITH_FREE_IDS = {"IJsselmeer-Markermeer", "Rijn", "Rijn-Maasmonding", "Waal"}
 
 
 # %% functies
@@ -146,8 +147,17 @@ def add_parallel_kwk(model: Model, code: str, name: str, node_type: str, node_id
     point = Point(parallel.xy) if parallel.xy else Point(main_point.x + parallel.offset, main_point.y + parallel.offset)
     static = {"Outlet": outlet.Static, "Pump": pump.Static}[node_type](flow_rate=[0.0])
     node = model.get_component(node_type).add(Node(node_id, point, name=name, meta_code_waterbeheerder=code), [static])
-    model.link.add(model.get_node(int(upstream)), node)
-    model.link.add(node, model.get_node(int(downstream)))
+    lines: tuple[LineString | None, LineString | None] = (None, None)
+    if parallel.follow_main:
+        assert not parallel.reverse, f"The links of {name} cannot follow those of its main structure in reverse"
+        links = model.link.df
+        lines = parallel_lines(
+            links.loc[(links.from_node_id == upstream) & (links.to_node_id == main_id), "geometry"].item(),
+            links.loc[(links.from_node_id == main_id) & (links.to_node_id == downstream), "geometry"].item(),
+            point,
+        )
+    model.link.add(model.get_node(int(upstream)), node, geometry=lines[0])
+    model.link.add(node, model.get_node(int(downstream)), geometry=lines[1])
 
 
 def read_pid(control_properties, control_basin_id):

@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+from ribasim_nl.junctions import find_common_linestring
 from ribasim_nl.rws_kunstwerken import (
     PARALLEL_KWK,
     SUBTRACT_PROPERTY,
@@ -8,12 +9,14 @@ from ribasim_nl.rws_kunstwerken import (
     flow_demand_tables,
     has_discrete_control,
     has_flow_demand,
+    parallel_lines,
     rating_curve_from_bottom,
     read_control_thresholds,
     read_kwk_properties,
     read_static,
     repeat_yearly,
 )
+from shapely.geometry import LineString, Point
 
 STARTTIME = pd.Timestamp("2017-01-01")
 ENDTIME = pd.Timestamp("2019-01-01")
@@ -266,6 +269,19 @@ def test_repeat_yearly_sorts_by_day_of_year():
     repeated = repeat_yearly(time, STARTTIME, pd.Timestamp("2017-12-31"))
     assert repeated["index"].to_list() == [1, 0]
     assert repeated["time"].to_list() == [pd.Timestamp("2017-04-01"), pd.Timestamp("2017-10-01")]
+
+
+def test_parallel_lines_share_vertices_with_the_main_structure():
+    """The links of a lock follow those of the weir next to it, which `junctionify` turns into shared Junctions."""
+    upstream = LineString([(0, 0), (10, 0), (20, 0), (30, 0)])
+    downstream = LineString([(30, 0), (40, 0), (50, 0), (60, 0)])
+    lines = parallel_lines(upstream, downstream, Point(30, 5))
+    assert list(lines[0].coords) == [(0, 0), (10, 0), (20, 0), (30, 5)]
+    assert list(lines[1].coords) == [(30, 5), (40, 0), (50, 0), (60, 0)]
+    (common,), _, _ = find_common_linestring([upstream, lines[0]], converging=False)
+    assert list(common.coords) == [(0, 0), (10, 0), (20, 0)]
+    (common,), _, _ = find_common_linestring([downstream, lines[1]], converging=True)
+    assert list(common.coords) == [(40, 0), (50, 0), (60, 0)]
 
 
 def test_parallel_kwk_next_to_a_structure_in_the_network():
