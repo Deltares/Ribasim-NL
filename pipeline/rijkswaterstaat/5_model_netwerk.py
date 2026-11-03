@@ -17,6 +17,7 @@ from ribasim.nodes import (
 )
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.rws_kunstwerken import (
+    PARALLEL_KWK,
     read_kwk_properties,
     read_qq_curve,
     read_rating_curve,
@@ -35,7 +36,8 @@ warnings.filterwarnings(
 
 # Krammersluizen (43C-002-03) lozen van Krammer op Oosterschelde, zie issue #813
 # Spuisluis Delden (34E-001-04) ligt in het stroomkanaal van Gemaal Delden, maar spuit naar beneden, zie issue #730
-KWK_INVERSE_FLOW_DIRECTION = ["750028686", "44D-002-03", "43C-002-03", "34E-001-04"]
+# De Wilhelminasluis (44F-002-01) schut van de Waal naar de Maas, zie issue #979
+KWK_INVERSE_FLOW_DIRECTION = ["750028686", "44D-002-03", "43C-002-03", "34E-001-04", "44F-002-01"]
 VERDEELSLEUTELS = ["Lobith", "Monsin"]
 RVW_IJSSELMEER = ["KOBU", "OEBU"]
 
@@ -187,7 +189,10 @@ model = Model(starttime="2017-01-01", endtime="2020-01-01", crs="EPSG:28992")
 # We voegen de boundaries toe aan het netwerk
 
 level_ijsselmeer_df = pd.read_excel(ijsselmeer_markermeer_path, sheet_name="IJsselmeer", skiprows=4)
-level_ijsselmeer_df.index = [i.day_of_year for i in level_ijsselmeer_df.datum]
+# onder de tabel kan nog een bron staan
+level_ijsselmeer_datum = pd.to_datetime(level_ijsselmeer_df["datum"], errors="coerce").dropna()
+level_ijsselmeer_df = level_ijsselmeer_df.loc[level_ijsselmeer_datum.index]
+level_ijsselmeer_df.index = level_ijsselmeer_datum.dt.day_of_year
 
 
 def get_level(timestamp, level_ijsselmeer_df):
@@ -233,7 +238,8 @@ for row in boundary_gdf.fillna({"naam": ""}).itertuples():
 
 # Toevoegen kunstwerken uit de Excel
 mask = kwks_df.code.isin(kwks_gdf.code) | kwks_df.code.isin(kwks_gdf.complex_code)
-mask = mask & kwks_df.in_model
+# de kunstwerken naast een ander kunstwerk hebben geen eigen plek in het netwerk, die voegt 6_model_sturing toe
+mask = mask & kwks_df.in_model & ~kwks_df.code.isin(PARALLEL_KWK)
 
 kwk_topology = {}
 

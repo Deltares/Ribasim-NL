@@ -3,6 +3,7 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, pump
 from ribasim_nl.validation import (
     _connector_through_junction_issues,
+    _deep_basin_profile_issues,
     _flow_demand_capacity_issues,
     _listen_to_junction_issues,
     _manning_resistance_issues,
@@ -167,3 +168,30 @@ def test_merge_outlets_keeps_discrete_control(controlled_outlet_model):
     control = model.link.df[model.link.df["link_type"] == "control"]
     assert sorted(control[["from_node_id", "to_node_id"]].values.tolist()) == [[4, 2], [7, 2]]
     assert _uncontrolled_control_state_issues(model) == []
+
+
+@pytest.mark.parametrize(
+    ("category", "bottom", "n_issues"),
+    [
+        ("doorgaand", -29.0, 0),  # deep water, like a lake
+        ("doorgaand", -124.0, 1),  # a no-data level of 999 subtracted from a cross-section
+        ("doorgaand", -32.0, 1),  # a no-data level of 99, averaged with other cross-sections
+        ("hoofdwater", -66.0, 0),  # the Westerschelde
+        ("hoofdwater", -124.0, 1),
+        ("bergend", -136.0, 0),  # the terrain in Limburg
+        ("bergend", -160.0, 1),
+        (None, -66.0, 0),  # not categorized yet
+        (None, -124.0, 1),
+    ],
+)
+def test_deep_basin_profile_issues(model: Model, category: str | None, bottom: float, n_issues: int) -> None:
+    profile_df = model.basin.profile.df
+    assert profile_df is not None
+    assert not _deep_basin_profile_issues(model), "Expect no issues without a meta_categorie column"
+    profile_df.loc[(profile_df["node_id"] == 1) & (profile_df["level"] == 0.0), "level"] = bottom
+    if category is not None:
+        model.node.df["meta_categorie"] = category
+    issues = _deep_basin_profile_issues(model)
+    assert len(issues) == n_issues
+    if n_issues:
+        assert "1:" in issues[0]

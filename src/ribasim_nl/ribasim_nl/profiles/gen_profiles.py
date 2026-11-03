@@ -1,6 +1,7 @@
 """Generation of profiles."""
 
 import typing
+from collections.abc import Collection
 from pathlib import Path
 
 import geopandas as gpd
@@ -8,6 +9,11 @@ import pandas as pd
 
 from ribasim_nl import CloudStorage
 from ribasim_nl.profiles import hydrotopes, run
+
+# The levels that mean that the target level of a peilgebied is missing, per dataset. 0 m NAP is a real level.
+NO_DATA_LEVELS: dict[str, tuple[float, ...]] = {"Scheldestromen": (-99.0, 99.0), "Zuiderzeeland": (999.0,)}
+# The peilgebieden that have a target level are all below this, in m NAP, and above minus this
+MAX_TARGET_LEVEL = 50.0
 
 # A file name, or a file name and the name of a layer in it
 type FileName = Path | str
@@ -49,7 +55,7 @@ def main(
     gdf_basins = _read_basins(cloud, water_authority)
     gdf_hydro_objects = gpd.read_file(fn_crossings, layer="hydroobject") if hydro_objects is None else hydro_objects
     gdf_crossings = gpd.read_file(fn_crossings, layer="crossings_hydroobject_filtered")
-    gdf_target_levels = _read_target_levels(fn_crossings)
+    gdf_target_levels = _read_target_levels(fn_crossings, NO_DATA_LEVELS.get(water_authority, ()))
     gdf_cross_sections = _read_cross_sections(cloud, water_authority, cross_sections_available)
     gdf_water_bodies = _read_water_bodies(cloud, water_authority, fn_water_bodies)
     table = _read_hydrotope_table(cloud)
@@ -118,7 +124,9 @@ def flagged_hydro_objects(
     cloud = CloudStorage()
     gdf_basins = _read_basins(cloud, water_authority)
     gdf_hydro_objects = gpd.read_file(cloud.joinpath(water_authority, fn_hydro_objects), layer=layer_hydro_objects)
-    gdf_target_levels = _read_target_levels(_crossings_path(cloud, water_authority))
+    gdf_target_levels = _read_target_levels(
+        _crossings_path(cloud, water_authority), NO_DATA_LEVELS.get(water_authority, ())
+    )
     gdf_cross_sections = _read_cross_sections(cloud, water_authority, cross_sections_available)
     gdf_water_bodies = _read_water_bodies(cloud, water_authority, fn_water_bodies)
     table = _read_hydrotope_table(cloud)
@@ -203,17 +211,25 @@ def _read_cross_sections(cloud: CloudStorage, water_authority: str, available: b
     return out
 
 
-def _read_target_levels(fn: Path) -> gpd.GeoDataFrame:
+def _read_target_levels(fn: Path, no_data_levels: Collection[float] = ()) -> gpd.GeoDataFrame:
     """Get polygons with target levels from source-data.
 
-    :param fn: GeoPackage with the layers "peilgebied" and "streefpeil"
+    The levels stay as delivered in the crossings, of which they are an input, so the no-data levels are removed here.
 
-    :return: polygons with target levels
+    :param fn: GeoPackage with the layers "peilgebied" and "streefpeil"
+    :param no_data_levels: levels that mean that the target level is missing in this dataset, see `NO_DATA_LEVELS`
+
+    :return: polygons with target levels, without a level where it is missing
+
+    :raises AssertionError: if a target level is out of range, and so probably another no-data level
     """
     polygons = gpd.read_file(fn, layer="peilgebied")
     levels = gpd.read_file(fn, layer="streefpeil")
-    out = polygons.assign(meta_streefpeil=polygons["globalid"].map(levels.set_index("globalid")["waterhoogte"]))
-    return out
+    level = polygons["globalid"].map(levels.set_index("globalid")["waterhoogte"]).astype(float)
+    level = level.where(~level.isin(list(no_data_levels)))
+    invalid = level[level.abs() > MAX_TARGET_LEVEL]
+    assert invalid.empty, f"Target levels of {fn} out of range, are these no-data?\n{invalid}"
+    return polygons.assign(meta_streefpeil=level)
 
 
 def _read_hydrotope_table(cloud: CloudStorage) -> hydrotopes.HydrotopeTable:

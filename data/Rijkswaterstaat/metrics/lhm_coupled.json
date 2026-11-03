@@ -1,48 +1,48 @@
 {
   "solver": {
     "computation_time": 2.3,
-    "rhs_calls": 1556000.0,
-    "mean_dt": 170.2,
-    "dt_p05": 96.95,
-    "rejected_fraction": 0.08428
+    "rhs_calls": 1585000.0,
+    "mean_dt": 163.2,
+    "dt_p05": 89.29,
+    "rejected_fraction": 0.08071
   },
   "observations": {
     "compared": 628.0,
-    "median_nse": 0.02707,
-    "median_kge": 0.07533
+    "median_nse": 0.02834,
+    "median_kge": 0.08169
   },
   "discharge_kge": {
     "Lobith": 0.9999,
     "Pannerdense Kop": 0.9292,
     "IJsselkop": 0.9199,
     "Driel boven": 0.8108,
-    "Hagestein boven": 0.8574,
-    "Tiel Waal": 0.9313,
+    "Hagestein boven": 0.8575,
+    "Tiel Waal": 0.9308,
     "Haringvlietsluizen binnen": 0.8007,
-    "Maasmond": 0.4528,
-    "Den Oever buiten": 0.4612,
-    "Kornwerderzand buiten": 0.3996,
-    "IJmuiden binnen": 0.3255
+    "Maasmond": 0.4531,
+    "Den Oever buiten": 0.3763,
+    "Kornwerderzand buiten": 0.1595,
+    "IJmuiden binnen": 0.3229
   },
   "level_p01": {
-    "IJsselmeer": -0.3952,
-    "Markermeer": -0.5571,
-    "Veluwemeer": -0.3246,
-    "Noordzeekanaal": -0.4026,
-    "Amsterdam-Rijnkanaal Breukelen": -0.4052,
+    "IJsselmeer": -0.3919,
+    "Markermeer": -0.3898,
+    "Veluwemeer": -0.3126,
+    "Noordzeekanaal": -0.3986,
+    "Amsterdam-Rijnkanaal Breukelen": -0.4017,
     "Volkerak": -0.1335,
-    "Haringvliet": 0.02087,
+    "Haringvliet": 0.02082,
     "Twentekanaal (Kanaal Zutphen-Enschede)": 9.977,
     "Julianakanaal": 44.04
   },
   "level_p99": {
-    "IJsselmeer": -0.08425,
-    "Markermeer": -0.2074,
-    "Veluwemeer": -0.03732,
+    "IJsselmeer": -0.0856,
+    "Markermeer": -0.09582,
+    "Veluwemeer": -0.03736,
     "Noordzeekanaal": -0.3907,
-    "Amsterdam-Rijnkanaal Breukelen": -0.3538,
+    "Amsterdam-Rijnkanaal Breukelen": -0.3514,
     "Volkerak": 0.1128,
-    "Haringvliet": 0.08463,
+    "Haringvliet": 0.08461,
     "Twentekanaal (Kanaal Zutphen-Enschede)": 9.985,
     "Julianakanaal": 44.07
   }
