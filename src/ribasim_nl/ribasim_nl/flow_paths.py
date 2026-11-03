@@ -554,9 +554,9 @@ def rebuild_junction_trees(
                     model.link.add(model.get_node(node_ids[0]), model.get_node(node_ids[1]), geometry=geometry)
             new_junctions.extend(junctions.values())
             if "meta_waterbeheerder" in nodes.columns:
-                model.node.df.loc[list(junctions.values()), "meta_waterbeheerder"] = nodes.at[  # ty: ignore[invalid-assignment]
-                    basin_id, "meta_waterbeheerder"
-                ]
+                model.node.df.loc[list(junctions.values()), "meta_waterbeheerder"] = typing.cast(
+                    str, nodes.at[basin_id, "meta_waterbeheerder"]
+                )
         routes = Routes(model)
 
     new_links = sorted(set(model.link.df.index) - old_link_ids)

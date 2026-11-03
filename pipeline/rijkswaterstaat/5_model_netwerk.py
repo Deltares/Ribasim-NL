@@ -205,13 +205,13 @@ def get_level(timestamp, level_ijsselmeer_df):
 time = pd.date_range(model.starttime, model.endtime).to_list()
 level = [get_level(i, level_ijsselmeer_df) for i in time]
 
-for row in boundary_gdf.itertuples():
+for row in boundary_gdf.fillna({"naam": ""}).itertuples():
     # uitlezen dichtsbijzijnde netwerk-knoop
     node_id = nodes_gdf.distance(row.geometry).idxmin()
     point = nodes_gdf.at[node_id, "geometry"]
 
     # uitlezen naam als beschikbaar
-    name = "" if pd.isna(row.naam) else row.naam  # ty: ignore[no-matching-overload]
+    name = row.naam
 
     # toevoegen knoop per type: FlowBoundary, LevelBoundary of Terminal
     if row.type == "FlowBoundary":
@@ -585,8 +585,9 @@ for row in basin_poly_gdf.itertuples():
     basin_node_id = gdf.distance(cast(Polygon, row.geometry).centroid).idxmin()
     basin_node = Node(basin_node_id, network.nodes.at[basin_node_id, "geometry"], name=row.naam)
     basin_poly_gdf.loc[row.Index, "node_id"] = basin_node_id
-    level = basin_profile_df.loc[row.Index].level.to_list()  # ty: ignore[invalid-argument-type]
-    area = basin_profile_df.loc[row.Index].area.to_list()  # ty: ignore[invalid-argument-type]
+    profile = basin_profile_df.loc[cast(int, row.Index)]
+    level = profile.level.to_list()
+    area = profile.area.to_list()
     data = [
         basin.Profile(
             area=area,

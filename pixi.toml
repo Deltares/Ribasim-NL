@@ -101,6 +101,8 @@ viewer-build = { cmd = "npm run build", cwd = "viewer", depends-on = ["viewer-in
 viewer = { cmd = "python -m ribasim_nl.webmap_local", depends-on = ["viewer-build"] }
 # Serves the local `export_webmap` output, see viewer/vite.config.ts
 viewer-dev = { cmd = "npm run dev", cwd = "viewer", depends-on = ["viewer-install"] }
+# Compare the results of two runs of the coupled model, see `ribasim_nl.run_comparison`
+compare-runs = "python -m ribasim_nl.run_comparison"
 # Publish the model for the docs viewer, see `ribasim_nl.webmap_publish`: `pixi run publish-webmap [--pr N | --main]`
 publish-webmap = "python -m ribasim_nl.webmap_publish"
 ribasim = { cmd = "bin/ribasim/bin/ribasim", depends-on = ["install-core"] }
