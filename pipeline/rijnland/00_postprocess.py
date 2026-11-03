@@ -132,7 +132,7 @@ boezem = boezem.assign(kind="boezem", number=boezem.index, waterhoogte=0.61)
 boezem = apply_edits(boezem, gpd.read_file(corrections, layer="Peilgebiedenpraktijk_aggregatie_RL"), "CODE_AFW")
 gouwe = aggregation_area.index[aggregation_area["CODE_AFW"] == "Gouwe"]
 assert len(gouwe) == 1
-boezem.loc[boezem["CODE_AFW"] == "Gouwe", ["code", "number"]] = [aggregation_area.at[gouwe[0], "code"], gouwe[0]]
+boezem.loc[boezem["CODE_AFW"] == "Gouwe", ["code", "number"]] = [aggregation_area.at[gouwe[0], "code"], gouwe[0]]  # ty: ignore[invalid-assignment]
 
 # the aanvullingen of the boezem and its parts get a margin of 1 m, and come first; HKV took their symmetric
 # difference with the other peilgebieden by position, which joins the first 21 of these to them, as duplicates. They get

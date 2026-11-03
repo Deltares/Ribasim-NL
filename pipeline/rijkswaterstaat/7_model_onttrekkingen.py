@@ -229,7 +229,7 @@ for row in energie_inlet_gdf[mask].itertuples():
     demand = float(cast(float, row.capaciteit))
 
     # from plant name and (demand-)geometry and
-    plant = energie_gdf.set_index("osm_id").loc[osm_id]
+    plant = energie_gdf.set_index("osm_id").loc[osm_id]  # ty: ignore[invalid-argument-type]
     name = cast(str, plant["name"])
     print(name)
     beheerder = plant.operator
@@ -289,7 +289,7 @@ for row in industrie_inlet_gdf[mask].itertuples():
     demand = float(cast(float, row.demand))
 
     # from plant name and (demand-)geometry and
-    plant = industrie_gdf.set_index("osm_id").loc[osm_id]
+    plant = industrie_gdf.set_index("osm_id").loc[osm_id]  # ty: ignore[invalid-argument-type]
     name = cast(str, plant["name"])
     print(name)
     geometry = plant.geometry.centroid

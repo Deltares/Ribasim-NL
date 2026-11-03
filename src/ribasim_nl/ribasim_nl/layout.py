@@ -45,8 +45,8 @@ def _set_link_ends(model: Model, node_ids: typing.Iterable[int]) -> None:
     geometries = []
     for link_id in affected:
         coords = np.array(typing.cast(shapely.LineString, links.at[link_id, "geometry"]).coords)[:, :2]
-        coords[0] = nodes[links.at[link_id, "from_node_id"]].coords[0][:2]
-        coords[-1] = nodes[links.at[link_id, "to_node_id"]].coords[0][:2]
+        coords[0] = nodes[links.at[link_id, "from_node_id"]].coords[0][:2]  # ty: ignore[invalid-argument-type]
+        coords[-1] = nodes[links.at[link_id, "to_node_id"]].coords[0][:2]  # ty: ignore[invalid-argument-type]
         geometries.append(shapely.LineString(coords))
     links.loc[affected, "geometry"] = gpd.GeoSeries(geometries, index=affected, crs=links.crs)
 

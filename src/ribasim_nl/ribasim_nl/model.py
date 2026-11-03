@@ -1044,7 +1044,7 @@ class Model(ribasim.Model):
 
             # if we have one node left we are done
             if len(basin_df) == 1:
-                self.basin.area.df.loc[row.Index, ["node_id"]] = basin_df.index[0]
+                self.basin.area.df.loc[row.Index, ["node_id"]] = basin_df.index[0]  # ty: ignore[invalid-assignment]
 
     def reset_link_geometry(self, link_ids: list[int] | None = None) -> None:
         node_df = self.node.df
@@ -1061,12 +1061,12 @@ class Model(ribasim.Model):
     @property
     def link_from_node_type(self) -> pd.Series:
         node_df = self.node.df
-        return self.link.df.from_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
+        return self.link.df.from_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)  # ty: ignore[no-matching-overload]
 
     @property
     def link_to_node_type(self) -> pd.Series:
         node_df = self.node.df
-        return self.link.df.to_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
+        return self.link.df.to_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)  # ty: ignore[no-matching-overload]
 
     def split_basin(
         self,
