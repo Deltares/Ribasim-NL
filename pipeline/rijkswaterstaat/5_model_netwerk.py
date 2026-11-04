@@ -18,6 +18,7 @@ from ribasim.nodes import (
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.rws_kunstwerken import (
     PARALLEL_KWK,
+    rating_curve_from_bottom,
     read_kwk_properties,
     read_qq_curve,
     read_rating_curve,
@@ -701,6 +702,47 @@ for row in model.manning_resistance.static.df.itertuples():
         print(f"remove manning_resistance node {row.node_id} not connected on both sides")
         model.remove_node(cast(int, row.node_id), remove_links=True)
 
+
+# %% Waal bij Tiel, see https://github.com/Deltares/Ribasim-NL/issues/974
+# The ManningResistance between these Basins becomes the Q(h) relation of an LSM calculation. It moves upstream of the
+# branch to the Amsterdam-Rijnkanaal, so the Pr. Bernhardsluis takes its water from the Basin downstream of it.
+TIEL, TIEL_UPSTREAM_BASIN, TIEL_DOWNSTREAM_BASIN = 6630, 7291, 6613
+PR_BERNHARDSLUIS = model.find_node_id(meta_code_waterbeheerder="39D-001-02")
+basin_profile = model.basin.profile.df
+assert basin_profile is not None
+tiel_rating_curve = rating_curve_from_bottom(
+    pd.read_excel(kwk_dir / "QhTielWaal.xlsx", sheet_name="Qh-relatie", usecols=["Q", "H"]),
+    bottom=float(basin_profile.loc[basin_profile.node_id == TIEL_UPSTREAM_BASIN, "level"].min()),
+)
+# On the Waal just upstream of the branch. Links are routed along the waterways within 250 m of the area of their Basin,
+# see `rebuild_junction_trees`, which this point needs to be for the Basin downstream.
+tiel_point = Point(160100, 433345)
+tiel_waal = cast(LineString, network.links.geometry.iloc[network.links.distance(tiel_point).argmin()])
+tiel_point = tiel_waal.interpolate(tiel_waal.project(tiel_point))
+tiel_network_node = network.add_node(tiel_point, max_distance=100)
+assert tiel_network_node is not None, f"Tiel {tiel_point} is too far from the network"
+
+
+def link_between(from_node_id: int, to_node_id: int) -> int:
+    """The ID of the only link from one node to another."""
+    links = model.link.df
+    (link_id,) = links.index[(links.from_node_id == from_node_id) & (links.to_node_id == to_node_id)]
+    return int(link_id)
+
+
+tiel_links = {
+    link_between(TIEL_UPSTREAM_BASIN, TIEL): network.get_line(TIEL_UPSTREAM_BASIN, tiel_network_node),
+    link_between(TIEL, TIEL_DOWNSTREAM_BASIN): network.get_line(tiel_network_node, TIEL_DOWNSTREAM_BASIN),
+    link_between(TIEL_UPSTREAM_BASIN, PR_BERNHARDSLUIS): network.get_line(
+        TIEL_DOWNSTREAM_BASIN, PR_BERNHARDSLUIS, directed=False
+    ),
+}
+model.redirect_link(link_between(TIEL_UPSTREAM_BASIN, PR_BERNHARDSLUIS), from_node_id=TIEL_DOWNSTREAM_BASIN)
+model.update_node(TIEL, "TabulatedRatingCurve", [tiel_rating_curve], node_properties={"name": "Tiel Waal"})
+model.move_node(TIEL, tiel_point)
+for link_id, line in tiel_links.items():
+    model.link.df.loc[link_id, ["geometry"]] = line
+profile_geometries = [i for i in profile_geometries if i["node_id"] != TIEL]
 
 # %%wegschrijven model
 print("write ribasim model")
