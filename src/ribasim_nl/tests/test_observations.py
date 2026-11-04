@@ -1,6 +1,5 @@
 import geopandas as gpd
 import pandas as pd
-import pytest
 from ribasim import Node
 from ribasim.nodes import basin, outlet
 from ribasim_nl.observations import LinkEnd, _is_sum, _points, _strings, add_observation_nodes
@@ -23,7 +22,7 @@ def test_is_sum():
     assert not _is_sum("link1-link2", 2)
 
 
-def _observation_model() -> Model:
+def test_add_observation_nodes():
     """Basin 1 -> Outlet 2 -> Junction 4 -> Basin 5, and Basin 1 -> Outlet 3 -> Junction 4."""
     model = Model(starttime="2020-01-01", endtime="2020-01-03", crs="EPSG:28992")
     for node_id, x in ((1, 0), (5, 30)):
@@ -41,11 +40,6 @@ def _observation_model() -> Model:
         (model.junction[4], model.basin[5]),
     ):
         model.link.add(from_node, to_node)
-    return model
-
-
-def test_add_observation_nodes():
-    model = _observation_model()
 
     def end(y: float) -> LinkEnd:
         return LinkEnd("Outlet", Point(10.5, y), "Basin", True)
@@ -96,15 +90,3 @@ def test_add_observation_nodes():
     assert first["variable"].unique().tolist() == ["flow_rate"]
     assert first["time"].tolist() == [pd.Timestamp("2020-01-01"), pd.Timestamp("2020-01-03")]
     assert first["value"].tolist() == [-2.0, -4.0]
-
-    # the koppeltabel can be overruled, and the overruled series must exist and be observable
-    model_overruled = _observation_model()
-    model_overruled = add_observation_nodes(
-        model_overruled, coupling, measurements, observed_nodes={("outlet", "Aanvoer"): 3}
-    )
-    links = model_overruled.link.df[model_overruled.link.df["link_type"] == "observation"]
-    assert links["to_node_id"].iloc[0] == 3
-    with pytest.raises(AssertionError, match="not in the koppeltabel"):
-        add_observation_nodes(_observation_model(), coupling, measurements, observed_nodes={("onbekend", "Afvoer"): 3})
-    with pytest.raises(AssertionError, match="cannot be observed"):
-        add_observation_nodes(_observation_model(), coupling, measurements, observed_nodes={("outlet", "Aanvoer"): 1})

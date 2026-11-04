@@ -51,11 +51,6 @@ OBSERVED_NODE_TYPES = (
 INTERCHANGEABLE_TYPES = {"Outlet": "Pump", "Pump": "Outlet"}
 # Operations of the koppeltabel after which the measurement has the sign of the model flow, see ApplySpecificOperation
 NEGATE_OPERATIONS = ("negatief_maken", "optellen_en_negatief_maken")
-# The node to observe in the model of an authority, by its series and Aan/Af, where the koppeltabel names the wrong one
-OBSERVED_NODES: dict[str, dict[tuple[str, str], int]] = {
-    # the Nieuwe Leij passes ManningResistance 869, not the closed weir 245 next to it, see #997
-    "DeDommel": {("Nieuwe Leij Goirle (Vloeder)", "Afvoer"): 869},
-}
 
 
 def _points(value: object) -> list[shapely.Point]:
@@ -158,7 +153,7 @@ def add_observations(model: Model, authority: str) -> Model:
     :return: updated Ribasim model
     """
     coupling = read_coupling(authority)
-    model = add_observation_nodes(model, coupling, read_measurements(), observed_nodes=OBSERVED_NODES.get(authority))
+    model = add_observation_nodes(model, coupling, read_measurements())
     links = model.link.df[model.link.df["link_type"] == "observation"]
     LOG.info(f"{authority} has {len(coupling)} Observation nodes, of which {len(links)} are linked")
     return model
@@ -256,11 +251,7 @@ def _observed_node(
 
 
 def add_observation_nodes(
-    model: Model,
-    coupling: gpd.GeoDataFrame,
-    measurements: dict[str, pd.DataFrame],
-    tolerance: float = 1.0,
-    observed_nodes: dict[tuple[str, str], int] | None = None,
+    model: Model, coupling: gpd.GeoDataFrame, measurements: dict[str, pd.DataFrame], tolerance: float = 1.0
 ) -> Model:
     """Add Observation nodes for the series in `coupling`, see `read_coupling` and `read_measurements`.
 
@@ -268,24 +259,15 @@ def add_observation_nodes(
     :param coupling: series with the node to observe
     :param measurements: measured discharges
     :param tolerance: maximum distance between the node to observe in `coupling` and in the model
-    :param observed_nodes: node to observe instead of that of `coupling`, by series and Aan/Af, see `OBSERVED_NODES`
 
     :return: updated Ribasim model
     """
     period = slice(pd.Timestamp(model.starttime), pd.Timestamp(model.endtime))
 
     graph = _Graph(model)
-    observed_nodes = {} if observed_nodes is None else observed_nodes
-    unknown = set(observed_nodes) - set(zip(coupling["MeetreeksC"], coupling["Aan/Af"], strict=True))
-    assert not unknown, f"Series in observed_nodes that are not in the koppeltabel: {unknown}"
-    wrong_types = {k: v for k, v in observed_nodes.items() if graph.node_types.get(v) not in OBSERVED_NODE_TYPES}
-    assert not wrong_types, f"Nodes in observed_nodes of which the flow_rate cannot be observed: {wrong_types}"
     times: list[pd.DataFrame] = [] if model.observation.time.df is None else [model.observation.time.df]
     for _, row in coupling.iterrows():
-        node_id = observed_nodes.get((row["MeetreeksC"], row["Aan/Af"]))
-        koppeling = ""
-        if node_id is None:
-            node_id, koppeling = _observed_node(model, row, graph, tolerance, tolerance)
+        node_id, koppeling = _observed_node(model, row, graph, tolerance, tolerance)
         observation = model.observation.add(
             Node(geometry=row["geometry"], name=row["MeetreeksC"], meta_aan_af=row["Aan/Af"], meta_koppeling=koppeling)
         )
