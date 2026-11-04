@@ -5,7 +5,7 @@ import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet
-from ribasim_nl.gsk3e import line_between, read_reach
+from ribasim_nl.geometry import line_between
 from ribasim_nl.model import DEFAULT_TABLES
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
@@ -23,6 +23,7 @@ ribasim_toml = ribasim_dir / "model.toml"
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 areas_gpkg = cloud.joinpath(authority, "verwerkt/3_input/areas.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
+gsk3e_gpkg = cloud.joinpath("Basisgegevens/GSK3E/gsk3e.gpkg")
 
 HOHER_ABSTURZ_NODE_ID = 514
 DIE_WILD_MANNING_NODE_ID = 1101
@@ -165,7 +166,9 @@ model.merge_basins(node_id=788, to_node_id=1150)
 # see https://github.com/Deltares/Ribasim-NL/issues/992
 # LevelBoundary 837 and FlowBoundary 49 are this waterway, so they become Basins. Between them is the Hoher Absturz, and
 # downstream of them a ManningResistance. The new nodes reuse IDs that were removed above, to keep the IDs of later nodes.
-die_wild = read_reach(code="279982", name="Die Wild")
+die_wild_gdf = gpd.read_file(gsk3e_gpkg, layer="waterways", where="GEWKZ3E = '279982' AND ABSNAME = 'Die Wild'")
+assert len(die_wild_gdf) == 1
+die_wild = cast(LineString, die_wild_gdf.geometry.iloc[0].reverse())  # GSK3E draws waterways in upstream direction
 hoher_absturz = cast(Point, gpd.GeoSeries([Point(307305.41, 5750171.41)], crs="EPSG:25832").to_crs(model.crs).iloc[0])
 model.update_node(node_id=837, node_type="Basin", data=basin_data)
 model.update_node(node_id=49, node_type="Basin", data=basin_data)

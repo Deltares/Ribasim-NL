@@ -487,7 +487,7 @@ stages:
       - data/RijnenIJssel/verwerkt/1_ontvangen_data/wrij_profielen.gpkg
       - data/RijnenIJssel/verwerkt/sturing/aanvoergebieden.gpkg
       - data/RijnenIJssel/verwerkt/parameters/static_data.xlsx
-      - data/Basisgegevens/GSK3E/gsk3e_EPSG25832_Shape.zip
+      - data/Basisgegevens/GSK3E/gsk3e.gpkg
     outs:
       - data/RijnenIJssel/modellen/RijnenIJssel_parameterized_model
   parameterized_stichtse_rijnlanden:
@@ -1211,7 +1211,7 @@ stages:
       - data/Rivierenland/modellen/Rivierenland_profiles
       - data/Rivierenland/verwerkt/profielen/network.gpkg
       - data/Rivierenland/verwerkt/crossings.gpkg
-      - data/Basisgegevens/GSK3E/gsk3e_EPSG25832_Shape.zip
+      - data/Basisgegevens/GSK3E/gsk3e.gpkg
       - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Rivierenland/modellen/Rivierenland_boezemmodel_2024_12_0
