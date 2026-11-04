@@ -1,6 +1,5 @@
 """Parameterisation of water board: Rivierenland."""
 
-import geopandas as gpd
 import ribasim_nl.ribasim_parametrization as ribasim_param
 from ribasim_nl.control import (
     set_flow_rate,
@@ -18,7 +17,7 @@ from ribasim_nl.workflow import (
     set_manning_resistance_outside_bergend,
     write_and_run_forcing_model,
 )
-from shapely.geometry import Point, box
+from shapely.geometry import Point
 
 from ribasim_nl import CloudStorage, Model
 
@@ -179,8 +178,4 @@ set_design_capacities(ribasim_model, from_to_node_function_table)
 
 set_flow_rate(ribasim_model.pump.static.df, [664], 8.0)  # average flow rate in the winter
 
-# the outlets near Groesbeek drain via Germany into the Ooijpolder, route their links along the waterways there, see #995
-waterways = gpd.read_file(
-    cloud.joinpath("Basisgegevens/GSK3E/gsk3e.gpkg"), layer="waterways", mask=box(192500, 420500, 199500, 428500)
-)
-write_and_run_forcing_model(ribasim_model, paths, extra_waterways={161: waterways})
+write_and_run_forcing_model(ribasim_model, paths)

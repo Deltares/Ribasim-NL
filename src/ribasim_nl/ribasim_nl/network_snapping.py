@@ -725,6 +725,7 @@ def snap_model(
     water_path: pathlib.Path | None = None,
     top10nl_path: pathlib.Path | None = None,
     tolerance: float = 10.0,
+    link_ids: list[int] | None = None,
     extra_waterways: dict[int, gpd.GeoDataFrame] | None = None,
 ) -> Model:
     """Snap a model to the hydro-objects of the profile-generation, see `snap_to_network`.
@@ -735,6 +736,7 @@ def snap_model(
     :param water_path: GeoParquet with water surfaces, see `ribasim_nl.bgt_water`, defaults to None
     :param top10nl_path: Top10NL GeoPackage, of which the water lines complement the hydro-objects, defaults to None
     :param tolerance: buffer around the basin area within which hydro-objects are used, defaults to 10.0
+    :param link_ids: only route these links, defaults to None (all)
     :param extra_waterways: per Basin, waterways outside its basin area, see `snap_to_network`
     """
     node_geometry = model.node.df.geometry.copy()
@@ -751,7 +753,13 @@ def snap_model(
         x0, y0, x1, y1 = model.basin.area.df.total_bounds
         water = read_bgt_water(shapely.box(x0, y0, x1, y1), path=water_path, columns=["geometry"])
     model = snap_to_network(
-        model, hydro_objects, culverts=culverts, water=water, tolerance=tolerance, extra_waterways=extra_waterways
+        model,
+        hydro_objects,
+        culverts=culverts,
+        water=water,
+        tolerance=tolerance,
+        link_ids=link_ids,
+        extra_waterways=extra_waterways,
     )
     moved = ~model.node.df.geometry.geom_equals_exact(node_geometry, tolerance=0)
     moved_types = set(model.node.df.loc[moved, "node_type"])
