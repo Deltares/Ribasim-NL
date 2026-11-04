@@ -73,8 +73,9 @@ def test_rating_curve_from_bottom():
     ],
 )
 def test_rating_curve_from_bottom_invalid(q: list[float], h: list[float], bottom: float):
+    qh = pd.DataFrame({"Q": q, "H": h})
     with pytest.raises(AssertionError):
-        rating_curve_from_bottom(pd.DataFrame({"Q": q, "H": h}), bottom)
+        rating_curve_from_bottom(qh, bottom)
 
 
 def test_read_kwk_properties():
@@ -281,8 +282,9 @@ def test_line_along():
 
 def test_line_along_needs_connected_lines():
     lines = [LineString([(0, 0), (1, 0)]), LineString([(5, 0), (6, 0)])]
+    start, end = Point(0, 0), Point(6, 0)
     with pytest.raises(AssertionError, match="connect end to end"):
-        line_along(lines, Point(0, 0), Point(6, 0))
+        line_along(lines, start, end)
 
 
 def test_parallel_kwk_next_to_a_structure_in_the_network():
