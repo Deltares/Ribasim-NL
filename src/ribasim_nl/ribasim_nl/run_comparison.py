@@ -156,8 +156,9 @@ def read_run(commit: str | None) -> Run:
 def node_mapping(base: gpd.GeoDataFrame, head: gpd.GeoDataFrame) -> pd.Series:
     """The node_id in `head` of each node_id in `base`, with the negated ID for a node that is only in `base`.
 
-    Nodes of the same type at the same location are the same node, whatever their ID. The others are the same node
-    if they have the same ID and type, so they moved.
+    Nodes of the same type at the same location are the same node, whatever their ID. Other Observations are the same
+    node if they have the same name, since the layout moves them and their ID says nothing about the series they
+    measure. The others are the same node if they have the same ID and type, so they moved.
     """
 
     def locations(nodes: gpd.GeoDataFrame) -> pd.DataFrame:
@@ -175,10 +176,25 @@ def node_mapping(base: gpd.GeoDataFrame, head: gpd.GeoDataFrame) -> pd.Series:
     mapping = pd.Series(-base.index.to_numpy(), index=base.index, name="node_id")
     mapping[pairs["node_id_base"].to_numpy()] = pairs["node_id_head"].to_numpy()
 
-    open_base = base.index.difference(pd.Index(pairs["node_id_base"]))
-    open_head = head.index.difference(pd.Index(pairs["node_id_head"]))
+    def open_observations(nodes: gpd.GeoDataFrame, matched: pd.Series) -> pd.Series:
+        """The node_id by name of the Observations that are not matched yet, without ambiguous names."""
+        names = nodes.loc[(nodes["node_type"] == "Observation") & ~nodes.index.isin(matched), "name"]
+        names = names[~names.duplicated(keep=False)]
+        return pd.Series(names.index.to_numpy(), index=names.to_numpy())
+
+    named = pd.concat(
+        [open_observations(base, pairs["node_id_base"]), open_observations(head, pairs["node_id_head"])],
+        axis=1,
+        join="inner",
+        keys=["node_id_base", "node_id_head"],
+    )
+    mapping[named["node_id_base"].to_numpy()] = named["node_id_head"].to_numpy()
+
+    open_base = base.index.difference(pd.Index(pairs["node_id_base"])).difference(pd.Index(named["node_id_base"]))
+    open_head = head.index.difference(pd.Index(pairs["node_id_head"])).difference(pd.Index(named["node_id_head"]))
     same_id = open_base.intersection(open_head)
-    moved = same_id[base.loc[same_id, "node_type"] == head.loc[same_id, "node_type"]]
+    same_type = base.loc[same_id, "node_type"] == head.loc[same_id, "node_type"]
+    moved = same_id[same_type & (base.loc[same_id, "node_type"] != "Observation")]
     mapping.loc[moved] = moved.to_numpy()
     matched = mapping[mapping > 0]
     assert matched.is_unique, "Multiple nodes of the base run are matched with the same node"

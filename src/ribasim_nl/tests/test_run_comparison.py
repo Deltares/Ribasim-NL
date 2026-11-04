@@ -108,6 +108,16 @@ def test_node_mapping_location_is_not_id():
     assert mapping[1] == -1
 
 
+def test_node_mapping_observations_by_name():
+    """The layout moved Observations whose IDs shifted, so an ID now belongs to another series."""
+    base = nodes({1: ("Observation", 0.0), 2: ("Observation", 10.0), 3: ("Observation", 20.0), 4: ("Basin", 30.0)})
+    base["name"] = ["a", "b", "gone", ""]
+    head = nodes({2: ("Observation", 1.0), 3: ("Observation", 11.0), 4: ("Basin", 30.0)})
+    head["name"] = ["a", "b", ""]
+    # Observation 3 of base is not matched with Observation 3 of head, which measures b
+    assert node_mapping(base, head).to_dict() == {1: 2, 2: 3, 3: -3, 4: 4}
+
+
 def test_renumber_hides_shifted_ids():
     base_rows = {1: ("Basin", 0.0), 2: ("Junction", 10.0), 3: ("Basin", 20.0)}
     head_rows = {1: ("Basin", 0.0), 5: ("Junction", 10.0), 3: ("Basin", 20.0)}
