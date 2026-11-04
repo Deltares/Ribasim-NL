@@ -14,10 +14,13 @@ A structure in `PARALLEL_KWK` is next to another structure, between the same Bas
 the network. `5_model_netwerk` leaves it out, and `6_model_sturing` adds it.
 """
 
+from collections.abc import Iterable
 from typing import Any, Literal, NamedTuple
 
 import numpy as np
 import pandas as pd
+import shapely
+import shapely.ops
 from ribasim.nodes import discrete_control, flow_demand, outlet, pump, tabulated_rating_curve
 from shapely.geometry import LineString, Point
 
@@ -54,15 +57,17 @@ YES_NO = {"ja": True, "nee": False}
 class ParallelKwk(NamedTuple):
     """A structure next to the structure with code `main`, flowing the other way with `reverse`, at `offset` or `xy`.
 
-    With `follow_main` its links follow those of the main structure, so Junctions combine the flow of both, which is
-    what is measured upstream of a weir with a lock next to it.
+    With `downstream_network_node`, the link out of it starts along the network from this node. It then shares the
+    route of the main structure from where their channels meet, so a Junction there combines the flow of both, as is
+    measured upstream of a weir with a lock next to it. `8b_update_bc` keeps such an observed Junction as it is, and
+    routes the other links.
     """
 
     main: str
     reverse: bool = False
     offset: float = 30.0  # m
     xy: tuple[float, float] | None = None
-    follow_main: bool = False
+    downstream_network_node: int | None = None
 
 
 # The structures of a complex that is one place in the network, by their code
@@ -71,10 +76,12 @@ PARALLEL_KWK = {
     "37C-001-01": ParallelKwk("37C-350-09", xy=(62091.0, 426984.0)),  # Goereese sluis, next to the Haringvlietsluizen
     "20A-001-04": ParallelKwk("20A-001-02", reverse=True),  # Krabbersgatsluis, supply of the Markermeer
     "20D-001-04": ParallelKwk("20D-001-08", reverse=True),  # Houtribsluizen, supply of the Markermeer
-    # The locks and fish passages next to the weirs of the Nederrijn and the Lek, see #996
-    "38F-001-02": ParallelKwk("38F-001-01", xy=(137631.0, 444946.0), follow_main=True),  # Sluis Hagestein
-    "39B-003-01": ParallelKwk("39B-003-02", xy=(156499.0, 443114.0), follow_main=True),  # Sluis Amerongen
-    "40A-004-01": ParallelKwk("40A-004-02", xy=(183700.0, 442130.0), follow_main=True),  # Sluis Driel
+    # The locks and fish passages next to the weirs of the Nederrijn and the Lek, in their own channels, see #996
+    # The network has a gap at Sluis Hagestein, which is placed 33 m from the NIS location to be within 100 m of the
+    # network upstream of it, so `8b_update_bc` routes the link towards it
+    "38F-001-02": ParallelKwk("38F-001-01", xy=(137650.0, 444919.0), downstream_network_node=5309),  # Sluis Hagestein
+    "39B-003-01": ParallelKwk("39B-003-02", xy=(156499.0, 443114.0)),  # Sluis Amerongen
+    "40A-004-01": ParallelKwk("40A-004-02", xy=(183700.0, 442130.0), downstream_network_node=8654),  # Sluis Driel
     "46A-001-01": ParallelKwk("46A-001-06"),  # Schutsluis Heumen, next to the Keersluis
     "46A-001-02": ParallelKwk("46A-001-06", reverse=True, offset=-30.0),  # Gemaal Heumen, from the canal to the Maas
     # Dunea pumps Maas water to the Waal side of the Wilhelminasluis, see #979
@@ -82,15 +89,15 @@ PARALLEL_KWK = {
 }
 
 
-def parallel_lines(
-    upstream_line: LineString, downstream_line: LineString, point: Point
-) -> tuple[LineString, LineString]:
-    """Lines of the links of a structure at `point`, along the links of the structure next to it, except at the ends."""
-    assert len(upstream_line.coords) > 2 and len(downstream_line.coords) > 2, "Links should have shared vertices"
-    return (
-        LineString([*upstream_line.coords[:-1], *point.coords]),
-        LineString([*point.coords, *downstream_line.coords[1:]]),
-    )
+def line_along(lines: Iterable[LineString], start: Point, end: Point) -> LineString:
+    """The line from `start` to `end` along `lines` that connect end to end, such as waterways of OpenStreetMap."""
+    merged = shapely.line_merge(shapely.union_all(list(lines)))
+    assert isinstance(merged, LineString), f"Expected lines that connect end to end, got a {merged.geom_type}"
+    first, last = merged.project(start), merged.project(end)
+    part = shapely.ops.substring(merged, min(first, last), max(first, last))
+    assert isinstance(part, LineString) and part.length > 0, f"No line from {start} to {end}"
+    coords = list(part.coords) if first < last else list(part.coords)[::-1]
+    return shapely.remove_repeated_points(LineString([*start.coords, *coords, *end.coords]))
 
 
 def read_rating_curve(kwk_df: pd.DataFrame) -> tabulated_rating_curve.Static:

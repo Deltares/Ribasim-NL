@@ -26,6 +26,7 @@ from ribasim_nl.rws_kunstwerken import (
 )
 from shapely.affinity import translate
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
+from shapely.ops import split
 
 from ribasim_nl import CloudStorage, Model, Network
 from ribasim_nl import discrete_control as dc
@@ -706,7 +707,6 @@ for row in model.manning_resistance.static.df.itertuples():
 # %% Waal bij Tiel, see https://github.com/Deltares/Ribasim-NL/issues/974
 # The ManningResistance between these Basins becomes the Q(h) relation of an LSM calculation. It moves upstream of the
 # branch to the Amsterdam-Rijnkanaal, so the Pr. Bernhardsluis takes its water from the Basin downstream of it.
-# The Basin areas stay as they are, since a change in their boundary would renumber the network.
 TIEL, TIEL_UPSTREAM_BASIN, TIEL_DOWNSTREAM_BASIN = 6630, 7291, 6613
 PR_BERNHARDSLUIS = model.find_node_id(meta_code_waterbeheerder="39D-001-02")
 basin_profile = model.basin.profile.df
@@ -715,7 +715,10 @@ tiel_rating_curve = rating_curve_from_bottom(
     pd.read_excel(kwk_dir / "QhTielWaal.xlsx", sheet_name="Qh-relatie", usecols=["Q", "H"]),
     bottom=float(basin_profile.loc[basin_profile.node_id == TIEL_UPSTREAM_BASIN, "level"].min()),
 )
+# on the Waal, as links are routed along the network
 tiel_point = Point(160550, 433400)
+tiel_waal = cast(LineString, network.links.geometry.iloc[network.links.distance(tiel_point).argmin()])
+tiel_point = tiel_waal.interpolate(tiel_waal.project(tiel_point))
 tiel_network_node = network.add_node(tiel_point, max_distance=100)
 assert tiel_network_node is not None, f"Tiel {tiel_point} is too far from the network"
 
@@ -740,6 +743,26 @@ model.move_node(TIEL, tiel_point)
 for link_id, line in tiel_links.items():
     model.link.df.loc[link_id, ["geometry"]] = line
 profile_geometries = [i for i in profile_geometries if i["node_id"] != TIEL]
+
+# The boundary between their areas moves along, so the Waal down to Tiel and the branch to the Pr. Bernhardsluis belong
+# to the Basin downstream. Links are routed over the area of their Basin, see `rebuild_junction_trees`, and nodes on the
+# branch couple to the nearest Basin area. The profiles stay as they are.
+basin_areas = model.basin.area.df
+assert basin_areas is not None
+tiel_area = basin_areas.loc[basin_areas.node_id == TIEL_UPSTREAM_BASIN, "geometry"].item()
+tiel_cut = LineString([(tiel_point.x, tiel_point.y - 500), (tiel_point.x, tiel_point.y + 500)])
+tiel_parts = sorted(
+    split(tiel_area, tiel_cut).geoms, key=lambda i: i.distance(model.basin[TIEL_UPSTREAM_BASIN].geometry)
+)
+assert len(tiel_parts) == 2, f"Expected two parts of the area of Basin {TIEL_UPSTREAM_BASIN}, got {len(tiel_parts)}"
+downstream_area = basin_areas.loc[basin_areas.node_id == TIEL_DOWNSTREAM_BASIN, "geometry"].item()
+downstream_area = downstream_area.union(tiel_parts[1])
+assert downstream_area.geom_type == "Polygon" or len(downstream_area.geoms) == 1, "The Basin area should be one part"
+for basin_id, area in ((TIEL_UPSTREAM_BASIN, tiel_parts[0]), (TIEL_DOWNSTREAM_BASIN, downstream_area)):
+    area = MultiPolygon([cast(Polygon, area)]) if area.geom_type == "Polygon" else area
+    basin_areas.loc[basin_areas.index[basin_areas.node_id == basin_id], "geometry"] = gpd.GeoSeries(
+        [area], index=basin_areas.index[basin_areas.node_id == basin_id], crs=basin_areas.crs
+    )
 
 # %%wegschrijven model
 print("write ribasim model")

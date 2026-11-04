@@ -2,6 +2,7 @@
 import warnings
 from typing import Literal, cast
 
+import geopandas as gpd
 import numpy as np
 import openpyxl
 import pandas as pd
@@ -20,7 +21,7 @@ from ribasim_nl.rws_kunstwerken import (
     flow_demand_tables,
     has_discrete_control,
     has_flow_demand,
-    parallel_lines,
+    line_along,
     read_control_thresholds,
     read_kwk_properties,
     read_qq_curve,
@@ -29,7 +30,7 @@ from ribasim_nl.rws_kunstwerken import (
 )
 from shapely.geometry import LineString, Point
 
-from ribasim_nl import CloudStorage, Model
+from ribasim_nl import CloudStorage, Model, Network
 
 warnings.filterwarnings(
     action="ignore",
@@ -133,7 +134,7 @@ def add_flow_demand(model: Model, node_id: int, tables: list, name: str, demand_
     model.link.add(demand_node, model.get_node(node_id))
 
 
-def add_parallel_kwk(model: Model, code: str, name: str, node_type: str, node_id: int) -> None:
+def add_parallel_kwk(model: Model, network: Network, code: str, name: str, node_type: str, node_id: int) -> None:
     """Add the structure with `code` next to its main structure, see `PARALLEL_KWK`, with a Static table to replace."""
     parallel = PARALLEL_KWK[code]
     main_id = model.find_node_id(meta_code_waterbeheerder=parallel.main)
@@ -147,17 +148,12 @@ def add_parallel_kwk(model: Model, code: str, name: str, node_type: str, node_id
     point = Point(parallel.xy) if parallel.xy else Point(main_point.x + parallel.offset, main_point.y + parallel.offset)
     static = {"Outlet": outlet.Static, "Pump": pump.Static}[node_type](flow_rate=[0.0])
     node = model.get_component(node_type).add(Node(node_id, point, name=name, meta_code_waterbeheerder=code), [static])
-    lines: tuple[LineString | None, LineString | None] = (None, None)
-    if parallel.follow_main:
-        assert not parallel.reverse, f"The links of {name} cannot follow those of its main structure in reverse"
-        links = model.link.df
-        lines = parallel_lines(
-            links.loc[(links.from_node_id == upstream) & (links.to_node_id == main_id), "geometry"].item(),
-            links.loc[(links.from_node_id == main_id) & (links.to_node_id == downstream), "geometry"].item(),
-            point,
-        )
-    model.link.add(model.get_node(int(upstream)), node, geometry=lines[0])
-    model.link.add(node, model.get_node(int(downstream)), geometry=lines[1])
+    model.link.add(model.get_node(int(upstream)), node)
+    downstream_line = None
+    if parallel.downstream_network_node is not None:
+        line = network.get_line(parallel.downstream_network_node, int(downstream), directed=False)
+        downstream_line = LineString([*point.coords, *line.coords])
+    model.link.add(node, model.get_node(int(downstream)), geometry=downstream_line)
 
 
 def read_pid(control_properties, control_basin_id):
@@ -189,6 +185,7 @@ kwk_xlsx = kwk_dir.joinpath("kunstwerken.xlsx")
 all_kwk_df = pd.read_excel(kwk_xlsx, sheet_name="kunstwerken")
 all_kwk_df.loc[:, "code"] = all_kwk_df["code"].astype(str)
 model = Model.read(ribasim_toml)
+network = Network.from_network_gpkg(cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg"))
 starttime, endtime = pd.Timestamp(model.starttime), pd.Timestamp(model.endtime)
 
 # %% IDs that no node has
@@ -227,7 +224,9 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
 
         # a structure next to another one is not in the network yet
         if kwk.code in PARALLEL_KWK:
-            add_parallel_kwk(model, str(kwk.code), str(kwk.naam), kwk_properties["Ribasim type"], next(free_node_ids))
+            add_parallel_kwk(
+                model, network, str(kwk.code), str(kwk.naam), kwk_properties["Ribasim type"], next(free_node_ids)
+            )
 
         # find existing node_id in model
         node_id = model.find_node_id(meta_code_waterbeheerder=str(kwk_properties["Kunstwerkcode"]))
@@ -351,6 +350,24 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
                 name=f"minimum debiet {kwk.naam}: {demand} [m3/s]",
                 demand_node_id=next(free_node_ids) if gebied in GEBIEDEN_WITH_FREE_IDS else None,
             )
+
+# %% The Goereese sluis drains to the sea along its channel and the fairway, which are not in the network
+goereese_sluis = model.find_node_id(meta_code_waterbeheerder="37C-001-01")
+sea = model.downstream_node_id(goereese_sluis)
+# from just upstream of the sluis to past the boundary
+goereese_bbox = (61500, 426960, 62200, 428900)
+waterways = pd.concat(
+    gpd.read_file(cloud.joinpath(f"Basisgegevens/OSM/waterway_{kind}.gpkg"), bbox=goereese_bbox)
+    for kind in ("canal", "fairway")
+)
+goereese_line = line_along(
+    waterways.geometry.clip_by_rect(*goereese_bbox).explode(),
+    cast(Point, model.node.df.at[goereese_sluis, "geometry"]),
+    cast(Point, model.node.df.at[sea, "geometry"]),
+)
+links = model.link.df
+(goereese_link,) = links.index[(links.from_node_id == goereese_sluis) & (links.to_node_id == sea)]
+links.loc[goereese_link, ["geometry"]] = goereese_line  # ty: ignore[invalid-assignment]
 
 # %% write
 ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_sturing/hws.toml")
