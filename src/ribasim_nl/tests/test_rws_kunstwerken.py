@@ -1,14 +1,17 @@
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pytest
 from ribasim_nl.rws_kunstwerken import (
     PARALLEL_KWK,
     SUBTRACT_PROPERTY,
+    ParallelKwk,
     discrete_control_tables,
     flow_demand_tables,
     has_discrete_control,
     has_flow_demand,
     line_along,
+    main_route,
     rating_curve_from_bottom,
     read_control_thresholds,
     read_kwk_properties,
@@ -16,6 +19,8 @@ from ribasim_nl.rws_kunstwerken import (
     repeat_yearly,
 )
 from shapely.geometry import LineString, Point
+
+from ribasim_nl import Network
 
 STARTTIME = pd.Timestamp("2017-01-01")
 ENDTIME = pd.Timestamp("2019-01-01")
@@ -192,6 +197,38 @@ def test_read_static_levels(node_type, listen_side, levels):
             assert column not in static or static[column].isna().all()
 
 
+def test_read_static_seasonal_thresholds():
+    """Like Sluis Borgharen, a lock with summer and winter thresholds and a FlowDemand stops at the lowest threshold."""
+    df = sheet(
+        [
+            ["Ribasim type", "Outlet"],
+            ["Kunstwerkcode", "61F-004-02"],
+            ["Streefpeil bovenstrooms (m +NAP)", 44.05],
+            ["Aanvoer Capaciteit (m3/s)", 0],
+            ["Afvoer Capaciteit (m3/s)", 10],
+            ["FlowDemand", "ja"],
+            ["Type sturing", "DiscreteControl"],
+            ["Meetlocatiecode", 8007826],
+            [np.nan],
+            ["FlowDemand (m3/s)", "Prioriteit"],
+            [10, 2],
+            [np.nan],
+            ["Toestand (control_state)", "Bovengrens (threshold_high)", "Ondergrens (threshold_low)", "Datum"],
+            ["afvoer", 44.075, 44.025, pd.Timestamp("2026-01-01")],
+            ["afvoer", 44.175, 44.125, pd.Timestamp("2026-04-01")],
+            ["afvoer", 44.075, 44.025, pd.Timestamp("2026-10-01")],
+        ]
+    )
+    static = read_static(df, "Outlet", "upstream").df
+    assert static is not None
+    assert static["flow_rate"].to_list() == [0.0, 10.0]
+    # not at the Streefpeil, and in both states at the winter threshold, also in summer
+    assert static["min_upstream_level"].to_list() == [44.025, 44.025]
+    _, condition, _ = discrete_control_tables(df, 7826, STARTTIME, ENDTIME)
+    assert condition.df is not None
+    assert condition.df["threshold_low"].to_list() == [44.025, 44.125, 44.025] * 3
+
+
 def test_read_static_supply_levels():
     """Like Gemaal Born, a pump that supplies the Basin downstream stops at the upper threshold."""
     df = sheet(
@@ -285,6 +322,30 @@ def test_line_along_needs_connected_lines():
     start, end = Point(0, 0), Point(6, 0)
     with pytest.raises(AssertionError, match="connect end to end"):
         line_along(lines, start, end)
+
+
+def gap_network() -> tuple[Network, tuple[int, int]]:
+    """A network with a gap from x = 10 to 20, like at a lock chamber, and the nodes at both ends of the gap."""
+    network = Network(gpd.GeoDataFrame(geometry=[LineString([(0, 0), (10, 0)]), LineString([(20, 0), (30, 0)])]))
+    nodes = network.nodes
+    ends = tuple(int(nodes.index[nodes.distance(Point(x, 0)) < 1e-6][0]) for x in (10, 20))
+    return network, (ends[0], ends[1])
+
+
+def test_main_route_bridges_lock_chambers():
+    """Like Sluis Roermond, a lock in a gap of the network gets a line through its chamber."""
+    network, chamber = gap_network()
+    route = main_route(network, {"lock": ParallelKwk("weir", xy=(15.0, 1.0), chamber=chamber)})
+    assert len(route) == 3
+    assert list(route.geometry.iloc[-1].coords) == [(10, 0), (20, 0)]
+    # without a chamber, the network as it is
+    assert len(main_route(network, {"lock": ParallelKwk("weir", xy=(15.0, 1.0))})) == 2
+
+
+def test_main_route_lock_in_its_chamber():
+    network, chamber = gap_network()
+    with pytest.raises(AssertionError, match="not in its chamber"):
+        main_route(network, {"lock": ParallelKwk("weir", xy=(15.0, 10.0), chamber=chamber)})
 
 
 def test_parallel_kwk_next_to_a_structure_in_the_network():
