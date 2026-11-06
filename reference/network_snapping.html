@@ -235,7 +235,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="even">
 <td><a href="#ribasim_nl.network_snapping.read_waterways">read_waterways</a></td>
-<td>Read the Top10NL water lines within a mask, to complement the hydro-objects.</td>
+<td>Read the water lines of the Top10NL, or of a dataset in its format, within a mask, to complement the hydro-objects.</td>
 </tr>
 <tr class="odd">
 <td><a href="#ribasim_nl.network_snapping.route_basin_links">route_basin_links</a></td>
@@ -347,8 +347,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.network_snapping.read_waterways" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.network_snapping.read_waterways">read_waterways</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>network_snapping.read_waterways(top10nl_path, mask)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Read the Top10NL water lines within a mask, to complement the hydro-objects.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>network_snapping.read_waterways(path, mask)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Read the water lines of the Top10NL, or of a dataset in its format, within a mask, to complement the hydro-objects.</p>
+<p>See <code>scripts/download_gsk3e.py</code> for such a dataset.</p>
 </section>
 <section id="ribasim_nl.network_snapping.route_basin_links" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.network_snapping.route_basin_links">route_basin_links</h3>
@@ -626,18 +627,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
 <span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    crossings_path<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    water_path<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    top10nl_path<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    waterway_paths<span class="op">=</span>(),</span>
 <span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    tolerance<span class="op">=</span><span class="fl">10.0</span>,</span>
-<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    routing_areas<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Snap a model to the hydro-objects of the profile-generation, see <code>snap_to_network</code>.</p>
 <section id="parameters-3" class="level4 doc-section doc-section-parameters">
 <h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-3">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 11%">
-<col style="width: 15%">
-<col style="width: 65%">
-<col style="width: 8%">
+<col style="width: 7%">
+<col style="width: 17%">
+<col style="width: 69%">
+<col style="width: 5%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -673,16 +675,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>None</code></td>
 </tr>
 <tr class="odd">
-<td>top10nl_path</td>
-<td>pathlib.Path | None</td>
-<td>Top10NL GeoPackage, of which the water lines complement the hydro-objects, defaults to None</td>
-<td><code>None</code></td>
+<td>waterway_paths</td>
+<td>typing.Sequence[pathlib.Path]</td>
+<td>GeoPackages of which the water lines complement the hydro-objects, the Top10NL and possibly others in its format, see <code>read_waterways</code>, defaults to none</td>
+<td><code>()</code></td>
 </tr>
 <tr class="even">
 <td>tolerance</td>
 <td>float</td>
 <td>buffer around the basin area within which hydro-objects are used, defaults to 10.0</td>
 <td><code>10.0</code></td>
+</tr>
+<tr class="odd">
+<td>routing_areas</td>
+<td>dict[int, shapely.Geometry] | None</td>
+<td>per Basin, an area beyond its basin area in which it is routed, see <code>snap_to_network</code></td>
+<td><code>None</code></td>
 </tr>
 </tbody>
 </table>
@@ -700,17 +708,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    move_basins<span class="op">=</span><span class="va">True</span>,</span>
 <span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    route_water<span class="op">=</span><span class="va">True</span>,</span>
 <span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    link_ids<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>    routing_areas<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Route flow links between a Basin and a connector node along the hydro-objects, and move Basin nodes onto them.</p>
 <p>Connector nodes are never moved, such that they stay at the location of the structure they represent. Basin nodes are moved onto the main route nearest to them if <code>move_basins</code> is True, see <code>route_basin_links</code>, and the nodes of their bergend part along with them. Links that cannot be routed, links to bergend basins and links to boundary nodes keep their geometry, unless it does not connect their nodes, see <code>straight_link_geometries</code>.</p>
 <section id="parameters-4" class="level4 doc-section doc-section-parameters">
 <h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-4">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 8%">
-<col style="width: 14%">
-<col style="width: 70%">
 <col style="width: 6%">
+<col style="width: 15%">
+<col style="width: 73%">
+<col style="width: 4%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -767,6 +776,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>link_ids</td>
 <td>list[int] | None</td>
 <td>only route these links, defaults to None (all)</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td>routing_areas</td>
+<td>dict[int, shapely.Geometry] | None</td>
+<td>per Basin, an area beyond its basin area in which the hydro-objects are used as well, for connector nodes that are connected to it over a long distance, for instance through Germany</td>
 <td><code>None</code></td>
 </tr>
 </tbody>
