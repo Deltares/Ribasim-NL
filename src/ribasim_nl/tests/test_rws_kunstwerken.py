@@ -205,13 +205,14 @@ def test_read_static_seasonal_thresholds():
             ["Kunstwerkcode", "61F-004-02"],
             ["Streefpeil bovenstrooms (m +NAP)", 44.05],
             ["Aanvoer Capaciteit (m3/s)", 0],
-            ["Afvoer Capaciteit (m3/s)", 10],
+            ["Afvoer Capaciteit (m3/s)", 0.1],
+            ["Maximale capaciteit (m3/s)", 0.1],
             ["FlowDemand", "ja"],
             ["Type sturing", "DiscreteControl"],
             ["Meetlocatiecode", 8007826],
             [np.nan],
             ["FlowDemand (m3/s)", "Prioriteit"],
-            [10, 2],
+            [0.1, 2],
             [np.nan],
             ["Toestand (control_state)", "Bovengrens (threshold_high)", "Ondergrens (threshold_low)", "Datum"],
             ["afvoer", 44.075, 44.025, pd.Timestamp("2026-01-01")],
@@ -221,7 +222,8 @@ def test_read_static_seasonal_thresholds():
     )
     static = read_static(df, "Outlet", "upstream").df
     assert static is not None
-    assert static["flow_rate"].to_list() == [0.0, 10.0]
+    assert static["flow_rate"].to_list() == [0.0, 0.1]
+    assert static["max_flow_rate"].to_list() == [0.1, 0.1]
     # not at the Streefpeil, and in both states at the winter threshold, also in summer
     assert static["min_upstream_level"].to_list() == [44.025, 44.025]
     _, condition, _ = discrete_control_tables(df, 7826, STARTTIME, ENDTIME)
