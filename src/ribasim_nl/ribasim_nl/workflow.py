@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Literal
 
 import geopandas as gpd
+import shapely
 
 import ribasim_nl.ribasim_parametrization as ribasim_param
 from ribasim_nl import CloudStorage, Model, junctionify, supply
@@ -61,6 +62,8 @@ class WaterBoardPaths:
     cloud: CloudStorage
     waterschap: str
     base_model_versie: str
+    # water lines in the format of the Top10NL beyond it, such as those of Germany in GSK3E
+    extra_waterways: tuple[Path, ...] = ()
 
     @property
     def base_model_toml(self) -> Path:
@@ -104,6 +107,11 @@ class WaterBoardPaths:
     @property
     def top10nl(self) -> Path:
         return settings.ribasim_nl_data_dir / "Basisgegevens/Top10NL/top10nl_Compleet.gpkg"
+
+    @property
+    def waterways(self) -> list[Path]:
+        """The water lines that complement the hydro-objects, see `ribasim_nl.network_snapping.snap_model`."""
+        return [self.top10nl, *self.extra_waterways]
 
     def model_dir(self, stage: Literal["feedback", "profiles", "forcing"]) -> Path:
         """Directory of the model written by a pipeline stage."""
@@ -358,10 +366,16 @@ def preserve_connector_meta(model: Model, method: Literal["merge", "combine_firs
         )
 
 
-def write_and_run_forcing_model(model: Model, paths: WaterBoardPaths) -> None:
+def write_and_run_forcing_model(
+    model: Model, paths: WaterBoardPaths, *, routing_areas: dict[int, shapely.Geometry] | None = None
+) -> None:
     """Write and run the forcing model and its steady state regression variants, and check the results.
 
     See `finish_regional_model`, which snaps the model to the hydro-objects of the profile generation.
+
+    :param model: model with forcing
+    :param paths: paths of the water board
+    :param routing_areas: per Basin, an area beyond its basin area in which it is routed, see `snap_to_network`
     """
     check_basin_meta_categorie(model)
     bound_supply_inflows(model)
@@ -373,7 +387,8 @@ def write_and_run_forcing_model(model: Model, paths: WaterBoardPaths) -> None:
             paths.profielen_dir,
             crossings_path=paths.crossings,
             water_path=paths.bgt_water,
-            top10nl_path=paths.top10nl,
+            waterway_paths=paths.waterways,
+            routing_areas=routing_areas,
         )
         return junctionify(model)
 

@@ -7,7 +7,7 @@ import numpy as np
 import shapely
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.geometry.base import BaseGeometry
-from shapely.ops import polygonize, polylabel
+from shapely.ops import polygonize, polylabel, substring
 
 from ribasim_nl.generic import _validate_inputs
 
@@ -248,6 +248,20 @@ def drop_z(geometry: LineString | MultiPolygon | Point | Polygon) -> LineString 
             )
 
     return geometry
+
+
+def line_between(line: LineString, start: Point, end: Point) -> LineString:
+    """The part of a line between the points nearest to two points, connected to these points.
+
+    :param line: line, drawn from `start` to `end`
+    :param start: first point
+    :param end: last point
+    :return: line that starts at `start` and ends at `end`
+    """
+    from_distance, to_distance = line.project(start), line.project(end)
+    assert from_distance < to_distance, f"{start} must lie before {end} along the line"
+    part = substring(line, from_distance, to_distance)
+    return LineString([start, *part.coords[1:-1], end])
 
 
 def link(point_from: Point, point_to: Point) -> LineString:
