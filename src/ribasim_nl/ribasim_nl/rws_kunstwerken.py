@@ -14,15 +14,18 @@ A structure in `PARALLEL_KWK` is next to another structure, between the same Bas
 the network. `5_model_netwerk` leaves it out, and `6_model_sturing` adds it.
 """
 
-from collections.abc import Iterable
-from typing import Any, Literal, NamedTuple
+from collections.abc import Iterable, Mapping
+from typing import Any, Literal, NamedTuple, cast
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 import shapely
 import shapely.ops
 from ribasim.nodes import discrete_control, flow_demand, outlet, pump, tabulated_rating_curve
 from shapely.geometry import LineString, Point
+
+from ribasim_nl.network import Network
 
 FLOW_KWARGS = {
     "Capaciteit (m3/s)": "flow_rate",
@@ -61,6 +64,9 @@ class ParallelKwk(NamedTuple):
     route of the main structure from where their channels meet, so a Junction there combines the flow of both, as is
     measured upstream of a weir with a lock next to it. `8b_update_bc` keeps such an observed Junction as it is, and
     routes the other links.
+
+    With `chamber`, the network nodes at both ends of its lock chamber. The network has a gap there, since it is clipped
+    to the Basin areas, which leave out the chamber, so `main_route` bridges it.
     """
 
     main: str
@@ -68,6 +74,7 @@ class ParallelKwk(NamedTuple):
     offset: float = 30.0  # m
     xy: tuple[float, float] | None = None
     downstream_network_node: int | None = None
+    chamber: tuple[int, int] | None = None
 
 
 # The structures of a complex that is one place in the network, by their code
@@ -82,11 +89,44 @@ PARALLEL_KWK = {
     "38F-001-02": ParallelKwk("38F-001-01", xy=(137650.0, 444919.0), downstream_network_node=5309),  # Sluis Hagestein
     "39B-003-01": ParallelKwk("39B-003-02", xy=(156499.0, 443114.0)),  # Sluis Amerongen
     "40A-004-01": ParallelKwk("40A-004-02", xy=(183700.0, 442130.0), downstream_network_node=8654),  # Sluis Driel
+    # The locks and the fish passage next to the weirs of the Maas, in their own channels, at their NIS location, see
+    # #1011. The fish passage of Linne is placed on its channel, 63 m north of the bridge over it in NIS. The series
+    # Lith measures the whole Maas, so the link out of its lock joins that of the weir where their channels meet.
+    "61F-004-02": ParallelKwk("61F-004-01", xy=(176846.0, 320008.0)),  # Sluis Borgharen
+    "58D-353-03": ParallelKwk("58D-353-01", xy=(192413.0, 353227.0)),  # Vistrap Linne
+    "58D-350-01": ParallelKwk("58D-354-01", xy=(196500.0, 358250.0), chamber=(9191, 9193)),  # Sluis Roermond
+    "58E-350-01": ParallelKwk("58E-350-04", xy=(205579.0, 370472.0)),  # Sluis Belfeld
+    "46D-350-01": ParallelKwk("46D-350-04", xy=(196224.0, 405947.0), chamber=(9226, 9231)),  # Sluis Sambeek
+    "45F-001-01": ParallelKwk("45F-001-02", xy=(179267.0, 420087.0)),  # Sluis Grave
+    # Sluis Lith
+    "45B-351-03": ParallelKwk(
+        "45B-351-02", xy=(159614.0, 424475.0), downstream_network_node=6575, chamber=(6576, 6575)
+    ),
     "46A-001-01": ParallelKwk("46A-001-06"),  # Schutsluis Heumen, next to the Keersluis
     "46A-001-02": ParallelKwk("46A-001-06", reverse=True, offset=-30.0),  # Gemaal Heumen, from the canal to the Maas
     # Dunea pumps Maas water to the Waal side of the Wilhelminasluis, see #979
     "Brakel, Maaswaterbel": ParallelKwk("44F-002-01", reverse=True, xy=(131922.0, 423045.0)),
 }
+
+
+def main_route(network: Network, structures: Mapping[str, ParallelKwk] = PARALLEL_KWK) -> gpd.GeoDataFrame:
+    """The lines of the network, and a straight line through each lock chamber of `structures` that it lacks.
+
+    Links are routed along these lines, see `ribasim_nl.flow_paths.rebuild_junction_trees_along_top10nl`, so they pass
+    through the chamber of such a lock, rather than straight from the nearest line.
+    """
+    links, nodes = network.links, network.nodes
+    chambers = []
+    for code, structure in structures.items():
+        if structure.chamber is None:
+            continue
+        for node_id in structure.chamber:
+            ends = ((links["node_from"] == node_id) | (links["node_to"] == node_id)).sum()
+            assert ends == 1, f"Network node {node_id} at the chamber of {code} is not the end of a gap"
+        line = LineString([cast(Point, nodes.at[node_id, "geometry"]) for node_id in structure.chamber])
+        assert structure.xy is not None and line.distance(Point(structure.xy)) < 5.0, f"{code} is not in its chamber"
+        chambers.append(line)
+    return pd.concat([links, gpd.GeoDataFrame(geometry=chambers, crs=links.crs)], ignore_index=True)
 
 
 def line_along(lines: Iterable[LineString], start: Point, end: Point) -> LineString:

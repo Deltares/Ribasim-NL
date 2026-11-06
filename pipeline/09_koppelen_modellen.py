@@ -32,6 +32,7 @@ from ribasim_nl.layout import move_nodes, offset_junctions, offset_links, resolv
 from ribasim_nl.model import find_toml
 from ribasim_nl.network_snapping import snap_to_waterways
 from ribasim_nl.observations import link_observations
+from ribasim_nl.rws_kunstwerken import main_route
 from ribasim_nl.rwzi import attach_rwzi_junctions
 from ribasim_nl.seasonal_levels import PEILBEHEER, apply_seasonal_levels, remove_seasonal_levels
 from ribasim_nl.settings import settings
@@ -742,7 +743,7 @@ def route_links_between_models(model: Model, network: Network) -> list[int]:
     straight = shapely.get_num_points(flow.geometry.to_numpy()) == 2
     rws = (from_authority == "Rijkswaterstaat") & (to_authority == "Rijkswaterstaat")
     link_ids = flow.index[straight & ((from_authority != to_authority) | rws)].tolist()
-    snap_to_waterways(model, top10nl_gpkg, link_ids, main_route=network.links, tolerance=250.0)
+    snap_to_waterways(model, top10nl_gpkg, link_ids, main_route=main_route(network), tolerance=250.0)
     return link_ids
 
 
@@ -817,7 +818,7 @@ def tidy_coupling_layout(model: Model, link_ids: list[int], network: Network) ->
     """
     link_ids = [i for i in link_ids if i in model.link.df.index]  # some were replaced, see `change_routes`
     rebuilt_links, rebuilt_junctions = rebuild_junction_trees_along_top10nl(
-        model, rws_basins_between_models(model), top10nl_gpkg, network.links
+        model, rws_basins_between_models(model), top10nl_gpkg, main_route(network)
     )
     junctions = set(model.node.df.index[model.node.df["node_type"] == "Junction"])
     junctionify(model)
