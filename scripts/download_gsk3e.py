@@ -6,16 +6,16 @@ single-part 2D lines in the CRS of the models, to be tracked with `dvc add`, in 
 - `waterways`: all of them, to draw a link along a named reach.
 - `top10nl_waterdeel_lijn`: their parts outside the water boards and Rijkswaterstaat, in the layer of the Top10NL water
   lines. That way they complement the Top10NL in the snapping of links, see `ribasim_nl.network_snapping.read_waterways`,
-  without duplicating the Dutch waterways. The columns come from these
-two shapefiles, so GEWKZ3E, GEWHNAME and ABSNAME are only set for the named waterways, and GEWNAME for the other ones.
-The named waterways are stationed from their mouth, so they are drawn in upstream direction.
+  without duplicating the Dutch waterways.
+
+The columns come from the two shapefiles, so GEWKZ3E, GEWHNAME and ABSNAME are only set for the named waterways, and
+GEWNAME for the other ones. The named waterways are stationed from their mouth, so they are drawn in upstream direction.
 
 Not a DVC stage: run it to update the dataset, and commit the updated `.dvc` file.
 
-Usage: pixi run python scripts/download_gsk3e.py [--archive ZIP] [--output GPKG]
+Usage: pixi run python scripts/download_gsk3e.py
 """
 
-import argparse
 import logging
 import urllib.request
 from pathlib import Path
@@ -30,6 +30,8 @@ URL = (
     "https://www.opengeodata.nrw.de/produkte/umwelt_klima/wasser/oberflaechengewaesser/gsk3e/gsk3e_EPSG25832_Shape.zip"
 )
 OUTPUT = settings.ribasim_nl_data_dir / "Basisgegevens/GSK3E/gsk3e.gpkg"
+# the download, which is kept to convert it again
+ARCHIVE = Path(".cache/gsk3e_EPSG25832_Shape.zip")
 BOUNDARIES = settings.ribasim_nl_data_dir / "Basisgegevens/RWS_waterschaps_grenzen"
 TOP10NL_LAYER = "top10nl_waterdeel_lijn"
 SHAPEFILES = {
@@ -66,23 +68,18 @@ def outside_netherlands(waterways: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--archive", type=Path, default=Path(".cache/gsk3e_EPSG25832_Shape.zip"), help="downloaded zip")
-    parser.add_argument("--output", type=Path, default=OUTPUT, help="GeoPackage file to write")
-    args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
-
-    if not args.archive.exists():
+    if not ARCHIVE.exists():
         LOG.info(f"Downloading {URL}")
-        args.archive.parent.mkdir(parents=True, exist_ok=True)
-        urllib.request.urlretrieve(URL, args.archive)
-    waterways = read_waterways(args.archive)
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.unlink(missing_ok=True)
-    waterways.to_file(args.output, layer="waterways")
+        ARCHIVE.parent.mkdir(parents=True, exist_ok=True)
+        urllib.request.urlretrieve(URL, ARCHIVE)
+    waterways = read_waterways(ARCHIVE)
+    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT.unlink(missing_ok=True)
+    waterways.to_file(OUTPUT, layer="waterways")
     outside = outside_netherlands(waterways)
-    outside.to_file(args.output, layer=TOP10NL_LAYER)
-    LOG.info(f"Wrote {len(waterways)} waterways, and {len(outside)} parts outside the Netherlands, to {args.output}")
+    outside.to_file(OUTPUT, layer=TOP10NL_LAYER)
+    LOG.info(f"Wrote {len(waterways)} waterways, and {len(outside)} parts outside the Netherlands, to {OUTPUT}")
 
 
 if __name__ == "__main__":
