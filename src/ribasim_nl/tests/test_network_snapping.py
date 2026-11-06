@@ -100,7 +100,7 @@ def test_snap_to_network():
     assert list(links[1].coords) == [(100, 5), (100, 0), (150, 0)]
 
 
-def test_snap_to_network_extra_waterways():
+def test_snap_to_network_routing_areas():
     """Outlets 3 and 4 drain into Basin 1 over waterways far outside its basin area, which come together at (500, 0)."""
     model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
     area = shapely.MultiPolygon([box(0, -50, 100, 50)])
@@ -115,9 +115,10 @@ def test_snap_to_network_extra_waterways():
     for node_id, point in ((3, Point(900, 300)), (4, Point(900, -300))):
         model.outlet.add(Node(node_id, point), [outlet.Static(flow_rate=[1.0])])
         model.link.add(model.outlet[node_id], model.basin[1])
-    hydro_objects = gpd.GeoDataFrame({"main-route": [True]}, geometry=[LineString([(0, 0), (100, 0)])], crs=model.crs)
-    waterways = gpd.GeoDataFrame(
+    hydro_objects = gpd.GeoDataFrame(
+        {"main-route": [True, False, False, False]},
         geometry=[
+            LineString([(0, 0), (100, 0)]),
             LineString([(100, 0), (500, 0)]),
             LineString([(500, 0), (900, 300)]),
             LineString([(500, 0), (900, -300)]),
@@ -126,9 +127,11 @@ def test_snap_to_network_extra_waterways():
     )
 
     unrouted = snap_to_network(model.model_copy(deep=True), hydro_objects, route_water=False)
-    assert all(len(line.coords) == 2 for line in unrouted.link.df.geometry), "Outside the area without extra waterways"
+    assert all(len(line.coords) == 2 for line in unrouted.link.df.geometry), (
+        "Outside the basin area without routing area"
+    )
 
-    routed = snap_to_network(model, hydro_objects, route_water=False, extra_waterways={1: waterways})
+    routed = snap_to_network(model, hydro_objects, route_water=False, routing_areas={1: box(0, -400, 1000, 400)})
     from_3, from_4 = routed.link.df.geometry.tolist()
     assert list(from_3.coords) == [(900, 300), (500, 0), (100, 0), (50, 0)]
     assert list(from_4.coords) == [(900, -300), (500, 0), (100, 0), (50, 0)]

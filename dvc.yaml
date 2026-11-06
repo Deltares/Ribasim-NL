@@ -974,14 +974,10 @@ stages:
     cmd:
       - pixi run python pipeline/prep_cross_sections.py Rivierenland
       - pixi run python pipeline/rivierenland/02_profiles.py
-      - pixi run python pipeline/rivierenland/02b_route_groesbeek.py
     deps:
       - pipeline/prep_cross_sections.py
       - src/ribasim_nl/ribasim_nl
       - pipeline/rivierenland/02_profiles.py
-      - pipeline/rivierenland/02b_route_groesbeek.py
-      - data/Basisgegevens/GSK3E/gsk3e.gpkg
-      - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Rivierenland/modellen/Rivierenland_feedback
       - data/Rivierenland/verwerkt/crossings.gpkg
       - data/Basisgegevens/BGT/bgt_water.parquet
@@ -1217,6 +1213,7 @@ stages:
       - data/Rivierenland/verwerkt/crossings.gpkg
       - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
+      - data/Basisgegevens/GSK3E/gsk3e.gpkg
       - data/Rivierenland/modellen/Rivierenland_boezemmodel_2024_12_0
       - data/Rivierenland/verwerkt/Feedback Formulier/feedback_formulier_Rivierenland.xlsx
       - data/Rivierenland/aangeleverd/Na_levering/Wateraanvoer

@@ -529,7 +529,7 @@ def snap_to_network(
     move_basins: bool = True,
     route_water: bool = True,
     link_ids: list[int] | None = None,
-    extra_waterways: dict[int, gpd.GeoDataFrame] | None = None,
+    routing_areas: dict[int, shapely.Geometry] | None = None,
 ) -> Model:
     """Route flow links between a Basin and a connector node along the hydro-objects, and move Basin nodes onto them.
 
@@ -547,12 +547,12 @@ def snap_to_network(
     :param route_water: route links that cannot be routed along the hydro-objects over the water surface, see
         `route_basin_links`, defaults to True
     :param link_ids: only route these links, defaults to None (all)
-    :param extra_waterways: per Basin, waterways outside its basin area, for connector nodes that are connected to it
-        over a long distance, for instance through Germany. They are not clipped, and are never its main route.
+    :param routing_areas: per Basin, an area beyond its basin area in which the hydro-objects are used as well, for
+        connector nodes that are connected to it over a long distance, for instance through Germany
 
     :return: updated Ribasim model
     """
-    extra_waterways = {} if extra_waterways is None else extra_waterways
+    routing_areas = {} if routing_areas is None else routing_areas
     model = straight_link_geometries(model)
     assert model.basin.area.df is not None
     nodes = model.node.df
@@ -592,6 +592,8 @@ def snap_to_network(
             continue
         # hydro-objects within the basin area, clipped to keep those crossing its boundary connected
         area = areas[basin_id].buffer(tolerance)
+        if basin_id in routing_areas:
+            area = area.union(routing_areas[basin_id])
         idx, lines = lines_in(ho_geometries, tree, area)
         _, basin_culverts = lines_in(culvert_geometries, culvert_tree, area)
         basin_water = shapely.intersection(
@@ -602,12 +604,11 @@ def snap_to_network(
             int(typing.cast(int, link_id)): typing.cast(shapely.Point, nodes.at[cid, "geometry"])
             for link_id, cid in group["connector_id"].items()
         }
-        extra_lines = list(extra_waterways[basin_id].geometry) if basin_id in extra_waterways else []
         location, routes = route_basin_links(
             basin_point,
             connectors,
-            [*lines, *extra_lines],
-            [*main_route[idx], *[False] * len(extra_lines)],
+            list(lines),
+            list(main_route[idx]),
             culverts=list(basin_culverts),
             water=None if basin_water.is_empty else basin_water,
             area=area if route_water else None,
@@ -637,9 +638,12 @@ def snap_to_network(
     return straight_link_geometries(model)
 
 
-def read_waterways(top10nl_path: pathlib.Path, mask: shapely.Geometry) -> gpd.GeoDataFrame:
-    """Read the Top10NL water lines within a mask, to complement the hydro-objects."""
-    lines = gpd.read_file(top10nl_path, layer="top10nl_waterdeel_lijn", mask=mask).explode(ignore_index=True)
+def read_waterways(path: pathlib.Path, mask: shapely.Geometry) -> gpd.GeoDataFrame:
+    """Read the water lines of the Top10NL, or of a dataset in its format, within a mask, to complement the hydro-objects.
+
+    See `scripts/download_gsk3e.py` for such a dataset.
+    """
+    lines = gpd.read_file(path, layer="top10nl_waterdeel_lijn", mask=mask).explode(ignore_index=True)
     lines = lines[lines.geom_type == "LineString"]
     return gpd.GeoDataFrame(
         {"main-route": np.zeros(len(lines), dtype=bool)},
@@ -723,10 +727,9 @@ def snap_model(
     *,
     crossings_path: pathlib.Path | None = None,
     water_path: pathlib.Path | None = None,
-    top10nl_path: pathlib.Path | None = None,
+    waterway_paths: typing.Sequence[pathlib.Path] = (),
     tolerance: float = 10.0,
-    link_ids: list[int] | None = None,
-    extra_waterways: dict[int, gpd.GeoDataFrame] | None = None,
+    routing_areas: dict[int, shapely.Geometry] | None = None,
 ) -> Model:
     """Snap a model to the hydro-objects of the profile-generation, see `snap_to_network`.
 
@@ -734,18 +737,19 @@ def snap_model(
     :param profiles_path: directory with the network.gpkg of the profile-generation
     :param crossings_path: GeoPackage with a duikersifonhevel layer of culverts, defaults to None
     :param water_path: GeoParquet with water surfaces, see `ribasim_nl.bgt_water`, defaults to None
-    :param top10nl_path: Top10NL GeoPackage, of which the water lines complement the hydro-objects, defaults to None
+    :param waterway_paths: GeoPackages of which the water lines complement the hydro-objects, the Top10NL and possibly
+        others in its format, see `read_waterways`, defaults to none
     :param tolerance: buffer around the basin area within which hydro-objects are used, defaults to 10.0
-    :param link_ids: only route these links, defaults to None (all)
-    :param extra_waterways: per Basin, waterways outside its basin area, see `snap_to_network`
+    :param routing_areas: per Basin, an area beyond its basin area in which it is routed, see `snap_to_network`
     """
     node_geometry = model.node.df.geometry.copy()
     hydro_objects = read_hydro_objects(profiles_path)
-    if top10nl_path is not None:
+    if waterway_paths:
         assert model.basin.area.df is not None
         x0, y0, x1, y1 = model.basin.area.df.total_bounds
-        mask = shapely.box(x0, y0, x1, y1)
-        hydro_objects = pd.concat([hydro_objects, read_waterways(top10nl_path, mask)], ignore_index=True)
+        mask = shapely.union_all([shapely.box(x0, y0, x1, y1), *(routing_areas or {}).values()])
+        waterways = [read_waterways(path, mask) for path in waterway_paths]
+        hydro_objects = pd.concat([hydro_objects, *waterways], ignore_index=True)
     culverts = None if crossings_path is None else gpd.read_file(crossings_path, layer="duikersifonhevel")
     water = None
     if water_path is not None:
@@ -758,8 +762,7 @@ def snap_model(
         culverts=culverts,
         water=water,
         tolerance=tolerance,
-        link_ids=link_ids,
-        extra_waterways=extra_waterways,
+        routing_areas=routing_areas,
     )
     moved = ~model.node.df.geometry.geom_equals_exact(node_geometry, tolerance=0)
     moved_types = set(model.node.df.loc[moved, "node_type"])
