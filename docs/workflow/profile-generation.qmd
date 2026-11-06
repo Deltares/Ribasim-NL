@@ -52,7 +52,7 @@ Subsequently, the following steps are executed on a per-basin basis:
 4.  Couple BGT-polygons to hydro-objects (non-intersecting BGT-polygons will be classified as _bergend_ at a later stage);
 5.  Estimate representative width per hydro-object based on coupled BGT-polygon's surface area and circumference;
 6.  Estimate representative depth per hydro-object based on width and hydrotope (using a look-up table);
-7.  Update representative depth of hydro-objects labelled as _doorgaand_ using measured cross-sections, if available;
+7.  Update representative depth of hydro-objects labelled as _doorgaand_ using measured cross-sections, if available: the mean depth of the cross-sections they cross, below the target level of the peilgebied of each cross-section, the smallest where peilgebieden overlap. Bed levels outside $-50$ to $+50\,\mathrm{m}$ NAP are errors or no-data values, and are left out;
 8.  Define a trapezoidal cross-sectional profile using the representative width and depth (and a slope of $1:3$, default);
 9.  Define the $A(h)$-relation for _doorgaand_ and _bergend_ separately using the length of the hydro-objects;
 10. Correct the $A(h)$-relation of _bergend_ by including non-intersecting BGT-polygons' surface areas (as preluded to in 5.);

@@ -4,8 +4,13 @@ from pathlib import Path
 import geopandas as gpd
 import numpy as np
 import pytest
-from ribasim_nl.profiles.depth import depth_from_hydrotopes, depth_from_measurements, normalise_measured_cross_sections
-from ribasim_nl.profiles.gen_profiles import NO_DATA_LEVELS, _read_target_levels
+from ribasim_nl.profiles.depth import (
+    depth_from_hydrotopes,
+    depth_from_measurements,
+    drop_implausible_levels,
+    normalise_measured_cross_sections,
+)
+from ribasim_nl.profiles.gen_profiles import LEVEL_CORRECTIONS, NO_DATA_LEVELS, _read_target_levels
 from ribasim_nl.profiles.hydrotopes import Hydrotope, HydrotopeTable
 from shapely.geometry import LineString, box
 
@@ -81,3 +86,56 @@ def test_unknown_no_data_target_level_fails(tmp_path: Path):
     with pytest.raises(AssertionError, match="out of range"):
         _read_target_levels(fn)
     assert _read_target_levels(fn, NO_DATA_LEVELS["Scheldestromen"])["meta_streefpeil"].isna().sum() == 1
+
+
+def test_level_corrections(tmp_path: Path):
+    fn = _write_target_levels(tmp_path / "crossings.gpkg", [0.61, -1.0])
+    levels = _read_target_levels(fn, corrections=LEVEL_CORRECTIONS["Rijnland"])["meta_streefpeil"]
+    assert levels.tolist() == [-0.61, -1.0]
+    with pytest.raises(AssertionError, match="remove its correction"):
+        _read_target_levels(fn, corrections={0.5: -0.5})
+
+
+def test_overlapping_target_levels_take_the_smallest():
+    """A cross-section within a small peilgebied inside a large one gets the level of the small one, once."""
+    target_levels = gpd.GeoDataFrame(
+        {"meta_streefpeil": [-1.0, -2.0]}, geometry=[box(0, 0, 10, 10), box(2, 2, 4, 4)], crs="EPSG:28992"
+    )
+    cross_sections = gpd.GeoDataFrame(
+        geometry=[LineString([(3, 2.5, -4), (3, 3.5, -4)]), LineString([(6, 2.5, -4), (6, 3.5, -4)])],
+        index=[7, 3],
+        crs="EPSG:28992",
+    )
+    normalised = normalise_measured_cross_sections(cross_sections, target_levels)
+    assert normalised.index.tolist() == [7, 3]
+    assert normalised["meta_streefpeil"].tolist() == [-2.0, -1.0]
+    assert [g.coords[0][2] for g in normalised.geometry] == [-2.0, -3.0]
+
+
+def test_depth_from_measurements_by_index():
+    """The depth comes from the cross-section that a hydro-object crosses, also when the index is not its position."""
+    cross_sections = gpd.GeoDataFrame(
+        geometry=[LineString([(0, 0.5, -3), (1, 0.5, -3)]), LineString([(2, 0.5, -1), (3, 0.5, -1)])],
+        index=[20, 10],
+        crs="EPSG:28992",
+    )
+    hydro_objects = gpd.GeoDataFrame(
+        {"main-route": [True], "depth": [0.5]}, geometry=[LineString([(2.5, 0), (2.5, 1)])], crs="EPSG:28992"
+    )
+    assert depth_from_measurements(hydro_objects, cross_sections)["depth"].tolist() == [1.0]
+
+
+def test_drop_implausible_levels():
+    cross_sections = gpd.GeoDataFrame(
+        geometry=[
+            LineString([(0, 0, -1), (1, 0, -9999), (2, 0, -2)]),  # a no-data point
+            LineString([(0, 1, -99.4), (1, 1, -99.4)]),  # only implausible points
+            LineString([(0, 2, -48), (1, 2, 1)]),
+        ],
+        index=[5, 6, 7],
+        crs="EPSG:28992",
+    )
+    result = drop_implausible_levels(cross_sections)
+    assert result.index.tolist() == [5, 7]
+    assert [z for *_, z in result.geometry[5].coords] == [-1, -2]
+    assert result.geometry[7].equals(cross_sections.geometry[7])

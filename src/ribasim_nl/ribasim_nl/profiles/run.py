@@ -297,6 +297,7 @@ def main(
 
     # depth from measurements
     if cross_sections is not None:
+        cross_sections = depth.drop_implausible_levels(cross_sections)
         cross_sections = depth.normalise_measured_cross_sections(cross_sections, target_levels)
         hydro_objects = depth.depth_from_measurements(hydro_objects, cross_sections)
 

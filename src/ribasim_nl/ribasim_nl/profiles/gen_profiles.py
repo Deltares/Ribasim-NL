@@ -1,10 +1,11 @@
 """Generation of profiles."""
 
 import typing
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 from pathlib import Path
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 
 from ribasim_nl import CloudStorage
@@ -12,6 +13,9 @@ from ribasim_nl.profiles import hydrotopes, run
 
 # The levels that mean that the target level of a peilgebied is missing, per dataset. 0 m NAP is a real level.
 NO_DATA_LEVELS: dict[str, tuple[float, ...]] = {"Scheldestromen": (-99.0, 99.0), "Zuiderzeeland": (999.0,)}
+# Wrong target levels and their corrections, per dataset. The Rijnland boezem has the level of 2024, 0.61 m, in the
+# crossings, though it is -0.61 m NAP, see `pipeline/rijnland/00_postprocess.py`.
+LEVEL_CORRECTIONS: dict[str, dict[float, float]] = {"Rijnland": {0.61: -0.61}}
 # The peilgebieden that have a target level are all below this, in m NAP, and above minus this
 MAX_TARGET_LEVEL = 50.0
 
@@ -55,7 +59,9 @@ def main(
     gdf_basins = _read_basins(cloud, water_authority)
     gdf_hydro_objects = gpd.read_file(fn_crossings, layer="hydroobject") if hydro_objects is None else hydro_objects
     gdf_crossings = gpd.read_file(fn_crossings, layer="crossings_hydroobject_filtered")
-    gdf_target_levels = _read_target_levels(fn_crossings, NO_DATA_LEVELS.get(water_authority, ()))
+    gdf_target_levels = _read_target_levels(
+        fn_crossings, NO_DATA_LEVELS.get(water_authority, ()), LEVEL_CORRECTIONS.get(water_authority)
+    )
     gdf_cross_sections = _read_cross_sections(cloud, water_authority, cross_sections_available)
     gdf_water_bodies = _read_water_bodies(cloud, water_authority, fn_water_bodies)
     table = _read_hydrotope_table(cloud)
@@ -125,7 +131,9 @@ def flagged_hydro_objects(
     gdf_basins = _read_basins(cloud, water_authority)
     gdf_hydro_objects = gpd.read_file(cloud.joinpath(water_authority, fn_hydro_objects), layer=layer_hydro_objects)
     gdf_target_levels = _read_target_levels(
-        _crossings_path(cloud, water_authority), NO_DATA_LEVELS.get(water_authority, ())
+        _crossings_path(cloud, water_authority),
+        NO_DATA_LEVELS.get(water_authority, ()),
+        LEVEL_CORRECTIONS.get(water_authority),
     )
     gdf_cross_sections = _read_cross_sections(cloud, water_authority, cross_sections_available)
     gdf_water_bodies = _read_water_bodies(cloud, water_authority, fn_water_bodies)
@@ -211,13 +219,17 @@ def _read_cross_sections(cloud: CloudStorage, water_authority: str, available: b
     return out
 
 
-def _read_target_levels(fn: Path, no_data_levels: Collection[float] = ()) -> gpd.GeoDataFrame:
+def _read_target_levels(
+    fn: Path, no_data_levels: Collection[float] = (), corrections: Mapping[float, float] | None = None
+) -> gpd.GeoDataFrame:
     """Get polygons with target levels from source-data.
 
-    The levels stay as delivered in the crossings, of which they are an input, so the no-data levels are removed here.
+    The levels stay as delivered in the crossings, of which they are an input, so the no-data levels are removed and
+    the wrong levels corrected here.
 
     :param fn: GeoPackage with the layers "peilgebied" and "streefpeil"
     :param no_data_levels: levels that mean that the target level is missing in this dataset, see `NO_DATA_LEVELS`
+    :param corrections: wrong levels in this dataset and their corrections, see `LEVEL_CORRECTIONS`
 
     :return: polygons with target levels, without a level where it is missing
 
@@ -227,6 +239,10 @@ def _read_target_levels(fn: Path, no_data_levels: Collection[float] = ()) -> gpd
     levels = gpd.read_file(fn, layer="streefpeil")
     level = polygons["globalid"].map(levels.set_index("globalid")["waterhoogte"]).astype(float)
     level = level.where(~level.isin(list(no_data_levels)))
+    for wrong, right in (corrections or {}).items():
+        is_wrong = np.isclose(level, wrong)
+        assert is_wrong.any(), f"No target level of {fn} is {wrong}, remove its correction"
+        level = level.mask(is_wrong, right)
     invalid = level[level.abs() > MAX_TARGET_LEVEL]
     assert invalid.empty, f"Target levels of {fn} out of range, are these no-data?\n{invalid}"
     return polygons.assign(meta_streefpeil=level)
