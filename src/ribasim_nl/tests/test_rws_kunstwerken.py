@@ -8,11 +8,14 @@ from ribasim_nl.rws_kunstwerken import (
     flow_demand_tables,
     has_discrete_control,
     has_flow_demand,
+    line_along,
+    rating_curve_from_bottom,
     read_control_thresholds,
     read_kwk_properties,
     read_static,
     repeat_yearly,
 )
+from shapely.geometry import LineString, Point
 
 STARTTIME = pd.Timestamp("2017-01-01")
 ENDTIME = pd.Timestamp("2019-01-01")
@@ -48,6 +51,31 @@ def sluis_born() -> pd.DataFrame:
             [15, 9, np.nan, "Schut+Lekverlies"],
         ]
     )
+
+
+def test_rating_curve_from_bottom():
+    """Like the Waal at Tiel, a calculated Q(h) table gets a first row without flow at the bottom of the Basin."""
+    qh = pd.DataFrame({"Q": [347.7, 370.1, 394.8], "H": [1.0, 1.1, 1.2]})
+    static = rating_curve_from_bottom(qh, bottom=-3.7).df
+    assert static is not None
+    assert static["level"].to_list() == [-3.7, 1.0, 1.1, 1.2]
+    assert static["flow_rate"].to_list() == [0.0, 347.7, 370.1, 394.8]
+
+
+@pytest.mark.parametrize(
+    ("q", "h", "bottom"),
+    [
+        ([1.0, 2.0], [1.0, 1.0], 0.0),  # repeated level
+        ([2.0, 1.0], [1.0, 2.0], 0.0),  # decreasing flow
+        ([0.0, 1.0], [1.0, 2.0], 0.0),  # no flow already in the table
+        ([1.0, 2.0], [1.0, 2.0], 1.0),  # bottom not below the table
+        ([1.0, np.nan], [1.0, 2.0], 0.0),  # missing flow
+    ],
+)
+def test_rating_curve_from_bottom_invalid(q: list[float], h: list[float], bottom: float):
+    qh = pd.DataFrame({"Q": q, "H": h})
+    with pytest.raises(AssertionError):
+        rating_curve_from_bottom(qh, bottom)
 
 
 def test_read_kwk_properties():
@@ -109,6 +137,30 @@ def test_read_static_flow_demand_level():
     static = read_static(df[df["Eigenschap"] != "FlowDemand"], "Outlet").df
     assert static is not None
     assert "min_upstream_level" not in static or static["min_upstream_level"].isna().all()
+
+
+def test_read_static_flow_demand_at_sea_level():
+    """Like the Goereese sluis, a level of 0 m NAP is a level, and the afvoer capacity without control is the flow."""
+    df = sheet(
+        [
+            ["Ribasim type", "Outlet"],
+            ["Kunstwerkcode", "37C-001-01"],
+            ["Aanvoer Capaciteit (m3/s)", 0],
+            ["Afvoer Capaciteit (m3/s)", 5],
+            ["Streefpeil bovenstrooms (m +NAP)", 0],
+            ["FlowDemand", "ja"],
+            [np.nan],
+            ["FlowDemand (m3/s)", "Prioriteit"],
+            [5, 2],
+        ]
+    )
+    static = read_static(df, "Outlet").df
+    assert static is not None
+    assert static[["flow_rate", "min_upstream_level"]].iloc[0].to_list() == [5, 0]
+    assert has_flow_demand(read_kwk_properties(df))
+    demand = flow_demand_tables(df, STARTTIME, ENDTIME)[0].df
+    assert demand is not None
+    assert demand[["demand", "demand_priority"]].iloc[0].to_list() == [5, 2]
 
 
 def test_read_static_discrete_control():
@@ -217,6 +269,22 @@ def test_repeat_yearly_sorts_by_day_of_year():
     repeated = repeat_yearly(time, STARTTIME, pd.Timestamp("2017-12-31"))
     assert repeated["index"].to_list() == [1, 0]
     assert repeated["time"].to_list() == [pd.Timestamp("2017-04-01"), pd.Timestamp("2017-10-01")]
+
+
+def test_line_along():
+    """Like the channel and the fairway from the Goereese sluis to the sea, which connect end to end."""
+    lines = [LineString([(10, 10), (0, 10), (0, 0)]), LineString([(10, 10), (20, 10)])]
+    line = line_along(lines, Point(-1, 5), Point(15, 11))
+    assert list(line.coords) == [(-1, 5), (0, 5), (0, 10), (10, 10), (15, 10), (15, 11)]
+    # the other way around
+    assert list(line_along(lines, Point(15, 11), Point(-1, 5)).coords) == list(line.coords)[::-1]
+
+
+def test_line_along_needs_connected_lines():
+    lines = [LineString([(0, 0), (1, 0)]), LineString([(5, 0), (6, 0)])]
+    start, end = Point(0, 0), Point(6, 0)
+    with pytest.raises(AssertionError, match="connect end to end"):
+        line_along(lines, start, end)
 
 
 def test_parallel_kwk_next_to_a_structure_in_the_network():
