@@ -5,7 +5,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
+import shapely
 
+from ribasim_nl.geometry import SLIVER_WIDTH, is_sliver
 from ribasim_nl.profiles import MIN_PROFILE_AREA
 
 if TYPE_CHECKING:
@@ -56,6 +58,34 @@ def _deep_basin_profile_issues(model: "Model") -> list[str]:
         return []
     ranges = invalid.round(1).to_dict()
     return [f"Basin profiles must not be deeper than {MAX_PROFILE_RANGE} m; invalid node IDs and ranges: {ranges}"]
+
+
+def _basin_area_issues(model: "Model") -> list[str]:
+    """Return invalid basin areas, and basin areas with slivers, which `Model.clean_basin_area` removes."""
+    area = model.basin.area.df
+    if area is None or area.empty:
+        return []
+
+    issues = []
+    geometry = area.geometry.to_numpy()
+    node_id = area["node_id"].to_numpy()
+    invalid = ~shapely.is_valid(geometry)
+    if invalid.any():
+        issues.append(f"Basin areas must be valid; invalid node IDs: {sorted(set(map(int, node_id[invalid])))}")
+
+    parts, part_area = shapely.get_parts(geometry, return_index=True)
+    # the rings of each polygon start with its exterior, the others are holes
+    rings, ring_part = shapely.get_rings(parts, return_index=True)
+    is_hole = np.r_[False, ring_part[1:] == ring_part[:-1]]
+    sliver_parts = part_area[is_sliver(parts)]
+    sliver_holes = part_area[ring_part[is_hole][is_sliver(shapely.polygons(rings[is_hole]))]]
+    slivers = np.concatenate([sliver_parts, sliver_holes])
+    if slivers.size:
+        issues.append(
+            f"Basin areas must not have parts or holes that are on average at most {SLIVER_WIDTH} m wide, "
+            f"see Model.clean_basin_area; invalid node IDs: {sorted(set(map(int, node_id[slivers])))}"
+        )
+    return issues
 
 
 def _discrete_control_condition_issues(model: "Model") -> list[str]:
@@ -290,6 +320,7 @@ def validate_model(model: "Model", layout: bool = True) -> None:
     With `layout`, also check that nodes are not on top of each other and links do not overlap.
     """
     issues = [
+        *_basin_area_issues(model),
         *_basin_profile_issues(model),
         *_deep_basin_profile_issues(model),
         *_discrete_control_condition_issues(model),

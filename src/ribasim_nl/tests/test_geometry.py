@@ -3,8 +3,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 import shapely
-from ribasim_nl.geometry import connected_parts, line_between, polygon_parts, union_polygons
-from shapely.geometry import GeometryCollection, LineString, MultiPolygon, Point, box
+from ribasim_nl.geometry import connected_parts, line_between, polygon_parts, union_polygons, without_slivers
+from shapely.geometry import GeometryCollection, LineString, MultiPolygon, Point, Polygon, box
 
 
 def test_polygon_parts():
@@ -12,6 +12,19 @@ def test_polygon_parts():
     geometry = GeometryCollection([MultiPolygon([box(0, 0, 10, 10), sliver]), LineString([(0, 0), (1, 1)])])
     assert polygon_parts(geometry) == [box(0, 0, 10, 10), sliver]
     assert polygon_parts(geometry, tolerance=0.001) == [box(0, 0, 10, 10)]
+
+
+def test_without_slivers():
+    hole, sliver_hole = box(2, 2, 4, 4), box(6, 2, 6 + 1e-6, 8)
+    polygon = Polygon(box(0, 0, 10, 10).exterior, [hole.exterior, sliver_hole.exterior])
+    sliver = box(20, 0, 20 + 1e-6, 10)
+    expected = MultiPolygon([Polygon(box(0, 0, 10, 10).exterior, [hole.exterior])])
+    assert without_slivers(MultiPolygon([polygon, sliver])).equals(expected)
+    # a bow tie, which crosses itself, becomes two triangles
+    bow_tie = Polygon([(0, 0), (2, 2), (2, 0), (0, 2)])
+    assert not bow_tie.is_valid
+    result = without_slivers(bow_tie)
+    assert result.is_valid and len(result.geoms) == 2 and result.area == pytest.approx(2.0)
 
 
 def test_connected_parts():

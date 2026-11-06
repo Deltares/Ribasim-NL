@@ -38,4 +38,6 @@ flowchart LR
 - Nodes that are still within 10 m of each other are moved apart.
 
 The gravity controlled models get the same layout step at the end of their dynamic stage, and `ribasim_nl.validation.validate_model` checks it.
+It also checks that the Basin areas are valid and have no slivers: parts and holes that are on average at most 1 mm wide, which draw as lines on the map.
+`Model.clean_basin_area` fixes both in the regional models and the Rijkswaterstaat model.
 The [coupling](couple.qmd) tidies the links between models in the same way, and first rebuilds the routes of the Basins of Rijkswaterstaat along Top10NL.

@@ -137,13 +137,33 @@ def split_basin_multi_polygon(basin_polygon: MultiPolygon, line: LineString) -> 
     return MultiPolygon(right_basin_poly), MultiPolygon(left_basin_poly)
 
 
-def polygon_parts(geometry: BaseGeometry, tolerance: float = 0.0) -> list[Polygon]:
-    """The polygons of a geometry that are on average wider than `tolerance`, so without slivers.
+# Polygons that are on average at most this wide are slivers, which have no meaningful area but draw as lines on a map
+SLIVER_WIDTH = 0.001  # m
 
-    The average width of a polygon is taken as its area divided by its perimeter.
-    """
+
+def is_sliver(polygons: Polygon | np.ndarray, tolerance: float = SLIVER_WIDTH) -> np.ndarray:
+    """Whether polygons are on average at most `tolerance` wide, taken as their area divided by their perimeter."""
+    return np.asarray(shapely.area(polygons) <= tolerance * shapely.length(polygons))
+
+
+def polygon_parts(geometry: BaseGeometry, tolerance: float = 0.0) -> list[Polygon]:
+    """The polygons of a geometry that are on average wider than `tolerance`, so without slivers, see `is_sliver`."""
     parts = shapely.get_parts(shapely.get_parts(geometry))
-    return [p for p in parts if isinstance(p, Polygon) and p.area > tolerance * p.length]
+    return [p for p in parts if isinstance(p, Polygon) and not is_sliver(p, tolerance)]
+
+
+def without_slivers(geometry: BaseGeometry, tolerance: float = SLIVER_WIDTH) -> MultiPolygon:
+    """The geometry made valid, as a MultiPolygon without the parts and holes that are slivers, see `is_sliver`.
+
+    Removing a sliver hole fills it.
+    """
+    polygons = [
+        Polygon(part.exterior, [ring for ring in part.interiors if not is_sliver(Polygon(ring), tolerance)])
+        for part in polygon_parts(shapely.make_valid(geometry), tolerance)
+    ]
+    result = MultiPolygon(polygons)
+    assert result.is_valid, f"removing the slivers made the geometry invalid: {shapely.is_valid_reason(result)}"
+    return result
 
 
 def union_polygons(polygons: np.ndarray, tolerance: float = 0.001) -> BaseGeometry:
