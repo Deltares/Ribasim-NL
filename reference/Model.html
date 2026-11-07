@@ -190,6 +190,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#ribasim_nl.Model.add_links" id="toc-ribasim_nl.Model.add_links" class="nav-link" data-scroll-target="#ribasim_nl.Model.add_links">add_links</a></li>
   <li><a href="#ribasim_nl.Model.add_node" id="toc-ribasim_nl.Model.add_node" class="nav-link" data-scroll-target="#ribasim_nl.Model.add_node">add_node</a></li>
   <li><a href="#ribasim_nl.Model.apply_edits" id="toc-ribasim_nl.Model.apply_edits" class="nav-link" data-scroll-target="#ribasim_nl.Model.apply_edits">apply_edits</a></li>
+  <li><a href="#ribasim_nl.Model.clean_basin_area" id="toc-ribasim_nl.Model.clean_basin_area" class="nav-link" data-scroll-target="#ribasim_nl.Model.clean_basin_area">clean_basin_area</a></li>
   <li><a href="#ribasim_nl.Model.deactivate_node" id="toc-ribasim_nl.Model.deactivate_node" class="nav-link" data-scroll-target="#ribasim_nl.Model.deactivate_node">deactivate_node</a></li>
   <li><a href="#ribasim_nl.Model.dissolve_basin_area" id="toc-ribasim_nl.Model.dissolve_basin_area" class="nav-link" data-scroll-target="#ribasim_nl.Model.dissolve_basin_area">dissolve_basin_area</a></li>
   <li><a href="#ribasim_nl.Model.downstream_node_id" id="toc-ribasim_nl.Model.downstream_node_id" class="nav-link" data-scroll-target="#ribasim_nl.Model.downstream_node_id">downstream_node_id</a></li>
@@ -293,118 +294,122 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Apply model edits stored in a GeoPackage, with a layer per edit method (action).</td>
 </tr>
 <tr class="odd">
+<td><a href="#ribasim_nl.Model.clean_basin_area">clean_basin_area</a></td>
+<td>Make the basin areas valid, without slivers, see <code>ribasim_nl.geometry.without_slivers</code>.</td>
+</tr>
+<tr class="even">
 <td><a href="#ribasim_nl.Model.deactivate_node">deactivate_node</a></td>
 <td>Deactivate a node by setting its flow_rate to 0.0 or manning_n to 100.0, if possible.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.Model.dissolve_basin_area">dissolve_basin_area</a></td>
 <td>Make one basin area per Basin, the union of its basin areas, keeping the first values of other columns.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.Model.downstream_node_id">downstream_node_id</a></td>
 <td>Get downstream node_id(s)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.Model.downstream_profile">downstream_profile</a></td>
 <td>Get upstream basin-profile</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.Model.fill_basin_area_holes">fill_basin_area_holes</a></td>
 <td>Give the parts of the areas of <code>areas_gpkg</code> that no basin area covers to a Basin, one basin area per Basin.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.Model.filter_nodes">filter_nodes</a></td>
 <td>Return the rows of the Node table of one node type.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.Model.find_closest_basin">find_closest_basin</a></td>
 <td>Find the closest basin_node.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.Model.find_node_id">find_node_id</a></td>
 <td>Find a node_id by it’s properties</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.Model.fix_unassigned_basin_area">fix_unassigned_basin_area</a></td>
 <td>Assign a Basin node_id to a Basin / Area if the Area doesn’t contain a basin node_id.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.Model.get_component">get_component</a></td>
 <td>Return model component for a given node_type string (e.g.&nbsp;‘Outlet’ → model.outlet)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.Model.get_node">get_node</a></td>
 <td>Return model-node by node_id</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.Model.merge_outlets">merge_outlets</a></td>
 <td>Merge outlet_b into outlet_a. Outlet a is considered upstream, and b donwstream.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.Model.remove_link">remove_link</a></td>
 <td>Remove an link and disconnected nodes</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.Model.remove_links">remove_links</a></td>
 <td>Remove links, and release their IDs so they can be reused</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.Model.remove_node">remove_node</a></td>
 <td>Remove node from model</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.Model.remove_nodes">remove_nodes</a></td>
 <td>Remove nodes with <code>remove_node</code>, removing duplicated node_ids once.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.Model.replace_flow_boundaries_by_level_boundaries">replace_flow_boundaries_by_level_boundaries</a></td>
 <td>Replace each FlowBoundary by a LevelBoundary, with an Outlet on its link to the node downstream.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.Model.reverse_link">reverse_link</a></td>
 <td>Reverse a link</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.Model.run">run</a></td>
 <td>Run your Ribasim model</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.Model.select_basin_area">select_basin_area</a></td>
 <td>Select the basin areas that equal <code>geometry</code>, or else each of its polygons.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.Model.set_link_id">set_link_id</a></td>
 <td>Change the ID of a link, for instance to reuse the ID of a link it replaces</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.Model.split_basin">split_basin</a></td>
 <td>Split the basin area that <code>geometry</code> crosses in two parts along it.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.Model.update_basin_area">update_basin_area</a></td>
 <td>Give the basin areas that <code>geometry</code> selects to <code>node_id</code>, see <code>select_basin_area</code>.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.Model.update_nodes">update_nodes</a></td>
 <td>Change the node type of nodes with <code>update_node</code>, updating duplicated node_ids once.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.Model.update_state">update_state</a></td>
 <td>Update basin.state with results or final basin_state (outstate)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.Model.upstream_node_id">upstream_node_id</a></td>
 <td>Get upstream node_id(s)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.Model.upstream_profile">upstream_profile</a></td>
 <td>Get upstream basin-profile</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.Model.validate_link_source_destination">validate_link_source_destination</a></td>
 <td>Check if links exist with reversed source-destination</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.Model.validate_ribasim_nl">validate_ribasim_nl</a></td>
 <td>Validate Ribasim-NL-specific model conventions, see <code>ribasim_nl.validation.validate_model</code>.</td>
 </tr>
@@ -466,162 +471,168 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Every row of the layer is a call of the method with the columns that are arguments of the method.</p>
 <p>Args: edits_gpkg: GeoPackage with a layer per action, e.g.&nbsp;“merge_basins” or “remove_node” actions: names of the methods to apply, in this order sort_by_order: apply the rows in the order of an “order” column, if the layer has one drop_na: don’t pass missing values, so the method’s defaults are used</p>
 </section>
+<section id="ribasim_nl.Model.clean_basin_area" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.Model.clean_basin_area">clean_basin_area</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>Model.clean_basin_area()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Make the basin areas valid, without slivers, see <code>ribasim_nl.geometry.without_slivers</code>.</p>
+<p>Raises if a basin area is a sliver as a whole.</p>
+</section>
 <section id="ribasim_nl.Model.deactivate_node" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.deactivate_node">deactivate_node</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>Model.deactivate_node(node_id)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>Model.deactivate_node(node_id)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Deactivate a node by setting its flow_rate to 0.0 or manning_n to 100.0, if possible.</p>
 </section>
 <section id="ribasim_nl.Model.dissolve_basin_area" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.dissolve_basin_area">dissolve_basin_area</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>Model.dissolve_basin_area()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>Model.dissolve_basin_area()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Make one basin area per Basin, the union of its basin areas, keeping the first values of other columns.</p>
 <p>Raises if a basin area belongs to no Basin.</p>
 </section>
 <section id="ribasim_nl.Model.downstream_node_id" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.downstream_node_id">downstream_node_id</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>Model.downstream_node_id(node_id, link_type<span class="op">=</span><span class="st">'flow'</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>Model.downstream_node_id(node_id, link_type<span class="op">=</span><span class="st">'flow'</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Get downstream node_id(s)</p>
 </section>
 <section id="ribasim_nl.Model.downstream_profile" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.downstream_profile">downstream_profile</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>Model.downstream_profile(node_id)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>Model.downstream_profile(node_id)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Get upstream basin-profile</p>
 </section>
 <section id="ribasim_nl.Model.fill_basin_area_holes" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.fill_basin_area_holes">fill_basin_area_holes</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>Model.fill_basin_area_holes(areas_gpkg, excluded<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>Model.fill_basin_area_holes(areas_gpkg, excluded<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Give the parts of the areas of <code>areas_gpkg</code> that no basin area covers to a Basin, one basin area per Basin.</p>
 <p>The uncovered part of an area goes to the Basin that covers most of that area, and an area that none covers to the Basin it shares the longest border with, preferably in the same drainage area, as in the lumping, see <code>ribasim_nl.lumping.network.fill_holes</code>. What lies within <code>excluded</code> is not part of the model: it is removed from the basin areas, and not filled. Raises if a basin area belongs to no Basin, or a Basin has no basin area.</p>
 </section>
 <section id="ribasim_nl.Model.filter_nodes" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.filter_nodes">filter_nodes</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>Model.filter_nodes(node_type)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>Model.filter_nodes(node_type)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Return the rows of the Node table of one node type.</p>
 <p>Cheaper than <code>model.&lt;node_type&gt;.node.df</code>, which builds and validates a new NodeTable on every access.</p>
 </section>
 <section id="ribasim_nl.Model.find_closest_basin" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.find_closest_basin">find_closest_basin</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>Model.find_closest_basin(geometry, max_distance)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>Model.find_closest_basin(geometry, max_distance)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Find the closest basin_node.</p>
 </section>
 <section id="ribasim_nl.Model.find_node_id" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.find_node_id">find_node_id</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>Model.find_node_id(ds_node_id<span class="op">=</span><span class="va">None</span>, us_node_id<span class="op">=</span><span class="va">None</span>, <span class="op">**</span>kwargs)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>Model.find_node_id(ds_node_id<span class="op">=</span><span class="va">None</span>, us_node_id<span class="op">=</span><span class="va">None</span>, <span class="op">**</span>kwargs)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Find a node_id by it’s properties</p>
 </section>
 <section id="ribasim_nl.Model.fix_unassigned_basin_area" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.fix_unassigned_basin_area">fix_unassigned_basin_area</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>Model.fix_unassigned_basin_area(method<span class="op">=</span><span class="st">'within'</span>, distance<span class="op">=</span><span class="dv">100</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>Model.fix_unassigned_basin_area(method<span class="op">=</span><span class="st">'within'</span>, distance<span class="op">=</span><span class="dv">100</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Assign a Basin node_id to a Basin / Area if the Area doesn’t contain a basin node_id.</p>
 <p>Args: method (str): method to find basin node_id; <code>within</code> or <code>closest</code>. First start with <code>within</code>. Default is <code>within</code> distance (float, optional): for method closest, the distance to find an unassigned basin node_id. Defaults to 100.</p>
 </section>
 <section id="ribasim_nl.Model.get_component" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.get_component">get_component</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>Model.get_component(node_type)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>Model.get_component(node_type)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Return model component for a given node_type string (e.g.&nbsp;‘Outlet’ → model.outlet)</p>
 </section>
 <section id="ribasim_nl.Model.get_node" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.get_node">get_node</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>Model.get_node(node_id)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>Model.get_node(node_id)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Return model-node by node_id</p>
 </section>
 <section id="ribasim_nl.Model.merge_outlets" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.merge_outlets">merge_outlets</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>Model.merge_outlets(outlet_a_id<span class="op">=</span><span class="va">None</span>, outlet_b_id<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>Model.merge_outlets(outlet_a_id<span class="op">=</span><span class="va">None</span>, outlet_b_id<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Merge outlet_b into outlet_a. Outlet a is considered upstream, and b donwstream.</p>
 </section>
 <section id="ribasim_nl.Model.remove_link" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.remove_link">remove_link</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>Model.remove_link(from_node_id, to_node_id, remove_disconnected_nodes<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>Model.remove_link(from_node_id, to_node_id, remove_disconnected_nodes<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Remove an link and disconnected nodes</p>
 </section>
 <section id="ribasim_nl.Model.remove_links" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.remove_links">remove_links</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>Model.remove_links(link_ids)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>Model.remove_links(link_ids)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Remove links, and release their IDs so they can be reused</p>
 </section>
 <section id="ribasim_nl.Model.remove_node" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.remove_node">remove_node</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>Model.remove_node(node_id, remove_links<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>Model.remove_node(node_id, remove_links<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Remove node from model</p>
 </section>
 <section id="ribasim_nl.Model.remove_nodes" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.remove_nodes">remove_nodes</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>Model.remove_nodes(node_ids, remove_links<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>Model.remove_nodes(node_ids, remove_links<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Remove nodes with <code>remove_node</code>, removing duplicated node_ids once.</p>
 </section>
 <section id="ribasim_nl.Model.replace_flow_boundaries_by_level_boundaries" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.replace_flow_boundaries_by_level_boundaries">replace_flow_boundaries_by_level_boundaries</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>Model.replace_flow_boundaries_by_level_boundaries()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>Model.replace_flow_boundaries_by_level_boundaries()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Replace each FlowBoundary by a LevelBoundary, with an Outlet on its link to the node downstream.</p>
 <p>The Outlet is placed 10 m from the boundary, or at 10% of links of at most 20 m.</p>
 </section>
 <section id="ribasim_nl.Model.reverse_link" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.reverse_link">reverse_link</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>Model.reverse_link(from_node_id<span class="op">=</span><span class="va">None</span>, to_node_id<span class="op">=</span><span class="va">None</span>, link_id<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>Model.reverse_link(from_node_id<span class="op">=</span><span class="va">None</span>, to_node_id<span class="op">=</span><span class="va">None</span>, link_id<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Reverse a link</p>
 </section>
 <section id="ribasim_nl.Model.run" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.run">run</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>Model.run(<span class="op">**</span>kwargs)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>Model.run(<span class="op">**</span>kwargs)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Run your Ribasim model</p>
 </section>
 <section id="ribasim_nl.Model.select_basin_area" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.select_basin_area">select_basin_area</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>Model.select_basin_area(geometry, tolerance<span class="op">=</span><span class="fl">0.001</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>Model.select_basin_area(geometry, tolerance<span class="op">=</span><span class="fl">0.001</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Select the basin areas that equal <code>geometry</code>, or else each of its polygons.</p>
 <p>Geometries are taken as equal if their boundaries are on average at most <code>tolerance</code> m apart. That allows for the differences between the results of versions of GEOS, which can also merge or separate adjacent parts of an area. So without a basin area that equals a polygon, the basin areas that together make it up are selected, or else the polygon is split from the basin areas that cover it, as basin areas of the same nodes. Polygons on average narrower than <code>tolerance</code> are slivers, which differ between versions of GEOS, and are not selected.</p>
 </section>
 <section id="ribasim_nl.Model.set_link_id" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.set_link_id">set_link_id</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>Model.set_link_id(link_id, new_link_id)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>Model.set_link_id(link_id, new_link_id)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Change the ID of a link, for instance to reuse the ID of a link it replaces</p>
 </section>
 <section id="ribasim_nl.Model.split_basin" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.split_basin">split_basin</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>Model.split_basin(</span>
-<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>    line<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>    basin_id<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>    geometry<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>    assign_unique_node<span class="op">=</span><span class="va">True</span>,</span>
-<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>Model.split_basin(</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>    line<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>    basin_id<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>    geometry<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>    assign_unique_node<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Split the basin area that <code>geometry</code> crosses in two parts along it.</p>
 <p>The basin area is the one of <code>basin_id</code> that the line crosses, or else the one that contains its middle. The parts keep its node, or with <code>assign_unique_node</code>, go to the one Basin within them that has no basin area.</p>
 </section>
 <section id="ribasim_nl.Model.update_basin_area" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.update_basin_area">update_basin_area</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>Model.update_basin_area(node_id, geometry)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>Model.update_basin_area(node_id, geometry)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Give the basin areas that <code>geometry</code> selects to <code>node_id</code>, see <code>select_basin_area</code>.</p>
 </section>
 <section id="ribasim_nl.Model.update_nodes" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.update_nodes">update_nodes</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>Model.update_nodes(node_ids, node_type)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>Model.update_nodes(node_ids, node_type)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Change the node type of nodes with <code>update_node</code>, updating duplicated node_ids once.</p>
 </section>
 <section id="ribasim_nl.Model.update_state" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.update_state">update_state</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>Model.update_state(time_stamp<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>Model.update_state(time_stamp<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Update basin.state with results or final basin_state (outstate)</p>
 <p>Args: time_stamp (pd.Timestamp | None, optional): Timestamp in results to update basin.state with . Defaults to None.</p>
 </section>
 <section id="ribasim_nl.Model.upstream_node_id" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.upstream_node_id">upstream_node_id</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>Model.upstream_node_id(node_id, link_type<span class="op">=</span><span class="st">'flow'</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb34"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>Model.upstream_node_id(node_id, link_type<span class="op">=</span><span class="st">'flow'</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Get upstream node_id(s)</p>
 </section>
 <section id="ribasim_nl.Model.upstream_profile" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.upstream_profile">upstream_profile</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb34"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>Model.upstream_profile(node_id)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>Model.upstream_profile(node_id)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Get upstream basin-profile</p>
 </section>
 <section id="ribasim_nl.Model.validate_link_source_destination" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.validate_link_source_destination">validate_link_source_destination</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>Model.validate_link_source_destination()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb36"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>Model.validate_link_source_destination()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Check if links exist with reversed source-destination</p>
 </section>
 <section id="ribasim_nl.Model.validate_ribasim_nl" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.Model.validate_ribasim_nl">validate_ribasim_nl</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb36"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>Model.validate_ribasim_nl(layout<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>Model.validate_ribasim_nl(layout<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Validate Ribasim-NL-specific model conventions, see <code>ribasim_nl.validation.validate_model</code>.</p>
 
 

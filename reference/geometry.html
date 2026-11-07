@@ -186,6 +186,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#ribasim_nl.geometry.basin_to_point" id="toc-ribasim_nl.geometry.basin_to_point" class="nav-link" data-scroll-target="#ribasim_nl.geometry.basin_to_point">basin_to_point</a></li>
   <li><a href="#ribasim_nl.geometry.connected_parts" id="toc-ribasim_nl.geometry.connected_parts" class="nav-link" data-scroll-target="#ribasim_nl.geometry.connected_parts">connected_parts</a></li>
   <li><a href="#ribasim_nl.geometry.drop_z" id="toc-ribasim_nl.geometry.drop_z" class="nav-link" data-scroll-target="#ribasim_nl.geometry.drop_z">drop_z</a></li>
+  <li><a href="#ribasim_nl.geometry.is_sliver" id="toc-ribasim_nl.geometry.is_sliver" class="nav-link" data-scroll-target="#ribasim_nl.geometry.is_sliver">is_sliver</a></li>
   <li><a href="#ribasim_nl.geometry.line_between" id="toc-ribasim_nl.geometry.line_between" class="nav-link" data-scroll-target="#ribasim_nl.geometry.line_between">line_between</a></li>
   <li><a href="#ribasim_nl.geometry.link" id="toc-ribasim_nl.geometry.link" class="nav-link" data-scroll-target="#ribasim_nl.geometry.link">link</a></li>
   <li><a href="#ribasim_nl.geometry.polygon_parts" id="toc-ribasim_nl.geometry.polygon_parts" class="nav-link" data-scroll-target="#ribasim_nl.geometry.polygon_parts">polygon_parts</a></li>
@@ -194,6 +195,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#ribasim_nl.geometry.split_basin" id="toc-ribasim_nl.geometry.split_basin" class="nav-link" data-scroll-target="#ribasim_nl.geometry.split_basin">split_basin</a></li>
   <li><a href="#ribasim_nl.geometry.split_line" id="toc-ribasim_nl.geometry.split_line" class="nav-link" data-scroll-target="#ribasim_nl.geometry.split_line">split_line</a></li>
   <li><a href="#ribasim_nl.geometry.union_polygons" id="toc-ribasim_nl.geometry.union_polygons" class="nav-link" data-scroll-target="#ribasim_nl.geometry.union_polygons">union_polygons</a></li>
+  <li><a href="#ribasim_nl.geometry.without_slivers" id="toc-ribasim_nl.geometry.without_slivers" class="nav-link" data-scroll-target="#ribasim_nl.geometry.without_slivers">without_slivers</a></li>
   </ul></li>
   </ul></li>
   </ul>
@@ -232,36 +234,44 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Drop the z-coordinate of a geometry if it has.</td>
 </tr>
 <tr class="even">
+<td><a href="#ribasim_nl.geometry.is_sliver">is_sliver</a></td>
+<td>Whether polygons are on average at most <code>tolerance</code> wide, taken as their area divided by their perimeter.</td>
+</tr>
+<tr class="odd">
 <td><a href="#ribasim_nl.geometry.line_between">line_between</a></td>
 <td>The part of a line between the points nearest to two points, connected to these points.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.geometry.link">link</a></td>
 <td>Create a LineString geometry between two Point geometries, dropping z-coordinate if any</td>
 </tr>
-<tr class="even">
-<td><a href="#ribasim_nl.geometry.polygon_parts">polygon_parts</a></td>
-<td>The polygons of a geometry that are on average wider than <code>tolerance</code>, so without slivers.</td>
-</tr>
 <tr class="odd">
+<td><a href="#ribasim_nl.geometry.polygon_parts">polygon_parts</a></td>
+<td>The polygons of a geometry that are on average wider than <code>tolerance</code>, so without slivers, see <code>is_sliver</code>.</td>
+</tr>
+<tr class="even">
 <td><a href="#ribasim_nl.geometry.snap_boundaries_to_other_line">snap_boundaries_to_other_line</a></td>
 <td>Snap the boundaries of line to the boundary or link/vertice of other_line if boundaries are within tolerance</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.geometry.sort_basins">sort_basins</a></td>
 <td>Sort basins in a MultiPolygon or list of Polygons on .area in ascending order (small to large).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.geometry.split_basin">split_basin</a></td>
 <td>Split a polygon with a line into two polygons.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.geometry.split_line">split_line</a></td>
 <td>Split a line into two lines based on a point.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.geometry.union_polygons">union_polygons</a></td>
 <td>The union of polygons, as <code>shapely.union_all</code>, but checked.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.geometry.without_slivers">without_slivers</a></td>
+<td>The geometry made valid, as a MultiPolygon without the parts and holes that are slivers, see <code>is_sliver</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -297,9 +307,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>LineString | Point | Polygon | MultiPolygon Output geometry</p>
 </section>
 </section>
+<section id="ribasim_nl.geometry.is_sliver" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.geometry.is_sliver">is_sliver</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>geometry.is_sliver(polygons, tolerance<span class="op">=</span>SLIVER_WIDTH)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Whether polygons are on average at most <code>tolerance</code> wide, taken as their area divided by their perimeter.</p>
+</section>
 <section id="ribasim_nl.geometry.line_between" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.geometry.line_between">line_between</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>geometry.line_between(line, start, end)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>geometry.line_between(line, start, end)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The part of a line between the points nearest to two points, connected to these points.</p>
 <section id="parameters-2" class="level4 doc-section doc-section-parameters">
 <h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
@@ -356,7 +371,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.geometry.link" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.geometry.link">link</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>geometry.link(point_from, point_to)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>geometry.link(point_from, point_to)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Create a LineString geometry between two Point geometries, dropping z-coordinate if any</p>
 <p>Args: point_from (Point): <em>description</em> point_to (Point): <em>description</em></p>
 <section id="returns-3" class="level4 doc-section doc-section-returns">
@@ -366,18 +381,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.geometry.polygon_parts" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.geometry.polygon_parts">polygon_parts</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>geometry.polygon_parts(geometry, tolerance<span class="op">=</span><span class="fl">0.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>The polygons of a geometry that are on average wider than <code>tolerance</code>, so without slivers.</p>
-<p>The average width of a polygon is taken as its area divided by its perimeter.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>geometry.polygon_parts(geometry, tolerance<span class="op">=</span><span class="fl">0.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The polygons of a geometry that are on average wider than <code>tolerance</code>, so without slivers, see <code>is_sliver</code>.</p>
 </section>
 <section id="ribasim_nl.geometry.snap_boundaries_to_other_line" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.geometry.snap_boundaries_to_other_line">snap_boundaries_to_other_line</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>geometry.snap_boundaries_to_other_line(line, other_line, tolerance<span class="op">=</span><span class="fl">0.1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>geometry.snap_boundaries_to_other_line(line, other_line, tolerance<span class="op">=</span><span class="fl">0.1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Snap the boundaries of line to the boundary or link/vertice of other_line if boundaries are within tolerance</p>
 </section>
 <section id="ribasim_nl.geometry.sort_basins" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.geometry.sort_basins">sort_basins</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>geometry.sort_basins(basin_polygons)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>geometry.sort_basins(basin_polygons)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Sort basins in a MultiPolygon or list of Polygons on .area in ascending order (small to large).</p>
 <section id="parameters-3" class="level4 doc-section doc-section-parameters">
 <h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-3">Parameters</h4>
@@ -390,7 +404,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.geometry.split_basin" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.geometry.split_basin">split_basin</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>geometry.split_basin(basin_polygon, line)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>geometry.split_basin(basin_polygon, line)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Split a polygon with a line into two polygons.</p>
 <p>Credits to https://kuanbutts.com/2020/07/07/subdivide-polygon-with-linestring/</p>
 <section id="parameters-4" class="level4 doc-section doc-section-parameters">
@@ -404,7 +418,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.geometry.split_line" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.geometry.split_line">split_line</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>geometry.split_line(line, point, <span class="op">*</span>, tolerance<span class="op">=</span><span class="fl">0.1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>geometry.split_line(line, point, <span class="op">*</span>, tolerance<span class="op">=</span><span class="fl">0.1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Split a line into two lines based on a point.</p>
 <p>As the built-in <code>shapely.ops.split</code> is not designed to do this splitting, its use should be avoided.</p>
 <p>This line-splitting function uses the splitting point as part of the newly generated lines.</p>
@@ -416,9 +430,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.geometry.union_polygons" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.geometry.union_polygons">union_polygons</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>geometry.union_polygons(polygons, tolerance<span class="op">=</span><span class="fl">0.001</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>geometry.union_polygons(polygons, tolerance<span class="op">=</span><span class="fl">0.001</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The union of polygons, as <code>shapely.union_all</code>, but checked.</p>
 <p>GEOS can lose or add whole parts in a union with slivers. A union is wrong if it exceeds the area of the polygons together by more than <code>tolerance</code> times their perimeter, or is further than <code>tolerance</code> from a point inside a polygon that is not a sliver, on average wider than 100 times <code>tolerance</code>. Then the union is taken again with a fixed precision of <code>tolerance</code>, or if that fails, without slivers.</p>
+</section>
+<section id="ribasim_nl.geometry.without_slivers" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.geometry.without_slivers">without_slivers</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>geometry.without_slivers(geometry, tolerance<span class="op">=</span>SLIVER_WIDTH)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The geometry made valid, as a MultiPolygon without the parts and holes that are slivers, see <code>is_sliver</code>.</p>
+<p>Removing a sliver hole fills it.</p>
 
 
 </section>
