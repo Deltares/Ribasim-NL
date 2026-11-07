@@ -54,7 +54,8 @@ VERDEELSLEUTEL_KWK_FROM_SHEET = ["61F-001-01"]
 # Node types between Basins that do not control the flow, so a DiscreteControl may listen across them
 FREE_FLOW_NODE_TYPES = {"Basin", "ManningResistance", "LinearResistance", "Junction"}
 RWS_NODE_ID_OFFSET = waterbeheercode["Rijkswaterstaat"] * 100_000
-# New structures and their control in these areas get free IDs, so the IDs of the nodes added after them stay the same
+# New structures and their control get free IDs, so the IDs of the nodes added after them stay the same: the structures
+# next to another one, see `PARALLEL_KWK`, and all structures in these areas
 GEBIEDEN_WITH_FREE_IDS = {"IJsselmeer-Markermeer", "Rijn", "Rijn-Maasmonding", "Waal"}
 
 
@@ -214,7 +215,7 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
 
         # get properties
         kwk_properties = read_kwk_properties(kwk_df)
-        assert kwk.code not in PARALLEL_KWK or gebied in GEBIEDEN_WITH_FREE_IDS, f"{kwk.naam} needs a free ID"
+        free_ids = gebied in GEBIEDEN_WITH_FREE_IDS or kwk.code in PARALLEL_KWK
 
         # check if code-value is the same in both Excels
         if kwk_properties["Kunstwerkcode"] != kwk.code:
@@ -328,7 +329,7 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
                 ctrl_type="DiscreteControl",
                 node_offset=20,
                 node_properties={"name": f"{label}: {levels} [m{'' if subtract_node_id else '+NAP'}]"},
-                node_id=next(free_node_ids) if gebied in GEBIEDEN_WITH_FREE_IDS else None,
+                node_id=next(free_node_ids) if free_ids else None,
             )
 
         # check if structure has a minimum flow, such as the losses of a lock
@@ -348,7 +349,7 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
                 node_id,
                 tables,
                 name=f"minimum debiet {kwk.naam}: {demand} [m3/s]",
-                demand_node_id=next(free_node_ids) if gebied in GEBIEDEN_WITH_FREE_IDS else None,
+                demand_node_id=next(free_node_ids) if free_ids else None,
             )
 
 # %% The Goereese sluis drains to the sea along its channel and the fairway, which are not in the network
