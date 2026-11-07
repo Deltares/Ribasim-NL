@@ -434,7 +434,7 @@ window.Quarto = {
 <li>Couple BGT-polygons to hydro-objects (non-intersecting BGT-polygons will be classified as <em>bergend</em> at a later stage);</li>
 <li>Estimate representative width per hydro-object based on coupled BGT-polygon’s surface area and circumference;</li>
 <li>Estimate representative depth per hydro-object based on width and hydrotope (using a look-up table);</li>
-<li>Update representative depth of hydro-objects labelled as <em>doorgaand</em> using measured cross-sections, if available;</li>
+<li>Update representative depth of hydro-objects labelled as <em>doorgaand</em> using measured cross-sections, if available: the mean depth of the cross-sections they cross, below the target level of the peilgebied of each cross-section, the smallest where peilgebieden overlap. Bed levels outside <span class="math inline">\(-50\)</span> to <span class="math inline">\(+50\,\mathrm{m}\)</span> NAP are errors or no-data values, and are left out;</li>
 <li>Define a trapezoidal cross-sectional profile using the representative width and depth (and a slope of <span class="math inline">\(1:3\)</span>, default);</li>
 <li>Define the <span class="math inline">\(A(h)\)</span>-relation for <em>doorgaand</em> and <em>bergend</em> separately using the length of the hydro-objects;</li>
 <li>Correct the <span class="math inline">\(A(h)\)</span>-relation of <em>bergend</em> by including non-intersecting BGT-polygons’ surface areas (as preluded to in 5.);</li>
