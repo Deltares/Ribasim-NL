@@ -209,6 +209,7 @@ model = add_observations(model, "Rijkswaterstaat")
 network = Network.from_network_gpkg(network_gpkg)
 rebuild_junction_trees_along_top10nl(model, model.basin.node.df.index.tolist(), top10nl_gpkg, main_route(network))
 model = tidy_layout(model)
+model.clean_basin_area()
 
 # %%
 ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_transient/hws.toml")

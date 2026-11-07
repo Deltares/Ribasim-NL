@@ -1,10 +1,13 @@
 """Parameterisation of water board: Hollandse Delta."""
 
+import geopandas as gpd
+import numpy as np
 import ribasim_nl.ribasim_parametrization as ribasim_param
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
+from ribasim_nl.geometry import polygon_parts, union_polygons
 from ribasim_nl.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form
-from shapely import Point
+from shapely import MultiPolygon, Point
 
 from ribasim_nl import CloudStorage
 
@@ -27,6 +30,19 @@ default_level = 1.24 if AANVOER_CONDITIONS else -0.42
 
 # process the feedback form and load the model
 ribasim_model = process_feedback_form(paths)
+
+# The feedback form removes Basins 662 and 713, the KRW water body De Viersprong that HKV split off from Polder de
+# Biesbosch (273) as peilgebieden of their own, and their areas with them. Their areas go back to the polder, see #873.
+base_area = gpd.read_file(paths.base_model_toml.parent / "input/database.gpkg", layer="Basin / area")
+viersprong = base_area.loc[base_area["node_id"].isin([662, 713]), "geometry"]
+assert len(viersprong) == 2
+assert ribasim_model.basin.area.df is not None
+polder = ribasim_model.basin.area.df.index[ribasim_model.basin.area.df["node_id"] == 273]
+assert len(polder) == 1
+polder_area = union_polygons(np.array([ribasim_model.basin.area.df.geometry[polder[0]], *viersprong]))
+ribasim_model.basin.area.df.loc[polder, "geometry"] = gpd.GeoSeries(
+    [MultiPolygon(polygon_parts(polder_area))], index=polder, crs=ribasim_model.crs
+)
 
 # model specific tweaks
 # merge small basins into larger basins for numerical stability

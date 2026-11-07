@@ -1,7 +1,9 @@
+import geopandas as gpd
 import pytest
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, pump
 from ribasim_nl.validation import (
+    _basin_area_issues,
     _connector_through_junction_issues,
     _deep_basin_profile_issues,
     _flow_demand_capacity_issues,
@@ -9,7 +11,7 @@ from ribasim_nl.validation import (
     _manning_resistance_issues,
     _uncontrolled_control_state_issues,
 )
-from shapely.geometry import Point
+from shapely.geometry import MultiPolygon, Point, Polygon, box
 
 from ribasim_nl import Model
 
@@ -43,6 +45,36 @@ def model() -> Model:
     ):
         model.link.add(from_node, to_node)
     return model
+
+
+def test_basin_area_issues(model):
+    # Basin 1 has a hole that is a sliver, Basin 2 is a bow tie, which crosses itself
+    sliver_hole = box(-5, 5, 5, 5 + 1e-6)
+    with_sliver_hole = Polygon(box(-10, 0, 10, 20).exterior, [sliver_hole.exterior])
+    bow_tie = Polygon([(-10, -20), (10, 0), (10, -20), (-10, -10)])
+    model.basin.area.df = gpd.GeoDataFrame(
+        {"node_id": [1, 2]}, geometry=[MultiPolygon([with_sliver_hole]), MultiPolygon([bow_tie])], crs=model.crs
+    )
+    issues = _basin_area_issues(model)
+    assert len(issues) == 2
+    assert "must be valid; invalid node IDs: [2]" in issues[0]
+    assert "wide, see Model.clean_basin_area; invalid node IDs: [1]" in issues[1]
+
+    model.clean_basin_area()
+    assert _basin_area_issues(model) == []
+    area = model.basin.area.df
+    assert area is not None
+    assert area.geometry[0].equals(MultiPolygon([box(-10, 0, 10, 20)]))
+    # the two triangles of the bow tie
+    assert area.geometry[1].is_valid and area.geometry[1].area == pytest.approx(500 / 3)
+
+
+def test_clean_basin_area_raises_on_sliver(model):
+    model.basin.area.df = gpd.GeoDataFrame(
+        {"node_id": [1]}, geometry=[MultiPolygon([box(0, 0, 1e-6, 10)])], crs=model.crs
+    )
+    with pytest.raises(AssertionError, match=r"slivers as a whole, of node IDs: \[1\]"):
+        model.clean_basin_area()
 
 
 def test_connector_through_junction(model):

@@ -28,7 +28,7 @@ from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.downstream import downstream_nodes
-from ribasim_nl.geometry import polygon_parts, split_basin, split_line, union_polygons
+from ribasim_nl.geometry import polygon_parts, split_basin, split_line, union_polygons, without_slivers
 from ribasim_nl.lumping.hydamo import read_areas
 from ribasim_nl.lumping.network import fill_holes
 from ribasim_nl.lumping.utils import read_layer
@@ -1206,6 +1206,18 @@ class Model(ribasim.Model):
         )
         df.index.name = "fid"
         self.basin.area.df = GeoDataFrame[BasinAreaSchema](df)
+
+    def clean_basin_area(self) -> None:
+        """Make the basin areas valid, without slivers, see `ribasim_nl.geometry.without_slivers`.
+
+        Raises if a basin area is a sliver as a whole.
+        """
+        df = self.basin.area.df
+        assert df is not None
+        geometry = gpd.GeoSeries([without_slivers(g) for g in df.geometry], index=df.index, crs=df.crs)
+        slivers = sorted(map(int, df.loc[geometry.is_empty, "node_id"]))
+        assert not slivers, f"basin areas that are slivers as a whole, of node IDs: {slivers}"
+        self.basin.area.df = GeoDataFrame[BasinAreaSchema](df.assign(geometry=geometry))
 
     def fill_basin_area_holes(self, areas_gpkg: Path, excluded: Polygon | MultiPolygon | None = None) -> None:
         """Give the parts of the areas of `areas_gpkg` that no basin area covers to a Basin, one basin area per Basin.

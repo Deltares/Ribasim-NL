@@ -128,7 +128,8 @@ def finish_regional_model(
 ) -> Model:
     """Lay out, write, validate and run the model, use its final state as initial state, and check its results.
 
-    The layout only changes the geometry, after all parametrization: `snap` routes the links along the waterways
+    The layout only changes the geometry, after all parametrization: the Basin areas are made valid, without slivers
+    (see `Model.clean_basin_area`), `snap` routes the links along the waterways
     known for the authority, after which the BGT profile of ManningResistances follows their new links (see
     `update_manning_resistance_reach`), the RWZIs discharge on the links into their Basins (see #860), and nodes and links are
     moved apart. Then the model gets the summer and winter levels of the peilgebieden of the authority, see
@@ -141,6 +142,7 @@ def finish_regional_model(
     :param steady_state_regression: also write, run and check the dry and wet steady state variants
     :return: the model with its final state as initial state
     """
+    model.clean_basin_area()
     model = snap(model)
     update_manning_resistance_reach(model, read_manning_water(model))
     model = attach_rwzi_junctions(model)
