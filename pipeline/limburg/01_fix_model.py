@@ -7,7 +7,7 @@ from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, MultiPolygon, Point
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -21,9 +21,18 @@ run_model = False
 
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
-database_gpkg = ribasim_toml.with_name("database.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
+areas_gpkg = cloud.joinpath(authority, "verwerkt/3_input/areas.gpkg")
+
+# the areas of the basins that this script adds, which the lumping gives to their neighbours
+BASIN_AREAS = {
+    2482: [f"AG_JEK_JEKjeker_BN_{i}_LAT" for i in (20, 22, 34, 35)],
+    2487: [f"AG_WGN_{i}" for i in (305, 306, 307, 308, 309, 466, 467, 468, 469, 571, 572, 579, 704, 705, 706)]
+    + [f"AG_WGN_{i}" for i in range(807, 814)],
+    2490: [f"AG_HUT_{i}" for i in (68, 89, 106, 107, 108, 109, 110, 240)],
+    2495: [f"AG_EKBAWK_{i}" for i in (512, 1861, 4539, 6428, 6638, 6639, 6640, 6641, 6643, 6644)],
+}
 
 # %% read model
 
@@ -71,21 +80,20 @@ model.merge_basins(node_id=2396, to_node_id=1669, are_connected=False)
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426151899
 
 # Corrigeren ontbrekende basins en outlets nabij modelrand
+# an outlet between the basins at the model boundary, which the lumping adds back, and their LevelBoundaries, with the
+# node IDs they got when this script added these basins too
 # geen kdu bij 2202
 geometry = cast(LineString, hydroobject_gdf.at[3099, "geometry"])
-basin_node = model.basin.add(Node(geometry=geometry.boundary.geoms[0]), tables=basin_data)
-outlet_node = model.outlet.add(Node(geometry=geometry.interpolate(271)), tables=[outlet_data])
+outlet_node = model.outlet.add(Node(node_id=2473, geometry=geometry.interpolate(271)), tables=[outlet_data])
 model.redirect_link(link_id=2202, from_node_id=outlet_node.node_id)
-model.link.add(basin_node, outlet_node)
+model.link.add(model.basin[2472], outlet_node)
+model.move_node(2472, geometry.boundary.geoms[0])
 
-assert model.link.df is not None
-for fid, link_id, _boundary_node_id in ((2054, 2244, 63), (9794, 2295, 103), (9260, 2297, 105), (3307, 2305, 113)):
+for basin_id, fid, link_id in ((2474, 2054, 2244), (2476, 9794, 2295), (2478, 9260, 2297), (2480, 3307, 2305)):
     kdu = duiker_gdf.loc[fid]
-    basin_node = model.basin.add(
-        Node(geometry=cast(LineString, model.link.df.loc[link_id, "geometry"]).boundary.geoms[0]), tables=basin_data
-    )
     outlet_node = model.outlet.add(
         Node(
+            node_id=basin_id + 1,
             name=kdu.code,
             geometry=cast(Point, kdu.geometry.interpolate(0.5, normalized=True)),
             meta_object_type="duikersifonhevel",
@@ -93,7 +101,7 @@ for fid, link_id, _boundary_node_id in ((2054, 2244, 63), (9794, 2295, 103), (92
         tables=[outlet_data],
     )
     model.redirect_link(link_id=link_id, from_node_id=outlet_node.node_id)
-    model.link.add(basin_node, outlet_node)
+    model.link.add(model.basin[basin_id], outlet_node)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426258242
 
@@ -278,11 +286,13 @@ for row in network_validator.link_incorrect_type_connectivity(
 
 # Reset static tables
 model = reset_static_tables(model)
-model.fix_unassigned_basin_area()
+areas_gdf = gpd.read_file(areas_gpkg, layer="areas")
+for node_id, codes in BASIN_AREAS.items():
+    model.add_basin_area(areas_gdf[areas_gdf["code"].isin(codes)].union_all(), node_id=node_id)
 # %%
-# rename node-ids
-df = rename_basin_area_gdf.set_index("ribasim_fid")
-model.basin.area.df.loc[df.index, ["node_id"]] = df["to_node_id"].astype("int32")
+# rename node-ids, by geometry, since the fids of the basin areas in the input model can change
+for row in rename_basin_area_gdf.itertuples():
+    model.update_basin_area(node_id=cast(int, row.to_node_id), geometry=cast(MultiPolygon, row.geometry))
 
 # %%add basin area
 for row in add_basin_area_gdf.itertuples():
@@ -292,9 +302,8 @@ for row in add_basin_area_gdf.itertuples():
 
 # merge basins
 selection_df = basin_node_edits_gdf[basin_node_edits_gdf["to_node_id"].notna()]
-for row in selection_df.itertuples():
-    are_connected = True if pd.isna(row.connected) else row.connected
-    model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=are_connected)
+for row in selection_df.fillna({"connected": True}).itertuples():
+    model.merge_basins(node_id=row.node_id, to_node_id=row.to_node_id, are_connected=row.connected)
 
 # %% reverse links
 
@@ -476,13 +485,6 @@ for row in add_basin_outlet_gdf.itertuples():
         node_type = "TabulatedRatingCurve"
     model.add_basin_outlet(basin_id, geometry=row.geometry, node_type=node_type, name=row.add_object_name)
 
-# %% weggooien basin areas zonder node
-
-df = model.basin.area.df[~model.basin.area.df.index.isin(model.unassigned_basin_area.index)]
-df = df.dissolve(by="node_id").reset_index()
-df.index.name = "fid"
-model.basin.area.df = df
-
 
 # %% corrigeren knoop-topologie
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
@@ -494,8 +496,6 @@ for row in network_validator.link_incorrect_type_connectivity(
     from_node_type="LevelBoundary", to_node_type="ManningResistance"
 ).itertuples():
     model.update_node(row.to_node_id, "Outlet")
-
-model.remove_unassigned_basin_area()
 
 # %% verwijderen i.v.m koppelen met Aa en Maas
 model.remove_node(node_id=144, remove_links=True)
@@ -585,6 +585,9 @@ model.redirect_link(link_id=2208, to_node_id=1802)
 # Merge bij Niers
 model.merge_basins(node_id=2375, to_node_id=1917)
 
+
+# %% give the holes that the edits left in the basin areas to a basin
+model.fill_basin_area_holes(areas_gpkg)
 
 #  %% write model
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")

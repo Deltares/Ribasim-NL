@@ -123,8 +123,6 @@ def sync_min_upstream_levels_with_profile_bottoms(
     if basin_bottom.empty:
         return pd.DataFrame()
 
-    assert model.node.df is not None
-    assert model.link.df is not None
     node_type_by_id = {
         as_int(node_id): str(node_type) for node_id, node_type in model.node.df["node_type"].to_dict().items()
     }

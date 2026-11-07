@@ -1,0 +1,5 @@
+outs:
+- md5: 70a4d44e177a279c78149708f3ed0313
+  size: 7163904
+  hash: md5
+  path: areas.gpkg

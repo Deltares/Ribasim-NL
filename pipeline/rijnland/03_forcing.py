@@ -123,7 +123,6 @@ ribasim_model.pump.static.df.loc[
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
-assert ribasim_model.node.df is not None
 ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
 
 # # set LevelBoundary-nodes level to AGV-basins
@@ -191,7 +190,6 @@ BOEZEMGEMALEN: tuple[tuple[int, str, list[float], list[float], float | list[floa
     # Gouda starts at -0.59 m NAP and stops below -0.595 m NAP
     (1279, "Gouda", [-0.59, -0.57], [0.0, 34.5, 40.0], [0.005, DEFAULT_LEVEL_STEP_HYSTERESIS]),
 )
-assert ribasim_model.node.df is not None
 for node_id, name, levels, flow_rates, hysteresis in BOEZEMGEMALEN:
     pump_name = ribasim_model.node.df.at[node_id, "name"]
     assert pump_name == f"Boezemgemaal {name}", pump_name

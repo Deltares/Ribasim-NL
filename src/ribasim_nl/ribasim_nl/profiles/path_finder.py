@@ -15,6 +15,7 @@ import geopandas as gpd
 import momepy
 import networkx as nx
 import numpy as np
+import pandas as pd
 import shapely
 import tqdm
 from shapely.ops import nearest_points
@@ -24,6 +25,56 @@ from ribasim_nl import geometry
 from ribasim_nl.geodataframe import sorted_sjoin
 
 LOG = logging.getLogger(__name__)
+
+
+def canonical(gdf: gpd.GeoDataFrame, decimals: int = 3) -> gpd.GeoDataFrame:
+    """The rows in the order of their rounded geometry and then their other columns.
+
+    Of the shortest paths of equal length, networkx finds the one it reaches first, which depends on the order in which
+    the graph was built, and of crossings within a tolerance of each other the first is kept. In this order, the main
+    routes do not depend on the order of the rows. The geometries are only rounded to sort them, so that coordinate noise,
+    such as that of another version of PROJ, does not change the order, unless a coordinate lies within the noise of a
+    rounding boundary. They keep their coordinates, since rounding them changes which lines touch.
+
+    :param gdf: geospatial data
+    :param decimals: the number of decimals to round the coordinates to for sorting, defaults to 3 (millimetres)
+    :return: the sorted data, with a new index, and the rows without geometry last
+    """
+    geometries = gdf.geometry.to_numpy()
+    missing = shapely.is_missing(geometries)
+    wkb = shapely.to_wkb(shapely.transform(geometries, lambda coords: np.round(coords, decimals)))
+    wkb[missing] = b""
+    # by position, since the index need not be unique
+    keys = pd.DataFrame(
+        {
+            "missing": missing,
+            "geometry": wkb,
+            **{
+                f"column_{i}": gdf[c].astype(object).map(str).to_numpy()
+                for i, c in enumerate(gdf.columns)
+                if c != gdf.geometry.name
+            },
+        }
+    )
+    order = keys.sort_values(list(keys.columns), kind="stable").index.to_numpy()
+    return gdf.iloc[order].reset_index(drop=True)
+
+
+def overlaps(
+    lines: np.ndarray, polygons: shapely.Polygon | shapely.MultiPolygon | np.ndarray, *, min_length: float = 1e-3
+) -> np.ndarray:
+    """Whether the lines have more than `min_length` in the polygons, rather than only touching them.
+
+    The hydro-objects are split at the crossings, on the boundaries of the basins. Whether the end of such a line reaches
+    into the neighbouring basin by 1e-9 m depends on coordinate noise, while a line counts with its whole length in a
+    basin it intersects. So the lines should only count in the basins they overlap.
+
+    :param lines: hydro-objects
+    :param polygons: a basin, or a basin per line
+    :param min_length: the length a line must have in a polygon to overlap it, defaults to 1 mm
+    :return: for each line, whether it overlaps
+    """
+    return shapely.length(shapely.intersection(lines, polygons)) > min_length
 
 
 def simplify_geodata(

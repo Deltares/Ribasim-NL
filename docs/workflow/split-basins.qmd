@@ -5,10 +5,31 @@ title: "Split basins based on pre-split basin polygons"
 Workflow for replacing one Ribasim basin by multiple smaller basin polygons and reconnecting the surrounding model network.
 The implementation lives in [`src/ribasim_nl/ribasim_nl/split_basins.py`](https://github.com/Deltares/Ribasim-NL/tree/main/src/ribasim_nl/ribasim_nl/split_basins.py).
 
+```{mermaid}
+%%| fig-cap: "Splitting basin B into three parts, and how the connectors follow."
+flowchart TB
+  subgraph before["Before"]
+    direction LR
+    i1["inlet"] --> b["basin B"]
+    b --> o1["outlet"]
+  end
+  subgraph after["After"]
+    direction LR
+    i2["inlet"] --> b1["B1"]
+    b1 <--> m1["ManningResistance"]
+    m1 <--> b2["B2"]
+    b2 <--> m2["ManningResistance"]
+    m2 <--> b3["B3"]
+    b3 --> o2["outlet"]
+  end
+  before --> after
+```
+
 ## Purpose
 
-This workflow is used after a Ribasim model has already been built and before the model is written or further parameterized.
+This workflow runs at the end of the feedback stage of 5 [level controlled](level-controlled.qmd) water boards: Delfland, Hollands Noorderkwartier, Rijnland, Wetterskip Fryslân and Zuiderzeeland, so before their profiles are generated.
 It replaces a basin by multiple smaller basins and reconnects the links, which may be useful for convergence improvements or an improved water quality schematisation.
+The polygons are in `verwerkt/Splitting_basins`.
 The script does this by:
 
 1. creating new basin nodes from pre-split basin polygons,
@@ -17,11 +38,11 @@ The script does this by:
 
 ## How to run
 
-This workflow is intended to be run from a water board parametrization script:
+This workflow is intended to be run from the `pipeline/<water board>/01_feedback.py` script of a water board:
 
 1. Prepare a polygon layer with the split basin parts.
    Each polygon represents one new basin area that will replace the original basin. This can easily be done using QGIS.
-2. Set the path to this layer in the parametrization script.
+2. Set the path to this layer in the script.
 3. Create a `SplitBasins` object with:
    - the Ribasim model,
    - the path to the split basin polygons,
@@ -64,12 +85,12 @@ The script expects at least the following inputs to be available:
 
 ### 1. Read the split basin polygons
 
-The `SplitBasins` class reads the supplied polygon layer. The geometry of this polygon is used as the new splitted basin areas.
+The `SplitBasins` class reads the supplied polygon layer. The geometry of these polygons is used as the new basin areas.
 The original basin geometry is not cut by the script itself; the basin parts must already be prepared as this is a more practical approach, mainly when splitting the basin into many smaller basins or when the basin has an awkward / large shape.
 
 ### 2. Create new basin nodes
 
-For each polygon in the split basin layer, the script creates a new basin nodes for each splitted basin. The node geometry is placed at the polygon representative point.
+The script creates a new basin node for each polygon in the split basin layer. The node geometry is placed at the polygon representative point.
 
 The basin table rows of the original basin are copied to each new basin node to retain the (meta)data.
 This includes available rows in:
@@ -80,7 +101,7 @@ This includes available rows in:
 - `model.basin.state`
 - `model.basin.area`
 
-After copying, the geometry in `model.basin.area.df` is replaced by the corresponding split basin polygon. Note that the user may need to update the profile and static/time table, as the surface area of the polygons has changed.
+After copying, the geometry in `model.basin.area.df` is replaced by the corresponding split basin polygon. Note that the user may need to update the profile and static/time table, as the surface area of the polygons has changed. In the level controlled models, the later profile and forcing stages set these for the new basins.
 
 ### 3. Redirect existing connectors
 
@@ -89,7 +110,7 @@ For each connected node, it determines which new split basin polygon is nearest 
 The link is then redirected administratively by replacing the original basin `node_id` with the nearest new basin `node_id`.
 
 The link geometry is also updated.
-A new straight `LineString` is created between the connector node and the representative point of the selected new basin.
+A new straight `LineString` is created between the connector node and the representative point of the selected new basin, which the [layout](layout.qmd) later routes along the watercourses.
 
 ### 4. Add ManningResistance nodes between split basins
 
@@ -136,3 +157,10 @@ The main outputs are:
 - new basin nodes and basin area geometries for each split basin polygon,
 - existing connector links redirected to the nearest new basin,
 - ManningResistance nodes and links between adjacent split basin parts.
+
+The scripts wrap the split in `NodeMetaCache`, so `meta_categorie` is kept, and the new basins get `hoofdwater`.
+
+## Splitting along a route
+
+`split_basin_along_route` in the same module is another method, which `pipeline/rijkswaterstaat/7_model_onttrekkingen.py` uses in the main water system.
+It cuts a basin across a route, scales the profiles by the length of the route, and sets the ManningResistance from the geometry.

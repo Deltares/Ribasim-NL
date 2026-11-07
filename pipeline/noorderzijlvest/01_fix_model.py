@@ -46,7 +46,6 @@ lines_gdf = gpd.read_file(
     fid_as_index=True,
 )
 
-assert model.node.df is not None
 points = model.node.df[model.node.df.node_type.isin(["TabulatedRatingCurve", "Outlet", "Pump"])].geometry
 
 for row in lines_gdf.itertuples():
@@ -86,7 +85,6 @@ pump_data = pump.Static(flow_rate=[10])
 # %% https://github.com/Deltares/Ribasim-NL/issues/155#issuecomment-2454955046
 
 # 76 links bij opgeheven nodes verwijderen
-assert model.link.df is not None
 mask = model.link.df.to_node_id.isin(model.node.df.index) & model.link.df.from_node_id.isin(model.node.df.index)
 missing_links_df = model.link.df[~mask]
 
@@ -113,12 +111,13 @@ he_snap_df.loc[mask, "Kunstwerk"] = he_snap_df[mask].Kunstwerk.str[3:]
 he_outlet_df = gpd.GeoDataFrame(geometry=gpd.GeoSeries(), crs=he_snap_df.crs, index=he_df.index)
 
 mask = he_df["KWKuit"].notna()
-he_outlet_df.loc[mask, "geometry"] = he_df[mask]["KWKuit"].apply(
-    lambda x: he_snap_df.set_index("Kunstwerk").at[x, "geometry"]
+he_outlet_df.loc[mask, "geometry"] = he_df.loc[mask, "KWKuit"].map(
+    he_snap_df.dropna(subset="Kunstwerk").set_index("Kunstwerk").geometry
 )
-he_outlet_df.loc[~mask, "geometry"] = he_df[~mask]["HEIDENT"].apply(
-    lambda x: he_snap_df.set_index("HEIDENT").at[x, "geometry"]
+he_outlet_df.loc[~mask, "geometry"] = he_df.loc[~mask, "HEIDENT"].map(
+    he_snap_df.dropna(subset="HEIDENT").set_index("HEIDENT").geometry
 )
+assert he_outlet_df.geometry.notna().all(), "not every he has an outlet"
 
 he_outlet_df.loc[:, "HEIDENT"] = he_df["HEIDENT"]
 he_outlet_df.set_index("HEIDENT", inplace=True)
@@ -273,7 +272,7 @@ for row in he_df[he_df["node_id"].isna()].itertuples():
     network_node = get_network_node(point)
 
     basin_node_id = network.find_downstream(network_node, attribute="node_id")
-    he_df.loc[row.Index, ["node_id"]] = basin_node_id
+    he_df.at[cast(str, row.Index), "node_id"] = basin_node_id
 
 
 data = []

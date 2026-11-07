@@ -30,10 +30,8 @@ model = Model.read(ribasim_toml)
 start_time = time.time()
 # %%
 # parameterize
-assert model.basin.node is not None and model.basin.node.df is not None
 series = model.basin.node.df["meta_categorie"]
 uncategorized_basins = series[series.isna()].index.values
-assert model.node.df is not None
 if len(uncategorized_basins) > 0:
     print(f"uncategorized basins: {uncategorized_basins}, will be set to doorgaand")
     model.node.df.loc[uncategorized_basins, "meta_categorie"] = "doorgaand"

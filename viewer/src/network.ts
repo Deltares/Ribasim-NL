@@ -1,4 +1,4 @@
-import { readColumns, type Comparison, type FeatureDiff, type Manifest } from "./data";
+import { hasColumn, readColumns, type Comparison, type FeatureDiff, type Manifest } from "./data";
 
 /**
  * deck.gl binary layer data. Layers must get the same object on every render,
@@ -43,6 +43,8 @@ export interface Network {
   nodeY: Float32Array;
   nodeRow: Map<number, number>;
   nodeGroups: Group[];
+  /** The storing ('bergend') Basins of the head model, empty if its nodes have no categories */
+  storingBasins: Set<number>;
   linkId: Int32Array;
   linkType: string[];
   fromNodeId: Int32Array;
@@ -188,6 +190,12 @@ async function readNetwork(manifest: Manifest): Promise<Columns> {
   return { nodes, links };
 }
 
+async function readStoringBasins(manifest: Manifest): Promise<Set<number>> {
+  if (!(await hasColumn(manifest.files.nodes, "meta_categorie"))) return new Set();
+  const { node_id, meta_categorie } = await readColumns(manifest.files.nodes, ["node_id", "meta_categorie"]);
+  return new Set(node_id.filter((_, row) => meta_categorie[row] === "bergend").map(Number));
+}
+
 /** Rows of the head model, followed by the rows of the base model that were removed. */
 function mergedRows(head: unknown[], base: unknown[] | undefined, removed: (id: number) => boolean) {
   const baseRows = base ? base.flatMap((id, row) => (removed(Number(id)) ? [row] : [])) : [];
@@ -328,7 +336,11 @@ function matchLinks(head: Columns["links"], base: Columns["links"]): Map<number,
  * grouped by type; the other unchanged features form the context.
  */
 export async function loadNetwork(manifest: Manifest, comparison: Comparison | null = null): Promise<Network> {
-  const [head, base] = await Promise.all([readNetwork(manifest), comparison ? readNetwork(comparison.base) : null]);
+  const [head, base, storingBasins] = await Promise.all([
+    readNetwork(manifest),
+    comparison ? readNetwork(comparison.base) : null,
+    readStoringBasins(manifest),
+  ]);
   const diff = comparison?.diff;
 
   const nodes = mergedRows(head.nodes.node_id, base?.nodes.node_id, isRemoved(diff?.nodes, 1));
@@ -384,6 +396,7 @@ export async function loadNetwork(manifest: Manifest, comparison: Comparison | n
     nodeY,
     nodeRow: indexById(nodeId),
     nodeGroups,
+    storingBasins,
     nodeLocal,
     linkId,
     linkType,

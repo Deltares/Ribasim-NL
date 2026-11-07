@@ -36,7 +36,6 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 assert model.manning_resistance.static.df is not None
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 # the sediment at open water connection OW575 resists more, see https://github.com/Deltares/Ribasim-NL/issues/912
-assert model.node.df is not None
 (ow575,) = model.node.df.index[model.node.df["meta_code_waterbeheerder"] == "OW575"]
 assert model.get_node_type(ow575) == "ManningResistance"
 model.manning_resistance.static.df.loc[model.manning_resistance.static.df.node_id == ow575, "manning_n"] = 0.04

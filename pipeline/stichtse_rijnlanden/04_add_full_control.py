@@ -1,7 +1,12 @@
 # %%
+from typing import cast
+
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 from pandera.typing import DataFrame
+from ribasim import Node
+from ribasim.nodes import discrete_control, pump
 from ribasim.schemas import DiscreteControlConditionSchema, DiscreteControlLogicSchema, DiscreteControlVariableSchema
 from ribasim_nl.control import (
     add_controllers_to_supply_area,
@@ -173,7 +178,6 @@ aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).diss
 
 # aanmaken node_df en specificeren supply_nodes
 # knopen die beginnen met INL, i of eindigen op i, maar niet op fictief
-assert model.node.df is not None
 for node_type in CONTROL_NODE_TYPES:
     node_df = model.get_component(node_type).node.df
 
@@ -364,7 +368,6 @@ def straight_link(model: Model, from_node_id: int, to_node_id: int) -> None:
     It gets a vertex halfway, as straight links of two points are routed along the waterways later, see
     07_add_dynamic_forcing.py.
     """
-    assert model.link.df is not None
     links = model.link.df
     (link_id,) = links.index[
         (links.link_type == "flow") & (links.from_node_id == from_node_id) & (links.to_node_id == to_node_id)
@@ -425,7 +428,6 @@ model.outlet.static.df.loc[zero_aanvoer_mask, ["flow_rate", "max_flow_rate"]] = 
 
 # Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
 node_type_by_id = model.node.df["node_type"].to_dict()
-assert model.link.df is not None
 flow_demand_controlled_node_ids = set(
     model.link.df.loc[
         model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),
@@ -470,7 +472,6 @@ def set_flow_regime_control(
 
     Regime i applies while the flow exceeds i of the ascending `thresholds`. The levels of the aanvoer state are kept.
     """
-    assert model.link.df is not None
     assert len(flow_rates) == len(thresholds) + 1, "Expected one flow rate per regime"
     assert thresholds == sorted(thresholds), "Expected ascending thresholds"
     assert model.get_node_type(node_id) == "Outlet", f"Expected Outlet for node {node_id}"
@@ -547,7 +548,6 @@ def set_flow_regime_control(
             ignore_index=True,
         )
     )
-    assert model.node.df is not None
     model.node.df.loc[control_node_id, "name"] = name
 
 
@@ -559,6 +559,63 @@ set_flow_regime_control(
     flow_rates=WIJK_BIJ_DUURSTEDE_FLOW_RATES,
     name="debiet Amelisweerd: 6/7 [m3/s]",
 )
+
+# %% Gemaal Kromme Rijn, naast de inlaat bij Wijk bij Duurstede, zie #978
+# Het gemaal vervangt de noodpompen in droge perioden: het pompt als Amelisweerd in regime 1 zit, en de Lek te laag
+# staat voor de inlaat, die niet onder zijn min_upstream_level inlaat. De bovengrens op de Lek is dat level, dus bij het
+# peil van de LevelBoundary in het regionale model blijft het gemaal uit.
+# Vrije node IDs, want volgnummers zouden de IDs van de bergende Basins verschuiven, waar koppelen naar verwijst.
+GEMAAL_KROMME_RIJN, GEMAAL_KROMME_RIJN_CONTROL = 2106, 2107
+GEMAAL_KROMME_RIJN_FLOW_RATE = 9.0  # m3/s
+LEK_THRESHOLD_RANGE = 0.04  # m
+assert not {GEMAAL_KROMME_RIJN, GEMAAL_KROMME_RIJN_CONTROL} & set(model.node.df.index), "Expected free node IDs"
+
+lek, kromme_rijn = model.upstream_node_id(WIJK_BIJ_DUURSTEDE), model.downstream_node_id(WIJK_BIJ_DUURSTEDE)
+assert isinstance(lek, int | np.integer) and isinstance(kromme_rijn, int | np.integer)
+assert model.get_node_type(int(lek)) == "LevelBoundary", f"Expected the Lek upstream of {WIJK_BIJ_DUURSTEDE}"
+inlaat = model.outlet.static.df[model.outlet.static.df.node_id == WIJK_BIJ_DUURSTEDE]
+assert inlaat[["min_upstream_level", "max_downstream_level"]].nunique().eq(1).all(), "Expected one level per side"
+lek_threshold = float(inlaat["min_upstream_level"].iloc[0])
+inlaat_point = cast(Point, model.node.df.at[WIJK_BIJ_DUURSTEDE, "geometry"])
+
+gemaal_node = model.pump.add(
+    Node(GEMAAL_KROMME_RIJN, Point(inlaat_point.x + 20, inlaat_point.y - 20), name="Gemaal Kromme Rijn"),
+    [
+        pump.Static(
+            control_state=["gemaal aan", "gemaal uit"],
+            flow_rate=[GEMAAL_KROMME_RIJN_FLOW_RATE, 0.0],
+            max_flow_rate=[GEMAAL_KROMME_RIJN_FLOW_RATE] * 2,
+            max_downstream_level=[float(inlaat["max_downstream_level"].iloc[0])] * 2,
+        )
+    ],
+)
+model.link.add(model.get_node(int(lek)), gemaal_node)
+model.link.add(gemaal_node, model.get_node(int(kromme_rijn)))
+
+gemaal_control = model.discrete_control.add(
+    Node(
+        GEMAAL_KROMME_RIJN_CONTROL,
+        Point(inlaat_point.x + 40, inlaat_point.y - 40),
+        name=f"debiet Amelisweerd: {AMELISWEERD_THRESHOLDS[0]:.0f} [m3/s] en Lek: {lek_threshold} [m+NAP]",
+    ),
+    [
+        discrete_control.Variable(
+            compound_variable_id=[1, 2], listen_node_id=[AMELISWEERD, int(lek)], variable=["flow_rate", "level"]
+        ),
+        discrete_control.Condition(
+            compound_variable_id=[1, 2],
+            condition_id=[1, 1],
+            threshold_high=[AMELISWEERD_THRESHOLDS[0], lek_threshold],
+            threshold_low=[AMELISWEERD_THRESHOLDS[0] - FLOW_THRESHOLD_HYSTERESIS, lek_threshold - LEK_THRESHOLD_RANGE],
+            time=[model.starttime] * 2,
+        ),
+        discrete_control.Logic(
+            truth_state=["FF", "FT", "TF", "TT"],
+            control_state=["gemaal aan", "gemaal uit", "gemaal uit", "gemaal uit"],
+        ),
+    ],
+)
+model.link.add(gemaal_control, gemaal_node)
 
 # %% Namen, zie #855
 model.node.df.loc[168, "name"] = "Oog in Al, spuisluis"

@@ -55,7 +55,6 @@ profiles_df = damo_profiles.process_profiles()
 profiles_df.to_file(profiles_gpkg)
 add_link_profile_ids(model, profiles=damo_profiles)
 fix_link_geometries(model, network)
-assert model.link.df is not None
 model.link.df.reset_index().to_file(link_geometries_gpkg)
 profiles_df.set_index("profiel_id", inplace=True)
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
@@ -279,9 +278,9 @@ static_data.add_series(node_type="Pump", series=flow_rate)
 
 model.basin.area.df.loc[model.basin.area.df.node_id == 2190, "meta_streefpeil"] = -0.6
 model.basin.area.df.loc[model.basin.area.df.node_id == 1868, "meta_streefpeil"] = 3.5
-model.basin.area.df.loc[model.basin.area.df.node_id == 1612, "meta_streefpeil"] = model.basin.area.df.set_index(
-    "node_id"
-).at[1769, "meta_streefpeil"]
+model.basin.area.df.loc[model.basin.area.df.node_id == 1612, "meta_streefpeil"] = float(
+    cast(float, model.basin.area.df.set_index("node_id").at[1769, "meta_streefpeil"])
+)
 
 model.basin.area.df.loc[model.basin.area.df.node_id == 2190, "meta_streefpeil"] = -0.19
 # %%

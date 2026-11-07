@@ -133,9 +133,6 @@ def model_level_difference_threshold(model: Model) -> float:
 def control_node_name(model: Model, control_node_id: int) -> str | None:
     """Return the name of a DiscreteControl node, if present."""
     node_df = model.node.df
-    if node_df is None:
-        return None
-
     control_node_id = as_int(control_node_id)
     if control_node_id not in node_df.index:
         return None
@@ -145,9 +142,6 @@ def control_node_name(model: Model, control_node_id: int) -> str | None:
 
 def control_node_ids_by_target_node_id(model: Model) -> dict[int, list[int]]:
     """Map controlled Outlet/Pump node_id to its DiscreteControl node_ids."""
-    assert model.node.df is not None
-    assert model.link.df is not None
-
     node_type_by_id = {
         as_int(node_id): str(node_type) for node_id, node_type in model.node.df["node_type"].to_dict().items()
     }
@@ -168,9 +162,6 @@ def control_node_ids_by_target_node_id(model: Model) -> dict[int, list[int]]:
 
 def flow_demand_controlled_node_ids(model: Model) -> set[int]:
     """Find Outlet/Pump nodes controlled by a FlowDemand node."""
-    assert model.node.df is not None
-    assert model.link.df is not None
-
     node_df = reset_index_to_column(model.node.df.copy(), "node_id")
     link_df = reset_index_to_column(model.link.df.copy(), "link_id")
     node_type_by_id = {

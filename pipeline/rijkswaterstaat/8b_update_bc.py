@@ -1,13 +1,16 @@
 # %%
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 from pandera.typing import DataFrame
 from ribasim.schemas import FlowBoundaryTimeSchema, LevelBoundaryTimeSchema
+from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.flow_paths import rebuild_junction_trees_along_top10nl
 from ribasim_nl.layout import tidy_layout
 from ribasim_nl.observations import add_observations
 from ribasim_nl.regional_model import ENDTIME, STARTTIME, read_lhm_budgets
+from ribasim_nl.rws_kunstwerken import main_route
 from ribasim_nl.set_forcing import SetDynamicForcing
 
 from ribasim_nl import CloudStorage, Model, Network, merge_rwzi_model
@@ -75,7 +78,6 @@ monsin_series = read_monsin(debieten_xlsx, model.starttime, model.endtime)
 # %% set FlowBoundary / Time
 
 # get node ids
-assert model.flow_boundary.node is not None and model.flow_boundary.node.df is not None
 lobith_node_id = (
     model.flow_boundary.node.df.reset_index(drop=False).set_index("meta_meetlocatie_code").at["LOBH", "node_id"]
 )
@@ -84,11 +86,9 @@ monsin_node_id = (
 )
 
 # set flow boundary timeseries
-lobith_df = pd.DataFrame(lobith_series).reset_index()
-lobith_df.loc[:, "node_id"] = lobith_node_id
+lobith_df = pd.DataFrame(lobith_series).reset_index().assign(node_id=cast(int, lobith_node_id))
 
-monsin_df = pd.DataFrame(monsin_series).reset_index()
-monsin_df.loc[:, "node_id"] = monsin_node_id
+monsin_df = pd.DataFrame(monsin_series).reset_index().assign(node_id=cast(int, monsin_node_id))
 
 # TODO fill the gaps before so we don't need dropna here
 # the resample introduces missing from gaps in the timeseries
@@ -103,7 +103,6 @@ model.flow_boundary.static.df = model.flow_boundary.static.df[
 
 # %% update LevelBoundary / Time
 
-assert model.level_boundary.node is not None and model.level_boundary.node.df is not None
 node_ids = model.level_boundary.node.df[
     model.level_boundary.node.df["meta_meetlocatie_code"].isin(["KOBU", "OEBU"])
 ].index.to_numpy()
@@ -170,8 +169,6 @@ model.level_boundary.time.df = DataFrame[LevelBoundaryTimeSchema](level_df)
 
 # The precipitation and open water evaporation of the LHM on the Basins, which are all main water. They get no
 # groundwater budgets, which the LHM computes for the land only.
-assert model.node.df is not None
-assert model.basin.node is not None and model.basin.node.df is not None
 model.node.df.loc[model.basin.node.df.index, "meta_categorie"] = "hoofdwater"
 model = SetDynamicForcing(model=model, budgets=read_lhm_budgets(), startdate=STARTTIME, enddate=ENDTIME).add()
 # Basins too narrow to contain the center of an LHM cell get no meteo, like in the regional models
@@ -182,8 +179,6 @@ assert area[missing].sum() < 0.001 * area.sum(), f"No meteo for a large area of 
 print(f"No meteo for Basins {missing.tolist()}, of {area[missing].sum() / 1e6:.2f} km2")
 
 # merge RWZI model, which requires meta_waterbeheerder (the hws model is fully Rijkswaterstaat)
-assert model.node.df is not None
-assert model.basin.node is not None and model.basin.node.df is not None
 model.node.df.loc[model.basin.node.df.index, "meta_waterbeheerder"] = "Rijkswaterstaat"
 # RWZIs that discharge on hws water that the Basin areas do not cover, such as Vollenhove on the Vollenhover Kanaal
 # 2.8 km from the Zwarte Meer, couple to the nearest hws Basin, see #936
@@ -195,13 +190,26 @@ model = merge_rwzi_model(
     max_distance=3000,
 )
 
+# %% label the water by its origin
+# The two rivers, and the two FlowBoundaries from Belgium, without a flow: the Kanaal van Gent naar Terneuzen and the
+# Schelde. The RWZIs have their label from merge_rwzi_model.
+model.node.df.loc[lobith_node_id, "meta_categorie"] = "Rijn"
+model.node.df.loc[monsin_node_id, "meta_categorie"] = "Maas"
+model.node.df.loc[[358, 2302], "meta_categorie"] = "buitenlandse aanvoer"
+# All LevelBoundaries lie on the sea, except the one on the Schelde at the Belgian border. koppelen keeps these labels
+# as boundaries.
+model.node.df.loc[model.level_boundary.node.df.index, "meta_couple_authority"] = "Noordzee"
+model.node.df.loc[2309, "meta_couple_authority"] = "Buitenland"
+assign_lhm_fractions(model)
+
 # add Observation nodes with measured discharges
 model = add_observations(model, "Rijkswaterstaat")
-# route the links of each Basin as one tree along the network, which koppelen extends with the links of other models
-assert model.basin.node is not None and model.basin.node.df is not None
+# route the links of each Basin as one tree along the network, and through the lock chambers it lacks, which koppelen
+# extends with the links of other models
 network = Network.from_network_gpkg(network_gpkg)
-rebuild_junction_trees_along_top10nl(model, model.basin.node.df.index.tolist(), top10nl_gpkg, network.links)
+rebuild_junction_trees_along_top10nl(model, model.basin.node.df.index.tolist(), top10nl_gpkg, main_route(network))
 model = tidy_layout(model)
+model.clean_basin_area()
 
 # %%
 ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_transient/hws.toml")

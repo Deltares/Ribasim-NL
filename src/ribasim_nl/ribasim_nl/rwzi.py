@@ -38,11 +38,10 @@ def create_rwzi_basin_coupling(rwzi_coupled_model: Model, max_distance=100):
         coupling_lookup (dict): Lookup table of RWZI codes and basin IDs.
         unmatched_rwzi_df (GeoDataFrame): RWZI locations that have not yet been matched with basins.
     """
-    assert rwzi_coupled_model.terminal.node is not None
     terminals_all = rwzi_coupled_model.terminal.node.df
     basins = rwzi_coupled_model.basin.area.df
     nodes = rwzi_coupled_model.node.df
-    assert terminals_all is not None and basins is not None and nodes is not None
+    assert basins is not None
     assert basins.crs is not None
 
     unique_waterbeheerders = nodes["meta_waterbeheerder"].dropna().unique()
@@ -130,9 +129,7 @@ def remove_unmatched_rwzi(rwzi_coupled_model: Model, unmatched_rwzi_df: GeoDataF
         terminals_removed += 1
 
     #  2. bijbehorende flow boundaries verwijderen
-    assert rwzi_coupled_model.flow_boundary.node is not None
     fb_df = rwzi_coupled_model.flow_boundary.node.df
-    assert fb_df is not None
     flow_boundary_to_remove = fb_df[fb_df["meta_rwzi_code"].isin(unmatched_rwzi_df["meta_rwzi_code"])]
 
     flow_boundaries_removed = 0
@@ -229,8 +226,6 @@ def _is_bergend(nodes: pd.DataFrame, node_ids: typing.Iterable[int]) -> bool:
 
 def _attach_rwzi_junction(model: Model, junction_id: int, basin_id: int, max_distance: float) -> bool:
     """Attach an RWZI Junction to the route of `basin_id`, see `attach_rwzi_junctions`. Returns whether it did."""
-    assert model.node.df is not None
-    assert model.link.df is not None
     nodes = model.node.df  # the nodes used below are not removed
     routes = Routes(model)
     inflow = routes.links_at(junction_id, upstream=True)
@@ -314,7 +309,6 @@ def attach_rwzi_junctions(
     -------
         Model: the model with the RWZI Junctions on the links.
     """
-    assert model.node.df is not None
     nodes = model.node.df
     if "meta_rwzi_code" not in nodes.columns:
         return model
@@ -381,12 +375,9 @@ def merge_rwzi_model(
     logger.info("RWZI model loaded")
 
     # add meta_categorie = RWZI so we can discriminate between other (buitenlandse aanvoer) boundaries
-    assert rwzi_model.node.df is not None
     rwzi_model.node.df.loc[rwzi_model.node.df.node_type == "FlowBoundary", "meta_categorie"] = "RWZI"
 
     # index rwzi model with nodes >1 higher than of base model
-    assert base_model.node.df is not None
-    assert base_model.link.df is not None
     node_start = base_model.node.df.index.max() + 1
     link_start = base_model.link.df.index.max() + 1
     rwzi_model = reset_index(rwzi_model, node_start=node_start, link_start=link_start)
@@ -436,9 +427,7 @@ def export_rwzi_coverage_geojson(
     """
     rwzi_gdf = gpd.read_file(rwzi_coverage_path)
 
-    assert rwzi_coupled_model.junction.node is not None
     junction_df = rwzi_coupled_model.junction.node.df
-    assert junction_df is not None
     rwzi_junction_names = junction_df[junction_df["meta_rwzi_code"].notna()]["name"].str.replace("_out", "")
     duplicate_rwzi_names = set(rwzi_junction_names[rwzi_junction_names.duplicated(keep=False)])
 
@@ -483,16 +472,10 @@ def log_rwzi_coverage_report(
     -------
         GeoDataFrame with coverage flags for the coupled model.
     """
-    flow_boundary_node = rwzi_coupled_model.flow_boundary.node
-    if flow_boundary_node is None or flow_boundary_node.df is None:
-        raise ValueError("FlowBoundary node table is missing in rwzi_coupled_model")
-    fb_df = flow_boundary_node.df
+    fb_df = rwzi_coupled_model.flow_boundary.node.df
     rwzi_flow_boundaries = fb_df[fb_df["meta_rwzi_code"].notna()]
 
-    junction_node = rwzi_coupled_model.junction.node
-    if junction_node is None or junction_node.df is None:
-        raise ValueError("Junction node table is missing in rwzi_coupled_model")
-    junction_df = junction_node.df
+    junction_df = rwzi_coupled_model.junction.node.df
     rwzi_junctions = junction_df[junction_df["meta_rwzi_code"].notna()]
 
     total_rwzi = len(rwzi_flow_boundaries)

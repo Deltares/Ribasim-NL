@@ -75,8 +75,6 @@ class AssignMetaData:
                 if ribasim_attr == "node":
                     # Use global node table
                     df_ribasim = self.model.node.df
-                    assert df_ribasim is not None
-
                     type_name = type(rtype).__name__
                     type_mask = df_ribasim["node_type"] == type_name
                 else:
@@ -97,7 +95,6 @@ class AssignMetaData:
             if ribasim_attr == "node":
                 # Use global node table
                 df_ribasim = self.model.node.df
-                assert df_ribasim is not None
                 mrows = self._na_or_empty(df_ribasim.loc[org_vals.index, col])
                 df_ribasim.loc[org_vals.index[mrows], col] = org_vals[mrows]
             else:
@@ -114,7 +111,6 @@ class AssignMetaData:
         if ribasim_attr == "node":
             # Use global node table
             df_ribasim = self.model.node.df
-            assert df_ribasim is not None
             matching_rows = df_ribasim.index.isin(node_id)
         else:
             df_ribasim = getattr(getattr(self.model, ribasim_type), ribasim_attr).df
@@ -163,7 +159,6 @@ class AssignMetaData:
 
         # control states that switch a pump off keep their flow_rate of 0
         assert self.model.pump.static.df is not None
-        assert self.model.pump.node is not None and self.model.pump.node.df is not None
         pump_off = off_states(self.model.pump.static.df)
 
         # Add columns which do not exist yet

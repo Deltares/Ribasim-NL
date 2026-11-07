@@ -4,8 +4,10 @@
 from typing import get_type_hints, overload
 
 import numpy as np
+import shapely
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
-from shapely.ops import polygonize, polylabel
+from shapely.geometry.base import BaseGeometry
+from shapely.ops import polygonize, polylabel, substring
 
 from ribasim_nl.generic import _validate_inputs
 
@@ -135,6 +137,83 @@ def split_basin_multi_polygon(basin_polygon: MultiPolygon, line: LineString) -> 
     return MultiPolygon(right_basin_poly), MultiPolygon(left_basin_poly)
 
 
+# Polygons that are on average at most this wide are slivers, which have no meaningful area but draw as lines on a map
+SLIVER_WIDTH = 0.001  # m
+
+
+def is_sliver(polygons: Polygon | np.ndarray, tolerance: float = SLIVER_WIDTH) -> np.ndarray:
+    """Whether polygons are on average at most `tolerance` wide, taken as their area divided by their perimeter."""
+    return np.asarray(shapely.area(polygons) <= tolerance * shapely.length(polygons))
+
+
+def polygon_parts(geometry: BaseGeometry, tolerance: float = 0.0) -> list[Polygon]:
+    """The polygons of a geometry that are on average wider than `tolerance`, so without slivers, see `is_sliver`."""
+    parts = shapely.get_parts(shapely.get_parts(geometry))
+    return [p for p in parts if isinstance(p, Polygon) and not is_sliver(p, tolerance)]
+
+
+def without_slivers(geometry: BaseGeometry, tolerance: float = SLIVER_WIDTH) -> MultiPolygon:
+    """The geometry made valid, as a MultiPolygon without the parts and holes that are slivers, see `is_sliver`.
+
+    Removing a sliver hole fills it.
+    """
+    polygons = [
+        Polygon(part.exterior, [ring for ring in part.interiors if not is_sliver(Polygon(ring), tolerance)])
+        for part in polygon_parts(shapely.make_valid(geometry), tolerance)
+    ]
+    result = MultiPolygon(polygons)
+    assert result.is_valid, f"removing the slivers made the geometry invalid: {shapely.is_valid_reason(result)}"
+    return result
+
+
+def union_polygons(polygons: np.ndarray, tolerance: float = 0.001) -> BaseGeometry:
+    """The union of polygons, as `shapely.union_all`, but checked.
+
+    GEOS can lose or add whole parts in a union with slivers. A union is wrong if it exceeds the area of the polygons
+    together by more than `tolerance` times their perimeter, or is further than `tolerance` from a point inside a
+    polygon that is not a sliver, on average wider than 100 times `tolerance`. Then the union is taken again with a
+    fixed precision of `tolerance`, or if that fails, without slivers.
+    """
+    total = shapely.area(polygons).sum() + tolerance * shapely.length(polygons).sum()
+    solid = polygons[shapely.area(polygons) > 100 * tolerance * shapely.length(polygons)]
+    points = shapely.point_on_surface(solid)
+
+    def right(union: BaseGeometry) -> bool:
+        return bool(union.area <= total and shapely.dwithin(union, points, tolerance).all())
+
+    union = shapely.union_all(polygons)
+    if right(union):
+        return union
+    try:
+        union = shapely.union_all(polygons, grid_size=tolerance)
+    except shapely.errors.GEOSException:
+        union = shapely.union_all([p for polygon in polygons for p in polygon_parts(polygon, tolerance)])
+    assert right(union), "GEOS cannot make a union of these polygons"
+    return union
+
+
+def connected_parts(
+    geometry: Polygon | MultiPolygon, point: Point, tolerance: float = 0.001
+) -> tuple[Polygon | MultiPolygon, list[Polygon]]:
+    """Split a (Multi)Polygon in the parts connected to the part that contains `point`, and the other parts.
+
+    Parts at most `tolerance` apart are connected, also through other parts. That joins parts that versions of GEOS
+    leave touching or a sliver apart. The connected parts are returned as Polygon if there is one.
+    """
+    parts = list(geometry.geoms) if isinstance(geometry, MultiPolygon) else [geometry]
+    connected = {i for i, part in enumerate(parts) if part.distance(point) <= tolerance}
+    assert connected, "no part contains the point"
+    while joined := {
+        i
+        for i, part in enumerate(parts)
+        if i not in connected and any(part.distance(parts[j]) <= tolerance for j in connected)
+    }:
+        connected |= joined
+    keep = [parts[i] for i in sorted(connected)]
+    others = [part for i, part in enumerate(parts) if i not in connected]
+    return (keep[0] if len(keep) == 1 else MultiPolygon(keep)), others
+
+
 @overload
 def drop_z(geometry: LineString) -> LineString: ...
 @overload
@@ -189,6 +268,20 @@ def drop_z(geometry: LineString | MultiPolygon | Point | Polygon) -> LineString 
             )
 
     return geometry
+
+
+def line_between(line: LineString, start: Point, end: Point) -> LineString:
+    """The part of a line between the points nearest to two points, connected to these points.
+
+    :param line: line, drawn from `start` to `end`
+    :param start: first point
+    :param end: last point
+    :return: line that starts at `start` and ends at `end`
+    """
+    from_distance, to_distance = line.project(start), line.project(end)
+    assert from_distance < to_distance, f"{start} must lie before {end} along the line"
+    part = substring(line, from_distance, to_distance)
+    return LineString([start, *part.coords[1:-1], end])
 
 
 def link(point_from: Point, point_to: Point) -> LineString:

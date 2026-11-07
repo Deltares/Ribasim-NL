@@ -2,7 +2,7 @@
 # Noorderzijlvest
 
 - Laatst bijgewerkt: 07-04-2026
-- [Laatste modelversie](https://deltares.thegood.cloud/s/LEcDeSTPq8M3itz)
+- [Bekijk het model in de modelviewer](/viewer.qmd#authority=34)
 
 ## Systeembeschrijving
 ![Systeembeschrijving Noorderzijlvest](https://s3.deltares.nl/ribasim-nl/doc-image/watersystems/Noorderzijlvest.svg){.lightbox}
@@ -75,7 +75,7 @@ Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h
 | Ter Aardinlaat          | INL001   |      1751 | inlaat                 |            0.043 |            0    |
 
 ## Bronnen
-Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
+Bovenstaand model is afgeleid van het invoermodel `Noorderzijlvest_2024_6_3`, dat de pipeline uit de brongegevens maakt, op de manier waarop Sweco dat in 2024 deed. Dit is bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](/workflow/gravity-controlled.qmd). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
 
 - Documentatie Distributiemodel (Deel C, hoofdstuk 26)
-- [Noorderzijlvest - beschrijving wateraanvoer en doorspoeling](bronnen/noorderzijlvest/wateraanvoer_en_doorspoeling_input_voor_ribasim_lhm_model_noorderzijlvest.pdf)
+- Noorderzijlvest - beschrijving wateraanvoer en doorspoeling

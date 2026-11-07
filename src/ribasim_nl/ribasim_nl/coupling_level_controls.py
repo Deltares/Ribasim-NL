@@ -73,11 +73,10 @@ def validate_control_layout_for_sync(
     """Fail when a DiscreteControl does not match the expected control.py layout."""
     control_name = None
     node_df = model.node.df
-    if node_df is not None:
-        control_node_id = as_int(control_node_id)
-        if control_node_id in node_df.index:
-            name = node_df.at[control_node_id, "name"]
-            control_name = None if is_missing(name) else str(name)
+    control_node_id = as_int(control_node_id)
+    if control_node_id in node_df.index:
+        name = node_df.at[control_node_id, "name"]
+        control_name = None if is_missing(name) else str(name)
     layout_key = control_layout_key(
         function=function,
         flow_demand_controlled=flow_demand_controlled,
@@ -278,8 +277,6 @@ def protected_controller_threshold_updates(
     static_level_sync_node_ids: set[int] | None = None,
 ) -> pd.DataFrame:
     """Find coupling/protected DiscreteControl thresholds that need syncing."""
-    assert model.node.df is not None
-    assert model.link.df is not None
     static_level_sync_node_ids = static_level_sync_node_ids or set()
 
     node_df = reset_index_to_column(model.node.df.copy(), "node_id")

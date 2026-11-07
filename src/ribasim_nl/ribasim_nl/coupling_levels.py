@@ -185,8 +185,6 @@ def coupled_flow_link_ids(link_df: pd.DataFrame) -> set[int]:
 
 def build_coupling_level_context(model: Model) -> CouplingLevelContext:
     """Prepare lookup tables used by the coupling-level checks."""
-    assert model.node.df is not None
-    assert model.link.df is not None
     assert model.basin.area.df is not None
     assert model.basin.profile.df is not None
 
@@ -510,7 +508,6 @@ def run_coupling_level_check(
 ) -> None:
     """Apply configured coupling-level corrections to a TOML model."""
     model = Model.read(toml_file)
-    assert model.node.df is not None
 
     tables = build_coupling_level_tables(
         model=model,

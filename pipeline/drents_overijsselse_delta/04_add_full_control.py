@@ -178,7 +178,6 @@ model.outlet.static.df.loc[mask, "min_upstream_level"] = 2.63
 mark_level_update_protected(model.outlet.static.df, mask, model=model)
 
 # Naamcorrectie: node_id 1344 is Zalk, niet Adsum
-assert model.node.df is not None
 model.node.df.loc[1344, "name"] = "Zalk"
 
 
@@ -431,7 +430,6 @@ def get_nearest_control_nodes(
 ) -> list[int]:
     kunstwerk_gdf = gpd.read_file(kunstwerk_path, fid_as_index=True).to_crs(model.crs)
 
-    assert model.node.df is not None
     control_node_gdf = model.node.df[model.node.df["node_type"].isin(node_types)].copy()
     control_node_gdf["ribasim_node_id"] = control_node_gdf.index
     control_node_gdf = gpd.GeoDataFrame(control_node_gdf, geometry="geometry", crs=model.crs)
@@ -610,8 +608,6 @@ mark_level_update_protected(model.pump.static.df, mask, model=model)
 
 # Noordscheschutsluis: basin 1920 is gemerged naar 1881; aanvoer stopt 1 cm onder benedenstrooms streefpeil.
 noordscheschutsluis_pump_node_id = 346
-assert model.link.df is not None
-assert model.basin.node is not None and model.basin.node.df is not None
 downstream_basin_ids = model.link.df.loc[
     (model.link.df.from_node_id == noordscheschutsluis_pump_node_id)
     & model.link.df.to_node_id.isin(model.basin.node.df.index),

@@ -6,12 +6,15 @@ import {
   type Comparison,
   type FeatureDiff,
   type Manifest,
+  type ResultSet,
   type Row,
   type TableEntry,
 } from "./data";
 import { describeResult, statusLabel } from "./diff";
 import { LevelDiagram, type LevelSeries, type LevelSide } from "./levels";
 import { linkLabel, type Network, pastJunctions } from "./network";
+import { fitFacts, loadFits, type Fits } from "./observations";
+import { addSubstances } from "./timebar";
 
 export type Selection = { kind: "node" | "link"; id: number };
 
@@ -248,6 +251,8 @@ export interface PanelCallbacks {
   select: (selection: Selection) => void;
   zoomTo: (selection: Selection) => void;
   close: () => void;
+  /** The user chose another substance in the panel, which the map shares */
+  chooseSubstance: (substance: string) => void;
 }
 
 export class Panel {
@@ -256,6 +261,10 @@ export class Panel {
   private step = 0;
   private readonly times: Date[];
   private situation: Situation | null = null;
+  /** The substance to chart, the same as in the time bar */
+  private substance: string | null;
+  /** Shows the concentration chart of the selected Basin for another substance */
+  private showSubstance: ((substance: string) => void) | null = null;
 
   constructor(
     parent: HTMLElement,
@@ -267,12 +276,20 @@ export class Panel {
     this.element = el("div", { className: "panel", hidden: true });
     parent.append(this.element);
     this.times = (manifest.results?.times ?? []).map((time) => new Date(`${time}Z`));
+    this.substance = Object.keys(manifest.results?.concentration?.variables ?? {})[0] ?? null;
   }
 
   /** Follow the time step of the map, for the level diagram. */
   setStep(step: number): void {
     this.step = step;
     this.situation?.update(step);
+  }
+
+  /** Follow the substance of the map, for the concentration chart. */
+  setSubstance(substance: string): void {
+    if (substance === this.substance) return;
+    this.substance = substance;
+    this.showSubstance?.(substance);
   }
 
   private nodeLink(nodeId: number): HTMLElement {
@@ -358,6 +375,52 @@ export class Panel {
     return mergeOnTime(head, await readRowsById(base[kind].by_id, idColumn, baseId));
   }
 
+  /** The concentration of a substance in a Basin, merged with that of the base model when both have it. */
+  private async concentrationRows(id: number, substance: string, diff: FeatureDiff | undefined): Promise<Row[]> {
+    const read = async (set: ResultSet | undefined) =>
+      set && substance in set.variables ? readRowsById(set.by_id, "node_id", id, ["time", substance]) : [];
+    const head = await read(this.source(diff).results?.concentration);
+    const base = this.comparison?.base.results?.concentration;
+    if (!base || diff?.status === "removed" || diff?.status === "added") return head;
+    return mergeOnTime(head, await read(base));
+  }
+
+  /**
+   * The chart of the concentration of one substance in a Basin, also when the map shows something else, with the
+   * list of substances. One at a time, since there can be many, of which some with other units.
+   */
+  private concentrationSection(id: number, diff: FeatureDiff | undefined, width: number, token: number): HTMLElement | null {
+    const variables = this.source(diff).results?.concentration?.variables;
+    if (!variables) return null;
+    return lazySection(
+      "Concentration",
+      async () => {
+        if (token !== this.token) return [];
+        const select = el("select");
+        addSubstances(select, variables);
+        select.addEventListener("change", () => this.callbacks.chooseSubstance(select.value));
+        const chart = el("div", {}, "Loading…");
+        let latest = 0;
+        const show = async (substance: string) => {
+          if (!(substance in variables)) return;
+          select.value = substance;
+          const request = ++latest;
+          const { label, units } = variables[substance];
+          try {
+            const rows = await this.concentrationRows(id, substance, diff);
+            if (request === latest) chart.replaceChildren(...charts(rows, width, [[`${label} (${units})`, [substance]]]));
+          } catch (error) {
+            if (request === latest) chart.replaceChildren(el("p", { className: "error" }, `Failed to load: ${error}`));
+          }
+        };
+        this.showSubstance = (substance) => void show(substance);
+        void show(this.substance ?? Object.keys(variables)[0]);
+        return [el("label", { className: "substance" }, "Substance ", select), chart];
+      },
+      true,
+    );
+  }
+
   /** Input tables of a node; changed tables are shown for both models. */
   private tableSections(nodeType: string, nodeId: number, diff: FeatureDiff | undefined, width: number): HTMLElement[] {
     const source = this.source(diff);
@@ -379,6 +442,7 @@ export class Panel {
   show(selection: Selection): void {
     const token = ++this.token;
     this.situation = null;
+    this.showSubstance = null;
     const { network } = this;
     const diff = this.featureDiff(selection);
     const manifest = this.source(diff);
@@ -442,6 +506,8 @@ export class Panel {
             true,
           ),
         );
+        const concentration = this.concentrationSection(selection.id, diff, width, token);
+        if (concentration) sections.push(concentration);
       } else if (results && flowLinks.length && diff?.status !== "removed") {
         sections.push(lazySection("Flow results", () => this.linkFlows(flowLinks, width), true));
       }
@@ -661,16 +727,21 @@ export class Panel {
   }
 
   /**
-   * Per observed variable, a chart of the observed values and the simulated values of the observed node,
-   * also of the base model when comparing models.
+   * Per observed variable, how well the results fit, and a chart of the observed values and the simulated values of
+   * the observed node, also of the base model when comparing models.
    */
   private async observedSimulated(nodeId: number, observedId: number, width: number): Promise<(Node | string)[]> {
     const { network } = this;
     const row = network.nodeRow.get(observedId);
     if (row === undefined) return ["The observed node is not in the model."];
     const observedType = network.nodeType[row];
-    const observations = await this.tableRows("Observation", "time", nodeId);
     const results = this.manifest.results;
+    const base = this.comparison?.base.results;
+    const [observations, fits, baseFits] = await Promise.all([
+      this.tableRows("Observation", "time", nodeId),
+      results?.observation ? loadFits(results.observation) : null,
+      base?.observation ? loadFits(base.observation) : null,
+    ]);
     const outflows = Array.from(
       network.linkId.filter(
         (_, linkRow) => network.linkType[linkRow] === "flow" && network.fromNodeId[linkRow] === observedId,
@@ -678,7 +749,6 @@ export class Panel {
     );
     // Links are renumbered and can lead to renumbered nodes, so the outflows of the observed node, which keeps its
     // id, are those of the base model
-    const base = this.comparison?.base.results;
     const baseOutflows = network.baseOutflows.get(observedId) ?? [];
     const columns = ["observed", "simulated", ...(base ? [`simulated${BASE}`] : [])];
     const variables = [...new Set(observations.map((observation) => String(observation.variable)))].sort((a, b) => a.localeCompare(b));
@@ -708,8 +778,15 @@ export class Panel {
         const rows = [...byTime.values()].sort((a, b) => (a.time as Date).getTime() - (b.time as Date).getTime());
         const chart = timeChart(rows, width, columns);
         const title = `${variable} of ${observedType} #${observedId}`;
-        if (!chart) return [el("h4", {}, title), "Too few values to chart."];
-        return [el("h4", {}, title), chart, ...(variable === "flow_rate" ? cumulativeChart(rows, width, columns) : [])];
+        const fit = (model: Fits | null) => model?.get(variable)?.get(nodeId);
+        const facts = fits ? [fitFacts(fit(fits), fit(baseFits), results!.observation!.min_days, baseFits !== null)] : [];
+        if (!chart) return [el("h4", {}, title), ...facts, "Too few values to chart."];
+        return [
+          el("h4", {}, title),
+          ...facts,
+          chart,
+          ...(variable === "flow_rate" ? cumulativeChart(rows, width, columns) : []),
+        ];
       }),
     );
     return [...sections.flat(), ...(results ? [] : [el("p", { className: "note" }, "No simulation results.")])];

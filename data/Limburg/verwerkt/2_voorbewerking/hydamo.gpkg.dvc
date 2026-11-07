@@ -1,0 +1,5 @@
+outs:
+- md5: b7e932014a267bd2e4492d0758832b8d
+  size: 87212032
+  hash: md5
+  path: hydamo.gpkg

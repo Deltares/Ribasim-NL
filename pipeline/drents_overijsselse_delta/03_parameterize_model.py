@@ -128,7 +128,6 @@ sync_parameterized_manning_basin_levels(
 
 # %%
 # Inlaten op False zetten
-assert model.outlet.node is not None and model.outlet.node.df is not None
 outlet_node_df = model.outlet.node.df.copy()
 outlet_gdf = gpd.GeoDataFrame(outlet_node_df, geometry="geometry", crs="EPSG:28992")
 

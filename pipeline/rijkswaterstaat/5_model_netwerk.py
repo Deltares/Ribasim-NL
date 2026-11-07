@@ -17,11 +17,12 @@ from ribasim.nodes import (
 )
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.rws_kunstwerken import (
-    read_flow_kwargs,
+    PARALLEL_KWK,
+    rating_curve_from_bottom,
     read_kwk_properties,
-    read_pump,
     read_qq_curve,
     read_rating_curve,
+    read_static,
 )
 from shapely.affinity import translate
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
@@ -35,7 +36,9 @@ warnings.filterwarnings(
 )
 
 # Krammersluizen (43C-002-03) lozen van Krammer op Oosterschelde, zie issue #813
-KWK_INVERSE_FLOW_DIRECTION = ["750028686", "44D-002-03", "43C-002-03"]
+# Spuisluis Delden (34E-001-04) ligt in het stroomkanaal van Gemaal Delden, maar spuit naar beneden, zie issue #730
+# De Wilhelminasluis (44F-002-01) schut van de Waal naar de Maas, zie issue #979
+KWK_INVERSE_FLOW_DIRECTION = ["750028686", "44D-002-03", "43C-002-03", "34E-001-04", "44F-002-01"]
 VERDEELSLEUTELS = ["Lobith", "Monsin"]
 RVW_IJSSELMEER = ["KOBU", "OEBU"]
 
@@ -72,7 +75,7 @@ def read_outlet(kwk_df, name: str):
             control_state=outlet_df.control_state.to_list(),
         )
     else:
-        return outlet.Static(**read_flow_kwargs(read_kwk_properties(kwk_df)))
+        return read_static(kwk_df, "Outlet")
 
 
 def read_pid(control_properties, control_basin_id):
@@ -187,7 +190,10 @@ model = Model(starttime="2017-01-01", endtime="2020-01-01", crs="EPSG:28992")
 # We voegen de boundaries toe aan het netwerk
 
 level_ijsselmeer_df = pd.read_excel(ijsselmeer_markermeer_path, sheet_name="IJsselmeer", skiprows=4)
-level_ijsselmeer_df.index = [i.day_of_year for i in level_ijsselmeer_df.datum]
+# onder de tabel kan nog een bron staan
+level_ijsselmeer_datum = pd.to_datetime(level_ijsselmeer_df["datum"], errors="coerce").dropna()
+level_ijsselmeer_df = level_ijsselmeer_df.loc[level_ijsselmeer_datum.index]
+level_ijsselmeer_df.index = level_ijsselmeer_datum.dt.day_of_year
 
 
 def get_level(timestamp, level_ijsselmeer_df):
@@ -200,13 +206,13 @@ def get_level(timestamp, level_ijsselmeer_df):
 time = pd.date_range(model.starttime, model.endtime).to_list()
 level = [get_level(i, level_ijsselmeer_df) for i in time]
 
-for row in boundary_gdf.itertuples():
+for row in boundary_gdf.fillna({"naam": ""}).itertuples():
     # uitlezen dichtsbijzijnde netwerk-knoop
     node_id = nodes_gdf.distance(row.geometry).idxmin()
     point = nodes_gdf.at[node_id, "geometry"]
 
     # uitlezen naam als beschikbaar
-    name = "" if pd.isna(row.naam) else row.naam
+    name = row.naam
 
     # toevoegen knoop per type: FlowBoundary, LevelBoundary of Terminal
     if row.type == "FlowBoundary":
@@ -233,7 +239,8 @@ for row in boundary_gdf.itertuples():
 
 # Toevoegen kunstwerken uit de Excel
 mask = kwks_df.code.isin(kwks_gdf.code) | kwks_df.code.isin(kwks_gdf.complex_code)
-mask = mask & kwks_df.in_model
+# de kunstwerken naast een ander kunstwerk hebben geen eigen plek in het netwerk, die voegt 6_model_sturing toe
+mask = mask & kwks_df.in_model & ~kwks_df.code.isin(PARALLEL_KWK)
 
 kwk_topology = {}
 
@@ -290,7 +297,7 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
         elif node_type == "Outlet":
             data = [read_outlet(kwk_df, name=cast(str, row.naam))]
         elif node_type == "Pump":
-            data = [read_pump(kwk_properties)]
+            data = [read_static(kwk_df, "Pump")]
         else:
             raise ValueError(f"node-type {node_type} not yet implemented")
 
@@ -470,8 +477,6 @@ for kwk in kwk_topology.itertuples():
 
 # opbouwen basin over het netwerk
 profile_geometries = []
-assert model.manning_resistance.node is not None and model.manning_resistance.node.df is not None
-assert model.node.df is not None
 for row in basin_poly_gdf.itertuples():
     # row = next(i for i in basin_poly_gdf.itertuples() if i.Index == 1)
     print(f"{row.Index} {row.naam}")
@@ -494,10 +499,9 @@ for row in basin_poly_gdf.itertuples():
     basin_boundary_nodes = basin_boundary_nodes[~basin_boundary_nodes["upstream"].isin(connected)]
     basin_boundary_nodes = basin_boundary_nodes[~basin_boundary_nodes["downstream"].isin(connected)]
 
-    if model.manning_resistance.node.df is not None:
-        basin_boundary_nodes = basin_boundary_nodes[
-            ~basin_boundary_nodes.index.isin(model.manning_resistance.node.df.index)
-        ]
+    basin_boundary_nodes = basin_boundary_nodes[
+        ~basin_boundary_nodes.index.isin(model.manning_resistance.node.df.index)
+    ]
 
     # overige basin_boundary_nodes voorzien van een ManningResistance
     for bbn_row in basin_boundary_nodes.reset_index().itertuples():
@@ -582,8 +586,9 @@ for row in basin_poly_gdf.itertuples():
     basin_node_id = gdf.distance(cast(Polygon, row.geometry).centroid).idxmin()
     basin_node = Node(basin_node_id, network.nodes.at[basin_node_id, "geometry"], name=row.naam)
     basin_poly_gdf.loc[row.Index, "node_id"] = basin_node_id
-    level = basin_profile_df.loc[row.Index].level.to_list()
-    area = basin_profile_df.loc[row.Index].area.to_list()
+    profile = basin_profile_df.loc[cast(int, row.Index)]
+    level = profile.level.to_list()
+    area = profile.area.to_list()
     data = [
         basin.Profile(
             area=area,
@@ -625,7 +630,6 @@ for row in basin_poly_gdf.itertuples():
 # %%
 
 # Verbinden overgebleven levelBoundaries zonder kunstwerken (bijv. Westerschelde en Nieuwe Maas)
-assert model.level_boundary.node is not None and model.level_boundary.node.df is not None
 assert model.level_boundary.static.df is not None
 # Capacity [m3/s] of the Outlet from these basins to the boundary, instead of a placeholder that makes the model stiff.
 # Twice the largest flow of the coupled run of 2017-2019, or the capacity of the inflows of the basin if those are
@@ -681,7 +685,6 @@ assert sorted(open_boundary_basins) == sorted(OPEN_BOUNDARY_CAPACITY), (
 # Later kunnen we het stuk bij basins verbeteren
 
 assert model.manning_resistance.static.df is not None
-assert model.link.df is not None
 for row in model.manning_resistance.static.df.itertuples():
     try:
         link_to = model.link.df[model.link.df["to_node_id"] == row.node_id].iloc[0]
@@ -699,6 +702,47 @@ for row in model.manning_resistance.static.df.itertuples():
         print(f"remove manning_resistance node {row.node_id} not connected on both sides")
         model.remove_node(cast(int, row.node_id), remove_links=True)
 
+
+# %% Waal bij Tiel, see https://github.com/Deltares/Ribasim-NL/issues/974
+# The ManningResistance between these Basins becomes the Q(h) relation of an LSM calculation. It moves upstream of the
+# branch to the Amsterdam-Rijnkanaal, so the Pr. Bernhardsluis takes its water from the Basin downstream of it.
+TIEL, TIEL_UPSTREAM_BASIN, TIEL_DOWNSTREAM_BASIN = 6630, 7291, 6613
+PR_BERNHARDSLUIS = model.find_node_id(meta_code_waterbeheerder="39D-001-02")
+basin_profile = model.basin.profile.df
+assert basin_profile is not None
+tiel_rating_curve = rating_curve_from_bottom(
+    pd.read_excel(kwk_dir / "QhTielWaal.xlsx", sheet_name="Qh-relatie", usecols=["Q", "H"]),
+    bottom=float(basin_profile.loc[basin_profile.node_id == TIEL_UPSTREAM_BASIN, "level"].min()),
+)
+# On the Waal just upstream of the branch. Links are routed along the waterways within 250 m of the area of their Basin,
+# see `rebuild_junction_trees`, which this point needs to be for the Basin downstream.
+tiel_point = Point(160100, 433345)
+tiel_waal = cast(LineString, network.links.geometry.iloc[network.links.distance(tiel_point).argmin()])
+tiel_point = tiel_waal.interpolate(tiel_waal.project(tiel_point))
+tiel_network_node = network.add_node(tiel_point, max_distance=100)
+assert tiel_network_node is not None, f"Tiel {tiel_point} is too far from the network"
+
+
+def link_between(from_node_id: int, to_node_id: int) -> int:
+    """The ID of the only link from one node to another."""
+    links = model.link.df
+    (link_id,) = links.index[(links.from_node_id == from_node_id) & (links.to_node_id == to_node_id)]
+    return int(link_id)
+
+
+tiel_links = {
+    link_between(TIEL_UPSTREAM_BASIN, TIEL): network.get_line(TIEL_UPSTREAM_BASIN, tiel_network_node),
+    link_between(TIEL, TIEL_DOWNSTREAM_BASIN): network.get_line(tiel_network_node, TIEL_DOWNSTREAM_BASIN),
+    link_between(TIEL_UPSTREAM_BASIN, PR_BERNHARDSLUIS): network.get_line(
+        TIEL_DOWNSTREAM_BASIN, PR_BERNHARDSLUIS, directed=False
+    ),
+}
+model.redirect_link(link_between(TIEL_UPSTREAM_BASIN, PR_BERNHARDSLUIS), from_node_id=TIEL_DOWNSTREAM_BASIN)
+model.update_node(TIEL, "TabulatedRatingCurve", [tiel_rating_curve], node_properties={"name": "Tiel Waal"})
+model.move_node(TIEL, tiel_point)
+for link_id, line in tiel_links.items():
+    model.link.df.loc[link_id, ["geometry"]] = line
+profile_geometries = [i for i in profile_geometries if i["node_id"] != TIEL]
 
 # %%wegschrijven model
 print("write ribasim model")

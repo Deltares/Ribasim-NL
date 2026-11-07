@@ -50,6 +50,14 @@ def test_store_manifest():
                 "by_time": _entry("results/b.parquet", "ee"),
             },
             "flow": {"by_id": _entry("results/flow_by_id.parquet", "ff"), "by_time": _entry("results/f.parquet", "ee")},
+            "observation": {
+                "by_time": _entry("results/observation_by_time.parquet", "gg"),
+                "metrics": _entry("results/observation_metrics.parquet", "hh"),
+            },
+            "concentration": {
+                "by_id": _entry("results/concentration_by_id.parquet", "jj"),
+                "by_time": _entry("results/concentration_by_time.parquet", "ii"),
+            },
         },
     }
     stored, sources = store_manifest(manifest)
@@ -64,8 +72,12 @@ def test_store_manifest():
         "dd.parquet": "results/basin_by_id.parquet",
         "ee.parquet": "results/b.parquet",
         "ff.parquet": "results/flow_by_id.parquet",
+        "gg.parquet": "results/observation_by_time.parquet",
+        "hh.parquet": "results/observation_metrics.parquet",
+        "ii.parquet": "results/concentration_by_time.parquet",
+        "jj.parquet": "results/concentration_by_id.parquet",
     }
-    assert len(manifest_entries(stored)) == 7
+    assert len(manifest_entries(stored)) == 11
     # The original is not changed
     assert manifest["files"]["nodes"]["path"] == "nodes.parquet"
 

@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 
 from ribasim_nl.geodataframe import sorted_sjoin
+from ribasim_nl.profiles.path_finder import overlaps
 
 LOG = logging.getLogger(__name__)
 
@@ -123,6 +124,9 @@ def assign_basin_profiles(
     # couple hydro-objects to basins
     gdf_joined = sorted_sjoin(basins, hydro_objects, how="left", predicate="intersects", lsuffix="basin", rsuffix="ho")
     gdf_joined = gdf_joined.dropna(subset="index_ho")
+    gdf_joined = gdf_joined[
+        overlaps(hydro_objects.geometry.loc[gdf_joined["index_ho"]].to_numpy(), gdf_joined.geometry.to_numpy())
+    ]
 
     # weighted average of profile dimensions
     gdf_joined["length"] = hydro_objects.geometry.loc[gdf_joined["index_ho"]].length.values

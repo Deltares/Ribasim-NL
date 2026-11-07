@@ -245,7 +245,6 @@ ribasim_model.link.add(ribasim_model.basin[97], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # (re)set 'meta_node_id'-values
-assert ribasim_model.node.df is not None
 for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
     mask = ribasim_model.node.df["node_type"] == node_type
     ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index

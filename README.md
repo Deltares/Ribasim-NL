@@ -15,5 +15,6 @@ It aims to integrate and share existing efforts by Sweco, HKV and D2Hydro:
 
 The approach is to identify common functionalities, and add them one-by-one, directly adding documentation and tests.
 The goal is to be able to run entire workflows from base data to Ribasim model using the functions from Ribasim-NL.
+A reproducible [DVC](https://dvc.org/) pipeline now does so: it turns source data and the Python code in this repository into a nationwide schematization, from the models of Rijkswaterstaat and 21 water authorities, see [Model derivation](https://ribasim.nl/workflow/).
 
 Where needed developments will be coordinated with the generic functionality in [Deltares/Ribasim](https://github.com/Deltares/Ribasim).

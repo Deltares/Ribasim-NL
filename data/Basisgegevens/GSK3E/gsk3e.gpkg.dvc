@@ -1,0 +1,5 @@
+outs:
+- md5: df3ddb40b00da83ff039c5386aaff98e
+  size: 261550080
+  hash: md5
+  path: gsk3e.gpkg

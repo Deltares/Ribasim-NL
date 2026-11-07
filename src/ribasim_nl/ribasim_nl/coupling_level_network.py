@@ -47,17 +47,12 @@ def flow_link_graphs(
     link_df: pd.DataFrame,
 ) -> tuple[dict[int, list[tuple[int, int]]], dict[int, list[tuple[int, int]]]]:
     """Build outgoing and incoming flow-link lookups by node_id."""
-    flow_link_df = link_df[link_df["link_type"].fillna("flow").eq("flow")].copy()
+    flow_link_df = link_df[link_df["link_type"].fillna("flow").eq("flow")]
     outgoing_flow_links: dict[int, list[tuple[int, int]]] = {}
-    for from_node_id, rows in flow_link_df.groupby("from_node_id"):
-        outgoing_flow_links[as_int(from_node_id)] = [
-            (as_int(row.link_id), as_int(row.to_node_id)) for row in rows.itertuples(index=False)
-        ]
-
     incoming_flow_links: dict[int, list[tuple[int, int]]] = {}
-    for to_node_id, rows in flow_link_df.groupby("to_node_id"):
-        incoming_flow_links[as_int(to_node_id)] = [
-            (as_int(row.link_id), as_int(row.from_node_id)) for row in rows.itertuples(index=False)
-        ]
-
+    for link_id, from_node_id, to_node_id in zip(
+        flow_link_df["link_id"], flow_link_df["from_node_id"], flow_link_df["to_node_id"], strict=True
+    ):
+        outgoing_flow_links.setdefault(as_int(from_node_id), []).append((as_int(link_id), as_int(to_node_id)))
+        incoming_flow_links.setdefault(as_int(to_node_id), []).append((as_int(link_id), as_int(from_node_id)))
     return outgoing_flow_links, incoming_flow_links
