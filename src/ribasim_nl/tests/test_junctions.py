@@ -1,6 +1,6 @@
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet
-from ribasim_nl.flow_paths import simplified_links
+from ribasim_nl.flow_paths import merge_basin_trees, simplified_links
 from ribasim_nl.junctions import find_common_linestring, junctionify
 from shapely.geometry import LineString, Point
 
@@ -64,7 +64,7 @@ def test_junctionify():
     assert (8, 6) in links.index
 
 
-def test_junctionify_inflow_and_outflow():
+def test_merge_basin_trees_after_junctionify():
     """Outlet 2 drains into Basin 1 and Outlet 3 is fed by it along a shared route, which becomes one tree."""
     model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
     model.basin.add(
@@ -76,7 +76,10 @@ def test_junctionify_inflow_and_outflow():
     model.link.add(model.basin[1], model.outlet[3], geometry=LineString([(0, 0), (5, 0), (10, -1)]))
     links_before = simplified_links(model)
 
+    # Junctions are directed, so junctionify keeps the inflow and outflow apart
     model = junctionify(model)
+    assert (model.node.df.node_type == "Junction").sum() == 0
+    merge_basin_trees(model)
     (junction,) = model.node.df.index[model.node.df.node_type == "Junction"]
     assert model.node.df.at[junction, "geometry"].equals(Point(5, 0))
     assert simplified_links(model) == links_before

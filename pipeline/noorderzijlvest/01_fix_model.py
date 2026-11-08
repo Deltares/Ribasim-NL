@@ -377,9 +377,8 @@ outlet_node = model.outlet.add(Node(name="Meerweg", geometry=Point(234893, 57587
 model.link.add(boundary_node, outlet_node)
 model.link.add(outlet_node, model.basin[1192])
 
-# %% Create junctions, with separate trees for the inflows and outflows of a Basin, which the parametrization and
-# control of 02 to 04 follow in the flow direction; 04 merges them, see `merge_basin_trees`
-junctionify(model, merge=False)
+# %% Create junctions
+junctionify(model)
 
 # manning_resistances die inlaten of uitlaten horen te zijn
 model.update_node(node_id=943, node_type="Outlet")

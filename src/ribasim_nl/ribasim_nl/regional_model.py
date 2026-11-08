@@ -16,6 +16,7 @@ import xarray as xr
 from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.assign_offline_budgets import AssignOfflineBudgets
 from ribasim_nl.controle_output import DYNAMIC_FORCING_METRICS, Control
+from ribasim_nl.flow_paths import merge_basin_trees
 from ribasim_nl.layout import tidy_layout
 from ribasim_nl.model import Model
 from ribasim_nl.observations import add_observations
@@ -132,7 +133,8 @@ def finish_regional_model(
     (see `Model.clean_basin_area`), `snap` routes the links along the waterways
     known for the authority, after which the BGT profile of ManningResistances follows their new links (see
     `update_manning_resistance_reach`), the RWZIs discharge on the links into their Basins (see #860), and nodes and links are
-    moved apart. Then the model gets the summer and winter levels of the peilgebieden of the authority, see
+    moved apart. The inflows and outflows of each Basin share one Junction tree, see `merge_basin_trees`. Then the
+    model gets the summer and winter levels of the peilgebieden of the authority, see
     `ribasim_nl.seasonal_levels`. The results get `performance.xlsx` and `output_controle.gpkg`.
 
     :param model: parametrized model
@@ -147,6 +149,8 @@ def finish_regional_model(
     update_manning_resistance_reach(model, read_manning_water(model))
     model = attach_rwzi_junctions(model)
     model = add_observations(model, authority)
+    # after the last nodes are added, such that only the IDs of the Junctions change
+    merge_basin_trees(model)
     model = tidy_layout(model)
 
     model.use_validation = True

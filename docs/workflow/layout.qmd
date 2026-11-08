@@ -33,7 +33,8 @@ flowchart LR
 
 `ribasim_nl.junctionify` merges the shared parts of links into Junctions, and `ribasim_nl.layout.tidy_layout` makes sure no nodes are on top of each other and no links overlap.
 
-The inflows and outflows of a Basin share one Junction tree, so each waterway is drawn once.
+The inflows and outflows of a Basin share one Junction tree, so each waterway is drawn once, see `ribasim_nl.flow_paths.merge_basin_trees`.
+The trees are merged after the last nodes are added to a model, so only the IDs of Junctions change.
 Ribasim connects a group of Junctions with one Basin as a neighbour with that Basin, in the direction of the link of each other neighbour with the group, see [Junction](https://ribasim.org/reference/node/junction.html).
 The direction of the links within the tree, and with the Basin, does not change the simulation, only the sign of their flow: a link that only carries inflows points towards the Basin, and one that only carries outflows away from it.
 `ribasim_nl.flow_paths.Routes` follows the links through Junctions in the same way as Ribasim.

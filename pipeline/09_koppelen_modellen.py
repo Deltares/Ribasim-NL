@@ -22,6 +22,7 @@ from ribasim_nl.coupling_levels import run_coupling_level_check
 from ribasim_nl.flow_paths import (
     Routes,
     branch_from_route,
+    merge_basin_trees,
     merge_inflows,
     merge_outflows,
     place_on_link,
@@ -152,12 +153,12 @@ forced_coupling = {
     6000003: 3801961,  # Forceren zijtak Helanvaart Limburg
     3800029: 6002294,  # Defensiekanaal Limburg: voorkom koppeling via Junction 6003577
     3801958: 6002408,  # AaenMaas FlowDemand-inlaat 3800601 koppelen aan Limburg-basin
-    # Dokkumer Nieuwe Zijlen, zie #824: Fryslân-uitlaten op NZV-afvoerjunction 3401931, inlaat 203888 vanaf
-    # NZV-aanvoerjunction 3402060. Een inlaat kan niet vanaf 3401931, die alleen connectors bovenstrooms heeft.
-    203885: 3401931,
-    203887: 3402060,
-    203898: 3401931,
-    203900: 3401931,
+    # Dokkumer Nieuwe Zijlen, zie #824: Fryslân-uitlaten en inlaat 203888 op de NZV-junction 3402850, waarin de aan- en
+    # afvoer van NZV-basin 3401124 samenkomen
+    203885: 3402850,
+    203887: 3402850,
+    203898: 3402850,
+    203900: 3402850,
 }
 
 # Connector nodes whose link with a Rijkswaterstaat Basin starts straight, to be routed over its water, see
@@ -168,9 +169,7 @@ straight_rws_links = {
 }
 
 # Nodes to move after coupling, by (dx, dy) in meters
-node_offsets = {
-    3401931: (10.0, 0.0),  # NZV-afvoerjunction visueel scheiden van aanvoerjunction 3402060, zie #824
-}
+node_offsets: dict[int, tuple[float, float]] = {}
 
 # Outlets that are open water connections, converted to ManningResistance after coupling, removing their control
 outlet_to_manning_resistance = {
@@ -811,11 +810,12 @@ def tidy_coupling_layout(model: Model, network: Network) -> None:
 
     The Rijkswaterstaat Basins with links from other models get the same routes as in the hws model, see
     `rebuild_junction_trees_along_top10nl`, with branches to these links. The links between models that share routes
-    are merged into Junctions, see `junctionify`. Then nodes on top of each other are moved apart, and links that
-    still overlap are offset.
+    are merged into Junctions, see `junctionify`, and the inflows and outflows of each Basin share one Junction tree,
+    see `merge_basin_trees`. Then nodes on top of each other are moved apart, and links that still overlap are offset.
     """
     rebuild_junction_trees_along_top10nl(model, rws_basins_between_models(model), top10nl_gpkg, main_route(network))
     junctionify(model)
+    merge_basin_trees(model)
     separate_nodes(model)
     resolve_overlaps(model, max_iterations=10)
 
