@@ -38,6 +38,8 @@ LOG = logging.getLogger(__name__)
 CONNECTOR_NODE_TYPES = "ManningResistance", "Outlet", "Pump"
 
 type Coord = tuple[float, float]
+# reads the lines within an area, see `line_reader`
+type LineReader = typing.Callable[[shapely.Geometry], np.ndarray]
 
 
 def read_hydro_objects(profiles_path: pathlib.Path) -> gpd.GeoDataFrame:
@@ -650,6 +652,24 @@ def read_waterways(path: pathlib.Path, mask: shapely.Geometry) -> gpd.GeoDataFra
         geometry=shapely.force_2d(lines.geometry.to_numpy()),
         crs=lines.crs,
     )
+
+
+def line_reader(
+    waterway_paths: typing.Sequence[pathlib.Path] = (), lines: gpd.GeoDataFrame | None = None
+) -> LineReader:
+    """Read the lines along which links are routed, within an area.
+
+    These are the water lines of `waterway_paths`, see `read_waterways`, and the `lines`, such as hydro-objects or a
+    main route.
+    """
+    geometries = np.array([]) if lines is None else shapely.force_2d(lines.geometry.explode().to_numpy())
+    tree = shapely.STRtree(geometries)
+
+    def read(area: shapely.Geometry) -> np.ndarray:
+        parts = [read_waterways(path, area).geometry.to_numpy() for path in waterway_paths]
+        return np.concatenate([*parts, geometries[tree.query(area)]])
+
+    return read
 
 
 def read_main_waterways(

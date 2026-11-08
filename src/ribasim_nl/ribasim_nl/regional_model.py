@@ -19,6 +19,7 @@ from ribasim_nl.controle_output import DYNAMIC_FORCING_METRICS, Control
 from ribasim_nl.flow_paths import merge_basin_trees
 from ribasim_nl.layout import tidy_layout
 from ribasim_nl.model import Model
+from ribasim_nl.network_snapping import LineReader
 from ribasim_nl.observations import add_observations
 from ribasim_nl.parametrization.manning_resistance_table import read_manning_water, update_manning_resistance_reach
 from ribasim_nl.performance import write_performance
@@ -125,6 +126,7 @@ def finish_regional_model(
     authority: str,
     *,
     snap: Callable[[Model], Model],
+    read_lines: LineReader,
     steady_state_regression: bool = False,
 ) -> Model:
     """Lay out, write, validate and run the model, use its final state as initial state, and check its results.
@@ -141,6 +143,7 @@ def finish_regional_model(
     :param toml_file: TOML file to write the model to
     :param authority: water authority, as named in the koppeltabel of the observations
     :param snap: function that snaps the links and Basins to the waterways
+    :param read_lines: reads the waterways that `snap` routes along, see `merge_basin_trees`
     :param steady_state_regression: also write, run and check the dry and wet steady state variants
     :return: the model with its final state as initial state
     """
@@ -150,7 +153,7 @@ def finish_regional_model(
     model = attach_rwzi_junctions(model)
     model = add_observations(model, authority)
     # after the last nodes are added, such that only the IDs of the Junctions change
-    merge_basin_trees(model)
+    merge_basin_trees(model, read_lines)
     model = tidy_layout(model)
 
     model.use_validation = True

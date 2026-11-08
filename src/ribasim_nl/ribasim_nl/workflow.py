@@ -26,7 +26,7 @@ from ribasim_nl.control import (
     get_node_table_with_from_to_node_ids,
     remove_duplicate_controls,
 )
-from ribasim_nl.network_snapping import snap_model
+from ribasim_nl.network_snapping import line_reader, read_hydro_objects, snap_model
 from ribasim_nl.regional_model import ENDTIME, STARTTIME, add_inflows, add_lhm_forcing, finish_regional_model
 from ribasim_nl.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl.settings import settings
@@ -397,5 +397,6 @@ def write_and_run_forcing_model(
         paths.model_dir("forcing") / "ribasim.toml",
         paths.waterschap,
         snap=snap,
+        read_lines=line_reader(paths.waterways, read_hydro_objects(paths.profielen_dir)),
         steady_state_regression=True,
     )

@@ -9,7 +9,7 @@ import sys
 
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.delwaq import compute_delwaq
-from ribasim_nl.network_snapping import snap_to_waterways, straight_flow_link_ids
+from ribasim_nl.network_snapping import line_reader, snap_to_waterways, straight_flow_link_ids
 from ribasim_nl.regional_model import add_inflows, add_lhm_forcing, finish_regional_model
 from ribasim_nl.settings import settings
 
@@ -69,7 +69,7 @@ for authority in authorities:
 
     # TODO add flow_boundary to the tables written to NetCDF after we can run core versions with
     # https://github.com/Deltares/Ribasim/pull/3033
-    model = finish_regional_model(model, dst_toml_file, authority, snap=snap)
+    model = finish_regional_model(model, dst_toml_file, authority, snap=snap, read_lines=line_reader([top10nl_path]))
 
     # DELWAQ(!)
     if compute_fractions:

@@ -22,7 +22,7 @@ from shapely.ops import substring
 
 from ribasim_nl.layout import move_nodes
 from ribasim_nl.model import Model
-from ribasim_nl.network_snapping import lines_in, read_main_waterways, route_basin_links
+from ribasim_nl.network_snapping import LineReader, lines_in, read_main_waterways, route_basin_links
 
 LOG = logging.getLogger(__name__)
 
@@ -539,12 +539,112 @@ def junction_tree(
     return junctions, links, reached
 
 
-def towards_basin(inflows: typing.Collection[int], outflows: typing.Collection[int]) -> bool:
+# a capacity of at least this is a placeholder for an unlimited capacity, like the 99999 of some Outlets
+UNLIMITED_CAPACITY = 1e4
+
+
+def drainage_capacity(model: Model) -> dict[int, float]:
+    """The flow that each node can pass in the drainage situation, to choose the direction of Basin tree links.
+
+    For Pumps and Outlets the largest `flow_rate` or `max_flow_rate` without control state, or in a control state with
+    "afvoer". ManningResistances, and placeholders and missing maxima, are unlimited (infinite). Also the
+    LinearResistances, TabulatedRatingCurves, FlowBoundaries and UserDemands, by their largest flow or demand.
+    """
+    capacity: dict[int, float] = {}
+
+    def add(table: pd.DataFrame | None, columns: list[str]) -> None:
+        if table is None or table.empty:
+            return
+        values = table[[c for c in columns if c in table.columns]].max(axis=1)
+        values = values.where(values < UNLIMITED_CAPACITY, np.inf).fillna(np.inf)
+        maxima = values.groupby(table["node_id"]).max()
+        for node_id, value in zip(maxima.index.tolist(), maxima.tolist(), strict=True):
+            capacity[node_id] = max(capacity.get(node_id, 0.0), value)
+
+    for table in (model.pump.static.df, model.outlet.static.df):
+        if table is not None:
+            state = table["control_state"].astype("string").str.lower()
+            add(table[state.isna() | state.str.contains("afvoer", na=False)], ["flow_rate", "max_flow_rate"])
+    add(model.linear_resistance.static.df, ["max_flow_rate"])
+    add(model.tabulated_rating_curve.static.df, ["flow_rate"])
+    add(model.flow_boundary.static.df, ["flow_rate"])
+    add(model.flow_boundary.time.df, ["flow_rate"])
+    add(model.user_demand.static.df, ["demand"])
+    add(model.user_demand.time.df, ["demand"])
+    nodes = model.node.df
+    capacity.update(dict.fromkeys(nodes.index[nodes["node_type"] == "ManningResistance"].tolist(), np.inf))
+    return capacity
+
+
+class Digitized:
+    """The direction in which lines are digitized, to follow it where routes run along them.
+
+    Routes along lines, see `ribasim_nl.network_snapping.route_basin_links`, take the coordinates of the lines, so each
+    of their segments is a segment of a line, digitized in the direction of the route, or against it.
+    """
+
+    def __init__(
+        self, lines: typing.Iterable[shapely.Geometry], routes: typing.Iterable[list[Coord]] | None = None
+    ) -> None:
+        """Take the direction of the segments of `lines`, only of those along `routes` if given."""
+        geometries = shapely.force_2d(np.asarray(list(lines), dtype=object))
+        xy, index = shapely.get_coordinates(geometries, return_index=True)
+        same = index[1:] == index[:-1]
+        needed = None
+        if routes is not None:
+            needed = {pair for route in routes for a, b in itertools.pairwise(route) for pair in ((a, b), (b, a))}
+        # the segments digitized from their first to their second coordinate
+        self.segments: set[tuple[Coord, Coord]] = set()
+        for a, b in zip(map(tuple, xy[:-1][same].tolist()), map(tuple, xy[1:][same].tolist()), strict=True):
+            if needed is None or (a, b) in needed:
+                self.segments.add((a, b))
+        # segments digitized both ways have no direction
+        self.segments -= {(b, a) for a, b in self.segments}
+
+    def along(self, coords: list[Coord]) -> bool | None:
+        """Whether lines are digitized in the direction of a route, or against it, over most of its length.
+
+        :return: None if lines cover less than half the route in one direction, or as much in both
+        """
+        forward = backward = total = 0.0
+        for a, b in itertools.pairwise(coords):
+            length = float(np.hypot(b[0] - a[0], b[1] - a[1]))
+            total += length
+            if (a, b) in self.segments:
+                forward += length
+            elif (b, a) in self.segments:
+                backward += length
+        if forward + backward <= 0.5 * total or forward == backward:
+            return None
+        return forward > backward
+
+
+def towards_basin(
+    inflows: typing.Collection[int],
+    outflows: typing.Collection[int],
+    capacity: typing.Mapping[int, float],
+    digitized_away: bool | None = None,
+) -> bool:
     """Whether a link of a Basin tree points towards its Basin, given the nodes beyond it that flow in and out.
 
-    The direction does not change the simulation, only the sign of the flow of the link in the results.
+    The direction does not change the simulation, only the sign of the flow of the link in the results. A link that
+    only carries inflows points towards the Basin, and one that only carries outflows away from it. A link that
+    carries both follows the main flow: the direction in which the lines it follows are digitized, if they decide,
+    else the side with the larger `drainage_capacity`, else the side with more nodes, else away from the Basin.
+
+    :param digitized_away: whether the lines along the link are digitized away from the Basin, see `Digitized.along`
     """
-    return not outflows
+    if not outflows:
+        return True
+    if not inflows:
+        return False
+    if digitized_away is not None:
+        return not digitized_away
+    capacity_in = sum(capacity.get(i, 0.0) for i in inflows)
+    capacity_out = sum(capacity.get(i, 0.0) for i in outflows)
+    if capacity_in != capacity_out:
+        return capacity_in > capacity_out
+    return len(inflows) > len(outflows)
 
 
 def build_basin_tree(
@@ -553,6 +653,8 @@ def build_basin_tree(
     ends: list[tuple[int, int]],
     coords: dict[int, list[Coord]],
     sides: dict[int, tuple[frozenset[int], frozenset[int]]],
+    capacity: typing.Mapping[int, float],
+    digitized: Digitized | None = None,
 ) -> tuple[list[int], list[int]]:
     """Connect the nodes reached by the Basin tree of `basin_id` along their routes, with Junctions where they split.
 
@@ -562,6 +664,8 @@ def build_basin_tree(
     :param ends: per key, the node reached and its link, which still exists
     :param coords: per key, the coordinates of the route from the Basin node to the node reached
     :param sides: per key, the nodes beyond the link that flow into the Basin, and out of it, see `Routes.subtree`
+    :param capacity: the `drainage_capacity` of the model
+    :param digitized: the lines the routes follow, see `towards_basin`
     :return: the ids of the links that changed or are new, and of the new Junctions
     """
     tree = tree_links(coords)
@@ -605,7 +709,8 @@ def build_basin_tree(
             model.link.df.loc[[link_id], "geometry"] = gpd.GeoSeries([geometry], index=[link_id], crs=links.crs)
             changed.append(link_id)
         else:
-            if towards_basin(*beyond(end)):
+            digitized_away = None if digitized is None else digitized.along(line_coords)
+            if towards_basin(*beyond(end), capacity, digitized_away):
                 node_ids, geometry = node_ids[::-1], geometry.reverse()
             model.link.add(model.get_node(node_ids[0]), model.get_node(node_ids[1]), geometry=geometry)
             changed.append(int(model.link.df.index[-1]))
@@ -728,7 +833,7 @@ def attach_to_tree(routes: dict[int, list[Coord]], start: Coord, points: dict[in
     return routes
 
 
-def merge_basin_trees(model: Model) -> list[int]:
+def merge_basin_trees(model: Model, read_lines: LineReader | None = None) -> list[int]:
     """Give each Basin one Junction tree for its inflows and outflows, along the current routes of its links.
 
     The routes of the links of a Basin are followed through the Junctions of its Basin trees, see
@@ -736,14 +841,18 @@ def merge_basin_trees(model: Model) -> list[int]:
     their coordinates from the Basin node on, see `build_basin_tree`. A Basin whose tree would
     not change is left as it is. Each node keeps exchanging water with the same nodes, which is asserted.
 
+    :param read_lines: reads the lines that the routes follow within an area, to follow the direction in which they
+        are digitized, see `towards_basin`
     :return: the new Junctions
     """
     before = simplified_links(model)
     # the trees of different Basins do not share links, so changing one leaves the routes of the others as they are
     routes = Routes(model)
     fixed = fixed_junctions(model)
+    capacity = drainage_capacity(model)
     nodes = model.node.df
-    new_junctions: list[int] = []
+    # first find the trees that change, to read the lines around them at once
+    changes = []
     for basin_id in sorted(nodes.index[nodes["node_type"] == "Basin"].tolist()):
         junctions, tree_link_ids, reached = junction_tree(routes, basin_id, fixed)
         if len(reached) < 2:
@@ -761,10 +870,21 @@ def merge_basin_trees(model: Model) -> list[int]:
         if _tree_splits(tree_links(coords)) == current:
             continue
         sides = {key: routes.subtree(link_id) for key, (_, link_id) in enumerate(ends)}
+        changes.append((basin_id, junctions, tree_link_ids, ends, coords, sides))
+
+    digitized = None
+    if read_lines is not None and changes:
+        area = shapely.union_all(
+            [shapely.MultiPoint([c for route in change[4].values() for c in route]).envelope for change in changes]
+        )
+        routes_coords = [route for change in changes for route in change[4].values()]
+        digitized = Digitized(read_lines(shapely.buffer(area, 1.0)), routes_coords)
+    new_junctions: list[int] = []
+    for basin_id, junctions, tree_link_ids, ends, coords, sides in changes:
         model.remove_links(tree_link_ids)
         for junction_id in sorted(junctions):
             model.remove_node(junction_id)
-        new_junctions.extend(build_basin_tree(model, basin_id, ends, coords, sides)[1])
+        new_junctions.extend(build_basin_tree(model, basin_id, ends, coords, sides, capacity, digitized)[1])
     after = simplified_links(model)
     assert after == before, f"Merging the Basin trees changed the links {sorted(after ^ before)[:10]}"
     return new_junctions
@@ -797,6 +917,7 @@ def rebuild_junction_trees(
     before = simplified_links(model)
     routes = Routes(model)
     fixed = fixed_junctions(model)
+    capacity = drainage_capacity(model)
     areas = model.basin.area.df.dissolve(by="node_id").geometry
     waterway_geometries = shapely.force_2d(waterways.geometry.to_numpy())
     waterway_tree = shapely.STRtree(waterway_geometries)
@@ -835,7 +956,9 @@ def rebuild_junction_trees(
         model.remove_links(tree_link_ids)
         for junction_id in sorted(junctions):
             model.remove_node(junction_id)
-        changed_links, junction_ids = build_basin_tree(model, basin_id, ends, coords, sides)
+        changed_links, junction_ids = build_basin_tree(
+            model, basin_id, ends, coords, sides, capacity, Digitized(lines, coords.values())
+        )
         changed.extend(changed_links)
         new_junctions.extend(junction_ids)
 

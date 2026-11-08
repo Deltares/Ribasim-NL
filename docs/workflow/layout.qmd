@@ -36,7 +36,10 @@ flowchart LR
 The inflows and outflows of a Basin share one Junction tree, so each waterway is drawn once, see `ribasim_nl.flow_paths.merge_basin_trees`.
 The trees are merged after the last nodes are added to a model, so only the IDs of Junctions change.
 Ribasim connects a group of Junctions with one Basin as a neighbour with that Basin, in the direction of the link of each other neighbour with the group, see [Junction](https://ribasim.org/reference/node/junction.html).
-The direction of the links within the tree, and with the Basin, does not change the simulation, only the sign of their flow: a link that only carries inflows points towards the Basin, and one that only carries outflows away from it.
+The direction of the links within the tree, and with the Basin, does not change the simulation, only the sign of their flow, see `ribasim_nl.flow_paths.towards_basin`.
+A link that only carries inflows points towards the Basin, and one that only carries outflows away from it.
+A link that carries both follows the main flow: the direction in which the waterway lines it follows are digitized, where they cover most of it, such as the network of Rijkswaterstaat.
+Elsewhere it points to the side that can drain the most, in the `afvoer` control state, where ManningResistances and placeholder capacities are unlimited.
 `ribasim_nl.flow_paths.Routes` follows the links through Junctions in the same way as Ribasim.
 
 - Bergend Basins are placed 100 m from their doorgaand Basin.

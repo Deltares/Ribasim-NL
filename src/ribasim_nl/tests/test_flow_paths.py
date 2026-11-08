@@ -1,11 +1,17 @@
+import math
+
 import geopandas as gpd
+import numpy as np
+import pandas as pd
 import pytest
 from ribasim import Node
-from ribasim.nodes import basin, outlet
+from ribasim.nodes import basin, manning_resistance, outlet
 from ribasim_nl.flow_paths import (
+    Digitized,
     Routes,
     attach_to_tree,
     branch_from_route,
+    drainage_capacity,
     junction_tree,
     merge_basin_trees,
     merge_inflows,
@@ -14,6 +20,7 @@ from ribasim_nl.flow_paths import (
     prune_junction,
     rebuild_junction_trees,
     simplified_links,
+    towards_basin,
     tree_links,
 )
 from shapely.geometry import LineString, Point, box
@@ -265,3 +272,46 @@ def test_branch_from_route_in_basin_tree():
     junction_id = branch_from_route(model, 6, basin_id=1, towards_id=5)
     assert link_pairs(model) == {(1, 4), (4, 2), (4, 3), (5, junction_id), (junction_id, 1), (junction_id, 6)}
     assert simplified_links(model) == {(1, 2), (1, 3), (5, 1), (1, 6)}
+
+
+def test_towards_basin():
+    capacity = {1: 10.0, 2: 1.0, 3: math.inf, 4: math.inf}
+    # a link of inflows only points towards the Basin, of outflows only away from it
+    assert towards_basin({1}, set(), capacity)
+    assert not towards_basin(set(), {1}, capacity, digitized_away=False)
+    # the direction in which the lines along it are digitized decides, else the larger capacity
+    assert not towards_basin({1}, {2}, capacity, digitized_away=True)
+    assert towards_basin({1}, {2}, capacity)
+    assert not towards_basin({2}, {3}, capacity)
+    # else the side with more nodes, else away from the Basin
+    assert towards_basin({3, 2}, {4}, capacity)  # both unlimited
+    assert towards_basin({5, 6}, {7}, capacity)
+    assert not towards_basin({5}, {7}, capacity)
+
+
+def test_digitized():
+    digitized = Digitized([LineString([(0, 0), (10, 0), (20, 0)]), LineString([(0, 5), (0, 0)])])
+    assert digitized.along([(0.0, 0.0), (10.0, 0.0), (20.0, 0.0)]) is True
+    assert digitized.along([(20.0, 0.0), (10.0, 0.0), (0.0, 5.0)]) is None  # mostly off the lines
+    assert digitized.along([(20.0, 0.0), (10.0, 0.0), (0.0, 0.0), (0.0, 5.0)]) is False
+    # lines digitized both ways have no direction
+    assert (
+        Digitized([LineString([(0, 0), (1, 0)]), LineString([(1, 0), (0, 0)])]).along([(0.0, 0.0), (1.0, 0.0)]) is None
+    )
+
+
+def test_drainage_capacity():
+    model = route_model()
+    model.outlet.static.df = pd.DataFrame(
+        {
+            "node_id": [2, 2, 3, 5],
+            "control_state": ["afvoer", "aanvoer", None, None],
+            "flow_rate": [4.0, 9.0, 99999.0, 1.0],
+            "max_flow_rate": [np.nan, np.nan, np.nan, np.nan],
+        }
+    )
+    model.manning_resistance.add(
+        Node(6, Point(0, 50)),
+        [manning_resistance.Static(length=[10.0], manning_n=[0.04], profile_width=[5.0], profile_slope=[1.0])],
+    )
+    assert drainage_capacity(model) == {2: 4.0, 3: math.inf, 5: 1.0, 6: math.inf}

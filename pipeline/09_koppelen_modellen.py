@@ -27,11 +27,12 @@ from ribasim_nl.flow_paths import (
     merge_outflows,
     place_on_link,
     rebuild_junction_trees_along_top10nl,
+    remove_flow_link,
 )
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.layout import move_nodes, resolve_overlaps, separate_nodes
 from ribasim_nl.model import find_toml
-from ribasim_nl.network_snapping import snap_to_waterways
+from ribasim_nl.network_snapping import line_reader, snap_to_waterways
 from ribasim_nl.observations import link_observations
 from ribasim_nl.rws_kunstwerken import main_route
 from ribasim_nl.rwzi import attach_rwzi_junctions
@@ -153,12 +154,12 @@ forced_coupling = {
     6000003: 3801961,  # Forceren zijtak Helanvaart Limburg
     3800029: 6002294,  # Defensiekanaal Limburg: voorkom koppeling via Junction 6003577
     3801958: 6002408,  # AaenMaas FlowDemand-inlaat 3800601 koppelen aan Limburg-basin
-    # Dokkumer Nieuwe Zijlen, zie #824: Fryslân-uitlaten en inlaat 203888 op de NZV-junction 3402850, waarin de aan- en
+    # Dokkumer Nieuwe Zijlen, zie #824: Fryslân-uitlaten en inlaat 203888 op de NZV-junction 3404398, waarin de aan- en
     # afvoer van NZV-basin 3401124 samenkomen
-    203885: 3402850,
-    203887: 3402850,
-    203898: 3402850,
-    203900: 3402850,
+    203885: 3404398,
+    203887: 3404398,
+    203898: 3404398,
+    203900: 3404398,
 }
 
 # Connector nodes whose link with a Rijkswaterstaat Basin starts straight, to be routed over its water, see
@@ -374,22 +375,25 @@ def create_link_geometry(
     return geometry
 
 
-def reverse_flow_link_ids(model: Model, from_node_id: int, to_node_id: int) -> list[int]:
-    """The flow links of an existing path from `to_node_id` to `from_node_id`, directly or through Junctions."""
-    flow = model.link.df[model.link.df["link_type"] == "flow"]
-    node_types = model.node.df["node_type"]
-    stack: list[tuple[int, list[int]]] = [(to_node_id, [])]
-    seen = {to_node_id}
-    while stack:
-        node_id, path = stack.pop()
-        for link_id, next_node_id in flow.loc[flow["from_node_id"] == node_id, "to_node_id"].items():
-            link_id = cast(int, link_id)
-            if next_node_id == from_node_id:
-                return [*path, int(link_id)]
-            if node_types[next_node_id] == "Junction" and next_node_id not in seen:
-                seen.add(next_node_id)
-                stack.append((int(next_node_id), [*path, int(link_id)]))
-    return []
+def flows_into(model: Model, routes: Routes, from_node_id: int, to_node_id: int) -> bool:
+    """Whether `from_node_id` flows into `to_node_id` already, directly or through Junctions, see `Routes`.
+
+    `routes` may be older than the links of the model, but not than its Junctions.
+    """
+    links = model.link.df
+    if ((links["from_node_id"] == from_node_id) & (links["to_node_id"] == to_node_id)).any():
+        return True
+    return any(to_node_id in routes.ends(link_id) for link_id in routes.links_at(from_node_id, upstream=False))
+
+
+def remove_connector(model: Model, node_id: int) -> None:
+    """Remove a node with its links, and prune the Junctions it was connected to, see `remove_flow_link`."""
+    links = model.link.df
+    for link_id in links.index[
+        (links["link_type"] == "flow") & ((links["from_node_id"] == node_id) | (links["to_node_id"] == node_id))
+    ].tolist():
+        remove_flow_link(model, link_id)
+    model.remove_node(node_id, remove_links=True)
 
 
 def add_control(
@@ -460,6 +464,8 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: gpd.G
     ].index.to_list()
 
     all_link_table = []
+    # the links added below do not change the Junctions, so the routes only change where a node is removed
+    routes = Routes(model)
 
     for boundary_node_id in tqdm(boundary_node_ids, desc="Coupling boundary nodes"):
         # Check whether the boundary has been merged already
@@ -587,17 +593,13 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: gpd.G
                 couple_authority, boundary_node_authority, kwargs, network, couple_with_basin_id
             )
 
-            # Check for cycles
-            cycle = reverse_flow_link_ids(model, kwargs["from_node"].node_id, kwargs["to_node"].node_id)
-            if cycle:
+            # Check for cycles: the connector already flows from or into the Basin it would be coupled to
+            if flows_into(model, routes, kwargs["to_node"].node_id, kwargs["from_node"].node_id):
                 print(f"Link {kwargs['to_node']} -> {kwargs['from_node']} already exists.")
-                model.link.df.drop(cycle, inplace=True)
-                if kwargs["to_node"].node_type != "Basin":
-                    print("Removing node", kwargs["to_node"])
-                    model.remove_node(kwargs["to_node"].node_id, remove_links=True)
-                else:
-                    print("Removing node", kwargs["from_node"])
-                    model.remove_node(kwargs["from_node"].node_id, remove_links=True)
+                connector = kwargs["to_node"] if kwargs["to_node"].node_type != "Basin" else kwargs["from_node"]
+                print("Removing node", connector)
+                remove_connector(model, connector.node_id)
+                routes = Routes(model)
                 continue
 
             model.link.add(**kwargs, geometry=geometry)
@@ -815,7 +817,7 @@ def tidy_coupling_layout(model: Model, network: Network) -> None:
     """
     rebuild_junction_trees_along_top10nl(model, rws_basins_between_models(model), top10nl_gpkg, main_route(network))
     junctionify(model)
-    merge_basin_trees(model)
+    merge_basin_trees(model, line_reader([top10nl_gpkg], main_route(network)))
     separate_nodes(model)
     resolve_overlaps(model, max_iterations=10)
 
