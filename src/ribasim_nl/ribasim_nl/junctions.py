@@ -5,9 +5,12 @@ from typing import Any, cast
 import geopandas as gpd
 import pandas as pd
 import shapely
-from ribasim import Model, Node
+from ribasim import Node
 from ribasim.input_base import NodeData
 from ribasim.validation import can_connect
+
+from ribasim_nl.flow_paths import Routes, merge_basin_trees
+from ribasim_nl.model import Model
 
 LOG = logging.getLogger(__name__)
 
@@ -120,15 +123,19 @@ def find_common_linestring(
     return common_linestrings, linestring_mapping, stripped_linestrings
 
 
-def _junctionify(model: Model, links: gpd.GeoDataFrame, converging: bool = True) -> list[int]:
+def _junctionify(
+    model: Model, links: gpd.GeoDataFrame, converging: bool = True, skip: set[int] | frozenset[int] = frozenset()
+) -> list[int]:
     junction_ids = []
     field = "to_node_id" if converging else "from_node_id"
     node_type = model.node.df["node_type"]
     # only merge where the node can be connected to a Junction, and not into a LevelBoundary,
     # which koppelen replaces by the connection to the neighbouring model
     mergeable = [
-        t != "LevelBoundary" and (can_connect("Junction", t) if converging else can_connect(t, "Junction"))
-        for t in node_type
+        node_id not in skip
+        and t != "LevelBoundary"
+        and (can_connect("Junction", t) if converging else can_connect(t, "Junction"))
+        for node_id, t in node_type.items()
     ]
     links = links[links[field].map(pd.Series(mergeable, index=node_type.index))]
     for node_id, group in links.groupby(field):
@@ -164,11 +171,15 @@ def _junctionify(model: Model, links: gpd.GeoDataFrame, converging: bool = True)
     return junction_ids
 
 
-def junctionify[M: Model](model: M) -> M:
+def junctionify[M: Model](model: M, merge: bool = True) -> M:
     """Add Junction nodes in a model inplace where flow links share common geometry.
 
     Useful for model visualization and debugging, as otherwise there will be many
     overlapping line segments that are hard to distinguish.
+
+    With `merge`, the inflows and outflows of each Basin share one Junction tree, see `merge_basin_trees`, as Ribasim
+    allows, and the links of other nodes are merged like without `merge`: links into the same node where they end
+    alike, and links out of the same node where they start alike.
 
     Assumes that all flow link geometries between node a and b start with point a and end with point b.
     """
@@ -185,27 +196,26 @@ def junctionify[M: Model](model: M) -> M:
     if disconnected.any():
         LOG.warning(f"{disconnected.sum()} flow link geometries do not connect their nodes: {flow.index[disconnected]}")
 
-    # starting from common end points
-    links = model.link.df[model.link.df.link_type == "flow"]
-    links = links[[geom is not None for geom in links.geometry]]
-    new_junctions = _junctionify(model, links, converging=True)
-    iteration = 0
-    while len(new_junctions) > 0:
-        LOG.debug(f"Iteration {iteration} with {len(new_junctions)} new junctions")
-        nlinks = model.link.df[model.link.df.to_node_id.isin(new_junctions)]
-        new_junctions = _junctionify(model, nlinks, converging=True)
-        iteration += 1
+    skip: set[int] = set()
+    if merge:
+        merge_basin_trees(model)
+        routes = Routes(model)
+        nodes = model.node.df
+        skip = set(nodes.index[nodes["node_type"] == "Basin"].tolist())
+        skip |= {node_id for node_id in routes.plain if routes.tree_basin(node_id) is not None}
 
-    # starting from common begin points
-    links = model.link.df[model.link.df.link_type == "flow"]
-    links = links[[geom is not None for geom in links.geometry]]
-    new_junctions = _junctionify(model, links, converging=False)
-    iteration = 0
-    while len(new_junctions) > 0:
-        LOG.debug(f"Iteration {iteration} with {len(new_junctions)} new junctions")
-        nlinks = model.link.df[model.link.df.from_node_id.isin(new_junctions)]
-        new_junctions = _junctionify(model, nlinks, converging=False)
-        iteration += 1
+    for converging in (True, False):
+        # starting from common end points, or from common begin points
+        field = "to_node_id" if converging else "from_node_id"
+        links = model.link.df[model.link.df.link_type == "flow"]
+        links = links[[geom is not None for geom in links.geometry]]
+        new_junctions = _junctionify(model, links, converging=converging, skip=skip)
+        iteration = 0
+        while len(new_junctions) > 0:
+            LOG.debug(f"Iteration {iteration} with {len(new_junctions)} new junctions")
+            nlinks = model.link.df[model.link.df[field].isin(new_junctions)]
+            new_junctions = _junctionify(model, nlinks, converging=converging, skip=skip)
+            iteration += 1
 
     # return updated model
     return model

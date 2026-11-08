@@ -6,7 +6,8 @@ from networkx import NetworkXNoPath, NodeNotFound, shortest_path
 from shapely.geometry import LineString
 from tqdm import tqdm
 
-from ribasim_nl import Model, Network
+from ribasim_nl.model import Model
+from ribasim_nl.network import Network
 
 logger = logging.getLogger(__name__)
 

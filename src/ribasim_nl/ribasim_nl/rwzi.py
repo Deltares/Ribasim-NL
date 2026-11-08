@@ -4,6 +4,7 @@ Merge standalone model(s) with the RWZI model.
 Replaces the Terminals with Junctions and connects them to the underlying Basin.
 """
 
+import itertools
 import logging
 import math
 import typing
@@ -17,7 +18,7 @@ from geopandas.geodataframe import GeoDataFrame
 from shapely.geometry import LineString, Point
 
 from ribasim_nl import Model, concat
-from ribasim_nl.flow_paths import Routes, place_on_link, prune_junction, split_distance, split_link
+from ribasim_nl.flow_paths import Routes, split_distance, split_link
 from ribasim_nl.reset_index import reset_index
 
 # %%
@@ -237,42 +238,30 @@ def _attach_rwzi_junction(model: Model, junction_id: int, basin_id: int, max_dis
     if len(current) != 1 or routes.node_types[next(iter(current))] != "Basin":
         return False
 
-    def candidates(routes: Routes) -> dict[int, bool]:
-        """The links of the routes into (True) and out of (False) the Basin, except of RWZIs and bergend Basins."""
-        result = {}
-        for upstream in (True, False):
-            for link_id in routes.paths(basin_id, upstream):
-                from_node_id = cast(int, routes.flow.at[link_id, "from_node_id"])
-                to_node_id = cast(int, routes.flow.at[link_id, "to_node_id"])
-                if junction_id in (from_node_id, to_node_id) or routes.node_types[from_node_id] == "FlowBoundary":
-                    continue
-                if _is_bergend(nodes, [from_node_id, to_node_id, *routes.ends(link_id, upstream)]):
-                    continue
-                result[link_id] = upstream
+    def candidates(routes: Routes) -> list[int]:
+        """The links of the route of the Basin, see `Routes.paths`, except of RWZIs and bergend Basins."""
+        result = []
+        for link_id in routes.paths(basin_id):
+            from_node_id = cast(int, routes.flow.at[link_id, "from_node_id"])
+            to_node_id = cast(int, routes.flow.at[link_id, "to_node_id"])
+            if junction_id in (from_node_id, to_node_id) or routes.node_types[from_node_id] == "FlowBoundary":
+                continue
+            if _is_bergend(nodes, [from_node_id, to_node_id, *itertools.chain(*routes.subtree(link_id))]):
+                continue
+            result.append(link_id)
         return result
 
     point = cast(Point, nodes.at[junction_id, "geometry"])
-    distances = routes.flow.loc[list(candidates(routes))].distance(point)
+    distances = model.link.df.loc[candidates(routes)].distance(point)
     if distances.empty or distances.min() > max_distance:
         return False
 
-    name = cast(str, model.link.df.at[outflow[0], "name"])
     model.remove_links(outflow)
-    prune_junction(model, routes.next_node(outflow[0], upstream=False))
     routes = Routes(model)
-    options = candidates(routes)
-    link_id = cast(int, routes.flow.loc[list(options)].distance(point).idxmin())
-    upstream = options[link_id]
+    link_id = cast(int, model.link.df.loc[candidates(routes)].distance(point).idxmin())
     geometry = cast(LineString, routes.flow.at[link_id, "geometry"])
-    distance = split_distance(geometry, point)
-    if upstream:
-        # on a link into the Basin, which is split there
-        split_link(model, link_id, distance, junction_id)
-    else:
-        # on a link out of the Basin: the RWZI cannot discharge there, since a FlowBoundary cannot be connected
-        # to its connector node, so its link to the Basin runs along the route instead
-        model.link.add(model.get_node(junction_id), model.get_node(basin_id), name=name)
-        place_on_link(model, junction_id, basin_id, link_id)
+    # the RWZI Junction joins the Basin tree, so the RWZI discharges into the Basin, see `Routes`
+    split_link(model, link_id, split_distance(geometry, point), junction_id)
     location = cast(Point, model.node.df.at[junction_id, "geometry"])
     model.link.df.loc[inflow, "geometry"] = gpd.GeoSeries(
         [LineString([cast(Point, nodes.at[routes.next_node(i, True), "geometry"]), location]) for i in inflow],
@@ -288,13 +277,13 @@ def attach_rwzi_junctions(
     basins: Mapping[int, int] = RWZI_BASINS,
     authorities: set[str] | None = None,
 ) -> Model:
-    """Move each RWZI Junction onto the nearest route into or out of its Basin, along the flow links and Junctions.
+    """Move each RWZI Junction onto the nearest link of the route of its Basin, see `ribasim_nl.flow_paths.Routes`.
 
     An RWZI Junction, see `terminal2junction`, is located at the discharge point, with a straight link to the
-    Basin it is in, or to `basins[meta_rwzi_code]` if given. Instead, it is moved onto the nearest flow link into
-    or out of this Basin, directly or through Junctions only, such as the routed links of the doorgaand and
-    hoofdwater Basins, except links of bergend Basins. A link into the Basin is split there; along a link out of the
-    Basin runs the new link to the Basin. RWZI Junctions without such a link within `max_distance` are left as is,
+    Basin it is in, or to `basins[meta_rwzi_code]` if given. Instead, it splits the nearest flow link of this Basin,
+    directly or through the Junctions of its tree, such as the routed links of the doorgaand and hoofdwater Basins,
+    except links of bergend Basins. The RWZI Junction then joins the tree of the Basin, so the RWZI discharges into
+    the Basin, also on a link out of it. RWZI Junctions without such a link within `max_distance` are left as is,
     and so are those of `basins` whose Basin is not in the model, or which are attached already.
 
     Parameters
@@ -324,9 +313,7 @@ def attach_rwzi_junctions(
         ):
             continue
         routes = Routes(model)
-        outflow = routes.links_at(junction_id, upstream=False)
-        ends = routes.ends(outflow[0]) if len(outflow) == 1 else frozenset()
-        basin_id = basins.get(int(code), next(iter(ends)) if len(ends) == 1 else None)
+        basin_id = basins.get(int(code), routes.tree_basin(junction_id))
         if basin_id is None or basin_id not in model.node.df.index:
             continue
         if model.get_node_type(basin_id) != "Basin":

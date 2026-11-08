@@ -17,7 +17,7 @@ from ribasim_nl.coupling_level_apply import (
     sync_static_controller_thresholds,
 )
 from ribasim_nl.coupling_level_common import finite_level, finite_levels
-from ribasim_nl.coupling_level_network import first_non_junction, flow_link_graphs
+from ribasim_nl.coupling_level_network import first_non_junction
 from ribasim_nl.coupling_levels import run_coupling_level_check
 from ribasim_nl.flow_paths import (
     Routes,
@@ -28,7 +28,7 @@ from ribasim_nl.flow_paths import (
     rebuild_junction_trees_along_top10nl,
 )
 from ribasim_nl.junctions import junctionify
-from ribasim_nl.layout import move_nodes, offset_junctions, offset_links, resolve_overlaps, separate_nodes
+from ribasim_nl.layout import move_nodes, resolve_overlaps, separate_nodes
 from ribasim_nl.model import find_toml
 from ribasim_nl.network_snapping import snap_to_waterways
 from ribasim_nl.observations import link_observations
@@ -708,11 +708,10 @@ def convert_outlets_to_manning_resistance(model: Model) -> None:
         if node_type != "Outlet":
             raise ValueError(f"Expected Outlet for node {node_id}, got {node_type}.")
         # the Basins may be behind Junctions
-        outgoing, incoming = flow_link_graphs(model.link.df.reset_index())
-        node_types = model.node.df["node_type"].to_dict()
-        for graph in (incoming, outgoing):
-            neighbor_id, _, _ = first_non_junction(node_id, graph, node_types)
-            if neighbor_id is None or node_types[neighbor_id] != "Basin":
+        routes = Routes(model)
+        for upstream in (True, False):
+            neighbor_id, _, _ = first_non_junction(routes, node_id, upstream)
+            if neighbor_id is None or routes.node_types[neighbor_id] != "Basin":
                 raise ValueError(f"Outlet {node_id} should connect two Basins to become a ManningResistance.")
 
         control_df = model.link.df[model.link.df["link_type"] == "control"]
@@ -730,7 +729,7 @@ def convert_outlets_to_manning_resistance(model: Model) -> None:
         model.update_node(node_id, "ManningResistance", [static])
 
 
-def route_links_between_models(model: Model, network: Network) -> list[int]:
+def route_links_between_models(model: Model, network: Network) -> None:
     """Route the straight links between models, and in the Rijkswaterstaat model, along waterways and water.
 
     The connector nodes are often outside the area of the receiving Basin, so waterways up to 250 m around it are
@@ -744,7 +743,6 @@ def route_links_between_models(model: Model, network: Network) -> list[int]:
     rws = (from_authority == "Rijkswaterstaat") & (to_authority == "Rijkswaterstaat")
     link_ids = flow.index[straight & ((from_authority != to_authority) | rws)].tolist()
     snap_to_waterways(model, top10nl_gpkg, link_ids, main_route=main_route(network), tolerance=250.0)
-    return link_ids
 
 
 def add_user_demands(model: Model) -> None:
@@ -808,29 +806,16 @@ def rws_basins_between_models(model: Model) -> list[int]:
     return sorted(ends & set(rws_basins))
 
 
-def tidy_coupling_layout(model: Model, link_ids: list[int], network: Network) -> None:
+def tidy_coupling_layout(model: Model, network: Network) -> None:
     """Tidy the layout of the coupling: the layout of the models is already tidy, see `tidy_layout`.
 
     The Rijkswaterstaat Basins with links from other models get the same routes as in the hws model, see
     `rebuild_junction_trees_along_top10nl`, with branches to these links. The links between models that share routes
-    towards other Basins are merged into Junctions. These and the routed links `link_ids` are offset, such that no
-    links overlap.
+    are merged into Junctions, see `junctionify`. Then nodes on top of each other are moved apart, and links that
+    still overlap are offset.
     """
-    link_ids = [i for i in link_ids if i in model.link.df.index]  # some were replaced, see `change_routes`
-    rebuilt_links, rebuilt_junctions = rebuild_junction_trees_along_top10nl(
-        model, rws_basins_between_models(model), top10nl_gpkg, main_route(network)
-    )
-    junctions = set(model.node.df.index[model.node.df["node_type"] == "Junction"])
+    rebuild_junction_trees_along_top10nl(model, rws_basins_between_models(model), top10nl_gpkg, main_route(network))
     junctionify(model)
-    nodes, flow = model.node.df, model.link.df[model.link.df["link_type"] == "flow"]
-    assert nodes is not None
-    new_junctions = set(nodes.index[nodes["node_type"] == "Junction"]) - junctions
-    authority = nodes["meta_waterbeheerder"]
-    between = flow["from_node_id"].map(authority).to_numpy() != flow["to_node_id"].map(authority).to_numpy()
-    at_new_junction = (flow["from_node_id"].isin(new_junctions) | flow["to_node_id"].isin(new_junctions)).to_numpy()
-    link_ids = [i for i in {*link_ids, *rebuilt_links} if i in flow.index]
-    offset_links(model, link_ids={*flow.index[between | at_new_junction], *link_ids})
-    offset_junctions(model, junction_ids=[i for i in rebuilt_junctions if i in nodes.index])
     separate_nodes(model)
     resolve_overlaps(model, max_iterations=10)
 
@@ -1026,10 +1011,9 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
 
     # Update listen references for removed boundary nodes, to the Basins behind any Junctions: the boundary
     # downstream of the upstream outlet stands for the downstream Basin, the other one for the upstream Basin
-    outgoing, incoming = flow_link_graphs(model.link.df.reset_index())
-    node_types = model.node.df["node_type"].to_dict()
-    upstream_basin_id, _, _ = first_non_junction(from_node_ids, incoming, node_types)
-    downstream_basin_id, _, _ = first_non_junction(to_node_ids, outgoing, node_types)
+    routes = Routes(model)
+    upstream_basin_id, _, _ = first_non_junction(routes, from_node_ids, upstream=True)
+    downstream_basin_id, _, _ = first_non_junction(routes, to_node_ids, upstream=False)
     for lb_id in (boundary_node_id, neighbor_id):
         upstream_id = model.upstream_node_id(lb_id)
         is_downstream = not isinstance(upstream_id, pd.Series) and upstream_id == from_node_ids
@@ -1056,14 +1040,14 @@ def couple_model(toml_file: Path) -> None:
     convert_outlets_to_manning_resistance(model)
     fix_basin_profiles(model)
     remove_invalid_topology_nodes(model)
-    link_ids = route_links_between_models(model, network)
+    route_links_between_models(model, network)
     add_user_demands(model)
     # the RWZIs of Rijkswaterstaat and those that discharge into another model, see #860 and #871
     attach_rwzi_junctions(model, authorities={"Rijkswaterstaat"})
     change_routes(model)
     # series measured on links between models can only be observed in the coupled model
     link_observations(model)
-    tidy_coupling_layout(model, link_ids, network)
+    tidy_coupling_layout(model, network)
     coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)
     run_configured_coupling_level_check(coupled_toml_file)
     apply_peilbeheer(coupled_toml_file)

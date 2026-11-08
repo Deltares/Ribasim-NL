@@ -172,36 +172,6 @@ def offset_links(
     links.loc[flow.index, "geometry"] = gpd.GeoSeries(geometries, index=flow.index, crs=links.crs)
 
 
-def offset_junctions(model: Model, distance: float = 5.0, junction_ids: typing.Iterable[int] | None = None) -> None:
-    """Offset the Junctions to the right of the direction of the flow through them, along with their links.
-
-    The Junctions of the inflows and outflows of a Basin then no longer coincide. Only `junction_ids` are offset if
-    given, else all Junctions.
-    """
-    nodes, links = model.node.df, model.link.df
-    flow = links[links["link_type"] == "flow"]
-    locations: dict[int, shapely.Point] = {}
-    if junction_ids is None:
-        junction_ids = nodes.index[nodes["node_type"] == "Junction"]
-    for junction_id in junction_ids:
-        outgoing = flow[flow["from_node_id"] == junction_id].geometry
-        incoming = flow[flow["to_node_id"] == junction_id].geometry
-        # the direction of the single side, where the flows are combined
-        if len(outgoing) == 1:
-            coords = np.array(outgoing.iloc[0].coords)[:2, :2]
-        elif len(incoming) == 1:
-            coords = np.array(incoming.iloc[0].coords)[-2:, :2]
-        else:
-            continue
-        dx, dy = coords[1] - coords[0]
-        length = np.hypot(dx, dy)
-        if length == 0:
-            continue
-        point = typing.cast(shapely.Point, nodes.at[junction_id, "geometry"])
-        locations[int(junction_id)] = shapely.Point(point.x + distance * dy / length, point.y - distance * dx / length)
-    move_nodes(model, locations)
-
-
 def separate_nodes(model: Model, min_distance: float = 10.0) -> None:
     """Move nodes that are within `min_distance` of another node, such that no nodes are on top of each other.
 
@@ -289,11 +259,11 @@ def tidy_layout(
 ) -> Model:
     """Make the layout of a model readable: no nodes on top of each other, and no overlapping links.
 
-    See `place_bergend_nodes`, `offset_links`, `offset_junctions`, `separate_nodes` and `resolve_overlaps`.
+    The inflows and outflows of a Basin share one Junction tree, see `ribasim_nl.flow_paths.Routes`, so links stay on
+    their route, and only links that still overlap are offset. See `place_bergend_nodes`, `separate_nodes` and
+    `resolve_overlaps`.
     """
     place_bergend_nodes(model, bergend_distance)
-    offset_links(model, offset)
-    offset_junctions(model, offset)
     separate_nodes(model, min_distance)
     resolve_overlaps(model, offset)
     return model

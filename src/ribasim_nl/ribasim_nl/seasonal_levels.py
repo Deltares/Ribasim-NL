@@ -41,7 +41,8 @@ import shapely
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.control_layout import DEFAULT_LEVEL_THRESHOLD_RANGE
 from ribasim_nl.coupling_level_common import as_int
-from ribasim_nl.coupling_level_network import first_non_junction, flow_link_graphs
+from ribasim_nl.coupling_level_network import first_non_junction
+from ribasim_nl.flow_paths import Routes
 from ribasim_nl.model import Model
 from ribasim_nl.peilbeheer import LEVEL_COLUMNS, SEASONS, TRANSITION_COLUMNS, month_day
 from ribasim_nl.settings import settings
@@ -323,14 +324,10 @@ def _over_year(rows: pd.DataFrame, times: pd.Index) -> pd.DataFrame:
 
 
 def _neighbors(model: Model, node_ids: Sequence[int]) -> pd.DataFrame:
-    """The first nodes upstream and downstream of connector nodes that are not a Junction."""
-    outgoing, incoming = flow_link_graphs(model.link.df.rename_axis("link_id").reset_index())
-    node_type = model.node.df["node_type"].to_dict()
+    """The nodes upstream and downstream of connector nodes, through Junctions, see `first_non_junction`."""
+    routes = Routes(model)
     neighbors = {
-        node_id: (
-            first_non_junction(node_id, incoming, node_type)[0],
-            first_non_junction(node_id, outgoing, node_type)[0],
-        )
+        node_id: (first_non_junction(routes, node_id, True)[0], first_non_junction(routes, node_id, False)[0])
         for node_id in node_ids
     }
     return pd.DataFrame.from_dict(neighbors, orient="index", columns=["upstream", "downstream"], dtype="Int64")

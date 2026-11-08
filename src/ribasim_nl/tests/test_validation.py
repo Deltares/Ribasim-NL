@@ -93,6 +93,10 @@ def test_connector_through_junction_to_basin(model):
     )
     model.link.add(model.junction[7], model.basin[9])
     assert _connector_through_junction_issues(model) == []
+    # also when Basin 9 feeds a Pump through the same Junctions, which then form its tree
+    model.pump.add(Node(10, Point(40, 10)), [pump.Static(flow_rate=[1.0])])
+    model.link.add(model.junction[7], model.pump[10])
+    assert _connector_through_junction_issues(model) == []
 
 
 @pytest.mark.parametrize(
