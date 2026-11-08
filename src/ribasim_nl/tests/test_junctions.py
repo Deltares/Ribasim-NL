@@ -45,7 +45,7 @@ def test_junctionify():
     model.link.add(model.basin[5], model.outlet[3])
     model.link.add(model.outlet[2], model.basin[1], geometry=LineString([(10, 1), (5, 0), (2, 0), (0, 0)]))
     model.link.add(model.outlet[3], model.basin[1], geometry=LineString([(10, -1), (5, 0), (2, 0), (0, 0)]))
-    # a Junction cannot be connected to a LevelBoundary
+    # no Junction is put in front of a LevelBoundary
     model.link.add(model.basin[4], model.outlet[7])
     model.link.add(model.basin[5], model.outlet[8])
     model.link.add(model.outlet[7], model.level_boundary[6], geometry=LineString([(10, 9), (10, 15), (10, 20)]))
