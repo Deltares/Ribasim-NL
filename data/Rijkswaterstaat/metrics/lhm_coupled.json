@@ -1,15 +1,15 @@
 {
   "solver": {
-    "computation_time": 2.0,
+    "computation_time": 2.1,
     "rhs_calls": 1473000.0,
     "mean_dt": 201.0,
     "dt_p05": 120.5,
     "rejected_fraction": 0.07996
   },
   "observations": {
-    "compared": 628.0,
-    "median_nse": 0.03274,
-    "median_kge": 0.08563
+    "compared": 645.0,
+    "median_nse": 0.04087,
+    "median_kge": 0.08483
   },
   "discharge_kge": {
     "Lobith": 0.9999,
@@ -17,7 +17,7 @@
     "IJsselkop": 0.9206,
     "Driel boven": 0.8112,
     "Hagestein boven": 0.8524,
-    "Tiel Waal": 0.9284,
+    "Tiel Waal": 0.9283,
     "Haringvlietsluizen binnen": 0.7986,
     "Maasmond": 0.4534,
     "Den Oever buiten": 0.3767,
