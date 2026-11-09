@@ -1,5 +1,6 @@
 from ribasim import Node
 from ribasim.nodes import basin, flow_boundary, outlet
+from ribasim_nl.flow_paths import simplified_links
 from ribasim_nl.rwzi import attach_rwzi_junctions, create_rwzi_basin_coupling
 from shapely.geometry import LineString, Point
 
@@ -45,7 +46,7 @@ def test_attach_rwzi_junctions_too_far():
 
 
 def test_attach_rwzi_junctions_out_of_basin():
-    """Along the link out of Basin 1, as the FlowBoundary cannot discharge into its Outlet."""
+    """On the link out of Basin 1, which then forms the tree of Basin 1 that the RWZI discharges into."""
     model = rwzi_model()
     model.outlet.add(Node(7, Point(-50, 0)), [outlet.Static(flow_rate=[1.0])])
     line = LineString([(0, 0), (60, 19), (-50, 0)])
@@ -54,10 +55,9 @@ def test_attach_rwzi_junctions_out_of_basin():
     location = model.node.df.at[6, "geometry"]
     assert location.distance(line.interpolate(line.project(Point(60, 20)))) < 1e-9
     links = model.link.df.set_index(["from_node_id", "to_node_id"]).geometry
-    assert set(links.index) == {(2, 3), (3, 4), (4, 1), (1, 7), (5, 6), (6, 1)}
-    # the link to Basin 1 runs back along the link out of it
-    assert links[(6, 1)].coords[:] == [location.coords[0], (0, 0)]
-    assert links[(1, 7)].equals(line)
+    assert set(links.index) == {(2, 3), (3, 4), (4, 1), (1, 6), (6, 7), (5, 6)}
+    assert links[(1, 6)].coords[-1] == links[(6, 7)].coords[0] == location.coords[0]
+    assert simplified_links(model) == {(2, 3), (3, 1), (1, 7), (5, 1)}
 
 
 def test_attach_rwzi_junctions_not_bergend():
@@ -78,8 +78,8 @@ def test_attach_rwzi_junctions_other_basin():
     """Along the link out of Basin 2 if configured, at any distance, and only once."""
     model = attach_rwzi_junctions(rwzi_model(), max_distance=5.0, basins={1: 2})
     links = model.link.df.set_index(["from_node_id", "to_node_id"]).geometry
-    assert set(links.index) == {(2, 3), (3, 4), (4, 1), (5, 6), (6, 2)}
-    assert model.node.df.at[6, "geometry"].distance(links[(2, 3)]) < 1e-9
+    assert set(links.index) == {(2, 6), (6, 3), (3, 4), (4, 1), (5, 6)}
+    assert simplified_links(model) == {(2, 3), (3, 1), (5, 2)}
     again = attach_rwzi_junctions(model, basins={1: 2}).link.df.set_index(["from_node_id", "to_node_id"]).geometry
     assert links.equals(again)
 
@@ -97,7 +97,7 @@ def test_attach_rwzi_junctions_authorities():
     unchanged = attach_rwzi_junctions(model.model_copy(deep=True), authorities={"B"})
     assert (6, 1) in unchanged.link.df.set_index(["from_node_id", "to_node_id"]).index
     model = attach_rwzi_junctions(model, basins={1: 2}, authorities={"B"})
-    assert (6, 2) in model.link.df.set_index(["from_node_id", "to_node_id"]).index
+    assert (5, 2) in simplified_links(model)
 
 
 def test_create_rwzi_basin_coupling():

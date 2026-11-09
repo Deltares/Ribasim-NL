@@ -224,25 +224,17 @@ CONNECTOR_NODE_TYPES = {"Pump", "Outlet", "TabulatedRatingCurve", "LinearResista
 def _connector_through_junction_issues(model: "Model") -> list[str]:
     """Return connector nodes that are connected to other connector nodes through Junctions.
 
-    Ribasim treats Junctions as transparent, so it rejects such links as connecting e.g. a Pump to a Pump.
+    Ribasim removes the plain Junctions, see `ribasim_nl.flow_paths.Routes`, so it rejects the links that this gives
+    between e.g. a Pump and a Pump.
     """
-    link_df, node_df = model.link.df, model.node.df
-    flow = link_df[link_df["link_type"] == "flow"]
-    node_type = node_df["node_type"]
-    downstream = flow.groupby("from_node_id")["to_node_id"].agg(list).to_dict()
+    from ribasim_nl.flow_paths import simplified_links
 
-    pairs = []
-    for from_node_id in sorted(node_type.index[node_type.isin(CONNECTOR_NODE_TYPES)]):
-        junctions = [n for n in downstream.get(from_node_id, []) if node_type[n] == "Junction"]
-        seen = set(junctions)
-        while junctions:
-            for to_node_id in downstream.get(junctions.pop(), []):
-                if node_type[to_node_id] == "Junction":
-                    if to_node_id not in seen:
-                        seen.add(to_node_id)
-                        junctions.append(to_node_id)
-                elif node_type[to_node_id] in CONNECTOR_NODE_TYPES:
-                    pairs.append((int(from_node_id), int(to_node_id)))
+    node_type = model.node.df["node_type"]
+    pairs = [
+        (int(from_node_id), int(to_node_id))
+        for from_node_id, to_node_id in simplified_links(model)
+        if node_type[from_node_id] in CONNECTOR_NODE_TYPES and node_type[to_node_id] in CONNECTOR_NODE_TYPES
+    ]
     if not pairs:
         return []
     return [

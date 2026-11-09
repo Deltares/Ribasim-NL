@@ -1,5 +1,6 @@
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet
+from ribasim_nl.flow_paths import merge_basin_trees, simplified_links
 from ribasim_nl.junctions import find_common_linestring, junctionify
 from shapely.geometry import LineString, Point
 
@@ -45,7 +46,7 @@ def test_junctionify():
     model.link.add(model.basin[5], model.outlet[3])
     model.link.add(model.outlet[2], model.basin[1], geometry=LineString([(10, 1), (5, 0), (2, 0), (0, 0)]))
     model.link.add(model.outlet[3], model.basin[1], geometry=LineString([(10, -1), (5, 0), (2, 0), (0, 0)]))
-    # a Junction cannot be connected to a LevelBoundary
+    # no Junction is put in front of a LevelBoundary
     model.link.add(model.basin[4], model.outlet[7])
     model.link.add(model.basin[5], model.outlet[8])
     model.link.add(model.outlet[7], model.level_boundary[6], geometry=LineString([(10, 9), (10, 15), (10, 20)]))
@@ -61,3 +62,27 @@ def test_junctionify():
     assert list(links[(2, junction)].coords) == [(10, 1), (5, 0)]
     assert list(links[(3, junction)].coords) == [(10, -1), (5, 0)]
     assert (8, 6) in links.index
+
+
+def test_merge_basin_trees_after_junctionify():
+    """Outlet 2 drains into Basin 1 and Outlet 3 is fed by it along a shared route, which becomes one tree."""
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    model.basin.add(
+        Node(1, Point(0, 0)), [basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]), basin.State(level=[0.5])]
+    )
+    for node_id, y in ((2, 1), (3, -1)):
+        model.outlet.add(Node(node_id, Point(10, y)), [outlet.Static(flow_rate=[1.0])])
+    model.link.add(model.outlet[2], model.basin[1], geometry=LineString([(10, 1), (5, 0), (0, 0)]))
+    model.link.add(model.basin[1], model.outlet[3], geometry=LineString([(0, 0), (5, 0), (10, -1)]))
+    links_before = simplified_links(model)
+
+    # Junctions are directed, so junctionify keeps the inflow and outflow apart
+    model = junctionify(model)
+    assert (model.node.df.node_type == "Junction").sum() == 0
+    merge_basin_trees(model)
+    (junction,) = model.node.df.index[model.node.df.node_type == "Junction"]
+    assert model.node.df.at[junction, "geometry"].equals(Point(5, 0))
+    assert simplified_links(model) == links_before
+    links = model.link.df.set_index(["from_node_id", "to_node_id"]).geometry
+    assert set(links.index) == {(1, junction), (2, junction), (junction, 3)}
+    assert list(links[(1, junction)].coords) == [(0, 0), (5, 0)]

@@ -193,6 +193,16 @@ def test_compare_exchange_nets_both_directions():
     assert table.loc["WetterskipFryslan - Rijnland", "mean_head"] == 3.0
 
 
+def test_compare_exchange_junction_of_basin_tree():
+    """A Junction of the tree of a Rijnland Basin, with an ID of Rijkswaterstaat, belongs to Rijnland."""
+    rows = {FRYSLAN + 1: ("Outlet", 0.0), RIJNLAND + 1: ("Basin", 1.0), 8_000_001: ("Junction", 2.0)}
+    links = [(FRYSLAN + 1, 8_000_001, 5.0), (8_000_001, RIJNLAND + 1, 5.0)]
+    run = make_run(rows, links, {RIJNLAND + 1: [1.0] * 3})
+    table = compare_exchange(make_run(rows, [], {RIJNLAND + 1: [1.0] * 3}), run)
+    assert list(table.index) == ["WetterskipFryslan - Rijnland"]
+    assert table.loc["WetterskipFryslan - Rijnland", "mean_head"] == 5.0
+
+
 def test_top_flows_ignores_small_changes_and_links_in_one_run():
     levels = {FRYSLAN + 1: [1.0] * 3, RIJNLAND + 1: [1.0] * 3}
     base = make_run(BASE_ROWS, [(1, 2, 1.0), (2, 3, 1.0), (3, 4, 1.0)], levels)

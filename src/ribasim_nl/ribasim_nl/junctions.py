@@ -124,8 +124,12 @@ def _junctionify(model: Model, links: gpd.GeoDataFrame, converging: bool = True)
     junction_ids = []
     field = "to_node_id" if converging else "from_node_id"
     node_type = model.node.df["node_type"]
-    # only merge where the node can be connected to a Junction
-    mergeable = [can_connect("Junction", t) if converging else can_connect(t, "Junction") for t in node_type]
+    # only merge where the node can be connected to a Junction, and not into a LevelBoundary,
+    # which koppelen replaces by the connection to the neighbouring model
+    mergeable = [
+        t != "LevelBoundary" and (can_connect("Junction", t) if converging else can_connect(t, "Junction"))
+        for t in node_type
+    ]
     links = links[links[field].map(pd.Series(mergeable, index=node_type.index))]
     for node_id, group in links.groupby(field):
         assert isinstance(node_id, int)
