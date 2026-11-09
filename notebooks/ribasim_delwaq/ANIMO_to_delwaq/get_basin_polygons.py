@@ -1,13 +1,24 @@
 # %%
+# ruff: noqa: E402
+
+import sys
 from pathlib import Path
 
+CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.toml"
+ROOT = CONFIG_PATH.resolve().parents[2]
+sys.path.insert(0, str(CONFIG_PATH.parent))
 import geopandas as gpd
+from config import load_delwaq_config
 
-model_name = "lhm_coupled_full"
+# %% CONFIG
+# select basin polygons (or other selection) and save shapefiles
+basin_types = ["bergend"]  # ,  "hoofdwater"]
+# %%
 
-root_dir = Path(__file__).resolve().parents[3]
-model_path = root_dir / "data" / "Rijkswaterstaat" / "modellen" / model_name
-output_path = root_dir / "data" / "Basisgegevens" / "Delwaq" / "ANIMO" / "aangeleverd" / "shapes" / model_name
+delwaq_config = load_delwaq_config(CONFIG_PATH)
+model_name = delwaq_config.model_path.name
+model_path = delwaq_config.model_path
+output_path = delwaq_config.animo_data / "aangeleverd" / "shapes" / model_name
 # %%
 
 basin_path = model_path / "input/database.gpkg"
@@ -20,9 +31,6 @@ nodes = nodes.reset_index()
 basin = basin.merge(nodes[["node_id", "meta_categorie"]], on="node_id", how="left")
 
 # %%
-# select basin polygons (or other selection) and save shapefiles
-
-basin_types = ["bergend"]  # ,  "hoofdwater"]
 
 basins_to_save = basin[basin["meta_categorie"].isin(basin_types)]
 total_area_km2 = basins_to_save.geometry.area.sum() / 1e6
@@ -50,3 +58,5 @@ print(f"total area covered by LHM: {total_area_dissolved_sel_km2:.2f} km²")
 print(f"Total area of selected polygons: {total_area_km2:.2f} km²")
 print(f"Areal coverage of selected basin polygons: {total_area_km2 / total_area_dissolved_km2 * 100:.2f}%")
 print("if this exceeds 100%, there is overlap among the selected polygons")
+
+# %%

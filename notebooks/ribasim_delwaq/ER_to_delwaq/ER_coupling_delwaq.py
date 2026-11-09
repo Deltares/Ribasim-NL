@@ -38,18 +38,28 @@ bekend en wordt er tussen deze jaren geinterpoleerd.
 # import os
 # import sys
 
+# ruff: noqa: E402
+
+
 # print(sys.executable)
 # print(os.environ.get("GDAL_DATA"))
 # %%
 # -------------------------------Packages---------------------------------------
 
 import logging
+import re
+import sys
 from pathlib import Path
 
+CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.toml"
+ROOT = CONFIG_PATH.resolve().parents[2]
+sys.path.insert(0, str(CONFIG_PATH.parent))
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+from config import load_delwaq_config
 from ER_GAF_fractions_func import compute_overlap_df
+from matplotlib.figure import Figure
 
 # ------------------------ Import local module ----------------------------------
 
@@ -73,9 +83,8 @@ conv_ton2g = 10**6
 
 # fixed
 
-ROOT = Path(__file__).resolve().parents[3]
-
-ER_DATA_DIR = ROOT / "data" / "Basisgegevens" / "Delwaq" / "Emissieregistratie"
+delwaq_config = load_delwaq_config(CONFIG_PATH)
+ER_DATA_DIR = delwaq_config.er_data
 
 ER_INPUT_DIR = ER_DATA_DIR / "aangeleverd"  # vervangt "data\1-external" of /
 ER_INTERIM_DIR = ER_DATA_DIR / "interim"  # vervangt "data\2-interim" of /
@@ -83,17 +92,15 @@ ER_OUTPUT_DIR = ER_DATA_DIR / "output"  # vervangt "data/5-results" of \
 ER_FIGURES_DIR = ER_DATA_DIR / "figures"  # vervangt "data/6-visualization" of \
 
 ER_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+ER_FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
 emissies_buiten_ER_path = ER_INPUT_DIR / "Emissies_per_jaar_buiten_ER.csv"
 ER_export_path = ER_INPUT_DIR / "ER_DataExport-2026-09-16-103931.xlsx"
 OE_bedrijven_path = ER_INPUT_DIR / "OverigeEmissies_bedrijven__2024_01_24.csv"
 gaf_path = ER_INPUT_DIR / "gaf_90.shp"
 
-# model-dependent
-model_name = "lhm_coupled_full"
-toml_name = "lhm_coupled.toml"
-model_path = ROOT / "data" / "Rijkswaterstaat" / "modellen" / model_name
-toml_path = model_path / toml_name
+model_path = delwaq_config.model_path
+toml_path = delwaq_config.model_toml
 basin_path = model_path / "input/database.gpkg"
 
 # %%
@@ -113,17 +120,25 @@ def validate_df(
         raise ValueError(f"DataFrame missing required columns: {missing}")
 
 
+def save_figure(fig: Figure, name: str) -> None:
+    """Save a figure in the ER figures directory."""
+    safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", name).strip("_")
+    figure_path = ER_FIGURES_DIR / f"{safe_name}.png"
+    fig.savefig(figure_path, dpi=150, bbox_inches="tight")
+    logger.info("Saved figure to %s", figure_path)
+    if make_plots:
+        plt.show()
+    plt.close(fig)
+
+
 def lineplot_N_P(df, N, P, kg=True, set_log=False, title=None):
     """Generate lineplots for the different EMK per Sub."""
-    if not make_plots:
-        return
-
     validate_df(df)
 
     df_n = df[df["VariableId"] == N]
     df_p = df[df["VariableId"] == P]
 
-    _fig, axes = plt.subplots(1, 2, figsize=(15, 6), sharey=False)
+    fig, axes = plt.subplots(1, 2, figsize=(15, 6), sharey=False)
 
     emk_order = sorted(df["EmissionTypeId"].unique())
 
@@ -174,20 +189,18 @@ def lineplot_N_P(df, N, P, kg=True, set_log=False, title=None):
     )
 
     plt.tight_layout()
-    plt.show()
+    plot_name = f"lineplot_N_P_{title or 'all'}_{'kg_year' if kg else 'g_s'}"
+    save_figure(fig, plot_name)
 
 
 def barplot_N_P(df, N, P, y_lim_min_n, y_lim_max_n, y_lim_min_p, y_lim_max_p, kg=True, title=None):
     """Generate barplots per year for N and P."""
-    if not make_plots:
-        return
-
     validate_df(df, required_columns=("Year", "Value", "VariableId"))
 
     df_n = df[df["VariableId"] == N]
     df_p = df[df["VariableId"] == P]
 
-    _fig, axes = plt.subplots(1, 2, figsize=(15, 6), sharey=False)
+    fig, axes = plt.subplots(1, 2, figsize=(15, 6), sharey=False)
 
     sns.barplot(data=df_n, x="Year", y="Value", errorbar=None, ax=axes[0])
     axes[0].set_title(f"Sum of Emissions of {title} for N - totaal")
@@ -204,7 +217,8 @@ def barplot_N_P(df, N, P, y_lim_min_n, y_lim_max_n, y_lim_min_p, y_lim_max_p, kg
     axes[1].grid(True)
 
     plt.tight_layout()
-    plt.show()
+    plot_name = f"barplot_N_P_{title or 'all'}_{'kg_year' if kg else 'g_s'}"
+    save_figure(fig, plot_name)
 
 
 # %%
@@ -311,7 +325,7 @@ sum_per_emk_long = sum_per_gaf_long.groupby(["Emissieoorzaak", "Stof", "Jaar"])[
 for stof in sum_per_emk_long["Stof"].unique():
     df_stof = sum_per_emk_long[sum_per_emk_long["Stof"] == stof]
 
-    plt.figure(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(10, 6))
 
     sns.lineplot(
         data=df_stof,
@@ -319,15 +333,16 @@ for stof in sum_per_emk_long["Stof"].unique():
         y="Emissie",
         hue="Emissieoorzaak",
         marker="o",
+        ax=ax,
     )
 
-    plt.title(f"Emissies voor {stof} per jaar totaal (kg)")
-    plt.xlabel("Jaar")
-    plt.ylabel("Emissie")
-    plt.grid(True)
+    ax.set_title(f"Emissies voor {stof} per jaar totaal (kg)")
+    ax.set_xlabel("Jaar")
+    ax.set_ylabel("Emissie")
+    ax.grid(True)
 
     plt.tight_layout()
-    plt.show()
+    save_figure(fig, f"emissions_per_year_{stof}")
 
 # year totals (all emissieoorzaken together)
 sum_per_year_base_long = sum_per_gaf_long.groupby(["Stof", "Jaar"])["Emissie"].sum().reset_index()
