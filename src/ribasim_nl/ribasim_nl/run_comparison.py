@@ -443,10 +443,25 @@ def top_flows(matched: pd.DataFrame) -> pd.DataFrame:
     return top[columns].set_index(["from_node_id", "to_node_id"])
 
 
+def link_authority_codes(run: Run) -> tuple[pd.Series, pd.Series]:
+    """The authority code of the nodes each flow link comes from and goes to.
+
+    A Junction of a Basin tree, see `ribasim_nl.flow_paths.Routes`, belongs to the authority of its Basin, also when
+    the coupling gave it an ID of another authority.
+    """
+    flow = run.links[["from_node_id", "to_node_id"]].astype(int)
+    routes = Routes.from_tables(flow.reset_index(drop=True), run.nodes["node_type"])
+    junction_basin = {node_id: routes.tree_basin(node_id) for node_id in routes.plain}
+    codes = []
+    for column in ("from_node_id", "to_node_id"):
+        node_ids = flow[column].map(lambda i: junction_basin.get(i) or i)
+        codes.append(pd.Series(authority_code(node_ids), index=run.links.index))
+    return codes[0], codes[1]
+
+
 def net_exchange(run: Run, column: str) -> pd.Series:
     """The net flow between each pair of authorities, from the first to the second, in the order of their codes."""
-    from_code = pd.Series(authority_code(run.links["from_node_id"]), index=run.links.index)
-    to_code = pd.Series(authority_code(run.links["to_node_id"]), index=run.links.index)
+    from_code, to_code = link_authority_codes(run)
     crossing = from_code != to_code
     forward = from_code[crossing] < to_code[crossing]
     first = from_code[crossing].where(forward, to_code[crossing])
