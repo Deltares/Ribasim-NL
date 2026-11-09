@@ -63,8 +63,10 @@ It then writes the updated Ribasim model TOML file.
 `03_run_and_analyse_delwaq.py`:
 
 1. Creates DELWAQ input files with `generate`.
-2. Runs DELWAQ through DIMR.
+2. Runs DELWAQ with `run_delwaq`.
 3. Parses the results with `parse`.
+
+These steps are combined in `ribasim_nl.delwaq.compute_delwaq`.
 
 The output is written below the model's `delwaq_all_sources` directory.
 
@@ -106,17 +108,18 @@ files necessary to run a DELWAQ simulation. It can take around 30 minutes.
 
 ## Run DELWAQ simulation
 
-The DELWAQ simulation is run from Python using the `subprocess` package. The
-run script uses the DIMR executable and the input files created by `generate`.
+The DELWAQ simulation is run with `run_delwaq` from Ribasim, on the input
+files created by `generate`. It calls `bin/run_delwaq.bat` on Windows and
+`bin/run_delwaq.sh` on Linux.
 
 ### D3D_HOME Environment Variable
 
-To run DELWAQ, ensure that `D3D_HOME` points to the DIMR executable used by
-the run script.
+To run DELWAQ, set `D3D_HOME` in `.env` to the root of the Delft3D
+installation, the directory that holds `bin`.
 
 Example:
 ```
-D3D_HOME=c:\Program Files\Deltares\Delft3D FM Suite 2025.02 HMWQ\plugins\DeltaShell.Dimr\kernels\x64\bin\run_dimr.bat
+D3D_HOME=c:\Program Files\Deltares\Delft3D FM Suite 2025.02 HMWQ\plugins\DeltaShell.Dimr\kernels\x64
 ```
 
 ### Running the simulation

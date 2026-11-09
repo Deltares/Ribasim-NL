@@ -1,7 +1,7 @@
 # %%
-from ribasim.delwaq import generate, parse, run_delwaq
+from ribasim_nl.delwaq import compute_delwaq
 
-from ribasim_nl import CloudStorage, Model, settings
+from ribasim_nl import CloudStorage, Model
 
 cloud = CloudStorage()
 
@@ -46,20 +46,8 @@ for authority in authorities:
         # run DELWAQ
         if RUN_DELWAQ:
             try:
-                delwaq_dir = model.toml_path.with_name("delwaq")
-                print(f"generate DELWAQ model in {delwaq_dir}")
-                graph, substances = generate(model, output_path=delwaq_dir)
-
-                # run DELWAQ model
                 print("run DELWAQ")
-                run_delwaq(
-                    model_dir=delwaq_dir,
-                    d3d_home=settings.d3d_home,
-                )
-
-                # parse DELWAQ results in model
-                print("parse DELWAQ results in Ribasim-model")
-                parse(model, graph, substances, output_folder=delwaq_dir, to_input=True)
+                compute_delwaq(model, to_input=True)
             except AssertionError as e:
                 print(f"DELWAQ overgeslagen voor {authority}: {e}")
                 pass
