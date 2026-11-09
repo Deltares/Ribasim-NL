@@ -1,0 +1,67 @@
+---
+title: "Control"
+---
+
+Most Outlets and Pumps in the regional models are controlled by a DiscreteControl node.
+Each has one of these functions, which decides when it lets water through, and the code that adds them is in `ribasim_nl.control`:
+
+- `drain`: outlet draining an area
+- `supply`: inlet supplying an area
+- `flow_control`: flow through an area in supply (drought) and drain conditions
+- `flushing`: an outlet with a specific flow to be maintained at any conditions (supply or drain)
+
+This is what they do in terms of upstream and downstream levels, in the supply (aanvoer) or drain (afvoer) state:
+
+| Function | Dutch | State determined by | Flow in supply state [m³/s] | Flow in drain state [m³/s] | Nodes added |
+|:---------|:------|:--------------------|:---------------------|:--------------------|:------------|
+| `drain` | uitlaat | upstream level | 0 | capacity | DiscreteControl |
+| `supply` | inlaat | downstream level | capacity | 0 | DiscreteControl |
+| `flow_control` | doorlaat | upstream and downstream level | capacity | capacity | DiscreteControl |
+| `flushing` | doorspoeling | upstream level and flow rate | demand | capacity | DiscreteControl and FlowDemand |
+
+Each controlled node gets two rows in its static table, for the control states `aanvoer` (supply) and `afvoer` (drain), and one DiscreteControl node with a control link.
+The capacity in the table is `max_flow_rate`: a node lets through its `flow_rate`, limited by `max_flow_rate`.
+Flushing nodes also get a FlowDemand node, which sets the flow to maintain, seasonal if it differs between summer and winter; their `flow_rate` in the supply state is 0.
+
+```{mermaid}
+%%| fig-cap: "A drain node between two Basins. The DiscreteControl node listens to the level upstream and switches the state of the Outlet."
+flowchart LR
+  up["Basin upstream"] -->|flow| outlet["Outlet<br>afvoer: capacity<br>aanvoer: 0"]
+  outlet -->|flow| down["Basin downstream"]
+  dc["DiscreteControl"] -.->|control| outlet
+  up -.->|listens to level| dc
+```
+
+## Levels and thresholds
+
+The target level of a Basin is its `meta_streefpeil` in `Basin / area`.
+From it follow the thresholds of the DiscreteControl nodes and the level limits of the nodes:
+
+- The thresholds have a band of 5 cm in total around the level (`DEFAULT_LEVEL_THRESHOLD_RANGE`), so a node does not keep switching.
+- `min_upstream_level` is the target level upstream, and in the supply state 4 cm below it, except for drain nodes, which keep the target level in both states.
+- `max_downstream_level` in the supply state is the target level downstream.
+- In the drain state, Pumps stop pumping into a Basin 20 cm above its target level (`MAALSTOP_LEVEL_OFFSET`). Outlets are limited by gravity, so they have no such limit.
+
+The [summer and winter levels](seasonal-levels.qmd) later split each state into a winter and a summer variant, such as `afvoer zomer`.
+
+## How nodes get their function
+
+The two kinds of models get their function differently.
+
+- **Gravity controlled**: `04_add_full_control.py` calls `add_controllers_to_supply_area` for each supply area, `verwerkt/sturing/aanvoergebieden.gpkg`. The inlets and outlets of the polygon, and lists by hand, give the function: inlets supply and outlets drain, the reverse of a supply or flow control node drains, downstream of supply nodes it is `flow_control`, and the rest drains, except the reverse of a drain node, which supplies. Then `add_controllers_to_uncontrolled_connector_nodes` handles the remaining Outlets and Pumps, without those in `exclude_nodes`. The priority is flushing, flow control, drain, supply; the rest again drains, except the reverse of a drain node.
+- **Level controlled**: the `meta_categorie` of a node maps to a function, with exceptions in `set_node_functions`. This gives no flushing nodes.
+
+## Exceptions
+
+Some systems need more than a DiscreteControl node per connector:
+
+- Noorderzijlvest and Wetterskip Fryslân use `set_continuous_level_control` in places.
+- Rijnland uses `set_discrete_level_control`, with control states `stap n`.
+- Aa en Maas, Limburg and Rijnland also add FlowDemand nodes in their own scripts. In Rijnland, Katwijk flushes at least 1.07 m³/s this way.
+- The main water system has its own control with DiscreteControl, ContinuousControl and FlowDemand nodes, see [Main water system](main-watersystem.qmd#control-and-demands).
+
+## Capacities
+
+The capacity of a node is its `max_flow_rate`.
+In the gravity controlled models it comes from the reviewed `static_data.xlsx`, with `flow_rate_mm_per_day` as the default by node type and function, and `flow_rate` is often higher, so `max_flow_rate` decides.
+The level controlled models set the unknown capacities from the area they drain or supply, and their `flow_rate` to the same value, see [design capacities](design-capacities.qmd).

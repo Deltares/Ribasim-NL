@@ -1,0 +1,122 @@
+---
+title: "Lumping"
+---
+
+The regional model of a [gravity controlled](gravity-controlled.qmd) water authority starts with two steps.
+The **lumping** turns the watercourses, structures and areas of the authority into an input model.
+The **fix script** then corrects that model, mostly with edits made by hand.
+Every map on this page shows the same 5 × 5 km of Drents Overijsselse Delta near Kampen.
+
+```{mermaid}
+flowchart LR
+  hydamo["hydamo.gpkg<br>watercourses, structures"] --> lump
+  input["ribasim_input.gpkg<br>split nodes, boundaries"] --> lump
+  areas["areas.gpkg<br>areas, drainage areas"] --> lump
+  lump(["Lumping<br>00b_lump_model.py"]) --> model["Input model<br>&lt;authority&gt;_2024_6_3"]
+  model --> fix(["Fix script<br>01_fix_model.py"])
+  edits["model_edits.gpkg<br>edits by node ID"] --> fix
+  fix --> fixed["Fix model<br>&lt;authority&gt;_fix_model"]
+
+  classDef step fill:#dfedef,stroke:#0c6a77
+  class lump,fix step
+```
+
+The code is in `ribasim_nl.lumping`, a port of the `ribasim_lumping` code with which Sweco made these models in 2024, see [Reproducing models](../dev/reproducing-models.qmd).
+Noorderzijlvest is lumped from its D-HYDRO model instead, with `pipeline/noorderzijlvest/00_lump_model.py`.
+
+:::: {.grid .step}
+::: {.g-col-12 .g-col-lg-5}
+### 1. The inputs
+
+Three files describe the area.
+The watercourses come from the HyDAMO data of the water authority.
+`verwerkt/3_input/ribasim_input.gpkg` holds the split nodes: the weirs, pumping stations, culverts and other structures where the model splits the network.
+It also holds the boundaries, where water enters or leaves the area of the authority.
+`verwerkt/3_input/areas.gpkg` holds the areas that will make up the basin areas, here the level areas (peilgebieden), grouped in drainage areas.
+:::
+::: {.g-col-12 .g-col-lg-7}
+![Grey lines are watercourses, black dots split nodes, triangles boundaries, thin lines areas and dashed lines drainage areas. The blank band from northwest to southeast is the IJssel with the Reevediep, in the model of Rijkswaterstaat.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/lumping-1-inputs.png){fig-alt="Grey watercourses with black dots at the split nodes, triangles at the boundaries along a blank band, thin area outlines and dashed drainage area outlines."}
+:::
+::::
+
+:::: {.grid .step}
+::: {.g-col-12 .g-col-lg-5}
+### 2. Split the network into basins
+
+The lumping cuts the watercourses into edges of about 250 m, and then cuts the network at every split node.
+Each piece that stays connected is a basin.
+
+A basin between a boundary and the split node next to it is dropped, and the boundary connects straight to that split node.
+Where a boundary has no split node, its basin stays.
+:::
+::: {.g-col-12 .g-col-lg-7}
+![Each basin has its own colour and is labelled with its node ID. Dashed grey watercourses are basins of a boundary, which are dropped. The large green basin 2563 is all the network that is reachable without passing a split node.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/lumping-2-basins.png){fig-alt="The same watercourses coloured by basin: a large green basin 2563 in the middle, blue basins 1665 and 2556, yellow 1597 and orange 1740, with dashed grey watercourses near the boundaries."}
+:::
+::::
+
+:::: {.grid .step}
+::: {.g-col-12 .g-col-lg-5}
+### 3. Give every area to a basin
+
+Each area goes to the basin with the most watercourse length inside it.
+Areas without a watercourse go to the neighbouring basin they share the longest border with, preferably in the same drainage area.
+Gaps of up to 5000 m² between the areas are filled, and each basin gets one basin area.
+
+A basin can end up without any area.
+The level areas here are large and cross several basins, so basin 1665 gets 1134 ha, including the areas around the canal of basin 1597, while basins 1597 and 1740 get none.
+The fix script deals with that in step 5.
+:::
+::: {.g-col-12 .g-col-lg-7}
+![Basin areas in the colour of their basin. The watercourses of basins 1597 and 1740 run through the area of basin 1665.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/lumping-3-areas.png){fig-alt="Areas filled in the colour of their basin: blue for basin 1665 in the west and 2556 in the east, green for 2563 in the middle."}
+:::
+::::
+
+:::: {.grid .step}
+::: {.g-col-12 .g-col-lg-5}
+### 4. Write the input model
+
+Each basin becomes a Basin node, and each split node a connector by the type of its structure:
+
+| Structure | Node |
+|:----------|:-----|
+| Weir | TabulatedRatingCurve |
+| Pumping station | Pump |
+| Culvert, open water | ManningResistance |
+| Sluice, valve | Outlet |
+
+The boundaries become LevelBoundaries or FlowBoundaries, and the links follow the direction of flow.
+Nodes on a KRW water body get `meta_categorie` hoofdwater.
+:::
+::: {.g-col-12 .g-col-lg-7}
+![The input model `modellen/DrentsOverijsselseDelta_2024_6_3`. Circles are Basins, diamonds ManningResistances and squares TabulatedRatingCurves or Outlets. Basins 1597 and 1740 have a node but no area yet.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/lumping-4-input-model.png){fig-alt="The input model: Basin nodes 1597, 1740, 1665, 2563 and 1750 as coloured dots, connectors as small black symbols, LevelBoundaries as triangles, and links with arrows, over the basin areas."}
+:::
+::::
+
+:::: {.grid .step}
+::: {.g-col-12 .g-col-lg-5}
+### 5. Correct the model in the fix script
+
+`pipeline/drents_overijsselse_delta/01_fix_model.py` corrects the input model by node ID.
+It removes and merges nodes, adds basins and connectors, and reverses or redirects links.
+Most edits are rows in `verwerkt/model_edits.gpkg`.
+In this window, `merge_basins` merges basins 1597 and 1665 into 1740, which takes over the 1134 ha of 1665, and `remove_node` removes LevelBoundary 5 and Outlet 535.
+
+The last step, `Model.fill_basin_area_holes`, gives every part of an area that the edits left without a basin to a basin, by the same rules as the lumping.
+It also checks that every Basin has an area.
+
+```python
+model = Model.read(input_model_toml)
+# edits by node ID
+model.remove_node(7, remove_links=True)
+# the rows of model_edits.gpkg
+model.apply_edits(model_edits_path, actions)
+...
+# last: every area to a Basin
+model.fill_basin_area_holes(areas_gpkg)
+model.write(fix_model_toml)
+```
+:::
+::: {.g-col-12 .g-col-lg-7}
+![The fix model `modellen/DrentsOverijsselseDelta_fix_model`. Crosses mark nodes that the fix script removed. Basin 2563 keeps its 714 ha, and the links of the merged basins now start or end at 1740.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/lumping-5-fix-model.png){fig-alt="The fix model: basin 1740 now has the large orange area in the west, crosses mark the removed nodes, and most connectors are squares."}
+:::
+::::

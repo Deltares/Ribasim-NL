@@ -57,7 +57,6 @@ ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["meta_streefpeil"] =
 inlaat_pump = []
 
 # change gemaal function Brielse Meer to aanvoer. Find node_id first, as it is added in the feedback form
-assert ribasim_model.link.df is not None
 BrielseMeerNodes = ribasim_model.link.df.loc[
     ribasim_model.link.df.from_node_id == 98, "to_node_id"
 ]  # array of all values from basin 98
@@ -220,7 +219,6 @@ ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 460,
 ribasim_model.link.add(ribasim_model.pump[460], ribasim_model.basin[10])
 
 # (re)set 'meta_node_id'-values
-assert ribasim_model.node.df is not None
 for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
     mask = ribasim_model.node.df["node_type"] == node_type
     ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index

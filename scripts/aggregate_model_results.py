@@ -43,7 +43,6 @@ def main() -> None:
 
     echo_polygons = gpd.read_file(ECHO_POLYGONS, columns=["ECHO_ID", "geometry"])
     node_df = model.node.df
-    assert node_df is not None
     assert node_df.crs is not None
     echo_polygons = echo_polygons.set_crs(node_df.crs)
     echo_groups = NodeGroups.from_polygons(model, echo_polygons, "ECHO_ID")

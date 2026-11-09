@@ -253,14 +253,10 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     storing_ids, df_flowing, df_storing = single_profile_nodes(*map(drop_degenerate_profiles, tables))
 
     if (
-        ribasim_model.node.df is None
-        or ribasim_model.basin.profile.df is None
-        or ribasim_model.basin.node is None
-        or ribasim_model.basin.node.df is None
+        ribasim_model.basin.profile.df is None
         or ribasim_model.basin.static.df is None
         or ribasim_model.basin.state.df is None
         or ribasim_model.basin.area.df is None
-        or ribasim_model.link.df is None
         or ribasim_model.manning_resistance.static.df is None
     ):
         msg = "Required model tables are missing."
@@ -288,7 +284,6 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
         return ribasim_model
 
     # duplicate all basin-tables
-    assert ribasim_model.basin.node is not None
     basin_node = ribasim_model.basin.node.df
 
     basin_static = ribasim_model.basin.static.df

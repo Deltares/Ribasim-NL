@@ -1,13 +1,17 @@
+import geopandas as gpd
 import pytest
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, pump
 from ribasim_nl.validation import (
+    _basin_area_issues,
     _connector_through_junction_issues,
+    _deep_basin_profile_issues,
+    _flow_demand_capacity_issues,
     _listen_to_junction_issues,
     _manning_resistance_issues,
     _uncontrolled_control_state_issues,
 )
-from shapely.geometry import Point
+from shapely.geometry import MultiPolygon, Point, Polygon, box
 
 from ribasim_nl import Model
 
@@ -43,6 +47,36 @@ def model() -> Model:
     return model
 
 
+def test_basin_area_issues(model):
+    # Basin 1 has a hole that is a sliver, Basin 2 is a bow tie, which crosses itself
+    sliver_hole = box(-5, 5, 5, 5 + 1e-6)
+    with_sliver_hole = Polygon(box(-10, 0, 10, 20).exterior, [sliver_hole.exterior])
+    bow_tie = Polygon([(-10, -20), (10, 0), (10, -20), (-10, -10)])
+    model.basin.area.df = gpd.GeoDataFrame(
+        {"node_id": [1, 2]}, geometry=[MultiPolygon([with_sliver_hole]), MultiPolygon([bow_tie])], crs=model.crs
+    )
+    issues = _basin_area_issues(model)
+    assert len(issues) == 2
+    assert "must be valid; invalid node IDs: [2]" in issues[0]
+    assert "wide, see Model.clean_basin_area; invalid node IDs: [1]" in issues[1]
+
+    model.clean_basin_area()
+    assert _basin_area_issues(model) == []
+    area = model.basin.area.df
+    assert area is not None
+    assert area.geometry[0].equals(MultiPolygon([box(-10, 0, 10, 20)]))
+    # the two triangles of the bow tie
+    assert area.geometry[1].is_valid and area.geometry[1].area == pytest.approx(500 / 3)
+
+
+def test_clean_basin_area_raises_on_sliver(model):
+    model.basin.area.df = gpd.GeoDataFrame(
+        {"node_id": [1]}, geometry=[MultiPolygon([box(0, 0, 1e-6, 10)])], crs=model.crs
+    )
+    with pytest.raises(AssertionError, match=r"slivers as a whole, of node IDs: \[1\]"):
+        model.clean_basin_area()
+
+
 def test_connector_through_junction(model):
     issues = _connector_through_junction_issues(model)
     assert len(issues) == 1
@@ -58,6 +92,10 @@ def test_connector_through_junction_to_basin(model):
         Node(9, Point(40, 0)), [basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]), basin.State(level=[0.5])]
     )
     model.link.add(model.junction[7], model.basin[9])
+    assert _connector_through_junction_issues(model) == []
+    # also when Basin 9 feeds a Pump through the same Junctions, which then form its tree
+    model.pump.add(Node(10, Point(40, 10)), [pump.Static(flow_rate=[1.0])])
+    model.link.add(model.junction[7], model.pump[10])
     assert _connector_through_junction_issues(model) == []
 
 
@@ -142,6 +180,17 @@ def test_uncontrolled_control_states(controlled_outlet_model):
     assert "Outlet" in issues[0] and "[2]" in issues[0]
 
 
+def test_flow_demand_capacity(controlled_outlet_model):
+    model = controlled_outlet_model
+    assert _flow_demand_capacity_issues(model) == []
+    # without allocation, Ribasim ignores the part of a demand above max_flow_rate
+    model.outlet.static.df.loc[model.outlet.static.df.node_id == 6, "max_flow_rate"] = 0.4
+    assert _flow_demand_capacity_issues(model) == [
+        "FlowDemand must not exceed the max_flow_rate of its Pump or Outlet in any control state; "
+        "invalid (FlowDemand, connector) node IDs: [(7, 6)]"
+    ]
+
+
 def test_merge_outlets_keeps_discrete_control(controlled_outlet_model):
     # An outlet merged with an inlet with a FlowDemand keeps its DiscreteControl and control states
     model = controlled_outlet_model
@@ -155,3 +204,30 @@ def test_merge_outlets_keeps_discrete_control(controlled_outlet_model):
     control = model.link.df[model.link.df["link_type"] == "control"]
     assert sorted(control[["from_node_id", "to_node_id"]].values.tolist()) == [[4, 2], [7, 2]]
     assert _uncontrolled_control_state_issues(model) == []
+
+
+@pytest.mark.parametrize(
+    ("category", "bottom", "n_issues"),
+    [
+        ("doorgaand", -29.0, 0),  # deep water, like a lake
+        ("doorgaand", -124.0, 1),  # a no-data level of 999 subtracted from a cross-section
+        ("doorgaand", -32.0, 1),  # a no-data level of 99, averaged with other cross-sections
+        ("hoofdwater", -66.0, 0),  # the Westerschelde
+        ("hoofdwater", -124.0, 1),
+        ("bergend", -136.0, 0),  # the terrain in Limburg
+        ("bergend", -160.0, 1),
+        (None, -66.0, 0),  # not categorized yet
+        (None, -124.0, 1),
+    ],
+)
+def test_deep_basin_profile_issues(model: Model, category: str | None, bottom: float, n_issues: int) -> None:
+    profile_df = model.basin.profile.df
+    assert profile_df is not None
+    assert not _deep_basin_profile_issues(model), "Expect no issues without a meta_categorie column"
+    profile_df.loc[(profile_df["node_id"] == 1) & (profile_df["level"] == 0.0), "level"] = bottom
+    if category is not None:
+        model.node.df["meta_categorie"] = category
+    issues = _deep_basin_profile_issues(model)
+    assert len(issues) == n_issues
+    if n_issues:
+        assert "1:" in issues[0]

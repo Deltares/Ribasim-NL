@@ -18,11 +18,9 @@ def sanitize_node_table(
         copy_map = []
     if meta_columns is None:
         meta_columns = []
-    assert model.basin.node is not None
     node_columns = model.basin.node.columns() + meta_columns
 
     # update values per node_type directly on model.node.df
-    assert model.node.df is not None
     for node_type in model.node.df.node_type.unique():
         mask = model.node.df["node_type"] == node_type
 

@@ -1,7 +1,7 @@
 # Hunze en Aas
 
 - Laatst bijgewerkt: 20-4-2026
-- [Laatste modelversie](https://deltares.thegood.cloud/s/3Q2eGKqwpqdLkE8)
+- [Bekijk het model in de modelviewer](/viewer.qmd#authority=33)
 
 ## Systeembeschrijving
 ![Systeembeschrijving Hunze en Aas](https://s3.deltares.nl/ribasim-nl/doc-image/watersystems/HunzeenAas.svg){.lightbox}
@@ -61,7 +61,7 @@ Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h
 P.M.
 
 ## Bronnen
-Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
+Bovenstaand model is afgeleid van het invoermodel `HunzeenAas_2024_6_3`, dat de pipeline uit de brongegevens maakt, op de manier waarop Sweco dat in 2024 deed. Dit is bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](/workflow/gravity-controlled.qmd). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
 
 - Documentatie Distributiemodel, Deel C, hoofdstuk 25
 - Bespreekverslag SWECO (12-12-2023)

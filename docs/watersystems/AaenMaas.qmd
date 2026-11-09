@@ -1,7 +1,7 @@
 # Aa en Maas
 
 - Laatst bijgewerkt: 07-04-2026
-- [Laatste modelversie](https://deltares.thegood.cloud/s/2tRGidQ5daqWJ9J)
+- [Bekijk het model in de modelviewer](/viewer.qmd#authority=38)
 
 ## Systeembeschrijving
 ![Systeembeschrijving Aa en Maas](https://s3.deltares.nl/ribasim-nl/doc-image/watersystems/AaenMaas.svg){.lightbox}
@@ -138,6 +138,6 @@ Bij de `Noordervaart` wordt maximaal 5.4m3/s aangevoerd. Door kanaal van Deurne 
 Per kunstwerk, gespecificeerd op `naam`, `code` (waterbeheerder), `node_id` (v.h. Ribasim model) zijn hieronder de functie (`inlaat`, `doorlaat`, `uitlaat`, `uitlaat (doorspoeling))`) en de capaciteiten onder `aanvoer` en `afvoer` condities opgegeven.
 
 ## Bronnen
-Voor het vervaardigen van bovenstaand model is het model met versie 2023.6.3 gebruikt welke is geleverd door Sweco. Deze bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](../workflow/gravity-controlled.html). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
+Bovenstaand model is afgeleid van het invoermodel `AaenMaas_2024_6_3`, dat de pipeline uit de brongegevens maakt, op de manier waarop Sweco dat in 2024 deed. Dit is bewerkt, geparameteriseerd en voorzien van sturing met deze [workflow](/workflow/gravity-controlled.qmd). Om de sturing goed in het model te zetten is tevens gebruik gemaakt van:
 
 - Documentatie Distributiemodel (Deel D, hoofdstuk 29 en 30)

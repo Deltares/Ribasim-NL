@@ -626,9 +626,7 @@ def sync_parameterized_manning_basin_levels(
     if apply and not update_rows.empty:
         profile_df = model.basin.profile.df
         if update_profile and profile_df is not None:
-            for row in update_rows.itertuples(index=False):
-                if pd.isna(row.old_level) or pd.isna(row.new_level):
-                    continue
+            for row in update_rows.dropna(subset=["old_level", "new_level"]).itertuples(index=False):
                 basin_id = as_int(row.basin_node_id)
                 profile_mask = profile_df["node_id"].eq(basin_id)
                 if not profile_mask.any():

@@ -129,10 +129,49 @@ def depth_from_hydrotopes(
     return hydro_objects
 
 
+# Measured bed levels outside this range, in m NAP, are errors or no-data values. In the level controlled authorities
+# these are -9999 m in Hollandse Delta, about -99 m in Delfland, -278 m and up to +95 m in Amstel, Gooi en Vecht, and
+# -2876 m to +210 m in Rijnland. The deepest other levels are -48 m in Amstel, Gooi en Vecht and -19 m in Scheldestromen.
+MIN_BED_LEVEL = -50.0
+MAX_BED_LEVEL = 50.0
+
+
+def drop_implausible_levels(
+    cross_sections: gpd.GeoDataFrame, min_level: float = MIN_BED_LEVEL, max_level: float = MAX_BED_LEVEL
+) -> gpd.GeoDataFrame:
+    """Remove the points of cross-sections with a level outside [`min_level`, `max_level`] m NAP.
+
+    Cross-sections with fewer than two points left are removed. The others keep their index.
+
+    :param cross_sections: measured cross-sectional profiles, with z-coordinates
+    :param min_level: lowest plausible bed level, defaults to `MIN_BED_LEVEL`
+    :param max_level: highest plausible bed level, defaults to `MAX_BED_LEVEL`
+
+    :return: cross-sections without implausible levels
+    """
+    assert all(cross_sections.has_z), "cross-sections must have z-coordinates"
+    lines, kept = [], []
+    removed = 0
+    for i, line in zip(cross_sections.index, cross_sections.geometry, strict=True):
+        coords = np.asarray(line.coords)
+        plausible = (coords[:, 2] >= min_level) & (coords[:, 2] <= max_level)
+        removed += int((~plausible).sum())
+        if plausible.sum() > 1:
+            lines.append(shapely.LineString(coords[plausible]))
+            kept.append(i)
+    out = cross_sections.loc[kept]
+    out = out.set_geometry(gpd.GeoSeries(lines, index=out.index, crs=cross_sections.crs))
+    LOG.info(f"Removed {removed} implausible levels, and {len(cross_sections) - len(out)} cross-sections entirely")
+    return out
+
+
 def normalise_measured_cross_sections(
     cross_sections: gpd.GeoDataFrame, target_levels: gpd.GeoDataFrame, *, col_target_level: str = "meta_streefpeil"
 ) -> gpd.GeoDataFrame:
     """Normalise cross-sections z-coordinates to the target level within which they lay.
+
+    A cross-section within several overlapping polygons gets the level of the smallest, which is the local one, such as
+    a KRW water body within its polder in Hollandse Delta. A cross-section within none gets no level.
 
     :param cross_sections: measured cross-sectional profiles
     :param target_levels: regional target levels
@@ -142,14 +181,17 @@ def normalise_measured_cross_sections(
     :type target_levels: geopandas.GeoDataFrame
     :type col_target_level: str, optional
 
-    :return: measured cross-sectional profiles with normalised z-coordinates
+    :return: measured cross-sectional profiles with normalised z-coordinates, with the index of `cross_sections`
     :rtype: geopandas.GeoDataFrame
     """
-    out = cross_sections.sjoin(target_levels[[col_target_level, "geometry"]], how="left", predicate="within")
-    out["geometry"] = out.apply(
-        lambda row: shapely.affinity.translate(row.geometry, zoff=-row[col_target_level]), axis=1
-    )
-    return out
+    assert cross_sections.index.is_unique, "cross-sections must have a unique index"
+    polygons = target_levels[[col_target_level, "geometry"]].assign(_polygon_area=target_levels.area)
+    joined = cross_sections[["geometry"]].sjoin(polygons, how="left", predicate="within")
+    joined = joined.sort_values("_polygon_area", kind="stable")
+    level = joined.loc[~joined.index.duplicated(), col_target_level].reindex(cross_sections.index)
+    geometry = [shapely.affinity.translate(g, zoff=-z) for g, z in zip(cross_sections.geometry, level, strict=True)]
+    out = cross_sections.assign(**{col_target_level: level})
+    return out.set_geometry(gpd.GeoSeries(geometry, index=out.index, crs=out.crs))
 
 
 def depth_from_measurements(
@@ -176,13 +218,14 @@ def depth_from_measurements(
         return -np.min(line.coords, axis=0)[2]
 
     def representative_depth(indices: tuple[int, ...]) -> float | None:
-        """Take the mean of estimated depths of all connected cross-sections."""
+        """Take the mean of estimated depths of all connected cross-sections, by their index."""
         if indices and -1 not in indices:
-            return float(np.nanmean([depth_calculator(cross_sections.geometry.iloc[i]) for i in indices]))
+            return float(np.nanmean([depth_calculator(cross_sections.geometry.loc[i]) for i in indices]))
         return None
 
-    # assure cross-sections contain z-coordinates
+    # assure cross-sections contain z-coordinates, and can be found by their index
     assert all(cross_sections.has_z)
+    assert cross_sections.index.is_unique and (cross_sections.index >= 0).all()
 
     # couple hydro-objects to cross-sections
     temp = sorted_sjoin(

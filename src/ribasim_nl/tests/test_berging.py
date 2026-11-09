@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import geopandas as gpd
 import pandas as pd
 import pytest
@@ -62,6 +64,15 @@ def test_supply_area_basin_ids_only_supplied(model):
     assert supply_area_basin_ids(model, supply_areas) == {1}
     supply_areas["meta_aanvoer"] = False
     assert supply_area_basin_ids(model, supply_areas) == set()
+
+
+def test_supply_area_basin_ids_precision(model):
+    """Drents Overijsselse Delta's basin 2378, in a supply area of its own shape, whose overlay GEOS got wrong."""
+    path = Path(__file__).parent / "data" / "basin_in_supply_area.wkt"
+    area, *supply = shapely.from_wkt(path.read_text().splitlines())
+    add_basin(model, 6, area.point_on_surface(), area, meta_categorie="doorgaand")
+    supply_areas = gpd.GeoDataFrame({"meta_aanvoer": [True] * len(supply)}, geometry=supply, crs=model.crs)
+    assert supply_area_basin_ids(model, supply_areas) == {6}
 
 
 def test_parse_meta_aanvoer():

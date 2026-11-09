@@ -19,6 +19,7 @@ import shapely
 import xarray as xr
 
 from ribasim_nl.case_conversions import pascal_to_snake_case, snake_to_pascal_case
+from ribasim_nl.goodness_of_fit import MIN_COMPARED_DAYS, compare, observed_and_simulated
 
 WEB_CRS = "EPSG:4326"
 # Simplification tolerances in model CRS units (m)
@@ -34,6 +35,19 @@ TIME_STEPS_PER_ROW_GROUP = 8
 # Result variables that can color the map, with their color scale
 MAP_VARIABLES = {"basin": {"level": "linear", "storage": "log"}, "flow": {"flow_rate": "log"}}
 LOG_SCALE_DYNAMIC_RANGE = 1e-4
+# The tracers of the Ribasim core: the fractions of the water by its source, and the age of the water in seconds
+RESIDENCE_TIME = "ResidenceTime"
+SOURCE_TRACERS = {
+    "Continuity",
+    "Initial",
+    "LevelBoundary",
+    "FlowBoundary",
+    "UserDemand",
+    "Drainage",
+    "Precipitation",
+    "SurfaceRunoff",
+}
+SECONDS_PER_DAY = 86400.0
 SKIP_TABLES = {"layer_styles", "ribasim_metadata"}
 # The local times at which Ribasim logs the start and successful end of a simulation, in `ribasim.log`
 RUN_LOG_TIMES = {
@@ -151,10 +165,18 @@ def export_links(database: Path, path: Path) -> None:
     write_table(table, path)
 
 
-def export_basin_area(database: Path, path: Path) -> None:
-    """Export Basin / area polygons as vector tiles; attributes are looked up by node_id."""
+def export_basin_area(database: Path, nodes: pd.DataFrame, path: Path) -> None:
+    """Export Basin / area polygons as vector tiles; attributes are looked up by node_id.
+
+    The areas of the storing ('bergend') Basins overlap those of the flowing Basins they belong to. The tiles keep this
+    order and the viewer draws and picks the last feature on top, so the storing Basins come first, to show and select
+    the flowing Basins by default.
+    """
     area = gpd.read_file(database, layer="Basin / area", columns=["node_id"], use_arrow=True)
     assert area.node_id.notna().all(), "Basin / area has missing node_id"
+    if "meta_categorie" in nodes.columns:
+        storing = nodes.loc[nodes["meta_categorie"] == "bergend", "node_id"]
+        area = area.sort_values("node_id", key=lambda node_id: ~node_id.isin(storing), kind="stable")
     pyogrio.write_dataframe(
         area[["node_id", "geometry"]],
         path,
@@ -239,10 +261,16 @@ def float_encoding(*dictionary_columns: str, data: dict[str, np.ndarray]) -> dic
 
 
 def write_by_id(ids: np.ndarray, times: np.ndarray, data: dict[str, np.ndarray], id_dim: str, path: Path) -> int:
-    """Write long-format Parquet sorted by id, one row group per block of ids, for per-feature time series."""
+    """Write long-format Parquet sorted by id, one row group per block of ids, for per-feature time series.
+
+    The viewer finds the row group of an id by the statistics of the id column. Those of the other columns are left
+    out, since they would be read with the file metadata of each feature, and grow with the number of columns.
+    """
     schema = pa.schema([(id_dim, pa.int32()), ("time", pa.timestamp("ms"))] + [(v, pa.float32()) for v in data])
     ntime = len(times)
-    with pq.ParquetWriter(path, schema, write_statistics=True, **float_encoding(id_dim, "time", data=data)) as writer:
+    with pq.ParquetWriter(
+        path, schema, write_statistics=[id_dim], **float_encoding(id_dim, "time", data=data)
+    ) as writer:
         for start in range(0, len(ids), NETCDF_NODES_PER_ROW_GROUP):
             block = slice(start, start + NETCDF_NODES_PER_ROW_GROUP)
             nblock = len(ids[block])
@@ -287,8 +315,68 @@ def export_netcdf_table(source: Path, path: Path) -> int:
     return write_by_id(ids, times, data, "node_id", path)
 
 
+def concentration_variable(substance: str, values: np.ndarray, units: str) -> dict:
+    """The color scale of a substance, linear from zero.
+
+    Up to the highest value, since a substance that reaches few Basins would be saturated by a percentile, and a
+    fraction of the water then goes up to about 1, like the others. The residence time has no such limit: the few
+    stagnant Basins would make all others look the same.
+    """
+    values = values[np.isfinite(values)]
+    residence_time = substance == RESIDENCE_TIME
+    high = 0.0
+    if len(values) > 0:
+        high = float(np.percentile(values, 98) if residence_time else values.max())
+    tracer = residence_time or substance in SOURCE_TRACERS
+    return {
+        "label": substance,
+        "units": "d" if residence_time else "-" if tracer else units,
+        "scale": "linear",
+        # Without values above zero the scale would be empty
+        "domain": [0.0, high if high > 0 else 1.0],
+        "group": "Ribasim tracers" if tracer else "Model substances",
+    }
+
+
+def export_concentration(source: Path, ids: np.ndarray, times: np.ndarray, by_id: Path, by_time: Path) -> dict:
+    """Export the Basin concentrations per Basin for charts and per time step for the map, with a column per substance.
+
+    The viewer reads only the column of the chosen substance, so a long list of substances does not slow it down.
+    The Basins and time steps must be those of the Basin results, so the viewer can reuse their order on the map.
+    """
+    with xr.open_dataset(source) as ds:
+        concentration = ds["concentration"]
+        assert set(concentration.dims) == {"time", "substance", "node_id"}, f"Unexpected dimensions in {source}"
+        file_ids = ds["node_id"].to_numpy().astype("int32")
+        order = np.argsort(file_ids, kind="stable")
+        assert np.array_equal(file_ids[order], ids), f"The Basins of {source} differ from the Basin results"
+        file_times = ds["time"].to_numpy().astype("datetime64[ms]")
+        assert np.array_equal(file_times, times), f"The time steps of {source} differ from the Basin results"
+        substances = [str(substance) for substance in ds["substance"].to_numpy()]
+        assert len(set(substances)) == len(substances), f"Duplicate substances in {source}"
+        assert "node_id" not in substances, f"A substance in {source} is named node_id"
+        units = concentration.attrs.get("units", "")
+        data = {}
+        for substance in substances:
+            values = concentration.sel(substance=substance).transpose("node_id", "time").to_numpy()
+            values = values[order].astype("float32")
+            data[substance] = values / SECONDS_PER_DAY if substance == RESIDENCE_TIME else values
+    write_by_id(ids, times, data, "node_id", by_id)
+    write_by_time(ids, data, "node_id", by_time)
+    variables = {substance: concentration_variable(substance, data[substance], units) for substance in substances}
+    # The substances of the model first, since they are what is chosen most, and easier to find when sorted
+    order_of_choice = sorted(substances, key=lambda s: (variables[s]["group"] == "Ribasim tracers", s))
+    return {
+        "id": "node_id",
+        "count": len(ids),
+        "variables": {substance: variables[substance] for substance in order_of_choice},
+        "by_id": by_id,
+        "by_time": by_time,
+    }
+
+
 def export_results(results_dir: Path, output_dir: Path) -> dict:
-    """Export Basin and flow results, both per feature for charts and per time step for the map."""
+    """Export Basin and flow results and Basin concentrations, both per feature for charts and per time step for the map."""
     results: dict = {"steps_per_row_group": TIME_STEPS_PER_ROW_GROUP}
     (output_dir / "results").mkdir()
     for name, id_dim in [("basin", "node_id"), ("flow", "link_id")]:
@@ -323,10 +411,75 @@ def export_results(results_dir: Path, output_dir: Path) -> dict:
             assert results["times"] == [str(t) for t in times], f"Time steps of {source} differ"
         results["times"] = [str(t) for t in times]
         results[name] = {"id": id_dim, "count": len(ids), "variables": variables, "by_id": by_id, "by_time": by_time}
+        if name == "basin" and (results_dir / "concentration.nc").is_file():
+            results["concentration"] = export_concentration(
+                results_dir / "concentration.nc",
+                ids,
+                times,
+                output_dir / "results" / "concentration_by_id.parquet",
+                output_dir / "results" / "concentration_by_time.parquet",
+            )
     control = results_dir / "control.nc"
     if control.is_file():
         results["control"] = export_control(control, output_dir / "results" / "control.parquet")
     return results
+
+
+def observed_variable_attrs(results_dir: Path, variable: str) -> dict:
+    """The attributes of the simulated values of an observed variable: the flow rate of links, or a Basin variable."""
+    with xr.open_dataset(results_dir / ("flow.nc" if variable == "flow_rate" else "basin.nc")) as ds:
+        return dict(ds[variable].attrs)
+
+
+def export_observations(database: Path, results_dir: Path, times: pd.DatetimeIndex, output_dir: Path) -> dict | None:
+    """Export how well the results fit the measurements of the Observation nodes, see `ribasim_nl.goodness_of_fit`.
+
+    The fit of each observed variable over the whole run is written as a table, and the difference simulated -
+    observed at each of the `times` for the map, which is NaN where either value is missing. Returns None if no
+    Observation node is compared.
+    """
+    series = observed_and_simulated(database, results_dir)
+    if not series:
+        return None
+    metrics = pd.DataFrame(
+        [
+            {"node_id": s.node_id, "name": s.name, "variable": s.variable} | compare(s.observed, s.simulated)
+            for s in series
+        ]
+    )
+    metrics["days"] = metrics["days"].astype("int32")
+    metrics_path = output_dir / "results" / "observation_metrics.parquet"
+    write_parquet(metrics, metrics_path)
+
+    ids = np.unique([s.node_id for s in series]).astype("int32")
+    rows = {node_id: row for row, node_id in enumerate(ids)}
+    variables = sorted({s.variable for s in series})
+    differences = {variable: np.full((len(ids), len(times)), np.nan, dtype="float32") for variable in variables}
+    for s in series:
+        differences[s.variable][rows[s.node_id]] = (s.simulated - s.observed).reindex(times).to_numpy(dtype="float32")
+    by_time = output_dir / "results" / "observation_by_time.parquet"
+    write_by_time(ids, differences, "node_id", by_time)
+
+    scales = {}
+    for variable, values in differences.items():
+        attrs = observed_variable_attrs(results_dir, variable)
+        # Without differences the scale would be empty
+        high = color_domain(values, "diverging")[1] if np.isfinite(values).any() else 0.0
+        scales[variable] = {
+            "label": attrs.get("long_name", variable),
+            "units": attrs.get("units", ""),
+            # The differences of large rivers and small ditches span orders of magnitude
+            "scale": "symlog",
+            "domain": [-high, high] if high > 0 else [-1.0, 1.0],
+        }
+    return {
+        "id": "node_id",
+        "count": len(ids),
+        "min_days": MIN_COMPARED_DAYS,
+        "variables": scales,
+        "by_time": by_time,
+        "metrics": metrics_path,
+    }
 
 
 def export_control(source: Path, path: Path) -> Path:
@@ -407,7 +560,7 @@ def export_webmap(toml_path: Path, waterboards_path: Path | None, output_dir: Pa
 
     nodes = export_nodes(database, output_dir / "nodes.parquet")
     export_links(database, output_dir / "links.parquet")
-    export_basin_area(database, output_dir / "basin_area.pmtiles")
+    export_basin_area(database, nodes, output_dir / "basin_area.pmtiles")
     exported = [("nodes", "nodes.parquet"), ("links", "links.parquet"), ("basin_area", "basin_area.pmtiles")]
     if waterboards_path is not None:
         export_waterboards(waterboards_path, output_dir / "waterboards.geojson")
@@ -436,9 +589,15 @@ def export_webmap(toml_path: Path, waterboards_path: Path | None, output_dir: Pa
     results_dir = model_results_dir(toml_path, config)
     if results_dir.is_dir():
         results = export_results(results_dir, output_dir)
-        for name in ("basin", "flow"):
-            results[name]["by_id"] = entry(results[name]["by_id"])
-            results[name]["by_time"] = entry(results[name]["by_time"])
+        for name in ("basin", "flow", "concentration"):
+            if name in results:
+                results[name]["by_id"] = entry(results[name]["by_id"])
+                results[name]["by_time"] = entry(results[name]["by_time"])
+        times = pd.DatetimeIndex(results["times"])
+        if observation := export_observations(database, results_dir, times, output_dir):
+            observation["by_time"] = entry(observation["by_time"])
+            observation["metrics"] = entry(observation["metrics"])
+            results["observation"] = observation
         if "control" in results:
             results["control"] = entry(results["control"])
         manifest["results"] = results

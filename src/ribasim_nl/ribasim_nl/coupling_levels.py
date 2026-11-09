@@ -32,8 +32,8 @@ from ribasim_nl.coupling_level_common import (
 from ribasim_nl.coupling_level_controls import protected_controller_threshold_updates
 from ribasim_nl.coupling_level_network import (
     first_non_junction,
-    flow_link_graphs,
 )
+from ribasim_nl.flow_paths import Routes
 
 FLOW_DEMAND_DIRECT_MIN_UPSTREAM_AUTHORITIES = {AAENMAAS_AUTHORITY, LIMBURG_AUTHORITY}
 RWS_FLOW_DEMAND_PROFILE_AUTHORITIES = {AAENMAAS_AUTHORITY, DEDOMMEL_AUTHORITY, LIMBURG_AUTHORITY}
@@ -45,8 +45,7 @@ class CouplingLevelContext:
     basin_authority_by_id: dict[int, object]
     streefpeil_by_basin_id: pd.Series
     min_profile_by_basin_id: pd.Series
-    outgoing_flow_links: dict[int, list[tuple[int, int]]]
-    incoming_flow_links: dict[int, list[tuple[int, int]]]
+    routes: Routes
     coupled_flow_link_ids: set[int]
     static_df: pd.DataFrame
 
@@ -185,8 +184,6 @@ def coupled_flow_link_ids(link_df: pd.DataFrame) -> set[int]:
 
 def build_coupling_level_context(model: Model) -> CouplingLevelContext:
     """Prepare lookup tables used by the coupling-level checks."""
-    assert model.node.df is not None
-    assert model.link.df is not None
     assert model.basin.area.df is not None
     assert model.basin.profile.df is not None
 
@@ -203,7 +200,6 @@ def build_coupling_level_context(model: Model) -> CouplingLevelContext:
         as_int(node_id): authority
         for node_id, authority in node_df.set_index("node_id")["meta_waterbeheerder"].to_dict().items()
     }
-    outgoing_flow_links, incoming_flow_links = flow_link_graphs(link_df)
     positive_flow_demand_ids, flow_demand_controlled_ids = flow_demand_targets(
         model=model,
         link_df=link_df,
@@ -224,8 +220,7 @@ def build_coupling_level_context(model: Model) -> CouplingLevelContext:
         basin_authority_by_id=basin_authority_by_id,
         streefpeil_by_basin_id=normalize_numeric(basin_area_df.set_index("node_id")["meta_streefpeil"]),
         min_profile_by_basin_id=basin_profile_df.groupby("node_id")["level"].min(),
-        outgoing_flow_links=outgoing_flow_links,
-        incoming_flow_links=incoming_flow_links,
+        routes=Routes(model),
         coupled_flow_link_ids=coupled_flow_link_ids(link_df),
         static_df=static_df,
     )
@@ -249,12 +244,8 @@ def connector_level_record(
     active_aanvoer_capacity = control_state == "aanvoer" and static_capacity
     inactive_flow_demand_aanvoer = control_state == "aanvoer" and flow_demand_inlaat and not static_capacity
 
-    upstream_id, upstream_flow_link_id, _ = first_non_junction(
-        node_id, context.incoming_flow_links, context.node_type_by_id
-    )
-    downstream_id, downstream_flow_link_id, _ = first_non_junction(
-        node_id, context.outgoing_flow_links, context.node_type_by_id
-    )
+    upstream_id, upstream_flow_link_id, _ = first_non_junction(context.routes, node_id, upstream=True)
+    downstream_id, downstream_flow_link_id, _ = first_non_junction(context.routes, node_id, upstream=False)
     upstream_node_type = context.node_type_by_id.get(upstream_id) if upstream_id is not None else None
     downstream_node_type = context.node_type_by_id.get(downstream_id) if downstream_id is not None else None
     upstream_authority = context.basin_authority_by_id.get(upstream_id) if upstream_id is not None else None
@@ -510,7 +501,6 @@ def run_coupling_level_check(
 ) -> None:
     """Apply configured coupling-level corrections to a TOML model."""
     model = Model.read(toml_file)
-    assert model.node.df is not None
 
     tables = build_coupling_level_tables(
         model=model,

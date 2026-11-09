@@ -13,18 +13,15 @@ def _map_node_ids(node_ids: pd.Series | pd.Index, node_index: pd.Series) -> np.n
 def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: str | None = "waterbeheerder") -> Model:
     """Reindex all model-nodes to a new node_index series"""
     # reindex the node table
-    assert model.node.df is not None
     if original_index_postfix is not None:
         model.node.df[f"meta_node_id_{original_index_postfix}"] = model.node.df.index.astype("int32")
     model.node.df.index = pd.Index(_map_node_ids(model.node.df.index, node_index).tolist(), name="node_id")
 
     # re-number from_node_id and to_node_id
-    assert model.link.df is not None
     model.link.df["from_node_id"] = _map_node_ids(model.link.df["from_node_id"], node_index)
     model.link.df["to_node_id"] = _map_node_ids(model.link.df["to_node_id"], node_index)
 
     # renumber all node-tables (node, static, area, ...)
-    assert model.node.df is not None
     for node_type in model.node.df.node_type.unique():
         ribasim_node = model.get_component(node_type)
         for attr in ribasim_node.__class__.model_fields:
@@ -60,7 +57,6 @@ def prefix_index(
     ------
         ValueError: If any node_id exceeds the max_digits limit
     """
-    assert model.node.df is not None
     node_ids = model.node.df.index
 
     # Check if any node_id exceeds max_digits
@@ -80,7 +76,6 @@ def prefix_index(
     model = reindex_nodes(model=model, node_index=node_index, original_index_postfix=original_index_postfix)
 
     # create an link_index and reindex links
-    assert model.link.df is not None
     link_ids = model.link.df.index
 
     # Check if any link_id exceeds max_digits
@@ -120,8 +115,6 @@ def reset_index(
         Model: reindexed model
     """
     # only reset nodes if we have to
-    assert model.node.df is not None
-    assert model.link.df is not None
     node_ids = model.node.df.index
     node_id_min = node_ids.min()
     node_id_max = node_ids.max()
@@ -132,7 +125,6 @@ def reset_index(
         model = reindex_nodes(model=model, node_index=node_index, original_index_postfix=original_index_postfix)
 
         # only reset nodes if we have to
-        assert model.link.df is not None
         link_ids = model.link.df.index
         link_id_min = link_ids.min()
         link_id_max = link_ids.max()

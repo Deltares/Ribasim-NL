@@ -101,9 +101,8 @@ def match_flow_boundaries(model: Model, inflows: pd.DataFrame) -> pd.Series:
     :param inflows: the inflows of the water authority of the model, see `read_overview`
     :return: the node IDs of the FlowBoundaries, by inflow id
     """
-    assert model.flow_boundary.node is not None
     nodes = model.flow_boundary.node.df
-    if nodes is None or "meta_categorie" not in nodes:
+    if "meta_categorie" not in nodes:
         nodes = gpd.GeoDataFrame({"name": [], "meta_categorie": []}, geometry=[], crs=model.crs)
     nodes = nodes.loc[nodes["meta_categorie"] == CATEGORY]
     assert nodes["name"].is_unique, f"Names of the {CATEGORY} FlowBoundaries are not unique"

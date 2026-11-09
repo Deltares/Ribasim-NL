@@ -9,6 +9,7 @@ from `dvc.yaml`:
    only the stages that changed compared with `dvc.lock`, and everything downstream of them, are run.
    Data that is not in the workspace does not count as a change, so this also works in a fresh git worktree.
 2. Check that the Ribasim core and credentials are installed, see `pixi run setup-worktree` for worktrees.
+   `pixi run repro-local` first installs the core of `install_ribasim_core.py`, unless it is installed already.
    Then prepare the workspace with `clean.py`: remove the outputs of the selected stages and pull
    everything upstream of them.
 3. Run the stages as soon as their upstream stages have succeeded, with at most `--jobs` at a time.

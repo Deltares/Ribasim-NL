@@ -8,14 +8,12 @@ if __name__ == "__main__":
     waterschap = "HollandseDelta"
     gen_profiles.flagged_hydro_objects(
         waterschap,
-        "hd_crossings_v06.gpkg",
         "aangeleverd/Eerste_levering/watergangen/HydroObjectWatergangtype.shp",
         "SOORT_OPPE",
         val_flag="hoofdwaterloop",
         layer_hydro_objects=None,
         export_profile_tables=True,
         export_intermediate_output=True,
-        sync=False,
     )
     src_toml = f"data/{waterschap}/modellen/{waterschap}_feedback/ribasim.toml"
     dst_toml = f"data/{waterschap}/modellen/{waterschap}_profiles/ribasim.toml"

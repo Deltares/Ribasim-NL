@@ -8,10 +8,8 @@ if __name__ == "__main__":
     waterschap = "Delfland"
     gen_profiles.main(
         waterschap,
-        "delfland_crossings_v08.gpkg",
         export_profile_tables=True,
         export_intermediate_output=True,
-        sync=False,
     )
     src_toml = f"data/{waterschap}/modellen/{waterschap}_feedback/ribasim.toml"
     dst_toml = f"data/{waterschap}/modellen/{waterschap}_profiles/ribasim.toml"

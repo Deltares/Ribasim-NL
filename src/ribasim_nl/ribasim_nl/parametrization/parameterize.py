@@ -40,7 +40,6 @@ class Parameterize(BaseModel):
             print("  static_data_xlsx bestaat lokaal.")
 
         # add meta_function as we will need that for further parametrization
-        assert self.model.node.df is not None
         if "meta_function" not in self.model.node.df.columns:
             print("meta_function kolom ontbreekt -> wordt toegevoegd via populate_function_column()")
             assert self.static_data_xlsx is not None, "static_data_xlsx is needed to populate meta_function"

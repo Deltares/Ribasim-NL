@@ -82,7 +82,7 @@ PEILBEHEERST_PAIRS=(
 # remove the outputs of all stages run below, like `dvc repro` does, and `dvc pull --force`
 # everything upstream of them. Those outputs are not pulled, so a newly added output that is not
 # yet in the remote does not make the pull fail.
-STAGES="rwzi hws_demand hws_transient samenvoegen koppelen"
+STAGES="rwzi peilbeheer hws_demand hws_transient samenvoegen koppelen"
 for pair in "${DYNAMIC_PAIRS[@]}"; do
   key="${pair%%:*}"
   STAGES="${STAGES} parameterized_${key} bergend_${key} dynamic@${key}"
@@ -93,9 +93,10 @@ for pair in "${PEILBEHEERST_PAIRS[@]}"; do
 done
 JOB_CLEAN=$(submit clean singleton ${TIME} "$(py scripts/clean.py ${STAGES})")
 
-# Step 1: shared rwzi dependency (needs the pulled inputs).
+# Step 1: shared rwzi and peilbeheer dependencies (need the pulled inputs).
 JOB_RWZI=$(submit rwzi "afterok:${JOB_CLEAN}" ${TIME} "$(py pipeline/create_rwzi_model.py)")
-DEP="afterok:${JOB_RWZI}"
+JOB_PEILBEHEER=$(submit peilbeheer "afterok:${JOB_CLEAN}" ${TIME} "$(py pipeline/peilbeheer.py)")
+DEP="afterok:${JOB_RWZI}:${JOB_PEILBEHEER}"
 
 # Step 2: 22 independent stage jobs
 JOBIDS=""

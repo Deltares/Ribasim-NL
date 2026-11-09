@@ -1,0 +1,50 @@
+---
+title: "Documentation"
+---
+
+This website is made with [Quarto](https://quarto.org/) from the `docs` folder, and published to [ribasim.nl](https://ribasim.nl/) from `main` by the workflow `.github/workflows/docs.yml`.
+
+```sh
+pixi run docs         # preview, with the viewer and the API reference
+pixi run docs-render  # render as on CI
+```
+
+Quarto silently finds no pages if the repository is below a hidden folder, such as a worktree in `.claude/worktrees`. Render a copy elsewhere in that case.
+
+## Diagrams
+
+Use [Mermaid](https://mermaid.js.org/) for diagrams of steps and flows, in a `{mermaid}` code block, with short labels.
+The theme is set in `docs/_quarto.yml`.
+`pixi run dvc-dag` makes the full graph of the pipeline in `docs/dev/_dvc-dag.mmd`.
+
+## Figures
+
+The maps and charts of real examples are not in Git, and CI has no access to the data they are made from.
+`scripts/docs_figures.py` makes them, and uploads them to `doc-image/figures` on MinIO, next to the other images of the docs.
+The pages link to them there, so the docs do not need to be rebuilt to show new figures.
+
+Every [catch-up run](pull-requests.qmd#catch-up-runs-on-main) publishes them after it has opened its pull request, so they follow the code of `main`:
+
+```sh
+pixi run docs-figures --pull --publish
+```
+
+If that fails, the catch-up run continues and logs it, and the docs keep the previous figures.
+A figure that fails does not stop the others.
+
+To work on a figure, make it locally in `data/docs_figures`, without uploading it:
+
+```sh
+pixi run docs-figures lumping         # one group, from the data you have
+pixi run docs-figures --pull lumping  # pull its data first, as listed in the script
+```
+
+`--publish` needs credentials with write access in `.env`, and overwrites the figures on the live site, so only use it for a run of `main`.
+A new figure needs its name in the `outputs` of its group; `scripts/test_docs_figures.py` checks that the pages only link to figures that are made.
+
+Captions are written by hand, and do not follow the figures.
+Keep them general where the figure can change, and check the numbers in those of [Lumping](../workflow/lumping.qmd) when its data changes.
+
+## API reference
+
+[quartodoc](https://machow.github.io/quartodoc/) builds the [API reference](../reference/index.qmd) from the docstrings, in the sections of `docs/_quarto.yml`.

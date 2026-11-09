@@ -5,9 +5,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 from pandera.typing import DataFrame
-from pandera.typing.geopandas import GeoDataFrame
 from ribasim import Node
-from ribasim.geometry.area import BasinAreaSchema
 from ribasim.nodes import basin, level_boundary, outlet
 from ribasim.schemas import (
     BasinProfileSchema,
@@ -21,7 +19,7 @@ from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.model import default_tables
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, MultiPolygon, Point
 
 from ribasim_nl import CloudStorage, Model, NetworkValidator
 
@@ -34,13 +32,8 @@ name = "aam"
 # %% Check if model exist, otherwise download
 ribasim_dir = cloud.joinpath(authority, f"modellen/{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
-database_gpkg = ribasim_toml.with_name("database.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
-afwateringseenheden_shp = cloud.joinpath(
-    authority, "verwerkt/1_ontvangen_data/Na_levering_202404/afwateringseenheden_WAM/Afwateringseenheden.shp"
-)
-af_aanvoergebied_shp = cloud.joinpath(authority, "aangeleverd/Eerste_levering/AfvoergebiedAanvoergebied.shp")
-ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
+areas_gpkg = cloud.joinpath(authority, "verwerkt/3_input/areas.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
 # %%
@@ -66,36 +59,12 @@ outlet_data = outlet.Static(flow_rate=[5.0])
 
 # HIER KOMEN ISSUES
 
-# %% https://github.com/Deltares/Ribasim-NL/issues/149#issuecomment-2421617819
-
-# Verwijderen duplicate links
-assert model.link.df is not None
-model.link.df.drop_duplicates(inplace=True)
-
 # %% https://github.com/Deltares/Ribasim-NL/issues/149#issuecomment-2421959240
 
 # Verwijderen link met 0m lengte
 model.remove_node(34, remove_links=True)
 model.update_node(1568, "LevelBoundary", data=[level_data], node_properties={"name": ""})
 
-
-# %% see: https://github.com/Deltares/Ribasim-NL/issues/149#issuecomment-2421946693
-# toevoegen ontbrekende basins
-
-basin_links_df = network_validator.link_incorrect_connectivity()
-basin_nodes_df = network_validator.node_invalid_connectivity()
-
-for row in basin_nodes_df.itertuples():
-    # maak basin-node
-    basin_node = model.basin.add(Node(geometry=cast(Point, row.geometry)), tables=basin_data)
-
-    # update link_table
-    model.link.df.loc[basin_links_df[basin_links_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
-        basin_node.node_id
-    )
-    model.link.df.loc[basin_links_df[basin_links_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
-        basin_node.node_id
-    )
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/149#issuecomment-2421991252
 
@@ -250,7 +219,6 @@ for row in network_validator.link_incorrect_type_connectivity(
 
 # %%
 # basin-profielen/state updaten
-assert model.basin.node is not None and model.basin.node.df is not None
 df = pd.DataFrame(
     {
         "node_id": np.repeat(model.basin.node.df.index.to_numpy(), 2),
@@ -268,7 +236,6 @@ model.basin.state.df = DataFrame[BasinStateSchema](df)
 
 # %%
 # tabulated_rating_curves updaten
-assert model.tabulated_rating_curve.node is not None and model.tabulated_rating_curve.node.df is not None
 df = pd.DataFrame(
     {
         "node_id": np.repeat(model.tabulated_rating_curve.node.df.index.to_numpy(), 2),
@@ -290,7 +257,6 @@ model.tabulated_rating_curve.static.df.loc[
 # %%
 
 # level_boundaries updaten
-assert model.level_boundary.node is not None and model.level_boundary.node.df is not None
 df = pd.DataFrame(
     {
         "node_id": model.level_boundary.node.df.index.to_list(),
@@ -302,7 +268,6 @@ model.level_boundary.static.df = DataFrame[LevelBoundaryStaticSchema](df)
 
 # %%
 # manning_resistance updaten
-assert model.manning_resistance.node is not None and model.manning_resistance.node.df is not None
 length = len(model.manning_resistance.node.df)
 df = pd.DataFrame(
     {
@@ -318,7 +283,6 @@ model.manning_resistance.static.df = DataFrame[ManningResistanceStaticSchema](df
 
 # %%
 # flow boundaries updaten
-assert model.flow_boundary.node is not None and model.flow_boundary.node.df is not None
 length = len(model.flow_boundary.node.df)
 df = pd.DataFrame(
     {
@@ -330,148 +294,30 @@ df.index.name = "fid"
 model.flow_boundary.static.df = DataFrame[FlowBoundaryStaticSchema](df)
 
 # %% read
-drainage_units_gdf = gpd.read_file(
-    afwateringseenheden_shp, fid_as_index=True
-)  # Deze afwateringseenheden wordt gebruikt voor vullen gaten
-drainage_units_johnny_gdf = gpd.read_file(
-    af_aanvoergebied_shp, fid_as_index=True
-)  # Indien gaten niet met bovenstaande data kunnen worden gevuld dan proberen met deze
-ribasim_areas_gdf = gpd.read_file(ribasim_areas_gpkg, fid_as_index=True, layer="areas")
-
 basin_node_edits_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="unassigned_basin_node")
 basin_area_edits_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="unassigned_basin_area")
 internal_basin_edits_gdf = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="internal_basins")
-assert model.basin.area.df is not None
-model.basin.area.df = model.basin.area.df[~model.basin.area.df.index.isin(model.unassigned_basin_area.index)]
 remove_nodes_df = gpd.read_file(model_edits_gpkg, fid_as_index=True, layer="remove_node")
+areas_gdf = gpd.read_file(areas_gpkg, layer="areas")
 
-df = basin_area_edits_gdf[basin_area_edits_gdf["to_node_id"].notna()]
-df.loc[:, ["node_id"]] = df["to_node_id"].astype("int32")
-model.basin.area.df = GeoDataFrame[BasinAreaSchema](pd.concat([model.basin.area.df, df[["node_id", "geometry"]]]))
-
-# %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code) by overlapping the Ribasim area file baed on largest overlap
-# then assign Ribasim node-ID's to areas with the same area code. Many nodata areas disappear by this method
-assert model.basin.area.df is not None
-combined_basin_areas_gdf = gpd.overlay(
-    ribasim_areas_gdf, model.basin.area.df, how="union", keep_geom_type=True
-).explode()
-
-combined_basin_areas_gdf["area"] = combined_basin_areas_gdf.geometry.area
-non_null_basin_areas_gdf = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].notna()]
-
-largest_area_node_ids = non_null_basin_areas_gdf.loc[
-    non_null_basin_areas_gdf.groupby("code")["area"].idxmax(), ["code", "node_id"]
-].reset_index(drop=True)
-
-combined_basin_areas_gdf = combined_basin_areas_gdf.merge(largest_area_node_ids, on="code", how="left")
-combined_basin_areas_gdf["node_id"] = combined_basin_areas_gdf["node_id_y"]
-combined_basin_areas_gdf.drop(columns=["node_id_x", "node_id_y"], inplace=True)
-combined_basin_areas_gdf = combined_basin_areas_gdf.drop_duplicates(keep="first")
-combined_basin_areas_gdf = combined_basin_areas_gdf.dissolve(by="code").reset_index()
-
-# %% The Ribasim model basins that have still nodata are being checked if they have overlap with aftwareringseenheden.shp.
-# If overlap, they get ther Ribasim node-id where they have the largest overlap with
-filtered_drainage_units_gdf = drainage_units_johnny_gdf[
-    drainage_units_johnny_gdf["SOORTAFVOE"] != "Deelstroomgebied"
-].copy()
-
-assert combined_basin_areas_gdf.crs is not None
-filtered_drainage_units_gdf = filtered_drainage_units_gdf.to_crs(combined_basin_areas_gdf.crs)
-
-# Overlay filtered drainage units and updated basin areas
-combined_basin_areas_johnny_gdf = gpd.overlay(
-    filtered_drainage_units_gdf, combined_basin_areas_gdf, how="union", keep_geom_type=True
-).explode()
-combined_basin_areas_johnny_gdf = combined_basin_areas_johnny_gdf.dissolve(by="CODE")
-
-# Step 1: Separate unassigned from assigned units
-unassigned_units_gdf = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].isnull()].copy()
-assigned_units_gdf = combined_basin_areas_gdf[combined_basin_areas_gdf["node_id"].notna()].copy()
-
-# Step 2: Calculate intersection areas between unassigned units and Johnny basins
-overlap_gdf = gpd.overlay(combined_basin_areas_johnny_gdf, unassigned_units_gdf, how="union", keep_geom_type=True)
-# Step 3: Add overlap area for each polygon
-overlap_gdf["overlap_area"] = overlap_gdf.geometry.area
-
-# Step 4: Select the largest overlap per code to assign `node_id`
-largest_area_node_ids = overlap_gdf.loc[
-    overlap_gdf.groupby("OBJECTID_2")["overlap_area"].idxmax(), ["node_id_1", "OBJECTID_2"]
-].reset_index(drop=True)
-
-# Step 5: Merge largest node_id from overlaps back to unassigned units
-unassigned_units_gdf = unassigned_units_gdf.merge(
-    largest_area_node_ids, left_on=["OBJECTID"], right_on=["OBJECTID_2"], how="outer"
-)
-unassigned_units_gdf["node_id"] = unassigned_units_gdf["node_id_1"]
-unassigned_units_gdf.drop(columns=["node_id_1"], inplace=True)
-
-# Step 6: Merge unassigned node_ids back into the main dataset
-basin_area_update = combined_basin_areas_gdf.merge(
-    unassigned_units_gdf[["OBJECTID", "node_id"]],
-    on="OBJECTID",
-    how="left",
-    suffixes=("", "_unassigned"),
-)
-# Step 7: Finalize missing `node_id` values from unassigned units
-basin_area_update.loc[:, ["node_id"]] = basin_area_update["node_id"].fillna(basin_area_update["node_id_unassigned"])
-basin_area_update.drop(columns=["node_id_unassigned"], inplace=True)
-
-# %% If there are still nodata basins they are removed by assigning Nearest Basin ID
-null_node_rows = basin_area_update[basin_area_update["node_id"].isnull()]
-
-if not null_node_rows.empty:
-    null_node_rows = null_node_rows.set_geometry(null_node_rows.geometry.centroid)
-    basin_area_update_centroid = basin_area_update.set_geometry(basin_area_update.geometry.centroid)
-
-    nearest_basin = gpd.sjoin_nearest(
-        null_node_rows,
-        basin_area_update_centroid[basin_area_update_centroid["node_id"].notna()][["geometry", "node_id"]],
-        how="left",
-        distance_col="distance",
-    )
-    basin_area_update.loc[basin_area_update["node_id"].isnull(), "node_id"] = nearest_basin["node_id_right"]
-# basin_area_update.to_file("basin_area_update.gpkg", layer="basin_area_update")
-# %% Based on basin_node_edits.gpkg, areas are assigned the Ribasim node_id that is in the file
-basin_node_edits_notnull_gdf = basin_node_edits_gdf[basin_node_edits_gdf["to_area_code"].notna()]
-merged_gdf = basin_area_update.merge(
-    basin_node_edits_notnull_gdf[["to_area_code", "node_id"]],
-    how="left",
-    left_on="code",
-    right_on="to_area_code",
-)
-merged_gdf["node_id"] = merged_gdf["node_id_y"].combine_first(merged_gdf["node_id_x"])
-merged_gdf.drop(columns=["node_id_x", "node_id_y"], inplace=True)
-
-# Dissolve geometries by `node_id` and save final GeoDataFrame
-final_basins_gdf = merged_gdf.set_index("node_id").dissolve(by="node_id").reset_index()
-# final_basins_gdf.to_file("basins_noholes.gpkg", layer="basins_noholes")
-
-final_basins_gdf.index.name = "fid"
-model.basin.area.df = GeoDataFrame[BasinAreaSchema](final_basins_gdf[["node_id", "geometry"]])
-
-# %% Check Differences in Node_ID Between Initial and Final Models
-final_node_ids = final_basins_gdf["node_id"]
-assert model.basin.area.df is not None
-model_node_ids = model.basin.area.df["node_id"]
-missing_in_model = final_basins_gdf[~final_basins_gdf["node_id"].isin(model_node_ids)]
-missing_in_final = model.basin.area.df[~model.basin.area.df["node_id"].isin(final_node_ids)]
-missing_gdf = pd.concat([missing_in_model, missing_in_final])
-
-if "fid" in missing_gdf.columns:
-    missing_gdf = missing_gdf.rename(columns={"fid": "new_fid_name"})
+# %% the areas assigned to a basin by hand, by geometry and by area code
+for row in basin_area_edits_gdf[basin_area_edits_gdf["to_node_id"].notna()].itertuples():
+    model.add_basin_area(cast(MultiPolygon, row.geometry), node_id=int(cast(str, row.to_node_id)))
+for row in basin_node_edits_gdf[basin_node_edits_gdf["to_area_code"].notna()].itertuples():
+    area = areas_gdf.loc[areas_gdf["code"] == row.to_area_code].union_all()
+    model.add_basin_area(area, node_id=cast(int, row.node_id))
 
 # %% merge_basins
-for row in basin_node_edits_gdf[basin_node_edits_gdf["to_node_id"].notna()].itertuples():
-    are_connected = True if pd.isna(row.connected) else row.connected
+selection = basin_node_edits_gdf[basin_node_edits_gdf["to_node_id"].notna()]
+for row in selection.fillna({"connected": True}).itertuples():
     model.merge_basins(
-        node_id=cast(int, row.node_id), to_node_id=cast(int, row.to_node_id), are_connected=are_connected
+        node_id=cast(int, row.node_id), to_node_id=cast(int, row.to_node_id), are_connected=row.connected
     )
 
 mask = internal_basin_edits_gdf["to_node_id"].notna() & internal_basin_edits_gdf["add_object"].isna()
-for row in internal_basin_edits_gdf[mask].itertuples():
-    are_connected = True if pd.isna(row.connected) else row.connected
+for row in internal_basin_edits_gdf[mask].fillna({"connected": True}).itertuples():
     model.merge_basins(
-        node_id=cast(int, row.node_id), to_node_id=cast(int, row.to_node_id), are_connected=are_connected
+        node_id=cast(int, row.node_id), to_node_id=cast(int, row.to_node_id), are_connected=row.connected
     )
 
 # %% add and connect nodes
@@ -675,7 +521,6 @@ for row in network_validator.link_incorrect_type_connectivity(
 
 # %% sanitize node-table
 # TabulatedRatingCurve to Outlet
-assert model.node.df is not None
 for row in model.node.df[model.node.df.node_type == "TabulatedRatingCurve"].itertuples():
     node_id = row.Index
     model.update_node(node_id=node_id, node_type="Outlet")
@@ -684,7 +529,6 @@ for row in model.node.df[model.node.df.node_type == "TabulatedRatingCurve"].iter
 model.node.df.loc[model.basin.node.df.index[model.basin.node.df["meta_categorie"].isna()], "meta_categorie"] = (
     "hoofdwater"
 )
-assert model.outlet.node is not None and model.outlet.node.df is not None
 model.node.df.loc[model.outlet.node.df.index[model.outlet.node.df["meta_categorie"].isna()], "meta_categorie"] = (
     "hoofdwater"
 )
@@ -786,12 +630,14 @@ model.redirect_link(link_id=2073, from_node_id=1922, to_node_id=997)
 
 # Fix Drongelens kanaal
 df = gpd.read_file(model_edits_gpkg, layer="add_basin_area", fid_as_index=True)
-model.basin.area.df.loc[model.basin.area.df.node_id == 1276, "geometry"] = df.at[154, "geometry"]
+assert model.basin.area.df is not None
+model.basin.area.df.loc[model.basin.area.df.node_id == 1276, "geometry"] = df.loc[[154], "geometry"].to_numpy()
 # add new basin
 basin_node = model.basin.add(
     Node(geometry=cast(Point, model.outlet.node.df.loc[1067].geometry), meta_categorie="doorgaand"),
-    tables=[*default_tables.basin, basin.Area(node_id=[basin_node.node_id], geometry=[df.at[155, "geometry"]])],
+    tables=default_tables.basin,
 )
+model.add_basin_area(cast(MultiPolygon, df.at[155, "geometry"]), node_id=basin_node.node_id)
 
 # fix topology
 model.move_node(node_id=1067, geometry=Point(145057.6, 409049.8))
@@ -801,6 +647,9 @@ model.link.add(outlet_node, basin_node)
 model.link.add(model.level_boundary[48], outlet_node)
 # nog een basin-merge i.v.m. manning
 model.merge_basins(node_id=2016, to_node_id=1394)
+
+# %% give the holes that the edits left in the basin areas to a basin
+model.fill_basin_area_holes(areas_gpkg)
 
 # %%
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")

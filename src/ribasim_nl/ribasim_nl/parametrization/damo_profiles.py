@@ -28,7 +28,6 @@ class DAMOProfiles(BaseModel):
 
     def model_post_init(self, __context) -> None:
         if self.network is None:
-            assert self.model.link.df is not None
             self.network = Network(lines_gdf=self.model.link.df)
 
         # drop duplicated profile-lines
@@ -89,7 +88,6 @@ class DAMOProfiles(BaseModel):
         return getattr(pd.Series(z_values), statistic)()
 
     def get_profile_id(self, node_id, statistic="max"):
-        assert self.model.link.df is not None
         try:
             node_type = self.model.get_node_type(node_id)
             if node_type == "Basin":
@@ -105,7 +103,6 @@ class DAMOProfiles(BaseModel):
             raise  # eventueel doorgeven zodat je de fout ook buiten kunt afhandelen
 
     def get_node_level(self, node_id, statistic="max"):
-        assert self.model.link.df is not None
         node_type = self.model.get_node_type(node_id)
         if node_type == "Basin":
             profile_ids = self.model.link.df[

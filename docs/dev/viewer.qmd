@@ -11,6 +11,9 @@ The *Water authority* choice above the layer list shows the nodes and links of o
 It also shows the links to other authorities and the nodes at their other end, such as the regional inlets and outlets of the hws, and the Basin / areas of the shown Basins.
 The choice is kept in the URL, as `#authority=<waterbeheercode>`.
 
+The *Basins* choice in the time bar colors the Basins and their Basin / areas by a result.
+The areas of `bergend` Basins stay uncolored, since they overlap those of the `doorgaand` Basins; only their nodes are colored.
+
 ```{mermaid}
 flowchart LR
   A[modellen/lhm_coupled] -->|dvc repro run_lhm_coupled| R[runs/lhm_coupled]
@@ -22,14 +25,35 @@ flowchart LR
 
 All local paths are relative to `data/Rijkswaterstaat`.
 
+## Concentrations
+
+Choose *concentration* in the *Basins* choice of the time bar to color the Basins by the concentration of a substance, chosen in a second list that then appears.
+It lists the substances of the model input first, then the tracers of the Ribasim core; type the first letters of a substance to jump to it.
+The color scale starts at zero and goes up to the highest value, so a fraction of the water goes up to about 1, except for the residence time, which goes up to its 98th percentile and is shown in days.
+Each substance has its own limits, which can be changed in the legend.
+The panel of a Basin charts the concentration of one substance, with its own list, which also changes the substance on the map.
+
+## Fit to the measurements
+
+The *Observations* choice in the time bar colors the Observation nodes by how well the simulated values fit their measurements, see `ribasim_nl.goodness_of_fit`:
+
+- *KGE* and *NSE*: the Kling-Gupta and Nash-Sutcliffe efficiencies over the whole run, from purple at -1 to green at 1. At 0 the results are as good as the mean of the measurements.
+- *bias*: the difference of the mean simulated and measured value, relative to the mean absolute measurement. It is green within 25%, the limit of a satisfactory bias of discharges of Moriasi et al. (2007), grey at 50%, and purple from 100% either way.
+- *simulated − observed*: the difference at the time of the time bar, from red for too low to blue for too high. It is colored on a symmetric log scale, since the differences of large rivers and small ditches span orders of magnitude.
+
+The efficiencies and bias need 365 days with both a measured and a simulated value, so Observation nodes with fewer days, or without a measurement at the time of the time bar, are small grey dots.
+Change the limits of a color scale in its legend.
+The *Observations* box above the layer list lists the shown Observation nodes by their fit, the best or the worst first, with the median, and zooms to one when clicked.
+The panel of an Observation node shows its fit above the chart of its observed and simulated values.
+
 ## Updating the published data
 
 1. Run the model with the `run_lhm_coupled` DVC stage.
-    It writes `runs/lhm_coupled/lhm_coupled.toml`, which reads the input of `modellen/lhm_coupled`, and the results next to it.
+    It copies the model of `modellen/lhm_coupled` to `runs/lhm_coupled`, and writes the results of the first 2 of its 3 years next to it.
     It also writes the commit of the code to `runinfo.json`, which the viewer shows next to the scale bar, with the time the run finished from `results/ribasim.log`.
     For now this runs with a looser solver tolerance, see `pipeline/run_lhm_coupled.py`.
     The NetCDF results are compressed, to save space in DVC.
-    This takes many hours, so normally pull the cached results instead:
+    This takes about 1.5 hours, so normally pull the cached results instead:
 
     ```sh
     pixi run dvc pull run_lhm_coupled
@@ -47,11 +71,15 @@ All local paths are relative to `data/Rijkswaterstaat`.
     |:-----|:--------|
     | `nodes.parquet` | Node table with all attributes and lon/lat |
     | `links.parquet` | Link table with all attributes and simplified geometry |
-    | `basin_area.pmtiles` | Basin / area polygons as vector tiles |
+    | `basin_area.pmtiles` | Basin / area polygons as vector tiles, the `bergend` Basins first, so that the map selects the overlapping `doorgaand` Basins; click its node to select a `bergend` Basin |
     | `waterboards.geojson` | Simplified water board boundaries |
     | `tables/*.parquet` | All other input tables, including those in NetCDF, sorted by `node_id` |
     | `results/*_by_id.parquet` | Basin and flow results sorted by id, for the time series charts |
     | `results/*_by_time.parquet` | Basin level and storage, and flow rate, ordered by time step, for coloring the map |
+    | `results/concentration_by_id.parquet` | Basin concentrations with a column per substance, sorted by id, for the charts; only if the model tracks them |
+    | `results/concentration_by_time.parquet` | The same ordered by time step, for coloring the map |
+    | `results/observation_metrics.parquet` | How well the results fit the measurements of each Observation node, see [Fit to the measurements](#fit-to-the-measurements) |
+    | `results/observation_by_time.parquet` | The difference simulated − observed of each Observation node, ordered by time step, for coloring the map |
     | `manifest.json` | List of the files above with their content hash and size, the color scale of each result variable, and when and from which commit the model was run |
 
     Results are only exported if the model's `results` directory exists.
@@ -76,7 +104,7 @@ All local paths are relative to `data/Rijkswaterstaat`.
     Use `--pr <number>` to publish for another pull request, and `--main` to only publish the model of `origin/main`.
     Use `--commit <revision>` to publish the model of a commit on GitHub, and add `--base <revision>` to also publish its differences from another commit, see [Links to a version](#links-to-a-version).
 
-`pixi run repro-local` runs steps 1 to 4 by default, see [Running locally](local.qmd).
+`pixi run repro-local` runs steps 1, 2 and 4 by default, and with `--push` it also pushes the run, see [Running locally](local.qmd).
 The docs do not need to be rebuilt to show another model.
 
 ### How the published models are found
@@ -176,6 +204,9 @@ Uncheck a status or a change to hide those features from the map, for instance t
 It also lists the changed TOML settings, all differing features, and the features whose results differ, largest first; click one to zoom to it.
 The panel of a changed feature lists what changed, shows the old value of changed attributes struck through, and shows both versions of changed tables.
 The result charts show the old model as dashed lines in a lighter tint.
+
+If both models have the fit to the measurements, the time bar has the *Observations* choice only, which can also color the Observation nodes by the change of their KGE, NSE or absolute bias, from purple for a worse to green for a better fit.
+The panel of an Observation node shows the fit of both models.
 
 ## Developing the viewer
 

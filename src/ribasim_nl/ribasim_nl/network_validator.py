@@ -60,12 +60,10 @@ class NetworkValidator:
 
     @property
     def node_df(self) -> GeoDataFrame[NodeSchema]:
-        assert self.model.node.df is not None
         return self.model.node.df
 
     @property
     def link_df(self) -> GeoDataFrame[LinkSchema]:
-        assert self.model.link.df is not None
         return self.model.link.df
 
     def node_overlapping(self):

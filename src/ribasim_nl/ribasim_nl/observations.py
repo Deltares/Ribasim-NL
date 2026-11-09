@@ -19,7 +19,8 @@ from ribasim import Node
 from ribasim.input_base import NodeData
 from ribasim.schemas import ObservationTimeSchema
 
-from ribasim_nl.coupling_level_network import first_non_junction, flow_link_graphs
+from ribasim_nl.coupling_level_network import first_non_junction
+from ribasim_nl.flow_paths import Routes
 from ribasim_nl.model import Model
 from ribasim_nl.settings import settings
 
@@ -154,47 +155,54 @@ def add_observations(model: Model, authority: str) -> Model:
     """
     coupling = read_coupling(authority)
     model = add_observation_nodes(model, coupling, read_measurements())
-    assert model.node.df is not None
-    links = model.link.df[model.link.df["link_type"] == "observation"] if model.link.df is not None else []
+    links = model.link.df[model.link.df["link_type"] == "observation"]
     LOG.info(f"{authority} has {len(coupling)} Observation nodes, of which {len(links)} are linked")
     return model
 
 
 class _Graph:
-    """Flow neighbors of the nodes of a model, to look past Junctions."""
+    """Flow neighbors of the nodes of a model, to look past Junctions, see `ribasim_nl.flow_paths.Routes`."""
 
     def __init__(self, model: Model) -> None:
-        assert model.node.df is not None
-        assert model.link.df is not None
+        self.routes = Routes(model)
         node_type = model.node.df["node_type"]
         self.node_types = dict(zip(node_type.index.astype(int), node_type.astype(str), strict=True))
-        self.outgoing, self.incoming = flow_link_graphs(model.link.df.reset_index())
 
     def neighbor(self, node_id: int, upstream: bool) -> int | None:
-        """The first neighbor that is not a Junction, if there is one."""
-        return first_non_junction(node_id, self.incoming if upstream else self.outgoing, self.node_types)[0]
-
-    def behind_junctions(self, node_id: int, upstream: bool) -> set[int]:
-        """The nodes reached through Junctions from a Junction."""
-        found, stack = set(), [node_id]
-        while stack:
-            for _, next_id in (self.incoming if upstream else self.outgoing).get(stack.pop(), []):
-                if self.node_types[next_id] == "Junction":
-                    stack.append(next_id)
-                else:
-                    found.add(next_id)
-        return found
+        """The neighbor through Junctions, if there is exactly one, see `first_non_junction`."""
+        return first_non_junction(self.routes, node_id, upstream)[0]
 
     def collecting_junction(self, node_ids: set[int], upstream: bool) -> int | None:
-        """The Junction that collects the flow of exactly `node_ids`: downstream of them, or upstream if `upstream`."""
-        node_id = next(iter(node_ids))
+        """The Junction that collects the flow of exactly `node_ids`: downstream of them, or upstream if `upstream`.
+
+        In a Basin tree, the Junction is on the way to the Basin, with only `node_ids` beyond it, which all flow into
+        the Basin, or out of it if `upstream`. Its links then point that way, so its outflow is their flow.
+        """
+        routes = self.routes
+        links = routes.links_at(next(iter(node_ids)), upstream)
+        if len(links) != 1:
+            return None
+        node_id = routes.next_node(links[0], upstream)
+        basin_id = routes.tree_basin(node_id)
         for _ in range(50):
-            links = (self.incoming if upstream else self.outgoing).get(node_id, [])
-            if len(links) != 1 or self.node_types[links[0][1]] != "Junction":
+            if node_id not in routes.plain:
                 return None
-            node_id = links[0][1]
-            if self.behind_junctions(node_id, not upstream) == node_ids:
-                return node_id
+            if basin_id is None:
+                if routes.node_ends(node_id, not upstream) == node_ids:
+                    return node_id
+                links = routes.links_at(node_id, upstream)
+                if len(links) != 1:
+                    return None
+                node_id = routes.next_node(links[0], upstream)
+            else:
+                parent_link = routes.parent_link(node_id)
+                if parent_link is None:
+                    return None
+                inflows, outflows = routes.subtree(parent_link)
+                collected, other = (outflows, inflows) if upstream else (inflows, outflows)
+                if collected == node_ids and not other:
+                    return node_id
+                node_id = routes.other_node(parent_link, node_id)
         return None
 
 
@@ -207,7 +215,6 @@ def _match(
     `tolerance`, the nearest node within `moved_tolerance` is used. If there is no node of the type of the koppeltabel,
     an Outlet may be a Pump instead, or the other way around, see `INTERCHANGEABLE_TYPES`.
     """
-    assert model.node.df is not None
     nodes = model.node.df
 
     def nearby(node_type: str) -> list:
@@ -266,7 +273,6 @@ def add_observation_nodes(
 
     :return: updated Ribasim model
     """
-    assert model.node.df is not None
     period = slice(pd.Timestamp(model.starttime), pd.Timestamp(model.endtime))
 
     graph = _Graph(model)
@@ -314,8 +320,6 @@ def link_observations(model: Model, tolerance: float = 1.0, moved_tolerance: flo
 
     :return: updated Ribasim model
     """
-    assert model.node.df is not None
-    assert model.link.df is not None
     nodes = model.node.df
     linked = model.link.df.loc[model.link.df["link_type"] == "observation", "from_node_id"]
     unlinked = nodes[(nodes["node_type"] == "Observation") & ~nodes.index.isin(linked)]

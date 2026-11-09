@@ -5,7 +5,8 @@ import geopandas as gpd
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet
-from ribasim_nl.geodataframe import assign_node_ids_by_largest_overlap
+from ribasim_nl.geometry import line_between
+from ribasim_nl.model import DEFAULT_TABLES
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
 from shapely.geometry import LineString, Point
@@ -19,17 +20,20 @@ name = "wrij"
 run_model = False
 ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_2024_6_3")
 ribasim_toml = ribasim_dir / "model.toml"
-database_gpkg = ribasim_toml.with_name("database.gpkg")
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
-ribasim_areas_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/areas.gpkg")
+areas_gpkg = cloud.joinpath(authority, "verwerkt/3_input/areas.gpkg")
 model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
+gsk3e_gpkg = cloud.joinpath("Basisgegevens/GSK3E/gsk3e.gpkg")
+
+HOHER_ABSTURZ_NODE_ID = 514
+DIE_WILD_MANNING_NODE_ID = 1101
+DIE_WILD_BASIN_AREA_BUFFER = 25.0  # half the width of the strip along Die Wild [m]
 
 # %% read model
 model = Model.read(ribasim_toml)
 
 network_validator = NetworkValidator(model)
 
-ribasim_areas_gdf = gpd.read_file(ribasim_areas_gpkg, fid_as_index=True, layer="areas")
 hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
 duiker_gdf = gpd.read_file(hydamo_gpkg, layer="duikersifonhevel", fid_as_index=True)
 
@@ -48,30 +52,6 @@ basin_data = [
 ]
 outlet_data = outlet.Static(flow_rate=[5.0])
 
-
-# %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419605149
-# Verwijderen duplicate links
-
-assert model.link.df is not None
-model.link.df.drop_duplicates(inplace=True)
-
-# %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419620184
-# toevoegen ontbrekende basins
-
-basin_links_df = network_validator.link_incorrect_connectivity()
-basin_nodes_df = network_validator.node_invalid_connectivity()
-
-for row in basin_nodes_df.itertuples():
-    # maak basin-node
-    basin_node = model.basin.add(Node(geometry=cast(Point, row.geometry)), tables=basin_data)
-
-    # update link_table
-    model.link.df.loc[basin_links_df[basin_links_df.from_node_id == row.node_id].index, ["from_node_id"]] = (
-        basin_node.node_id
-    )
-    model.link.df.loc[basin_links_df[basin_links_df.to_node_id == row.node_id].index, ["to_node_id"]] = (
-        basin_node.node_id
-    )
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/151#issuecomment-2419649171
 # update link administratie
@@ -177,28 +157,59 @@ actions = [
 actions = [i for i in actions if i in gpd.list_layers(model_edits_gpkg).name.to_list()]
 model.apply_edits(model_edits_gpkg, actions)
 
-# remove unassigned basin area
-model.remove_unassigned_basin_area()
-
-
-# %% Assign Ribasim model ID's (dissolved areas) to the model basin areas (original areas with code) by overlapping the Ribasim area file baed on largest overlap
-# then assign Ribasim node-ID's to areas with the same area code. Many nodata areas disappear by this method
-# Create the overlay of areas
-ribasim_areas_gdf = ribasim_areas_gdf.to_crs(model.basin.area.df.crs)
-combined_basin_areas_gdf = assign_node_ids_by_largest_overlap(ribasim_areas_gdf, model.basin.area.df)
-
-# %%
-model.basin.area.df = combined_basin_areas_gdf
-
-
-#  %% write model
-# model.use_validation = False
-model.fix_unassigned_basin_area()
-
 
 # %% merge basins
 model.merge_basins(node_id=944, to_node_id=1028)
 model.merge_basins(node_id=788, to_node_id=1150)
+
+# %% connect 's Heerenberg (286) with the Oude Rijn (1036) along Die Wild in Germany, instead of over two boundaries
+# see https://github.com/Deltares/Ribasim-NL/issues/992
+# LevelBoundary 837 and FlowBoundary 49 are this waterway, so they become Basins. Between them is the Hoher Absturz, and
+# downstream of them a ManningResistance. The new nodes reuse IDs that were removed above, to keep the IDs of later nodes.
+die_wild_gdf = gpd.read_file(gsk3e_gpkg, layer="waterways", where="GEWKZ3E = '279982' AND ABSNAME = 'Die Wild'")
+assert len(die_wild_gdf) == 1
+die_wild = cast(LineString, die_wild_gdf.geometry.iloc[0].reverse())  # GSK3E draws waterways in upstream direction
+hoher_absturz = cast(Point, gpd.GeoSeries([Point(307305.41, 5750171.41)], crs="EPSG:25832").to_crs(model.crs).iloc[0])
+model.update_node(node_id=837, node_type="Basin", data=basin_data)
+model.update_node(node_id=49, node_type="Basin", data=basin_data)
+model.node.df.loc[[837, 49], "meta_categorie"] = pd.NA
+outlet_node = model.outlet.add(
+    Node(
+        node_id=HOHER_ABSTURZ_NODE_ID,
+        name="qbw_9638",
+        geometry=hoher_absturz,
+        meta_object_type="stuw",
+    ),
+    tables=[outlet_data],
+)
+model.remove_links([1372])
+manning_node = model.manning_resistance.add(
+    Node(
+        node_id=DIE_WILD_MANNING_NODE_ID,
+        geometry=die_wild.interpolate(
+            (die_wild.project(model.basin[49].geometry) + die_wild.project(model.basin[1036].geometry)) / 2
+        ),
+        meta_categorie="hoofdwater",
+    ),
+    tables=DEFAULT_TABLES.manning_resistance,
+)
+for from_node, to_node in (
+    (model.basin[837], outlet_node),
+    (outlet_node, model.basin[49]),
+    (model.basin[49], manning_node),
+    (manning_node, model.basin[1036]),
+):
+    model.link.add(from_node, to_node, geometry=line_between(die_wild, from_node.geometry, to_node.geometry))
+
+# Germany has no peilgebieden: their basin areas are a strip along Die Wild, outside of the existing basin areas
+assert model.basin.area.df is not None
+existing_areas = model.basin.area.df.union_all()
+for node_id, reach in (
+    (837, line_between(die_wild, model.outlet[286].geometry, outlet_node.geometry)),
+    (49, line_between(die_wild, outlet_node.geometry, manning_node.geometry)),
+):
+    model.add_basin_area(reach.buffer(DIE_WILD_BASIN_AREA_BUFFER).difference(existing_areas), node_id=node_id)
+
 # %%
 # Sanitize node_table
 for node_id in model.tabulated_rating_curve.node.df.index:
@@ -239,6 +250,7 @@ df = pd.concat(
 )
 df.set_index("code", inplace=True)
 names = df["naam"]
+names.loc["qbw_9638"] = "Hoher Absturz"
 
 # set meta_gestuwd in basins
 model.node.df.loc[model.node.df["node_type"] == "Basin", "meta_gestuwd"] = False
@@ -309,6 +321,9 @@ sanitize_node_table(
 
 # %%
 model.node.df.loc[model.flow_boundary.node.df.index, "meta_categorie"] = "buitenlandse aanvoer"
+
+# %% give the holes that the edits left in the basin areas to a basin
+model.fill_basin_area_holes(areas_gpkg)
 
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{name}.toml")
 model.write(ribasim_toml)

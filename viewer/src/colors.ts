@@ -8,11 +8,19 @@ const VIRIDIS = ["#440154", "#482878", "#3e4989", "#31688e", "#26828e", "#1f9e89
 export const GREYS = ["#c9d1d6", "#a3afb7", "#7e8d97", "#5a6b77", "#3a4a55", "#1e2a32"];
 // Red for falling, blue for rising values
 const RED_BLUE = ["#b2182b", "#d6604d", "#f4a582", "#fddbc7", "#f7f7f7", "#d1e5f0", "#92c5de", "#4393c3", "#2166ac"];
+// Purple for a poor and green for a good fit of the results to the measurements, grey in between: colorblind-safe,
+// and apart from the status colors of differences
+export const FIT = ["#762a83", "#9970ab", "#c2a5cf", "#e7d4e8", "#f7f7f7", "#d9f0d3", "#a6dba0", "#5aae61", "#1b7837"];
+// Green in the middle, for values that fit best close to zero, like a bias
+export const FIT_AROUND_ZERO = [...FIT, ...FIT.slice(0, -1).reverse()];
+// A symmetric log scale tells magnitudes apart over this many orders below its limits, and is linear closer to zero
+const SYMLOG_DECADES = 3;
 
 const parseHex = (hex: string): [number, number, number] => [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
 
 export function palette(variable: ResultVariable): string[] {
-  return variable.scale === "diverging" ? RED_BLUE : VIRIDIS;
+  if (variable.palette) return variable.palette;
+  return variable.scale === "diverging" || variable.scale === "symlog" ? RED_BLUE : VIRIDIS;
 }
 
 /** Map a value to [0, 1] on the color scale of a variable, or NaN if it has no color. */
@@ -23,6 +31,11 @@ export function normalize(variable: ResultVariable, value: number): number {
     const magnitude = Math.abs(value);
     if (magnitude <= 0 || Number.isNaN(magnitude)) return Number.NaN;
     t = (Math.log10(magnitude) - Math.log10(low)) / (Math.log10(high) - Math.log10(low));
+  } else if (variable.scale === "symlog") {
+    // Negative values reach the end of the scale at the lower limit, positive values at the upper limit
+    const linear = Math.max(-low, high) * 10 ** -SYMLOG_DECADES;
+    const limit = value < 0 ? -low : high;
+    t = 0.5 + (0.5 * Math.sign(value) * Math.log1p(Math.abs(value) / linear)) / Math.log1p(limit / linear);
   } else {
     t = (value - low) / (high - low);
   }

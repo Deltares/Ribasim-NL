@@ -1,1 +1,33 @@
-/* css styles */
+/* Maps and charts get a thin frame, so their light surface stands out from the page. */
+.quarto-figure img,
+.figure-img {
+  border: 1px solid #e1e0d9;
+  border-radius: 6px;
+}
+
+/* Text next to a map in the walkthroughs. Below the lg breakpoint the columns stack. */
+.step {
+  margin-block: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e1e0d9;
+}
+
+.step .quarto-figure {
+  margin-bottom: 0;
+}
+
+/* The links on the home page. */
+.cards {
+  gap: 1rem;
+  margin-block: 1.5rem;
+}
+
+.cards > div {
+  padding: 1rem 1.1rem;
+  border: 1px solid #e1e0d9;
+  border-radius: 6px;
+}
+
+.cards p {
+  margin-bottom: 0;
+}

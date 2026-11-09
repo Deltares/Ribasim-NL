@@ -1,0 +1,5 @@
+outs:
+- md5: d0c1c2ccb4d6b4949682eae22a0a507b
+  size: 135168
+  hash: md5
+  path: openwater.gpkg

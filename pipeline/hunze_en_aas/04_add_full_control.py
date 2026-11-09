@@ -113,7 +113,6 @@ aanvoergebieden_gpkg = cloud.joinpath(rf"{AUTHORITY}/verwerkt/sturing/aanvoergeb
 
 
 def upstream_basin_target_level(model: Model, node_id: int) -> float | None:
-    assert model.link.df is not None
     upstream_node_ids = model.link.df.loc[model.link.df.to_node_id == node_id, "from_node_id"].unique()
     assert model.basin.area.df is not None
     basin_levels = model.basin.area.df.dropna(subset=["meta_streefpeil"]).groupby("node_id")["meta_streefpeil"].first()
@@ -150,7 +149,6 @@ def configure_always_on_pumps(model: Model) -> None:
 
 
 def configure_dorkwerd_control(model: Model) -> None:
-    assert model.link.df is not None
     control_links = model.link.df[
         model.link.df["link_type"].eq("control") & model.link.df["to_node_id"].eq(DORKWERD_PUMP_NODE_ID)
     ]
@@ -184,7 +182,6 @@ def configure_dorkwerd_control(model: Model) -> None:
     model.pump.static.df.loc[pump_mask, "max_downstream_level"] = DORKWERD_MAX_DOWNSTREAM_LEVEL
     mark_level_update_protected(model.pump.static.df, pump_mask)
 
-    assert model.node.df is not None
     if DORKWERD_LISTEN_NODE_ID in model.node.df.index:
         model.node.df.loc[control_node_id, "name"] = (
             f"inlaat: {DORKWERD_THRESHOLD_HIGH:.3f}/{DORKWERD_MAX_DOWNSTREAM_LEVEL:.2f} via {DORKWERD_LISTEN_NODE_ID}"
@@ -250,7 +247,6 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id == 2014, "flow_rate"] 
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 2011, "flow_rate"] = 0.3  # Inlaat Verl. Hoogeveense Vaart
 model.outlet.static.df.loc[model.outlet.static.df.node_id == 847, "flow_rate"] = 0.3  # Inlaat Barriereweg
 
-assert model.node.df is not None
 model.node.df[IS_SUPPLY_NODE_COLUMN] = False
 mask = model.node.df["meta_code_waterbeheerder"].str.contains("KIN-", case=False, na=False)
 model.node.df.loc[mask, IS_SUPPLY_NODE_COLUMN] = True
@@ -743,7 +739,6 @@ for static_df, max_flow_rate_by_node_id in (
 
 # Afvoer-cap: voorkom blokkades door te lage max_flow_rate in afvoer.
 node_type_by_id = model.node.df["node_type"].to_dict()
-assert model.link.df is not None
 flow_demand_controlled_node_ids = set(
     model.link.df.loc[
         model.link.df["from_node_id"].map(node_type_by_id).eq("FlowDemand"),

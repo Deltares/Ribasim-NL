@@ -121,13 +121,15 @@ def find_common_linestring(
 
 
 def _junctionify(model: Model, links: gpd.GeoDataFrame, converging: bool = True) -> list[int]:
-    assert model.link.df is not None  # suppressing type-checking None option for .df
-    assert model.node.df is not None
     junction_ids = []
     field = "to_node_id" if converging else "from_node_id"
     node_type = model.node.df["node_type"]
-    # only merge where the node can be connected to a Junction
-    mergeable = [can_connect("Junction", t) if converging else can_connect(t, "Junction") for t in node_type]
+    # only merge where the node can be connected to a Junction, and not into a LevelBoundary,
+    # which koppelen replaces by the connection to the neighbouring model
+    mergeable = [
+        t != "LevelBoundary" and (can_connect("Junction", t) if converging else can_connect(t, "Junction"))
+        for t in node_type
+    ]
     links = links[links[field].map(pd.Series(mergeable, index=node_type.index))]
     for node_id, group in links.groupby(field):
         assert isinstance(node_id, int)
@@ -170,10 +172,6 @@ def junctionify[M: Model](model: M) -> M:
 
     Assumes that all flow link geometries between node a and b start with point a and end with point b.
     """
-    # ensure available LinkTable
-    if model.link.df is None or model.node.df is None:
-        msg = f"No LinkTable or NodeTable available: {model.link.df=}, {model.node.df=}"
-        raise ValueError(msg)
     flow = model.link.df[model.link.df.link_type == "flow"]
     geometries = flow.geometry.to_numpy()
     disconnected = ~(

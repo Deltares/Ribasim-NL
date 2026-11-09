@@ -1,0 +1,52 @@
+---
+title: "Layout"
+---
+
+Ribasim does not use the location of nodes and the geometry of links in the simulation.
+But a model that follows the real water system is much easier to review, on the map and in the [model viewer](../viewer.qmd), so the regional models and the coupled model get a shared layout step.
+None of this changes the results.
+
+::: {layout-ncol=2}
+![The input model, with straight links.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/level-3-input-model.png){fig-alt="Coloured Basin areas with straight links."}
+
+![The final model, with links along the watercourses, and Junctions where they join.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/level-4-forcing.png){fig-alt="The same area, with links that follow the watercourses."}
+:::
+
+## Routing the links
+
+At the end of the forcing stage, `ribasim_nl.network_snapping.snap_model` aligns the layout of the level controlled models with the hydro-objects in `verwerkt/profielen/network.gpkg`, which are written by the [profile generation](profile-generation.qmd):
+
+- Connector nodes stay at the location of the structure they represent.
+- Basin nodes are moved onto the nearest main route of the longest connected part of the hydro-objects in their basin, as in the gravity controlled models.
+- Links between a Basin and a connector node follow the hydro-objects, complemented by the Top10NL water lines. Hydro-objects are only connected where there is evidence: the culverts (`duikersifonhevel`) of the crossings data, gaps of at most 2 m, and gaps across BGT water surfaces. Connector nodes far from the hydro-objects are connected over the BGT water surfaces, crossing at most 100 m of land.
+- Links stay straight if no such route is found, or if it is not less than `ribasim_nl.link_geometries.MAX_STRAIGHT_LINE_RATIO` times longer than the straight line, the same threshold as for the gravity controlled models.
+
+In the gravity controlled models, `snap_to_waterways` routes the links that are still straight along the Top10NL waterways, at the end of their dynamic stage.
+
+## Tidying
+
+```{mermaid}
+flowchart LR
+  a["Route links"] --> b["junctionify<br>merge shared parts<br>of links"]
+  b --> c["tidy_layout"]
+```
+
+`ribasim_nl.junctionify` merges the shared parts of links into Junctions, and `ribasim_nl.layout.tidy_layout` makes sure no nodes are on top of each other and no links overlap.
+
+The inflows and outflows of a Basin share one Junction tree, so each waterway is drawn once, see `ribasim_nl.flow_paths.merge_basin_trees`.
+The trees are merged after the last nodes are added to a model, so only the IDs of Junctions change.
+Ribasim connects a group of Junctions with one Basin as a neighbour with that Basin, in the direction of the link of each other neighbour with the group, see [Junction](https://ribasim.org/reference/node/junction.html).
+The direction of the links within the tree, and with the Basin, does not change the simulation, only the sign of their flow, see `ribasim_nl.flow_paths.towards_basin`.
+A link that only carries inflows points towards the Basin, and one that only carries outflows away from it.
+A link that carries both follows the main flow: the direction in which the waterway lines it follows are digitized, where they cover most of it, such as the network of Rijkswaterstaat.
+Elsewhere it points to the side that can drain the most, in the `afvoer` control state, where ManningResistances and placeholder capacities are unlimited.
+`ribasim_nl.flow_paths.Routes` follows the links through Junctions in the same way as Ribasim.
+
+- Bergend Basins are placed 100 m from their doorgaand Basin.
+- Nodes that are still within 10 m of each other are moved apart.
+- Links that still overlap, such as those of neighbouring Basins along a shared waterway, are offset 5 m.
+
+The gravity controlled models get the same layout step at the end of their dynamic stage, and `ribasim_nl.validation.validate_model` checks it.
+It also checks that the Basin areas are valid and have no slivers: parts and holes that are on average at most 1 mm wide, which draw as lines on the map.
+`Model.clean_basin_area` fixes both in the regional models and the Rijkswaterstaat model.
+The [coupling](couple.qmd) tidies the links between models in the same way, and first rebuilds the routes of the Basins of Rijkswaterstaat along Top10NL.

@@ -44,7 +44,6 @@ ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
 # hard-coded coordinates still match the original node locations (used much further below).
 _drain_points = [Point(206421, 592530), Point(206360, 592679)]
 to_drain_node_ids = []
-assert ribasim_model.node.df is not None
 for _drain_point in _drain_points:
     _drain_candidates = ribasim_model.node.df.loc[ribasim_model.node.df.geometry.distance(_drain_point) < 1]
     if len(_drain_candidates) != 1:
@@ -62,8 +61,9 @@ for node_id in (3064, 3065, 15882, 8125, 340, 1001):
     ribasim_model.remove_node(node_id, remove_links=True)
 # Basin 554 (AP-141, AP-142) drains via outlets 2018 and 2236 into Drents Overijsselse Delta, instead of being supplied
 APPELSCHA_OUTLETS = (2018, 2236)
-for link_id in (4907, 918, 4912, 1120):  # LevelBoundary -> Outlet -> Basin 554
-    ribasim_model.reverse_link(link_id=link_id)
+# LevelBoundary -> Outlet -> Basin 554, by their nodes, since the feedback form numbers the links anew
+for from_node_id, to_node_id in ((3782, 2018), (2018, 554), (3789, 2236), (2236, 554)):
+    ribasim_model.reverse_link(from_node_id=from_node_id, to_node_id=to_node_id)
 
 # Read outlet_aanvoer_on BEFORE set_boundary_conditions, of which find_upstream_downstream_target_levels strips meta columns
 assert ribasim_model.outlet.static.df is not None
@@ -158,9 +158,7 @@ ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 3891, "
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
-assert ribasim_model.manning_resistance.node is not None and ribasim_model.manning_resistance.node.df is not None
 mr_null_geom = ribasim_model.manning_resistance.node.df[ribasim_model.manning_resistance.node.df.geometry.isna()].index
-assert ribasim_model.node.df is not None
 ribasim_model.node.df = ribasim_model.node.df.drop(mr_null_geom)
 
 ribasim_model = complete_parametrization(
@@ -185,9 +183,7 @@ set_design_capacities(ribasim_model, from_to_node_function_table)
 
 # the North Sea and Wadden Sea boundaries stay in the LHM, so give them mean sea level instead of the
 # hypothetical drainage and supply levels, see https://github.com/Deltares/Ribasim-NL/issues/660
-assert ribasim_model.level_boundary.node is not None and ribasim_model.level_boundary.node.df is not None
 lb_node_df = ribasim_model.level_boundary.node.df
-assert lb_node_df is not None
 ribasim_param.set_static_level_boundaries(
     ribasim_model, lb_node_df.index[lb_node_df["meta_couple_authority"] == "Noordzee"], level=0.0
 )
@@ -202,11 +198,9 @@ for control_state, max_flow_rate, max_downstream_level in (("aanvoer", 0.0, None
     outlet_static_df.loc[mask, ["flow_rate", "max_flow_rate"]] = max_flow_rate
     if max_downstream_level is not None:
         outlet_static_df.loc[mask, "max_downstream_level"] = max_downstream_level
-assert ribasim_model.link.df is not None
 control_link_df = ribasim_model.link.df[ribasim_model.link.df.link_type == "control"]
 appelscha_control_ids = control_link_df.loc[control_link_df.to_node_id.isin(APPELSCHA_OUTLETS), "from_node_id"]
 assert len(appelscha_control_ids) == len(APPELSCHA_OUTLETS), "Expected one DiscreteControl per Appelscha outlet"
-assert ribasim_model.node.df is not None
 ribasim_model.node.df.loc[appelscha_control_ids, "name"] = "uitlaat: 9.40/9.38 [m+NAP]"
 
 # Boezem in- and outlets are controlled on the level of the Pikmeer, deeper in the boezem than the Basins next to them,

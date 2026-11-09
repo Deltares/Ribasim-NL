@@ -14,13 +14,11 @@ if __name__ == "__main__":
     waterschap = "Scheldestromen"
     gen_profiles.flagged_hydro_objects(
         waterschap,
-        "scheldestromen_crossings_v02.gpkg",
         "aangeleverd/Na_levering/Oplevering_Scheldestromen_20240328/Oplevering_20240328.gpkg",
         "categorieoppwaterlichaam",
         val_flag="primair",
         export_profile_tables=True,
         export_intermediate_output=True,
-        sync=False,
     )
     src_toml = f"data/{waterschap}/modellen/{waterschap}_feedback/ribasim.toml"
     dst_toml = f"data/{waterschap}/modellen/{waterschap}_profiles/ribasim.toml"

@@ -4,7 +4,10 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 import numpy as np
+import pandas as pd
+import shapely
 
+from ribasim_nl.geometry import SLIVER_WIDTH, is_sliver
 from ribasim_nl.profiles import MIN_PROFILE_AREA
 
 if TYPE_CHECKING:
@@ -29,6 +32,59 @@ def _basin_profile_issues(model: "Model") -> list[str]:
     if not invalid_areas.empty:
         node_ids = sorted(map(int, invalid_areas["node_id"].unique()))
         issues.append(f"Basin profile areas must be at least {MIN_PROFILE_AREA} m2; invalid node IDs: {node_ids}")
+    return issues
+
+
+# The largest range between the bottom and top of a Basin profile that is real, per `meta_categorie` of the Basin.
+# Bergend Basins follow the terrain within their area, up to 136 m in Limburg. Other Basins follow their water: the main
+# water system up to 67 m in the Westerschelde, and elsewhere up to 18 m. Basins without a category have the largest
+# limit of the water, since the category is not known yet.
+MAX_PROFILE_RANGE = {"bergend": 150.0, "hoofdwater": 80.0, "doorgaand": 30.0}  # m
+DEFAULT_MAX_PROFILE_RANGE = MAX_PROFILE_RANGE["hoofdwater"]
+
+
+def _deep_basin_profile_issues(model: "Model") -> list[str]:
+    """Return Basins with an unreasonable range in their profile, which typically comes from a no-data level."""
+    basin_profile = model.basin.profile.df
+    if basin_profile is None or basin_profile.empty:
+        return []
+    levels = basin_profile.groupby("node_id")["level"]
+    profile_range = levels.max() - levels.min()
+    node_df = model.node.df
+    category = node_df["meta_categorie"] if "meta_categorie" in node_df.columns else pd.Series(index=node_df.index)
+    limit = category.reindex(profile_range.index).map(MAX_PROFILE_RANGE).fillna(DEFAULT_MAX_PROFILE_RANGE)
+    invalid = profile_range[profile_range > limit]
+    if invalid.empty:
+        return []
+    ranges = invalid.round(1).to_dict()
+    return [f"Basin profiles must not be deeper than {MAX_PROFILE_RANGE} m; invalid node IDs and ranges: {ranges}"]
+
+
+def _basin_area_issues(model: "Model") -> list[str]:
+    """Return invalid basin areas, and basin areas with slivers, which `Model.clean_basin_area` removes."""
+    area = model.basin.area.df
+    if area is None or area.empty:
+        return []
+
+    issues = []
+    geometry = area.geometry.to_numpy()
+    node_id = area["node_id"].to_numpy()
+    invalid = ~shapely.is_valid(geometry)
+    if invalid.any():
+        issues.append(f"Basin areas must be valid; invalid node IDs: {sorted(set(map(int, node_id[invalid])))}")
+
+    parts, part_area = shapely.get_parts(geometry, return_index=True)
+    # the rings of each polygon start with its exterior, the others are holes
+    rings, ring_part = shapely.get_rings(parts, return_index=True)
+    is_hole = np.r_[False, ring_part[1:] == ring_part[:-1]]
+    sliver_parts = part_area[is_sliver(parts)]
+    sliver_holes = part_area[ring_part[is_hole][is_sliver(shapely.polygons(rings[is_hole]))]]
+    slivers = np.concatenate([sliver_parts, sliver_holes])
+    if slivers.size:
+        issues.append(
+            f"Basin areas must not have parts or holes that are on average at most {SLIVER_WIDTH} m wide, "
+            f"see Model.clean_basin_area; invalid node IDs: {sorted(set(map(int, node_id[slivers])))}"
+        )
     return issues
 
 
@@ -121,11 +177,9 @@ def _uncontrolled_control_state_issues(model: "Model") -> list[str]:
     """
     link = model.link.df
     node = model.node.df
-    discrete_controlled = set()
-    if link is not None and node is not None:
-        control = link.loc[link["link_type"] == "control"]
-        from_discrete_control = control["from_node_id"].map(node["node_type"]).eq("DiscreteControl")
-        discrete_controlled = set(control.loc[from_discrete_control, "to_node_id"])
+    control = link.loc[link["link_type"] == "control"]
+    from_discrete_control = control["from_node_id"].map(node["node_type"]).eq("DiscreteControl")
+    discrete_controlled = set(control.loc[from_discrete_control, "to_node_id"])
 
     issues = []
     for node_type in CONTROL_STATE_NODE_TYPES:
@@ -170,27 +224,17 @@ CONNECTOR_NODE_TYPES = {"Pump", "Outlet", "TabulatedRatingCurve", "LinearResista
 def _connector_through_junction_issues(model: "Model") -> list[str]:
     """Return connector nodes that are connected to other connector nodes through Junctions.
 
-    Ribasim treats Junctions as transparent, so it rejects such links as connecting e.g. a Pump to a Pump.
+    Ribasim removes the plain Junctions, see `ribasim_nl.flow_paths.Routes`, so it rejects the links that this gives
+    between e.g. a Pump and a Pump.
     """
-    link_df, node_df = model.link.df, model.node.df
-    if link_df is None or node_df is None:
-        return []
-    flow = link_df[link_df["link_type"] == "flow"]
-    node_type = node_df["node_type"]
-    downstream = flow.groupby("from_node_id")["to_node_id"].agg(list).to_dict()
+    from ribasim_nl.flow_paths import simplified_links
 
-    pairs = []
-    for from_node_id in sorted(node_type.index[node_type.isin(CONNECTOR_NODE_TYPES)]):
-        junctions = [n for n in downstream.get(from_node_id, []) if node_type[n] == "Junction"]
-        seen = set(junctions)
-        while junctions:
-            for to_node_id in downstream.get(junctions.pop(), []):
-                if node_type[to_node_id] == "Junction":
-                    if to_node_id not in seen:
-                        seen.add(to_node_id)
-                        junctions.append(to_node_id)
-                elif node_type[to_node_id] in CONNECTOR_NODE_TYPES:
-                    pairs.append((int(from_node_id), int(to_node_id)))
+    node_type = model.node.df["node_type"]
+    pairs = [
+        (int(from_node_id), int(to_node_id))
+        for from_node_id, to_node_id in simplified_links(model)
+        if node_type[from_node_id] in CONNECTOR_NODE_TYPES and node_type[to_node_id] in CONNECTOR_NODE_TYPES
+    ]
     if not pairs:
         return []
     return [
@@ -208,8 +252,6 @@ def _layout_issues(model: "Model") -> list[str]:
     """Return nodes on top of each other and overlapping links, which make the model hard to read on a map."""
     from ribasim_nl.layout import coincident_nodes, overlapping_links
 
-    if model.node.df is None or model.link.df is None:
-        return []
     issues = []
     nodes = coincident_nodes(model, MIN_NODE_DISTANCE)
     if nodes.shape[1]:
@@ -224,8 +266,6 @@ def _layout_issues(model: "Model") -> list[str]:
 
 def _listen_to_junction_issues(model: "Model") -> list[str]:
     """Return control nodes that listen to a Junction, which has no level or flow rate of its own."""
-    if model.node.df is None:
-        return []
     node_type = model.node.df["node_type"]
     pairs = []
     for table in (model.discrete_control.variable.df, model.continuous_control.variable.df):
@@ -237,13 +277,44 @@ def _listen_to_junction_issues(model: "Model") -> list[str]:
     return [f"Control nodes must not listen to a Junction; invalid (control, Junction) node IDs: {sorted(set(pairs))}"]
 
 
+def _flow_demand_capacity_issues(model: "Model") -> list[str]:
+    """Return FlowDemand nodes whose demand exceeds the max_flow_rate of their Pump or Outlet.
+
+    Without allocation, Ribasim clamps the demand to the max_flow_rate of the current control state, so the part
+    above it is silently ignored.
+    """
+    link_df = model.link.df
+    demands = [table.df for table in (model.flow_demand.static, model.flow_demand.time) if table.df is not None]
+    if not demands:
+        return []
+    demand = pd.concat([df[["node_id", "demand"]] for df in demands]).groupby("node_id")["demand"].max()
+    static = [model.get_component(i).static.df for i in ("Pump", "Outlet")]
+    static = [df[["node_id", "max_flow_rate"]] for df in static if df is not None]
+    max_flow_rate = pd.concat(static).groupby("node_id")["max_flow_rate"].min() if static else pd.Series()
+
+    control = link_df[(link_df["link_type"] == "control") & link_df["from_node_id"].isin(demand.index)]
+    pairs = [
+        (int(from_node_id), int(to_node_id))
+        for from_node_id, to_node_id in zip(control["from_node_id"], control["to_node_id"], strict=True)
+        if demand[from_node_id] > max_flow_rate.get(to_node_id, np.inf)
+    ]
+    if not pairs:
+        return []
+    return [
+        "FlowDemand must not exceed the max_flow_rate of its Pump or Outlet in any control state; "
+        f"invalid (FlowDemand, connector) node IDs: {sorted(pairs)}"
+    ]
+
+
 def validate_model(model: "Model", layout: bool = True) -> None:
     """Validate Ribasim-NL conventions and report all issues together.
 
     With `layout`, also check that nodes are not on top of each other and links do not overlap.
     """
     issues = [
+        *_basin_area_issues(model),
         *_basin_profile_issues(model),
+        *_deep_basin_profile_issues(model),
         *_discrete_control_condition_issues(model),
         *_partially_missing_control_state_issues(model),
         *_inert_control_state_issues(model),
@@ -251,6 +322,7 @@ def validate_model(model: "Model", layout: bool = True) -> None:
         *_connector_through_junction_issues(model),
         *_manning_resistance_issues(model),
         *_listen_to_junction_issues(model),
+        *_flow_demand_capacity_issues(model),
         *(_layout_issues(model) if layout else []),
     ]
     if issues:

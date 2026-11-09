@@ -18,6 +18,9 @@ from repro_main import (
     check_no_secrets,
     check_private,
     check_worktree,
+    compare_results,
+    publish_figures,
+    repro_command,
     superseded,
 )
 
@@ -57,6 +60,11 @@ def test_branch_name():
     assert BRANCH_PATTERN.fullmatch(name)
     assert not BRANCH_PATTERN.fullmatch("repro-main")
     assert not BRANCH_PATTERN.fullmatch("main")
+
+
+def test_repro_command():
+    assert repro_command(full=False) == ["pixi", "run", "repro-local", "--incremental", "--push", "--no-publish"]
+    assert repro_command(full=True) == ["pixi", "run", "repro-local", "--push", "--no-publish"]
 
 
 def test_superseded(repo: Path):
@@ -103,6 +111,47 @@ def test_check_private(tmp_path: Path):
         check_private(path)
     path.chmod(0o600)
     check_private(path)
+
+
+@pytest.mark.parametrize("returncode", [0, 1])
+def test_publish_figures_does_not_stop_the_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], returncode: int
+):
+    commands = []
+
+    def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+        commands.append(args)
+        return subprocess.CompletedProcess(args, returncode)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    publish_figures(tmp_path)
+    assert commands == [["pixi", "run", "docs-figures", "--pull", "--publish"]]
+    assert ("failed" in capsys.readouterr().out) == (returncode != 0)
+
+
+def test_compare_results(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    commands = []
+
+    def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+        commands.append(args)
+        return subprocess.CompletedProcess(args, 0, stdout="| node_id |\n")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    assert "| node_id |" in compare_results(tmp_path, "abc")
+    assert commands == [["pixi", "run", "compare-runs", "--base", "abc"]]
+
+
+@pytest.mark.parametrize(
+    "error", [subprocess.CalledProcessError(1, "pixi"), subprocess.TimeoutExpired("pixi", 1)], ids=["fails", "timeout"]
+)
+def test_compare_results_does_not_stop_the_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, error: subprocess.SubprocessError
+):
+    def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+        raise error
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    assert "not compared" in compare_results(tmp_path, "abc")
 
 
 def test_check_no_secrets(monkeypatch: pytest.MonkeyPatch):

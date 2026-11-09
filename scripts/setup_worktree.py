@@ -39,7 +39,7 @@ def setup_worktree(root: Path, main: Path) -> None:
         shutil.copy2(main / ".env", env)
         print(f"Copied {main / '.env'} to {env}")
     else:
-        print(f"No .env in {main}, add one with the credentials, see the docs on the cloud storage")
+        print(f"No .env in {main}, add one with the credentials, see docs/dev/index.qmd")
 
     cache = dvc_cache_dir(main)
     assert cache.is_dir(), f"DVC cache {cache} of the main checkout does not exist"

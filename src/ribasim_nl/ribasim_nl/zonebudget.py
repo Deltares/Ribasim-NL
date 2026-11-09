@@ -94,7 +94,6 @@ class NodeGroups:
     def from_ids(cls, model: ribasim.Model, groups: Mapping[Hashable, Sequence[int]]) -> Self:
         """Create groups from explicitly listed Basin node IDs."""
         node_df = model.node.df
-        assert node_df is not None
         basin_ids = set(node_df.index[node_df["node_type"] == "Basin"])
         assignments: dict[int, Hashable] = {}
         for group, node_ids in groups.items():
@@ -117,7 +116,6 @@ class NodeGroups:
     ) -> Self:
         """Group Basin nodes by a column, optionally leaving values ungrouped."""
         node_df = model.node.df
-        assert node_df is not None
         if column not in node_df:
             raise KeyError(f"Node table has no column {column!r}.")
         node_values = node_df[column].dropna()
@@ -141,7 +139,6 @@ class NodeGroups:
         if group_column not in polygons:
             raise KeyError(f"Polygon table has no column {group_column!r}.")
         node_df = model.node.df
-        assert node_df is not None
         if polygons.crs != node_df.crs:
             raise ValueError("Model nodes and grouping polygons must have the same CRS.")
         if polygons[group_column].isna().any():
@@ -249,8 +246,6 @@ class _NetworkAggregator:
         self.groups = groups
         node_df = model.node.df
         link_df = model.link.df
-        assert node_df is not None
-        assert link_df is not None
         self.node_df = node_df.copy()
         self.link_df = link_df.loc[link_df["link_type"] == "flow"].copy()
 

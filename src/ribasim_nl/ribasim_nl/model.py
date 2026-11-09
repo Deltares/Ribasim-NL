@@ -28,7 +28,10 @@ from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.downstream import downstream_nodes
-from ribasim_nl.geometry import split_basin, split_line
+from ribasim_nl.geometry import polygon_parts, split_basin, split_line, union_polygons, without_slivers
+from ribasim_nl.lumping.hydamo import read_areas
+from ribasim_nl.lumping.network import fill_holes
+from ribasim_nl.lumping.utils import read_layer
 from ribasim_nl.run_model import RunSpecs, parse_computation_time, run
 from ribasim_nl.upstream import upstream_nodes
 
@@ -170,8 +173,6 @@ class Model(ribasim.Model):
     def graph(self):
         # create a DiGraph from link-table
         if self._graph is None:
-            assert self.link.df is not None
-            assert self.node.df is not None
             graph = nx.from_pandas_edgelist(
                 df=self.link.df[["from_node_id", "to_node_id"]],
                 source="from_node_id",
@@ -198,7 +199,6 @@ class Model(ribasim.Model):
 
     @property
     def next_node_id(self):
-        assert self.node.df is not None
         return self.node.df.index.max() + 1
 
     @property
@@ -248,7 +248,6 @@ class Model(ribasim.Model):
         df.index.name = "fid"
 
         basin_node_df = self.filter_nodes("Basin")
-        assert basin_node_df is not None
         if set(df["node_id"]) != set(basin_node_df.index):
             raise ValueError("Basin ID mismatch, cannot use results as model state.")
 
@@ -294,7 +293,6 @@ class Model(ribasim.Model):
     def find_node_id(self, ds_node_id=None, us_node_id=None, **kwargs) -> int:
         """Find a node_id by it's properties"""
         # get node table
-        assert self.node.df is not None
         df = self.node.df
 
         # filter node ids by properties
@@ -303,7 +301,6 @@ class Model(ribasim.Model):
 
         # filter node ids by us and ds node
         if (ds_node_id is not None) or (us_node_id is not None):
-            assert self.link.df is not None
             link_df = self.link.df
             if ds_node_id is not None:
                 df = df[df.index.isin(link_df[link_df.to_node_id == ds_node_id].from_node_id)]
@@ -340,7 +337,6 @@ class Model(ribasim.Model):
 
     def upstream_node_id(self, node_id: int, link_type: Literal["flow", "control"] = "flow"):
         """Get upstream node_id(s)"""
-        assert self.link.df is not None
         _df = self.link.df.set_index("to_node_id")
         _df = _df[_df.link_type == link_type]
         if node_id in _df.index:
@@ -350,7 +346,6 @@ class Model(ribasim.Model):
         """Get upstream basin-profile"""
         upstream_node_id = self.upstream_node_id(node_id)
 
-        assert self.node.df is not None
         node_type = self.node.df.loc[upstream_node_id].node_type
         if node_type != "Basin":
             raise ValueError(f"Upstream node_type is not a Basin, but {node_type}")
@@ -359,7 +354,6 @@ class Model(ribasim.Model):
 
     def downstream_node_id(self, node_id: int, link_type: Literal["flow", "control"] = "flow"):
         """Get downstream node_id(s)"""
-        assert self.link.df is not None
         _df = self.link.df.set_index("from_node_id")
         _df = _df[_df.link_type == link_type]
         if node_id in _df.index:
@@ -369,7 +363,6 @@ class Model(ribasim.Model):
         """Get upstream basin-profile"""
         downstream_node_id = self.downstream_node_id(node_id)
 
-        assert self.node.df is not None
         node_type = self.node.df.loc[downstream_node_id].node_type
         if node_type != "Basin":
             raise ValueError(f"Upstream node_type is not a Basin, but {node_type}")
@@ -381,11 +374,9 @@ class Model(ribasim.Model):
 
         Cheaper than `model.<node_type>.node.df`, which builds and validates a new NodeTable on every access.
         """
-        assert self.node.df is not None
         return self.node.df[self.node.df["node_type"] == node_type]
 
     def get_node_type(self, node_id: int):
-        assert self.node.df is not None
         return self.node.df.at[node_id, "node_type"]
 
     def get_component(self, node_type: str):
@@ -399,7 +390,6 @@ class Model(ribasim.Model):
 
     def remove_node(self, node_id: int, remove_links: bool = False) -> None:
         """Remove node from model"""
-        assert self.node.df is not None
         node_type = None
         if node_id in self.node.df.index:
             node_type = self.get_node_type(node_id)
@@ -416,7 +406,7 @@ class Model(ribasim.Model):
                     df = table.df[table.df["node_id"] != node_id]
                     set_df_unvalidated(table, None if df.empty else df)
         # remove links
-        if remove_links and (self.link.df is not None):
+        if remove_links:
             for row in self.link.df[self.link.df.from_node_id == node_id].itertuples():
                 self.remove_link(
                     from_node_id=cast(int, row.from_node_id),
@@ -439,7 +429,6 @@ class Model(ribasim.Model):
     ) -> None:
         if node_properties is None:
             node_properties = {}
-        assert self.node.df is not None
         existing_node_type = cast(str, self.node.df.at[node_id, "node_type"])
 
         # read existing table
@@ -570,7 +559,6 @@ class Model(ribasim.Model):
             if isinstance(to_node_id, list):
                 raise TypeError(f"to_node_id is a list ({to_node_id}. node_geom should be defined (is None))")
             else:
-                assert self.link.df is not None
                 linestring = self.link.df[self.link.df["to_node_id"] == to_node_id].iloc[0].geometry
                 lo = linestring.parallel_offset(node_offset, "left")
                 if lo.geom_type == "MultiLineString":
@@ -581,7 +569,6 @@ class Model(ribasim.Model):
 
         if node_id is None:
             node_id = self.next_node_id
-        assert self.node.df is not None
         assert node_id not in self.node.df.index, f"Node {node_id} already exists"
         node = Node(node_id=node_id, geometry=node_geom)
 
@@ -606,46 +593,43 @@ class Model(ribasim.Model):
         link_id: int | None = None,
     ) -> None:
         """Reverse a link"""
-        if self.link.df is not None:
-            if link_id is None:
-                # get original link-data
-                df = self.link.df.copy()
-                df.loc[:, ["link_id"]] = df.index
-                df = df.set_index(["from_node_id", "to_node_id"], drop=False)
-                link_data: dict[str, Any] = dict(cast(Any, df).loc[from_node_id, to_node_id])
-                link_id = link_data["link_id"]
-            else:
-                link_data = dict(self.link.df.loc[link_id])
+        if link_id is None:
+            # get original link-data
+            df = self.link.df.copy()
+            df.loc[:, ["link_id"]] = df.index
+            df = df.set_index(["from_node_id", "to_node_id"], drop=False)
+            link_data: dict[str, Any] = dict(cast(Any, df).loc[from_node_id, to_node_id])
+            link_id = link_data["link_id"]
+        else:
+            link_data = dict(self.link.df.loc[link_id])
 
-            # revert node ids
-            self.link.df.loc[link_id, ["from_node_id"]] = link_data["to_node_id"]
-            self.link.df.loc[link_id, ["to_node_id"]] = link_data["from_node_id"]
+        # revert node ids
+        self.link.df.loc[link_id, ["from_node_id"]] = link_data["to_node_id"]
+        self.link.df.loc[link_id, ["to_node_id"]] = link_data["from_node_id"]
 
-            # revert geometry
-            self.link.df.loc[link_id, ["geometry"]] = link_data["geometry"].reverse()
+        # revert geometry
+        self.link.df.loc[link_id, ["geometry"]] = link_data["geometry"].reverse()
 
     def remove_link(  # ty: ignore[invalid-method-override]
         self, from_node_id: int, to_node_id: int, remove_disconnected_nodes=True
     ) -> None:
         """Remove an link and disconnected nodes"""
-        if self.link.df is not None:
-            # get original link-data
-            indices = self.link.df[
-                (self.link.df.from_node_id == from_node_id) & (self.link.df.to_node_id == to_node_id)
-            ].index
+        # get original link-data
+        indices = self.link.df[
+            (self.link.df.from_node_id == from_node_id) & (self.link.df.to_node_id == to_node_id)
+        ].index
 
-            # remove link from link-table
-            self.remove_links(list(indices))
+        # remove link from link-table
+        self.remove_links(list(indices))
 
-            # remove disconnected nodes
-            if remove_disconnected_nodes:
-                for node_id in [from_node_id, to_node_id]:
-                    if node_id not in self.link.df[["from_node_id", "to_node_id"]].to_numpy().ravel():
-                        self.remove_node(node_id)
+        # remove disconnected nodes
+        if remove_disconnected_nodes:
+            for node_id in [from_node_id, to_node_id]:
+                if node_id not in self.link.df[["from_node_id", "to_node_id"]].to_numpy().ravel():
+                    self.remove_node(node_id)
 
     def set_link_id(self, link_id: int, new_link_id: int) -> None:
         """Change the ID of a link, for instance to reuse the ID of a link it replaces"""
-        assert self.link.df is not None
         assert link_id in self.link.df.index, f"Link {link_id} does not exist"
         assert new_link_id not in self.link.df.index, f"Link {new_link_id} already exists"
         set_df_unvalidated(self.link, self.link.df.rename(index={link_id: new_link_id}))
@@ -654,9 +638,8 @@ class Model(ribasim.Model):
 
     def remove_links(self, link_ids: list[int]) -> None:
         """Remove links, and release their IDs so they can be reused"""
-        if self.link.df is not None:
-            set_df_unvalidated(self.link, self.link.df[~self.link.df.index.isin(link_ids)])
-            self.link._used_link_ids.node_ids.difference_update(link_ids)
+        set_df_unvalidated(self.link, self.link.df[~self.link.df.index.isin(link_ids)])
+        self.link._used_link_ids.node_ids.difference_update(link_ids)
 
     def add_basin(self, node_id, geometry, tables=None, **kwargs) -> None:
         # define node properties
@@ -749,7 +732,6 @@ class Model(ribasim.Model):
         """
         if len(node_pairs) == 0:
             return
-        assert self.link.df is not None
         start_link_id = self.link.df.index.max() + 1
         link_ids = pd.RangeIndex(start_link_id, start_link_id + len(node_pairs), name="link_id")
         df = gpd.GeoDataFrame(
@@ -793,7 +775,6 @@ class Model(ribasim.Model):
 
         # add links from and to node
         self.link.add(self.basin[basin_id], node)
-        assert self.link.df is not None
         link_geometry = cast(
             LineString, self.link.df.set_index(["from_node_id", "to_node_id"]).at[(basin_id, node.node_id), "geometry"]
         )
@@ -809,8 +790,6 @@ class Model(ribasim.Model):
 
         The Outlet is placed 10 m from the boundary, or at 10% of links of at most 20 m.
         """
-        assert self.flow_boundary.node is not None and self.flow_boundary.node.df is not None
-        assert self.link.df is not None
         for row in self.flow_boundary.node.df.itertuples():
             node_id = cast(int, row.Index)
             basin_node_id = self.downstream_node_id(node_id)
@@ -840,44 +819,117 @@ class Model(ribasim.Model):
             self.link.add(outlet_node, self.basin[basin_node_id], geometry=right_link_geometry)
 
     def reverse_direction_at_node(self, node_id) -> None:
-        assert self.link.df is not None
         for link_id in self.link.df[
             (self.link.df.from_node_id == node_id) | (self.link.df.to_node_id == node_id)
         ].index:
             self.reverse_link(link_id=link_id)
 
-    def select_basin_area(self, geometry):
+    def select_basin_area(self, geometry: Polygon | MultiPolygon, tolerance: float = 0.001) -> pd.Series:
+        """Select the basin areas that equal `geometry`, or else each of its polygons.
+
+        Geometries are taken as equal if their boundaries are on average at most `tolerance` m apart. That allows for
+        the differences between the results of versions of GEOS, which can also merge or separate adjacent parts of an
+        area. So without a basin area that equals a polygon, the basin areas that together make it up are selected, or
+        else the polygon is split from the basin areas that cover it, as basin areas of the same nodes. Polygons on
+        average narrower than `tolerance` are slivers, which differ between versions of GEOS, and are not selected.
+        """
         geometry = shapely.force_2d(geometry)
-        if isinstance(geometry, MultiPolygon):
-            polygons = list(geometry.geoms)
-        elif isinstance(geometry, Polygon):
-            polygons = [geometry]
-        else:
+        if not isinstance(geometry, Polygon | MultiPolygon):
             raise TypeError("geometry cannot be used for selection, is not a (Multi)Polygon")
 
         assert self.basin.area.df is not None
-        mask = self.basin.area.df.geometry.apply(lambda x: any(x.equals(i) for i in polygons))
+        selected = self._basin_areas_equal(geometry, tolerance)
+        if selected.empty:
+            for i, polygon in enumerate(shapely.get_parts(geometry).tolist()):
+                if not polygon_parts(polygon, tolerance):
+                    continue
+                fids = self._basin_areas_equal(polygon, tolerance)
+                if fids.empty:
+                    fids = self._basin_areas_within(polygon, tolerance)
+                if fids.empty:
+                    fids = self._split_basin_areas(polygon, tolerance)
+                if fids.empty:
+                    raise ValueError(f"Not any basin area equals, makes up or covers polygon {i} of input geometry")
+                selected = selected.append(fids)
+        return pd.Series(self.basin.area.df.index.isin(selected), index=self.basin.area.df.index)
 
-        if not mask.any():
-            raise ValueError("Not any basin area equals input geometry")
-        return mask
-
-    def update_basin_area(
-        self, node_id: int, geometry: Polygon | MultiPolygon, basin_area_fid: int | None = None
-    ) -> None:
+    def _basin_areas_equal(self, geometry: Polygon | MultiPolygon, tolerance: float) -> pd.Index:
+        """The fids of the basin areas that equal `geometry`."""
         assert self.basin.area.df is not None
-        if pd.isna(basin_area_fid):
-            mask = self.select_basin_area(geometry)
-        else:
-            mask = self.basin.area.df.index == basin_area_fid
+        areas = self.basin.area.df.geometry
+        areas = areas[areas.intersects(geometry)]
+        return areas.index[areas.symmetric_difference(geometry).area <= tolerance * geometry.length]
 
+    def _basin_areas_within(self, geometry: Polygon | MultiPolygon, tolerance: float) -> pd.Index:
+        """The fids of the basin areas within `geometry` that together equal it, or none."""
+        assert self.basin.area.df is not None
+        areas = self.basin.area.df.geometry
+        areas = areas[areas.intersects(geometry)]
+        # mostly within, so not a neighbour with a sliver across the boundary
+        within = areas[
+            (areas.difference(geometry).area <= tolerance * areas.length)
+            & (areas.intersection(geometry).area >= areas.area / 2)
+        ]
+        if within.empty or within.union_all().symmetric_difference(geometry).area > tolerance * geometry.length:
+            return pd.Index([])
+        return within.index
+
+    def _split_basin_areas(self, polygon: Polygon, tolerance: float) -> pd.Index:
+        """Split `polygon` from the basin areas that cover it, as new basin areas of the same nodes.
+
+        A basin area within the polygon, but for slivers, is taken whole. Returns the fids of the basin areas that make
+        up the polygon, or none if the basin areas do not cover it.
+        """
+        assert self.basin.area.df is not None
+        areas = self.basin.area.df.geometry
+        areas = areas[areas.intersects(polygon)]
+        if areas.empty or polygon.difference(areas.union_all()).area > tolerance * polygon.length:
+            return pd.Index([])
+        fids = []
+        for fid, area in zip(areas.index.to_numpy(), areas.to_numpy(), strict=True):
+            part = polygon_parts(area.intersection(polygon), tolerance)
+            if not part:
+                continue
+            rest = polygon_parts(area.difference(polygon), tolerance)
+            if not rest:
+                fids.append(fid)
+                continue
+            new_fid = self.basin.area.df.index.max() + 1
+            self.basin.area.df.loc[new_fid] = self.basin.area.df.loc[fid]
+            self.basin.area.df.loc[[fid, new_fid], "geometry"] = [MultiPolygon(rest), MultiPolygon(part)]  # ty: ignore[invalid-assignment]
+            fids.append(new_fid)
+        # enlarging the table drops its CRS
+        if self.basin.area.df.crs is None:
+            self.basin.area.df.crs = self.crs
+        return pd.Index(fids)
+
+    def update_basin_area(self, node_id: int, geometry: Polygon | MultiPolygon) -> None:
+        """Give the basin areas that `geometry` selects to `node_id`, see `select_basin_area`."""
+        assert self.basin.area.df is not None
+        mask = self.select_basin_area(geometry)
         self.basin.area.df.loc[mask, ["node_id"]] = node_id
 
     def add_basin_area(
-        self, geometry: MultiPolygon, node_id: int | None = None, meta_streefpeil: float | None = None
+        self,
+        geometry: BaseGeometry,
+        node_id: int | None = None,
+        meta_streefpeil: float | None = None,
+        tolerance: float = 0.001,
     ) -> None:
-        # if node_id is None, get an available node_id
+        """Add `geometry` to the basin area of Basin `node_id`, taking it from the other basin areas.
+
+        Without `node_id`, it is added to the one Basin within `geometry`. The polygons on average narrower than
+        `tolerance` are slivers, which are not added, see `select_basin_area`.
+        """
         assert self.basin.area.df is not None
+        if geometry.geom_type not in ("Polygon", "MultiPolygon"):
+            raise ValueError(f"geometry-type {geometry.geom_type} is not valid. Provide (Multi)Polygon instead")
+        polygons = polygon_parts(geometry, tolerance)
+        if not polygons:
+            return
+        geometry = MultiPolygon(polygons)
+
+        # if node_id is None, get an available node_id
         basin_node_df = self.filter_nodes("Basin")
         if pd.isna(node_id):
             basin_df = basin_node_df[basin_node_df.within(geometry)]
@@ -892,14 +944,7 @@ class Model(ribasim.Model):
         elif node_id not in basin_node_df.index:
             raise ValueError(f"Node_id {node_id} is not a basin")
 
-        # check geometry and promote to mulitpolygon
-        if geometry.geom_type != "MultiPolygon":
-            if geometry.geom_type == "Polygon":
-                geometry = MultiPolygon([geometry])
-            else:
-                raise ValueError(f"geometry-type {geometry.geom_type} is not valid. Provide (Multi)Polygon instead")
-
-        # if all correct, assign
+        self._remove_from_basin_areas(geometry, tolerance)
         data = {"node_id": [node_id], "geometry": [geometry]}
         if meta_streefpeil is not None:
             data = {**data, "meta_streefpeil": [meta_streefpeil]}
@@ -908,10 +953,22 @@ class Model(ribasim.Model):
         area_df.index += self.basin.area.df.index.max() + 1
         self.basin.area.df = GeoDataFrame[BasinAreaSchema](pd.concat([self.basin.area.df, area_df]))
 
+    def _remove_from_basin_areas(self, geometry: MultiPolygon, tolerance: float) -> None:
+        """Remove `geometry` from the basin areas, leaving out the slivers that remain, and the empty basin areas."""
+        df = self.basin.area.df
+        assert df is not None
+        hit = df.index[df.intersects(geometry)]
+        if hit.empty:
+            return
+        rests = {fid: polygon_parts(df.geometry[fid].difference(geometry), tolerance) for fid in hit}
+        remaining = [MultiPolygon(rests[fid]) if rests.get(fid) else g for fid, g in df.geometry.items()]
+        df = df.set_geometry(gpd.GeoSeries(remaining, index=df.index, crs=df.crs))
+        self.basin.area.df = GeoDataFrame[BasinAreaSchema](
+            df[[fid not in rests or bool(rests[fid]) for fid in df.index]]
+        )
+
     def move_node(self, node_id: int, geometry: Point) -> None:
         # update geometry
-        assert self.node.df is not None
-        assert self.link.df is not None
         self.node.df.loc[node_id, ["geometry"]] = geometry  # ty: ignore[invalid-assignment]
 
         # reset all links
@@ -929,7 +986,6 @@ class Model(ribasim.Model):
 
     def report_internal_basins(self):
         assert self.filepath is not None
-        assert self.link.df is not None
         gpkg = self.filepath.with_name("internal_basins.gpkg")
         basin_node_df = self.filter_nodes("Basin")
         df = basin_node_df[~basin_node_df.index.isin(self.link.df.from_node_id)]
@@ -963,40 +1019,34 @@ class Model(ribasim.Model):
             method (str): method to find basin node_id; `within` or `closest`. First start with `within`. Default is `within`
             distance (float, optional): for method closest, the distance to find an unassigned basin node_id. Defaults to 100.
         """
-        if self.node.df is not None:
-            basin_node_df = self.filter_nodes("Basin")
-            if self.basin.area.df is not None:
-                basin_area_df = self.basin.area.df[~self.basin.area.df.node_id.isin(basin_node_df.index)]
+        if self.basin.area.df is None:
+            raise ValueError("Assign Basin Area to your model first")
+        basin_node_df = self.filter_nodes("Basin")
+        basin_area_df = self.basin.area.df[~self.basin.area.df.node_id.isin(basin_node_df.index)]
 
-                for row in basin_area_df.itertuples():
-                    area_geometry = cast(BaseGeometry, row.geometry)
-                    if method == "within":
-                        # check if area contains basin-nodes
-                        basin_df = basin_node_df[basin_node_df.within(area_geometry)]
+        for row in basin_area_df.itertuples():
+            area_geometry = cast(BaseGeometry, row.geometry)
+            if method == "within":
+                # check if area contains basin-nodes
+                basin_df = basin_node_df[basin_node_df.within(area_geometry)]
 
-                    elif method == "closest":
-                        basin_df = basin_node_df[basin_node_df.within(area_geometry)]
-                        # if method is `distance` and basin_df is emtpy we create a new basin_df
-                        if basin_df.empty:
-                            basin_df = basin_node_df[basin_node_df.distance(area_geometry) < distance]
+            elif method == "closest":
+                basin_df = basin_node_df[basin_node_df.within(area_geometry)]
+                # if method is `distance` and basin_df is emtpy we create a new basin_df
+                if basin_df.empty:
+                    basin_df = basin_node_df[basin_node_df.distance(area_geometry) < distance]
 
-                    else:
-                        raise ValueError(f"Supported methods are 'within' or 'closest', got '{method}'.")
-
-                    # check if basin_nodes within area are not yet assigned an area
-                    basin_df = basin_df[~basin_df.index.isin(self.basin.area.df.node_id)]
-
-                    # if we have one node left we are done
-                    if len(basin_df) == 1:
-                        self.basin.area.df.loc[row.Index, ["node_id"]] = basin_df.index[0]
             else:
-                raise ValueError("Assign Basin Area to your model first")
-        else:
-            raise ValueError("Assign a Basin Node to your model first")
+                raise ValueError(f"Supported methods are 'within' or 'closest', got '{method}'.")
+
+            # check if basin_nodes within area are not yet assigned an area
+            basin_df = basin_df[~basin_df.index.isin(self.basin.area.df.node_id)]
+
+            # if we have one node left we are done
+            if len(basin_df) == 1:
+                self.basin.area.df.at[cast(int, row.Index), "node_id"] = basin_df.index[0]
 
     def reset_link_geometry(self, link_ids: list[int] | None = None) -> None:
-        assert self.node.df is not None
-        assert self.link.df is not None
         node_df = self.node.df
         df = self.link.df[self.link.df.index.isin(link_ids)] if link_ids is not None else self.link.df
 
@@ -1010,17 +1060,11 @@ class Model(ribasim.Model):
 
     @property
     def link_from_node_type(self) -> pd.Series:
-        assert self.node.df is not None
-        assert self.link.df is not None
-        node_df = self.node.df
-        return self.link.df.from_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
+        return self.link.df.from_node_id.map(self.node.df["node_type"])
 
     @property
     def link_to_node_type(self) -> pd.Series:
-        assert self.node.df is not None
-        assert self.link.df is not None
-        node_df = self.node.df
-        return self.link.df.to_node_id.apply(lambda x: node_df.at[x, "node_type"] if x in node_df.index else None)
+        return self.link.df.to_node_id.map(self.node.df["node_type"])
 
     def split_basin(
         self,
@@ -1029,6 +1073,11 @@ class Model(ribasim.Model):
         geometry: LineString | None = None,
         assign_unique_node: bool = True,
     ) -> None:
+        """Split the basin area that `geometry` crosses in two parts along it.
+
+        The basin area is the one of `basin_id` that the line crosses, or else the one that contains its middle. The
+        parts keep its node, or with `assign_unique_node`, go to the one Basin within them that has no basin area.
+        """
         if geometry is None:
             if line is None:
                 raise ValueError("geometry cannot be None")
@@ -1063,6 +1112,7 @@ class Model(ribasim.Model):
         # get all we need and remove area from basin.area.df
         basin_fid = int(cast(int, basin_area_df.iloc[0].name))
         basin_geometry = basin_area_df.iloc[0].geometry
+        basin_node_id = basin_area_df.iloc[0].node_id
         self.basin.area.df = self.basin.area.df[self.basin.area.df.index != basin_fid]
 
         # get the polygon to cut
@@ -1088,13 +1138,13 @@ class Model(ribasim.Model):
 
         # add polygons to area
         for poly in [right_basin_poly, left_basin_poly]:
-            # by default we assign provided basin_id
+            # by default the polygons keep the node of the basin area
             kwargs = {
-                "node_id": basin_id,
+                "node_id": basin_node_id,
                 "geometry": poly,
             }
 
-            # we override node_id to a unique basin-node within area if that is specified
+            # we override node_id to a unique basin-node within area, without basin area, if that is specified
             if assign_unique_node:
                 basin_node_df = self.filter_nodes("Basin")
                 within = basin_node_df.geometry.within(poly)
@@ -1109,11 +1159,10 @@ class Model(ribasim.Model):
             self.basin.area.df.crs = self.crs
 
     def redirect_link(self, link_id: int, from_node_id: int | None = None, to_node_id: int | None = None) -> None:
-        if self.link.df is not None:
-            if from_node_id is not None:
-                self.link.df.loc[link_id, ["from_node_id"]] = from_node_id
-            if to_node_id is not None:
-                self.link.df.loc[link_id, ["to_node_id"]] = to_node_id
+        if from_node_id is not None:
+            self.link.df.loc[link_id, ["from_node_id"]] = from_node_id
+        if to_node_id is not None:
+            self.link.df.loc[link_id, ["to_node_id"]] = to_node_id
 
         self.reset_link_geometry(link_ids=[link_id])
 
@@ -1137,6 +1186,71 @@ class Model(ribasim.Model):
             df.index.name = "fid"
         self.basin.area.df = GeoDataFrame[BasinAreaSchema](df)
 
+    def dissolve_basin_area(self) -> None:
+        """Make one basin area per Basin, the union of its basin areas, keeping the first values of other columns.
+
+        Raises if a basin area belongs to no Basin.
+        """
+        df = self.basin.area.df
+        assert df is not None
+        unassigned = self.unassigned_basin_area
+        assert unassigned.empty, (
+            f"basin areas of nodes that are no Basin: {sorted(map(int, unassigned.node_id.unique()))}"
+        )
+        geometry = df.groupby("node_id")["geometry"].apply(lambda parts: union_polygons(parts.to_numpy()))
+        df = df.drop(columns="geometry").groupby("node_id", as_index=False).first()
+        df = gpd.GeoDataFrame(
+            df,
+            geometry=[MultiPolygon(polygon_parts(g)) for g in geometry.loc[df["node_id"]]],
+            crs=self.crs,
+        )
+        df.index.name = "fid"
+        self.basin.area.df = GeoDataFrame[BasinAreaSchema](df)
+
+    def clean_basin_area(self) -> None:
+        """Make the basin areas valid, without slivers, see `ribasim_nl.geometry.without_slivers`.
+
+        Raises if a basin area is a sliver as a whole.
+        """
+        df = self.basin.area.df
+        assert df is not None
+        geometry = gpd.GeoSeries([without_slivers(g) for g in df.geometry], index=df.index, crs=df.crs)
+        slivers = sorted(map(int, df.loc[geometry.is_empty, "node_id"]))
+        assert not slivers, f"basin areas that are slivers as a whole, of node IDs: {slivers}"
+        self.basin.area.df = GeoDataFrame[BasinAreaSchema](df.assign(geometry=geometry))
+
+    def fill_basin_area_holes(self, areas_gpkg: Path, excluded: Polygon | MultiPolygon | None = None) -> None:
+        """Give the parts of the areas of `areas_gpkg` that no basin area covers to a Basin, one basin area per Basin.
+
+        The uncovered part of an area goes to the Basin that covers most of that area, and an area that none covers to
+        the Basin it shares the longest border with, preferably in the same drainage area, as in the lumping, see
+        `ribasim_nl.lumping.network.fill_holes`. What lies within `excluded` is not part of the model: it is removed
+        from the basin areas, and not filled. Raises if a basin area belongs to no Basin, or a Basin has no basin area.
+        """
+        self.dissolve_basin_area()
+        areas = read_areas(areas_gpkg, "areas").to_crs(self.crs)
+        if excluded is not None:
+            excluded = MultiPolygon(polygon_parts(excluded))
+            self._remove_from_basin_areas(excluded, tolerance=0.001)
+            areas["geometry"] = gpd.GeoSeries(
+                [
+                    MultiPolygon(parts) if (parts := polygon_parts(g.difference(excluded), 0.001)) else None
+                    for g in shapely.make_valid(areas.geometry.to_numpy())
+                ],
+                index=areas.index,
+                crs=areas.crs,
+            )
+        drainage_areas = read_layer(areas_gpkg, "drainage_areas", explode=False, code_column="CODE")
+        assert drainage_areas is not None, f"no layer drainage_areas in {areas_gpkg}"
+        df = self.basin.area.df
+        assert df is not None
+        filled = fill_holes(df[["node_id", "geometry"]], areas, drainage_areas.to_crs(self.crs))
+        df = gpd.GeoDataFrame(df.drop(columns="geometry").merge(filled, on="node_id"), crs=self.crs)
+        df.index.name = "fid"
+        self.basin.area.df = GeoDataFrame[BasinAreaSchema](df)
+        without_area = self.basin.node.df.index.difference(pd.Index(df["node_id"]))
+        assert without_area.empty, f"Basins without basin area: {sorted(map(int, without_area))}"
+
     def explode_basin_area(self, remove_z=True) -> None:
         assert self.basin.area.df is not None
         df = self.basin.area.df.explode().reset_index(drop=True)
@@ -1159,12 +1273,10 @@ class Model(ribasim.Model):
         to_node_id: int | None = None,
         are_connected=True,
     ) -> None:
-        assert self.node.df is not None
         if node_id not in self.node.df.index or self.node.df.at[node_id, "node_type"] != "Basin":
             raise ValueError(f"{node_id} is not a basin")
         assert node_id is not None
         assert to_node_id is not None
-        assert self.link.df is not None
         assert self.basin.area.df is not None
         to_node_type = self.node.df.at[to_node_id, "node_type"]
         if to_node_type not in ["Basin", "FlowBoundary", "LevelBoundary"]:
@@ -1248,8 +1360,6 @@ class Model(ribasim.Model):
         assert outlet_b_id is not None
         assert self.get_node_type(outlet_a_id) == "Outlet" and self.get_node_type(outlet_b_id) == "Outlet"
 
-        assert self.node.df is not None
-        assert self.link.df is not None
         assert self.outlet.static.df is not None
         outlet_a = self.node.df.loc[outlet_a_id].copy()
         outlet_b = self.node.df.loc[outlet_b_id].copy()
@@ -1301,8 +1411,6 @@ class Model(ribasim.Model):
         return outlet_a
 
     def invalid_topology_at_node(self, link_type: str = "flow") -> gpd.GeoDataFrame:
-        assert self.link.df is not None
-        assert self.node.df is not None
         df_graph = self.link.df
         df_node = self.node.df
         # Join df_link with df_node to get to_node_type
@@ -1385,7 +1493,6 @@ class Model(ribasim.Model):
         """Check if links exist with reversed source-destination"""
         # remove function when this is available: https://github.com/Deltares/Ribasim/issues/2140
         df = self.link.df
-        assert df is not None
 
         # on tuples we can easily check duplicates irrespective of order
         duplicated_links = pd.Series(

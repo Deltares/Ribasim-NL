@@ -1,18 +1,26 @@
+import math
+
 import geopandas as gpd
+import numpy as np
+import pandas as pd
 import pytest
 from ribasim import Node
-from ribasim.nodes import basin, outlet
+from ribasim.nodes import basin, manning_resistance, outlet
 from ribasim_nl.flow_paths import (
+    Digitized,
     Routes,
     attach_to_tree,
     branch_from_route,
+    drainage_capacity,
     junction_tree,
+    merge_basin_trees,
     merge_inflows,
     merge_outflows,
     place_on_link,
     prune_junction,
     rebuild_junction_trees,
     simplified_links,
+    towards_basin,
     tree_links,
 )
 from shapely.geometry import LineString, Point, box
@@ -46,10 +54,32 @@ def test_routes():
     link_ids = model.link.df.reset_index().set_index(["from_node_id", "to_node_id"])["link_id"]
     assert routes.ends(link_ids[(1, 4)]) == {2, 3}
     assert routes.ends(link_ids[(4, 2)], upstream=True) == {1}
-    downstream = routes.paths(1)
-    assert set(downstream) == {link_ids[(1, 4)], link_ids[(4, 2)], link_ids[(4, 3)]}
-    assert downstream[link_ids[(4, 2)]] == [link_ids[(1, 4)], link_ids[(4, 2)]]
-    assert set(routes.paths(1, upstream=True)) == {link_ids[(5, 1)]}
+    paths = routes.paths(1)
+    assert set(paths) == {link_ids[(1, 4)], link_ids[(4, 2)], link_ids[(4, 3)], link_ids[(5, 1)]}
+    assert paths[link_ids[(4, 2)]] == [link_ids[(1, 4)], link_ids[(4, 2)]]
+
+
+def mixed_model() -> Model:
+    """`route_model` where Outlet 5 drains into Basin 1 through Junction 4 too, with its link towards the Basin."""
+    model = route_model()
+    model.remove_links(model.link.df.index[model.link.df["from_node_id"].isin([1, 5])].tolist())
+    model.link.add(model.junction[4], model.basin[1])
+    model.link.add(model.outlet[5], model.junction[4])
+    return model
+
+
+def test_routes_basin_tree():
+    """A group of Junctions with one Basin connects it with the other nodes, whichever way its links point."""
+    model = mixed_model()
+    routes = Routes(model)
+    link_ids = model.link.df.reset_index().set_index(["from_node_id", "to_node_id"])["link_id"]
+    assert routes.tree_basin(4) == 1
+    assert routes.ends(link_ids[(5, 4)]) == {1}
+    assert routes.ends(link_ids[(4, 2)], upstream=True) == {1}
+    assert routes.ends(link_ids[(4, 1)], upstream=True) == {5}
+    assert routes.subtree(link_ids[(4, 1)]) == ({5}, {2, 3})
+    assert simplified_links(model) == {(1, 2), (1, 3), (5, 1)}
+    assert set(routes.paths(1)) == set(link_ids)
 
 
 def test_prune_junction():
@@ -174,8 +204,8 @@ def rebuild_model():
     """`route_model` with an area, and Outlet 6 that drains into Basin 1 from where Outlets 2 and 3 are fed."""
     model = route_model()
     model.basin.area.df = gpd.GeoDataFrame({"node_id": [1]}, geometry=[box(-150, -50, 150, 50)], crs="EPSG:28992")
-    model.outlet.add(Node(6, Point(100, 0)), [outlet.Static(flow_rate=[1.0])])
-    model.link.add(model.outlet[6], model.basin[1], geometry=LineString([(100, 0), (0, 20), (0, 0)]))
+    model.outlet.add(Node(6, Point(100, 5)), [outlet.Static(flow_rate=[1.0])])
+    model.link.add(model.outlet[6], model.basin[1], geometry=LineString([(100, 5), (0, 20), (0, 0)]))
     return model
 
 
@@ -183,10 +213,11 @@ def test_junction_tree():
     model = rebuild_model()
     routes = Routes(model)
     link_ids = model.link.df.reset_index().set_index(["from_node_id", "to_node_id"])["link_id"]
-    assert junction_tree(routes, 1) == ({4}, [link_ids[(1, 4)]], {2: link_ids[(4, 2)], 3: link_ids[(4, 3)]})
-    assert junction_tree(routes, 1, upstream=True) == (set(), [], {5: link_ids[(5, 1)], 6: link_ids[(6, 1)]})
+    reached = {link_ids[(4, 2)]: 2, link_ids[(4, 3)]: 3, link_ids[(5, 1)]: 5, link_ids[(6, 1)]: 6}
+    assert junction_tree(routes, 1) == ({4}, [link_ids[(1, 4)]], reached)
     # a fixed Junction, for instance an observed one, is reached instead
-    assert junction_tree(routes, 1, fixed={4}) == (set(), [], {4: link_ids[(1, 4)]})
+    reached = {link_ids[(1, 4)]: 4, link_ids[(5, 1)]: 5, link_ids[(6, 1)]: 6}
+    assert junction_tree(routes, 1, fixed={4}) == (set(), [], reached)
 
 
 def test_rebuild_junction_trees():
@@ -198,13 +229,89 @@ def test_rebuild_junction_trees():
 
     assert simplified_links(model) == links_before
     assert 4 not in model.node.df.index
-    # the outflows split where the waterway ends, and the inflow of Outlet 6 follows the outflows to there
+    # the inflow of Outlet 6 and the outflows share one tree, which splits where the waterway ends
     (junction_id,) = junction_ids
     assert model.node.df.at[junction_id, "geometry"].coords[:] == [(100, 0)]
     geometries = model.link.df.set_index(["from_node_id", "to_node_id"])["geometry"]
     assert geometries[(1, junction_id)].coords[:] == [(0, 0), (100, 0)]
-    assert geometries[(6, 1)].coords[:] == [(100, 0), (0, 0)]
+    assert geometries[(6, junction_id)].coords[:] == [(100, 5), (100, 0)]
     assert geometries[(5, 1)].coords[:] == [(-100, 0), (0, 0)]
     # the links to the nodes reached keep their ids
     assert model.link.df.at[link_ids[(4, 2)], "from_node_id"] == junction_id
     assert set(changed) >= {link_ids[(4, 2)], link_ids[(4, 3)], link_ids[(5, 1)], link_ids[(6, 1)]}
+
+
+def test_merge_basin_trees():
+    """The inflow of Outlet 6 follows the outflows to Junction 4, and joins their tree there."""
+    model = route_model()
+    model.outlet.add(Node(6, Point(50, 10)), [outlet.Static(flow_rate=[1.0])])
+    model.link.add(model.outlet[6], model.basin[1], geometry=LineString([(50, 10), (50, 0), (0, 0)]))
+    links_before = simplified_links(model)
+    (junction_id,) = merge_basin_trees(model)
+    assert simplified_links(model) == links_before
+    assert model.node.df.at[junction_id, "geometry"].coords[:] == [(50, 0)]
+    assert link_pairs(model) == {(1, junction_id), (junction_id, 2), (junction_id, 3), (6, junction_id), (5, 1)}
+    # a tree that would not change is kept
+    assert merge_basin_trees(model) == []
+
+
+def test_prune_junction_in_basin_tree():
+    """A Junction of a Basin tree with two links merges them, keeping the direction of the node other than the Basin."""
+    model = mixed_model()
+    model.remove_links(model.link.df.index[model.link.df["to_node_id"].isin([2, 3])].tolist())
+    prune_junction(model, 4)
+    assert link_pairs(model) == {(5, 1)}
+    assert model.link.df.set_index("from_node_id").at[5, "geometry"].coords[:] == [(-100, 0), (50, 0), (0, 0)]
+
+
+def test_branch_from_route_in_basin_tree():
+    """A node fed by the Basin can branch off the route of an inflow."""
+    model = route_model()
+    model.outlet.add(Node(6, Point(-50, -20)), [outlet.Static(flow_rate=[1.0])])
+    model.link.add(model.basin[1], model.outlet[6])
+    junction_id = branch_from_route(model, 6, basin_id=1, towards_id=5)
+    assert link_pairs(model) == {(1, 4), (4, 2), (4, 3), (5, junction_id), (junction_id, 1), (junction_id, 6)}
+    assert simplified_links(model) == {(1, 2), (1, 3), (5, 1), (1, 6)}
+
+
+def test_towards_basin():
+    capacity = {1: 10.0, 2: 1.0, 3: math.inf, 4: math.inf}
+    # a link of inflows only points towards the Basin, of outflows only away from it
+    assert towards_basin({1}, set(), capacity)
+    assert not towards_basin(set(), {1}, capacity, digitized_away=False)
+    # the direction in which the lines along it are digitized decides, else the larger capacity
+    assert not towards_basin({1}, {2}, capacity, digitized_away=True)
+    assert towards_basin({1}, {2}, capacity)
+    assert not towards_basin({2}, {3}, capacity)
+    # else the side with more nodes, else away from the Basin
+    assert towards_basin({3, 2}, {4}, capacity)  # both unlimited
+    assert towards_basin({5, 6}, {7}, capacity)
+    assert not towards_basin({5}, {7}, capacity)
+
+
+def test_digitized():
+    digitized = Digitized([LineString([(0, 0), (10, 0), (20, 0)]), LineString([(0, 5), (0, 0)])])
+    assert digitized.along([(0.0, 0.0), (10.0, 0.0), (20.0, 0.0)]) is True
+    assert digitized.along([(20.0, 0.0), (10.0, 0.0), (0.0, 5.0)]) is None  # mostly off the lines
+    assert digitized.along([(20.0, 0.0), (10.0, 0.0), (0.0, 0.0), (0.0, 5.0)]) is False
+    # lines digitized both ways have no direction
+    assert (
+        Digitized([LineString([(0, 0), (1, 0)]), LineString([(1, 0), (0, 0)])]).along([(0.0, 0.0), (1.0, 0.0)]) is None
+    )
+
+
+def test_drainage_capacity():
+    model = route_model()
+    model.outlet.static.df = pd.DataFrame(
+        {
+            "node_id": [2, 2, 3, 5],
+            "control_state": ["afvoer", "aanvoer", None, None],
+            "flow_rate": [4.0, 9.0, 99999.0, 1.0],
+            "max_flow_rate": [np.nan, np.nan, np.nan, np.nan],
+        }
+    )
+    model.manning_resistance.add(
+        Node(6, Point(0, 50)),
+        [manning_resistance.Static(length=[10.0], manning_n=[0.04], profile_width=[5.0], profile_slope=[1.0])],
+    )
+    assert drainage_capacity(model) == {2: 4.0, 3: math.inf, 5: 1.0, 6: math.inf}

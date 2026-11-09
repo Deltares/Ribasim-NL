@@ -67,92 +67,51 @@ assign_pump_and_basin_names(ribasim_model, paths, pump_flow_rate_factor=1)
 assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df["meta_known_flow_rate"] = False
 
-# based on Excel for D-HYDRO model. Also set the meta_known_flow_rate to True for these pumps, as we have data for these.
-ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df.node_id == 364,
-    ("max_flow_rate", "meta_known_flow_rate"),
-] = 4.44, True
-ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df.node_id == 708,
-    ("max_flow_rate", "meta_known_flow_rate"),
-] = 2.78, True
-ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df.node_id == 517,
-    ("max_flow_rate", "meta_known_flow_rate"),
-] = 3.00, True
-ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df.node_id == 564,
-    ("max_flow_rate", "meta_known_flow_rate"),
-] = 1.22, True
-
-# based on Gemalen stichting
-ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df.node_id == 719,
-    ("max_flow_rate", "meta_known_flow_rate"),
-] = 1, True  # unknown capacity, 1 m3/s based on expert judgement
-ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df.node_id == 856,
-    ("max_flow_rate", "meta_known_flow_rate"),
-] = 50, True  # Wortman
-ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df.node_id == 853,
-    ("max_flow_rate", "meta_known_flow_rate"),
-] = 770 * 2 / 60, True  # Blocq van Kuffeler, Lage Vaart
-ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df.node_id == 855,
-    ("max_flow_rate", "meta_known_flow_rate"),
-] = 935 * 2 / 60, True  # Blocq van Kuffeler, Hoge Vaart
-ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df.node_id == 787,
-    ("max_flow_rate", "meta_known_flow_rate"),
-] = 500 * 2 / 60, True  # Colijn, Lage Vaart
-
-ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df.node_id == 788,
-    ("max_flow_rate", "meta_known_flow_rate"),
-] = 580 / 60, True  # Colijn, Hoge Vaart
-
-ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df.node_id == 823,
-    ("max_flow_rate", "meta_known_flow_rate"),
-] = 580 * 2 / 60, True  # Lovink
-
-ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df.node_id == 814,
-    ("max_flow_rate", "meta_known_flow_rate"),
-] = 800 * 3 / 60, True  # Vissering
-
-
-ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df.node_id == 834,
-    ("max_flow_rate", "meta_known_flow_rate"),
-] = 620 * 2 / 60, True  # Smeenge
-ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df.node_id == 815,
-    ("max_flow_rate", "meta_known_flow_rate"),
-] = 720 * 3 / 60, True  # Buma
+KNOWN_PUMP_CAPACITIES = {
+    # based on Excel for D-HYDRO model
+    364: 4.44,
+    708: 2.78,
+    517: 3.00,
+    564: 1.22,
+    # based on Gemalen stichting, https://www.gemalen.nl/gemaal_per_waterschap.asp?ws=Waterschap+Zuiderzeeland
+    719: 1,  # Leeghwater, unknown capacity, 1 m3/s based on expert judgement
+    857: 500 * 4 / 60,  # Wortman, also the capacity on the website of the water board and in its delivery
+    853: 770 * 2 / 60,  # Blocq van Kuffeler, Lage Vaart
+    855: 935 * 2 / 60,  # Blocq van Kuffeler, Hoge Vaart
+    787: 500 * 2 / 60,  # Colijn, Lage Vaart
+    788: 580 / 60,  # Colijn, Hoge Vaart
+    766: 580 * 2 / 60,  # Lovink; the website of the water board has 550 m3/min per pump, its delivery 16.67 m3/s
+    814: 800 * 3 / 60,  # Vissering
+    527: 620 * 2 / 60,  # Smeenge, also on the website of the water board; its delivery has 20 m3/s
+    815: 720 * 3 / 60,  # Buma
+}
+for node_id, capacity in KNOWN_PUMP_CAPACITIES.items():
+    assert ribasim_model.get_node_type(node_id) == "Pump", f"Expected a Pump for node {node_id}"
+    ribasim_model.pump.static.df.loc[
+        ribasim_model.pump.static.df.node_id == node_id,
+        ("max_flow_rate", "meta_known_flow_rate"),
+    ] = capacity, True
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
-assert ribasim_model.manning_resistance.node is not None and ribasim_model.manning_resistance.node.df is not None
 mr_null_geom = ribasim_model.manning_resistance.node.df[ribasim_model.manning_resistance.node.df.geometry.isna()].index
-assert ribasim_model.node.df is not None
 ribasim_model.node.df = ribasim_model.node.df.drop(mr_null_geom)
 
 # lower the difference in waterlevel for each manning node, except those of storing basins
 set_manning_resistance_outside_bergend(ribasim_model, length=100.0, manning_n=0.01)
 
-# increase aanslagpeil for gemaal Wortman
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 2436, "min_upstream_level"] += (
-    0.05  # 5 cm higher than streefpeil
-)
-assert ribasim_model.discrete_control.condition.df is not None
-ribasim_model.discrete_control.condition.df.loc[
-    ribasim_model.discrete_control.condition.df.node_id == 14970, "threshold_high"
-] += 0.05
-ribasim_model.discrete_control.condition.df.loc[
-    ribasim_model.discrete_control.condition.df.node_id == 14970, "threshold_low"
-] += 0.05
+# Gemaal Wortman only starts 12 cm above the -6.20 m NAP of the Lage Vaart, for sustainability and capacity, see
+# https://www.zuiderzeeland.nl/wat-doet-het-waterschap/gemalen-in-flevoland/gemaal-wortman/
+WORTMAN, WORTMAN_CONTROL, WORTMAN_START_LEVEL = 857, 5556, -6.20 + 0.12
+assert ribasim_model.upstream_node_id(WORTMAN, link_type="control") == WORTMAN_CONTROL
+condition_df = ribasim_model.discrete_control.condition.df
+assert condition_df is not None
+wortman_condition = condition_df.node_id == WORTMAN_CONTROL
+assert wortman_condition.sum() == 1, f"Expected one condition of DiscreteControl {WORTMAN_CONTROL}"
+wortman_shift = WORTMAN_START_LEVEL - condition_df.loc[wortman_condition, "threshold_high"].item()
+assert wortman_shift > 0, "Expected the start level of Wortman above its threshold from the target level"
+condition_df.loc[wortman_condition, ["threshold_high", "threshold_low"]] += wortman_shift
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == WORTMAN, "min_upstream_level"] += wortman_shift
 
 ribasim_model = complete_parametrization(
     ribasim_model,

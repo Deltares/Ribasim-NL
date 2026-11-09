@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Literal
 
 import geopandas as gpd
+import shapely
 
 import ribasim_nl.ribasim_parametrization as ribasim_param
 from ribasim_nl import CloudStorage, Model, junctionify, supply
@@ -25,7 +26,7 @@ from ribasim_nl.control import (
     get_node_table_with_from_to_node_ids,
     remove_duplicate_controls,
 )
-from ribasim_nl.network_snapping import snap_model
+from ribasim_nl.network_snapping import line_reader, read_hydro_objects, snap_model
 from ribasim_nl.regional_model import ENDTIME, STARTTIME, add_inflows, add_lhm_forcing, finish_regional_model
 from ribasim_nl.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl.settings import settings
@@ -54,22 +55,6 @@ PUMP_META_COLUMNS = [
 ]
 
 
-# GeoPackage per water board in verwerkt/Crossings, with the hydro-objects, culverts and crossings, as also used in
-# pipeline/<water board>/02_profiles.py
-CROSSINGS = {
-    "AmstelGooienVecht": "agv_crossings_v05.gpkg",
-    "Delfland": "delfland_crossings_v08.gpkg",
-    "HollandsNoorderkwartier": "hhnk_crossings_v26.gpkg",
-    "HollandseDelta": "hd_crossings_v06.gpkg",
-    "Rijnland": "rijnland_crossings_v05.gpkg",
-    "Rivierenland": "wsrl_crossings_v06.gpkg",
-    "Scheldestromen": "scheldestromen_crossings_v02.gpkg",
-    "SchielandendeKrimpenerwaard": "hhsk_crossings_voor_profielen_met_OG_hydroobjecten.gpkg",
-    "WetterskipFryslan": "wetterskip_crossings_v06.gpkg",
-    "Zuiderzeeland": "zzl_crossings_v05.gpkg",
-}
-
-
 @dataclass(frozen=True)
 class WaterBoardPaths:
     """Paths of the input and output of one water board in the peilbeheerst pipeline."""
@@ -77,6 +62,8 @@ class WaterBoardPaths:
     cloud: CloudStorage
     waterschap: str
     base_model_versie: str
+    # water lines in the format of the Top10NL beyond it, such as those of Germany in GSK3E
+    extra_waterways: tuple[Path, ...] = ()
 
     @property
     def base_model_toml(self) -> Path:
@@ -110,7 +97,8 @@ class WaterBoardPaths:
 
     @property
     def crossings(self) -> Path:
-        return settings.ribasim_nl_data_dir / self.waterschap / "verwerkt/Crossings" / CROSSINGS[self.waterschap]
+        """The crossings, with the culverts, see `pipeline/00c_parse_crossings.py`."""
+        return settings.ribasim_nl_data_dir / self.waterschap / "verwerkt/crossings.gpkg"
 
     @property
     def bgt_water(self) -> Path:
@@ -119,6 +107,11 @@ class WaterBoardPaths:
     @property
     def top10nl(self) -> Path:
         return settings.ribasim_nl_data_dir / "Basisgegevens/Top10NL/top10nl_Compleet.gpkg"
+
+    @property
+    def waterways(self) -> list[Path]:
+        """The water lines that complement the hydro-objects, see `ribasim_nl.network_snapping.snap_model`."""
+        return [self.top10nl, *self.extra_waterways]
 
     def model_dir(self, stage: Literal["feedback", "profiles", "forcing"]) -> Path:
         """Directory of the model written by a pipeline stage."""
@@ -167,7 +160,6 @@ def check_basin_meta_categorie(model: Model) -> None:
 
 def keep_model_supply_basins(processor: RibasimFeedbackProcessor, model: Model) -> None:
     """Keep only the Basins of the model in the aanvoer settings of the feedback form, for `set_aanvoer_flags`."""
-    assert model.basin.node is not None and model.basin.node.df is not None
     basin_ids = set(model.basin.node.df.index)
     processor._basin_aanvoer_on = tuple(n for n in (processor.basin_aanvoer_on or ()) if n in basin_ids)
     processor._basin_aanvoer_off = tuple(n for n in (processor.basin_aanvoer_off or ()) if n in basin_ids)
@@ -217,7 +209,7 @@ def set_manning_resistance_outside_bergend(model: Model, length: float, manning_
     The ManningResistance nodes of storing basins are parametrized by their area in `set_basin_profiles`.
     """
     static_df = model.manning_resistance.static.df
-    assert static_df is not None and model.link.df is not None
+    assert static_df is not None
     basin_node_df = model.filter_nodes("Basin")
     bergend_basin_ids = basin_node_df.index[basin_node_df["meta_categorie"] == "bergend"]
     link_df = model.link.df
@@ -374,10 +366,16 @@ def preserve_connector_meta(model: Model, method: Literal["merge", "combine_firs
         )
 
 
-def write_and_run_forcing_model(model: Model, paths: WaterBoardPaths) -> None:
+def write_and_run_forcing_model(
+    model: Model, paths: WaterBoardPaths, *, routing_areas: dict[int, shapely.Geometry] | None = None
+) -> None:
     """Write and run the forcing model and its steady state regression variants, and check the results.
 
     See `finish_regional_model`, which snaps the model to the hydro-objects of the profile generation.
+
+    :param model: model with forcing
+    :param paths: paths of the water board
+    :param routing_areas: per Basin, an area beyond its basin area in which it is routed, see `snap_to_network`
     """
     check_basin_meta_categorie(model)
     bound_supply_inflows(model)
@@ -389,7 +387,8 @@ def write_and_run_forcing_model(model: Model, paths: WaterBoardPaths) -> None:
             paths.profielen_dir,
             crossings_path=paths.crossings,
             water_path=paths.bgt_water,
-            top10nl_path=paths.top10nl,
+            waterway_paths=paths.waterways,
+            routing_areas=routing_areas,
         )
         return junctionify(model)
 
@@ -398,5 +397,6 @@ def write_and_run_forcing_model(model: Model, paths: WaterBoardPaths) -> None:
         paths.model_dir("forcing") / "ribasim.toml",
         paths.waterschap,
         snap=snap,
+        read_lines=line_reader(paths.waterways, read_hydro_objects(paths.profielen_dir)),
         steady_state_regression=True,
     )
