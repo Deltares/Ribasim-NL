@@ -1,8 +1,16 @@
 import geopandas as gpd
+import numpy as np
 import shapely
 from ribasim import Node
 from ribasim.nodes import basin, outlet
-from ribasim_nl.network_snapping import route_basin_links, route_over_water, snap_to_network
+from ribasim_nl.network_snapping import (
+    _BasinNetwork,
+    _WaterRaster,
+    read_lake_waterways,
+    route_basin_links,
+    route_over_water,
+    snap_to_network,
+)
 from shapely.geometry import LineString, Point, box
 
 from ribasim_nl import Model
@@ -57,6 +65,68 @@ def test_route_over_water():
     assert shapely.LineString(coords).difference(water.buffer(10)).length <= 50
     # crossing much land is not accepted
     assert route_over_water(Point(10, 50), {1: Point(990, 150)}, box(0, 0, 500, 100), area) == {}
+
+
+def test_connect_over_water():
+    # a fairway, and two short ones far from it, which are closer to each other
+    lines = [LineString([(0, 0), (1000, 0)]), LineString([(0, 600), (100, 600)]), LineString([(0, 700), (100, 700)])]
+    water = box(-10, -10, 1010, 710)
+    network = _BasinNetwork(lines, [True, True, True])
+    network.bridge_gaps(2.0, water, 500.0)
+    assert len(set(network.component)) == 2
+    network.connect_over_water(water)
+    assert len(set(network.component)) == 1
+    assert network.graph.has_edge((0.0, 600.0), (0.0, 0.0))
+    # not over land
+    network = _BasinNetwork(lines, [True, True, True])
+    network.connect_over_water(box(-10, -10, 1010, 300).union(box(-10, 550, 1010, 710)))
+    assert len(set(network.component)) == 3
+
+
+def lake_with_island() -> tuple[shapely.Geometry, shapely.Geometry]:
+    """A lake with an island of 80 by 100 m, and the area around it."""
+    water = box(0, -100, 1000, 400).difference(box(440, 50, 520, 150))
+    return water, box(-10, -110, 1010, 410)
+
+
+def test_attach_straight():
+    water, area = lake_with_island()
+    raster = _WaterRaster(water, area, land_cost=20.0, max_cells=100_000)
+    lines = np.array([LineString([(0, 0), (1000, 0)])])
+    points = {1: Point(600, 300), 2: Point(480, 250), 3: Point(480, 100)}
+    attached = raster.attach_straight(lines, points, max_land=10.0)
+    # 2 is behind the island, so it branches off the line to 1, which is attached first, and 3 is on the island
+    assert attached == {1: [(600, 0), (600, 250), (600, 300)], 2: [(600, 0), (600, 250), (480, 250)]}
+    # a line does not branch off at the end of another one, where it would pass through that point
+    attached = raster.attach_straight(lines, {1: Point(600, 300), 2: Point(480, 350)}, max_land=10.0)
+    assert attached == {1: [(600, 0), (600, 300)]}
+
+
+def test_route_basin_links_open_water():
+    water, area = lake_with_island()
+    lines = [LineString([(0, 0), (1000, 0)])]
+    connectors = {1: Point(600, 300), 2: Point(480, 250)}
+    kwargs = {"water": water, "area": area, "max_land": 10.0}
+    _, routes = route_basin_links(Point(100, 50), connectors, lines, [True], open_water=True, **kwargs)
+    assert routes == {
+        1: [(100, 50), (100, 0), (600, 0), (600, 250), (600, 300)],
+        2: [(100, 50), (100, 0), (600, 0), (600, 250), (480, 250)],
+    }
+    # else they are routed along the least-cost paths over water, around the island
+    _, routes = route_basin_links(Point(100, 50), connectors, lines, [True], **kwargs)
+    assert set(routes) == {1, 2}
+    assert shapely.LineString(routes[2]).intersection(box(450, 60, 510, 140)).is_empty
+
+
+def test_read_lake_waterways(tmp_path):
+    """Fairways that cross each other and the main route are split there, to connect them."""
+    path = tmp_path / "fairway.gpkg"
+    fairways = [LineString([(0, 0), (100, 0)]), LineString([(50, -50), (50, 50)])]
+    gpd.GeoDataFrame(geometry=fairways, crs="EPSG:28992").to_file(path)
+    main_route = gpd.GeoDataFrame(geometry=[LineString([(0, 20), (100, 20)])], crs="EPSG:28992")
+    waterways = read_lake_waterways(path, box(-10, -60, 110, 60), main_route)
+    assert waterways["main-route"].all()
+    assert sorted(waterways.length.round(6).tolist()) == [20, 30, 50, 50, 50, 50, 50]
 
 
 def test_route_basin_links_detour():

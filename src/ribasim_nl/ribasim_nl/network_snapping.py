@@ -190,6 +190,37 @@ class _BasinNetwork:
                 self.graph.add_edge(node, target, weight=shapely.LineString(gap).length, coords=gap, main=False)
         self._index()
 
+    def connect_over_water(self, water: shapely.Geometry) -> None:
+        """Connect the other parts of the network to the longest one, by the shortest straight lines over water.
+
+        On open water, such as a lake, waterways can cross or end without a common point, while any of them can be
+        reached from another one.
+        """
+        water = shapely.buffer(water, 1.0)
+        shapely.prepare(water)
+        while True:
+            lengths = np.bincount(self.component, weights=shapely.length(self.geometries))
+            longest = np.flatnonzero(self.component == np.argmax(lengths))
+            others = np.flatnonzero(self.component != np.argmax(lengths))
+            if len(others) == 0:
+                return
+            # the shortest line from each edge of another part to the longest part
+            gaps = shapely.shortest_line(self.geometries[others], shapely.union_all(self.geometries[longest]))
+            over_water = [i for i in np.argsort(shapely.length(gaps), kind="stable") if water.contains(gaps[i])]
+            if not over_water:
+                return
+            gap = gaps[over_water[0]]
+            start, end = shapely.get_point(gap, 0), shapely.get_point(gap, -1)
+            requests: dict[typing.Hashable, tuple[shapely.Point, int]] = {
+                0: (start, int(others[over_water[0]])),
+                1: (end, self.nearest_edge(end, longest)),
+            }
+            attached = self.split(requests)
+            a, b = attached[0], attached[1]
+            if a != b:
+                self.graph.add_edge(a, b, weight=shapely.LineString([a, b]).length, coords=[a, b], main=False)
+                self._index()
+
     def path_coords(self, path: list[Coord]) -> list[Coord]:
         """Coordinates along a path of graph nodes."""
         coords = [path[0]]
@@ -227,6 +258,7 @@ def route_basin_links(
     max_land: float = MAX_LAND,
     max_straight_line_ratio: float = MAX_STRAIGHT_LINE_RATIO,
     min_routed_fraction: float = 0.5,
+    open_water: bool = False,
 ) -> tuple[shapely.Point, dict[int, list[Coord]]]:
     """Route the links between a Basin node and its connector nodes along the hydro-objects in the basin.
 
@@ -234,8 +266,13 @@ def route_basin_links(
     if the gap is small or crossed over `water`, see `_BasinNetwork.bridge_gaps`. Then only the longest connected part
     of the network is used. The Basin node is attached to its nearest main route hydro-object in this part (if any),
     and each connector node to its nearest hydro-object within `max_attach_distance`. Connector nodes farther away are
-    attached over the `water` within `area` instead, crossing at most `max_land` of land, see `_WaterRaster`. All
-    routes follow the shortest paths from the Basin node, such that routes share their common parts exactly.
+    attached over the `water` within `area` instead, along the least-cost path over water that crosses at most
+    `max_land` of land, see `_WaterRaster`. All routes follow the shortest paths from the Basin node, such that routes
+    share their common parts exactly.
+
+    If the `water` is `open_water`, such as a lake, the other parts of the network are first connected to the longest
+    one over it, see `_BasinNetwork.connect_over_water`, and connector nodes far from the network are attached by
+    straight lines where possible, see `_WaterRaster.attach_straight`.
 
     If `basin_area` is given and contains the attachment point of the Basin node, and at least `min_routed_fraction`
     of the links can be routed from there, the Basin node is moved there. A route is not used if it is not less than
@@ -256,6 +293,7 @@ def route_basin_links(
     :param max_land: maximum length of land crossed by a route over water
     :param max_straight_line_ratio: maximum ratio between route length and straight line length
     :param min_routed_fraction: minimum fraction of the links that can be routed to move the Basin node
+    :param open_water: whether the `water` is open water, such as a lake
 
     :return: the (possibly moved) location of the Basin node, and per routed connector key the coordinates from the
         Basin node to the connector node
@@ -275,6 +313,8 @@ def route_basin_links(
     if culverts:
         network.add_culverts(culverts, culvert_snap)
     network.bridge_gaps(max_gap, water, max_water_gap)
+    if open_water and water is not None:
+        network.connect_over_water(water)
 
     # use the longest connected part of the network, typically the main waterway
     lengths = np.bincount(network.component, weights=shapely.length(network.geometries))
@@ -285,7 +325,7 @@ def route_basin_links(
     to_attach: dict[typing.Hashable, tuple[shapely.Point, int]] = {
         -1: (basin_point, network.nearest_edge(basin_point, main if len(main) > 0 else candidates))
     }
-    far = {}
+    far: dict[typing.Hashable, shapely.Point] = {}
     for key, point in connectors.items():
         edge = network.nearest_edge(point, candidates)
         distance = network.geometries[edge].distance(point)
@@ -298,14 +338,17 @@ def route_basin_links(
     water_coords: dict[typing.Hashable, list[Coord]] = {}
     if use_water and far:
         raster = _WaterRaster(water, area, land_cost=20.0, max_cells=1_000_000)
+        if open_water:
+            water_coords = raster.attach_straight(network.geometries[candidates], far, max_land)
+            far = {key: point for key, point in far.items() if key not in water_coords}
         sources = [int(c) for c in np.flatnonzero(raster.rasterize(list(network.geometries[candidates])).ravel())]
-        if sources:
+        if sources and far:
             paths = raster.paths(sources, {key: raster.cell_of(point) for key, point in far.items()})
             paths = {key: path for key, path in paths.items() if raster.land(path) <= max_land}
-            water_coords = raster.coords(paths)
-            for key, coords in water_coords.items():
-                start = shapely.Point(coords[0])
-                to_attach[("water", key)] = (start, network.nearest_edge(start, candidates))
+            water_coords |= raster.coords(paths)
+        for key, coords in water_coords.items():
+            start = shapely.Point(coords[0])
+            to_attach[("water", key)] = (start, network.nearest_edge(start, candidates))
     attached = network.split(to_attach)
     anchor = attached.pop(-1)
     paths = nx.single_source_dijkstra_path(network.graph, anchor, weight="weight")
@@ -400,6 +443,73 @@ class _WaterRaster:
     def land(self, path: list[int]) -> float:
         """Length of land crossed by a path, without its ends."""
         return float((~self.wet[path[1:-1]]).sum() * self.cell)
+
+    def land_along(self, line: shapely.LineString) -> float:
+        """Length of land crossed by a straight line, like `land` without the cells of its ends, outside the raster too."""
+        # sample at half the cell size, such that every cell crossed is sampled
+        n = int(np.ceil(2 * line.length / self.cell)) + 1
+        xy = shapely.get_coordinates(shapely.line_interpolate_point(line, np.linspace(0.0, 1.0, n), normalized=True))
+        rows, cols = (np.asarray(i) for i in rasterio.transform.rowcol(self.transform, xy[:, 0], xy[:, 1]))
+        inside = (rows >= 0) & (rows < self.nrow) & (cols >= 0) & (cols < self.ncol)
+        cells = np.where(inside, rows * self.ncol + cols, -1)
+        inner = ~np.isin(cells, [cell for cell in (cells[0], cells[-1]) if cell >= 0])
+        wet = inside & self.wet[np.where(inside, cells, 0)]
+        return float((inner & ~wet).sum() * line.length / max(n - 1, 1))
+
+    def attach_straight(
+        self, lines: np.ndarray, points: dict[typing.Hashable, shapely.Point], max_land: float
+    ) -> dict[typing.Hashable, list[Coord]]:
+        """Attach points to lines by straight lines that cross at most `max_land` of land, see `land_along`.
+
+        Each point is attached from the nearest point of the lines, or of the straight lines attached before, from which
+        that is possible. The points nearest to these are attached first, such that points close together share a line.
+        They branch off a line attached before at the foot of their perpendicular, not at its end, where it would pass
+        through the point attached before. Where a line branches off, a point is inserted in all lines along that
+        segment, such that they share it, as in `ribasim_nl.flow_paths.attach_to_tree`.
+
+        :param lines: the lines to attach to
+        :param points: the points to attach, by key
+        :param max_land: maximum length of land crossed
+
+        :return: per key of an attached point, the coordinates from the nearest point of the lines to the point
+        """
+        attached: dict[typing.Hashable, list[Coord]] = {}
+        remaining = dict(points)
+        while remaining:
+            # the segments of the lines attached before, with the coordinate they may not branch off at
+            segments = list(
+                dict.fromkeys((a, b) for coords in attached.values() for a, b in itertools.pairwise(coords))
+            )
+            ends = {coords[-1] for coords in attached.values()}
+            candidates = np.concatenate([lines, np.array([shapely.LineString(s) for s in segments], dtype=object)])
+            best: tuple[float, typing.Hashable, Coord, int] | None = None
+            for key, point in remaining.items():
+                shortest = shapely.shortest_line(candidates, point)
+                lengths = shapely.length(shortest)
+                for i in np.argsort(lengths, kind="stable"):
+                    if best is not None and lengths[i] >= best[0]:
+                        break
+                    start = typing.cast(Coord, tuple(shapely.get_coordinates(shortest[i])[0].tolist()))
+                    if i >= len(lines) and start in ends:
+                        continue
+                    if self.land_along(shortest[i]) <= max_land:
+                        best = (float(lengths[i]), key, start, int(i))
+                        break
+            if best is None:
+                break
+            _, key, start, i = best
+            point = remaining.pop(key)
+            prefix = [start]
+            if i >= len(lines):
+                a, b = segments[i - len(lines)]
+                for coords in attached.values():
+                    for k in range(len(coords) - 1):
+                        if (coords[k], coords[k + 1]) == (a, b) and start not in (a, b):
+                            coords.insert(k + 1, start)
+                            break
+                prefix = next(coords[: coords.index(start) + 1] for coords in attached.values() if start in coords)
+            attached[key] = _dedupe([*prefix, (point.x, point.y)])
+        return attached
 
     def coords(self, paths: dict[typing.Hashable, list[int]]) -> dict[typing.Hashable, list[Coord]]:
         """Simplified coordinates of paths that start at the sources, the same where paths share cells.
@@ -695,6 +805,29 @@ def read_main_waterways(
             )
         )
     return gpd.GeoDataFrame(pd.concat(waterways, ignore_index=True))
+
+
+def read_lake_waterways(
+    fairway_path: pathlib.Path, mask: shapely.Geometry, main_route: gpd.GeoDataFrame
+) -> gpd.GeoDataFrame:
+    """The fairways within a mask, such as those of OpenStreetMap, and the lines of a main route, all as main route.
+
+    On open water the fairways cross each other and the main route without a common point, so the lines are split
+    where they cross, to connect them.
+
+    :param fairway_path: GeoPackage with the fairways
+    :param mask: area to read
+    :param main_route: lines of the main route, such as a network of main waterways
+
+    :return: the waterways, with a boolean "main-route" column
+    """
+    fairways = gpd.read_file(fairway_path, mask=mask)
+    assert fairways.crs == main_route.crs, f"Fairways in {fairways.crs}, main route in {main_route.crs}"
+    lines = main_route.geometry.to_numpy()
+    lines = np.concatenate([fairways.geometry.to_numpy(), lines[shapely.intersects(lines, mask)]])
+    parts = shapely.get_parts(shapely.union_all(shapely.force_2d(lines)))
+    parts = parts[shapely.get_type_id(parts) == shapely.GeometryType.LINESTRING]
+    return gpd.GeoDataFrame({"main-route": np.ones(len(parts), dtype=bool)}, geometry=parts, crs=main_route.crs)
 
 
 def straight_flow_link_ids(model: Model) -> list[int]:

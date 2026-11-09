@@ -49,4 +49,6 @@ Elsewhere it points to the side that can drain the most, in the `afvoer` control
 The gravity controlled models get the same layout step at the end of their dynamic stage, and `ribasim_nl.validation.validate_model` checks it.
 It also checks that the Basin areas are valid and have no slivers: parts and holes that are on average at most 1 mm wide, which draw as lines on the map.
 `Model.clean_basin_area` fixes both in the regional models and the Rijkswaterstaat model.
-The [coupling](couple.qmd) tidies the links between models in the same way, and first rebuilds the routes of the Basins of Rijkswaterstaat along Top10NL.
+The [coupling](couple.qmd) tidies the links between models in the same way, and first rebuilds the routes of the Basins of Rijkswaterstaat along Top10NL, as the Rijkswaterstaat model does, see `ribasim_nl.flow_paths.rebuild_rws_junction_trees`.
+In the IJsselmeer, Markermeer, IJmeer and Gouwzee, the network of Rijkswaterstaat only has a few straight lines, so there the routes follow the fairways of OpenStreetMap ([#1010](https://github.com/Deltares/Ribasim-NL/issues/1010)).
+Nodes on the shore branch off straight from the nearest point of a fairway from which the line crosses at most 100 m of land, and nodes close together share such a line.
