@@ -59,6 +59,8 @@ export interface ObservationResults extends FrameSet {
   min_days: number;
   /** The fit over the whole run: node_id, name, variable, days, nse, kge and bias */
   metrics: FileEntry;
+  /** The flow links whose total flow is the simulated flow rate of each Observation node: node_id and link_id */
+  links?: FileEntry;
 }
 
 export interface Results {
@@ -223,7 +225,10 @@ function fileEntries(manifest: Manifest): FileEntry[] {
   if (results) {
     entries.push(results.basin.by_id, results.basin.by_time, results.flow.by_id, results.flow.by_time);
     if (results.concentration) entries.push(results.concentration.by_id, results.concentration.by_time);
-    if (results.observation) entries.push(results.observation.by_time, results.observation.metrics);
+    if (results.observation) {
+      const { by_time, metrics, links } = results.observation;
+      entries.push(by_time, metrics, ...(links ? [links] : []));
+    }
     if (results.control) entries.push(results.control);
   }
   return entries;

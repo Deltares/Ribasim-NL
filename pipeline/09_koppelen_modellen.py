@@ -807,19 +807,17 @@ def rws_basins_between_models(model: Model) -> list[int]:
     return sorted(ends & set(rws_basins))
 
 
-def tidy_coupling_layout(model: Model, network: Network) -> None:
-    """Tidy the layout of the coupling: the layout of the models is already tidy, see `tidy_layout`.
+def merge_coupling_trees(model: Model, network: Network) -> None:
+    """Route the links between models through the Junction trees of their Basins, like in the models.
 
     The Rijkswaterstaat Basins with links from other models get the same routes as in the hws model, see
     `rebuild_junction_trees_along_top10nl`, with branches to these links. The links between models that share routes
     are merged into Junctions, see `junctionify`, and the inflows and outflows of each Basin share one Junction tree,
-    see `merge_basin_trees`. Then nodes on top of each other are moved apart, and links that still overlap are offset.
+    see `merge_basin_trees`.
     """
     rebuild_junction_trees_along_top10nl(model, rws_basins_between_models(model), top10nl_gpkg, main_route(network))
     junctionify(model)
     merge_basin_trees(model, line_reader([top10nl_gpkg], main_route(network)))
-    separate_nodes(model)
-    resolve_overlaps(model, max_iterations=10)
 
 
 def remove_invalid_topology_nodes(model: Model) -> None:
@@ -1049,7 +1047,13 @@ def couple_model(toml_file: Path) -> None:
     change_routes(model)
     # series measured on links between models can only be observed in the coupled model
     link_observations(model)
-    tidy_coupling_layout(model, network)
+    merge_coupling_trees(model, network)
+    # and series that combine the inflows and outflows of a Basin through its merged tree
+    link_observations(model)
+    # the layout of the models is already tidy, see `tidy_layout`, so only move apart nodes on top of each other, and
+    # offset links that still overlap
+    separate_nodes(model)
+    resolve_overlaps(model, max_iterations=10)
     coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)
     run_configured_coupling_level_check(coupled_toml_file)
     apply_peilbeheer(coupled_toml_file)

@@ -15,6 +15,8 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+from ribasim_nl.flow_paths import Routes
+
 # Observations need this many days with both a measured and a simulated value to be compared
 MIN_COMPARED_DAYS = 365
 
@@ -29,6 +31,8 @@ class ObservedSeries:
     observed_node_id: int
     observed: pd.Series
     simulated: pd.Series
+    # the flow links whose total flow is the simulated flow rate, see `Routes.flow_rate_links`
+    link_ids: tuple[int, ...] = ()
 
 
 def compare(observed: pd.Series, simulated: pd.Series) -> dict[str, float]:
@@ -65,14 +69,15 @@ def read_table(con: sqlite3.Connection, table: str, columns: str) -> pd.DataFram
 def observed_and_simulated(database: Path, results_dir: Path) -> list[ObservedSeries]:
     """The measured and simulated values of each observed variable of each Observation node, by node ID and variable.
 
-    Like in the model viewer, the simulated flow rate of a node is its total outflow, which for a Junction is the
-    flow through it, and other variables are those of an observed Basin. Observation nodes without a link to the
-    node they observe are left out.
+    The simulated flow rate of a node is that of Ribasim, see `ribasim_nl.flow_paths.Routes.flow_rate_links`: its
+    total outflow, but for a Junction of a Basin tree the net flow through it. Other variables are those of an observed
+    Basin. Observation nodes without a link to the node they observe are left out.
     """
     with closing(sqlite3.connect(database)) as con:
         node = read_table(con, "Node", "node_id, name, node_type").set_index("node_id")
         link = read_table(con, "Link", "link_id, from_node_id, to_node_id, link_type")
         observed_values = read_table(con, "Observation / time", "node_id, variable, time, value")
+        routed = read_table(con, "Junction / static", "node_id")["node_id"].tolist()
     observed_values["time"] = pd.to_datetime(observed_values["time"])
 
     observation_links = link[link["link_type"] == "observation"]
@@ -80,11 +85,15 @@ def observed_and_simulated(database: Path, results_dir: Path) -> list[ObservedSe
     assert len(observed) == len(observation_links), "Observation nodes must observe one node"
     node_types = dict(zip(node.index, node["node_type"], strict=True))
     names = dict(zip(node.index, node["name"], strict=True))
-    flow_links = link[link["link_type"] == "flow"]
-    outflows = flow_links.groupby("from_node_id")["link_id"].agg(list)
+    routes = Routes.from_tables(link[link["link_type"] == "flow"].set_index("link_id"), node["node_type"], routed)
+    flow_rate_links = {
+        node_id: tuple(routes.flow_rate_links(node_id))
+        for node_id in set(observed.values())
+        if node_types[node_id] != "Basin"
+    }
 
     flow_rate = pd.DataFrame()
-    link_ids = sorted({link_id for node_id in observed.values() for link_id in outflows.get(node_id, [])})
+    link_ids = sorted({link_id for links in flow_rate_links.values() for link_id in links})
     if link_ids:
         with xr.open_dataset(results_dir / "flow.nc") as ds:
             flow_rate = ds["flow_rate"].sel(link_id=link_ids).to_pandas()
@@ -96,11 +105,13 @@ def observed_and_simulated(database: Path, results_dir: Path) -> list[ObservedSe
         if observation_id not in observed:
             continue
         node_id = observed[observation_id]
+        link_ids: tuple[int, ...] = ()
         if node_types[node_id] == "Basin":
             with xr.open_dataset(results_dir / "basin.nc") as ds:
                 simulated = ds[variable].sel(node_id=node_id).to_series()
         elif variable == "flow_rate":
-            simulated = flow_rate[outflows[node_id]].sum(axis=1)
+            link_ids = flow_rate_links[node_id]
+            simulated = flow_rate[list(link_ids)].sum(axis=1)
         else:
             raise ValueError(f"Cannot compare the {variable} of {node_types[node_id]} #{node_id}")
         series.append(
@@ -111,6 +122,7 @@ def observed_and_simulated(database: Path, results_dir: Path) -> list[ObservedSe
                 observed_node_id=node_id,
                 observed=values.set_index("time")["value"],
                 simulated=simulated,
+                link_ids=link_ids,
             )
         )
     return series

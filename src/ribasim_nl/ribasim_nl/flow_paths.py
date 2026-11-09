@@ -162,6 +162,15 @@ class Routes:
         """The link of a Junction of a Basin tree towards its Basin."""
         return self._parent.get(node_id)
 
+    def flow_rate_links(self, node_id: int) -> list[int]:
+        """The flow links whose total flow is the flow rate of a node, as in Ribasim.
+
+        That is the outflow of a node, but for a Junction of a Basin tree the flow of its link towards the Basin, in
+        the direction of that link: the net flow of the nodes beyond it, see `subtree`.
+        """
+        parent_link = self._parent.get(node_id)
+        return [parent_link] if parent_link is not None else self.links_at(node_id, upstream=False)
+
     def is_tree_link(self, link_id: int) -> bool:
         """Whether a link connects a Junction of a Basin tree with its Basin, or with another Junction of the tree."""
         return link_id in self._tree_links

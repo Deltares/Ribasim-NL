@@ -13,7 +13,7 @@ import {
 import { describeResult, statusLabel } from "./diff";
 import { LevelDiagram, type LevelSeries, type LevelSide } from "./levels";
 import { linkLabel, type Network, pastJunctions } from "./network";
-import { fitFacts, loadFits, type Fits } from "./observations";
+import { fitFacts, loadFits, loadObservedLinks, type Fits } from "./observations";
 import { addSubstances } from "./timebar";
 
 export type Selection = { kind: "node" | "link"; id: number };
@@ -703,19 +703,19 @@ export class Panel {
   }
 
   /**
-   * The simulated values of a variable of an observed node in the results of a model. The simulated flow rate of a
-   * node is its total outflow, which for a Junction is the flow through it.
+   * The simulated values of a variable of an observed node in the results of a model. The simulated flow rate is the
+   * total flow of `links`, see `ribasim_nl.goodness_of_fit`.
    */
   private async simulatedRows(
     results: Manifest["results"],
     observedType: string,
     observedId: number,
     variable: string,
-    outflows: number[],
+    links: number[],
   ): Promise<Row[]> {
     if (results && observedType === "Basin") return readRowsById(results.basin.by_id, "node_id", observedId);
-    if (!results || variable !== "flow_rate" || outflows.length === 0) return [];
-    const series = await Promise.all(outflows.map((id) => readRowsById(results.flow.by_id, "link_id", id)));
+    if (!results || variable !== "flow_rate" || links.length === 0) return [];
+    const series = await Promise.all(links.map((id) => readRowsById(results.flow.by_id, "link_id", id)));
     const total = new Map<number, Row>();
     for (const row of series.flat()) {
       const time = (row.time as Date).getTime();
@@ -737,19 +737,24 @@ export class Panel {
     const observedType = network.nodeType[row];
     const results = this.manifest.results;
     const base = this.comparison?.base.results;
-    const [observations, fits, baseFits] = await Promise.all([
+    const [observations, fits, baseFits, links, baseLinks] = await Promise.all([
       this.tableRows("Observation", "time", nodeId),
       results?.observation ? loadFits(results.observation) : null,
       base?.observation ? loadFits(base.observation) : null,
+      results?.observation ? loadObservedLinks(results.observation) : null,
+      base?.observation ? loadObservedLinks(base.observation) : null,
     ]);
-    const outflows = Array.from(
-      network.linkId.filter(
-        (_, linkRow) => network.linkType[linkRow] === "flow" && network.fromNodeId[linkRow] === observedId,
-      ),
-    );
-    // Links are renumbered and can lead to renumbered nodes, so the outflows of the observed node, which keeps its
-    // id, are those of the base model
-    const baseOutflows = network.baseOutflows.get(observedId) ?? [];
+    // Without the exported links, the simulated flow rate is the total outflow of the observed node
+    const outflows =
+      links?.get(nodeId) ??
+      Array.from(
+        network.linkId.filter(
+          (_, linkRow) => network.linkType[linkRow] === "flow" && network.fromNodeId[linkRow] === observedId,
+        ),
+      );
+    // Links are renumbered and can lead to renumbered nodes, so without the exported links of the base model, the
+    // outflows of the observed node, which keeps its id, are those of the base model
+    const baseOutflows = baseLinks?.get(nodeId) ?? network.baseOutflows.get(observedId) ?? [];
     const columns = ["observed", "simulated", ...(base ? [`simulated${BASE}`] : [])];
     const variables = [...new Set(observations.map((observation) => String(observation.variable)))].sort((a, b) => a.localeCompare(b));
     if (variables.length === 0) return ["No observed values."];
