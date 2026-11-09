@@ -437,7 +437,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.export_observations">export_observations</h3>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>webmap.export_observations(database, results_dir, times, output_dir)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Export how well the results fit the measurements of the Observation nodes, see <code>ribasim_nl.goodness_of_fit</code>.</p>
-<p>The fit of each observed variable over the whole run is written as a table, and the difference simulated - observed at each of the <code>times</code> for the map, which is NaN where either value is missing. Returns None if no Observation node is compared.</p>
+<p>The fit of each observed variable over the whole run is written as a table, and the difference simulated - observed at each of the <code>times</code> for the map, which is NaN where either value is missing. The flow links whose total flow is the simulated flow rate of each Observation node are written for its chart in the panel. Returns None if no Observation node is compared.</p>
 </section>
 <section id="ribasim_nl.webmap.export_results" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.export_results">export_results</h3>

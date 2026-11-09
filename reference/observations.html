@@ -207,7 +207,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h1>observations</h1>
 <p><code>observations</code></p>
 <p>Add Observation nodes with measured discharges to a model.</p>
-<p>The measurement series and the model links they are compared with are taken from the koppeltabel that is also used by <code>ribasim_nl.analyse_results</code>. Each series gets an Observation node at the measurement location, with the measured values. If the series is measured on a single link, the Observation node observes the <code>flow_rate</code> of the connector node of that link, or else of its Junction. The <code>flow_rate</code> of a Junction is the flow through it, the sum of its outflows. These nodes are found by their type and location, which do not change when links are renumbered. Other Observation nodes are not linked, as a reminder; <code>meta_koppeling</code> says why.</p>
+<p>The measurement series and the model links they are compared with are taken from the koppeltabel that is also used by <code>ribasim_nl.analyse_results</code>. Each series gets an Observation node at the measurement location, with the measured values. If the series is measured on a single link, the Observation node observes the <code>flow_rate</code> of the connector node of that link. If it adds and subtracts the flows of multiple links, it observes a Junction with that flow, the net flow of the nodes beyond its link towards its Basin, see <code>ribasim_nl.flow_paths.Routes.flow_rate_links</code>. These nodes are found by their type and location, which do not change when links are renumbered. Other Observation nodes are not linked, as a reminder; <code>meta_koppeling</code> says why.</p>
+<p>Series are linked before the Basin trees of a model are merged, see <code>ribasim_nl.flow_paths.merge_basin_trees</code>, which keeps the observed Junctions, and the others again after, see <code>link_observations</code>, as a merged tree can combine the inflows and outflows of a Basin.</p>
 <section id="classes" class="level2">
 <h2 class="anchored" data-anchor-id="classes">Classes</h2>
 <table class="caption-top table">
@@ -390,17 +391,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.observations.link_observations" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.observations.link_observations">link_observations</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>observations.link_observations(model, tolerance<span class="op">=</span><span class="fl">1.0</span>, moved_tolerance<span class="op">=</span><span class="fl">50.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>observations.link_observations(</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    authority<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    tolerance<span class="op">=</span><span class="fl">1.0</span>,</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    moved_tolerance<span class="op">=</span><span class="fl">50.0</span>,</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Link the Observation nodes that are not linked yet, for instance in a model coupled from other models.</p>
-<p>Series can be measured on links between models, of which only the coupled model has all nodes.</p>
+<p>Series can be measured on links between models, of which only the coupled model has all nodes, or combine inflows and outflows of a Basin, which only a merged Basin tree can, see <code>ribasim_nl.flow_paths.merge_basin_trees</code>. If the observed flow rate has the opposite sign, so do the measured values.</p>
 <section id="parameters-2" class="level4 doc-section doc-section-parameters">
 <h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 13%">
-<col style="width: 6%">
-<col style="width: 70%">
-<col style="width: 9%">
+<col style="width: 10%">
+<col style="width: 8%">
+<col style="width: 73%">
+<col style="width: 7%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -414,16 +420,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td>model</td>
 <td>Model</td>
-<td>Ribasim model with a meta_waterbeheerder column with the authority of each node</td>
+<td>Ribasim model</td>
 <td><em>required</em></td>
 </tr>
 <tr class="even">
+<td>authority</td>
+<td>str | None</td>
+<td>water authority of the Observation nodes as named in the koppeltabel, or else the meta_waterbeheerder of each node</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
 <td>tolerance</td>
 <td>float</td>
 <td>maximum distance between the node to observe in the koppeltabel and in the model</td>
 <td><code>1.0</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>moved_tolerance</td>
 <td>float</td>
 <td>maximum distance to a node that was moved to separate it from other nodes, see <code>_match</code></td>
@@ -461,8 +473,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <table class="caption-top table">
 <colgroup>
 <col style="width: 2%">
-<col style="width: 5%">
-<col style="width: 92%">
+<col style="width: 4%">
+<col style="width: 93%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -475,7 +487,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td></td>
 <td>gpd.GeoDataFrame</td>
-<td>a table with columns MeetreeksC, Aan/Af, negate (whether the measurement has the opposite sign of the flow_rate), ends (the <code>LinkEnd</code> per link, or None if the series is not the sum of the links or a link has no node to observe), koppeling (why ends is None) and geometry of the measurement location</td>
+<td>a table with columns MeetreeksC, Aan/Af, negate (whether the measurement has the opposite sign of the flow_rate), ends (the <code>LinkEnd</code> per link, or None if the series does not add the flows of the links or a link has no node to observe), signs (per link the sign of its flow in the series), koppeling (why ends is None) and geometry of the measurement location</td>
 </tr>
 </tbody>
 </table>

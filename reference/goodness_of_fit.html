@@ -232,7 +232,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    observed_node_id,</span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    observed,</span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    simulated,</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    link_ids<span class="op">=</span>(),</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The measured values of a variable of an Observation node, and the simulated values of the node it observes.</p>
 </section>
 </section>
@@ -303,7 +304,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="ribasim_nl.goodness_of_fit.observed_and_simulated">observed_and_simulated</h3>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>goodness_of_fit.observed_and_simulated(database, results_dir)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The measured and simulated values of each observed variable of each Observation node, by node ID and variable.</p>
-<p>Like in the model viewer, the simulated flow rate of a node is its total outflow, which for a Junction is the flow through it, and other variables are those of an observed Basin. Observation nodes without a link to the node they observe are left out.</p>
+<p>The simulated flow rate of a node is that of Ribasim, see <code>ribasim_nl.flow_paths.Routes.flow_rate_links</code>: its total outflow, but for a Junction of a Basin tree the net flow through it. Other variables are those of an observed Basin. Observation nodes without a link to the node they observe are left out.</p>
 </section>
 <section id="ribasim_nl.goodness_of_fit.read_table" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.goodness_of_fit.read_table">read_table</h3>
