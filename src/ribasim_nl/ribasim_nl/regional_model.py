@@ -20,7 +20,7 @@ from ribasim_nl.flow_paths import merge_basin_trees
 from ribasim_nl.layout import tidy_layout
 from ribasim_nl.model import Model
 from ribasim_nl.network_snapping import LineReader
-from ribasim_nl.observations import add_observations
+from ribasim_nl.observations import add_observations, link_observations
 from ribasim_nl.parametrization.manning_resistance_table import read_manning_water, update_manning_resistance_reach
 from ribasim_nl.performance import write_performance
 from ribasim_nl.ribasim_parametrization import write_steady_state_regression_models
@@ -135,9 +135,10 @@ def finish_regional_model(
     (see `Model.clean_basin_area`), `snap` routes the links along the waterways
     known for the authority, after which the BGT profile of ManningResistances follows their new links (see
     `update_manning_resistance_reach`), the RWZIs discharge on the links into their Basins (see #860), and nodes and links are
-    moved apart. The inflows and outflows of each Basin share one Junction tree, see `merge_basin_trees`. Then the
-    model gets the summer and winter levels of the peilgebieden of the authority, see
-    `ribasim_nl.seasonal_levels`. The results get `performance.xlsx` and `output_controle.gpkg`.
+    moved apart. The inflows and outflows of each Basin share one Junction tree, see `merge_basin_trees`, through
+    which more series can be observed, see `ribasim_nl.observations`. Then the model gets the summer and winter
+    levels of the peilgebieden of the authority, see `ribasim_nl.seasonal_levels`. The results get `performance.xlsx`
+    and `output_controle.gpkg`.
 
     :param model: parametrized model
     :param toml_file: TOML file to write the model to
@@ -154,6 +155,7 @@ def finish_regional_model(
     model = add_observations(model, authority)
     # after the last nodes are added, such that only the IDs of the Junctions change
     merge_basin_trees(model, read_lines)
+    model = link_observations(model, authority)
     model = tidy_layout(model)
 
     model.use_validation = True

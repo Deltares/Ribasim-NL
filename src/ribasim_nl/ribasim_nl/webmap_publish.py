@@ -102,7 +102,9 @@ def manifest_entries(manifest: dict) -> list[dict]:
             for key in ("by_id", "by_time")
         ]
         if "observation" in results:
-            entries += [results["observation"][key] for key in ("by_time", "metrics")]
+            # older exports have no links
+            observation = results["observation"]
+            entries += [observation[key] for key in ("by_time", "metrics", "links") if key in observation]
         if "control" in results:
             entries.append(results["control"])
     return entries

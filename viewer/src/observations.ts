@@ -80,6 +80,32 @@ export function loadFits(results: ObservationResults): Promise<Fits> {
   return fits;
 }
 
+const loadedLinks = new WeakMap<ObservationResults, Promise<Map<number, number[]>>>();
+
+/**
+ * The flow links whose total flow is the simulated flow rate of each Observation node, by its id, loaded once. Older
+ * exports have none.
+ */
+export function loadObservedLinks(results: ObservationResults): Promise<Map<number, number[]>> {
+  let links = loadedLinks.get(results);
+  if (!links) {
+    links = results.links
+      ? readColumns(results.links, ["node_id", "link_id"]).then((table) => {
+          const byNode = new Map<number, number[]>();
+          table.node_id.forEach((id, i) => {
+            const ids = byNode.get(Number(id)) ?? [];
+            ids.push(Number(table.link_id[i]));
+            byNode.set(Number(id), ids);
+          });
+          return byNode;
+        })
+      : Promise.resolve(new Map());
+    links.catch(() => loadedLinks.delete(results));
+    loadedLinks.set(results, links);
+  }
+  return links;
+}
+
 /** A metric of a fit as it is colored, with the bias in percent. */
 function metricValue(fit: Fit | undefined, metric: Exclude<Metric, "difference">): number {
   if (!fit) return Number.NaN;

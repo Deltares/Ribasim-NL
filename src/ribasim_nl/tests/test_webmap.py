@@ -316,6 +316,10 @@ def test_export_observations(tmp_path, observation_run, observed):
     assert metrics["days"].tolist() == [len(observed)] * 2
     assert metrics["nse"].iloc[0] == 1.0
 
+    # The flow rate of Outlet 2 is that of its outflow link, the second link
+    links = pd.read_parquet(observation["links"])
+    assert links.values.tolist() == [[4, 2]]
+
     by_time = pd.read_parquet(observation["by_time"])
     assert by_time.columns.tolist() == ["node_id", "flow_rate", "level"]
     assert by_time["node_id"].tolist()[:2] == [4, 5]

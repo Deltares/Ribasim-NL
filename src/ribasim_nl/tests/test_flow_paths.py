@@ -80,6 +80,13 @@ def test_routes_basin_tree():
     assert routes.subtree(link_ids[(4, 1)]) == ({5}, {2, 3})
     assert simplified_links(model) == {(1, 2), (1, 3), (5, 1)}
     assert set(routes.paths(1)) == set(link_ids)
+    # the flow rate of Junction 4 is the net flow of its link towards the Basin, as in Ribasim, not its outflow
+    assert routes.flow_rate_links(4) == [link_ids[(4, 1)]]
+    assert routes.flow_rate_links(5) == [link_ids[(5, 4)]]
+    # without a Basin it is the outflow
+    flow = pd.DataFrame({"from_node_id": [2, 3, 4, 4], "to_node_id": [4, 4, 5, 6]}, index=[10, 11, 12, 13])
+    node_types = pd.Series(["Outlet", "Outlet", "Junction", "Outlet", "Outlet"], index=[2, 3, 4, 5, 6])
+    assert Routes.from_tables(flow, node_types).flow_rate_links(4) == [12, 13]
 
 
 def test_prune_junction():

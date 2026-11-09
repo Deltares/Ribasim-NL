@@ -85,7 +85,7 @@ For instance, LevelBoundary 1500551 of Delfland couples to Basin 4000298, the Br
 8. **Add user demands** that cross models, such as the Evides drinking water of the Maasvlakte ([#857](https://github.com/Deltares/Ribasim-NL/issues/857)).
 9. **Attach RWZIs** to the routes of Basins that only exist after coupling. For instance, RWZI Stein discharges to the Julianakanaal instead of a Basin of Limburg.
 10. **Link observations** that measure on links between models, which need the coupled network, see `ribasim_nl.observations`.
-11. **Tidy the layout**, see [Layout](layout.qmd).
+11. **Tidy the layout**, see [Layout](layout.qmd), and link the observations that need the merged Junction trees.
 12. **Write the model**, validate it with `validate_ribasim_nl`, and write the links that were added to `link.gpkg`.
 13. **Correct the coupling levels**, see below.
 14. **Apply the [summer and winter levels](seasonal-levels.qmd)** again, without changing the initial state, since the final state of the regional models already follows the seasons.

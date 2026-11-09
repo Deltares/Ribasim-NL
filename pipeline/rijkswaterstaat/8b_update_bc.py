@@ -8,7 +8,7 @@ from ribasim.schemas import FlowBoundaryTimeSchema, LevelBoundaryTimeSchema
 from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.flow_paths import rebuild_junction_trees_along_top10nl
 from ribasim_nl.layout import tidy_layout
-from ribasim_nl.observations import add_observations
+from ribasim_nl.observations import add_observations, link_observations
 from ribasim_nl.regional_model import ENDTIME, STARTTIME, read_lhm_budgets
 from ribasim_nl.rws_kunstwerken import main_route
 from ribasim_nl.set_forcing import SetDynamicForcing
@@ -208,6 +208,8 @@ model = add_observations(model, "Rijkswaterstaat")
 # extends with the links of other models
 network = Network.from_network_gpkg(network_gpkg)
 rebuild_junction_trees_along_top10nl(model, model.basin.node.df.index.tolist(), top10nl_gpkg, main_route(network))
+# and observe series that combine the inflows and outflows of a Basin, through its tree
+model = link_observations(model, "Rijkswaterstaat")
 model = tidy_layout(model)
 model.clean_basin_area()
 

@@ -435,8 +435,9 @@ def export_observations(database: Path, results_dir: Path, times: pd.DatetimeInd
     """Export how well the results fit the measurements of the Observation nodes, see `ribasim_nl.goodness_of_fit`.
 
     The fit of each observed variable over the whole run is written as a table, and the difference simulated -
-    observed at each of the `times` for the map, which is NaN where either value is missing. Returns None if no
-    Observation node is compared.
+    observed at each of the `times` for the map, which is NaN where either value is missing. The flow links whose
+    total flow is the simulated flow rate of each Observation node are written for its chart in the panel. Returns
+    None if no Observation node is compared.
     """
     series = observed_and_simulated(database, results_dir)
     if not series:
@@ -450,6 +451,11 @@ def export_observations(database: Path, results_dir: Path, times: pd.DatetimeInd
     metrics["days"] = metrics["days"].astype("int32")
     metrics_path = output_dir / "results" / "observation_metrics.parquet"
     write_parquet(metrics, metrics_path)
+    links = pd.DataFrame(
+        [(s.node_id, link_id) for s in series for link_id in s.link_ids], columns=["node_id", "link_id"], dtype="int32"
+    ).sort_values(["node_id", "link_id"], kind="stable")
+    links_path = output_dir / "results" / "observation_links.parquet"
+    write_parquet(links, links_path)
 
     ids = np.unique([s.node_id for s in series]).astype("int32")
     rows = {node_id: row for row, node_id in enumerate(ids)}
@@ -479,6 +485,7 @@ def export_observations(database: Path, results_dir: Path, times: pd.DatetimeInd
         "variables": scales,
         "by_time": by_time,
         "metrics": metrics_path,
+        "links": links_path,
     }
 
 
@@ -595,8 +602,8 @@ def export_webmap(toml_path: Path, waterboards_path: Path | None, output_dir: Pa
                 results[name]["by_time"] = entry(results[name]["by_time"])
         times = pd.DatetimeIndex(results["times"])
         if observation := export_observations(database, results_dir, times, output_dir):
-            observation["by_time"] = entry(observation["by_time"])
-            observation["metrics"] = entry(observation["metrics"])
+            for key in ("by_time", "metrics", "links"):
+                observation[key] = entry(observation[key])
             results["observation"] = observation
         if "control" in results:
             results["control"] = entry(results["control"])

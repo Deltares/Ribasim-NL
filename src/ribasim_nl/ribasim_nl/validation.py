@@ -306,6 +306,28 @@ def _flow_demand_capacity_issues(model: "Model") -> list[str]:
     ]
 
 
+# Observation nodes are at the measurement location, near the node they observe; Lobith is 4.8 km from the Rhine boundary
+MAX_OBSERVATION_DISTANCE = 5000.0  # m
+
+
+def _observation_distance_issues(model: "Model") -> list[str]:
+    """Return Observation nodes far from the node they observe, such as a node far along the river, or a typo."""
+    links = model.link.df
+    observation = links[links["link_type"] == "observation"]
+    points = model.node.df.geometry
+    distance = shapely.distance(
+        points.loc[observation["from_node_id"]].to_numpy(), points.loc[observation["to_node_id"]].to_numpy()
+    )
+    far = observation[distance > MAX_OBSERVATION_DISTANCE]
+    if far.empty:
+        return []
+    pairs = sorted(zip(far["from_node_id"].tolist(), far["to_node_id"].tolist(), strict=True))
+    return [
+        f"Observation nodes must be within {MAX_OBSERVATION_DISTANCE:.0f} m of the node they observe; "
+        f"invalid (Observation, observed) node IDs: {pairs}"
+    ]
+
+
 def validate_model(model: "Model", layout: bool = True) -> None:
     """Validate Ribasim-NL conventions and report all issues together.
 
@@ -323,6 +345,7 @@ def validate_model(model: "Model", layout: bool = True) -> None:
         *_manning_resistance_issues(model),
         *_listen_to_junction_issues(model),
         *_flow_demand_capacity_issues(model),
+        *_observation_distance_issues(model),
         *(_layout_issues(model) if layout else []),
     ]
     if issues:

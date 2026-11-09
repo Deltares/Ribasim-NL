@@ -9,6 +9,7 @@ from ribasim_nl.validation import (
     _flow_demand_capacity_issues,
     _listen_to_junction_issues,
     _manning_resistance_issues,
+    _observation_distance_issues,
     _uncontrolled_control_state_issues,
 )
 from shapely.geometry import MultiPolygon, Point, Polygon, box
@@ -110,6 +111,17 @@ def test_manning_resistance_bounds(length, manning_n, valid):
     )
     issues = _manning_resistance_issues(model)
     assert issues == [] if valid else "[1]" in issues[0]
+
+
+def test_observation_distance(model):
+    # Observation 9 measures at Pump 3, Observation 10 at a typo 8.9 km from Pump 4
+    for node_id, point, observed in ((9, Point(15, 15), 3), (10, Point(8910, -10), 4)):
+        model.observation.add(Node(node_id, point))
+        model.link.add(model.observation[node_id], model.pump[observed])
+    assert _observation_distance_issues(model) == [
+        "Observation nodes must be within 5000 m of the node they observe; "
+        "invalid (Observation, observed) node IDs: [(10, 4)]"
+    ]
 
 
 def test_listen_to_junction(model):
