@@ -1,5 +1,6 @@
 """Run the full Delwaq pipeline (generate -> run -> parse) for a Ribasim model."""
 
+import contextlib
 from pathlib import Path
 
 from ribasim.delwaq import generate, parse, run_delwaq
@@ -12,13 +13,16 @@ def compute_delwaq(
     model: Model | Path | str,
     d3d_home: Path | None = None,
     to_input: bool = False,
+    output_path: Path | None = None,
 ) -> Model:
     """Generate, run and parse a Delwaq model for the given Ribasim model.
 
     Args:
         model: A loaded `Model` or a path to a Ribasim TOML file.
-        d3d_home: Path to the Delft3D installation. Defaults to `settings.d3d_home`.
+        d3d_home: Root of the Delft3D installation, which holds `bin/run_delwaq.sh` or `bin/run_delwaq.bat`.
+            Defaults to `settings.d3d_home`, the `D3D_HOME` setting.
         to_input: Whether to write the parsed results back as model input.
+        output_path: Directory for the Delwaq input and output. Defaults to `delwaq` next to the model TOML.
 
     Returns
     -------
@@ -30,13 +34,20 @@ def compute_delwaq(
     if d3d_home is None:
         d3d_home = settings.d3d_home
 
-    delwaq_dir = model.toml_path.with_name("delwaq")
+    if not (d3d_home / "bin").is_dir():
+        raise FileNotFoundError(
+            f"D3D_HOME should be the root of the Delft3D installation, with a bin directory: {d3d_home}"
+        )
 
-    # print(f"generate DELWAQ model in {delwaq_dir}")
+    delwaq_dir = (output_path or model.toml_path.with_name("delwaq")).absolute()
+
+    print(f"generate DELWAQ model in {delwaq_dir}")
     generate(model, output_path=delwaq_dir)
 
-    # print("run DELWAQ")
-    run_delwaq(model_dir=delwaq_dir, d3d_home=d3d_home)
+    # Delwaq reads delwaq.inp from the working directory, which run_delwaq only sets on Windows.
+    # TODO: remove the chdir once we use a Ribasim release with https://github.com/Deltares/Ribasim/pull/3415
+    with contextlib.chdir(delwaq_dir):
+        run_delwaq(model_dir=delwaq_dir, d3d_home=d3d_home)
 
     print("parse DELWAQ results in Ribasim-model")
     parse(model, output_folder=delwaq_dir, to_input=to_input)
