@@ -185,7 +185,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul class="collapse">
   <li><a href="#ribasim_nl.layout.coincident_nodes" id="toc-ribasim_nl.layout.coincident_nodes" class="nav-link" data-scroll-target="#ribasim_nl.layout.coincident_nodes">coincident_nodes</a></li>
   <li><a href="#ribasim_nl.layout.move_nodes" id="toc-ribasim_nl.layout.move_nodes" class="nav-link" data-scroll-target="#ribasim_nl.layout.move_nodes">move_nodes</a></li>
-  <li><a href="#ribasim_nl.layout.offset_junctions" id="toc-ribasim_nl.layout.offset_junctions" class="nav-link" data-scroll-target="#ribasim_nl.layout.offset_junctions">offset_junctions</a></li>
   <li><a href="#ribasim_nl.layout.offset_links" id="toc-ribasim_nl.layout.offset_links" class="nav-link" data-scroll-target="#ribasim_nl.layout.offset_links">offset_links</a></li>
   <li><a href="#ribasim_nl.layout.overlapping_links" id="toc-ribasim_nl.layout.overlapping_links" class="nav-link" data-scroll-target="#ribasim_nl.layout.overlapping_links">overlapping_links</a></li>
   <li><a href="#ribasim_nl.layout.place_bergend_nodes" id="toc-ribasim_nl.layout.place_bergend_nodes" class="nav-link" data-scroll-target="#ribasim_nl.layout.place_bergend_nodes">place_bergend_nodes</a></li>
@@ -227,30 +226,26 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Move nodes, and the ends of their links along.</td>
 </tr>
 <tr class="odd">
-<td><a href="#ribasim_nl.layout.offset_junctions">offset_junctions</a></td>
-<td>Offset the Junctions to the right of the direction of the flow through them, along with their links.</td>
-</tr>
-<tr class="even">
 <td><a href="#ribasim_nl.layout.offset_links">offset_links</a></td>
 <td>Offset links to the right of their direction, like traffic, keeping their ends at their nodes.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.layout.overlapping_links">overlapping_links</a></td>
 <td>Pairs of flow and observation link ids that overlap over more than <code>min_length</code>, as an array of shape (2, n).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.layout.place_bergend_nodes">place_bergend_nodes</a></td>
 <td>Place each bergend Basin <code>distance</code> from its doorgaand Basin, and its connector halfway.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.layout.resolve_overlaps">resolve_overlaps</a></td>
 <td>Offset links that still overlap other links further to their right, see <code>offset_links</code>.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.layout.separate_nodes">separate_nodes</a></td>
 <td>Move nodes that are within <code>min_distance</code> of another node, such that no nodes are on top of each other.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.layout.tidy_layout">tidy_layout</a></td>
 <td>Make the layout of a model readable: no nodes on top of each other, and no overlapping links.</td>
 </tr>
@@ -266,26 +261,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>layout.move_nodes(model, locations)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Move nodes, and the ends of their links along.</p>
 </section>
-<section id="ribasim_nl.layout.offset_junctions" class="level3">
-<h3 class="anchored" data-anchor-id="ribasim_nl.layout.offset_junctions">offset_junctions</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>layout.offset_junctions(model, distance<span class="op">=</span><span class="fl">5.0</span>, junction_ids<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Offset the Junctions to the right of the direction of the flow through them, along with their links.</p>
-<p>The Junctions of the inflows and outflows of a Basin then no longer coincide. Only <code>junction_ids</code> are offset if given, else all Junctions.</p>
-</section>
 <section id="ribasim_nl.layout.offset_links" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.layout.offset_links">offset_links</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>layout.offset_links(model, distance<span class="op">=</span><span class="fl">5.0</span>, link_ids<span class="op">=</span><span class="va">None</span>, bend<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>layout.offset_links(model, distance<span class="op">=</span><span class="fl">5.0</span>, link_ids<span class="op">=</span><span class="va">None</span>, bend<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Offset links to the right of their direction, like traffic, keeping their ends at their nodes.</p>
 <p>Links that share a route in opposite directions, such as the inflows and outflows of a Basin, then no longer overlap, while links that share a route in the same direction stay together. With <code>bend</code>, straight links get a point halfway that is offset as well.</p>
 </section>
 <section id="ribasim_nl.layout.overlapping_links" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.layout.overlapping_links">overlapping_links</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>layout.overlapping_links(model, min_length)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>layout.overlapping_links(model, min_length)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Pairs of flow and observation link ids that overlap over more than <code>min_length</code>, as an array of shape (2, n).</p>
 </section>
 <section id="ribasim_nl.layout.place_bergend_nodes" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.layout.place_bergend_nodes">place_bergend_nodes</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>layout.place_bergend_nodes(model, distance<span class="op">=</span><span class="fl">100.0</span>, directions<span class="op">=</span><span class="dv">16</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>layout.place_bergend_nodes(model, distance<span class="op">=</span><span class="fl">100.0</span>, directions<span class="op">=</span><span class="dv">16</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Place each bergend Basin <code>distance</code> from its doorgaand Basin, and its connector halfway.</p>
 <p>The direction is the one with the most room to other links and nodes, within the area of the doorgaand Basin. If no direction fits at <code>distance</code>, half that distance is tried, and so on, and finally also directions outside the area.</p>
 <section id="parameters" class="level4 doc-section doc-section-parameters">
@@ -330,27 +319,27 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.layout.resolve_overlaps" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.layout.resolve_overlaps">resolve_overlaps</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>layout.resolve_overlaps(model, distance<span class="op">=</span><span class="fl">5.0</span>, min_length<span class="op">=</span><span class="fl">1.0</span>, max_iterations<span class="op">=</span><span class="dv">5</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>layout.resolve_overlaps(model, distance<span class="op">=</span><span class="fl">5.0</span>, min_length<span class="op">=</span><span class="fl">1.0</span>, max_iterations<span class="op">=</span><span class="dv">5</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Offset links that still overlap other links further to their right, see <code>offset_links</code>.</p>
 <p>These are for instance the links of neighboring Basins along a shared waterway.</p>
 </section>
 <section id="ribasim_nl.layout.separate_nodes" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.layout.separate_nodes">separate_nodes</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>layout.separate_nodes(model, min_distance<span class="op">=</span><span class="fl">10.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>layout.separate_nodes(model, min_distance<span class="op">=</span><span class="fl">10.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Move nodes that are within <code>min_distance</code> of another node, such that no nodes are on top of each other.</p>
 <p>Of two such nodes, the most movable one is moved, see <code>MOVABLE_NODE_TYPES</code>; Basins are never moved. It is moved to the first free location around the other node, starting in the direction away from it.</p>
 </section>
 <section id="ribasim_nl.layout.tidy_layout" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.layout.tidy_layout">tidy_layout</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>layout.tidy_layout(</span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    offset<span class="op">=</span><span class="fl">5.0</span>,</span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    min_distance<span class="op">=</span><span class="fl">10.0</span>,</span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    bergend_distance<span class="op">=</span><span class="fl">100.0</span>,</span>
-<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>layout.tidy_layout(</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    offset<span class="op">=</span><span class="fl">5.0</span>,</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    min_distance<span class="op">=</span><span class="fl">10.0</span>,</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    bergend_distance<span class="op">=</span><span class="fl">100.0</span>,</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Make the layout of a model readable: no nodes on top of each other, and no overlapping links.</p>
-<p>See <code>place_bergend_nodes</code>, <code>offset_links</code>, <code>offset_junctions</code>, <code>separate_nodes</code> and <code>resolve_overlaps</code>.</p>
+<p>The inflows and outflows of a Basin share one Junction tree, see <code>ribasim_nl.flow_paths.Routes</code>, so links stay on their route, and only links that still overlap are offset. See <code>place_bergend_nodes</code>, <code>separate_nodes</code> and <code>resolve_overlaps</code>.</p>
 
 
 </section>

@@ -183,6 +183,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul class="collapse">
   <li><a href="#functions" id="toc-functions" class="nav-link" data-scroll-target="#functions">Functions</a>
   <ul class="collapse">
+  <li><a href="#ribasim_nl.network_snapping.line_reader" id="toc-ribasim_nl.network_snapping.line_reader" class="nav-link" data-scroll-target="#ribasim_nl.network_snapping.line_reader">line_reader</a></li>
   <li><a href="#ribasim_nl.network_snapping.lines_in" id="toc-ribasim_nl.network_snapping.lines_in" class="nav-link" data-scroll-target="#ribasim_nl.network_snapping.lines_in">lines_in</a></li>
   <li><a href="#ribasim_nl.network_snapping.read_hydro_objects" id="toc-ribasim_nl.network_snapping.read_hydro_objects" class="nav-link" data-scroll-target="#ribasim_nl.network_snapping.read_hydro_objects">read_hydro_objects</a></li>
   <li><a href="#ribasim_nl.network_snapping.read_main_waterways" id="toc-ribasim_nl.network_snapping.read_main_waterways" class="nav-link" data-scroll-target="#ribasim_nl.network_snapping.read_main_waterways">read_main_waterways</a></li>
@@ -222,64 +223,74 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
+<td><a href="#ribasim_nl.network_snapping.line_reader">line_reader</a></td>
+<td>Read the lines along which links are routed, within an area.</td>
+</tr>
+<tr class="even">
 <td><a href="#ribasim_nl.network_snapping.lines_in">lines_in</a></td>
 <td>Indices and LineString parts of the geometries clipped to an area.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.network_snapping.read_hydro_objects">read_hydro_objects</a></td>
 <td>Read the network of hydro-objects written by the profile-generation.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.network_snapping.read_main_waterways">read_main_waterways</a></td>
 <td>The Top10NL water lines within a mask, and the lines of the <code>main_route</code> as its main route.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.network_snapping.read_waterways">read_waterways</a></td>
 <td>Read the water lines of the Top10NL, or of a dataset in its format, within a mask, to complement the hydro-objects.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.network_snapping.route_basin_links">route_basin_links</a></td>
 <td>Route the links between a Basin node and its connector nodes along the hydro-objects in the basin.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.network_snapping.route_over_water">route_over_water</a></td>
 <td>Route the links between a Basin node and its connector nodes over the water surface in the basin area.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.network_snapping.snap_model">snap_model</a></td>
 <td>Snap a model to the hydro-objects of the profile-generation, see <code>snap_to_network</code>.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.network_snapping.snap_to_network">snap_to_network</a></td>
 <td>Route flow links between a Basin and a connector node along the hydro-objects, and move Basin nodes onto them.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.network_snapping.snap_to_waterways">snap_to_waterways</a></td>
 <td>Route links along the Top10NL water lines and over the Top10NL water surfaces, without moving nodes.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.network_snapping.straight_flow_link_ids">straight_flow_link_ids</a></td>
 <td>The flow links with a straight geometry.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.network_snapping.straight_link_geometries">straight_link_geometries</a></td>
 <td>Make link geometries start at their from-node and end at their to-node.</td>
 </tr>
 </tbody>
 </table>
+<section id="ribasim_nl.network_snapping.line_reader" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.network_snapping.line_reader">line_reader</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>network_snapping.line_reader(waterway_paths<span class="op">=</span>(), lines<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Read the lines along which links are routed, within an area.</p>
+<p>These are the water lines of <code>waterway_paths</code>, see <code>read_waterways</code>, and the <code>lines</code>, such as hydro-objects or a main route.</p>
+</section>
 <section id="ribasim_nl.network_snapping.lines_in" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.network_snapping.lines_in">lines_in</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>network_snapping.lines_in(geometries, tree, area)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>network_snapping.lines_in(geometries, tree, area)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Indices and LineString parts of the geometries clipped to an area.</p>
 </section>
 <section id="ribasim_nl.network_snapping.read_hydro_objects" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.network_snapping.read_hydro_objects">read_hydro_objects</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>network_snapping.read_hydro_objects(profiles_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>network_snapping.read_hydro_objects(profiles_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Read the network of hydro-objects written by the profile-generation.</p>
 </section>
 <section id="ribasim_nl.network_snapping.read_main_waterways" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.network_snapping.read_main_waterways">read_main_waterways</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>network_snapping.read_main_waterways(top10nl_path, mask, main_route<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>network_snapping.read_main_waterways(top10nl_path, mask, main_route<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The Top10NL water lines within a mask, and the lines of the <code>main_route</code> as its main route.</p>
 <section id="parameters" class="level4 doc-section doc-section-parameters">
 <h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h4>
@@ -347,30 +358,30 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.network_snapping.read_waterways" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.network_snapping.read_waterways">read_waterways</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>network_snapping.read_waterways(path, mask)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>network_snapping.read_waterways(path, mask)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Read the water lines of the Top10NL, or of a dataset in its format, within a mask, to complement the hydro-objects.</p>
 <p>See <code>scripts/download_gsk3e.py</code> for such a dataset.</p>
 </section>
 <section id="ribasim_nl.network_snapping.route_basin_links" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.network_snapping.route_basin_links">route_basin_links</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>network_snapping.route_basin_links(</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    basin_point,</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    connectors,</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    lines,</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    main_route,</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    culverts<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    water<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    area<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    basin_area<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    max_gap<span class="op">=</span><span class="fl">2.0</span>,</span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    max_water_gap<span class="op">=</span><span class="fl">500.0</span>,</span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    culvert_snap<span class="op">=</span><span class="fl">10.0</span>,</span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>    max_attach_distance<span class="op">=</span><span class="fl">100.0</span>,</span>
-<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>    max_land<span class="op">=</span>MAX_LAND,</span>
-<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>    max_straight_line_ratio<span class="op">=</span>MAX_STRAIGHT_LINE_RATIO,</span>
-<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>    min_routed_fraction<span class="op">=</span><span class="fl">0.5</span>,</span>
-<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>network_snapping.route_basin_links(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    basin_point,</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    connectors,</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    lines,</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    main_route,</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    culverts<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    water<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    area<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    basin_area<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    max_gap<span class="op">=</span><span class="fl">2.0</span>,</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    max_water_gap<span class="op">=</span><span class="fl">500.0</span>,</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    culvert_snap<span class="op">=</span><span class="fl">10.0</span>,</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    max_attach_distance<span class="op">=</span><span class="fl">100.0</span>,</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>    max_land<span class="op">=</span>MAX_LAND,</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    max_straight_line_ratio<span class="op">=</span>MAX_STRAIGHT_LINE_RATIO,</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>    min_routed_fraction<span class="op">=</span><span class="fl">0.5</span>,</span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Route the links between a Basin node and its connector nodes along the hydro-objects in the basin.</p>
 <p>The hydro-objects are connected by the <code>culverts</code>, and dangling ends are connected to other parts of the network if the gap is small or crossed over <code>water</code>, see <code>_BasinNetwork.bridge_gaps</code>. Then only the longest connected part of the network is used. The Basin node is attached to its nearest main route hydro-object in this part (if any), and each connector node to its nearest hydro-object within <code>max_attach_distance</code>. Connector nodes farther away are attached over the <code>water</code> within <code>area</code> instead, crossing at most <code>max_land</code> of land, see <code>_WaterRaster</code>. All routes follow the shortest paths from the Basin node, such that routes share their common parts exactly.</p>
 <p>If <code>basin_area</code> is given and contains the attachment point of the Basin node, and at least <code>min_routed_fraction</code> of the links can be routed from there, the Basin node is moved there. A route is not used if it is not less than <code>max_straight_line_ratio</code> times the straight line, as in <code>ribasim_nl.link_geometries.fix_link_geometries</code>.</p>
@@ -512,17 +523,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.network_snapping.route_over_water" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.network_snapping.route_over_water">route_over_water</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>network_snapping.route_over_water(</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    basin_point,</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    connectors,</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    water,</span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    area,</span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    land_cost<span class="op">=</span><span class="fl">20.0</span>,</span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    max_land<span class="op">=</span>MAX_LAND,</span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    max_cells<span class="op">=</span><span class="dv">1000000</span>,</span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    max_straight_line_ratio<span class="op">=</span>MAX_STRAIGHT_LINE_RATIO,</span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>network_snapping.route_over_water(</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    basin_point,</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    connectors,</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    water,</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    area,</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    land_cost<span class="op">=</span><span class="fl">20.0</span>,</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    max_land<span class="op">=</span>MAX_LAND,</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    max_cells<span class="op">=</span><span class="dv">1000000</span>,</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    max_straight_line_ratio<span class="op">=</span>MAX_STRAIGHT_LINE_RATIO,</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Route the links between a Basin node and its connector nodes over the water surface in the basin area.</p>
 <p>This is for basins without hydro-objects, such as lakes and harbours, see <code>_WaterRaster</code>. Routes that cross more than <code>max_land</code> of land, or are not less than <code>max_straight_line_ratio</code> times the straight line, are not used.</p>
 <section id="parameters-2" class="level4 doc-section doc-section-parameters">
@@ -621,16 +632,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.network_snapping.snap_model" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.network_snapping.snap_model">snap_model</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>network_snapping.snap_model(</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    profiles_path,</span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    crossings_path<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    water_path<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    waterway_paths<span class="op">=</span>(),</span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    tolerance<span class="op">=</span><span class="fl">10.0</span>,</span>
-<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    routing_areas<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>network_snapping.snap_model(</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    profiles_path,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    crossings_path<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    water_path<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>    waterway_paths<span class="op">=</span>(),</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    tolerance<span class="op">=</span><span class="fl">10.0</span>,</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    routing_areas<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Snap a model to the hydro-objects of the profile-generation, see <code>snap_to_network</code>.</p>
 <section id="parameters-3" class="level4 doc-section doc-section-parameters">
 <h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-3">Parameters</h4>
@@ -698,18 +709,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.network_snapping.snap_to_network" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.network_snapping.snap_to_network">snap_to_network</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>network_snapping.snap_to_network(</span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    hydro_objects,</span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    culverts<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    water<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>    tolerance<span class="op">=</span><span class="fl">10.0</span>,</span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    move_basins<span class="op">=</span><span class="va">True</span>,</span>
-<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    route_water<span class="op">=</span><span class="va">True</span>,</span>
-<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    link_ids<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>    routing_areas<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>network_snapping.snap_to_network(</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    hydro_objects,</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    culverts<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    water<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    tolerance<span class="op">=</span><span class="fl">10.0</span>,</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    move_basins<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>    route_water<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>    link_ids<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>    routing_areas<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Route flow links between a Basin and a connector node along the hydro-objects, and move Basin nodes onto them.</p>
 <p>Connector nodes are never moved, such that they stay at the location of the structure they represent. Basin nodes are moved onto the main route nearest to them if <code>move_basins</code> is True, see <code>route_basin_links</code>, and the nodes of their bergend part along with them. Links that cannot be routed, links to bergend basins and links to boundary nodes keep their geometry, unless it does not connect their nodes, see <code>straight_link_geometries</code>.</p>
 <section id="parameters-4" class="level4 doc-section doc-section-parameters">
@@ -809,14 +820,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.network_snapping.snap_to_waterways" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.network_snapping.snap_to_waterways">snap_to_waterways</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>network_snapping.snap_to_waterways(</span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    top10nl_path,</span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    link_ids,</span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    main_route<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    tolerance<span class="op">=</span><span class="fl">10.0</span>,</span>
-<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>network_snapping.snap_to_waterways(</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    top10nl_path,</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    link_ids,</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    main_route<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    tolerance<span class="op">=</span><span class="fl">10.0</span>,</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Route links along the Top10NL water lines and over the Top10NL water surfaces, without moving nodes.</p>
 <p>This is a fallback for links that cannot be routed along the hydro-objects of a water authority, see <code>snap_to_network</code>.</p>
 <section id="parameters-5" class="level4 doc-section doc-section-parameters">
@@ -892,12 +903,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.network_snapping.straight_flow_link_ids" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.network_snapping.straight_flow_link_ids">straight_flow_link_ids</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>network_snapping.straight_flow_link_ids(model)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>network_snapping.straight_flow_link_ids(model)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The flow links with a straight geometry.</p>
 </section>
 <section id="ribasim_nl.network_snapping.straight_link_geometries" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.network_snapping.straight_link_geometries">straight_link_geometries</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>network_snapping.straight_link_geometries(model, tolerance<span class="op">=</span><span class="fl">1.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>network_snapping.straight_link_geometries(model, tolerance<span class="op">=</span><span class="fl">1.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Make link geometries start at their from-node and end at their to-node.</p>
 <p>Link ends within <code>tolerance</code> of their node are moved onto it, other link geometries are replaced by straight lines.</p>
 <section id="parameters-6" class="level4 doc-section doc-section-parameters">

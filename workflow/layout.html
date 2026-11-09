@@ -362,11 +362,12 @@ ul.task-list li input[type="checkbox"] {
 </div>
 </div>
 </div>
-<p><code>ribasim_nl.junctionify</code> merges the shared parts of links into Junctions, and <code>ribasim_nl.layout.tidy_layout</code> makes sure no nodes are on top of each other and no links overlap:</p>
+<p><code>ribasim_nl.junctionify</code> merges the shared parts of links into Junctions, and <code>ribasim_nl.layout.tidy_layout</code> makes sure no nodes are on top of each other and no links overlap.</p>
+<p>The inflows and outflows of a Basin share one Junction tree, so each waterway is drawn once, see <code>ribasim_nl.flow_paths.merge_basin_trees</code>. The trees are merged after the last nodes are added to a model, so only the IDs of Junctions change. Ribasim connects a group of Junctions with one Basin as a neighbour with that Basin, in the direction of the link of each other neighbour with the group, see <a href="https://ribasim.org/reference/node/junction.html">Junction</a>. The direction of the links within the tree, and with the Basin, does not change the simulation, only the sign of their flow, see <code>ribasim_nl.flow_paths.towards_basin</code>. A link that only carries inflows points towards the Basin, and one that only carries outflows away from it. A link that carries both follows the main flow: the direction in which the waterway lines it follows are digitized, where they cover most of it, such as the network of Rijkswaterstaat. Elsewhere it points to the side that can drain the most, in the <code>afvoer</code> control state, where ManningResistances and placeholder capacities are unlimited. <code>ribasim_nl.flow_paths.Routes</code> follows the links through Junctions in the same way as Ribasim.</p>
 <ul>
 <li>Bergend Basins are placed 100 m from their doorgaand Basin.</li>
-<li>Links are offset 5 m to the right of their direction, so inflows and outflows along the same waterway are drawn side by side.</li>
 <li>Nodes that are still within 10 m of each other are moved apart.</li>
+<li>Links that still overlap, such as those of neighbouring Basins along a shared waterway, are offset 5 m.</li>
 </ul>
 <p>The gravity controlled models get the same layout step at the end of their dynamic stage, and <code>ribasim_nl.validation.validate_model</code> checks it. It also checks that the Basin areas are valid and have no slivers: parts and holes that are on average at most 1 mm wide, which draw as lines on the map. <code>Model.clean_basin_area</code> fixes both in the regional models and the Rijkswaterstaat model. The <a href="../workflow/couple.html">coupling</a> tidies the links between models in the same way, and first rebuilds the routes of the Basins of Rijkswaterstaat along Top10NL.</p>
 
