@@ -261,4 +261,18 @@ for node_id, name, points, kwargs in BOEZEM_CONTROLS:
         ribasim_model, node_id, PIKMEER_BASIN, level=levels, flow_rate=flow_rates, name=name, **kwargs
     )
 
+# The inlets from the IJsselmeer have no name in the source data, see https://github.com/Deltares/Ribasim-NL/issues/1010
+INLET_NAMES = {
+    2783: "Hindeloopen",
+    3023: "Inlaat Tacozijl",
+    3591: "Makkum-inlaat Suderseewei",
+    3890: "Sluis Makkum",
+    3892: "Inlaat Teroelsterkolk",
+    3897: "Inlaat Johan Friso sluis",
+}
+for node_id, name in INLET_NAMES.items():
+    node_type = ribasim_model.get_node_type(node_id)
+    assert node_type == "Outlet", f"Expected Outlet {node_id} for {name}, got {node_type}"
+    ribasim_model.node.df.loc[node_id, "name"] = name
+
 write_and_run_forcing_model(ribasim_model, paths)

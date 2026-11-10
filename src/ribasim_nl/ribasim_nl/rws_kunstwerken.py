@@ -112,7 +112,7 @@ PARALLEL_KWK = {
 def main_route(network: Network, structures: Mapping[str, ParallelKwk] = PARALLEL_KWK) -> gpd.GeoDataFrame:
     """The lines of the network, and a straight line through each lock chamber of `structures` that it lacks.
 
-    Links are routed along these lines, see `ribasim_nl.flow_paths.rebuild_junction_trees_along_top10nl`, so they pass
+    Links are routed along these lines, see `ribasim_nl.flow_paths.rebuild_rws_junction_trees`, so they pass
     through the chamber of such a lock, rather than straight from the nearest line.
     """
     links, nodes = network.links, network.nodes

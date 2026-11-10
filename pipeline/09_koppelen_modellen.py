@@ -26,7 +26,7 @@ from ribasim_nl.flow_paths import (
     merge_inflows,
     merge_outflows,
     place_on_link,
-    rebuild_junction_trees_along_top10nl,
+    rebuild_rws_junction_trees,
     remove_flow_link,
 )
 from ribasim_nl.junctions import junctionify
@@ -74,6 +74,7 @@ COUPLING_LEVEL_APPLY_AUTHORITIES = {
 # Configuration
 data_dir = settings.ribasim_nl_data_dir
 top10nl_gpkg = data_dir / "Basisgegevens/Top10NL/top10nl_Compleet.gpkg"
+fairway_gpkg = data_dir / "Basisgegevens/OSM/waterway_fairway.gpkg"
 couple_lhm: bool = True
 sub_models: list[str] = []
 
@@ -811,11 +812,11 @@ def merge_coupling_trees(model: Model, network: Network) -> None:
     """Route the links between models through the Junction trees of their Basins, like in the models.
 
     The Rijkswaterstaat Basins with links from other models get the same routes as in the hws model, see
-    `rebuild_junction_trees_along_top10nl`, with branches to these links. The links between models that share routes
+    `rebuild_rws_junction_trees`, with branches to these links. The links between models that share routes
     are merged into Junctions, see `junctionify`, and the inflows and outflows of each Basin share one Junction tree,
     see `merge_basin_trees`.
     """
-    rebuild_junction_trees_along_top10nl(model, rws_basins_between_models(model), top10nl_gpkg, main_route(network))
+    rebuild_rws_junction_trees(model, rws_basins_between_models(model), top10nl_gpkg, fairway_gpkg, main_route(network))
     junctionify(model)
     merge_basin_trees(model, line_reader([top10nl_gpkg], main_route(network)))
 

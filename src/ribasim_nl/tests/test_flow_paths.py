@@ -19,6 +19,7 @@ from ribasim_nl.flow_paths import (
     place_on_link,
     prune_junction,
     rebuild_junction_trees,
+    rebuild_rws_junction_trees,
     simplified_links,
     towards_basin,
     tree_links,
@@ -246,6 +247,25 @@ def test_rebuild_junction_trees():
     # the links to the nodes reached keep their ids
     assert model.link.df.at[link_ids[(4, 2)], "from_node_id"] == junction_id
     assert set(changed) >= {link_ids[(4, 2)], link_ids[(4, 3)], link_ids[(5, 1)], link_ids[(6, 1)]}
+
+
+def test_rebuild_rws_junction_trees_lake(tmp_path):
+    """The Basin of a lake follows the fairways and the main route, as `test_rebuild_junction_trees` its waterway."""
+    model = rebuild_model()
+    model.node.df.loc[1, "name"] = "IJsselmeer"
+    fairway_path = tmp_path / "fairway.gpkg"
+    gpd.GeoDataFrame(geometry=[LineString([(-100, 0), (0, 0)])], crs="EPSG:28992").to_file(fairway_path)
+    main_route = gpd.GeoDataFrame(geometry=[LineString([(0, 0), (100, 0)])], crs="EPSG:28992")
+    links_before = simplified_links(model)
+    # the Top10NL is not read for a lake
+    rebuild_rws_junction_trees(model, [1], tmp_path / "top10nl.gpkg", fairway_path, main_route)
+
+    assert simplified_links(model) == links_before
+    geometries = model.link.df.set_index(["from_node_id", "to_node_id"])["geometry"]
+    (junction_id,) = model.node.df.index[model.node.df["node_type"] == "Junction"]
+    assert model.node.df.at[junction_id, "geometry"].coords[:] == [(100, 0)]
+    assert geometries[(1, junction_id)].coords[:] == [(0, 0), (100, 0)]
+    assert geometries[(5, 1)].coords[:] == [(-100, 0), (0, 0)]
 
 
 def test_merge_basin_trees():

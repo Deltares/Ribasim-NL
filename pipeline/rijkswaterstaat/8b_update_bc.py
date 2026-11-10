@@ -6,7 +6,7 @@ import pandas as pd
 from pandera.typing import DataFrame
 from ribasim.schemas import FlowBoundaryTimeSchema, LevelBoundaryTimeSchema
 from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
-from ribasim_nl.flow_paths import rebuild_junction_trees_along_top10nl
+from ribasim_nl.flow_paths import rebuild_rws_junction_trees
 from ribasim_nl.layout import tidy_layout
 from ribasim_nl.observations import add_observations, link_observations
 from ribasim_nl.regional_model import ENDTIME, STARTTIME, read_lhm_budgets
@@ -25,6 +25,7 @@ rwzi_coverage_path = rwzi_model_path.parent / "meta/RWZI_coordinates_model_cover
 debieten_xlsx = cloud.joinpath("Rijkswaterstaat/aangeleverd/Matroos_debieten_2017_2022_Lobith_Monsin.xlsx")
 network_gpkg = cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg")
 top10nl_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
+fairway_gpkg = cloud.joinpath("Basisgegevens/OSM/waterway_fairway.gpkg")
 
 time_colname = " Timeseries retrieved from the MATROOS series database"
 
@@ -204,10 +205,10 @@ assign_lhm_fractions(model)
 
 # add Observation nodes with measured discharges
 model = add_observations(model, "Rijkswaterstaat")
-# route the links of each Basin as one tree along the network, and through the lock chambers it lacks, which koppelen
-# extends with the links of other models
+# route the links of each Basin as one tree along the network, and through the lock chambers it lacks, and in the lakes
+# along the fairways, which koppelen extends with the links of other models
 network = Network.from_network_gpkg(network_gpkg)
-rebuild_junction_trees_along_top10nl(model, model.basin.node.df.index.tolist(), top10nl_gpkg, main_route(network))
+rebuild_rws_junction_trees(model, model.basin.node.df.index.tolist(), top10nl_gpkg, fairway_gpkg, main_route(network))
 # and observe series that combine the inflows and outflows of a Basin, through its tree
 model = link_observations(model, "Rijkswaterstaat")
 model = tidy_layout(model)

@@ -13,7 +13,7 @@ flowchart LR
   level["10 &lt;authority&gt;_forcing"] --> merge
   merge(["samenvoegen<br>08_samenvoegen_modellen.py"]) --> parts["lhm_parts"]
   parts --> couple(["koppelen<br>09_koppelen_modellen.py"])
-  netwerk["netwerk.gpkg, Top10NL"] --> couple
+  netwerk["netwerk.gpkg, Top10NL, OSM fairways"] --> couple
   peilbeheer["peilbeheer.gpkg"] --> couple
   couple --> coupled["lhm_coupled"]
 
