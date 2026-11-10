@@ -201,7 +201,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#ribasim_nl.flow_paths.place_on_link" id="toc-ribasim_nl.flow_paths.place_on_link" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.place_on_link">place_on_link</a></li>
   <li><a href="#ribasim_nl.flow_paths.prune_junction" id="toc-ribasim_nl.flow_paths.prune_junction" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.prune_junction">prune_junction</a></li>
   <li><a href="#ribasim_nl.flow_paths.rebuild_junction_trees" id="toc-ribasim_nl.flow_paths.rebuild_junction_trees" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.rebuild_junction_trees">rebuild_junction_trees</a></li>
-  <li><a href="#ribasim_nl.flow_paths.rebuild_junction_trees_along_top10nl" id="toc-ribasim_nl.flow_paths.rebuild_junction_trees_along_top10nl" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.rebuild_junction_trees_along_top10nl">rebuild_junction_trees_along_top10nl</a></li>
+  <li><a href="#ribasim_nl.flow_paths.rebuild_rws_junction_trees" id="toc-ribasim_nl.flow_paths.rebuild_rws_junction_trees" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.rebuild_rws_junction_trees">rebuild_rws_junction_trees</a></li>
   <li><a href="#ribasim_nl.flow_paths.remove_flow_link" id="toc-ribasim_nl.flow_paths.remove_flow_link" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.remove_flow_link">remove_flow_link</a></li>
   <li><a href="#ribasim_nl.flow_paths.route_parts" id="toc-ribasim_nl.flow_paths.route_parts" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.route_parts">route_parts</a></li>
   <li><a href="#ribasim_nl.flow_paths.simplified_links" id="toc-ribasim_nl.flow_paths.simplified_links" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.simplified_links">simplified_links</a></li>
@@ -528,8 +528,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Route the flow links of Basins along the waterways, with one Junction tree per Basin, split where they split.</td>
 </tr>
 <tr class="even">
-<td><a href="#ribasim_nl.flow_paths.rebuild_junction_trees_along_top10nl">rebuild_junction_trees_along_top10nl</a></td>
-<td>Rebuild the Junctions of Basins along the Top10NL water lines and a main route, see <code>rebuild_junction_trees</code>.</td>
+<td><a href="#ribasim_nl.flow_paths.rebuild_rws_junction_trees">rebuild_rws_junction_trees</a></td>
+<td>Rebuild the Junctions of Rijkswaterstaat Basins along the waterways and a main route, see <code>rebuild_junction_trees</code>.</td>
 </tr>
 <tr class="odd">
 <td><a href="#ribasim_nl.flow_paths.remove_flow_link">remove_flow_link</a></td>
@@ -851,17 +851,23 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.flow_paths.rebuild_junction_trees" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.rebuild_junction_trees">rebuild_junction_trees</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>flow_paths.rebuild_junction_trees(model, basin_ids, waterways, tolerance<span class="op">=</span><span class="fl">10.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>flow_paths.rebuild_junction_trees(</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>    basin_ids,</span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>    waterways,</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>    tolerance<span class="op">=</span><span class="fl">10.0</span>,</span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>    water<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Route the flow links of Basins along the waterways, with one Junction tree per Basin, split where they split.</p>
-<p>The Junctions of the Basin trees of a Basin, see <code>junction_tree</code>, are removed, except the <code>fixed_junctions</code>. The links to the nodes they reach are routed from the Basin node along the shortest paths of one network, see <code>ribasim_nl.network_snapping.route_basin_links</code>, such that its inflows and outflows share one tree, see <code>build_basin_tree</code>. Nodes far from the waterways branch off straight from the nearest point of these routes, see <code>attach_to_tree</code>, also over open water, where routes over the water surface would run in parallel. Each node keeps exchanging water with the same nodes, which is asserted, and the links to the nodes reached keep their link ids. Nodes are not moved and links are not offset, see <code>ribasim_nl.layout.tidy_layout</code>.</p>
+<p>The Junctions of the Basin trees of a Basin, see <code>junction_tree</code>, are removed, except the <code>fixed_junctions</code>. The links to the nodes they reach are routed from the Basin node along the shortest paths of one network, see <code>ribasim_nl.network_snapping.route_basin_links</code>, such that its inflows and outflows share one tree, see <code>build_basin_tree</code>. With open <code>water</code>, such as a lake, the waterways are connected over it, and nodes far from them are routed over it, straight from the nearest point of the waterways from which that is possible. The others branch off straight from the nearest point of these routes, see <code>attach_to_tree</code>. Each node keeps exchanging water with the same nodes, which is asserted, and the links to the nodes reached keep their link ids. Nodes are not moved and links are not offset, see <code>ribasim_nl.layout.tidy_layout</code>.</p>
 <section id="parameters-3" class="level4 doc-section doc-section-parameters">
 <h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-3">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
+<col style="width: 2%">
 <col style="width: 7%">
-<col style="width: 16%">
-<col style="width: 67%">
-<col style="width: 8%">
+<col style="width: 86%">
+<col style="width: 3%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -896,6 +902,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>buffer around the basin area within which waterways are used, defaults to 10.0</td>
 <td><code>10.0</code></td>
 </tr>
+<tr class="odd">
+<td>water</td>
+<td>gpd.GeoDataFrame | None</td>
+<td>open water, over which the waterways are connected and nodes far from them are routed to them, see <code>ribasim_nl.network_snapping.route_basin_links</code>, defaults to None. The waterways on it, such as fairways, are not digitized in the direction of the flow, so they do not set the direction of links, see <code>towards_basin</code>.</td>
+<td><code>None</code></td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -924,17 +936,99 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </table>
 </section>
 </section>
-<section id="ribasim_nl.flow_paths.rebuild_junction_trees_along_top10nl" class="level3">
-<h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.rebuild_junction_trees_along_top10nl">rebuild_junction_trees_along_top10nl</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>flow_paths.rebuild_junction_trees_along_top10nl(</span>
+<section id="ribasim_nl.flow_paths.rebuild_rws_junction_trees" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.rebuild_rws_junction_trees">rebuild_rws_junction_trees</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>flow_paths.rebuild_rws_junction_trees(</span>
 <span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
 <span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>    basin_ids,</span>
 <span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>    top10nl_path,</span>
-<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>    main_route,</span>
-<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>    tolerance<span class="op">=</span><span class="fl">250.0</span>,</span>
-<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Rebuild the Junctions of Basins along the Top10NL water lines and a main route, see <code>rebuild_junction_trees</code>.</p>
-<p>This is used for the hws model and again after coupling, such that its Basins keep their routes. Its connector nodes are often outside the area of their Basin, so waterways up to <code>tolerance</code> around it are used.</p>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>    fairway_path,</span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>    main_route,</span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a>    tolerance<span class="op">=</span><span class="fl">250.0</span>,</span>
+<span id="cb33-8"><a href="#cb33-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Rebuild the Junctions of Rijkswaterstaat Basins along the waterways and a main route, see <code>rebuild_junction_trees</code>.</p>
+<p>This is used for the hws model and again after coupling, such that its Basins keep their routes. Its connector nodes are often outside the area of their Basin, so waterways up to <code>tolerance</code> around it are used. These are the Top10NL water lines, except for the Basins of the <code>LAKES</code>, named after them. These follow the fairways, and cross their own water to the nodes on their shores, see <code>ribasim_nl.network_snapping.read_lake_waterways</code>.</p>
+<section id="parameters-4" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-4">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 10%">
+<col style="width: 19%">
+<col style="width: 60%">
+<col style="width: 9%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>model</td>
+<td>Model</td>
+<td>Ribasim model</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td>basin_ids</td>
+<td>typing.Collection[int]</td>
+<td>Basins to rebuild the Junctions of</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td>top10nl_path</td>
+<td>pathlib.Path</td>
+<td>Top10NL GeoPackage</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td>fairway_path</td>
+<td>pathlib.Path</td>
+<td>GeoPackage with the fairways of OpenStreetMap</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td>main_route</td>
+<td>gpd.GeoDataFrame</td>
+<td>lines of the main route, see <code>ribasim_nl.rws_kunstwerken.main_route</code></td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td>tolerance</td>
+<td>float</td>
+<td>buffer around the basin area within which waterways are used, defaults to 250.0</td>
+<td><code>250.0</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns-6" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-6">Returns</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 7%">
+<col style="width: 31%">
+<col style="width: 60%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td></td>
+<td>tuple[list[int], list[int]]</td>
+<td>the ids of the links and of the Junctions that are new or changed</td>
+</tr>
+</tbody>
+</table>
+</section>
 </section>
 <section id="ribasim_nl.flow_paths.remove_flow_link" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.remove_flow_link">remove_flow_link</h3>
@@ -967,8 +1061,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb39"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>flow_paths.towards_basin(inflows, outflows, capacity, digitized_away<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Whether a link of a Basin tree points towards its Basin, given the nodes beyond it that flow in and out.</p>
 <p>The direction does not change the simulation, only the sign of the flow of the link in the results. A link that only carries inflows points towards the Basin, and one that only carries outflows away from it. A link that carries both follows the main flow: the direction in which the lines it follows are digitized, if they decide, else the side with the larger <code>drainage_capacity</code>, else the side with more nodes, else away from the Basin.</p>
-<section id="parameters-4" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-4">Parameters</h4>
+<section id="parameters-5" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-5">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 12%">
@@ -1000,8 +1094,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb40"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>flow_paths.tree_links(routes)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The links of the tree of routes that all start at the same point, with a Junction where they split.</p>
 <p>The last segment of each route is its own, so a route that is part of another one still ends in a branch.</p>
-<section id="parameters-5" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-5">Parameters</h4>
+<section id="parameters-6" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-6">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 9%">
@@ -1027,8 +1121,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="returns-6" class="level4 doc-section doc-section-returns">
-<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-6">Returns</h4>
+<section id="returns-7" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-7">Returns</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 3%">
