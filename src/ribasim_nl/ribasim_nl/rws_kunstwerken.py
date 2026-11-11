@@ -129,8 +129,8 @@ PARALLEL_KWK = {
 
 # Per Basin, by its ID in the hws model, an area beyond its basin area in which its links are routed, see
 # `ribasim_nl.flow_paths.rebuild_rws_junction_trees`. The Pr. Bernhardsluis and its omloopriool take water from the Waal
-# downstream of Tiel, along the canal, to the locks 1.4 km from the Waal in the area of the Amsterdam-Rijnkanaal.
-ROUTING_AREAS = {6613: shapely.box(159400.0, 433200.0, 160300.0, 434900.0)}
+# at Tiel, along the canal, to the locks 1.4 km from the Waal in the area of the Amsterdam-Rijnkanaal.
+ROUTING_AREAS = {7291: shapely.box(159400.0, 433200.0, 160300.0, 434900.0)}
 
 
 def main_route(network: Network, structures: Mapping[str, ParallelKwk] = PARALLEL_KWK) -> gpd.GeoDataFrame:
@@ -438,20 +438,17 @@ def flow_demand_tables(
     ]
 
 
-def connected_basin_ids(
-    model: Model, basin_id: int, node_types: set[str] = FREE_FLOW_NODE_TYPES, upstream: bool = False
-) -> set[int]:
-    """Basins connected to `basin_id` through nodes of `node_types`, or only those upstream of it if `upstream`."""
+def connected_basin_ids(model: Model, basin_id: int) -> set[int]:
+    """Basins connected to `basin_id` without a structure that controls the flow in between."""
     links = model.link.df[model.link.df.link_type == "flow"]
     node_type = model.node.df["node_type"]
     found, front = {basin_id}, [basin_id]
     while front:
         node_id = front.pop()
         neighbors = links.loc[links.to_node_id == node_id, "from_node_id"].to_list()
-        if not upstream:
-            neighbors += links.loc[links.from_node_id == node_id, "to_node_id"].to_list()
+        neighbors += links.loc[links.from_node_id == node_id, "to_node_id"].to_list()
         for neighbor in neighbors:
-            if neighbor not in found and node_type[neighbor] in node_types:
+            if neighbor not in found and node_type[neighbor] in FREE_FLOW_NODE_TYPES:
                 found.add(neighbor)
                 front.append(neighbor)
     return {i for i in found if node_type[i] == "Basin"}
@@ -465,8 +462,7 @@ def listen_node(
     The Meetlocatiecode is the ID of that node in the coupled model. Without it, an afvoer structure listens to the
     Basin upstream, and an aanvoer structure to the Basin downstream. A DiscreteControl on a flow rate listens to a
     connector node anywhere. A Basin should be next to the structure, or connected to the Basin on one side of it,
-    possibly through other Basins without structures in between, like the Veluwerandmeren. Upstream it can also be
-    beyond a TabulatedRatingCurve, which does not control the flow, like the Waal at Tiel for the Pr. Bernhardsluis.
+    possibly through other Basins without structures in between, like the Veluwerandmeren.
     """
     kwk_properties = read_kwk_properties(kwk_df)
     upstream = model.upstream_node_id(node_id)
@@ -489,18 +485,11 @@ def listen_node(
         ("upstream", int(upstream)),
         ("downstream", int(downstream)),
     ]
-    basins = [(side, neighbor) for side, neighbor in neighbors if model.node.df.at[neighbor, "node_type"] == "Basin"]
     # both sides can be connected further away, like the Waal and the Maas through the Merwede and the Hollandsch Diep
-    sides: list[Literal["upstream", "downstream"]] = [
-        side for side, neighbor in neighbors if neighbor == listen_id
-    ] or [side for side, neighbor in basins if listen_id in connected_basin_ids(model, neighbor)]
-    # a TabulatedRatingCurve does not control the flow, so the level upstream of it follows from the flow
-    rating_curve_types = FREE_FLOW_NODE_TYPES | {"TabulatedRatingCurve"}
-    if (
-        not sides
-        and ("upstream", upstream) in basins
-        and listen_id in connected_basin_ids(model, int(upstream), rating_curve_types, upstream=True)
-    ):
-        sides = ["upstream"]
+    sides = [side for side, neighbor in neighbors if neighbor == listen_id] or [
+        side
+        for side, neighbor in neighbors
+        if model.node.df.at[neighbor, "node_type"] == "Basin" and listen_id in connected_basin_ids(model, neighbor)
+    ]
     assert len(sides) == 1, f"Basin {listen_id} {model.node.df.at[listen_id, 'name']!r} not on one side of {node_id}"
     return listen_id, sides[0]

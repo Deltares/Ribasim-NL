@@ -496,7 +496,7 @@ def test_listen_variable():
 
 
 def waal_model() -> Model:
-    """Like the Waal at Tiel, with the Pr. Bernhardsluis to the Amsterdam-Rijnkanaal.
+    """A structure between Basins, with a TabulatedRatingCurve upstream and a ManningResistance downstream.
 
     Basin 1 flows through TabulatedRatingCurve 2 into Basin 3, from which Outlet 4 takes water to Basin 5, and
     ManningResistance 6 drains Basin 5 to Basin 7.
@@ -541,21 +541,12 @@ def test_listen_node():
     # next to it, or connected to the Basin on one side through nodes that do not control the flow
     assert listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 3), 4) == (3, "upstream")
     assert listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 7), 4) == (7, "downstream")
-    # like the Pr. Bernhardsluis, upstream beyond a TabulatedRatingCurve, whose level follows from its flow
-    assert listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 1), 4) == (1, "upstream")
     # like the Prs. Irenesluis-Doorspoeling, the flow rate of a connector node anywhere
     assert listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 6, "flow_rate"), 4) == (6, None)
     with pytest.raises(AssertionError, match="not a Basin"):
         listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 6), 4)
     with pytest.raises(AssertionError, match="flow rate of Basin"):
         listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 3, "flow_rate"), 4)
-    # downstream, a TabulatedRatingCurve controls the level upstream of it
-    model.manning_resistance.static.df = None
-    model.remove_node(6, remove_links=True)
-    model.tabulated_rating_curve.add(
-        Node(6, Point(600, 0)), [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 1.0])]
-    )
-    model.link.add(model.basin[5], model.tabulated_rating_curve[6])
-    model.link.add(model.tabulated_rating_curve[6], model.basin[7])
+    # a TabulatedRatingCurve controls the level upstream of it
     with pytest.raises(AssertionError, match="not on one side"):
-        listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 7), 4)
+        listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 1), 4)
