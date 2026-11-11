@@ -1,7 +1,7 @@
 import geopandas as gpd
 import pytest
 from ribasim import Node
-from ribasim.nodes import basin, level_boundary, manning_resistance, pump
+from ribasim.nodes import basin, level_boundary, manning_resistance, pump, user_demand
 from ribasim_nl.validation import (
     _basin_area_issues,
     _connector_through_junction_issues,
@@ -11,6 +11,7 @@ from ribasim_nl.validation import (
     _manning_resistance_issues,
     _observation_distance_issues,
     _uncontrolled_control_state_issues,
+    _user_demand_return_factor_issues,
 )
 from shapely.geometry import MultiPolygon, Point, Polygon, box
 
@@ -122,6 +123,19 @@ def test_observation_distance(model):
         "Observation nodes must be within 5000 m of the node they observe; "
         "invalid (Observation, observed) node IDs: [(10, 4)]"
     ]
+
+
+@pytest.mark.parametrize(("return_factor", "valid"), [(0.0, True), (1.0, True), (1.2, False), (-0.1, False)])
+def test_user_demand_return_factor(model, return_factor, valid):
+    """Like Sappi in Maastricht, which discharges groundwater too, a UserDemand cannot return more than it takes."""
+    model.user_demand.add(
+        Node(9, Point(0, 20)),
+        [user_demand.Static(demand=[1.0], return_factor=[return_factor], min_level=[0.0], demand_priority=[1])],
+    )
+    issues = _user_demand_return_factor_issues(model)
+    assert (
+        issues == [] if valid else issues == ["UserDemand return_factor must be between 0 and 1; invalid node IDs: [9]"]
+    )
 
 
 def test_listen_to_junction(model):

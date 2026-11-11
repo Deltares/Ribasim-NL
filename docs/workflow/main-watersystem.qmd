@@ -51,8 +51,8 @@ This stage is frozen, so it is not run again in a reproduction, since the source
 
 ## Control and demands
 
-- `6_model_sturing.py` adds control, with ContinuousControl, DiscreteControl and FlowDemand nodes, into `modellen/hws_sturing/hws.toml`. It also adds the structures next to another one, see `PARALLEL_KWK` in `ribasim_nl.rws_kunstwerken`, such as the locks next to the weirs of the Maas, the Nederrijn and the Lek, with a FlowDemand for their losses.
-- `7_model_onttrekkingen.py` adds the demands of drinking water, industry and energy as UserDemands, splits Basins along a route where needed, and adds Junctions, into `modellen/hws_demand/hws.toml`.
+- `6_model_sturing.py` adds control, with ContinuousControl, DiscreteControl and FlowDemand nodes, into `modellen/hws_sturing/hws.toml`. It also adds the structures next to another one, see `PARALLEL_KWK` in `ribasim_nl.rws_kunstwerken`, such as the locks next to the weirs of the Maas, the Nederrijn and the Lek, with a FlowDemand for their losses. It splits the Amsterdam-Rijnkanaal north of the Lek in three Basins, to which the Prinses Irenesluis listens.
+- `7_model_onttrekkingen.py` adds the demands of drinking water, industry and energy as UserDemands, and adds Junctions, into `modellen/hws_demand/hws.toml`.
 - `8a_update_state.py` runs this model, and writes its final state back as its initial state.
 
 ## Boundaries and forcing
