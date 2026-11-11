@@ -1,0 +1,63 @@
+---
+title: "HWS plus"
+---
+
+`hws_plus` is the main water system (HWS) cut out of the run of the coupled model, with the exchanges with the regional water systems in that run as boundaries.
+It runs in minutes instead of hours, and is closer to the coupled model than [`hws_transient`](main-watersystem.qmd), which lacks the regional water systems.
+In return, the HWS no longer affects the exchanges: an inlet takes the water it took in the coupled run, also when the HWS is lower.
+
+```{mermaid}
+flowchart LR
+  run["runs/lhm_coupled<br>input and results"] --> cut(["hws_plus<br>pipeline/hws_plus.py"]) --> model["modellen/hws_plus"]
+
+  classDef step fill:#dfedef,stroke:#0c6a77
+  class cut step
+```
+
+## The cut
+
+`ribasim_nl.hws_plus` cuts through the structures between an HWS Basin and a regional Basin, along the links that Ribasim makes of the links through Junctions, see `ribasim_nl.flow_paths.Routes`.
+Nearly all of them belong to the water authorities: their outlets and pumping stations into the HWS, and their inlets.
+Each keeps its node ID and location, and becomes a boundary with the daily flow of the run:
+
+| Water flows | The structure becomes | The regional Basin becomes |
+|:------------|:----------------------|:---------------------------|
+| Into the HWS | A FlowBoundary | Removed |
+| Out of the HWS | A Pump | A Terminal, which the Pump reaches through the Junction tree of the Basin |
+
+The flow decides, not the kind of structure, so a ManningResistance through which water only leaves the HWS becomes a Pump.
+A structure through which water flows both ways cannot be cut; there are none.
+The rest of the HWS, with its control, stays as it is in the coupled model, with the same node and link IDs, so the two can be compared node by node.
+The model has the period and solver settings of the run.
+
+The boundaries keep a value until their next row, so the rows that repeat the previous value are left out, which changes nothing.
+
+## Where the water comes from
+
+The FlowBoundaries carry the daily concentrations of all substances of the regional Basin they get their water from: the [fractions](forcing.qmd#fractions), the tracers of the Ribasim core, and the age of the water.
+So the water of the HWS has the same sources as in the coupled run.
+These are exact, which makes up most of the 700 MB of the model.
+
+A tracer per water authority, named as in `ribasim_nl.aquo.waterbeheercode`, such as `HollandsNoorderkwartier`, tells where the water was last.
+Each regional inflow has the tracer of the authority of its Basin, and all other water has `Rijkswaterstaat`: the rain on the HWS, its boundaries and its initial water.
+Together they add up to 1.
+
+## Differences with the coupled model
+
+Most HWS Basins follow the coupled run within millimetres. They differ because:
+
+- The HWS no longer affects the exchanges.
+- The boundaries have the daily mean flows, without the changes within a day. These matter most on the first day, since the initial state of the coupled model is not in balance.
+- A Basin whose level only depends on fixed flows keeps such a difference, since nothing pulls its level back. The Máximakanaal, whose only outflow is now a Pump, stays a few centimetres lower.
+
+## Building and running
+
+The `hws_plus` stage runs after `run_lhm_coupled` in every reproduction.
+Its output is not stored on the DVC remote, since it is large and built in about a minute; `dvc.lock` only records its hash.
+Build it from the pulled run, and run it:
+
+```sh
+pixi run dvc pull run_lhm_coupled
+pixi run dvc repro --single-item hws_plus
+pixi run ribasim data/Rijkswaterstaat/modellen/hws_plus/hws_plus.toml
+```
