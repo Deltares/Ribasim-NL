@@ -306,6 +306,19 @@ def _flow_demand_capacity_issues(model: "Model") -> list[str]:
     ]
 
 
+def _user_demand_return_factor_issues(model: "Model") -> list[str]:
+    """Return UserDemand nodes that return more than they take, or a negative fraction, see #1027."""
+    tables = [table.df for table in (model.user_demand.static, model.user_demand.time) if table.df is not None]
+    if not tables:
+        return []
+    return_factor = pd.concat([df[["node_id", "return_factor"]] for df in tables])
+    invalid = return_factor[(return_factor["return_factor"] < 0) | (return_factor["return_factor"] > 1)]
+    if invalid.empty:
+        return []
+    node_ids = sorted(map(int, invalid["node_id"].unique()))
+    return [f"UserDemand return_factor must be between 0 and 1; invalid node IDs: {node_ids}"]
+
+
 # Observation nodes are at the measurement location, near the node they observe; Lobith is 4.8 km from the Rhine boundary
 MAX_OBSERVATION_DISTANCE = 5000.0  # m
 
@@ -345,6 +358,7 @@ def validate_model(model: "Model", layout: bool = True) -> None:
         *_manning_resistance_issues(model),
         *_listen_to_junction_issues(model),
         *_flow_demand_capacity_issues(model),
+        *_user_demand_return_factor_issues(model),
         *_observation_distance_issues(model),
         *(_layout_issues(model) if layout else []),
     ]
