@@ -29,8 +29,8 @@ from ribasim_nl.settings import settings
 #       Never overwrite a folder: name a new build after its branch and commit, so a NAME is one build.
 # Make sure the version is compatible with the Ribasim Python version in pixi.toml.
 # `run_lhm_coupled` depends on this script, so changing NAME reruns the coupled model.
-SOURCE = "minio"
-NAME = "nl-2026-11-08-a66f580"
+SOURCE = "github"
+NAME = "v2026.2.0-rc1"
 # ───────────────────────────────────────────────────────────────────────────────
 
 GITHUB_RELEASE_URL = "https://github.com/Deltares/Ribasim/releases/download/{name}/{asset}"

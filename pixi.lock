@@ -668,7 +668,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.2-pyh5ded981_0.conda
       - pypi: ./src/hydamo
       - pypi: ./src/ribasim_nl
-      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=a66f580abe2ae372c06cd6748f55e3a6d9572fb9#a66f580abe2ae372c06cd6748f55e3a6d9572fb9
+      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&tag=v2026.2.0-rc1#af3e1b99756c0b8e1e8b7882b36a7c74134a87ee
       - pypi: https://files.pythonhosted.org/packages/04/94/598975013306c83df1820bf6cf7424da43c98eff190d528b733be615e8c6/strenum-0.5.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/2e/7c85f00260aa332fbab9caba209290a07be645ee1d5691415ae635a7382a/rasterstats-0.21.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1a/1f/f6e09b17b2f051b1a9eeba5ef30a734025808bd7ce10daed167688eb59b8/xlwings-0.37.8-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
@@ -1262,7 +1262,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hf451053_7.conda
       - pypi: ./src/hydamo
       - pypi: ./src/ribasim_nl
-      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=a66f580abe2ae372c06cd6748f55e3a6d9572fb9#a66f580abe2ae372c06cd6748f55e3a6d9572fb9
+      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&tag=v2026.2.0-rc1#af3e1b99756c0b8e1e8b7882b36a7c74134a87ee
       - pypi: https://files.pythonhosted.org/packages/04/94/598975013306c83df1820bf6cf7424da43c98eff190d528b733be615e8c6/strenum-0.5.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/2e/7c85f00260aa332fbab9caba209290a07be645ee1d5691415ae635a7382a/rasterstats-0.21.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/29/17/239d1e64d290c26f126582445649bc7c925a7a80f2472b8bd04d6ec22f8d/pandera-0.35.0-py3-none-any.whl
@@ -1835,7 +1835,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_7.conda
       - pypi: ./src/hydamo
       - pypi: ./src/ribasim_nl
-      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=a66f580abe2ae372c06cd6748f55e3a6d9572fb9#a66f580abe2ae372c06cd6748f55e3a6d9572fb9
+      - pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&tag=v2026.2.0-rc1#af3e1b99756c0b8e1e8b7882b36a7c74134a87ee
       - pypi: https://files.pythonhosted.org/packages/04/94/598975013306c83df1820bf6cf7424da43c98eff190d528b733be615e8c6/strenum-0.5.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/2e/7c85f00260aa332fbab9caba209290a07be645ee1d5691415ae635a7382a/rasterstats-0.21.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/29/17/239d1e64d290c26f126582445649bc7c925a7a80f2472b8bd04d6ec22f8d/pandera-0.35.0-py3-none-any.whl
@@ -6608,7 +6608,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/pandas?source=compressed-mapping
+  - pkg:pypi/pandas?source=hash-mapping
   run_exports: {}
   size: 17069216
   timestamp: 1792679038986
@@ -9105,7 +9105,7 @@ packages:
   license: Apache-2.0
   license_family: APACHE
   purls:
-  - pkg:pypi/cyclopts?source=compressed-mapping
+  - pkg:pypi/cyclopts?source=hash-mapping
   run_exports: {}
   size: 238135
   timestamp: 1793656119142
@@ -11187,7 +11187,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/platformdirs?source=compressed-mapping
+  - pkg:pypi/platformdirs?source=hash-mapping
   run_exports: {}
   size: 35802
   timestamp: 1793634925486
@@ -22110,7 +22110,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/scipy?source=compressed-mapping
+  - pkg:pypi/scipy?source=hash-mapping
   run_exports: {}
   size: 15236507
   timestamp: 1792930944234
@@ -22892,9 +22892,9 @@ packages:
   - geopandas
   - pytest ; extra == 'tests'
   requires_python: '>=3.13'
-- pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&rev=a66f580abe2ae372c06cd6748f55e3a6d9572fb9#a66f580abe2ae372c06cd6748f55e3a6d9572fb9
+- pypi: git+https://github.com/Deltares/Ribasim?subdirectory=python%2Fribasim&tag=v2026.2.0-rc1#af3e1b99756c0b8e1e8b7882b36a7c74134a87ee
   name: ribasim
-  version: 2026.1.2
+  version: 2026.2.0rc1
   requires_dist:
   - geopandas>=1.0
   - matplotlib>=3.9
