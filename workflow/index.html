@@ -302,6 +302,12 @@ window.Quarto = {
  <span class="menu-text">Coupling</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../workflow/hws-plus.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">HWS plus</span></a>
+  </div>
+</li>
       </ul>
   </li>
     </ul>
@@ -387,12 +393,13 @@ window.Quarto = {
   samenvoegen --&gt; koppelen --&gt; run_lhm_coupled
   run_lhm_coupled --&gt; validate_lhm_coupled
   run_lhm_coupled --&gt; export_webmap
+  run_lhm_coupled --&gt; hws_plus
 
   classDef perauthority fill:#cde2fb,stroke:#2a78d6
   class hydamo,lumped,parameterized,bergend,dynamic,postprocessed,crossings,shortest_paths,boezemmodel,feedback,profiles,forcing perauthority
 </pre>
 </div>
-<p></p><figcaption> The stages of the pipeline, grouped. Blue stages run per authority. The <a href="../dev/dvc.html#fig-dvc-pipeline">full graph</a> has 79 stages.</figcaption> </figure><p></p>
+<p></p><figcaption> The stages of the pipeline, grouped. Blue stages run per authority. The <a href="../dev/dvc.html#fig-dvc-pipeline">full graph</a> has 80 stages.</figcaption> </figure><p></p>
 </div>
 </div>
 </div>
@@ -454,6 +461,11 @@ window.Quarto = {
 <td style="text-align: left;"><code>export_webmap</code></td>
 <td style="text-align: left;">Export the run for the model viewer.</td>
 <td style="text-align: left;"><a href="../dev/viewer.html">Model viewer</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>hws_plus</code></td>
+<td style="text-align: left;">Cut the main water system out of the run, with its exchanges as boundaries.</td>
+<td style="text-align: left;"><a href="../workflow/hws-plus.html">HWS plus</a></td>
 </tr>
 </tbody>
 </table>
