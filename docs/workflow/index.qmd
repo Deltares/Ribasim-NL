@@ -14,7 +14,7 @@ Each authority starts from its own kind of data, so there are three routes to a 
 ## The stages
 
 ```{mermaid}
-%%| fig-cap: "The stages of the pipeline, grouped. Blue stages run per authority. The [full graph](../dev/dvc.qmd#fig-dvc-pipeline) has 79 stages."
+%%| fig-cap: "The stages of the pipeline, grouped. Blue stages run per authority. The [full graph](../dev/dvc.qmd#fig-dvc-pipeline) has 80 stages."
 flowchart TB
   subgraph main["Main water system"]
     direction TB
@@ -40,6 +40,7 @@ flowchart TB
   samenvoegen --> koppelen --> run_lhm_coupled
   run_lhm_coupled --> validate_lhm_coupled
   run_lhm_coupled --> export_webmap
+  run_lhm_coupled --> hws_plus
 
   classDef perauthority fill:#cde2fb,stroke:#2a78d6
   class hydamo,lumped,parameterized,bergend,dynamic,postprocessed,crossings,shortest_paths,boezemmodel,feedback,profiles,forcing perauthority
@@ -57,6 +58,7 @@ flowchart TB
 | `samenvoegen`, `koppelen` | Merge all models, and connect them where they meet. | [Coupling](couple.qmd) |
 | `run_lhm_coupled`, `validate_lhm_coupled` | Run the model and check its results. | [Testing](../dev/testing.qmd#coupled-model-result-checks) |
 | `export_webmap` | Export the run for the model viewer. | [Model viewer](../dev/viewer.qmd) |
+| `hws_plus` | Cut the main water system out of the run, with its exchanges as boundaries. | [HWS plus](hws-plus.qmd) |
 
 ## Where the data is
 

@@ -1481,6 +1481,16 @@ stages:
       - data/Rijkswaterstaat/modellen/lhm_coupled
     outs:
       - data/Rijkswaterstaat/runs/lhm_coupled
+  hws_plus:
+    cmd: pixi run python pipeline/hws_plus.py
+    deps:
+      - pipeline/hws_plus.py
+      - src/ribasim_nl/ribasim_nl
+      - data/Rijkswaterstaat/runs/lhm_coupled
+    # Not cached by DVC, since it is large and built from the run in a minute: `dvc.lock` still records its hash
+    outs:
+      - data/Rijkswaterstaat/modellen/hws_plus:
+          cache: false
   validate_lhm_coupled:
     cmd: pixi run python pipeline/validate_lhm_coupled.py
     deps:

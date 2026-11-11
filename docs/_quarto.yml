@@ -52,6 +52,7 @@ website:
         - section: "The nationwide model"
           contents:
             - workflow/couple.qmd
+            - workflow/hws-plus.qmd
     - title: "Contributing"
       contents:
         - dev/index.qmd

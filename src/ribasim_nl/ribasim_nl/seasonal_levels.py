@@ -38,7 +38,7 @@ import numpy as np
 import pandas as pd
 import shapely
 
-from ribasim_nl.aquo import waterbeheercode
+from ribasim_nl.aquo import authority_by_code, authority_code
 from ribasim_nl.control_layout import DEFAULT_LEVEL_THRESHOLD_RANGE
 from ribasim_nl.coupling_level_common import as_int
 from ribasim_nl.coupling_level_network import first_non_junction
@@ -51,8 +51,6 @@ LOG = logging.getLogger(__name__)
 
 # The level management of the peilgebieden, written by pipeline/peilbeheer.py
 PEILBEHEER = settings.ribasim_nl_data_dir / "Rijkswaterstaat/verwerkt/peilbeheer.gpkg"
-# The node IDs of the coupled model are the waterbeheercode of their authority times this, plus their own node ID
-NODE_ID_FACTOR = 100_000
 # The suffix of the control states of the Outlets and Pumps in each season
 STATE_SUFFIX = {"winter": " winter", "zomer": " zomer"}
 # The condition on the season has a variable with weight 0, which is always 0, and these thresholds, so it is true
@@ -83,8 +81,7 @@ META_COLUMNS = {
 
 def node_authority(node_ids: pd.Series) -> pd.Series:
     """The authority of nodes of the coupled model, from their node ID, see `ribasim_nl.aquo`."""
-    authority_by_code = {code: authority for authority, code in waterbeheercode.items()}
-    return (node_ids // NODE_ID_FACTOR).map(authority_by_code)
+    return pd.Series(authority_code(node_ids), index=node_ids.index).map(authority_by_code)
 
 
 def _offset(target_level: pd.Series, summer: pd.Series, winter: pd.Series) -> pd.Series:
