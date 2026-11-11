@@ -307,9 +307,9 @@ for row in industrie_inlet_gdf[mask].itertuples():
             return_factor = 0.9
         else:  # else we calculate
             return_flow = outlets["return_flow"].sum()
-            return_factor = return_flow / demand
-            # if return_flow > demand:
-            #     raise ValueError(f"return_flow > demand: {return_flow} > {demand}")
+            # Sappi in Maastricht and Nobian in Hengelo discharge more than they take, since they also extract
+            # groundwater, which the model does not have, so they return all they take, see #1027
+            return_factor = min(return_flow / demand, 1.0)
 
     add_demand(
         model=model,
