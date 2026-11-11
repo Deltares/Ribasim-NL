@@ -911,6 +911,7 @@ def rebuild_junction_trees(
     waterways: gpd.GeoDataFrame,
     tolerance: float = 10.0,
     water: gpd.GeoDataFrame | None = None,
+    routing_areas: typing.Mapping[int, shapely.Geometry] | None = None,
 ) -> tuple[list[int], list[int]]:
     """Route the flow links of Basins along the waterways, with one Junction tree per Basin, split where they split.
 
@@ -930,10 +931,13 @@ def rebuild_junction_trees(
     :param water: open water, over which the waterways are connected and nodes far from them are routed to them, see
         `ribasim_nl.network_snapping.route_basin_links`, defaults to None. The waterways on it, such as fairways, are
         not digitized in the direction of the flow, so they do not set the direction of links, see `towards_basin`.
+    :param routing_areas: per Basin, an area beyond its basin area in which the waterways are used as well, for
+        connector nodes that are connected to it over a long distance, defaults to None
 
     :return: the ids of the links and of the Junctions that are new or changed
     """
     assert model.basin.area.df is not None
+    routing_areas = {} if routing_areas is None else routing_areas
     before = simplified_links(model)
     routes = Routes(model)
     fixed = fixed_junctions(model)
@@ -961,6 +965,8 @@ def rebuild_junction_trees(
             continue
         sides = {key: routes.subtree(link_id) for key, (_, link_id) in enumerate(ends)}
         area = areas[basin_id].buffer(tolerance)
+        if basin_id in routing_areas:
+            area = area.union(routing_areas[basin_id])
         idx, lines = lines_in(waterway_geometries, waterway_tree, area)
         basin_water = shapely.intersection(
             shapely.union_all(water_geometries[water_tree.query(area, predicate="intersects")]), area
@@ -1007,6 +1013,7 @@ def rebuild_rws_junction_trees(
     fairway_path: pathlib.Path,
     main_route: gpd.GeoDataFrame,
     tolerance: float = 250.0,
+    routing_areas: typing.Mapping[int, shapely.Geometry] | None = None,
 ) -> tuple[list[int], list[int]]:
     """Rebuild the Junctions of Rijkswaterstaat Basins along the waterways and a main route, see `rebuild_junction_trees`.
 
@@ -1021,10 +1028,13 @@ def rebuild_rws_junction_trees(
     :param fairway_path: GeoPackage with the fairways of OpenStreetMap
     :param main_route: lines of the main route, see `ribasim_nl.rws_kunstwerken.main_route`
     :param tolerance: buffer around the basin area within which waterways are used, defaults to 250.0
+    :param routing_areas: per Basin, an area beyond its basin area in which the waterways are used as well, see
+        `rebuild_junction_trees`, defaults to None
 
     :return: the ids of the links and of the Junctions that are new or changed
     """
     assert model.basin.area.df is not None
+    routing_areas = {} if routing_areas is None else routing_areas
     is_lake = model.node.df.loc[sorted(basin_ids), "name"].isin(LAKES)
     changed: list[int] = []
     junctions: list[int] = []
@@ -1033,13 +1043,18 @@ def rebuild_rws_junction_trees(
         areas = model.basin.area.df[model.basin.area.df["node_id"].isin(ids)]
         if areas.empty:
             continue
-        mask = shapely.union_all(areas.geometry.buffer(tolerance).to_numpy())
+        extra = [routing_areas[i] for i in ids if i in routing_areas]
+        mask = shapely.union_all([*areas.geometry.buffer(tolerance).to_numpy(), *extra])
         if lake:
             waterways = read_lake_waterways(fairway_path, mask, main_route)
-            changed_links, new_junctions = rebuild_junction_trees(model, ids, waterways, tolerance, water=areas)
+            changed_links, new_junctions = rebuild_junction_trees(
+                model, ids, waterways, tolerance, water=areas, routing_areas=routing_areas
+            )
         else:
             waterways = read_main_waterways(top10nl_path, mask, main_route)
-            changed_links, new_junctions = rebuild_junction_trees(model, ids, waterways, tolerance)
+            changed_links, new_junctions = rebuild_junction_trees(
+                model, ids, waterways, tolerance, routing_areas=routing_areas
+            )
         changed.extend(changed_links)
         junctions.extend(new_junctions)
     return sorted(set(changed) & set(model.link.df.index)), junctions

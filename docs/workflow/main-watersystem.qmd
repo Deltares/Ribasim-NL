@@ -47,12 +47,12 @@ This stage is frozen, so it is not run again in a reproduction, since the source
 - `2_basins.py` derives the Basin areas of the main water system. From the bathymetry it writes a CSV file with the profile of each Basin, `verwerkt/basins_level_area.csv`.
 - `3_netwerk.py` derives a `ribasim_nl.Network` (not a Ribasim network yet!) from OpenStreetMap, with modifications mainly in the IJsselmeer, to build the model network with in `5_model_netwerk.py`. It needs the Basins of `2_basins.py`, since a network node goes at each intersection of a Basin area with the network. This network, `verwerkt/netwerk.gpkg`, also guides the links in the [coupling](couple.qmd).
 - `4_kunstwerken.py` combines the structures from NIS (Netwerk Informatie Systeem) of Rijkswaterstaat, Baseline, OpenStreetMap, the structures in the primary flood defences, and the abstractions, into a HyDAMO-based format, from which the Ribasim network is derived.
-- `5_model_netwerk.py` combines the results of steps 2 to 4 into a first Ribasim model, `modellen/hws_netwerk/hws.toml`. It includes the distribution keys (verdeelsleutels) of Lobith and Monsin as structures, but no control nodes, and no demands. The Waal at Tiel is a TabulatedRatingCurve with the Q(h) relation of a calculation with LSM, `verwerkt/kunstwerken/QhTielWaal.xlsx`, upstream of the branch to the Amsterdam-Rijnkanaal.
+- `5_model_netwerk.py` combines the results of steps 2 to 4 into a first Ribasim model, `modellen/hws_netwerk/hws.toml`. It includes the distribution keys (verdeelsleutels) of Lobith and Monsin as structures, but no control nodes, and no demands. The Waal at Tiel is a TabulatedRatingCurve with the Q(h) relation of a calculation with LSM, `verwerkt/kunstwerken/QhTielWaal.xlsx`, downstream of the branch to the Amsterdam-Rijnkanaal, with the flow downstream of it.
 
 ## Control and demands
 
-- `6_model_sturing.py` adds control, with ContinuousControl, DiscreteControl and FlowDemand nodes, into `modellen/hws_sturing/hws.toml`. It also adds the structures next to another one, see `PARALLEL_KWK` in `ribasim_nl.rws_kunstwerken`, such as the locks next to the weirs of the Maas, the Nederrijn and the Lek, with a FlowDemand for their losses.
-- `7_model_onttrekkingen.py` adds the demands of drinking water, industry and energy as UserDemands, splits Basins along a route where needed, and adds Junctions, into `modellen/hws_demand/hws.toml`.
+- `6_model_sturing.py` adds control, with ContinuousControl, DiscreteControl and FlowDemand nodes, into `modellen/hws_sturing/hws.toml`. It also adds the structures next to another one, see `PARALLEL_KWK` in `ribasim_nl.rws_kunstwerken`, such as the locks next to the weirs of the Maas, the Nederrijn and the Lek, with a FlowDemand for their losses. It splits the Amsterdam-Rijnkanaal north of the Lek in three Basins, to which the Prinses Irenesluis listens.
+- `7_model_onttrekkingen.py` adds the demands of drinking water, industry and energy as UserDemands, and adds Junctions, into `modellen/hws_demand/hws.toml`.
 - `8a_update_state.py` runs this model, and writes its final state back as its initial state.
 
 ## Boundaries and forcing

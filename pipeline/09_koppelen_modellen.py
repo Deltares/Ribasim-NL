@@ -34,7 +34,7 @@ from ribasim_nl.layout import move_nodes, resolve_overlaps, separate_nodes
 from ribasim_nl.model import find_toml
 from ribasim_nl.network_snapping import line_reader, snap_to_waterways
 from ribasim_nl.observations import link_observations
-from ribasim_nl.rws_kunstwerken import main_route
+from ribasim_nl.rws_kunstwerken import ROUTING_AREAS, main_route
 from ribasim_nl.rwzi import attach_rwzi_junctions
 from ribasim_nl.seasonal_levels import PEILBEHEER, apply_seasonal_levels, remove_seasonal_levels
 from ribasim_nl.settings import settings
@@ -816,7 +816,15 @@ def merge_coupling_trees(model: Model, network: Network) -> None:
     are merged into Junctions, see `junctionify`, and the inflows and outflows of each Basin share one Junction tree,
     see `merge_basin_trees`.
     """
-    rebuild_rws_junction_trees(model, rws_basins_between_models(model), top10nl_gpkg, fairway_gpkg, main_route(network))
+    rws_offset = waterbeheercode["Rijkswaterstaat"] * 100_000
+    rebuild_rws_junction_trees(
+        model,
+        rws_basins_between_models(model),
+        top10nl_gpkg,
+        fairway_gpkg,
+        main_route(network),
+        routing_areas={rws_offset + basin_id: area for basin_id, area in ROUTING_AREAS.items()},
+    )
     junctionify(model)
     merge_basin_trees(model, line_reader([top10nl_gpkg], main_route(network)))
 

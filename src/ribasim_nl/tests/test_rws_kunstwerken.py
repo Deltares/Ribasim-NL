@@ -2,8 +2,11 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pytest
+from ribasim import Node
+from ribasim.nodes import basin, manning_resistance, outlet, tabulated_rating_curve
 from ribasim_nl.rws_kunstwerken import (
     PARALLEL_KWK,
+    RWS_NODE_ID_OFFSET,
     SUBTRACT_PROPERTY,
     ParallelKwk,
     discrete_control_tables,
@@ -11,6 +14,8 @@ from ribasim_nl.rws_kunstwerken import (
     has_discrete_control,
     has_flow_demand,
     line_along,
+    listen_node,
+    listen_variable,
     main_route,
     rating_curve_from_bottom,
     read_control_thresholds,
@@ -20,7 +25,7 @@ from ribasim_nl.rws_kunstwerken import (
 )
 from shapely.geometry import LineString, Point
 
-from ribasim_nl import Network
+from ribasim_nl import Model, Network
 
 STARTTIME = pd.Timestamp("2017-01-01")
 ENDTIME = pd.Timestamp("2019-01-01")
@@ -381,3 +386,167 @@ def test_discrete_control_on_level_difference():
     assert static.set_index("control_state")["flow_rate"].to_dict() == {"aanvoer": 0.1, "afvoer": 0.0}
     assert static["min_upstream_level"].isna().all() and static["max_downstream_level"].isna().all()
     assert dict(zip(logic.df["truth_state"], logic.df["control_state"], strict=True)) == {"T": "afvoer", "F": "aanvoer"}
+
+
+def test_read_static_supply_without_control():
+    """Like the Prs. Beatrixsluis, a supply pump without control has its aanvoer capacity as flow rate."""
+    df = sheet(
+        [
+            ["Ribasim type", "Pump"],
+            ["Kunstwerkcode", "38F-352-01"],
+            ["Aanvoer Capaciteit (m3/s)", 10],
+            ["Afvoer Capaciteit (m3/s)", 0],
+            ["Maximale capaciteit (m3/s)", 13],
+            ["Streefpeil bovenstrooms (m +NAP)", -0.4],
+            ["FlowDemand", "ja"],
+        ]
+    )
+    static = read_static(df, "Pump").df
+    assert static is not None
+    assert static[["flow_rate", "max_flow_rate", "min_upstream_level"]].iloc[0].to_list() == [10, 10, -0.4]
+    # without control, a structure cannot switch between two capacities
+    df.loc[df["Eigenschap"] == "Afvoer Capaciteit (m3/s)", "Waarde"] = 5
+    with pytest.raises(AssertionError, match="without a DiscreteControl"):
+        read_static(df, "Pump")
+
+
+def pr_bernhardsluis() -> pd.DataFrame:
+    """Like the Pr. Bernhardsluis: an aanvoer Outlet with DiscreteControl on the Waal upstream, and a FlowDemand."""
+    return sheet(
+        [
+            ["Ribasim type", "Outlet"],
+            ["Kunstwerkcode", "39D-001-02"],
+            ["Afvoer Capaciteit (m3/s)", 0],
+            ["Aanvoer Capaciteit (m3/s)", 73],
+            ["Streefpeil bovenstrooms (m +NAP)", 0],
+            ["FlowDemand", "ja"],
+            ["Meetlocatiecode", 8007291],
+            ["Type sturing", "DiscreteControl"],
+            [np.nan],
+            ["Toestand (control_state)", "Bovengrens (threshold_high)", "Ondergrens (threshold_low)"],
+            ["aanvoer", 3.125, 3.075],
+            [np.nan],
+            ["FlowDemand (m3/s)", "Prioriteit"],
+            [1, 3],
+        ]
+    )
+
+
+def test_read_static_flow_demand_level_with_control():
+    """A structure that supplies from the Basin it listens to has no level from its thresholds to stop its FlowDemand.
+
+    It then stops at its Streefpeil bovenstrooms, like the Pr. Bernhardsluis.
+    """
+    static = read_static(pr_bernhardsluis(), "Outlet", "upstream").df
+    assert static is not None
+    assert static.set_index("control_state")["flow_rate"].to_dict() == {"aanvoer": 73.0, "afvoer": 0.0}
+    assert static["min_upstream_level"].to_list() == [0.0, 0.0]
+    # without a FlowDemand the Streefpeil is not used
+    df = pr_bernhardsluis()
+    static = read_static(df[df["Eigenschap"] != "FlowDemand"], "Outlet", "upstream").df
+    assert static is not None
+    assert "min_upstream_level" not in static or static["min_upstream_level"].isna().all()
+
+
+def prs_irenesluis_doorspoeling() -> pd.DataFrame:
+    """Like the Prs. Irenesluis-Doorspoeling, which supplies 25 m3/s while less flows at Nigtevecht."""
+    return sheet(
+        [
+            ["Ribasim type", "Outlet"],
+            ["Kunstwerkcode", "39B-002-01"],
+            ["Aanvoer Capaciteit (m3/s)", 25],
+            ["Afvoer Capaciteit (m3/s)", 0],
+            ["Minimale capaciteit (m3/s)", 10],
+            ["Meetlocatiecode", 8010764],
+            ["Meetlocatievariabele", "flow_rate"],
+            ["Type sturing", "DiscreteControl"],
+            [np.nan],
+            ["Toestand (control_state)", "Bovengrens (threshold_high)", "Ondergrens (threshold_low)"],
+            ["aanvoer", 27.5, 22.5],
+        ]
+    )
+
+
+def test_discrete_control_on_flow_rate():
+    df = prs_irenesluis_doorspoeling()
+    variable, condition, logic = discrete_control_tables(df, 10764, STARTTIME, ENDTIME)
+    assert variable.df["listen_node_id"].to_list() == [10764]
+    assert variable.df["variable"].to_list() == ["flow_rate"]
+    assert condition.df[["threshold_high", "threshold_low"]].iloc[0].to_list() == [27.5, 22.5]
+    assert dict(zip(logic.df["truth_state"], logic.df["control_state"], strict=True)) == {"T": "afvoer", "F": "aanvoer"}
+    # the minimum capacity holds in both states, and a flow rate says nothing about the level to stop at
+    static = read_static(df, "Outlet").df
+    assert static is not None
+    assert static.set_index("control_state")["flow_rate"].to_dict() == {"aanvoer": 25.0, "afvoer": 0.0}
+    assert static["min_flow_rate"].to_list() == [10.0, 10.0]
+    for column in ("min_upstream_level", "max_downstream_level"):
+        assert column not in static or static[column].isna().all()
+    # only a level difference is implemented
+    with pytest.raises(AssertionError, match="level difference"):
+        discrete_control_tables(df, 10764, STARTTIME, ENDTIME, subtract_node_id=10763)
+
+
+def test_listen_variable():
+    assert listen_variable(read_kwk_properties(sluis_born())) == "level"
+    assert listen_variable(read_kwk_properties(prs_irenesluis_doorspoeling())) == "flow_rate"
+    df = prs_irenesluis_doorspoeling()
+    df.loc[df["Eigenschap"] == "Meetlocatievariabele", "Waarde"] = "storage"
+    with pytest.raises(AssertionError, match="Meetlocatievariabele"):
+        listen_variable(read_kwk_properties(df))
+
+
+def waal_model() -> Model:
+    """A structure between Basins, with a TabulatedRatingCurve upstream and a ManningResistance downstream.
+
+    Basin 1 flows through TabulatedRatingCurve 2 into Basin 3, from which Outlet 4 takes water to Basin 5, and
+    ManningResistance 6 drains Basin 5 to Basin 7.
+    """
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    for node_id in (1, 3, 5, 7):
+        model.basin.add(
+            Node(node_id, Point(node_id * 100, 0)),
+            [basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]), basin.State(level=[0.5])],
+        )
+    model.tabulated_rating_curve.add(
+        Node(2, Point(200, 0)), [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 1.0])]
+    )
+    model.outlet.add(Node(4, Point(400, 0)), [outlet.Static(flow_rate=[1.0])])
+    model.manning_resistance.add(
+        Node(6, Point(600, 0)),
+        [manning_resistance.Static(length=[100.0], manning_n=[0.04], profile_width=[10.0], profile_slope=[1.0])],
+    )
+    for from_id, to_id in ((1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7)):
+        model.link.add(model.get_node(from_id), model.get_node(to_id))
+    return model
+
+
+def outlet_sheet(meetlocatiecode: int, variable: str = "level") -> pd.DataFrame:
+    """An aanvoer Outlet with DiscreteControl on the `variable` of node `meetlocatiecode` of the coupled model."""
+    return sheet(
+        [
+            ["Ribasim type", "Outlet"],
+            ["Aanvoer Capaciteit (m3/s)", 1],
+            ["Meetlocatiecode", meetlocatiecode],
+            ["Meetlocatievariabele", variable],
+            ["Type sturing", "DiscreteControl"],
+            [np.nan],
+            ["Toestand (control_state)", "Bovengrens (threshold_high)", "Ondergrens (threshold_low)"],
+            ["aanvoer", 0.6, 0.5],
+        ]
+    )
+
+
+def test_listen_node():
+    model = waal_model()
+    # next to it, or connected to the Basin on one side through nodes that do not control the flow
+    assert listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 3), 4) == (3, "upstream")
+    assert listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 7), 4) == (7, "downstream")
+    # like the Prs. Irenesluis-Doorspoeling, the flow rate of a connector node anywhere
+    assert listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 6, "flow_rate"), 4) == (6, None)
+    with pytest.raises(AssertionError, match="not a Basin"):
+        listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 6), 4)
+    with pytest.raises(AssertionError, match="flow rate of Basin"):
+        listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 3, "flow_rate"), 4)
+    # a TabulatedRatingCurve controls the level upstream of it
+    with pytest.raises(AssertionError, match="not on one side"):
+        listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 1), 4)

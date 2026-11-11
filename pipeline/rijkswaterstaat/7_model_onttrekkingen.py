@@ -5,7 +5,6 @@ import geopandas as gpd
 from ribasim import Node
 from ribasim.nodes import user_demand
 from ribasim_nl.junctions import junctionify
-from ribasim_nl.split_basins import split_basin_along_route
 from shapely.geometry import LineString, Point
 
 from ribasim_nl import CloudStorage, Model, Network
@@ -143,35 +142,10 @@ onttrekkingen_gpkg = cloud.joinpath("Basisgegevens/Onttrekkingen/onttrekkingen.g
 
 network = Network.from_network_gpkg(cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg"))
 
-# %% Split the Amsterdam-Rijnkanaal north of the Lek in three, see https://github.com/Deltares/Ribasim-NL/issues/916
-# It runs about 59 km from the Prinses Irenesluis to ManningResistance 4695 at the Noordzeekanaal. It is split before
-# the demands are added, so they and the couplings connect to the section they are at.
-ARK, IRENESLUIS, ARK_END = 5018, 5930, 4695
-flow_df = model.link.df[model.link.df.link_type == "flow"]
-(upstream_link_id,) = flow_df.index[(flow_df.from_node_id == IRENESLUIS) & (flow_df.to_node_id == ARK)]
-(downstream_link_id,) = flow_df.index[(flow_df.from_node_id == ARK) & (flow_df.to_node_id == ARK_END)]
-upstream_line = cast(LineString, flow_df.at[upstream_link_id, "geometry"])
-downstream_line = cast(LineString, flow_df.at[downstream_link_id, "geometry"])
-ark_route = LineString([*upstream_line.coords, *downstream_line.coords[1:]])
-ark_basin_ids, _ = split_basin_along_route(
-    model,
-    ARK,
-    ark_route,
-    # ARK-Zuilen after gemaal De Aanvoerder, and ARK-Nigtevecht before Nigtevecht
-    split_points=[Point(133742, 457096), Point(129815, 475689)],
-    basin_names=["Amsterdam-Rijnkanaal Utrecht", "Amsterdam-Rijnkanaal Breukelen", "Amsterdam-Rijnkanaal Weesp"],
-    manning_names=["ARK-Zuilen", "ARK-Nigtevecht"],
-    manning_n=0.04,  # like ManningResistance 4695
-    profile_slope=1.0,
-)
-assert ark_basin_ids[1] == ARK, "The Basin node of the ARK lies in Breukelen"
-# Like the other ManningResistances, see 5_model_netwerk.py, the one at the end has the length of its links
-assert model.manning_resistance.static.df is not None
-end_links = model.link.df[(model.link.df.from_node_id == ARK_END) | (model.link.df.to_node_id == ARK_END)]
-assert len(end_links) == 2, f"Expected two links of ManningResistance {ARK_END}"
-model.manning_resistance.static.df.loc[model.manning_resistance.static.df.node_id == ARK_END, "length"] = (
-    end_links.length.sum()
-)
+# %% The Amsterdam-Rijnkanaal north of the Lek is split in three in 6_model_sturing, so the demands and the couplings
+# connect to the section they are at
+ARK_BASINS = ["Amsterdam-Rijnkanaal Utrecht", "Amsterdam-Rijnkanaal Breukelen", "Amsterdam-Rijnkanaal Weesp"]
+ark_basin_ids = [model.find_node_id(node_type="Basin", name=name) for name in ARK_BASINS]
 # The links of demands start from a network node at their Basin node, see `add_demand`
 for basin_id in ark_basin_ids:
     if network.nodes.distance(model.basin[basin_id].geometry).min() > TOLERANCE:

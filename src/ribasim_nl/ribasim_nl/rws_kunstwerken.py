@@ -8,7 +8,8 @@ A structure with `Type sturing` DiscreteControl switches between the control sta
 state while the level of the listened Basin is above the thresholds, and in the aanvoer state while it is below
 them. The `Toestand (control_state)` column of the thresholds names the function of the structure, and does not
 change this. A pump that supplies a canal therefore pumps while the canal is below its thresholds. With
-`Meetlocatiecode aftrek` the structure switches on the level difference with that Basin, rather than on a level.
+`Meetlocatiecode aftrek` the structure switches on the level difference with that Basin, rather than on a level, and
+with `Meetlocatievariabele` flow_rate on the flow rate of the connector node of the `Meetlocatiecode`.
 
 A structure in `PARALLEL_KWK` is next to another structure, between the same Basins, so it has no place of its own in
 the network. `5_model_netwerk` leaves it out, and `6_model_sturing` adds it.
@@ -25,13 +26,17 @@ import shapely.ops
 from ribasim.nodes import discrete_control, flow_demand, outlet, pump, tabulated_rating_curve
 from shapely.geometry import LineString, Point
 
+from ribasim_nl.aquo import waterbeheercode
+from ribasim_nl.model import Model
 from ribasim_nl.network import Network
+from ribasim_nl.validation import CONNECTOR_NODE_TYPES
 
+UPSTREAM_LEVEL = "Streefpeil bovenstrooms (m +NAP)"
 FLOW_KWARGS = {
     "Capaciteit (m3/s)": "flow_rate",
     "Minimale capaciteit (m3/s)": "min_flow_rate",
     "Maximale capaciteit (m3/s)": "max_flow_rate",
-    "Streefpeil bovenstrooms (m +NAP)": "min_upstream_level",
+    UPSTREAM_LEVEL: "min_upstream_level",
     "Streefpeil benedenstrooms (m +NAP)": "max_downstream_level",
 }
 CONTROL_STATES = {"aanvoer": "Aanvoer Capaciteit (m3/s)", "afvoer": "Afvoer Capaciteit (m3/s)"}
@@ -54,6 +59,12 @@ USED_PROPERTIES = {
 }
 # `Type sturing` values without a control node
 LOCAL_CONTROL = {"lokaal", "geen"}
+# `Meetlocatievariabele` values of a DiscreteControl
+LISTEN_VARIABLES = ("level", "flow_rate")
+# Node types between Basins that do not control the flow, so a DiscreteControl may listen across them
+FREE_FLOW_NODE_TYPES = {"Basin", "ManningResistance", "LinearResistance", "Junction"}
+# A Meetlocatiecode is the ID of a node in the coupled model, see `ribasim_nl.aquo`
+RWS_NODE_ID_OFFSET = waterbeheercode["Rijkswaterstaat"] * 100_000
 YES_NO = {"ja": True, "nee": False}
 
 
@@ -106,7 +117,20 @@ PARALLEL_KWK = {
     "46A-001-02": ParallelKwk("46A-001-06", reverse=True, offset=-30.0),  # Gemaal Heumen, from the canal to the Maas
     # Dunea pumps Maas water to the Waal side of the Wilhelminasluis, see #979
     "Brakel, Maaswaterbel": ParallelKwk("44F-002-01", reverse=True, xy=(131922.0, 423045.0)),
+    # The structures of the Amsterdam-Rijnkanaal and the Noordzeekanaal in their own channels, at their NIS location, see
+    # #973. The link of the spuisluis of IJmuiden to the sea joins that of the gemaal where their channels meet.
+    "25A-001-16": ParallelKwk(
+        "25A-001-09", xy=(101627.0, 498352.0), downstream_network_node=3547
+    ),  # Spuisluis IJmuiden
+    "39B-002-01": ParallelKwk("39B-002-02", xy=(150388.0, 442145.0)),  # Prs. Irenesluis-Doorspoeling
+    "39D-001-01": ParallelKwk("39D-001-02", xy=(159593.0, 434770.0)),  # Pr. Bernhardsluis-omloopriool
 }
+
+
+# Per Basin, by its ID in the hws model, an area beyond its basin area in which its links are routed, see
+# `ribasim_nl.flow_paths.rebuild_rws_junction_trees`. The Pr. Bernhardsluis and its omloopriool take water from the Waal
+# at Tiel, along the canal, to the locks 1.4 km from the Waal in the area of the Amsterdam-Rijnkanaal.
+ROUTING_AREAS = {7291: shapely.box(159400.0, 433200.0, 160300.0, 434900.0)}
 
 
 def main_route(network: Network, structures: Mapping[str, ParallelKwk] = PARALLEL_KWK) -> gpd.GeoDataFrame:
@@ -189,13 +213,17 @@ def read_kwk_properties(kwk_df: pd.DataFrame) -> pd.Series:
 def read_flow_kwargs(kwk_properties: pd.Series) -> dict[str, Any]:
     """Flow rates and levels of a structure, as keyword arguments for Outlet or Pump static tables.
 
-    Without `Capaciteit (m3/s)`, a structure without control uses `Afvoer Capaciteit (m3/s)` as flow rate.
+    Without `Capaciteit (m3/s)`, a structure without control uses the capacity of the one function it has as flow rate,
+    `Afvoer Capaciteit (m3/s)` or `Aanvoer Capaciteit (m3/s)`, like a supply pump.
     """
     kwk_properties = kwk_properties.copy()
-    if "Capaciteit (m3/s)" not in kwk_properties and CONTROL_STATES["afvoer"] in kwk_properties:
-        aanvoer = kwk_properties.get(CONTROL_STATES["aanvoer"], 0.0)
-        assert aanvoer == 0, f"Aanvoer capacity {aanvoer} without a DiscreteControl that switches to it"
-        kwk_properties["Capaciteit (m3/s)"] = kwk_properties[CONTROL_STATES["afvoer"]]
+    keys = [key for key in CONTROL_STATES.values() if key in kwk_properties]
+    if "Capaciteit (m3/s)" not in kwk_properties and keys:
+        capacities = {key: float(kwk_properties[key]) for key in keys}
+        assert sum(i > 0 for i in capacities.values()) <= 1, (
+            f"Capacities {capacities} without a DiscreteControl that switches between them"
+        )
+        kwk_properties["Capaciteit (m3/s)"] = max(capacities.values())
     kwargs = kwk_properties.rename(FLOW_KWARGS).to_dict()
     if "flow_rate" in kwargs:
         kwargs["max_flow_rate"] = kwargs["flow_rate"]
@@ -212,6 +240,13 @@ def has_discrete_control(kwk_properties: pd.Series) -> bool:
     control_type = kwk_properties.get("Type sturing", "lokaal")
     assert control_type in {*LOCAL_CONTROL, "DiscreteControl"}, f"Type sturing {control_type!r} not implemented"
     return control_type == "DiscreteControl"
+
+
+def listen_variable(kwk_properties: pd.Series) -> Literal["level", "flow_rate"]:
+    """The `Meetlocatievariabele` of a DiscreteControl: the level of a Basin, or the flow rate of a connector node."""
+    variable = kwk_properties.get("Meetlocatievariabele", "level")
+    assert variable in LISTEN_VARIABLES, f"Meetlocatievariabele should be one of {LISTEN_VARIABLES}, not {variable!r}"
+    return variable
 
 
 def has_flow_demand(kwk_properties: pd.Series) -> bool:
@@ -271,23 +306,23 @@ def read_static(
     Without allocation, a FlowDemand is a minimum flow also from an empty Basin, so a structure with a FlowDemand
     stops at `Streefpeil bovenstrooms (m +NAP)`, or else at its `Streefpeil (m +NAP)`.
 
-    The levels of a structure with DiscreteControl follow from its thresholds and `listen_side`, the side of the
+    The levels of a structure with DiscreteControl follow from its level thresholds and `listen_side`, the side of the
     structure where the listened Basin is, rather than from the Streefpeil properties. A structure that drains the
     listened Basin stops at the lowest `threshold_low`, and one that supplies it stops at the highest
     `threshold_high`. This holds the level between the evaluations of the DiscreteControl, also against a FlowDemand.
+    If these do not stop a structure with a FlowDemand, it stops at `Streefpeil bovenstrooms (m +NAP)`.
     """
     kwk_properties = read_kwk_properties(kwk_df)
     table = {"Outlet": outlet.Static, "Pump": pump.Static}[node_type]
     if not has_discrete_control(kwk_properties):
-        upstream_level = "Streefpeil bovenstrooms (m +NAP)"
         if (
             has_flow_demand(kwk_properties)
-            and upstream_level not in kwk_properties
+            and UPSTREAM_LEVEL not in kwk_properties
             and "Streefpeil (m +NAP)" in kwk_properties
         ):
             # the Streefpeil of a lock is its upstream level, at which its FlowDemand stops
             kwk_properties = kwk_properties.copy()
-            kwk_properties[upstream_level] = kwk_properties["Streefpeil (m +NAP)"]
+            kwk_properties[UPSTREAM_LEVEL] = kwk_properties["Streefpeil (m +NAP)"]
         return table(**read_flow_kwargs(kwk_properties))
 
     assert "Capaciteit (m3/s)" not in kwk_properties, "Use the aanvoer and afvoer capacities with DiscreteControl"
@@ -306,17 +341,17 @@ def read_static(
     if "Minimale capaciteit (m3/s)" in kwk_properties:
         kwargs["min_flow_rate"] = [float(kwk_properties["Minimale capaciteit (m3/s)"])] * 2
 
-    # a threshold on a level difference says nothing about the level to stop at
-    if SUBTRACT_PROPERTY in kwk_properties:
-        return table(**kwargs)
-
-    thresholds = read_control_thresholds(kwk_df)
-    # above the thresholds a structure is in the afvoer state, so it drains an upstream Basin in that state, and it
-    # supplies a downstream Basin in the aanvoer state
-    if listen_side == "upstream" and flow_rate["afvoer"] > 0:
-        kwargs["min_upstream_level"] = [thresholds["threshold_low"].min()] * 2
-    elif listen_side == "downstream" and flow_rate["aanvoer"] > 0:
-        kwargs["max_downstream_level"] = [thresholds["threshold_high"].max()] * 2
+    # a threshold on a level difference or on a flow rate says nothing about the level to stop at
+    if SUBTRACT_PROPERTY not in kwk_properties and listen_variable(kwk_properties) == "level":
+        thresholds = read_control_thresholds(kwk_df)
+        # above the thresholds a structure is in the afvoer state, so it drains an upstream Basin in that state, and it
+        # supplies a downstream Basin in the aanvoer state
+        if listen_side == "upstream" and flow_rate["afvoer"] > 0:
+            kwargs["min_upstream_level"] = [thresholds["threshold_low"].min()] * 2
+        elif listen_side == "downstream" and flow_rate["aanvoer"] > 0:
+            kwargs["max_downstream_level"] = [thresholds["threshold_high"].max()] * 2
+    if "min_upstream_level" not in kwargs and has_flow_demand(kwk_properties) and UPSTREAM_LEVEL in kwk_properties:
+        kwargs["min_upstream_level"] = [float(kwk_properties[UPSTREAM_LEVEL])] * 2
     return table(**kwargs)
 
 
@@ -343,12 +378,12 @@ def discrete_control_tables(
 ) -> list[Any]:
     """DiscreteControl tables that switch a structure to afvoer above the thresholds, and to aanvoer below them.
 
-    Dated thresholds are a yearly pattern, repeated over the simulation period. With `subtract_node_id`, the thresholds
-    are on the level of `listen_node_id` minus that of this Basin.
+    Dated thresholds are a yearly pattern, repeated over the simulation period. The thresholds are on the
+    `listen_variable` of `listen_node_id`. With `subtract_node_id`, they are on the level of `listen_node_id` minus
+    that of this Basin.
     """
-    kwk_properties = read_kwk_properties(kwk_df)
-    variable = kwk_properties.get("Meetlocatievariabele", "level")
-    assert variable == "level", f"Only DiscreteControl on a level is implemented, not {variable!r}"
+    variable = listen_variable(read_kwk_properties(kwk_df))
+    assert subtract_node_id is None or variable == "level", "Only a level difference is implemented"
     thresholds = read_control_thresholds(kwk_df)
     time = thresholds["time"]
     if time.notna().all():
@@ -363,7 +398,7 @@ def discrete_control_tables(
         discrete_control.Variable(
             compound_variable_id=[1] * len(listen_node_ids),
             listen_node_id=listen_node_ids,
-            variable=["level"] * len(listen_node_ids),
+            variable=[variable] * len(listen_node_ids),
             weight=[1.0, -1.0][: len(listen_node_ids)],
         ),
         discrete_control.Condition(
@@ -401,3 +436,60 @@ def flow_demand_tables(
             demand_priority=table["demand_priority"].to_list(),
         )
     ]
+
+
+def connected_basin_ids(model: Model, basin_id: int) -> set[int]:
+    """Basins connected to `basin_id` without a structure that controls the flow in between."""
+    links = model.link.df[model.link.df.link_type == "flow"]
+    node_type = model.node.df["node_type"]
+    found, front = {basin_id}, [basin_id]
+    while front:
+        node_id = front.pop()
+        neighbors = links.loc[links.to_node_id == node_id, "from_node_id"].to_list()
+        neighbors += links.loc[links.from_node_id == node_id, "to_node_id"].to_list()
+        for neighbor in neighbors:
+            if neighbor not in found and node_type[neighbor] in FREE_FLOW_NODE_TYPES:
+                found.add(neighbor)
+                front.append(neighbor)
+    return {i for i in found if node_type[i] == "Basin"}
+
+
+def listen_node(
+    model: Model, kwk_df: pd.DataFrame, node_id: int
+) -> tuple[int, Literal["upstream", "downstream"] | None]:
+    """The node that switches the DiscreteControl of structure `node_id`, and the side of the structure of a Basin.
+
+    The Meetlocatiecode is the ID of that node in the coupled model. Without it, an afvoer structure listens to the
+    Basin upstream, and an aanvoer structure to the Basin downstream. A DiscreteControl on a flow rate listens to a
+    connector node anywhere. A Basin should be next to the structure, or connected to the Basin on one side of it,
+    possibly through other Basins without structures in between, like the Veluwerandmeren.
+    """
+    kwk_properties = read_kwk_properties(kwk_df)
+    upstream = model.upstream_node_id(node_id)
+    downstream = model.downstream_node_id(node_id)
+    assert isinstance(upstream, int | np.integer) and isinstance(downstream, int | np.integer), (
+        f"Expected one node up- and downstream of {node_id}, got {upstream} and {downstream}"
+    )
+    if "Meetlocatiecode" in kwk_properties:
+        listen_id = int(kwk_properties["Meetlocatiecode"]) - RWS_NODE_ID_OFFSET
+        assert listen_id in model.node.df.index, f"Meetlocatiecode {kwk_properties['Meetlocatiecode']} not in the model"
+    else:
+        label = read_control_thresholds(kwk_df)["control_state"].iloc[0]
+        listen_id = int(upstream if label == "afvoer" else downstream)
+    listen_type = model.node.df.at[listen_id, "node_type"]
+    if listen_variable(kwk_properties) == "flow_rate":
+        assert listen_type in CONNECTOR_NODE_TYPES, f"DiscreteControl on the flow rate of {listen_type} {listen_id}"
+        return listen_id, None
+    assert listen_type == "Basin", f"DiscreteControl listens to the level of {listen_type} {listen_id}, not a Basin"
+    neighbors: list[tuple[Literal["upstream", "downstream"], int]] = [
+        ("upstream", int(upstream)),
+        ("downstream", int(downstream)),
+    ]
+    # both sides can be connected further away, like the Waal and the Maas through the Merwede and the Hollandsch Diep
+    sides = [side for side, neighbor in neighbors if neighbor == listen_id] or [
+        side
+        for side, neighbor in neighbors
+        if model.node.df.at[neighbor, "node_type"] == "Basin" and listen_id in connected_basin_ids(model, neighbor)
+    ]
+    assert len(sides) == 1, f"Basin {listen_id} {model.node.df.at[listen_id, 'name']!r} not on one side of {node_id}"
+    return listen_id, sides[0]

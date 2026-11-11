@@ -703,45 +703,21 @@ for row in model.manning_resistance.static.df.itertuples():
         model.remove_node(cast(int, row.node_id), remove_links=True)
 
 
-# %% Waal bij Tiel, see https://github.com/Deltares/Ribasim-NL/issues/974
-# The ManningResistance between these Basins becomes the Q(h) relation of an LSM calculation. It moves upstream of the
-# branch to the Amsterdam-Rijnkanaal, so the Pr. Bernhardsluis takes its water from the Basin downstream of it.
-TIEL, TIEL_UPSTREAM_BASIN, TIEL_DOWNSTREAM_BASIN = 6630, 7291, 6613
-PR_BERNHARDSLUIS = model.find_node_id(meta_code_waterbeheerder="39D-001-02")
+# %% Waal bij Tiel, see https://github.com/Deltares/Ribasim-NL/issues/974 and #973
+# The ManningResistance between these Basins becomes the Q(h) relation of an LSM calculation, of the flow downstream of
+# the branch to the Amsterdam-Rijnkanaal, with the level at Tiel. It stays downstream of the branch, so the
+# Pr. Bernhardsluis takes its water from the Basin upstream of it, to whose level it is controlled.
+TIEL, TIEL_UPSTREAM_BASIN = 6630, 7291
+qh_tiel = pd.read_excel(kwk_dir / "QhTielWaal.xlsx", sheet_name="Qh-relatie", usecols=["H", "Q_ds"])
+# The fit of Q_ds decreases above 10.1 m, far above the levels at Tiel in the simulation, so the table ends there
+qh_tiel = qh_tiel[~(qh_tiel["Q_ds"].diff() <= 0).cummax()].rename(columns={"Q_ds": "Q"})
+assert qh_tiel["H"].max() >= 10.0, f"The Q(h) relation of Tiel ends at {qh_tiel['H'].max()} m"
 basin_profile = model.basin.profile.df
 assert basin_profile is not None
 tiel_rating_curve = rating_curve_from_bottom(
-    pd.read_excel(kwk_dir / "QhTielWaal.xlsx", sheet_name="Qh-relatie", usecols=["Q", "H"]),
-    bottom=float(basin_profile.loc[basin_profile.node_id == TIEL_UPSTREAM_BASIN, "level"].min()),
+    qh_tiel, bottom=float(basin_profile.loc[basin_profile.node_id == TIEL_UPSTREAM_BASIN, "level"].min())
 )
-# On the Waal just upstream of the branch. Links are routed along the waterways within 250 m of the area of their Basin,
-# see `rebuild_junction_trees`, which this point needs to be for the Basin downstream.
-tiel_point = Point(160100, 433345)
-tiel_waal = cast(LineString, network.links.geometry.iloc[network.links.distance(tiel_point).argmin()])
-tiel_point = tiel_waal.interpolate(tiel_waal.project(tiel_point))
-tiel_network_node = network.add_node(tiel_point, max_distance=100)
-assert tiel_network_node is not None, f"Tiel {tiel_point} is too far from the network"
-
-
-def link_between(from_node_id: int, to_node_id: int) -> int:
-    """The ID of the only link from one node to another."""
-    links = model.link.df
-    (link_id,) = links.index[(links.from_node_id == from_node_id) & (links.to_node_id == to_node_id)]
-    return int(link_id)
-
-
-tiel_links = {
-    link_between(TIEL_UPSTREAM_BASIN, TIEL): network.get_line(TIEL_UPSTREAM_BASIN, tiel_network_node),
-    link_between(TIEL, TIEL_DOWNSTREAM_BASIN): network.get_line(tiel_network_node, TIEL_DOWNSTREAM_BASIN),
-    link_between(TIEL_UPSTREAM_BASIN, PR_BERNHARDSLUIS): network.get_line(
-        TIEL_DOWNSTREAM_BASIN, PR_BERNHARDSLUIS, directed=False
-    ),
-}
-model.redirect_link(link_between(TIEL_UPSTREAM_BASIN, PR_BERNHARDSLUIS), from_node_id=TIEL_DOWNSTREAM_BASIN)
 model.update_node(TIEL, "TabulatedRatingCurve", [tiel_rating_curve], node_properties={"name": "Tiel Waal"})
-model.move_node(TIEL, tiel_point)
-for link_id, line in tiel_links.items():
-    model.link.df.loc[link_id, ["geometry"]] = line
 profile_geometries = [i for i in profile_geometries if i["node_id"] != TIEL]
 
 # %%wegschrijven model

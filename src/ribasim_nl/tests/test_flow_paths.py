@@ -249,6 +249,25 @@ def test_rebuild_junction_trees():
     assert set(changed) >= {link_ids[(4, 2)], link_ids[(4, 3)], link_ids[(5, 1)], link_ids[(6, 1)]}
 
 
+def test_rebuild_junction_trees_routing_areas():
+    """Like the Pr. Bernhardsluis, a node far from its Basin follows the waterways of a routing area to it."""
+
+    def routed_coords(routing_areas: dict | None) -> list[tuple[float, float]]:
+        model = route_model()
+        model.basin.area.df = gpd.GeoDataFrame({"node_id": [1]}, geometry=[box(-150, -50, 150, 50)], crs="EPSG:28992")
+        model.outlet.add(Node(7, Point(400, 100)), [outlet.Static(flow_rate=[1.0])])
+        model.link.add(model.basin[1], model.outlet[7])
+        line = LineString([(-100, 0), (300, 0), (400, 100)])
+        waterways = gpd.GeoDataFrame({"main-route": [True]}, geometry=[line], crs="EPSG:28992")
+        rebuild_junction_trees(model, [1], waterways, routing_areas=routing_areas)
+        (geometry,) = model.link.df.loc[model.link.df["to_node_id"] == 7, "geometry"]
+        return geometry.coords[:]
+
+    # beyond the area of the Basin it branches off straight
+    assert (300, 0) not in routed_coords(None)
+    assert routed_coords({1: box(150, -50, 450, 150)})[-2:] == [(300, 0), (400, 100)]
+
+
 def test_rebuild_rws_junction_trees_lake(tmp_path):
     """The Basin of a lake follows the fairways and the main route, as `test_rebuild_junction_trees` its waterway."""
     model = rebuild_model()

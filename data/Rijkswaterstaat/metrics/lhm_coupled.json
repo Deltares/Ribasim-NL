@@ -1,14 +1,14 @@
 {
   "solver": {
-    "computation_time": 2.2,
-    "rhs_calls": 1473000.0,
-    "mean_dt": 201.0,
-    "dt_p05": 120.5,
-    "rejected_fraction": 0.07996
+    "computation_time": 2.1,
+    "rhs_calls": 1483000.0,
+    "mean_dt": 199.9,
+    "dt_p05": 119.7,
+    "rejected_fraction": 0.08145
   },
   "observations": {
     "compared": 645.0,
-    "median_nse": 0.04087,
+    "median_nse": 0.04097,
     "median_kge": 0.08483
   },
   "discharge_kge": {
@@ -16,33 +16,33 @@
     "Pannerdense Kop": 0.9292,
     "IJsselkop": 0.9206,
     "Driel boven": 0.8112,
-    "Hagestein boven": 0.8524,
-    "Tiel Waal": 0.9283,
-    "Haringvlietsluizen binnen": 0.7986,
-    "Maasmond": 0.4534,
-    "Den Oever buiten": 0.3767,
-    "Kornwerderzand buiten": 0.1595,
-    "IJmuiden binnen": 0.3291
+    "Hagestein boven": 0.7939,
+    "Tiel Waal": 0.9295,
+    "Haringvlietsluizen binnen": 0.7985,
+    "Maasmond": 0.4372,
+    "Den Oever buiten": 0.3899,
+    "Kornwerderzand buiten": 0.1576,
+    "IJmuiden binnen": 0.5126
   },
   "level_p01": {
-    "IJsselmeer": -0.392,
-    "Markermeer": -0.3898,
-    "Veluwemeer": -0.3126,
-    "Noordzeekanaal": -0.3987,
-    "Amsterdam-Rijnkanaal Breukelen": -0.4017,
+    "IJsselmeer": -0.3921,
+    "Markermeer": -0.3906,
+    "Veluwemeer": -0.3127,
+    "Noordzeekanaal": -0.3972,
+    "Amsterdam-Rijnkanaal Breukelen": -0.3825,
     "Volkerak": -0.1335,
-    "Haringvliet": 0.02179,
+    "Haringvliet": 0.02188,
     "Twentekanaal (Kanaal Zutphen-Enschede)": 9.977,
     "Julianakanaal": 44.04
   },
   "level_p99": {
-    "IJsselmeer": -0.0856,
-    "Markermeer": -0.09581,
-    "Veluwemeer": -0.03736,
-    "Noordzeekanaal": -0.3907,
-    "Amsterdam-Rijnkanaal Breukelen": -0.3511,
+    "IJsselmeer": -0.08452,
+    "Markermeer": -0.09935,
+    "Veluwemeer": -0.03898,
+    "Noordzeekanaal": -0.3928,
+    "Amsterdam-Rijnkanaal Breukelen": -0.3553,
     "Volkerak": 0.1148,
-    "Haringvliet": 0.08692,
+    "Haringvliet": 0.08686,
     "Twentekanaal (Kanaal Zutphen-Enschede)": 9.985,
     "Julianakanaal": 44.07
   }

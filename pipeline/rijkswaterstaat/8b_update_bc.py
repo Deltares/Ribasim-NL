@@ -10,7 +10,7 @@ from ribasim_nl.flow_paths import rebuild_rws_junction_trees
 from ribasim_nl.layout import tidy_layout
 from ribasim_nl.observations import add_observations, link_observations
 from ribasim_nl.regional_model import ENDTIME, STARTTIME, read_lhm_budgets
-from ribasim_nl.rws_kunstwerken import main_route
+from ribasim_nl.rws_kunstwerken import ROUTING_AREAS, main_route
 from ribasim_nl.set_forcing import SetDynamicForcing
 
 from ribasim_nl import CloudStorage, Model, Network, merge_rwzi_model
@@ -208,7 +208,14 @@ model = add_observations(model, "Rijkswaterstaat")
 # route the links of each Basin as one tree along the network, and through the lock chambers it lacks, and in the lakes
 # along the fairways, which koppelen extends with the links of other models
 network = Network.from_network_gpkg(network_gpkg)
-rebuild_rws_junction_trees(model, model.basin.node.df.index.tolist(), top10nl_gpkg, fairway_gpkg, main_route(network))
+rebuild_rws_junction_trees(
+    model,
+    model.basin.node.df.index.tolist(),
+    top10nl_gpkg,
+    fairway_gpkg,
+    main_route(network),
+    routing_areas=ROUTING_AREAS,
+)
 # and observe series that combine the inflows and outflows of a Basin, through its tree
 model = link_observations(model, "Rijkswaterstaat")
 model = tidy_layout(model)
