@@ -1,3 +1,6 @@
+import numpy as np
+import numpy.typing as npt
+
 # https://www.aquo.nl/index.php/Imwa_sim_1.0/doc/codelijst/waterbeheerder
 waterbeheercode = {
     "HollandseDelta": 40,
@@ -23,3 +26,13 @@ waterbeheercode = {
     "AmstelGooienVecht": 11,
     "Rijkswaterstaat": 80,
 }
+
+# The name of the authority of each waterbeheercode
+authority_by_code = {code: name for name, code in waterbeheercode.items()}
+# The node IDs of the coupled model are the waterbeheercode of their authority times this, plus their own node ID
+NODE_ID_FACTOR = 100_000
+
+
+def authority_code(node_ids: npt.ArrayLike) -> np.ndarray:
+    """The waterbeheercode of the authority of nodes of the coupled model, also of negated node IDs."""
+    return np.abs(np.asarray(node_ids)) // NODE_ID_FACTOR

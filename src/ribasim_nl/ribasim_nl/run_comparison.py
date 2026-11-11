@@ -25,7 +25,7 @@ import pandas as pd
 import xarray as xr
 from dvc.api import DVCFileSystem
 
-from ribasim_nl.aquo import waterbeheercode
+from ribasim_nl.aquo import authority_by_code, authority_code
 from ribasim_nl.flow_paths import Routes
 from ribasim_nl.webmap import read_features
 from ribasim_nl.webmap_diff import read_basin_areas
@@ -38,8 +38,6 @@ FLOW_RESULTS = RUN_DIR / "results/flow.nc"
 SOLVER_STATS = RUN_DIR / "results/solver_stats.nc"
 OBSERVATIONS = Path("data/Rijkswaterstaat/metrics/lhm_coupled_observations.csv")
 
-AUTHORITY_FACTOR = 100_000
-AUTHORITIES = {code: name for name, code in waterbeheercode.items()}
 BALANCE_TERMS = ["precipitation", "evaporation", "drainage", "infiltration"]
 DRY_PERIOD = slice("2018-08-01", "2018-11-30")
 LEVEL_THRESHOLDS = (0.1, 0.5)
@@ -230,14 +228,9 @@ def renumber(run: Run, mapping: pd.Series) -> Run:
     )
 
 
-def authority_code(node_ids: np.ndarray | pd.Index | pd.Series) -> np.ndarray:
-    """The code of the authority of each node, also for the negated IDs of `node_mapping`."""
-    return np.abs(np.asarray(node_ids)) // AUTHORITY_FACTOR
-
-
 def authority(node_ids: pd.Index | pd.Series) -> np.ndarray:
     """The name of the authority of each node, see the model conventions in AGENTS.md."""
-    return np.array([AUTHORITIES.get(int(code), str(code)) for code in authority_code(node_ids)], dtype=object)
+    return np.array([authority_by_code.get(int(code), str(code)) for code in authority_code(node_ids)], dtype=object)
 
 
 def markdown_table(df: pd.DataFrame, digits: int = 3) -> str:
@@ -284,11 +277,7 @@ def connections(run: Run) -> set[tuple[int, int]]:
     """
     flow = run.links[["from_node_id", "to_node_id"]].astype(int).reset_index(drop=True)
     routes = Routes.from_tables(flow, run.nodes["node_type"])
-    return {
-        (start, node)
-        for start, node in routes.simplified_links()
-        if abs(start) // AUTHORITY_FACTOR != abs(node) // AUTHORITY_FACTOR
-    }
+    return {(start, node) for start, node in routes.simplified_links() if authority_code(start) != authority_code(node)}
 
 
 def input_changes(base: Run, head: Run, basins: pd.Index) -> pd.Series:
@@ -484,7 +473,7 @@ def compare_exchange(base: Run, head: Run) -> pd.DataFrame:
         [(table["mean_head"] - table["mean_base"]).abs(), (table["dry_head"] - table["dry_base"]).abs()], axis=1
     ).max(axis=1)
     table = table.loc[largest[largest > MIN_FLOW_CHANGE].sort_values(ascending=False, kind="stable").index[:TOP]]
-    names = [f"{AUTHORITIES.get(a, a)} - {AUTHORITIES.get(b, b)}" for a, b in table.index]
+    names = [f"{authority_by_code.get(a, a)} - {authority_by_code.get(b, b)}" for a, b in table.index]
     table.index = pd.Index(names, name="from - to")
     return table
 

@@ -40,9 +40,9 @@ from clean import clean
 from dvc.repo import Repo
 from dvc.stage import PipelineStage, Stage
 
-# The final stages of the pipeline: the coupled model, its results, their regression checks and their export for the
-# model viewer. `repro.sh` reproduces the pipeline up to `koppelen`.
-DEFAULT_TARGETS = ["validate_lhm_coupled", "export_webmap"]
+# The final stages of the pipeline: the coupled model, its results, their regression checks, their export for the
+# model viewer, and the hws_plus model cut from them. `repro.sh` reproduces the pipeline up to `koppelen`.
+DEFAULT_TARGETS = ["validate_lhm_coupled", "export_webmap", "hws_plus"]
 PUBLISHED_STAGE = "export_webmap"
 
 
