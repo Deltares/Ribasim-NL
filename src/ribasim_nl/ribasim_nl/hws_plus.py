@@ -23,6 +23,7 @@ import shutil
 from collections import defaultdict
 from collections.abc import Collection
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -351,6 +352,22 @@ def hws_plus(model: Model, flow: xr.DataArray, concentration: xr.DataArray) -> M
     return model
 
 
+def select_basin_time(
+    ds: xr.Dataset, node_ids: Collection[int], starttime: datetime, endtime: datetime
+) -> pd.DataFrame:
+    """The Basin / time of the Basins `node_ids` in `ds`, over the simulation period from `starttime` to `endtime`.
+
+    The period starts at the last time at or before `starttime`, since the forcing of the LHM starts the day before,
+    see `ribasim_nl.regional_model.read_lhm_budgets`. Ribasim would otherwise use the forcing of the next time from
+    the start, and log that for every Basin.
+    """
+    times = ds.indexes["time"]
+    before = times[times <= starttime]
+    assert len(before) > 0, f"Basin / time starts at {times[0]}, after the start time {starttime}"
+    selected = ds.sel(node_id=ds["node_id"].isin(list(node_ids)), time=slice(before[-1], endtime))
+    return selected.to_dataframe().reset_index()
+
+
 def build_hws_plus(run_toml: Path, output_toml: Path) -> Model:
     """Write the hws_plus model of the run of the coupled model at `run_toml`, see `hws_plus`."""
     model = Model.read(run_toml, external=False)
@@ -364,9 +381,9 @@ def build_hws_plus(run_toml: Path, output_toml: Path) -> Model:
         model = hws_plus(model, flow["flow_rate"], concentration["concentration"])
     # the Basin / time of the HWS only, of the Basins that have one, from the NetCDF file with that of all Basins
     with xr.open_dataset(run_toml.parent / model.input_dir / basin_time) as ds:
-        hws = ds["node_id"].isin(model.basin.node.df.index)
-        time = ds.sel(node_id=hws, time=slice(model.starttime, model.endtime))
-        model.basin.time.df = DataFrame[BasinTimeSchema](time.to_dataframe().reset_index())
+        model.basin.time.df = DataFrame[BasinTimeSchema](
+            select_basin_time(ds, model.basin.node.df.index, model.starttime, model.endtime)
+        )
     model.basin.time.filepath = basin_time
     shutil.rmtree(output_toml.parent, ignore_errors=True)
     model.write(output_toml)
