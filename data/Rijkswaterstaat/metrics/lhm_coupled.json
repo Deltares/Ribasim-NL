@@ -1,6 +1,6 @@
 {
   "solver": {
-    "computation_time": 2.1,
+    "computation_time": 3.0,
     "rhs_calls": 1497000.0,
     "mean_dt": 198.8,
     "dt_p05": 120.1,
