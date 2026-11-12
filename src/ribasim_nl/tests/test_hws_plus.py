@@ -16,7 +16,7 @@ from ribasim.nodes import (
     pump,
 )
 from ribasim_nl.flow_paths import Routes
-from ribasim_nl.hws_plus import changes, hws_plus
+from ribasim_nl.hws_plus import changes, hws_plus, select_basin_time
 from shapely.geometry import Point
 
 from ribasim_nl import Model
@@ -130,6 +130,20 @@ def test_changes():
     values = np.array([[1.0, 0.0], [1.0, 0.0], [2.0, 0.0], [2.0, 0.0], [2.0, 0.0]])
     expected = [[True, True], [False, False], [True, False], [False, False], [True, True]]
     assert changes(values).tolist() == expected
+
+
+def test_select_basin_time():
+    """The Basin / time starts with the forcing of the day before the start time, which lasts until 09:00."""
+    time = pd.date_range("2016-12-30T09:00", periods=5, name="time")
+    ds = xr.Dataset(
+        {"precipitation": (("time", "node_id"), np.arange(15.0).reshape(5, 3))},
+        coords={"time": time, "node_id": [A, B, R1]},
+    )
+    df = select_basin_time(ds, [A, B], pd.Timestamp("2017-01-01"), pd.Timestamp("2017-01-02"))
+    assert df["time"].unique().tolist() == [time[1], time[2]]
+    assert sorted(df["node_id"].unique()) == [A, B]
+    with pytest.raises(AssertionError, match="after the start time"):
+        select_basin_time(ds, [A], pd.Timestamp("2016-12-30"), pd.Timestamp("2017-01-02"))
 
 
 def test_hws_plus(coupled: Model, tmp_path: Path):
