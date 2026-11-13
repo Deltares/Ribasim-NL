@@ -1,20 +1,75 @@
 # Ribasim-Delwaq Integration Guide
 
-The DELWAQ workflow is split into three notebook-style Python scripts. They use
+The DELWAQ workflow is split into notebook-style Python scripts. They use
 the active Pixi environment of Ribasim-NL and can be run as Jupyter notebooks
 in VS Code because they contain `# %%` cells.
 
 Run the scripts in this order:
 
-1. `01_prepare_and_verify_inputs.py`
-2. `02_build_delwaq_model.py`
-3. `03_run_and_analyse_delwaq.py`
-4. `04_visualise_delwaq_results.py`
+1. `00_copy_lhm_run.py`
+2. `ANIMO_to_delwaq/get_basin_polygons.py`
+3. `01_prepare_and_verify_inputs.py`
+4. `02_build_delwaq_model.py`
+5. `03_run_and_analyse_delwaq.py`
 
-The active model is configured in `config.toml`. The preparation, build, run,
-and source conversion scripts all read the model name and TOML filename from
-this file. The basin polygon script must be rerun when changing the configured
-model so that its output is available to the ANIMO conversion script.
+`04_visualise_delwaq_results.py` is a template for post-processing the results
+afterwards.
+
+## DVC stage
+
+The `delwaq` stage of the DVC pipeline in `dvc.yaml` runs these five scripts in
+this order, on the latest run of the coupled model. It is not part of the full
+reproductions of the pipeline, since it needs a Delft3D installation, see
+[D3D_HOME](#d3d_home-environment-variable). Run it on demand, which also pulls
+the run and the input data:
+
+```
+pixi run dvc repro --pull --single-item delwaq
+```
+
+Commit `dvc.lock` and push the outputs with `pixi run dvc push delwaq`
+afterwards. The `delwaq` entry in `dvc.lock` belongs to the run of the coupled
+model it was made on, so it lags behind when that run is reproduced;
+`pixi run dvc status delwaq` shows whether it is up to date. Get the results of
+that entry without running Delwaq with `pixi run dvc pull delwaq`.
+
+The stage reads and writes:
+
+| Path | Content | In DVC |
+|:-----|:--------|:-------|
+| `data/Rijkswaterstaat/runs/lhm_coupled` | The run of the coupled model | Output of `run_lhm_coupled` |
+| `data/Basisgegevens/Delwaq/<source>/aangeleverd` | The delivered data per emission source, of which only the files that the scripts read are in DVC | Input, `.dvc` files |
+| `data/Basisgegevens/Delwaq/ANIMO/interim/LHM_fluxen/LHM_433` | The drainage fluxes of LHM 4.3.3 per decade, made by `Process_LHM_hydrology.py` outside the pipeline | Input, `.dvc` file |
+| `data/Basisgegevens/Delwaq/<source>/output` | The loads and concentrations per source | Output, not cached |
+| `data/Basisgegevens/Delwaq/ANIMO/aangeleverd/shapes/lhm_coupled_delwaq` | The basin polygons of the model | Output, not cached |
+| `data/Rijkswaterstaat/runs/lhm_coupled_delwaq` | The copy of the run, with the emissions, the DELWAQ input and the results | Output |
+| `data/Basisgegevens/Delwaq/<source>/figures`, `data/Basisgegevens/Delwaq/ANIMO/interim` | Figures and other intermediate files | No |
+
+To add or replace an input file, add it with `pixi run dvc add <file>`, list it
+in the `deps` of the stage in `dvc.yaml`, and push it with `pixi run dvc push`.
+
+The stage takes nearly two hours for a run of two years, and its output is 8 GB:
+
+| Step | Time |
+|:-----|:-----|
+| `00_copy_lhm_run.py` | 3 seconds |
+| `get_basin_polygons.py` | 8 to 13 minutes, nearly all for the two `dissolve` calls of its printed diagnostics |
+| `01_prepare_and_verify_inputs.py` | 20 minutes: 4 for ER, 13 for ANIMO and 3 for the boundaries and the verification |
+| `02_build_delwaq_model.py` | 4 minutes |
+| `03_run_and_analyse_delwaq.py` | 75 minutes: 23 for `generate`, 5 for the input processing of DELWAQ, 41 for its simulation and 5 for `parse` |
+
+## Configuration
+
+`config.toml` has the run of the coupled model, `run_toml_path`, and the copy
+of it that the workflow changes and adds its results to, `toml_path`.
+`00_copy_lhm_run.py` makes that copy, replacing an earlier one. The
+preparation, build, run, and source conversion scripts all read the model
+directory and TOML filename from `toml_path`. The basin polygon script must be
+rerun when changing the configured model so that its output is available to the
+ANIMO conversion script.
+
+`02_build_delwaq_model.py` adds the concentrations to those that are in the
+model, so make a new copy before running it again.
 
 ### 4. Visualise existing DELWAQ results
 
@@ -26,7 +81,7 @@ analysing results outside the repository.
 The scripts communicate through prepared Parquet files in:
 
 ```
-data/Rijkswaterstaat/modellen/lhm_coupled_full/delwaq_input/
+data/Rijkswaterstaat/runs/lhm_coupled_delwaq/delwaq_input/
 ```
 
 ### 1. Prepare and verify inputs
@@ -72,7 +127,7 @@ The output is written below the model's `delwaq_all_sources` directory.
 
 ### Ribasim model (hydrology)
 
-This script requires a Ribasim model with results, located under ``model_path``. This model may be obtained by downloading it from TheGoodCloud or by running `notebooks/rwzi/add_rwzi_model.py`. **check if these are currently still the main methods**
+The workflow requires a Ribasim model with results: the copy that `00_copy_lhm_run.py` makes of the run of the coupled model. Get that run with `pixi run dvc pull run_lhm_coupled`.
 
 Results may already be included in a downloaded Ribasim model, otherwise, in a CLI:
 ```
@@ -141,7 +196,7 @@ Using ``plot_fraction``, the concentration for a specific basin node is plotted.
 
 ### Data Sources
 
-File locations in Python scripts need to be adjusted, corresponding to cloud storage or DVC
+The input files are in DVC, under `data/Basisgegevens/Delwaq/Emissieregistratie/aangeleverd`.
 
 The conversion script `ER_data_conversion_delwaq.py` is an adaptation of:
 `p:/krw-verkenner/01_landsdekkende_schematisatie/LKM25 schematisatie/OverigeEmissies/KRW_Tussenevaluatie_2024/Convert_ER_Emissions_To_KRW_input_tusseneval.py`

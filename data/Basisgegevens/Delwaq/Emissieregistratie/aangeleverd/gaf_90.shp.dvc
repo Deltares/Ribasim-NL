@@ -1,0 +1,5 @@
+outs:
+- md5: 060c6c9c21173caa4c2e23e89d1c072a
+  size: 16901960
+  hash: md5
+  path: gaf_90.shp

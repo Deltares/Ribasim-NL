@@ -236,7 +236,8 @@ def read_excel_file(file_path: str) -> pd.DataFrame:
         raise FileNotFoundError(f"Het Excel-bestand bestaat niet: {file_path}")
 
     logger.info(f"Begin met inlezen van Excel-bestand met IM-metingen: {file_path}")
-    return pd.read_excel(file_path, sheet_name=None)
+    # The calamine engine reads the sheets in under a minute, where openpyxl takes more than 4 minutes
+    return pd.read_excel(file_path, sheet_name=None, engine="calamine")
 
 
 sheets_dict = read_excel_file(IM_metingen_excel_path)

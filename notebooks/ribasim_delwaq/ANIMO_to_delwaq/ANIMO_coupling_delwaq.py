@@ -157,11 +157,58 @@ def lookup_zone_class_to_grid(zone_values, class_values, zone_to_idx, lookup_mat
     if not valid.any():
         return out.reshape(zone_values.shape)
 
-    zones = np.asarray([int(v) for v in flat_zone[valid]], dtype=np.int64)
-    classes = np.asarray([int(v) for v in flat_class[valid]], dtype=np.int64) - 1
-    zone_idx = np.fromiter((zone_to_idx[z] for z in zones), dtype=np.int64, count=zones.size)
+    zones = flat_zone[valid].astype(np.int64)
+    classes = flat_class[valid].astype(np.int64) - 1
+    # `build_zone_class_lookup` numbers the zone IDs in ascending order, so the position of a zone ID is its index
+    zone_ids = np.fromiter(zone_to_idx, dtype=np.int64, count=len(zone_to_idx))
+    assert (np.diff(zone_ids) > 0).all(), "The zone IDs of the lookup are not in ascending order"
+    assert list(zone_to_idx.values()) == list(range(zone_ids.size)), "The zones of the lookup are not numbered in order"
+    zone_idx = np.searchsorted(zone_ids, zones)
+    unknown = zone_ids[np.minimum(zone_idx, zone_ids.size - 1)] != zones
+    if unknown.any():
+        raise KeyError(f"Zone IDs of the grid without concentrations: {np.unique(zones[unknown]).tolist()}")
     out[valid] = lookup_matrix[zone_idx, classes]
     return out.reshape(zone_values.shape)
+
+
+def group_cells_per_basin(da_basin):
+    """Group the cells of a grid of basin IDs, for `sum_per_basin` and `mean_per_basin`.
+
+    Returns the basin IDs in ascending order, the positions in the flattened grid of the cells with a basin,
+    ordered by basin and then by position, and where each basin starts in those positions.
+    """
+    flat_basin = da_basin.values.ravel()
+    cells = np.flatnonzero(~np.isnan(flat_basin))
+    cells = cells[np.argsort(flat_basin[cells], kind="stable")]
+    basin_ids, starts = np.unique(flat_basin[cells], return_index=True)
+    return basin_ids, cells, starts
+
+
+def sum_per_basin(da, da_basin, basin_cells):
+    """Sum a grid per basin, skipping nodata cells.
+
+    The same as `da.groupby(da_basin).sum()`, which takes seconds per grid since xarray reduces the basins one by one.
+    This adds the cells of a basin in the same order, so the sums are equal to the last bit.
+    `basin_cells` is the result of `group_cells_per_basin(da_basin)`.
+    """
+    basin_ids, cells, starts = basin_cells
+    assert da.dims == da_basin.dims, f"The grid has dimensions {da.dims}, the basins {da_basin.dims}"
+    assert da.shape == da_basin.shape, f"The grid has shape {da.shape}, the basins {da_basin.shape}"
+    values = da.values.ravel()[cells]
+    values[np.isnan(values)] = 0
+    stops = np.append(starts[1:], values.size)
+    sums = np.array([values[start:stop].sum() for start, stop in zip(starts, stops, strict=True)])
+    coords = {name: coord for name, coord in da.coords.items() if coord.ndim == 0}
+    coords[da_basin.name] = basin_ids
+    return xr.DataArray(sums, coords=coords, dims=(da_basin.name,), name=da.name)
+
+
+def mean_per_basin(da, da_basin, basin_cells):
+    """Average a grid per basin, skipping nodata cells: the same as `da.groupby(da_basin).mean()`, but much faster.
+
+    A basin with only nodata cells gets nodata. `basin_cells` is the result of `group_cells_per_basin(da_basin)`.
+    """
+    return sum_per_basin(da, da_basin, basin_cells) / sum_per_basin(~da.isnull(), da_basin, basin_cells)
 
 
 def build_year_decade_lookup(df, zone_col, value_cols):
@@ -414,6 +461,10 @@ da_basin_area = da_basin_area.load()
 imod.idf.write(ANIMO_INTERIM_DIR / "basins.idf", da_basin)
 imod.idf.write(ANIMO_INTERIM_DIR / "basin_area.idf", da_basin_area)
 
+# The cells per basin, to sum and average grids per basin in the loop below
+basin_cells = group_cells_per_basin(da_basin)
+da_basin_filled = da_basin.fillna(-9999)
+basin_cells_filled = group_cells_per_basin(da_basin_filled)
 
 print("Done preprocessing")
 
@@ -457,7 +508,7 @@ for year in range(2017, 2020):
 
             # Calculate total discharge per basin (LHM)
             valid = ~da_afvoer_lhm_m3_day_t.isnull()
-            da_afvoer_lhm_per_basin_m3_day = da_afvoer_lhm_m3_day_t.where(valid).groupby(da_basin).sum()
+            da_afvoer_lhm_per_basin_m3_day = sum_per_basin(da_afvoer_lhm_m3_day_t.where(valid), da_basin, basin_cells)
 
             # Create a DataArray of basin areas
             da_basin_area_m2 = xr.DataArray(
@@ -552,7 +603,7 @@ for year in range(2017, 2020):
 
             # Calculate total discharge per basin (HRU)
             valid = ~da_afvoer_hru_m3_day.isnull()
-            da_afvoer_hru_per_basin_m3_day = da_afvoer_hru_m3_day.where(valid).groupby(da_basin).sum()
+            da_afvoer_hru_per_basin_m3_day = sum_per_basin(da_afvoer_hru_m3_day.where(valid), da_basin, basin_cells)
 
             # Project onto grid
             valid = ~da_basin.isnull()
@@ -597,10 +648,15 @@ for year in range(2017, 2020):
 
             ### Average concentrations natuur over basins, to be able to apply
             ### those values to urban grassland (not calculated by ANIMO)
-            all_basins = np.unique(da_basin.fillna(-9999))
-            means = ds_natuur.groupby(da_basin.fillna(-9999)).mean()
+            all_basins = np.unique(da_basin_filled)
+            means = xr.Dataset(
+                {
+                    var: mean_per_basin(ds_natuur[var], da_basin_filled, basin_cells_filled)
+                    for var in ds_natuur.data_vars
+                }
+            )
             means = means.reindex(basin_id=all_basins)
-            ds_basinmean = means.sel(basin_id=da_basin.fillna(-9999))
+            ds_basinmean = means.sel(basin_id=da_basin_filled)
             # Note: not all basins have nature, this results in nodata areas.
             # We need to accomodate for filling urban areas in basins that have no nature.
             # Solution: we just take the nearest non-Nan value.
@@ -632,8 +688,8 @@ for year in range(2017, 2020):
                 print("Calculating flux-averaged concentrations over the basins for " + var)
                 valid = ~ds_concs[var].isnull() & ~da_afvoer_hru_m3_day.isnull()
 
-                num = (ds_concs[var] * da_afvoer_hru_m3_day).where(valid).groupby(da_basin).sum()
-                den = da_afvoer_hru_m3_day.where(valid).groupby(da_basin).sum()
+                num = sum_per_basin((ds_concs[var] * da_afvoer_hru_m3_day).where(valid), da_basin, basin_cells)
+                den = sum_per_basin(da_afvoer_hru_m3_day.where(valid), da_basin, basin_cells)
 
                 ds_concs_per_basin[var] = num / den
 

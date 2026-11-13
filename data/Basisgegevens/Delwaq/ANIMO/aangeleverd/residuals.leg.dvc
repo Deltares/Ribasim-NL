@@ -1,0 +1,5 @@
+outs:
+- md5: 297dec3e043e5a76353106edb36591e2
+  size: 571
+  hash: md5
+  path: residuals.leg

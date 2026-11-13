@@ -6845,3 +6845,193 @@ stages:
       md5: 4945c06bc531ef10a770b8c4d31d42f2.dir
       size: 698022503
       nfiles: 3
+  delwaq:
+    cmd:
+    - pixi run python notebooks/ribasim_delwaq/00_copy_lhm_run.py
+    - pixi run python 
+      notebooks/ribasim_delwaq/ANIMO_to_delwaq/get_basin_polygons.py
+    - pixi run python-headless 
+      notebooks/ribasim_delwaq/01_prepare_and_verify_inputs.py
+    - pixi run python notebooks/ribasim_delwaq/02_build_delwaq_model.py
+    - pixi run python notebooks/ribasim_delwaq/03_run_and_analyse_delwaq.py
+    deps:
+    - path: data/Basisgegevens/Delwaq/ANIMO/aangeleverd/LGN250.IDF
+      hash: md5
+      md5: 2923fbcc408369b27b9f58c36b18f15a
+      size: 6240208
+    - path: 
+        data/Basisgegevens/Delwaq/ANIMO/aangeleverd/Uitspoelconcentraties_4opties/Concs_per_6Afvoerklassen_1991_2020/Afvoerklassen_per_landbouw_natuur_zone__6Afvoerklassen1991_2020_23062026.tif
+      hash: md5
+      md5: ad53f371abdbef9fd1b7b5bd3088490f
+      size: 1617914
+    - path: 
+        data/Basisgegevens/Delwaq/ANIMO/aangeleverd/Uitspoelconcentraties_4opties/Concs_per_6Afvoerklassen_1991_2020/uitpoelconcentraties_decade_landbouw__6Afvoerklassen1991_2020_23062026.csv
+      hash: md5
+      md5: e990a71ffc042260f7a0a0f967efd0e0
+      size: 266834133
+    - path: 
+        data/Basisgegevens/Delwaq/ANIMO/aangeleverd/Uitspoelconcentraties_4opties/Concs_per_6Afvoerklassen_1991_2020/uitpoelconcentraties_decade_natuur__6Afvoerklassen1991_2020_23062026.csv
+      hash: md5
+      md5: e581f9dffa5fb715b33f810066ae86c9
+      size: 66439027
+    - path: data/Basisgegevens/Delwaq/ANIMO/aangeleverd/residuals.leg
+      hash: md5
+      md5: 297dec3e043e5a76353106edb36591e2
+      size: 571
+    - path: 
+        data/Basisgegevens/Delwaq/ANIMO/aangeleverd/shapes/B1_Provinciale_indeling_van_NederlandPolygon.dbf
+      hash: md5
+      md5: 99908023f382a55c3ca81c321138b5f0
+      size: 3981
+    - path: 
+        data/Basisgegevens/Delwaq/ANIMO/aangeleverd/shapes/B1_Provinciale_indeling_van_NederlandPolygon.prj
+      hash: md5
+      md5: cbf5dc9a4f64f95551c33504fe58bb80
+      size: 838
+    - path: 
+        data/Basisgegevens/Delwaq/ANIMO/aangeleverd/shapes/B1_Provinciale_indeling_van_NederlandPolygon.shp
+      hash: md5
+      md5: 13997271dc47e0deb3209501795f65fc
+      size: 155284
+    - path: 
+        data/Basisgegevens/Delwaq/ANIMO/aangeleverd/shapes/B1_Provinciale_indeling_van_NederlandPolygon.shx
+      hash: md5
+      md5: 9959b5f3d7e81c673f33605d842863bb
+      size: 196
+    - path: data/Basisgegevens/Delwaq/ANIMO/interim/LHM_fluxen/LHM_433
+      hash: md5
+      md5: fb63318650cbb7ac91d6bbd2fc4618cf.dir
+      size: 1214910144
+      nfiles: 216
+    - path: 
+        data/Basisgegevens/Delwaq/Emissieregistratie/aangeleverd/ER_DataExport-2026-09-16-103931.xlsx
+      hash: md5
+      md5: 8edb553d91bf54d5bc87ed2aaa96bf89
+      size: 87470754
+    - path: 
+        data/Basisgegevens/Delwaq/Emissieregistratie/aangeleverd/Emissies_per_jaar_buiten_ER.csv
+      hash: md5
+      md5: a897a55c9e971dbfc13745e816ad2cfb
+      size: 4517
+    - path: 
+        data/Basisgegevens/Delwaq/Emissieregistratie/aangeleverd/OverigeEmissies_bedrijven__2024_01_24.csv
+      hash: md5
+      md5: ebf0a72b3f5bf2e485cfd88ccf957e5d
+      size: 13174
+    - path: data/Basisgegevens/Delwaq/Emissieregistratie/aangeleverd/gaf_90.dbf
+      hash: md5
+      md5: 52afb7f3bebcfa81cf54a23aade4446f
+      size: 2001466
+    - path: data/Basisgegevens/Delwaq/Emissieregistratie/aangeleverd/gaf_90.prj
+      hash: md5
+      md5: 4250ee41129d6f43b4b897848c0655ac
+      size: 428
+    - path: data/Basisgegevens/Delwaq/Emissieregistratie/aangeleverd/gaf_90.shp
+      hash: md5
+      md5: 060c6c9c21173caa4c2e23e89d1c072a
+      size: 16901960
+    - path: data/Basisgegevens/Delwaq/Emissieregistratie/aangeleverd/gaf_90.shx
+      hash: md5
+      md5: ed935b8819c6ed497834e782cda91879
+      size: 20132
+    - path: data/Basisgegevens/Delwaq/IM/aangeleverd
+      hash: md5
+      md5: fdc5d611aada787d65464d0a87dd60c5.dir
+      size: 86171792
+      nfiles: 2
+    - path: data/Basisgegevens/Delwaq/Zinfo/aangeleverd
+      hash: md5
+      md5: e68eb5527d1cb92583c8a597a71c2a25.dir
+      size: 63842258
+      nfiles: 1
+    - path: data/Rijkswaterstaat/runs/lhm_coupled
+      hash: md5
+      md5: 14591894678cf5941a2c87ed28c49525.dir
+      size: 2531419862
+      nfiles: 11
+    - path: notebooks/ribasim_delwaq/00_copy_lhm_run.py
+      hash: md5
+      md5: d9c991baf9635001292338eee992642e
+      size: 1719
+    - path: notebooks/ribasim_delwaq/01_prepare_and_verify_inputs.py
+      hash: md5
+      md5: bf58e134837a3c77d5832b9ed148dd7b
+      size: 8948
+    - path: notebooks/ribasim_delwaq/02_build_delwaq_model.py
+      hash: md5
+      md5: e46a84685c9d66722e2a56805df3e3dc
+      size: 866
+    - path: notebooks/ribasim_delwaq/03_run_and_analyse_delwaq.py
+      hash: md5
+      md5: 0d416b2902fb55b461a1d91434ed3fc4
+      size: 539
+    - path: notebooks/ribasim_delwaq/ANIMO_to_delwaq/ANIMO_coupling_delwaq.py
+      hash: md5
+      md5: 16a58c85e1fefde4e92f08c42e70123c
+      size: 40060
+    - path: notebooks/ribasim_delwaq/ANIMO_to_delwaq/get_basin_polygons.py
+      hash: md5
+      md5: 73f1c0b5e0fb100fbd3ae0fc250ae788
+      size: 2296
+    - path: notebooks/ribasim_delwaq/ER_to_delwaq/ER_GAF_fractions_func.py
+      hash: md5
+      md5: 96d0fdb7f9477e96cfbe143fca779318
+      size: 2580
+    - path: notebooks/ribasim_delwaq/ER_to_delwaq/ER_coupling_delwaq.py
+      hash: md5
+      md5: 36baa1d59ac9ce70f9fb8bc9962fcb18
+      size: 22319
+    - path: notebooks/ribasim_delwaq/IM_Zinfo_to_delwaq/write_boundwq_files.py
+      hash: md5
+      md5: e8e94d7702449c81b15f5dd5c1fd78ad
+      size: 39710
+    - path: notebooks/ribasim_delwaq/config.py
+      hash: md5
+      md5: f7fffb7d9657e8c1b9602d819b3adde2
+      size: 1717
+    - path: notebooks/ribasim_delwaq/config.toml
+      hash: md5
+      md5: 9a80befefb37ce29e1c257b3be2df2a2
+      size: 395
+    - path: notebooks/ribasim_delwaq/scripts
+      hash: md5
+      md5: 36dbd91675521463aef4c14bd4a64744.dir
+      size: 26280
+      nfiles: 3
+    - path: src/ribasim_nl/ribasim_nl
+      hash: md5
+      md5: ce3918e28fa53e6d76a73befb478505b.dir
+      size: 2225358
+      nfiles: 122
+    outs:
+    - path: 
+        data/Basisgegevens/Delwaq/ANIMO/aangeleverd/shapes/lhm_coupled_delwaq
+      hash: md5
+      md5: 7fdd90e9e6ba5268749c28472782495d.dir
+      size: 111388746
+      nfiles: 5
+    - path: data/Basisgegevens/Delwaq/ANIMO/output
+      hash: md5
+      md5: 7c5ef41f9cfa3ec1a28d80f40765e25e.dir
+      size: 43305698
+      nfiles: 1
+    - path: data/Basisgegevens/Delwaq/Emissieregistratie/output
+      hash: md5
+      md5: b4fb0ac7b7a57b277b9b999b83814f05.dir
+      size: 22539319
+      nfiles: 1
+    - path: data/Basisgegevens/Delwaq/IM/output
+      hash: md5
+      md5: c85e2243a42f4af6d0655bfcec3b33bf.dir
+      size: 214902
+      nfiles: 2
+    - path: data/Basisgegevens/Delwaq/Zinfo/output
+      hash: md5
+      md5: bd2f9d46c57e454b34a7d5b22f6e787f.dir
+      size: 5710200
+      nfiles: 2
+    - path: data/Rijkswaterstaat/runs/lhm_coupled_delwaq
+      hash: md5
+      md5: 7fdf75eadd27c91fcc7b9d466853b412.dir
+      size: 8505683917
+      nfiles: 56
