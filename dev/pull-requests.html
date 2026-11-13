@@ -338,7 +338,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Keep those of <code>main</code> even if git merges <code>dvc.lock</code> without conflicts, and never combine the two by hand: a <code>dvc.lock</code> that mixes two runs describes outputs that no run produced. Always take <code>dvc.lock</code> and the metrics together, so they belong to the same run.</p></li>
 </ol>
-<p>The pull request is then merged without its run being recorded on <code>main</code>, until the next catch-up run. Its outputs stay on the DVC remote until the next cleanup of data that is not on <code>main</code>, and its preview in the model viewer remains available.</p>
+<p>The pull request is then merged without its run being recorded on <code>main</code>, until the next catch-up run. Its outputs stay until the next <a href="../dev/dvc.html#clean-up-the-remote">cleanup of the remote</a>, and its preview in the model viewer while it is among the last 30 pull requests with one.</p>
 </section>
 <section id="push-the-outputs-of-every-run" class="level2">
 <h2 class="anchored" data-anchor-id="push-the-outputs-of-every-run">Push the outputs of every run</h2>
