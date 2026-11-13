@@ -28,6 +28,7 @@ import pandas as pd
 import shapely
 import shapely.ops
 import xarray as xr
+from dvc.repo import Repo
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
@@ -114,21 +115,27 @@ plt.rcParams.update(
 
 @dataclass(frozen=True)
 class FigureGroup:
-    """A function that makes figures, the names of its figures, and the arguments of `dvc pull` for its data."""
+    """A function that makes figures, the names of its figures, and how to get its data.
+
+    `pull` holds the arguments of `dvc pull`, and `rebuild` the stages whose outputs DVC does not cache, see `rebuild`.
+    """
 
     make: Callable[[], None]
     outputs: tuple[str, ...]
     pull: tuple[str, ...]
+    rebuild: tuple[str, ...] = ()
 
 
 FIGURES: dict[str, FigureGroup] = {}
 
 
-def figure(outputs: tuple[str, ...], pull: tuple[str, ...]) -> Callable[[Callable[[], None]], Callable[[], None]]:
-    """Register a function that makes the figures `outputs` from the data that the `pull` arguments get."""
+def figure(
+    outputs: tuple[str, ...], pull: tuple[str, ...], rebuild: tuple[str, ...] = ()
+) -> Callable[[Callable[[], None]], Callable[[], None]]:
+    """Register a function that makes the figures `outputs` from the data of `pull` and `rebuild`, see `FigureGroup`."""
 
     def register(function: Callable[[], None]) -> Callable[[], None]:
-        FIGURES[function.__name__] = FigureGroup(function, outputs, pull)
+        FIGURES[function.__name__] = FigureGroup(function, outputs, pull, rebuild)
         return function
 
     return register
@@ -429,7 +436,8 @@ COUPLING_WINDOW = (115_800.0, 476_900.0, 119_200.0, 480_300.0)
 
 @figure(
     outputs=("coupling-before", "coupling-after"),
-    pull=("samenvoegen", "run_lhm_coupled"),
+    pull=("run_lhm_coupled",),
+    rebuild=("samenvoegen",),
 )
 def coupling() -> None:
     """Map of the border between two water authorities, before and after coupling."""
@@ -990,6 +998,21 @@ def upload(names: Iterable[str]) -> None:
         print(f"Uploaded {PREFIX}{name}.png")
 
 
+def rebuild(name: str) -> None:
+    """Run a stage whose outputs DVC does not cache, if they are not in the workspace, after pulling its inputs.
+
+    `dvc repro --pull` does not do this: it counts outputs that are not in the workspace as up to date.
+    """
+    repo = Repo()
+    (stage,) = (stage for stage in repo.index.graph if stage.addressing == name)
+    if all(out.exists for out in stage.outs):
+        return
+    # Edges point from a stage to the stages it depends on
+    inputs = sorted(dep.addressing for dep in repo.index.graph.successors(stage))
+    subprocess.run(["dvc", "pull", *inputs], check=True)
+    subprocess.run(["dvc", "repro", "--single-item", "--force", name], check=True)
+
+
 def main() -> int:
     """Make the figures that are selected on the command line, or all, and return the exit code."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -1009,6 +1032,8 @@ def main() -> int:
             if args.pull:
                 for target in group.pull:
                     subprocess.run(["dvc", "pull", *shlex.split(target)], check=True)
+                for stage in group.rebuild:
+                    rebuild(stage)
             group.make()
             missing = [output for output in group.outputs if not (OUT / f"{output}.png").is_file()]
             assert not missing, f"{name} did not make {missing}"

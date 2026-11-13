@@ -1456,8 +1456,11 @@ stages:
       - data/StichtseRijnlanden/modellen/StichtseRijnlanden_dynamic_model
       - data/ValleienVeluwe/modellen/ValleienVeluwe_dynamic_model
       - data/Vechtstromen/modellen/Vechtstromen_dynamic_model
+    # Not cached by DVC, since it is built in a minute from the regional models, bit for bit the same. `dvc.lock`
+    # still records its hash. `repro.py --incremental` runs this stage if `koppelen` runs and it is not in the workspace
     outs:
-      - data/Rijkswaterstaat/modellen/lhm_parts
+      - data/Rijkswaterstaat/modellen/lhm_parts:
+          cache: false
   koppelen:
     cmd: pixi run python pipeline/09_koppelen_modellen.py
     deps:

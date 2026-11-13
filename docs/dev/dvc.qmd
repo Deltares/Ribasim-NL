@@ -122,4 +122,27 @@ Do this before pushing the updated `dvc.lock` file to Git, so the data hashes re
 
 Most MinIO access keys handed out are read-only.
 Reach out if you need help uploading data.
+
+Outputs that a stage rebuilds in minutes from data that is on the remote are not pushed, with `cache: false` in `dvc.yaml`: `lhm_parts`, `hws_plus` and the export for the model viewer.
+`dvc pull` does not get them, and `dvc repro --pull` counts them as up to date. To get one, pull the inputs of its stage and run it with `pixi run dvc repro --single-item --force <stage>`, like `rebuild` in `scripts/docs_figures.py` does.
+
+## Clean up the remote
+
+Every run pushes its outputs, so the remote fills up. To delete the data that no kept commit uses:
+
+```sh
+pixi run prune-remote           # list what it would delete in logs/prune-remote
+pixi run prune-remote --delete  # delete it
+```
+
+It keeps the data of:
+
+- the last 30 runs of `main`, its last commits that changed `dvc.lock`;
+- every version of the source data, the `.dvc` files of all commits of `main`;
+- all commits of open pull requests, and the tips of branches that are not merged;
+- everything uploaded in the last 3 days, such as a run that is pushed but not committed yet.
+
+Previews in the [model viewer](viewer.qmd) are kept for the runs it keeps, and for the last 30 pull requests that have one.
+An older commit of `main` can no longer pull its outputs, but they can be reproduced from its source data.
+Do not use `dvc gc`: git worktrees share the cache of the main checkout, which it would also clean, and it has no grace period.
 See [Reproducing pull requests](pull-requests.qmd) for how the full runs of pull requests and of `main` are recorded.

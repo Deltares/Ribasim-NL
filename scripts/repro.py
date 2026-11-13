@@ -8,6 +8,8 @@ from `dvc.yaml`:
    `.dvc` files. Without `--incremental` all of them are run, like `repro.sh`. With `--incremental`
    only the stages that changed compared with `dvc.lock`, and everything downstream of them, are run.
    Data that is not in the workspace does not count as a change, so this also works in a fresh git worktree.
+   An upstream stage whose output DVC does not cache, `cache: false`, is run too if that output is not in the
+   workspace, since it cannot be pulled.
 2. Check that the Ribasim core and credentials are installed, see `pixi run setup-worktree` for worktrees.
    `pixi run repro-local` first installs the core of `install_ribasim_core.py`, unless it is installed already.
    Then prepare the workspace with `clean.py`: remove the outputs of the selected stages and pull
@@ -99,6 +101,29 @@ def check_environment(root: Path) -> None:
     hint = "In a git worktree run `pixi run setup-worktree`, otherwise"
     assert cli.is_file(), f"No Ribasim core at {cli}. {hint} `pixi run install-core`"
     assert (root / ".env").is_file(), f"No credentials in {root / '.env'}. {hint} add them"
+
+
+def uncached_missing(stage: Stage) -> bool:
+    """Whether an output of a stage that DVC does not cache, `cache: false`, is not in the workspace."""
+    return any(not out.use_cache and not out.exists for out in stage.outs)
+
+
+def with_uncached_upstream[T](
+    graph: nx.DiGraph, selected: Collection[T], candidates: Collection[T], missing: Callable[[T], bool]
+) -> set[T]:
+    """Add the candidate stages that a selected stage depends on, and whose output is missing and cannot be pulled.
+
+    These rebuild the output that `dvc.lock` records, so the stages downstream of them are not added.
+    """
+    result = set(selected)
+    todo = list(result)
+    while todo:
+        # Edges point from a stage to the stages it depends on
+        for dep in graph.successors(todo.pop()):
+            if dep in candidates and dep not in result and missing(dep):
+                result.add(dep)
+                todo.append(dep)
+    return result
 
 
 def with_downstream[T](graph: nx.DiGraph, selected: Collection[T], changed: Iterable[T]) -> set[T]:
@@ -232,7 +257,11 @@ def main() -> int:
     if args.incremental:
         with repo.lock:
             changed_stages = [stage for stage in selected if changed(stage)]
-        selected = with_downstream(graph, selected, changed_stages)
+            run = with_downstream(graph, selected, changed_stages)
+            rebuilt = with_uncached_upstream(graph, run, selected, uncached_missing) - run
+        for stage in sorted(rebuilt, key=lambda s: s.addressing):
+            log(f"Running {stage.addressing} too, its output is not cached by DVC and not in the workspace")
+        selected = run | rebuilt
     if not selected:
         log("All stages are up to date")
         return 0

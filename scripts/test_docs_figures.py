@@ -5,8 +5,10 @@ from pathlib import Path
 
 import docs_figures
 import pytest
+import yaml
 
 DOCS = Path(__file__).parents[1] / "docs"
+DVC_YAML = Path(__file__).parents[1] / "dvc.yaml"
 
 
 def test_pages_link_to_figures_that_are_made():
@@ -28,6 +30,21 @@ def test_groups_have_outputs_and_data():
     for name, group in docs_figures.FIGURES.items():
         assert group.outputs, name
         assert group.pull, name
+
+
+def uncached(outs: list) -> bool:
+    """Whether a stage in `dvc.yaml` has an output with `cache: false`."""
+    return any(isinstance(out, dict) and not next(iter(out.values())).get("cache", True) for out in outs)
+
+
+def test_pull_cached_and_rebuild_uncached_stages():
+    stages = yaml.safe_load(DVC_YAML.read_text())["stages"]
+    for name, group in docs_figures.FIGURES.items():
+        for target in group.pull:
+            stage = stages.get(target.split()[0])
+            assert stage is None or not uncached(stage.get("outs", [])), f"{name} pulls uncached {target}, rebuild it"
+        for target in group.rebuild:
+            assert uncached(stages[target]["outs"]), f"{name} rebuilds {target}, whose outputs are cached, pull it"
 
 
 def test_upload(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
