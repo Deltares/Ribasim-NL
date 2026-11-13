@@ -142,7 +142,7 @@ It keeps the data of:
 - all commits of open pull requests, and the tips of branches that are not merged;
 - everything uploaded in the last 3 days, such as a run that is pushed but not committed yet.
 
-It also deletes the previews in the [model viewer](viewer.qmd) of the runs it deletes.
+Previews in the [model viewer](viewer.qmd) are kept for the runs it keeps, and for the last 30 pull requests that have one.
 An older commit of `main` can no longer pull its outputs, but they can be reproduced from its source data.
 Do not use `dvc gc`: git worktrees share the cache of the main checkout, which it would also clean, and it has no grace period.
 See [Reproducing pull requests](pull-requests.qmd) for how the full runs of pull requests and of `main` are recorded.

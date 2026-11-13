@@ -12,9 +12,10 @@ This keeps the DVC data of:
 - everything uploaded in the last `--grace-days` days.
 
 Of the model viewer previews below `doc-image/webmap/`, see `ribasim_nl.webmap_publish`, it keeps those of the kept
-runs, of open pull requests, of the latest published main, and those published in the last `--grace-days` days.
-The records of pull requests and differences that show a deleted preview are deleted with it, and so are the files
-that no kept preview uses.
+runs, of the latest published main, those published in the last `--grace-days` days, and the previews of open pull
+requests and of the last `--keep-prs` pull requests, with the previews they are compared with. The records of pull
+requests and differences that show a deleted preview are deleted with it, and so are the files that no kept preview
+uses.
 
 The outputs of an older commit of main can be reproduced from its source data, and a deleted preview can be published
 again from its run with `pixi run publish-webmap --commit`. `dvc gc` does not fit: git worktrees share the cache of
@@ -23,7 +24,7 @@ the main checkout, which it would clean too, and it has no grace period.
 Without `--delete` this only lists what it would delete, in `logs/prune-remote/`. With `--delete` it first checks that
 DVC itself finds all data of the kept commits in what is kept.
 
-Usage: pixi run prune-remote [--keep-main N] [--grace-days DAYS] [--delete]
+Usage: pixi run prune-remote [--keep-main N] [--keep-prs N] [--grace-days DAYS] [--delete]
 """
 
 import argparse
@@ -272,12 +273,14 @@ def plan_webmap(
     objects: list[Object],
     exports: set[str],
     open_prs: set[int],
+    keep_prs: int,
     read_json: Callable[[str], Any],
     cutoff: datetime,
 ) -> list[Deletion]:
     """The objects of the model viewer to delete.
 
-    The snapshots of `exports`, of open pull requests, of the latest main and those published since `cutoff` are kept.
+    Kept are the snapshots of `exports`, of the latest main, those published since `cutoff`, and those of the records
+    of open pull requests and of the last `keep_prs` pull requests that have one.
     """
     snapshots: dict[str, Object] = {}
     diffs: dict[tuple[str, str], Object] = {}
@@ -303,13 +306,14 @@ def plan_webmap(
     keep = set(exports) | {md5 for md5, obj in snapshots.items() if obj.modified >= cutoff}
     if any(obj.key == MAIN_KEY for obj in objects):
         keep.add(read_json(MAIN_KEY)["snapshot"])
-    keep |= {md5 for number in open_prs if number in prs for md5 in pr_snapshots(number)}
+    kept_prs = (open_prs & prs.keys()) | set(sorted(prs, reverse=True)[:keep_prs])
+    keep |= {md5 for number in kept_prs for md5 in pr_snapshots(number)}
     deletions = [Deletion("snapshot", obj) for md5, obj in snapshots.items() if md5 not in keep]
     deletions += [Deletion("difference", obj) for pair, obj in diffs.items() if not set(pair) <= keep]
     deletions += [
         Deletion("pull request", obj)
         for number, obj in prs.items()
-        if number not in open_prs and not pr_snapshots(number) <= keep
+        if number not in kept_prs and not pr_snapshots(number) <= keep
     ]
     used = {
         entry["path"] for md5 in keep & snapshots.keys() for entry in manifest_entries(read_json(snapshots[md5].key))
@@ -386,10 +390,12 @@ def main() -> int:
     """Plan the deletions, and with `--delete` carry them out; return the exit code."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--keep-main", type=int, default=30, help="the number of last runs of main to keep")
+    parser.add_argument("--keep-prs", type=int, default=30, help="the number of last pull request previews to keep")
     parser.add_argument("--grace-days", type=float, default=3.0, help="keep what was uploaded in these last days")
     parser.add_argument("--delete", action="store_true", help="delete, instead of only listing what to delete")
     args = parser.parse_args()
     assert args.keep_main >= 1, "Keep at least the last run of main"
+    assert args.keep_prs >= 0, "The number of pull request previews to keep cannot be negative"
     assert args.grace_days >= 1, "Keep at least what was uploaded in the last day, it may not be committed yet"
     cutoff = datetime.now(UTC) - timedelta(days=args.grace_days)
 
@@ -416,7 +422,7 @@ def main() -> int:
     )
     deletions = plan_dvc(dvc_objects, keep, cutoff)
     webmap_objects = bucket.objects(WEBMAP_PREFIX)
-    deletions += plan_webmap(webmap_objects, exports, set(kept.open_prs), bucket.read_json, cutoff)
+    deletions += plan_webmap(webmap_objects, exports, set(kept.open_prs), args.keep_prs, bucket.read_json, cutoff)
     deletions.sort(key=lambda d: (DELETE_ORDER.index(d.kind), d.obj.key))
 
     for name, objects in (("DVC remote", dvc_objects), ("model viewer", webmap_objects)):

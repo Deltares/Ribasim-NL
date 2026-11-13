@@ -128,7 +128,7 @@ def test_plan_webmap():
     objects += [Object(f"{WEBMAP}files/8.parquet", 100, NEW)]
     objects += [Object(f"{MODEL}diffs/{kept}-{old}.json", 10, OLD), Object(f"{MODEL}diffs/{main}-{kept}.json", 10, OLD)]
 
-    deletions = plan_webmap(objects, {kept}, {5}, records.__getitem__, CUTOFF)
+    deletions = plan_webmap(objects, {kept}, {5}, 0, records.__getitem__, CUTOFF)
     assert {(d.kind, d.obj.key) for d in deletions} == {
         ("snapshot", f"{MODEL}snapshots/{old}/manifest.json"),
         ("difference", f"{MODEL}diffs/{kept}-{old}.json"),
@@ -138,5 +138,10 @@ def test_plan_webmap():
         ("viewer file", f"{WEBMAP}files/7.parquet"),
     }
 
+    # The last pull requests with a preview are kept with their snapshots and differences, also when closed
+    assert plan_webmap(objects, {kept}, {5}, 2, records.__getitem__, CUTOFF) == deletions
+    deletions = plan_webmap(objects, {kept}, set(), 3, records.__getitem__, CUTOFF)
+    assert {d.obj.key for d in deletions} == {f"{WEBMAP}files/7.parquet"}
+
     with pytest.raises(AssertionError, match="Unknown object"):
-        plan_webmap([*objects, Object(f"{MODEL}other.json", 1, OLD)], {kept}, {5}, records.__getitem__, CUTOFF)
+        plan_webmap([*objects, Object(f"{MODEL}other.json", 1, OLD)], {kept}, {5}, 0, records.__getitem__, CUTOFF)
