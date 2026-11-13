@@ -151,6 +151,8 @@ def handle_open_pr(root: Path) -> bool:
 
 def lock_worktree(root: Path) -> TextIO | None:
     """Lock the worktree until this process exits; return the lock file, or None if another run holds it."""
+    # Catch-up runs are on Linux: Windows has no `fcntl`, which this also tells the type checker there
+    assert sys.platform != "win32", "Windows has no fcntl to lock the worktree"
     git_dir = Path(git("rev-parse", "--absolute-git-dir", cwd=root))
     file = (git_dir / LOCK).open("w")
     try:

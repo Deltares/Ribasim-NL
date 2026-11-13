@@ -96,6 +96,13 @@ runs/
 repro_jobs.txt
 logs/
 delwaq/
+# The input data of the Delwaq stage, which `delwaq/` also matches on a case insensitive file system.
+# Only its .dvc and .gitignore files are in git; the scripts also write figures and intermediate files here.
+!/data/Basisgegevens/Delwaq/
+/data/Basisgegevens/Delwaq/**
+!/data/Basisgegevens/Delwaq/**/
+!/data/Basisgegevens/Delwaq/**/*.dvc
+!/data/Basisgegevens/Delwaq/**/.gitignore
 
 # Main scripts to run workflows per water authority
 notebooks/*/main.py
