@@ -40,7 +40,7 @@ Regular catch-up runs reproduce `main` again, for all pull requests merged since
    Always take `dvc.lock` and the metrics together, so they belong to the same run.
 
 The pull request is then merged without its run being recorded on `main`, until the next catch-up run.
-Its outputs stay on the DVC remote until the next cleanup of data that is not on `main`, and its preview in the model viewer remains available.
+Its outputs and its preview in the model viewer stay until the next [cleanup of the remote](dvc.qmd#clean-up-the-remote).
 
 ## Push the outputs of every run
 

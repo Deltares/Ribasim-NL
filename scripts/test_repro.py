@@ -8,7 +8,17 @@ import networkx as nx
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
-from repro import Result, Status, changed, check_environment, dependencies, run_dag, select_stages, with_downstream
+from repro import (
+    Result,
+    Status,
+    changed,
+    check_environment,
+    dependencies,
+    run_dag,
+    select_stages,
+    with_downstream,
+    with_uncached_upstream,
+)
 
 
 def pipeline() -> nx.DiGraph:
@@ -53,6 +63,19 @@ def test_with_downstream():
     assert with_downstream(graph, selected, ["a"]) == {"a", "b", "merge"}
     assert with_downstream(graph, selected, ["merge"]) == {"merge"}
     assert with_downstream(graph, selected, []) == set()
+
+
+def test_with_uncached_upstream():
+    graph = pipeline()
+    candidates = select_stages(graph, ["final"], runnable)
+    assert with_uncached_upstream(graph, {"final"}, candidates, lambda stage: False) == {"final"}
+    # merge needs b, which needs a: both are run if their uncached outputs are missing
+    assert with_uncached_upstream(graph, {"merge"}, candidates, lambda stage: stage == "b") == {"merge", "b"}
+    assert with_uncached_upstream(graph, {"merge"}, candidates, lambda stage: stage in "ab") == {"merge", "a", "b"}
+    # The output of b is there, so the missing output of a is not needed
+    assert with_uncached_upstream(graph, {"merge"}, candidates, lambda stage: stage == "a") == {"merge"}
+    # Stages that cannot run are not added
+    assert with_uncached_upstream(graph, {"a"}, candidates, lambda stage: True) == {"a"}
 
 
 def test_dependencies_through_unselected_stage():

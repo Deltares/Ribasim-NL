@@ -22,7 +22,7 @@ Like `repro.sh`, it runs the stage commands directly, not with `dvc repro`, sinc
 - Targets: stages to reproduce together with their upstream stages, `validate_lhm_coupled`, `export_webmap` and `hws_plus` by default. For example, `pixi run repro-local koppelen` only builds the coupled model, like `repro.sh`.
 - `--jobs N`: the maximum number of stages that run at once, 12 by default. Each stage is a Python process that may also run Ribasim, so watch the memory use when increasing it.
 - `--stagger SECONDS`: the minimum time between stage starts, 30 by default, to not overload the GoodCloud server from which `parameterized` stages download GKW data that is not local.
-- `--incremental`: only run the stages that DVC reports as changed, and everything downstream of them, rather than all stages. Data that is not in the workspace does not count as changed, so a fresh worktree does not rerun everything. A stage that failed before only runs again if the outputs it left differ from `dvc.lock`. Run `pixi run dvc pull` first if the workspace may be behind `dvc.lock`.
+- `--incremental`: only run the stages that DVC reports as changed, and everything downstream of them, rather than all stages. Data that is not in the workspace does not count as changed, so a fresh worktree does not rerun everything. A stage whose output DVC does not cache, such as `samenvoegen`, also runs if a stage that runs needs that output and it is not in the workspace. A stage that failed before only runs again if the outputs it left differ from `dvc.lock`. Run `pixi run dvc pull` first if the workspace may be behind `dvc.lock`.
 - `--push`: run `dvc push` for the reproduced stages if they all succeeded.
 - `--no-publish`: do not publish the model to the model viewer.
 

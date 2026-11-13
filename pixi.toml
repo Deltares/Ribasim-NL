@@ -105,6 +105,8 @@ viewer-dev = { cmd = "npm run dev", cwd = "viewer", depends-on = ["viewer-instal
 compare-runs = "python -m ribasim_nl.run_comparison"
 # Publish the model for the docs viewer, see `ribasim_nl.webmap_publish`: `pixi run publish-webmap [--pr N | --main]`
 publish-webmap = "python -m ribasim_nl.webmap_publish"
+# Delete old data from the DVC remote and the model viewer, see scripts/prune_remote.py: `pixi run prune-remote [--delete]`
+prune-remote = "python scripts/prune_remote.py"
 ribasim = { cmd = "bin/ribasim/bin/ribasim", depends-on = ["install-core"] }
 edit-toml = "python scripts/edit_toml.py"
 delwaq = "python -m ribasim_nl.delwaq"
