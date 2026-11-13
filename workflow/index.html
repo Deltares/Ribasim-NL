@@ -394,12 +394,13 @@ window.Quarto = {
   run_lhm_coupled --&gt; validate_lhm_coupled
   run_lhm_coupled --&gt; export_webmap
   run_lhm_coupled --&gt; hws_plus
+  run_lhm_coupled -.-&gt; delwaq
 
   classDef perauthority fill:#cde2fb,stroke:#2a78d6
   class hydamo,lumped,parameterized,bergend,dynamic,postprocessed,crossings,shortest_paths,boezemmodel,feedback,profiles,forcing perauthority
 </pre>
 </div>
-<p></p><figcaption> The stages of the pipeline, grouped. Blue stages run per authority. The <a href="../dev/dvc.html#fig-dvc-pipeline">full graph</a> has 80 stages.</figcaption> </figure><p></p>
+<p></p><figcaption> The stages of the pipeline, grouped. Blue stages run per authority. The <a href="../dev/dvc.html#fig-dvc-pipeline">full graph</a> has 81 stages.</figcaption> </figure><p></p>
 </div>
 </div>
 </div>
@@ -467,6 +468,11 @@ window.Quarto = {
 <td style="text-align: left;">Cut the main water system out of the run, with its exchanges as boundaries.</td>
 <td style="text-align: left;"><a href="../workflow/hws-plus.html">HWS plus</a></td>
 </tr>
+<tr class="even">
+<td style="text-align: left;"><code>delwaq</code></td>
+<td style="text-align: left;">The water quality of the run with Delwaq. Only runs on demand, since it needs a Delft3D installation.</td>
+<td style="text-align: left;"><a href="https://github.com/Deltares/Ribasim-NL/tree/main/notebooks/ribasim_delwaq#readme">Ribasim-Delwaq</a></td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -504,6 +510,14 @@ window.Quarto = {
 <tr class="odd">
 <td style="text-align: left;"><code>Rijkswaterstaat/runs/lhm_coupled</code></td>
 <td style="text-align: left;">The latest run of the coupled model, with its <code>results</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>Rijkswaterstaat/runs/lhm_coupled_delwaq</code></td>
+<td style="text-align: left;">A copy of that run with the emissions and the Delwaq results of the <code>delwaq</code> stage</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>Basisgegevens/Delwaq</code></td>
+<td style="text-align: left;">The emission data of the <code>delwaq</code> stage</td>
 </tr>
 </tbody>
 </table>
