@@ -1517,3 +1517,63 @@ stages:
     outs:
       - data/Rijkswaterstaat/webmap/lhm_coupled:
           cache: false
+  # The water quality of the run with Delwaq, see notebooks/ribasim_delwaq/README.md. Not a default target of the
+  # reproductions, since it needs the Delft3D installation of `D3D_HOME`: run it on demand with
+  # `pixi run dvc repro --pull --single-item delwaq`
+  delwaq:
+    cmd:
+      - pixi run python notebooks/ribasim_delwaq/00_copy_lhm_run.py
+      - pixi run python notebooks/ribasim_delwaq/ANIMO_to_delwaq/get_basin_polygons.py
+      - pixi run python-headless notebooks/ribasim_delwaq/01_prepare_and_verify_inputs.py
+      - pixi run python notebooks/ribasim_delwaq/02_build_delwaq_model.py
+      - pixi run python notebooks/ribasim_delwaq/03_run_and_analyse_delwaq.py
+    deps:
+      - notebooks/ribasim_delwaq/00_copy_lhm_run.py
+      - notebooks/ribasim_delwaq/01_prepare_and_verify_inputs.py
+      - notebooks/ribasim_delwaq/02_build_delwaq_model.py
+      - notebooks/ribasim_delwaq/03_run_and_analyse_delwaq.py
+      - notebooks/ribasim_delwaq/config.py
+      - notebooks/ribasim_delwaq/config.toml
+      - notebooks/ribasim_delwaq/scripts
+      # The conversion scripts that 01_prepare_and_verify_inputs.py runs
+      - notebooks/ribasim_delwaq/ANIMO_to_delwaq/get_basin_polygons.py
+      - notebooks/ribasim_delwaq/ANIMO_to_delwaq/ANIMO_coupling_delwaq.py
+      - notebooks/ribasim_delwaq/ER_to_delwaq/ER_coupling_delwaq.py
+      - notebooks/ribasim_delwaq/ER_to_delwaq/ER_GAF_fractions_func.py
+      - notebooks/ribasim_delwaq/IM_Zinfo_to_delwaq/write_boundwq_files.py
+      - src/ribasim_nl/ribasim_nl
+      - data/Rijkswaterstaat/runs/lhm_coupled
+      - data/Basisgegevens/Delwaq/ANIMO/aangeleverd/LGN250.IDF
+      - data/Basisgegevens/Delwaq/ANIMO/aangeleverd/residuals.leg
+      - data/Basisgegevens/Delwaq/ANIMO/aangeleverd/shapes/B1_Provinciale_indeling_van_NederlandPolygon.shp
+      - data/Basisgegevens/Delwaq/ANIMO/aangeleverd/shapes/B1_Provinciale_indeling_van_NederlandPolygon.shx
+      - data/Basisgegevens/Delwaq/ANIMO/aangeleverd/shapes/B1_Provinciale_indeling_van_NederlandPolygon.dbf
+      - data/Basisgegevens/Delwaq/ANIMO/aangeleverd/shapes/B1_Provinciale_indeling_van_NederlandPolygon.prj
+      - data/Basisgegevens/Delwaq/ANIMO/aangeleverd/Uitspoelconcentraties_4opties/Concs_per_6Afvoerklassen_1991_2020/Afvoerklassen_per_landbouw_natuur_zone__6Afvoerklassen1991_2020_23062026.tif
+      - data/Basisgegevens/Delwaq/ANIMO/aangeleverd/Uitspoelconcentraties_4opties/Concs_per_6Afvoerklassen_1991_2020/uitpoelconcentraties_decade_landbouw__6Afvoerklassen1991_2020_23062026.csv
+      - data/Basisgegevens/Delwaq/ANIMO/aangeleverd/Uitspoelconcentraties_4opties/Concs_per_6Afvoerklassen_1991_2020/uitpoelconcentraties_decade_natuur__6Afvoerklassen1991_2020_23062026.csv
+      # The drainage fluxes of LHM 4.3.3 per decade, made by Process_LHM_hydrology.py from data outside this repository
+      - data/Basisgegevens/Delwaq/ANIMO/interim/LHM_fluxen/LHM_433
+      - data/Basisgegevens/Delwaq/Emissieregistratie/aangeleverd/ER_DataExport-2026-09-16-103931.xlsx
+      - data/Basisgegevens/Delwaq/Emissieregistratie/aangeleverd/Emissies_per_jaar_buiten_ER.csv
+      - data/Basisgegevens/Delwaq/Emissieregistratie/aangeleverd/OverigeEmissies_bedrijven__2024_01_24.csv
+      - data/Basisgegevens/Delwaq/Emissieregistratie/aangeleverd/gaf_90.shp
+      - data/Basisgegevens/Delwaq/Emissieregistratie/aangeleverd/gaf_90.shx
+      - data/Basisgegevens/Delwaq/Emissieregistratie/aangeleverd/gaf_90.dbf
+      - data/Basisgegevens/Delwaq/Emissieregistratie/aangeleverd/gaf_90.prj
+      - data/Basisgegevens/Delwaq/IM/aangeleverd
+      - data/Basisgegevens/Delwaq/Zinfo/aangeleverd
+    outs:
+      - data/Rijkswaterstaat/runs/lhm_coupled_delwaq
+      # The loads and concentrations per source, which 01_prepare_and_verify_inputs.py combines in the run directory.
+      # Not cached by DVC, since the stage rebuilds them: `dvc.lock` still records their hashes
+      - data/Basisgegevens/Delwaq/ANIMO/aangeleverd/shapes/lhm_coupled_delwaq:
+          cache: false
+      - data/Basisgegevens/Delwaq/ANIMO/output:
+          cache: false
+      - data/Basisgegevens/Delwaq/Emissieregistratie/output:
+          cache: false
+      - data/Basisgegevens/Delwaq/IM/output:
+          cache: false
+      - data/Basisgegevens/Delwaq/Zinfo/output:
+          cache: false

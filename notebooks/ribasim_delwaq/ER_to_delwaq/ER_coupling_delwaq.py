@@ -267,10 +267,12 @@ print(f"Percentage of GAF-units with sum of fractions exceeding 1 by more than 5
 # -------------------------------Import data------------------------------------
 
 # Direct download from the ER website at GAF90 level
+# The calamine engine reads the 640 000 rows in half a minute, where openpyxl takes more than 6 minutes
 emissions_gaf_kg_year = pd.read_excel(
     ER_export_path,
     sheet_name="Emissies",
     usecols=["Stofcode", "Stof", "Code_gebied", "Sector", "Subsector", "Emissieoorzaak", "Jaar", "Emissie"],
+    engine="calamine",
 )
 
 # Manual file to fill in Deltares ER yearly loads #$ not using this rn

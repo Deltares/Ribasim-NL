@@ -1,5 +1,8 @@
 [model]
-toml_path = "data/Rijkswaterstaat/modellen/lhm_coupled/lhm_coupled.toml"
+# The run of the coupled model, the output of the `run_lhm_coupled` DVC stage
+run_toml_path = "data/Rijkswaterstaat/runs/lhm_coupled/lhm_coupled.toml"
+# The copy of that run made by `00_copy_lhm_run.py`, which the other scripts change and add their results to
+toml_path = "data/Rijkswaterstaat/runs/lhm_coupled_delwaq/lhm_coupled.toml"
 
 [paths]
 delwaq_data = "data/Basisgegevens/Delwaq"
