@@ -42,7 +42,6 @@ SOURCE_TRACERS = {
     "Initial",
     "LevelBoundary",
     "FlowBoundary",
-    "UserDemand",
     "Drainage",
     "Precipitation",
     "SurfaceRunoff",

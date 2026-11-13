@@ -1,6 +1,5 @@
 """Run the full Delwaq pipeline (generate -> run -> parse) for a Ribasim model."""
 
-import contextlib
 from pathlib import Path
 
 from ribasim.delwaq import generate, parse, run_delwaq
@@ -44,10 +43,7 @@ def compute_delwaq(
     print(f"generate DELWAQ model in {delwaq_dir}")
     generate(model, output_path=delwaq_dir)
 
-    # Delwaq reads delwaq.inp from the working directory, which run_delwaq only sets on Windows.
-    # TODO: remove the chdir once we use a Ribasim release with https://github.com/Deltares/Ribasim/pull/3415
-    with contextlib.chdir(delwaq_dir):
-        run_delwaq(model_dir=delwaq_dir, d3d_home=d3d_home)
+    run_delwaq(model_dir=delwaq_dir, d3d_home=d3d_home)
 
     print("parse DELWAQ results in Ribasim-model")
     parse(model, output_folder=delwaq_dir, to_input=to_input)
