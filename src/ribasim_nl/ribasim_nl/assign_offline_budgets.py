@@ -503,13 +503,17 @@ class AssignOfflineBudgets:
             .abs()
         )  # assume surface_runoff can't be <0 in Ribasim. And negative budgets in MODFLOW-MetaSWAP are positive terms in Ribasim
 
-        # update basin drainage and infiltration
+        # Update basin drainage and infiltration. Basins that contain no cell center have no budgets, like in an
+        # online coupling with imod_coupler, in which each cell exchanges with the Basin that contains its center.
         assert model.basin.time.df is not None
         idx = pd.MultiIndex.from_frame(model.basin.time.df[["node_id", "time"]])
-        # pandas-stubs does not accept mapping an Index with a Series
-        model.basin.time.df["drainage"] = idx.map(drainage)  # ty: ignore[invalid-argument-type]
-        model.basin.time.df["infiltration"] = idx.map(infiltration)  # ty: ignore[invalid-argument-type]
-        model.basin.time.df["surface_runoff"] = idx.map(surface_runoff)  # ty: ignore[invalid-argument-type]
+        for column, series in (
+            ("drainage", drainage),
+            ("infiltration", infiltration),
+            ("surface_runoff", surface_runoff),
+        ):
+            # pandas-stubs does not accept mapping an Index with a Series
+            model.basin.time.df[column] = idx.map(series).fillna(0.0)  # ty: ignore[invalid-argument-type]
 
         # assign fractions from budgets if user wants to
         if assign_fractions:
