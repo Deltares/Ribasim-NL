@@ -353,11 +353,11 @@ ul.task-list li input[type="checkbox"] {
 </div>
 <section id="precipitation-and-evaporation" class="level2">
 <h2 class="anchored" data-anchor-id="precipitation-and-evaporation">Precipitation and evaporation</h2>
-<p>Both come from the results of LHM 4.3, averaged per Basin, see <code>ribasim_nl.set_forcing</code>. Evaporation is the Makkink reference evaporation times the open water factor of Mozart, by month and decade. An LHM day starts at 09:00 in model time, so the forcing starts on the day before the start of the model.</p>
+<p>Both come from the results of LHM 4.3, averaged per Basin, see <code>ribasim_nl.set_forcing</code>. The average is over the 250 m cells of the LHM whose center lies in the Basin. A Basin that contains no cell center takes the cell that a point on its surface lies in. Evaporation is the Makkink reference evaporation times the open water factor of Mozart, by month and decade. An LHM day starts at 09:00 in model time, so the forcing starts on the day before the start of the model.</p>
 </section>
 <section id="sec-budgets" class="level2">
 <h2 class="anchored" data-anchor-id="sec-budgets">Drainage, infiltration and runoff</h2>
-<p><code>ribasim_nl.assign_offline_budgets</code> adds the MODFLOW-MetaSWAP budgets of the LHM, summed per Basin: negative values become drainage, and positive values infiltration.</p>
+<p><code>ribasim_nl.assign_offline_budgets</code> adds the MODFLOW-MetaSWAP budgets of the LHM, summed per Basin: negative values become drainage, and positive values infiltration. Each cell goes to the Basin that contains its center, like in an online coupling with <a href="https://github.com/Deltares/imod_coupler">imod_coupler</a>, so Basins that contain no cell center get no budgets.</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 47%">

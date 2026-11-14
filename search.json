@@ -2741,7 +2741,7 @@
     "href": "workflow/forcing.html#precipitation-and-evaporation",
     "title": "Forcing",
     "section": "Precipitation and evaporation",
-    "text": "Precipitation and evaporation\nBoth come from the results of LHM 4.3, averaged per Basin, see ribasim_nl.set_forcing. Evaporation is the Makkink reference evaporation times the open water factor of Mozart, by month and decade. An LHM day starts at 09:00 in model time, so the forcing starts on the day before the start of the model.",
+    "text": "Precipitation and evaporation\nBoth come from the results of LHM 4.3, averaged per Basin, see ribasim_nl.set_forcing. The average is over the 250 m cells of the LHM whose center lies in the Basin. A Basin that contains no cell center takes the cell that a point on its surface lies in. Evaporation is the Makkink reference evaporation times the open water factor of Mozart, by month and decade. An LHM day starts at 09:00 in model time, so the forcing starts on the day before the start of the model.",
     "crumbs": [
       "Model derivation",
       "Shared steps",
@@ -2753,7 +2753,7 @@
     "href": "workflow/forcing.html#sec-budgets",
     "title": "Forcing",
     "section": "Drainage, infiltration and runoff",
-    "text": "Drainage, infiltration and runoff\nribasim_nl.assign_offline_budgets adds the MODFLOW-MetaSWAP budgets of the LHM, summed per Basin: negative values become drainage, and positive values infiltration.\n\n\n\n\n\n\n\nBudget\nGoes to\n\n\n\n\nbdgriv_sys1, 4, 5\ndoorgaand and hoofdwater Basins\n\n\nbdgriv_sys2, 3, 6, bdgdrn_sys1, 2, 3\nbergend Basins\n\n\nbdgqrun\nsurface_runoff\n\n\nbdgpssw, sprinkling\nhoofdwater and doorgaand Basins in the gravity controlled models, bergend Basins in the level controlled models\n\n\n\nThe script writes the budgets to mfms_budgets.arrow, and a check of the assignment to results/assign_validation.png in the model folder.",
+    "text": "Drainage, infiltration and runoff\nribasim_nl.assign_offline_budgets adds the MODFLOW-MetaSWAP budgets of the LHM, summed per Basin: negative values become drainage, and positive values infiltration. Each cell goes to the Basin that contains its center, like in an online coupling with imod_coupler, so Basins that contain no cell center get no budgets.\n\n\n\n\n\n\n\nBudget\nGoes to\n\n\n\n\nbdgriv_sys1, 4, 5\ndoorgaand and hoofdwater Basins\n\n\nbdgriv_sys2, 3, 6, bdgdrn_sys1, 2, 3\nbergend Basins\n\n\nbdgqrun\nsurface_runoff\n\n\nbdgpssw, sprinkling\nhoofdwater and doorgaand Basins in the gravity controlled models, bergend Basins in the level controlled models\n\n\n\nThe script writes the budgets to mfms_budgets.arrow, and a check of the assignment to results/assign_validation.png in the model folder.",
     "crumbs": [
       "Model derivation",
       "Shared steps",
