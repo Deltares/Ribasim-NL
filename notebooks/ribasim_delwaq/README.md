@@ -38,7 +38,7 @@ The stage reads and writes:
 | `data/Basisgegevens/Delwaq/ANIMO/interim/LHM_fluxen/LHM_433` | The drainage fluxes of LHM 4.3.3 per decade, made by `Process_LHM_hydrology.py` outside the pipeline | Input, `.dvc` file |
 | `data/Basisgegevens/Delwaq/<source>/output` | The loads and concentrations per source | Output, not cached |
 | `data/Basisgegevens/Delwaq/ANIMO/aangeleverd/shapes/lhm_coupled_delwaq` | The basin polygons of the model | Output, not cached |
-| `data/Rijkswaterstaat/runs/lhm_coupled_delwaq` | The copy of the run, with the emissions, the DELWAQ input, and the concentrations of DELWAQ in `results/concentration_delwaq.nc`, next to those of the core | Output |
+| `data/Rijkswaterstaat/runs/lhm_coupled_delwaq` | The copy of the run, with the emissions, the DELWAQ input, and the nutrients of DELWAQ added to the concentrations of the core in `results/concentration.nc` | Output |
 | `data/Basisgegevens/Delwaq/<source>/figures`, `data/Basisgegevens/Delwaq/ANIMO/interim` | Figures and other intermediate files | No |
 
 To add or replace an input file, add it with `pixi run dvc add <file>`, list it
@@ -120,9 +120,10 @@ It then writes the updated Ribasim model TOML file.
 
 These steps are combined in `ribasim_nl.delwaq.compute_delwaq`.
 
-The output is written below the model's `delwaq_all_sources` directory, and
-the parsed concentrations to `results/concentration_delwaq.nc`, so those of the
-core in `results/concentration.nc` stay.
+The output is written below the model's `delwaq_all_sources` directory. The
+substances that only DELWAQ has, the nutrients, are added to the concentrations
+of the core in `results/concentration.nc`, so the tracers stay those of the
+core, see `ribasim_nl.delwaq.add_delwaq_substances`.
 
 ### Ribasim model (hydrology)
 

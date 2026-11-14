@@ -7,6 +7,8 @@ import shutil
 import sqlite3
 import tomllib
 import warnings
+from collections.abc import Collection
+from contextlib import closing
 from pathlib import Path
 
 import geopandas as gpd
@@ -19,7 +21,6 @@ import shapely
 import xarray as xr
 
 from ribasim_nl.case_conversions import pascal_to_snake_case, snake_to_pascal_case
-from ribasim_nl.delwaq import CONCENTRATION_FILENAME as DELWAQ_CONCENTRATION_FILENAME
 from ribasim_nl.goodness_of_fit import MIN_COMPARED_DAYS, compare, observed_and_simulated
 
 WEB_CRS = "EPSG:4326"
@@ -47,12 +48,11 @@ SOURCE_TRACERS = {
     "Precipitation",
     "SurfaceRunoff",
 }
-# The substances of Delwaq are named by this prefix and their name, to tell them from those of the core
-DELWAQ_PREFIX = "Delwaq "
-# The highest value of a fraction of the water, with some room for numerical error
-MAX_FRACTION = 1.01
-# The groups of the substances, in the order of the list to choose from
-CONCENTRATION_GROUPS = ["Model substances", "Delwaq substances", "Ribasim tracers", "Delwaq tracers"]
+# The tables of the model input with concentrations, which mark the fractions of the LHM
+CONCENTRATION_TABLES = ("Basin / concentration", "FlowBoundary / concentration", "LevelBoundary / concentration")
+# The groups of the substances in the list to choose from
+NUTRIENTS = "Nutrients"
+TRACERS = "Tracers"
 SECONDS_PER_DAY = 86400.0
 SKIP_TABLES = {"layer_styles", "ribasim_metadata"}
 # The local times at which Ribasim logs the start and successful end of a simulation, in `ribasim.log`
@@ -321,44 +321,54 @@ def export_netcdf_table(source: Path, path: Path) -> int:
     return write_by_id(ids, times, data, "node_id", path)
 
 
-def concentration_variable(substance: str, values: np.ndarray, units: str, delwaq: bool = False) -> dict:
-    """The color scale of a substance, linear from zero, and its group: of the core or of Delwaq.
+def lhm_fractions(database: Path) -> set[str]:
+    """The substances that the model input marks as fractions of the LHM, see `ribasim_nl.assign_lhm_fractions`."""
+    fractions = set()
+    with closing(sqlite3.connect(database)) as con:
+        for table in CONCENTRATION_TABLES:
+            columns = {row[1] for row in con.execute(f'PRAGMA table_info("{table}")')}
+            if "meta_lhm_fraction" in columns:
+                # The table is one of CONCENTRATION_TABLES
+                query = f'SELECT DISTINCT substance FROM "{table}" WHERE meta_lhm_fraction'  # noqa: S608
+                rows = con.execute(query).fetchall()
+                fractions.update(str(substance) for (substance,) in rows)
+    return fractions
 
-    A fraction of the water goes up to its highest value, about 1 like the others, since a fraction that reaches few
-    Basins would be saturated by a percentile. Other values go up to their 98th percentile: the few stagnant Basins
-    would make all others look the same in the residence time, and so would the few nearly empty Basins in a
-    concentration of Delwaq.
+
+def concentration_variable(substance: str, values: np.ndarray, units: str, fraction: bool) -> dict:
+    """The color scale of a substance, linear from zero, and its group: the tracers or the nutrients.
+
+    The tracers are the fractions of the water and its residence time, which the core computes, and the nutrients
+    the other substances, which Delwaq adds, see `ribasim_nl.delwaq`.
+    A fraction goes up to its highest value, about 1 like the others, since a fraction that reaches few Basins would
+    be saturated by a percentile. Other values go up to their 98th percentile: the few stagnant Basins would make all
+    others look the same in the residence time, and so would the few nearly empty Basins in a nutrient.
     """
     values = values[np.isfinite(values)]
     residence_time = substance == RESIDENCE_TIME
     high = 0.0
     if len(values) > 0:
-        high = float(values.max())
-        if residence_time or high > MAX_FRACTION:
-            high = float(np.percentile(values, 98))
-    tracer = residence_time or substance in SOURCE_TRACERS
-    if delwaq:
-        group = "Delwaq tracers" if tracer else "Delwaq substances"
-    else:
-        group = "Ribasim tracers" if tracer else "Model substances"
+        high = float(values.max() if fraction else np.percentile(values, 98))
+    tracer = residence_time or fraction
     return {
-        "label": f"{DELWAQ_PREFIX}{substance}" if delwaq else substance,
+        "label": substance,
         "units": "d" if residence_time else "-" if tracer else units,
         "scale": "linear",
         # Without values above zero the scale would be empty
         "domain": [0.0, high if high > 0 else 1.0],
-        "group": group,
+        "group": TRACERS if tracer else NUTRIENTS,
     }
 
 
-def read_concentration(
-    source: Path, ids: np.ndarray, times: np.ndarray, delwaq: bool = False
-) -> tuple[dict[str, np.ndarray], str]:
-    """Read the concentration of each substance as (Basin, time) in the order of the Basin results, and its units.
+def export_concentration(
+    source: Path, ids: np.ndarray, times: np.ndarray, by_id: Path, by_time: Path, fractions: Collection[str] = ()
+) -> dict:
+    """Export the Basin concentrations per Basin for charts and per time step for the map, with a column per substance.
 
-    The core stamps the state at the end of a time step with the start of that time step. Delwaq stamps the state
-    at its time, starting with the initial state, see Deltares/Ribasim#3445. So the values of Delwaq move one time
-    step earlier, and its last time step has none.
+    The `fractions` are the substances of the model input that are fractions of the water, like the tracers of the
+    core, see `lhm_fractions`.
+    The viewer reads only the column of the chosen substance, so a long list of substances does not slow it down.
+    The Basins and time steps must be those of the Basin results, so the viewer can reuse their order on the map.
     """
     with xr.open_dataset(source) as ds:
         concentration = ds["concentration"]
@@ -371,59 +381,36 @@ def read_concentration(
         substances = [str(substance) for substance in ds["substance"].to_numpy()]
         assert len(set(substances)) == len(substances), f"Duplicate substances in {source}"
         assert "node_id" not in substances, f"A substance in {source} is named node_id"
-        if delwaq:
-            initial = concentration.sel(substance="Initial").isel(time=0).to_numpy()
-            assert np.allclose(initial, 1.0), (
-                f"{source} does not start with the initial state, see Deltares/Ribasim#3445"
-            )
-        # Delwaq writes no units, its concentrations are in g/m3 like those of the core
-        units = concentration.attrs.get("units", "g m-3" if delwaq else "")
+        units = concentration.attrs.get("units", "")
         data = {}
         for substance in substances:
             values = concentration.sel(substance=substance).transpose("node_id", "time").to_numpy()
             values = values[order].astype("float32")
-            if delwaq:
-                values = np.concatenate([values[:, 1:], np.full((len(ids), 1), np.nan, dtype="float32")], axis=1)
             data[substance] = values / SECONDS_PER_DAY if substance == RESIDENCE_TIME else values
-    return data, units
-
-
-def export_concentration(
-    sources: list[tuple[Path, bool]], ids: np.ndarray, times: np.ndarray, by_id: Path, by_time: Path
-) -> dict:
-    """Export the Basin concentrations per Basin for charts and per time step for the map, with a column per substance.
-
-    The sources are the files of the core and of Delwaq, given as their path and whether they are of Delwaq.
-    The substances of Delwaq are named with `DELWAQ_PREFIX`, so both can have the same substance.
-    The viewer reads only the column of the chosen substance, so a long list of substances does not slow it down.
-    The Basins and time steps must be those of the Basin results, so the viewer can reuse their order on the map.
-    """
-    assert sources, "No concentrations to export"
-    data: dict[str, np.ndarray] = {}
-    variables = {}
-    for source, delwaq in sources:
-        source_data, units = read_concentration(source, ids, times, delwaq)
-        for substance, values in source_data.items():
-            variable = concentration_variable(substance, values, units, delwaq)
-            name = variable["label"]
-            assert name not in data, f"Substance {name} of {source} is exported already"
-            data[name] = values
-            variables[name] = variable
     write_by_id(ids, times, data, "node_id", by_id)
     write_by_time(ids, data, "node_id", by_time)
-    # The substances of the model first, since they are what is chosen most, and easier to find when sorted
-    order_of_choice = sorted(variables, key=lambda name: (CONCENTRATION_GROUPS.index(variables[name]["group"]), name))
+    variables = {
+        substance: concentration_variable(
+            substance, data[substance], units, substance in SOURCE_TRACERS or substance in fractions
+        )
+        for substance in substances
+    }
+    # The nutrients first, then the tracers, each sorted, which makes them easy to find
+    order_of_choice = sorted(substances, key=lambda s: (variables[s]["group"] == TRACERS, s))
     return {
         "id": "node_id",
         "count": len(ids),
-        "variables": {name: variables[name] for name in order_of_choice},
+        "variables": {substance: variables[substance] for substance in order_of_choice},
         "by_id": by_id,
         "by_time": by_time,
     }
 
 
-def export_results(results_dir: Path, output_dir: Path) -> dict:
-    """Export Basin and flow results and Basin concentrations, both per feature for charts and per time step for the map."""
+def export_results(results_dir: Path, output_dir: Path, fractions: Collection[str] = ()) -> dict:
+    """Export Basin and flow results and Basin concentrations, both per feature for charts and per time step for the map.
+
+    The `fractions` are the substances of the model input that are fractions of the water, see `lhm_fractions`.
+    """
     results: dict = {"steps_per_row_group": TIME_STEPS_PER_ROW_GROUP}
     (output_dir / "results").mkdir()
     for name, id_dim in [("basin", "node_id"), ("flow", "link_id")]:
@@ -458,19 +445,14 @@ def export_results(results_dir: Path, output_dir: Path) -> dict:
             assert results["times"] == [str(t) for t in times], f"Time steps of {source} differ"
         results["times"] = [str(t) for t in times]
         results[name] = {"id": id_dim, "count": len(ids), "variables": variables, "by_id": by_id, "by_time": by_time}
-        # The concentrations of the core, and those of Delwaq if it ran, see `ribasim_nl.delwaq.compute_delwaq`
-        concentrations = [
-            (results_dir / "concentration.nc", False),
-            (results_dir / DELWAQ_CONCENTRATION_FILENAME, True),
-        ]
-        concentrations = [(path, delwaq) for path, delwaq in concentrations if path.is_file()]
-        if name == "basin" and concentrations:
+        if name == "basin" and (results_dir / "concentration.nc").is_file():
             results["concentration"] = export_concentration(
-                concentrations,
+                results_dir / "concentration.nc",
                 ids,
                 times,
                 output_dir / "results" / "concentration_by_id.parquet",
                 output_dir / "results" / "concentration_by_time.parquet",
+                fractions,
             )
     control = results_dir / "control.nc"
     if control.is_file():
@@ -648,7 +630,7 @@ def export_webmap(toml_path: Path, waterboards_path: Path | None, output_dir: Pa
     }
     results_dir = model_results_dir(toml_path, config)
     if results_dir.is_dir():
-        results = export_results(results_dir, output_dir)
+        results = export_results(results_dir, output_dir, lhm_fractions(database))
         for name in ("basin", "flow", "concentration"):
             if name in results:
                 results[name]["by_id"] = entry(results[name]["by_id"])
