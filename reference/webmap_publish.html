@@ -194,6 +194,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#ribasim_nl.webmap_publish.commit_hash" id="toc-ribasim_nl.webmap_publish.commit_hash" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.commit_hash">commit_hash</a></li>
   <li><a href="#ribasim_nl.webmap_publish.diff_counts" id="toc-ribasim_nl.webmap_publish.diff_counts" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.diff_counts">diff_counts</a></li>
   <li><a href="#ribasim_nl.webmap_publish.export_hash" id="toc-ribasim_nl.webmap_publish.export_hash" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.export_hash">export_hash</a></li>
+  <li><a href="#ribasim_nl.webmap_publish.export_toml" id="toc-ribasim_nl.webmap_publish.export_toml" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.export_toml">export_toml</a></li>
   <li><a href="#ribasim_nl.webmap_publish.fetch_branch" id="toc-ribasim_nl.webmap_publish.fetch_branch" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.fetch_branch">fetch_branch</a></li>
   <li><a href="#ribasim_nl.webmap_publish.fetch_main" id="toc-ribasim_nl.webmap_publish.fetch_main" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.fetch_main">fetch_main</a></li>
   <li><a href="#ribasim_nl.webmap_publish.find_pr" id="toc-ribasim_nl.webmap_publish.find_pr" class="nav-link" data-scroll-target="#ribasim_nl.webmap_publish.find_pr">find_pr</a></li>
@@ -373,86 +374,90 @@ pixi run publish-webmap --commit REV [--base REV]  # the model of a commit, comp
 <td>The DVC hash of the <code>export_webmap</code> output in a parsed <code>dvc.lock</code>, without the <code>.dir</code> suffix.</td>
 </tr>
 <tr class="even">
+<td><a href="#ribasim_nl.webmap_publish.export_toml">export_toml</a></td>
+<td>The TOML of the run that the <code>export_webmap</code> output in a parsed <code>dvc.lock</code> is exported from.</td>
+</tr>
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap_publish.fetch_branch">fetch_branch</a></td>
 <td>Fetch a branch from GitHub and return its commit.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.webmap_publish.fetch_main">fetch_main</a></td>
 <td>Fetch main from GitHub and return its commit.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap_publish.find_pr">find_pr</a></td>
 <td>The number of the pull request of the current branch.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.webmap_publish.gh_json">gh_json</a></td>
 <td>Run a GitHub CLI command with JSON output and return the parsed result.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap_publish.github_commit">github_commit</a></td>
 <td>The commit of a git revision, asserted to be on GitHub.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.webmap_publish.lock_at">lock_at</a></td>
 <td>The parsed <code>dvc.lock</code> of the working tree, or at a commit.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap_publish.main">main</a></td>
 <td>Command line entry point, see the module docstring.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.webmap_publish.manifest_entries">manifest_entries</a></td>
 <td>All file entries of a manifest, see <code>ribasim_nl.webmap.export_webmap</code>.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap_publish.now">now</a></td>
 <td>The current time in UTC, to the minute.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.webmap_publish.on_github">on_github</a></td>
 <td>Assert a commit is on GitHub, where the viewer reads its <code>dvc.lock</code>; return it.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap_publish.pr_number">pr_number</a></td>
 <td>Assert a pull request number is valid; return it.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.webmap_publish.publish_commit">publish_commit</a></td>
 <td>Publish the model of a commit as its snapshot, unless it is published; return the snapshot md5.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap_publish.publish_commits">publish_commits</a></td>
 <td>Publish the model of a commit, and with a base commit their differences; return the viewer link.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.webmap_publish.publish_diff">publish_diff</a></td>
 <td>Publish the differences of a model, exported to <code>head_dir</code>, from the model of a base commit.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap_publish.publish_main">publish_main</a></td>
 <td>Publish the model of a commit of main as its snapshot and as the latest main; return the snapshot md5.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.webmap_publish.publish_pr">publish_pr</a></td>
 <td>Publish the model of the working tree for a pull request, with its differences from its base.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap_publish.snapshot_name">snapshot_name</a></td>
 <td>The name of the manifest of snapshot <code>md5</code>.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.webmap_publish.stack_base">stack_base</a></td>
 <td>The base branch of a pull request and the open pull request of that branch, or None if it is based on main.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap_publish.store_manifest">store_manifest</a></td>
 <td>A copy of a manifest with the paths of its files in the shared <code>files/</code> store, and the original paths.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.webmap_publish.upsert_comment">upsert_comment</a></td>
 <td>Update the viewer comment on a pull request, or add it if there is none.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap_publish.viewer_url">viewer_url</a></td>
 <td>The viewer link to the model of a commit, compared with that of a base commit if given.</td>
 </tr>
@@ -501,121 +506,127 @@ pixi run publish-webmap --commit REV [--base REV]  # the model of a commit, comp
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.export_hash(lock)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The DVC hash of the <code>export_webmap</code> output in a parsed <code>dvc.lock</code>, without the <code>.dir</code> suffix.</p>
 </section>
+<section id="ribasim_nl.webmap_publish.export_toml" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.export_toml">export_toml</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.export_toml(lock)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The TOML of the run that the <code>export_webmap</code> output in a parsed <code>dvc.lock</code> is exported from.</p>
+<p>Earlier commits exported the coupled run, later ones the copy of it with the results of Delwaq too.</p>
+</section>
 <section id="ribasim_nl.webmap_publish.fetch_branch" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.fetch_branch">fetch_branch</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.fetch_branch(branch)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.fetch_branch(branch)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Fetch a branch from GitHub and return its commit.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.fetch_main" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.fetch_main">fetch_main</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.fetch_main()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.fetch_main()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Fetch main from GitHub and return its commit.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.find_pr" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.find_pr">find_pr</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.find_pr()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.find_pr()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The number of the pull request of the current branch.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.gh_json" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.gh_json">gh_json</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.gh_json(<span class="op">*</span>args)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.gh_json(<span class="op">*</span>args)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Run a GitHub CLI command with JSON output and return the parsed result.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.github_commit" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.github_commit">github_commit</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.github_commit(revision)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.github_commit(revision)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The commit of a git revision, asserted to be on GitHub.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.lock_at" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.lock_at">lock_at</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.lock_at(commit)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.lock_at(commit)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The parsed <code>dvc.lock</code> of the working tree, or at a commit.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.main" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.main">main</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.main(argv<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.main(argv<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Command line entry point, see the module docstring.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.manifest_entries" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.manifest_entries">manifest_entries</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.manifest_entries(manifest)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.manifest_entries(manifest)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>All file entries of a manifest, see <code>ribasim_nl.webmap.export_webmap</code>.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.now" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.now">now</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.now()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.now()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The current time in UTC, to the minute.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.on_github" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.on_github">on_github</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.on_github(commit)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.on_github(commit)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Assert a commit is on GitHub, where the viewer reads its <code>dvc.lock</code>; return it.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.pr_number" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.pr_number">pr_number</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.pr_number(number)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.pr_number(number)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Assert a pull request number is valid; return it.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.publish_commit" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.publish_commit">publish_commit</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.publish_commit(store, commit)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.publish_commit(store, commit)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Publish the model of a commit as its snapshot, unless it is published; return the snapshot md5.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.publish_commits" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.publish_commits">publish_commits</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.publish_commits(store, commit, base<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.publish_commits(store, commit, base<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Publish the model of a commit, and with a base commit their differences; return the viewer link.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.publish_diff" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.publish_diff">publish_diff</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.publish_diff(</span>
-<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>    store,</span>
-<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>    base_commit,</span>
-<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>    base_md5,</span>
-<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>    head_toml,</span>
-<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>    head_dir,</span>
-<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>    head_md5,</span>
-<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>    labels,</span>
-<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.publish_diff(</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>    store,</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>    base_commit,</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>    base_md5,</span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>    head_toml,</span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>    head_dir,</span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>    head_md5,</span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>    labels,</span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Publish the differences of a model, exported to <code>head_dir</code>, from the model of a base commit.</p>
 <p>Return the differences, and their name in the published model.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.publish_main" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.publish_main">publish_main</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.publish_main(store, commit)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.publish_main(store, commit)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Publish the model of a commit of main as its snapshot and as the latest main; return the snapshot md5.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.publish_pr" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.publish_pr">publish_pr</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.publish_pr(store, number)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.publish_pr(store, number)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Publish the model of the working tree for a pull request, with its differences from its base.</p>
 <p>The base is main, or in a stack the pull request of the base branch.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.snapshot_name" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.snapshot_name">snapshot_name</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.snapshot_name(md5)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.snapshot_name(md5)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The name of the manifest of snapshot <code>md5</code>.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.stack_base" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.stack_base">stack_base</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.stack_base(number)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb34"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.stack_base(number)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The base branch of a pull request and the open pull request of that branch, or None if it is based on main.</p>
 <p>In a stack of pull requests, a pull request is based on the branch of the one below it.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.store_manifest" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.store_manifest">store_manifest</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb34"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.store_manifest(manifest)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.store_manifest(manifest)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>A copy of a manifest with the paths of its files in the shared <code>files/</code> store, and the original paths.</p>
 <p>Files are named by their content hash, so the second result maps each new path to the exported file.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.upsert_comment" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.upsert_comment">upsert_comment</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb35"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.upsert_comment(number, body)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb36"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.upsert_comment(number, body)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Update the viewer comment on a pull request, or add it if there is none.</p>
 </section>
 <section id="ribasim_nl.webmap_publish.viewer_url" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_publish.viewer_url">viewer_url</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb36"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.viewer_url(commit, base<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>webmap_publish.viewer_url(commit, base<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The viewer link to the model of a commit, compared with that of a base commit if given.</p>
 
 

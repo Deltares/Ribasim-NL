@@ -202,6 +202,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#ribasim_nl.webmap.flat_coords" id="toc-ribasim_nl.webmap.flat_coords" class="nav-link" data-scroll-target="#ribasim_nl.webmap.flat_coords">flat_coords</a></li>
   <li><a href="#ribasim_nl.webmap.float32_column_paths" id="toc-ribasim_nl.webmap.float32_column_paths" class="nav-link" data-scroll-target="#ribasim_nl.webmap.float32_column_paths">float32_column_paths</a></li>
   <li><a href="#ribasim_nl.webmap.float_encoding" id="toc-ribasim_nl.webmap.float_encoding" class="nav-link" data-scroll-target="#ribasim_nl.webmap.float_encoding">float_encoding</a></li>
+  <li><a href="#ribasim_nl.webmap.lhm_fractions" id="toc-ribasim_nl.webmap.lhm_fractions" class="nav-link" data-scroll-target="#ribasim_nl.webmap.lhm_fractions">lhm_fractions</a></li>
   <li><a href="#ribasim_nl.webmap.lonlat_columns" id="toc-ribasim_nl.webmap.lonlat_columns" class="nav-link" data-scroll-target="#ribasim_nl.webmap.lonlat_columns">lonlat_columns</a></li>
   <li><a href="#ribasim_nl.webmap.model_input_dir" id="toc-ribasim_nl.webmap.model_input_dir" class="nav-link" data-scroll-target="#ribasim_nl.webmap.model_input_dir">model_input_dir</a></li>
   <li><a href="#ribasim_nl.webmap.model_results_dir" id="toc-ribasim_nl.webmap.model_results_dir" class="nav-link" data-scroll-target="#ribasim_nl.webmap.model_results_dir">model_results_dir</a></li>
@@ -251,7 +252,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="odd">
 <td><a href="#ribasim_nl.webmap.concentration_variable">concentration_variable</a></td>
-<td>The color scale of a substance, linear from zero.</td>
+<td>The color scale of a substance, linear from zero, and its group: the tracers or the nutrients.</td>
 </tr>
 <tr class="even">
 <td><a href="#ribasim_nl.webmap.downcast_int64">downcast_int64</a></td>
@@ -318,58 +319,62 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Parquet writer options that store float columns with byte stream split, which compresses well.</td>
 </tr>
 <tr class="even">
+<td><a href="#ribasim_nl.webmap.lhm_fractions">lhm_fractions</a></td>
+<td>The substances that the model input marks as fractions of the LHM, see <code>ribasim_nl.assign_lhm_fractions</code>.</td>
+</tr>
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap.lonlat_columns">lonlat_columns</a></td>
 <td>Add float32 <code>x</code> (longitude) and <code>y</code> (latitude) columns from point geometries.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.webmap.model_input_dir">model_input_dir</a></td>
 <td>The input directory of a model, with its <code>database.gpkg</code>.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap.model_results_dir">model_results_dir</a></td>
 <td>The results directory of a model, which may not exist.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.webmap.netcdf_tables">netcdf_tables</a></td>
 <td>Map table names like “Basin / time” to the NetCDF files referenced in the TOML.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap.observed_variable_attrs">observed_variable_attrs</a></td>
 <td>The attributes of the simulated values of an observed variable: the flow rate of links, or a Basin variable.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.webmap.read_config">read_config</a></td>
 <td>Read a Ribasim TOML, return the config, the input directory and the database path.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap.read_features">read_features</a></td>
 <td>Read a layer whose id column is the GeoPackage FID, so GDAL does not return it as a column.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.webmap.read_netcdf">read_netcdf</a></td>
 <td>Read the (time, id) variables of a Ribasim NetCDF file as float32 (id, time) arrays sorted by id.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap.run_info">run_info</a></td>
 <td>When the model was run, from <code>ribasim.log</code>, and from which commits, from <code>runinfo.json</code> next to the TOML.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.webmap.table_slug">table_slug</a></td>
 <td>Convert a Ribasim table name like “Basin / profile” to “basin_profile”.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap.write_by_id">write_by_id</a></td>
 <td>Write long-format Parquet sorted by id, one row group per block of ids, for per-feature time series.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.webmap.write_by_time">write_by_time</a></td>
 <td>Write Parquet ordered by time then id, one row group per block of time steps, for map animation.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap.write_parquet">write_parquet</a></td>
 <td>Write a DataFrame to Parquet, see <code>write_table</code>.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.webmap.write_table">write_table</a></td>
 <td>Write zstd compressed Parquet with column statistics for row group lookup.</td>
 </tr>
@@ -387,9 +392,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.webmap.concentration_variable" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.concentration_variable">concentration_variable</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>webmap.concentration_variable(substance, values, units)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>The color scale of a substance, linear from zero.</p>
-<p>Up to the highest value, since a substance that reaches few Basins would be saturated by a percentile, and a fraction of the water then goes up to about 1, like the others. The residence time has no such limit: the few stagnant Basins would make all others look the same.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>webmap.concentration_variable(substance, values, units, fraction)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The color scale of a substance, linear from zero, and its group: the tracers or the nutrients.</p>
+<p>The tracers are the fractions of the water and its residence time, which the core computes, and the nutrients the other substances, which Delwaq adds, see <code>ribasim_nl.delwaq</code>. A fraction goes up to its highest value, about 1 like the others, since a fraction that reaches few Basins would be saturated by a percentile. Other values go up to their 98th percentile: the few stagnant Basins would make all others look the same in the residence time, and so would the few nearly empty Basins in a nutrient.</p>
 </section>
 <section id="ribasim_nl.webmap.downcast_int64" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.downcast_int64">downcast_int64</h3>
@@ -404,9 +409,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.webmap.export_concentration" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.export_concentration">export_concentration</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>webmap.export_concentration(source, ids, times, by_id, by_time)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>webmap.export_concentration(source, ids, times, by_id, by_time, fractions<span class="op">=</span>())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Export the Basin concentrations per Basin for charts and per time step for the map, with a column per substance.</p>
-<p>The viewer reads only the column of the chosen substance, so a long list of substances does not slow it down. The Basins and time steps must be those of the Basin results, so the viewer can reuse their order on the map.</p>
+<p>The <code>fractions</code> are the substances of the model input that are fractions of the water, like the tracers of the core, see <code>lhm_fractions</code>. The viewer reads only the column of the chosen substance, so a long list of substances does not slow it down. The Basins and time steps must be those of the Basin results, so the viewer can reuse their order on the map.</p>
 </section>
 <section id="ribasim_nl.webmap.export_control" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.export_control">export_control</h3>
@@ -441,8 +446,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.webmap.export_results" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.export_results">export_results</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>webmap.export_results(results_dir, output_dir)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>webmap.export_results(results_dir, output_dir, fractions<span class="op">=</span>())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Export Basin and flow results and Basin concentrations, both per feature for charts and per time step for the map.</p>
+<p>The <code>fractions</code> are the substances of the model input that are fractions of the water, see <code>lhm_fractions</code>.</p>
 </section>
 <section id="ribasim_nl.webmap.export_waterboards" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.export_waterboards">export_waterboards</h3>
@@ -475,76 +481,81 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>webmap.float_encoding(<span class="op">*</span>dictionary_columns, data)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Parquet writer options that store float columns with byte stream split, which compresses well.</p>
 </section>
+<section id="ribasim_nl.webmap.lhm_fractions" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap.lhm_fractions">lhm_fractions</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>webmap.lhm_fractions(database)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The substances that the model input marks as fractions of the LHM, see <code>ribasim_nl.assign_lhm_fractions</code>.</p>
+</section>
 <section id="ribasim_nl.webmap.lonlat_columns" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.lonlat_columns">lonlat_columns</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>webmap.lonlat_columns(gdf)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>webmap.lonlat_columns(gdf)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Add float32 <code>x</code> (longitude) and <code>y</code> (latitude) columns from point geometries.</p>
 </section>
 <section id="ribasim_nl.webmap.model_input_dir" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.model_input_dir">model_input_dir</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>webmap.model_input_dir(toml_path, config)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>webmap.model_input_dir(toml_path, config)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The input directory of a model, with its <code>database.gpkg</code>.</p>
 </section>
 <section id="ribasim_nl.webmap.model_results_dir" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.model_results_dir">model_results_dir</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>webmap.model_results_dir(toml_path, config)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>webmap.model_results_dir(toml_path, config)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The results directory of a model, which may not exist.</p>
 </section>
 <section id="ribasim_nl.webmap.netcdf_tables" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.netcdf_tables">netcdf_tables</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>webmap.netcdf_tables(config, input_dir)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>webmap.netcdf_tables(config, input_dir)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Map table names like “Basin / time” to the NetCDF files referenced in the TOML.</p>
 </section>
 <section id="ribasim_nl.webmap.observed_variable_attrs" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.observed_variable_attrs">observed_variable_attrs</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>webmap.observed_variable_attrs(results_dir, variable)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>webmap.observed_variable_attrs(results_dir, variable)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The attributes of the simulated values of an observed variable: the flow rate of links, or a Basin variable.</p>
 </section>
 <section id="ribasim_nl.webmap.read_config" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.read_config">read_config</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>webmap.read_config(toml_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>webmap.read_config(toml_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Read a Ribasim TOML, return the config, the input directory and the database path.</p>
 </section>
 <section id="ribasim_nl.webmap.read_features" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.read_features">read_features</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>webmap.read_features(database, layer, id_column)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>webmap.read_features(database, layer, id_column)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Read a layer whose id column is the GeoPackage FID, so GDAL does not return it as a column.</p>
 </section>
 <section id="ribasim_nl.webmap.read_netcdf" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.read_netcdf">read_netcdf</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>webmap.read_netcdf(source, id_dim)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>webmap.read_netcdf(source, id_dim)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Read the (time, id) variables of a Ribasim NetCDF file as float32 (id, time) arrays sorted by id.</p>
 </section>
 <section id="ribasim_nl.webmap.run_info" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.run_info">run_info</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>webmap.run_info(toml_path, results_dir)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>webmap.run_info(toml_path, results_dir)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>When the model was run, from <code>ribasim.log</code>, and from which commits, from <code>runinfo.json</code> next to the TOML.</p>
 <p>Only what is known is included, so the result may be empty.</p>
 </section>
 <section id="ribasim_nl.webmap.table_slug" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.table_slug">table_slug</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>webmap.table_slug(name)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>webmap.table_slug(name)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Convert a Ribasim table name like “Basin / profile” to “basin_profile”.</p>
 </section>
 <section id="ribasim_nl.webmap.write_by_id" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.write_by_id">write_by_id</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>webmap.write_by_id(ids, times, data, id_dim, path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>webmap.write_by_id(ids, times, data, id_dim, path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Write long-format Parquet sorted by id, one row group per block of ids, for per-feature time series.</p>
 <p>The viewer finds the row group of an id by the statistics of the id column. Those of the other columns are left out, since they would be read with the file metadata of each feature, and grow with the number of columns.</p>
 </section>
 <section id="ribasim_nl.webmap.write_by_time" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.write_by_time">write_by_time</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>webmap.write_by_time(ids, data, id_dim, path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>webmap.write_by_time(ids, data, id_dim, path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Write Parquet ordered by time then id, one row group per block of time steps, for map animation.</p>
 </section>
 <section id="ribasim_nl.webmap.write_parquet" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.write_parquet">write_parquet</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>webmap.write_parquet(df, path, row_group_size<span class="op">=</span>ROW_GROUP_SIZE)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>webmap.write_parquet(df, path, row_group_size<span class="op">=</span>ROW_GROUP_SIZE)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Write a DataFrame to Parquet, see <code>write_table</code>.</p>
 </section>
 <section id="ribasim_nl.webmap.write_table" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap.write_table">write_table</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>webmap.write_table(table, path, row_group_size<span class="op">=</span>ROW_GROUP_SIZE)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb34"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>webmap.write_table(table, path, row_group_size<span class="op">=</span>ROW_GROUP_SIZE)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Write zstd compressed Parquet with column statistics for row group lookup.</p>
 <p>The float32 coordinates are stored with byte stream split, which compresses the link coordinates about 40% better than the plain encoding. The float64 input tables repeat many values, which suit dictionary encoding.</p>
 

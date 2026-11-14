@@ -392,9 +392,8 @@ window.Quarto = {
   forcing --&gt; samenvoegen
   samenvoegen --&gt; koppelen --&gt; run_lhm_coupled
   run_lhm_coupled --&gt; validate_lhm_coupled
-  run_lhm_coupled --&gt; export_webmap
+  run_lhm_coupled --&gt; delwaq --&gt; export_webmap
   run_lhm_coupled --&gt; hws_plus
-  run_lhm_coupled -.-&gt; delwaq
 
   classDef perauthority fill:#cde2fb,stroke:#2a78d6
   class hydamo,lumped,parameterized,bergend,dynamic,postprocessed,crossings,shortest_paths,boezemmodel,feedback,profiles,forcing perauthority
@@ -460,7 +459,7 @@ window.Quarto = {
 </tr>
 <tr class="even">
 <td style="text-align: left;"><code>export_webmap</code></td>
-<td style="text-align: left;">Export the run for the model viewer.</td>
+<td style="text-align: left;">Export the run, with the concentrations of Delwaq, for the model viewer.</td>
 <td style="text-align: left;"><a href="../dev/viewer.html">Model viewer</a></td>
 </tr>
 <tr class="odd">
@@ -470,7 +469,7 @@ window.Quarto = {
 </tr>
 <tr class="even">
 <td style="text-align: left;"><code>delwaq</code></td>
-<td style="text-align: left;">The water quality of the run with Delwaq. Only runs on demand, since it needs a Delft3D installation.</td>
+<td style="text-align: left;">The water quality of the run with Delwaq, which needs a Delft3D installation.</td>
 <td style="text-align: left;"><a href="https://github.com/Deltares/Ribasim-NL/tree/main/notebooks/ribasim_delwaq#readme">Ribasim-Delwaq</a></td>
 </tr>
 </tbody>
