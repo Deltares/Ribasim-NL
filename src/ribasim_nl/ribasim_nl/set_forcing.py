@@ -2,6 +2,7 @@
 
 from datetime import datetime
 
+import geopandas as gpd
 import imod
 import numpy as np
 import pandas as pd
@@ -69,6 +70,24 @@ def _count_cells_per_basin(mask: xr.DataArray, nodata: int = -999) -> pd.Series:
     return pd.Series(counts, index=unique, name="count")
 
 
+def _sample_cell_per_basin(budgets: xr.Dataset, basin_definition: gpd.GeoDataFrame) -> pd.DataFrame:
+    """The budgets of the cell that contains a point on the surface of each Basin, or else of the nearest cell.
+
+    This is for the Basins that contain no cell center, since they are smaller or narrower than a cell or lie
+    outside the raster. The result is like that of `_compute_budgets_per_basin` for a Basin with one cell.
+    """
+    node_ids = basin_definition["node_id"].to_numpy()
+    assert len(np.unique(node_ids)) == len(node_ids), "Basins with more than one polygon"
+    points = basin_definition.representative_point()
+    sampled = budgets.sel(
+        x=xr.DataArray(points.x.to_numpy(), dims="node_id"),
+        y=xr.DataArray(points.y.to_numpy(), dims="node_id"),
+        method="nearest",
+    ).assign_coords(node_id=node_ids)
+    df = sampled.to_dataframe()[list(budgets.data_vars)].fillna(0.0)
+    return df.reorder_levels(["node_id", "time"]).sort_index()
+
+
 class SetDynamicForcing:
     def __init__(
         self,
@@ -100,6 +119,7 @@ class SetDynamicForcing:
 
         Basins are split into primary and secondary definitions to correctly handle overlapping
         basin areas. Cell counts are assigned to exactly one mask (primary takes priority) per node_id.
+        Basins that contain no cell center get the meteo of the cell that a point on their surface lies in.
 
         Removes any existing Basin / time data.
         The groundwater budgets need to be added afterwards.
@@ -165,6 +185,14 @@ class SetDynamicForcing:
         cell_counts = pd.concat(
             [_count_cells_per_basin(primary_basin_mask), _count_cells_per_basin(secondary_basin_mask)]
         )
+
+        # Basins that contain no cell center take the cell that a point on their surface lies in
+        definitions = pd.concat([primary_basin_definition, secondary_basin_definition])
+        without_cells = gpd.GeoDataFrame(definitions[~definitions["node_id"].isin(cell_counts.index)])
+        print(f"sample precipitation and evaporation of {len(without_cells)} basins without a cell center")
+        precip_df = pd.concat([precip_df, _sample_cell_per_basin(precip_ds, without_cells)]).sort_index()
+        evap_df = pd.concat([evap_df, _sample_cell_per_basin(evap_ds, without_cells)]).sort_index()
+        cell_counts = pd.concat([cell_counts, pd.Series(1, index=without_cells["node_id"].to_numpy())])
 
         # Divide summed mm/day by cell count to get the basin-mean, then convert to m/s
         node_ids = precip_df.index.get_level_values("node_id")

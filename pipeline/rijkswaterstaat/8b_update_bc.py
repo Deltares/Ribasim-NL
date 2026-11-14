@@ -172,12 +172,9 @@ model.level_boundary.time.df = DataFrame[LevelBoundaryTimeSchema](level_df)
 # groundwater budgets, which the LHM computes for the land only.
 model.node.df.loc[model.basin.node.df.index, "meta_categorie"] = "hoofdwater"
 model = SetDynamicForcing(model=model, budgets=read_lhm_budgets(), startdate=STARTTIME, enddate=ENDTIME).add()
-# Basins too narrow to contain the center of an LHM cell get no meteo, like in the regional models
-assert model.basin.time.df is not None and model.basin.area.df is not None
-area = model.basin.area.df.set_index("node_id").area
-missing = area.index.difference(pd.Index(model.basin.time.df["node_id"].unique()))
-assert area[missing].sum() < 0.001 * area.sum(), f"No meteo for a large area of Basins {missing.tolist()}"
-print(f"No meteo for Basins {missing.tolist()}, of {area[missing].sum() / 1e6:.2f} km2")
+assert model.basin.time.df is not None
+missing = model.basin.node.df.index.difference(pd.Index(model.basin.time.df["node_id"].unique()))
+assert missing.empty, f"No meteo for Basins {missing.tolist()}"
 
 # merge RWZI model, which requires meta_waterbeheerder (the hws model is fully Rijkswaterstaat)
 model.node.df.loc[model.basin.node.df.index, "meta_waterbeheerder"] = "Rijkswaterstaat"
