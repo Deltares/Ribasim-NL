@@ -17,7 +17,8 @@ The areas of `bergend` Basins stay uncolored, since they overlap those of the `d
 ```{mermaid}
 flowchart LR
   A[modellen/lhm_coupled] -->|dvc repro run_lhm_coupled| R[runs/lhm_coupled]
-  R -->|dvc repro export_webmap| B[webmap/lhm_coupled]
+  R -->|dvc repro delwaq| W[runs/lhm_coupled_delwaq]
+  W -->|dvc repro export_webmap| B[webmap/lhm_coupled]
   B -->|pixi run publish-webmap| C[MinIO doc-image/webmap]
   C --> D[Model viewer page]
   L[dvc.lock on GitHub main] --> D
@@ -28,8 +29,10 @@ All local paths are relative to `data/Rijkswaterstaat`.
 ## Concentrations
 
 Choose *concentration* in the *Basins* choice of the time bar to color the Basins by the concentration of a substance, chosen in a second list that then appears.
-It lists the substances of the model input first, then the tracers of the Ribasim core; type the first letters of a substance to jump to it.
-The color scale starts at zero and goes up to the highest value, so a fraction of the water goes up to about 1, except for the residence time, which goes up to its 98th percentile and is shown in days.
+It lists the substances of the model input, those of [Delwaq](https://github.com/Deltares/Ribasim-NL/tree/main/notebooks/ribasim_delwaq#readme), the tracers of the Ribasim core, and those of Delwaq; type the first letters of a substance to jump to it.
+Delwaq adds the nutrients of the emissions, and computes the substances and tracers of the core again; its substances are named `Delwaq <substance>`.
+Delwaq stamps the state at a time, and the core the state at the end of a day with the start of that day, see [Ribasim#3445](https://github.com/Deltares/Ribasim/issues/3445), so the viewer moves the values of Delwaq a day earlier, and they end a day before those of the core.
+The color scale starts at zero and goes up to the highest value for a fraction of the water, about 1, and to the 98th percentile for other values: the residence time, shown in days, and the concentrations of Delwaq, which nearly empty Basins can make extreme.
 Each substance has its own limits, which can be changed in the legend.
 The panel of a Basin charts the concentration of one substance, with its own list, which also changes the substance on the map.
 
@@ -54,10 +57,11 @@ The simulated flow rate of a Junction of a Basin tree is the net flow of its lin
     It also writes the commit of the code to `runinfo.json`, which the viewer shows next to the scale bar, with the time the run finished from `results/ribasim.log`.
     For now this runs with a looser solver tolerance, see `pipeline/run_lhm_coupled.py`.
     The NetCDF results are compressed, to save space in DVC.
-    This takes about 1.5 hours, so normally pull the cached results instead:
+    The `delwaq` stage then copies the run to `runs/lhm_coupled_delwaq`, with the emissions, and writes the concentrations of Delwaq to `results/concentration_delwaq.nc`, next to those of the core.
+    These take about 2 hours, so normally pull the cached results instead:
 
     ```sh
-    pixi run dvc pull run_lhm_coupled
+    pixi run dvc pull run_lhm_coupled delwaq
     ```
 
 2. Export the model to web-friendly files with the `export_webmap` DVC stage, which takes about 10 minutes:
@@ -77,7 +81,7 @@ The simulated flow rate of a Junction of a Basin tree is the net flow of its lin
     | `tables/*.parquet` | All other input tables, including those in NetCDF, sorted by `node_id` |
     | `results/*_by_id.parquet` | Basin and flow results sorted by id, for the time series charts |
     | `results/*_by_time.parquet` | Basin level and storage, and flow rate, ordered by time step, for coloring the map |
-    | `results/concentration_by_id.parquet` | Basin concentrations with a column per substance, sorted by id, for the charts; only if the model tracks them |
+    | `results/concentration_by_id.parquet` | Basin concentrations of the core and of Delwaq, with a column per substance, sorted by id, for the charts; only if the model tracks them |
     | `results/concentration_by_time.parquet` | The same ordered by time step, for coloring the map |
     | `results/observation_metrics.parquet` | How well the results fit the measurements of each Observation node, see [Fit to the measurements](#fit-to-the-measurements) |
     | `results/observation_by_time.parquet` | The difference simulated − observed of each Observation node, ordered by time step, for coloring the map |

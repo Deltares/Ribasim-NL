@@ -18,20 +18,16 @@ afterwards.
 ## DVC stage
 
 The `delwaq` stage of the DVC pipeline in `dvc.yaml` runs these five scripts in
-this order, on the latest run of the coupled model. It is not part of the full
-reproductions of the pipeline, since it needs a Delft3D installation, see
-[D3D_HOME](#d3d_home-environment-variable). Run it on demand, which also pulls
-the run and the input data:
+this order, on the run of the coupled model. The reproductions of the pipeline
+run it, since the model viewer shows its concentrations, see `export_webmap`. It
+needs a Delft3D installation, see [D3D_HOME](#d3d_home-environment-variable).
+To run only this stage, which also pulls the run and the input data:
 
 ```
 pixi run dvc repro --pull --single-item delwaq
 ```
 
-Commit `dvc.lock` and push the outputs with `pixi run dvc push delwaq`
-afterwards. The `delwaq` entry in `dvc.lock` belongs to the run of the coupled
-model it was made on, so it lags behind when that run is reproduced;
-`pixi run dvc status delwaq` shows whether it is up to date. Get the results of
-that entry without running Delwaq with `pixi run dvc pull delwaq`.
+Get its results without running Delwaq with `pixi run dvc pull delwaq`.
 
 The stage reads and writes:
 
@@ -42,21 +38,22 @@ The stage reads and writes:
 | `data/Basisgegevens/Delwaq/ANIMO/interim/LHM_fluxen/LHM_433` | The drainage fluxes of LHM 4.3.3 per decade, made by `Process_LHM_hydrology.py` outside the pipeline | Input, `.dvc` file |
 | `data/Basisgegevens/Delwaq/<source>/output` | The loads and concentrations per source | Output, not cached |
 | `data/Basisgegevens/Delwaq/ANIMO/aangeleverd/shapes/lhm_coupled_delwaq` | The basin polygons of the model | Output, not cached |
-| `data/Rijkswaterstaat/runs/lhm_coupled_delwaq` | The copy of the run, with the emissions, the DELWAQ input and the results | Output |
+| `data/Rijkswaterstaat/runs/lhm_coupled_delwaq` | The copy of the run, with the emissions, the DELWAQ input, and the concentrations of DELWAQ in `results/concentration_delwaq.nc`, next to those of the core | Output |
 | `data/Basisgegevens/Delwaq/<source>/figures`, `data/Basisgegevens/Delwaq/ANIMO/interim` | Figures and other intermediate files | No |
 
 To add or replace an input file, add it with `pixi run dvc add <file>`, list it
 in the `deps` of the stage in `dvc.yaml`, and push it with `pixi run dvc push`.
 
-The stage takes nearly two hours for a run of two years, and its output is 8 GB:
+The stage takes about 20 minutes for a run of two years on a Linux workstation,
+where it took nearly two hours on a Windows laptop. Its output is 8 GB:
 
 | Step | Time |
 |:-----|:-----|
-| `00_copy_lhm_run.py` | 3 seconds |
-| `get_basin_polygons.py` | 8 to 13 minutes, nearly all for the two `dissolve` calls of its printed diagnostics |
-| `01_prepare_and_verify_inputs.py` | 20 minutes: 4 for ER, 13 for ANIMO and 3 for the boundaries and the verification |
-| `02_build_delwaq_model.py` | 4 minutes |
-| `03_run_and_analyse_delwaq.py` | 75 minutes: 23 for `generate`, 5 for the input processing of DELWAQ, 41 for its simulation and 5 for `parse` |
+| `00_copy_lhm_run.py` | seconds |
+| `get_basin_polygons.py` | 2 minutes |
+| `01_prepare_and_verify_inputs.py` | 5 minutes |
+| `02_build_delwaq_model.py` | 1 minute |
+| `03_run_and_analyse_delwaq.py` | 14 minutes: 3 for `generate`, 9 for DELWAQ and 1 for `parse` |
 
 ## Configuration
 
@@ -123,7 +120,9 @@ It then writes the updated Ribasim model TOML file.
 
 These steps are combined in `ribasim_nl.delwaq.compute_delwaq`.
 
-The output is written below the model's `delwaq_all_sources` directory.
+The output is written below the model's `delwaq_all_sources` directory, and
+the parsed concentrations to `results/concentration_delwaq.nc`, so those of the
+core in `results/concentration.nc` stay.
 
 ### Ribasim model (hydrology)
 

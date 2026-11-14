@@ -108,7 +108,7 @@ Besides the access key, `.env` can hold these optional settings, read in `src/ri
 | Environment variable | Description |
 |:---------------------|:------------|
 | `RIBASIM_NL_DATA_DIR` | Local directory for data files, `data` by default |
-| `D3D_HOME` | Root of the Delft3D installation, only needed for Delwaq |
+| `D3D_HOME` | Root of the Delft3D installation, which holds `bin`, for the `delwaq` stage of the reproductions |
 | `RIBASIM_NL_CLOUD_PASS` | Password for the legacy [Good Cloud storage](/cloudstorage.qmd), which 9 `parameterized` stages use to download GKW data that is not local; most users can leave it empty |
 | `OVERWRITE_FILES_FROM_CLOUD` | Whether legacy Good Cloud downloads overwrite local files, `true` by default |
 
