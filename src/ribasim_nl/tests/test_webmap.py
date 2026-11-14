@@ -1,4 +1,6 @@
 import json
+import sqlite3
+from contextlib import closing
 
 import geopandas as gpd
 import numpy as np
@@ -12,7 +14,9 @@ from ribasim.nodes import basin, level_boundary, tabulated_rating_curve
 from ribasim_nl.goodness_of_fit import MIN_COMPARED_DAYS
 from ribasim_nl.webmap import (
     NETCDF_NODES_PER_ROW_GROUP,
+    NUTRIENTS,
     TIME_STEPS_PER_ROW_GROUP,
+    TRACERS,
     color_domain,
     concentration_variable,
     downcast_int64,
@@ -24,6 +28,7 @@ from ribasim_nl.webmap import (
     export_results,
     export_webmap,
     file_hash,
+    lhm_fractions,
     netcdf_tables,
     run_info,
     table_slug,
@@ -225,39 +230,42 @@ def write_concentration(path, node_ids, time, substances):
 def test_export_concentration(tmp_path):
     source = tmp_path / "concentration.nc"
     time = pd.date_range("2020-01-01", periods=9, freq="D")
-    substances = ["Continuity", "ResidenceTime", "Neerslag", "Cl"]
+    substances = ["Continuity", "ResidenceTime", "Neerslag", "NO3"]
     values = write_concentration(source, np.array([3, 1, 2], dtype="int32"), time, substances)
 
     ids = np.array([1, 2, 3], dtype="int32")
     by_id = tmp_path / "concentration_by_id.parquet"
     path = tmp_path / "concentration_by_time.parquet"
-    set_ = export_concentration(source, ids, time.to_numpy().astype("datetime64[ms]"), by_id, path)
+    times = time.to_numpy().astype("datetime64[ms]")
+    set_ = export_concentration(source, ids, times, by_id, path, fractions={"Neerslag"})
 
     assert set_["count"] == 3
-    # The substances of the model first and sorted, then the tracers of the core
-    assert list(set_["variables"]) == ["Cl", "Neerslag", "Continuity", "ResidenceTime"]
+    # The nutrients first and sorted, then the tracers: those of the core and the fractions of the model input
+    assert list(set_["variables"]) == ["NO3", "Continuity", "Neerslag", "ResidenceTime"]
     variables = set_["variables"]
-    assert variables["Cl"]["group"] == "Model substances"
-    assert variables["Cl"]["units"] == "g m-3"
-    assert variables["Continuity"]["group"] == "Ribasim tracers"
-    assert variables["Continuity"]["units"] == "-"
+    assert variables["NO3"]["group"] == NUTRIENTS
+    assert variables["NO3"]["units"] == "g m-3"
+    assert {variables[name]["group"] for name in ["Continuity", "Neerslag", "ResidenceTime"]} == {TRACERS}
+    assert variables["Neerslag"]["units"] == "-"
     assert variables["ResidenceTime"]["units"] == "d"
-    # Up to the highest value: the last time step and substance, and the last of the three nodes in the file
-    assert variables["Cl"]["domain"] == [0.0, values[:, 3].max()]
+    # A fraction goes up to its highest value: the last time step, and the last of the three nodes in the file
+    assert variables["Neerslag"]["domain"] == [0.0, values[:, 2].max()]
+    # A nutrient goes up to its 98th percentile
+    assert variables["NO3"]["domain"] == [0.0, pytest.approx(np.percentile(values[:, 3].astype("float32"), 98))]
     assert all(variable["scale"] == "linear" for variable in variables.values())
 
     by_time = pq.ParquetFile(path)
     assert by_time.metadata.num_row_groups == int(np.ceil(9 / TIME_STEPS_PER_ROW_GROUP))
     df = by_time.read().to_pandas()
     assert df["node_id"].tolist()[:3] == [1, 2, 3]
-    assert df["Cl"].dtype == "float32"
+    assert df["NO3"].dtype == "float32"
     # Second time step, node 1 is the second column in the NetCDF
     assert df["Neerslag"].iloc[3] == values[1, 2, 1]
     # The residence time is written in seconds, and shown in days
     assert df["ResidenceTime"].iloc[3] == pytest.approx(values[1, 1, 1] / 86400)
 
     per_basin = pd.read_parquet(by_id)
-    assert per_basin.columns.tolist() == ["node_id", "time", "Continuity", "ResidenceTime", "Neerslag", "Cl"]
+    assert per_basin.columns.tolist() == ["node_id", "time", "Continuity", "ResidenceTime", "Neerslag", "NO3"]
     assert per_basin["node_id"].is_monotonic_increasing
     # Node 1 is the second column in the NetCDF
     np.testing.assert_array_equal(per_basin.loc[per_basin.node_id == 1, "Neerslag"], values[:, 2, 1].astype("float32"))
@@ -269,14 +277,33 @@ def test_export_concentration(tmp_path):
 def test_concentration_variable_without_values_above_zero():
     """A substance that nothing reaches, or without values, still has a scale that can be drawn."""
     for values in (np.zeros(4, dtype="float32"), np.full(4, np.nan, dtype="float32")):
-        assert concentration_variable("Cl", values, "g m-3")["domain"] == [0.0, 1.0]
+        for fraction in (False, True):
+            assert concentration_variable("NO3", values, "g m-3", fraction)["domain"] == [0.0, 1.0]
 
 
 def test_concentration_variable_keeps_sparse_substances_apart():
     """A fraction that reaches few Basins goes up to its highest value, not to a percentile near zero."""
     values = np.zeros(1000, dtype="float32")
     values[0] = 0.99
-    assert concentration_variable("Noordzee", values, "g m-3")["domain"] == [0.0, pytest.approx(0.99)]
+    assert concentration_variable("Noordzee", values, "g m-3", True)["domain"] == [0.0, pytest.approx(0.99)]
+
+
+def test_lhm_fractions(tmp_path):
+    """The fractions of the LHM are marked in the concentration tables of the model input, the nutrients are not."""
+    database = tmp_path / "database.gpkg"
+    with closing(sqlite3.connect(database)) as con:
+        con.execute('CREATE TABLE "Basin / concentration" (node_id INTEGER, substance TEXT, meta_lhm_fraction BOOLEAN)')
+        con.execute('CREATE TABLE "FlowBoundary / concentration" (node_id INTEGER, substance TEXT, meta_lhm_fraction)')
+        con.execute('CREATE TABLE "LevelBoundary / concentration" (node_id INTEGER, substance TEXT)')
+        con.executemany(
+            'INSERT INTO "Basin / concentration" VALUES (?, ?, ?)', [(1, "Neerslag", 1), (2, "Neerslag", 1)]
+        )
+        con.executemany(
+            'INSERT INTO "FlowBoundary / concentration" VALUES (?, ?, ?)', [(3, "Rijn", 1), (4, "NO3", None)]
+        )
+        con.execute('INSERT INTO "LevelBoundary / concentration" VALUES (5, "Noordzee")')
+        con.commit()
+    assert lhm_fractions(database) == {"Neerslag", "Rijn"}
 
 
 def test_export_concentration_needs_the_basins_and_times_of_the_results(tmp_path):

@@ -97,9 +97,14 @@ function timeChart(rows: Row[], width: number, only?: string[]): HTMLElement | n
     (column) => !ID_COLUMNS.has(column) && rows.some((row) => typeof row[column] === "number"),
   );
   if (columns.length === 0) return null;
+  // A value that is missing or not finite, like the last day of the concentrations of Delwaq, is a gap
+  const value = (row: Row, column: string) => {
+    const v = row[column];
+    return typeof v === "number" && Number.isFinite(v) ? v : null;
+  };
   const data: uPlot.AlignedData = [
     rows.map((row) => (row.time as Date).getTime() / 1000),
-    ...columns.map((column) => rows.map((row) => (typeof row[column] === "number" ? (row[column] as number) : null))),
+    ...columns.map((column) => rows.map((row) => value(row, column))),
   ];
   const colors = columns.filter((column) => !column.endsWith(BASE));
   const container = el("div", { className: "chart" });

@@ -1,14 +1,14 @@
 {
   "solver": {
-    "computation_time": 2.1,
-    "rhs_calls": 1497000.0,
+    "computation_time": 1.7,
+    "rhs_calls": 1492000.0,
     "mean_dt": 198.8,
-    "dt_p05": 120.1,
-    "rejected_fraction": 0.08269
+    "dt_p05": 116.0,
+    "rejected_fraction": 0.08258
   },
   "observations": {
     "compared": 645.0,
-    "median_nse": 0.04097,
+    "median_nse": 0.04099,
     "median_kge": 0.08483
   },
   "discharge_kge": {
@@ -42,7 +42,7 @@
     "Noordzeekanaal": -0.3928,
     "Amsterdam-Rijnkanaal Breukelen": -0.3553,
     "Volkerak": 0.1148,
-    "Haringvliet": 0.08685,
+    "Haringvliet": 0.08676,
     "Twentekanaal (Kanaal Zutphen-Enschede)": 9.985,
     "Julianakanaal": 44.07
   }

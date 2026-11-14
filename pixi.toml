@@ -64,7 +64,7 @@ nodejs = ">=22"
 hydamo = { path = "src/hydamo", editable = true }
 ribasim_nl = { path = "src/ribasim_nl", editable = true }
 # sync with config in install_ribasim_core.py
-ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "a66f580abe2ae372c06cd6748f55e3a6d9572fb9", subdirectory = "python/ribasim" }
+ribasim = { git = "https://github.com/Deltares/Ribasim", rev = "a0d619759434e07f20e86d4102667fa05eb60185", subdirectory = "python/ribasim" }
 # in pypi fiona is optional, and fiona held back gdal 3.13
 rasterstats = ">=0.21"
 types-geopandas = ">=1.1"

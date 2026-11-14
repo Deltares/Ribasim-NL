@@ -36,13 +36,14 @@ DELWAQ_DATA_DIR = delwaq_config.delwaq_data
 
 IM_DATA_DIR = delwaq_config.im_data
 IM_INPUT_DIR = IM_DATA_DIR / "aangeleverd"
-# IM_INTERIM_DIR = IM_DATA_DIR / "interim" # currently not used
+# For checking the interpolated data by hand, not in DVC: its workbooks record when they were written
+IM_INTERIM_DIR = IM_DATA_DIR / "interim"
 IM_FIGURES_DIR = IM_DATA_DIR / "figures"  # replaces figures_path for IM derived boundaries
 IM_OUTPUT_DIR = IM_DATA_DIR / "output"  # replaces boundwq_path for IM derived boundaries
 
 ZINFO_DATA_DIR = delwaq_config.zinfo_data
 ZINFO_INPUT_DIR = ZINFO_DATA_DIR / "aangeleverd"
-# ZINFO_INTERIM_DIR = ZINFO_DATA_DIR / "interim" # currently not used
+ZINFO_INTERIM_DIR = ZINFO_DATA_DIR / "interim"
 ZINFO_FIGURES_DIR = ZINFO_DATA_DIR / "figures"  # replaces figures_path for Zinfo derived boundaries
 ZINFO_OUTPUT_DIR = ZINFO_DATA_DIR / "output"  # replaces boundwq_path for IM derived boundaries
 
@@ -600,12 +601,14 @@ else:
 # %% Sla de geinterpoleerde dataset op voor check in het model
 IM_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 ZINFO_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+IM_INTERIM_DIR.mkdir(parents=True, exist_ok=True)
+ZINFO_INTERIM_DIR.mkdir(parents=True, exist_ok=True)
 
-with pd.ExcelWriter(IM_OUTPUT_DIR / "delwaq_input_IM.xlsx") as writer:
+with pd.ExcelWriter(IM_INTERIM_DIR / "delwaq_input_IM.xlsx") as writer:
     for name, df in dict_delwaq_input_IM.items():
         df.to_excel(writer, sheet_name=name, index=False)
 
-with pd.ExcelWriter(ZINFO_OUTPUT_DIR / "delwaq_input_Zinfo.xlsx") as writer:
+with pd.ExcelWriter(ZINFO_INTERIM_DIR / "delwaq_input_Zinfo.xlsx") as writer:
     for name, df in dict_delwaq_input_Zinfo.items():
         df.to_excel(writer, sheet_name=name, index=False)
 

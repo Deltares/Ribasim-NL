@@ -13,5 +13,6 @@ delwaq_config = load_delwaq_config(Path(__file__).resolve().parent / "config.tom
 toml_path = delwaq_config.model_toml
 output_path = delwaq_config.model_path / OUTPUT_FOLDER
 
-# %% Generate, run and parse DELWAQ, with the Delft3D installation of D3D_HOME
+# %% Generate, run and parse DELWAQ, with the Delft3D installation of D3D_HOME.
+# The substances that only DELWAQ has, the nutrients, are added to the concentrations of the core.
 nmodel = compute_delwaq(toml_path, to_input=True, output_path=output_path)

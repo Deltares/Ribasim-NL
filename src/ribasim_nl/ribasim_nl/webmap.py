@@ -7,6 +7,8 @@ import shutil
 import sqlite3
 import tomllib
 import warnings
+from collections.abc import Collection
+from contextlib import closing
 from pathlib import Path
 
 import geopandas as gpd
@@ -42,11 +44,15 @@ SOURCE_TRACERS = {
     "Initial",
     "LevelBoundary",
     "FlowBoundary",
-    "UserDemand",
     "Drainage",
     "Precipitation",
     "SurfaceRunoff",
 }
+# The tables of the model input with concentrations, which mark the fractions of the LHM
+CONCENTRATION_TABLES = ("Basin / concentration", "FlowBoundary / concentration", "LevelBoundary / concentration")
+# The groups of the substances in the list to choose from
+NUTRIENTS = "Nutrients"
+TRACERS = "Tracers"
 SECONDS_PER_DAY = 86400.0
 SKIP_TABLES = {"layer_styles", "ribasim_metadata"}
 # The local times at which Ribasim logs the start and successful end of a simulation, in `ribasim.log`
@@ -315,32 +321,52 @@ def export_netcdf_table(source: Path, path: Path) -> int:
     return write_by_id(ids, times, data, "node_id", path)
 
 
-def concentration_variable(substance: str, values: np.ndarray, units: str) -> dict:
-    """The color scale of a substance, linear from zero.
+def lhm_fractions(database: Path) -> set[str]:
+    """The substances that the model input marks as fractions of the LHM, see `ribasim_nl.assign_lhm_fractions`."""
+    fractions = set()
+    with closing(sqlite3.connect(database)) as con:
+        for table in CONCENTRATION_TABLES:
+            columns = {row[1] for row in con.execute(f'PRAGMA table_info("{table}")')}
+            if "meta_lhm_fraction" in columns:
+                # The table is one of CONCENTRATION_TABLES
+                query = f'SELECT DISTINCT substance FROM "{table}" WHERE meta_lhm_fraction'  # noqa: S608
+                rows = con.execute(query).fetchall()
+                fractions.update(str(substance) for (substance,) in rows)
+    return fractions
 
-    Up to the highest value, since a substance that reaches few Basins would be saturated by a percentile, and a
-    fraction of the water then goes up to about 1, like the others. The residence time has no such limit: the few
-    stagnant Basins would make all others look the same.
+
+def concentration_variable(substance: str, values: np.ndarray, units: str, fraction: bool) -> dict:
+    """The color scale of a substance, linear from zero, and its group: the tracers or the nutrients.
+
+    The tracers are the fractions of the water and its residence time, which the core computes, and the nutrients
+    the other substances, which Delwaq adds, see `ribasim_nl.delwaq`.
+    A fraction goes up to its highest value, about 1 like the others, since a fraction that reaches few Basins would
+    be saturated by a percentile. Other values go up to their 98th percentile: the few stagnant Basins would make all
+    others look the same in the residence time, and so would the few nearly empty Basins in a nutrient.
     """
     values = values[np.isfinite(values)]
     residence_time = substance == RESIDENCE_TIME
     high = 0.0
     if len(values) > 0:
-        high = float(np.percentile(values, 98) if residence_time else values.max())
-    tracer = residence_time or substance in SOURCE_TRACERS
+        high = float(values.max() if fraction else np.percentile(values, 98))
+    tracer = residence_time or fraction
     return {
         "label": substance,
         "units": "d" if residence_time else "-" if tracer else units,
         "scale": "linear",
         # Without values above zero the scale would be empty
         "domain": [0.0, high if high > 0 else 1.0],
-        "group": "Ribasim tracers" if tracer else "Model substances",
+        "group": TRACERS if tracer else NUTRIENTS,
     }
 
 
-def export_concentration(source: Path, ids: np.ndarray, times: np.ndarray, by_id: Path, by_time: Path) -> dict:
+def export_concentration(
+    source: Path, ids: np.ndarray, times: np.ndarray, by_id: Path, by_time: Path, fractions: Collection[str] = ()
+) -> dict:
     """Export the Basin concentrations per Basin for charts and per time step for the map, with a column per substance.
 
+    The `fractions` are the substances of the model input that are fractions of the water, like the tracers of the
+    core, see `lhm_fractions`.
     The viewer reads only the column of the chosen substance, so a long list of substances does not slow it down.
     The Basins and time steps must be those of the Basin results, so the viewer can reuse their order on the map.
     """
@@ -363,9 +389,14 @@ def export_concentration(source: Path, ids: np.ndarray, times: np.ndarray, by_id
             data[substance] = values / SECONDS_PER_DAY if substance == RESIDENCE_TIME else values
     write_by_id(ids, times, data, "node_id", by_id)
     write_by_time(ids, data, "node_id", by_time)
-    variables = {substance: concentration_variable(substance, data[substance], units) for substance in substances}
-    # The substances of the model first, since they are what is chosen most, and easier to find when sorted
-    order_of_choice = sorted(substances, key=lambda s: (variables[s]["group"] == "Ribasim tracers", s))
+    variables = {
+        substance: concentration_variable(
+            substance, data[substance], units, substance in SOURCE_TRACERS or substance in fractions
+        )
+        for substance in substances
+    }
+    # The nutrients first, then the tracers, each sorted, which makes them easy to find
+    order_of_choice = sorted(substances, key=lambda s: (variables[s]["group"] == TRACERS, s))
     return {
         "id": "node_id",
         "count": len(ids),
@@ -375,8 +406,11 @@ def export_concentration(source: Path, ids: np.ndarray, times: np.ndarray, by_id
     }
 
 
-def export_results(results_dir: Path, output_dir: Path) -> dict:
-    """Export Basin and flow results and Basin concentrations, both per feature for charts and per time step for the map."""
+def export_results(results_dir: Path, output_dir: Path, fractions: Collection[str] = ()) -> dict:
+    """Export Basin and flow results and Basin concentrations, both per feature for charts and per time step for the map.
+
+    The `fractions` are the substances of the model input that are fractions of the water, see `lhm_fractions`.
+    """
     results: dict = {"steps_per_row_group": TIME_STEPS_PER_ROW_GROUP}
     (output_dir / "results").mkdir()
     for name, id_dim in [("basin", "node_id"), ("flow", "link_id")]:
@@ -418,6 +452,7 @@ def export_results(results_dir: Path, output_dir: Path) -> dict:
                 times,
                 output_dir / "results" / "concentration_by_id.parquet",
                 output_dir / "results" / "concentration_by_time.parquet",
+                fractions,
             )
     control = results_dir / "control.nc"
     if control.is_file():
@@ -595,7 +630,7 @@ def export_webmap(toml_path: Path, waterboards_path: Path | None, output_dir: Pa
     }
     results_dir = model_results_dir(toml_path, config)
     if results_dir.is_dir():
-        results = export_results(results_dir, output_dir)
+        results = export_results(results_dir, output_dir, lhm_fractions(database))
         for name in ("basin", "flow", "concentration"):
             if name in results:
                 results[name]["by_id"] = entry(results[name]["by_id"])

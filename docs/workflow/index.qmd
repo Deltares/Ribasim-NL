@@ -39,9 +39,8 @@ flowchart TB
   forcing --> samenvoegen
   samenvoegen --> koppelen --> run_lhm_coupled
   run_lhm_coupled --> validate_lhm_coupled
-  run_lhm_coupled --> export_webmap
+  run_lhm_coupled --> delwaq --> export_webmap
   run_lhm_coupled --> hws_plus
-  run_lhm_coupled -.-> delwaq
 
   classDef perauthority fill:#cde2fb,stroke:#2a78d6
   class hydamo,lumped,parameterized,bergend,dynamic,postprocessed,crossings,shortest_paths,boezemmodel,feedback,profiles,forcing perauthority
@@ -58,9 +57,9 @@ flowchart TB
 | `peilbeheer` | The summer and winter levels of the level areas. | [Summer and winter levels](seasonal-levels.qmd) |
 | `samenvoegen`, `koppelen` | Merge all models, and connect them where they meet. | [Coupling](couple.qmd) |
 | `run_lhm_coupled`, `validate_lhm_coupled` | Run the model and check its results. | [Testing](../dev/testing.qmd#coupled-model-result-checks) |
-| `export_webmap` | Export the run for the model viewer. | [Model viewer](../dev/viewer.qmd) |
+| `export_webmap` | Export the run, with the concentrations of Delwaq, for the model viewer. | [Model viewer](../dev/viewer.qmd) |
 | `hws_plus` | Cut the main water system out of the run, with its exchanges as boundaries. | [HWS plus](hws-plus.qmd) |
-| `delwaq` | The water quality of the run with Delwaq. Only runs on demand, since it needs a Delft3D installation. | [Ribasim-Delwaq](https://github.com/Deltares/Ribasim-NL/tree/main/notebooks/ribasim_delwaq#readme) |
+| `delwaq` | The water quality of the run with Delwaq, which needs a Delft3D installation. | [Ribasim-Delwaq](https://github.com/Deltares/Ribasim-NL/tree/main/notebooks/ribasim_delwaq#readme) |
 
 ## Where the data is
 

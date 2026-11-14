@@ -60,7 +60,11 @@ PREFIX = "doc-image/webmap/"
 MODEL = "lhm_coupled"
 STAGE = "export_webmap"
 EXPORT_PATH = "data/Rijkswaterstaat/webmap/lhm_coupled"
+# The run of the coupled model, which runs are compared by
 RUN_TOML = "data/Rijkswaterstaat/runs/lhm_coupled/lhm_coupled.toml"
+# The runs that `export_webmap` exports, by the coupled run alone, or with Delwaq, which has the same results
+RUNS_DIR = "data/Rijkswaterstaat/runs/"
+RUN_TOML_NAME = "lhm_coupled.toml"
 MAIN = "origin/main"
 VIEWER_URL = "https://ribasim.nl/viewer"
 # The length of commits in viewer links, see `PINNED_COMMIT_LENGTH` in viewer/src/data.ts
@@ -89,6 +93,16 @@ def export_hash(lock: dict) -> str:
     md5 = out["md5"].removesuffix(".dir")
     assert len(md5) == 32 and all(c in "0123456789abcdef" for c in md5), f"Invalid md5 {out['md5']}"
     return md5
+
+
+def export_toml(lock: dict) -> str:
+    """The TOML of the run that the `export_webmap` output in a parsed `dvc.lock` is exported from.
+
+    Earlier commits exported the coupled run, later ones the copy of it with the results of Delwaq too.
+    """
+    deps = lock["stages"][STAGE]["deps"]
+    (run,) = (dep["path"] for dep in deps if dep["path"].startswith(RUNS_DIR))
+    return f"{run}/{RUN_TOML_NAME}"
 
 
 def manifest_entries(manifest: dict) -> list[dict]:
@@ -298,7 +312,8 @@ def checkout_export(store: Store, commit: str, md5: str, cache_dir: Path = CACHE
         store.download_snapshot(md5, target)
     else:
         print(f"Snapshot {md5} of {EXPORT_PATH} at {commit} is not published, exporting its run again")
-        export_webmap(checkout_model(REPO_DIR / RUN_TOML, commit, cache_dir=cache_dir), waterboards(), target)
+        toml = REPO_DIR / export_toml(lock_at(commit))
+        export_webmap(checkout_model(toml, commit, cache_dir=cache_dir), waterboards(), target)
     complete.touch()
     return target
 

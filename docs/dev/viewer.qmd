@@ -17,7 +17,8 @@ The areas of `bergend` Basins stay uncolored, since they overlap those of the `d
 ```{mermaid}
 flowchart LR
   A[modellen/lhm_coupled] -->|dvc repro run_lhm_coupled| R[runs/lhm_coupled]
-  R -->|dvc repro export_webmap| B[webmap/lhm_coupled]
+  R -->|dvc repro delwaq| W[runs/lhm_coupled_delwaq]
+  W -->|dvc repro export_webmap| B[webmap/lhm_coupled]
   B -->|pixi run publish-webmap| C[MinIO doc-image/webmap]
   C --> D[Model viewer page]
   L[dvc.lock on GitHub main] --> D
@@ -28,8 +29,10 @@ All local paths are relative to `data/Rijkswaterstaat`.
 ## Concentrations
 
 Choose *concentration* in the *Basins* choice of the time bar to color the Basins by the concentration of a substance, chosen in a second list that then appears.
-It lists the substances of the model input first, then the tracers of the Ribasim core; type the first letters of a substance to jump to it.
-The color scale starts at zero and goes up to the highest value, so a fraction of the water goes up to about 1, except for the residence time, which goes up to its 98th percentile and is shown in days.
+It lists the nutrients first, then the tracers; type the first letters of a substance to jump to it.
+The tracers are those of the Ribasim core: the fractions of the water by its source, also those of the LHM that the model input marks with `meta_lhm_fraction`, and the residence time.
+The nutrients are those of the emissions, computed by [Delwaq](https://github.com/Deltares/Ribasim-NL/tree/main/notebooks/ribasim_delwaq#readme), and they end a day before the tracers, see `ribasim_nl.delwaq.add_delwaq_substances`.
+The color scale starts at zero and goes up to the highest value for a fraction of the water, about 1, and to the 98th percentile for the residence time, shown in days, and the nutrients, which nearly empty Basins can make extreme.
 Each substance has its own limits, which can be changed in the legend.
 The panel of a Basin charts the concentration of one substance, with its own list, which also changes the substance on the map.
 
@@ -54,10 +57,11 @@ The simulated flow rate of a Junction of a Basin tree is the net flow of its lin
     It also writes the commit of the code to `runinfo.json`, which the viewer shows next to the scale bar, with the time the run finished from `results/ribasim.log`.
     For now this runs with a looser solver tolerance, see `pipeline/run_lhm_coupled.py`.
     The NetCDF results are compressed, to save space in DVC.
-    This takes about 1.5 hours, so normally pull the cached results instead:
+    The `delwaq` stage then copies the run to `runs/lhm_coupled_delwaq`, with the emissions, and adds the nutrients that Delwaq computes to the concentrations of the core in `results/concentration.nc`.
+    These take about 2 hours, so normally pull the cached results instead:
 
     ```sh
-    pixi run dvc pull run_lhm_coupled
+    pixi run dvc pull run_lhm_coupled delwaq
     ```
 
 2. Export the model to web-friendly files with the `export_webmap` DVC stage, which takes about 10 minutes:

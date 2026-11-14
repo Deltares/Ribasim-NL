@@ -15,6 +15,7 @@ from ribasim_nl.webmap_publish import (
     commit_hash,
     diff_counts,
     export_hash,
+    export_toml,
     manifest_entries,
     pr_number,
     snapshot_name,
@@ -34,6 +35,15 @@ def test_export_hash():
     assert export_hash(_lock(f"{MD5}.dir")) == MD5
     with pytest.raises(AssertionError):
         export_hash(_lock("not-a-hash.dir"))
+
+
+@pytest.mark.parametrize("run", ["lhm_coupled", "lhm_coupled_delwaq"])
+def test_export_toml(run: str):
+    """Earlier commits exported the coupled run, later ones the run with Delwaq."""
+    lock = _lock(f"{MD5}.dir")
+    deps = [{"path": "pipeline/export_webmap.py"}, {"path": f"data/Rijkswaterstaat/runs/{run}"}]
+    lock["stages"]["export_webmap"]["deps"] = deps
+    assert export_toml(lock) == f"data/Rijkswaterstaat/runs/{run}/lhm_coupled.toml"
 
 
 def _entry(path: str, content_hash: str) -> dict:

@@ -192,11 +192,27 @@ def test_changed(stage, expected):
 def test_check_environment(tmp_path, monkeypatch):
     monkeypatch.setenv("RIBASIM_HOME", str(tmp_path / "ribasim"))
     with pytest.raises(AssertionError, match="No Ribasim core"):
-        check_environment(tmp_path)
+        check_environment(tmp_path, ["a"])
     cli = tmp_path / "ribasim/bin" / ("ribasim.exe" if sys.platform == "win32" else "ribasim")
     cli.parent.mkdir(parents=True)
     cli.touch()
     with pytest.raises(AssertionError, match="No credentials"):
-        check_environment(tmp_path)
+        check_environment(tmp_path, ["a"])
     (tmp_path / ".env").touch()
-    check_environment(tmp_path)
+    check_environment(tmp_path, ["a"])
+
+
+def test_check_environment_delwaq(tmp_path, monkeypatch):
+    """The delwaq stage needs the Delft3D installation of D3D_HOME, which is only checked if it runs."""
+    monkeypatch.setenv("RIBASIM_HOME", str(tmp_path / "ribasim"))
+    cli = tmp_path / "ribasim/bin" / ("ribasim.exe" if sys.platform == "win32" else "ribasim")
+    cli.parent.mkdir(parents=True)
+    cli.touch()
+    (tmp_path / ".env").touch()
+    d3d_home = tmp_path / "d3d"
+    monkeypatch.setattr("ribasim_nl.delwaq.settings.d3d_home", d3d_home)
+    check_environment(tmp_path, ["a"])
+    with pytest.raises(FileNotFoundError, match="D3D_HOME"):
+        check_environment(tmp_path, ["a", "delwaq"])
+    (d3d_home / "bin").mkdir(parents=True)
+    check_environment(tmp_path, ["a", "delwaq"])
