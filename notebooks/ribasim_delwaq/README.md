@@ -39,7 +39,7 @@ The stage reads and writes:
 | `data/Basisgegevens/Delwaq/<source>/output` | The loads and concentrations per source | Output, not cached |
 | `data/Basisgegevens/Delwaq/ANIMO/aangeleverd/shapes/lhm_coupled_delwaq` | The basin polygons of the model | Output, not cached |
 | `data/Rijkswaterstaat/runs/lhm_coupled_delwaq` | The copy of the run, with the emissions, the DELWAQ input, and the nutrients of DELWAQ added to the concentrations of the core in `results/concentration.nc` | Output |
-| `data/Basisgegevens/Delwaq/<source>/figures`, `data/Basisgegevens/Delwaq/ANIMO/interim` | Figures and other intermediate files | No |
+| `data/Basisgegevens/Delwaq/<source>/figures`, `data/Basisgegevens/Delwaq/<source>/interim` | Figures and other intermediate files | No |
 
 To add or replace an input file, add it with `pixi run dvc add <file>`, list it
 in the `deps` of the stage in `dvc.yaml`, and push it with `pixi run dvc push`.
