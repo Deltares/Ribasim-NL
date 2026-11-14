@@ -31,6 +31,7 @@ from dvc.api import DVCFileSystem
 import ribasim_nl.goodness_of_fit
 import ribasim_nl.webmap
 import ribasim_nl.webmap_diff
+from ribasim_nl.delwaq import CONCENTRATION_FILENAME as DELWAQ_CONCENTRATION_FILENAME
 from ribasim_nl.settings import settings
 from ribasim_nl.webmap import RUN_INFO, export_webmap, model_input_dir, model_results_dir, netcdf_tables, read_config
 from ribasim_nl.webmap_diff import diff_models
@@ -67,7 +68,7 @@ INDEX_HTML = """<!doctype html>
 """
 MANIFEST = "manifest.json"
 # The result files that `export_webmap` reads, the log for when the model was run
-RESULT_FILES = ("basin.nc", "flow.nc", "concentration.nc", "control.nc", "ribasim.log")
+RESULT_FILES = ("basin.nc", "flow.nc", "concentration.nc", DELWAQ_CONCENTRATION_FILENAME, "control.nc", "ribasim.log")
 # The characters of git revisions like main, origin/main, HEAD~2 or v1.0, without a leading dash: never an option
 REVISION = re.compile(r"[\w.@/~^{}:][\w.@/~^{}:-]*")
 RANGE = re.compile(r"bytes=(\d*)-(\d*)")

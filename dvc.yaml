@@ -1510,16 +1510,16 @@ stages:
     deps:
       - pipeline/export_webmap.py
       - src/ribasim_nl/ribasim_nl
-      - data/Rijkswaterstaat/runs/lhm_coupled
+      # The run with the concentrations of Delwaq, next to those of the core, see `delwaq`
+      - data/Rijkswaterstaat/runs/lhm_coupled_delwaq
       - data/Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg
     # Not cached by DVC: `pixi run publish-webmap` stores it on MinIO, see `ribasim_nl.webmap_publish`.
     # `dvc.lock` still records its hash, which names the published snapshot.
     outs:
       - data/Rijkswaterstaat/webmap/lhm_coupled:
           cache: false
-  # The water quality of the run with Delwaq, see notebooks/ribasim_delwaq/README.md. Not a default target of the
-  # reproductions, since it needs the Delft3D installation of `D3D_HOME`: run it on demand with
-  # `pixi run dvc repro --pull --single-item delwaq`
+  # The water quality of the run with Delwaq, see notebooks/ribasim_delwaq/README.md. Needs the Delft3D installation
+  # of `D3D_HOME`.
   delwaq:
     cmd:
       - pixi run python notebooks/ribasim_delwaq/00_copy_lhm_run.py

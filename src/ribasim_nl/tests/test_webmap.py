@@ -11,6 +11,7 @@ from ribasim import Model, Node
 from ribasim.nodes import basin, level_boundary, tabulated_rating_curve
 from ribasim_nl.goodness_of_fit import MIN_COMPARED_DAYS
 from ribasim_nl.webmap import (
+    CONCENTRATION_GROUPS,
     NETCDF_NODES_PER_ROW_GROUP,
     TIME_STEPS_PER_ROW_GROUP,
     color_domain,
@@ -231,7 +232,7 @@ def test_export_concentration(tmp_path):
     ids = np.array([1, 2, 3], dtype="int32")
     by_id = tmp_path / "concentration_by_id.parquet"
     path = tmp_path / "concentration_by_time.parquet"
-    set_ = export_concentration(source, ids, time.to_numpy().astype("datetime64[ms]"), by_id, path)
+    set_ = export_concentration([(source, False)], ids, time.to_numpy().astype("datetime64[ms]"), by_id, path)
 
     assert set_["count"] == 3
     # The substances of the model first and sorted, then the tracers of the core
@@ -242,8 +243,8 @@ def test_export_concentration(tmp_path):
     assert variables["Continuity"]["group"] == "Ribasim tracers"
     assert variables["Continuity"]["units"] == "-"
     assert variables["ResidenceTime"]["units"] == "d"
-    # Up to the highest value: the last time step and substance, and the last of the three nodes in the file
-    assert variables["Cl"]["domain"] == [0.0, values[:, 3].max()]
+    # Not a fraction of the water, so up to its 98th percentile
+    assert variables["Cl"]["domain"] == [0.0, pytest.approx(np.percentile(values[:, 3].astype("float32"), 98))]
     assert all(variable["scale"] == "linear" for variable in variables.values())
 
     by_time = pq.ParquetFile(path)
@@ -287,9 +288,44 @@ def test_export_concentration_needs_the_basins_and_times_of_the_results(tmp_path
     paths = tmp_path / "by_id.parquet", tmp_path / "by_time.parquet"
 
     with pytest.raises(AssertionError, match="Basins"):
-        export_concentration(source, np.array([1, 3], dtype="int32"), times, *paths)
+        export_concentration([(source, False)], np.array([1, 3], dtype="int32"), times, *paths)
     with pytest.raises(AssertionError, match="time steps"):
-        export_concentration(source, np.array([1, 2], dtype="int32"), times[:2], *paths)
+        export_concentration([(source, False)], np.array([1, 2], dtype="int32"), times[:2], *paths)
+
+
+def test_export_concentration_of_delwaq(tmp_path):
+    """The substances of Delwaq are exported next to those of the core, moved one time step earlier."""
+    time = pd.date_range("2020-01-01", periods=4, freq="D")
+    times = time.to_numpy().astype("datetime64[ms]")
+    ids = np.array([1, 2], dtype="int32")
+    core = tmp_path / "concentration.nc"
+    write_concentration(core, ids, time, ["Initial", "Cl"])
+    delwaq = tmp_path / "concentration_delwaq.nc"
+    # Delwaq starts with the initial state, in which Initial is 1
+    values = np.stack([np.ones((4, 2)), np.arange(8.0).reshape(4, 2) * 1000], axis=1)
+    xr.Dataset(
+        {"concentration": (("time", "substance", "node_id"), values)},
+        coords={"time": time, "substance": ["Initial", "NO3"], "node_id": ids},
+    ).to_netcdf(delwaq)
+    by_id, by_time = tmp_path / "by_id.parquet", tmp_path / "by_time.parquet"
+
+    set_ = export_concentration([(core, False), (delwaq, True)], ids, times, by_id, by_time)
+
+    variables = set_["variables"]
+    assert list(variables) == ["Cl", "Delwaq NO3", "Initial", "Delwaq Initial"]
+    assert [variables[name]["group"] for name in variables] == CONCENTRATION_GROUPS
+    # Delwaq writes no units
+    assert variables["Delwaq NO3"]["units"] == "g m-3"
+    assert variables["Delwaq Initial"]["units"] == "-"
+    per_basin = pd.read_parquet(by_id)
+    no3 = per_basin.loc[per_basin.node_id == 2, "Delwaq NO3"].to_numpy()
+    # The state at the end of a day is stamped with its start, like in the core; Delwaq has none for the last day
+    np.testing.assert_array_equal(no3[:3], values[1:, 1, 1])
+    assert np.isnan(no3[3])
+
+    # A file of Delwaq that does not start with the initial state was written without the shift of Ribasim#3445
+    with pytest.raises(AssertionError, match="initial state"):
+        export_concentration([(core, True)], ids, times, by_id, by_time)
 
 
 def test_export_observations(tmp_path, observation_run, observed):

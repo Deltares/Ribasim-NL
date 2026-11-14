@@ -41,11 +41,15 @@ import networkx as nx
 from clean import clean
 from dvc.repo import Repo
 from dvc.stage import PipelineStage, Stage
+from ribasim_nl.delwaq import check_d3d_home
 
 # The final stages of the pipeline: the coupled model, its results, their regression checks, their export for the
-# model viewer, and the hws_plus model cut from them. `repro.sh` reproduces the pipeline up to `koppelen`.
+# model viewer with the water quality of Delwaq, and the hws_plus model cut from them. `repro.sh` reproduces the
+# pipeline up to `koppelen`.
 DEFAULT_TARGETS = ["validate_lhm_coupled", "export_webmap", "hws_plus"]
 PUBLISHED_STAGE = "export_webmap"
+# Needs the Delft3D installation of `D3D_HOME`
+DELWAQ_STAGE = "delwaq"
 
 
 class Status(StrEnum):
@@ -94,13 +98,15 @@ def changed(stage: Stage) -> bool:
     return any(status not in MISSING_STATUSES for entry in entries for status in entry.status().values())
 
 
-def check_environment(root: Path) -> None:
-    """Fail before removing any outputs if the Ribasim core or the credentials are missing."""
+def check_environment(root: Path, names: Collection[str]) -> None:
+    """Fail before removing any outputs if the Ribasim core, the credentials, or Delft3D for Delwaq are missing."""
     ribasim_home = Path(os.environ.get("RIBASIM_HOME", root / "bin/ribasim"))
     cli = ribasim_home / "bin" / ("ribasim.exe" if os.name == "nt" else "ribasim")
     hint = "In a git worktree run `pixi run setup-worktree`, otherwise"
     assert cli.is_file(), f"No Ribasim core at {cli}. {hint} `pixi run install-core`"
     assert (root / ".env").is_file(), f"No credentials in {root / '.env'}. {hint} add them"
+    if DELWAQ_STAGE in names:
+        check_d3d_home()
 
 
 def uncached_missing(stage: Stage) -> bool:
@@ -268,7 +274,7 @@ def main() -> int:
     names = sorted(stage.addressing for stage in selected)
     log(f"Reproducing {len(names)} stages: {' '.join(names)}")
 
-    check_environment(root)
+    check_environment(root, names)
     clean(names)
 
     log_dir = root / "logs/repro" / f"{datetime.now():%Y%m%d-%H%M%S}"

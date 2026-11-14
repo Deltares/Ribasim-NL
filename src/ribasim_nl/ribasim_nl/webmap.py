@@ -19,6 +19,7 @@ import shapely
 import xarray as xr
 
 from ribasim_nl.case_conversions import pascal_to_snake_case, snake_to_pascal_case
+from ribasim_nl.delwaq import CONCENTRATION_FILENAME as DELWAQ_CONCENTRATION_FILENAME
 from ribasim_nl.goodness_of_fit import MIN_COMPARED_DAYS, compare, observed_and_simulated
 
 WEB_CRS = "EPSG:4326"
@@ -42,11 +43,16 @@ SOURCE_TRACERS = {
     "Initial",
     "LevelBoundary",
     "FlowBoundary",
-    "UserDemand",
     "Drainage",
     "Precipitation",
     "SurfaceRunoff",
 }
+# The substances of Delwaq are named by this prefix and their name, to tell them from those of the core
+DELWAQ_PREFIX = "Delwaq "
+# The highest value of a fraction of the water, with some room for numerical error
+MAX_FRACTION = 1.01
+# The groups of the substances, in the order of the list to choose from
+CONCENTRATION_GROUPS = ["Model substances", "Delwaq substances", "Ribasim tracers", "Delwaq tracers"]
 SECONDS_PER_DAY = 86400.0
 SKIP_TABLES = {"layer_styles", "ribasim_metadata"}
 # The local times at which Ribasim logs the start and successful end of a simulation, in `ribasim.log`
@@ -315,34 +321,44 @@ def export_netcdf_table(source: Path, path: Path) -> int:
     return write_by_id(ids, times, data, "node_id", path)
 
 
-def concentration_variable(substance: str, values: np.ndarray, units: str) -> dict:
-    """The color scale of a substance, linear from zero.
+def concentration_variable(substance: str, values: np.ndarray, units: str, delwaq: bool = False) -> dict:
+    """The color scale of a substance, linear from zero, and its group: of the core or of Delwaq.
 
-    Up to the highest value, since a substance that reaches few Basins would be saturated by a percentile, and a
-    fraction of the water then goes up to about 1, like the others. The residence time has no such limit: the few
-    stagnant Basins would make all others look the same.
+    A fraction of the water goes up to its highest value, about 1 like the others, since a fraction that reaches few
+    Basins would be saturated by a percentile. Other values go up to their 98th percentile: the few stagnant Basins
+    would make all others look the same in the residence time, and so would the few nearly empty Basins in a
+    concentration of Delwaq.
     """
     values = values[np.isfinite(values)]
     residence_time = substance == RESIDENCE_TIME
     high = 0.0
     if len(values) > 0:
-        high = float(np.percentile(values, 98) if residence_time else values.max())
+        high = float(values.max())
+        if residence_time or high > MAX_FRACTION:
+            high = float(np.percentile(values, 98))
     tracer = residence_time or substance in SOURCE_TRACERS
+    if delwaq:
+        group = "Delwaq tracers" if tracer else "Delwaq substances"
+    else:
+        group = "Ribasim tracers" if tracer else "Model substances"
     return {
-        "label": substance,
+        "label": f"{DELWAQ_PREFIX}{substance}" if delwaq else substance,
         "units": "d" if residence_time else "-" if tracer else units,
         "scale": "linear",
         # Without values above zero the scale would be empty
         "domain": [0.0, high if high > 0 else 1.0],
-        "group": "Ribasim tracers" if tracer else "Model substances",
+        "group": group,
     }
 
 
-def export_concentration(source: Path, ids: np.ndarray, times: np.ndarray, by_id: Path, by_time: Path) -> dict:
-    """Export the Basin concentrations per Basin for charts and per time step for the map, with a column per substance.
+def read_concentration(
+    source: Path, ids: np.ndarray, times: np.ndarray, delwaq: bool = False
+) -> tuple[dict[str, np.ndarray], str]:
+    """Read the concentration of each substance as (Basin, time) in the order of the Basin results, and its units.
 
-    The viewer reads only the column of the chosen substance, so a long list of substances does not slow it down.
-    The Basins and time steps must be those of the Basin results, so the viewer can reuse their order on the map.
+    The core stamps the state at the end of a time step with the start of that time step. Delwaq stamps the state
+    at its time, starting with the initial state, see Deltares/Ribasim#3445. So the values of Delwaq move one time
+    step earlier, and its last time step has none.
     """
     with xr.open_dataset(source) as ds:
         concentration = ds["concentration"]
@@ -355,21 +371,52 @@ def export_concentration(source: Path, ids: np.ndarray, times: np.ndarray, by_id
         substances = [str(substance) for substance in ds["substance"].to_numpy()]
         assert len(set(substances)) == len(substances), f"Duplicate substances in {source}"
         assert "node_id" not in substances, f"A substance in {source} is named node_id"
-        units = concentration.attrs.get("units", "")
+        if delwaq:
+            initial = concentration.sel(substance="Initial").isel(time=0).to_numpy()
+            assert np.allclose(initial, 1.0), (
+                f"{source} does not start with the initial state, see Deltares/Ribasim#3445"
+            )
+        # Delwaq writes no units, its concentrations are in g/m3 like those of the core
+        units = concentration.attrs.get("units", "g m-3" if delwaq else "")
         data = {}
         for substance in substances:
             values = concentration.sel(substance=substance).transpose("node_id", "time").to_numpy()
             values = values[order].astype("float32")
+            if delwaq:
+                values = np.concatenate([values[:, 1:], np.full((len(ids), 1), np.nan, dtype="float32")], axis=1)
             data[substance] = values / SECONDS_PER_DAY if substance == RESIDENCE_TIME else values
+    return data, units
+
+
+def export_concentration(
+    sources: list[tuple[Path, bool]], ids: np.ndarray, times: np.ndarray, by_id: Path, by_time: Path
+) -> dict:
+    """Export the Basin concentrations per Basin for charts and per time step for the map, with a column per substance.
+
+    The sources are the files of the core and of Delwaq, given as their path and whether they are of Delwaq.
+    The substances of Delwaq are named with `DELWAQ_PREFIX`, so both can have the same substance.
+    The viewer reads only the column of the chosen substance, so a long list of substances does not slow it down.
+    The Basins and time steps must be those of the Basin results, so the viewer can reuse their order on the map.
+    """
+    assert sources, "No concentrations to export"
+    data: dict[str, np.ndarray] = {}
+    variables = {}
+    for source, delwaq in sources:
+        source_data, units = read_concentration(source, ids, times, delwaq)
+        for substance, values in source_data.items():
+            variable = concentration_variable(substance, values, units, delwaq)
+            name = variable["label"]
+            assert name not in data, f"Substance {name} of {source} is exported already"
+            data[name] = values
+            variables[name] = variable
     write_by_id(ids, times, data, "node_id", by_id)
     write_by_time(ids, data, "node_id", by_time)
-    variables = {substance: concentration_variable(substance, data[substance], units) for substance in substances}
     # The substances of the model first, since they are what is chosen most, and easier to find when sorted
-    order_of_choice = sorted(substances, key=lambda s: (variables[s]["group"] == "Ribasim tracers", s))
+    order_of_choice = sorted(variables, key=lambda name: (CONCENTRATION_GROUPS.index(variables[name]["group"]), name))
     return {
         "id": "node_id",
         "count": len(ids),
-        "variables": {substance: variables[substance] for substance in order_of_choice},
+        "variables": {name: variables[name] for name in order_of_choice},
         "by_id": by_id,
         "by_time": by_time,
     }
@@ -411,9 +458,15 @@ def export_results(results_dir: Path, output_dir: Path) -> dict:
             assert results["times"] == [str(t) for t in times], f"Time steps of {source} differ"
         results["times"] = [str(t) for t in times]
         results[name] = {"id": id_dim, "count": len(ids), "variables": variables, "by_id": by_id, "by_time": by_time}
-        if name == "basin" and (results_dir / "concentration.nc").is_file():
+        # The concentrations of the core, and those of Delwaq if it ran, see `ribasim_nl.delwaq.compute_delwaq`
+        concentrations = [
+            (results_dir / "concentration.nc", False),
+            (results_dir / DELWAQ_CONCENTRATION_FILENAME, True),
+        ]
+        concentrations = [(path, delwaq) for path, delwaq in concentrations if path.is_file()]
+        if name == "basin" and concentrations:
             results["concentration"] = export_concentration(
-                results_dir / "concentration.nc",
+                concentrations,
                 ids,
                 times,
                 output_dir / "results" / "concentration_by_id.parquet",
