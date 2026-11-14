@@ -4906,7 +4906,7 @@ stages:
       size: 4665344
     - path: data/Rijkswaterstaat/runs/lhm_coupled_delwaq
       hash: md5
-      md5: 524cd639d801f8d481ddd4e62bb6b6be.dir
+      md5: 33f47c190a63f6d524d9649fb482035a.dir
       size: 7820619730
       nfiles: 56
     - path: pipeline/export_webmap.py
@@ -6983,8 +6983,8 @@ stages:
       size: 22319
     - path: notebooks/ribasim_delwaq/IM_Zinfo_to_delwaq/write_boundwq_files.py
       hash: md5
-      md5: e8e94d7702449c81b15f5dd5c1fd78ad
-      size: 39710
+      md5: 2fc58d11a4a02ee2d6db23fe44b10c45
+      size: 39871
     - path: notebooks/ribasim_delwaq/config.py
       hash: md5
       md5: f7fffb7d9657e8c1b9602d819b3adde2
@@ -7022,16 +7022,16 @@ stages:
       nfiles: 1
     - path: data/Basisgegevens/Delwaq/IM/output
       hash: md5
-      md5: d8326a314d1a508b41fc1717e731543d.dir
-      size: 214914
-      nfiles: 2
+      md5: 53a48669cf9c60c96e95b2b57dedfee3.dir
+      size: 80256
+      nfiles: 1
     - path: data/Basisgegevens/Delwaq/Zinfo/output
       hash: md5
-      md5: 07b8aca403bc630d6c0961ce57e9c7f3.dir
-      size: 5710471
-      nfiles: 2
+      md5: 45059248d9aa0cf81166c9f3772b3da7.dir
+      size: 1853286
+      nfiles: 1
     - path: data/Rijkswaterstaat/runs/lhm_coupled_delwaq
       hash: md5
-      md5: 524cd639d801f8d481ddd4e62bb6b6be.dir
+      md5: 33f47c190a63f6d524d9649fb482035a.dir
       size: 7820619730
       nfiles: 56
