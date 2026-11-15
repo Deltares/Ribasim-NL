@@ -1,6 +1,7 @@
 import uPlot from "uplot";
-import { formatNumber, formatTicks } from "./colors";
+import { CATEGORICAL, formatNumber, formatTicks, NEUTRAL } from "./colors";
 import {
+  readColumns,
   readRow,
   readRowsById,
   type Comparison,
@@ -11,8 +12,31 @@ import {
   type TableEntry,
 } from "./data";
 import { describeResult, statusLabel } from "./diff";
+import {
+  basinFlowParts,
+  basinFractions,
+  CONNECTOR_TYPES,
+  CONTINUITY,
+  FLOW_NODE_TYPES,
+  flowParts,
+  INITIAL,
+  layerFlows,
+  layerNames,
+  nodeFlow,
+  OTHER,
+  partsTotal,
+  stackLayers,
+  tracedWaters,
+  visibleLayers,
+  waterFractions,
+  type FlowGraph,
+  type FlowTerm,
+  type Fractions,
+  type TracerSet,
+  type UsedWaters,
+} from "./fractions";
 import { LevelDiagram, type LevelSeries, type LevelSide } from "./levels";
-import { linkLabel, type Network, pastJunctions } from "./network";
+import { flowGraph, linkLabel, type Network, pastJunctions } from "./network";
 import { fitFacts, loadFits, loadObservedLinks, type Fits } from "./observations";
 import { addSubstances } from "./timebar";
 
@@ -24,8 +48,6 @@ const HIDDEN_COLUMNS = new Set(["x", "y", "coords"]);
 const ID_COLUMNS = new Set(["node_id", "link_id"]);
 /** Suffix of the series and tables of the base model, when comparing models */
 const BASE = " (base)";
-/** Nodes with one flow in and out, see https://ribasim.org/reference/ */
-const CONNECTOR_TYPES = new Set(["TabulatedRatingCurve", "Outlet", "Pump", "LinearResistance", "ManningResistance"]);
 const BASIN_CHARTS: [string, string[]][] = [
   ["Level", ["level"]],
   ["Storage", ["storage"]],
@@ -89,6 +111,12 @@ function dataTable(rows: Row[]): HTMLElement {
 const SERIES_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2"];
 // The base model is drawn dashed in a lighter tint of the same color, which also sets it apart in the legend
 const BASE_ALPHA = "73";
+/** The time axis of the charts, whose value in the legend is the date under the cursor */
+const TIME_SERIES: uPlot.Series = {
+  value: (_: uPlot, value: number | null) => (value === null ? "" : new Date(value * 1000).toISOString().slice(0, 10)),
+};
+/** The value axis of the charts, with ticks that tell neighbors apart */
+const VALUE_AXIS: uPlot.Axis = { size: 60, values: (_, ticks, _axis, _space, increment) => formatTicks(ticks, increment) };
 
 /** A time series chart of numeric columns, if the rows form one. */
 function timeChart(rows: Row[], width: number, only?: string[]): HTMLElement | null {
@@ -115,7 +143,7 @@ function timeChart(rows: Row[], width: number, only?: string[]): HTMLElement | n
       width,
       height: 200,
       series: [
-        { value: (_: uPlot, value: number | null) => (value === null ? "" : new Date(value * 1000).toISOString().slice(0, 10)) },
+        TIME_SERIES,
         ...columns.map((label) => {
           const isBase = label.endsWith(BASE);
           const color = SERIES_COLORS[colors.indexOf(isBase ? label.slice(0, -BASE.length) : label) % SERIES_COLORS.length];
@@ -125,12 +153,152 @@ function timeChart(rows: Row[], width: number, only?: string[]): HTMLElement | n
         }),
       ],
       scales: { x: { time: true } },
-      axes: [{}, { size: 60, values: (_, ticks, _axis, _space, increment) => formatTicks(ticks, increment) }],
+      axes: [{}, VALUE_AXIS],
     },
     data,
   );
   container.append(plot.root);
   return container;
+}
+
+/** A layer of a stacked chart. */
+interface Layer {
+  label: string;
+  values: Float64Array;
+  color: string;
+  /** Hatched, to tell it apart from the layer with the same color */
+  hatched: boolean;
+}
+
+// The hatching is a darker tone of the color it is drawn on
+const HATCH_INK = "rgba(0, 0, 0, 0.35)";
+const LINE_INK = "#1e2a32";
+
+// A hatched layer has the color of the layer this many places below it in the set
+const HATCH_PARTNER_DISTANCE = 5;
+
+/**
+ * The colors of the layers of a set, by their place in it, so a tracer keeps its color in all charts: grey for the
+ * initial water and the water without a label, and the categorical colors in order for the others, with the derived
+ * tracers last, so they do not change the colors of the others. More colors would be hard to tell apart, so the ninth
+ * and later layers are hatched, in the color of a layer some places below them. Layers between them often have no
+ * water, so they still touch, but rarely: in the LHM fractions of the coupled model, in 22 of the 20151 Basins.
+ */
+function layerStyles(set: TracerSet): Map<string, Pick<Layer, "color" | "hatched">> {
+  const styles = new Map<string, Pick<Layer, "color" | "hatched">>([
+    [INITIAL, { color: NEUTRAL.dark, hatched: false }],
+    [OTHER, { color: NEUTRAL.light, hatched: false }],
+  ]);
+  const derived = (name: string) => set.derived?.[name] !== undefined;
+  const named = layerNames(set).filter((name) => !styles.has(name));
+  [...named.filter((name) => !derived(name)), ...named.filter(derived)].forEach((name, slot) => {
+    const hatched = slot >= CATEGORICAL.length;
+    const color = CATEGORICAL[(hatched ? slot - HATCH_PARTNER_DISTANCE : slot) % CATEGORICAL.length];
+    styles.set(name, { color, hatched });
+  });
+  return styles;
+}
+
+/** The fill of a hatched layer: lines at 45° on its color, made once for the canvas of a chart. */
+function hatchFill(color: string): uPlot.Series.Fill {
+  let fill: CanvasPattern | string | null = null;
+  return (plot) => {
+    if (fill) return fill;
+    const size = Math.round(6 * devicePixelRatio);
+    const tile = Object.assign(document.createElement("canvas"), { width: size, height: size });
+    const context = tile.getContext("2d");
+    if (!context) return (fill = color);
+    context.fillStyle = color;
+    context.fillRect(0, 0, size, size);
+    context.strokeStyle = HATCH_INK;
+    context.lineWidth = devicePixelRatio;
+    context.beginPath();
+    // Lines from the lower left to the upper right, which continue in the next tile
+    for (const offset of [-size, 0, size]) {
+      context.moveTo(offset, size);
+      context.lineTo(offset + size, 0);
+    }
+    context.stroke();
+    return (fill = plot.ctx.createPattern(tile, "repeat") ?? color);
+  };
+}
+
+/** The legend marker of a layer, hatched like its fill. */
+const layerMarker = ({ color, hatched }: Layer) =>
+  hatched ? `repeating-linear-gradient(-45deg, ${HATCH_INK} 0 1px, transparent 1px 4px), ${color}` : color;
+
+/** A line on a stacked chart, like the total of its layers; dashed for measured values. */
+interface ChartLine {
+  label: string;
+  values: Float64Array;
+  dashed?: boolean;
+}
+
+// The legend marker of a line: a bar across the middle, dashed for a dashed line
+const lineMarker = ({ dashed }: ChartLine) => {
+  const bar = dashed ? `repeating-linear-gradient(90deg, ${LINE_INK} 0 4px, transparent 4px 6px)` : `linear-gradient(${LINE_INK}, ${LINE_INK})`;
+  return `${bar} center / 100% 2px no-repeat`;
+};
+
+/**
+ * A chart of layers stacked per time step: their positive parts up from zero and their negative parts down from zero,
+ * with lines like their total. The legend shows the value of each layer under the cursor.
+ */
+function stackedChart(times: Date[], layers: Layer[], width: number, lines: ChartLine[] = []): HTMLElement {
+  const { up, down } = stackLayers(layers.map((layer) => layer.values));
+  const finite = (values: Float64Array) => Array.from(values, (value) => (Number.isFinite(value) ? value : null));
+  const series: uPlot.Series[] = [TIME_SERIES];
+  const data: (number | null)[][] = [times.map((time) => time.getTime() / 1000)];
+  const markers: string[] = [""];
+  const bands: uPlot.Band[] = [];
+  const add = (layer: Layer, edges: Float64Array, options: uPlot.Series) => {
+    const fill = layer.hatched ? hatchFill(layer.color) : layer.color;
+    // An edge in the color of its layer, since a line of the panel color would hide the peaks of a single time step
+    series.push({ label: layer.label, stroke: layer.color, width: 1, fill, ...options });
+    data.push(finite(edges));
+    markers.push(layerMarker(layer));
+    return series.length - 1;
+  };
+  // Each layer fills the band between its edge and the edge below or above it; the first one fills to zero
+  let below = 0;
+  layers.forEach((layer, i) => {
+    const value = (_: uPlot, _raw: number, _series: number, step: number | null) =>
+      step === null ? "" : formatNumber(layer.values[step]);
+    const edge = add(layer, up[i], { value });
+    if (below) bands.push({ series: [edge, below] });
+    below = edge;
+  });
+  let above = 0;
+  layers.forEach((layer, i) => {
+    if (!layer.values.some((value) => value < 0)) return;
+    // The legend has a single entry per layer, with its net value
+    const edge = add(layer, down[i], { class: "stack-down", value: () => "" });
+    if (above) bands.push({ series: [edge, above], dir: 1 });
+    above = edge;
+  });
+  for (const line of lines) {
+    const value = (_: uPlot, raw: number | null) => (raw === null ? "" : formatNumber(raw));
+    series.push({ label: line.label, stroke: LINE_INK, width: 1.5, value, ...(line.dashed ? { dash: [6, 4] } : {}) });
+    data.push(finite(line.values));
+    markers.push(lineMarker(line));
+  }
+  const plot = new uPlot(
+    {
+      width,
+      height: 220,
+      series,
+      bands,
+      scales: {
+        x: { time: true },
+        // The stack starts at zero
+        y: { range: (_, min, max) => uPlot.rangeNum(Math.min(0, min), Math.max(0, max), 0.05, true) },
+      },
+      axes: [{}, VALUE_AXIS],
+      legend: { markers: { show: true, width: 0, stroke: LINE_INK, fill: (_, i) => markers[i], dash: "solid" } },
+    },
+    data as uPlot.AlignedData,
+  );
+  return el("div", { className: "chart" }, plot.root);
 }
 
 /** The rows of a time table in effect at each time step: the last at or before it. */
@@ -260,16 +428,38 @@ export interface PanelCallbacks {
   chooseSubstance: (substance: string) => void;
 }
 
+/** What a chart of the parts of a flow shows next to them, see `Panel.partsChart`. */
+interface FlowChart {
+  /** Like "flow rate" or "inflow rate", for the heading and the line of the total */
+  variable?: string;
+  /** What flows, for the heading, like "Pump #5" */
+  subject?: string;
+  /** The total flow, if it is not that of the charted links */
+  total?: Float64Array;
+  /** The observed flow of an Observation node, per time step */
+  observed?: Float64Array;
+  notes?: HTMLElement[];
+}
+
+/** A note below a chart. */
+const note = (...text: string[]) => el("p", { className: "note" }, ...text);
+
 export class Panel {
   private readonly element: HTMLElement;
   private token = 0;
   private step = 0;
   private readonly times: Date[];
   private situation: Situation | null = null;
+  /** The time step of each time of the results, in milliseconds */
+  private readonly steps: Map<number, number>;
   /** The substance to chart, the same as in the time bar */
   private substance: string | null;
   /** Shows the concentration chart of the selected Basin for another substance */
   private showSubstance: ((substance: string) => void) | null = null;
+  /** The name of the tracer set of the stacked charts, which the panels of other features keep */
+  private tracerSet: string | null = null;
+  /** The Junctions in the Junction / static table of the shown model, once they are read */
+  private staticJunctionIds: Promise<Set<number>> | null = null;
 
   constructor(
     parent: HTMLElement,
@@ -281,6 +471,7 @@ export class Panel {
     this.element = el("div", { className: "panel", hidden: true });
     parent.append(this.element);
     this.times = (manifest.results?.times ?? []).map((time) => new Date(`${time}Z`));
+    this.steps = new Map(this.times.map((time, step) => [time.getTime(), step]));
     this.substance = Object.keys(manifest.results?.concentration?.variables ?? {})[0] ?? null;
   }
 
@@ -298,9 +489,7 @@ export class Panel {
   }
 
   private nodeLink(nodeId: number): HTMLElement {
-    const row = this.network.nodeRow.get(nodeId);
-    const label = row === undefined ? `#${nodeId}` : `${this.network.nodeType[row]} #${nodeId}`;
-    const link = el("a", { href: "#" }, label);
+    const link = el("a", { href: "#" }, this.nodeName(nodeId));
     link.addEventListener("click", (event) => {
       event.preventDefault();
       this.callbacks.select({ kind: "node", id: nodeId });
@@ -426,6 +615,265 @@ export class Panel {
     );
   }
 
+  /** The values of a column per time step of the results, NaN for a time step without a row. */
+  private perStep(rows: Row[], column: string): Float64Array {
+    const values = new Float64Array(this.times.length).fill(Number.NaN);
+    for (const row of rows) {
+      const step = this.steps.get((row.time as Date).getTime());
+      const value = row[column];
+      if (step !== undefined && typeof value === "number") values[step] = value;
+    }
+    return values;
+  }
+
+  /**
+   * A section with a stacked chart of a tracer set of the shown model, see `TracerSet`, with the list of sets; the
+   * panels of other features keep the chosen set.
+   */
+  private tracerSection(title: string, chart: (set: TracerSet) => Promise<(Node | string)[]>, token: number): HTMLElement | null {
+    const sets = this.manifest.results?.concentration?.sets ?? [];
+    if (sets.length === 0) return null;
+    return lazySection(
+      title,
+      async () => {
+        if (token !== this.token) return [];
+        const select = el("select");
+        select.append(...sets.map(({ name }) => new Option(name, name)));
+        select.value = sets.find(({ name }) => name === this.tracerSet)?.name ?? sets[0].name;
+        const content = el("div");
+        let latest = 0;
+        const show = async () => {
+          const set = sets.find(({ name }) => name === select.value) ?? sets[0];
+          this.tracerSet = set.name;
+          const request = ++latest;
+          content.replaceChildren("Loading…");
+          try {
+            const children = await chart(set);
+            if (request === latest) content.replaceChildren(...children);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            if (request === latest) content.replaceChildren(el("p", { className: "error" }, message));
+          }
+        };
+        select.addEventListener("change", () => void show());
+        void show();
+        const note = this.comparison ? [el("p", { className: "note" }, "Of this model, not of the base model.")] : [];
+        return [el("label", { className: "substance" }, "Tracer set ", select), content, ...note];
+      },
+      true,
+    );
+  }
+
+  /** The fractions of the water of a Basin of the shown model per time step, from its concentrations. */
+  private async basinFractions(set: TracerSet, id: number): Promise<Fractions> {
+    const concentration = this.manifest.results?.concentration;
+    if (!concentration) throw new Error("The model has no concentrations.");
+    const columns = [CONTINUITY, ...set.tracers];
+    const rows = await readRowsById(concentration.by_id, "node_id", id, ["time", ...columns]);
+    if (rows.length === 0) throw new Error(`No concentrations of Basin #${id}.`);
+    return basinFractions(set, Object.fromEntries(columns.map((column) => [column, this.perStep(rows, column)])));
+  }
+
+  /** The layers of a stacked chart of a set that are large enough to see, with their colors. */
+  private layers(set: TracerSet, values: Map<string, Float64Array>, scale: number): Layer[] {
+    const styles = layerStyles(set);
+    return visibleLayers(values, scale).map((name) => ({ label: name, values: values.get(name)!, ...styles.get(name)! }));
+  }
+
+  /** What the layer of the water without a label is, if it is shown. */
+  private static otherNote(layers: Layer[], untraced = ""): HTMLElement[] {
+    if (!layers.some(({ label }) => label === OTHER)) return [];
+    return [el("p", { className: "note" }, `${OTHER} is the water without any of these labels${untraced}.`)];
+  }
+
+  /** What the derived tracers of a set are, if they are shown, see `TracerSet`. */
+  private static derivedNote(set: TracerSet, layers: Layer[]): HTMLElement[] {
+    return layers.flatMap(({ label }) => {
+      const derived = set.derived?.[label];
+      if (!derived) return [];
+      return [el("p", { className: "note" }, `${label} is the ${derived.tracer} tracer minus ${derived.minus.join(" and ")}.`)];
+    });
+  }
+
+  /** The water of a Basin by its source, as stacked fractions; `subject` names the Basin in the heading. */
+  private async basinFractionsChart(set: TracerSet, id: number, width: number, subject?: string): Promise<(Node | string)[]> {
+    const layers = this.layers(set, await this.basinFractions(set, id), 1);
+    if (layers.length === 0) return ["No water in this Basin."];
+    return [
+      el("h4", {}, `Fraction of the water${subject ? ` of ${subject}` : ""}`),
+      stackedChart(this.times, layers, width),
+      ...Panel.otherNote(layers),
+      ...Panel.derivedNote(set, layers),
+    ];
+  }
+
+  /** The label of a node of the shown model, like "Terminal #3". */
+  private nodeName(id: number): string {
+    const row = this.network.nodeRow.get(id);
+    return row === undefined ? `#${id}` : `${this.network.nodeType[row]} #${id}`;
+  }
+
+  /** The Junctions in the Junction / static table of the shown model, which divide the flow they receive. */
+  private staticJunctions(): Promise<Set<number>> {
+    if (!this.staticJunctionIds) {
+      const table = this.table("Junction", "static");
+      const ids = table
+        ? readColumns(table, ["node_id"]).then(({ node_id }) => new Set(node_id.map(Number)))
+        : Promise.resolve(new Set<number>());
+      ids.catch(() => (this.staticJunctionIds = null));
+      this.staticJunctionIds = ids;
+    }
+    return this.staticJunctionIds;
+  }
+
+  /** The flow links of the shown model, with its Junctions in the Junction / static table. */
+  private async graph(): Promise<FlowGraph> {
+    return flowGraph(this.network, await this.staticJunctions());
+  }
+
+  /**
+   * The flow over links by the source of its water, as stacked flows, with their total flow rate: that of a link, the
+   * flow of a node, see `nodeFlow`, or the simulated flow of an Observation node, see `observedFractions`.
+   */
+  private async flowFractionsChart(set: TracerSet, links: number[], width: number, chart: FlowChart = {}): Promise<(Node | string)[]> {
+    if (links.length === 0) return ["No flow links to trace."];
+    const graph = await this.graph();
+    const parts = links.map((link) => flowParts(graph, link));
+    const notes: HTMLElement[] = [];
+    if (links.length > 1) notes.push(note(`The total flow of links ${links.map((link) => `#${link}`).join(", ")}.`));
+    parts.forEach(({ terms: behind, basin }, i) => {
+      if (basin === null) return;
+      notes.push(
+        note(
+          `${links.length > 1 ? `Link #${links[i]} is part` : "Part"} of the Junction tree of ${this.nodeName(basin)}: `,
+          `the net flow of the ${behind.length} links of the tree behind it, which carry the water of where they come `,
+          "from towards the Basin, and that of the Basin away from it.",
+        ),
+      );
+    });
+    const terms = parts.flatMap((part) => part.terms);
+    return this.partsChart(set, graph, terms, width, { ...chart, notes: [...notes, ...(chart.notes ?? [])] }, links);
+  }
+
+  /** The inflow or outflow of a Basin by the source of its water, with that of the Basin results, see `basinFlowParts`. */
+  private async basinFlowChart(
+    set: TracerSet,
+    basin: number,
+    inflow: boolean,
+    width: number,
+    chart: FlowChart = {},
+  ): Promise<(Node | string)[]> {
+    const graph = await this.graph();
+    const variable = inflow ? "inflow_rate" : "outflow_rate";
+    const results = this.manifest.results;
+    if (!results) return ["No simulation results."];
+    const rows = await readRowsById(results.basin.by_id, "node_id", basin, ["time", variable]);
+    const exchange =
+      `The water that ${this.nodeName(basin)} exchanges with each neighbor, also with those of its Junction trees, ` +
+      `where it flows ${inflow ? "in" : "out"}.`;
+    return this.partsChart(set, graph, basinFlowParts(graph, basin, inflow), width, {
+      variable: variable.replace("_", " "),
+      ...chart,
+      total: this.perStep(rows, variable),
+      notes: [note(exchange), ...(chart.notes ?? [])],
+    });
+  }
+
+  /** The flow of a node by the source of its water, see `nodeFlow`. */
+  private async nodeFlowChart(set: TracerSet, node: number, width: number): Promise<(Node | string)[]> {
+    const flow = nodeFlow(await this.graph(), node);
+    if (!flow) return ["This node has no flow to trace."];
+    return this.flowFractionsChart(set, flow.links, width, { variable: flow.variable.replace("_", " ") });
+  }
+
+  /**
+   * The water of the node an Observation node observes, by its source: the simulated flow, with the observed values,
+   * or the inflow or outflow of a Basin. The water in an observed Basin is charted for its other variables, like its
+   * level.
+   */
+  private async observedFractions(set: TracerSet, nodeId: number, observedId: number, width: number): Promise<(Node | string)[]> {
+    const subject = this.nodeName(observedId);
+    const rows = await this.tableRows("Observation", "time", nodeId);
+    const observed = (variable: string) => this.perStep(rows.filter((row) => row.variable === variable), "value");
+    const row = this.network.nodeRow.get(observedId);
+    if (row === undefined || this.network.nodeType[row] !== "Basin") {
+      const links = await this.observedLinks(nodeId, observedId);
+      return this.flowFractionsChart(set, links, width, { subject, observed: observed("flow_rate") });
+    }
+    const variables = new Set(rows.map((observation) => String(observation.variable)));
+    const flows = ["inflow_rate", "outflow_rate"].filter((variable) => variables.has(variable));
+    const charts = await Promise.all(
+      flows.map((variable) =>
+        this.basinFlowChart(set, observedId, variable === "inflow_rate", width, { subject, observed: observed(variable) }),
+      ),
+    );
+    const others = flows.length < variables.size || flows.length === 0;
+    return [...charts.flat(), ...(others ? await this.basinFractionsChart(set, observedId, width, subject) : [])];
+  }
+
+  /**
+   * A stacked chart of the parts of a flow by the source of their water, with the total flow rate, which is that of the
+   * `links` if given; the parts of the flow over links must add up to it.
+   */
+  private async partsChart(
+    set: TracerSet,
+    graph: FlowGraph,
+    terms: FlowTerm[],
+    width: number,
+    chart: FlowChart,
+    links: number[] = [],
+  ): Promise<(Node | string)[]> {
+    const traced = tracedWaters(graph, terms);
+    const steps = this.times.length;
+    const linkIds = [...new Set([...links, ...traced.links])];
+    const basins = [...traced.basins];
+    const [flows, fractions] = await Promise.all([
+      Promise.all(linkIds.map((id) => this.flowSeries(id))),
+      Promise.all(basins.map((id) => this.basinFractions(set, id))),
+    ]);
+    const flowOf = new Map(linkIds.map((id, i) => [id, flows[i] ?? new Float64Array(steps).fill(Number.NaN)]));
+    const used: UsedWaters = { mixed: new Set(), untraced: new Set() };
+    const fractionsOf = waterFractions(set, graph, flowOf, new Map(basins.map((id, i) => [id, fractions[i]])), steps, used);
+    let total = chart.total;
+    if (!total) {
+      total = new Float64Array(steps);
+      for (const link of links) flowOf.get(link)!.forEach((value, i) => (total![i] += value));
+    }
+    const scale = Math.max(0, ...Array.from(total, Math.abs).filter(Number.isFinite));
+    const layers = this.layers(set, layerFlows(set, terms, flowOf, fractionsOf, steps), scale);
+
+    const notes = [...(chart.notes ?? [])];
+    if (used.mixed.size) {
+      const names = [...used.mixed].map((id) => this.nodeName(id)).join(", ");
+      const [verb, object] = used.mixed.size > 1 ? ["mix", "them"] : ["mixes", "it"];
+      notes.push(note(`${names} ${verb} the water that flows into ${object} by the flows of each time step, like the core.`));
+    }
+    // The parts add up to the flow over the links, unless the Junction trees are read otherwise than the core does
+    const differences = partsTotal(terms, flowOf, steps).map((value, i) => Math.abs(value - total[i]));
+    const mismatch = Math.max(0, ...differences.filter(Number.isFinite));
+    if (links.length && mismatch > 1e-6 + 1e-3 * scale) {
+      const message = `The flows of the links behind differ up to ${formatNumber(mismatch)} m³ s⁻¹ from the flow rate.`;
+      notes.push(el("p", { className: "error" }, message));
+    }
+    const untraced = [...used.untraced].map((id) => this.nodeName(id));
+    const untracedNote = untraced.length ? `, and that of ${untraced.join(", ")}, which is not traced` : "";
+    const variable = chart.variable ?? "flow rate";
+    const lines: ChartLine[] = chart.observed
+      ? [
+          { label: "simulated", values: total },
+          { label: "observed", values: chart.observed, dashed: true },
+        ]
+      : [{ label: variable, values: total }];
+    const heading = `${variable[0].toUpperCase()}${variable.slice(1)}${chart.subject ? ` of ${chart.subject}` : ""}`;
+    return [
+      el("h4", {}, `${heading} by the source of the water (m³ s⁻¹)`),
+      stackedChart(this.times, layers, width, lines),
+      ...Panel.otherNote(layers, untracedNote),
+      ...Panel.derivedNote(set, layers),
+      ...notes,
+    ];
+  }
+
   /** Input tables of a node; changed tables are shown for both models. */
   private tableSections(nodeType: string, nodeId: number, diff: FeatureDiff | undefined, width: number): HTMLElement[] {
     const source = this.source(diff);
@@ -494,15 +942,20 @@ export class Panel {
           (_, linkRow) => network.linkType[linkRow] === "observation" && network.fromNodeId[linkRow] === selection.id,
         );
         if (observed >= 0) {
+          const observedId = network.toNodeId[observed];
           sections.push(
-            lazySection(
-              "Observed and simulated",
-              () => this.observedSimulated(selection.id, network.toNodeId[observed], width),
-              true,
-            ),
+            lazySection("Observed and simulated", () => this.observedSimulated(selection.id, observedId, width), true),
           );
+          // The water of the observed node, like in its own panel
+          const observedRow = network.nodeRow.get(observedId);
+          const title = observedRow !== undefined && network.nodeType[observedRow] === "Basin" ? "Fractions" : "Fractional flow";
+          const chart = (set: TracerSet) => this.observedFractions(set, selection.id, observedId, width);
+          const fractions = results && this.tracerSection(title, chart, token);
+          if (fractions) sections.push(fractions);
         }
       }
+      // The stacked charts are of the shown model, which has no removed features
+      const shown = diff?.status !== "removed";
       if (results && nodeType === "Basin") {
         sections.push(
           lazySection(
@@ -511,10 +964,15 @@ export class Panel {
             true,
           ),
         );
+        const fractions = shown && this.tracerSection("Fractions", (set) => this.basinFractionsChart(set, selection.id, width), token);
+        if (fractions) sections.push(fractions);
         const concentration = this.concentrationSection(selection.id, diff, width, token);
         if (concentration) sections.push(concentration);
-      } else if (results && flowLinks.length && diff?.status !== "removed") {
+      } else if (results && flowLinks.length && shown) {
         sections.push(lazySection("Flow results", () => this.linkFlows(flowLinks, width), true));
+        const chart = (set: TracerSet) => this.nodeFlowChart(set, selection.id, width);
+        const fractions = FLOW_NODE_TYPES.has(nodeType) && this.tracerSection("Fractional flow", chart, token);
+        if (fractions) sections.push(fractions);
       }
       // The situation combines head model inputs and results
       if (isConnector && diff?.status !== "removed") {
@@ -572,6 +1030,10 @@ export class Panel {
             true,
           ),
         );
+        const fractions =
+          diff?.status !== "removed" &&
+          this.tracerSection("Fractional flow", (set) => this.flowFractionsChart(set, [selection.id], width), token);
+        if (fractions) sections.push(fractions);
       }
       this.render(sections);
       void this.fillAttributes(
@@ -597,11 +1059,7 @@ export class Panel {
     const results = this.manifest.results;
     const steps = Math.max(this.times.length, 1);
     if (nodeType === "Basin" && results) {
-      const byTime = new Map<number, number>();
-      for (const row of await readRowsById(results.basin.by_id, "node_id", nodeId)) {
-        byTime.set((row.time as Date).getTime(), row.level as number);
-      }
-      return Float64Array.from(this.times, (time) => byTime.get(time.getTime()) ?? Number.NaN);
+      return this.perStep(await readRowsById(results.basin.by_id, "node_id", nodeId, ["time", "level"]), "level");
     }
     if (nodeType !== "LevelBoundary") return null;
     const rows = await this.tableRows(nodeType, "time", nodeId);
@@ -649,11 +1107,7 @@ export class Panel {
   private async flowSeries(linkId: number | undefined): Promise<Float64Array | null> {
     const flow = this.manifest.results?.flow;
     if (!flow || linkId === undefined) return null;
-    const byTime = new Map<number, number>();
-    for (const row of await readRowsById(flow.by_id, "link_id", linkId)) {
-      byTime.set((row.time as Date).getTime(), row.flow_rate as number);
-    }
-    return Float64Array.from(this.times, (time) => byTime.get(time.getTime()) ?? Number.NaN);
+    return this.perStep(await readRowsById(flow.by_id, "link_id", linkId, ["time", "flow_rate"]), "flow_rate");
   }
 
   /** Levels, control state and limits, and flow rate around a connector node, per time step. */
@@ -732,6 +1186,20 @@ export class Panel {
   }
 
   /**
+   * The flow links of the shown model whose total flow is the simulated flow rate of an Observation node, see
+   * `ribasim_nl.goodness_of_fit`; without the exported links, the outflows of the observed node.
+   */
+  private async observedLinks(nodeId: number, observedId: number): Promise<number[]> {
+    const { network } = this;
+    const observation = this.manifest.results?.observation;
+    const links = observation ? await loadObservedLinks(observation) : null;
+    return (
+      links?.get(nodeId) ??
+      Array.from(network.linkId.filter((_, row) => network.linkType[row] === "flow" && network.fromNodeId[row] === observedId))
+    );
+  }
+
+  /**
    * Per observed variable, how well the results fit, and a chart of the observed values and the simulated values of
    * the observed node, also of the base model when comparing models.
    */
@@ -742,21 +1210,13 @@ export class Panel {
     const observedType = network.nodeType[row];
     const results = this.manifest.results;
     const base = this.comparison?.base.results;
-    const [observations, fits, baseFits, links, baseLinks] = await Promise.all([
+    const [observations, fits, baseFits, outflows, baseLinks] = await Promise.all([
       this.tableRows("Observation", "time", nodeId),
       results?.observation ? loadFits(results.observation) : null,
       base?.observation ? loadFits(base.observation) : null,
-      results?.observation ? loadObservedLinks(results.observation) : null,
+      this.observedLinks(nodeId, observedId),
       base?.observation ? loadObservedLinks(base.observation) : null,
     ]);
-    // Without the exported links, the simulated flow rate is the total outflow of the observed node
-    const outflows =
-      links?.get(nodeId) ??
-      Array.from(
-        network.linkId.filter(
-          (_, linkRow) => network.linkType[linkRow] === "flow" && network.fromNodeId[linkRow] === observedId,
-        ),
-      );
     // Links are renumbered and can lead to renumbered nodes, so without the exported links of the base model, the
     // outflows of the observed node, which keeps its id, are those of the base model
     const baseOutflows = baseLinks?.get(nodeId) ?? network.baseOutflows.get(observedId) ?? [];

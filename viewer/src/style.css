@@ -694,3 +694,8 @@
   border-radius: 4px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
+
+/* A stacked chart has a single legend entry per layer, also for the layers with a negative part */
+.ribasim-viewer .u-legend .stack-down {
+  display: none;
+}

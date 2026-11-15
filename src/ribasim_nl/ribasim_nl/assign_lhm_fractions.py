@@ -7,6 +7,10 @@ from ribasim import Model
 from ribasim.schemas import BasinConcentrationSchema, FlowBoundaryConcentrationSchema, LevelBoundaryConcentrationSchema
 
 RENAME_MAP = {"buitenland": "Buitenland", "buitenlandse aanvoer": "Buitenland"}
+# The LHM fractions that follow from a default tracer of the core, by the tracer and the LHM fractions that label part
+# of its water: the core labels all surface runoff, and `assign_lhm_fractions` only that of the secondary Basins, as
+# Maaiveld, so the rest is that of the primary Basins
+DERIVED_LHM_FRACTIONS = {"Maaiveld (doorgaand)": ("SurfaceRunoff", ("Maaiveld",))}
 
 
 def sort_lhm_fractions(items: list[str]) -> list[str]:
@@ -42,7 +46,7 @@ def sort_lhm_fractions(items: list[str]) -> list[str]:
     top_order = ["Initial", "Drainage (doorgaand)", "Drainage (bergend)", "RWZI"]
 
     # --- Items that should always appear at the bottom (in this order) ---
-    lower_order = ["Buitenland", "Maaiveld", "Neerslag"]
+    lower_order = ["Buitenland", "Maaiveld (doorgaand)", "Maaiveld", "Neerslag"]
 
     result: list[str] = []
 

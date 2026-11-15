@@ -1,4 +1,5 @@
 import { hasColumn, readColumns, type Comparison, type FeatureDiff, type Manifest } from "./data";
+import type { FlowGraph, FlowNeighbor } from "./fractions";
 
 /**
  * deck.gl binary layer data. Layers must get the same object on every render,
@@ -303,6 +304,50 @@ export function pastJunctions(network: Network, nodeId: number, direction: "upst
     }
   }
   return found ?? nodeId;
+}
+
+interface FlowLinks {
+  neighbors: Map<number, FlowNeighbor[]>;
+  ends: Map<number, { from: number; to: number }>;
+}
+
+const flowLinks = new WeakMap<Network, FlowLinks>();
+
+/**
+ * The flow links of the shown model, to trace its water, with the Junctions in the Junction / static table; the links
+ * are found once per network, and removed links are left out.
+ */
+export function flowGraph(network: Network, inStatic: ReadonlySet<number>): FlowGraph {
+  let links = flowLinks.get(network);
+  if (!links) {
+    links = { neighbors: new Map(), ends: new Map() };
+    const { neighbors, ends } = links;
+    const add = (node: number, neighbor: FlowNeighbor) => {
+      const list = neighbors.get(node);
+      if (list) list.push(neighbor);
+      else neighbors.set(node, [neighbor]);
+    };
+    network.linkId.forEach((link, row) => {
+      // Removed links of the base model have negated ids
+      if (network.linkType[row] !== "flow" || link < 0) return;
+      const from = network.fromNodeId[row];
+      const to = network.toNodeId[row];
+      ends.set(link, { from, to });
+      add(from, { node: to, link, inflow: -1 });
+      add(to, { node: from, link, inflow: 1 });
+    });
+    flowLinks.set(network, links);
+  }
+  const { neighbors, ends } = links;
+  return {
+    nodeType: (node) => {
+      const row = network.nodeRow.get(node);
+      return row === undefined ? undefined : network.nodeType[row];
+    },
+    inStatic: (node) => inStatic.has(node),
+    neighbors: (node) => neighbors.get(node) ?? [],
+    ends: (link) => ends.get(link),
+  };
 }
 
 /** The ids of the flow links out of each node, by node id. */

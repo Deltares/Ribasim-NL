@@ -7,7 +7,7 @@ import shutil
 import sqlite3
 import tomllib
 import warnings
-from collections.abc import Collection
+from collections.abc import Sequence
 from contextlib import closing
 from pathlib import Path
 
@@ -20,6 +20,7 @@ import pyogrio
 import shapely
 import xarray as xr
 
+from ribasim_nl.assign_lhm_fractions import DERIVED_LHM_FRACTIONS, sort_lhm_fractions
 from ribasim_nl.case_conversions import pascal_to_snake_case, snake_to_pascal_case
 from ribasim_nl.goodness_of_fit import MIN_COMPARED_DAYS, compare, observed_and_simulated
 
@@ -37,19 +38,20 @@ TIME_STEPS_PER_ROW_GROUP = 8
 # Result variables that can color the map, with their color scale
 MAP_VARIABLES = {"basin": {"level": "linear", "storage": "log"}, "flow": {"flow_rate": "log"}}
 LOG_SCALE_DYNAMIC_RANGE = 1e-4
-# The tracers of the Ribasim core: the fractions of the water by its source, and the age of the water in seconds
+# The tracers of the Ribasim core: the age of the water in seconds, the fraction of all water, and the fractions of
+# the water by the type of its source, in the order of the stacked charts of the viewer from the bottom, like the
+# plots of the QGIS plugin
 RESIDENCE_TIME = "ResidenceTime"
-SOURCE_TRACERS = {
-    "Continuity",
-    "Initial",
-    "LevelBoundary",
-    "FlowBoundary",
-    "Drainage",
-    "Precipitation",
-    "SurfaceRunoff",
-}
+CONTINUITY = "Continuity"
+SOURCE_TRACERS = ("Initial", "Drainage", "SurfaceRunoff", "FlowBoundary", "LevelBoundary", "Precipitation")
 # The tables of the model input with concentrations, which mark the fractions of the LHM
-CONCENTRATION_TABLES = ("Basin / concentration", "FlowBoundary / concentration", "LevelBoundary / concentration")
+BOUNDARY_CONCENTRATION_TABLES = ("FlowBoundary / concentration", "LevelBoundary / concentration")
+CONCENTRATION_TABLES = ("Basin / concentration", *BOUNDARY_CONCENTRATION_TABLES)
+# The sets of tracers that label all water by its source, see `tracer_sets`
+LHM_SET = "LHM fractions"
+SOURCE_SET = "Source types"
+# How much the tracers of a set may add up to more than Continuity, which float32 rounding can do
+SET_SUM_TOLERANCE = 1e-3
 # The groups of the substances in the list to choose from
 NUTRIENTS = "Nutrients"
 TRACERS = "Tracers"
@@ -335,6 +337,111 @@ def lhm_fractions(database: Path) -> set[str]:
     return fractions
 
 
+def lhm_boundary_labels(database: Path) -> dict[int, str]:
+    """The LHM fraction that labels the water of each FlowBoundary and LevelBoundary node, see `lhm_fractions`.
+
+    Each boundary has at most one, with a concentration of 1, so it labels all its water.
+    """
+    labels: dict[int, str] = {}
+    with closing(sqlite3.connect(database)) as con:
+        for table in BOUNDARY_CONCENTRATION_TABLES:
+            columns = {row[1] for row in con.execute(f'PRAGMA table_info("{table}")')}
+            if "meta_lhm_fraction" not in columns:
+                continue
+            # The table is one of BOUNDARY_CONCENTRATION_TABLES
+            query = f'SELECT node_id, substance, concentration FROM "{table}" WHERE meta_lhm_fraction'  # noqa: S608
+            for node_id, substance, concentration in con.execute(query).fetchall():
+                assert concentration == 1, f"LHM fraction {substance} of node {node_id} in {table} is {concentration}"
+                assert labels.get(node_id, substance) == substance, f"Node {node_id} has two LHM fractions"
+                labels[int(node_id)] = str(substance)
+    return labels
+
+
+def tracer_sets(database: Path, nodes: pd.DataFrame) -> list[dict]:
+    """The sets of tracers that each label the water by its source, which the viewer charts as stacked fractions.
+
+    Within a set, all water has one label at most, so its tracers add up to `Continuity`, except for the water without
+    a label, see https://github.com/Deltares/Ribasim/issues/3438#issuecomment-6834960461. The LHM fractions come
+    first, as the default, with the `Initial` water, ordered like the figures of `ribasim_nl.analyse_results`; then
+    the default tracers of the core, which label the water by the type of its source.
+
+    Each set lists its tracers in the order of the stacked charts from the bottom, and the label of the water of the
+    FlowBoundary and LevelBoundary nodes, since that water flows over links without passing a Basin. A set can have
+    `derived` tracers, which are a tracer of the results minus others, see `derived_tracers`: the LHM fractions that
+    the model input lacks, but that follow from the default tracers of the core, see `DERIVED_LHM_FRACTIONS`.
+    """
+    sets = []
+    if fractions := lhm_fractions(database):
+        boundaries = lhm_boundary_labels(database)
+        derived = {
+            name: {"tracer": tracer, "minus": list(minus)}
+            for name, (tracer, minus) in DERIVED_LHM_FRACTIONS.items()
+            if name not in fractions and set(minus) <= fractions
+        }
+        lhm_set = {
+            "name": LHM_SET,
+            "tracers": sort_lhm_fractions(["Initial", *sorted(fractions), *derived]),
+            "boundaries": {str(node_id): boundaries[node_id] for node_id in sorted(boundaries)},
+        }
+        sets.append(lhm_set | ({"derived": derived} if derived else {}))
+    boundary_nodes = nodes[nodes["node_type"].isin(["FlowBoundary", "LevelBoundary"])].sort_values("node_id")
+    sets.append(
+        {
+            "name": SOURCE_SET,
+            "tracers": list(SOURCE_TRACERS),
+            "boundaries": dict(zip(boundary_nodes["node_id"].astype(str), boundary_nodes["node_type"], strict=True)),
+        }
+    )
+    return sets
+
+
+def derived_tracers(sets: Sequence[dict], data: dict[str, np.ndarray]) -> tuple[list[dict], dict[str, np.ndarray]]:
+    """The values of the derived tracers of the tracer `sets` from the concentrations `data`, see `tracer_sets`.
+
+    A derived tracer is a tracer minus the others that label part of its water, so it may not be negative. Returns the
+    sets without the derived tracers that `data` lacks the tracers for, and the values of the derived tracers that
+    `data` does not have yet. A derived tracer that is in `data` is no longer derived.
+    """
+    values: dict[str, np.ndarray] = {}
+    kept = []
+    for tracer_set in sets:
+        derived = {}
+        missing = set()
+        for name, definition in tracer_set.get("derived", {}).items():
+            tracer, minus = definition["tracer"], definition["minus"]
+            if name in data:
+                continue
+            if not {tracer, *minus} <= set(data):
+                missing.add(name)
+                continue
+            difference = data[tracer] - sum(data[other] for other in minus)
+            lowest = float(np.nanmin(difference, initial=0.0))
+            assert lowest > -SET_SUM_TOLERANCE, f"{name}: {', '.join(minus)} exceed {tracer} by {-lowest}"
+            # Without the rounding errors below zero
+            values[name] = np.maximum(difference, 0.0)
+            derived[name] = definition
+        tracer_set = {key: value for key, value in tracer_set.items() if key != "derived"}
+        tracer_set["tracers"] = [tracer for tracer in tracer_set["tracers"] if tracer not in missing]
+        kept.append(tracer_set | ({"derived": derived} if derived else {}))
+    return kept, values
+
+
+def checked_sets(sets: Sequence[dict], data: dict[str, np.ndarray]) -> list[dict]:
+    """The tracer sets whose tracers are all in the concentrations `data`, checked to label no water twice."""
+    if CONTINUITY not in data:
+        return []
+    kept = []
+    for tracer_set in sets:
+        tracers = tracer_set["tracers"]
+        assert len(set(tracers)) == len(tracers), f"Duplicate tracers in {tracer_set['name']}"
+        if not set(tracers) <= set(data):
+            continue
+        excess = np.nanmax(sum(data[tracer] for tracer in tracers) - data[CONTINUITY], initial=0.0)
+        assert excess < SET_SUM_TOLERANCE, f"The tracers of {tracer_set['name']} exceed {CONTINUITY} by {excess}"
+        kept.append(tracer_set)
+    return kept
+
+
 def concentration_variable(substance: str, values: np.ndarray, units: str, fraction: bool) -> dict:
     """The color scale of a substance, linear from zero, and its group: the tracers or the nutrients.
 
@@ -361,12 +468,12 @@ def concentration_variable(substance: str, values: np.ndarray, units: str, fract
 
 
 def export_concentration(
-    source: Path, ids: np.ndarray, times: np.ndarray, by_id: Path, by_time: Path, fractions: Collection[str] = ()
+    source: Path, ids: np.ndarray, times: np.ndarray, by_id: Path, by_time: Path, sets: Sequence[dict] = ()
 ) -> dict:
     """Export the Basin concentrations per Basin for charts and per time step for the map, with a column per substance.
 
-    The `fractions` are the substances of the model input that are fractions of the water, like the tracers of the
-    core, see `lhm_fractions`.
+    The tracers of the tracer `sets` are fractions of the water, like `Continuity`; their derived tracers are added to
+    the substances, and the sets whose tracers are all in the results are kept, see `tracer_sets`.
     The viewer reads only the column of the chosen substance, so a long list of substances does not slow it down.
     The Basins and time steps must be those of the Basin results, so the viewer can reuse their order on the map.
     """
@@ -387,12 +494,14 @@ def export_concentration(
             values = concentration.sel(substance=substance).transpose("node_id", "time").to_numpy()
             values = values[order].astype("float32")
             data[substance] = values / SECONDS_PER_DAY if substance == RESIDENCE_TIME else values
+    sets, derived = derived_tracers(sets, data)
+    data |= derived
+    substances += list(derived)
     write_by_id(ids, times, data, "node_id", by_id)
     write_by_time(ids, data, "node_id", by_time)
+    fractions = {CONTINUITY}.union(*(tracer_set["tracers"] for tracer_set in sets))
     variables = {
-        substance: concentration_variable(
-            substance, data[substance], units, substance in SOURCE_TRACERS or substance in fractions
-        )
+        substance: concentration_variable(substance, data[substance], units, substance in fractions)
         for substance in substances
     }
     # The nutrients first, then the tracers, each sorted, which makes them easy to find
@@ -401,15 +510,16 @@ def export_concentration(
         "id": "node_id",
         "count": len(ids),
         "variables": {substance: variables[substance] for substance in order_of_choice},
+        "sets": checked_sets(sets, data),
         "by_id": by_id,
         "by_time": by_time,
     }
 
 
-def export_results(results_dir: Path, output_dir: Path, fractions: Collection[str] = ()) -> dict:
+def export_results(results_dir: Path, output_dir: Path, sets: Sequence[dict] = ()) -> dict:
     """Export Basin and flow results and Basin concentrations, both per feature for charts and per time step for the map.
 
-    The `fractions` are the substances of the model input that are fractions of the water, see `lhm_fractions`.
+    The `sets` are the tracer sets of the model, see `tracer_sets`.
     """
     results: dict = {"steps_per_row_group": TIME_STEPS_PER_ROW_GROUP}
     (output_dir / "results").mkdir()
@@ -452,7 +562,7 @@ def export_results(results_dir: Path, output_dir: Path, fractions: Collection[st
                 times,
                 output_dir / "results" / "concentration_by_id.parquet",
                 output_dir / "results" / "concentration_by_time.parquet",
-                fractions,
+                sets,
             )
     control = results_dir / "control.nc"
     if control.is_file():
@@ -630,7 +740,7 @@ def export_webmap(toml_path: Path, waterboards_path: Path | None, output_dir: Pa
     }
     results_dir = model_results_dir(toml_path, config)
     if results_dir.is_dir():
-        results = export_results(results_dir, output_dir, lhm_fractions(database))
+        results = export_results(results_dir, output_dir, tracer_sets(database, nodes))
         for name in ("basin", "flow", "concentration"):
             if name in results:
                 results[name]["by_id"] = entry(results[name]["by_id"])
