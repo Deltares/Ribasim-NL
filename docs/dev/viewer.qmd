@@ -14,6 +14,9 @@ The choice is kept in the URL, as `#authority=<waterbeheercode>`.
 The *Basins* choice in the time bar colors the Basins and their Basin / areas by a result.
 The areas of `bergend` Basins stay uncolored, since they overlap those of the `doorgaand` Basins; only their nodes are colored.
 
+The button in the corner of a chart in the panel opens it large.
+Drag across a chart to zoom in on a time range, in the large chart also a box to zoom in on the values, and double-click to zoom out.
+
 ```{mermaid}
 flowchart LR
   A[modellen/lhm_coupled] -->|dvc repro run_lhm_coupled| R[runs/lhm_coupled]
