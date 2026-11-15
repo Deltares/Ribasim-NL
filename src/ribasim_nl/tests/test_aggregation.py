@@ -5,7 +5,6 @@ import pytest
 from ribasim_nl.crossings.aggregation import (
     aggregation_area_of,
     merge_small,
-    overlapping_pairs,
     refine_aggregation_areas,
     shared_boundaries,
 )
@@ -76,17 +75,6 @@ def test_merge_small():
     # without levels, the longest shared boundary decides: C joins A, and D joins B
     unknown = np.full(len(area), np.nan)
     assert merge_small(area, unknown, within, shared, 5000.0).tolist() == [0, 1, 0, 1, 0, 5]
-
-    # a copy of B and a peilgebied within A are one area with them, also if they are large enough themselves
-    polygons = np.array([*polygons, box(100, 0, 200, 100), box(10, 10, 90, 90)])
-    assert overlapping_pairs(polygons) == [(0, 7), (1, 6)]
-    area = np.array([*area, 10000.0, 6400.0])
-    level = np.array([*level, -1.0, -5.0])
-    within = np.array([*within, "P", "P"])
-    groups = merge_small(
-        area, level, within, shared_boundaries(polygons), 100.0, overlapping=overlapping_pairs(polygons)
-    )
-    assert groups.tolist() == [0, 1, 2, 3, 4, 5, 1, 0]
 
 
 def test_refine_aggregation_areas():

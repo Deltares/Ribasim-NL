@@ -40,7 +40,9 @@ processor = paths.feedback_processor(work_dir=paths.model_dir("profiles"))
 
 ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
 # the Basins and added nodes below are those of the models of 2024, see `References2024`
-refs = References2024(ribasim_model, paths.boezemmodel_ids, paths.base_model_toml, paths.feedback_form)
+refs = References2024(
+    ribasim_model, paths.boezemmodel_ids, paths.base_model_toml, paths.feedback_form, paths.feedback_ids
+)
 refs.translate_supply_flags(processor)
 
 # add gemaal Kadoelen which is removed due to the merging

@@ -12,8 +12,7 @@ Usage: pixi run python pipeline/00e_crossings_to_ribasim.py <authority>
 
 import sys
 
-from ribasim_nl.crossings.aggregation import REFINED
-from ribasim_nl.crossings.basin_references import FIRST_NEW_NODE_ID
+from ribasim_nl.crossings.aggregation import FIRST_NEW_NODE_ID, REFINED
 from ribasim_nl.crossings.model import Options, boezem_model
 from ribasim_nl.crossings.renumber import Reference, renumber_checks, renumber_nodes
 

@@ -8,6 +8,7 @@ from ribasim.nodes import basin, manning_resistance, pump
 from ribasim_nl.crossings.basin_references import (
     BasinLookup,
     References2024,
+    locate_node,
     rating_curves_between_levels,
     remove_dangling_connectors,
     removed_basins,
@@ -171,3 +172,31 @@ def test_remove_dangling_connectors(tmp_path: Path):
     assert remove_dangling_connectors(model, among={11}) == []
     assert remove_dangling_connectors(model) == [5]
     assert 5 not in model.node.df.index
+
+
+def test_located_nodes(tmp_path: Path):
+    model, reference, input_toml, form = _refined(tmp_path)
+    # in 2024 the feedback stage added Pump 6 at (0, 50) and Basin 7 in the second half of Basin 1
+    added = tmp_path / "feedback_ids.gpkg"
+    gpd.GeoDataFrame(
+        {"node_id": [6, 7, 8], "node_type": ["Pump", "Basin", "Pump"]},
+        geometry=[Point(0, 50), Point(180, 20), Point(1000, 1000)],
+        crs=CRS,
+    ).to_file(added, layer="node")
+    new_pump = model.pump.add(Node(geometry=Point(1, 50)), [pump.Static(flow_rate=[1.0])])
+    refs = References2024(model, reference, input_toml, form, added)
+    # a node other than a Basin is found within 5 m, a Basin by its area
+    assert refs.node(6) == new_pump.node_id
+    assert refs.node(7) == 10
+    assert refs.node(5) == 5
+    # a node that is not there, and one that 2024 lacked, get an ID that no node has
+    assert refs.nodes([8, 9]) == (-8, -9)
+    assert refs.keys({6: "name"}) == {new_pump.node_id: "name"}
+
+    nodes, areas = model.node.df, model.basin.area.df
+    assert areas is not None
+    assert locate_node(nodes, areas, "Pump", Point(205, 50)) == 5
+    assert locate_node(nodes, areas, "Pump", Point(210, 50)) is None
+    # outside the Basin areas, the nearest Basin within 500 m
+    assert locate_node(nodes, areas, "Basin", Point(350, 50)) == 2
+    assert locate_node(nodes, areas, "Basin", Point(900, 50)) is None

@@ -20,6 +20,9 @@ from ribasim_nl.model import Model
 
 logger = logging.getLogger(__name__)
 
+# the node types at the boundary of a model, which have no Basin of their own
+BOUNDARY_TYPES = ["Terminal", "FlowBoundary", "LevelBoundary"]
+
 # the columns with node IDs, in the tables of the input models
 NODE_ID_COLUMNS = ["node_id", "meta_node_id", "from_node_id", "to_node_id"]
 
@@ -110,7 +113,8 @@ def match_nodes(
     """Match the nodes of a model to those of a reference, as a mapping from their ID to that of the reference.
 
     Basins match by `match_basins`. The other nodes match one to one with a node of the same type within `tolerance`,
-    first those that connect the same matched Basins, then by distance. The nodes that are left match with a node of the
+    first those that connect the same matched Basins, then by distance, and boundary nodes first with the one that
+    has the same matched connector nodes. The nodes that are left match with a node of the
     same type that connects the same Basins within `loose_tolerance`, nearest first: a crossing that moved along the
     boundary of its peilgebied, for instance.
     """
@@ -148,11 +152,28 @@ def match_nodes(
 
     others = nodes.loc[nodes["node_type"] != "Basin"].reset_index(drop=True)
     old_others = old_nodes.loc[old_nodes["node_type"] != "Basin"].reset_index(drop=True)
-    pairs = candidates(others, old_others, tolerance)
+    boundary = others["node_type"].isin(BOUNDARY_TYPES)
+    old_boundary = old_others["node_type"].isin(BOUNDARY_TYPES)
+    pairs = candidates(others.loc[~boundary], old_others.loc[~old_boundary], tolerance)
     pairs = pairs.sort_values(
         ["same_basins", "distance", "new", "old"], ascending=[False, True, True, True], kind="stable"
     )
     mapping = basins | _greedy(pairs)
+
+    # Boundary nodes lie beside their connector node, so those of two connector nodes at one crossing coincide. A
+    # boundary node matches the one whose connector nodes match its own first.
+    def same_neighbours(new: int, old: int) -> bool:
+        linked = up_new.get(new, empty) | down_new.get(new, empty)
+        return frozenset(mapping.get(i) for i in linked) == up_old.get(old, empty) | down_old.get(old, empty)
+
+    pairs = candidates(others.loc[boundary], old_others.loc[old_boundary], tolerance)
+    pairs["same_neighbours"] = [same_neighbours(a, b) for a, b in zip(pairs["new"], pairs["old"], strict=True)]
+    pairs = pairs.sort_values(
+        ["same_neighbours", "same_basins", "distance", "new", "old"],
+        ascending=[False, False, True, True, True],
+        kind="stable",
+    )
+    mapping |= _greedy(pairs)
 
     left = others.loc[~others["node_id"].isin(mapping)].reset_index(drop=True)
     old_left = old_others.loc[~old_others["node_id"].isin(mapping.values())].reset_index(drop=True)

@@ -10,6 +10,7 @@ several Basins. `BasinLookup` finds the Basin that replaces a Basin of 2024 at a
 import logging
 from collections.abc import Collection, Hashable, Iterable, Mapping
 from pathlib import Path
+from typing import cast
 
 import geopandas as gpd
 import pandas as pd
@@ -20,15 +21,11 @@ from shapely.geometry import Point
 from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl.aquo import NODE_ID_FACTOR, authority_by_code
-from ribasim_nl.crossings.aggregation import REFINED
+from ribasim_nl.crossings.aggregation import FIRST_NEW_NODE_ID, REFINED
 from ribasim_nl.model import Model
 from ribasim_nl.ribasim_feedback_processor import RibasimFeedbackProcessor
 
 logger = logging.getLogger(__name__)
-
-# The first ID of the nodes that the input model of 2024 lacks. IDs right after those of 2024 are the ones that the
-# feedback forms gave to the nodes they add, to which scripts refer.
-FIRST_NEW_NODE_ID = 10_000
 
 
 class BasinLookup:
@@ -110,21 +107,32 @@ def remove_dangling_connectors(model: Model, among: Collection[int] | None = Non
     """Remove the connector nodes that lack a node upstream or downstream, with their links, and return their IDs.
 
     A feedback form that removes a Basin of 2024 also removes its connector nodes, but not those that the Basin with
-    its ID has to its neighbours within the delivered aggregation area.
+    its ID has to its neighbours within the delivered aggregation area. The Terminals and FlowBoundaries that are
+    left without a connector node are removed as well.
 
     :param among: the nodes to consider, by default all
     """
-    node_type = model.node.df["node_type"]
-    connectors = node_type.index[node_type.isin(["Pump", "Outlet", "TabulatedRatingCurve", "ManningResistance"])]
-    dangling = sorted(
-        int(i)
-        for i in connectors
-        if (among is None or i in among)
-        and (not (model.link.df["from_node_id"] == i).any() or not (model.link.df["to_node_id"] == i).any())
-    )
-    for node_id in dangling:
-        model.remove_node(node_id, remove_links=True)
-    return dangling
+    connector_types = ["Pump", "Outlet", "TabulatedRatingCurve", "ManningResistance"]
+    removed: list[int] = []
+    while True:
+        node_type = model.node.df["node_type"]
+        upstream = set(model.link.df["to_node_id"])
+        downstream = set(model.link.df["from_node_id"])
+        dangling = sorted(
+            int(i)
+            for i, kind in zip(node_type.index.to_numpy(), node_type.to_numpy(), strict=True)
+            if (among is None or i in among)
+            and (
+                (kind in connector_types and (i not in upstream or i not in downstream))
+                or (kind == "Terminal" and i not in upstream)
+                or (kind == "FlowBoundary" and i not in downstream)
+            )
+        )
+        if not dangling:
+            return removed
+        for node_id in dangling:
+            model.remove_node(node_id, remove_links=True)
+        removed += dangling
 
 
 def rating_curves_between_levels(model: Model, unknown_level: float, tolerance: float = 0.005) -> list[int]:
@@ -183,6 +191,7 @@ def translate_feedback_form(processor: RibasimFeedbackProcessor, reference_path:
       refined aggregation areas, the Basin with its ID merges into another Basin that covers most of its area, a
       copy of the same peilgebieden. Without one it stays if a Basin of 2024 that the form keeps covers most of its
       area, since no other Basin represents that area now. Else it is removed.
+    - A Basin of 2024 that becomes another node, such as a boundary, does so with all Basins that replace it.
     - Target levels are only set for the Basins of 2024 that one Basin replaces, since the refined areas have their own.
 
     :param processor: the processor of the form, of which the model has refined aggregation areas
@@ -234,6 +243,18 @@ def translate_feedback_form(processor: RibasimFeedbackProcessor, reference_path:
                 skip.append(index)
             else:
                 lookup.merge(basin, -1)
+        elif row["Actie"] == "Aanpassen" and row["Verbinding"] == "Node" and is_basin(row["Node ID.2"]):
+            # a Basin that becomes another node, such as a boundary: the Basins that replace it become that node
+            basin = int(row["Node ID.2"])
+            replacing = lookup.basins(basin)
+            if basin not in replacing:
+                continue
+            for other in replacing:
+                if other != basin:
+                    connectors = neighbours(other) & neighbours(basin)
+                    model.merge_basins(node_id=other, to_node_id=basin, are_connected=bool(connectors))
+                    lookup.merge(other, basin)
+                    counts["merged"] += 1
         elif row["Actie"] == "Toevoegen":
             point = Point(row["Coordinaat X"], row["Coordinaat Y"])
             for column in ["Node ID A", "Node ID B"]:
@@ -270,6 +291,80 @@ def translate_feedback_form(processor: RibasimFeedbackProcessor, reference_path:
         int(b) for b in types_2024.index[types_2024 == "Basin"] if lookup.is_single(int(b))
     )
     return counts
+
+
+def shifted_past_new_boundaries(node_id: int, nodes: pd.DataFrame) -> int:
+    """The ID of a node that the feedback stage adds, past the LevelBoundaries of the new FlowBoundaries.
+
+    `ribasim_param.FlowBoundaries_to_LevelBoundaries` numbers the LevelBoundaries of the FlowBoundaries that the input
+    model of 2024 lacks after the others. The nodes that the stage adds later follow these.
+
+    :param node_id: the ID of the node, shifted by `added_node_shift`
+    :param nodes: the Node table of a model of the feedback stage or later, by node ID
+    """
+    if "meta_old_node_id" not in nodes.columns:
+        return node_id
+    new = nodes.index[(nodes["node_type"] == "LevelBoundary") & (nodes["meta_old_node_id"] >= FIRST_NEW_NODE_ID)]
+    return node_id + len(new) if len(new) > 0 and node_id >= new.min() else node_id
+
+
+def write_added_nodes(feedback_database: Path, reference_path: Path, path: Path) -> None:
+    """Write the nodes that the feedback stage of 2024 added, `verwerkt/feedback_ids.gpkg`, from its model.
+
+    These are the nodes of the feedback model with an ID after those of the input model of 2024, with their type
+    and location. The forcing scripts and the coupling refer to them by ID, see `locate_node`.
+    """
+    nodes = gpd.read_file(feedback_database, layer="Node", fid_as_index=True)
+    last_2024 = int(gpd.read_file(reference_path, layer="node", ignore_geometry=True)["node_id"].max())
+    added = nodes.loc[nodes.index > last_2024, ["node_type", "geometry"]].rename_axis("node_id").reset_index()
+    path.unlink(missing_ok=True)
+    added.to_file(path, layer="node")
+
+
+def locate_node(
+    nodes: gpd.GeoDataFrame,
+    areas: gpd.GeoDataFrame,
+    node_type: str,
+    point: Point,
+    tolerance: float = 5.0,
+    basin_tolerance: float = 500.0,
+) -> int | None:
+    """The node of a type at a location, or None if there is none.
+
+    A Basin is the one whose area holds the location, or else the nearest within `basin_tolerance`, since a Basin
+    that the feedback stage makes from part of another can lie elsewhere in that part. Other nodes are within
+    `tolerance`.
+
+    :param nodes: the Node table of a model of the feedback stage or the profiles stage, by node ID
+    :param areas: its Basin areas, with the column node_id
+    """
+    candidates = nodes.loc[nodes["node_type"] == node_type]
+    if node_type == "Basin":
+        if "meta_categorie" in candidates.columns:
+            candidates = candidates.loc[candidates["meta_categorie"] != "bergend"]
+        own = areas.loc[areas["node_id"].isin(candidates.index)]
+        distance = own.geometry.distance(point).groupby(own["node_id"].to_numpy()).min()
+        tolerance = basin_tolerance
+        # of the Basins whose area holds the location, the one with the nearest node
+        distance = distance.loc[distance == distance.min()] if len(distance) > 0 else distance
+        tie = candidates.loc[distance.index].geometry.distance(point)
+        order = pd.DataFrame({"distance": distance, "tie": tie}).sort_values(["distance", "tie"], kind="stable")
+        return int(order.index[0]) if len(order) > 0 and order["distance"].iloc[0] <= tolerance else None
+    distance = candidates.geometry.distance(point).sort_values(kind="stable")
+    return int(distance.index[0]) if len(distance) > 0 and distance.iloc[0] <= tolerance else None
+
+
+def locate_added_node(
+    added: gpd.GeoDataFrame, node_id: int, nodes: gpd.GeoDataFrame, areas: gpd.GeoDataFrame
+) -> int | None:
+    """The node of a model that the feedback stage of 2024 added with an ID, see `locate_node`.
+
+    :param added: the nodes that the feedback stage of 2024 added, by node ID, see `write_added_nodes`
+    """
+    if node_id not in added.index:
+        return None
+    node_type = cast(str, added.at[node_id, "node_type"])
+    return locate_node(nodes, areas, node_type, cast(Point, added.at[node_id, "geometry"]))
 
 
 def added_node_shift(input_model_toml: Path, reference_path: Path) -> int:
@@ -333,16 +428,31 @@ class References2024:
       `basins` all of them, and `merge_basins` merges them into the Basin they connect to.
     - Another node of the input model of 2024 kept its ID, see `ribasim_nl.crossings.renumber`.
     - A node that the feedback stage adds is numbered after the nodes of the input model, of which there are more
-      now. Since the stage adds the same nodes in the same order, its ID is shifted by a fixed number, see `node`.
+      now. The feedback scripts refer to nodes that the form and they themselves just added: these are added in the
+      same order, so their ID is shifted by a fixed number, see `node`. The LevelBoundaries of the FlowBoundaries
+      that the input model of 2024 lacks, see `ribasim_param.FlowBoundaries_to_LevelBoundaries`, shift the nodes that
+      are added after them once more.
+    - Later stages find an added node by its type and location in the feedback model of 2024, `added_path`, since
+      the number of nodes that a script adds can depend on the Basins, see `locate_node`.
 
     :param model: model of the feedback stage or a later one
     :param reference_path: the nodes and Basin areas of the input model of 2024, `verwerkt/boezemmodel_ids.gpkg`
     :param input_model_toml: the input model with refined aggregation areas
     :param feedback_excel: the feedback form, of which the removed Basins of 2024 are not replaced
+    :param added_path: the nodes that the feedback stage of 2024 added, `verwerkt/feedback_ids.gpkg`, for a model of
+        a later stage
     """
 
-    def __init__(self, model: Model, reference_path: Path, input_model_toml: Path, feedback_excel: Path) -> None:
+    def __init__(
+        self,
+        model: Model,
+        reference_path: Path,
+        input_model_toml: Path,
+        feedback_excel: Path,
+        added_path: Path | None = None,
+    ) -> None:
         self.model = model
+        self.added = None if added_path is None else gpd.read_file(added_path, layer="node").set_index("node_id")
         nodes = gpd.read_file(reference_path, layer="node", ignore_geometry=True)
         self.types_2024 = nodes.set_index("node_id")["node_type"]
         self.last_2024 = int(nodes["node_id"].max())
@@ -356,15 +466,27 @@ class References2024:
     def node(self, node_id: int) -> int:
         """The ID of a node other than a Basin of 2024: its own if it is of 2024, else that of the added node."""
         assert not self.is_basin(node_id), f"{node_id} is a Basin of 2024, see `basin` and `basins`"
-        return node_id if node_id <= self.last_2024 else node_id + self.shift
+        if node_id <= self.last_2024:
+            return node_id
+        if self.added is None:
+            return shifted_past_new_boundaries(node_id + self.shift, self.model.node.df)
+        assert self.model.basin.area.df is not None, "the model has no Basin areas"
+        located = locate_added_node(self.added, node_id, self.model.node.df, self.model.basin.area.df)
+        # an ID that no node has, so that what refers to it does nothing, as for a node that 2024 lacked
+        return -node_id if located is None else located
 
     def nodes(self, node_ids: Iterable[int]) -> tuple[int, ...]:
-        """The IDs of several nodes, see `node`."""
-        return tuple(self.node(node_id) for node_id in node_ids)
+        """The IDs of several nodes, see `node`. Reports those that are not in the model, as some never were."""
+        node_ids = tuple(node_ids)
+        translated = tuple(self.node(node_id) for node_id in node_ids)
+        missing = [old for old, new in zip(node_ids, translated, strict=True) if new not in self.model.node.df.index]
+        if missing:
+            print(f"Nodes of 2024 that are not in the model: {missing}")
+        return translated
 
     def keys[T](self, by_node: Mapping[int, T]) -> dict[int, T]:
-        """A mapping by node ID, with the IDs of `node`."""
-        return {self.node(node_id): value for node_id, value in by_node.items()}
+        """A mapping by node ID, with the IDs of `nodes`."""
+        return dict(zip(self.nodes(by_node), by_node.values(), strict=True))
 
     def basins(self, basin_2024: int) -> list[int]:
         """The Basins that replace a Basin of 2024."""
@@ -481,9 +603,10 @@ class CoupledReferences2024:
     def __init__(self, data_dir: Path) -> None:
         self.data_dir = data_dir
         self._types: dict[str, pd.Series] = {}
-        self._shift: dict[str, int] = {}
         self._lookup: dict[str, BasinLookup] = {}
-        self._points: dict[str, gpd.GeoSeries] = {}
+        self._nodes: dict[str, gpd.GeoDataFrame] = {}
+        # the nodes that the feedback stage of 2024 added, and the nodes and Basin areas of the feedback model
+        self._added: dict[str, tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]] = {}
 
     def _reference_path(self, authority: str) -> Path:
         return self.data_dir / authority / "verwerkt/boezemmodel_ids.gpkg"
@@ -491,26 +614,32 @@ class CoupledReferences2024:
     def _read(self, authority: str) -> None:
         nodes = gpd.read_file(self._reference_path(authority), layer="node", ignore_geometry=True)
         self._types[authority] = nodes.set_index("node_id")["node_type"]
-        (input_model,) = (self.data_dir / authority / "modellen").glob(f"{authority}_boezemmodel_*")
-        self._shift[authority] = added_node_shift(input_model / "ribasim.toml", self._reference_path(authority))
+        database = self.data_dir / authority / f"modellen/{authority}_forcing/input/database.gpkg"
+        self._nodes[authority] = gpd.read_file(database, layer="Node", fid_as_index=True)
+        added = gpd.read_file(self._reference_path(authority).with_name("feedback_ids.gpkg"), layer="node")
+        feedback = self.data_dir / authority / f"modellen/{authority}_feedback/input/database.gpkg"
+        self._added[authority] = (
+            added.set_index("node_id"),
+            gpd.read_file(feedback, layer="Node", fid_as_index=True),
+            gpd.read_file(feedback, layer="Basin / area"),
+        )
 
     def _basin(self, authority: str, basin_2024: int, near: int | None) -> int:
         """The Basin that replaces a Basin of 2024 nearest to a node of the forcing model, or the one with its ID."""
+        nodes = self._nodes[authority]
         if authority not in self._lookup:
             database = self.data_dir / authority / f"modellen/{authority}_forcing/input/database.gpkg"
-            nodes = gpd.read_file(database, layer="Node", fid_as_index=True)
             areas = gpd.read_file(database, layer="Basin / area")
             bergend = nodes.index[nodes["meta_categorie"] == "bergend"]
             reference = gpd.read_file(self._reference_path(authority), layer="area")
             form = self.data_dir / authority / "verwerkt/Feedback Formulier" / f"feedback_formulier_{authority}.xlsx"
             reference = reference.loc[~reference["node_id"].isin(list(removed_basins(form)))]
             self._lookup[authority] = BasinLookup(areas.loc[~areas["node_id"].isin(bergend)], reference)
-            self._points[authority] = nodes.geometry
         lookup = self._lookup[authority]
         if near is None:
             assert basin_2024 in lookup.basins(basin_2024), f"Basin {basin_2024} of 2024 of {authority} is replaced"
             return basin_2024
-        return lookup.at(basin_2024, self._points[authority].loc[near])
+        return lookup.at(basin_2024, nodes.geometry.loc[near])
 
     def node(self, node_id: int, near: int | None = None) -> int:
         """The ID in the coupled model of a node, given as in 2024.
@@ -530,7 +659,12 @@ class CoupledReferences2024:
             if near is not None and near // NODE_ID_FACTOR == code:
                 near_local = self.node(near) % NODE_ID_FACTOR
             return code * NODE_ID_FACTOR + self._basin(authority, local, near_local)
-        return node_id if local <= int(types.index.max()) else node_id + self._shift[authority]
+        if local <= int(types.index.max()):
+            return node_id
+        # a node that the feedback stage added, which has the same ID in the later stages
+        added, nodes, areas = self._added[authority]
+        located = locate_added_node(added, local, nodes, areas)
+        return -node_id if located is None else code * NODE_ID_FACTOR + located
 
     def keys[T](self, by_node: Mapping[int, T]) -> dict[int, T]:
         """A mapping by node ID, with the IDs of `node`."""

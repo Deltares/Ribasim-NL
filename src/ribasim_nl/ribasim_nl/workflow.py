@@ -26,9 +26,8 @@ from ribasim_nl.control import (
     get_node_table_with_from_to_node_ids,
     remove_duplicate_controls,
 )
-from ribasim_nl.crossings.aggregation import REFINED
+from ribasim_nl.crossings.aggregation import FIRST_NEW_NODE_ID, REFINED
 from ribasim_nl.crossings.basin_references import (
-    FIRST_NEW_NODE_ID,
     remove_dangling_connectors,
     translate_feedback_form,
 )
@@ -81,6 +80,11 @@ class WaterBoardPaths:
     def boezemmodel_ids(self) -> Path:
         """The nodes, links and Basin areas of the input model of 2024, see `ribasim_nl.crossings.renumber`."""
         return self.cloud.joinpath(self.waterschap, "verwerkt/boezemmodel_ids.gpkg")
+
+    @property
+    def feedback_ids(self) -> Path:
+        """The nodes that the feedback stage of 2024 added, see `ribasim_nl.crossings.basin_references`."""
+        return self.cloud.joinpath(self.waterschap, "verwerkt/feedback_ids.gpkg")
 
     @property
     def feedback_form(self) -> Path:
