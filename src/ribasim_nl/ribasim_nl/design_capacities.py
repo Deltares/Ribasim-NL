@@ -164,8 +164,9 @@ def _split_drainage(
     A water body drains its own area and what the drains into it carry. The drains with a known capacity carry up to
     that capacity, and the other drains share the rest equally. Drains that flow out of a water body into a boundary
     take the drainage out of the model. Unknown drains in a loop that no unknown drain leaves would pass the drainage
-    around forever, so in the water bodies of such a loop with known drains, these carry all. This repeats until the
-    drained areas no longer change.
+    around forever, so in the water bodies of such a loop with known drains, these carry all. The loop can pass
+    through known drains. In a loop that no drain leaves at all, the drains only carry the area of the water body
+    they come from. This repeats until the drained areas no longer change.
 
     Returns
     -------
@@ -192,18 +193,22 @@ def _split_drainage(
     own_area = {body: float(body_area.get(body, 0.0)) for body in outflows}
     # unknown drains in a loop that no unknown drain leaves would pass the drainage around forever, so where such a
     # loop has known drains, these carry all
-    unknown_links = nx.DiGraph((from_body[n], to_body[n]) for n in to_body if n not in known_area)
+    links = nx.DiGraph((from_body[n], to_body[n]) for n in to_body)
     trapped: set[int] = set()
-    for loop in nx.strongly_connected_components(unknown_links):
-        loop_drains = [n for n, body in from_body.items() if body in loop and n not in known_area]
-        if all(to_body.get(n) in loop for n in loop_drains):
-            trapped.update(loop_drains)
+    # the drains of a loop that no drain leaves, which do not pass on what flows into their water body
+    closed: set[int] = set()
+    for loop in nx.strongly_connected_components(links):
+        loop_drains = [n for n, body in from_body.items() if body in loop]
+        if all(to_body.get(n) in loop for n in loop_drains if n not in known_area):
+            trapped.update(n for n in loop_drains if n not in known_area)
+        if loop_drains and all(to_body.get(n) in loop for n in loop_drains):
+            closed.update(loop_drains)
 
     drained = dict.fromkeys(from_body, 0.0)
     for _ in range(10_000):
         inflow = dict.fromkeys(outflows, 0.0)
         for node_id, body in to_body.items():
-            if body in inflow:
+            if body in inflow and node_id not in closed:
                 inflow[body] += drained[node_id]
         new = {}
         for body, nodes in outflows.items():

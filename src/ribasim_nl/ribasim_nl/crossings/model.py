@@ -23,6 +23,7 @@ from ribasim.geometry.link import LinkSchema
 from ribasim.geometry.node import NodeSchema
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 
+from ribasim_nl.crossings.aggregation import AGGREGATED_CATEGORIES
 from ribasim_nl.model import Model
 
 CRS = "EPSG:28992"
@@ -123,17 +124,25 @@ def routing_processor(
     crossings["peilgebied_from_original"] = crossings["peilgebied_from"]
     crossings["peilgebied_to_original"] = crossings["peilgebied_to"]
 
+    aggregation_areas = post_processed_data["aggregation_areas"].rename(columns={"CODE": "code"})
+    # Refined aggregation areas, see `ribasim_nl.crossings.aggregation`, hold every aggregated peilgebied, so a side
+    # of a crossing without one is outside the model. The peilgebied of a crossing is no alternative then: a crossing
+    # that is added the other way, see `ParseCrossings._add_double_links`, has its peilgebieden as they were, which in
+    # 2024 made such a peilgebied a second Basin within its aggregation area.
+    aggregated: set[str] = set()
+    if "delivered" in aggregation_areas.columns:
+        own = post_processed_data["peilgebied"]
+        aggregated = set(own.loc[own["peilgebied_cat"].isin(AGGREGATED_CATEGORIES), "globalid"])
+
     # peilgebieden without an aggregation area keep their own
-    crossings["agg_area_from"] = crossings["agg_area_from"].where(
-        crossings["agg_area_from"].notna(), crossings["peilgebied_from"]
-    )
-    crossings["agg_area_to"] = crossings["agg_area_to"].where(
-        crossings["agg_area_to"].notna(), crossings["peilgebied_to"]
-    )
+    for side in ["from", "to"]:
+        own_peilgebied = crossings[f"peilgebied_{side}"].where(~crossings[f"peilgebied_{side}"].isin(aggregated), None)
+        crossings[f"agg_area_{side}"] = crossings[f"agg_area_{side}"].where(
+            crossings[f"agg_area_{side}"].notna(), own_peilgebied
+        )
     crossings["peilgebied_from"] = crossings["agg_area_from"]
     crossings["peilgebied_to"] = crossings["agg_area_to"]
 
-    aggregation_areas = post_processed_data["aggregation_areas"].rename(columns={"CODE": "code"})
     aggregation_areas["globalid"] = aggregation_areas["code"]
     post_processed_data["aggregation_areas"] = aggregation_areas
     area_columns = ["code", "globalid", "geometry"]

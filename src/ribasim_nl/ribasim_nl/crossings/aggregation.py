@@ -7,6 +7,7 @@ area. An area is named after its largest peilgebied and gets its target level, s
 """
 
 import heapq
+from collections.abc import Sequence
 
 import geopandas as gpd
 import numpy as np
@@ -72,6 +73,19 @@ def shared_boundaries(polygons: np.ndarray, tolerance: float = 0.5, min_length: 
     return pairs.sort_values(["a", "b"], kind="stable").reset_index(drop=True)
 
 
+def overlapping_pairs(polygons: np.ndarray, part: float = 0.5) -> list[tuple[int, int]]:
+    """The pairs of polygons of which one covers more than `part` of the other, as their positions a < b.
+
+    Deliveries hold copies of peilgebieden, and peilgebieden that lie within another one.
+    """
+    a, b = shapely.STRtree(polygons).query(polygons, predicate="intersects")
+    keep = a < b
+    a, b = a[keep], b[keep]
+    overlap = shapely.area(shapely.intersection(polygons[a], polygons[b]))
+    covers = overlap > part * np.minimum(shapely.area(polygons[a]), shapely.area(polygons[b]))
+    return sorted(zip(a[covers].tolist(), b[covers].tolist(), strict=True))
+
+
 def merge_small(
     area: np.ndarray,
     level: np.ndarray,
@@ -79,6 +93,7 @@ def merge_small(
     shared: pd.DataFrame,
     min_area: float,
     min_shared: float = 10.0,
+    overlapping: Sequence[tuple[int, int]] = (),
 ) -> np.ndarray:
     """Join the polygons smaller than `min_area` with a neighbour, smallest first, until all groups are large enough.
 
@@ -87,11 +102,14 @@ def merge_small(
     longest shared boundary decides. A joined group has the level of the larger of the two, or the one that is known.
     A group without a neighbour stays as it is.
 
+    Polygons that overlap are the same area: they are joined first, whatever their size, and count once.
+
     :param area: the area of each polygon
     :param level: the target level of each polygon, NaN if unknown
-    :param within: a label per polygon; only polygons with the same label are joined
+    :param within: a label per polygon; only polygons with the same label are joined with a neighbour
     :param shared: the result of `shared_boundaries`
     :param min_area: the area from which a group is left as it is
+    :param overlapping: the result of `overlapping_pairs`
     :return: per polygon, the position of the polygon that its group started from
     """
     group_area = area.astype(float).copy()
@@ -109,7 +127,29 @@ def merge_small(
             i = int(parent[i])
         return i
 
-    heap = [(float(a), i) for i, a in enumerate(group_area) if a < min_area]
+    def join(group: int, target: int, add_area: bool) -> None:
+        """Join a group with another one, which takes over its neighbours, and its level if it is the larger."""
+        if np.isnan(group_level[target]) or (
+            group_area[group] > group_area[target] and not np.isnan(group_level[group])
+        ):
+            group_level[target] = group_level[group]
+        parent[group] = target
+        group_area[target] = group_area[target] + group_area[group] if add_area else max(group_area[[group, target]])
+        for n, length in neighbours[group].items():
+            del neighbours[n][group]
+            if n != target:
+                neighbours[n][target] = neighbours[n].get(target, 0.0) + length
+                neighbours[target][n] = neighbours[target].get(n, 0.0) + length
+        neighbours[group] = {}
+
+    for a, b in overlapping:
+        a, b = root(a), root(b)
+        if a != b:
+            # into the larger one, or the first of equal ones
+            group, target = (b, a) if (group_area[a], -a) >= (group_area[b], -b) else (a, b)
+            join(group, target, add_area=False)
+
+    heap = [(float(a), i) for i, a in enumerate(group_area) if a < min_area and parent[i] == i]
     heapq.heapify(heap)
     while heap:
         heap_area, group = heapq.heappop(heap)
@@ -123,18 +163,7 @@ def merge_small(
             return (abs(group_level[group] - group_level[n]) if both_known else np.inf, -near[n], n)
 
         target = min(near, key=difference)
-        if np.isnan(group_level[target]) or (
-            group_area[group] > group_area[target] and not np.isnan(group_level[group])
-        ):
-            group_level[target] = group_level[group]
-        parent[group] = target
-        group_area[target] += group_area[group]
-        for n, length in neighbours[group].items():
-            del neighbours[n][group]
-            if n != target:
-                neighbours[n][target] = neighbours[n].get(target, 0.0) + length
-                neighbours[target][n] = neighbours[target].get(n, 0.0) + length
-        neighbours[group] = {}
+        join(group, target, add_area=True)
         if group_area[target] < min_area:
             heapq.heappush(heap, (float(group_area[target]), target))
     return np.array([root(i) for i in range(len(area))])
@@ -153,7 +182,8 @@ def refine_aggregation_areas(
 
     A peilgebied of at least `min_area` is an aggregation area. A smaller one joins a neighbour in its delivered
     aggregation area, see `merge_small`. Peilgebieden that are not aggregated, see `aggregation_area_of`, are an area of
-    their own. An area gets the code and the target level of its largest peilgebied.
+    their own. Peilgebieden that overlap for more than half, such as copies, are one area, whatever their size. An area
+    gets the code and the target level of its largest peilgebied.
 
     :param peilgebied: the peilgebieden, with the columns code, globalid and peilgebied_cat
     :param areas: the delivered aggregation areas
@@ -175,7 +205,9 @@ def refine_aggregation_areas(
     # peilgebieden outside the delivered aggregation areas are not joined with others
     own = "peilgebied " + selected["globalid"].astype(str)
     within = delivered.loc[selected.index].where(delivered.loc[selected.index].notna(), own).to_numpy()
-    group = merge_small(area, level, within, shared_boundaries(polygons), min_area)
+    group = merge_small(
+        area, level, within, shared_boundaries(polygons), min_area, overlapping=overlapping_pairs(polygons)
+    )
 
     rows = []
     code = selected["code"].to_numpy()

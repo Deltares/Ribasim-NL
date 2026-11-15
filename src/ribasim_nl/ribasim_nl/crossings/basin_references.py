@@ -50,7 +50,8 @@ class BasinLookup:
             keep_geom_type=True,
         )
         overlay["overlap"] = overlay.area
-        # a Basin belongs to the Basin of 2024 that it overlaps most
+        # a Basin belongs to the Basin of 2024 that it overlaps most, if that covers most of it
+        overlay = overlay.loc[overlay["overlap"] > 0.5 * overlay["new"].map(areas.area)]
         overlay = overlay.sort_values(["new", "overlap", "old"], ascending=[True, False, True], kind="stable")
         best = overlay.drop_duplicates("new")
         self.old_of: dict[int, int] = dict(zip(best["new"].astype(int), best["old"].astype(int), strict=True))
@@ -231,6 +232,8 @@ def translate_feedback_form(processor: RibasimFeedbackProcessor, reference_path:
             elif any(covered(area, other) for other in kept_2024):
                 counts["kept"] += 1
                 skip.append(index)
+            else:
+                lookup.merge(basin, -1)
         elif row["Actie"] == "Toevoegen":
             point = Point(row["Coordinaat X"], row["Coordinaat Y"])
             for column in ["Node ID A", "Node ID B"]:
@@ -238,8 +241,10 @@ def translate_feedback_form(processor: RibasimFeedbackProcessor, reference_path:
                     try:
                         rewrite(index, column, int(row[column]), lookup.at(int(row[column]), point))
                     except AssertionError as e:
+                        # without the Basin, the node would be added without its links
                         counts["failed"] += 1
-                        logger.warning(f"row {index}: {e}")
+                        skip.append(index)
+                        print(f"The feedback form adds no node at row {index}: {e}")
         elif row["Actie"] == "Aanpassen" and row["Verbinding"] in ("Edge", "Link"):
             a, b = row["Node ID A.1"], row["Node ID B.1"]
             column, basin, connector = ("Node ID A.1", a, b) if is_basin(a) else ("Node ID B.1", b, a)
@@ -255,7 +260,7 @@ def translate_feedback_form(processor: RibasimFeedbackProcessor, reference_path:
                 logger.warning(
                     f"row {index}: {len(replacing)} Basins that replace Basin {int(basin)} at node {int(connector)}"
                 )
-    processor.df = processor.df.drop(index=skip)
+    processor.df = processor.df.loc[~processor.df.index.isin(skip)]
 
     # the node types of the form are those of 2024; add those of the new nodes
     node_type = model.node.df["node_type"]
