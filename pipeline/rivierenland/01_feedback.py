@@ -7,6 +7,7 @@ import ribasim_nl.ribasim_parametrization as ribasim_param
 import shapely
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
+from ribasim_nl.crossings.basin_references import References2024, rating_curves_between_levels
 from ribasim_nl.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form
 from shapely import LineString, Point
 from shapely.geometry import Polygon
@@ -33,6 +34,8 @@ default_level = 12.4 if AANVOER_CONDITIONS else -0.60  # default LevelBoundary l
 
 # process the feedback form and load the model
 ribasim_model = process_feedback_form(paths, use_validation=False)
+# the Basins and added nodes below are those of the models of 2024, see `References2024`
+refs = References2024(ribasim_model, paths.boezemmodel_ids, paths.base_model_toml, paths.feedback_form)
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
@@ -45,20 +48,20 @@ aanvoer_pumps = []
 
 # model specific tweaks
 # merge basins
-ribasim_model.merge_basins(node_id=3, to_node_id=21, are_connected=True)
-ribasim_model.merge_basins(node_id=63, to_node_id=97, are_connected=True)
-ribasim_model.merge_basins(node_id=131, to_node_id=119, are_connected=True)
-ribasim_model.merge_basins(node_id=212, to_node_id=210, are_connected=True)
-ribasim_model.merge_basins(node_id=33, to_node_id=1, are_connected=True)
-ribasim_model.merge_basins(node_id=181, to_node_id=162, are_connected=True)
+refs.merge_basins(node_id=3, to_node_id=21, are_connected=True)
+refs.merge_basins(node_id=63, to_node_id=97, are_connected=True)
+refs.merge_basins(node_id=131, to_node_id=119, are_connected=True)
+refs.merge_basins(node_id=212, to_node_id=210, are_connected=True)
+refs.merge_basins(node_id=33, to_node_id=1, are_connected=True)
+refs.merge_basins(node_id=181, to_node_id=162, are_connected=True)
 
 # minor basins in south west of WSRL, which FW and HvdG said to merge
-ribasim_model.merge_basins(node_id=50, to_node_id=56, are_connected=True)
-ribasim_model.merge_basins(node_id=54, to_node_id=56, are_connected=True)
+refs.merge_basins(node_id=50, to_node_id=56, are_connected=True)
+refs.merge_basins(node_id=54, to_node_id=56, are_connected=True)
 
 # (too) small basins connected via a Manning-node --> merge basins
-ribasim_model.merge_basins(node_id=226, to_node_id=1, are_connected=True)
-ribasim_model.merge_basins(node_id=220, to_node_id=219, are_connected=True)
+refs.merge_basins(node_id=226, to_node_id=1, are_connected=True)
+refs.merge_basins(node_id=220, to_node_id=219, are_connected=True)
 
 # retrieve the two polygons where still holes occur so it can be merged with existing basins
 gaten = gpd.read_file(gaten_path)
@@ -66,15 +69,17 @@ gaten = gpd.read_file(gaten_path)
 # fix hole Wijchen
 wijchen = gaten.loc[gaten.meta_name == "Wijchen"]
 assert ribasim_model.basin.area.df is not None
-basin_195 = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 195]
+basin_id = refs.basin(195, wijchen.geometry.union_all().representative_point()).node_id
+basin_195 = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == basin_id]
 merged_geom = basin_195.geometry.iloc[0].union(wijchen.geometry.union_all())
-ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 195, "geometry"] = merged_geom
+ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == basin_id, "geometry"] = merged_geom
 
 # fix hole Vennen
 vennen = gaten.loc[gaten.meta_name == "Vennen"]
-basin_241 = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 241]
+basin_id = refs.basin(241, vennen.geometry.union_all().representative_point()).node_id
+basin_241 = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == basin_id]
 merged_geom = basin_241.geometry.iloc[0].union(vennen.geometry.union_all())
-ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 241, "geometry"] = merged_geom
+ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == basin_id, "geometry"] = merged_geom
 
 # redefine basins #66 & #69
 split_line_string = LineString(
@@ -97,15 +102,21 @@ split_line_string = LineString(
     ]
 )
 basin_ids = 66, 69
-basin = shapely.union_all(
-    [
-        ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == basin_id, "geometry"].values[0].geoms
-        for basin_id in basin_ids
-    ]
-)
-polygons = geometry.split_basin(cast(Polygon, basin), split_line_string)
-for basin_id, polygon in zip(basin_ids, polygons.geoms, strict=True):
-    ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == basin_id, "geometry"] = polygon  # ty: ignore[invalid-assignment]
+# with refined aggregation areas, the Basins follow the peilgebieden, unless one Basin still replaces each
+if all(refs.basins(basin_id) == [basin_id] for basin_id in basin_ids):
+    basin = shapely.union_all(
+        [
+            ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == basin_id, "geometry"]
+            .values[0]
+            .geoms
+            for basin_id in basin_ids
+        ]
+    )
+    polygons = geometry.split_basin(cast(Polygon, basin), split_line_string)
+    for basin_id, polygon in zip(basin_ids, polygons.geoms, strict=True):
+        ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == basin_id, "geometry"] = polygon  # ty: ignore[invalid-assignment]
+else:
+    print(f"Basins {basin_ids} of 2024 are refined, their areas are not redefined")
 
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
@@ -123,7 +134,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(136574, 422965)), [pump.Static(flow_rate=[6])])
 ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 1)
-ribasim_model.link.add(ribasim_model.basin[154], pump_node)
+ribasim_model.link.add(refs.basin(154, pump_node), pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 afvoer_pumps.append(pump_node.node_id)
 
@@ -136,7 +147,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[94])
+ribasim_model.link.add(tabulated_rating_curve_node, refs.basin(94, tabulated_rating_curve_node))
 
 inlaat_Kuijk = tabulated_rating_curve_node.node_id
 inlaten.append(inlaat_Kuijk)
@@ -150,7 +161,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[8])
+ribasim_model.link.add(tabulated_rating_curve_node, refs.basin(8, tabulated_rating_curve_node))
 
 inlaten.append(tabulated_rating_curve_node.node_id)
 
@@ -163,7 +174,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[5])
+ribasim_model.link.add(tabulated_rating_curve_node, refs.basin(5, tabulated_rating_curve_node))
 inlaten.append(tabulated_rating_curve_node.node_id)
 
 # add gemaal and LB at Pannerlingen
@@ -173,7 +184,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
 pump_node = ribasim_model.pump.add(Node(geometry=Point(198568, 434184)), [pump.Static(flow_rate=[6])])
 ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 1)
 ribasim_model.link.add(level_boundary_node, pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[115])
+ribasim_model.link.add(pump_node, refs.basin(115, pump_node))
 inlaten.append(pump_node.node_id)
 
 # add a TRC and LB near Groesbeek to Germany
@@ -184,7 +195,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(196147, 421056)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
-ribasim_model.link.add(ribasim_model.basin[237], tabulated_rating_curve_node)
+ribasim_model.link.add(refs.basin(237, tabulated_rating_curve_node), tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
 # # add gemaal and LB at downstream Linge (Hardinxveld)
@@ -192,7 +203,7 @@ ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 # level_boundary_node = ribasim_model.level_boundary.add(
 #     Node(geometry=Point(118530.65, 425964)), [level_boundary.Static(level=[default_level])]
 # )
-# ribasim_model.link.add(ribasim_model.basin[1], pump_node)
+# ribasim_model.link.add(refs.basin(1, pump_node), pump_node)
 # ribasim_model.link.add(pump_node, level_boundary_node)
 
 # add gemaal and LB at downstream Linge (Hardinxveld)
@@ -200,7 +211,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(118548, 425951)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(118561.5, 425973.0)), [pump.Static(flow_rate=[20])])
-ribasim_model.link.add(ribasim_model.basin[1], pump_node)
+ribasim_model.link.add(refs.basin(1, pump_node), pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # add outlet (TRC) and LB from Beneden Merwerde to Sliedrecht
@@ -212,7 +223,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[30])
+ribasim_model.link.add(tabulated_rating_curve_node, refs.basin(30, tabulated_rating_curve_node))
 
 # Van Dam van Brakel is both afvoergemaal as aanvoer-outlet
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -223,7 +234,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[158])
+ribasim_model.link.add(tabulated_rating_curve_node, refs.basin(158, tabulated_rating_curve_node))
 
 # Add Schanspolder
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -234,7 +245,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[32])
+ribasim_model.link.add(tabulated_rating_curve_node, refs.basin(32, tabulated_rating_curve_node))
 
 # Add aanvoer-route from ARK to Rivierenland
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -243,7 +254,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
 pump_node = ribasim_model.pump.add(Node(geometry=Point(153091, 440360)), [pump.Static(flow_rate=[20])])
 ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 1)
 ribasim_model.link.add(level_boundary_node, pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[91])
+ribasim_model.link.add(pump_node, refs.basin(91, pump_node))
 
 # Add aanvoer-component of Kuijkgemaal
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -253,7 +264,7 @@ pump_node = ribasim_model.pump.add(Node(geometry=Point(174630, 440132)), [pump.S
 ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 1)
 ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "afvoer", 0)
 ribasim_model.link.add(level_boundary_node, pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[94])
+ribasim_model.link.add(pump_node, refs.basin(94, pump_node))
 
 # Add Inlaatgemaal van Beuningen
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -261,7 +272,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(158276, 436942)), [pump.Static(flow_rate=[20])])
 ribasim_model.link.add(level_boundary_node, pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[86])
+ribasim_model.link.add(pump_node, refs.basin(86, pump_node))
 aanvoer_pumps.append(pump_node.node_id)
 
 # Add Inlaatgemaal Bontemorgen
@@ -272,10 +283,10 @@ pump_node = ribasim_model.pump.add(Node(geometry=Point(164412, 441741)), [pump.S
 ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 1)
 ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "afvoer", 0)
 ribasim_model.link.add(level_boundary_node, pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[77])
+ribasim_model.link.add(pump_node, refs.basin(77, pump_node))
 
 # set 'aanvoer'-function on
-pump_ids: tuple[int, ...] = 989, 1000, 1001
+pump_ids: tuple[int, ...] = refs.nodes((989, 1000, 1001))
 for i in pump_ids:
     ribasim_param.change_pump_func(ribasim_model, i, "aanvoer", 1)
 
@@ -294,7 +305,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
 pump_node = ribasim_model.pump.add(Node(geometry=Point(157940, 425856)), [pump.Static(flow_rate=[20])])
 ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "afvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 1)
-ribasim_model.link.add(ribasim_model.basin[194], pump_node)
+ribasim_model.link.add(refs.basin(194, pump_node), pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 afvoer_pumps.append(pump_node.node_id)
 
@@ -302,11 +313,11 @@ ribasim_param.change_pump_func(ribasim_model, 414, "aanvoer", 1)
 ribasim_param.change_pump_func(ribasim_model, 414, "afvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, 668, "afvoer", 1)
 ribasim_param.change_pump_func(ribasim_model, 722, "aanvoer", 0)
-ribasim_param.change_pump_func(ribasim_model, 1005, "aanvoer", 0)
-ribasim_param.change_pump_func(ribasim_model, 1005, "afvoer", 1)
-ribasim_param.change_pump_func(ribasim_model, 1153, "aanvoer", 0)
-ribasim_param.change_pump_func(ribasim_model, 1025, "afvoer", 0)
-ribasim_param.change_pump_func(ribasim_model, 1025, "aanvoer", 1)
+ribasim_param.change_pump_func(ribasim_model, refs.node(1005), "aanvoer", 0)
+ribasim_param.change_pump_func(ribasim_model, refs.node(1005), "afvoer", 1)
+ribasim_param.change_pump_func(ribasim_model, refs.node(1153), "aanvoer", 0)
+ribasim_param.change_pump_func(ribasim_model, refs.node(1025), "afvoer", 0)
+ribasim_param.change_pump_func(ribasim_model, refs.node(1025), "aanvoer", 1)
 
 assert ribasim_model.pump.static.df is not None
 for afvoer_pump in afvoer_pumps:
@@ -326,6 +337,9 @@ ribasim_model.node.df.loc[ribasim_model.tabulated_rating_curve.node.df.index, "m
 )
 ribasim_model.node.df.loc[ribasim_model.pump.node.df.index, "meta_node_id"] = ribasim_model.pump.node.df.index
 
+# a Basin that is merged with one of another target level keeps its ManningResistances
+print(f"ManningResistances between target levels: {rating_curves_between_levels(ribasim_model, UNKNOWN_STREEFPEIL)}")
+
 # convert all boundary nodes to LevelBoundaries
 ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
 ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
@@ -335,8 +349,8 @@ ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
 # outlets near Groesbeek drain via Germany into the Ooijpolder, entering it near (193612, 426427)
 # see https://github.com/Deltares/Ribasim-NL/issues/743
-ooijpolder = ribasim_model.basin[161]
-for outlet_id in (749, 755, 1019):
+ooijpolder = refs.basin(161, Point(193612, 426427))
+for outlet_id in refs.nodes((749, 755, 1019)):
     outlet_node = ribasim_model.outlet[outlet_id]
     level_boundary_id = ribasim_model.downstream_node_id(outlet_id)
     assert ribasim_model.get_node_type(level_boundary_id) == "LevelBoundary"

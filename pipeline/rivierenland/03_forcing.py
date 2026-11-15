@@ -5,6 +5,7 @@ from ribasim_nl.control import (
     set_flow_rate,
     set_node_functions,
 )
+from ribasim_nl.crossings.basin_references import References2024, supply_opposite_nodes
 from ribasim_nl.design_capacities import set_design_capacities
 from ribasim_nl.workflow import (
     WaterBoardPaths,
@@ -39,6 +40,9 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/
 processor = paths.feedback_processor(work_dir=paths.model_dir("profiles"))
 
 ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
+# the Basins and added nodes below are those of the models of 2024, see `References2024`
+refs = References2024(ribasim_model, paths.boezemmodel_ids, paths.base_model_toml, paths.feedback_form)
+refs.translate_supply_flags(processor)
 
 # Resolve geometry-based inlaat node lookups before snapping relocates these nodes, so the
 # hard-coded coordinates still match the original node locations (used much further below).
@@ -69,7 +73,7 @@ ribasim_model.level_boundary.time.df.loc[
 
 # add control, based on the meta_categorie
 ribasim_param.set_aanvoer_flags(
-    ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=True, basin_aanvoer_off=(204)
+    ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=True, basin_aanvoer_off=tuple(refs.basins(204))
 )
 # change the control of the outlet at Kinderdijk
 assert ribasim_model.pump.static.df is not None
@@ -131,8 +135,13 @@ to_supply = (
     1002,
 )
 from_to_node_function_table = set_node_functions(
-    from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
+    from_to_node_function_table,
+    to_supply=refs.nodes(to_supply),
+    to_flow_control=refs.nodes(to_flow_control),
+    to_drain=refs.nodes(to_drain),
 )
+# between the peilgebieden of a delivered aggregation area, an inlet next to a gemaal the other way supplies
+supply_opposite_nodes(ribasim_model, from_to_node_function_table)
 
 
 add_controllers(ribasim_model, from_to_node_function_table, remove_duplicates=False)
@@ -149,13 +158,15 @@ set_manning_resistance_outside_bergend(ribasim_model, length=10.0, manning_n=0.0
 ribasim_model = complete_parametrization(
     ribasim_model,
     paths,
-    custom_nodes={
-        973: "Rijkswaterstaat",
-        940: "Rijkswaterstaat",
-        939: "Rijkswaterstaat",
-        1004: "Rijkswaterstaat",
-        1005: "Rijkswaterstaat",
-    },
+    custom_nodes=refs.keys(
+        {
+            973: "Rijkswaterstaat",
+            940: "Rijkswaterstaat",
+            939: "Rijkswaterstaat",
+            1004: "Rijkswaterstaat",
+            1005: "Rijkswaterstaat",
+        }
+    ),
 )
 
 # for some reason, some connector nodes of the Linge are incorrectly scaled. Keep using the original (high) values of the flow_rate to allow for better discharge of the system.
@@ -172,7 +183,7 @@ ribasim_model.outlet.static.df.loc[
 
 # fix pumps from Linge to ARK
 assert ribasim_model.pump.static.df is not None
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 1025, "max_flow_rate"] = 8.0
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == refs.node(1025), "max_flow_rate"] = 8.0
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == 664, "max_flow_rate"] = 16.0
 
 # set the unknown capacities of Pumps and Outlets from the area they drain or supply
@@ -181,4 +192,8 @@ set_design_capacities(ribasim_model, from_to_node_function_table)
 set_flow_rate(ribasim_model.pump.static.df, [664], 8.0)  # average flow rate in the winter
 
 # the outlets near Groesbeek drain via Germany into the Ooijpolder, so its links are routed through there, see #995
-write_and_run_forcing_model(ribasim_model, paths, routing_areas={161: box(192500, 420500, 199500, 428500)})
+write_and_run_forcing_model(
+    ribasim_model,
+    paths,
+    routing_areas={refs.basin(161, Point(193612, 426427)).node_id: box(192500, 420500, 199500, 428500)},
+)

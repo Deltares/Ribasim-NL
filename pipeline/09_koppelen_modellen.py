@@ -19,6 +19,7 @@ from ribasim_nl.coupling_level_apply import (
 from ribasim_nl.coupling_level_common import finite_level, finite_levels
 from ribasim_nl.coupling_level_network import first_non_junction
 from ribasim_nl.coupling_levels import run_coupling_level_check
+from ribasim_nl.crossings.basin_references import CoupledReferences2024
 from ribasim_nl.flow_paths import (
     Routes,
     branch_from_route,
@@ -35,7 +36,7 @@ from ribasim_nl.model import find_toml
 from ribasim_nl.network_snapping import line_reader, snap_to_waterways
 from ribasim_nl.observations import link_observations
 from ribasim_nl.rws_kunstwerken import ROUTING_AREAS, main_route
-from ribasim_nl.rwzi import attach_rwzi_junctions
+from ribasim_nl.rwzi import RWZI_BASINS, attach_rwzi_junctions
 from ribasim_nl.seasonal_levels import PEILBEHEER, apply_seasonal_levels, remove_seasonal_levels
 from ribasim_nl.settings import settings
 from shapely.geometry import LineString, Point
@@ -252,6 +253,20 @@ connector_static_meta = {
     203899: {"meta_to_level": -0.60},  # zie #824
     203901: {"meta_to_level": -0.60},  # zie #824
 }
+
+# The nodes above of the authorities with refined aggregation areas are those of the models of 2024
+refs = CoupledReferences2024(data_dir)
+remove_nodes = [refs.node(node_id) for node_id in remove_nodes]
+forced_coupling = {
+    refs.node(boundary_id): refs.node(basin_id, near=boundary_id) for boundary_id, basin_id in forced_coupling.items()
+}
+route_branches = {
+    refs.node(node_id): (refs.node(basin_id, near=node_id), refs.node(towards_id))
+    for node_id, (basin_id, towards_id) in route_branches.items()
+}
+node_names = refs.keys(node_names)
+connector_static_meta = refs.keys(connector_static_meta)
+rwzi_basins = {code: refs.node(basin_id) for code, basin_id in RWZI_BASINS.items()}
 
 
 # %% Functions
@@ -1052,7 +1067,7 @@ def couple_model(toml_file: Path) -> None:
     route_links_between_models(model, network)
     add_user_demands(model)
     # the RWZIs of Rijkswaterstaat and those that discharge into another model, see #860 and #871
-    attach_rwzi_junctions(model, authorities={"Rijkswaterstaat"})
+    attach_rwzi_junctions(model, basins=rwzi_basins, authorities={"Rijkswaterstaat"})
     change_routes(model)
     # series measured on links between models can only be observed in the coupled model
     link_observations(model)

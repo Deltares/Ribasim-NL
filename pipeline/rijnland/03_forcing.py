@@ -9,6 +9,7 @@ from ribasim_nl.control import (
     set_flow_rate,
     set_node_functions,
 )
+from ribasim_nl.crossings.basin_references import References2024, supply_opposite_nodes
 from ribasim_nl.design_capacities import set_design_capacities
 from ribasim_nl.workflow import (
     WaterBoardPaths,
@@ -42,6 +43,9 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/
 processor = paths.feedback_processor(work_dir=paths.model_dir("profiles"))
 
 ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
+# the Basins and added nodes below are those of the models of 2024, see `References2024`
+refs = References2024(ribasim_model, paths.boezemmodel_ids, paths.base_model_toml, paths.feedback_form)
+refs.translate_supply_flags(processor)
 
 # reset pump capacity for each pump
 assert ribasim_model.pump.static.df is not None
@@ -102,8 +106,13 @@ to_supply = (
     1471,
 )
 from_to_node_function_table = set_node_functions(
-    from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
+    from_to_node_function_table,
+    to_supply=refs.nodes(to_supply),
+    to_flow_control=refs.nodes(to_flow_control),
+    to_drain=refs.nodes(to_drain),
 )
+# between the peilgebieden of a delivered aggregation area, an inlet next to a gemaal the other way supplies
+supply_opposite_nodes(ribasim_model, from_to_node_function_table)
 
 
 add_controllers(ribasim_model, from_to_node_function_table, remove_duplicates=True)
@@ -111,7 +120,7 @@ add_controllers(ribasim_model, from_to_node_function_table, remove_duplicates=Tr
 assign_pump_and_basin_names(ribasim_model, paths)
 
 # according data flow_rate of 0
-zero_flow_pumps = [460, 736, 1282, 1435, 1436, 1471, 1472]
+zero_flow_pumps = list(refs.nodes([460, 736, 1282, 1435, 1436, 1471, 1472]))
 assert ribasim_model.pump.static.df is not None
 set_flow_rate(ribasim_model.pump.static.df, zero_flow_pumps, 25.0)
 
@@ -152,17 +161,19 @@ set_manning_resistance_outside_bergend(ribasim_model, length=10.0, manning_n=0.0
 ribasim_model = complete_parametrization(
     ribasim_model,
     paths,
-    custom_nodes={
-        1354: "Noordzee",
-        1367: "Delfland",
-        1481: "StichtseRijnlanden",
-        1485: "StichtseRijnlanden",
-        1486: "StichtseRijnlanden",
-        1487: "StichtseRijnlanden",
-        1488: "StichtseRijnlanden",
-        1489: "StichtseRijnlanden",
-        1490: "StichtseRijnlanden",
-    },
+    custom_nodes=refs.keys(
+        {
+            1354: "Noordzee",
+            1367: "Delfland",
+            1481: "StichtseRijnlanden",
+            1485: "StichtseRijnlanden",
+            1486: "StichtseRijnlanden",
+            1487: "StichtseRijnlanden",
+            1488: "StichtseRijnlanden",
+            1489: "StichtseRijnlanden",
+            1490: "StichtseRijnlanden",
+        }
+    ),
 )
 
 # set the unknown capacities of Pumps and Outlets from the area they drain or supply
@@ -171,7 +182,7 @@ set_design_capacities(ribasim_model, from_to_node_function_table)
 # The boezemgemalen drain the boezem in steps of the level of Basin 2771, in the middle of the boezem, rather than of
 # the Basins next to them, see https://github.com/Deltares/Ribasim-NL/issues/906 and
 # https://github.com/Deltares/Ribasim-NL/pull/928#issuecomment-6443645940
-BOEZEM_BASIN = 2771  # streefpeil -0.61 m NAP
+BOEZEM_BASIN = refs.node(2771)  # streefpeil -0.61 m NAP
 # The Basins next to the gemalen are about 1 cm lower than Basin 2771. With the min_upstream_level of -0.61 m NAP
 # they had, the gemalen would only pump a fraction of their steps, so it is a safety limit below the streefpeil.
 BOEZEM_MIN_UPSTREAM_LEVEL = -0.65
@@ -190,7 +201,8 @@ BOEZEMGEMALEN: tuple[tuple[int, str, list[float], list[float], float | list[floa
     # Gouda starts at -0.59 m NAP and stops below -0.595 m NAP
     (1279, "Gouda", [-0.59, -0.57], [0.0, 34.5, 40.0], [0.005, DEFAULT_LEVEL_STEP_HYSTERESIS]),
 )
-for node_id, name, levels, flow_rates, hysteresis in BOEZEMGEMALEN:
+for node_id_2024, name, levels, flow_rates, hysteresis in BOEZEMGEMALEN:
+    node_id = refs.node(node_id_2024)
     pump_name = ribasim_model.node.df.at[node_id, "name"]
     assert pump_name == f"Boezemgemaal {name}", pump_name
     set_discrete_level_control(

@@ -26,6 +26,12 @@ from ribasim_nl.control import (
     get_node_table_with_from_to_node_ids,
     remove_duplicate_controls,
 )
+from ribasim_nl.crossings.aggregation import REFINED
+from ribasim_nl.crossings.basin_references import (
+    FIRST_NEW_NODE_ID,
+    remove_dangling_connectors,
+    translate_feedback_form,
+)
 from ribasim_nl.network_snapping import line_reader, read_hydro_objects, snap_model
 from ribasim_nl.regional_model import ENDTIME, STARTTIME, add_inflows, add_lhm_forcing, finish_regional_model
 from ribasim_nl.ribasim_feedback_processor import RibasimFeedbackProcessor
@@ -70,6 +76,11 @@ class WaterBoardPaths:
         return self.cloud.joinpath(
             self.waterschap, "modellen", f"{self.waterschap}_boezemmodel_{self.base_model_versie}", "ribasim.toml"
         )
+
+    @property
+    def boezemmodel_ids(self) -> Path:
+        """The nodes, links and Basin areas of the input model of 2024, see `ribasim_nl.crossings.renumber`."""
+        return self.cloud.joinpath(self.waterschap, "verwerkt/boezemmodel_ids.gpkg")
 
     @property
     def feedback_form(self) -> Path:
@@ -139,11 +150,27 @@ def process_feedback_form(paths: WaterBoardPaths, use_validation: bool = True) -
     temporarily invalid.
     """
     work_dir = paths.model_dir("feedback")
-    paths.feedback_processor(work_dir, use_validation=use_validation).run()
+    processor = paths.feedback_processor(work_dir, use_validation=use_validation)
+    refined = paths.waterschap in REFINED
+    # the nodes that the input model of 2024 lacks
+    new_nodes = (
+        frozenset(i for i in processor.model.node.df.index if i >= FIRST_NEW_NODE_ID) if refined else frozenset()
+    )
+    if refined:
+        counts = translate_feedback_form(processor, paths.boezemmodel_ids)
+        print(f"Basins of the feedback form: {counts}")
+        # the hook of the processor that runs before it writes the model, if it validates it
+        processor.clean_tables = lambda: print(  # ty: ignore[invalid-assignment]
+            f"Removed dangling connector nodes: {remove_dangling_connectors(processor.model)}"
+        )
+    processor.run()
     with warnings.catch_warnings():
         warnings.simplefilter(action="ignore", category=FutureWarning)
         model = Model.read(work_dir / "ribasim.toml")
         model.set_crs("EPSG:28992")
+    if refined and not use_validation:
+        # the script completes the nodes of 2024 that the form leaves without a neighbour, but knows no other nodes
+        print(f"Removed dangling connector nodes: {remove_dangling_connectors(model, new_nodes)}")
     return model
 
 

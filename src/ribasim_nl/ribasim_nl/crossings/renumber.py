@@ -168,16 +168,19 @@ def match_nodes(
     return mapping
 
 
-def renumber_nodes(model: Model, reference: Reference) -> dict[int, int]:
+def renumber_nodes(model: Model, reference: Reference, first_new_id: int | None = None) -> dict[int, int]:
     """Renumber the nodes and links of a model after a reference, in place, and return the mapping of the node IDs.
 
-    Matched nodes, see `match_nodes`, get the ID of the node they match; the others IDs after the highest ID of the
-    reference, in the order of their IDs. Links get the ID of the link between the same nodes in the reference, or else
-    IDs after its highest link ID. The tables are sorted again, and the Basin areas colored again, as
-    `ribasim_nl.crossings.model` does.
+    Matched nodes, see `match_nodes`, get the ID of the node they match; the others IDs from `first_new_id`, by default
+    after the highest ID of the reference, in the order of their IDs. Links get the ID of the link between the same
+    nodes in the reference, or else IDs after its highest link ID. The tables are sorted again, and the Basin areas
+    colored again, as `ribasim_nl.crossings.model` does.
     """
     matched = match_nodes(model, reference)
     next_id = int(max(reference.nodes["node_id"].max(), 0)) + 1
+    if first_new_id is not None:
+        assert first_new_id >= next_id, f"the reference has node IDs up to {next_id - 1}"
+        next_id = first_new_id
     mapping = {}
     for node_id in sorted(model.node.df.index):
         if node_id in matched:

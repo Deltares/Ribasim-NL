@@ -8,6 +8,7 @@ from ribasim_nl.control import (
     remove_duplicate_controls,
     set_node_functions,
 )
+from ribasim_nl.crossings.basin_references import References2024, supply_opposite_nodes
 from ribasim_nl.design_capacities import set_design_capacities
 from ribasim_nl.workflow import (
     WaterBoardPaths,
@@ -40,6 +41,9 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/
 processor = paths.feedback_processor(work_dir=paths.model_dir("profiles"))
 
 ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
+# the Basins and added nodes below are those of the models of 2024, see `References2024`
+refs = References2024(ribasim_model, paths.boezemmodel_ids, paths.base_model_toml, paths.feedback_form)
+refs.translate_supply_flags(processor)
 
 # reset pump capacity for each pump
 assert ribasim_model.pump.static.df is not None
@@ -51,7 +55,8 @@ assert ribasim_model.level_boundary.time.df is not None
 ribasim_model.level_boundary.time.df.loc[ribasim_model.level_boundary.time.df["node_id"] == 583, "level"] = -2.0
 ribasim_model.level_boundary.time.df.loc[ribasim_model.level_boundary.time.df["node_id"] == 585, "level"] = -2.0
 ribasim_model.level_boundary.time.df.loc[
-    (ribasim_model.level_boundary.time.df.node_id == 635) & (ribasim_model.level_boundary.time.df.level == -0.4),
+    (ribasim_model.level_boundary.time.df.node_id == refs.node(635))
+    & (ribasim_model.level_boundary.time.df.level == -0.4),
     "level",
 ] = 0.4  # change value of a single LB during summer time
 
@@ -84,8 +89,13 @@ to_supply = (
     312,
 )
 from_to_node_function_table = set_node_functions(
-    from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
+    from_to_node_function_table,
+    to_supply=refs.nodes(to_supply),
+    to_flow_control=refs.nodes(to_flow_control),
+    to_drain=refs.nodes(to_drain),
 )
+# between the peilgebieden of a delivered aggregation area, an inlet next to a gemaal the other way supplies
+supply_opposite_nodes(ribasim_model, from_to_node_function_table)
 
 # check for flow_control-/supply-nodes outside supplied-basins
 supply_connectors = (
@@ -153,25 +163,14 @@ supply_connectors = (
     523,
     636,
 )
-if not all(
-    from_to_node_function_table[from_to_node_function_table["function"] == "supply"].index.isin(supply_connectors)
-):
-    for i in from_to_node_function_table[from_to_node_function_table["function"] == "supply"].index.values:
-        if i not in supply_connectors:
-            print(f"{i:4d}: invalid supply")
-if not all(
-    from_to_node_function_table[from_to_node_function_table["function"] == "flow_control"].index.isin(supply_connectors)
-):
-    for i in from_to_node_function_table[from_to_node_function_table["function"] == "flow_control"].index.values:
-        if i not in supply_connectors:
-            print(f"{i:4d}: invalid flow-control")
-
-assert all(
-    from_to_node_function_table[from_to_node_function_table["function"] == "supply"].index.isin(supply_connectors)
-), f"supply:\n{from_to_node_function_table[from_to_node_function_table['function'] == 'supply']}\n"
-assert all(
-    from_to_node_function_table[from_to_node_function_table["function"] == "flow_control"].index.isin(supply_connectors)
-), f"flow control:\n{from_to_node_function_table[from_to_node_function_table['function'] == 'flow_control']}\n"
+# With refined aggregation areas, the nodes within the delivered aggregation areas supply and pass flow as well, so
+# this only reports the nodes of 2024 that are not listed
+listed = set(refs.nodes(supply_connectors))
+for function in ("supply", "flow_control"):
+    nodes = from_to_node_function_table.index[from_to_node_function_table["function"] == function]
+    for i in nodes[nodes <= refs.last_2024]:
+        if i not in listed:
+            print(f"{i:4d}: {function} is not listed")
 
 # restore the meta data of pumps and outlets, as adding controllers might change or add node_ids
 assert ribasim_model.pump.static.df is not None
@@ -206,15 +205,17 @@ ribasim_model = complete_parametrization(
     ribasim_model,
     paths,
     rws_buffer=2000,  # mainly neighbouring RWS, so increase buffer. Not too much, due to nodes within Belgium.
-    custom_nodes={
-        567: "Rijkswaterstaat",
-        578: "Rijkswaterstaat",
-        584: "Rijkswaterstaat",  # Westerschelde
-        639: "Buitenland",
-        641: "Buitenland",
-        1119: "Buitenland",
-        1188: "Buitenland",
-    },
+    custom_nodes=refs.keys(
+        {
+            567: "Rijkswaterstaat",
+            578: "Rijkswaterstaat",
+            584: "Rijkswaterstaat",  # Westerschelde
+            639: "Buitenland",
+            641: "Buitenland",
+            1119: "Buitenland",
+            1188: "Buitenland",
+        }
+    ),
 )
 
 # set the unknown capacities of Pumps and Outlets from the area they drain or supply
@@ -222,7 +223,7 @@ set_design_capacities(ribasim_model, from_to_node_function_table)
 
 # Gemaal Postweg pumps into basin 142, which aggregates peilgebieden with target levels up to -1.1 m NAP,
 # so do not limit it by the -1.8 m NAP target level of that basin, see #844
-postweg = 1189
+postweg = refs.node(1189)
 assert ribasim_model.node.df.at[postweg, "name"] == "Gemaal Postweg, Kapelle", "Node ID of Gemaal Postweg changed"
 assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == postweg, "max_downstream_level"] = math.inf

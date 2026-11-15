@@ -30,6 +30,7 @@ import tqdm.auto as tqdm
 from shapely.geometry import LineString, MultiLineString, MultiPoint, Point, Polygon
 from shapely.geometry.base import BaseGeometry
 
+from ribasim_nl.crossings.aggregation import aggregation_area_of, refine_aggregation_areas
 from ribasim_nl.lumping.utils import quicksort_order
 
 logger = logging.getLogger(__name__)
@@ -143,11 +144,31 @@ class ParseCrossings:
         self.agg_areas_threshold = agg_areas_threshold
         self.agg_peilgebieden_layer = agg_peilgebieden_layer
         self.agg_peilgebieden_column = agg_peilgebieden_column
+        # the aggregation area of each peilgebied, if the aggregation areas are refined
+        self.refined_area_of: pd.Series | None = None
         if self.agg_peilgebieden_layer is not None:
             if self.agg_peilgebieden_column is None:
                 raise ValueError("Aggregation layer is defined, but aggregation column is not defined")
             if not self.df_gpkg[self.agg_peilgebieden_layer][self.agg_peilgebieden_column].is_unique:
                 raise ValueError(f"Aggregation column '{agg_peilgebieden_column}' has duplicate values")
+
+    @pandas2_strings
+    def refine_aggregation_areas(self, min_area: float) -> None:
+        """Replace the aggregation areas by the peilgebieden of at least `min_area`, joined with the smaller ones.
+
+        See `ribasim_nl.crossings.aggregation.refine_aggregation_areas`. The aggregation column becomes `code`.
+        """
+        assert self.agg_peilgebieden_layer is not None and self.agg_peilgebieden_column is not None
+        refined, self.refined_area_of = refine_aggregation_areas(
+            self.df_gpkg["peilgebied"],
+            self.df_gpkg[self.agg_peilgebieden_layer],
+            self.df_gpkg["streefpeil"],
+            column=self.agg_peilgebieden_column,
+            threshold=self.agg_areas_threshold,
+            min_area=min_area,
+        )
+        self.df_gpkg[self.agg_peilgebieden_layer] = refined
+        self.agg_peilgebieden_column = "code"
 
     @staticmethod
     def _polar(x1: float, x2: float, y1: float, y2: float) -> tuple[float, float]:
@@ -1582,27 +1603,16 @@ class ParseCrossings:
         if agg_peilgebieden is None:
             return dfs
         else:
-            for row in tqdm.tqdm(
-                self.df_gpkg["peilgebied"].itertuples(),
-                desc="Assign aggregate areas",
-                total=len(self.df_gpkg["peilgebied"]),
-                disable=self.disable_progress,
-            ):
-                # Only category 0 and 1
-                if row.peilgebied_cat not in [0, 1]:
-                    continue
-
-                # Determine overlapping aggregate areas
-                idx = agg_peilgebieden.sindex.query(row.geometry, predicate="intersects")
-                df_agg = agg_peilgebieden.iloc[idx, :].copy()
-                df_agg["geometry"] = df_agg.intersection(row.geometry)
-                df_agg["overlap"] = df_agg.geometry.area / row.geometry.area
-
-                # Assign an aggreation area only if the sum of overlaps exceeds
-                # the pre-defined threshold.
-                if df_agg["overlap"].sum() >= self.agg_areas_threshold:
-                    agg_id = df_agg.at[df_agg.overlap.idxmax(), self.agg_peilgebieden_column]
-                    self.df_gpkg["peilgebied"].at[row.Index, "agg_area"] = agg_id
+            # Assign an aggregation area to the peilgebieden of category 0 and 1 that they cover enough of. Refined
+            # aggregation areas are made of peilgebieden, so each peilgebied has its own.
+            assert self.agg_peilgebieden_column is not None
+            self.df_gpkg["peilgebied"]["agg_area"] = (
+                aggregation_area_of(
+                    self.df_gpkg["peilgebied"], agg_peilgebieden, self.agg_peilgebieden_column, self.agg_areas_threshold
+                )
+                if self.refined_area_of is None
+                else self.refined_area_of
+            )
 
             # Assign aggregate areas to crossings
             agg_lookup = self.df_gpkg["peilgebied"][["globalid", "agg_area"]].set_index("globalid").agg_area

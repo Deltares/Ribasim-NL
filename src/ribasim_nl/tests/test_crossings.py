@@ -225,6 +225,10 @@ def test_renumber_nodes(tmp_path: Path, postprocessed: Path):
     assert renumber_nodes(model(), reference) == {1: 11, 2: 12, 3: 13}
     reference.nodes.loc[pump, "geometry"] = geometry.translate(xoff=1000.0)
     assert renumber_nodes(model(), reference) == {1: 11, 2: 12, 3: 14}
+    # or an ID from a given first ID, which leaves the IDs after those of the reference free
+    assert renumber_nodes(model(), reference, first_new_id=100) == {1: 11, 2: 12, 3: 100}
+    with pytest.raises(AssertionError, match="node IDs up to 13"):
+        renumber_nodes(model(), reference, first_new_id=13)
 
 
 def _crossings(cross: ParseCrossings) -> tuple:

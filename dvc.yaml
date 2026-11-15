@@ -788,6 +788,7 @@ stages:
       - pipeline/delfland/01_feedback.py
       - src/ribasim_nl/ribasim_nl
       - data/Delfland/modellen/Delfland_boezemmodel_2024_12_0
+      - data/Delfland/verwerkt/boezemmodel_ids.gpkg
       - data/Delfland/verwerkt/Feedback Formulier/feedback_formulier_Delfland.xlsx
       - data/Delfland/verwerkt/Splitting_basins/Opgeknipte_basin_2.gpkg
       - data/Delfland/verwerkt/Splitting_basins/Opgeknipte_basin_9.gpkg
@@ -809,6 +810,7 @@ stages:
       - pipeline/hollands_noorderkwartier/01_feedback.py
       - src/ribasim_nl/ribasim_nl
       - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_boezemmodel_2024_12_0
+      - data/HollandsNoorderkwartier/verwerkt/boezemmodel_ids.gpkg
       - data/HollandsNoorderkwartier/verwerkt/Feedback Formulier/feedback_formulier_HollandsNoorderkwartier.xlsx
       - data/HollandsNoorderkwartier/verwerkt/Splitting_basins/Opgeknipte_basin_3.gpkg
     outs:
@@ -828,6 +830,7 @@ stages:
       - pipeline/rijnland/01_feedback.py
       - src/ribasim_nl/ribasim_nl
       - data/Rijnland/modellen/Rijnland_boezemmodel_2024_12_3
+      - data/Rijnland/verwerkt/boezemmodel_ids.gpkg
       - data/Rijnland/verwerkt/Feedback Formulier/feedback_formulier_Rijnland.xlsx
       - data/Rijnland/verwerkt/Splitting_basins/Opgeknipte_basin_1.gpkg
       - data/Rijnland/verwerkt/Splitting_basins/Opgeknipte_basin_15.gpkg
@@ -840,6 +843,7 @@ stages:
       - pipeline/rivierenland/01_feedback.py
       - src/ribasim_nl/ribasim_nl
       - data/Rivierenland/modellen/Rivierenland_boezemmodel_2024_12_0
+      - data/Rivierenland/verwerkt/boezemmodel_ids.gpkg
       - data/Rivierenland/verwerkt/Feedback Formulier/feedback_formulier_Rivierenland.xlsx
       - data/Rivierenland/aangeleverd/Na_levering/gaten.gpkg
     outs:
@@ -850,6 +854,7 @@ stages:
       - pipeline/scheldestromen/01_feedback.py
       - src/ribasim_nl/ribasim_nl
       - data/Scheldestromen/modellen/Scheldestromen_boezemmodel_2024_12_0
+      - data/Scheldestromen/verwerkt/boezemmodel_ids.gpkg
       - data/Scheldestromen/verwerkt/Feedback Formulier/feedback_formulier_Scheldestromen.xlsx
     outs:
       - data/Scheldestromen/modellen/Scheldestromen_feedback
@@ -868,6 +873,7 @@ stages:
       - pipeline/wetterskip_fryslan/01_feedback.py
       - src/ribasim_nl/ribasim_nl
       - data/WetterskipFryslan/modellen/WetterskipFryslan_boezemmodel_2025_5_1
+      - data/WetterskipFryslan/verwerkt/boezemmodel_ids.gpkg
       - data/WetterskipFryslan/verwerkt/Feedback Formulier/feedback_formulier_WetterskipFryslan.xlsx
       - data/WetterskipFryslan/aangeleverd/Na_levering/gaarkeuken.gpkg
       - data/WetterskipFryslan/verwerkt/Splitting_basins/Opgeknipte_basin_6.gpkg
@@ -1069,6 +1075,7 @@ stages:
       - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Delfland/modellen/Delfland_boezemmodel_2024_12_0
+      - data/Delfland/verwerkt/boezemmodel_ids.gpkg
       - data/Delfland/verwerkt/Feedback Formulier/feedback_formulier_Delfland.xlsx
       - data/Delfland/aangeleverd/Na_levering/Wateraanvoer/Aanvoergebied_Afvoergebied_polders.gpkg
       - data/Delfland/verwerkt/Parametrisatie_data/Delfland.gpkg
@@ -1127,6 +1134,7 @@ stages:
       - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_boezemmodel_2024_12_0
+      - data/HollandsNoorderkwartier/verwerkt/boezemmodel_ids.gpkg
       - data/HollandsNoorderkwartier/verwerkt/Feedback Formulier/feedback_formulier_HollandsNoorderkwartier.xlsx
       - data/HollandsNoorderkwartier/aangeleverd/Na_levering/20240618_peilgebieden_en_polders
       - data/HollandsNoorderkwartier/verwerkt/Parametrisatie_data/Noorderkwartier.gpkg
@@ -1185,6 +1193,7 @@ stages:
       - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Rijnland/modellen/Rijnland_boezemmodel_2024_12_3
+      - data/Rijnland/verwerkt/boezemmodel_ids.gpkg
       - data/Rijnland/verwerkt/Feedback Formulier/feedback_formulier_Rijnland.xlsx
       - data/Rijnland/aangeleverd/Na_levering/Wateraanvoer
       - data/Rijnland/verwerkt/Parametrisatie_data/Rijnland.gpkg
@@ -1215,6 +1224,7 @@ stages:
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/GSK3E/gsk3e.gpkg
       - data/Rivierenland/modellen/Rivierenland_boezemmodel_2024_12_0
+      - data/Rivierenland/verwerkt/boezemmodel_ids.gpkg
       - data/Rivierenland/verwerkt/Feedback Formulier/feedback_formulier_Rivierenland.xlsx
       - data/Rivierenland/aangeleverd/Na_levering/Wateraanvoer
       - data/Rivierenland/verwerkt/Parametrisatie_data/Rivierenland.gpkg
@@ -1244,6 +1254,7 @@ stages:
       - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Scheldestromen/modellen/Scheldestromen_boezemmodel_2024_12_0
+      - data/Scheldestromen/verwerkt/boezemmodel_ids.gpkg
       - data/Scheldestromen/verwerkt/Feedback Formulier/feedback_formulier_Scheldestromen.xlsx
       - data/Scheldestromen/aangeleverd/Na_levering/Wateraanvoer
       - data/Scheldestromen/verwerkt/Parametrisatie_data/Scheldestromen.gpkg
@@ -1302,6 +1313,7 @@ stages:
       - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/WetterskipFryslan/modellen/WetterskipFryslan_boezemmodel_2025_5_1
+      - data/WetterskipFryslan/verwerkt/boezemmodel_ids.gpkg
       - data/WetterskipFryslan/verwerkt/Feedback Formulier/feedback_formulier_WetterskipFryslan.xlsx
       - data/WetterskipFryslan/aangeleverd/Na_levering/Wateraanvoer/aanvoer.gpkg
       - data/WetterskipFryslan/verwerkt/Parametrisatie_data/WetterskipFryslan.gpkg
@@ -1473,6 +1485,24 @@ stages:
       - data/Rijkswaterstaat/modellen/lhm_parts
       - data/Rijkswaterstaat/verwerkt/netwerk.gpkg
       - data/Rijkswaterstaat/verwerkt/peilbeheer.gpkg
+      - data/Delfland/verwerkt/boezemmodel_ids.gpkg
+      - data/Delfland/modellen/Delfland_boezemmodel_2024_12_0
+      - data/Delfland/modellen/Delfland_forcing
+      - data/HollandsNoorderkwartier/verwerkt/boezemmodel_ids.gpkg
+      - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_boezemmodel_2024_12_0
+      - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_forcing
+      - data/Rijnland/verwerkt/boezemmodel_ids.gpkg
+      - data/Rijnland/modellen/Rijnland_boezemmodel_2024_12_3
+      - data/Rijnland/modellen/Rijnland_forcing
+      - data/Rivierenland/verwerkt/boezemmodel_ids.gpkg
+      - data/Rivierenland/modellen/Rivierenland_boezemmodel_2024_12_0
+      - data/Rivierenland/modellen/Rivierenland_forcing
+      - data/Scheldestromen/verwerkt/boezemmodel_ids.gpkg
+      - data/Scheldestromen/modellen/Scheldestromen_boezemmodel_2024_12_0
+      - data/Scheldestromen/modellen/Scheldestromen_forcing
+      - data/WetterskipFryslan/verwerkt/boezemmodel_ids.gpkg
+      - data/WetterskipFryslan/modellen/WetterskipFryslan_boezemmodel_2025_5_1
+      - data/WetterskipFryslan/modellen/WetterskipFryslan_forcing
     outs:
       - data/Rijkswaterstaat/modellen/lhm_coupled
   run_lhm_coupled:

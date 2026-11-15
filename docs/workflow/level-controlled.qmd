@@ -60,6 +60,7 @@ Where HKV corrected the delivered data by hand, it applies these corrections, `v
 
 `pipeline/00e_crossings_to_ribasim.py` makes the input model `modellen/<water board>_boezemmodel_<version>`: the aggregation areas become Basins, and the crossings connector nodes.
 It numbers the nodes and links after the input model of 2024, `verwerkt/boezemmodel_ids.gpkg`, to which the feedback forms and scripts refer, by matching the nodes by type and location, see `ribasim_nl.crossings.renumber`.
+The map shows the delivered aggregation areas; six water boards get smaller ones, see [Aggregation areas](#sec-aggregation).
 :::
 ::: {.g-col-12 .g-col-lg-7}
 ![The input model. Each aggregation area is one Basin, in its own colour, with straight links to the structures on its boundary.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/level-3-input-model.png){fig-alt="Coloured Basin areas each with a blue Basin node, and straight links to black connector nodes on their boundaries."}
@@ -69,6 +70,22 @@ It numbers the nodes and links after the input model of 2024, `verwerkt/boezemmo
 This code is a port of the code that made the input models in 2024 and 2025, see [Reproducing models](../dev/reproducing-models.qmd#sec-level-controlled).
 Since the nodes are numbered after the input models of 2024, the deliveries, the aggregation areas and the algorithms can change, while the feedback forms keep referring to the right nodes, as long as these can be matched.
 The corrections refer to the delivered rows by their code, and `apply_edits` stops at corrections of rows that a new delivery lacks, so check them when the delivery changes.
+
+## Aggregation areas {#sec-aggregation}
+
+For Amstel, Gooi en Vecht, Hollandse Delta, Schieland en de Krimpenerwaard and Zuiderzeeland, each peilgebied is an aggregation area.
+The other six delivered aggregation areas such as polders, which hold several peilgebieden with target levels that differ by 1.5 m in the median polder of Delfland.
+One Basin per polder hides these levels, while one Basin per peilgebied gives many Basins that are too small to model: half of the 1570 peilgebieden of Delfland are smaller than 2.2 ha, and smaller than a cell of the LHM.
+
+`ribasim_nl.crossings.aggregation` therefore refines the aggregation areas of these six, before the crossings are aggregated:
+
+- A peilgebied of at least `MIN_AREA`, 50 ha, keeps its own Basin.
+- A smaller one joins the neighbour in its delivered aggregation area with the closest target level, smallest first, until all are large enough.
+- An area is named after its largest peilgebied and gets its target level, so the water board recognizes it.
+
+The feedback forms and scripts refer to the Basins of 2024, the delivered aggregation areas.
+`ribasim_nl.crossings.basin_references` keeps these references: the connector nodes between delivered aggregation areas keep their ID, a Basin of 2024 is the Basin that replaces it at the location of the edit, and the nodes that the feedback stage adds are numbered after the new nodes, which start at 10 000.
+The connections within the delivered aggregation areas were never reviewed by the water boards.
 
 ## The regional model
 
