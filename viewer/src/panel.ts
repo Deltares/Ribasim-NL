@@ -118,6 +118,78 @@ const TIME_SERIES: uPlot.Series = {
 /** The value axis of the charts, with ticks that tell neighbors apart */
 const VALUE_AXIS: uPlot.Axis = { size: 60, values: (_, ticks, _axis, _space, increment) => formatTicks(ticks, increment) };
 
+// The corners of a square, the icon of the button that opens a chart large
+const OPEN_ICON = "M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4";
+// Room for the legend of a large chart to grow a line, when it shows the time under the cursor
+const LEGEND_SLACK = 20;
+
+/** An icon of a path in a 16 by 16 box, drawn in the color of the text. */
+function icon(path: string): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const line = document.createElementNS(svg.namespaceURI, "path");
+  const set = (element: Element, attributes: Record<string, string>) =>
+    Object.entries(attributes).forEach(([name, value]) => element.setAttribute(name, value));
+  set(svg, { viewBox: "0 0 16 16", width: "14", height: "14", "aria-hidden": "true" });
+  set(line, { d: path, fill: "none", stroke: "currentColor", "stroke-width": "1.5" });
+  svg.append(line);
+  return svg;
+}
+
+/**
+ * A chart in the panel, with a button in its corner that opens it large, see `openChart`. uPlot copies its options, so
+ * they also make the large chart.
+ */
+function chartElement(options: uPlot.Options, data: uPlot.AlignedData): HTMLElement {
+  const plot = new uPlot(options, data);
+  const open = el("button", { type: "button", className: "chart-open", title: "Open large" }, icon(OPEN_ICON));
+  open.setAttribute("aria-label", "Open the chart large");
+  open.addEventListener("click", () => openChart(open, plot, options, data));
+  return el("div", { className: "chart" }, plot.root, open);
+}
+
+/**
+ * Open a chart of the panel large in a dialog, with the series that it hides and its time range. Dragging zooms in on
+ * a time range, or with a box also on the values, and a double click zooms out again.
+ */
+function openChart(button: HTMLElement, small: uPlot, options: uPlot.Options, data: uPlot.AlignedData): void {
+  // Titled by the feature of the panel and the heading of the chart, or else the section it is in
+  const feature = button.closest(".panel")?.querySelector("header h2")?.textContent;
+  let heading = button.closest(".chart")?.previousElementSibling;
+  while (heading && heading.tagName !== "H4") heading = heading.previousElementSibling;
+  const name = heading?.textContent ?? button.closest("details")?.querySelector("summary")?.textContent;
+  const body = el("div", { className: "chart-body" });
+  const close = el("button", { type: "button", className: "close", title: "Close" }, "×");
+  const title = el("h2", {}, [feature, name].filter(Boolean).join(": "));
+  const dialog = el("dialog", { className: "chart-dialog" }, el("header", {}, title, close), body);
+  (button.closest(".ribasim-viewer") ?? document.body).append(dialog);
+  dialog.showModal();
+
+  const plot = new uPlot({ ...options, cursor: { ...options.cursor, drag: { x: true, y: true, uni: 50 } } }, data, body);
+  // Hiding a series fires the hooks of the chart, like stacking the layers again
+  small.series.forEach(({ show }, i) => {
+    if (show === false) plot.setSeries(i, { show: false });
+  });
+  const fit = () => {
+    const legend = plot.root.querySelector<HTMLElement>(".u-legend")?.offsetHeight ?? 0;
+    plot.setSize({ width: body.clientWidth, height: Math.max(120, body.clientHeight - legend - LEGEND_SLACK) });
+  };
+  fit();
+  const { min, max } = small.scales.x;
+  if (min !== undefined && max !== undefined) plot.setScale("x", { min, max });
+  const resized = new ResizeObserver(fit);
+  resized.observe(body);
+  close.addEventListener("click", () => dialog.close());
+  // A click on the backdrop outside the dialog closes it too, like the Escape key
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) dialog.close();
+  });
+  dialog.addEventListener("close", () => {
+    resized.disconnect();
+    plot.destroy();
+    dialog.remove();
+  });
+}
+
 /** A time series chart of numeric columns, if the rows form one. */
 function timeChart(rows: Row[], width: number, only?: string[]): HTMLElement | null {
   if (rows.length < 2 || !rows.every((row) => row.time instanceof Date)) return null;
@@ -135,10 +207,9 @@ function timeChart(rows: Row[], width: number, only?: string[]): HTMLElement | n
     ...columns.map((column) => rows.map((row) => value(row, column))),
   ];
   const colors = columns.filter((column) => !column.endsWith(BASE));
-  const container = el("div", { className: "chart" });
   // Values are only shown while hovering the chart
   const seriesValue = (_: uPlot, value: number | null) => (value === null ? "" : formatNumber(value));
-  const plot = new uPlot(
+  return chartElement(
     {
       width,
       height: 200,
@@ -157,8 +228,6 @@ function timeChart(rows: Row[], width: number, only?: string[]): HTMLElement | n
     },
     data,
   );
-  container.append(plot.root);
-  return container;
 }
 
 /** A layer of a stacked chart. */
@@ -242,52 +311,69 @@ const lineMarker = ({ dashed }: ChartLine) => {
 
 /**
  * A chart of layers stacked per time step: their positive parts up from zero and their negative parts down from zero,
- * with lines like their total. The legend shows the value of each layer under the cursor.
+ * with lines like their total. The legend shows the value of each layer under the cursor, and hides a layer when it is
+ * clicked, which stacks the others again without it.
  */
 function stackedChart(times: Date[], layers: Layer[], width: number, lines: ChartLine[] = []): HTMLElement {
-  const { up, down } = stackLayers(layers.map((layer) => layer.values));
   const finite = (values: Float64Array) => Array.from(values, (value) => (Number.isFinite(value) ? value : null));
   const series: uPlot.Series[] = [TIME_SERIES];
-  const data: (number | null)[][] = [times.map((time) => time.getTime() / 1000)];
   const markers: string[] = [""];
-  const bands: uPlot.Band[] = [];
-  const add = (layer: Layer, edges: Float64Array, options: uPlot.Series) => {
+  const add = (layer: Layer, options: uPlot.Series) => {
     const fill = layer.hatched ? hatchFill(layer.color) : layer.color;
     // An edge in the color of its layer, since a line of the panel color would hide the peaks of a single time step
     series.push({ label: layer.label, stroke: layer.color, width: 1, fill, ...options });
-    data.push(finite(edges));
     markers.push(layerMarker(layer));
     return series.length - 1;
   };
-  // Each layer fills the band between its edge and the edge below or above it; the first one fills to zero
-  let below = 0;
-  layers.forEach((layer, i) => {
-    const value = (_: uPlot, _raw: number, _series: number, step: number | null) =>
-      step === null ? "" : formatNumber(layer.values[step]);
-    const edge = add(layer, up[i], { value });
-    if (below) bands.push({ series: [edge, below] });
-    below = edge;
-  });
-  let above = 0;
-  layers.forEach((layer, i) => {
-    if (!layer.values.some((value) => value < 0)) return;
-    // The legend has a single entry per layer, with its net value
-    const edge = add(layer, down[i], { class: "stack-down", value: () => "" });
-    if (above) bands.push({ series: [edge, above], dir: 1 });
-    above = edge;
-  });
+  // The series of the edge of each layer above zero, and of that below zero for the layers with negative values
+  const upper = layers.map((layer) =>
+    add(layer, { value: (_, _raw, _series, step) => (step === null ? "" : formatNumber(layer.values[step])) }),
+  );
+  // The legend has a single entry per layer, with its net value
+  const lower = layers.map((layer) =>
+    layer.values.some((value) => value < 0) ? add(layer, { class: "stack-down", value: () => "" }) : null,
+  );
   for (const line of lines) {
     const value = (_: uPlot, raw: number | null) => (raw === null ? "" : formatNumber(raw));
     series.push({ label: line.label, stroke: LINE_INK, width: 1.5, value, ...(line.dashed ? { dash: [6, 4] } : {}) });
-    data.push(finite(line.values));
     markers.push(lineMarker(line));
   }
-  const plot = new uPlot(
+  /**
+   * The data of the series with the visible layers stacked, and the bands that fill each visible layer from the edge of
+   * the visible layer below it, or above it below zero; the first fills to zero.
+   */
+  const stack = (visible: boolean[]) => {
+    const { up, down } = stackLayers(
+      layers.map((layer) => layer.values),
+      visible,
+    );
+    const data = [
+      times.map((time) => time.getTime() / 1000),
+      ...up.map(finite),
+      ...down.flatMap((edges, i) => (lower[i] === null ? [] : [finite(edges)])),
+      ...lines.map((line) => finite(line.values)),
+    ];
+    const bands: uPlot.Band[] = [];
+    let below: number | null = null;
+    let above: number | null = null;
+    layers.forEach((_, i) => {
+      if (!visible[i]) return;
+      if (below !== null) bands.push({ series: [upper[i], below] });
+      below = upper[i];
+      const edge = lower[i];
+      if (edge === null) return;
+      if (above !== null) bands.push({ series: [edge, above], dir: 1 });
+      above = edge;
+    });
+    return { data: data as uPlot.AlignedData, bands };
+  };
+  const shown = stack(layers.map(() => true));
+  return chartElement(
     {
       width,
       height: 220,
       series,
-      bands,
+      bands: shown.bands,
       scales: {
         x: { time: true },
         // The stack starts at zero
@@ -295,10 +381,28 @@ function stackedChart(times: Date[], layers: Layer[], width: number, lines: Char
       },
       axes: [{}, VALUE_AXIS],
       legend: { markers: { show: true, width: 0, stroke: LINE_INK, fill: (_, i) => markers[i], dash: "solid" } },
+      hooks: {
+        setSeries: [
+          (u, _series, options) => {
+            if (options.show === undefined) return;
+            // A layer is hidden with its edge below zero, and the visible layers stacked again, in the zoomed time
+            const visible = upper.map((index) => u.series[index].show !== false);
+            lower.forEach((index, i) => {
+              const shown = index !== null && u.series[index].show !== false;
+              if (index !== null && shown !== visible[i]) u.setSeries(index, { show: visible[i] }, false);
+            });
+            const { data, bands } = stack(visible);
+            u.delBand(null);
+            for (const band of bands) u.addBand(band);
+            const { min, max } = u.scales.x;
+            u.setData(data);
+            if (min !== undefined && max !== undefined) u.setScale("x", { min, max });
+          },
+        ],
+      },
     },
-    data as uPlot.AlignedData,
+    shown.data,
   );
-  return el("div", { className: "chart" }, plot.root);
 }
 
 /** The rows of a time table in effect at each time step: the last at or before it. */
