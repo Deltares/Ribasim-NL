@@ -1,4 +1,5 @@
 import json
+import re
 import sqlite3
 from contextlib import closing
 
@@ -13,12 +14,16 @@ from ribasim import Model, Node
 from ribasim.nodes import basin, level_boundary, tabulated_rating_curve
 from ribasim_nl.goodness_of_fit import MIN_COMPARED_DAYS
 from ribasim_nl.webmap import (
+    LHM_SET,
     NETCDF_NODES_PER_ROW_GROUP,
     NUTRIENTS,
+    SOURCE_SET,
     TIME_STEPS_PER_ROW_GROUP,
     TRACERS,
+    checked_sets,
     color_domain,
     concentration_variable,
+    derived_tracers,
     downcast_int64,
     export_basin_area,
     export_concentration,
@@ -28,10 +33,12 @@ from ribasim_nl.webmap import (
     export_results,
     export_webmap,
     file_hash,
+    lhm_boundary_labels,
     lhm_fractions,
     netcdf_tables,
     run_info,
     table_slug,
+    tracer_sets,
     write_table,
 )
 from shapely.geometry import MultiPolygon, Point, box
@@ -230,17 +237,22 @@ def write_concentration(path, node_ids, time, substances):
 def test_export_concentration(tmp_path):
     source = tmp_path / "concentration.nc"
     time = pd.date_range("2020-01-01", periods=9, freq="D")
-    substances = ["Continuity", "ResidenceTime", "Neerslag", "NO3"]
+    # The values grow with the index of the substance, so Neerslag stays below Continuity, as a fraction does
+    substances = ["Neerslag", "ResidenceTime", "Continuity", "NO3"]
     values = write_concentration(source, np.array([3, 1, 2], dtype="int32"), time, substances)
 
     ids = np.array([1, 2, 3], dtype="int32")
     by_id = tmp_path / "concentration_by_id.parquet"
     path = tmp_path / "concentration_by_time.parquet"
     times = time.to_numpy().astype("datetime64[ms]")
-    set_ = export_concentration(source, ids, times, by_id, path, fractions={"Neerslag"})
+    rain = {"name": "rain", "tracers": ["Neerslag"], "boundaries": {}}
+    missing = {"name": "missing", "tracers": ["Neerslag", "Rijn"], "boundaries": {}}
+    set_ = export_concentration(source, ids, times, by_id, path, [rain, missing])
 
     assert set_["count"] == 3
-    # The nutrients first and sorted, then the tracers: those of the core and the fractions of the model input
+    # Only the sets whose tracers are all in the results are kept
+    assert set_["sets"] == [rain]
+    # The nutrients first and sorted, then the tracers: Continuity, and those of the tracer sets
     assert list(set_["variables"]) == ["NO3", "Continuity", "Neerslag", "ResidenceTime"]
     variables = set_["variables"]
     assert variables["NO3"]["group"] == NUTRIENTS
@@ -249,7 +261,7 @@ def test_export_concentration(tmp_path):
     assert variables["Neerslag"]["units"] == "-"
     assert variables["ResidenceTime"]["units"] == "d"
     # A fraction goes up to its highest value: the last time step, and the last of the three nodes in the file
-    assert variables["Neerslag"]["domain"] == [0.0, values[:, 2].max()]
+    assert variables["Neerslag"]["domain"] == [0.0, values[:, 0].max()]
     # A nutrient goes up to its 98th percentile
     assert variables["NO3"]["domain"] == [0.0, pytest.approx(np.percentile(values[:, 3].astype("float32"), 98))]
     assert all(variable["scale"] == "linear" for variable in variables.values())
@@ -260,15 +272,15 @@ def test_export_concentration(tmp_path):
     assert df["node_id"].tolist()[:3] == [1, 2, 3]
     assert df["NO3"].dtype == "float32"
     # Second time step, node 1 is the second column in the NetCDF
-    assert df["Neerslag"].iloc[3] == values[1, 2, 1]
+    assert df["Neerslag"].iloc[3] == values[1, 0, 1]
     # The residence time is written in seconds, and shown in days
     assert df["ResidenceTime"].iloc[3] == pytest.approx(values[1, 1, 1] / 86400)
 
     per_basin = pd.read_parquet(by_id)
-    assert per_basin.columns.tolist() == ["node_id", "time", "Continuity", "ResidenceTime", "Neerslag", "NO3"]
+    assert per_basin.columns.tolist() == ["node_id", "time", "Neerslag", "ResidenceTime", "Continuity", "NO3"]
     assert per_basin["node_id"].is_monotonic_increasing
     # Node 1 is the second column in the NetCDF
-    np.testing.assert_array_equal(per_basin.loc[per_basin.node_id == 1, "Neerslag"], values[:, 2, 1].astype("float32"))
+    np.testing.assert_array_equal(per_basin.loc[per_basin.node_id == 1, "Neerslag"], values[:, 0, 1].astype("float32"))
     # Only the id column has the statistics that find the row group of a Basin
     columns = pq.ParquetFile(by_id).metadata.row_group(0).to_dict()["columns"]
     assert [column["path_in_schema"] for column in columns if column["is_stats_set"]] == ["node_id"]
@@ -304,6 +316,123 @@ def test_lhm_fractions(tmp_path):
         con.execute('INSERT INTO "LevelBoundary / concentration" VALUES (5, "Noordzee")')
         con.commit()
     assert lhm_fractions(database) == {"Neerslag", "Rijn"}
+
+
+def write_lhm_database(
+    path, flow_boundary_rows, level_boundary_rows=(), basin_fractions=("Neerslag", "Drainage (doorgaand)")
+):
+    """Write the concentration tables of a model input with LHM fractions, like `assign_lhm_fractions`."""
+    with closing(sqlite3.connect(path)) as con:
+        con.execute('CREATE TABLE "Basin / concentration" (node_id INTEGER, substance TEXT, meta_lhm_fraction BOOLEAN)')
+        con.executemany(
+            'INSERT INTO "Basin / concentration" VALUES (?, ?, ?)', [(1, fraction, 1) for fraction in basin_fractions]
+        )
+        for table, rows in [("FlowBoundary", flow_boundary_rows), ("LevelBoundary", level_boundary_rows)]:
+            con.execute(
+                f'CREATE TABLE "{table} / concentration" '
+                "(node_id INTEGER, substance TEXT, concentration REAL, meta_lhm_fraction BOOLEAN)"
+            )
+            # The table is one of the two boundary tables
+            con.executemany(f'INSERT INTO "{table} / concentration" VALUES (?, ?, ?, ?)', rows)  # noqa: S608
+        con.commit()
+
+
+def test_tracer_sets(tmp_path):
+    """The LHM fractions come first, as the default set, then the default tracers of the core."""
+    database = tmp_path / "database.gpkg"
+    write_lhm_database(
+        database, [(4, "Rijn", 1.0, 1), (4, "NO3", 2.5, None), (3, "RWZI", 1.0, 1)], [(5, "Noordzee", 1.0, 1)]
+    )
+    node_types = {5: "LevelBoundary", 4: "FlowBoundary", 3: "FlowBoundary", 1: "Basin", 6: "LevelBoundary"}
+    nodes = pd.DataFrame({"node_id": list(node_types), "node_type": list(node_types.values())})
+
+    lhm, source = tracer_sets(database, nodes)
+    assert lhm == {
+        "name": LHM_SET,
+        # Like `sort_lhm_fractions`: the initial water at the bottom, then drainage and RWZI, the rest, and rain on top
+        "tracers": ["Initial", "Drainage (doorgaand)", "RWZI", "Noordzee", "Rijn", "Neerslag"],
+        # LevelBoundary 6 has no LHM fraction, so its water has no label in this set
+        "boundaries": {"3": "RWZI", "4": "Rijn", "5": "Noordzee"},
+    }
+    assert source == {
+        "name": SOURCE_SET,
+        "tracers": ["Initial", "Drainage", "SurfaceRunoff", "FlowBoundary", "LevelBoundary", "Precipitation"],
+        "boundaries": {"3": "FlowBoundary", "4": "FlowBoundary", "5": "LevelBoundary", "6": "LevelBoundary"},
+    }
+    # Without LHM fractions only the default tracers of the core remain
+    assert tracer_sets(tmp_path / "without_concentration.gpkg", nodes) == [source]
+
+
+@pytest.mark.parametrize(
+    ("basin_fractions", "derived"),
+    [
+        # Maaiveld labels the surface runoff of the secondary Basins, the rest of it is that of the primary Basins
+        (["Neerslag", "Maaiveld"], {"Maaiveld (doorgaand)": {"tracer": "SurfaceRunoff", "minus": ["Maaiveld"]}}),
+        # A model that labels it is not derived
+        (["Neerslag", "Maaiveld", "Maaiveld (doorgaand)"], None),
+        # Nor that of a model without Maaiveld, whose surface runoff has no label
+        (["Neerslag"], None),
+    ],
+)
+def test_tracer_sets_derive_lhm_fractions(tmp_path, basin_fractions, derived):
+    """The LHM set has the LHM fractions that follow from the default tracers of the core, next to their parts."""
+    database = tmp_path / "database.gpkg"
+    write_lhm_database(database, [], basin_fractions=basin_fractions)
+    lhm, _ = tracer_sets(database, pd.DataFrame({"node_id": [1], "node_type": ["Basin"]}))
+    assert lhm.get("derived") == derived
+    runoff = ["Maaiveld (doorgaand)", "Maaiveld"] if len(basin_fractions) > 1 else []
+    assert lhm["tracers"] == ["Initial", *runoff, "Neerslag"]
+
+
+def test_derived_tracers():
+    """A derived tracer is a tracer minus the tracers that label part of its water."""
+    runoff = np.array([[0.5, 0.25], [0.0, 1.0]], dtype="float32")
+    data = {"SurfaceRunoff": runoff, "Maaiveld": np.array([[0.25, 0.25], [0.0, 0.5]], dtype="float32")}
+    definition = {"tracer": "SurfaceRunoff", "minus": ["Maaiveld"]}
+    lhm = {"name": "lhm", "tracers": ["Maaiveld (doorgaand)", "Maaiveld"], "boundaries": {}}
+    sets, values = derived_tracers([lhm | {"derived": {"Maaiveld (doorgaand)": definition}}], data)
+    assert sets == [lhm | {"derived": {"Maaiveld (doorgaand)": definition}}]
+    np.testing.assert_array_equal(values["Maaiveld (doorgaand)"], [[0.25, 0.0], [0.0, 0.5]])
+
+    # Results without the tracer have no derived tracer, and results with the derived tracer need none
+    without = {"Maaiveld": data["Maaiveld"]}
+    assert derived_tracers([lhm | {"derived": {"Maaiveld (doorgaand)": definition}}], without) == (
+        [lhm | {"tracers": ["Maaiveld"]}],
+        {},
+    )
+    native = data | {"Maaiveld (doorgaand)": runoff}
+    assert derived_tracers([lhm | {"derived": {"Maaiveld (doorgaand)": definition}}], native) == ([lhm], {})
+
+    # A part that is larger than the whole labels water that the tracer does not
+    with pytest.raises(AssertionError, match=r"Maaiveld exceed SurfaceRunoff by 0\.5"):
+        derived_tracers([lhm | {"derived": {"x": definition}}], data | {"Maaiveld": runoff + 0.5})
+
+
+@pytest.mark.parametrize(
+    ("rows", "message"),
+    [
+        ([(3, "Rijn", 0.5, 1)], "Rijn of node 3 in FlowBoundary / concentration is 0.5"),
+        ([(3, "Rijn", 1.0, 1), (3, "Maas", 1.0, 1)], "two"),
+    ],
+)
+def test_lhm_boundary_labels_label_all_water(tmp_path, rows, message):
+    """The LHM fraction of a boundary labels all its water: it has one, with a concentration of 1."""
+    database = tmp_path / "database.gpkg"
+    write_lhm_database(database, rows)
+    with pytest.raises(AssertionError, match=re.escape(message)):
+        lhm_boundary_labels(database)
+
+
+def test_checked_sets():
+    """A set is kept if the results have all its tracers, and it may not label any water twice."""
+    half = np.full((2, 3), 0.5, dtype="float32")
+    data = {"Continuity": np.ones((2, 3), dtype="float32"), "A": half, "B": half, "C": half}
+    ab = {"name": "ab", "tracers": ["A", "B"], "boundaries": {}}
+    assert checked_sets([ab, {"name": "ad", "tracers": ["A", "D"], "boundaries": {}}], data) == [ab]
+    # Without Continuity the fractions of a set have no total
+    assert checked_sets([ab], {"A": half, "B": half}) == []
+    with pytest.raises(AssertionError, match=r"The tracers of abc exceed Continuity by 0\.5"):
+        checked_sets([{"name": "abc", "tracers": ["A", "B", "C"], "boundaries": {}}], data)
 
 
 def test_export_concentration_needs_the_basins_and_times_of_the_results(tmp_path):

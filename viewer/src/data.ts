@@ -8,6 +8,7 @@ import {
 import type { AsyncBuffer, FileMetaData } from "hyparquet";
 import { compressors } from "hyparquet-compressors";
 import { formatUnits } from "./colors";
+import type { TracerSet } from "./fractions";
 
 export interface FileEntry {
   path: string;
@@ -50,6 +51,11 @@ export interface ResultSet extends FrameSet {
   by_id: FileEntry;
 }
 
+export interface ConcentrationResults extends ResultSet {
+  /** The sets of tracers that label the water by its source, the default first; older exports have none */
+  sets?: TracerSet[];
+}
+
 /**
  * How well the results fit the measurements of the Observation nodes, see `ribasim_nl.webmap.export_observations`.
  * The frames are the differences simulated - observed of each observed variable.
@@ -69,7 +75,7 @@ export interface Results {
   basin: ResultSet;
   flow: ResultSet;
   /** The concentration of each substance in the Basins, in the order of the Basin results; only if the model tracks them */
-  concentration?: ResultSet;
+  concentration?: ConcentrationResults;
   /** Only if the model has Observation nodes with measurements */
   observation?: ObservationResults;
   /** Control state changes, sorted by control_node_id and time */

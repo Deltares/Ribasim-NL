@@ -15,6 +15,11 @@ export const FIT = ["#762a83", "#9970ab", "#c2a5cf", "#e7d4e8", "#f7f7f7", "#d9f
 export const FIT_AROUND_ZERO = [...FIT, ...FIT.slice(0, -1).reverse()];
 // A symmetric log scale tells magnitudes apart over this many orders below its limits, and is linear closer to zero
 const SYMLOG_DECADES = 3;
+// Colors of categories in this order, in which neighbors stay apart, also with a color vision deficiency; the aqua,
+// yellow and magenta have little contrast with white, so a legend names them
+export const CATEGORICAL = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"];
+// Neutral greys for categories without an identity, like the water without a label
+export const NEUTRAL = { dark: "#898781", light: "#c3c2b7" };
 
 const parseHex = (hex: string): [number, number, number] => [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
 
@@ -114,5 +119,9 @@ export function formatTicks(ticks: number[], increment: number): string[] {
     const digits = Math.max(1, Math.floor(Math.log10(largest)) - step);
     return ticks.map((tick) => (tick === 0 ? "0" : tick.toExponential(digits)));
   }
-  return ticks.map((tick) => tick.toFixed(Math.max(0, -step)));
+  // The decimals that write the spacing exactly, so a spacing of 0.25 reads 0.25 and 0.75, not 0.3 and 0.8
+  let decimals = Math.max(0, -step);
+  const scaled = (digits: number) => increment * 10 ** digits;
+  while (decimals < 15 && Math.abs(scaled(decimals) - Math.round(scaled(decimals))) > 1e-6 * scaled(decimals)) decimals++;
+  return ticks.map((tick) => tick.toFixed(decimals));
 }

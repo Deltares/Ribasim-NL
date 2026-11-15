@@ -4,8 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "typecheck": "tsc --noEmit"
+    "build": "tsc && node --test && vite build",
+    "test": "node --test",
+    "typecheck": "tsc"
   },
   "dependencies": {
     "@deck.gl/core": "^9.4.0",

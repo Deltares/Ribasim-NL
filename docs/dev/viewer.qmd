@@ -36,6 +36,38 @@ The color scale starts at zero and goes up to the highest value for a fraction o
 Each substance has its own limits, which can be changed in the legend.
 The panel of a Basin charts the concentration of one substance, with its own list, which also changes the substance on the map.
 
+## Fractions of the water
+
+The panel of a Basin charts the water of the Basin by its source, as stacked fractions.
+The panel of a flow link charts the flow over it by the source of its water: stacked above zero in the direction of the link, below zero against it, with the flow rate as a line.
+So does the panel of a node with a flow, as in QGIS: the outflow of a connector node or FlowBoundary, the flow of a Junction on its link towards the Basin of its tree, or else its inflow, and the inflow that a UserDemand or Terminal takes.
+The panel of an Observation node charts the flow it observes, with the measured values as a dashed line: the simulated flow rate of a node, see [Fit to the measurements](#fit-to-the-measurements), or the inflow or outflow of a Basin, which is the water the Basin exchanges with each neighbor, also through its Junction trees.
+For the other variables of a Basin, like its level, it charts the water in the Basin.
+The sources are the tracers of a tracer set, which labels all water by its source, so its tracers add up to `Continuity`, as proposed in [Ribasim#3438](https://github.com/Deltares/Ribasim/issues/3438#issuecomment-6834960461).
+The export writes the sets of the model to the manifest, and checks that no set labels any water twice, see `ribasim_nl.webmap.tracer_sets`:
+
+- *LHM fractions*, the default: the substances that `ribasim_nl.assign_lhm_fractions` marks with `meta_lhm_fraction` in the model input, like `Rijn` and `Maas`, with the `Initial` water.
+    The model input labels the surface runoff of the secondary Basins only, as `Maaiveld`, so the export derives `Maaiveld (doorgaand)`, that of the primary Basins: the `SurfaceRunoff` tracer of the core minus `Maaiveld`, see `DERIVED_LHM_FRACTIONS`.
+    It is exported like a substance, so the map can color the Basins by it too.
+- *Source types*: the default tracers of the Ribasim core, which label the water by the type of its source, like `FlowBoundary` and `Precipitation`.
+
+*Other* is the water without a label in the set, like that of a boundary without an LHM fraction.
+Layers that stay below 0.1% of the chart are left out.
+Each tracer keeps its color in all charts; those after the eighth of a set are hatched, since more colors would be hard to tell apart.
+Derived tracers take the colors after the others, so a model with them does not change the colors of the others.
+The list above the chart chooses the set, which the panels of other features keep.
+When comparing models, the charts are of the shown model only.
+
+A flow has the water of the node it flows out of: that of a Basin, or the label of a FlowBoundary or LevelBoundary.
+Connector nodes and UserDemands pass on the water they take, so the water is traced past them.
+A group of Junctions with one Basin connects its other neighbors to that Basin, see [Junction](https://ribasim.org/reference/node/junction.html), so the flow out of the group has the water of the Basin.
+A link of such a group, between Junctions or to the Basin, has the net flow of the neighbors of the group behind it, away from the Basin.
+Their flows towards the Basin have the water of where they come from, and those away from it the water of the Basin, so the layers of such a link can flow in opposite directions.
+The panel says so, and checks that these flows add up to the flow over the link.
+Other Junctions mix the water that flows into them by the flows of each time step, like the core mixes the [tracers](https://ribasim.org/reference/node/junction.html#tracers) that flow into a Junction: those in the `Junction / static` table, which divide the flow they receive, and those of a group without a single Basin, which passes on the water where its links take it.
+A UserDemand that takes water from several nodes, or from such a Junction, returns the mix.
+The water of a Basin is that at the start of each time step, like the core uses it for the flows into Junctions.
+
 ## Fit to the measurements
 
 The *Observations* choice in the time bar colors the Observation nodes by how well the simulated values fit their measurements, see `ribasim_nl.goodness_of_fit`:
@@ -86,7 +118,7 @@ The simulated flow rate of a Junction of a Basin tree is the net flow of its lin
     | `results/observation_metrics.parquet` | How well the results fit the measurements of each Observation node, see [Fit to the measurements](#fit-to-the-measurements) |
     | `results/observation_by_time.parquet` | The difference simulated − observed of each Observation node, ordered by time step, for coloring the map |
     | `results/observation_links.parquet` | The flow links whose total flow is the simulated flow rate of each Observation node, for its chart |
-    | `manifest.json` | List of the files above with their content hash and size, the color scale of each result variable, and when and from which commit the model was run |
+    | `manifest.json` | List of the files above with their content hash and size, the color scale of each result variable, the tracer sets, see [Fractions of the water](#fractions-of-the-water), and when and from which commit the model was run |
 
     Results are only exported if the model's `results` directory exists.
     DVC does not cache this output, since the published model on MinIO is a copy of it already.
@@ -226,7 +258,9 @@ pixi run viewer-dev
 ```
 
 Changes to the TypeScript code reload the page automatically.
-`pixi run viewer-build` checks types and builds the viewer into `docs/viewer-app`.
+`pixi run viewer-build` checks types, runs the tests, and builds the viewer into `docs/viewer-app`.
+`pixi run viewer-test` only runs the tests: the `viewer/src/*.test.ts` files, which Node runs as they are, without dependencies.
+So the modules they test have only type imports, and the tests import them by file name.
 `pixi run docs` and `pixi run docs-render` run it before rendering the docs.
 Add `?data=<url>` to the viewer page URL to load the data from another location, and `&base_data=<url>&diff=<url>` to compare it with another model, for instance `?data=http://localhost:5173/` to use the development server.
 Only the default MinIO host, the docs site itself and `localhost` are accepted.

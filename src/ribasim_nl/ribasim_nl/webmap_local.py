@@ -28,6 +28,7 @@ from urllib.parse import unquote, urlsplit
 
 from dvc.api import DVCFileSystem
 
+import ribasim_nl.assign_lhm_fractions
 import ribasim_nl.goodness_of_fit
 import ribasim_nl.webmap
 import ribasim_nl.webmap_diff
@@ -77,7 +78,11 @@ COPY_CHUNK = 1 << 20
 def model_sources(toml_path: Path) -> list[Path]:
     """The files an export of the model depends on, including the export code."""
     config, input_dir, database = read_config(toml_path)
-    code = [Path(ribasim_nl.webmap.__file__), Path(ribasim_nl.goodness_of_fit.__file__)]
+    code = [
+        Path(ribasim_nl.webmap.__file__),
+        Path(ribasim_nl.goodness_of_fit.__file__),
+        Path(ribasim_nl.assign_lhm_fractions.__file__),
+    ]
     sources = [toml_path, database, *netcdf_tables(config, input_dir).values(), *code]
     results_dir = model_results_dir(toml_path, config)
     if results_dir.is_dir():
