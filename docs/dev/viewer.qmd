@@ -56,6 +56,7 @@ Layers that stay below 0.1% of the chart are left out.
 Each tracer keeps its color in all charts; those after the eighth of a set are hatched, since more colors would be hard to tell apart.
 Derived tracers take the colors after the others, so a model with them does not change the colors of the others.
 The list above the chart chooses the set, which the panels of other features keep.
+Click a tracer in the legend to hide it; the others are stacked again without it.
 When comparing models, the charts are of the shown model only.
 
 A flow has the water of the node it flows out of: that of a Basin, or the label of a FlowBoundary or LevelBoundary.

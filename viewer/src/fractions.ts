@@ -426,18 +426,20 @@ export function visibleLayers(layers: Map<string, Float64Array>, scale: number, 
 /**
  * The edges of the stacked layers per time step: the positive parts stacked up from zero, and the negative parts down
  * from zero, both in the order of the layers. A layer without a value at a time step has no edge there, nor the layers
- * above it.
+ * above it. A layer that is not `visible` adds nothing, so the layers above it stack on the layer below it.
  */
-export function stackLayers(layers: Float64Array[]): { up: Float64Array[]; down: Float64Array[] } {
+export function stackLayers(layers: Float64Array[], visible?: boolean[]): { up: Float64Array[]; down: Float64Array[] } {
   const steps = layers[0]?.length ?? 0;
   const up: Float64Array[] = [];
   const down: Float64Array[] = [];
   let [below, above] = [new Float64Array(steps), new Float64Array(steps)];
-  for (const values of layers) {
-    above = above.map((edge, i) => edge + Math.max(values[i], 0));
-    below = below.map((edge, i) => edge + Math.min(values[i], 0));
+  layers.forEach((values, layer) => {
+    if (visible?.[layer] !== false) {
+      above = above.map((edge, i) => edge + Math.max(values[i], 0));
+      below = below.map((edge, i) => edge + Math.min(values[i], 0));
+    }
     up.push(above);
     down.push(below);
-  }
+  });
   return { up, down };
 }

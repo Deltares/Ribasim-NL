@@ -242,52 +242,69 @@ const lineMarker = ({ dashed }: ChartLine) => {
 
 /**
  * A chart of layers stacked per time step: their positive parts up from zero and their negative parts down from zero,
- * with lines like their total. The legend shows the value of each layer under the cursor.
+ * with lines like their total. The legend shows the value of each layer under the cursor, and hides a layer when it is
+ * clicked, which stacks the others again without it.
  */
 function stackedChart(times: Date[], layers: Layer[], width: number, lines: ChartLine[] = []): HTMLElement {
-  const { up, down } = stackLayers(layers.map((layer) => layer.values));
   const finite = (values: Float64Array) => Array.from(values, (value) => (Number.isFinite(value) ? value : null));
   const series: uPlot.Series[] = [TIME_SERIES];
-  const data: (number | null)[][] = [times.map((time) => time.getTime() / 1000)];
   const markers: string[] = [""];
-  const bands: uPlot.Band[] = [];
-  const add = (layer: Layer, edges: Float64Array, options: uPlot.Series) => {
+  const add = (layer: Layer, options: uPlot.Series) => {
     const fill = layer.hatched ? hatchFill(layer.color) : layer.color;
     // An edge in the color of its layer, since a line of the panel color would hide the peaks of a single time step
     series.push({ label: layer.label, stroke: layer.color, width: 1, fill, ...options });
-    data.push(finite(edges));
     markers.push(layerMarker(layer));
     return series.length - 1;
   };
-  // Each layer fills the band between its edge and the edge below or above it; the first one fills to zero
-  let below = 0;
-  layers.forEach((layer, i) => {
-    const value = (_: uPlot, _raw: number, _series: number, step: number | null) =>
-      step === null ? "" : formatNumber(layer.values[step]);
-    const edge = add(layer, up[i], { value });
-    if (below) bands.push({ series: [edge, below] });
-    below = edge;
-  });
-  let above = 0;
-  layers.forEach((layer, i) => {
-    if (!layer.values.some((value) => value < 0)) return;
-    // The legend has a single entry per layer, with its net value
-    const edge = add(layer, down[i], { class: "stack-down", value: () => "" });
-    if (above) bands.push({ series: [edge, above], dir: 1 });
-    above = edge;
-  });
+  // The series of the edge of each layer above zero, and of that below zero for the layers with negative values
+  const upper = layers.map((layer) =>
+    add(layer, { value: (_, _raw, _series, step) => (step === null ? "" : formatNumber(layer.values[step])) }),
+  );
+  // The legend has a single entry per layer, with its net value
+  const lower = layers.map((layer) =>
+    layer.values.some((value) => value < 0) ? add(layer, { class: "stack-down", value: () => "" }) : null,
+  );
   for (const line of lines) {
     const value = (_: uPlot, raw: number | null) => (raw === null ? "" : formatNumber(raw));
     series.push({ label: line.label, stroke: LINE_INK, width: 1.5, value, ...(line.dashed ? { dash: [6, 4] } : {}) });
-    data.push(finite(line.values));
     markers.push(lineMarker(line));
   }
+  /**
+   * The data of the series with the visible layers stacked, and the bands that fill each visible layer from the edge of
+   * the visible layer below it, or above it below zero; the first fills to zero.
+   */
+  const stack = (visible: boolean[]) => {
+    const { up, down } = stackLayers(
+      layers.map((layer) => layer.values),
+      visible,
+    );
+    const data = [
+      times.map((time) => time.getTime() / 1000),
+      ...up.map(finite),
+      ...down.flatMap((edges, i) => (lower[i] === null ? [] : [finite(edges)])),
+      ...lines.map((line) => finite(line.values)),
+    ];
+    const bands: uPlot.Band[] = [];
+    let below: number | null = null;
+    let above: number | null = null;
+    layers.forEach((_, i) => {
+      if (!visible[i]) return;
+      if (below !== null) bands.push({ series: [upper[i], below] });
+      below = upper[i];
+      const edge = lower[i];
+      if (edge === null) return;
+      if (above !== null) bands.push({ series: [edge, above], dir: 1 });
+      above = edge;
+    });
+    return { data: data as uPlot.AlignedData, bands };
+  };
+  const shown = stack(layers.map(() => true));
   const plot = new uPlot(
     {
       width,
       height: 220,
       series,
-      bands,
+      bands: shown.bands,
       scales: {
         x: { time: true },
         // The stack starts at zero
@@ -295,8 +312,26 @@ function stackedChart(times: Date[], layers: Layer[], width: number, lines: Char
       },
       axes: [{}, VALUE_AXIS],
       legend: { markers: { show: true, width: 0, stroke: LINE_INK, fill: (_, i) => markers[i], dash: "solid" } },
+      hooks: {
+        setSeries: [
+          (u, _series, options) => {
+            if (options.show === undefined) return;
+            // A layer is hidden with its edge below zero, and the visible layers stacked again, in the zoomed time
+            const visible = upper.map((index) => u.series[index].show !== false);
+            lower.forEach((index, i) => {
+              if (index !== null && (u.series[index].show !== false) !== visible[i]) u.setSeries(index, { show: visible[i] }, false);
+            });
+            const { data, bands } = stack(visible);
+            u.delBand(null);
+            for (const band of bands) u.addBand(band);
+            const { min, max } = u.scales.x;
+            u.setData(data);
+            if (min !== undefined && max !== undefined) u.setScale("x", { min, max });
+          },
+        ],
+      },
     },
-    data as uPlot.AlignedData,
+    shown.data,
   );
   return el("div", { className: "chart" }, plot.root);
 }

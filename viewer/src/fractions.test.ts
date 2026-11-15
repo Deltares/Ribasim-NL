@@ -163,6 +163,10 @@ test("stacked layers and the layers worth showing", () => {
   const plain = (edges: Float64Array[]) => edges.map((edge) => [...edge]);
   assert.deepEqual(plain(up), [[1, 0], [3, 3], [3, Number.NaN]]);
   assert.deepEqual(plain(down), [[0, -1], [0, -1], [-1, Number.NaN]]);
+  // Without the second layer, the third stacks on the first
+  const shown = stackLayers([new Float64Array([1, -1]), new Float64Array([2, 3]), new Float64Array([-1, 4])], [true, false, true]);
+  assert.deepEqual(plain(shown.up), [[1, 0], [1, 0], [1, 4]]);
+  assert.deepEqual(plain(shown.down), [[0, -1], [0, -1], [-1, -1]]);
   const layers = new Map([
     ["a", new Float64Array([0.5, 0])],
     ["b", new Float64Array([1e-4, -1e-4])],
