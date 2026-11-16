@@ -106,7 +106,7 @@ def test_read_kwk_properties_conflict():
 
 
 def test_read_static_local():
-    """Without DiscreteControl, the afvoer capacity is the flow rate, and it caps the flow."""
+    """Without DiscreteControl, the afvoer capacity is the flow rate, and the maximum capacity caps the flow."""
     df = sheet(
         [
             ["Ribasim type", "Outlet"],
@@ -122,11 +122,18 @@ def test_read_static_local():
     assert static is not None
     assert static[["flow_rate", "max_flow_rate", "min_flow_rate", "min_upstream_level"]].iloc[0].to_list() == [
         18,
-        18,
+        28,
         0.5,
         4.7,
     ]
     assert not has_flow_demand(read_kwk_properties(df))
+    # without a maximum capacity, the flow rate caps the flow
+    static = read_static(df[df["Eigenschap"] != "Maximale capaciteit (m3/s)"], "Outlet").df
+    assert static is not None
+    assert static[["flow_rate", "max_flow_rate"]].iloc[0].to_list() == [18, 18]
+    df.loc[df["Eigenschap"] == "Maximale capaciteit (m3/s)", "Waarde"] = 10
+    with pytest.raises(AssertionError, match="above the maximum"):
+        read_static(df, "Outlet")
 
 
 def test_read_static_flow_demand_level():
@@ -403,7 +410,7 @@ def test_read_static_supply_without_control():
     )
     static = read_static(df, "Pump").df
     assert static is not None
-    assert static[["flow_rate", "max_flow_rate", "min_upstream_level"]].iloc[0].to_list() == [10, 10, -0.4]
+    assert static[["flow_rate", "max_flow_rate", "min_upstream_level"]].iloc[0].to_list() == [10, 13, -0.4]
     # without control, a structure cannot switch between two capacities
     df.loc[df["Eigenschap"] == "Afvoer Capaciteit (m3/s)", "Waarde"] = 5
     with pytest.raises(AssertionError, match="without a DiscreteControl"):
@@ -449,7 +456,7 @@ def test_read_static_flow_demand_level_with_control():
 
 
 def prs_irenesluis_doorspoeling() -> pd.DataFrame:
-    """Like the Prs. Irenesluis-Doorspoeling, which supplies 25 m3/s while less flows at Nigtevecht."""
+    """Like the Prs. Irenesluis-Doorspoeling before #1035, which supplied 25 m3/s while less flowed at Nigtevecht."""
     return sheet(
         [
             ["Ribasim type", "Outlet"],
