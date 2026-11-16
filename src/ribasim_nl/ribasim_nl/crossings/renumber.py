@@ -20,6 +20,9 @@ from ribasim_nl.model import Model
 
 logger = logging.getLogger(__name__)
 
+# the node types at the boundary of a model, which have no Basin of their own
+BOUNDARY_TYPES = ["Terminal", "FlowBoundary", "LevelBoundary"]
+
 # the columns with node IDs, in the tables of the input models
 NODE_ID_COLUMNS = ["node_id", "meta_node_id", "from_node_id", "to_node_id"]
 
@@ -110,7 +113,8 @@ def match_nodes(
     """Match the nodes of a model to those of a reference, as a mapping from their ID to that of the reference.
 
     Basins match by `match_basins`. The other nodes match one to one with a node of the same type within `tolerance`,
-    first those that connect the same matched Basins, then by distance. The nodes that are left match with a node of the
+    first those that connect the same matched Basins, then by distance, and boundary nodes first with the one that
+    has the same matched connector nodes. The nodes that are left match with a node of the
     same type that connects the same Basins within `loose_tolerance`, nearest first: a crossing that moved along the
     boundary of its peilgebied, for instance.
     """
@@ -148,11 +152,28 @@ def match_nodes(
 
     others = nodes.loc[nodes["node_type"] != "Basin"].reset_index(drop=True)
     old_others = old_nodes.loc[old_nodes["node_type"] != "Basin"].reset_index(drop=True)
-    pairs = candidates(others, old_others, tolerance)
+    boundary = others["node_type"].isin(BOUNDARY_TYPES)
+    old_boundary = old_others["node_type"].isin(BOUNDARY_TYPES)
+    pairs = candidates(others.loc[~boundary], old_others.loc[~old_boundary], tolerance)
     pairs = pairs.sort_values(
         ["same_basins", "distance", "new", "old"], ascending=[False, True, True, True], kind="stable"
     )
     mapping = basins | _greedy(pairs)
+
+    # Boundary nodes lie beside their connector node, so those of two connector nodes at one crossing coincide. A
+    # boundary node matches the one whose connector nodes match its own first.
+    def same_neighbours(new: int, old: int) -> bool:
+        linked = up_new.get(new, empty) | down_new.get(new, empty)
+        return frozenset(mapping.get(i) for i in linked) == up_old.get(old, empty) | down_old.get(old, empty)
+
+    pairs = candidates(others.loc[boundary], old_others.loc[old_boundary], tolerance)
+    pairs["same_neighbours"] = [same_neighbours(a, b) for a, b in zip(pairs["new"], pairs["old"], strict=True)]
+    pairs = pairs.sort_values(
+        ["same_neighbours", "same_basins", "distance", "new", "old"],
+        ascending=[False, False, True, True, True],
+        kind="stable",
+    )
+    mapping |= _greedy(pairs)
 
     left = others.loc[~others["node_id"].isin(mapping)].reset_index(drop=True)
     old_left = old_others.loc[~old_others["node_id"].isin(mapping.values())].reset_index(drop=True)
@@ -168,16 +189,19 @@ def match_nodes(
     return mapping
 
 
-def renumber_nodes(model: Model, reference: Reference) -> dict[int, int]:
+def renumber_nodes(model: Model, reference: Reference, first_new_id: int | None = None) -> dict[int, int]:
     """Renumber the nodes and links of a model after a reference, in place, and return the mapping of the node IDs.
 
-    Matched nodes, see `match_nodes`, get the ID of the node they match; the others IDs after the highest ID of the
-    reference, in the order of their IDs. Links get the ID of the link between the same nodes in the reference, or else
-    IDs after its highest link ID. The tables are sorted again, and the Basin areas colored again, as
-    `ribasim_nl.crossings.model` does.
+    Matched nodes, see `match_nodes`, get the ID of the node they match; the others IDs from `first_new_id`, by default
+    after the highest ID of the reference, in the order of their IDs. Links get the ID of the link between the same
+    nodes in the reference, or else IDs after its highest link ID. The tables are sorted again, and the Basin areas
+    colored again, as `ribasim_nl.crossings.model` does.
     """
     matched = match_nodes(model, reference)
     next_id = int(max(reference.nodes["node_id"].max(), 0)) + 1
+    if first_new_id is not None:
+        assert first_new_id >= next_id, f"the reference has node IDs up to {next_id - 1}"
+        next_id = first_new_id
     mapping = {}
     for node_id in sorted(model.node.df.index):
         if node_id in matched:

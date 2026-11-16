@@ -8,6 +8,7 @@ from ribasim_nl.control import (
     set_flow_rate,
     set_node_functions,
 )
+from ribasim_nl.crossings.basin_references import References2024, supply_opposite_nodes
 from ribasim_nl.design_capacities import set_design_capacities
 from ribasim_nl.workflow import (
     WaterBoardPaths,
@@ -39,6 +40,11 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/
 processor = paths.feedback_processor(work_dir=paths.model_dir("profiles"))
 
 ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
+# the Basins and added nodes below are those of the models of 2024, see `References2024`
+refs = References2024(
+    ribasim_model, paths.boezemmodel_ids, paths.base_model_toml, paths.feedback_form, paths.feedback_ids
+)
+refs.translate_supply_flags(processor)
 
 # Resolve geometry-based drain node lookups before snapping relocates these nodes, so the
 # hard-coded coordinates still match the original node locations (used much further below).
@@ -57,13 +63,18 @@ to_drain_node_ids = tuple(to_drain_node_ids)
 # Appelscha, see https://github.com/Deltares/Ribasim-NL/issues/831
 # Basin 340 (AP-051, AP-143, GPG-F13117) with its bergend Basin 8125, and Basin 1001 (GPG-F13118) are already
 # represented by Drents Overijsselse Delta, so they and the doorlaten 3064 and 3065 between them are removed.
-for node_id in (3064, 3065, 15882, 8125, 340, 1001):
+for node_id in (3064, 3065):
     ribasim_model.remove_node(node_id, remove_links=True)
+for basin_2024 in (340, 1001):
+    refs.remove_basins(basin_2024)
 # Basin 554 (AP-141, AP-142) drains via outlets 2018 and 2236 into Drents Overijsselse Delta, instead of being supplied
 APPELSCHA_OUTLETS = (2018, 2236)
 # LevelBoundary -> Outlet -> Basin 554, by their nodes, since the feedback form numbers the links anew
-for from_node_id, to_node_id in ((3782, 2018), (2018, 554), (3789, 2236), (2236, 554)):
-    ribasim_model.reverse_link(from_node_id=from_node_id, to_node_id=to_node_id)
+for boundary, outlet in ((3782, 2018), (3789, 2236)):
+    basin = ribasim_model.downstream_node_id(outlet)
+    assert basin in refs.basins(554), f"Outlet {outlet} does not flow into Basin 554 of 2024"
+    ribasim_model.reverse_link(from_node_id=boundary, to_node_id=outlet)
+    ribasim_model.reverse_link(from_node_id=outlet, to_node_id=basin)
 
 # Read outlet_aanvoer_on BEFORE set_boundary_conditions, of which find_upstream_downstream_target_levels strips meta columns
 assert ribasim_model.outlet.static.df is not None
@@ -144,8 +155,13 @@ to_flow_control = (2452, 3068)
 to_drain = (2147, 2751, 2944, 3041, 3494, 3568, 3709, *to_drain_node_ids, *APPELSCHA_OUTLETS)
 
 from_to_node_function_table = set_node_functions(
-    from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
+    from_to_node_function_table,
+    to_supply=refs.nodes(to_supply),
+    to_flow_control=refs.nodes(to_flow_control),
+    to_drain=refs.nodes(to_drain),
 )
+# between the peilgebieden of a delivered aggregation area, an inlet next to a gemaal the other way supplies
+supply_opposite_nodes(ribasim_model, from_to_node_function_table)
 
 # retain meta data of the outlets and pumps
 add_controllers(ribasim_model, from_to_node_function_table, remove_duplicates=True, method="combine_first")
@@ -154,7 +170,7 @@ assign_pump_and_basin_names(ribasim_model, paths)
 
 assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 2700, "max_flow_rate"] = 172 / 60
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 3891, "max_flow_rate"] = 7340 / 60
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == refs.node(3891), "max_flow_rate"] = 7340 / 60
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
@@ -164,19 +180,15 @@ ribasim_model.node.df = ribasim_model.node.df.drop(mr_null_geom)
 ribasim_model = complete_parametrization(
     ribasim_model,
     paths,
-    custom_nodes={
-        3820: "Noordzee",
-        5022: "Rijkswaterstaat",
-        10958: "Rijkswaterstaat",
-    },
+    custom_nodes=refs.keys({3820: "Noordzee", 5022: "Rijkswaterstaat"}),
     fill_na_authority="Noordzee",
 )
 
 assert ribasim_model.pump.static.df is not None
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 3863, "meta_known_flow_rate"] = (
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == refs.node(3863), "meta_known_flow_rate"] = (
     False  # unknown capacity, set temp value
 )
-set_flow_rate(ribasim_model.pump.static.df, [3863], 0.1)
+set_flow_rate(ribasim_model.pump.static.df, [refs.node(3863)], 0.1)
 
 # set the unknown capacities of Pumps and Outlets from the area they drain or supply
 set_design_capacities(ribasim_model, from_to_node_function_table)
@@ -208,7 +220,7 @@ ribasim_model.node.df.loc[appelscha_control_ids, "name"] = "uitlaat: 9.40/9.38 [
 # The Pikmeer is far from these structures in the model, so the Basins next to them get safety limits around the
 # streefpeil of -0.52 m NAP, with which inlets do not overfill them and drains do not empty them.
 # Makkum, Workum and Hindelopen keep their DiscreteControl.
-PIKMEER_BASIN = 7669
+PIKMEER_BASIN = refs.node(7669)
 
 
 class LevelControlOptions(TypedDict, total=False):
@@ -255,7 +267,8 @@ BOEZEM_CONTROLS: tuple[tuple[int, str, list[tuple[float, float]], LevelControlOp
         DRAIN_LIMIT | LAUWERSMEER_LIMIT,
     ),
 )
-for node_id, name, points, kwargs in BOEZEM_CONTROLS:
+for node_id_2024, name, points, kwargs in BOEZEM_CONTROLS:
+    node_id = refs.node(node_id_2024)
     levels, flow_rates = zip(*points, strict=True)
     set_continuous_level_control(
         ribasim_model, node_id, PIKMEER_BASIN, level=levels, flow_rate=flow_rates, name=name, **kwargs
@@ -270,7 +283,7 @@ INLET_NAMES = {
     3892: "Inlaat Teroelsterkolk",
     3897: "Inlaat Johan Friso sluis",
 }
-for node_id, name in INLET_NAMES.items():
+for node_id, name in refs.keys(INLET_NAMES).items():
     node_type = ribasim_model.get_node_type(node_id)
     assert node_type == "Outlet", f"Expected Outlet {node_id} for {name}, got {node_type}"
     ribasim_model.node.df.loc[node_id, "name"] = name

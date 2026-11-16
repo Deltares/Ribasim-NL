@@ -610,7 +610,7 @@ def straight_link_geometries(model: Model, tolerance: float = 1.0) -> Model:
     return model
 
 
-def _bergend_nodes(model: Model, basin_id: int) -> list[int]:
+def bergend_nodes(model: Model, basin_id: int) -> list[int]:
     """The ManningResistance and Basin nodes of the bergend part connected to a doorgaand Basin node."""
     if "meta_categorie" not in model.node.df.columns:
         return []
@@ -741,7 +741,7 @@ def snap_to_network(
     for basin_id, location in new_locations.items():
         old = typing.cast(shapely.Point, nodes.at[basin_id, "geometry"])
         moved[basin_id] = location
-        for node_id in _bergend_nodes(model, basin_id):
+        for node_id in bergend_nodes(model, basin_id):
             point = typing.cast(shapely.Point, nodes.at[node_id, "geometry"])
             moved[node_id] = shapely.affinity.translate(point, location.x - old.x, location.y - old.y)
     nodes.loc[list(moved), "geometry"] = gpd.GeoSeries(moved, crs=nodes.crs)

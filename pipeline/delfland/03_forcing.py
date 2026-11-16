@@ -2,6 +2,7 @@
 
 import ribasim_nl.ribasim_parametrization as ribasim_param
 from ribasim_nl.control import set_node_functions
+from ribasim_nl.crossings.basin_references import References2024, supply_opposite_nodes
 from ribasim_nl.design_capacities import set_design_capacities
 from ribasim_nl.workflow import (
     WaterBoardPaths,
@@ -34,6 +35,12 @@ aanvoer_path = cloud.joinpath(
 processor = paths.feedback_processor(work_dir=paths.model_dir("profiles"))
 
 ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
+# the Basins and added nodes below are those of the models of 2024, see `References2024`
+refs = References2024(
+    ribasim_model, paths.boezemmodel_ids, paths.base_model_toml, paths.feedback_form, paths.feedback_ids
+)
+refs.translate_supply_flags(processor)
+dolk = refs.node(569)
 
 ribasim_model = set_boundary_conditions(ribasim_model, paths, level_boundary_levels=(-0.42, -0.4))
 
@@ -44,6 +51,8 @@ from_to_node_function_table = node_function_table(ribasim_model)
 # manual adjustments to control settings
 to_supply = 167, 371, 239, 223, 258, 306, 525, 377, 150, 224, 468, 163, 201, 475
 set_node_functions(from_to_node_function_table, to_supply=to_supply)
+# between the peilgebieden of a delivered aggregation area, an inlet next to a gemaal the other way supplies
+supply_opposite_nodes(ribasim_model, from_to_node_function_table)
 
 add_controllers(ribasim_model, from_to_node_function_table, remove_duplicates=False)
 
@@ -63,7 +72,7 @@ ribasim_model.pump.static.df.loc[
     ribasim_model.pump.static.df["node_id"].isin(increase_flow_rate_pumps), ["flow_rate", "max_flow_rate"]
 ] *= 60
 
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 559, "max_flow_rate"] = (
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == refs.node(559), "max_flow_rate"] = (
     1.5  # TODO: Guessed value, ask Delfland
 )
 # set the pumps and outlets with unknown flow capacities to have unknown flow capacities in the model, so they can be scaled in the next step.
@@ -80,16 +89,17 @@ ribasim_model.node.df = ribasim_model.node.df.dropna(subset="geometry")
 set_manning_resistance_outside_bergend(ribasim_model, length=100.0, manning_n=0.01)
 
 # decrease aanslagpeil for Dolkgemaal
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 569, "max_downstream_level"] -= (
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == dolk, "max_downstream_level"] -= (
     0.05  # 5 cm lower than streefpeil to make sure Winsemius pumps first
 )
 assert ribasim_model.discrete_control.condition.df is not None
-ribasim_model.discrete_control.condition.df.loc[
-    ribasim_model.discrete_control.condition.df.node_id == 3118, "threshold_high"
-] -= 0.05
-ribasim_model.discrete_control.condition.df.loc[
-    ribasim_model.discrete_control.condition.df.node_id == 3118, "threshold_low"
-] -= 0.05
+dolk_control = ribasim_model.link.df.loc[
+    (ribasim_model.link.df.to_node_id == dolk) & (ribasim_model.link.df.link_type == "control"), "from_node_id"
+]
+assert len(dolk_control) == 1, "no single DiscreteControl of the Dolkgemaal"
+dolk_conditions = ribasim_model.discrete_control.condition.df.node_id == dolk_control.iloc[0]
+ribasim_model.discrete_control.condition.df.loc[dolk_conditions, "threshold_high"] -= 0.05
+ribasim_model.discrete_control.condition.df.loc[dolk_conditions, "threshold_low"] -= 0.05
 
 
 ribasim_model = complete_parametrization(

@@ -4,6 +4,7 @@ import ribasim_nl.ribasim_parametrization as ribasim_param
 from ribasim import Node
 from ribasim.nodes import level_boundary, manning_resistance, pump
 from ribasim_nl.control import set_flow_rate, set_node_functions
+from ribasim_nl.crossings.basin_references import References2024, supply_opposite_nodes
 from ribasim_nl.design_capacities import set_design_capacities
 from ribasim_nl.workflow import (
     WaterBoardPaths,
@@ -38,13 +39,18 @@ aanvoer_path = cloud.joinpath(
 processor = paths.feedback_processor(work_dir=paths.model_dir("profiles"))
 
 ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
+# the Basins and added nodes below are those of the models of 2024, see `References2024`
+refs = References2024(
+    ribasim_model, paths.boezemmodel_ids, paths.base_model_toml, paths.feedback_form, paths.feedback_ids
+)
+refs.translate_supply_flags(processor)
 
 # add gemaal Kadoelen which is removed due to the merging
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(122405, 491275)), [level_boundary.Static(level=[0.42])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(122475, 491317)), [pump.Static(flow_rate=[11.67])])
-ribasim_model.link.add(ribasim_model.basin[2], pump_node)
+ribasim_model.link.add(refs.basin(2, pump_node), pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 ribasim_model.node.df.loc[level_boundary_node.node_id, "meta_node_id"] = level_boundary_node.node_id
 ribasim_model.node.df.loc[pump_node.node_id, "meta_node_id"] = pump_node.node_id
@@ -54,8 +60,8 @@ manning_node = ribasim_model.manning_resistance.add(
     Node(geometry=Point(110789, 518114)),
     [manning_resistance.Static(length=[10.0], manning_n=[0.01], profile_width=[10.0], profile_slope=[3.0])],
 )
-ribasim_model.link.add(ribasim_model.basin[2769], manning_node)
-ribasim_model.link.add(manning_node, ribasim_model.basin[2757])
+ribasim_model.link.add(ribasim_model.basin[refs.node(2769)], manning_node)
+ribasim_model.link.add(manning_node, ribasim_model.basin[refs.node(2757)])
 ribasim_model.node.df.loc[manning_node.node_id, "meta_node_id"] = manning_node.node_id
 
 # reset pump capacity for each pump
@@ -75,8 +81,7 @@ basin_aanvoer_off = (
 
 # add control, based on the meta_categorie
 keep_model_supply_basins(processor, ribasim_model)
-basin_ids = set(ribasim_model.basin.node.df.index)
-basin_aanvoer_off = tuple(n for n in basin_aanvoer_off if n in basin_ids)
+basin_aanvoer_off = tuple(basin for basin_2024 in basin_aanvoer_off for basin in refs.basins(basin_2024))
 
 ribasim_param.set_aanvoer_flags(
     ribasim_model, str(aanvoer_path), processor, aanvoer_enabled=True, basin_aanvoer_off=basin_aanvoer_off
@@ -190,8 +195,13 @@ to_supply = (
     1296,
 )
 from_to_node_function_table = set_node_functions(
-    from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
+    from_to_node_function_table,
+    to_supply=refs.nodes(to_supply),
+    to_flow_control=refs.nodes(to_flow_control),
+    to_drain=refs.nodes(to_drain),
 )
+# between the peilgebieden of a delivered aggregation area, an inlet next to a gemaal the other way supplies
+supply_opposite_nodes(ribasim_model, from_to_node_function_table)
 
 add_controllers(ribasim_model, from_to_node_function_table, remove_duplicates=True)
 
@@ -222,31 +232,31 @@ ribasim_model = complete_parametrization(
     ribasim_model,
     paths,
     rws_buffer=3000,  # due to harbour
-    custom_nodes={
-        4565: "AmstelGooienVecht",
-        1394: "AmstelGooienVecht",
-        3657: "AmstelGooienVecht",
-        1309: "Noordzee",
-        1312: "Noordzee",
-        1322: "Noordzee",
-        1337: "Noordzee",
-        1338: "Noordzee",
-        1345: "Noordzee",
-        1355: "Noordzee",
-        1371: "Noordzee",
-        1376: "Noordzee",
-        1382: "Noordzee",
-        1390: "Noordzee",
-        1392: "Noordzee",
-        1393: "Noordzee",
-        1396: "Noordzee",
-        1421: "Noordzee",
-        2088: "Noordzee",
-        2457: "Noordzee",
-        2517: "Noordzee",
-        2563: "Noordzee",
-        2717: "Noordzee",
-    },
+    custom_nodes=refs.keys(
+        {
+            1394: "AmstelGooienVecht",
+            1309: "Noordzee",
+            1312: "Noordzee",
+            1322: "Noordzee",
+            1337: "Noordzee",
+            1338: "Noordzee",
+            1345: "Noordzee",
+            1355: "Noordzee",
+            1371: "Noordzee",
+            1376: "Noordzee",
+            1382: "Noordzee",
+            1390: "Noordzee",
+            1392: "Noordzee",
+            1393: "Noordzee",
+            1396: "Noordzee",
+            1421: "Noordzee",
+            2088: "Noordzee",
+            2457: "Noordzee",
+            2517: "Noordzee",
+            2563: "Noordzee",
+            2717: "Noordzee",
+        }
+    ),
 )
 
 # set the unknown capacities of Pumps and Outlets from the area they drain or supply

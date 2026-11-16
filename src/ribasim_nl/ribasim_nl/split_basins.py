@@ -20,6 +20,7 @@ from shapely.geometry.base import BaseGeometry
 from shapely.ops import linemerge, split, substring, unary_union
 
 from ribasim_nl import Model
+from ribasim_nl.geometry import without_slivers
 
 # https://github.com/Deltares/Ribasim-NL/issues/554
 
@@ -41,6 +42,26 @@ class SplitBasins:
         self.basin_node_id_to_split = basin_node_id_to_split
         self.geometry_tolerance = geometry_tolerance
         self.printing = printing
+        self._clip_to_basin()
+
+    def _clip_to_basin(self, min_part: float = 0.999, min_area: float = 100.0) -> None:
+        """Clip the split polygons to the area of the Basin, if other Basins took over parts of it since they were drawn.
+
+        With refined aggregation areas, see `ribasim_nl.crossings.aggregation`, a Basin can be smaller than the Basin
+        of 2024 for which the polygons were drawn. Polygons of which less than `min_area` [m2] is left are dropped.
+        """
+        assert self.model.basin.area.df is not None
+        areas = self.model.basin.area.df
+        basin_area = shapely.union_all(areas.loc[areas["node_id"] == self.basin_node_id_to_split].geometry.to_numpy())
+        if basin_area.area >= min_part * self.splitted_basin_gdf.union_all().area:
+            return
+        clipped = shapely.intersection(self.splitted_basin_gdf.geometry.to_numpy(), basin_area)
+        parts = gpd.GeoSeries([without_slivers(geometry) for geometry in clipped], crs=self.splitted_basin_gdf.crs)
+        self.splitted_basin_gdf = self.splitted_basin_gdf.set_geometry(parts)
+        self.splitted_basin_gdf = self.splitted_basin_gdf.loc[self.splitted_basin_gdf.area >= min_area].reset_index(
+            drop=True
+        )
+        assert len(self.splitted_basin_gdf) > 0, f"nothing is left of Basin {self.basin_node_id_to_split} to split"
 
     def run(self):
         """Run the full split workflow and return the updated model."""

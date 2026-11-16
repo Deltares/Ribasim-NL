@@ -164,8 +164,10 @@ def _split_drainage(
     A water body drains its own area and what the drains into it carry. The drains with a known capacity carry up to
     that capacity, and the other drains share the rest equally. Drains that flow out of a water body into a boundary
     take the drainage out of the model. Unknown drains in a loop that no unknown drain leaves would pass the drainage
-    around forever, so in the water bodies of such a loop with known drains, these carry all. This repeats until the
-    drained areas no longer change.
+    around forever, so in the water bodies of such a loop with known drains, these carry all. The loop can pass
+    through known drains. The same holds for a loop that the drainage beyond the known capacities cannot leave, see
+    `_trap_loops`. In a loop that no drain leaves at all, the drains only carry the area of the water body they come
+    from. This repeats until the drained areas no longer change.
 
     Returns
     -------
@@ -192,18 +194,23 @@ def _split_drainage(
     own_area = {body: float(body_area.get(body, 0.0)) for body in outflows}
     # unknown drains in a loop that no unknown drain leaves would pass the drainage around forever, so where such a
     # loop has known drains, these carry all
-    unknown_links = nx.DiGraph((from_body[n], to_body[n]) for n in to_body if n not in known_area)
+    links = nx.DiGraph((from_body[n], to_body[n]) for n in to_body)
     trapped: set[int] = set()
-    for loop in nx.strongly_connected_components(unknown_links):
-        loop_drains = [n for n, body in from_body.items() if body in loop and n not in known_area]
-        if all(to_body.get(n) in loop for n in loop_drains):
-            trapped.update(loop_drains)
+    # the drains of a loop that no drain leaves, which do not pass on what flows into their water body
+    closed: set[int] = set()
+    for loop in nx.strongly_connected_components(links):
+        loop_drains = [n for n, body in from_body.items() if body in loop]
+        if all(to_body.get(n) in loop for n in loop_drains if n not in known_area):
+            trapped.update(n for n in loop_drains if n not in known_area)
+        if loop_drains and all(to_body.get(n) in loop for n in loop_drains):
+            closed.update(loop_drains)
+    trapped, closed = _trap_loops(from_body, to_body, set(known_area), trapped, closed)
 
     drained = dict.fromkeys(from_body, 0.0)
     for _ in range(10_000):
         inflow = dict.fromkeys(outflows, 0.0)
         for node_id, body in to_body.items():
-            if body in inflow:
+            if body in inflow and node_id not in closed:
                 inflow[body] += drained[node_id]
         new = {}
         for body, nodes in outflows.items():
@@ -229,6 +236,52 @@ def _split_drainage(
             return new, minimum
         drained = new
     raise AssertionError("The split of the drainage did not converge, is there a loop without a drain out of it?")
+
+
+def _trap_loops(
+    from_body: dict[int, int], to_body: dict[int, int], known: set[int], trapped: set[int], closed: set[int]
+) -> tuple[set[int], set[int]]:
+    """Add the drains of the loops that the drainage beyond the known capacities cannot leave, see `_split_drainage`.
+
+    That drainage follows the unknown drains out of a water body, or its known drains if it has no others. Where it
+    can only go round in a loop, the known drains of the water bodies of that loop carry all, which the unknown drains
+    then no longer do: these become trapped. A loop that it cannot leave through known drains either is closed.
+
+    :param from_body: the water body that each drain comes from
+    :param to_body: the water body that each drain flows into, unless it flows out of the model
+    :param known: the drains with a known capacity
+    :param trapped: the unknown drains that no longer carry drainage beyond their own water body
+    :param closed: the drains that do not pass on what flows into their water body
+    :return: `trapped` and `closed`, with those of these loops added
+    """
+    drains_of: dict[int, list[int]] = {}
+    for node_id, body in from_body.items():
+        drains_of.setdefault(body, []).append(node_id)
+    while True:
+        rest = nx.DiGraph()
+        for body, nodes in drains_of.items():
+            open_nodes = [n for n in nodes if n not in closed]
+            unknown = [n for n in open_nodes if n not in known and n not in trapped]
+            for n in unknown or [n for n in open_nodes if n in known]:
+                rest.add_edge(body, to_body.get(n, "out"))
+        new_trapped: set[int] = set()
+        new_closed: set[int] = set()
+        for loop in nx.strongly_connected_components(rest):
+            first = next(iter(loop))
+            if "out" in loop or (len(loop) == 1 and not rest.has_edge(first, first)):
+                continue
+            if any(n not in loop for body in loop for n in rest.successors(body)):
+                continue
+            with_known = [body for body in loop if any(n in known for n in drains_of.get(body, []))]
+            unknown = {n for body in with_known for n in drains_of[body] if n not in known and n not in trapped}
+            if unknown:
+                new_trapped |= unknown
+            else:
+                new_closed |= {n for body in loop for n in drains_of.get(body, [])}
+        if not new_trapped and not new_closed:
+            return trapped, closed
+        trapped |= new_trapped
+        closed |= new_closed
 
 
 def _limit_by_neighbours(

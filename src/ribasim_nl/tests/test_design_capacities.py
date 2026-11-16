@@ -122,6 +122,73 @@ def test_design_capacities_trapped_loop():
     # Outlet 12 keeps its share of the own area of Basin 6
     assert capacities.at[12, "design"] == pytest.approx(1e5 / 2 * 50 * MM_PER_DAY)
 
+    # the same holds for a loop through the known Pump 5
+    pump_df["meta_known_flow_rate"] = True
+    capacities = design_capacities(model, function_table({2: "supply", 5: "drain", 7: "drain", 12: "drain"}))
+    assert capacities.at[7, "drained_area"] == pytest.approx(1.1e6)
+    assert capacities.at[12, "drained_area"] == 0.0
+
+
+def test_design_capacities_loop_beyond_known():
+    model = polder_model()
+    # an unknown Outlet back from Basin 6 to Basin 3 closes a loop with the unknown Pump 5, which only small known
+    # Outlets leave: Outlet 7 out of the model, and Outlet 13 into Basin 14, which drains out and back into Basin 3
+    model.basin.add(
+        Node(14, Point(150, 200), meta_categorie="doorgaand"),
+        [
+            basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]),
+            basin.State(level=[0.5]),
+            basin.Area(geometry=[MultiPolygon([box(0, 1000, 100, 1100)])]),
+        ],
+    )
+    model.level_boundary.add(Node(16, Point(150, 300)), [level_boundary.Static(level=[0.0])])
+    for node_id, x, y, known in (
+        (12, 250, 50, False),
+        (13, 150, 100, True),
+        (15, 150, 250, False),
+        (17, 100, 150, False),
+    ):
+        model.outlet.add(
+            Node(node_id, Point(x, y)),
+            [outlet.Static(flow_rate=[0.01], max_flow_rate=[0.01], meta_known_flow_rate=[known])],
+        )
+    for from_node, connector, to_node in (
+        (model.basin[6], 12, model.basin[3]),
+        (model.basin[3], 13, model.basin[14]),
+        (model.basin[14], 15, model.level_boundary[16]),
+        (model.basin[14], 17, model.basin[3]),
+    ):
+        model.link.add(from_node, model.outlet[connector])
+        model.link.add(model.outlet[connector], to_node)
+    pump_df, outlet_df = model.pump.static.df, model.outlet.static.df
+    assert pump_df is not None and outlet_df is not None
+    pump_df["meta_known_flow_rate"] = False
+    outlet_df.loc[outlet_df["node_id"] == 7, ["max_flow_rate", "meta_known_flow_rate"]] = [0.01, True]
+    functions = dict.fromkeys([5, 7, 12, 13, 15, 17], "drain")
+    capacities = design_capacities(model, function_table({2: "supply", **functions}))
+    # the known Outlets carry all out of the loop, and Basin 14 passes half of it back into Basin 3
+    assert capacities.at[5, "drained_area"] == capacities.at[12, "drained_area"] == 0.0
+    assert capacities.at[7, "drained_area"] == pytest.approx(1e5)
+    assert capacities.at[13, "drained_area"] == pytest.approx(2.01e6)
+    assert capacities.at[15, "drained_area"] == capacities.at[17, "drained_area"] == pytest.approx(1.01e6)
+
+
+def test_design_capacities_closed_loop():
+    model = polder_model()
+    # without Outlet 7, no drain leaves the loop of Pump 5 and an Outlet back from Basin 6 to Basin 3
+    model.remove_node(7, remove_links=True)
+    model.remove_node(8, remove_links=True)
+    model.outlet.add(Node(12, Point(250, 50)), [outlet.Static(flow_rate=[1.0], meta_known_flow_rate=[False])])
+    model.link.add(model.basin[6], model.outlet[12])
+    model.link.add(model.outlet[12], model.basin[3])
+    pump_df = model.pump.static.df
+    assert pump_df is not None
+    pump_df["meta_known_flow_rate"] = False
+    capacities = design_capacities(model, function_table({2: "supply", 5: "drain", 12: "drain"}))
+    # each drain carries the area of the Basin it comes from, instead of passing the drainage around forever
+    assert capacities.at[5, "drained_area"] == pytest.approx(1e6)
+    assert capacities.at[12, "drained_area"] == pytest.approx(1e5)
+
 
 def test_design_capacities_downstream_limit():
     model = polder_model()

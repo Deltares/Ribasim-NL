@@ -12,6 +12,7 @@ Usage: pixi run python pipeline/00e_crossings_to_ribasim.py <authority>
 
 import sys
 
+from ribasim_nl.crossings.aggregation import FIRST_NEW_NODE_ID, REFINED
 from ribasim_nl.crossings.model import Options, boezem_model
 from ribasim_nl.crossings.renumber import Reference, renumber_checks, renumber_nodes
 
@@ -65,7 +66,9 @@ for authority in authorities:
     model, checks = boezem_model(
         verwerkt / "postprocessed.gpkg", verwerkt / "crossings.gpkg", verwerkt / "shortest_path.gpkg", options
     )
-    mapping = renumber_nodes(model, Reference.read(verwerkt / "boezemmodel_ids.gpkg"))
+    # with refined aggregation areas, the new nodes leave the IDs free that the feedback stage gave to added nodes
+    first_new_id = FIRST_NEW_NODE_ID if authority in REFINED else None
+    mapping = renumber_nodes(model, Reference.read(verwerkt / "boezemmodel_ids.gpkg"), first_new_id)
     renumber_checks(checks, mapping)
     changed = sum(old != new for old, new in mapping.items())
     print(f"{changed} of {len(mapping)} nodes renumbered after the input model of 2024")

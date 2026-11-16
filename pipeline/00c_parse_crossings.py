@@ -9,7 +9,9 @@ Usage: pixi run python pipeline/00c_parse_crossings.py <authority>
 
 import sys
 
+from ribasim_nl.crossings.aggregation import MIN_AREA, REFINED
 from ribasim_nl.crossings.parse import ParseCrossings
+from ribasim_nl.target_levels import LEVEL_CORRECTIONS, NO_DATA_LEVELS
 
 from ribasim_nl import CloudStorage
 
@@ -39,5 +41,8 @@ for authority in authorities:
         agg_peilgebieden_column="code",
         excluded_crossings=EXCLUDED_CROSSINGS.get(authority, []),
     )
+    if authority in REFINED:
+        # with the target levels of the areas cleaned, as for the profiles
+        cross.refine_aggregation_areas(MIN_AREA, NO_DATA_LEVELS.get(authority, ()), LEVEL_CORRECTIONS.get(authority))
     df_hydro, df_culverts, df_hydro_culverts = cross.find_crossings_with_peilgebieden("hydroobject", "duikersifonhevel")
     cross.write_crossings(verwerkt / "crossings.gpkg", df_hydro, "duikersifonhevel", df_culverts, df_hydro_culverts)

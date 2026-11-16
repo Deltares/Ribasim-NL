@@ -5,11 +5,6 @@ import xarray as xr
 
 ALLOWED_NON_STEADY_STATE_NODE_IDS = {
     "DeDommel": {"wet": {1708}},
-    # Boezemgemaal Halfweg pumps from Basin 2770 on the level of Basin 2771. In the wet scenario it pulls 2770 and 5600
-    # about 3 cm below the rest of the boezem every other day or so, also with fixed levels. In the dry scenario
-    # Inlaatgemaal AGC supplies the boezem up to 0.5 cm above the level from which Halfweg pumps, so the boezem keeps
-    # cycling, also with daily DiscreteControl
-    "Rijnland": {"dry": {2770, 5600}, "wet": {2770, 5600}},
     "RijnenIJssel": {"wet": {835}},
     # Basin 98 of about 4000 m2 receives about 0.35 m3/s from RWZI Arnhem, with Pump 490 as its only way out. If its off
     # state is chosen, the level rises up to 2 m until DiscreteControl is next evaluated 6 hours later. It also has
@@ -20,7 +15,10 @@ ALLOWED_NON_STEADY_STATE_NODE_IDS = {
 
 
 def allowed_non_steady_state_node_ids(authority: str | None, scenario: str | None) -> set[int]:
-    """Return approved level-instability exceptions for a model scenario."""
+    """Return approved level-instability exceptions for a model scenario.
+
+    A model whose node IDs follow from its network passes its exceptions to `finish_regional_model` instead.
+    """
     return ALLOWED_NON_STEADY_STATE_NODE_IDS.get(authority, {}).get(scenario, set())
 
 

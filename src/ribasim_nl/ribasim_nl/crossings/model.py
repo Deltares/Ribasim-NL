@@ -23,6 +23,7 @@ from ribasim.geometry.link import LinkSchema
 from ribasim.geometry.node import NodeSchema
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 
+from ribasim_nl.crossings.aggregation import AGGREGATED_CATEGORIES
 from ribasim_nl.model import Model
 
 CRS = "EPSG:28992"
@@ -117,27 +118,39 @@ def routing_processor(
 ) -> tuple[dict[str, gpd.GeoDataFrame], gpd.GeoDataFrame]:
     """Replace the peilgebieden of the crossings by their aggregation areas, and add the location of the basins.
 
-    A basin is located at the representative point of its aggregation area, or else of its peilgebied.
+    A basin is located at the representative point of its aggregation area, or else of its peilgebied. Refined
+    aggregation areas, see `ribasim_nl.crossings.aggregation`, also give their target level.
     """
     crossings["peilgebied_from_original"] = crossings["peilgebied_from"]
     crossings["peilgebied_to_original"] = crossings["peilgebied_to"]
 
+    aggregation_areas = post_processed_data["aggregation_areas"].rename(columns={"CODE": "code"})
+    # Refined aggregation areas, see `ribasim_nl.crossings.aggregation`, hold every aggregated peilgebied, so a side
+    # of a crossing without one is outside the model. The peilgebied of a crossing is no alternative then: a crossing
+    # that is added the other way, see `ParseCrossings._add_double_links`, has its peilgebieden as they were, which in
+    # 2024 made such a peilgebied a second Basin within its aggregation area.
+    aggregated: set[str] = set()
+    if "delivered" in aggregation_areas.columns:
+        own = post_processed_data["peilgebied"]
+        aggregated = set(own.loc[own["peilgebied_cat"].isin(AGGREGATED_CATEGORIES), "globalid"])
+
     # peilgebieden without an aggregation area keep their own
-    crossings["agg_area_from"] = crossings["agg_area_from"].where(
-        crossings["agg_area_from"].notna(), crossings["peilgebied_from"]
-    )
-    crossings["agg_area_to"] = crossings["agg_area_to"].where(
-        crossings["agg_area_to"].notna(), crossings["peilgebied_to"]
-    )
+    for side in ["from", "to"]:
+        own_peilgebied = crossings[f"peilgebied_{side}"].where(~crossings[f"peilgebied_{side}"].isin(aggregated), None)
+        crossings[f"agg_area_{side}"] = crossings[f"agg_area_{side}"].where(
+            crossings[f"agg_area_{side}"].notna(), own_peilgebied
+        )
     crossings["peilgebied_from"] = crossings["agg_area_from"]
     crossings["peilgebied_to"] = crossings["agg_area_to"]
 
-    aggregation_areas = post_processed_data["aggregation_areas"].rename(columns={"CODE": "code"})
     aggregation_areas["globalid"] = aggregation_areas["code"]
     post_processed_data["aggregation_areas"] = aggregation_areas
+    area_columns = ["code", "globalid", "geometry"]
+    if "streefpeil" in aggregation_areas.columns:
+        area_columns.append("streefpeil")
     peilgebied = pd.concat(
         [
-            aggregation_areas[["code", "globalid", "geometry"]],
+            aggregation_areas[area_columns],
             post_processed_data["peilgebied"][["code", "globalid", "peilgebied_cat", "geometry"]],
         ]
     )
@@ -151,6 +164,8 @@ def routing_processor(
         keys = crossings[f"peilgebied_{side}"]
         crossings[f"{side}_centroid_geometry"] = keys.map(lookup["centroid_geometry"]).where(keys.notna(), None)
         crossings[f"{side}_polygon_geometry"] = keys.map(lookup["geometry"]).where(keys.notna(), None)
+        if "streefpeil" in lookup.columns:
+            crossings[f"{side}_area_streefpeil"] = keys.map(lookup["streefpeil"])
     return post_processed_data, crossings
 
 
@@ -289,7 +304,12 @@ def create_nodes(crossings: gpd.GeoDataFrame, links: pd.DataFrame) -> tuple[pd.D
     nodes_basins["basins_area_geom"] = pd.concat(
         [crossings["from_polygon_geometry"], crossings["to_polygon_geometry"]]
     ).to_numpy()
-    streefpeil = pd.concat([crossings["streefpeil_from"], crossings["streefpeil_to"]]).astype(object).to_numpy()
+    streefpeil = pd.concat([crossings["streefpeil_from"], crossings["streefpeil_to"]])
+    if "from_area_streefpeil" in crossings.columns:
+        # the target level of a refined aggregation area, rather than that of the peilgebied at the crossing
+        of_area = pd.concat([crossings["from_area_streefpeil"], crossings["to_area_streefpeil"]])
+        streefpeil = of_area.where(of_area.notna(), streefpeil)
+    streefpeil = streefpeil.astype(object).to_numpy()
     nodes_basins["streefpeil"] = pd.Series(streefpeil, dtype=object).where(pd.notna(streefpeil), "Onbekend streefpeil")
     nodes_basins = nodes_basins.loc[nodes_basins["node_id"] != -999].dropna()
     nodes_basins = nodes_basins.drop_duplicates(subset="node_id").reset_index(drop=True)

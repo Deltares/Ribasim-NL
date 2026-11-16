@@ -3,6 +3,11 @@
 import ribasim_nl.ribasim_parametrization as ribasim_param
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
+from ribasim_nl.crossings.basin_references import (
+    References2024,
+    rating_curves_between_levels,
+    remove_dangling_connectors,
+)
 from ribasim_nl.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form
 from shapely import Point
 
@@ -27,6 +32,8 @@ default_level = 0.42 if AANVOER_CONDITIONS else -0.42  # default LevelBoundary l
 
 # process the feedback form and load the model
 ribasim_model = process_feedback_form(paths)
+# the Basins and added nodes below are those of the models of 2024, see `References2024`
+refs = References2024(ribasim_model, paths.boezemmodel_ids, paths.base_model_toml, paths.feedback_form)
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
@@ -37,12 +44,15 @@ ribasim_param.validate_manning_basins(ribasim_model)
 # model specific tweaks
 # the vrij-afwaterende basins are a multipolygon, in a single basin (189). Only retain the largest value
 assert ribasim_model.basin.area.df is not None
-exploded_basins = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 189].explode(
-    index_parts=False
-)
-exploded_basins["area"] = exploded_basins.area
-largest_polygon = exploded_basins.sort_values(by="area", ascending=False).iloc[0]
-ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df.node_id == 189, "geometry"] = largest_polygon["geometry"]
+for basin_id in refs.basins(189):
+    exploded_basins = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == basin_id].explode(
+        index_parts=False
+    )
+    exploded_basins["area"] = exploded_basins.area
+    largest_polygon = exploded_basins.sort_values(by="area", ascending=False).iloc[0]
+    ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df.node_id == basin_id, "geometry"] = largest_polygon[
+        "geometry"
+    ]
 
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
@@ -61,14 +71,14 @@ level_boundary_node = ribasim_model.level_boundary.add(
 pump_node = ribasim_model.pump.add(Node(geometry=Point(74504, 382443)), [pump.Static(flow_rate=[0.1])])
 ribasim_model.node.df.loc[pump_node.node_id, "meta_node_id"] = pump_node.node_id
 ribasim_model.link.add(level_boundary_node, pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[133])
+ribasim_model.link.add(pump_node, refs.basin(133, pump_node))
 
 # add a pump and links to a newly created level boundary
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(65450, 374986)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(65429, 374945)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[148], pump_node)
+ribasim_model.link.add(refs.basin(148, pump_node), pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # add a TRC and LB from Belgium
@@ -80,11 +90,12 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[1])
+ribasim_model.link.add(tabulated_rating_curve_node, refs.basin(1, tabulated_rating_curve_node))
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # connection with Belgium
-ribasim_model.remove_node(29, True)
+for basin_id in refs.basins(29):
+    ribasim_model.remove_node(basin_id, True)
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(35147, 362794)), [level_boundary.Static(level=[default_level])]
 )
@@ -96,11 +107,16 @@ ribasim_model.link.add(ribasim_model.tabulated_rating_curve[227], level_boundary
 ribasim_model.link.add(ribasim_model.tabulated_rating_curve[381], level_boundary_node)
 inlaat_structures.extend([491, 547, 334, 554])
 inlaat_structures.append(309)
+# the connector nodes between the Basins that replaced Basin 29 of 2024
+remove_dangling_connectors(ribasim_model)
 
 # (re) set 'meta_node_id'
 for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
     mask = ribasim_model.node.df["node_type"] == node_type
     ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
+
+# a Basin that is merged with one of another target level keeps its ManningResistances
+print(f"ManningResistances between target levels: {rating_curves_between_levels(ribasim_model, UNKNOWN_STREEFPEIL)}")
 
 # convert all boundary nodes to LevelBoundaries
 ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
@@ -119,8 +135,8 @@ for node in inlaat_structures:
 # its name and capacity are assigned from the 'gemaal' layer in the forcing stage
 pump_node = ribasim_model.pump.add(Node(geometry=Point(57403, 390161)), [pump.Static(flow_rate=[0.1])])
 ribasim_model.node.df.loc[pump_node.node_id, "meta_node_id"] = pump_node.node_id
-ribasim_model.link.add(ribasim_model.basin[138], pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[142])
+ribasim_model.link.add(refs.basin(138, pump_node), pump_node)
+ribasim_model.link.add(pump_node, refs.basin(142, pump_node))
 
 ribasim_param.clean_tables(ribasim_model, waterschap)
 ribasim_model.write(paths.model_dir("feedback") / "ribasim.toml")

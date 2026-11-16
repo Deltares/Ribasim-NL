@@ -38,6 +38,8 @@ class RibasimFeedbackProcessor:
     _basin_aanvoer_off: tuple[int, ...] | None = None
     _outlet_aanvoer_on: tuple[int, ...] | None = None
     _outlet_aanvoer_off: tuple[int, ...] | None = None
+    # the Basins of which the form sets the target level, by default all it lists
+    target_level_basins: frozenset[int] | None = None
 
     def __init__(
         self,
@@ -458,6 +460,8 @@ class RibasimFeedbackProcessor:
         # read sheet with the updated the target levels
         df_TL = pd.read_excel(self.feedback_excel, sheet_name="Streefpeilen", header=0)
         df_TL = df_TL.sort_values(by=["Basin node_id"]).reset_index(drop=True)
+        if self.target_level_basins is not None:
+            df_TL = df_TL[df_TL["Basin node_id"].isin(self.target_level_basins)].reset_index(drop=True)
         if len(df_TL) > 0:  # if the sheet is filled in, proceed
             assert self.model.basin.state.df is not None
             assert self.model.basin.area.df is not None

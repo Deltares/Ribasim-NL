@@ -2,7 +2,8 @@
 
 import ribasim_nl.ribasim_parametrization as ribasim_param
 from ribasim import Node
-from ribasim.nodes import level_boundary, pump
+from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
+from ribasim_nl.crossings.basin_references import References2024, rating_curves_between_levels
 from ribasim_nl.split_basins import NodeMetaCache, SplitBasins
 from ribasim_nl.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form
 from shapely import Point
@@ -31,6 +32,8 @@ default_level = 2 if AANVOER_CONDITIONS else -2  # default LevelBoundary level
 
 # process the feedback form and load the model
 ribasim_model = process_feedback_form(paths, use_validation=False)
+# the Basins and added nodes below are those of the models of 2024, see `References2024`
+refs = References2024(ribasim_model, paths.boezemmodel_ids, paths.base_model_toml, paths.feedback_form)
 
 inlaat_pump = []
 
@@ -39,7 +42,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(110865, 446289)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(110884, 446307)), [pump.Static(flow_rate=[1.5])])
-ribasim_model.link.add(ribasim_model.basin[338], pump_node)
+ribasim_model.link.add(refs.basin(338, pump_node), pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 assert ribasim_model.pump.static.df is not None
@@ -53,23 +56,36 @@ for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
 
 # model specific tweaks
 # merge basins
-ribasim_model.merge_basins(node_id=106, to_node_id=93, are_connected=True)  # (too) small area
-ribasim_model.merge_basins(node_id=235, to_node_id=151, are_connected=True)  # (too) small area
-ribasim_model.merge_basins(node_id=166, to_node_id=22, are_connected=True)  # (too) small area
-ribasim_model.merge_basins(node_id=79, to_node_id=22, are_connected=True)  # (too) small area
+refs.merge_basins(node_id=106, to_node_id=93, are_connected=True)  # (too) small area
+refs.merge_basins(node_id=235, to_node_id=151, are_connected=True)  # (too) small area
+refs.merge_basins(node_id=166, to_node_id=22, are_connected=True)  # (too) small area
+refs.merge_basins(node_id=79, to_node_id=22, are_connected=True)  # (too) small area
 # unconnected basins
-ribasim_model.merge_basins(node_id=308, to_node_id=22, are_connected=False)
-ribasim_model.merge_basins(node_id=332, to_node_id=138, are_connected=False)
+refs.merge_basins(node_id=308, to_node_id=22, are_connected=False)
+refs.merge_basins(node_id=332, to_node_id=138, are_connected=False)
 
 # add gemaal in middle of beheergebied. Dont use FF as it is an aanvoergemaal
 pump_node = ribasim_model.pump.add(Node(geometry=Point(88284, 469447)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[22], pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[27])
+ribasim_model.link.add(refs.basin(22, pump_node), pump_node)
+ribasim_model.link.add(pump_node, refs.basin(27, pump_node))
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_node.node_id, "meta_func_aanvoer"] = 1
 
 # re-define LevelBoundary-nodes connecting to HDSR, which are closer to the connector-nodes,
 #  and thereby result in better coupling of the sub-models
 ribasim_param.reassign_level_boundaries(ribasim_model, {141, 145})
+
+# The water of Ruigoord (peilgebied GH-080.06) is on the level of the Noordzeekanaal and open to it. RWZI
+# Amsterdam-West discharges up to 5.8 m3/s into it, which the two weirs into the polders next to it cannot pass on. In
+# the models of 2024 it is part of Basin 107, a polder. The capacity is set in the forcing stage.
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(112260, 491050)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(112216, 491009), name="Uitstroom Ruigoord"),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(refs.basin(107, tabulated_rating_curve_node), tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
 # (re)set 'meta_node_id'-values
 for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
@@ -90,6 +106,9 @@ ribasim_param.validate_basin_area(ribasim_model)
 
 # check streefpeilen at manning nodes
 ribasim_param.validate_manning_basins(ribasim_model)
+
+# a Basin that is merged with one of another target level keeps its ManningResistances
+print(f"ManningResistances between target levels: {rating_curves_between_levels(ribasim_model, UNKNOWN_STREEFPEIL)}")
 
 # convert all boundary nodes to LevelBoundaries
 ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean

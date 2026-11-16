@@ -28,6 +28,7 @@ from shapely.geometry import LineString, Point
 from ribasim_nl import Model, supply
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.control_layout import DEFAULT_LEVEL_THRESHOLD_RANGE
+from ribasim_nl.crossings.aggregation import FIRST_NEW_NODE_ID
 from ribasim_nl.ribasim_feedback_processor import RibasimFeedbackProcessor
 
 logger = logging.getLogger(__name__)
@@ -128,12 +129,16 @@ def write_steady_state_regression_models(
     qlr_path: Path,
     dry_evaporation_mm_per_day: float = 1.0,
     wet_precipitation_mm_per_day: float = 2.0,
+    non_steady_state: set[int] | None = None,
 ) -> None:
     """Write, run, export, and validate constant dry and wet forcing variants.
 
     The source model is read separately for each variant so that the dynamic
     production model remains unchanged. Its simulation period, controls, and
     level boundaries are retained; only Basin meteo forcing is replaced.
+
+    :param non_steady_state: Basins that need not reach a steady state in either variant, instead of those of
+        `allowed_non_steady_state_node_ids`
     """
     required_scenarios = {"dry", "wet"}
     if set(output_paths) != required_scenarios:
@@ -173,6 +178,8 @@ def write_steady_state_regression_models(
         control.run(metrics=STATIC_FORCING_METRICS)
         control.validate_result_conditions(
             allowed_non_steady_state_node_ids=allowed_non_steady_state_node_ids(authority, scenario)
+            if non_steady_state is None
+            else non_steady_state
         )
 
 
@@ -356,7 +363,13 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0) -> None:
     # up till this point, all FlowBoundaries have been converted to TRC's. Now the actual LevelBoundaries needs to be created
     max_id = get_current_max_node_id(ribasim_model)
     nodes_FlowBoundary["meta_old_node_id"] = nodes_FlowBoundary.meta_node_id  # store for later
-    nodes_FlowBoundary["node_id"] = max_id + nodes_FlowBoundary.index + 1  # implement new id's
+    node_ids = np.array(max_id + nodes_FlowBoundary.index + 1)  # implement new id's
+    # FlowBoundaries that the input model of 2024 lacks, see `ribasim_nl.crossings.aggregation`, are numbered from
+    # 10 000, which would double the highest ID. Their LevelBoundaries are numbered after the others instead.
+    new_boundary = nodes_FlowBoundary.index.to_numpy() >= FIRST_NEW_NODE_ID
+    if new_boundary.any():
+        node_ids[new_boundary] = node_ids[~new_boundary].max(initial=max_id) + 1 + np.arange(new_boundary.sum())
+    nodes_FlowBoundary["node_id"] = node_ids
     # nodes_FlowBoundary["node_id"] = nodes_FlowBoundary.meta_node_id.copy()
     nodes_FlowBoundary["geometry"] = nodes_FlowBoundary.geometry.translate(
         xoff=-1, yoff=-1

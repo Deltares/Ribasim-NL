@@ -26,6 +26,11 @@ from ribasim_nl.control import (
     get_node_table_with_from_to_node_ids,
     remove_duplicate_controls,
 )
+from ribasim_nl.crossings.aggregation import FIRST_NEW_NODE_ID, REFINED
+from ribasim_nl.crossings.basin_references import (
+    remove_dangling_connectors,
+    translate_feedback_form,
+)
 from ribasim_nl.network_snapping import line_reader, read_hydro_objects, snap_model
 from ribasim_nl.regional_model import ENDTIME, STARTTIME, add_inflows, add_lhm_forcing, finish_regional_model
 from ribasim_nl.ribasim_feedback_processor import RibasimFeedbackProcessor
@@ -70,6 +75,16 @@ class WaterBoardPaths:
         return self.cloud.joinpath(
             self.waterschap, "modellen", f"{self.waterschap}_boezemmodel_{self.base_model_versie}", "ribasim.toml"
         )
+
+    @property
+    def boezemmodel_ids(self) -> Path:
+        """The nodes, links and Basin areas of the input model of 2024, see `ribasim_nl.crossings.renumber`."""
+        return self.cloud.joinpath(self.waterschap, "verwerkt/boezemmodel_ids.gpkg")
+
+    @property
+    def feedback_ids(self) -> Path:
+        """The nodes that the feedback stage of 2024 added, see `ribasim_nl.crossings.basin_references`."""
+        return self.cloud.joinpath(self.waterschap, "verwerkt/feedback_ids.gpkg")
 
     @property
     def feedback_form(self) -> Path:
@@ -139,11 +154,27 @@ def process_feedback_form(paths: WaterBoardPaths, use_validation: bool = True) -
     temporarily invalid.
     """
     work_dir = paths.model_dir("feedback")
-    paths.feedback_processor(work_dir, use_validation=use_validation).run()
+    processor = paths.feedback_processor(work_dir, use_validation=use_validation)
+    refined = paths.waterschap in REFINED
+    # the nodes that the input model of 2024 lacks
+    new_nodes = (
+        frozenset(i for i in processor.model.node.df.index if i >= FIRST_NEW_NODE_ID) if refined else frozenset()
+    )
+    if refined:
+        counts = translate_feedback_form(processor, paths.boezemmodel_ids)
+        print(f"Basins of the feedback form: {counts}")
+        # the hook of the processor that runs before it writes the model, if it validates it
+        processor.clean_tables = lambda: print(  # ty: ignore[invalid-assignment]
+            f"Removed dangling connector nodes: {remove_dangling_connectors(processor.model)}"
+        )
+    processor.run()
     with warnings.catch_warnings():
         warnings.simplefilter(action="ignore", category=FutureWarning)
         model = Model.read(work_dir / "ribasim.toml")
         model.set_crs("EPSG:28992")
+    if refined and not use_validation:
+        # the script completes the nodes of 2024 that the form leaves without a neighbour, but knows no other nodes
+        print(f"Removed dangling connector nodes: {remove_dangling_connectors(model, new_nodes)}")
     return model
 
 
@@ -367,7 +398,11 @@ def preserve_connector_meta(model: Model, method: Literal["merge", "combine_firs
 
 
 def write_and_run_forcing_model(
-    model: Model, paths: WaterBoardPaths, *, routing_areas: dict[int, shapely.Geometry] | None = None
+    model: Model,
+    paths: WaterBoardPaths,
+    *,
+    routing_areas: dict[int, shapely.Geometry] | None = None,
+    non_steady_state: set[int] | None = None,
 ) -> None:
     """Write and run the forcing model and its steady state regression variants, and check the results.
 
@@ -376,6 +411,7 @@ def write_and_run_forcing_model(
     :param model: model with forcing
     :param paths: paths of the water board
     :param routing_areas: per Basin, an area beyond its basin area in which it is routed, see `snap_to_network`
+    :param non_steady_state: Basins that need not reach a steady state, see `write_steady_state_regression_models`
     """
     check_basin_meta_categorie(model)
     bound_supply_inflows(model)
@@ -399,4 +435,5 @@ def write_and_run_forcing_model(
         snap=snap,
         read_lines=line_reader(paths.waterways, read_hydro_objects(paths.profielen_dir)),
         steady_state_regression=True,
+        non_steady_state=non_steady_state,
     )

@@ -9,7 +9,9 @@ from ribasim_nl.control import (
     set_flow_rate,
     set_node_functions,
 )
+from ribasim_nl.crossings.basin_references import References2024, supply_opposite_nodes
 from ribasim_nl.design_capacities import set_design_capacities
+from ribasim_nl.network_snapping import bergend_nodes
 from ribasim_nl.workflow import (
     WaterBoardPaths,
     add_controllers,
@@ -42,12 +44,23 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/
 processor = paths.feedback_processor(work_dir=paths.model_dir("profiles"))
 
 ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
+# the Basins and added nodes below are those of the models of 2024, see `References2024`
+refs = References2024(
+    ribasim_model, paths.boezemmodel_ids, paths.base_model_toml, paths.feedback_form, paths.feedback_ids
+)
+refs.translate_supply_flags(processor)
 
 # reset pump capacity for each pump
 assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df["flow_rate"] = 10 / 60  # 10m3/min
 
 ribasim_model = set_boundary_conditions(ribasim_model, paths, level_boundary_levels=(-2, 2))
+
+# The open water of Ruigoord flows into the Noordzeekanaal, see the feedback stage. The canal is kept at -0.4 m NAP;
+# with the hypothetical level of the other boundaries the water could not flow out in summer.
+ruigoord = int(ribasim_model.node.df.index[ribasim_model.node.df["name"] == "Uitstroom Ruigoord"].item())
+ruigoord_boundary = int(ribasim_model.downstream_node_id(ruigoord))
+ribasim_param.set_static_level_boundaries(ribasim_model, [ruigoord_boundary], -0.4)
 
 # prepare 'aanvoergebieden'
 aanvoergebieden = supply.special_load_geometry(f_geometry=aanvoer_path, method="extract", key="aanvoer", value=1)
@@ -102,8 +115,13 @@ to_supply = (
     1471,
 )
 from_to_node_function_table = set_node_functions(
-    from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
+    from_to_node_function_table,
+    to_supply=refs.nodes(to_supply),
+    to_flow_control=refs.nodes(to_flow_control),
+    to_drain=(*refs.nodes(to_drain), ruigoord),
 )
+# between the peilgebieden of a delivered aggregation area, an inlet next to a gemaal the other way supplies
+supply_opposite_nodes(ribasim_model, from_to_node_function_table)
 
 
 add_controllers(ribasim_model, from_to_node_function_table, remove_duplicates=True)
@@ -111,7 +129,7 @@ add_controllers(ribasim_model, from_to_node_function_table, remove_duplicates=Tr
 assign_pump_and_basin_names(ribasim_model, paths)
 
 # according data flow_rate of 0
-zero_flow_pumps = [460, 736, 1282, 1435, 1436, 1471, 1472]
+zero_flow_pumps = list(refs.nodes([460, 736, 1282, 1435, 1436, 1471, 1472]))
 assert ribasim_model.pump.static.df is not None
 set_flow_rate(ribasim_model.pump.static.df, zero_flow_pumps, 25.0)
 
@@ -153,17 +171,27 @@ ribasim_model = complete_parametrization(
     ribasim_model,
     paths,
     custom_nodes={
-        1354: "Noordzee",
-        1367: "Delfland",
-        1481: "StichtseRijnlanden",
-        1485: "StichtseRijnlanden",
-        1486: "StichtseRijnlanden",
-        1487: "StichtseRijnlanden",
-        1488: "StichtseRijnlanden",
-        1489: "StichtseRijnlanden",
-        1490: "StichtseRijnlanden",
+        **refs.keys(
+            {
+                1354: "Noordzee",
+                1367: "Delfland",
+                1481: "StichtseRijnlanden",
+                1485: "StichtseRijnlanden",
+                1486: "StichtseRijnlanden",
+                1487: "StichtseRijnlanden",
+                1488: "StichtseRijnlanden",
+                1489: "StichtseRijnlanden",
+                1490: "StichtseRijnlanden",
+            }
+        ),
+        ruigoord_boundary: "Rijkswaterstaat",
     },
 )
+# an open connection, which passes the largest discharge of RWZI Amsterdam-West of 5.8 m3/s on
+assert ribasim_model.outlet.static.df is not None
+ribasim_model.outlet.static.df.loc[
+    ribasim_model.outlet.static.df["node_id"] == ruigoord, ["max_flow_rate", "meta_known_flow_rate"]
+] = [10.0, True]
 
 # set the unknown capacities of Pumps and Outlets from the area they drain or supply
 set_design_capacities(ribasim_model, from_to_node_function_table)
@@ -171,7 +199,7 @@ set_design_capacities(ribasim_model, from_to_node_function_table)
 # The boezemgemalen drain the boezem in steps of the level of Basin 2771, in the middle of the boezem, rather than of
 # the Basins next to them, see https://github.com/Deltares/Ribasim-NL/issues/906 and
 # https://github.com/Deltares/Ribasim-NL/pull/928#issuecomment-6443645940
-BOEZEM_BASIN = 2771  # streefpeil -0.61 m NAP
+BOEZEM_BASIN = refs.node(2771)  # streefpeil -0.61 m NAP
 # The Basins next to the gemalen are about 1 cm lower than Basin 2771. With the min_upstream_level of -0.61 m NAP
 # they had, the gemalen would only pump a fraction of their steps, so it is a safety limit below the streefpeil.
 BOEZEM_MIN_UPSTREAM_LEVEL = -0.65
@@ -190,7 +218,8 @@ BOEZEMGEMALEN: tuple[tuple[int, str, list[float], list[float], float | list[floa
     # Gouda starts at -0.59 m NAP and stops below -0.595 m NAP
     (1279, "Gouda", [-0.59, -0.57], [0.0, 34.5, 40.0], [0.005, DEFAULT_LEVEL_STEP_HYSTERESIS]),
 )
-for node_id, name, levels, flow_rates, hysteresis in BOEZEMGEMALEN:
+for node_id_2024, name, levels, flow_rates, hysteresis in BOEZEMGEMALEN:
+    node_id = refs.node(node_id_2024)
     pump_name = ribasim_model.node.df.at[node_id, "name"]
     assert pump_name == f"Boezemgemaal {name}", pump_name
     set_discrete_level_control(
@@ -213,4 +242,10 @@ doorspoeling = ribasim_model.flow_demand.add(
 )
 ribasim_model.link.add(doorspoeling, katwijk)
 
-write_and_run_forcing_model(ribasim_model, paths)
+# Boezemgemaal Halfweg pumps from Basin 2770 of 2024 on the level of Basin 2771. In the wet scenario of the steady
+# state regression it pulls Basin 2770 and its bergend Basin, if it has one, about 3 cm below the rest of the boezem
+# every other day or so, also with fixed levels. In the dry scenario Inlaatgemaal AGC supplies the boezem up to 0.5 cm
+# above the level from which Halfweg pumps, so the boezem keeps cycling, also with daily DiscreteControl
+halfweg_basin = refs.node(2770)
+halfweg_bergend = bergend_nodes(ribasim_model, halfweg_basin)[-1:]  # the ManningResistance comes first
+write_and_run_forcing_model(ribasim_model, paths, non_steady_state={halfweg_basin, *halfweg_bergend})
