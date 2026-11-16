@@ -129,12 +129,16 @@ def write_steady_state_regression_models(
     qlr_path: Path,
     dry_evaporation_mm_per_day: float = 1.0,
     wet_precipitation_mm_per_day: float = 2.0,
+    non_steady_state: set[int] | None = None,
 ) -> None:
     """Write, run, export, and validate constant dry and wet forcing variants.
 
     The source model is read separately for each variant so that the dynamic
     production model remains unchanged. Its simulation period, controls, and
     level boundaries are retained; only Basin meteo forcing is replaced.
+
+    :param non_steady_state: Basins that need not reach a steady state in either variant, instead of those of
+        `allowed_non_steady_state_node_ids`
     """
     required_scenarios = {"dry", "wet"}
     if set(output_paths) != required_scenarios:
@@ -174,6 +178,8 @@ def write_steady_state_regression_models(
         control.run(metrics=STATIC_FORCING_METRICS)
         control.validate_result_conditions(
             allowed_non_steady_state_node_ids=allowed_non_steady_state_node_ids(authority, scenario)
+            if non_steady_state is None
+            else non_steady_state
         )
 
 

@@ -5,8 +5,10 @@ import pandas as pd
 import pytest
 from ribasim import Node
 from ribasim.nodes import basin, manning_resistance, pump
+from ribasim_nl.aquo import NODE_ID_FACTOR, waterbeheercode
 from ribasim_nl.crossings.basin_references import (
     BasinLookup,
+    CoupledReferences2024,
     References2024,
     locate_node,
     rating_curves_between_levels,
@@ -200,3 +202,46 @@ def test_located_nodes(tmp_path: Path):
     # outside the Basin areas, the nearest Basin within 500 m
     assert locate_node(nodes, areas, "Basin", Point(350, 50)) == 2
     assert locate_node(nodes, areas, "Basin", Point(900, 50)) is None
+
+
+def test_coupled_references(tmp_path: Path):
+    model, reference, _, form = _refined(tmp_path)
+    authority = "Delfland"
+    prefix = waterbeheercode[authority] * NODE_ID_FACTOR
+    # in 2024 the model also had Terminal 6, which is not in the model, and the feedback stage added Pump 7
+    nodes = gpd.GeoDataFrame(
+        {"node_id": [1, 2, 5, 6], "node_type": ["Basin", "Basin", "Pump", "Terminal"]},
+        geometry=[Point(100, 50), Point(250, 50), Point(200, 50), Point(0, 50)],
+        crs=CRS,
+    )
+    reference.unlink()
+    nodes.to_file(reference, layer="node")
+    areas = gpd.GeoDataFrame({"node_id": [1, 2]}, geometry=[box(0, 0, 200, 100), box(200, 0, 300, 100)], crs=CRS)
+    areas.to_file(reference, layer="area")
+    new_pump = model.pump.add(Node(geometry=Point(1, 50)), [pump.Static(flow_rate=[1.0])])
+    model.link.add(model.basin[1], new_pump)
+    model.link.add(new_pump, model.basin[10])
+    model.node.df["meta_categorie"] = "doorgaand"
+
+    verwerkt = tmp_path / authority / "verwerkt"
+    (verwerkt / "Feedback Formulier").mkdir(parents=True)
+    reference.rename(verwerkt / "boezemmodel_ids.gpkg")
+    form.rename(verwerkt / "Feedback Formulier" / f"feedback_formulier_{authority}.xlsx")
+    gpd.GeoDataFrame({"node_id": [7], "node_type": ["Pump"]}, geometry=[Point(0, 50)], crs=CRS).to_file(
+        verwerkt / "feedback_ids.gpkg", layer="node"
+    )
+    for stage in ("feedback", "forcing"):
+        model.write(tmp_path / authority / f"modellen/{authority}_{stage}/ribasim.toml")
+
+    refs = CoupledReferences2024(tmp_path)
+    # the nodes of an authority without refined aggregation areas keep their ID
+    assert refs.node(4000001) == 4000001
+    assert refs.node(prefix + 5) == prefix + 5
+    assert refs.node(prefix + 7) == prefix + new_pump.node_id
+    assert refs.node(prefix + 2) == prefix + 2
+    # Basin 1 of 2024 is the Basin that replaces it next to the given node
+    assert refs.node(prefix + 1, near=prefix + 5) == prefix + 10
+    assert refs.node(prefix + 1, near=prefix + 7) == prefix + 1
+    # also next to a node of 2024 that is not in the model, where it was
+    assert refs.node(prefix + 1, near=prefix + 6) == prefix + 1
+    assert refs.keys({prefix + 7: "name"}) == {prefix + new_pump.node_id: "name"}

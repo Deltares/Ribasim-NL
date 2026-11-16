@@ -398,7 +398,11 @@ def preserve_connector_meta(model: Model, method: Literal["merge", "combine_firs
 
 
 def write_and_run_forcing_model(
-    model: Model, paths: WaterBoardPaths, *, routing_areas: dict[int, shapely.Geometry] | None = None
+    model: Model,
+    paths: WaterBoardPaths,
+    *,
+    routing_areas: dict[int, shapely.Geometry] | None = None,
+    non_steady_state: set[int] | None = None,
 ) -> None:
     """Write and run the forcing model and its steady state regression variants, and check the results.
 
@@ -407,6 +411,7 @@ def write_and_run_forcing_model(
     :param model: model with forcing
     :param paths: paths of the water board
     :param routing_areas: per Basin, an area beyond its basin area in which it is routed, see `snap_to_network`
+    :param non_steady_state: Basins that need not reach a steady state, see `write_steady_state_regression_models`
     """
     check_basin_meta_categorie(model)
     bound_supply_inflows(model)
@@ -430,4 +435,5 @@ def write_and_run_forcing_model(
         snap=snap,
         read_lines=line_reader(paths.waterways, read_hydro_objects(paths.profielen_dir)),
         steady_state_regression=True,
+        non_steady_state=non_steady_state,
     )

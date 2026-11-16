@@ -2,7 +2,7 @@
 
 import ribasim_nl.ribasim_parametrization as ribasim_param
 from ribasim import Node
-from ribasim.nodes import level_boundary, pump
+from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from ribasim_nl.crossings.basin_references import References2024, rating_curves_between_levels
 from ribasim_nl.split_basins import NodeMetaCache, SplitBasins
 from ribasim_nl.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form
@@ -73,6 +73,19 @@ ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump
 # re-define LevelBoundary-nodes connecting to HDSR, which are closer to the connector-nodes,
 #  and thereby result in better coupling of the sub-models
 ribasim_param.reassign_level_boundaries(ribasim_model, {141, 145})
+
+# The water of Ruigoord (peilgebied GH-080.06) is on the level of the Noordzeekanaal and open to it. RWZI
+# Amsterdam-West discharges up to 5.8 m3/s into it, which the two weirs into the polders next to it cannot pass on. In
+# the models of 2024 it is part of Basin 107, a polder. The capacity is set in the forcing stage.
+level_boundary_node = ribasim_model.level_boundary.add(
+    Node(geometry=Point(112260, 491050)), [level_boundary.Static(level=[default_level])]
+)
+tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
+    Node(geometry=Point(112216, 491009), name="Uitstroom Ruigoord"),
+    [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
+)
+ribasim_model.link.add(refs.basin(107, tabulated_rating_curve_node), tabulated_rating_curve_node)
+ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
 # (re)set 'meta_node_id'-values
 for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:

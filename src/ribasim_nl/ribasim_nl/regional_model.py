@@ -128,6 +128,7 @@ def finish_regional_model(
     snap: Callable[[Model], Model],
     read_lines: LineReader,
     steady_state_regression: bool = False,
+    non_steady_state: set[int] | None = None,
 ) -> Model:
     """Lay out, write, validate and run the model, use its final state as initial state, and check its results.
 
@@ -146,6 +147,8 @@ def finish_regional_model(
     :param snap: function that snaps the links and Basins to the waterways
     :param read_lines: reads the waterways that `snap` routes along, see `merge_basin_trees`
     :param steady_state_regression: also write, run and check the dry and wet steady state variants
+    :param non_steady_state: Basins that need not reach a steady state in these variants, see
+        `write_steady_state_regression_models`
     :return: the model with its final state as initial state
     """
     model.clean_basin_area()
@@ -175,6 +178,7 @@ def finish_regional_model(
             },
             authority=authority,
             qlr_path=QLR,
+            non_steady_state=non_steady_state,
         )
     model.validate_ribasim_nl()
 

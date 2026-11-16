@@ -603,6 +603,7 @@ class CoupledReferences2024:
     def __init__(self, data_dir: Path) -> None:
         self.data_dir = data_dir
         self._types: dict[str, pd.Series] = {}
+        self._reference: dict[str, gpd.GeoDataFrame] = {}
         self._lookup: dict[str, BasinLookup] = {}
         self._nodes: dict[str, gpd.GeoDataFrame] = {}
         # the nodes that the feedback stage of 2024 added, and the nodes and Basin areas of the feedback model
@@ -612,8 +613,8 @@ class CoupledReferences2024:
         return self.data_dir / authority / "verwerkt/boezemmodel_ids.gpkg"
 
     def _read(self, authority: str) -> None:
-        nodes = gpd.read_file(self._reference_path(authority), layer="node", ignore_geometry=True)
-        self._types[authority] = nodes.set_index("node_id")["node_type"]
+        self._reference[authority] = gpd.read_file(self._reference_path(authority), layer="node").set_index("node_id")
+        self._types[authority] = self._reference[authority]["node_type"]
         database = self.data_dir / authority / f"modellen/{authority}_forcing/input/database.gpkg"
         self._nodes[authority] = gpd.read_file(database, layer="Node", fid_as_index=True)
         added = gpd.read_file(self._reference_path(authority).with_name("feedback_ids.gpkg"), layer="node")
@@ -624,8 +625,25 @@ class CoupledReferences2024:
             gpd.read_file(feedback, layer="Basin / area"),
         )
 
-    def _basin(self, authority: str, basin_2024: int, near: int | None) -> int:
-        """The Basin that replaces a Basin of 2024 nearest to a node of the forcing model, or the one with its ID."""
+    def _local(self, authority: str, node_id: int) -> int | None:
+        """The ID in the model of its authority of a node of 2024 that is not a Basin, or None if it is not located."""
+        if node_id <= int(self._types[authority].index.max()):
+            return node_id
+        # a node that the feedback stage added, which has the same ID in the later stages
+        added, nodes, areas = self._added[authority]
+        return locate_added_node(added, node_id, nodes, areas)
+
+    def _location(self, authority: str, node_id: int) -> Point:
+        """Where a node of 2024 is in the forcing model, or where it was in 2024 if it is no longer in the model."""
+        nodes = self._nodes[authority]
+        local = self._local(authority, node_id)
+        if local is not None and local in nodes.index:
+            return cast(Point, nodes.geometry.loc[local])
+        reference, added = self._reference[authority], self._added[authority][0]
+        return cast(Point, (reference if node_id in reference.index else added).geometry.loc[node_id])
+
+    def _basin(self, authority: str, basin_2024: int, near: Point | None) -> int:
+        """The Basin that replaces a Basin of 2024 nearest to a location, or the one with its ID."""
         nodes = self._nodes[authority]
         if authority not in self._lookup:
             database = self.data_dir / authority / f"modellen/{authority}_forcing/input/database.gpkg"
@@ -639,7 +657,7 @@ class CoupledReferences2024:
         if near is None:
             assert basin_2024 in lookup.basins(basin_2024), f"Basin {basin_2024} of 2024 of {authority} is replaced"
             return basin_2024
-        return lookup.at(basin_2024, nodes.geometry.loc[near])
+        return lookup.at(basin_2024, near)
 
     def node(self, node_id: int, near: int | None = None) -> int:
         """The ID in the coupled model of a node, given as in 2024.
@@ -655,15 +673,11 @@ class CoupledReferences2024:
             self._read(authority)
         types = self._types[authority]
         if types.get(local) == "Basin":
-            near_local = None
+            location = None
             if near is not None and near // NODE_ID_FACTOR == code:
-                near_local = self.node(near) % NODE_ID_FACTOR
-            return code * NODE_ID_FACTOR + self._basin(authority, local, near_local)
-        if local <= int(types.index.max()):
-            return node_id
-        # a node that the feedback stage added, which has the same ID in the later stages
-        added, nodes, areas = self._added[authority]
-        located = locate_added_node(added, local, nodes, areas)
+                location = self._location(authority, near % NODE_ID_FACTOR)
+            return code * NODE_ID_FACTOR + self._basin(authority, local, location)
+        located = self._local(authority, local)
         return -node_id if located is None else code * NODE_ID_FACTOR + located
 
     def keys[T](self, by_node: Mapping[int, T]) -> dict[int, T]:
