@@ -1,5 +1,14 @@
-import { hasColumn, readColumns, type Comparison, type FeatureDiff, type Manifest } from "./data";
+import {
+  hasColumn,
+  readColumns,
+  textColumns,
+  type Comparison,
+  type FeatureDiff,
+  type FileEntry,
+  type Manifest,
+} from "./data";
 import type { FlowGraph, FlowNeighbor } from "./fractions";
+import { searchedColumns, TextIndex, type FeatureKind } from "./search";
 
 /**
  * deck.gl binary layer data. Layers must get the same object on every render,
@@ -256,6 +265,41 @@ const isRemoved = (diffs: Map<number, FeatureDiff> | undefined, sign: 1 | -1) =>
 
 /** The label of a link id; removed links have their negated id in the base model. */
 export const linkLabel = (id: number) => (id < 0 ? `#${-id} (base)` : `#${id}`);
+
+/**
+ * The names and codes of the nodes and links, to search them, see `searchedColumns`. When comparing models, those of
+ * the removed features are read from the base model.
+ */
+export async function loadSearchIndex(manifest: Manifest, comparison: Comparison | null): Promise<TextIndex> {
+  // Each file with the id of its features in the network, or null for those that are not in it
+  const files: [FileEntry, FeatureKind, (id: number) => number | null][] = [
+    [manifest.files.nodes, "node", (id) => id],
+    [manifest.files.links, "link", (id) => id],
+  ];
+  if (comparison) {
+    const removedNode = isRemoved(comparison.diff.nodes, 1);
+    const removedLink = isRemoved(comparison.diff.links, -1);
+    files.push(
+      [comparison.base.files.nodes, "node", (id) => (removedNode(id) ? id : null)],
+      [comparison.base.files.links, "link", (id) => (removedLink(id) ? -id : null)],
+    );
+  }
+  const tables = await Promise.all(
+    files.map(async ([entry, kind]) => readColumns(entry, [`${kind}_id`, ...(await textColumns(entry))])),
+  );
+  const index = new TextIndex();
+  files.forEach(([, kind, networkId], i) => {
+    const { [`${kind}_id`]: ids, ...columns } = tables[i];
+    const shown = ids.map((id) => networkId(Number(id)));
+    for (const column of searchedColumns(columns)) {
+      columns[column].forEach((value, row) => {
+        const id = shown[row];
+        if (id !== null) index.add(kind, id, column, value);
+      });
+    }
+  });
+  return index;
+}
 
 /** Flow neighbors of each Junction, upstream and downstream, built once per network. */
 const junctionNeighbors = new WeakMap<Network, { upstream: Map<number, number[]>; downstream: Map<number, number[]> }>();

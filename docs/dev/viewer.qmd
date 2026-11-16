@@ -7,6 +7,11 @@ It is a static web app: the docs site serves only the JavaScript, and the browse
 The model of a pull request can be previewed too, together with its differences from `main`, at `https://ribasim.nl/viewer?pr=<number>`.
 Any other published version can be viewed, or compared with another, by its commit, see [Links to a version](#links-to-a-version).
 
+The search box in the top left finds nodes and links while typing: by their id, prefixed with `n` or `l` to find only nodes or links, and by their `name` and the `meta_` columns that identify them, like `meta_code_waterbeheerder`.
+Columns of categories, whose values many features share, like `meta_categorie`, are left out.
+It also finds towns, municipalities and provinces, with the [Locatieserver of PDOK](https://www.pdok.nl/pdok-locatieserver), and shows the whole of a place when chosen.
+Enter goes to the first option, the arrow keys choose another.
+
 The *Water authority* choice above the layer list shows the nodes and links of one authority, by the `waterbeheercode` their node ids start with, see `ribasim_nl.aquo`.
 It also shows the links to other authorities and the nodes at their other end, such as the regional inlets and outlets of the hws, and the Basin / areas of the shown Basins.
 The choice is kept in the URL, as `#authority=<waterbeheercode>`.
