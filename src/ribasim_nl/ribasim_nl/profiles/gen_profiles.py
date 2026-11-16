@@ -5,19 +5,11 @@ from collections.abc import Collection, Mapping
 from pathlib import Path
 
 import geopandas as gpd
-import numpy as np
 import pandas as pd
 
 from ribasim_nl import CloudStorage
 from ribasim_nl.profiles import hydrotopes, run
-
-# The levels that mean that the target level of a peilgebied is missing, per dataset. 0 m NAP is a real level.
-NO_DATA_LEVELS: dict[str, tuple[float, ...]] = {"Scheldestromen": (-99.0, 99.0), "Zuiderzeeland": (999.0,)}
-# Wrong target levels and their corrections, per dataset. The Rijnland boezem has the level of 2024, 0.61 m, in the
-# crossings, though it is -0.61 m NAP, see `pipeline/rijnland/00_postprocess.py`.
-LEVEL_CORRECTIONS: dict[str, dict[float, float]] = {"Rijnland": {0.61: -0.61}}
-# The peilgebieden that have a target level are all below this, in m NAP, and above minus this
-MAX_TARGET_LEVEL = 50.0
+from ribasim_nl.target_levels import LEVEL_CORRECTIONS, NO_DATA_LEVELS, clean_target_levels
 
 # A file name, or a file name and the name of a layer in it
 type FileName = Path | str
@@ -237,15 +229,8 @@ def _read_target_levels(
     """
     polygons = gpd.read_file(fn, layer="peilgebied")
     levels = gpd.read_file(fn, layer="streefpeil")
-    level = polygons["globalid"].map(levels.set_index("globalid")["waterhoogte"]).astype(float)
-    level = level.where(~level.isin(list(no_data_levels)))
-    for wrong, right in (corrections or {}).items():
-        is_wrong = np.isclose(level, wrong)
-        assert is_wrong.any(), f"No target level of {fn} is {wrong}, remove its correction"
-        level = level.mask(is_wrong, right)
-    invalid = level[level.abs() > MAX_TARGET_LEVEL]
-    assert invalid.empty, f"Target levels of {fn} out of range, are these no-data?\n{invalid}"
-    return polygons.assign(meta_streefpeil=level)
+    level = polygons["globalid"].map(levels.set_index("globalid")["waterhoogte"])
+    return polygons.assign(meta_streefpeil=clean_target_levels(level, no_data_levels, corrections))
 
 
 def _read_hydrotope_table(cloud: CloudStorage) -> hydrotopes.HydrotopeTable:

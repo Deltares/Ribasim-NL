@@ -106,3 +106,20 @@ def test_refine_aggregation_areas():
     peilgebied.loc[1, "code"] = "C"
     with pytest.raises(AssertionError, match="not unique"):
         refine_aggregation_areas(peilgebied, areas, streefpeil, min_area=0.0, **kwargs)
+
+
+def test_refine_aggregation_areas_cleans_levels():
+    peilgebied, areas, streefpeil = _peilgebieden()
+    kwargs = {"column": "code", "threshold": 0.8, "min_area": 0.0}
+    # B has the no-data level 99 m, so it has no level, and joins A, of its neighbours A and D the first
+    streefpeil.loc[streefpeil["globalid"] == "id_B", "waterhoogte"] = 99.0
+    with pytest.raises(AssertionError, match="out of range"):
+        refine_aggregation_areas(peilgebied, areas, streefpeil, **kwargs)
+    refined, area_of = refine_aggregation_areas(peilgebied, areas, streefpeil, no_data_levels=(99.0,), **kwargs)
+    assert area_of.tolist() == ["A", "A", "C", "D", "C", "F"]
+    assert refined["streefpeil"].tolist() == [-2.0, -1.1, -1.9, -1.0]
+    # a wrong level is corrected
+    refined, _ = refine_aggregation_areas(
+        peilgebied, areas, streefpeil, no_data_levels=(99.0,), corrections={-2.0: -2.5}, **kwargs
+    )
+    assert refined["streefpeil"].tolist() == [-2.5, -1.1, -1.9, -1.0]

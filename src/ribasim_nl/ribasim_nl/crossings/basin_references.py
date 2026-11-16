@@ -287,35 +287,10 @@ def translate_feedback_form(processor: RibasimFeedbackProcessor, reference_path:
     node_type = model.node.df["node_type"]
     new_types = pd.DataFrame({"node_type": node_type[~node_type.index.isin(types_2024.index)]})
     processor.df_node_types = pd.concat([processor.df_node_types, new_types])
-    processor.target_level_basins = target_level_basins(model, lookup, types_2024.index[types_2024 == "Basin"])
+    processor.target_level_basins = frozenset(
+        int(b) for b in types_2024.index[types_2024 == "Basin"] if lookup.is_single(int(b))
+    )
     return counts
-
-
-def target_level_basins(model: Model, lookup: BasinLookup, basins_2024: Iterable[int]) -> dict[int, tuple[int, ...]]:
-    """Per Basin of 2024, the Basins that get the target level that a feedback form sets for it.
-
-    These are the Basin with its ID, or else the largest Basin that replaces it, and the Basins that replace it with
-    the same target level, which may be unknown. A form often corrects the level of the source data, such as the sign
-    of that of the boezem of Rijnland, which then holds for all its parts. A Basin that replaces it with another target
-    level is a peilgebied of its own, and keeps it.
-    """
-    assert model.basin.area.df is not None, "the model has no Basin areas"
-    area = model.basin.area.df.drop_duplicates("node_id").set_index("node_id")
-    level = pd.to_numeric(area["meta_streefpeil"], errors="coerce")
-    targets: dict[int, tuple[int, ...]] = {}
-    for basin_2024 in map(int, basins_2024):
-        replacing = lookup.basins(basin_2024)
-        if not replacing:
-            continue
-        main = basin_2024 if basin_2024 in replacing else max(replacing, key=lambda b: (lookup.areas[b].area, -b))
-        main_level = level.get(main, float("nan"))
-        targets[basin_2024] = tuple(
-            b
-            for b in replacing
-            if (pd.isna(level.get(b, float("nan"))) and pd.isna(main_level))
-            or abs(level.get(b, float("nan")) - main_level) < 0.005
-        )
-    return targets
 
 
 def shifted_past_new_boundaries(node_id: int, nodes: pd.DataFrame) -> int:

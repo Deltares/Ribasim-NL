@@ -38,8 +38,8 @@ class RibasimFeedbackProcessor:
     _basin_aanvoer_off: tuple[int, ...] | None = None
     _outlet_aanvoer_on: tuple[int, ...] | None = None
     _outlet_aanvoer_off: tuple[int, ...] | None = None
-    # per Basin of the form, the Basins that get its target level, by default the Basin itself
-    target_level_basins: dict[int, tuple[int, ...]] | None = None
+    # the Basins of which the form sets the target level, by default all it lists
+    target_level_basins: frozenset[int] | None = None
 
     def __init__(
         self,
@@ -461,10 +461,7 @@ class RibasimFeedbackProcessor:
         df_TL = pd.read_excel(self.feedback_excel, sheet_name="Streefpeilen", header=0)
         df_TL = df_TL.sort_values(by=["Basin node_id"]).reset_index(drop=True)
         if self.target_level_basins is not None:
-            # with refined aggregation areas, the Basins that replace the Basin of the form
-            targets = self.target_level_basins
-            df_TL["Basin node_id"] = [targets.get(int(basin), ()) for basin in df_TL["Basin node_id"]]
-            df_TL = df_TL.explode("Basin node_id").dropna(subset="Basin node_id").reset_index(drop=True)
+            df_TL = df_TL[df_TL["Basin node_id"].isin(self.target_level_basins)].reset_index(drop=True)
         if len(df_TL) > 0:  # if the sheet is filled in, proceed
             assert self.model.basin.state.df is not None
             assert self.model.basin.area.df is not None
@@ -473,19 +470,17 @@ class RibasimFeedbackProcessor:
             non_existing_basins = df_TL.loc[~df_TL["Basin node_id"].isin(existing_basins)]
             if len(non_existing_basins) > 0:
                 print("Warning! Following basins do not exist:\n", non_existing_basins, "\n")
-            levels = df_TL.set_index("Basin node_id")["Streefpeil"].astype(float)
-            assert levels.index.is_unique, "The form sets the target level of a Basin more than once"
 
             # update streefpeilen in the .state table
-            state_df = self.model.basin.state.df
-            listed = state_df["node_id"].isin(levels.index)
-            state_df.loc[listed, "level"] = state_df.loc[listed, "node_id"].map(levels)
+            self.model.basin.state.df.loc[
+                self.model.basin.state.df.node_id.isin(df_TL["Basin node_id"].to_numpy()), "level"
+            ] = df_TL.Streefpeil.astype(float).to_numpy()
 
             # update streefpeilen in the .area table
-            area_df = self.model.basin.area.df
-            area_df["meta_streefpeil"] = area_df["meta_streefpeil"].astype(object)
-            listed = area_df["node_id"].isin(levels.index)
-            area_df.loc[listed, "meta_streefpeil"] = area_df.loc[listed, "node_id"].map(levels)
+            self.model.basin.area.df["meta_streefpeil"] = self.model.basin.area.df["meta_streefpeil"].astype(object)
+            self.model.basin.area.df.loc[
+                self.model.basin.area.df.node_id.isin(df_TL["Basin node_id"].to_numpy()), "meta_streefpeil"
+            ] = df_TL.Streefpeil.astype(float).to_numpy()
             print("The target levels (streefpeilen) have been updated.")
 
     def functie_gemalen(self) -> None:

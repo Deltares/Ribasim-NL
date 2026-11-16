@@ -86,7 +86,8 @@ One Basin per polder hides these levels, while one Basin per peilgebied gives ma
 
 The feedback forms and scripts refer to the Basins of 2024, the delivered aggregation areas.
 `ribasim_nl.crossings.basin_references` keeps these references: the connector nodes between delivered aggregation areas keep their ID, a Basin of 2024 is the Basin that replaces it at the location of the edit, and the nodes that the feedback stage adds are numbered after the new nodes, which start at 10 000.
-A target level that a form sets for a Basin of 2024 holds for the Basins that replace it with the same target level as its main part, such as the parts of the boezem of Rijnland, of which the delivery has the wrong sign.
+The target levels of the areas are cleaned like those of the [profiles](profile-generation.qmd), see `ribasim_nl.target_levels`: without the no-data levels, and with the level of the boezem of Rijnland corrected, which the feedback form of 2024 corrected for its Basins.
+A target level that a feedback form sets for a Basin of 2024 only holds for a Basin that replaces it alone, since such a level was often chosen to represent all its peilgebieden.
 The connections within the delivered aggregation areas were never reviewed by the water boards.
 
 ## The regional model

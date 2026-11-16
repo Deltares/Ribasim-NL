@@ -16,7 +16,7 @@ import functools
 import itertools
 import logging
 import math
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from pathlib import Path
 from typing import NamedTuple, cast
 
@@ -153,7 +153,12 @@ class ParseCrossings:
                 raise ValueError(f"Aggregation column '{agg_peilgebieden_column}' has duplicate values")
 
     @pandas2_strings
-    def refine_aggregation_areas(self, min_area: float) -> None:
+    def refine_aggregation_areas(
+        self,
+        min_area: float,
+        no_data_levels: Collection[float] = (),
+        corrections: Mapping[float, float] | None = None,
+    ) -> None:
         """Replace the aggregation areas by the peilgebieden of at least `min_area`, joined with the smaller ones.
 
         See `ribasim_nl.crossings.aggregation.refine_aggregation_areas`. The aggregation column becomes `code`.
@@ -166,6 +171,8 @@ class ParseCrossings:
             column=self.agg_peilgebieden_column,
             threshold=self.agg_areas_threshold,
             min_area=min_area,
+            no_data_levels=no_data_levels,
+            corrections=corrections,
         )
         self.df_gpkg[self.agg_peilgebieden_layer] = refined
         self.agg_peilgebieden_column = "code"

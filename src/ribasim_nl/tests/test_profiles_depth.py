@@ -10,8 +10,9 @@ from ribasim_nl.profiles.depth import (
     drop_implausible_levels,
     normalise_measured_cross_sections,
 )
-from ribasim_nl.profiles.gen_profiles import LEVEL_CORRECTIONS, NO_DATA_LEVELS, _read_target_levels
+from ribasim_nl.profiles.gen_profiles import _read_target_levels
 from ribasim_nl.profiles.hydrotopes import Hydrotope, HydrotopeTable
+from ribasim_nl.target_levels import LEVEL_CORRECTIONS, NO_DATA_LEVELS
 from shapely.geometry import LineString, box
 
 

@@ -7,6 +7,7 @@ area. An area is named after its largest peilgebied and gets its target level, s
 """
 
 import heapq
+from collections.abc import Collection, Mapping
 
 import geopandas as gpd
 import numpy as np
@@ -14,6 +15,7 @@ import pandas as pd
 import shapely
 
 from ribasim_nl.geometry import union_polygons
+from ribasim_nl.target_levels import clean_target_levels
 
 # The authorities whose aggregation areas are refined: those of which the delivered aggregation areas, such as polders,
 # hold several peilgebieden. The other level controlled authorities have an aggregation area per peilgebied.
@@ -160,6 +162,8 @@ def refine_aggregation_areas(
     column: str,
     threshold: float,
     min_area: float,
+    no_data_levels: Collection[float] = (),
+    corrections: Mapping[float, float] | None = None,
 ) -> tuple[gpd.GeoDataFrame, pd.Series]:
     """Aggregation areas of at least `min_area`, made of the peilgebieden of the delivered aggregation areas.
 
@@ -173,6 +177,8 @@ def refine_aggregation_areas(
     :param column: the column with the code of the delivered aggregation areas
     :param threshold: see `aggregation_area_of`
     :param min_area: the area [m2] from which a peilgebied is an aggregation area; 0 for all peilgebieden
+    :param no_data_levels: the levels that mean that a target level is missing, see `clean_target_levels`
+    :param corrections: the wrong levels and their corrections, see `clean_target_levels`
     :return: the aggregation areas, with the columns code, globalid, delivered, streefpeil and geometry, and the code of
         the aggregation area by the index of the peilgebieden, None for those that are not aggregated
     """
@@ -183,7 +189,7 @@ def refine_aggregation_areas(
     polygons = shapely.make_valid(selected.geometry.to_numpy())
     area = shapely.area(polygons)
     levels = streefpeil.drop_duplicates("globalid").set_index("globalid")["waterhoogte"]
-    level = selected["globalid"].map(levels).to_numpy(dtype=float)
+    level = clean_target_levels(selected["globalid"].map(levels), no_data_levels, corrections).to_numpy(dtype=float)
     # peilgebieden outside the delivered aggregation areas are not joined with others
     own = "peilgebied " + selected["globalid"].astype(str)
     within = delivered.loc[selected.index].where(delivered.loc[selected.index].notna(), own).to_numpy()
