@@ -4,6 +4,7 @@ import {
   parquetMetadataAsync,
   parquetRead,
   parquetReadObjects,
+  parquetSchema,
 } from "hyparquet";
 import type { AsyncBuffer, FileMetaData } from "hyparquet";
 import { compressors } from "hyparquet-compressors";
@@ -565,6 +566,14 @@ export async function readColumns<K extends string>(
 export async function hasColumn(entry: FileEntry, column: string): Promise<boolean> {
   const { metadata } = await openParquet(entry);
   return metadata.schema.some((element) => element.name === column);
+}
+
+/** The names of the text columns of a Parquet file. */
+export async function textColumns(entry: FileEntry): Promise<string[]> {
+  const { metadata } = await openParquet(entry);
+  return parquetSchema(metadata)
+    .children.filter(({ element }) => element.logical_type?.type === "STRING" || element.converted_type === "UTF8")
+    .map(({ element }) => element.name);
 }
 
 export async function readRow(entry: FileEntry, row: number): Promise<Row> {

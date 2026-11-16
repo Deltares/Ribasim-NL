@@ -124,7 +124,7 @@ const OPEN_ICON = "M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4";
 const LEGEND_SLACK = 20;
 
 /** An icon of a path in a 16 by 16 box, drawn in the color of the text. */
-function icon(path: string): SVGSVGElement {
+export function icon(path: string): SVGSVGElement {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   const line = document.createElementNS(svg.namespaceURI, "path");
   const set = (element: Element, attributes: Record<string, string>) =>

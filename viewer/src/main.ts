@@ -40,14 +40,27 @@ import {
   authorityRows,
   linkLabel,
   loadNetwork,
+  loadSearchIndex,
   networkAuthorities,
   type Group,
   type LayerData,
   type Network,
 } from "./network";
 import { ObservationList, Observations, type ListedObservation, type ObservationChoice } from "./observations";
-import { Panel, type Selection } from "./panel";
+import { icon, Panel, type Selection } from "./panel";
 import { ResultFrames, type FrameKind } from "./results";
+import {
+  findPlaces,
+  parseId,
+  PLACE_TYPES,
+  placeBounds,
+  SearchBox,
+  type FeatureKind,
+  type Place,
+  type SearchOption,
+  type SearchResults,
+  type TextIndex,
+} from "./search";
 import {
   ARROW_ICON,
   ARROW_SIZE_PX,
@@ -109,6 +122,15 @@ const DIFF_DOT_PX = 3;
 const SELECTION_RING_SCALE = 0.9;
 // The radius of the Observation nodes colored by their fit, zoomed out and in; those without a value are half as large
 const FIT_RADIUS_PX: [number, number] = [4, 7];
+// Room around the features and places that are zoomed to
+const FIT_PADDING_PX = 80;
+// The most nodes and links the search lists
+const MAX_SEARCH_FEATURES = 6;
+// How far to zoom in on a small place at most, and on the center of a place whose outline is not found
+const PLACE_MAX_ZOOM = 13;
+const PLACE_ZOOM = 12;
+// A map pin, the symbol of the places in the search
+const PIN_ICON = "M8 14.5s4.5-4.2 4.5-8a4.5 4.5 0 0 0-9 0c0 3.8 4.5 8 4.5 8zM8 8a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z";
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text = ""): HTMLElementTagNameMap[K] {
   const element = document.createElement(tag);
@@ -296,6 +318,8 @@ class Viewer {
   private contextFilterValues: { nodes: Float32Array; links: Float32Array } | undefined;
   /** Increased on every change of the filter values, to update the map */
   private filterVersion = 0;
+  /** The names and codes of the nodes and links, read once the search is first used, or null if that failed */
+  private searchIndex: Promise<TextIndex | null> | null = null;
 
   constructor(
     private readonly map: maplibregl.Map,
@@ -343,9 +367,9 @@ class Viewer {
       },
     });
     this.addMapLayers();
-    // Search and layer list share a column, so the search choices push the list down
+    // Search and layer list share a column; the options of the search cover the boxes below it
     const sidebar = el("div", "sidebar");
-    sidebar.append(...this.searchControl());
+    sidebar.append(this.searchControl());
     if (comparison) {
       sidebar.append(
         diffSummary(
@@ -1281,8 +1305,14 @@ class Viewer {
       if (nodeRow !== undefined) bounds.extend([network.nodeX[nodeRow], network.nodeY[nodeRow]]);
     }
     if (bounds.isEmpty()) return;
+    this.map.fitBounds(bounds, { padding: this.fitPadding(), maxZoom: 15 });
+  }
+
+  /** Room around bounds to zoom to, beside the panel. */
+  private fitPadding(): maplibregl.PaddingOptions {
     const { right, bottom } = this.panelPadding();
-    this.map.fitBounds(bounds, { padding: { top: 80, right: right + 80, bottom: bottom + 80, left: 80 }, maxZoom: 15 });
+    const padding = FIT_PADDING_PX;
+    return { top: padding, right: right + padding, bottom: bottom + padding, left: padding };
   }
 
   /** The part of the map the panel covers: on the right, or at the bottom on phones, so features are zoomed to beside it. */
@@ -1351,6 +1381,13 @@ class Viewer {
     return swatch;
   }
 
+  private linkSymbol(linkType: string): HTMLElement {
+    const style = LINK_STYLES[linkType] ?? DEFAULT_LINK_STYLE;
+    const symbol = el("span", "line-swatch");
+    symbol.style.borderTop = `2px ${style.dashed ? "dashed" : "solid"} rgb(${style.color.join(",")})`;
+    return symbol;
+  }
+
   /** A choice of the authority whose nodes and links are shown, see `setAuthority`. */
   private authorityControl(): HTMLElement[] {
     const select = el("select", "authority");
@@ -1377,12 +1414,12 @@ class Viewer {
       symbol: this.nodeSymbol(type),
       count: rows.length,
     }));
-    const links = network.linkGroups.map(({ type, rows }) => {
-      const style = LINK_STYLES[type] ?? DEFAULT_LINK_STYLE;
-      const symbol = el("span", "line-swatch");
-      symbol.style.borderTop = `2px ${style.dashed ? "dashed" : "solid"} rgb(${style.color.join(",")})`;
-      return { key: type, label: type, symbol, count: rows.length };
-    });
+    const links = network.linkGroups.map(({ type, rows }) => ({
+      key: type,
+      label: type,
+      symbol: this.linkSymbol(type),
+      count: rows.length,
+    }));
     details.append(
       ...this.layerSection("Nodes", nodes),
       ...this.layerSection("Links", links),
@@ -1407,55 +1444,95 @@ class Viewer {
     return details;
   }
 
-  private searchMatches(query: string): Selection[] {
-    // Node and link ids overlap, so "node 12" / "n12" or "link 12" / "l12" restrict the search
-    const match = /^(?:(n|node|l|link)\s*#?\s*)?#?(\d+)$/i.exec(query.trim());
-    if (!match) return [];
-    const id = Number(match[2]);
-    const prefix = match[1]?.[0].toLowerCase();
-    const matches: Selection[] = [];
-    if (prefix !== "l" && this.network.nodeRow.has(id)) matches.push({ kind: "node", id });
-    if (prefix !== "n" && this.network.linkRow.has(id)) matches.push({ kind: "link", id });
-    return matches;
+  /** The search for nodes and links, by id, name or code, and for places. */
+  private searchControl(): HTMLElement {
+    const search = new SearchBox(
+      {
+        features: (query) => this.searchFeatures(query),
+        places: (query, signal) => this.searchPlaces(query, signal),
+      },
+      {
+        placeholder: "Search nodes, links and places",
+        title:
+          "Search nodes and links by id, name or code, and towns. " +
+          "Prefix an id with n or l to search only nodes or links, e.g. l200001",
+        prepare: () => void this.loadSearchIndex(),
+      },
+    );
+    return search.element;
   }
 
-  private searchControl(): HTMLElement[] {
-    const input = el("input", "search");
-    input.type = "search";
-    input.placeholder = "Node or link id";
-    input.title = "Prefix with n or l to search only nodes or links, e.g. l200001";
-    const choices = el("div", "search-choices");
-    choices.hidden = true;
-    const go = (selection: Selection) => {
-      choices.hidden = true;
-      this.select(selection);
-      this.zoomTo(selection);
+  private loadSearchIndex(): Promise<TextIndex | null> {
+    this.searchIndex ??= loadSearchIndex(this.manifest, this.comparison).catch((error) => {
+      // The ids can still be searched
+      console.warn("Failed to read the names and codes of the nodes and links", error);
+      return null;
+    });
+    return this.searchIndex;
+  }
+
+  /** The nodes and links with the id of the query, then those whose name or code matches it, see `TextIndex`. */
+  private async searchFeatures(query: string): Promise<SearchResults> {
+    const rows = { node: this.network.nodeRow, link: this.network.linkRow };
+    // Node and link ids overlap, so "n12" or "l12" restricts the search
+    const parsed = parseId(query);
+    const byId: Selection[] = [];
+    for (const kind of ["node", "link"] as const) {
+      if (parsed && (parsed.kind ?? kind) === kind && rows[kind].has(parsed.id)) byId.push({ kind, id: parsed.id });
+    }
+    const index = await this.loadSearchIndex();
+    const listed = (kind: FeatureKind, id: number) => byId.some((selection) => selection.kind === kind && selection.id === id);
+    const matches = (index?.search(query) ?? []).filter(({ kind, id }) => rows[kind].has(id) && !listed(kind, id));
+    const options = [
+      ...byId.map(({ kind, id }) => this.featureOption({ kind, id }, index?.name(kind, id) ?? "")),
+      ...matches.slice(0, Math.max(0, MAX_SEARCH_FEATURES - byId.length)).map(({ kind, id, column, value }) =>
+        // The value first, since the list is too narrow for most column names
+        this.featureOption({ kind, id }, column === "name" ? value : `${value} · ${column}`),
+      ),
+    ];
+    return { options, more: byId.length + matches.length - options.length };
+  }
+
+  private featureOption(selection: Selection, detail: string): SearchOption {
+    const { network } = this;
+    const isNode = selection.kind === "node";
+    const type = isNode
+      ? network.nodeType[network.nodeRow.get(selection.id)!]
+      : network.linkType[network.linkRow.get(selection.id)!];
+    return {
+      label: isNode ? `${type} #${selection.id}` : `${type} link ${linkLabel(selection.id)}`,
+      detail,
+      symbol: isNode ? this.nodeSymbol(type) : this.linkSymbol(type),
+      choose: () => {
+        this.select(selection);
+        this.zoomTo(selection);
+      },
     };
-    input.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter") return;
-      const matches = this.searchMatches(input.value);
-      input.classList.toggle("not-found", matches.length === 0);
-      choices.hidden = matches.length < 2;
-      if (matches.length === 1) go(matches[0]);
-      if (matches.length < 2) return;
-      choices.replaceChildren(
-        ...matches.map((selection) => {
-          const { network } = this;
-          const label =
-            selection.kind === "node"
-              ? `${network.nodeType[network.nodeRow.get(selection.id)!]} #${selection.id}`
-              : `${network.linkType[network.linkRow.get(selection.id)!]} link ${linkLabel(selection.id)}`;
-          const button = el("button", "", label);
-          button.type = "button";
-          button.addEventListener("click", () => go(selection));
-          return button;
-        }),
-      );
+  }
+
+  private async searchPlaces(query: string, signal: AbortSignal): Promise<SearchResults> {
+    const places = await findPlaces(query, signal);
+    const options = places.map((place) => ({
+      label: place.name,
+      detail: PLACE_TYPES[place.type],
+      symbol: icon(PIN_ICON),
+      choose: () => void this.goToPlace(place),
+    }));
+    return { options, more: 0 };
+  }
+
+  /** Show the whole of a place, or its center if its outline is not found. */
+  private async goToPlace(place: Place): Promise<void> {
+    const bounds = await placeBounds(place).catch((error) => {
+      console.warn(`Failed to find the outline of ${place.name}`, error);
+      return null;
     });
-    input.addEventListener("input", () => {
-      choices.hidden = true;
-    });
-    return [input, choices];
+    if (bounds) {
+      this.map.fitBounds(bounds, { padding: this.fitPadding(), maxZoom: PLACE_MAX_ZOOM });
+      return;
+    }
+    const { right, bottom } = this.panelPadding();
+    this.map.flyTo({ center: place.center, zoom: PLACE_ZOOM, offset: [-right / 2, -bottom / 2] });
   }
 }
 
