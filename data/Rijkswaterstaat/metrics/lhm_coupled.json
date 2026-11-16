@@ -1,48 +1,48 @@
 {
   "solver": {
-    "computation_time": 1.8,
-    "rhs_calls": 1500000.0,
-    "mean_dt": 198.8,
-    "dt_p05": 117.9,
-    "rejected_fraction": 0.08273
+    "computation_time": 2.4,
+    "rhs_calls": 1537000.0,
+    "mean_dt": 195.5,
+    "dt_p05": 118.3,
+    "rejected_fraction": 0.0844
   },
   "observations": {
-    "compared": 645.0,
-    "median_nse": 0.04086,
-    "median_kge": 0.08483
+    "compared": 644.0,
+    "median_nse": 0.02357,
+    "median_kge": 0.05719
   },
   "discharge_kge": {
     "Lobith": 0.9999,
     "Pannerdense Kop": 0.9292,
-    "IJsselkop": 0.9206,
-    "Driel boven": 0.8112,
-    "Hagestein boven": 0.8359,
-    "Tiel Waal": 0.9316,
+    "IJsselkop": 0.9197,
+    "Driel boven": 0.8114,
+    "Hagestein boven": 0.8415,
+    "Tiel Waal": 0.9317,
     "Haringvlietsluizen binnen": 0.7986,
-    "Maasmond": 0.4388,
-    "Den Oever buiten": 0.3899,
-    "Kornwerderzand buiten": 0.1576,
-    "IJmuiden binnen": 0.5129
+    "Maasmond": 0.4358,
+    "Den Oever buiten": 0.391,
+    "Kornwerderzand buiten": 0.156,
+    "IJmuiden binnen": 0.5248
   },
   "level_p01": {
     "IJsselmeer": -0.3921,
-    "Markermeer": -0.3906,
+    "Markermeer": -0.3907,
     "Veluwemeer": -0.3127,
-    "Noordzeekanaal": -0.3972,
+    "Noordzeekanaal": -0.3973,
     "Amsterdam-Rijnkanaal Breukelen": -0.3825,
-    "Volkerak": -0.1335,
-    "Haringvliet": 0.02215,
+    "Volkerak": -0.1326,
+    "Haringvliet": 0.02188,
     "Twentekanaal (Kanaal Zutphen-Enschede)": 9.977,
     "Julianakanaal": 44.04
   },
   "level_p99": {
-    "IJsselmeer": -0.08451,
-    "Markermeer": -0.09935,
-    "Veluwemeer": -0.03899,
-    "Noordzeekanaal": -0.3928,
-    "Amsterdam-Rijnkanaal Breukelen": -0.3553,
+    "IJsselmeer": -0.08507,
+    "Markermeer": -0.1004,
+    "Veluwemeer": -0.03709,
+    "Noordzeekanaal": -0.3926,
+    "Amsterdam-Rijnkanaal Breukelen": -0.3549,
     "Volkerak": 0.1149,
-    "Haringvliet": 0.08663,
+    "Haringvliet": 0.08616,
     "Twentekanaal (Kanaal Zutphen-Enschede)": 9.985,
     "Julianakanaal": 44.07
   }
