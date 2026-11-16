@@ -61,29 +61,33 @@ def test_merge_small():
     peilgebied, _, streefpeil = _peilgebieden()
     polygons = peilgebied.geometry.to_numpy()
     area = peilgebied.area.to_numpy()
-    level = peilgebied["globalid"].map(streefpeil.set_index("globalid")["waterhoogte"]).to_numpy(dtype=float)
+    level = peilgebied["globalid"].map(streefpeil.set_index("globalid")["waterhoogte"]).to_numpy(dtype=float).copy()
     within = np.array(["P", "P", "P", "P", "P", "Q"])
     shared = shared_boundaries(polygons)
-    # nothing is smaller than 100 m2
-    assert merge_small(area, level, within, shared, 100.0).tolist() == [0, 1, 2, 3, 4, 5]
+    # nothing is smaller than 100 m2, but E has no level, so it joins C, its only neighbour
+    assert merge_small(area, level, within, shared, 100.0).tolist() == [0, 1, 2, 3, 2, 5]
     # E joins C, its only neighbour; together they are 1500 m2. F has no neighbour in its polder.
     assert merge_small(area, level, within, shared, 1000.0).tolist() == [0, 1, 2, 3, 2, 5]
     # D joins C with E, beside it, whose level is closer than that of B below it
     assert merge_small(area, level, within, shared, 2000.0).tolist() == [0, 1, 2, 2, 2, 5]
     # together they have the level of C, the largest, and join B, whose level is closer than that of A
     assert merge_small(area, level, within, shared, 5000.0).tolist() == [0, 1, 1, 1, 1, 5]
-    # without levels, the longest shared boundary decides: C joins A, and D joins B
+    # a large peilgebied without a level joins a neighbour with one: A joins B, of the two with the longest boundary
+    level[0] = np.nan
+    assert merge_small(area, level, within, shared, 100.0).tolist() == [1, 1, 2, 3, 2, 5]
+    # without any level, the peilgebieden of a polder join into one
     unknown = np.full(len(area), np.nan)
-    assert merge_small(area, unknown, within, shared, 5000.0).tolist() == [0, 1, 0, 1, 0, 5]
+    assert merge_small(area, unknown, within, shared, 100.0).tolist() == [0, 0, 0, 0, 0, 5]
 
 
 def test_refine_aggregation_areas():
     peilgebied, areas, streefpeil = _peilgebieden()
     kwargs = {"column": "code", "threshold": 0.8}
-    # every peilgebied its own area
+    # every peilgebied with a target level its own area; E, without one, joins C
     refined, area_of = refine_aggregation_areas(peilgebied, areas, streefpeil, min_area=0.0, **kwargs)
-    assert refined["code"].tolist() == area_of.tolist() == ["A", "B", "C", "D", "E", "F"]
-    assert refined["delivered"].tolist() == ["P", "P", "P", "P", "P", "Q"]
+    assert refined["code"].tolist() == ["A", "B", "C", "D", "F"]
+    assert area_of.tolist() == ["A", "B", "C", "D", "C", "F"]
+    assert refined["delivered"].tolist() == ["P", "P", "P", "P", "Q"]
 
     refined, area_of = refine_aggregation_areas(peilgebied, areas, streefpeil, min_area=5000.0, **kwargs)
     assert refined["code"].tolist() == ["A", "B", "F"]

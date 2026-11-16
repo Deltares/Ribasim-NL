@@ -88,7 +88,8 @@ def merge_small(
     A group joins the neighbouring group with the closest level, among those with which it shares at least
     `min_shared` of boundary, or else among all its neighbours. Of equal levels, and where a level is missing, the
     longest shared boundary decides. A joined group has the level of the larger of the two, or the one that is known.
-    A group without a neighbour stays as it is.
+    A group without a level joins a neighbour with a level whatever its size, so that every group has a level where its
+    label has one. A group without a neighbour stays as it is.
 
     :param area: the area of each polygon
     :param level: the target level of each polygon, NaN if unknown
@@ -127,7 +128,10 @@ def merge_small(
                 neighbours[target][n] = neighbours[target].get(n, 0.0) + length
         neighbours[group] = {}
 
-    heap = [(float(a), i) for i, a in enumerate(group_area) if a < min_area]
+    def too_small(group: int) -> bool:
+        return group_area[group] < min_area or bool(np.isnan(group_level[group]))
+
+    heap = [(float(group_area[i]), i) for i in range(len(area)) if too_small(i)]
     heapq.heapify(heap)
     while heap:
         heap_area, group = heapq.heappop(heap)
@@ -136,13 +140,14 @@ def merge_small(
             continue
         near = {n: length for n, length in neighbours[group].items() if length >= min_shared} or neighbours[group]
 
-        def difference(n: int, group: int = group, near: dict[int, float] = near) -> tuple[float, float, int]:
-            both_known = not (np.isnan(group_level[group]) or np.isnan(group_level[n]))
-            return (abs(group_level[group] - group_level[n]) if both_known else np.inf, -near[n], n)
+        def difference(n: int, group: int = group, near: dict[int, float] = near) -> tuple[bool, float, float, int]:
+            unknown = bool(np.isnan(group_level[n]))
+            both_known = not (unknown or np.isnan(group_level[group]))
+            return (unknown, abs(group_level[group] - group_level[n]) if both_known else np.inf, -near[n], n)
 
         target = min(near, key=difference)
         join(group, target)
-        if group_area[target] < min_area:
+        if too_small(target):
             heapq.heappush(heap, (float(group_area[target]), target))
     return np.array([root(i) for i in range(len(area))])
 

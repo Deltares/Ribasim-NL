@@ -81,10 +81,12 @@ One Basin per polder hides these levels, while one Basin per peilgebied gives ma
 
 - A peilgebied of at least `MIN_AREA`, 50 ha, keeps its own Basin.
 - A smaller one joins the neighbour in its delivered aggregation area with the closest target level, smallest first, until all are large enough.
+- A peilgebied without a target level joins a neighbour with one, whatever its size, as it was part of a polder with a target level before.
 - An area is named after its largest peilgebied and gets its target level, so the water board recognizes it.
 
 The feedback forms and scripts refer to the Basins of 2024, the delivered aggregation areas.
 `ribasim_nl.crossings.basin_references` keeps these references: the connector nodes between delivered aggregation areas keep their ID, a Basin of 2024 is the Basin that replaces it at the location of the edit, and the nodes that the feedback stage adds are numbered after the new nodes, which start at 10 000.
+A target level that a form sets for a Basin of 2024 holds for the Basins that replace it with the same target level as its main part, such as the parts of the boezem of Rijnland, of which the delivery has the wrong sign.
 The connections within the delivered aggregation areas were never reviewed by the water boards.
 
 ## The regional model

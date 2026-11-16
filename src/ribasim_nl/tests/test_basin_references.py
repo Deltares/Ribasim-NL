@@ -15,6 +15,7 @@ from ribasim_nl.crossings.basin_references import (
     remove_dangling_connectors,
     removed_basins,
     reversed_to_supply,
+    target_level_basins,
 )
 from shapely.geometry import Point, box
 
@@ -245,3 +246,18 @@ def test_coupled_references(tmp_path: Path):
     # also next to a node of 2024 that is not in the model, where it was
     assert refs.node(prefix + 1, near=prefix + 6) == prefix + 1
     assert refs.keys({prefix + 7: "name"}) == {prefix + new_pump.node_id: "name"}
+
+
+def test_target_level_basins(tmp_path: Path):
+    model, reference, _, _ = _refined(tmp_path)
+    lookup = BasinLookup.read(model, reference)
+    # Basin 10 replaces part of Basin 1 of 2024, with another target level, so it keeps its own
+    assert target_level_basins(model, lookup, [1, 2, 3]) == {1: (1,), 2: (2,)}
+    # with the same target level, it is part of the same peilgebied, of which the form corrects the level
+    assert model.basin.area.df is not None
+    model.basin.area.df.loc[model.basin.area.df["node_id"] == 10, "meta_streefpeil"] = -1.0
+    assert target_level_basins(model, lookup, [1]) == {1: (1, 10)}
+    # without the Basin with its ID, the largest Basin that replaces it gives the target level
+    model.basin.area.df.loc[model.basin.area.df["node_id"] == 1, "meta_streefpeil"] = -1.5
+    lookup.merge(1, -1)
+    assert target_level_basins(model, lookup, [1]) == {1: (10,)}
