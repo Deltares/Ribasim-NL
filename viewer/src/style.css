@@ -80,6 +80,36 @@
   font: inherit;
 }
 
+/* The shortcut, while the search box is empty and does not have the focus */
+.ribasim-viewer .search-key {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  min-width: 8px;
+  padding: 0 4px;
+  border: 1px solid #c5ccd3;
+  border-radius: 3px;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 11px;
+  line-height: 15px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.ribasim-viewer .search:focus ~ .search-key,
+.ribasim-viewer .search:not(:placeholder-shown) ~ .search-key {
+  display: none;
+}
+
+/* Touch screens have no keyboard to type it on */
+@media (hover: none) {
+  .ribasim-viewer .search-key {
+    display: none;
+  }
+}
+
 .ribasim-viewer .search-list {
   /* Opaque, since the boxes below would show through */
   background: #fff;

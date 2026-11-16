@@ -221,6 +221,10 @@ interface Found extends SearchResults {
 
 /** Places are searched once typing pauses this long, in milliseconds, so not every keystroke is a request */
 const PLACE_DELAY_MS = 250;
+/** The key that starts a search from anywhere on the page, as on GitHub */
+const SHORTCUT = "/";
+/** Input types whose keys enter no text, so the shortcut still works while they have the focus */
+const NO_TEXT_INPUTS = new Set(["button", "checkbox", "color", "file", "image", "radio", "range", "reset", "submit"]);
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text = ""): HTMLElementTagNameMap[K] {
   const element = document.createElement(tag);
@@ -229,9 +233,15 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text 
   return element;
 }
 
+/** Whether the keys typed in an element enter text, like in the limits of a color scale. */
+function takesText(target: EventTarget | null): boolean {
+  if (target instanceof HTMLInputElement) return !NO_TEXT_INPUTS.has(target.type);
+  return target instanceof HTMLTextAreaElement || (target instanceof HTMLElement && target.isContentEditable);
+}
+
 /**
  * A search box that lists the features and places that match while typing. Enter, or a click, goes to the chosen
- * option, by default the first; the arrow keys choose another.
+ * option, by default the first; the arrow keys choose another. `/` starts a search, and Escape leaves it.
  */
 export class SearchBox {
   readonly element: HTMLElement;
@@ -261,6 +271,7 @@ export class SearchBox {
     this.input.setAttribute("role", "combobox");
     this.input.setAttribute("aria-controls", this.list.id);
     this.input.setAttribute("aria-expanded", "false");
+    this.input.setAttribute("aria-keyshortcuts", SHORTCUT);
     // Keep the focus in the input while an option is clicked, which would otherwise close the list first
     this.list.addEventListener("mousedown", (event) => event.preventDefault());
     this.input.addEventListener("focus", prepare, { once: true });
@@ -268,8 +279,26 @@ export class SearchBox {
     this.input.addEventListener("blur", () => this.show(false));
     this.input.addEventListener("input", () => void this.search(PLACE_DELAY_MS));
     this.input.addEventListener("keydown", (event) => this.onKey(event));
+    document.addEventListener("keydown", (event) => this.onShortcut(event));
+    // The shortcut in the empty search box, while it does not have the focus
+    const key = el("kbd", "search-key", SHORTCUT);
+    key.setAttribute("aria-hidden", "true");
     this.element = el("div", "search-box");
-    this.element.append(this.input, this.list);
+    this.element.append(this.input, key, this.list);
+  }
+
+  /**
+   * Start a search on the shortcut, with the previous query selected, unless it is typed in a text field. The docs
+   * site opens its own search on the release of the key, but not while an input has the focus.
+   */
+  private onShortcut(event: KeyboardEvent): void {
+    const modified = event.ctrlKey || event.metaKey || event.altKey || event.isComposing;
+    if (event.key !== SHORTCUT || modified || event.defaultPrevented || takesText(event.target)) return;
+    this.input.focus();
+    // Not while a dialog keeps the focus, like that of a large chart
+    if (document.activeElement !== this.input) return;
+    event.preventDefault();
+    this.input.select();
   }
 
   /** Find the options for the query; the places only once typing pauses for `delay` milliseconds. */
@@ -319,10 +348,11 @@ export class SearchBox {
     } else if (event.key === "Enter") {
       event.preventDefault();
       void this.enter();
-    } else if (event.key === "Escape" && !this.list.hidden) {
-      // Close the list first, the next Escape clears the search
+    } else if (event.key === "Escape") {
+      // Close the list first, then leave the search box, with the query kept for the next search
       event.preventDefault();
-      this.show(false);
+      if (this.list.hidden) this.input.blur();
+      else this.show(false);
     }
   }
 

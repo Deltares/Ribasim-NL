@@ -1452,7 +1452,7 @@ class Viewer {
         places: (query, signal) => this.searchPlaces(query, signal),
       },
       {
-        placeholder: "Node, link or place",
+        placeholder: "Search nodes, links and places",
         title:
           "Search nodes and links by id, name or code, and towns. " +
           "Prefix an id with n or l to search only nodes or links, e.g. l200001",
