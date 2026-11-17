@@ -1559,6 +1559,40 @@ function diffBounds(network: Network, diff: ModelDiff): [number, number, number,
 }
 
 const COMMIT_URL = "https://github.com/Deltares/Ribasim-NL/commit/";
+// Remembers in this browser that the banner about preliminary results was hidden
+const PRELIMINARY_KEY = "ribasim-viewer-preliminary-hidden";
+// A warning triangle
+const WARNING_ICON = "M8 1.5 15 14H1ZM8 6.2v3.6M8 11.6v.6";
+
+/** A banner that says the results are preliminary, or null if the user has hidden it before. */
+function preliminaryElement(): HTMLElement | null {
+  // Storage is not available in every browser mode, in which case the banner returns on each visit
+  try {
+    if (localStorage.getItem(PRELIMINARY_KEY) !== null) return null;
+  } catch {
+    // Show the banner
+  }
+  const element = el("div", "notice preliminary");
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.setAttribute("viewBox", "0 0 16 16");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", WARNING_ICON);
+  icon.append(path);
+  const text = el("span");
+  text.append(el("b", "", "Preliminary results"), " from a model under active development");
+  const hide = Object.assign(el("button", "", "×"), { type: "button", title: "Hide" });
+  hide.setAttribute("aria-label", "Hide");
+  hide.addEventListener("click", () => {
+    element.remove();
+    try {
+      localStorage.setItem(PRELIMINARY_KEY, "1");
+    } catch {
+      // Hidden for this visit only
+    }
+  });
+  element.append(icon, text, hide);
+  return element;
+}
 
 /** A warning about the shown model, with a link to its latest version that keeps the view and selection. */
 function noticeElement(notice: Notice): HTMLElement {
@@ -1616,7 +1650,11 @@ async function main(): Promise<void> {
   root.classList.add("ribasim-viewer");
   const status = el("div", "status", "Loading model…");
   const container = el("div", "map");
-  root.append(container, status);
+  // The warnings stack at the top of the map
+  const notices = el("div", "notices");
+  const preliminary = preliminaryElement();
+  if (preliminary) notices.append(preliminary);
+  root.append(container, status, notices);
 
   try {
     maplibregl.setWorkerUrl(maplibreWorkerUrl);
@@ -1630,7 +1668,7 @@ async function main(): Promise<void> {
     const { manifest, comparison, notice, pinned } = await loadSource();
     // A copied link keeps showing this version of the model, also once it is outdated
     if (pinned !== null) history.replaceState(history.state, "", `?${pinned}${location.hash}`);
-    if (notice) root.append(noticeElement(notice));
+    if (notice) notices.append(noticeElement(notice));
     const networkPromise = loadNetwork(manifest, comparison);
     // MapLibre adds its view to the hash, so check for it before creating the map
     const hasView = hashParams().has("map");
