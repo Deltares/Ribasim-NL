@@ -19,14 +19,14 @@ from validation_factors import calculate_summer_validation_factor, calculate_val
 MODEL_PATH = Path(r"c:/projects/2024/LWKM/06_Ribasim/02_models/LHM/lhm_coupled_full")
 VALIDATION_PATH = Path(r"p:/11212767-lwkm2/RibasimNL/Validatie/Waterkwaliteit")
 PARAMETER_COMPONENTS = {
-    # "Ntot": ["NO3", "NH4", "OON"],
-    # "Ptot": ["PO4", "AAP", "OOP"],
-    "Ntot": ["NO3", "NH4", "PON1"],
-    "Ptot": ["PO4", "AAP", "POP1"],
+    "Ntot": ["NO3", "NH4", "OON"],
+    "Ptot": ["PO4", "AAP", "OOP"],
+    # "Ntot": ["NO3", "NH4", "PON1"],
+    # "Ptot": ["PO4", "AAP", "POP1"],
 }
 LOCATION_LIMIT = None  # None (set to low value for testing)
 RECREATE_PLOTS = True  # Set to False to reuse existing Ntot and Ptot PNG files.
-INCLUDED_QUALITY_CLASSES = {"Ntot": {"A", "B"}, "Ptot": {"A", "B"}}
+INCLUDED_QUALITY_CLASSES = {"Ntot": {"A"}, "Ptot": {"A"}}
 
 
 def create_waterquality_html_viewer(
@@ -43,11 +43,13 @@ def create_waterquality_html_viewer(
     """
     if location_limit is not None and location_limit < 1:
         raise ValueError("location_limit must be at least 1 or None.")
-    delwaq_folder = model_path / "delwaq_all_sources_incl_proc"
+    delwaq_folder = model_path / "delwaq_ER_ANIMO"
     delwaq_map_path = delwaq_folder / "delwaq_map.nc"
     toml_path = model_path / "lhm_coupled.toml"
     model_gpkg_path = model_path / "input" / "database.gpkg"
-    mapping_path = validation_path / "basins_selected_joined_monlocs.shp"
+    mapping_path = validation_path / "output_validate/basins_doorgaand_joined_monlocs.shp"
+    # mapping_path = validation_path / "basins_selected_joined_monlocs.shp"
+    parent_mapping_path = validation_path / "krw_wl_basin_fractions_normalized.csv"
     observations_path = validation_path / "KRWMeetwaarden_1990_2025_20260615_1432.parquet"
     quality_labels_path = validation_path / "KRWMeetwaarden_met_kwaliteitslabel_per_locatie.csv"
     locations_path = validation_path / "WKP_KRW-monitoringlocaties-oppervlaktewater_Nederland_2025_20250915090837.csv"
@@ -57,6 +59,7 @@ def create_waterquality_html_viewer(
         (toml_path, "Ribasim model"),
         (model_gpkg_path, "Ribasim model GeoPackage"),
         (mapping_path, "Monitoring-to-node mapping"),
+        (parent_mapping_path, "Parent-to-child mapping"),
         (observations_path, "Monitoring data"),
         (quality_labels_path, "Monitoring quality labels"),
         (locations_path, "Monitoring location metadata"),
@@ -216,6 +219,9 @@ def create_waterquality_html_viewer(
             "meetwaarde"
         ]
         ntot_seasonal_bias_percent = _mean_seasonal_relative_bias(ntot_modelled.to_series(), ntot_observed)
+        # TODO: test below function (error: AttributeError: 'DataArray' object has no attribute 'columns')
+        # ntot_modelled_parent = _calculate_concentration_parent_location(ntot_modelled, parent_mapping_path)
+
         validation_factors = {
             parameter: calculate_validation_factor(
                 modelled_concentrations[parameter].to_series(),
@@ -400,6 +406,37 @@ def _validation_summary(
                 "evaluated": len(factors),
             }
     return summary
+
+
+def _calculate_concentration_parent_location(modelled: pd.DataFrame, parent_mapping_path: Path) -> None:
+    """Return volume and area weigthed average concentrations for parent locations KRW-waterbodies from children (RIBASIM basins)."""
+    children = modelled.copy()
+    print(children.columns)
+    children = children.rename(
+        columns={"node_id": "child", "time": "time", "concentration": "concentration", "storage": "volume"}
+    )
+    mapped_parent_children = pd.read_csv(parent_mapping_path)
+    mapped_parent_children = mapped_parent_children.rename(
+        columns={"WL_Id": "parent", "basin_id": "child", "fractie_normalized": "fraction_child_within_parent"}
+    )
+    print(mapped_parent_children.columns)
+
+    # join the children with the parent mapping
+    children = children.merge(mapped_parent_children, on="child", how="left")
+
+    # Calculate the parent concentration per timestep:
+
+    parent_conc = (
+        children.groupby(["parent", "time"])
+        .apply(
+            lambda g: (
+                (g["concentration"] * g["volume"] * g["fraction_child_within_parent"]).sum()
+                / (g["volume"] * g["fraction_child_within_parent"]).sum()
+            )
+        )
+        .reset_index(name="parent_concentration")
+    )
+    print(parent_conc.head())
 
 
 def _write_html(

@@ -9,28 +9,28 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from matplotlib.ticker import FuncFormatter, LogLocator, NullFormatter
+from quality_filter import filter_observations_by_quality
 from ribasim import Model
 
-PARAMETER_COMPONENTS = {
-    "Ntot": ["NO3", "NH4", "OON"],
-    "Ptot": ["PO4", "AAP", "OOP"],
-}
 N_COLUMNS = 2
 
 
 def create_validation_scatterplots(
     model_path: Path,
     validation_path: Path,
+    delwaq_map_path: Path,
+    mapping_path: Path,
     output_folder: Path,
     location_limit: int | str,
+    quality_labels_path: Path,
+    included_quality_classes: dict[str, set[str]],
+    parameter_components: dict[str, list[str]],
 ) -> list[Path]:
     """Create one annual measured-versus-modelled scatter grid per parameter."""
     if location_limit != "all" and (not isinstance(location_limit, int) or location_limit < 1):
         raise ValueError('location_limit must be a positive integer or "all".')
 
-    delwaq_map_path = model_path / "delwaq" / "delwaq_map.nc"
     toml_path = model_path / "lhm_coupled.toml"
-    mapping_path = validation_path / "output_validate" / "basins_doorgaand_joined_monlocs.shp"
     observations_path = validation_path / "KRWMeetwaarden_1990_2025_20260615_1432.parquet"
     for path, description in [
         (delwaq_map_path, "DELWAQ map output"),
@@ -47,11 +47,23 @@ def create_validation_scatterplots(
         model = Model.read(toml_path)
         mapping = gpd.read_file(mapping_path).dropna(subset=["loc_Code", "node_id"])
         observations = pd.read_parquet(observations_path)
+        observations = filter_observations_by_quality(
+            observations,
+            quality_labels_path,
+            included_quality_classes,
+        )
         observations["datum"] = pd.to_datetime(observations["datum"], format="%d-%m-%Y", errors="coerce")
         model_start = pd.Timestamp(dataset["nTimesDlwq"].min().item())
         model_end = pd.Timestamp(dataset["nTimesDlwq"].max().item())
         observations = observations.loc[observations["datum"].between(model_start, model_end)].copy()
-        values_by_parameter = _collect_annual_means(dataset, model, mapping, observations, location_limit)
+        values_by_parameter = _collect_annual_means(
+            dataset,
+            model,
+            mapping,
+            observations,
+            location_limit,
+            parameter_components,
+        )
     finally:
         dataset.close()
 
@@ -75,10 +87,11 @@ def _collect_annual_means(
     mapping: gpd.GeoDataFrame,
     observations: pd.DataFrame,
     location_limit: int | str,
+    parameter_components: dict[str, list[str]],
 ) -> dict[str, dict[int, list[tuple[float, float]]]]:
     """Collect positive annual measured and modelled mean pairs by parameter."""
     values_by_parameter: dict[str, dict[int, list[tuple[float, float]]]] = {
-        parameter: {} for parameter in PARAMETER_COMPONENTS
+        parameter: {} for parameter in parameter_components
     }
     locations = mapping[["loc_Code", "node_id"]].drop_duplicates().sort_values("loc_Code")
     if location_limit != "all":
@@ -93,7 +106,7 @@ def _collect_annual_means(
         if segment_index is None:
             continue
         location_observations = observations.loc[observations["KRW_monitoringslocatie"] == location.loc_Code]
-        for parameter, components in PARAMETER_COMPONENTS.items():
+        for parameter, components in parameter_components.items():
             observed = location_observations.loc[location_observations["parameter"] == parameter].set_index("datum")[
                 "meetwaarde"
             ]
@@ -144,18 +157,24 @@ def _annual_means(values: pd.Series) -> pd.Series:
 def _create_scatter_grid(values_by_year: dict[int, list[tuple[float, float]]], parameter: str) -> plt.Figure:
     """Create one measured-versus-modelled scatter panel for every calendar year."""
     panels = [(str(year), values) for year, values in sorted(values_by_year.items())]
+    axis_limits = (0.001, 100.0)
     n_rows = ceil(len(panels) / N_COLUMNS)
     figure, axes = plt.subplots(n_rows, N_COLUMNS, figsize=(5.2 * N_COLUMNS, 4.5 * n_rows), squeeze=False)
     figure.suptitle(f"Validation scatter plots ({parameter})", fontweight="bold")
     for axis, (label, values) in zip(axes.flat, panels, strict=False):
-        _plot_scatter(axis, np.asarray(values), label)
+        _plot_scatter(axis, np.asarray(values), label, axis_limits)
     for axis in axes.flat[len(panels) :]:
         axis.set_visible(False)
     figure.tight_layout(rect=(0, 0, 1, 0.97))
     return figure
 
 
-def _plot_scatter(axis: plt.Axes, values: np.ndarray, label: str) -> None:
+def _plot_scatter(
+    axis: plt.Axes,
+    values: np.ndarray,
+    label: str,
+    axis_limits: tuple[float, float],
+) -> None:
     """Plot measured values against modelled values with 95 percent agreement limits."""
     measured = values[:, 0]
     modelled = values[:, 1]
@@ -163,10 +182,9 @@ def _plot_scatter(axis: plt.Axes, values: np.ndarray, label: str) -> None:
     agreement_factor = float(np.exp(1.96 * np.std(log_ratios, ddof=0)))
     lower_limit = 1 / agreement_factor
 
-    plot_min = float(min(measured.min(), modelled.min()) / 1.2)
-    plot_max = float(max(measured.max(), modelled.max()) * 1.2)
+    plot_min, plot_max = axis_limits
     line_values = np.geomspace(plot_min, plot_max, 200)
-    axis.scatter(measured, modelled, color="#2ca02c", s=20, alpha=0.8, edgecolors="none")
+    axis.scatter(measured, modelled, color="#2ca02c", s=20, alpha=0.5, edgecolors="none")
     axis.plot(line_values, line_values, color="black", linewidth=1.5, label="1:1")
     axis.plot(line_values, lower_limit * line_values, color="black", linestyle="--", linewidth=1.5)
     axis.plot(line_values, agreement_factor * line_values, color="black", linestyle="--", linewidth=1.5)
