@@ -16,14 +16,17 @@ from quality_filter import filter_observations_by_quality
 from ribasim import Model
 from validation_factors import calculate_summer_validation_factor, calculate_validation_factor
 
-MODEL_PATH = Path(r"c:/projects/2024/LWKM/06_Ribasim/02_models/LHM/lhm_coupled_full")
+MODEL_PATH = Path(r"p:/11212767-lwkm2/Koppeling_ANIMO_Delwaq/lwkm_runs/lhm_coupled_full")
+DELWAQ_PATH = Path(r"p:/11212767-lwkm2/Koppeling_ANIMO_Delwaq/lwkm_runs/delwaq_all_sources_incl_proc")
+HTML_VIEWER_PATH = Path(r"p:/11212767-lwkm2/Koppeling_ANIMO_Delwaq/html_viewers")
 VALIDATION_PATH = Path(r"p:/11212767-lwkm2/RibasimNL/Validatie/Waterkwaliteit")
 PARAMETER_COMPONENTS = {
-    "Ntot": ["NO3", "NH4", "OON"],
-    "Ptot": ["PO4", "AAP", "OOP"],
-    # "Ntot": ["NO3", "NH4", "PON1"],
-    # "Ptot": ["PO4", "AAP", "POP1"],
+    # "Ntot": ["NO3", "NH4", "OON"],
+    # "Ptot": ["PO4", "AAP", "OOP"],
+    "Ntot": ["NO3", "NH4", "PON1"],
+    "Ptot": ["PO4", "AAP", "POP1"],
 }
+
 LOCATION_LIMIT = None  # None (set to low value for testing)
 RECREATE_PLOTS = True  # Set to False to reuse existing Ntot and Ptot PNG files.
 INCLUDED_QUALITY_CLASSES = {"Ntot": {"A"}, "Ptot": {"A"}}
@@ -31,8 +34,8 @@ INCLUDED_QUALITY_CLASSES = {"Ntot": {"A"}, "Ptot": {"A"}}
 
 def create_waterquality_html_viewer(
     model_path: Path = MODEL_PATH,
+    delwaq_path: Path = DELWAQ_PATH,
     validation_path: Path = VALIDATION_PATH,
-    output_subfolder: str = "results_delwaq_html_viewer",
     location_limit: int | None = LOCATION_LIMIT,
     recreate_plots: bool = RECREATE_PLOTS,
 ) -> Path:
@@ -43,8 +46,7 @@ def create_waterquality_html_viewer(
     """
     if location_limit is not None and location_limit < 1:
         raise ValueError("location_limit must be at least 1 or None.")
-    delwaq_folder = model_path / "delwaq_ER_ANIMO"
-    delwaq_map_path = delwaq_folder / "delwaq_map.nc"
+    delwaq_map_path = delwaq_path / "delwaq_map.nc"
     toml_path = model_path / "lhm_coupled.toml"
     model_gpkg_path = model_path / "input" / "database.gpkg"
     mapping_path = validation_path / "output_validate/basins_doorgaand_joined_monlocs.shp"
@@ -67,7 +69,7 @@ def create_waterquality_html_viewer(
         if not path.is_file():
             raise FileNotFoundError(f"{description} not found: {path}")
 
-    output_folder = model_path / output_subfolder
+    output_folder = HTML_VIEWER_PATH / delwaq_path.name
     figures_folder = output_folder / "figures"
     parameter_figure_folders = {parameter: figures_folder / parameter for parameter in PARAMETER_COMPONENTS}
     validation_factor_folder = figures_folder / "validation_factors"
@@ -282,7 +284,7 @@ def create_waterquality_html_viewer(
                     "location_name": location.location_name if pd.notna(location.location_name) else location.loc_Code,
                     "water_authority": location.water_authority if pd.notna(location.water_authority) else "Unknown",
                     "node_id": node_id,
-                    "segment_index": segment_index,
+                    "segment_number": segment_index + 1,
                     "ntot_seasonal_bias_percent": ntot_seasonal_bias_percent,
                     "ntot_validation_factor": validation_factors["Ntot"],
                     "validation_factors": validation_factors,
@@ -623,7 +625,7 @@ def _write_html(
                 const factor = props.validation_factors[parameter];
                 return factor === null ? 'No comparable annual means' : factor.toFixed(3);
             }};
-            return `<div class="popup-title">${{props.location_name}}</div><div class="popup-validation-factors"><span><b>Ntot validation factor:</b> ${{validationFactor('Ntot')}}</span><span><b>Ptot validation factor:</b> ${{validationFactor('Ptot')}}</span></div><div class="popup-meta">${{props.loc_code}} | ${{props.water_authority}} | Ribasim node ${{props.node_id}} | DELWAQ segment ${{props.segment_index}}</div>${{figures.join('')}}`;
+            return `<div class="popup-title">${{props.location_name}}</div><div class="popup-validation-factors"><span><b>Ntot validation factor:</b> ${{validationFactor('Ntot')}}</span><span><b>Ptot validation factor:</b> ${{validationFactor('Ptot')}}</span></div><div class="popup-meta">${{props.loc_code}} | ${{props.water_authority}} | Ribasim node ${{props.node_id}} | DELWAQ segment ${{props.segment_number}}</div>${{figures.join('')}}`;
         }}
         function updatePopups() {{ markers.forEach((entry) => entry.marker.setPopupContent(makePopup(entry.props))); }}
         document.getElementById('toggle-ntot').addEventListener('change', updatePopups);
@@ -737,10 +739,10 @@ if __name__ == "__main__":
 # validation_scatterplots.create_validation_scatterplots(
 #     model_path=MODEL_PATH,
 #     validation_path=VALIDATION_PATH,
-#     delwaq_map_path=MODEL_PATH / "delwaq_all_sources" / "delwaq_map.nc",
+#     delwaq_map_path=DELWAQ_PATH / "delwaq_map.nc",
 #     mapping_path=VALIDATION_PATH / "basins_selected_joined_monlocs.shp",
-#     output_folder=MODEL_PATH
-#     / "results_delwaq_html_viewer"
+#     output_folder=HTML_VIEWER_PATH
+#     / DELWAQ_PATH.name
 #     / "figures"
 #     / "validation_scatterplots",
 #     location_limit=LOCATION_LIMIT if LOCATION_LIMIT is not None else "all",
