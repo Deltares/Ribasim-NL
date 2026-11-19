@@ -1494,6 +1494,28 @@ stages:
     outs:
       - data/Rijkswaterstaat/modellen/hws_plus:
           cache: false
+  # A version of the coupled model with allocation, and its run, see docs/workflow/allocation.qmd. Not part of the
+  # full runs, see there how to run them.
+  lhm_allocation:
+    cmd: pixi run python pipeline/lhm_allocation.py
+    deps:
+      - pipeline/lhm_allocation.py
+      - src/ribasim_nl/ribasim_nl
+      - data/Rijkswaterstaat/modellen/lhm_coupled
+    # Not cached by DVC, since it is large and built from the coupled model in a minute: `dvc.lock` still records its
+    # hash
+    outs:
+      - data/Rijkswaterstaat/modellen/lhm_allocation:
+          cache: false
+  run_lhm_allocation:
+    cmd: pixi run python pipeline/run_lhm_coupled.py lhm_allocation
+    deps:
+      - pipeline/run_lhm_coupled.py
+      - scripts/install_ribasim_core.py
+      - src/ribasim_nl/ribasim_nl
+      - data/Rijkswaterstaat/modellen/lhm_allocation
+    outs:
+      - data/Rijkswaterstaat/runs/lhm_allocation
   validate_lhm_coupled:
     cmd: pixi run python pipeline/validate_lhm_coupled.py
     deps:

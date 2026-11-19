@@ -2,6 +2,7 @@
 
 The run directory holds the complete model, input and results together. The input is copied unchanged, so DVC stores
 it only once, in the cache and on the remote, since it deduplicates files by their content.
+The model is `lhm_coupled` by default, or the one named by the first argument, such as `lhm_allocation`.
 The commits of the code and of the Ribasim core in `RIBASIM_HOME` are written to `runinfo.json`, for the model viewer, see `ribasim_nl.webmap.run_info`.
 """
 
@@ -9,6 +10,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
@@ -31,9 +33,11 @@ def git(*args: str) -> str:
     return subprocess.run(["git", *args], check=True, capture_output=True, text=True, cwd=Path(__file__).parent).stdout
 
 
-model_dir = settings.ribasim_nl_data_dir / "Rijkswaterstaat/modellen/lhm_coupled"
-run_dir = settings.ribasim_nl_data_dir / "Rijkswaterstaat/runs/lhm_coupled"
-model_toml = model_dir / "lhm_coupled.toml"
+assert len(sys.argv) <= 2, f"Usage: {sys.argv[0]} [MODEL]"
+model_name = sys.argv[1] if len(sys.argv) == 2 else "lhm_coupled"
+model_dir = settings.ribasim_nl_data_dir / f"Rijkswaterstaat/modellen/{model_name}"
+run_dir = settings.ribasim_nl_data_dir / f"Rijkswaterstaat/runs/{model_name}"
+model_toml = model_dir / f"{model_name}.toml"
 run_toml = run_dir / model_toml.name
 
 with model_toml.open("rb") as f:
