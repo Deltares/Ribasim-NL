@@ -176,9 +176,6 @@ def plot_boundary_timeseries(
     original_concentration.plot(
         x="time",
         y="concentration",
-        title=f"{substance} concentration at node {node_id}",
-        xlabel="Time",
-        ylabel="Concentration [mg/L]",
         marker="o",
         linestyle="",
         grid=True,
@@ -193,11 +190,14 @@ def plot_boundary_timeseries(
         label="Interpolated/extrapolated",
         ax=ax,
     )
+    ax.set_title(f"{substance} concentration at node {node_id}", fontsize=18)
+    ax.set_xlabel("Time", fontsize=18)
+    ax.set_ylabel("Concentration [mg/L]", fontsize=18)
     ax.set_xlim(
         interpolated_concentration["time"].min(),
         interpolated_concentration["time"].max(),
     )
-    ax.legend()
+    ax.legend(fontsize=18)
     fig.tight_layout()
     plt.show()
 
@@ -236,10 +236,10 @@ def plot_boundary_timeseries(
         marker=".",
         markersize=3,
     )
-    ax.set_title(f"Flow from node {node_id}")
-    ax.set_xlabel("Time")
-    ax.set_ylabel("Flow rate [m³/s]")
+    ax.set_title(f"Flow from node {node_id}", fontsize=18)
+    ax.set_xlabel("Time", fontsize=18)
+    ax.set_ylabel("Flow rate [m³/s]", fontsize=18)
     ax.grid(True)
-    ax.legend()
+    ax.legend(fontsize=18)
     fig.tight_layout()
     plt.show()

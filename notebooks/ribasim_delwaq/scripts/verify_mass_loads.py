@@ -308,6 +308,8 @@ def verify_mass_loads(
             f"Load node_id dtype: {node_substance_loads['node_id'].dtype}; "
             f"spatial data node_id dtype: {spatial_data['node_id'].dtype}."
         )
+    if spatial_unit == "boundary":
+        spatial_data = spatial_data.loc[spatial_data["node_id"].isin(load_node_ids)].copy()
     mapped_label = "basin polygons" if spatial_unit == "basin" else "boundary points"
     print(f"Nodes mapped to {mapped_label}: {len(overlap)} of {len(load_node_ids)}")
 
@@ -349,118 +351,81 @@ def verify_mass_loads(
     fig = None
 
     if make_plot and spatial_unit is not None:
-        fig, axes = plt.subplots(
-            3,
-            2,
-            figsize=(16, 20),
+        fig = plt.figure(figsize=(16, 14))
+        time_ax = fig.add_subplot(2, 2, (1, 2))
+        map_axes = [fig.add_subplot(2, 2, 3), fig.add_subplot(2, 2, 4)]
+
+        total_p_load = summed_loads.reindex(columns=nutrient_substances["P"], fill_value=0).sum(axis=1)
+        total_n_load = summed_loads.reindex(columns=nutrient_substances["N"], fill_value=0).sum(axis=1)
+
+        time_ax.plot(
+            summed_loads.index,
+            total_n_load,
+            color="tab:orange",
+            drawstyle="steps-post",
+            label="Total N",
+        )
+        p_ax = time_ax.twinx()
+        p_ax.plot(
+            summed_loads.index,
+            total_p_load,
+            color="tab:blue",
+            drawstyle="steps-post",
+            label="Total P",
+        )
+        time_ax.set_xlabel("Time", fontsize=18)
+        time_ax.set_ylabel("Total N load [g/s]", fontsize=18, color="tab:orange")
+        p_ax.set_ylabel("Total P load [g/s]", fontsize=18, color="tab:blue")
+        time_ax.set_ylim(bottom=0, top=time_ax.get_ylim()[1] * 1.05)
+        p_ax.set_ylim(bottom=0, top=p_ax.get_ylim()[1] * 1.05)
+        time_ax.grid(True, alpha=0.3)
+        time_ax.set_title("Total N and P loads over time", fontsize=18)
+        time_ax.legend(
+            [time_ax.lines[0], p_ax.lines[0]],
+            ["Total N", "Total P"],
+            loc="upper left",
+            fontsize=18,
         )
 
         # ----------------------------------------------------------
-        # Forward-filled total load per selected substance groups
+        # Nutrient maps
         # ----------------------------------------------------------
 
-        substance_groups = (
-            ("OON, NH4, NO3", ["OON", "NH4", "NO3"]),
-            ("OOP, AAP, PO4", ["OOP", "AAP", "PO4"]),
-        )
-        for ax, (title, substances) in zip(axes[0], substance_groups, strict=True):
-            for substance in substances:
-                if substance in summed_loads:
-                    ax.plot(
-                        summed_loads.index,
-                        summed_loads[substance],
-                        drawstyle="steps-post",
-                        marker="o",
-                        label=substance,
-                    )
+        for nutrient, ax in zip(("N", "P"), map_axes, strict=True):
+            nutrient_map = nutrient_maps[nutrient]
+            if spatial_unit == "boundary" and links is not None:
+                links.plot(ax=ax, color="lightgray", linewidth=0.4, zorder=1)
 
-            ax.set(
-                xlabel="Time",
-                ylabel="Total load [g/s]",
-                title=f"Forward-filled total load: {title}",
-            )
-            ax.grid(True, alpha=0.3)
-            ax.legend(title="Substance")
-
-        # ----------------------------------------------------------
-        # Linear-scale distributions, excluding the highest 1 percent
-        # separately for N and P so one nutrient cannot set the other's bins.
-        # ----------------------------------------------------------
-
-        for nutrient, ax in zip(("N", "P"), axes[1], strict=True):
-            values = nutrient_maps[nutrient][map_column]
-            values = values.replace([float("inf"), -float("inf")], pd.NA).dropna()
-            values = values[values.gt(0)]
-            if values.empty:
+            if nutrient_map.empty:
                 ax.text(
                     0.5,
                     0.5,
-                    "No positive finite values",
+                    "No flow boundaries with a load",
                     ha="center",
                     va="center",
                     transform=ax.transAxes,
                 )
             else:
-                upper_limit = values.quantile(0.99)
-                values = values[values <= upper_limit]
-                if len(values) > 1 and not values.eq(values.iloc[0]).all():
-                    ax.hist(
-                        values, bins=30, density=True, alpha=0.75
-                    )  # density should be lower for N because the bins are wider
-                else:
-                    ax.axvline(values.iloc[0], color="tab:blue")
-            ax.set(
-                xlabel=f"Load [{map_unit}]",
-                ylabel="Density",
-                title=f"Total {nutrient} {spatial_unit} loads (below 99th percentile)",
-            )
-            ax.grid(alpha=0.3)
+                values = nutrient_map[map_column].replace([float("inf"), -float("inf")], pd.NA).dropna()
+                plot_options = {}
+                if not values.empty:
+                    vmax = values.quantile(0.99)
+                    if vmax > 0:
+                        plot_options["vmax"] = vmax
 
-        # ----------------------------------------------------------
-        # Total N map
-        # ----------------------------------------------------------
+                nutrient_map.plot(
+                    column=map_column,
+                    cmap="viridis",
+                    legend=True,
+                    ax=ax,
+                    zorder=2,
+                    **plot_options,
+                )
 
-        vmax_n = nutrient_maps["N"][map_column].replace([float("inf"), -float("inf")], pd.NA).quantile(0.99)
+            ax.set_title(f"Yearly {nutrient} load [{map_unit}]", fontsize=16)
+            ax.axis("off")
 
-        if spatial_unit == "boundary" and links is not None:
-            links.plot(ax=axes[2, 0], color="lightgray", linewidth=0.4, zorder=1)
-
-        nutrient_maps["N"].plot(
-            column=map_column,
-            cmap="viridis",
-            legend=True,
-            vmax=vmax_n,
-            ax=axes[2, 0],
-            zorder=2,
-        )
-
-        axes[2, 0].set_title(f"Total N load [{map_unit}]")
-
-        axes[2, 0].axis("off")
-
-        # ----------------------------------------------------------
-        # Total P map
-        # ----------------------------------------------------------
-
-        vmax_p = nutrient_maps["P"][map_column].replace([float("inf"), -float("inf")], pd.NA).quantile(0.99)
-
-        if spatial_unit == "boundary" and links is not None:
-            links.plot(ax=axes[2, 1], color="lightgray", linewidth=0.4, zorder=1)
-
-        nutrient_maps["P"].plot(
-            column=map_column,
-            cmap="viridis",
-            legend=True,
-            vmax=vmax_p,
-            ax=axes[2, 1],
-            zorder=2,
-        )
-
-        axes[2, 1].set_title(f"Total P load [{map_unit}]")
-
-        axes[2, 1].axis("off")
-
-        fig.tight_layout()
+        fig.tight_layout(pad=1.5)
 
         plt.show()
 
