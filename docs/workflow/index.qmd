@@ -14,7 +14,7 @@ Each authority starts from its own kind of data, so there are three routes to a 
 ## The stages
 
 ```{mermaid}
-%%| fig-cap: "The stages of the pipeline, grouped. Blue stages run per authority. The [full graph](../dev/dvc.qmd#fig-dvc-pipeline) has 81 stages."
+%%| fig-cap: "The stages of the pipeline, grouped. Blue stages run per authority. The [full graph](../dev/dvc.qmd#fig-dvc-pipeline) has 83 stages."
 flowchart TB
   subgraph main["Main water system"]
     direction TB
@@ -38,6 +38,7 @@ flowchart TB
   dynamic --> samenvoegen
   forcing --> samenvoegen
   samenvoegen --> koppelen --> run_lhm_coupled
+  koppelen --> lhm_allocation --> run_lhm_allocation
   run_lhm_coupled --> validate_lhm_coupled
   run_lhm_coupled --> delwaq --> export_webmap
   run_lhm_coupled --> hws_plus
@@ -60,6 +61,7 @@ flowchart TB
 | `export_webmap` | Export the run, with the concentrations of Delwaq, for the model viewer. | [Model viewer](../dev/viewer.qmd) |
 | `hws_plus` | Cut the main water system out of the run, with its exchanges as boundaries. | [HWS plus](hws-plus.qmd) |
 | `delwaq` | The water quality of the run with Delwaq, which needs a Delft3D installation. | [Ribasim-Delwaq](https://github.com/Deltares/Ribasim-NL/tree/main/notebooks/ribasim_delwaq#readme) |
+| `lhm_allocation`, `run_lhm_allocation` | The coupled model with allocation, and its run. | [Allocation](allocation.qmd) |
 
 ## Where the data is
 
@@ -70,9 +72,10 @@ Everything is under `data`, with a folder per authority, named as in `ribasim_nl
 | `<authority>/aangeleverd` | Data as delivered by the authority |
 | `<authority>/verwerkt` | Processed data, including hand-made edits such as `model_edits.gpkg` |
 | `<authority>/modellen` | The models of each stage, such as `<authority>_dynamic_model` |
-| `Rijkswaterstaat/modellen` | Also the merged `lhm_parts` and coupled `lhm_coupled` models |
+| `Rijkswaterstaat/modellen` | Also the merged `lhm_parts`, the coupled `lhm_coupled`, and `lhm_allocation` with allocation |
 | `Rijkswaterstaat/runs/lhm_coupled` | The latest run of the coupled model, with its `results` |
 | `Rijkswaterstaat/runs/lhm_coupled_delwaq` | A copy of that run with the emissions and the Delwaq results of the `delwaq` stage |
+| `Rijkswaterstaat/runs/lhm_allocation` | A run of `lhm_allocation`, if made |
 | `Basisgegevens/Delwaq` | The emission data of the `delwaq` stage |
 
 [Get data](../dev/index.qmd#get-data) explains how to download these.

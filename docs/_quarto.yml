@@ -53,6 +53,7 @@ website:
           contents:
             - workflow/couple.qmd
             - workflow/hws-plus.qmd
+            - workflow/allocation.qmd
     - title: "Contributing"
       contents:
         - dev/index.qmd

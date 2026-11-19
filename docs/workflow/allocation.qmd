@@ -1,0 +1,48 @@
+---
+title: "Allocation"
+---
+
+`lhm_allocation` is the coupled model with [allocation](https://ribasim.org/concept/allocation.html), to try allocation out on the nationwide model.
+Allocation divides the available water over the demands of the UserDemand and FlowDemand nodes, by solving a linear program for each subnetwork every day.
+
+```{mermaid}
+flowchart LR
+  coupled["modellen/lhm_coupled"] --> build(["lhm_allocation<br>pipeline/lhm_allocation.py"]) --> model["modellen/lhm_allocation"] --> run(["run_lhm_allocation<br>pipeline/run_lhm_coupled.py"]) --> results["runs/lhm_allocation"]
+
+  classDef step fill:#dfedef,stroke:#0c6a77
+  class build,run step
+```
+
+## Subnetworks
+
+`ribasim_nl.allocation.enable_allocation` turns allocation on, and gives each connected part of the model its own subnetwork.
+That is one subnetwork for nearly the whole country, and a few small ones, such as polders that only drain to their own boundary.
+The parts are connected the way Ribasim replaces the Junctions by links, see `ribasim_nl.allocation.connectivity_graph`.
+
+There is no primary network, subnetwork 1, so each subnetwork is solved on its own.
+A primary network of the main water system with a secondary network per water authority is not possible yet: secondary networks may only connect to the primary network through allocation-controlled Pumps and Outlets, and not to each other, while the water authorities also connect to each other directly.
+
+## What allocation changes
+
+No Pump or Outlet is allocation controlled yet, so allocation decides how much each UserDemand takes, but it does not steer any structure.
+Without allocation, a FlowDemand is a minimum flow through its Pump or Outlet.
+With allocation, it is a demand that only allocation-controlled nodes can meet, see [FlowDemand](https://ribasim.org/reference/node/flow-demand.html#behavior-in-allocation), so these structures lose their minimum flow, and the levels around them differ from `lhm_coupled`.
+To meet these demands, make these structures allocation controlled; they then also need a finite `max_flow_rate`.
+
+Besides the usual results, a run writes `allocation.nc`, with the demand and the allocated and supplied flow of each demand node, and `allocation_flow.nc`, with the flows of the allocation problems, see [results](https://ribasim.org/reference/usage.html#sec-results).
+
+## Building and running
+
+These stages are not part of the reproductions.
+Build the model from the pulled coupled model, and run it for 2 years, like the coupled model:
+
+```sh
+pixi run dvc pull koppelen
+pixi run dvc repro --single-item lhm_allocation
+pixi run dvc repro --single-item run_lhm_allocation
+```
+
+The model is not stored on the DVC remote, since it is large and built in a minute; `dvc.lock` only records its hash.
+
+To try a variant, such as allocation-controlled structures, change the model in `pipeline/lhm_allocation.py` after `enable_allocation`.
+To keep a variant next to it, write it as `modellen/<name>/<name>.toml`, and run it with `pixi run python pipeline/run_lhm_coupled.py <name>`, which writes the run to `runs/<name>`.
