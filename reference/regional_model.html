@@ -82,7 +82,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-8d3ad9c781c51ccd60b292c95058b2c2.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-cb61c712ca1a7fe70a83faed8e4da2d7.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -389,7 +389,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    steady_state_regression<span class="op">=</span><span class="va">False</span>,</span>
 <span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Lay out, write, validate and run the model, use its final state as initial state, and check its results.</p>
-<p>The layout only changes the geometry, after all parametrization: the Basin areas are made valid, without slivers (see <code>Model.clean_basin_area</code>), <code>snap</code> routes the links along the waterways known for the authority, after which the BGT profile of ManningResistances follows their new links (see <code>update_manning_resistance_reach</code>), the RWZIs discharge on the links into their Basins (see #860), and nodes and links are moved apart. The inflows and outflows of each Basin share one Junction tree, see <code>merge_basin_trees</code>, through which more series can be observed, see <code>ribasim_nl.observations</code>. Then the model gets the summer and winter levels of the peilgebieden of the authority, see <code>ribasim_nl.seasonal_levels</code>. The results get <code>performance.xlsx</code> and <code>output_controle.gpkg</code>.</p>
+<p>The layout only changes the geometry, after all parametrization: the Basin areas are made valid, without slivers (see <code>Model.clean_basin_area</code>), <code>snap</code> routes the links along the waterways known for the authority, after which the BGT profile of ManningResistances follows their new links (see <code>update_manning_resistance_reach</code>), the RWZIs discharge on the links into their Basins (see #860), and nodes and links are moved apart. The inflows and outflows of each Basin share one Junction tree, see <code>merge_basin_trees</code>, through which more series can be observed, see <code>ribasim_nl.observations</code>, which gives the nodes of a series a Junction of their own where the tree has none. Then the model gets the summer and winter levels of the peilgebieden of the authority, see <code>ribasim_nl.seasonal_levels</code>. The results get <code>performance.xlsx</code> and <code>output_controle.gpkg</code>.</p>
 <section id="parameters-2" class="level4 doc-section doc-section-parameters">
 <h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
 <table class="caption-top table">

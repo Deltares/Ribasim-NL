@@ -82,7 +82,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-8d3ad9c781c51ccd60b292c95058b2c2.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-cb61c712ca1a7fe70a83faed8e4da2d7.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -211,7 +211,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h1>network_snapping</h1>
 <p><code>network_snapping</code></p>
 <p>Route link geometries of a Ribasim-scheme along the network of hydro-objects.</p>
-<p>Nodes are never moved: connector nodes stay at the location of the structure they represent, and Basin nodes stay where they are. Only the geometries of the flow links between a Basin and a connector node are changed. Such a link is drawn as a straight line from the connector node to the nearest hydro-object within the basin area, followed by the shortest route along the hydro-objects to the point nearest to the Basin node, and a straight line to the Basin node. Links that share a route can afterwards be merged with <code>ribasim_nl.junctions.junctionify</code>.</p>
+<p>Connector nodes are never moved: they stay at the location of the structure they represent, see <code>ribasim_nl.structure_locations</code>. The geometries of the flow links between a Basin and a connector node are changed. Such a link is drawn as a straight line from the connector node to the nearest hydro-object within the basin area, followed by the cheapest route along the hydro-objects to the Basin node. Lines that are not hydro-objects of the water authority, such as the ditches of the Top10NL, cost more per metre, see <code>OTHER_LINE_COST</code>, so routes only use them where the hydro-objects leave a gap. A Basin node is moved to the center of its network, see <code>_BasinNetwork.center</code>, or else stays where it is, with a straight line to the network. Links that share a route can afterwards be merged with <code>ribasim_nl.junctions.junctionify</code>.</p>
 <p>This relies on the network of hydro-objects written by the network-based profile-generation: src/ribasim_nl/ribasim_nl/profiles/*.py.</p>
 <section id="functions" class="level2">
 <h2 class="anchored" data-anchor-id="functions">Functions</h2>
@@ -444,23 +444,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    lines,</span>
 <span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    main_route,</span>
 <span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    culverts<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    water<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    area<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    basin_area<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    max_gap<span class="op">=</span><span class="fl">2.0</span>,</span>
-<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    max_water_gap<span class="op">=</span><span class="fl">500.0</span>,</span>
-<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>    culvert_snap<span class="op">=</span><span class="fl">10.0</span>,</span>
-<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>    max_attach_distance<span class="op">=</span><span class="fl">100.0</span>,</span>
-<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>    max_land<span class="op">=</span>MAX_LAND,</span>
-<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>    max_straight_line_ratio<span class="op">=</span>MAX_STRAIGHT_LINE_RATIO,</span>
-<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>    min_routed_fraction<span class="op">=</span><span class="fl">0.5</span>,</span>
-<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>    open_water<span class="op">=</span><span class="va">False</span>,</span>
-<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    cost<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    culverts<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    water<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    area<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    basin_area<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    max_gap<span class="op">=</span><span class="fl">2.0</span>,</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>    max_water_gap<span class="op">=</span><span class="fl">500.0</span>,</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>    culvert_snap<span class="op">=</span><span class="fl">10.0</span>,</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>    max_attach_distance<span class="op">=</span><span class="fl">100.0</span>,</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>    max_land<span class="op">=</span>MAX_LAND,</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>    max_straight_line_ratio<span class="op">=</span>MAX_STRAIGHT_LINE_RATIO,</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>    min_routed_fraction<span class="op">=</span><span class="fl">0.5</span>,</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>    open_water<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Route the links between a Basin node and its connector nodes along the hydro-objects in the basin.</p>
-<p>The hydro-objects are connected by the <code>culverts</code>, and dangling ends are connected to other parts of the network if the gap is small or crossed over <code>water</code>, see <code>_BasinNetwork.bridge_gaps</code>. Then only the longest connected part of the network is used. The Basin node is attached to its nearest main route hydro-object in this part (if any), and each connector node to its nearest hydro-object within <code>max_attach_distance</code>. Connector nodes farther away are attached over the <code>water</code> within <code>area</code> instead, along the least-cost path over water that crosses at most <code>max_land</code> of land, see <code>_WaterRaster</code>. All routes follow the shortest paths from the Basin node, such that routes share their common parts exactly.</p>
+<p>The hydro-objects are connected by the <code>culverts</code>, and dangling ends are connected to other parts of the network if the gap is small or crossed over <code>water</code>, see <code>_BasinNetwork.bridge_gaps</code>. Then only the longest connected part of the network is used. Each connector node is attached to its nearest hydro-object within <code>max_attach_distance</code>. Connector nodes farther away are attached over the <code>water</code> within <code>area</code> instead, along the least-cost path over water that crosses at most <code>max_land</code> of land, see <code>_WaterRaster</code>. All routes follow the cheapest paths from the Basin node, by the length of the lines times their <code>cost</code> per metre, such that routes share their common parts exactly.</p>
 <p>If the <code>water</code> is <code>open_water</code>, such as a lake, the other parts of the network are first connected to the longest one over it, see <code>_BasinNetwork.connect_over_water</code>, and connector nodes far from the network are attached by straight lines where possible, see <code>_WaterRaster.attach_straight</code>.</p>
-<p>If <code>basin_area</code> is given and contains the attachment point of the Basin node, and at least <code>min_routed_fraction</code> of the links can be routed from there, the Basin node is moved there. A route is not used if it is not less than <code>max_straight_line_ratio</code> times the straight line, as in <code>ribasim_nl.link_geometries.fix_link_geometries</code>.</p>
+<p>If <code>basin_area</code> is given, the Basin node is moved to the center of the network within that area, see <code>_BasinNetwork.center</code>: the point from which the routes to its connector nodes, and to the point of the network nearest to where the Basin node was, are cheapest in total. That last point keeps a Basin with one connector node where it was, and one with two away from them. The Basin node is only moved if at least <code>min_routed_fraction</code> of the links can be routed from the center. Otherwise it stays where it is, attached to its nearest main route hydro-object (if any). A route is not used if it is not less than <code>max_straight_line_ratio</code> times the straight line, as in <code>ribasim_nl.link_geometries.fix_link_geometries</code>.</p>
 <section id="parameters-2" class="level4 doc-section doc-section-parameters">
 <h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
 <table class="caption-top table">
@@ -504,72 +505,78 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><em>required</em></td>
 </tr>
 <tr class="odd">
+<td>cost</td>
+<td>list[float] | None</td>
+<td>per hydro-object, its cost per metre, defaults to None (1.0 for all)</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
 <td>culverts</td>
 <td>list[shapely.LineString] | None</td>
 <td>culverts within the basin area, defaults to None</td>
 <td><code>None</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>water</td>
 <td>shapely.Geometry | None</td>
 <td>water surface within the basin area, defaults to None</td>
 <td><code>None</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>area</td>
 <td>shapely.Geometry | None</td>
 <td>area within which routes over water are found, defaults to None (no routes over water)</td>
 <td><code>None</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>basin_area</td>
 <td>shapely.Polygon | shapely.MultiPolygon | None</td>
 <td>area within which the Basin node may be moved onto the network, defaults to None (not moved)</td>
 <td><code>None</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>max_gap</td>
 <td>float</td>
 <td>maximum gap between hydro-objects to bridge</td>
 <td><code>2.0</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>max_water_gap</td>
 <td>float</td>
 <td>maximum gap between hydro-objects to bridge over water</td>
 <td><code>500.0</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>culvert_snap</td>
 <td>float</td>
 <td>maximum distance between a culvert end and the hydro-objects</td>
 <td><code>10.0</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>max_attach_distance</td>
 <td>float</td>
 <td>maximum distance between a connector node and the network</td>
 <td><code>100.0</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>max_land</td>
 <td>float</td>
 <td>maximum length of land crossed by a route over water</td>
 <td><code>MAX_LAND</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>max_straight_line_ratio</td>
 <td>float</td>
 <td>maximum ratio between route length and straight line length</td>
 <td><code>MAX_STRAIGHT_LINE_RATIO</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>min_routed_fraction</td>
 <td>float</td>
 <td>minimum fraction of the links that can be routed to move the Basin node</td>
 <td><code>0.5</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>open_water</td>
 <td>bool</td>
 <td>whether the <code>water</code> is open water, such as a lake</td>
@@ -725,6 +732,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>    routing_areas<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Snap a model to the hydro-objects of the profile-generation, see <code>snap_to_network</code>.</p>
+<p>The water lines of the <code>waterway_paths</code> cost <code>OTHER_LINE_COST</code> times as much per metre as the hydro-objects.</p>
 <section id="parameters-4" class="level4 doc-section doc-section-parameters">
 <h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-4">Parameters</h4>
 <table class="caption-top table">
@@ -804,7 +812,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>    routing_areas<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Route flow links between a Basin and a connector node along the hydro-objects, and move Basin nodes onto them.</p>
-<p>Connector nodes are never moved, such that they stay at the location of the structure they represent. Basin nodes are moved onto the main route nearest to them if <code>move_basins</code> is True, see <code>route_basin_links</code>, and the nodes of their bergend part along with them. Links that cannot be routed, links to bergend basins and links to boundary nodes keep their geometry, unless it does not connect their nodes, see <code>straight_link_geometries</code>.</p>
+<p>Connector nodes are never moved, such that they stay at the location of the structure they represent. Basin nodes are moved to the center of their network if <code>move_basins</code> is True, see <code>route_basin_links</code>, and the nodes of their bergend part along with them. Links that cannot be routed, links to bergend basins and links to boundary nodes keep their geometry, unless it does not connect their nodes, see <code>straight_link_geometries</code>.</p>
 <section id="parameters-5" class="level4 doc-section doc-section-parameters">
 <h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-5">Parameters</h4>
 <table class="caption-top table">
@@ -832,7 +840,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="even">
 <td>hydro_objects</td>
 <td>gpd.GeoDataFrame</td>
-<td>hydro-objects, with a boolean “main-route” column</td>
+<td>hydro-objects, with a boolean “main-route” column, and optionally a “cost” column with their cost per metre, see <code>route_basin_links</code></td>
 <td><em>required</em></td>
 </tr>
 <tr class="odd">

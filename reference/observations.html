@@ -82,7 +82,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-8d3ad9c781c51ccd60b292c95058b2c2.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-cb61c712ca1a7fe70a83faed8e4da2d7.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -207,8 +207,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h1>observations</h1>
 <p><code>observations</code></p>
 <p>Add Observation nodes with measured discharges to a model.</p>
-<p>The measurement series and the model links they are compared with are taken from the koppeltabel that is also used by <code>ribasim_nl.analyse_results</code>. Each series gets an Observation node at the measurement location, with the measured values. If the series is measured on a single link, the Observation node observes the <code>flow_rate</code> of the connector node of that link. If it adds and subtracts the flows of multiple links, it observes a Junction with that flow, the net flow of the nodes beyond its link towards its Basin, see <code>ribasim_nl.flow_paths.Routes.flow_rate_links</code>. These nodes are found by their type and location, which do not change when links are renumbered. Other Observation nodes are not linked, as a reminder; <code>meta_koppeling</code> says why.</p>
-<p>Series are linked before the Basin trees of a model are merged, see <code>ribasim_nl.flow_paths.merge_basin_trees</code>, which keeps the observed Junctions, and the others again after, see <code>link_observations</code>, as a merged tree can combine the inflows and outflows of a Basin.</p>
+<p>The measurement series and the model links they are compared with are taken from the koppeltabel that is also used by <code>ribasim_nl.analyse_results</code>. Each series gets an Observation node at the measurement location, with the measured values. If the series is measured on a single link, the Observation node observes the <code>flow_rate</code> of the connector node of that link. If it adds and subtracts the flows of multiple links, it observes a Junction with that flow, the net flow of the nodes beyond its link towards its Basin, see <code>ribasim_nl.flow_paths.Routes.flow_rate_links</code>. These nodes are found by their type and location, which do not change when links are renumbered: the location in the input model, also for nodes that are moved to their structure, see <code>ribasim_nl.structure_locations</code>. Other Observation nodes are not linked, as a reminder; <code>meta_koppeling</code> says why.</p>
+<p>Series are linked before the Basin trees of a model are merged, see <code>ribasim_nl.flow_paths.merge_basin_trees</code>, which keeps the observed Junctions, and the others again after, see <code>link_observations</code>, as a merged tree can combine the inflows and outflows of a Basin. If no Junction combines exactly the nodes of a series, nodes that are close together then get one, see <code>ribasim_nl.flow_paths.combine_nodes</code>.</p>
 <section id="classes" class="level2">
 <h2 class="anchored" data-anchor-id="classes">Classes</h2>
 <table class="caption-top table">
@@ -396,17 +396,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    authority<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    tolerance<span class="op">=</span><span class="fl">1.0</span>,</span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    moved_tolerance<span class="op">=</span><span class="fl">50.0</span>,</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    combine<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Link the Observation nodes that are not linked yet, for instance in a model coupled from other models.</p>
 <p>Series can be measured on links between models, of which only the coupled model has all nodes, or combine inflows and outflows of a Basin, which only a merged Basin tree can, see <code>ribasim_nl.flow_paths.merge_basin_trees</code>. If the observed flow rate has the opposite sign, so do the measured values.</p>
 <section id="parameters-2" class="level4 doc-section doc-section-parameters">
 <h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 10%">
-<col style="width: 8%">
-<col style="width: 73%">
 <col style="width: 7%">
+<col style="width: 5%">
+<col style="width: 82%">
+<col style="width: 5%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -440,6 +441,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>float</td>
 <td>maximum distance to a node that was moved to separate it from other nodes, see <code>_match</code></td>
 <td><code>50.0</code></td>
+</tr>
+<tr class="odd">
+<td>combine</td>
+<td>bool</td>
+<td>give the nodes of a series that no Junction combines such a Junction, see <code>_combine</code>, once the Basin trees of the model are merged, as merging them removes Junctions that are not observed yet</td>
+<td><code>False</code></td>
 </tr>
 </tbody>
 </table>
