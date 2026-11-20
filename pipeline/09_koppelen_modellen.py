@@ -812,12 +812,16 @@ def merge_coupling_trees(model: Model, network: Network) -> None:
     """Route the links between models through the Junction trees of their Basins, like in the models.
 
     The Rijkswaterstaat Basins with links from other models get the same routes as in the hws model, see
-    `rebuild_rws_junction_trees`, with branches to these links. The links between models that share routes
-    are merged into Junctions, see `junctionify`, and the inflows and outflows of each Basin share one Junction tree,
-    see `merge_basin_trees`.
+    `rebuild_rws_junction_trees`, with branches to these links. The links between the other models that share routes
+    are merged into Junctions, see `junctionify`. They are routed along other lines than the links of the model of
+    their Basin, so they branch off the routes of that Basin where it passes their node, and the inflows and outflows
+    of each Basin share one Junction tree, see `merge_basin_trees`.
     """
+    nodes, flow = model.node.df, model.link.df[model.link.df["link_type"] == "flow"]
+    authority = nodes["meta_waterbeheerder"]
+    between = flow.index[flow["from_node_id"].map(authority).to_numpy() != flow["to_node_id"].map(authority).to_numpy()]
     rws_offset = waterbeheercode["Rijkswaterstaat"] * 100_000
-    rebuild_rws_junction_trees(
+    rebuilt, _ = rebuild_rws_junction_trees(
         model,
         rws_basins_between_models(model),
         top10nl_gpkg,
@@ -826,7 +830,9 @@ def merge_coupling_trees(model: Model, network: Network) -> None:
         routing_areas={rws_offset + basin_id: area for basin_id, area in ROUTING_AREAS.items()},
     )
     junctionify(model)
-    merge_basin_trees(model, line_reader([top10nl_gpkg], main_route(network)))
+    merge_basin_trees(
+        model, line_reader([top10nl_gpkg], main_route(network)), branch=set(between.tolist()) - set(rebuilt)
+    )
 
 
 def remove_invalid_topology_nodes(model: Model) -> None:
@@ -1058,7 +1064,7 @@ def couple_model(toml_file: Path) -> None:
     link_observations(model)
     merge_coupling_trees(model, network)
     # and series that combine the inflows and outflows of a Basin through its merged tree
-    link_observations(model)
+    link_observations(model, combine=True)
     # the layout of the models is already tidy, see `tidy_layout`, so only move apart nodes on top of each other, and
     # offset links that still overlap
     separate_nodes(model)

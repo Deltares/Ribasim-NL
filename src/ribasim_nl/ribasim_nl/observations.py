@@ -5,12 +5,14 @@ by `ribasim_nl.analyse_results`. Each series gets an Observation node at the mea
 values. If the series is measured on a single link, the Observation node observes the `flow_rate` of the connector
 node of that link. If it adds and subtracts the flows of multiple links, it observes a Junction with that flow, the
 net flow of the nodes beyond its link towards its Basin, see `ribasim_nl.flow_paths.Routes.flow_rate_links`. These
-nodes are found by their type and location, which do not change when links are renumbered. Other Observation nodes are
-not linked, as a reminder; `meta_koppeling` says why.
+nodes are found by their type and location, which do not change when links are renumbered: the location in the input
+model, also for nodes that are moved to their structure, see `ribasim_nl.structure_locations`. Other Observation nodes
+are not linked, as a reminder; `meta_koppeling` says why.
 
 Series are linked before the Basin trees of a model are merged, see `ribasim_nl.flow_paths.merge_basin_trees`, which
 keeps the observed Junctions, and the others again after, see `link_observations`, as a merged tree can combine the
-inflows and outflows of a Basin.
+inflows and outflows of a Basin. If no Junction combines exactly the nodes of a series, nodes that are close together
+then get one, see `ribasim_nl.flow_paths.combine_nodes`.
 """
 
 import logging
@@ -26,9 +28,10 @@ from ribasim.input_base import NodeData
 from ribasim.schemas import ObservationTimeSchema
 
 from ribasim_nl.coupling_level_network import first_non_junction
-from ribasim_nl.flow_paths import Routes
+from ribasim_nl.flow_paths import Routes, combine_nodes, tree_sides
 from ribasim_nl.model import Model
 from ribasim_nl.settings import settings
+from ribasim_nl.structure_locations import reference_points
 
 LOG = logging.getLogger(__name__)
 
@@ -186,6 +189,10 @@ class _Graph:
     """Flow neighbors of the nodes of a model, to look past Junctions, see `ribasim_nl.flow_paths.Routes`."""
 
     def __init__(self, model: Model) -> None:
+        self.refresh(model)
+
+    def refresh(self, model: Model) -> None:
+        """Follow the links of the model as they are now."""
         self.routes = Routes(model)
         node_type = model.node.df["node_type"]
         self.node_types = dict(zip(node_type.index.astype(int), node_type.astype(str), strict=True))
@@ -253,14 +260,16 @@ def _match(
     """The model node of a `LinkEnd`, or None and why there is none.
 
     Nodes on top of each other are moved apart, see `ribasim_nl.layout.separate_nodes`, so if there is no node within
-    `tolerance`, the nearest node within `moved_tolerance` is used. If there is no node of the type of the koppeltabel,
-    an Outlet may be a Pump instead, or the other way around, see `INTERCHANGEABLE_TYPES`.
+    `tolerance`, the nearest node within `moved_tolerance` is used. A node that is moved to its structure is found
+    where the koppeltabel knows it, at its crossing, see `ribasim_nl.structure_locations.reference_points`. If there is
+    no node of the type of the koppeltabel, an Outlet may be a Pump instead, or the other way around, see
+    `INTERCHANGEABLE_TYPES`.
     """
     nodes = model.node.df
 
     def nearby(node_type: str) -> list:
         candidates = nodes[nodes["node_type"] == node_type]
-        distance = candidates.distance(end.geometry)
+        distance = reference_points(candidates).distance(end.geometry)
         within = list(candidates.index[distance <= tolerance])
         if not within and moved_tolerance > tolerance:
             # the nearest node within moved_tolerance, as the node may have been moved
@@ -278,10 +287,29 @@ def _match(
     return int(within[0]), ""
 
 
+def _combine(model: Model, signs: dict[int, int], graph: _Graph) -> bool:
+    """Give the nodes of a series a Junction that combines them, see `combine_nodes`, if they can be combined.
+
+    The flow rate of that Junction is the flow of the nodes into their Basin, minus that out of it, so the nodes that
+    flow into the Basin have one sign in the series, and the others the opposite sign.
+    """
+    found = tree_sides(graph.routes, signs)
+    if found is None:
+        return False
+    if len({-signs[node_id] if upstream else signs[node_id] for node_id, (_, upstream) in found[1].items()}) != 1:
+        return False
+    if combine_nodes(model, list(signs)) is None:
+        return False
+    graph.refresh(model)
+    return True
+
+
 def _observed_node(
-    model: Model, row: pd.Series, graph: _Graph, tolerance: float, moved_tolerance: float
+    model: Model, row: pd.Series, graph: _Graph, tolerance: float, moved_tolerance: float, combine: bool = False
 ) -> tuple[int | None, int, str]:
     """The node to observe for a series of `read_coupling`, or None and why there is none.
+
+    With `combine`, the nodes of a series that no Junction combines get such a Junction, if possible, see `_combine`.
 
     :return: the node, the sign of its flow rate relative to the series, and why there is no node
     """
@@ -300,6 +328,8 @@ def _observed_node(
         return node_id, sign, ""
     # the flows of multiple nodes added and subtracted are the flow of a Junction that combines exactly them
     found = graph.combining_junction(node_signs)
+    if found is None and combine and _combine(model, node_signs, graph):
+        found = graph.combining_junction(node_signs)
     if found is None:
         return None, 1, f"no Junction combines exactly its {len(ends)} links"
     return *found, ""
@@ -359,7 +389,11 @@ def add_observation_nodes(
 
 
 def link_observations(
-    model: Model, authority: str | None = None, tolerance: float = 1.0, moved_tolerance: float = 50.0
+    model: Model,
+    authority: str | None = None,
+    tolerance: float = 1.0,
+    moved_tolerance: float = 50.0,
+    combine: bool = False,
 ) -> Model:
     """Link the Observation nodes that are not linked yet, for instance in a model coupled from other models.
 
@@ -372,6 +406,8 @@ def link_observations(
         meta_waterbeheerder of each node
     :param tolerance: maximum distance between the node to observe in the koppeltabel and in the model
     :param moved_tolerance: maximum distance to a node that was moved to separate it from other nodes, see `_match`
+    :param combine: give the nodes of a series that no Junction combines such a Junction, see `_combine`, once the
+        Basin trees of the model are merged, as merging them removes Junctions that are not observed yet
 
     :return: updated Ribasim model
     """
@@ -390,12 +426,13 @@ def link_observations(
         for observation_id, observation in group.iterrows():
             observation_id = int(typing.cast(int, observation_id))
             row = coupling.loc[(observation["name"], observation["meta_aan_af"])]
-            node_id, sign, koppeling = _observed_node(model, row, graph, tolerance, moved_tolerance)
+            node_id, sign, koppeling = _observed_node(model, row, graph, tolerance, moved_tolerance, combine)
             if node_id is not None:
                 _link(model, observation_id, node_id, graph)
                 if sign == -1 and time is not None:
                     time.loc[time["node_id"] == observation_id, "value"] *= -1
                 count += 1
-            nodes.loc[observation_id, "meta_koppeling"] = koppeling
+            # not the table above, as adding a Junction replaces it
+            model.node.df.loc[observation_id, "meta_koppeling"] = koppeling
     LOG.info(f"Linked {count} of {len(unlinked)} unlinked Observation nodes")
     return model

@@ -520,6 +520,124 @@ def place_on_link(model: Model, node_id: int, basin_id: int, link_id: int) -> No
     model.link.df.loc[basin_link, "geometry"] = gpd.GeoSeries([along], index=basin_link, crs=model.link.df.crs)
 
 
+# Maximum distance between the nodes of `combine_nodes` and their Junction [m]: the nodes of one structure, such as
+# the pumps of a gemaal and the inlet next to it, not nodes along the boundary of a Basin
+MAX_COMBINE_DISTANCE = 250.0
+
+
+def tree_sides(routes: Routes, node_ids: typing.Iterable[int]) -> tuple[int, dict[int, tuple[int, bool]]] | None:
+    """The Basin that all nodes exchange water with through one link each, directly or through its Basin tree.
+
+    If the nodes have two such Basins, like structures next to each other between two Basins, it is the one downstream
+    of the node with the lowest id.
+
+    :return: the Basin, and per node its link towards the Basin and whether that link is upstream of the node, so the
+        Basin flows into the node, or None if there is no such Basin
+    """
+    sides: dict[int, dict[int, tuple[int, bool]]] = {}
+    for node_id in sorted(set(node_ids)):
+        sides[node_id] = {}
+        for upstream in (False, True):
+            links = routes.links_at(node_id, upstream)
+            if len(links) != 1:
+                continue
+            ends = routes.ends(links[0], upstream)
+            neighbor = routes.next_node(links[0], upstream)
+            if len(ends) == 1 and (neighbor in ends or routes.tree_basin(neighbor) in ends):
+                (basin_id,) = ends
+                if routes.node_types[basin_id] == "Basin" and basin_id not in sides[node_id]:
+                    sides[node_id][basin_id] = (links[0], upstream)
+    first = next(iter(sides.values()), {})
+    for basin_id in first:
+        if all(basin_id in side for side in sides.values()):
+            return basin_id, {node_id: side[basin_id] for node_id, side in sides.items()}
+    return None
+
+
+def combine_nodes(
+    model: Model, node_ids: typing.Collection[int], max_distance: float = MAX_COMBINE_DISTANCE
+) -> int | None:
+    """Give nodes that exchange water with the same Basin a Junction of their own, which combines exactly them.
+
+    The flow rate of that Junction is the net flow of these nodes into the Basin, see `Routes.flow_rate_links`, such as
+    that of a gemaal and the inlet next to it, of which the links meet at the Basin node, or run side by side. The
+    link of the node with the lowest id, see `tree_sides`, is split at its point nearest to the other nodes, at least
+    10 m from its ends if possible. The other nodes get a straight link to the Junction there, and the Junctions they
+    leave are pruned, see `prune_junction`. Each node keeps exchanging water with the same nodes, which is asserted.
+
+    Nothing changes if the nodes do not share a Basin, if a node is more than `max_distance` from the Junction, or if
+    a Junction between only some of the nodes and the Basin has other links than flow links, such as an observed
+    Junction, of which the flow rate would change.
+
+    :param model: Ribasim model
+    :param node_ids: nodes to combine, at least two
+    :param max_distance: maximum distance between the nodes and their Junction
+    :return: the Junction, or None if the nodes are not combined
+    """
+    assert len(set(node_ids)) >= 2, "Combine at least two nodes"
+    routes = Routes(model)
+    found = tree_sides(routes, node_ids)
+    if found is None:
+        return None
+    basin_id, sides = found
+    first, *others = sorted(sides)
+
+    # the Junctions between each node and the Basin
+    links = model.link.df
+    other_links = set(links.loc[links["link_type"] != "flow", ["from_node_id", "to_node_id"]].to_numpy().ravel())
+    ancestors = {}
+    for node_id, (link_id, upstream) in sides.items():
+        ancestors[node_id] = set()
+        junction_id = routes.next_node(link_id, upstream)
+        while junction_id != basin_id:
+            ancestors[node_id].add(junction_id)
+            parent_link = routes.parent_link(junction_id)
+            assert parent_link is not None, f"Junction {junction_id} is not in the tree of Basin {basin_id}"
+            junction_id = routes.other_node(parent_link, junction_id)
+    shared = set.intersection(*ancestors.values())
+    if (set.union(*ancestors.values()) - shared) & other_links:
+        return None
+
+    link_id, upstream = sides[first]
+    geometry = _line(model, link_id)
+    if geometry is None or geometry.length == 0:
+        return None
+    points = [_point(model, node_id) for node_id in others]
+    distance = split_distance(geometry, shapely.MultiPoint(points).centroid, margin=10.0)
+    location = geometry.interpolate(distance)
+    if max(location.distance(point) for point in [_point(model, first), *points]) > max_distance:
+        return None
+
+    before = routes.simplified_links()
+    junction = model.junction.add(Node(geometry=Point(location.x, location.y)))
+    if "meta_waterbeheerder" in model.node.df.columns:
+        authority = typing.cast(str, model.node.df.at[basin_id, "meta_waterbeheerder"])
+        model.node.df.loc[[junction.node_id], "meta_waterbeheerder"] = authority
+    # the link of the first node keeps its id on the part with that node
+    start, end = _substring(geometry, 0.0, distance), _substring(geometry, distance, geometry.length)
+    neighbor = routes.next_node(link_id, upstream)
+    name = _name(model, link_id)
+    if upstream:
+        model.link.df.loc[link_id, "from_node_id"] = junction.node_id
+        model.link.df.loc[[link_id], "geometry"] = gpd.GeoSeries([end], index=[link_id], crs=links.crs)
+        model.link.add(model.get_node(neighbor), junction, geometry=start, name=name)
+    else:
+        model.link.df.loc[link_id, "to_node_id"] = junction.node_id
+        model.link.df.loc[[link_id], "geometry"] = gpd.GeoSeries([start], index=[link_id], crs=links.crs)
+        model.link.add(junction, model.get_node(neighbor), geometry=end, name=name)
+    for node_id in others:
+        link_id, upstream = sides[node_id]
+        ends = [location, _point(model, node_id)] if upstream else [_point(model, node_id), location]
+        model.link.df.loc[link_id, "from_node_id" if upstream else "to_node_id"] = junction.node_id
+        model.link.df.loc[[link_id], "geometry"] = gpd.GeoSeries([LineString(ends)], index=[link_id], crs=links.crs)
+    # prune the Junctions the nodes left once all their links are moved, as pruning merges and removes links
+    for node_id in others:
+        prune_junction(model, routes.next_node(*sides[node_id]))
+    after = simplified_links(model)
+    assert after == before, f"Combining nodes {sorted(sides)} changed the links {sorted(after ^ before)[:10]}"
+    return junction.node_id
+
+
 def simplified_links(model: Model) -> set[tuple[int, int]]:
     """The flow links between nodes other than plain Junctions that Ribasim makes of the flow links, see `Routes`."""
     return Routes(model).simplified_links()
@@ -848,16 +966,59 @@ def attach_to_tree(routes: dict[int, list[Coord]], start: Coord, points: dict[in
     return routes
 
 
-def merge_basin_trees(model: Model, read_lines: LineReader | None = None) -> list[int]:
+# Maximum distance between a node and the routes of its Basin to branch its link off them [m], like the distance within
+# which a node is attached to the network, see `ribasim_nl.network_snapping.route_basin_links`
+MAX_BRANCH_DISTANCE = 100.0
+
+
+def branch_off_routes(
+    coords: dict[int, list[Coord]],
+    branch: typing.Collection[int],
+    max_distance: float = MAX_BRANCH_DISTANCE,
+) -> dict[int, list[Coord]]:
+    """Let routes from the same point follow the other routes up to their point nearest to its end, and go straight on.
+
+    This is for the routes of links that are added after the links of a Basin are routed, such as those from another
+    model: routed along other lines, they run beside the routes of the Basin without a point in common. The routes
+    whose ends are nearest to the other routes branch off first, so the others can branch off them, see
+    `attach_to_tree`.
+
+    A route is kept if its end is more than `max_distance` from the other routes. Routes that are a straight line do
+    not follow water, so no route branches off them.
+
+    :param coords: per key, the coordinates of a route
+    :param branch: keys of the routes to branch off the others
+    :param max_distance: maximum distance between the end of a route and the other routes
+    :return: the routes, of which the others have a point where a route branches off
+    """
+    tree = {key: route for key, route in coords.items() if key not in branch and len(route) > 2}
+    if not tree:
+        return coords
+    lines = shapely.union_all([LineString(route) for route in tree.values()])
+    near = {key: coords[key][-1] for key in sorted(branch) if lines.distance(Point(coords[key][-1])) <= max_distance}
+    if not near:
+        return coords
+    return coords | attach_to_tree(tree, next(iter(tree.values()))[0], near)
+
+
+def merge_basin_trees(
+    model: Model,
+    read_lines: LineReader | None = None,
+    branch: typing.Collection[int] = (),
+    max_branch_distance: float = MAX_BRANCH_DISTANCE,
+) -> list[int]:
     """Give each Basin one Junction tree for its inflows and outflows, along the current routes of its links.
 
     The routes of the links of a Basin are followed through the Junctions of its Basin trees, see
     `Routes`, up to the `fixed_junctions`, and joined where they share
-    their coordinates from the Basin node on, see `build_basin_tree`. A Basin whose tree would
-    not change is left as it is. Each node keeps exchanging water with the same nodes, which is asserted.
+    their coordinates from the Basin node on, see `build_basin_tree`. The links to `branch` first branch off the other
+    routes of their Basin, see `branch_off_routes`. A Basin whose tree would not change is left as it is. Each node
+    keeps exchanging water with the same nodes, which is asserted.
 
     :param read_lines: reads the lines that the routes follow within an area, to follow the direction in which they
         are digitized, see `towards_basin`
+    :param branch: links between a node and its Basin, or the tree of its Basin, to branch off the routes of that Basin
+    :param max_branch_distance: maximum distance between such a node and these routes
     :return: the new Junctions
     """
     before = simplified_links(model)
@@ -880,12 +1041,15 @@ def merge_basin_trees(model: Model, read_lines: LineReader | None = None) -> lis
             parts = route_parts(model, basin_id, paths[link_id])
             route = _dedupe([origin, *(c for part in parts for c in _coords(part))])
             coords[key] = route if len(route) >= 2 else [origin, _coord(model, node_id)]
+        branched = branch_off_routes(
+            coords, {key for key, (_, link_id) in enumerate(ends) if link_id in branch}, max_branch_distance
+        )
         # the tree as the nodes reached beyond each of its links between the Basin and Junctions
         current = {frozenset(k for k, (_, i) in enumerate(ends) if link_id in paths[i]) for link_id in tree_link_ids}
-        if _tree_splits(tree_links(coords)) == current:
+        if branched == coords and _tree_splits(tree_links(coords)) == current:
             continue
         sides = {key: routes.subtree(link_id) for key, (_, link_id) in enumerate(ends)}
-        changes.append((basin_id, junctions, tree_link_ids, ends, coords, sides))
+        changes.append((basin_id, junctions, tree_link_ids, ends, branched, sides))
 
     digitized = None
     if read_lines is not None and changes:

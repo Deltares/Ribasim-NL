@@ -30,6 +30,7 @@ from ribasim_nl.network_snapping import line_reader, read_hydro_objects, snap_mo
 from ribasim_nl.regional_model import ENDTIME, STARTTIME, add_inflows, add_lhm_forcing, finish_regional_model
 from ribasim_nl.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl.settings import settings
+from ribasim_nl.structure_locations import Crossings, move_to_structures
 
 # streefpeil used where it is unknown; we need one to create the profiles, Q(h)-relations, and af- and aanslag peil
 UNKNOWN_STREEFPEIL = 0.00012345
@@ -381,7 +382,11 @@ def write_and_run_forcing_model(
     bound_supply_inflows(model)
 
     def snap(model: Model) -> Model:
-        """Route links along the hydro-objects, move Basin nodes onto them, and merge overlapping links."""
+        """Move Pumps and Outlets to their structures, route links along the hydro-objects, and merge them.
+
+        Basin nodes are moved to the center of their network, see `ribasim_nl.network_snapping.route_basin_links`.
+        """
+        move_to_structures(model, Crossings.read(paths.crossings))
         model = snap_model(
             model,
             paths.profielen_dir,
