@@ -167,6 +167,11 @@ ribasim_model.link.add(pump_node, level_boundary_node)
 ribasim_model.remove_node(350, True)
 ribasim_model.remove_node(673, True)
 ribasim_model.remove_node(1000, False)
+# Outlets between two Basins that do not touch, see https://github.com/Deltares/Ribasim-NL/issues/1058. They cross into
+# a part of a peilgebied that lies kilometres from the rest of it: 345 is a copy of 344, at a sliver of the peilgebied
+# of Basin 80 that lies 3.5 km from it, and 877 enters a strip of 0.3 ha of the peilgebied of Basin 217, 4 km from it
+ribasim_model.remove_node(345, True)
+ribasim_model.remove_node(877, True)
 ribasim_param.change_pump_func(ribasim_model, 430, "aanvoer", 1)
 ribasim_param.change_pump_func(ribasim_model, 430, "afvoer", 0)
 

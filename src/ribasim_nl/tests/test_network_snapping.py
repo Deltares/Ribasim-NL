@@ -33,6 +33,50 @@ def test_route_basin_links():
     assert routes[1] == [(50, 10), (50, 0), (100, 0), (100, 100)]
 
 
+def test_route_basin_links_center():
+    """The Basin node goes to the point of the network from which the routes are shortest in total."""
+    # a waterway from west to east, crossed halfway by one from south to north, with a connector at each end
+    lines = [
+        LineString([(0, 0), (500, 0)]),
+        LineString([(500, 0), (1000, 0)]),
+        LineString([(500, 0), (500, 400)]),
+        LineString([(500, -400), (500, 0)]),
+    ]
+    connectors = {1: Point(0, 0), 2: Point(1000, 0), 3: Point(500, 400), 4: Point(500, -400)}
+    area = box(-10, -410, 1010, 410)
+    location, routes = route_basin_links(Point(900, 10), connectors, lines, [True] * 4, basin_area=area)
+    assert location.equals(Point(500, 0)), "The Basin node is where the routes split, not on the line nearest to it"
+    assert routes[1] == [(500, 0), (0, 0)] and routes[3] == [(500, 0), (500, 400)]
+
+    # with one connector all points on the route to it are as good, and the Basin node stays where it was
+    location, routes = route_basin_links(Point(900, 10), {1: Point(0, 0)}, lines, [True] * 4, basin_area=area)
+    assert location.equals(Point(900, 0))
+    assert routes == {1: [(900, 0), (500, 0), (0, 0)]}
+
+    # the center is within the area of the Basin
+    location, _ = route_basin_links(Point(900, 10), connectors, lines, [True] * 4, basin_area=box(600, -10, 1010, 10))
+    assert location.equals(Point(900, 0))
+    # and not on top of a connector if it can be elsewhere
+    network = _BasinNetwork(lines, [True] * 4)
+    assert network.center([(0, 0)], (0, 0), area) == (0, 0)
+    assert network.center([(0, 0)], (0, 0), area, [Point(0, 0)]) == (500, 0)
+    assert network.center([(0, 0)], (1000, 0), box(2000, 0, 3000, 10)) is None
+
+
+def test_route_basin_links_cost():
+    """Routes follow the hydro-objects of the water authority, and use other lines where these leave a gap."""
+    # a hydro-object around a parcel, and a ditch of another source that cuts the corner
+    lines = [LineString([(0, 0), (100, 0), (100, 100)]), LineString([(0, 0), (100, 100)])]
+    connectors = {1: Point(100, 100)}
+    _, routes = route_basin_links(Point(0, 0), connectors, lines, [True, False])
+    assert routes == {1: [(0, 0), (100, 100)]}
+    _, routes = route_basin_links(Point(0, 0), connectors, lines, [True, False], cost=[1.0, 3.0])
+    assert routes == {1: [(0, 0), (100, 0), (100, 100)]}
+    # without the hydro-object the ditch is used
+    _, routes = route_basin_links(Point(0, 0), connectors, lines[1:], [False], cost=[3.0])
+    assert routes == {1: [(0, 0), (100, 100)]}
+
+
 def test_route_basin_links_bridges_gaps():
     lines = [LineString([(0, 0), (40, 0)]), LineString([(70, 0), (100, 0)])]
     connectors = {1: Point(100, 0)}
@@ -168,6 +212,28 @@ def test_snap_to_network():
     links = model.link.df.geometry.tolist()
     assert list(links[0].coords) == [(50, 0), (100, 0), (100, 5)]
     assert list(links[1].coords) == [(100, 5), (100, 0), (150, 0)]
+
+
+def test_snap_to_network_cost():
+    """Links follow the hydro-objects with the lowest cost per metre."""
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    model.basin.add(
+        Node(1, Point(0, 0)),
+        [
+            basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]),
+            basin.State(level=[0.5]),
+            basin.Area(geometry=[shapely.MultiPolygon([box(-10, -10, 110, 110)])]),
+        ],
+    )
+    model.outlet.add(Node(2, Point(100, 100)), [outlet.Static(flow_rate=[1.0])])
+    model.link.add(model.basin[1], model.outlet[2])
+    hydro_objects = gpd.GeoDataFrame(
+        {"main-route": [True, False], "cost": [1.0, 3.0]},
+        geometry=[LineString([(0, 0), (100, 0), (100, 100)]), LineString([(0, 0), (100, 100)])],
+        crs="EPSG:28992",
+    )
+    model = snap_to_network(model, hydro_objects, move_basins=False)
+    assert list(model.link.df.geometry.iloc[0].coords) == [(0, 0), (100, 0), (100, 100)]
 
 
 def test_snap_to_network_routing_areas():

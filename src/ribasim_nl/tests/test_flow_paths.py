@@ -11,6 +11,8 @@ from ribasim_nl.flow_paths import (
     Routes,
     attach_to_tree,
     branch_from_route,
+    branch_off_routes,
+    combine_nodes,
     drainage_capacity,
     junction_tree,
     merge_basin_trees,
@@ -23,6 +25,7 @@ from ribasim_nl.flow_paths import (
     simplified_links,
     towards_basin,
     tree_links,
+    tree_sides,
 )
 from shapely.geometry import LineString, Point, box
 
@@ -299,6 +302,75 @@ def test_merge_basin_trees():
     assert link_pairs(model) == {(1, junction_id), (junction_id, 2), (junction_id, 3), (6, junction_id), (5, 1)}
     # a tree that would not change is kept
     assert merge_basin_trees(model) == []
+
+
+def test_merge_basin_trees_branch():
+    """The inflow of Outlet 6 was routed along other lines, and branches off the tree at its nearest point."""
+    model = route_model()
+    model.outlet.add(Node(6, Point(30, 20)), [outlet.Static(flow_rate=[1.0])])
+    model.link.add(model.outlet[6], model.basin[1], geometry=LineString([(30, 20), (0, 20), (0, 0)]))
+    link_id = int(model.link.df.index[-1])
+    links_before = simplified_links(model)
+    # its route has no point in common with the tree, so it is not merged into it
+    assert merge_basin_trees(model) == []
+
+    # the tree is rebuilt, with a Junction where the link branches off, before the one where the outflows split
+    first, second = merge_basin_trees(model, branch=[link_id])
+    assert simplified_links(model) == links_before
+    assert model.node.df.at[first, "geometry"].coords[:] == [(30, 0)]
+    assert model.node.df.at[second, "geometry"].coords[:] == [(50, 0)]
+    assert model.link.df.at[link_id, "geometry"].coords[:] == [(30, 20), (30, 0)]
+    assert link_pairs(model) == {(1, first), (first, second), (second, 2), (second, 3), (6, first), (5, 1)}
+
+    # not off a route that is a straight line, nor from far away
+    assert branch_off_routes({1: [(0.0, 0.0), (100.0, 0.0)], 2: [(0.0, 0.0), (50.0, 10.0)]}, {2})[2] == [
+        (0.0, 0.0),
+        (50.0, 10.0),
+    ]
+    routes = {1: [(0.0, 0.0), (50.0, 0.0), (100.0, 0.0)], 2: [(0.0, 0.0), (0.0, 300.0), (50.0, 300.0)]}
+    assert branch_off_routes(routes, {2}) == routes
+    assert branch_off_routes(routes, {2}, max_distance=500.0)[2] == [(0.0, 0.0), (50.0, 0.0), (50.0, 300.0)]
+
+
+def test_combine_nodes():
+    """Outlets 3 and 5 exchange water with Basin 1 through different links, and get a Junction of their own."""
+    model = route_model()
+    routes = Routes(model)
+    link_ids = model.link.df.reset_index().set_index(["from_node_id", "to_node_id"])["link_id"]
+    assert tree_sides(routes, [3, 5]) == (1, {3: (link_ids[(4, 3)], True), 5: (link_ids[(5, 1)], False)})
+    assert tree_sides(routes, [1, 3]) is None, "A Basin has no link with itself"
+    links_before = simplified_links(model)
+
+    # not from far away
+    assert combine_nodes(model, [3, 5], max_distance=50.0) is None
+    assert simplified_links(model) == links_before and len(model.node.df) == 5
+
+    junction_id = combine_nodes(model, [3, 5])
+    assert junction_id is not None
+    assert simplified_links(model) == links_before
+    # on the link of Outlet 3, the node with the lowest id, which keeps its link id, 10 m from its end
+    assert link_pairs(model) == {(1, 4), (4, 2), (4, junction_id), (junction_id, 3), (5, junction_id)}
+    assert model.link.df.at[link_ids[(4, 3)], "to_node_id"] == 3
+    assert model.node.df.at[junction_id, "geometry"].distance(Point(50, 0)) == pytest.approx(10.0)
+    routes = Routes(model)
+    assert routes.subtree(routes.parent_link(junction_id)) == (frozenset([5]), frozenset([3]))
+
+    # the Junction that Outlets 2 and 3 share is pruned when they get their own, and only one flows out of it
+    model = route_model()
+    junction_id = combine_nodes(model, [2, 3])
+    assert link_pairs(model) == {(1, junction_id), (junction_id, 2), (junction_id, 3), (5, 1)}
+    assert 4 not in model.node.df.index
+
+
+def test_combine_nodes_keeps_observed_junctions():
+    """Outlet 2 is not taken from under Junction 4 if that Junction has other links, like an observed Junction."""
+    model = route_model()
+    model.link.df.loc[model.link.df.index.max() + 1] = model.link.df.iloc[0]
+    model.link.df.loc[model.link.df.index.max(), ["from_node_id", "to_node_id", "link_type"]] = [5, 4, "control"]
+    assert combine_nodes(model, [2, 5]) is None
+    # but both nodes under it can be combined, as that leaves its flow as it is
+    assert combine_nodes(model, [2, 3]) is not None
+    assert 4 in model.node.df.index
 
 
 def test_prune_junction_in_basin_tree():

@@ -11,6 +11,7 @@ from ribasim_nl.observations import (
     add_observation_nodes,
     link_observations,
 )
+from ribasim_nl.structure_locations import CROSSING_COLUMNS
 from shapely.geometry import Point
 
 from ribasim_nl import Model
@@ -107,6 +108,43 @@ def test_add_observation_nodes():
     assert first["value"].tolist() == [-2.0, -4.0]
 
 
+def test_observe_node_at_structure():
+    """An Outlet that is moved to its structure is found where the koppeltabel knows it, at its crossing."""
+    model = Model(starttime="2020-01-01", endtime="2020-01-03", crs="EPSG:28992")
+    for node_id, x in ((1, 0), (4, 100)):
+        model.basin.add(
+            Node(node_id, Point(x, 0)), [basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]), basin.State(level=[0.5])]
+        )
+    # Outlet 2 is moved 40 m from its crossing, to where Outlet 3 would be found within the tolerance for moved nodes
+    model.outlet.add(Node(2, Point(50, 40)), [outlet.Static(flow_rate=[1.0])])
+    model.outlet.add(Node(3, Point(50, 70)), [outlet.Static(flow_rate=[1.0])])
+    for node_id in (2, 3):
+        model.link.add(model.basin[1], model.outlet[node_id])
+        model.link.add(model.outlet[node_id], model.basin[4])
+    coupling = gpd.GeoDataFrame(
+        {
+            "MeetreeksC": ["stuw"],
+            "Aan/Af": ["Afvoer"],
+            "negate": [False],
+            "ends": [[LinkEnd("Outlet", Point(50, 0), "Basin", True)]],
+            "signs": [[1]],
+            "koppeling": [""],
+        },
+        geometry=[Point(50, 45)],
+        crs="EPSG:28992",
+    )
+    measurements = {"Afvoer": pd.DataFrame({"stuw": 1.0}, index=pd.date_range("2020-01-01", "2020-01-03", name="time"))}
+
+    unmoved = add_observation_nodes(model.model_copy(deep=True), coupling, measurements)
+    assert (unmoved.link.df["link_type"] == "observation").sum() == 0
+
+    model.node.df[CROSSING_COLUMNS] = float("nan")
+    model.node.df.loc[2, CROSSING_COLUMNS] = [50.0, 0.0]
+    model = add_observation_nodes(model, coupling, measurements)
+    links = model.link.df[model.link.df["link_type"] == "observation"]
+    assert links["to_node_id"].tolist() == [2]
+
+
 def basin_tree_model(towards_basin: bool) -> Model:
     """A Basin tree in which Junction 6 carries the inflow of Outlet 2 minus the outflow of Outlet 3.
 
@@ -192,4 +230,46 @@ def test_link_observations(monkeypatch: pytest.MonkeyPatch) -> None:
     links = model.link.df[model.link.df["link_type"] == "observation"]
     assert links[["from_node_id", "to_node_id"]].values.tolist() == [[7, 6]]
     assert model.observation.time.df["value"].tolist() == [-1.0, -2.0]
+    assert model.node.df.at[7, "meta_koppeling"] == ""
+
+
+def test_link_observations_combine(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Outlets 2 and 3 meet at their Basin, so they get a Junction of their own to observe their net flow on."""
+    model = Model(starttime="2020-01-01", endtime="2020-01-03", crs="EPSG:28992")
+    for node_id, x, y in ((1, 0, 0), (8, 40, 10), (9, 40, -10)):
+        model.basin.add(
+            Node(node_id, Point(x, y)),
+            [basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]), basin.State(level=[0.5])],
+        )
+    for node_id, y in ((2, 5), (3, -5)):
+        model.outlet.add(Node(node_id, Point(30, y)), [outlet.Static(flow_rate=[1.0])])
+    for from_node, to_node in (
+        (model.basin[8], model.outlet[2]),
+        (model.outlet[2], model.basin[1]),
+        (model.basin[1], model.outlet[3]),
+        (model.outlet[3], model.basin[9]),
+    ):
+        model.link.add(from_node, to_node)
+    model.observation.add(
+        Node(7, Point(25, 0), name="netto", meta_aan_af="Afvoer", meta_koppeling="not linked yet"),
+        [observation.Time(time=["2020-01-01", "2020-01-02"], variable="flow_rate", value=[1.0, 2.0])],
+    )
+
+    # a series that adds both flows cannot be the flow of one Junction, as one flows in and the other out
+    monkeypatch.setattr("ribasim_nl.observations.read_coupling", lambda authority: net_flow_coupling([1, 1]))
+    model = link_observations(model, "Waterschap", combine=True)
+    assert (model.link.df["link_type"] == "observation").sum() == 0
+    assert (model.node.df["node_type"] == "Junction").sum() == 0
+
+    monkeypatch.setattr("ribasim_nl.observations.read_coupling", lambda authority: net_flow_coupling([1, -1]))
+    model = link_observations(model, "Waterschap")
+    assert model.node.df.at[7, "meta_koppeling"] == "no Junction combines exactly its 2 links"
+    model = link_observations(model, "Waterschap", combine=True)
+    (junction_id,) = model.node.df.index[model.node.df["node_type"] == "Junction"]
+    links = model.link.df[model.link.df["link_type"] == "observation"]
+    assert links[["from_node_id", "to_node_id"]].values.tolist() == [[7, junction_id]]
+    # the Junction is on the link of Outlet 2, which flows into the Basin, like the flow of the Junction
+    pairs = set(model.link.df[model.link.df["link_type"] == "flow"].set_index(["from_node_id", "to_node_id"]).index)
+    assert pairs == {(8, 2), (2, junction_id), (junction_id, 1), (junction_id, 3), (3, 9)}
+    assert model.observation.time.df["value"].tolist() == [1.0, 2.0]
     assert model.node.df.at[7, "meta_koppeling"] == ""
