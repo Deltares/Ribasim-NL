@@ -29,6 +29,8 @@ ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
 # read
 model = Model.read(ribasim_toml)
+# nodes are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 
 start_time = time.time()
 
@@ -41,7 +43,7 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 
 # Fix basin_levels
 basin_level_overrides = [
-    ([1718], 12.38),
+    ([n("up:DL1-7-gm2")], 12.38),
 ]
 
 apply_basin_level_overrides(model=model, basin_level_overrides=basin_level_overrides)

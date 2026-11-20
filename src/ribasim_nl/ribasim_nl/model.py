@@ -2,6 +2,7 @@
 import inspect
 from collections.abc import Iterable, Sequence
 from datetime import timedelta
+from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast
 
@@ -29,6 +30,7 @@ from shapely.geometry.base import BaseGeometry
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.downstream import downstream_nodes
 from ribasim_nl.geometry import polygon_parts, split_basin, split_line, union_polygons, without_slivers
+from ribasim_nl.keys import AUTHORITY_COLUMN, KEY_COLUMN, NODE_ARGUMENTS, fill_keys, validate_keys
 from ribasim_nl.lumping.hydamo import read_areas
 from ribasim_nl.lumping.network import fill_holes
 from ribasim_nl.lumping.utils import read_layer
@@ -290,6 +292,57 @@ class Model(ribasim.Model):
         assert self.basin.area.df is not None
         return self.basin.area.df[self.basin.area.df.node_id.isin(downstream_node_ids)]
 
+    def node_id(self, key: str, authority: str | None = None) -> int:
+        """Return the ID of the node with this key, see `ribasim_nl.keys`.
+
+        The key of a node follows from its source data, so it identifies the node in every run, unlike its ID. In the
+        coupled model the keys are unique per water authority, so pass the `authority` of the node as well.
+        """
+        node_ids = self._node_ids_with_key(key, authority)
+        if len(node_ids) == 0 and self.node.df[KEY_COLUMN].isna().any():
+            # a node that was added since the keys were last filled
+            self.fill_keys()
+            node_ids = self._node_ids_with_key(key, authority)
+        if len(node_ids) != 1:
+            of = "" if authority is None else f" of {authority}"
+            raise KeyError(f"{len(node_ids)} nodes{of} with key {key!r}, expected 1")
+        return int(node_ids[0])
+
+    def _node_ids_with_key(self, key: str, authority: str | None) -> pd.Index:
+        node_df = self.node.df
+        mask = node_df[KEY_COLUMN] == key
+        if authority is not None:
+            mask &= node_df[AUTHORITY_COLUMN] == authority
+        return node_df.index[mask]
+
+    def node_ids(self, keys: Iterable[str], authority: str | None = None) -> list[int]:
+        """Return the IDs of the nodes with these keys, in their order."""
+        return [self.node_id(key, authority) for key in keys]
+
+    def link_id(self, from_key: str, to_key: str, authority: str | None = None) -> int:
+        """Return the ID of the link between the nodes with these keys."""
+        from_node_id, to_node_id = self.node_id(from_key, authority), self.node_id(to_key, authority)
+        link_df = self.link.df
+        link_ids = link_df.index[(link_df["from_node_id"] == from_node_id) & (link_df["to_node_id"] == to_node_id)]
+        if len(link_ids) != 1:
+            raise KeyError(f"{len(link_ids)} links from {from_key!r} to {to_key!r}, expected 1")
+        return int(link_ids[0])
+
+    def fill_keys(self) -> None:
+        """Give the nodes without a key one, see `ribasim_nl.keys.fill_keys`."""
+        fill_keys(self)
+
+    def validate_keys(self) -> None:
+        """Check that every node has a key, and that the keys are unique, see `ribasim_nl.keys.validate_keys`."""
+        validate_keys(self)
+
+    def write(self, filepath: str | PathLike[str], *args: Any, **kwargs: Any) -> Path:
+        """Write the model, after giving the nodes without a key one, if the model has keys, see `ribasim_nl.keys`."""
+        if KEY_COLUMN in self.node.df.columns:
+            self.fill_keys()
+            self.validate_keys()
+        return super().write(filepath, *args, **kwargs)
+
     def find_node_id(self, ds_node_id=None, us_node_id=None, **kwargs) -> int:
         """Find a node_id by it's properties"""
         # get node table
@@ -480,7 +533,10 @@ class Model(ribasim.Model):
     ) -> None:
         """Apply model edits stored in a GeoPackage, with a layer per edit method (action).
 
-        Every row of the layer is a call of the method with the columns that are arguments of the method.
+        Every row of the layer is a call of the method with the columns that are arguments of the method. A layer
+        refers to nodes by their key, see `ribasim_nl.keys`: the column `node_key` gives the argument `node_id`,
+        `to_basin_key` gives `to_basin_id`, and so on. It refers to a link by the keys of its two nodes, in the
+        columns `link_from_key` and `link_to_key`, which give `link_id`.
 
         Args:
             edits_gpkg: GeoPackage with a layer per action, e.g. "merge_basins" or "remove_node"
@@ -497,7 +553,14 @@ class Model(ribasim.Model):
                 df.sort_values("order", inplace=True)
             for row in df.itertuples():
                 # itertuples rows are namedtuples, whose `_asdict` ty sees as a column
-                kwargs = {k: v for k, v in cast(Any, row)._asdict().items() if k in keywords}
+                values = cast(Any, row)._asdict()
+                kwargs = {k: v for k, v in values.items() if k in keywords}
+                for argument in NODE_ARGUMENTS.intersection(keywords):
+                    key = values.get(argument.removesuffix("_id") + "_key")
+                    if pd.notna(key):
+                        kwargs[argument] = self.node_id(key)
+                if "link_id" in keywords and pd.notna(values.get("link_from_key")):
+                    kwargs["link_id"] = self.link_id(values["link_from_key"], values["link_to_key"])
                 if drop_na:
                     kwargs = {k: v for k, v in kwargs.items() if pd.notna(v)}
                 try:
@@ -641,7 +704,13 @@ class Model(ribasim.Model):
         set_df_unvalidated(self.link, self.link.df[~self.link.df.index.isin(link_ids)])
         self.link._used_link_ids.node_ids.difference_update(link_ids)
 
-    def add_basin(self, node_id, geometry, tables=None, **kwargs) -> None:
+    def add_basin(self, node_id=None, geometry=None, tables=None, key: str | None = None, **kwargs) -> None:
+        """Add a Basin, with the next free node ID if none is given, and optionally with a `key`."""
+        assert geometry is not None, "a Basin needs a geometry"
+        if node_id is None or pd.isna(node_id):
+            node_id = self.next_node_id
+        if key is not None and pd.notna(key):
+            kwargs[KEY_COLUMN] = key
         # define node properties
         if "name" in kwargs:
             name = kwargs["name"]

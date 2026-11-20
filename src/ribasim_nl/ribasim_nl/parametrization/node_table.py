@@ -4,6 +4,7 @@ from typing import Literal
 import pandas as pd
 
 from ribasim_nl.model import Model
+from ribasim_nl.parametrization.static_data_xlsx import read_node_sheet
 
 
 def populate_function_column(model: Model, node_type: Literal["Pump", "Outlet"], static_data_xlsx: Path) -> Model:
@@ -23,7 +24,7 @@ def populate_function_column(model: Model, node_type: Literal["Pump", "Outlet"],
     if node_type in static_data_sheets:
         table = model.get_component(node_type).node
         # add node_id to static_data
-        static_data = pd.read_excel(static_data_xlsx, sheet_name=node_type)
+        static_data = read_node_sheet(model, static_data_xlsx, node_type)
         if "node_id" not in static_data.columns:
             static_data.set_index("code", inplace=True)
             static_data = static_data[static_data.index.isin(table.df["meta_code_waterbeheerder"])]

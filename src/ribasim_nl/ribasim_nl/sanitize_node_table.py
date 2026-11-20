@@ -4,6 +4,7 @@ from typing import Any
 
 import pandas as pd
 
+from ribasim_nl.keys import KEY_COLUMN
 from ribasim_nl.model import Model
 
 
@@ -19,6 +20,8 @@ def sanitize_node_table(
     if meta_columns is None:
         meta_columns = []
     node_columns = model.basin.node.columns() + meta_columns
+    if KEY_COLUMN in model.node.df.columns and KEY_COLUMN not in node_columns:
+        node_columns.append(KEY_COLUMN)
 
     # update values per node_type directly on model.node.df
     for node_type in model.node.df.node_type.unique():

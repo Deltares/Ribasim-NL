@@ -8,6 +8,7 @@ from openpyxl.styles import Border
 from pydantic import BaseModel, ConfigDict
 
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.keys import KEY_COLUMN
 from ribasim_nl.model import Model
 from ribasim_nl.parametrization.damo_profiles import DAMOProfiles, profile_level
 from ribasim_nl.parametrization.empty_table import empty_table_df
@@ -16,6 +17,10 @@ description = [
     {"sheet": "defaults", "beschrijving": "default settings bij geen-data"},
     {"sheet": "Outlet & Pump", "beschrijving": "gemodelleerde instellingen bij Ribasim Pump en Outlet nodes"},
     {"kolom": "flow_rate", "beschrijving": "gemodelleerde capaciteit (m3/s) van het kunstwerk"},
+    {
+        "kolom": "key",
+        "beschrijving": "sleutel van de Ribasim node, zie de kolom meta_key van de nodes",
+    },
     {
         "kolom": "code",
         "beschrijving": "code waterbeheerder van het object",
@@ -39,6 +44,24 @@ description = [
     {"kolom": "upstream_level_offset", "beschrijving": "afslagpunt (meter) boven bovenstrooms streefpeil"},
     {"kolom": "downstream_level_offset", "beschrijving": "afslagpunt (meter) onder benedenstrooms streefpeil"},
 ]
+
+# The column of the node sheets with the key of the node, see `ribasim_nl.keys`
+KEY = "key"
+
+
+def read_node_sheet(model: Model, static_data_xlsx: Path, node_type: str) -> pd.DataFrame:
+    """Read the sheet of a node type, with the `node_id` of the nodes that its `key` column refers to.
+
+    Rows whose key is not in the model are left out: the sheet can hold more nodes than the model.
+    """
+    static_data = pd.read_excel(static_data_xlsx, sheet_name=node_type)
+    if KEY not in static_data.columns:
+        return static_data
+    node_id = pd.Series(model.node.df.index, index=model.node.df[KEY_COLUMN])
+    static_data = static_data[static_data[KEY].isin(node_id.index)]
+    static_data.insert(0, "node_id", static_data[KEY].map(node_id).to_numpy())
+    return static_data.drop(columns=KEY)
+
 
 defaults: dict[str, dict[str, object]] = {
     "Afvoergemaal": {
@@ -338,6 +361,11 @@ class StaticData(BaseModel):
                 df = getattr(self, pascal_to_snake_case(node_type))
                 if df is None:
                     df = self.reset_data_frame(node_type=node_type)
+                if KEY_COLUMN in self.model.node.df.columns:
+                    # the sheets refer to nodes by their key, see `read_node_sheet`
+                    keys = df["node_id"].map(self.model.node.df[KEY_COLUMN])
+                    df = df.drop(columns="node_id")
+                    df.insert(0, KEY, keys.to_numpy())
                 df.to_excel(xlsx_writer, sheet_name=node_type, index=False)
 
         # fix formatting

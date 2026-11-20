@@ -8,6 +8,7 @@ import pandas as pd
 from ribasim_nl.model import Model
 from ribasim_nl.parametrization.conversions import round_to_significant_digits
 from ribasim_nl.parametrization.empty_table import empty_table_df
+from ribasim_nl.parametrization.static_data_xlsx import read_node_sheet
 from ribasim_nl.parametrization.target_level import downstream_target_levels, upstream_target_levels
 
 
@@ -36,7 +37,7 @@ def create_static_df(
         static_data_sheets = pd.ExcelFile(static_data_xlsx).sheet_names
         if node_type in static_data_sheets:
             # in case node_id doesn't exist in the Excel-table
-            static_data = pd.read_excel(static_data_xlsx, sheet_name=node_type)
+            static_data = read_node_sheet(model, static_data_xlsx, node_type)
             if "node_id" not in static_data.columns:
                 static_data.set_index("code", inplace=True)
 
