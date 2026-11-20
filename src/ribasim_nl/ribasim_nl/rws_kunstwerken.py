@@ -214,7 +214,9 @@ def read_flow_kwargs(kwk_properties: pd.Series) -> dict[str, Any]:
     """Flow rates and levels of a structure, as keyword arguments for Outlet or Pump static tables.
 
     Without `Capaciteit (m3/s)`, a structure without control uses the capacity of the one function it has as flow rate,
-    `Afvoer Capaciteit (m3/s)` or `Aanvoer Capaciteit (m3/s)`, like a supply pump.
+    `Afvoer Capaciteit (m3/s)` or `Aanvoer Capaciteit (m3/s)`, like a supply pump. The maximum flow rate is the
+    `Maximale capaciteit (m3/s)`, or else the flow rate, so a FlowDemand above the flow rate can raise the flow up to it,
+    like the locks of the Oranjesluizen.
     """
     kwk_properties = kwk_properties.copy()
     keys = [key for key in CONTROL_STATES.values() if key in kwk_properties]
@@ -226,7 +228,8 @@ def read_flow_kwargs(kwk_properties: pd.Series) -> dict[str, Any]:
         kwk_properties["Capaciteit (m3/s)"] = max(capacities.values())
     kwargs = kwk_properties.rename(FLOW_KWARGS).to_dict()
     if "flow_rate" in kwargs:
-        kwargs["max_flow_rate"] = kwargs["flow_rate"]
+        kwargs["max_flow_rate"] = float(kwargs.get("max_flow_rate", kwargs["flow_rate"]))
+        assert kwargs["flow_rate"] <= kwargs["max_flow_rate"], f"Flow rate above the maximum: {kwargs}"
     return {str(k): [v] for k, v in kwargs.items() if k in FLOW_KWARGS.values()}
 
 

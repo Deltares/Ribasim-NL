@@ -298,8 +298,7 @@ assert set(VERDEELSLEUTEL_KWK_FROM_SHEET) <= set(all_kwk_df.loc[~all_kwk_df.in_m
 all_kwk_df = all_kwk_df[all_kwk_df.in_model | all_kwk_df.code.isin(VERDEELSLEUTEL_KWK_FROM_SHEET)]
 assert set(PARALLEL_KWK) <= set(all_kwk_df.code), "Expected the structures next to another one in kunstwerken.xlsx"
 assert set(CONTROL_NODE_IDS) <= set(all_kwk_df.code), "Expected the structures with a control node ID"
-# the structures that listen to a section of the Amsterdam-Rijnkanaal, which is split below
-after_split = []
+kwks = []
 for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
     # get sheet-names
     file_name = kwk_dir / f"{gebied}.xlsx"
@@ -308,7 +307,6 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
     workbook.close()
 
     for kwk in kwks_df.itertuples():
-        print(f"updating {kwk.naam}")
         # check if naam column exists as sheet in xlsx and read sheet
         if kwk.naam not in sheet_names:
             raise ValueError(f"{kwk.naam} not a sheet in {file_name}")
@@ -326,10 +324,16 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
         assert has_demand_table == has_flow_demand(kwk_properties), (
             f"FlowDemand table and property of {kwk.naam} differ"
         )
-        if listens_to_missing_node(kwk_properties):
-            after_split.append((str(gebied), kwk, kwk_df))
-        else:
-            update_kwk(str(gebied), kwk, kwk_df)
+        kwks.append((str(gebied), kwk, kwk_df))
+
+# The structures that listen to a section of the Amsterdam-Rijnkanaal, which is split below, are added after the split,
+# and so are the structures next to them, which link to the same section, see `PARALLEL_KWK`
+listening_codes = {kwk.code for _, kwk, kwk_df in kwks if listens_to_missing_node(read_kwk_properties(kwk_df))}
+after_split_codes = listening_codes | {code for code, i in PARALLEL_KWK.items() if i.main in listening_codes}
+for gebied, kwk, kwk_df in kwks:
+    if kwk.code not in after_split_codes:
+        print(f"updating {kwk.naam}")
+        update_kwk(gebied, kwk, kwk_df)
 
 # %% Split the Amsterdam-Rijnkanaal north of the Lek in three, see https://github.com/Deltares/Ribasim-NL/issues/916
 # It runs about 59 km from the Prinses Irenesluis to ManningResistance 4695 at the Noordzeekanaal. It is split after
@@ -363,7 +367,7 @@ model.manning_resistance.static.df.loc[model.manning_resistance.static.df.node_i
 )
 
 # %% The structures that listen to a section of the Amsterdam-Rijnkanaal, such as the Prinses Irenesluis, see #973
-for gebied, kwk, kwk_df in after_split:
+for gebied, kwk, kwk_df in (i for i in kwks if i[1].code in after_split_codes):
     print(f"updating {kwk.naam}")
     assert not listens_to_missing_node(read_kwk_properties(kwk_df)), f"{kwk.naam} listens to a node not in the model"
     update_kwk(gebied, kwk, kwk_df)
