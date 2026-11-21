@@ -26,6 +26,9 @@ model_edits_gpkg = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
 # %% read model and hydroobject
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
+lk = model.link_id
 network_validator = NetworkValidator(model)
 
 hydroobject_gdf = gpd.read_file(hydamo_gpkg, layer="hydroobject", fid_as_index=True)
@@ -49,12 +52,26 @@ outlet_data = outlet.Static(flow_rate=[5.0])
 # %% https://github.com/Deltares/Ribasim-NL/issues/152#issuecomment-2427492528
 
 # Herstellen verbinding Schelde-Rijnverbinding met KDU02582
-model.remove_node(2288, remove_links=True)
-model.redirect_link(link_id=2450, to_node_id=955)
+model.remove_node(n("up:KDU02582"), remove_links=True)
+# the link from this LevelBoundary ends at a node that is not in the model
+(dangling_link_id,) = model.link.df.index[model.link.df.from_node_id == n("bnd:17")]
+model.redirect_link(link_id=dangling_link_id, to_node_id=n("KDU02582"))
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/152#issue-2535747701
 # Omkeren links
-link_ids = [2470, 2468, 2469, 2465, 748, 2476, 2489, 697, 2500, 2487, 2440]
+link_ids = [
+    lk("KST01068", "bnd:28"),
+    lk("KST01119", "bnd:28"),
+    lk("KDU10783", "bnd:28"),
+    lk("KDU30624", "bnd:27"),
+    lk("KDU14603", "up:KDU14602"),
+    lk("KDU14589", "bnd:30"),
+    lk("KSL00215", "bnd:40"),
+    lk("KDU30828", "up:GEM_KGM00209"),
+    lk("KDU28116", "bnd:49"),
+    lk("KDU01724", "bnd:39"),
+    lk("KST02654", "bnd:8"),
+]
 
 for link_id in link_ids:
     model.reverse_link(link_id=link_id)
@@ -62,22 +79,34 @@ for link_id in link_ids:
 # %% https://github.com/Deltares/Ribasim-NL/issues/152#issuecomment-2428677846
 # Toevoegen Donge
 basin_node = model.basin.add(
-    Node(geometry=drop_z(cast(LineString, hydroobject_gdf.at[13091, "geometry"]).boundary.geoms[0])), tables=basin_data
+    Node(
+        geometry=drop_z(cast(LineString, hydroobject_gdf.at[13091, "geometry"]).boundary.geoms[0]),
+        meta_key="up:uitlaat-donge",
+    ),
+    tables=basin_data,
 )
 outlet_node = model.outlet.add(
-    Node(geometry=drop_z(cast(LineString, hydroobject_gdf.at[13136, "geometry"]).boundary.geoms[0])),
+    Node(
+        geometry=drop_z(cast(LineString, hydroobject_gdf.at[13136, "geometry"]).boundary.geoms[0]),
+        meta_key="uitlaat-donge",
+    ),
     tables=[outlet_data],
 )
-model.redirect_link(link_id=2477, from_node_id=basin_node.node_id, to_node_id=973)
+model.redirect_link(link_id=lk("KGM00043", "bnd:31"), from_node_id=basin_node.node_id, to_node_id=n("KGM00043"))
 model.link.add(basin_node, outlet_node)
-model.link.add(outlet_node, model.level_boundary[31])
+model.link.add(outlet_node, model.level_boundary[n("bnd:31")])
 
 outlet_node = model.outlet.add(
-    Node(geometry=drop_z(cast(LineString, hydroobject_gdf.at[13088, "geometry"]).boundary.geoms[0])),
+    Node(
+        geometry=drop_z(cast(LineString, hydroobject_gdf.at[13088, "geometry"]).boundary.geoms[0]),
+        meta_key="inlaat-donge",
+    ),
     tables=[outlet_data],
 )
-model.redirect_link(link_id=2497, to_node_id=outlet_node.node_id)
-model.redirect_link(link_id=2498, from_node_id=outlet_node.node_id, to_node_id=basin_node.node_id)
+model.redirect_link(link_id=lk("bnd:47", "KGM00043"), to_node_id=outlet_node.node_id)
+model.redirect_link(
+    link_id=lk("bnd:47", "GEM_KGM00069"), from_node_id=outlet_node.node_id, to_node_id=basin_node.node_id
+)
 
 # EINDE ISSUES
 # %%
@@ -99,7 +128,12 @@ model.apply_edits(model_edits_gpkg, gpd.list_layers(model_edits_gpkg).name)
 # %%
 # Toeveoegen Inlaten vanuit Volkerak door omkeren links:
 # Omkeren links
-link_ids = [2451, 2137, 2484, 2229]
+link_ids = [
+    lk("ow:OVK12037", "bnd:18"),
+    lk("up:KDU32642", "ow:OVK12037"),
+    lk("ow:OVK12030", "bnd:36"),
+    lk("up:ow:OVK12030", "ow:OVK12030"),
+]
 for link_id in link_ids:
     model.reverse_link(link_id=link_id)
 
@@ -117,61 +151,61 @@ for row in network_validator.link_incorrect_type_connectivity(
 # %%
 # fixes model
 # merge basins
-model.merge_basins(node_id=2101, to_node_id=2058, are_connected=True)
-model.merge_basins(node_id=1885, to_node_id=2114, are_connected=True)
-model.merge_basins(node_id=2239, to_node_id=1617, are_connected=True)
-model.merge_basins(node_id=1850, to_node_id=2022, are_connected=True)
-model.merge_basins(node_id=2271, to_node_id=1766, are_connected=True)
-model.merge_basins(node_id=2048, to_node_id=1412, are_connected=True)
-model.merge_basins(node_id=2300, to_node_id=2198, are_connected=True)
-model.merge_basins(node_id=2001, to_node_id=2273, are_connected=True)
-model.merge_basins(node_id=1441, to_node_id=1799, are_connected=True)
-model.merge_basins(node_id=2282, to_node_id=2120, are_connected=True)
-model.merge_basins(node_id=2120, to_node_id=1928, are_connected=True)
-model.merge_basins(node_id=1928, to_node_id=1581, are_connected=True)
-model.merge_basins(node_id=1946, to_node_id=1581, are_connected=True)
-model.merge_basins(node_id=2218, to_node_id=2311, are_connected=True)
-model.merge_basins(node_id=2022, to_node_id=2311, are_connected=True)
-model.merge_basins(node_id=1452, to_node_id=2114, are_connected=True)
-model.merge_basins(node_id=2306, to_node_id=2281, are_connected=True)
-model.merge_basins(node_id=2281, to_node_id=2176, are_connected=True)
-model.merge_basins(node_id=2143, to_node_id=1617, are_connected=True)
-model.merge_basins(node_id=2286, to_node_id=2295, are_connected=True)
-model.merge_basins(node_id=2294, to_node_id=2275, are_connected=True)
-model.merge_basins(node_id=1475, to_node_id=1689, are_connected=True)
-model.merge_basins(node_id=1574, to_node_id=2276, are_connected=True)
-model.merge_basins(node_id=2276, to_node_id=1854, are_connected=True)
-model.merge_basins(node_id=1854, to_node_id=2293, are_connected=True)
-model.merge_basins(node_id=2293, to_node_id=1858, are_connected=True)
-model.merge_basins(node_id=1939, to_node_id=1445, are_connected=True)
-model.merge_basins(node_id=1403, to_node_id=1611, are_connected=True)
-model.merge_basins(node_id=1957, to_node_id=1856, are_connected=True)
-model.merge_basins(node_id=1856, to_node_id=2289, are_connected=True)
-model.merge_basins(node_id=1573, to_node_id=1720, are_connected=True)
-model.merge_basins(node_id=1412, to_node_id=1563, are_connected=True)
-model.merge_basins(node_id=1858, to_node_id=1689, are_connected=True)
-model.merge_basins(node_id=1563, to_node_id=2280, are_connected=True)
-model.merge_basins(node_id=2280, to_node_id=1802, are_connected=True)
-model.merge_basins(node_id=1740, to_node_id=2047, are_connected=True)
-model.merge_basins(node_id=2253, to_node_id=2114, are_connected=True)
-model.merge_basins(node_id=1708, to_node_id=2129, are_connected=True)
-model.merge_basins(node_id=1878, to_node_id=2214, are_connected=True)
-model.merge_basins(node_id=2250, to_node_id=1428, are_connected=True)
-model.merge_basins(node_id=1812, to_node_id=1870, are_connected=True)
-model.merge_basins(node_id=1622, to_node_id=1780, are_connected=True)
-model.merge_basins(node_id=1780, to_node_id=1694, are_connected=True)
-model.merge_basins(node_id=1616, to_node_id=1909, are_connected=True)
-model.merge_basins(node_id=2302, to_node_id=1808, are_connected=True)
-model.merge_basins(node_id=1568, to_node_id=1909, are_connected=True)
-model.merge_basins(node_id=1611, to_node_id=1543, are_connected=True)
-model.merge_basins(node_id=1543, to_node_id=2289, are_connected=True)
-model.merge_basins(node_id=2208, to_node_id=2242, are_connected=True)
-model.merge_basins(node_id=2028, to_node_id=2242, are_connected=True)
-model.merge_basins(node_id=2201, to_node_id=1820, are_connected=True)
-model.merge_basins(node_id=2002, to_node_id=2215, are_connected=True)
-model.merge_basins(node_id=2215, to_node_id=2248, are_connected=True)
-model.merge_basins(node_id=2247, to_node_id=1998, are_connected=True)
-model.remove_node(998, remove_links=True)
+model.merge_basins(node_id=n("up:ow:OVK03889"), to_node_id=n("up:ow:OVK03891-1"), are_connected=True)
+model.merge_basins(node_id=n("up:OVK01904"), to_node_id=n("up:KST00209"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK03174-0"), to_node_id=n("up:KST02037"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK11365"), to_node_id=n("up:OVK11367-0"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK00551"), to_node_id=n("up:KST00955"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK02133-1"), to_node_id=n("up:ow:OVK02843"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK05065"), to_node_id=n("up:KDU05199"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK11364"), to_node_id=n("up:KST02884"), are_connected=True)
+model.merge_basins(node_id=n("up:KDU00321"), to_node_id=n("up:GEM_KGM00431"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK11370"), to_node_id=n("up:ow:OVK11374"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK11374"), to_node_id=n("up:ow:OVK11373-0"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK11373-0"), to_node_id=n("up:ow:OVK11373-1"), are_connected=True)
+model.merge_basins(node_id=n("up:KST02907"), to_node_id=n("up:ow:OVK11373-1"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK11371"), to_node_id=n("up:ow:OVK11363-1"), are_connected=True)
+model.merge_basins(node_id=n("up:OVK11367-0"), to_node_id=n("up:ow:OVK11363-1"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK01991"), to_node_id=n("up:KST00209"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK04071"), to_node_id=n("up:OVK04510"), are_connected=True)
+model.merge_basins(node_id=n("up:OVK04510"), to_node_id=n("up:KST00115"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK03167"), to_node_id=n("up:KST02037"), are_connected=True)
+model.merge_basins(node_id=n("up:KDU03599"), to_node_id=n("up:KDU20154"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK05066"), to_node_id=n("up:ow:OVK05068"), are_connected=True)
+model.merge_basins(node_id=n("up:KDU15142"), to_node_id=n("up:ow:OVK02908"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK02919"), to_node_id=n("up:ow:OVK02914"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK02914"), to_node_id=n("up:ow:OVK02911"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK02911"), to_node_id=n("up:ow:OVK02906"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK02906"), to_node_id=n("up:ow:OVK02936"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK03640"), to_node_id=n("up:OVK20632"), are_connected=True)
+model.merge_basins(node_id=n("up:KDU19785"), to_node_id=n("up:ow:OVK12030"), are_connected=True)
+model.merge_basins(node_id=n("up:KDU44734"), to_node_id=n("up:ow:OVK12128"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK12128"), to_node_id=n("up:OVK06052"), are_connected=True)
+model.merge_basins(node_id=n("up:KST01776"), to_node_id=n("up:KDU04391"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK02843"), to_node_id=n("up:OVK02836"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK02936"), to_node_id=n("up:ow:OVK02908"), are_connected=True)
+model.merge_basins(node_id=n("up:OVK02836"), to_node_id=n("up:OVK02837"), are_connected=True)
+model.merge_basins(node_id=n("up:OVK02837"), to_node_id=n("up:KST00207"), are_connected=True)
+model.merge_basins(node_id=n("up:KST01493"), to_node_id=n("up:ow:OVK03186"), are_connected=True)
+model.merge_basins(node_id=n("up:KDU24269"), to_node_id=n("up:KST00209"), are_connected=True)
+model.merge_basins(node_id=n("up:GEM_KGM00053"), to_node_id=n("up:KST00792"), are_connected=True)
+model.merge_basins(node_id=n("up:KGM00052"), to_node_id=n("up:KST00406"), are_connected=True)
+model.merge_basins(node_id=n("up:KST02131"), to_node_id=n("up:KDU08584"), are_connected=True)
+model.merge_basins(node_id=n("up:KGM00421"), to_node_id=n("up:KDU02968"), are_connected=True)
+model.merge_basins(node_id=n("up:KDU14607"), to_node_id=n("up:KST02296"), are_connected=True)
+model.merge_basins(node_id=n("up:KST02296"), to_node_id=n("up:KDU03212"), are_connected=True)
+model.merge_basins(node_id=n("up:KDU10669"), to_node_id=n("up:KDU60018"), are_connected=True)
+model.merge_basins(node_id=n("up:KDU06233"), to_node_id=n("up:KDU03371"), are_connected=True)
+model.merge_basins(node_id=n("up:KDU32642"), to_node_id=n("up:KDU60018"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK12030"), to_node_id=n("up:OVK12124"), are_connected=True)
+model.merge_basins(node_id=n("up:OVK12124"), to_node_id=n("up:OVK06052"), are_connected=True)
+model.merge_basins(node_id=n("up:ow:OVK06051"), to_node_id=n("up:KDU19778"), are_connected=True)
+model.merge_basins(node_id=n("up:KDU03370"), to_node_id=n("up:KDU19778"), are_connected=True)
+model.merge_basins(node_id=n("up:OVK04869___17"), to_node_id=n("up:KDU04571"), are_connected=True)
+model.merge_basins(node_id=n("up:KDU16939"), to_node_id=n("up:KDU16940"), are_connected=True)
+model.merge_basins(node_id=n("up:KDU16940"), to_node_id=n("up:ow:OVK10756-2"), are_connected=True)
+model.merge_basins(node_id=n("up:KDU22219"), to_node_id=n("up:OVK08441-0___1"), are_connected=True)
+model.remove_node(n("OVK01598___1"), remove_links=True)
 # %% Reset static tables
 
 # Reset static tables

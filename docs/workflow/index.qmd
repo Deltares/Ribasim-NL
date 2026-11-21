@@ -82,13 +82,13 @@ Everything is under `data`, with a folder per authority, named as in `ribasim_nl
 
 ## Node IDs {#sec-node-ids}
 
-Scripts and edit files refer to nodes by their ID, in the model of the authority.
-Merging keeps these unique by prefixing them with the `waterbeheercode` of the authority, see `ribasim_nl.aquo`:
+Merging keeps the node IDs of the models of the authorities unique by prefixing them with the `waterbeheercode` of the authority, see `ribasim_nl.aquo`:
 
 $$\text{node ID in the coupled model} = \text{waterbeheercode} \times 100\,000 + \text{node ID in the regional model}$$
 
 So 203892 is node 3892 of Wetterskip Fryslân, with code 2, and 8009406 is node 9406 of Rijkswaterstaat, with code 80.
 The model viewer shows the same IDs.
+Scripts and edit files do not refer to nodes by their ID, but by their [key](../dev/node-keys.qmd), which follows from the source data.
 Fix a problem in the stages of the authority where possible, rather than in the coupling, so that the regional model and the nationwide model stay alike.
 
 The IDs must stay the same on every run, or all these references break, see [Reproducing models](../dev/reproducing-models.qmd).

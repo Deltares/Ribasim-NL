@@ -12,6 +12,7 @@ from ribasim_nl.control import (
     print_node_list_diff,
 )
 from ribasim_nl.junctions import junctionify
+from ribasim_nl.keys import KEY_COLUMN
 from ribasim_nl.run_model import write_steady_state_scenarios
 
 from ribasim_nl import CloudStorage, Model
@@ -24,9 +25,6 @@ AUTHORITY: str = "Vechtstromen"
 SHORT_NAME: str = "vechtstromen"
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
-
-# Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
-EXCLUDE_NODES = {38, 40, 996}
 
 
 # %%
@@ -140,14 +138,18 @@ def duplicate_level_boundary_for_link(model: Model, source_node_id: int, link_id
     if not isinstance(source_name, str):
         source_name = ""
     new_name = f"{source_name} extra boundary".strip()
+    # the copy gets the key of its source with a number, see `ribasim_nl.keys`
     boundary_node = model.level_boundary.add(
-        Node(geometry=source_node.geometry, name=new_name),
+        Node(
+            geometry=source_node.geometry, name=new_name, meta_key=f"{model.node.df.at[source_node_id, KEY_COLUMN]}@2"
+        ),
         tables=[level_boundary.Static(level=[0.0])],
     )
 
     new_node_id = boundary_node.node_id
 
-    node_columns = [column for column in model.node.df.columns if column not in {"node_type", "name", "geometry"}]
+    not_copied = {"node_type", "name", "geometry", KEY_COLUMN}
+    node_columns = [column for column in model.node.df.columns if column not in not_copied]
     model.node.df.loc[new_node_id, node_columns] = model.node.df.loc[source_node_id, node_columns]
 
     assert model.level_boundary.static.df is not None
@@ -178,20 +180,37 @@ lhm_gemaal_gdb = cloud.joinpath(AUTHORITY, "verwerkt", "1_ontvangen_data", "LHM2
 # Read data
 
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
+lk = model.link_id
+
+# Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
+EXCLUDE_NODES = {n("SL00004"), n("SL00001"), n("DK21403")}
+
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
 # Splits de bestaande boundary bij node 15 zodat link 2822 een eigen boundary node krijgt.
-duplicate_level_boundary_for_link(model=model, source_node_id=15, link_id=2822)
+duplicate_level_boundary_for_link(model=model, source_node_id=n("bnd:15"), link_id=lk("bnd:15", "SL00010"))
 
-reverse_existing_links(model, [2682, 2823, 2822, 1337, 27, 1891])
+reverse_existing_links(
+    model,
+    [
+        lk("GM00232", "bnd:15"),
+        lk("up:DK25518", "GM00232"),
+        lk("bnd:15@2", "SL00010"),
+        lk("SL00010", "up:DK25518"),
+        lk("up:ST03541", "DK01810"),
+        lk("DK01810", "up:DK04366"),
+    ],
+)
 # De Haandrik: ManningResistance 49 voert meestal af van Basin 2222 naar Basin 1700, zie #846
-reverse_existing_links(model, [66, 1372])
+reverse_existing_links(model, [lk("SL00002", "up:ow:WL02747-4"), lk("up:DK22015", "SL00002")])
 
 # Gemaal Orveltersluis was opggedeeld
-model.remove_node(node_id=665, remove_links=True)
-model.remove_node(node_id=969, remove_links=True)
+model.remove_node(node_id=n("GM00231"), remove_links=True)
+model.remove_node(node_id=n("DK22326"), remove_links=True)
 
-model.redirect_link(link_id=53, to_node_id=1878)
+model.redirect_link(link_id=lk("GM00135", "up:DK20656"), to_node_id=n("up:DK20656"))
 
 
 # %%
@@ -203,185 +222,185 @@ model.redirect_link(link_id=53, to_node_id=1878)
 # Uit waterakkoord
 
 outlet_max_flow_rate_by_node_id = {
-    553: 1.75,  # punt 902 - Vroomshoop
-    2337: 0.63,  # punt 56 - Banisschuiven
-    193: 0.8,  # punt 62 - Geerdijk (Hammerflier)
-    989: 1.5,  # punt 68 - Radewijkerbeek
-    260: 0.35,  # punt 87 - Twickelervaart Delden
-    498: 0.5,  # punt 106 - Twickelervaart
-    640: 0.1,  # punt 52 - Bolscherbeek
-    2344: 0.28,  # punt 60 - Vriezenveense Veenkanaal
-    1026: 0.16,  # punt 64 - Brucht
-    1016: 0.18,  # punt 65 - Zilverveen
-    695: 0.03,  # punt 66 - Emtenbroek
-    1011: 0.02,  # punt 67 - Eggenweg/Hoogeweg
-    986: 1.0,  # punt 77 - De Stouwe
-    997: 0.3,  # punt 90 - Boerendijk of Lijntje (Dooze)
-    1027: 0.06,  # punt 109 - Roskam
-    1009: 0.06,  # punt 911 - Steenmaat
-    1010: 0.02,  # punt 912 - Koenderink
-    44: 8,  # Sluis Aadorp
-    326: 6.21,  # aflaat punt 1 - Usselerstroom
-    386: 0.81,  # aflaat punt 2 - Schoolbeek
-    493: 4.76,  # aflaat punt 7 - Nieuwe Oelerbeek
-    256: 12.87,  # aflaat punt 9/15 - Hagmolenbeek / Oude Hagmolenbeek
-    458: 0.22,  # aflaat punt 10 - waterleiding vd Exterkottenlanden
-    183: 2.54,  # aflaat punt 16 - Wienerveldsleiding
-    214: 0.06,  # aflaat punt 17 - Bentelerbeek
-    190: 48.0,  # aflaat punt 19/30 - Bolscherbeek / Overstort Bolksbeek
-    411: 2.61,  # aflaat punt 23 - Boven-Regge/Diepenh. Molenbeek
-    394: 8.98,  # aflaat punt 21 - Poelsbeek (doorlaat)
-    2334: 7.84,  # aflaat punt 31 - Grote Waterleiding (doorlaat)
+    n("ST00633"): 1.75,  # punt 902 - Vroomshoop
+    n("PT00526"): 0.63,  # punt 56 - Banisschuiven
+    n("ST01777"): 0.8,  # punt 62 - Geerdijk (Hammerflier)
+    n("DK22903"): 1.5,  # punt 68 - Radewijkerbeek
+    n("ST00591"): 0.35,  # punt 87 - Twickelervaart Delden
+    n("ST02055"): 0.5,  # punt 106 - Twickelervaart
+    n("GM00020"): 0.1,  # punt 52 - Bolscherbeek
+    n("loc:238366,496287"): 0.28,  # punt 60 - Vriezenveense Veenkanaal
+    n("DK23361"): 0.16,  # punt 64 - Brucht
+    n("DK23474"): 0.18,  # punt 65 - Zilverveen
+    n("DK22934"): 0.03,  # punt 66 - Emtenbroek
+    n("DK17947"): 0.02,  # punt 67 - Eggenweg/Hoogeweg
+    n("DK14459"): 1.0,  # punt 77 - De Stouwe
+    n("DK17872"): 0.3,  # punt 90 - Boerendijk of Lijntje (Dooze)
+    n("DK25085"): 0.06,  # punt 109 - Roskam
+    n("DK23050"): 0.06,  # punt 911 - Steenmaat
+    n("DK20932"): 0.02,  # punt 912 - Koenderink
+    n("SL00015"): 8,  # Sluis Aadorp
+    n("ST02574"): 6.21,  # aflaat punt 1 - Usselerstroom
+    n("ST00695"): 0.81,  # aflaat punt 2 - Schoolbeek
+    n("ST02015"): 4.76,  # aflaat punt 7 - Nieuwe Oelerbeek
+    n("ST00645"): 12.87,  # aflaat punt 9/15 - Hagmolenbeek / Oude Hagmolenbeek
+    n("ST01950"): 0.22,  # aflaat punt 10 - waterleiding vd Exterkottenlanden
+    n("ST02269"): 2.54,  # aflaat punt 16 - Wienerveldsleiding
+    n("ST00168"): 0.06,  # aflaat punt 17 - Bentelerbeek
+    n("ST00067"): 48.0,  # aflaat punt 19/30 - Bolscherbeek / Overstort Bolksbeek
+    n("ST00558"): 2.61,  # aflaat punt 23 - Boven-Regge/Diepenh. Molenbeek
+    n("ST04702"): 8.98,  # aflaat punt 21 - Poelsbeek (doorlaat)
+    n("ST03089"): 7.84,  # aflaat punt 31 - Grote Waterleiding (doorlaat)
 }
 outlet_max_flow_rate_parameterized_zero_by_node_id = {
-    1269: 100.0,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
-    2324: 100.0,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
+    n("ow:WL05791-16@1"): 100.0,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
+    n("loc:268243,491536"): 100.0,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
 }
 outlet_max_flow_rate_from_results = {
-    26: 2,  # naam onbekend
-    41: 2,  # SL00010
-    75: 2,  # Inlaat Kleine Rietplas
-    90: 11,  # Stuw Rompelman Linderbeek
-    128: 2,  # Inlaat Nijboer
-    207: 2,  # Inlaatschuif Witten Noord
-    211: 11,  # Overlaat Assenhoek
-    236: 2,  # Inlaatschuif Omvloed
-    237: 2,  # Drempel bypass Vispassage Melodiestraat
-    254: 5,  # Overlaat Groot Boerman
-    271: 6,  # Stuw RW 34
-    310: 11,  # Stuw Linderdijk
-    422: 2,  # Overlaat Esbeek-Vinkebeek
-    425: 2,  # Stuw Melodiestraat
-    435: 2,  # Stuw Zuivering Enschede West
-    450: 11,  # Stuw Het Bergje
-    472: 2,  # Overlaat Broeierdweg
-    476: 12,  # Stuw Pelmolen
-    478: 8,  # Stuw Dalerveense straat
-    500: 6,  # Stuw Galgaten
-    506: 2,  # Inlaatschuif Havenstraat
-    507: 30,  # Stuw Bremmer 1 bij Russendijk
-    519: 5,  # Overlaat Energiefabriek Hengelo
-    548: 3,  # Stuw Heemafstraat
-    676: 2,  # DK31294
-    686: 2,  # naam onbekend
-    700: 2,  # naam onbekend
-    707: 15,  # naam onbekend
-    717: 2,  # naam onbekend
-    718: 2,  # naam onbekend
-    721: 2,  # naam onbekend
-    722: 2,  # naam onbekend
-    724: 2,  # naam onbekend
-    731: 2,  # naam onbekend
-    739: 2,  # naam onbekend
-    740: 2,  # naam onbekend
-    745: 2,  # naam onbekend
-    746: 2,  # naam onbekend
-    747: 3,  # naam onbekend
-    754: 2,  # naam onbekend
-    758: 2,  # naam onbekend
-    759: 2,  # naam onbekend
-    763: 2,  # naam onbekend
-    768: 3,  # naam onbekend
-    770: 2,  # naam onbekend
-    774: 2,  # naam onbekend
-    775: 3,  # naam onbekend
-    779: 2,  # naam onbekend
-    782: 2,  # naam onbekend
-    788: 2,  # naam onbekend
-    798: 2,  # naam onbekend
-    800: 2,  # naam onbekend
-    803: 2,  # naam onbekend
-    806: 2,  # naam onbekend
-    808: 2,  # naam onbekend
-    810: 2,  # naam onbekend
-    811: 2,  # naam onbekend
-    814: 2,  # naam onbekend
-    815: 2,  # naam onbekend
-    819: 2,  # naam onbekend
-    824: 2,  # naam onbekend
-    825: 2,  # naam onbekend
-    826: 2,  # naam onbekend
-    827: 2,  # naam onbekend
-    832: 2,  # naam onbekend
-    843: 2,  # naam onbekend
-    848: 2,  # naam onbekend
-    851: 2,  # naam onbekend
-    861: 2,  # naam onbekend
-    865: 2,  # naam onbekend
-    874: 2,  # naam onbekend
-    878: 2,  # naam onbekend
-    882: 2,  # naam onbekend
-    894: 2,  # naam onbekend
-    895: 2,  # naam onbekend
-    900: 2,  # naam onbekend
-    905: 2,  # naam onbekend
-    910: 2,  # naam onbekend
-    912: 2,  # naam onbekend
-    917: 2,  # naam onbekend
-    919: 2,  # naam onbekend
-    922: 2,  # naam onbekend
-    924: 2,  # naam onbekend
-    935: 2,  # naam onbekend
-    936: 2,  # naam onbekend
-    937: 3,  # naam onbekend
-    938: 2,  # naam onbekend
-    941: 2,  # naam onbekend
-    953: 5,  # naam onbekend
-    963: 11,  # naam onbekend
-    965: 2,  # naam onbekend
-    974: 2,  # naam onbekend
-    987: 29,  # naam onbekend
-    992: 2,  # naam onbekend
-    1004: 2,  # naam onbekend
-    1008: 3,  # naam onbekend
-    1019: 2,  # naam onbekend
-    1020: 3,  # naam onbekend
-    1029: 5,  # naam onbekend
-    1034: 5,  # naam onbekend
-    1040: 3,  # DK21233
-    1053: 2,  # naam onbekend
-    1066: 6,  # naam onbekend
-    1082: 2,  # naam onbekend
-    1137: 27,  # naam onbekend
-    1140: 3,  # naam onbekend
-    1153: 5,  # naam onbekend
-    1156: 2,  # naam onbekend
-    1167: 2,  # naam onbekend
-    1168: 2,  # naam onbekend
-    1169: 2,  # naam onbekend
-    1177: 2,  # naam onbekend
-    1237: 2,  # naam onbekend
-    1238: 2,  # naam onbekend
-    1304: 2,  # naam onbekend
-    1329: 2,  # naam onbekend
-    1336: 2,  # naam onbekend
-    1337: 2,  # naam onbekend
-    1340: 3,  # naam onbekend
-    1353: 81,  # naam onbekend
-    1368: 2,  # naam onbekend
-    1369: 2,  # naam onbekend
-    2342: 3,  # Uitlaat Westerhaar
+    n("bnd:26"): 2,  # naam onbekend
+    n("SL00010"): 2,  # SL00010
+    n("ST04531"): 2,  # Inlaat Kleine Rietplas
+    n("ST01050"): 11,  # Stuw Rompelman Linderbeek
+    n("ST04518"): 2,  # Inlaat Nijboer
+    n("ST03490"): 2,  # Inlaatschuif Witten Noord
+    n("ST01448"): 11,  # Overlaat Assenhoek
+    n("ST00266"): 2,  # Inlaatschuif Omvloed
+    n("ST00332"): 2,  # Drempel bypass Vispassage Melodiestraat
+    n("ST02636"): 5,  # Overlaat Groot Boerman
+    n("ST03266"): 6,  # Stuw RW 34
+    n("ST03471"): 11,  # Stuw Linderdijk
+    n("ST02204"): 2,  # Overlaat Esbeek-Vinkebeek
+    n("ST01031"): 2,  # Stuw Melodiestraat
+    n("ST00167"): 2,  # Stuw Zuivering Enschede West
+    n("ST03222"): 11,  # Stuw Het Bergje
+    n("ST00579"): 2,  # Overlaat Broeierdweg
+    n("ST00106"): 12,  # Stuw Pelmolen
+    n("ST03459"): 8,  # Stuw Dalerveense straat
+    n("ST03458"): 6,  # Stuw Galgaten
+    n("ST04277"): 2,  # Inlaatschuif Havenstraat
+    n("ST02259"): 30,  # Stuw Bremmer 1 bij Russendijk
+    n("ST03983"): 5,  # Overlaat Energiefabriek Hengelo
+    n("ST02546"): 3,  # Stuw Heemafstraat
+    n("DK31294"): 2,  # DK31294
+    n("DK00646"): 2,  # naam onbekend
+    n("DK31245"): 2,  # naam onbekend
+    n("DK06419"): 15,  # naam onbekend
+    n("DK29364"): 2,  # naam onbekend
+    n("DK22337"): 2,  # naam onbekend
+    n("DK03955"): 2,  # naam onbekend
+    n("DK16430"): 2,  # naam onbekend
+    n("DK25521"): 2,  # naam onbekend
+    n("DK08342"): 2,  # naam onbekend
+    n("DK07569"): 2,  # naam onbekend
+    n("DK21919"): 2,  # naam onbekend
+    n("DK16490"): 2,  # naam onbekend
+    n("DK12866"): 2,  # naam onbekend
+    n("DK08116"): 3,  # naam onbekend
+    n("DK00667"): 2,  # naam onbekend
+    n("DK29246"): 2,  # naam onbekend
+    n("DK28807"): 2,  # naam onbekend
+    n("DK00370"): 2,  # naam onbekend
+    n("DK01810"): 3,  # naam onbekend
+    n("DK07807"): 2,  # naam onbekend
+    n("DK07969"): 2,  # naam onbekend
+    n("DK04478"): 3,  # naam onbekend
+    n("DK01985"): 2,  # naam onbekend
+    n("DK07894"): 2,  # naam onbekend
+    n("DK05763"): 2,  # naam onbekend
+    n("DK10665"): 2,  # naam onbekend
+    n("SY00175"): 2,  # naam onbekend
+    n("DK29761"): 2,  # naam onbekend
+    n("DK23608"): 2,  # naam onbekend
+    n("DK13718"): 2,  # naam onbekend
+    n("DK06546"): 2,  # naam onbekend
+    n("DK06882"): 2,  # naam onbekend
+    n("DK13721"): 2,  # naam onbekend
+    n("DK05584"): 2,  # naam onbekend
+    n("DK09749"): 2,  # naam onbekend
+    n("DK11840"): 2,  # naam onbekend
+    n("DK12885"): 2,  # naam onbekend
+    n("DK10564"): 2,  # naam onbekend
+    n("DK03448"): 2,  # naam onbekend
+    n("DK08881"): 2,  # naam onbekend
+    n("DK20566"): 2,  # naam onbekend
+    n("DK03987"): 2,  # naam onbekend
+    n("DK21938"): 2,  # naam onbekend
+    n("DK11298"): 2,  # naam onbekend
+    n("DK11424"): 2,  # naam onbekend
+    n("DK10000"): 2,  # naam onbekend
+    n("DK31895"): 2,  # naam onbekend
+    n("DK24281"): 2,  # naam onbekend
+    n("DK01495"): 2,  # naam onbekend
+    n("DK13662"): 2,  # naam onbekend
+    n("DK01290"): 2,  # naam onbekend
+    n("DK12545"): 2,  # naam onbekend
+    n("DK06526"): 2,  # naam onbekend
+    n("DK01305"): 2,  # naam onbekend
+    n("DK08441"): 2,  # naam onbekend
+    n("DK13021"): 2,  # naam onbekend
+    n("DK07090"): 2,  # naam onbekend
+    n("DK11781"): 2,  # naam onbekend
+    n("DK26292"): 2,  # naam onbekend
+    n("DK06236"): 2,  # naam onbekend
+    n("DK28416"): 3,  # naam onbekend
+    n("DK04268"): 2,  # naam onbekend
+    n("DK29245"): 2,  # naam onbekend
+    n("SY00177"): 5,  # naam onbekend
+    n("DK07883"): 11,  # naam onbekend
+    n("DK14235"): 2,  # naam onbekend
+    n("DK07712"): 2,  # naam onbekend
+    n("DK01629"): 29,  # naam onbekend
+    n("DK06557"): 2,  # naam onbekend
+    n("DK30499"): 2,  # naam onbekend
+    n("DK25702"): 3,  # naam onbekend
+    n("DK04356"): 2,  # naam onbekend
+    n("DK14315"): 3,  # naam onbekend
+    n("DK19079"): 5,  # naam onbekend
+    n("DK22716"): 5,  # naam onbekend
+    n("DK21233"): 3,  # DK21233
+    n("DK25153"): 2,  # naam onbekend
+    n("DK17873"): 6,  # naam onbekend
+    n("DK18155"): 2,  # naam onbekend
+    n("ow:WL01959-32"): 27,  # naam onbekend
+    n("ow:WL01052-8"): 3,  # naam onbekend
+    n("ow:WL00859-0"): 5,  # naam onbekend
+    n("ow:WL05820-5"): 2,  # naam onbekend
+    n("ow:WL01863-9"): 2,  # naam onbekend
+    n("ow:WL01803-3"): 2,  # naam onbekend
+    n("ow:WL01758-3"): 2,  # naam onbekend
+    n("ow:WL00840-0"): 2,  # naam onbekend
+    n("ow:WL00609-4-0-0"): 2,  # naam onbekend
+    n("ow:WL00607-1-0-0"): 2,  # naam onbekend
+    n("ow:WL06694-3"): 2,  # naam onbekend
+    n("WL02311"): 2,  # naam onbekend
+    n("WL05569___3"): 2,  # naam onbekend
+    n("WL02126-1___4"): 2,  # naam onbekend
+    n("ow:WL01052-0"): 3,  # naam onbekend
+    n("WL02926-0___1"): 81,  # naam onbekend
+    n("WL00510-1___16"): 2,  # naam onbekend
+    n("WL00510-1___6"): 2,  # naam onbekend
+    n("loc:238834,496508"): 3,  # Uitlaat Westerhaar
 }
 outlet_max_flow_rate_coupled_by_node_id = {
-    98: 6,  # Debietbegrenzer Duitslandweg; gekoppeld max=3.36, parameterized=0.91
-    211: 32,  # Overlaat Assenhoek; gekoppeld max=20.82, parameterized=3.27
-    279: 30,  # gekoppeld max=19.71, huidige max=0.00, link=4400599
-    323: 30,  # gekoppeld max=19.79, huidige max=4.05, link=4400650
-    310: 20,  # Stuw Linderdijk; gekoppeld max=12.70, parameterized=3.58
-    477: 12,  # gekoppeld max=7.28, huidige max=0.00, link=4400871
-    478: 11,  # Stuw Dalerveense straat; gekoppeld max=6.21, parameterized=2.01
-    500: 9,  # Stuw Galgaten; gekoppeld max=5.90, parameterized=1.51
-    554: 3,  # Inlaat Daarleschebeek; gekoppeld max=1.50, parameterized=0.40
-    734: 6,  # gekoppeld max=3.78, huidige max=0.00, link=4401061
-    839: 2,  # parameterized nul; gekoppeld max=0.15
-    963: 32,  # gekoppeld max=20.82, parameterized=0.06
-    992: 5,  # gekoppeld max=2.12, parameterized=0.35
-    1006: 12,  # gekoppeld max=7.11, huidige max=0.00, link=4400826
-    1018: 11,  # gekoppeld max=6.98, huidige max=0.00, link=4401176
-    1008: 147,  # gekoppeld max=97.96, parameterized=0.23
-    1080: 30,  # gekoppeld max=20.00, huidige max=0.00, link=8000941
-    1084: 3,  # gekoppeld max=1.81, parameterized=0.40
-    2318: 2,  # gekoppeld max=0.58, huidige max=0.00, link=8000976
+    n("ST03059"): 6,  # Debietbegrenzer Duitslandweg; gekoppeld max=3.36, parameterized=0.91
+    n("ST01448"): 32,  # Overlaat Assenhoek; gekoppeld max=20.82, parameterized=3.27
+    n("ST03138"): 30,  # gekoppeld max=19.71, huidige max=0.00, link=4400599
+    n("ST03627"): 30,  # gekoppeld max=19.79, huidige max=4.05, link=4400650
+    n("ST03471"): 20,  # Stuw Linderdijk; gekoppeld max=12.70, parameterized=3.58
+    n("ST04446"): 12,  # gekoppeld max=7.28, huidige max=0.00, link=4400871
+    n("ST03459"): 11,  # Stuw Dalerveense straat; gekoppeld max=6.21, parameterized=2.01
+    n("ST03458"): 9,  # Stuw Galgaten; gekoppeld max=5.90, parameterized=1.51
+    n("ST00245"): 3,  # Inlaat Daarleschebeek; gekoppeld max=1.50, parameterized=0.40
+    n("DK20616"): 6,  # gekoppeld max=3.78, huidige max=0.00, link=4401061
+    n("DK20558"): 2,  # parameterized nul; gekoppeld max=0.15
+    n("DK07883"): 32,  # gekoppeld max=20.82, parameterized=0.06
+    n("DK06557"): 5,  # gekoppeld max=2.12, parameterized=0.35
+    n("DK20441"): 12,  # gekoppeld max=7.11, huidige max=0.00, link=4400826
+    n("DK19591"): 11,  # gekoppeld max=6.98, huidige max=0.00, link=4401176
+    n("DK25702"): 147,  # gekoppeld max=97.96, parameterized=0.23
+    n("DK20196_BO"): 30,  # gekoppeld max=20.00, huidige max=0.00, link=8000941
+    n("DK20968"): 3,  # gekoppeld max=1.81, parameterized=0.40
+    n("loc:263698,528136"): 2,  # gekoppeld max=0.58, huidige max=0.00, link=8000976
 }
 outlet_max_flow_rate_afvoer_by_node_id = {}
 for max_flow_rates in (
@@ -402,24 +421,24 @@ outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.n
 outlet_max_flow_rate_aanvoer_by_node_id.update(outlet_max_flow_rate_by_node_id)
 
 pump_max_flow_rate_by_node_id = {
-    629: 0.42,  # punt 53 - Stokkumerflier
-    626: 1.2,  # punt 904 - Stieltjeskanaalsluis
-    560: 0.14,  # punt 54 - Herikerflier
-    625: 0.2,  # punt 74 - Junne (vecht)
-    615: 0.15,  # punt 104 - Oude Poelsebeek
-    596: 0.0,  # punt 107 - Hedeman
-    2341: 0.88,  # punt 905 - Westerhaar
-    701: 0.65,  # punt 103 - Oude Hagmolenbeek
-    587: 10.0,  # aflaat punt 13 - Banisgemaal
-    674: 0.33,  # aflaat punt 24 - Leidebeek
-    662: 0.92,  # aflaat punt 35 - Afwatering vd Bierkamp
-    642: 0.56,  # aflaat punt 22 - Stokkumerflier (doorlaat)
-    607: 5.8,  # Ericasluis
-    664: 1.2,  # Orveltersluis
-    606: 1.2,  # Oranjesluis
+    n("GM00021"): 0.42,  # punt 53 - Stokkumerflier
+    n("GM00248"): 1.2,  # punt 904 - Stieltjeskanaalsluis
+    n("GM00181"): 0.14,  # punt 54 - Herikerflier
+    n("GM00146"): 0.2,  # punt 74 - Junne (vecht)
+    n("GM00195"): 0.15,  # punt 104 - Oude Poelsebeek
+    n("GM00207"): 0.0,  # punt 107 - Hedeman
+    n("aanvoergemaal-westerhaar"): 0.88,  # punt 905 - Westerhaar
+    n("DK29483"): 0.65,  # punt 103 - Oude Hagmolenbeek
+    n("GM00033"): 10.0,  # aflaat punt 13 - Banisgemaal
+    n("GM00048"): 0.33,  # aflaat punt 24 - Leidebeek
+    n("GM00119"): 0.92,  # aflaat punt 35 - Afwatering vd Bierkamp
+    n("GM00003"): 0.56,  # aflaat punt 22 - Stokkumerflier (doorlaat)
+    n("GM00244"): 5.8,  # Ericasluis
+    n("GM00232"): 1.2,  # Orveltersluis
+    n("GM00245"): 1.2,  # Oranjesluis
 }
 pump_max_flow_rate_from_results = {
-    564: 20,  # gekoppeld max=19.80, huidige max=0.00, link=4400277
+    n("GM00150"): 20,  # gekoppeld max=19.80, huidige max=0.00, link=4400277
 }
 max_flow_rate_aanvoer_by_node_id = {
     **outlet_max_flow_rate_aanvoer_by_node_id,
@@ -526,9 +545,9 @@ def get_lhm_gemaal_supply_nodes(
     return matched_node_ids
 
 
-model.update_node(node_id=1367, node_type="Outlet")
-model.update_node(node_id=1316, node_type="Outlet")
-model.update_node(node_id=1295, node_type="Outlet")
+model.update_node(node_id=n("WL03433-3___8"), node_type="Outlet")
+model.update_node(node_id=n("ow:WL03437-9"), node_type="Outlet")
+model.update_node(node_id=n("ow:WL04956-0"), node_type="Outlet")
 
 
 # %%
@@ -538,61 +557,61 @@ model.update_node(node_id=1295, node_type="Outlet")
 
 # fmt: off
 flow_control_nodes = node_list(
-    [42, 81, 89, 135, 156, 159, 198, 201, 231],
-    [260, 271, 282, 286, 312, 317, 331, 337, 349, 359, 361, 364],
-    [365, 373, 405, 428, 446, 464, 478, 500],
-    [509, 513, 518, 522, 539, 632, 635, 672, 672],
-    [700, 765, 840, 853, 908, 963, 971, 998],
-    [1004, 1041, 1074, 1083, 1088,1289,1290, 1314, 1316, 2334],
-    [180],  # Stuw De Haandrik in de Vecht is geen inlaat en moet ook kunnen afvoeren (#675)
+    [n("SL00003"), n("ST02886"), n("ST00572"), n("ST04716"), n("ST01667"), n("ST04024"), n("ST02235"), n("ST01833"), n("ST03419")],
+    [n("ST00591"), n("ST03266"), n("ST02355"), n("ST01745"), n("ST03588"), n("ST02972"), n("ST04267"), n("ST00218"), n("ST03261"), n("ST05005"), n("ST00220")],
+    [n("ST02134"), n("ST00018"), n("ST01584"), n("ST04715"), n("ST00848"), n("ST01733"), n("ST03459"), n("ST03458")],
+    [n("ST01855"), n("ST04025"), n("ST04517"), n("ST02860"), n("ST03269"), n("GM00154"), n("GM00258"), n("GM00192"), n("GM00192")],
+    [n("DK31245"), n("SY00185"), n("DK25574"), n("DK05185"), n("DK25487"), n("DK07883"), n("SY00239"), n("DK24977")],
+    [n("DK30499"), n("ow:WL07323"), n("DK18797"), n("GM00091"),n("ow:WL01909-9"),n("ow:WL02747-62"), n("ow:WL03325-2"), n("ow:WL03437-9"), n("ST03089")],
+    [n("ST04687")],  # Stuw De Haandrik in de Vecht is geen inlaat en moet ook kunnen afvoeren (#675)
 )
 
 supply_nodes = node_list(
-    [26, 44, 53, 75, 102, 155, 193, 199, 200, 221, 250],
-    [253, 297, 325, 362,363,389,399, 403, 447],
-    [459, 465, 467, 468, 469, 477, 481, 492, 498, 501],
-    [508, 547, 553, 554, 560, 564, 571, 580, 584, 589, 595, 596],
-    [606, 611, 615, 621, 623, 625, 626, 629, 640, 648],
-    [658, 664, 670, 676, 677, 680, 684, 690, 694, 695],
-    [701, 709, 709, 720, 726, 730, 734, 734, 736, 760],
-    [762, 846, 914, 961, 964, 973, 976, 978],
-    [979, 983, 985, 986, 988, 989, 990, 991, 993, 997],
-    [1000, 1001, 1003, 1006, 1007, 1009, 1010, 1011, 1012, 1013, 1013],
-    [1016, 1017, 1018, 1020, 1025, 1025, 1026, 1027, 1032, 1037],
-    [1057, 1065, 1069, 1080, 1087, 1301, 1307, 1329, 2318, 2337, 2339],
-    [2340, 2341, 2343, 2344, 2346],
+    [n("bnd:26"), n("SL00015"), n("DK30436_BO"), n("ST04531"), n("ST03657"), n("ST05103"), n("ST01777"), n("ST00287"), n("ST03127"), n("ST03390"), n("ST04266")],
+    [n("ST02973"), n("ST02237"), n("ST04106"), n("ST03440"),n("ST04268"),n("ST04832"),n("ST03026"), n("ST03447"), n("ST03620")],
+    [n("ST00610"), n("ST04516"), n("ST01942"), n("ST01549"), n("ST04265"), n("ST04446"), n("ST03211"), n("ST03544"), n("ST02055"), n("ST04838")],
+    [n("ST00512"), n("ST00750"), n("ST00633"), n("ST00245"), n("GM00181"), n("GM00150"), n("GM00224"), n("GM00141"), n("GM00112"), n("GM00090"), n("GM00106"), n("GM00207")],
+    [n("GM00245"), n("GM00178"), n("GM00195"), n("GM00101"), n("GM00137"), n("GM00146"), n("GM00248"), n("GM00021"), n("GM00020"), n("GM00110")],
+    [n("GM00142"), n("GM00232"), n("GM00105"), n("DK31294"), n("DK31940"), n("DK05134"), n("DK28476"), n("DK22336"), n("DK19778"), n("DK22934")],
+    [n("DK29483"), n("DK04254"), n("DK04254"), n("DK19428"), n("DK29373"), n("DK27337"), n("DK20616"), n("DK20616"), n("DK21040"), n("DK26410")],
+    [n("DK23182"), n("DK21454"), n("DK09836"), n("DK06237"), n("DK25430"), n("DK02627"), n("DK08466"), n("DK27007")],
+    [n("DK20584"), n("DK28737"), n("DK29136"), n("DK14459"), n("DK18391"), n("DK22903"), n("DK26377"), n("DK26997"), n("DK18813"), n("DK17872")],
+    [n("DK16741"), n("DK20655"), n("DK17212"), n("DK20441"), n("DK24243"), n("DK23050"), n("DK20932"), n("DK17947"), n("DK28591"), n("DK28749"), n("DK28749")],
+    [n("DK23474"), n("DK25568"), n("DK19591"), n("DK14315"), n("DK25620"), n("DK25620"), n("DK23361"), n("DK25085"), n("DK17636"), n("DK22967")],
+    [n("DK21982"), n("DK21875"), n("DK22251"), n("DK20196_BO"), n("GM0001"), n("ow:WL03296-2"), n("ow:WL03182-7"), n("WL02311"), n("loc:263698,528136"), n("PT00526")],
+    [n("loc:238984,496571"), n("aanvoergemaal-westerhaar"), n("loc:243225,495478"), n("loc:238366,496287"), n("loc:241322,486551")],
 )
 
 drain_nodes = node_list(
-    [36, 39, 40, 41, 43, 45, 46, 47, 52, 79],
-    [87, 88, 90, 91, 92, 94, 98, 99, 101, 104],
-    [106, 106, 112, 113, 118, 124, 134, 136, 142, 144],
-    [150, 154, 157, 160, 161, 162, 163, 169, 171, 174],
-    [181, 185, 191, 195, 203, 208, 209, 210, 211, 212],
-    [215, 222, 224, 225, 226, 228, 233, 240, 241],
-    [243, 247, 249, 257, 258, 266, 273, 276, 281, 283],
-    [284, 296, 302, 303, 303, 304, 306, 309, 333, 334],
-    [334, 339, 342, 348, 350, 353, 354, 370, 376, 379],
-    [384, 388, 398, 400, 401, 402, 408, 409, 412, 416],
-    [423, 424, 429, 432, 433, 440, 443, 444, 445, 449],
-    [450, 451, 452, 453, 455, 473, 475, 487, 490],
-    [491, 494, 504, 505, 510, 511, 512, 514, 517],
-    [519, 529, 530, 531, 533, 540, 548, 549, 550, 552],
-    [556, 557, 558, 559, 565, 568, 577, 578, 582, 583],
-    [586, 592, 593, 594, 597, 598, 600, 604, 605, 610],
-    [614, 617, 618, 620, 628, 637, 642, 643, 645, 649],
-    [650, 653, 661, 662, 666, 667, 674, 675, 686, 703],
-    [704, 707, 712, 713, 714, 715, 722, 723, 724, 729],
-    [733, 738, 740, 741, 743, 761, 763, 764, 768],
-    [772, 773, 776, 780, 781, 783, 790, 791, 792],
-    [792, 795, 798, 801, 805, 806, 807, 817, 820, 822],
-    [829, 831, 845, 845, 850, 852, 855, 856, 860],
-    [864, 869, 873, 876, 878, 880, 881, 882, 890, 891, 892],
-    [895, 906, 907, 909, 913, 919, 921, 928, 930, 932],
-    [933, 935, 947, 949, 950, 952, 957, 958, 960, 965, 966, 968],
-    [971, 975, 981, 1002, 1005, 1008, 1050, 1051, 1064, 1066, 1068,],
-    [1071, 1089, 1095, 1102, 1132,1245, 1269, 1295, 1316, 1353, 1367, 1367],
-    [2324, 2335, 2336, 2338, 2342, 2345, 2918],
+    [n("bnd:36"), n("SL00017"), n("SL00001"), n("SL00010"), n("SL00011"), n("SL00018"), n("SL00007"), n("SL00009"), n("SL00008"), n("ST03404")],
+    [n("ST02970"), n("ST01050"), n("ST03725"), n("ST03806"), n("ST04951"), n("ST03059"), n("ST03347"), n("ST03258"), n("ST03456")],
+    [n("ST03407"), n("ST03407"), n("ST01353"), n("ST03276"), n("ST03240"), n("ST00525"), n("ST04431"), n("ST02338"), n("ST03616"), n("ST03587")],
+    [n("ST00132"), n("ST02898"), n("ST01456"), n("ST01587"), n("ST03834"), n("ST02905"), n("ST02160"), n("ST03862"), n("ST01185"), n("ST03584")],
+    [n("ST04317"), n("ST03540"), n("ST01164"), n("ST03813"), n("ST03005"), n("ST03094"), n("ST03312"), n("ST03214"), n("ST01448"), n("ST00101")],
+    [n("ST03006"), n("ST02496"), n("ST04908"), n("ST04684"), n("ST01228"), n("ST03485"), n("ST00203"), n("ST01763"), n("ST02431")],
+    [n("ST03230"), n("ST00107"), n("ST03090"), n("ST00769"), n("ST00825"), n("ST00629"), n("ST03168"), n("ST01438"), n("ST01750"), n("ST02896")],
+    [n("ST02625"), n("ST02057"), n("ST03431"), n("ST03381"), n("ST03381"), n("ST01589"), n("ST02918"), n("ST01689"), n("ST00849"), n("ST03377")],
+    [n("ST03377"), n("ST00157"), n("ST02489"), n("ST04686"), n("ST03309"), n("ST03427"), n("ST04784"), n("ST03103"), n("ST00642"), n("ST02908")],
+    [n("ST01903"), n("ST01487"), n("ST03592"), n("ST02532"), n("ST03249"), n("ST03713"), n("ST00911"), n("ST03634"), n("ST03383"), n("ST03408")],
+    [n("ST00929"), n("ST01130"), n("ST03454"), n("ST03610"), n("ST01159"), n("ST04383"), n("ST00017"), n("ST01959"), n("ST04026"), n("ST00913")],
+    [n("ST03222"), n("ST01333"), n("ST02626"), n("ST01629"), n("ST01756"), n("ST04918"), n("ST02089"), n("ST03815")],
+    [n("ST02998"), n("ST00158"), n("ST00236"), n("ST03198"), n("ST00482"), n("ST02825"), n("ST03133"), n("ST03424")],
+    [n("ST03983"), n("ST00647"), n("ST00307"), n("ST03111"), n("ST03265"), n("ST03077"), n("ST02546"), n("ST01922"), n("ST00104"), n("ST00110")],
+    [n("ST00916"), n("ST01136"), n("ST00640"), n("GM00124"), n("GM00078"), n("GM00115"), n("GM00159"), n("GM00201"), n("GM00004"), n("GM00239")],
+    [n("GM00170"), n("GM00007"), n("GM00200"), n("GM00211"), n("GM00064"), n("GM00017"), n("GM00223"), n("GM00214"), n("GM00199"), n("GM00010")],
+    [n("GM00132"), n("GM00122"), n("GM00218"), n("GM00222"), n("GM00003"), n("GM00135"), n("GM00027"), n("GM00093")],
+    [n("GM00125"), n("GM00161"), n("GM00118"), n("GM00119"), n("GM00226"), n("GM00088"), n("GM00048"), n("DK07297"), n("DK00646"), n("DK31884")],
+    [n("DK22755"), n("DK06419"), n("DK22579"), n("DK23689"), n("DK31927"), n("DK31684"), n("DK16430"), n("DK23636"), n("DK25521"), n("DK07223")],
+    [n("DK30074"), n("DK10200"), n("DK21919"), n("DK07824"), n("DK22829"), n("DK31782"), n("DK00370"), n("DK17966"), n("DK01810")],
+    [n("DK22173"), n("DK07983"), n("DK05579"), n("DK11790"), n("DK02955"), n("DK27338"), n("DK24332"), n("DK29749"), n("SY00014")],
+    [n("SY00014"), n("DK29615"), n("DK10665"), n("DK25247"), n("SY00192"), n("DK23608"), n("DK19746"), n("DK00711"), n("DK20369")],
+    [n("DK26830"), n("DK11459"), n("DK31774"), n("DK31774"), n("DK17294"), n("DK13751"), n("DK04728"), n("DK22177"), n("DK13908")],
+    [n("DK05864"), n("DK00105"), n("DK25523"), n("DK18673"), n("DK31895"), n("DK30137"), n("DK25874"), n("DK24281"), n("DK03875"), n("DK16164"), n("DK17994")],
+    [n("DK13662"), n("DK04436"), n("DK05259"), n("DK19529"), n("DK25792"), n("DK13021"), n("DK13664"), n("DK13791"), n("DK23365")],
+    [n("DK26151"), n("DK26292"), n("DK19104"), n("DK04936"), n("DK16577"), n("DK16977"), n("DK29066"), n("DK14235"), n("DK00943"), n("DK25414")],
+    [n("SY00239"), n("DK30704"), n("DK09062"), n("DK17115"), n("DK31538"), n("DK25702"), n("DK29983"), n("DK17914"), n("DK03588"), n("DK17873"), n("DK22745"),],
+    [n("ST04473"), n("GM00109"), n("ST01870"), n("ST04691"), n("ow:WL00448-2"),n("ow:WL02036-3"), n("ow:WL05791-16@1"), n("ow:WL04956-0"), n("ow:WL03437-9"), n("WL02926-0___1"), n("WL03433-3___8"), n("WL03433-3___8")],
+    [n("loc:268243,491536"), n("ST03624"), n("ST00811"), n("loc:238834,496508"), n("loc:241738,513291")],
 )
 # fmt: on
 
@@ -629,29 +648,29 @@ print_node_list_diff("supply_nodes", manual_supply_nodes, supply_nodes)
 
 # fmt: off
 supply_area_ignore_links = {
-    "Boven Regge": [868, 1072, 1257, 1258, 1259, 1260, 2508, 2640],
+    "Boven Regge": [lk("ow:WL01803-3", "up:ow:WL01863-18"), lk("ow:WL01863-10", "up:ST04918"), lk("ow:WL01823-5", "up:ST03711"), lk("ow:WL01891-4@1", "up:ow:WL01891-4@2"), lk("ow:WL01698-3_2", "up:WL01698-3_4_inlaat"), lk("ow:WL01863-9", "up:WL01698-3_4_inlaat"), lk("up:ow:WL01863-18", "ow:WL01863-18")],
     "Regge": [
-        27, 91, 92, 93, 392, 403, 404, 405,
-        429, 472, 473, 474, 512, 612, 622, 623,
-        624, 800, 868, 1072, 1156, 1243, 1249, 1250,
-        1938, 2193, 2499, 2508, 2580, 2582, 2594, 2641,
+        lk("DK01810", "up:ST03541"), lk("DK04546", "up:ST02237"), lk("DK01390", "up:ST02237"), lk("DK13262", "up:ST02237"), lk("DK06236", "up:ST00803"), lk("DK11840", "up:ow:WL01181-5"), lk("ow:WL01181-0", "up:ow:WL01181-5"), lk("ow:WL01202-2", "up:ow:WL01181-5"),
+        lk("ow:WL01374-2", "up:ST00610"), lk("DK01495", "up:ST02860"), lk("ow:WL01917", "up:ow:WL01909-9"), lk("ow:WL02102-15", "up:WL02311"), lk("ow:WL07399", "up:GM00224"), lk("ow:WL02036-3", "up:GM00224"),
+        lk("ow:WL01959-14", "up:GM00224"), lk("ow:WL01993-1", "up:ow:WL01959-14"), lk("ow:WL01803-3", "up:ow:WL01863-18"), lk("ow:WL01863-10", "up:ST04918"), lk("WL07174-3___7", "up:ST00296"), lk("ow:WL01052-11", "up:ow:WL01181-5"), lk("ow:WL01052-8", "up:ow:WL01052-11"), lk("ow:WL02056-18", "up:ow:WL01959-75"),
+        lk("up:ST00106", "ow:WL01998-5"), lk("up:DK29791", "DK29791"), lk("up:WL02311", "WL02311"), lk("up:ow:WL01863-18", "ow:WL01863-18"), lk("up:ow:WL07399", "ow:WL07399"), lk("up:ow:WL01959-14", "ow:WL01959-14"), lk("up:WL01698-3_4_inlaat", "ow:WL01863-10"),
     ],
-    "Lateraalkanaal": [92, 269, 270, 403, 404, 405, 428, 436, 992, 1058, 1113, 1156, 1243, 1252, 1394, 1396, 2479],
+    "Lateraalkanaal": [lk("DK01390", "up:ST02237"), lk("ow:WL01256-3", "up:ST00848"), lk("ow:WL01265-14", "up:ST00848"), lk("DK11840", "up:ow:WL01181-5"), lk("ow:WL01181-0", "up:ow:WL01181-5"), lk("ow:WL01202-2", "up:ow:WL01181-5"), lk("DK28416", "up:ST00610"), lk("ow:WL01480-4", "up:ST01228"), lk("ow:WL01711-4", "up:DK11814"), lk("ow:WL05851-16", "up:DK01629"), lk("ow:WL01604-5", "up:DK06237"), lk("WL07174-3___7", "up:ST00296"), lk("ow:WL01052-11", "up:ow:WL01181-5"), lk("ow:WL01391-35", "up:ST01683"), lk("up:ST02237", "VW035_95"), lk("up:ST00610", "VW037_135"), lk("up:ow:WL01711-4", "ow:WL01711-4")],
     "Bolscherbeek": [],
-    "Vriezenveen": [436, 487, 489, 491, 492, 992, 1291, 1891, 2479],
-    "Dooze": [133, 918, 1236, 1783, 2411, 2629],
-    "Schipbeek": [541],
+    "Vriezenveen": [lk("ow:WL01480-4", "up:ST01228"), lk("DK00105", "up:ST00220"), lk("DK29066", "up:ST00220"), lk("ow:WL01711-4", "up:DK11814"), lk("up:DK04366", "DK01810"), lk("up:ow:WL01711-4", "ow:WL01711-4")],
+    "Dooze": [lk("WL05569___3", "up:ST03194"), lk("DK21305", "up:DK17873"), lk("ow:WL02973-11", "up:ST03541"), lk("up:ST02994", "WL05569___3"), lk("up:ow:WL03046-5", "ow:WL03046-5")],
+    "Schipbeek": [lk("ow:WL00847-2", "up:DK05134")],
     "Dinkel": [],
-    "Overijsselsch Kanaal noord": [133, 1172, 2671],
-    "Vecht": [17, 41, 42, 258, 1044, 1046, 1047],
-    "Coevorden-Zwinderen": [1136, 2109, 2234, 2398, 2425, 2436],
-    "Geesbrug": [2777],
-    "Braambergersloot": [71, 659, 2109, 2777],
-    "Nieuwe Drostendiep": [71, 255, 1183,1253, 1993, 2362, 2404, 2445, 2604, 2623,2777],
+    "Overijsselsch Kanaal noord": [lk("WL05569___3", "up:ST03194"), lk("bnd:6", "up:DK28701")],
+    "Vecht": [lk("ow:WL04956-0", "up:ow:WL02747-62"), lk("ow:WL04844", "up:SL00017"), lk("ow:WL02815", "up:SL00017"), lk("DK23689", "up:SL00018"), lk("DK25521", "up:SL00013"), lk("ow:WL02926-4", "up:SL00013"), lk("ow:WL02747-10", "up:SL00013")],
+    "Coevorden-Zwinderen": [lk("DK24281", "up:DK20616"), lk("up:DK21646", "ow:WL03182-7"), lk("up:DK25247", "DK25247"), lk("up:DK27007", "WL03433-3___8"), lk("up:DK22015", "WL02926-0___1")],
+    "Geesbrug": [lk("ow:WL03158-2", "up:DK20656")],
+    "Braambergersloot": [lk("WL03433-3___8", "up:DK21438"), lk("DK23608", "up:ST03222"), lk("up:DK21646", "ow:WL03182-7"), lk("ow:WL03158-2", "up:DK20656")],
+    "Nieuwe Drostendiep": [lk("WL03433-3___8", "up:DK21438"), lk("up:ST03198", "ow:WL03296-2"), lk("up:ST03459", "DK17636"),lk("ow:WL03676-1", "up:DK20656"), lk("DK17636", "up:DK17636"), lk("up:DK18155", "DK18155"), lk("up:DK20656", "ow:WL03161"), lk("ow:WL03158-2", "up:DK20656")],
     "Schoonebeek": [],
-    "Oranjekanaal": [598, 2414, 2604],
-    "Oosterwijk": [2633],
-    "Oosterhesselen": [1253, 2777],
+    "Oranjekanaal": [lk("DK25487", "up:ow:WL03457-8"), lk("up:SL00004", "ow:WL03440-3"), lk("up:DK20656", "ow:WL03161")],
+    "Oosterwijk": [lk("up:ST03211", "ow:WL03775-1")],
+    "Oosterhesselen": [lk("ow:WL03676-1", "up:DK20656"), lk("ow:WL03158-2", "up:DK20656")],
 }
 # fmt: on
 
@@ -687,7 +706,7 @@ add_controllers_to_uncontrolled_connector_nodes(
 # %%
 # Inlaat 26 Noordseschutsluis stopt 1 cm onder het benedenstroomse streefpeil.
 
-lower_outlet_max_downstream_level(model=model, node_id=26, offset=0.01)
+lower_outlet_max_downstream_level(model=model, node_id=n("bnd:26"), offset=0.01)
 
 
 # %%
@@ -707,7 +726,7 @@ model = junctionify(model)
 
 # Gemaal Orveltersluis
 assert model.pump.static.df is not None
-mask = model.pump.static.df.node_id == 664
+mask = model.pump.static.df.node_id == n("GM00232")
 model.pump.static.df.loc[mask, "min_upstream_level"] = 14.86
 mark_level_update_protected(model.pump.static.df, mask, model=model)
 

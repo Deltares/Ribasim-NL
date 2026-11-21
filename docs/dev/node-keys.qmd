@@ -1,0 +1,90 @@
+---
+title: "Node keys"
+---
+
+Scripts, edit files and feedback forms refer to nodes by their key, not by their node ID.
+A key follows from the source data, so it stays the same when the node IDs change: with another library version, or when a node is added or removed elsewhere in the model.
+A node ID is the next free number, and nothing may depend on its value.
+
+## The key of a node
+
+The key is in the node column `meta_key`, and is unique in the model of a water authority.
+In the coupled model a node is identified by its authority, `meta_waterbeheerder`, and its key.
+A key is set when the node is created, and does not change after that, also when the type or the name of the node changes, or another Basin is merged into it.
+
+The models that are built from source data set the keys of their nodes.
+
+| Node | Key | Example |
+|:-----|:----|:--------|
+| **Gravity controlled**, `ribasim_nl.keys.lumped_keys` | | |
+| Connector node on a structure | the code of the structure | `GA1-st9` |
+| Connector node on open water | `ow:` and the code of its hydroobject | `ow:KD25.1_0` |
+| Boundary | `bnd:` and its ID in the boundaries layer | `bnd:28` |
+| Basin | `up:` and the key of the connector node it drains through, the smallest if it has several. Without one, `down:` and the connector node that feeds it | `up:GA1-st9` |
+| **Level controlled**, `ribasim_nl.crossings.model.crossing_keys` | | |
+| Connector node on a structure | the code of its gemaal, or else of its stuw, the smallest if it has several | `KST-1375` |
+| Connector node on open water | `ow:` and the code of its hydroobject, the smallest if it has several | `ow:KDU15754` |
+| Several connector nodes with the same code | also the codes of the areas they connect, `<code>|<from>><to>` | `KGM-108|GPG-1011_36>GPG-1012_56` |
+| Basin | the code of its aggregation area or peilgebied | `P-D21.006` |
+| Boundary | `bnd:` and the key of the connector node it lies beside | `bnd:KGM-72` |
+| **Rijkswaterstaat**, `ribasim_nl.keys.named_keys` | | |
+| Connector node on a structure | the code of the structure, or else its name | `39B-002-02` |
+| Basin | the name of its water | `Markermeer` |
+| Boundary | `bnd:` and the code of its measuring location, or else its name | `bnd:LOBH` |
+| Other connector node | the keys of the Basins it connects, `<from>><to>` | `Waal@3>Waal@2` |
+
+Every other node gets a key when the model is written, or when a key is looked up that no node has yet, with `ribasim_nl.keys.fill_keys`:
+
+| Node | Key | Example |
+|:-----|:----|:--------|
+| Connector node with a `meta_code_waterbeheerder` | that code | `KST1` |
+| RWZI | `rwzi:` and its code | `rwzi:30021` |
+| Observation, UserDemand | the node type and its name | `observation:NL27_KD_3` |
+| Storing (bergend) Basin, and the node that connects it | `bergend:` and `bergend_link:` with the key of the Basin it stores for | `bergend:up:GA1-st9` |
+| Control or demand node | the node type and the key of the node it controls, the smallest if it controls several | `discrete_control:GA1-st9` |
+| Part of a Basin that is split from a file, `SplitBasins` | the key of the Basin and the ID of the part in the file | `PBH0248142/1` |
+| Junction | `junction:<from>><to>#<n>x<m>`: the smallest key of the n nodes that flow into it, and of the m nodes it flows to | |
+| Any other node | its location in whole metres | `loc:152150,365169` |
+
+Equal keys get a number, `@1`, `@2`, in an order that follows from the data: along the hydroobject, or by location.
+The keys of the Junctions are set again every time, since their trees are rebuilt along the way.
+`Model.write` checks that every node has a key and that no two nodes of a water authority have the same one.
+
+## Refer to a node
+
+In a script, right after the model is read:
+
+```python
+model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
+lk = model.link_id
+
+model.merge_basins(node_id=n("up:ow:SG1_0"), to_node_id=n("up:DO1-st3"))
+model.reverse_link(link_id=lk("up:KS52-st2", "KS52-st2"))
+```
+
+`n` returns the ID of the one node with a key, and raises a `KeyError` if there is none or more than one.
+A link has no key: `lk` returns the ID of the link between two nodes.
+
+- **Model edits.** A layer of `model_edits.gpkg` refers to a node in a column `<name>_key`, which `Model.apply_edits` passes to the argument `<name>_id` of the edit method: `node_key`, `to_basin_key`. It refers to a link in the columns `link_from_key` and `link_to_key`. The layer `add_basin` gives the new Basin a key in its column `key`.
+- **`static_data.xlsx`.** The sheets `Pump`, `Outlet` and `Basin` refer to a node in their column `key`.
+- **Feedback forms.** The sheet `Feedback_Formulier` refers to nodes in its `Node key` columns. A row that adds a node gives the key of the new node, by which later rows and scripts refer to it. The sheets with target levels, pump functions and supply areas refer to nodes in a `Basin key`, `Pump key` or `Outlet key` column.
+- **The coupled model.** The tables of `pipeline/09_koppelen_modellen.py` and of the package refer to a node by its water authority and key, `NodeKey("Noorderzijlvest", "KGM056")`. `ribasim_nl.keys.resolve_keys` replaces them by the node IDs of the model that is coupled. In a script, `model.node_id("KGM056", authority="Noorderzijlvest")` does the same for one node.
+
+## Add a node
+
+A node that a script adds gets a key by the rules above.
+Give it a key yourself where it is referred to later, so that the reference reads well:
+
+```python
+model.outlet.add(Node(geometry=Point(152150, 365169), meta_key="inlaat-keersop"), tables=[...])
+```
+
+A node that replaces another one, such as a FlowBoundary that becomes a LevelBoundary, gets the key of the node it replaces.
+
+## Not a node ID
+
+Not every integer in a script is a node ID.
+Row numbers of source layers (`fid_as_index=True`), codes of areas, capacities and levels stay as they are.
+Refer to a row of a source layer by its code where it has one.

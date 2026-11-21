@@ -27,6 +27,8 @@ qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
 # %%
 # read
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 start_time = time.time()
 
@@ -52,33 +54,50 @@ sync_parameterized_manning_basin_levels(
 
 # Fixes
 basin_level_overrides = [
-    ([1737], -0.4),
-    ([1975], 0.52),
-    ([1836], -2.08),  # Wulverhorst
-    ([1698], 0.0),
-    ([1474], -0.48),
-    ([1492], 0.52),
-    ([1396], 0.52),
-    ([1562], 0.52),
-    ([1387], -2.22),
-    ([1462], -1.55),
-    ([1501], -1.55),
-    ([1986], -1.55),
-    ([1987], -1.55),
-    ([1988], -1.55),
-    ([1516], -2.22),
-    ([1376], -2.22),
-    ([1380], -2.22),
-    ([1572], -2.22),
-    ([1886], -2.1),
-    ([1436], -0.1),  # check streefpeil!
-    ([1847], -2.35),  # check streefpeil!
-    ([1583], -0.25),  # check streefpeil!
-    ([1586], 1.85),  # check streefpeil!
+    ([n("up:OW571")], -0.4),
+    ([n("loc:135314,450583")], 0.52),
+    ([n("up:G4060")], -2.08),  # Wulverhorst
+    ([n("up:G4032")], 0.0),
+    ([n("up:H041347___1")], -0.48),
+    ([n("up:H059371")], 0.52),
+    ([n("up:I0543")], 0.52),
+    ([n("up:H071910___7")], 0.52),
+    ([n("up:I6206")], -2.22),
+    ([n("up:H055539___9")], -1.55),
+    ([n("up:I0002")], -1.55),
+    ([n("up:H055539___23")], -1.55),
+    ([n("up:H055539___34")], -1.55),
+    ([n("up:H055539___41")], -1.55),
+    ([n("up:OW637")], -2.22),
+    ([n("up:ST0769")], -2.22),
+    ([n("up:H078195")], -2.22),
+    ([n("up:H058524___12")], -2.22),
+    ([n("up:ST5008")], -2.1),
+    ([n("up:I1111")], -0.1),  # check streefpeil!
+    ([n("up:ST0441")], -2.35),  # check streefpeil!
+    ([n("up:ST2072")], -0.25),  # check streefpeil!
+    ([n("up:I1352")], 1.85),  # check streefpeil!
 ]
 
 # stadswater Utrecht beneden peil
-node_ids = [1401, 1406, 1414, 1422, 1426, 1452, 1576, 1588, 1654, 1660, 1668, 1673, 1757, 1760, 1766, 1778]
+node_ids = [
+    n("up:I6078"),
+    n("up:OW546"),
+    n("up:G3901"),
+    n("down:OW701"),
+    n("up:G1006"),
+    n("up:I1580"),
+    n("up:I6073"),
+    n("up:OW548"),
+    n("up:SL0014"),
+    n("up:OW554"),
+    n("up:H071436___3"),
+    n("up:H072046"),
+    n("up:G0009"),
+    n("up:G0052"),
+    n("up:H012363___0"),
+    n("up:H012352___1"),
+]
 basin_level_overrides.append((node_ids, 0.58))
 apply_basin_level_overrides(model=model, basin_level_overrides=basin_level_overrides)
 

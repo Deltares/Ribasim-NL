@@ -11,6 +11,9 @@ Usage: pixi run python pipeline/00b_lump_model.py <authority>
 
 import sys
 
+import geopandas as gpd
+import pyogrio
+from ribasim_nl.keys import KEY_COLUMN, lumped_keys
 from ribasim_nl.lumping.hydamo import read_areas, read_boundaries, read_hydamo_network, read_split_nodes
 from ribasim_nl.lumping.model import lumped_model, read_krw
 from ribasim_nl.lumping.network import lump_network
@@ -48,7 +51,8 @@ assert authorities, "pass the authorities as arguments"
 for authority in authorities:
     print(authority)
     verwerkt = cloud.joinpath(authority, "verwerkt")
-    network = read_hydamo_network(verwerkt / "4_ribasim/hydamo.gpkg", dx=250.0)
+    hydamo_gpkg = verwerkt / "4_ribasim/hydamo.gpkg"
+    network = read_hydamo_network(hydamo_gpkg, dx=250.0)
     areas_gpkg = verwerkt / "3_input/areas.gpkg"
     areas = read_areas(areas_gpkg, "areas")
     drainage_areas = read_layer(areas_gpkg, "drainage_areas", explode=False, code_column="CODE")
@@ -65,4 +69,9 @@ for authority in authorities:
         max_gap_area=5000.0,
         lost_basin_node_ids=LOST_BASIN_NODE_IDS.get(authority),
     )
+    # the keys of the nodes, by which the scripts that follow refer to them, see `ribasim_nl.keys`
+    layers = {layer.lower(): layer for layer in pyogrio.list_layers(hydamo_gpkg)[:, 0]}
+    hydroobject = gpd.read_file(hydamo_gpkg, layer=layers["hydroobject"])
+    model.node.df[KEY_COLUMN], _ = lumped_keys(model.node.df, model.link.df, hydroobject)
+    model.validate_keys()
     model.write(cloud.model_dir(authority, "2024_6_3") / "model.toml")

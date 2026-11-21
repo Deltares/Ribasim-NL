@@ -34,112 +34,192 @@ default_level = (
 
 # process the feedback form and load the model
 ribasim_model = process_feedback_form(paths, use_validation=False)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = ribasim_model.node_id
 
 # merge the smallest basins together
-ribasim_model.merge_basins(node_id=30, to_node_id=29)  # 4363 m2
-ribasim_model.merge_basins(node_id=66, to_node_id=21)  # 4745 m2
-ribasim_model.merge_basins(node_id=191, to_node_id=288)  # 4964 m2
-ribasim_model.merge_basins(node_id=288, to_node_id=140)
-ribasim_model.merge_basins(node_id=192, to_node_id=289)
-ribasim_model.merge_basins(node_id=289, to_node_id=140)
-ribasim_model.merge_basins(node_id=206, to_node_id=284)  # 7831 m2
-ribasim_model.merge_basins(node_id=29, to_node_id=195)  # 8398 m2
+ribasim_model.merge_basins(node_id=n("LS 1A_dummy_id_154"), to_node_id=n("LS 1B_dummy_id_206"))  # 4363 m2
+ribasim_model.merge_basins(node_id=n("2.03a_dummy_id_163"), to_node_id=n("2.04_dummy_id_159"))  # 4745 m2
+ribasim_model.merge_basins(node_id=n("HT 3_dummy_id_284"), to_node_id=n("HT 2_dummy_id_283"))  # 4964 m2
+ribasim_model.merge_basins(node_id=n("HT 2_dummy_id_283"), to_node_id=n("HT 7_dummy_id_23"))
+ribasim_model.merge_basins(node_id=n("HT 4_dummy_id_235"), to_node_id=n("HT 5_dummy_id_131"))
+ribasim_model.merge_basins(node_id=n("HT 5_dummy_id_131"), to_node_id=n("HT 7_dummy_id_23"))
+ribasim_model.merge_basins(node_id=n("OR 7_dummy_id_153"), to_node_id=n("OR 6_dummy_id_208"))  # 7831 m2
+ribasim_model.merge_basins(node_id=n("LS 1B_dummy_id_206"), to_node_id=n("LS 1_dummy_id_65"))  # 8398 m2
 
-ribasim_model.merge_basins(node_id=137, to_node_id=80)  # stedelijk gebied
-ribasim_model.merge_basins(node_id=103, to_node_id=217)  # stedelijk gebied
-ribasim_model.merge_basins(node_id=80, to_node_id=136)  # stedelijk gebied
-ribasim_model.merge_basins(node_id=231, to_node_id=136)  # stedelijk gebied
-ribasim_model.merge_basins(node_id=238, to_node_id=136)  # stedelijk gebied
-ribasim_model.merge_basins(node_id=239, to_node_id=136)  # stedelijk gebied
-ribasim_model.merge_basins(node_id=213, to_node_id=136)  # stedelijk gebied
-ribasim_model.merge_basins(node_id=91, to_node_id=136)  # stedelijk gebied
-ribasim_model.merge_basins(node_id=179, to_node_id=136)  # stedelijk gebied
-ribasim_model.merge_basins(node_id=174, to_node_id=136)  # stedelijk gebied
-ribasim_model.merge_basins(node_id=202, to_node_id=136)  # stedelijk gebied
-ribasim_model.merge_basins(node_id=259, to_node_id=136)  # stedelijk gebied
-ribasim_model.merge_basins(node_id=264, to_node_id=136)  # stedelijk gebied
-ribasim_model.merge_basins(node_id=175, to_node_id=136)  # stedelijk gebied
-ribasim_model.merge_basins(node_id=76, to_node_id=136)  # stedelijk gebied
-ribasim_model.merge_basins(node_id=77, to_node_id=136)  # stedelijk gebied
-ribasim_model.merge_basins(node_id=234, to_node_id=136)  # stedelijk gebied
-ribasim_model.merge_basins(node_id=235, to_node_id=136)  # stedelijk gebied
-ribasim_model.merge_basins(node_id=176, to_node_id=136)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("URK 14_dummy_id_46"), to_node_id=n("URK 5_dummy_id_24"))  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("TOPPAD 2_dummy_id_162"), to_node_id=n("TOPPAD 1_dummy_id_17"))  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("URK 5_dummy_id_24"), to_node_id=n("URK 6_dummy_id_175"))  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("URK 4_dummy_id_136"), to_node_id=n("URK 6_dummy_id_175"))  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("URK 3_dummy_id_35"), to_node_id=n("URK 6_dummy_id_175"))  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("URK 2_dummy_id_291"), to_node_id=n("URK 6_dummy_id_175"))  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("URK 1a_dummy_id_109"), to_node_id=n("URK 6_dummy_id_175"))  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("URK 1_dummy_id_72"), to_node_id=n("URK 6_dummy_id_175"))  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("URK 9_dummy_id_209"), to_node_id=n("URK 6_dummy_id_175"))  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("URK 10_dummy_id_174"), to_node_id=n("URK 6_dummy_id_175"))  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("URK 11_dummy_id_73"), to_node_id=n("URK 6_dummy_id_175"))  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("URK 12_dummy_id_219"), to_node_id=n("URK 6_dummy_id_175"))  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("URK 13_dummy_id_183"), to_node_id=n("URK 6_dummy_id_175"))  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("URK 7_dummy_id_38"), to_node_id=n("URK 6_dummy_id_175"))  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("ZW01_dummy_id_36"), to_node_id=n("URK 6_dummy_id_175"))  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("ZW02_dummy_id_132"), to_node_id=n("URK 6_dummy_id_175"))  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("ZW03_dummy_id_222"), to_node_id=n("URK 6_dummy_id_175"))  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("POLDERWIJK_dummy_id_201"), to_node_id=n("URK 6_dummy_id_175"))  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("URK 8_dummy_id_223"), to_node_id=n("URK 6_dummy_id_175"))  # stedelijk gebied
 
-ribasim_model.merge_basins(node_id=18, to_node_id=260)  # stedelijk gebied
+ribasim_model.merge_basins(node_id=n("NOP 6_dummy_id_31"), to_node_id=n("NOP 5_dummy_id_119"))  # stedelijk gebied
 
-ribasim_model.merge_basins(node_id=190, to_node_id=73)  # los snippertje
-ribasim_model.merge_basins(node_id=224, to_node_id=73)  # los snippertje
+ribasim_model.merge_basins(
+    node_id=n("NOP 3_dummy_id_220"), to_node_id=n("LAGE AFDELING_dummy_id_121")
+)  # los snippertje
+ribasim_model.merge_basins(
+    node_id=n("ROTTERDAMSEHOEK_dummy_id_64"), to_node_id=n("LAGE AFDELING_dummy_id_121")
+)  # los snippertje
 
-ribasim_model.merge_basins(node_id=246, to_node_id=133)  # Noordelijkst puntje veel kleine gebieden
-ribasim_model.merge_basins(node_id=250, to_node_id=133)  # Noordelijkst puntje veel kleine gebieden
-ribasim_model.merge_basins(node_id=162, to_node_id=133)  # Noordelijkst puntje veel kleine gebieden
-ribasim_model.merge_basins(node_id=119, to_node_id=133)  # Noordelijkst puntje veel kleine gebieden
-ribasim_model.merge_basins(node_id=65, to_node_id=124)  # Noordelijkst puntje veel kleine gebieden
-ribasim_model.merge_basins(node_id=150, to_node_id=124)  # Noordelijkst puntje veel kleine gebieden
+ribasim_model.merge_basins(
+    node_id=n("LV 4_dummy_id_29"), to_node_id=n("LV 5_dummy_id_10")
+)  # Noordelijkst puntje veel kleine gebieden
+ribasim_model.merge_basins(
+    node_id=n("LV 3_dummy_id_185"), to_node_id=n("LV 5_dummy_id_10")
+)  # Noordelijkst puntje veel kleine gebieden
+ribasim_model.merge_basins(
+    node_id=n("LV 2_dummy_id_28"), to_node_id=n("LV 5_dummy_id_10")
+)  # Noordelijkst puntje veel kleine gebieden
+ribasim_model.merge_basins(
+    node_id=n("LV 1_dummy_id_260"), to_node_id=n("LV 5_dummy_id_10")
+)  # Noordelijkst puntje veel kleine gebieden
+ribasim_model.merge_basins(
+    node_id=n("LV 9_dummy_id_69"), to_node_id=n("LV 7_dummy_id_188")
+)  # Noordelijkst puntje veel kleine gebieden
+ribasim_model.merge_basins(
+    node_id=n("LV 6_dummy_id_34"), to_node_id=n("LV 7_dummy_id_188")
+)  # Noordelijkst puntje veel kleine gebieden
 
-ribasim_model.merge_basins(node_id=83, to_node_id=220)  # oostelijke NOP
-ribasim_model.merge_basins(node_id=84, to_node_id=220)  # oostelijke NOP
+ribasim_model.merge_basins(node_id=n("EW3_dummy_id_238"), to_node_id=n("EW2_dummy_id_62"))  # oostelijke NOP
+ribasim_model.merge_basins(node_id=n("EW1_dummy_id_239"), to_node_id=n("EW2_dummy_id_62"))  # oostelijke NOP
 
-ribasim_model.merge_basins(node_id=196, to_node_id=73)  # klein gebiedje in lage afdeling
-ribasim_model.merge_basins(node_id=89, to_node_id=73)  # klein gebiedje in lage afdeling
-ribasim_model.merge_basins(node_id=42, to_node_id=123)  # klein gebiedjes met twee MR
+ribasim_model.merge_basins(
+    node_id=n("NOP 6A_dummy_id_58"), to_node_id=n("LAGE AFDELING_dummy_id_121")
+)  # klein gebiedje in lage afdeling
+ribasim_model.merge_basins(
+    node_id=n("WELLERWAARD_dummy_id_21"), to_node_id=n("LAGE AFDELING_dummy_id_121")
+)  # klein gebiedje in lage afdeling
+ribasim_model.merge_basins(
+    node_id=n("ECOPARK 2_dummy_id_40"), to_node_id=n("ECOPARK 1_dummy_id_186")
+)  # klein gebiedjes met twee MR
 
-ribasim_model.merge_basins(node_id=273, to_node_id=282)  # klein gebied NOP
-ribasim_model.merge_basins(node_id=215, to_node_id=143)  # klein gebied NOP
-ribasim_model.merge_basins(node_id=123, to_node_id=205, are_connected=False)  # klein gebied NOP
+ribasim_model.merge_basins(node_id=n("EH 2_dummy_id_217"), to_node_id=n("EH 1_dummy_id_234"))  # klein gebied NOP
+ribasim_model.merge_basins(node_id=n("NOP 9_dummy_id_6"), to_node_id=n("OT.02_dummy_id_168"))  # klein gebied NOP
+ribasim_model.merge_basins(
+    node_id=n("ECOPARK 1_dummy_id_186"), to_node_id=n("MU_dummy_id_56"), are_connected=False
+)  # klein gebied NOP
 
-ribasim_model.merge_basins(node_id=130, to_node_id=73)  # klein gebied NOP
+ribasim_model.merge_basins(
+    node_id=n("NOP 7_dummy_id_182"), to_node_id=n("LAGE AFDELING_dummy_id_121")
+)  # klein gebied NOP
 
-ribasim_model.merge_basins(node_id=68, to_node_id=96)  # natuurgebiedje NOP
-ribasim_model.merge_basins(node_id=158, to_node_id=96)  # natuurgebiedje NOP
-ribasim_model.merge_basins(node_id=256, to_node_id=96)  # natuurgebiedje NOP
-ribasim_model.merge_basins(node_id=163, to_node_id=96)  # natuurgebiedje NOP
-ribasim_model.merge_basins(node_id=69, to_node_id=96)  # natuurgebiedje NOP
-ribasim_model.merge_basins(node_id=177, to_node_id=96)  # natuurgebiedje NOP
-ribasim_model.merge_basins(node_id=78, to_node_id=96)  # natuurgebiedje NOP
+ribasim_model.merge_basins(
+    node_id=n("SCHOKLAND D1_dummy_id_248"), to_node_id=n("SCHOKLAND F1 - AFGEDAMD_dummy_id_133")
+)  # natuurgebiedje NOP
+ribasim_model.merge_basins(
+    node_id=n("SCHOKLAND D2_dummy_id_16"), to_node_id=n("SCHOKLAND F1 - AFGEDAMD_dummy_id_133")
+)  # natuurgebiedje NOP
+ribasim_model.merge_basins(
+    node_id=n("SCHOKLAND E_dummy_id_268"), to_node_id=n("SCHOKLAND F1 - AFGEDAMD_dummy_id_133")
+)  # natuurgebiedje NOP
+ribasim_model.merge_basins(
+    node_id=n("SCHOKLAND F5 - AFGEDAMD_dummy_id_210"), to_node_id=n("SCHOKLAND F1 - AFGEDAMD_dummy_id_133")
+)  # natuurgebiedje NOP
+ribasim_model.merge_basins(
+    node_id=n("SCHOKLAND C1_dummy_id_204"), to_node_id=n("SCHOKLAND F1 - AFGEDAMD_dummy_id_133")
+)  # natuurgebiedje NOP
+ribasim_model.merge_basins(
+    node_id=n("SCHOKLAND A_dummy_id_246"), to_node_id=n("SCHOKLAND F1 - AFGEDAMD_dummy_id_133")
+)  # natuurgebiedje NOP
+ribasim_model.merge_basins(
+    node_id=n("SCHOKLAND B_dummy_id_247"), to_node_id=n("SCHOKLAND F1 - AFGEDAMD_dummy_id_133")
+)  # natuurgebiedje NOP
 
-ribasim_model.merge_basins(node_id=268, to_node_id=73)  # klein gebied NOP
+ribasim_model.merge_basins(
+    node_id=n("SCHOKLAND G_dummy_id_115"), to_node_id=n("LAGE AFDELING_dummy_id_121")
+)  # klein gebied NOP
 
-ribasim_model.merge_basins(node_id=257, to_node_id=138)  # natuurgebiedje NOP
+ribasim_model.merge_basins(
+    node_id=n("SCHOKLAND F2 - AFGEDAMD_dummy_id_110"), to_node_id=n("SCHOKLAND C2_dummy_id_229")
+)  # natuurgebiedje NOP
 
-ribasim_model.merge_basins(node_id=115, to_node_id=6)  # natuurgebiedje NOP
-ribasim_model.merge_basins(node_id=135, to_node_id=6)  # natuurgebiedje NOP
+ribasim_model.merge_basins(
+    node_id=n("SCHOKLAND F3 - AFGEDAMD_dummy_id_245"), to_node_id=n("SCHOKLAND C3_dummy_id_142")
+)  # natuurgebiedje NOP
+ribasim_model.merge_basins(
+    node_id=n("SCHOKLAND F4 - AFGEDAMD_dummy_id_200"), to_node_id=n("SCHOKLAND C3_dummy_id_142")
+)  # natuurgebiedje NOP
 
-ribasim_model.merge_basins(node_id=227, to_node_id=10)
-ribasim_model.merge_basins(node_id=156, to_node_id=10)
+ribasim_model.merge_basins(node_id=n("OR 35_dummy_id_49"), to_node_id=n("OR 34_dummy_id_129"))
+ribasim_model.merge_basins(node_id=n("OR 36_dummy_id_27"), to_node_id=n("OR 34_dummy_id_129"))
 
-ribasim_model.merge_basins(node_id=4, to_node_id=32)  # vakantieparkje(?)
-ribasim_model.merge_basins(node_id=108, to_node_id=32)  # vakantieparkje(?)
+ribasim_model.merge_basins(node_id=n("OR 49_dummy_id_63"), to_node_id=n("OR 43_dummy_id_250"))  # vakantieparkje(?)
+ribasim_model.merge_basins(node_id=n("OR 48_dummy_id_54"), to_node_id=n("OR 43_dummy_id_250"))  # vakantieparkje(?)
 
-ribasim_model.merge_basins(node_id=107, to_node_id=198)  # klein gebiedje
-ribasim_model.merge_basins(node_id=67, to_node_id=21)  # klein gebiedje
-ribasim_model.merge_basins(node_id=281, to_node_id=51)  # klein gebiedje
+ribasim_model.merge_basins(node_id=n("OR 54_dummy_id_177"), to_node_id=n("OR 55_dummy_id_289"))  # klein gebiedje
+ribasim_model.merge_basins(node_id=n("2.03_dummy_id_228"), to_node_id=n("2.04_dummy_id_159"))  # klein gebiedje
+ribasim_model.merge_basins(node_id=n("2.06_dummy_id_230"), to_node_id=n("2.05_dummy_id_71"))  # klein gebiedje
 
-ribasim_model.merge_basins(node_id=285, to_node_id=73)  # klein gebiedje
+ribasim_model.merge_basins(node_id=n("NOP 2_dummy_id_32"), to_node_id=n("LAGE AFDELING_dummy_id_121"))  # klein gebiedje
 
-ribasim_model.merge_basins(node_id=286, to_node_id=283)  # klein gebiedje in stedelijk gebied
+ribasim_model.merge_basins(
+    node_id=n("BK_dummy_id_88"), to_node_id=n("ALM 1_dummy_id_101")
+)  # klein gebiedje in stedelijk gebied
 
-ribasim_model.merge_basins(node_id=11, to_node_id=16)  # klein gebiedje in hoge vaart
-ribasim_model.merge_basins(node_id=35, to_node_id=16)  # klein gebiedje in hoge vaart
-ribasim_model.merge_basins(node_id=97, to_node_id=16)  # klein gebiedje in hoge vaart
-ribasim_model.merge_basins(node_id=164, to_node_id=16)  # klein gebiedje in hoge vaart
-ribasim_model.merge_basins(node_id=75, to_node_id=16)  # klein gebiedje in hoge vaart
+ribasim_model.merge_basins(
+    node_id=n("3.09_dummy_id_227"), to_node_id=n("3.01_dummy_id_92")
+)  # klein gebiedje in hoge vaart
+ribasim_model.merge_basins(
+    node_id=n("3.08_dummy_id_190"), to_node_id=n("3.01_dummy_id_92")
+)  # klein gebiedje in hoge vaart
+ribasim_model.merge_basins(
+    node_id=n("3.10_dummy_id_231"), to_node_id=n("3.01_dummy_id_92")
+)  # klein gebiedje in hoge vaart
+ribasim_model.merge_basins(
+    node_id=n("3.07_dummy_id_75"), to_node_id=n("3.01_dummy_id_92")
+)  # klein gebiedje in hoge vaart
+ribasim_model.merge_basins(
+    node_id=n("3.06_dummy_id_8"), to_node_id=n("3.01_dummy_id_92")
+)  # klein gebiedje in hoge vaart
 
-ribasim_model.merge_basins(node_id=40, to_node_id=31)  # klein gebiedje in lage vaart
-ribasim_model.merge_basins(node_id=25, to_node_id=31)  # klein gebiedje in lage vaart
-ribasim_model.merge_basins(node_id=160, to_node_id=31)  # klein gebiedje in lage vaart
+ribasim_model.merge_basins(
+    node_id=n("LS 5_dummy_id_203"), to_node_id=n("LVA.01_dummy_id_94")
+)  # klein gebiedje in lage vaart
+ribasim_model.merge_basins(
+    node_id=n("LVA.20 AFGEDAMD_dummy_id_60"), to_node_id=n("LVA.01_dummy_id_94")
+)  # klein gebiedje in lage vaart
+ribasim_model.merge_basins(
+    node_id=n("LVA.21 AFGEDAMD_dummy_id_280"), to_node_id=n("LVA.01_dummy_id_94")
+)  # klein gebiedje in lage vaart
 
-ribasim_model.merge_basins(node_id=152, to_node_id=36)  # klein gebiedjes in polder, noordelijk
-ribasim_model.merge_basins(node_id=209, to_node_id=36)  # klein gebiedjes in polder, noordelijk
-ribasim_model.merge_basins(node_id=208, to_node_id=36)  # klein gebiedjes in polder, noordelijk
+ribasim_model.merge_basins(
+    node_id=n("LVA.29_dummy_id_256"), to_node_id=n("LVA.28_dummy_id_257")
+)  # klein gebiedjes in polder, noordelijk
+ribasim_model.merge_basins(
+    node_id=n("LVA.26_dummy_id_20"), to_node_id=n("LVA.28_dummy_id_257")
+)  # klein gebiedjes in polder, noordelijk
+ribasim_model.merge_basins(
+    node_id=n("LVA.27_dummy_id_139"), to_node_id=n("LVA.28_dummy_id_257")
+)  # klein gebiedjes in polder, noordelijk
 
-ribasim_model.merge_basins(node_id=212, to_node_id=101)  # ivm wateraanvoer. Klein onlogisch gebied.
+ribasim_model.merge_basins(
+    node_id=n("OR 18_dummy_id_179"), to_node_id=n("OR 17_dummy_id_267")
+)  # ivm wateraanvoer. Klein onlogisch gebied.
 
-ribasim_model.merge_basins(node_id=216, to_node_id=262)  # industriegebied Almere,
-ribasim_model.merge_basins(node_id=262, to_node_id=31)  # industriegebied Almere,
+ribasim_model.merge_basins(node_id=n("AV 2_dummy_id_89"), to_node_id=n("AV 1_dummy_id_103"))  # industriegebied Almere,
+ribasim_model.merge_basins(
+    node_id=n("AV 1_dummy_id_103"), to_node_id=n("LVA.01_dummy_id_94")
+)  # industriegebied Almere,
 
-ribasim_model.merge_basins(node_id=140, to_node_id=19)  # klein gebiedje Lelystad,
-ribasim_model.merge_basins(node_id=173, to_node_id=53, are_connected=False)  # klein gebiedje zonder streefpeil
+ribasim_model.merge_basins(node_id=n("HT 7_dummy_id_23"), to_node_id=n("LS 2_dummy_id_150"))  # klein gebiedje Lelystad,
+ribasim_model.merge_basins(
+    node_id=n("LVA.15 AFGEDAMD_dummy_id_68"), to_node_id=n("LVA.16_dummy_id_15"), are_connected=False
+)  # klein gebiedje zonder streefpeil
 
 # There are +- 30 locations where a pump has been added in the FF,
 # these pumps are generally not in the delivered data but are placed by i.e. farmers
@@ -159,7 +239,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(143912, 492256)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(143959, 492198)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[31], pump_node)
+ribasim_model.link.add(ribasim_model.basin[n("LVA.01_dummy_id_94")], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # 1 Gemaal near Almere
@@ -167,7 +247,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(143895, 492250)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(143927, 492229)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[16], pump_node)
+ribasim_model.link.add(ribasim_model.basin[n("3.01_dummy_id_92")], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # 1 Add gemaal Wortman
@@ -175,7 +255,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(157201, 501796)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(157251, 501708)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[31], pump_node)
+ribasim_model.link.add(ribasim_model.basin[n("LVA.01_dummy_id_94")], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # Inlaat (hevel) toevoegen
@@ -187,7 +267,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[98])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("TA.11_dummy_id_264")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # Inlaat (hevel) toevoegen
@@ -199,7 +279,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[116])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("KUINDERVAART 2_dummy_id_37")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # Inlaat (hevel) toevoegen near Lelystad 1
@@ -211,7 +291,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[31])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("LVA.01_dummy_id_94")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # Inlaat (hevel) toevoegen near Lelystad 2
@@ -223,7 +303,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[34])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("LS 9_dummy_id_125")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # Inlaat (hevel) toevoegen near Urk: 1
@@ -235,7 +315,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[136])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("URK 6_dummy_id_175")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # Inlaat (hevel) toevoegen near Urk: 2
@@ -247,7 +327,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[73])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("LAGE AFDELING_dummy_id_121")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # Inlaat (hevel) toevoegen at Ketelhaven
@@ -259,7 +339,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[16])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("3.01_dummy_id_92")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # Inlaat (hevel) toevoegen at NOP: east 1. According data it should go to basin 199, but 45 seems more logical
@@ -271,7 +351,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[45])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("KADOELERTOCHT 2_dummy_id_189")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # Inlaat (hevel) toevoegen at NOP: east 2
@@ -283,7 +363,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[64])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("TA.10_dummy_id_167")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # Inlaat (hevel) toevoegen at NOP: east 3
@@ -295,7 +375,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[220])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("EW2_dummy_id_62")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # Inlaat (hevel) toevoegen at NOP: south
@@ -307,7 +387,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[39])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("HERTENTOCHT_dummy_id_261")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # Inlaat (hevel) toevoegen at NOP: south east
@@ -319,7 +399,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[141])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("VOORSTERTOCHT_dummy_id_143")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # Inlaat (hevel) toevoegen at NOP: north east
@@ -331,7 +411,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[88])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("SCHOTERTOCHT 2_dummy_id_259")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 
@@ -344,7 +424,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[241])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("GEMAALTOCHT_dummy_id_5")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # Inlaat (hevel) toevoegen at NOP: north 2 (not in data, but mentioned by RV)
@@ -356,25 +436,25 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[26])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("NOORDERMEERTOCHT 1_dummy_id_67")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # add gemaal in middle of beheergebied. Dont use FF as it is an aanvoergemaal
 pump_node = ribasim_model.pump.add(Node(geometry=Point(163582, 482871)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[16], pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[51])
+ribasim_model.link.add(ribasim_model.basin[n("3.01_dummy_id_92")], pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[n("2.05_dummy_id_71")])
 inlaat_pump.append(pump_node.node_id)
 
 # add gemaal in middle of beheergebied. Dont use FF as it is an aanvoergemaal
 pump_node = ribasim_model.pump.add(Node(geometry=Point(181525, 517580)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[8], pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[96])
+ribasim_model.link.add(ribasim_model.basin[n("HOGE AFDELING_dummy_id_45")], pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[n("SCHOKLAND F1 - AFGEDAMD_dummy_id_133")])
 inlaat_pump.append(pump_node.node_id)
 
 # add gemaal in middle of beheergebied. Dont use FF as it is an aanvoergemaal
 pump_node = ribasim_model.pump.add(Node(geometry=Point(156428, 476695)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[16], pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[188])
+ribasim_model.link.add(ribasim_model.basin[n("3.01_dummy_id_92")], pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[n("2.08_dummy_id_164")])
 inlaat_pump.append(pump_node.node_id)
 
 # switching direction prohibited due to "old" terminal-node
@@ -385,46 +465,46 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(169592, 518954)), [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])]
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[73])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("LAGE AFDELING_dummy_id_121")])
 
-ribasim_model.remove_node(485, remove_links=True)
+ribasim_model.remove_node(n("ow:110347141"), remove_links=True)
 
 # [from_node, to_node, x_coordinate, y_coordinate]
 farmer_pumps = [
-    [16, 222, 163266, 487745],
-    [31, 53, 162476, 493070],
-    [31, 161, 160482, 495540],
-    [31, 147, 163155, 496109],
-    [31, 232, 167346, 493712],
-    [31, 180, 167553, 493696],
-    [31, 245, 161132, 497790],
-    [31, 219, 161413, 498612],
-    [31, 20, 159725, 499946],
-    [31, 117, 157082, 501506],
-    [31, 244, 163603, 498905],
-    [31, 243, 164112, 499846],
-    [31, 204, 164702, 501743],
-    [16, 229, 180860, 499866],
-    [16, 221, 180899, 499914],
-    [16, 155, 182273, 498826],
-    [16, 101, 184918, 504045],
-    [16, 102, 184013, 504227],
-    [16, 263, 182081, 504226],
-    [31, 278, 174932, 504574],
-    [129, 279, 175637, 507063],
-    [31, 129, 176616, 508796],
-    [31, 92, 172251, 506176],
-    [31, 28, 175874, 509405],
-    [31, 210, 174223, 510437],
-    [31, 48, 167508, 510888],
-    [8, 47, 184856, 515922],
-    [63, 201, 186402, 515281],
-    [199, 41, 192906, 519400],
-    [88, 110, 183948, 532356],
-    [73, 43, 180285, 531935],
-    [73, 184, 177791, 532821],
-    [16, 79, 180975, 509873],
-    [79, 56, 183547, 508147],
+    [n("3.01_dummy_id_92"), n("LVA.13_dummy_id_93"), 163266, 487745],
+    [n("LVA.01_dummy_id_94"), n("LVA.16_dummy_id_15"), 162476, 493070],
+    [n("LVA.01_dummy_id_94"), n("LVA.18_dummy_id_279"), 160482, 495540],
+    [n("LVA.01_dummy_id_94"), n("LVA.19_dummy_id_124"), 163155, 496109],
+    [n("LVA.01_dummy_id_94"), n("MT01_dummy_id_151"), 167346, 493712],
+    [n("LVA.01_dummy_id_94"), n("LVA.10_dummy_id_152"), 167553, 493696],
+    [n("LVA.01_dummy_id_94"), n("LS 8_dummy_id_128"), 161132, 497790],
+    [n("LVA.01_dummy_id_94"), n("LS 7_dummy_id_249"), 161413, 498612],
+    [n("LVA.01_dummy_id_94"), n("WA01_dummy_id_158"), 159725, 499946],
+    [n("LVA.01_dummy_id_94"), n("LS10_dummy_id_165"), 157082, 501506],
+    [n("LVA.01_dummy_id_94"), n("LVA.24_dummy_id_66"), 163603, 498905],
+    [n("LVA.01_dummy_id_94"), n("LVA.23_dummy_id_192"), 164112, 499846],
+    [n("LVA.01_dummy_id_94"), n("GC 01_dummy_id_213"), 164702, 501743],
+    [n("3.01_dummy_id_92"), n("OR 24_dummy_id_258"), 180860, 499866],
+    [n("3.01_dummy_id_92"), n("OR 22_dummy_id_61"), 180899, 499914],
+    [n("3.01_dummy_id_92"), n("OR 23_dummy_id_233"), 182273, 498826],
+    [n("3.01_dummy_id_92"), n("OR 17_dummy_id_267"), 184918, 504045],
+    [n("3.01_dummy_id_92"), n("OR 16_dummy_id_22"), 184013, 504227],
+    [n("3.01_dummy_id_92"), n("OR 19_dummy_id_39"), 182081, 504226],
+    [n("LVA.01_dummy_id_94"), n("DW 01_dummy_id_232"), 174932, 504574],
+    [n("LVA.05 A_dummy_id_274"), n("RW_dummy_id_172"), 175637, 507063],
+    [n("LVA.01_dummy_id_94"), n("LVA.05 A_dummy_id_274"), 176616, 508796],
+    [n("LVA.01_dummy_id_94"), n("LVA.04_dummy_id_113"), 172251, 506176],
+    [n("LVA.01_dummy_id_94"), n("LVA.03_dummy_id_288"), 175874, 509405],
+    [n("LVA.01_dummy_id_94"), n("LVA.02_dummy_id_194"), 174223, 510437],
+    [n("LVA.01_dummy_id_94"), n("LVA.25_dummy_id_57"), 167508, 510888],
+    [n("HOGE AFDELING_dummy_id_45"), n("RAMSTOCHT 2_dummy_id_202"), 184856, 515922],
+    [n("ENSERTOCHT 2_dummy_id_14"), n("ZWIJNSTOCHT 2_dummy_id_130"), 186402, 515281],
+    [n("KRAGGENBURGERTOCHT_dummy_id_218"), n("KADOELEN_dummy_id_269"), 192906, 519400],
+    [n("SCHOTERTOCHT 2_dummy_id_259"), n("SCHANSVELD_dummy_id_160"), 183948, 532356],
+    [n("LAGE AFDELING_dummy_id_121"), n("WELLERZANDTOCHT_dummy_id_196"), 180285, 531935],
+    [n("LAGE AFDELING_dummy_id_121"), n("VENETOCHT_dummy_id_285"), 177791, 532821],
+    [n("3.01_dummy_id_92"), n("OR 13_dummy_id_1"), 180975, 509873],
+    [n("OR 13_dummy_id_1"), n("OR 14_dummy_id_252"), 183547, 508147],
 ]
 
 for farmer_pump in farmer_pumps:
@@ -436,12 +516,12 @@ for farmer_pump in farmer_pumps:
     inlaat_pump.append(pump_node.node_id)  # add inlaat category
 
 # change afvoergemaal to aanvoergemaal
-inlaat_pump += [319, 333, 380, 433, 650]
+inlaat_pump += [n("OP3120"), n("OP2503"), n("OP2007"), n("OP4165"), n("OP2008")]
 
 assert ribasim_model.pump.static.df is not None
-for n in inlaat_pump:
-    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_aanvoer"] = 1
-    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_afvoer"] = 0
+for node_id in inlaat_pump:
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == node_id, "meta_func_aanvoer"] = 1
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == node_id, "meta_func_afvoer"] = 0
 
 # (re)set 'meta_node_id'-values
 for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
@@ -473,7 +553,9 @@ ribasim_param.clean_tables(ribasim_model, waterschap)
 # # loop through all splitted basins
 node_cache = NodeMetaCache(ribasim_model)
 for splitted_basin_path, basin_id in zip(
-    [splitted_basin_16_path, splitted_basin_31_path, splitted_basin_73_path], [16, 31, 73], strict=True
+    [splitted_basin_16_path, splitted_basin_31_path, splitted_basin_73_path],
+    [n("3.01_dummy_id_92"), n("LVA.01_dummy_id_94"), n("LAGE AFDELING_dummy_id_121")],
+    strict=True,
 ):
     # split basins to improve model convergence
     splitter = SplitBasins(

@@ -1,6 +1,7 @@
 from ribasim import Node
 from ribasim.nodes import basin, flow_boundary, outlet
 from ribasim_nl.flow_paths import simplified_links
+from ribasim_nl.keys import NodeKey
 from ribasim_nl.rwzi import attach_rwzi_junctions, create_rwzi_basin_coupling
 from shapely.geometry import LineString, Point
 
@@ -85,9 +86,23 @@ def test_attach_rwzi_junctions_other_basin():
 
 
 def test_attach_rwzi_junctions_not_in_model():
-    """Left as is if the configured Basin is not in the model, such as before coupling."""
+    """Left as is if the configured Basin is not in the model, or is None, such as before coupling."""
     model = attach_rwzi_junctions(rwzi_model(), basins={1: 10})
     assert model.node.df.at[6, "geometry"].equals(Point(60, 20))
+    model = attach_rwzi_junctions(rwzi_model(), basins={1: None})
+    assert model.node.df.at[6, "geometry"].equals(Point(60, 20))
+
+
+def test_attach_rwzi_junctions_basin_by_key():
+    """The configured Basin is referred to by its water authority and key, see `ribasim_nl.keys`."""
+    model = rwzi_model()
+    model.node.df["meta_waterbeheerder"] = "A"
+    model.node.df["meta_key"] = [f"node {node_id}" for node_id in model.node.df.index]
+    # a Basin of a water authority that is not in the model is left as is
+    unchanged = attach_rwzi_junctions(model.model_copy(deep=True), basins={1: NodeKey("B", "node 2")})
+    assert (6, 1) in unchanged.link.df.set_index(["from_node_id", "to_node_id"]).index
+    model = attach_rwzi_junctions(model, max_distance=5.0, basins={1: NodeKey("A", "node 2")})
+    assert simplified_links(model) == {(2, 3), (3, 1), (5, 2)}
 
 
 def test_attach_rwzi_junctions_authorities():

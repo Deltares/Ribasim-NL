@@ -26,6 +26,7 @@ from ribasim_nl.control import (
     get_node_table_with_from_to_node_ids,
     remove_duplicate_controls,
 )
+from ribasim_nl.keys import KEY_COLUMN
 from ribasim_nl.network_snapping import line_reader, read_hydro_objects, snap_model
 from ribasim_nl.regional_model import ENDTIME, STARTTIME, add_inflows, add_lhm_forcing, finish_regional_model
 from ribasim_nl.ribasim_feedback_processor import RibasimFeedbackProcessor
@@ -161,9 +162,9 @@ def check_basin_meta_categorie(model: Model) -> None:
 
 def keep_model_supply_basins(processor: RibasimFeedbackProcessor, model: Model) -> None:
     """Keep only the Basins of the model in the aanvoer settings of the feedback form, for `set_aanvoer_flags`."""
-    basin_ids = set(model.basin.node.df.index)
-    processor._basin_aanvoer_on = tuple(n for n in (processor.basin_aanvoer_on or ()) if n in basin_ids)
-    processor._basin_aanvoer_off = tuple(n for n in (processor.basin_aanvoer_off or ()) if n in basin_ids)
+    basin_keys = set(model.basin.node.df[KEY_COLUMN])
+    processor._basin_aanvoer_on = tuple(key for key in (processor.basin_aanvoer_on or ()) if key in basin_keys)
+    processor._basin_aanvoer_off = tuple(key for key in (processor.basin_aanvoer_off or ()) if key in basin_keys)
 
 
 def assign_pump_and_basin_names(

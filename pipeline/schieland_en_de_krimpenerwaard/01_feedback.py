@@ -28,6 +28,8 @@ default_level = 0.75 if AANVOER_CONDITIONS else -0.75  # default LevelBoundary l
 
 # process the feedback form and load the model
 ribasim_model = process_feedback_form(paths)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = ribasim_model.node_id
 
 # model specific tweaks
 # change unknown streefpeilen to a default streefpeil
@@ -47,7 +49,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(89792, 437301)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(89992, 437341)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[116], pump_node)
+ribasim_model.link.add(ribasim_model.basin[n("GPG-1249_110")], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # 2
@@ -59,14 +61,14 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[110])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("GPG-1253_104")])
 
 # 3
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(95111, 436428)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(95431, 436488)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[157], pump_node)
+ribasim_model.link.add(ribasim_model.basin[n("GPG-1284_140")], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # 4
@@ -74,7 +76,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(95111, 436418)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(95736, 436211)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[143], pump_node)
+ribasim_model.link.add(ribasim_model.basin[n("GPG-1282_128")], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # 5 not sure whether this one is correct. FF was not clear
@@ -82,7 +84,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(94966, 437011)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(94966, 437011)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[25], pump_node)
+ribasim_model.link.add(ribasim_model.basin[n("GPG-1277_21")], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # 6
@@ -90,7 +92,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(92476, 435889)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(92334, 436428)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[142], pump_node)
+ribasim_model.link.add(ribasim_model.basin[n("GPG-1252_73")], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # 7
@@ -98,7 +100,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(104547, 443432)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(104485, 443506)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[19], pump_node)
+ribasim_model.link.add(ribasim_model.basin[n("GPG-1333_16")], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # 7
@@ -106,7 +108,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(104555, 443434)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(104527, 443455)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[2], pump_node)
+ribasim_model.link.add(ribasim_model.basin[n("GPG-1360_5")], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # 8
@@ -114,7 +116,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(102079, 438209)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(102230, 438082)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[29], pump_node)
+ribasim_model.link.add(ribasim_model.basin[n("GPG-1201_24")], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # 9, added by RB as it is quiet clear a levelboundary is missing.
@@ -125,7 +127,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(91514, 439286)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
-ribasim_model.link.add(ribasim_model.basin[28], tabulated_rating_curve_node)
+ribasim_model.link.add(ribasim_model.basin[n("GPG-399_157")], tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
 # 10. cooperation day 12 dec 2024: Erik suggested adding an additional pump which already exists, but this would prevent two entire basins interacting with eachother if only one basin would get a pump, while this pump discharges both basins
@@ -133,7 +135,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(89786, 437309)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(89985, 437345)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[115], pump_node)
+ribasim_model.link.add(ribasim_model.basin[n("GPG-1246_109")], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 
@@ -146,7 +148,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[116])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("GPG-1249_110")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # Inlaat (hevel) toevoegen at north of HHSK
@@ -158,7 +160,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[27])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("PPG-449_23")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # Inlaat (hevel) toevoegen at Leuvehaven
@@ -170,7 +172,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[139])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("GPG-399_144")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # Inlaat (hevel) toevoegen at Schilthuis
@@ -182,13 +184,13 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[97])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("GPG-399_145")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # # # add gemaal between two basins in Rotterdam. Dont use FF as it is an aanvoergemaal
 pump_node = ribasim_model.pump.add(Node(geometry=Point(95653, 436055)), [pump.Static(flow_rate=[2.5 / 60])])
-ribasim_model.link.add(ribasim_model.basin[143], pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[157])
+ribasim_model.link.add(ribasim_model.basin[n("GPG-1282_128")], pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[n("GPG-1284_140")])
 inlaat_pump.append(pump_node.node_id)
 
 # Inlaat (hevel) toevoegen at Lek
@@ -200,7 +202,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[26])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("GPG-1205_28")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)
 
 # also add a pump here (afvoer)
@@ -208,7 +210,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(110764, 435587)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(110747, 435628)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[26], pump_node)
+ribasim_model.link.add(ribasim_model.basin[n("GPG-1205_28")], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # add pump to Schie (afvoer)
@@ -216,32 +218,32 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(89300, 439523)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(89429, 439574)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[45], pump_node)
+ribasim_model.link.add(ribasim_model.basin[n("GPG-431_42")], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 
-afvoer_pumps = [230, 387, 579, 366]
+afvoer_pumps = [n("KGM-76"), n("KGM-15|GPG-1255_112>GPG-399_145"), n("KGM-33"), n("KGM-10")]
 assert ribasim_model.pump.static.df is not None
 for afvoer_pump in afvoer_pumps:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == afvoer_pump, "meta_func_afvoer"] = 1
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == afvoer_pump, "meta_func_aanvoer"] = 0
 
-for n in inlaat_pump:
-    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == n, "meta_func_aanvoer"] = 1
+for node_id in inlaat_pump:
+    ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == node_id, "meta_func_aanvoer"] = 1
 
-ribasim_model.merge_basins(node_id=16, to_node_id=8)  # small (boezem)
-ribasim_model.merge_basins(node_id=145, to_node_id=2)  # small (boezem)
+ribasim_model.merge_basins(node_id=n("GPG-1361_156"), to_node_id=n("GPG-1360_149"))  # small (boezem)
+ribasim_model.merge_basins(node_id=n("GPG-1352_130"), to_node_id=n("GPG-1360_5"))  # small (boezem)
 
 # Flow directions have been changed: See feedback form
-ribasim_model.remove_node(478, True)
-ribasim_model.remove_node(641, False)
+ribasim_model.remove_node(n("KGM-72"), True)
+ribasim_model.remove_node(n("bnd:KGM-72"), False)
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(93810, 437547)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(93804, 437547)), [pump.Static(flow_rate=[20])])
 ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "aanvoer", 0)
 ribasim_param.change_pump_func(ribasim_model, pump_node.node_id, "afvoer", 1)
-ribasim_model.link.add(ribasim_model.basin[97], pump_node)
+ribasim_model.link.add(ribasim_model.basin[n("GPG-399_145")], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # (re)set 'meta_node_id'-values

@@ -66,6 +66,7 @@ website:
             - dev/slurm.qmd
             - dev/pull-requests.qmd
             - dev/reproducing-models.qmd
+            - dev/node-keys.qmd
         - section: "Tools"
           contents:
             - dev/viewer.qmd

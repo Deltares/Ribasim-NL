@@ -38,6 +38,8 @@ sturing_xlsx = cloud.joinpath(
 
 # %% init things
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
@@ -211,11 +213,11 @@ assert static_data.basin is not None
 streefpeil = static_data.basin.set_index("node_id")["streefpeil"]
 
 # Handmatige fixes
-streefpeil[1989] = 0.1
-streefpeil[1909] = 0.1
-streefpeil[1634] = 1.2  # Basin Turfvaart meetpunt
-streefpeil[1584] = 0.15
-streefpeil[1987] = -0.5
+streefpeil[n("up:KST02130")] = 0.1
+streefpeil[n("up:KDU60018")] = 0.1
+streefpeil[n("up:KST01483")] = 1.2  # Basin Turfvaart meetpunt
+streefpeil[n("up:GEM_KGM00384")] = 0.15
+streefpeil[n("up:KST02382")] = -0.5
 
 model.basin.area.df.loc[streefpeil.index, "meta_streefpeil"] = streefpeil
 profiellijnid = static_data.basin.set_index("node_id")["profielid"]
@@ -233,7 +235,12 @@ assign = AssignAuthorities(
     waterschap=authority,
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
-    custom_nodes={2030: "Buitenland", 2073: "Buitenland", 2093: "Buitenland", 34: "AaenMaas"},
+    custom_nodes={
+        n("up:KDU14823"): "Buitenland",
+        n("down:ow:OVK00640"): "Buitenland",
+        n("down:KST01649"): "Buitenland",
+        n("bnd:34"): "AaenMaas",
+    },
 )
 model = assign.assign_authorities()
 

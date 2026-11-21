@@ -24,27 +24,42 @@ IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 EXCLUDE_NODES = {}
 EXCLUDE_SUPPLY_NODES = []
 
+cloud = CloudStorage()
+ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
+ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
+qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
+
+aanvoergebieden_gpkg = cloud.joinpath(r"DeDommel/verwerkt/sturing/aanvoergebieden.gpkg")
+
+
+# %%
+# Read data
+model = Model.read(ribasim_toml)
+# nodes are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
+lk = model.link_id
+
 # Handmatige inlaatcapaciteiten uit WATAK.
 outlet_max_flow_rate_by_node_id = {
-    417: 0.6,  # Olen
-    405: 0.16,  # Sonse Heide
-    1912: 0.25,  # Bocholt naar Herentals, max aanvoer??, niet in WATAK
+    n("DSH0023156"): 0.6,  # Olen
+    n("DO28-st1"): 0.16,  # Sonse Heide
+    n("inlaat-keersop"): 0.25,  # Bocholt naar Herentals, max aanvoer??, niet in WATAK
 }
 outlet_max_flow_rate_from_results = {
-    103: 21,  # GA1-st2
-    214: 3,  # DO80-st3
-    217: 6,  # DO80-st5
-    218: 3,  # DO80-st2
-    233: 2,  # DO80-st1
-    375: 18,  # KS50-st5
-    411: 15,  # DSH0021865
-    413: 15,  # DSH0002859
-    457: 9,  # RS304-KDU24
+    n("GA1-st2"): 21,  # GA1-st2
+    n("DO80-st3"): 3,  # DO80-st3
+    n("DO80-st5"): 6,  # DO80-st5
+    n("DO80-st2"): 3,  # DO80-st2
+    n("DO80-st1"): 2,  # DO80-st1
+    n("KS50-st5"): 18,  # KS50-st5
+    n("DSH0021865"): 15,  # DSH0021865
+    n("DSH0002859"): 15,  # DSH0002859
+    n("RS304-KDU24"): 9,  # RS304-KDU24
 }
 outlet_max_flow_rate_coupled_by_node_id = {
-    45: 8,  # KD25-dr3; gekoppeld max=4.58, parameterized=3.23
-    97: 9,  # KD25-st3; gekoppeld max=5.12, parameterized=3.14
-    491: 8,  # gekoppeld max=4.06, huidige max=4.00, link=2700460
+    n("KD25-dr3"): 8,  # KD25-dr3; gekoppeld max=4.58, parameterized=3.23
+    n("KD25-st3"): 9,  # KD25-st3; gekoppeld max=5.12, parameterized=3.14
+    n("DSH0001997"): 8,  # gekoppeld max=4.06, huidige max=4.00, link=2700460
 }
 outlet_max_flow_rate_afvoer_by_node_id = {}
 for max_flow_rates in (
@@ -61,18 +76,18 @@ outlet_max_flow_rate_afvoer_by_node_id.update(outlet_max_flow_rate_by_node_id)
 # Houd deze lange data-lijsten compact; formatters klappen ze anders uit naar een node-id per regel.
 
 # fmt: off
-flow_control_nodes = [203, 212, 216, 217, 227, 236, 375]
+flow_control_nodes = [n("DO78-st2"), n("DO79 stuw Damianen"), n("DO79 stuw Wolvensteeg"), n("DO80-st5"), n("DO78-st1"), n("onbekend"), n("KS50-st5")]
 
-supply_nodes = [369, 370, 405, 416, 417, 590, 923, 1067, 1912]
+supply_nodes = [n("KS52-st2"), n("DSH0019985"), n("DO28-st1"), n("DSH0021558"), n("DSH0023156"), n("DSH0019826"), n("ow:DO23_1"), n("up:RS186-KSY1"), n("inlaat-keersop")]
 
-drain_nodes = [210, 419, 506, 507, 509, 510, 602, 611, 670, 705, 709, 710, 753, 754, 766, 926, 967]
+drain_nodes = [n("DL62-st1"), n("DSH0018205"), n("DSH0017161"), n("DO84-gm1"), n("DSH0016456"), n("DSH0016725"), n("DSH0016469"), n("KS48-st1"), n("ow:DL1_43"), n("ow:KS50_0"), n("ow:KS52_6"), n("ow:KS40_16"), n("ow:DO28_3"), n("ow:DO23_0"), n("ow:DO53_0"), n("ow:DO86_0")]
 
 flushing_nodes = {}
 
 SUPPLY_AREA_IGNORE_LINKS = {
-    "Son en Breugel": [641, 649, 1088,1089, 1392, 1875],
-    "Olen": [336, 349, 350, 381, 855, 856, 1548, 1700, 1854],
-    "Beekloop": [794, 836, 1660, 1661, 1934, 1973],
+    "Son en Breugel": [lk("ow:DO28_3", "up:ow:DO1_55"), lk("ow:DO53_0", "up:ow:DO1_40"), lk("up:DO1-dr1", "DO1-dr1"),lk("up:DO1-dr1", "ow:DO1.3_0@1"), lk("up:DSH0000083", "ow:DO28_3"), lk("up:ow:DO1_55", "ow:DO1_55")],
+    "Olen": [lk("ow:DO88_0", "up:onbekend"), lk("ow:DO81_0", "up:DO79 stuw Wolvensteeg"), lk("ow:DO83_0", "up:DO79 stuw Wolvensteeg"), lk("ow:DO91_0", "up:DO78-st1"), lk("ow:DO23_0", "up:ow:DO1_57"), lk("ow:DO1_61", "up:ow:DO1_57"), lk("up:DSH0017681", "ow:DO91_0"), lk("up:ow:DO23_0", "ow:DO23_0"), lk("up:ow:DO81_0", "ow:DO81_0")],
+    "Beekloop": [lk("ow:KS50_0", "up:KS40_7___2"), lk("ow:KS1_17", "up:KS1-dr5"), lk("up:ow:KS42_0", "ow:KS42_0"), lk("up:KS40_7___2", "KS40_7___2"), lk("bnd:5", "up:KS40_7___2"), lk("loc:155032,366181", "up:KS40_7___2")],
 }
 # fmt: on
 
@@ -109,17 +124,6 @@ def add_supply_area_control(
 
 # %%
 # Definieren paden en syncen met cloud
-cloud = CloudStorage()
-ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
-ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
-qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
-
-aanvoergebieden_gpkg = cloud.joinpath(r"DeDommel/verwerkt/sturing/aanvoergebieden.gpkg")
-
-
-# %%
-# Read data
-model = Model.read(ribasim_toml)
 
 assert model.outlet.static.df is not None
 outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.node_id.astype(int), 10.0)
@@ -130,15 +134,26 @@ outlet_max_flow_rate_aanvoer_by_node_id.update(outlet_max_flow_rate_by_node_id)
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
 # %% Fixes
-outlet_ids = [968, 754, 705, 709, 710, 923, 753, 649, 766, 926]
+outlet_ids = [
+    n("ow:DO254.1-AA_1"),
+    n("ow:DO23_0"),
+    n("ow:KS50_0"),
+    n("ow:KS52_6"),
+    n("ow:KS40_16"),
+    n("ow:DO23_1"),
+    n("ow:DO28_3"),
+    n("ow:KD4-AA_0"),
+    n("ow:DO53_0"),
+    n("ow:DO86_0"),
+]
 
 for node_id in dict.fromkeys(outlet_ids):
     model.update_node(node_id=node_id, node_type="Outlet")
 
-model.update_node(node_id=670, node_type="Outlet")
+model.update_node(node_id=n("ow:DL1_43"), node_type="Outlet")
 
 # Deze knoop is geen gestuurd kunstwerk maar open doorstroming.
-model.update_node(node_id=153, node_type="ManningResistance")
+model.update_node(node_id=n("DO1-dr1"), node_type="ManningResistance")
 
 # %%
 # Toevoegen aanvoergebieden
@@ -172,8 +187,8 @@ add_controllers_to_uncontrolled_connector_nodes(
 
 # Pomp-capaciteiten op basis van hoogste berekende dynamic debiet, afgerond naar boven.
 pump_max_flow_rate_from_results = {
-    548: 7,  # 't Goor; gekoppeld max=6.24, huidige max=3.00, link=2700754
-    558: 60,  # Oude Gracht uit; oude static flow_rate=39.8
+    n("GA53-gm1"): 7,  # 't Goor; gekoppeld max=6.24, huidige max=3.00, link=2700754
+    n("DL1-7-gm2"): 60,  # Oude Gracht uit; oude static flow_rate=39.8
 }
 assert model.pump.static.df is not None
 mask = (
@@ -221,7 +236,7 @@ flow_demand_controlled_node_ids = set(
     .astype(int)
 )
 manual_max_flow_rate_node_ids = set(outlet_max_flow_rate_by_node_id)
-manual_max_flow_rate_node_ids.add(379)
+manual_max_flow_rate_node_ids.add(n("DL1.10-st1"))
 protected_max_flow_rate_node_ids = set(EXCLUDE_NODES) | flow_demand_controlled_node_ids | manual_max_flow_rate_node_ids
 for static_df in (model.outlet.static.df, model.pump.static.df):
     assert static_df is not None
@@ -243,16 +258,16 @@ assert model.discrete_control.condition.df is not None
 model.discrete_control.condition.df.loc[model.discrete_control.condition.df.time.isna(), ["time"]] = model.starttime
 
 # %% Verdeelwerk bij Eindhoven 10% afvgevoerd via Beatrixkanaal (max 20m3/s) en 90% via Dieze
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 379, "max_flow_rate"] = 0
-mask = model.outlet.static.df.node_id.isin([293, 210])
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("DL1.10-st1"), "max_flow_rate"] = 0
+mask = model.outlet.static.df.node_id.isin([n("DL1-st5"), n("DL62-st1")])
 model.outlet.static.df.loc[mask, "min_upstream_level"] = 16.2
 mark_level_update_protected(model.outlet.static.df, mask, model=model)
 
 # flow rates WATAK Olen en Sonse Heide
 flow_updates = {
-    121: 200,  # Vughterstuw
-    210: 20,  # Blaatthem
-    293: 200,  # Verdeelwerk
+    n("DO1-st3"): 200,  # Vughterstuw
+    n("DL62-st1"): 20,  # Blaatthem
+    n("DL1-st5"): 200,  # Verdeelwerk
 }
 
 mask = model.outlet.static.df.node_id.isin(flow_updates.keys()) & (model.outlet.static.df["control_state"] == "afvoer")

@@ -11,6 +11,7 @@ input models follows from them.
 import itertools
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import geopandas as gpd
 import numpy as np
@@ -23,6 +24,7 @@ from ribasim.geometry.link import LinkSchema
 from ribasim.geometry.node import NodeSchema
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 
+from ribasim_nl.keys import KEY_COLUMN, number_duplicates
 from ribasim_nl.model import Model
 
 CRS = "EPSG:28992"
@@ -772,6 +774,105 @@ def add_relevant_names(
     tables.nodes["Pump"] = pump_node.rename(columns={"meta_name": "name"}).drop_duplicates()
 
 
+def _identifiers(layer: pd.DataFrame) -> pd.Series:
+    """The identifier of the objects of a layer, by globalid: their code, or their globalid if the code is a dummy.
+
+    The postprocessing gives the objects without a code or without a globalid a dummy one from their row number.
+    """
+    layer = layer.rename(columns={"CODE": "code"})
+    code = layer["code"].astype(object)
+    globalid = layer["globalid"].astype(object).astype(str)
+    dummy = code.isna() | code.astype(str).str.startswith("dummy")
+    identifier = code.astype(str).str.strip().where(~dummy, globalid.str.strip("{}"))
+    identifiers = pd.Series(identifier.to_numpy(), index=globalid.to_numpy())
+    return identifiers[~identifiers.index.duplicated(keep="first")]
+
+
+def _smallest_identifier(values: pd.Series, identifiers: pd.Series) -> pd.Series:
+    """The smallest identifier of the objects of each crossing, a comma separated list of globalids.
+
+    A crossing can have many objects, such as the weirs between two areas. Its smallest identifier stays the same when
+    other objects are added to it or removed from it.
+    """
+
+    def name(value: Any) -> Any:
+        if pd.isna(value):
+            return pd.NA
+        return min(str(identifiers.get(globalid, globalid.strip("{}"))) for globalid in str(value).split(","))
+
+    return values.map(name).astype(object)
+
+
+def crossing_keys(
+    nodes: pd.DataFrame, links: pd.DataFrame, crossings: pd.DataFrame, post_processed_data: dict[str, gpd.GeoDataFrame]
+) -> pd.Series:
+    """The key per node ID, from the source data of the node, see `ribasim_nl.keys`.
+
+    - A Basin gets the code of its aggregation area or peilgebied.
+    - A node at a crossing gets the code of its gemaal, or else of its stuw, or else `ow:` and the code of its
+      hydroobject: the smallest code if it has several. Where several crossings have the same, they also get the
+      codes of the areas they connect, `<code>|<from>><to>`, and after that a number in the order of their location,
+      `@1`.
+    - A boundary node beside a crossing gets `bnd:` and the key of that crossing.
+    """
+    area = _identifiers(post_processed_data["peilgebied"])
+    key = pd.Series(pd.NA, index=pd.Index(nodes["node_id"].to_numpy()), dtype=object)
+
+    # the Basins are numbered after their areas, see `assign_node_ids`
+    basin_keys = []
+    for side in ("from", "to"):
+        numbers, areas = crossings[f"peilgebied_{side}"], crossings[f"agg_area_{side}"]
+        known = numbers.notna() & areas.notna() & (numbers != -999)
+        basin_keys.append(pd.Series(areas[known].map(area).to_numpy(), index=numbers[known].astype(int).to_numpy()))
+    basin_key = pd.concat(basin_keys)
+    basin_key = basin_key[~basin_key.index.duplicated(keep="first")].astype(object)
+    assert basin_key.notna().all(), "Basins of areas without an identifier"
+    # an aggregation area and a peilgebied can have the same code: number those in the order of their location
+    location = nodes.drop_duplicates("node_id").set_index("node_id").geometry.reindex(basin_key.index)
+    basin_order = pd.Series(
+        np.lexsort(([point.y for point in location], [point.x for point in location])).argsort(), index=basin_key.index
+    )
+    key[basin_key.index] = number_duplicates(basin_key, basin_order)
+
+    structure = _smallest_identifier(crossings["gemaal"], _identifiers(post_processed_data["gemaal"]))
+    stuw = _smallest_identifier(crossings["stuw"], _identifiers(post_processed_data["stuw"]))
+    open_water = "ow:" + _smallest_identifier(
+        crossings["hydroobject"], _identifiers(post_processed_data["hydroobject"])
+    )
+    connector = structure.where(structure.notna(), stuw)
+    connector = connector.where(connector.notna(), open_water)
+    assert connector.notna().all(), "crossings without a gemaal, stuw or hydroobject"
+    several = connector.duplicated(keep=False)
+    areas = [
+        crossings[f"agg_area_{side}"].map(area).astype(object).where(crossings[f"agg_area_{side}"].notna(), "")
+        for side in ("from", "to")
+    ]
+    connector = connector.where(~several, connector + "|" + areas[0].astype(str) + ">" + areas[1].astype(str))
+    # equal crossings in the order of their location, and of the source data where they are at one location
+    order = pd.Series(
+        np.lexsort(
+            (np.arange(len(crossings)), crossings.geometry.y.to_numpy(), crossings.geometry.x.to_numpy())
+        ).argsort(),
+        index=crossings.index,
+    )
+    connector = number_duplicates(connector, order)
+    key[crossings["node_id"].to_numpy()] = connector.to_numpy()
+
+    # a boundary node is linked to its crossing only
+    is_boundary = nodes["type"].isin(["Terminal", "LevelBoundary"]).to_numpy()
+    boundary_ids = set(nodes.loc[is_boundary, "node_id"])
+    for boundary_column, crossing_column in (("to", "from"), ("from", "to")):
+        beside = links[links[boundary_column].isin(boundary_ids)]
+        key[beside[boundary_column].astype(int).to_numpy()] = (
+            "bnd:" + beside[crossing_column].astype(int).map(key)
+        ).to_numpy()
+
+    assert key.notna().all(), f"nodes without a key: {key.index[key.isna()].tolist()[:20]}"
+    duplicated = key[key.duplicated(keep=False)]
+    assert duplicated.empty, f"nodes with the same key: {duplicated.sort_values(kind='stable').head(20).to_dict()}"
+    return key
+
+
 def colors(n: int) -> list[str]:
     """The colors of `n` Basin areas, in their order."""
     return list(itertools.islice(itertools.cycle(Category10[10]), n))
@@ -840,4 +941,7 @@ def boezem_model(
     add_meta_data(tables, check, post_processed_data, crossings, options.unknown_pump_function)
     if options.add_names:
         add_relevant_names(tables, post_processed_data, crossings)
-    return to_model(tables, options.endtime), check
+    model = to_model(tables, options.endtime)
+    keys = crossing_keys(nodes, links, crossings, post_processed_data)
+    model.node.df[KEY_COLUMN] = keys.reindex(model.node.df.index).astype("str")
+    return model, check

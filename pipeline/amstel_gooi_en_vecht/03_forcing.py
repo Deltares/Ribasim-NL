@@ -39,6 +39,8 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/
 processor = paths.feedback_processor(work_dir=paths.model_dir("profiles"))
 
 ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = ribasim_model.node_id
 
 # capture the zeesluis node-id by its geometry before snapping relocates it (see flushing step below)
 zeesluis_point = Point(133336, 482556)
@@ -64,9 +66,13 @@ ribasim_param.set_aanvoer_flags(
     ribasim_model,
     aanvoergebieden,
     processor,
-    basin_aanvoer_on=38,
-    basin_aanvoer_off=(53, 134, 144),  # 1, 196 and 222 have been merged together, remove from tuple
-    outlet_aanvoer_on=856,
+    basin_aanvoer_on=n("'s-Gravelandsche Polder_dummy_id_49"),
+    basin_aanvoer_off=(
+        n("Oostelijke Binnenpolder van Tienhoven_dummy_id_217"),
+        n("Atekpolder_dummy_id_18"),
+        n("Bethunepolder_dummy_id_41"),
+    ),  # 1, 196 and 222 have been merged together, remove from tuple
+    outlet_aanvoer_on=n("ow:KDU20603"),
     aanvoer_enabled=True,
 )
 categorize_nodes(ribasim_model)
@@ -74,32 +80,49 @@ from_to_node_function_table = node_function_table(ribasim_model)
 
 # change function to inlaat
 to_supply = (
-    338,
-    348,
-    390,
-    425,
-    435,
-    450,
-    456,
-    489,
-    518,
-    539,
-    541,
-    548,
-    632,
-    679,
-    710,
-    722,
-    738,
-    741,
-    774,
-    789,
-    861,
-    1012,
-    1018,
+    n("KST02789"),
+    n("KST01411"),
+    n("ow:dummy_globalid_hydroobject_4516"),
+    n("KGM00260"),
+    n("ow:dummy_globalid_hydroobject_4752"),
+    n("KST01325"),
+    n(
+        "KST00511|Polder Maarsseveen-Westbroek, Molenpolder Natuurreservaat_dummy_id_193>Polder Maarsseveen-Westbroek, Taartpunt_dummy_id_192"
+    ),
+    n("ow:KDU15754"),
+    n("KST01329"),
+    n("ow:KDU11498"),
+    n("ow:KDU01388"),
+    n("KST01268"),
+    n("KST14295"),
+    n("KST01544"),
+    n("ow:KDU04112"),
+    n("ow:KDU07333"),
+    n("KST02456"),
+    n("ow:KDU08497"),
+    n("ow:KDU19935"),
+    n("ow:KDU15548"),
+    n("ow:KDU20708"),
+    n("loc:139735,479164"),
+    n("loc:129570,479627"),
 )
-to_flow_control = (290, 417, 557, 762, 1013, 1032, 1033)
-to_drain = (256, 626, 863, 1014)
+to_flow_control = (
+    n(
+        "ow:dummy_globalid_hydroobject_1911|Polder Groot Wilnis Vinkeveen, Reservaat Demmerik_dummy_id_211>Polder Oukoop en Polder Groot Wilnis-Vinkeveen (oost), Polder Demmerik_dummy_id_155"
+    ),
+    n("ow:KDU18015"),
+    n("ow:dummy_globalid_hydroobject_6347"),
+    n("KST10970"),
+    n("loc:132149,472431"),
+    n("loc:129031,482401"),
+    n("loc:124465,489076"),
+)
+to_drain = (
+    n("ow:dummy_globalid_hydroobject_667"),
+    n("ow:dummy_globalid_hydroobject_8951"),
+    n("ow:KDU20738"),
+    n("loc:118385,472840"),
+)
 from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
 )
@@ -135,19 +158,19 @@ for duplicate in dup_control:
 assign_pump_and_basin_names(ribasim_model, paths)
 
 # manually assign better names (as suggested by JWV in FF)
-ribasim_model.node.df.loc[19, "name"] = "Kromme Mijdrecht"
-ribasim_model.node.df.loc[97, "name"] = "Amstel-Drecht kanaal"
-ribasim_model.node.df.loc[20, "name"] = "Amstel"
-ribasim_model.node.df.loc[85, "name"] = "Amstel"
-ribasim_model.node.df.loc[86, "name"] = "Amstel"
+ribasim_model.node.df.loc[n("Oosterpark_dummy_id_218"), "name"] = "Kromme Mijdrecht"
+ribasim_model.node.df.loc[n("Oosterpark_dummy_id_224"), "name"] = "Amstel-Drecht kanaal"
+ribasim_model.node.df.loc[n("Oosterpark_dummy_id_227"), "name"] = "Amstel"
+ribasim_model.node.df.loc[n("Oosterpark_dummy_id_225"), "name"] = "Amstel"
+ribasim_model.node.df.loc[n("Oosterpark_dummy_id_228"), "name"] = "Amstel"
 
-increase_flow_rate_pumps = [412, 146]
+increase_flow_rate_pumps = [n("KGM00361"), n("Middelpolder onder Amstelveen_dummy_id_127")]
 
 # presumably wrong conversion of flow capacity in the data
 assert ribasim_model.pump.static.df is not None
 for pump_id in increase_flow_rate_pumps:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == pump_id, "flow_rate"] *= 60
-set_flow_rate(ribasim_model.pump.static.df, [475], 0.60)  # increase flow_rate of specific pump
+set_flow_rate(ribasim_model.pump.static.df, [n("KGM00480")], 0.60)  # increase flow_rate of specific pump
 
 # lower the difference in waterlevel for each manning node, except those of storing basins
 set_manning_resistance_outside_bergend(ribasim_model, length=100.0, manning_n=0.01)
@@ -158,9 +181,9 @@ set_manning_resistance_outside_bergend(ribasim_model, length=100.0, manning_n=0.
 # Vechtsluis and Nieuwersluis have a capacity of 5 m3/s, see https://github.com/Deltares/Ribasim-NL/pull/928#issuecomment-6437301792
 # (name, Outlet, LevelBoundary on the ARK, Vecht Basin, whether the Outlet flows from the ARK to the Vecht, capacity [m3/s])
 ARK_VECHT_LOCKS = (
-    ("Vechtsluis", Point(132189, 459981), Point(132143, 459931), 23, True, 5.0),  # below ManningResistance 525
-    ("Nieuwersluis", Point(129006, 467646), Point(128445, 467756), 23, True, 5.0),
-    ("Sluis Nigtevecht", Point(130130, 476375), Point(129950, 476424), 206, False, 10.0),
+    ("Vechtsluis", Point(132189, 459981), Point(132143, 459931), n("Vechtboezem_dummy_id_222"), True, 5.0),
+    ("Nieuwersluis", Point(129006, 467646), Point(128445, 467756), n("Vechtboezem_dummy_id_222"), True, 5.0),
+    ("Sluis Nigtevecht", Point(130130, 476375), Point(129950, 476424), n("Vechtboezem_dummy_id_220"), False, 10.0),
 )
 ARK_LEVEL = -0.4  # m NAP
 ark_vecht_outlet_ids, ark_boundary_ids = [], []
@@ -191,16 +214,17 @@ ribasim_model = complete_parametrization(
     ribasim_model,
     paths,
     custom_nodes={
-        907: "HollandsNoorderkwartier",
-        1050: "HollandsNoorderkwartier",
-        908: "HollandsNoorderkwartier",
-        905: "Rijkswaterstaat",
-        909: "Rijkswaterstaat",
-        931: "Rijkswaterstaat",
-        966: "Rijkswaterstaat",
-        2956: "Rijkswaterstaat",
-        994: "Rijnland",
-        995: "Rijkswaterstaat",
+        n("bnd:ow:dummy_globalid_hydroobject_12"): "HollandsNoorderkwartier",
+        n("loc:129097,468241@1"): "HollandsNoorderkwartier",
+        n("bnd:ow:dummy_globalid_hydroobject_13"): "HollandsNoorderkwartier",
+        n("bnd:ow:dummy_globalid_hydroobject_10"): "Rijkswaterstaat",
+        n(
+            "bnd:ow:dummy_globalid_hydroobject_14|Noordzeekanaal/IJ/Amsterdamrijnkanaalboezem_dummy_id_235>"
+        ): "Rijkswaterstaat",
+        n("bnd:ow:dummy_globalid_hydroobject_4673"): "Rijkswaterstaat",
+        n("bnd:KST02036"): "Rijkswaterstaat",
+        n("bnd:ow:KDU20603"): "Rijnland",
+        n("bnd:KGM00069|Polder Achtienhoven_dummy_id_32>@2"): "Rijkswaterstaat",
     },
 )
 
@@ -222,12 +246,16 @@ assert ark_vecht_static["max_downstream_level"].fillna(math.inf).eq(math.inf).al
 
 # manually assign max_flow_rates (as suggested by JWV in FF)
 assert ribasim_model.outlet.static.df is not None
-ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 826, "max_flow_rate"] = 0.05
+ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == n("ow:KDU16381"), "max_flow_rate"] = 0.05
 
 # manually assign max_flow_rates to keep the lakes on target level, maybe due to large groundwater fluxes
-ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 393, "max_flow_rate"] = 2
-ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 676, "max_flow_rate"] = 2
-ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 886, "max_flow_rate"] = 2
-ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 1051, "max_flow_rate"] = 10
+ribasim_model.outlet.static.df.loc[
+    ribasim_model.outlet.static.df.node_id == n("ow:dummy_globalid_hydroobject_4528"), "max_flow_rate"
+] = 2
+ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == n("ow:KDU03196"), "max_flow_rate"] = 2
+ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == n("ow:KDU31895"), "max_flow_rate"] = 2
+ribasim_model.outlet.static.df.loc[
+    ribasim_model.outlet.static.df.node_id == n("loc:129097,468241@2"), "max_flow_rate"
+] = 10
 
 write_and_run_forcing_model(ribasim_model, paths)

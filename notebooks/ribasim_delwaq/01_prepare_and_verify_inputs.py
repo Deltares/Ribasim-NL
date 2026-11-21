@@ -214,7 +214,10 @@ IM_and_Zinfo_df.to_parquet(PREPARED_DATA_DIR / "IM_and_Zinfo_concentrations.parq
 daily_mass_loads_boundaries.to_parquet(PREPARED_DATA_DIR / "daily_mass_loads_boundaries.parquet", index=False)
 
 # %% Optional interactive diagnostics
-plot_node_id = 8010191
+# the Rijn at Lobith, by its key, see docs/dev/node-keys.qmd
+nodes = model.node.df
+is_lobith = (nodes["meta_key"] == "bnd:LOBH") & (nodes["meta_waterbeheerder"] == "Rijkswaterstaat")
+plot_node_id = int(nodes.index[is_lobith].item())
 concentration_substance = "NO3"
 lhm_flow = xr.open_dataset(model_path / "results" / "flow.nc").to_dataframe().reset_index()
 timeseries_helpers.plot_boundary_timeseries(

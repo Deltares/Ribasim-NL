@@ -172,7 +172,7 @@ def write_steady_state_regression_models(
         control = Control(ribasim_toml=output_path, qlr_path=qlr_path)
         control.run(metrics=STATIC_FORCING_METRICS)
         control.validate_result_conditions(
-            allowed_non_steady_state_node_ids=allowed_non_steady_state_node_ids(authority, scenario)
+            allowed_non_steady_state_node_ids=allowed_non_steady_state_node_ids(scenario_model, authority, scenario)
         )
 
 
@@ -960,12 +960,12 @@ def set_aanvoer_flags(
         )
         aanvoer_regions = ribasim_model.basin.area.df.reset_index()
 
-    # include 'aanvoer'-settings from feedback form
+    # include 'aanvoer'-settings from feedback form, which refers to the nodes by their key
     if processor is not None:
-        basin_aanvoer_on = set(basin_aanvoer_on) | set(processor.basin_aanvoer_on or ())
-        basin_aanvoer_off = set(basin_aanvoer_off) | set(processor.basin_aanvoer_off or ())
-        outlet_aanvoer_on = set(outlet_aanvoer_on) | set(processor.outlet_aanvoer_on or ())
-        outlet_aanvoer_off = set(outlet_aanvoer_off) | set(processor.outlet_aanvoer_off or ())
+        basin_aanvoer_on = set(basin_aanvoer_on) | set(ribasim_model.node_ids(processor.basin_aanvoer_on or ()))
+        basin_aanvoer_off = set(basin_aanvoer_off) | set(ribasim_model.node_ids(processor.basin_aanvoer_off or ()))
+        outlet_aanvoer_on = set(outlet_aanvoer_on) | set(ribasim_model.node_ids(processor.outlet_aanvoer_on or ()))
+        outlet_aanvoer_off = set(outlet_aanvoer_off) | set(ribasim_model.node_ids(processor.outlet_aanvoer_off or ()))
 
     # label basins as 'aanvoergebied'
     sb = supply.SupplyBasin(ribasim_model, aanvoer_regions, **load_geometry_kw)
@@ -2266,7 +2266,9 @@ def remove_non_free_flowing_outlets(
     return ribasim_model
 
 
-def reassign_level_boundaries(ribasim_model: Model, lb_node_ids: set[int], *, dx: float = 50, dy: float = 0) -> Model:
+def reassign_level_boundaries(
+    ribasim_model: Model, lb_node_ids: typing.Sequence[int], *, dx: float = 50, dy: float = 0
+) -> Model:
     """Replace multi-connected LevelBoundary-nodes by single-connected LevelBoundary-nodes.
 
     Multi-connected LevelBoundary-nodes are farther away from the connected connector-nodes, which can cause snapping
@@ -2278,7 +2280,7 @@ def reassign_level_boundaries(ribasim_model: Model, lb_node_ids: set[int], *, dx
     nodes.
 
     :param ribasim_model: Ribasim model
-    :param lb_node_ids: node-IDs of LevelBoundary-nodes that are 'multi-connected'
+    :param lb_node_ids: node-IDs of LevelBoundary-nodes that are 'multi-connected', replaced in this order
     :param dx: horizontal distance from connector node to new LevelBoundary-node, defaults to 50.0
     :param dy: vertical distance from connector node to new LevelBoundary-node, defaults to 0.0
 

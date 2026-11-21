@@ -1,6 +1,5 @@
 # %%
-import inspect
-from typing import Any, cast
+from typing import cast
 
 import geopandas as gpd
 import pandas as pd
@@ -27,6 +26,9 @@ model_edits_aanvoer_gpkg = cloud.joinpath(authority, "verwerkt/model_edits_aanvo
 
 # %% read model
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
+lk = model.link_id
 network_validator = NetworkValidator(model)
 split_line_gdf = gpd.read_file(fix_user_data_gpkg, layer="split_basins", fid_as_index=True)
 
@@ -49,7 +51,14 @@ outlet_data = outlet.Static(flow_rate=[5.0])
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2401959032
 
 # Oplossen verkeerde takrichting
-for link_id in [1353, 933, 373, 401, 4, 1338]:
+for link_id in [
+    lk("KDU-21040", "bnd:38"),
+    lk("up:KSL-22", "KST-2202"),
+    lk("KGM-10", "down:KGM-10"),
+    lk("KST-671", "up:KDU-1009"),
+    lk("KST-3300", "up:KGM-91"),
+    lk("WL_1860", "bnd:24"),
+]:
     model.reverse_link(link_id=link_id)
 
 # model.invalid_topology_at_node().to_file("topo_errors.gpkg")
@@ -58,13 +67,13 @@ for link_id in [1353, 933, 373, 401, 4, 1338]:
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2402031275
 
 # Veluwemeer at Harderwijk verwijderen
-for node_id in [24, 694]:
+for node_id in [n("bnd:24"), n("WL_1860")]:
     model.remove_node(node_id, remove_links=True)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2402229646
 
 # Veluwemeer at Elburg verwijderen
-for node_id in [3, 1277]:
+for node_id in [n("bnd:3"), n("up:bnd:3")]:
     model.remove_node(node_id, remove_links=True)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/148#issuecomment-2402281396
@@ -73,50 +82,50 @@ for node_id in [3, 1277]:
 model.split_basin(line=cast(LineString, split_line_gdf.at[1, "geometry"]))
 model.split_basin(line=cast(LineString, split_line_gdf.at[2, "geometry"]))
 model.split_basin(line=cast(LineString, split_line_gdf.at[3, "geometry"]))
-model.merge_basins(node_id=1150, to_node_id=1101)
-model.merge_basins(node_id=1196, to_node_id=1192)
-model.merge_basins(node_id=1202, to_node_id=1049)
-model.merge_basins(node_id=1207, to_node_id=837)
-model.merge_basins(node_id=1208, to_node_id=851, are_connected=False)
-model.merge_basins(node_id=1210, to_node_id=1090)
-model.merge_basins(node_id=1212, to_node_id=823)
-model.merge_basins(node_id=1216, to_node_id=751, are_connected=False)
-model.merge_basins(node_id=1217, to_node_id=752)
-model.merge_basins(node_id=1219, to_node_id=814)
-model.merge_basins(node_id=1220, to_node_id=1118)
-model.merge_basins(node_id=1221, to_node_id=1170)
-model.update_node(1229, "LevelBoundary", data=[level_data])
-model.merge_basins(node_id=1254, to_node_id=1091, are_connected=False)
-model.merge_basins(node_id=1260, to_node_id=1125, are_connected=False)
-model.merge_basins(node_id=1263, to_node_id=863)
-model.merge_basins(node_id=1265, to_node_id=974)
-model.remove_node(node_id=539, remove_links=True)
-model.merge_basins(node_id=1267, to_node_id=1177, are_connected=False)
-model.remove_node(1268, remove_links=True)
-model.remove_node(360, remove_links=True)
-model.remove_node(394, remove_links=True)
-model.merge_basins(node_id=1269, to_node_id=1087)
-model.merge_basins(node_id=1149, to_node_id=1270, are_connected=False)
-model.merge_basins(node_id=1187, to_node_id=1028)
-model.merge_basins(node_id=759, to_node_id=990)
-model.merge_basins(node_id=992, to_node_id=990)
-model.merge_basins(node_id=1024, to_node_id=990)
-model.merge_basins(node_id=1064, to_node_id=990)
-model.merge_basins(node_id=826, to_node_id=1140)
-model.merge_basins(node_id=789, to_node_id=1137)
-model.merge_basins(node_id=1077, to_node_id=1137)
-model.merge_basins(node_id=938, to_node_id=1137)
-model.merge_basins(node_id=1147, to_node_id=1103)
-model.merge_basins(node_id=828, to_node_id=1103)
-model.merge_basins(node_id=1142, to_node_id=1066)
-model.merge_basins(node_id=900, to_node_id=959)
-model.merge_basins(node_id=1099, to_node_id=811)
-model.merge_basins(node_id=1033, to_node_id=811)
-model.remove_node(740, remove_links=True)
-model.remove_node(644, remove_links=True)
-model.remove_node(736, remove_links=True)
-model.merge_basins(node_id=1139, to_node_id=959, are_connected=False)
-model.merge_basins(node_id=1086, to_node_id=1137, are_connected=True)
+model.merge_basins(node_id=n("up:KST-3008"), to_node_id=n("up:WL_105699___3"))
+model.merge_basins(node_id=n("up:ow:WL_2717"), to_node_id=n("up:KDU-1500"))
+model.merge_basins(node_id=n("up:KDU-536"), to_node_id=n("up:KDU-2347"))
+model.merge_basins(node_id=n("up:KGM-182"), to_node_id=n("up:KDU-719"))
+model.merge_basins(node_id=n("up:KGM-44"), to_node_id=n("up:KGM-98"), are_connected=False)
+model.merge_basins(node_id=n("up:KST-320"), to_node_id=n("up:ow:WL_519"))
+model.merge_basins(node_id=n("up:KGM-41"), to_node_id=n("up:KST-56"))
+model.merge_basins(node_id=n("up:KST-2311"), to_node_id=n("up:KGM-73"), are_connected=False)
+model.merge_basins(node_id=n("up:KSL-27"), to_node_id=n("up:KGM-164"))
+model.merge_basins(node_id=n("up:KDU-76790"), to_node_id=n("up:KDU-18587"))
+model.merge_basins(node_id=n("up:KDU-3114"), to_node_id=n("up:KST-2416"))
+model.merge_basins(node_id=n("up:KDU-385"), to_node_id=n("up:ow:WL_2453"))
+model.update_node(n("down:KGM-98"), "LevelBoundary", data=[level_data])
+model.merge_basins(node_id=n("down:KST-2315"), to_node_id=n("up:WL_17858___3"), are_connected=False)
+model.merge_basins(node_id=n("down:KDU-60071"), to_node_id=n("up:KST-3052"), are_connected=False)
+model.merge_basins(node_id=n("up:ow:WL_1679"), to_node_id=n("up:KST-3976"))
+model.merge_basins(node_id=n("up:WL_112933"), to_node_id=n("up:KST-3043"))
+model.remove_node(node_id=n("KST-2420"), remove_links=True)
+model.merge_basins(node_id=n("up:KST-2419"), to_node_id=n("up:ow:WL_3293"), are_connected=False)
+model.remove_node(n("up:KST-4763"), remove_links=True)
+model.remove_node(n("KST-4763"), remove_links=True)
+model.remove_node(n("KST-4762"), remove_links=True)
+model.merge_basins(node_id=n("up:KDU-2845"), to_node_id=n("up:WL_2121___0"))
+model.merge_basins(node_id=n("up:KDU-60071"), to_node_id=n("up:KST-3051"), are_connected=False)
+model.merge_basins(node_id=n("up:WL_2223___4"), to_node_id=n("up:KGM-135"))
+model.merge_basins(node_id=n("up:KST-4217"), to_node_id=n("up:KST-2323"))
+model.merge_basins(node_id=n("up:KST-4114"), to_node_id=n("up:KST-2323"))
+model.merge_basins(node_id=n("up:KST-4115"), to_node_id=n("up:KST-2323"))
+model.merge_basins(node_id=n("up:KST-4116"), to_node_id=n("up:KST-2323"))
+model.merge_basins(node_id=n("up:KDU-17759"), to_node_id=n("up:KST-1488"))
+model.merge_basins(node_id=n("up:KGM-91"), to_node_id=n("up:KDU-19140"))
+model.merge_basins(node_id=n("up:ow:WL_31669"), to_node_id=n("up:KDU-19140"))
+model.merge_basins(node_id=n("up:WL_31710___2"), to_node_id=n("up:KDU-19140"))
+model.merge_basins(node_id=n("up:KST-1606"), to_node_id=n("up:KDU-18867"))
+model.merge_basins(node_id=n("up:KDU-18525"), to_node_id=n("up:KDU-18867"))
+model.merge_basins(node_id=n("up:KSL-23"), to_node_id=n("up:KSL-22"))
+model.merge_basins(node_id=n("up:KGM-81"), to_node_id=n("up:KST-3862"))
+model.merge_basins(node_id=n("up:KDU-5947"), to_node_id=n("up:ow:WL_19738"))
+model.merge_basins(node_id=n("up:KST-809"), to_node_id=n("up:ow:WL_19738"))
+model.remove_node(n("WL_13431___2"), remove_links=True)
+model.remove_node(n("ow:WL_35310"), remove_links=True)
+model.remove_node(n("WL_280___1"), remove_links=True)
+model.merge_basins(node_id=n("down:KGM-180"), to_node_id=n("up:KST-3862"), are_connected=False)
+model.merge_basins(node_id=n("up:KDU-18711"), to_node_id=n("up:KDU-19140"), are_connected=True)
 assert model.basin.area.df is not None
 
 # %%
@@ -169,90 +178,80 @@ actions = [i for i in actions if i in gpd.list_layers(model_edits_gpkg).name.to_
 model.apply_edits(model_edits_gpkg, actions, sort_by_order=True)
 
 # Valleikanaal verkeerd geschematiseerd
-model.redirect_link(link_id=138, to_node_id=1095)
-model.redirect_link(link_id=137, to_node_id=1095)
-model.redirect_link(link_id=136, to_node_id=1095)
-model.redirect_link(link_id=24, to_node_id=1115)
-model.redirect_link(link_id=560, to_node_id=1)
-model.redirect_link(link_id=745, from_node_id=1120)
+model.redirect_link(link_id=lk("KST-2311", "up:KST-1842"), to_node_id=n("up:KST-2312"))
+model.redirect_link(link_id=lk("KST-2310", "up:KST-1842"), to_node_id=n("up:KST-2312"))
+model.redirect_link(link_id=lk("KDU-17313", "up:KST-1842"), to_node_id=n("up:KST-2312"))
+model.redirect_link(link_id=lk("ow:WL_2453", "up:KST-67"), to_node_id=n("up:KGM-19"))
+model.redirect_link(link_id=lk("KGM-3", "up:KSL-6"), to_node_id=n("bnd:1"))
+model.redirect_link(link_id=lk("up:KDU-3797", "WL_1702"), from_node_id=n("up:KST-3227"))
 
 # %% Aanvoer edits
 
 # fix boundary levels so we can get inflow
-model.reverse_direction_at_node(271)  # sluis Dieren is not an inlet
-model.reverse_direction_at_node(302)  #
-model.reverse_direction_at_node(479)  # Laakse Duiker
+model.reverse_direction_at_node(n("KSL-20"))  # sluis Dieren is not an inlet
+model.reverse_direction_at_node(n("KST-1777"))  #
+model.reverse_direction_at_node(n("KSL-23"))  # Laakse Duiker
 
 
 layers = gpd.list_layers(model_edits_aanvoer_gpkg).name.to_list()
-for layer in layers:
-    action = layer.replace("_edge", "_link")
-    print(action)
-    # get method and args
-    method = getattr(model, action)
-    keywords = inspect.getfullargspec(method).args
-    df = gpd.read_file(model_edits_aanvoer_gpkg, layer=layer, fid_as_index=True)
-    if "order" in df.columns:
-        df.sort_values("order", inplace=True)
-    for row in df.itertuples():
-        # filter kwargs by keywords
-        # itertuples rows are namedtuples, whose `_asdict` ty sees as a column
-        kwargs = {k: v for k, v in cast(Any, row)._asdict().items() if k in keywords}
-        method(**kwargs)
+# the layers with the old names of the link edits, such as `reverse_edge`, are no edit methods, and have no rows
+old_layers = [i for i in layers if i.endswith("_edge")]
+assert all(gpd.read_file(model_edits_aanvoer_gpkg, layer=i).empty for i in old_layers), old_layers
+model.apply_edits(model_edits_aanvoer_gpkg, [i for i in layers if i not in old_layers], sort_by_order=True)
 
 # remove node (wrong connection)
-model.remove_node(478, remove_links=True)
-model.remove_node(672, remove_links=True)
-model.remove_node(671, remove_links=True)
-model.remove_node(16, remove_links=True)
-model.remove_node(17, remove_links=True)
-model.remove_node(18, remove_links=True)
-model.remove_node(738, remove_links=True)
-model.remove_node(443, remove_links=True)
-model.remove_node(595, remove_links=True)
-model.remove_node(199, remove_links=True)
-model.remove_node(585, remove_links=True)
-model.remove_node(631, remove_links=True)
-model.remove_node(611, remove_links=True)
-model.remove_node(710, remove_links=True)
-model.remove_node(292, remove_links=True)
-model.remove_node(125, remove_links=True)
-model.remove_node(696, remove_links=True)
-model.remove_node(706, remove_links=True)
-model.remove_node(737, remove_links=True)
-model.remove_node(182, remove_links=True)
-model.remove_node(185, remove_links=True)  # Duiker vervangen door pomp Oostsingel
-model.remove_node(581, remove_links=True)  # Stuw Asschat, zit er 2 keer in
-model.remove_node(496, remove_links=True)  # stuw de Groep, zit er 2 keer in
-model.remove_node(649, remove_links=True)
-model.remove_node(651, remove_links=True)
-model.remove_node(677, remove_links=True)
-model.remove_node(652, remove_links=True)
+model.remove_node(n("KSL-6"), remove_links=True)
+model.remove_node(n("ow:WL_105070"), remove_links=True)
+model.remove_node(n("ow:WL_2452"), remove_links=True)
+model.remove_node(n("bnd:16"), remove_links=True)
+model.remove_node(n("bnd:17"), remove_links=True)
+model.remove_node(n("bnd:18"), remove_links=True)
+model.remove_node(n("WL_5608___3"), remove_links=True)
+model.remove_node(n("KDU-5352"), remove_links=True)
+model.remove_node(n("KDU-18525"), remove_links=True)
+model.remove_node(n("KDU-43969"), remove_links=True)
+model.remove_node(n("KST-3227"), remove_links=True)
+model.remove_node(n("KST-710"), remove_links=True)
+model.remove_node(n("KGM3-2"), remove_links=True)
+model.remove_node(n("ow:WL_23405"), remove_links=True)
+model.remove_node(n("KST-225"), remove_links=True)
+model.remove_node(n("KDU-3797"), remove_links=True)
+model.remove_node(n("WL_114851"), remove_links=True)
+model.remove_node(n("WL_114868"), remove_links=True)
+model.remove_node(n("ow:WL_329"), remove_links=True)
+model.remove_node(n("KDU-870"), remove_links=True)
+model.remove_node(n("KDU-59769"), remove_links=True)  # Duiker vervangen door pomp Oostsingel
+model.remove_node(n("KST-2317"), remove_links=True)  # Stuw Asschat, zit er 2 keer in
+model.remove_node(n("KST-2310"), remove_links=True)  # stuw de Groep, zit er 2 keer in
+model.remove_node(n("ow:WL_112582"), remove_links=True)
+model.remove_node(n("ow:WL_112474"), remove_links=True)
+model.remove_node(n("ow:WL_19593"), remove_links=True)
+model.remove_node(n("ow:WL_19449"), remove_links=True)
 # merge basins
 # model.merge_basins(node_id=1044, to_node_id=1103)
 
-model.merge_basins(node_id=910, to_node_id=988)
-model.merge_basins(node_id=1078, to_node_id=1193)
-model.merge_basins(node_id=1193, to_node_id=1170)
-model.merge_basins(node_id=1170, to_node_id=1123)
-model.merge_basins(node_id=1115, to_node_id=1123)
-model.merge_basins(node_id=883, to_node_id=989)
-model.merge_basins(node_id=1145, to_node_id=1088)
-model.merge_basins(node_id=927, to_node_id=1117)
-model.merge_basins(node_id=1036, to_node_id=848)
-model.merge_basins(node_id=804, to_node_id=928)
-model.merge_basins(node_id=928, to_node_id=977)
-model.merge_basins(node_id=806, to_node_id=1185)
-model.merge_basins(node_id=1177, to_node_id=1111)
-model.merge_basins(node_id=834, to_node_id=904)
-model.merge_basins(node_id=904, to_node_id=862)
-model.merge_basins(node_id=1051, to_node_id=895)
-model.merge_basins(node_id=1044, to_node_id=1103)
-model.merge_basins(node_id=1120, to_node_id=862)
-model.merge_basins(node_id=1218, to_node_id=984)
-model.merge_basins(node_id=1159, to_node_id=1058, are_connected=False)
+model.merge_basins(node_id=n("up:KST-1604"), to_node_id=n("up:KGM-113"))
+model.merge_basins(node_id=n("up:WL_2317___3"), to_node_id=n("up:ow:WL_779"))
+model.merge_basins(node_id=n("up:ow:WL_779"), to_node_id=n("up:ow:WL_2453"))
+model.merge_basins(node_id=n("up:ow:WL_2453"), to_node_id=n("up:KST-74"))
+model.merge_basins(node_id=n("up:KGM-19"), to_node_id=n("up:KST-74"))
+model.merge_basins(node_id=n("up:KDU-867"), to_node_id=n("up:KST-673"))
+model.merge_basins(node_id=n("up:KDU-2711"), to_node_id=n("up:KST-59"))
+model.merge_basins(node_id=n("up:KDU-1952"), to_node_id=n("up:ow:WL_2478"))
+model.merge_basins(node_id=n("up:KDU-371"), to_node_id=n("up:KDU-2325"))
+model.merge_basins(node_id=n("up:KSL-6"), to_node_id=n("up:KDU-5365"))
+model.merge_basins(node_id=n("up:KDU-5365"), to_node_id=n("up:KDU-5352"))
+model.merge_basins(node_id=n("up:KST-3280"), to_node_id=n("up:KDU-76056"))
+model.merge_basins(node_id=n("up:ow:WL_3293"), to_node_id=n("up:KST-2420"))
+model.merge_basins(node_id=n("up:KDU-3797"), to_node_id=n("up:KDU-3737"))
+model.merge_basins(node_id=n("up:KDU-3737"), to_node_id=n("up:KST-347"))
+model.merge_basins(node_id=n("up:KDU-366"), to_node_id=n("up:KST-4169"))
+model.merge_basins(node_id=n("up:KDU-18473"), to_node_id=n("up:KDU-18867"))
+model.merge_basins(node_id=n("up:KST-3227"), to_node_id=n("up:KST-347"))
+model.merge_basins(node_id=n("up:KST-4251"), to_node_id=n("up:KST-3524"))
+model.merge_basins(node_id=n("up:KDU-870"), to_node_id=n("up:KDU-1009"), are_connected=False)
 
-model.remove_node(232, remove_links=True)
+model.remove_node(n("KGM-180"), remove_links=True)
 # %% corrigeren knoop-topologie
 # ManningResistance bovenstrooms LevelBoundary naar Outlet
 for row in network_validator.link_incorrect_type_connectivity().itertuples():

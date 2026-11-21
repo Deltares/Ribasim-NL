@@ -30,6 +30,8 @@ ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
 # read
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 start_time = time.time()
 # %%
 # parameterize
@@ -45,26 +47,25 @@ clear_ungated_outlet_levels(model)
 # %% fixes basins and profiles
 
 basin_level_overrides = [
-    ([2408], 28.82),
-    ([2309], 31.0),
-    ([2495], 31.0),
-    ([2418], 27.27),
-    ([1873], 27.6),
-    ([5434], 30.75),
-    ([2492], 30.75),
-    ([1553], 30.7),
-    ([1995], 30.75),
-    ([2028], 27.4),
-    ([1953], 28.8),
-    ([1606], 28.6),
+    ([n("up:S_98244")], 28.82),
+    ([n("up:D_23544")], 31.0),
+    ([n("loc:191446,372816")], 31.0),
+    ([n("up:S_97188")], 27.27),
+    ([n("up:D_18736")], 27.6),
+    ([n("loc:189487,383501")], 30.75),
+    ([n("up:S_97928")], 30.7),
+    ([n("up:D_217317")], 30.75),
+    ([n("up:S_97479")], 27.4),
+    ([n("up:D_19576")], 28.8),
+    ([n("up:D_21900")], 28.6),
 ]
 
 apply_basin_level_overrides(model=model, basin_level_overrides=basin_level_overrides)
 
 boundary_level_overrides = {
-    99: 31.0,
-    120: 31.0,
-    121: 31.0,
+    n("bnd:99"): 31.0,
+    n("bnd:120"): 31.0,
+    n("bnd:121"): 31.0,
 }
 
 apply_level_boundary_overrides(model, boundary_level_overrides)

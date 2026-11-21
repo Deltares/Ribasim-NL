@@ -20,6 +20,7 @@ from shapely.geometry.base import BaseGeometry
 from shapely.ops import linemerge, split, substring, unary_union
 
 from ribasim_nl import Model
+from ribasim_nl.keys import KEY_COLUMN, nonempty
 
 # https://github.com/Deltares/Ribasim-NL/issues/554
 
@@ -37,7 +38,7 @@ class SplitBasins:
     ):
         """Initialize splitter from a path to a polygon layer with the split basin parts."""
         self.model = model
-        self.splitted_basin_gdf = gpd.read_file(splitted_basin_path)
+        self.splitted_basin_gdf = gpd.read_file(splitted_basin_path, fid_as_index=True)
         self.basin_node_id_to_split = basin_node_id_to_split
         self.geometry_tolerance = geometry_tolerance
         self.printing = printing
@@ -251,11 +252,18 @@ class SplitBasins:
         newly_created_basins = []
 
         # loop through the splitted basin gdf and create new basins in the model for each geometry (which has been splitted)
+        # the key of a part is that of the Basin that is split, and the ID of the part in the file
+        node_df = self.model.node.df
+        has_key = (
+            KEY_COLUMN in node_df.columns and nonempty(node_df.loc[[self.basin_node_id_to_split], KEY_COLUMN]).all()
+        )
+        parent_key = node_df.at[self.basin_node_id_to_split, KEY_COLUMN] if has_key else None
         for new_basin in self.splitted_basin_gdf.itertuples():
             geometry = typing.cast(BaseGeometry, new_basin.geometry)
             new_node_id = self.model.next_node_id
+            key = {KEY_COLUMN: f"{parent_key}/{new_basin.Index}"} if has_key else {}
             self.model.basin.add(
-                Node(node_id=new_node_id, geometry=geometry.representative_point()),
+                Node(node_id=new_node_id, geometry=geometry.representative_point(), **key),
                 tables=[],
             )
 
@@ -483,6 +491,9 @@ def split_basin_along_route(
     # copy the Basin to the new sections, with the profile scaled by their length
     node_row = model.node.df.loc[basin_id]
     meta = {str(c): v for c, v in node_row.items() if str(c).startswith("meta_") and pd.notna(v)}
+    # the Basin keeps its key, the new sections and ManningResistances are referred to by their name
+    has_keys = KEY_COLUMN in meta
+    meta.pop(KEY_COLUMN, None)
     profile = model.basin.profile.df[model.basin.profile.df.node_id == basin_id]
     other_tables = [t for t in model.basin._tables() if t.tablename() not in ("Basin / profile", "Basin / area")]
     basin_ids = []
@@ -492,7 +503,13 @@ def split_basin_along_route(
         else:
             node_id = model.next_node_id
             model.basin.add(
-                Node(node_id, route.interpolate(distances[i]), name=name, **meta),
+                Node(
+                    node_id,
+                    route.interpolate(distances[i]),
+                    name=name,
+                    **meta,
+                    **({KEY_COLUMN: name} if has_keys else {}),
+                ),
                 [
                     basin.Profile(level=profile.level.to_list(), area=(profile.area * fraction).to_list()),
                     basin.Area(geometry=[MultiPolygon(shapely.get_parts(section))]),
@@ -534,7 +551,7 @@ def split_basin_along_route(
         upstream = LineString(_along_route(route, distances[i], cut))
         downstream = LineString(_along_route(route, cut, distances[i + 1]))
         node = model.manning_resistance.add(
-            Node(model.next_node_id, route.interpolate(cut), name=name),
+            Node(model.next_node_id, route.interpolate(cut), name=name, **({KEY_COLUMN: name} if has_keys else {})),
             [
                 manning_resistance.Static(
                     length=[upstream.length + downstream.length],

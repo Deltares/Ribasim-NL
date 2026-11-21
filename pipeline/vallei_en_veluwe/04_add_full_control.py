@@ -36,8 +36,35 @@ INLAATWERKEN_LAYERS_BY_NODE_TYPE = {
 }
 INLAATWERKEN_CODE_COLUMN = "meta_code_waterbeheerder"
 
+# %%
+# Definieren paden en syncen met cloud
+
+cloud = CloudStorage()
+
+ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
+ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
+qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
+aanvoergebieden_gpkg = cloud.joinpath(AUTHORITY, "verwerkt", "sturing", "aanvoergebieden.gpkg")
+inlaatwerken_gdb = cloud.joinpath(
+    AUTHORITY,
+    "verwerkt",
+    "1_ontvangen_data",
+    "20250425_HarmenVandeWerfhorst",
+    "Inlaatwerken en gebieden.gdb",
+)
+
+
+# %%
+# Read data
+
+model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
+lk = model.link_id
+aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
+
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
-EXCLUDE_NODES = {201, 593, 67, 137, 232}
+EXCLUDE_NODES = {n("KDU-16059"), n("KDU-16060"), n("KDU-21474"), n("KDU-19264")}
 
 
 # %%
@@ -77,6 +104,8 @@ def remove_basin_with_level_boundaries(
     next_boundary_node_id = max(int(model.node.df.index.max()) + 1, 10000)
     boundary_connector_node_ids = []
     model.remove_links(link_ids_to_remove)
+    # the names of the new boundaries refer to nodes by their key, see docs/dev/node-keys.qmd
+    keys = model.node.df["meta_key"]
 
     for row in links_to_basin.itertuples():
         link_geometry = cast(LineString, row.geometry)
@@ -94,7 +123,7 @@ def remove_basin_with_level_boundaries(
                 Node(
                     node_id=next_boundary_node_id,
                     geometry=boundary_geometry,
-                    name=f"Boundary basin {basin_id} - {connector_id}",
+                    name=f"Boundary basin {keys[basin_id]} - {keys[connector_id]}",
                 ),
                 boundary_data,
             )
@@ -111,7 +140,7 @@ def remove_basin_with_level_boundaries(
                 Node(
                     node_id=next_boundary_node_id,
                     geometry=boundary_geometry,
-                    name=f"Boundary basin {basin_id} - {connector_id}",
+                    name=f"Boundary basin {keys[basin_id]} - {keys[connector_id]}",
                 ),
                 boundary_data,
             )
@@ -175,43 +204,24 @@ def add_supply_area_control(
 
 
 # %%
-# Definieren paden en syncen met cloud
-
-cloud = CloudStorage()
-
-ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
-ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
-qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
-aanvoergebieden_gpkg = cloud.joinpath(AUTHORITY, "verwerkt", "sturing", "aanvoergebieden.gpkg")
-inlaatwerken_gdb = cloud.joinpath(
-    AUTHORITY,
-    "verwerkt",
-    "1_ontvangen_data",
-    "20250425_HarmenVandeWerfhorst",
-    "Inlaatwerken en gebieden.gdb",
-)
-
-
-# %%
-# Read data
-
-model = Model.read(ribasim_toml)
-aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
-
-# %%
 # Linkrichting fixes
-reverse_link_ids = [244, 875, 926, 422, 351, 853, 605, 1018, 378, 1055, 536]
-
-missing_reverse_link_ids = [link_id for link_id in reverse_link_ids if link_id not in model.link.df.index]
-if missing_reverse_link_ids:
-    print(f"Skipping missing reverse_link_ids: {missing_reverse_link_ids}")
+reverse_link_ids = [
+    lk("up:KGM-93", "KST-1777"),
+    lk("KST-1777", "up:KDU-19433"),
+    lk("up:KGM-93", "KSL-24"),
+    lk("KSL-24", "up:WL_14947___1"),
+    lk("KGM-59", "up:ow:WL_105031"),
+    lk("up:KDU-15134", "KGM-59"),
+    lk("ow:WL_15541", "up:KDU-69898"),
+    lk("up:KST-1219", "ow:WL_15541"),
+    lk("up:KST-2117", "KST-2119"),
+    lk("KST-2119", "up:KST-2118"),
+]
 
 for link_id in reverse_link_ids:
-    if link_id not in model.link.df.index:
-        continue
     model.reverse_link(link_id=link_id)
 
-model.redirect_link(278, to_node_id=936)
+model.redirect_link(lk("KST-1428", "up:KST-813"), to_node_id=n("up:KST-1455"))
 
 # Rijkswaterstaat Basin 1134 verwijderen en alle aangrenzende kunstwerken op een boundary zetten.
 assert model.level_boundary.node.df.meta_couple_authority.notna().all(), (
@@ -219,9 +229,9 @@ assert model.level_boundary.node.df.meta_couple_authority.notna().all(), (
 )
 basin_1134_boundary_connector_node_ids = remove_basin_with_level_boundaries(
     model,
-    basin_id=1134,
+    basin_id=n("up:WL_14947___1"),
     distance_from_connector=30.0,
-    remove_neighbor_node_ids={691},
+    remove_neighbor_node_ids={n("WL_14941")},
 )
 
 model.node.df.loc[
@@ -234,7 +244,7 @@ model.node.df.loc[
 
 # make outlet nodes
 model.update_nodes(
-    [646],
+    [n("ow:WL_15541")],
     "Outlet",
 )
 
@@ -242,10 +252,10 @@ model.update_nodes(
 model.update_nodes([], "ManningResistance")
 
 # make pump nodes
-model.update_nodes([1287], "Pump")  # Aanvoergemaal De Wenden
+model.update_nodes([n("Mr. Baron van der Feltz")], "Pump")  # Aanvoergemaal De Wenden
 
 # Verwijderen nutteloze kunstwerken voor LHM
-model.remove_nodes([484, 490, 501, 525, 42], remove_links=True)
+model.remove_nodes([n("KST-2314"), n("KST-2312"), n("KST-2113"), n("KST-2115"), n("bnd:42")], remove_links=True)
 
 # Verwijderen dubbele sluispompen. Capaciteit staat op de dichtstbijzijnde pomp per sluis.
 model.remove_nodes([], remove_links=True)
@@ -260,7 +270,7 @@ set_static_values(
 )
 
 for node_id, to_node_id in [
-    (1108, 813),
+    (n("up:KDU-3478"), n("up:KGM-11")),
 ]:
     model.merge_basins(node_id=node_id, to_node_id=to_node_id, are_connected=True)
 
@@ -269,91 +279,91 @@ for node_id, to_node_id in [
 GEMALEN_URL = "https://www.gemalen.nl/gemaal_detail.asp?gem_id={gem_id}"
 
 outlet_max_flow_rate_by_node_id = {
-    288: 2,  # Grebbesluis
-    400: 0.1,  # Schele Duiker
-    646: 0.1,  # Kleine duiker naar groot basin
+    n("KST-2307"): 2,  # Grebbesluis
+    n("KST-1828"): 0.1,  # Schele Duiker
+    n("ow:WL_15541"): 0.1,  # Kleine duiker naar groot basin
 }
 outlet_max_flow_rate_from_results = {
-    166: 2,  # KDU-8110
-    407: 2,  # KST-4425
-    479: 2,  # Sluis de Laak ( Laakse Duiker )
-    1288: 2,  # Inlaat de Wenden
+    n("KDU-8110"): 2,  # KDU-8110
+    n("KST-4425"): 2,  # KST-4425
+    n("KSL-23"): 2,  # Sluis de Laak ( Laakse Duiker )
+    n("Inlaat de Wenden"): 2,  # Inlaat de Wenden
 }
 outlet_max_flow_rate_coupled_by_node_id = {
-    74: 150,  # gekoppeld max=100.00, huidige max=0.00, link=4300038
-    212: 77,  # gekoppeld max=50.37, huidige max=25.10, link=8000978
-    692: 3,  # gekoppeld max=1.73, huidige max=0.00, link=8000949
+    n("KDU-4285"): 150,  # gekoppeld max=100.00, huidige max=0.00, link=4300038
+    n("KDU-5871"): 77,  # gekoppeld max=50.37, huidige max=25.10, link=8000978
+    n("ow:WL_1790"): 3,  # gekoppeld max=1.73, huidige max=0.00, link=8000949
 }
 
 pump_max_flow_rate_by_node_id = {
-    229: 1.167,  # Kleine Melm (70 m3/min)
-    231: 2.0,  # Zeldert (120 m3/min)
-    234: 3.267,  # J.G.W. Baron van Sytzama / Leuvenheim (196 m3/min)
-    239: 4.933,  # Mr. L.A.S.J Baron van der Feltz, Middelbeek-Voorsterbeek (296 m3/min)
-    240: 14.167,  # Mr. A.C. Baron van der Feltz (850 m3/min)
+    n("KGM-78"): 1.167,  # Kleine Melm (70 m3/min)
+    n("KGM-79"): 2.0,  # Zeldert (120 m3/min)
+    n("KGM-23"): 3.267,  # J.G.W. Baron van Sytzama / Leuvenheim (196 m3/min)
+    n("KGM-21"): 4.933,  # Mr. L.A.S.J Baron van der Feltz, Middelbeek-Voorsterbeek (296 m3/min)
+    n("KGM-19"): 14.167,  # Mr. A.C. Baron van der Feltz (850 m3/min)
     #   241: 0.0,  # Laag Helbergen (0 m3/min)
     #   242: 0.0,  # Pabstendam (0 m3/min)
-    243: 2.9,  # Tydeman (174 m3/min)
-    250: 3.0,  # Putten / Puttergemaal (180 m3/min)
-    254: 2.5,  # Westdijk (150 m3/min)
-    255: 0.333,  # Avervoordseweg (20 m3/min)
-    257: 27.667,  # Veluwe (1660 m3/min)
-    258: 3.35,  # Malesluis / Coelhorst (201 m3/min)
-    264: 4.0,  # Eemnes (240 m3/min)
-    266: 4.933,  # Mr. L.A.S.J Baron van der Feltz, Middelbeek-Lage Leiding (296 m3/min)
-    267: 5.4,  # Nijkerk (324 m3/min)
-    268: 2.167,  # Veendijk (130 m3/min)
-    457: 0.5,  # Oranje Nassau's Oord (30 m3/min)
-    459: 5.833,  # Antlia (350 m3/min)
-    460: 3.0,  # F.C. Colenbrander (180 m3/min)
-    466: 1.733,  # De Haar (104 m3/min)
-    468: 8.0,  # De Wenden (480 m3/min)
-    469: 3.35,  # Malesluis / Coelhorst (201 m3/min)
-    470: 0.1,  # Inlaat Goorpomp
-    471: 1.667,  # Bolwerk (100 m3/min)
+    n("KGM-92"): 2.9,  # Tydeman (174 m3/min)
+    n("KGM-111"): 3.0,  # Putten / Puttergemaal (180 m3/min)
+    n("KGM-91"): 2.5,  # Westdijk (150 m3/min)
+    n("KGM-14"): 0.333,  # Avervoordseweg (20 m3/min)
+    n("KGM-18"): 27.667,  # Veluwe (1660 m3/min)
+    n("KGM-75"): 3.35,  # Malesluis / Coelhorst (201 m3/min)
+    n("KGM-93"): 4.0,  # Eemnes (240 m3/min)
+    n("KGM-135"): 4.933,  # Mr. L.A.S.J Baron van der Feltz, Middelbeek-Lage Leiding (296 m3/min)
+    n("KGM-113"): 5.4,  # Nijkerk (324 m3/min)
+    n("KGM-83"): 2.167,  # Veendijk (130 m3/min)
+    n("KGM-139"): 0.5,  # Oranje Nassau's Oord (30 m3/min)
+    n("KGM-16"): 5.833,  # Antlia (350 m3/min)
+    n("KGM-22"): 3.0,  # F.C. Colenbrander (180 m3/min)
+    n("KGM-81"): 1.733,  # De Haar (104 m3/min)
+    n("KGM-3"): 8.0,  # De Wenden (480 m3/min)
+    n("KGM-134"): 3.35,  # Malesluis / Coelhorst (201 m3/min)
+    n("KGM-8"): 0.1,  # Inlaat Goorpomp
+    n("KGM-98"): 1.667,  # Bolwerk (100 m3/min)
     #   474: 0.0,  # Maatpolder (0 m3/min)
-    475: 2.9,  # Doornbos (174 m3/min)
-    573: 0.667,  # Hoenwaard (40 m3/min)
-    1282: 0.5,  # Inlaatgemaal Maatpolder, handmatig
-    1283: 0.17,  # Gemaal Meentweg
-    1284: 1.0,  # Gemaal Oostsingel
-    1285: 3.35,  # Inlaat Malesluis, match op meta_code_waterbeheerder (201 m3/min)
-    1292: 0.667,  # Aanvoergemaal Hoenwaard, match op meta_code_waterbeheerder (40 m3/min)
-    1293: 5.833,  # Aanvoergemaal Antlia, match op meta_code_waterbeheerder (350 m3/min)
+    n("KGM-164"): 2.9,  # Doornbos (174 m3/min)
+    n("KGM-17"): 0.667,  # Hoenwaard (40 m3/min)
+    n("Outlet"): 0.5,  # Inlaatgemaal Maatpolder, handmatig
+    n("Inlaatgemaal maatpolder"): 0.17,  # Gemaal Meentweg
+    n("Gemaal Meentweg"): 1.0,  # Gemaal Oostsingel
+    n("Gemaal Oostsingel"): 3.35,  # Inlaat Malesluis, match op meta_code_waterbeheerder (201 m3/min)
+    n("Inlaatgemaal Nijbroek"): 0.667,  # Aanvoergemaal Hoenwaard, match op meta_code_waterbeheerder (40 m3/min)
+    n("Aanvoergemaal Hoenwaard"): 5.833,  # Aanvoergemaal Antlia, match op meta_code_waterbeheerder (350 m3/min)
 }
 
 gemalen_url_by_node_id = {
-    229: GEMALEN_URL.format(gem_id=146),  # Kleine Melm
-    231: GEMALEN_URL.format(gem_id=930),  # Zeldert
-    234: GEMALEN_URL.format(gem_id=76),  # J.G.W. Baron van Sytzama / Leuvenheim
-    239: GEMALEN_URL.format(gem_id=6),  # Mr. L.A.S.J Baron van der Feltz
-    240: GEMALEN_URL.format(gem_id=5),  # Mr. A.C. Baron van der Feltz
-    241: GEMALEN_URL.format(gem_id=2228),  # Laag Helbergen
-    242: GEMALEN_URL.format(gem_id=7),  # Pabstendam
-    243: GEMALEN_URL.format(gem_id=542),  # Tydeman
-    250: GEMALEN_URL.format(gem_id=240),  # Putten
-    254: GEMALEN_URL.format(gem_id=940),  # Westdijk
-    255: GEMALEN_URL.format(gem_id=1499),  # Avervoordseweg
-    257: GEMALEN_URL.format(gem_id=1323),  # Veluwe
-    258: GEMALEN_URL.format(gem_id=495),  # Malesluis / Coelhorst
-    264: GEMALEN_URL.format(gem_id=950),  # Eemnes
-    266: GEMALEN_URL.format(gem_id=6),  # Mr. L.A.S.J Baron van der Feltz
-    267: GEMALEN_URL.format(gem_id=233),  # Nijkerk
-    268: GEMALEN_URL.format(gem_id=941),  # Veendijk
-    457: GEMALEN_URL.format(gem_id=1627),  # Oranje Nassau's Oord
-    459: GEMALEN_URL.format(gem_id=2028),  # Antlia
-    460: GEMALEN_URL.format(gem_id=75),  # F.C. Colenbrander
-    466: GEMALEN_URL.format(gem_id=932),  # De Haar
-    468: GEMALEN_URL.format(gem_id=238),  # De Wenden
-    469: GEMALEN_URL.format(gem_id=495),  # Malesluis / Coelhorst
-    471: GEMALEN_URL.format(gem_id=798),  # Bolwerk
-    474: GEMALEN_URL.format(gem_id=2478),  # Maatpolder
-    475: GEMALEN_URL.format(gem_id=2461),  # Doornbos
-    573: GEMALEN_URL.format(gem_id=151),  # Hoenwaard
-    1282: GEMALEN_URL.format(gem_id=2478),  # Inlaatgemaal Maatpolder
-    1285: GEMALEN_URL.format(gem_id=495),  # Inlaat Malesluis
-    1292: GEMALEN_URL.format(gem_id=151),  # Aanvoergemaal Hoenwaard
-    1293: GEMALEN_URL.format(gem_id=2028),  # Aanvoergemaal Antlia
+    n("KGM-78"): GEMALEN_URL.format(gem_id=146),  # Kleine Melm
+    n("KGM-79"): GEMALEN_URL.format(gem_id=930),  # Zeldert
+    n("KGM-23"): GEMALEN_URL.format(gem_id=76),  # J.G.W. Baron van Sytzama / Leuvenheim
+    n("KGM-21"): GEMALEN_URL.format(gem_id=6),  # Mr. L.A.S.J Baron van der Feltz
+    n("KGM-19"): GEMALEN_URL.format(gem_id=5),  # Mr. A.C. Baron van der Feltz
+    n("KGM-165"): GEMALEN_URL.format(gem_id=2228),  # Laag Helbergen
+    n("KGM-172"): GEMALEN_URL.format(gem_id=7),  # Pabstendam
+    n("KGM-92"): GEMALEN_URL.format(gem_id=542),  # Tydeman
+    n("KGM-111"): GEMALEN_URL.format(gem_id=240),  # Putten
+    n("KGM-91"): GEMALEN_URL.format(gem_id=940),  # Westdijk
+    n("KGM-14"): GEMALEN_URL.format(gem_id=1499),  # Avervoordseweg
+    n("KGM-18"): GEMALEN_URL.format(gem_id=1323),  # Veluwe
+    n("KGM-75"): GEMALEN_URL.format(gem_id=495),  # Malesluis / Coelhorst
+    n("KGM-93"): GEMALEN_URL.format(gem_id=950),  # Eemnes
+    n("KGM-135"): GEMALEN_URL.format(gem_id=6),  # Mr. L.A.S.J Baron van der Feltz
+    n("KGM-113"): GEMALEN_URL.format(gem_id=233),  # Nijkerk
+    n("KGM-83"): GEMALEN_URL.format(gem_id=941),  # Veendijk
+    n("KGM-139"): GEMALEN_URL.format(gem_id=1627),  # Oranje Nassau's Oord
+    n("KGM-16"): GEMALEN_URL.format(gem_id=2028),  # Antlia
+    n("KGM-22"): GEMALEN_URL.format(gem_id=75),  # F.C. Colenbrander
+    n("KGM-81"): GEMALEN_URL.format(gem_id=932),  # De Haar
+    n("KGM-3"): GEMALEN_URL.format(gem_id=238),  # De Wenden
+    n("KGM-134"): GEMALEN_URL.format(gem_id=495),  # Malesluis / Coelhorst
+    n("KGM-98"): GEMALEN_URL.format(gem_id=798),  # Bolwerk
+    n("KGM-121"): GEMALEN_URL.format(gem_id=2478),  # Maatpolder
+    n("KGM-164"): GEMALEN_URL.format(gem_id=2461),  # Doornbos
+    n("KGM-17"): GEMALEN_URL.format(gem_id=151),  # Hoenwaard
+    n("Outlet"): GEMALEN_URL.format(gem_id=2478),  # Inlaatgemaal Maatpolder
+    n("Gemaal Oostsingel"): GEMALEN_URL.format(gem_id=495),  # Inlaat Malesluis
+    n("Inlaatgemaal Nijbroek"): GEMALEN_URL.format(gem_id=151),  # Aanvoergemaal Hoenwaard
+    n("Aanvoergemaal Hoenwaard"): GEMALEN_URL.format(gem_id=2028),  # Aanvoergemaal Antlia
 }
 
 set_max_flow_rate(model.outlet.static.df, outlet_max_flow_rate_by_node_id)
@@ -367,21 +377,41 @@ set_static_values(model.pump.static.df, gemalen_url_by_node_id, "meta_url")
 # Houd deze lange data-lijsten compact; formatters klappen ze anders uit naar een node-id per regel.
 
 # fmt: off
-flow_control_nodes = [85, 224, 273, 276, 306, 311,321, 344, 373, 374, 386, 387, 393, 403, 404, 434, 436,
-482, 526, 533, 538, 551, 570, 574, 578, 580, 632, 760, 859, 1018, 1266, 1279, 1289, 1307, 1692]
+flow_control_nodes = [n("KDU-5351"), n("KDU-16519"), n("KST-174"), n("KST-753"), n("KST-74"), n("KST-1334"),
+n("KST-68"), n("KST-59"), n("KST-2067"), n("KST-58"), n("KST-4629"), n("KST-3280"), n("KST-67"), n("KST-57"),
+n("KST-56"), n("KDU-3478"), n("KDU-3850"), n("KST-2315"), n("KST-2311"), n("KST-421"), n("KST-2071"), n("KST-2313"),
+n("KSL-3"), n("KST-296"), n("KSL-1"), n("KST-2316"), n("KST-358"), n("up:KST-2492"), n("up:KDU-2039"), n("Riethaere"),
+n("Stuw Vloeddijk")]
 
-supply_nodes = [74, 91,477, 120, 137, 145, 164, 201, 226, 269, 312, 332, 339, 341, 352, 413, 471, 491,
-503, 506, 512, 528, 530, 536, 545, 555, 574, 588, 599, 604, 646, 1280, 1282, 1284, 1286, 1287, 1290, 1291,
-1292, 1293, 1294, 1295, 1296, 1904]
+supply_nodes = [n("KDU-4285"), n("KDU-18689"), n("KSL-10"), n("KDU-4691"), n("KDU-19264"), n("KDU-2325"), n("KDU-2652"),
+n("KDU-16059"), n("KDU-2347"), n("KSL-24"), n("KST-665"), n("KST-4173"), n("KST-249"), n("KST-823"), n("KST-3524"),
+n("KDU-1009"), n("KGM-98"), n("KST-1059"), n("KST-1731"), n("KST-3052"), n("KST-3926"), n("KST-4289"), n("KST-2118"),
+n("KST-4167"), n("KST-4034"), n("KST-1084"), n("KST-296"), n("KDU-69898"), n("KDU-79377"), n("KDU-20889"),
+n("ow:WL_15541"), n("Goorpomp"), n("Outlet"), n("Gemaal Meentweg"), n("Inlaat Malesluis"), n("Mr. Baron van der Feltz"),
+n("Aanvoergemaal Emsterbroek"), n("Aanvoergemaal Papenkamp"), n("Inlaatgemaal Nijbroek"), n("Aanvoergemaal Hoenwaard"),
+n("Aanvoergemaal Antlia"), n("Inlaat Nijoever"), n("Inlaat Luttenbroek")]
 
-drain_nodes = [68, 70, 75, 76, 79, 84, 87, 90, 93, 99, 101, 107, 116, 124, 142, 161, 166, 172, 173,
-175, 178, 179, 179, 180, 181, 187, 188, 188, 191, 198, 208, 210, 216, 220, 223, 224, 228, 229, 231,
-232, 235, 236, 237, 238, 240, 243, 245, 245, 248, 252, 255, 257, 258, 259, 259, 260, 264, 265, 270,
-272, 279, 282, 283, 287, 304, 309, 314, 320, 326, 330, 334, 336, 337, 350, 351, 354, 357, 358, 361,
-369, 371, 373, 376, 382, 383, 385, 392, 396, 402, 405, 406, 408, 409, 412, 415, 422, 429, 432, 433,
-435, 438, 444, 455, 456, 462, 466, 468, 469, 470, 475, 476, 476, 481, 489, 491, 492, 498, 505, 509,
-516, 518, 524, 527, 528, 534, 536, 537, 537, 547, 562, 564, 571, 572, 573, 583, 584, 589, 591, 592,
-596, 604, 607, 616, 619, 620, 621, 623, 624, 625, 629, 633, 638, 640, 643, 643, 1057, 1285, 1298, 1493, 1913]
+drain_nodes = [n("KDU-40934"), n("KDU-271"), n("KDU-2260"), n("KDU-45121"), n("KDU-5947"), n("KDU-30337"),
+n("KDU-77303"), n("KDU-1024"), n("KDU-719"), n("KDU-17313"), n("KDU-15567"), n("KDU-76563"), n("KDU-76692"),
+n("KDU-1738"), n("KDU-19355"), n("KDU-25756"), n("KDU-8110"), n("KDU-1500"), n("KDU-2636"), n("KDU-75161"),
+n("KDU-8107"), n("KDU-1023"), n("KDU-1023"), n("KDU-76664"), n("KDU-1926"), n("KDU-8106"), n("KDU-8391"), n("KDU-8391"),
+n("KDU-4933"), n("KDU-2295"), n("KDU-18818"), n("KDU-16925"), n("KDU-18796"), n("KDU-19433"), n("KDU-18602"),
+n("KDU-16519"), n("KGM-10"), n("KGM-78"), n("KGM-79"), n("KGM-36"), n("KGM-28"), n("KGM-34"), n("KGM-126"), n("KGM-19"),
+n("KGM-92"), n("KGM-35"), n("KGM-35"), n("KGM-127"), n("KGM-163"), n("KGM-14"), n("KGM-18"), n("KGM-75"), n("KGM-40"),
+n("KGM-40"), n("KGM-132"), n("KGM-93"), n("KGM-101"), n("KSL-5"), n("KSL-22"), n("KST-229"), n("KST-2492"),
+n("KST-1175"), n("KST-974"), n("KST-1200"), n("KST-1012"), n("KST-1488"), n("KST-842"), n("KST-1606"), n("KST-1010"),
+n("KST-2114"), n("KST-4403"), n("KST-1208"), n("KST-114"), n("KST-298"), n("KST-55"), n("KST-2214"), n("KST-4168"),
+n("KST-1428"), n("KST-73"), n("KST-1015"), n("KST-2067"), n("KST-4782"), n("KST-210"), n("KST-1011"), n("KST-4395"),
+n("KST-53"), n("KST-4394"), n("KST-1559"), n("KST-671"), n("KST-1004"), n("KST-1079"),
+n("stuw_valleikanaal_amersfoort"), n("KDU-17159"), n("KDU-1580"), n("KDU-78169"), n("KDU-2317"), n("KDU-1801"),
+n("KDU-60071"), n("KGM-37"), n("KDU-1711"), n("KDU-874"), n("KDU-76045"), n("KDU-1812"), n("KGM-39"), n("KGM-81"),
+n("KGM-3"), n("KGM-134"), n("KGM-8"), n("KGM-164"), n("KGM-42"), n("KGM-42"), n("KST-219"), n("KST-2091"),
+n("KST-1059"), n("KST-1760"), n("KST-4181"), n("KST-4398"), n("KST-813"), n("KST-2090"), n("KST-48"), n("KST-3866"),
+n("KST-1430"), n("KST-4289"), n("KST-1454"), n("KST-4167"), n("KST-782"), n("KST-782"), n("KST-3053"), n("KSL-19"),
+n("KST-3162"), n("KDU-4883"), n("KST-804"), n("KGM-17"), n("KST-4662"), n("KST-4663"), n("KDU-76900"), n("KDU-15568"),
+n("KST-4846"), n("KST-3976"), n("KDU-20889"), n("KDU-20036"), n("KST-4815"), n("KST-1316"), n("KST-1315"),
+n("KST-1314"), n("KST-4950"), n("KST-4952"), n("KST-148"), n("KST-246"), n("KST-212"), n("KST-4848"), n("KST-206"),
+n("KST-4176"), n("KST-4176"), n("up:KGM-8"), n("Gemaal Oostsingel"), n("Vlieterweg")]
 # fmt: on
 
 
@@ -551,12 +581,29 @@ print_node_list_diff("drain_nodes", manual_drain_nodes, drain_nodes)
 # Per gebied: links die intersecten die we kunnen negeren.
 
 supply_area_ignore_links = {
-    "Arkemheem": [1293],
+    "Arkemheem": [lk("up:ow:WL_114600", "ow:WL_114600")],
     "Eemland": [],
-    "Gelderse vallei": [435, 436, 538, 760, 859, 1018, 1266, 1306],
-    "IJsselvallei": [418, 419, 420, 610, 1254, 1296, 1298],
+    "Gelderse vallei": [
+        lk("WL_20022___2", "up:WL_17840"),
+        lk("WL_105176", "up:WL_17840"),
+        lk("WL_17858___3", "up:KST-2118"),
+        lk("up:KDU-15520", "WL_105176"),
+        lk("up:KDU-16925", "ow:WL_113271"),
+        lk("ow:WL_15541", "up:KST-1219"),
+        lk("up:WL_20022___2", "WL_20022___2"),
+        lk("up:WL_17858___3", "WL_17858___3"),
+    ],
+    "IJsselvallei": [
+        lk("ow:WL_2756", "up:KSL-5"),
+        lk("ow:WL_2728", "up:KSL-5"),
+        lk("ow:WL_3150", "up:KSL-5"),
+        lk("ow:WL_1401", "up:KDU-2295"),
+        lk("up:ow:WL_1401", "ow:WL_1401"),
+        lk("up:ow:WL_3219", "ow:WL_3219"),
+        lk("up:WL_2870___0", "WL_2870___0"),
+    ],
     "Noordoost Veluwe": [],
-    "Noordwest Veluwe": [547],
+    "Noordwest Veluwe": [lk("WL_114529", "up:KDU-5351")],
 }
 
 
@@ -577,7 +624,7 @@ for area_name, ignore_intersecting_links in supply_area_ignore_links.items():
 # Add all remaining inlets/outlets
 
 # Valleikanaal
-flushing_nodes = {409: 1}
+flushing_nodes = {n("stuw_valleikanaal_amersfoort"): 1}
 
 add_controllers_to_uncontrolled_connector_nodes(
     model=model,
@@ -601,12 +648,12 @@ model.outlet.static.df.loc[mask, ["flow_rate", "min_flow_rate", "max_flow_rate"]
 # Pomp-capaciteiten op basis van hoogste berekende dynamic debiet, afgerond naar boven.
 # Bestaande handmatige pompwaarden blijven leidend.
 pump_max_flow_rate_from_results = {
-    248: 1,  # Gemaal Bestevaer; oude static flow_rate=0.049
-    249: 50,  # gekoppeld max=50.00, huidige max=0.0562, link=8000977
-    251: 1,  # Dieren; oude static flow_rate=0
-    261: 50,  # gekoppeld max=50.00, huidige max=0.0562, link=4300240
-    1286: 2,  # gekoppeld max=1.80, huidige max=0.00, link=4301400
-    1294: 1,  # naam onbekend; oude static flow_rate=0
+    n("KGM-127"): 1,  # Gemaal Bestevaer; oude static flow_rate=0.049
+    n("KGM-25"): 50,  # gekoppeld max=50.00, huidige max=0.0562, link=8000977
+    n("KGM-4"): 1,  # Dieren; oude static flow_rate=0
+    n("KGM-24"): 50,  # gekoppeld max=50.00, huidige max=0.0562, link=4300240
+    n("Inlaat Malesluis"): 2,  # gekoppeld max=1.80, huidige max=0.00, link=4301400
+    n("Aanvoergemaal Antlia"): 1,  # naam onbekend; oude static flow_rate=0
 }
 assert model.pump.static.df is not None
 mask = (

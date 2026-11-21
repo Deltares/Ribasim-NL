@@ -24,7 +24,7 @@ from ribasim_nl.observations import add_observations, link_observations
 from ribasim_nl.parametrization.manning_resistance_table import read_manning_water, update_manning_resistance_reach
 from ribasim_nl.performance import write_performance
 from ribasim_nl.ribasim_parametrization import write_steady_state_regression_models
-from ribasim_nl.rwzi import attach_rwzi_junctions, merge_rwzi_model
+from ribasim_nl.rwzi import RWZI_BASINS, attach_rwzi_junctions, merge_rwzi_model
 from ribasim_nl.seasonal_levels import PEILBEHEER, apply_seasonal_levels
 from ribasim_nl.set_forcing import SetDynamicForcing
 from ribasim_nl.settings import settings
@@ -152,7 +152,8 @@ def finish_regional_model(
     model.clean_basin_area()
     model = snap(model)
     update_manning_resistance_reach(model, read_manning_water(model))
-    model = attach_rwzi_junctions(model)
+    # the RWZIs that discharge into another Basin than the one they are in are attached in the coupled model
+    model = attach_rwzi_junctions(model, basins=dict.fromkeys(RWZI_BASINS))
     model = add_observations(model, authority)
     # after the last nodes are added, such that only the IDs of the Junctions change
     merge_basin_trees(model, read_lines)

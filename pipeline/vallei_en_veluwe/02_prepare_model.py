@@ -22,6 +22,8 @@ ribasim_dir = cloud.joinpath(authority, "modellen", f"{authority}_fix_model")
 ribasim_toml = ribasim_dir / f"{short_name}.toml"
 
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
 
 # %%
@@ -236,9 +238,7 @@ flow_rate.name = "flow_rate"
 static_data.add_series(node_type="Pump", series=flow_rate)
 
 # %% correct some streefpeilen that are wrong
-static_data.basin.loc[static_data.basin.node_id == 1134, "streefpeil"] = -0.1
-static_data.basin.loc[static_data.basin.node_id == 1035, "streefpeil"] = -0.1
-static_data.basin.loc[static_data.basin.node_id == 1159, "streefpeil"] = 2
+static_data.basin.loc[static_data.basin.node_id == n("up:WL_14947___1"), "streefpeil"] = -0.1
 
 # %%
 # get all nodata streefpeilen with their profile_ids and levels

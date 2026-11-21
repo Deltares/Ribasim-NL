@@ -29,6 +29,8 @@ top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
 # %% init things
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
 
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
@@ -104,12 +106,12 @@ static_data.fill_streefpeil_from_profiles(damo_profiles, profiles_df)
 
 # Handmatige correcties streefpeilen:
 forced_levels = {
-    2495: 31.0,  # Benedenstrooms stuw Katsberg
-    1413: 30.13,  # Benedenstrooms Grenssloot op Moostdijk en AVL Dorperpeel
-    1861: 30.75,  # Bovenstrooms gemaal Helenaveen
-    1553: 30.75,
-    1995: 30.75,
-    2492: 30.75,
+    n("loc:191446,372816"): 31.0,  # Benedenstrooms stuw Katsberg
+    n("up:S_97631"): 30.13,  # Benedenstrooms Grenssloot op Moostdijk en AVL Dorperpeel
+    n("up:G_27616"): 30.75,  # Bovenstrooms gemaal Helenaveen
+    n("up:S_97928"): 30.75,
+    n("up:D_217317"): 30.75,
+    n("loc:189487,383501"): 30.75,
 }
 
 assert static_data.basin is not None
@@ -128,16 +130,16 @@ assign = AssignAuthorities(
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
     custom_nodes={
-        8: "Rijkswaterstaat",
-        37: "Rijkswaterstaat",
-        39: "Buitenland",
-        87: "Buitenland",
-        88: "Buitenland",
-        102: "Buitenland",
-        111: "Buitenland",
-        131: "Buitenland",
-        132: "AaenMaas",
-        1652: "DeDommel",
+        n("bnd:8"): "Rijkswaterstaat",
+        n("bnd:37"): "Rijkswaterstaat",
+        n("bnd:39"): "Buitenland",
+        n("bnd:87"): "Buitenland",
+        n("bnd:88"): "Buitenland",
+        n("bnd:102"): "Buitenland",
+        n("bnd:111"): "Buitenland",
+        n("bnd:131"): "Buitenland",
+        n("bnd:132"): "AaenMaas",
+        n("up:S_97911"): "DeDommel",
     },
 )
 model = assign.assign_authorities()

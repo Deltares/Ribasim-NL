@@ -27,6 +27,8 @@ top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
 # %% init things
 model = Model.read(ribasim_toml)
+# nodes are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
 
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
@@ -114,7 +116,7 @@ assign = AssignAuthorities(
     waterschap=authority,
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
-    custom_nodes={1891: "Buitenland", 1911: "Buitenland"},
+    custom_nodes={n("down:ow:NE1_0"): "Buitenland", n("bnd:keersop"): "Buitenland"},
 )
 model = assign.assign_authorities()
 

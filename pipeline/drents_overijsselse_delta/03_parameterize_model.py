@@ -38,6 +38,8 @@ inlaten_gdf = gpd.read_file(inlaten)
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 start_time = time.time()
 
 
@@ -55,61 +57,168 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 # %%
 basin_level_overrides = [
     # Paradijssluis ZP peilenkaart
-    ([59, 58, 2150, 2306, 2113, 2140], -0.2),
+    (
+        [
+            n("bnd:59"),
+            n("bnd:58"),
+            n("up:duikersifonhevel.134542"),
+            n("up:ow:hydroobject.7406"),
+            n("up:inlaat_nvl2"),
+            n("up:ow:hydroobject.12715"),
+        ],
+        -0.2,
+    ),
     # Haveltersluis ZP peilenkaart
-    ([2105], 1.82),
+    ([n("up:gemaal.21189")], 1.82),
     # Ossesluis ZP peilenkaart
-    ([1680], 4.8),
+    ([n("up:duikersifonhevel.27017")], 4.8),
     # Nieuwebrugsluis ZP peilenkaart
-    ([1772], 11.1),
+    ([n("up:duikersifonhevel.134226")], 11.1),
     # Smildigersluis ZP peilenkaart
-    ([1747], 13.27),
+    ([n("up:duikersifonhevel.13280")], 13.27),
     # Zwiggeltersluissluis ZP peilenkaart
-    ([1901], 14.95),
+    ([n("up:duikersifonhevel.24641")], 14.95),
     # Overijsels kanaal (Ankersmit)
-    ([1761, 2008, 2229, 2247, 2449], 5.75),
-    ([1721], 8.35),
+    (
+        [
+            n("up:duikersifonhevel.284644"),
+            n("up:gemaal.11472"),
+            n("up:duikersifonhevel.284665"),
+            n("up:duikersifonhevel.286196"),
+            n("up:duikersifonhevel.422952"),
+        ],
+        5.75,
+    ),
+    ([n("up:duikersifonhevel.284649")], 8.35),
     # Rietberg
-    ([2288], 1.6),
+    ([n("up:duikersifonhevel.464602")], 1.6),
     # Peilgebied VL169
-    ([1635], 4.95),
+    ([n("up:duikersifonhevel.15979")], 4.95),
     # BoezemNW
-    ([2580], -0.73),
+    ([n("loc:197542,525242")], -0.73),
     # Bentpolder
-    ([2185], -0.45),
-    ([2131], 8.4),
+    ([n("up:gemaal.8491")], -0.45),
+    ([n("up:stuw.16980")], 8.4),
 ]
 protected_basin_node_ids = apply_basin_level_overrides(model=model, basin_level_overrides=basin_level_overrides)
 
-model.update_node(node_id=1452, node_type="Outlet")
+model.update_node(node_id=n("ow:hydroobject.236366"), node_type="Outlet")
 
 # make outlet nodes
 model.update_nodes(
-    [1418, 1419, 1428, 1433, 1444, 1448, 1452, 1459, 1460, 1462, 1466, 1488, 1512, 1513, 1522, 1548, 1550],
+    [
+        n("ow:hydroobject.203309"),
+        n("ow:hydroobject.200741"),
+        n("ow:hydroobject.10133"),
+        n("ow:hydroobject.9069"),
+        n("ow:hydroobject.211426"),
+        n("ow:hydroobject.200446"),
+        n("ow:hydroobject.236366"),
+        n("ow:hydroobject.601606"),
+        n("ow:hydroobject.203937"),
+        n("ow:hydroobject.201586"),
+        n("ow:hydroobject.214582"),
+        n("ow:hydroobject.209633"),
+        n("ow:hydroobject.11593"),
+        n("ow:hydroobject.200512"),
+        n("ow:hydroobject.9552"),
+        n("ow:hydroobject.212111"),
+        n("ow:hydroobject.429079"),
+    ],
     "Outlet",
 )
 
 # make manning nodes
-model.update_nodes([859, 1032, 1060, 1083], "ManningResistance")
+model.update_nodes(
+    [
+        n("duikersifonhevel.278403"),
+        n("duikersifonhevel.18955"),
+        n("duikersifonhevel.18988"),
+        n("duikersifonhevel.508762"),
+    ],
+    "ManningResistance",
+)
 
 # make pump nodes
-model.update_nodes([195, 332, 346, 414, 742, 829, 906, 1048, 1076, 1423, 1484, 1516], "Pump")
+model.update_nodes(
+    [
+        n("stuw.47752"),
+        n("stuw.2350"),
+        n("stuw.112138"),
+        n("stuw.97401"),
+        n("duikersifonhevel.285129"),
+        n("duikersifonhevel.285046"),
+        n("duikersifonhevel.464602"),
+        n("duikersifonhevel.18968"),
+        n("duikersifonhevel.739223"),
+        n("ow:hydroobject.10384"),
+        n("ow:hydroobject.308700"),
+        n("ow:hydroobject.9684"),
+    ],
+    "Pump",
+)
 
 
 # make outlet nodes
 model.update_nodes(
-    [1418, 1419, 1428, 1433, 1444, 1448, 1452, 1459, 1460, 1462, 1466, 1488, 1512, 1513, 1522, 1548, 1550],
+    [
+        n("ow:hydroobject.203309"),
+        n("ow:hydroobject.200741"),
+        n("ow:hydroobject.10133"),
+        n("ow:hydroobject.9069"),
+        n("ow:hydroobject.211426"),
+        n("ow:hydroobject.200446"),
+        n("ow:hydroobject.236366"),
+        n("ow:hydroobject.601606"),
+        n("ow:hydroobject.203937"),
+        n("ow:hydroobject.201586"),
+        n("ow:hydroobject.214582"),
+        n("ow:hydroobject.209633"),
+        n("ow:hydroobject.11593"),
+        n("ow:hydroobject.200512"),
+        n("ow:hydroobject.9552"),
+        n("ow:hydroobject.212111"),
+        n("ow:hydroobject.429079"),
+    ],
     "Outlet",
 )
 
 # Westerveld
-model.update_nodes([1104, 885, 1522], "ManningResistance")
+model.update_nodes(
+    [n("duikersifonhevel.1016527"), n("duikersifonhevel.275959"), n("ow:hydroobject.9552")], "ManningResistance"
+)
 
 # Verwijderen nutteloze kunstwerken voor LHM
-model.remove_nodes([530, 264, 849, 1174, 1229, 266, 268, 523, 275, 537, 464, 406], remove_links=True)
+model.remove_nodes(
+    [
+        n("sluis.3335"),
+        n("stuw.43262"),
+        n("duikersifonhevel.280149"),
+        n("duikersifonhevel.284680"),
+        n("duikersifonhevel.754571"),
+        n("stuw.43349"),
+        n("stuw.43369"),
+        n("sluis.3323"),
+        n("stuw.67928"),
+        n("sluis.1966"),
+        n("stuw.21779"),
+        n("stuw.107020"),
+    ],
+    remove_links=True,
+)
 
 # Verwijderen dubbele sluispompen. Capaciteit staat op de dichtstbijzijnde pomp per sluis.
-model.remove_nodes([706, 550, 548, 632, 686, 406, 650], remove_links=True)
+model.remove_nodes(
+    [
+        n("gemaal.24733"),
+        n("gemaal.25052"),
+        n("gemaal.25372"),
+        n("gemaal.25692"),
+        n("gemaal.25693"),
+        n("gemaal.25694"),
+    ],
+    remove_links=True,
+)
 
 
 assert model.manning_resistance.static.df is not None
@@ -150,10 +259,10 @@ model.outlet.static.df.loc[model.outlet.static.df["node_id"].isin(node_ids), "ma
 
 # %%
 
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 980, "meta_categorie"] = "Inlaat"
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1143, "meta_categorie"] = "Inlaat"
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1401, "meta_categorie"] = "Inlaat"
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1086, "meta_categorie"] = "Inlaat"
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("duikersifonhevel.11301"), "meta_categorie"] = "Inlaat"
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("duikersifonhevel.12171"), "meta_categorie"] = "Inlaat"
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("ow:hydroobject.497881"), "meta_categorie"] = "Inlaat"
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("duikersifonhevel.13178"), "meta_categorie"] = "Inlaat"
 
 update_level_boundary_static(
     model=model,

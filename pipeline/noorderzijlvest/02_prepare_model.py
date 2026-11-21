@@ -19,6 +19,8 @@ ws_grenzen_path = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/watersch
 RWS_grenzen_path = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg")
 
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
 
 
@@ -36,7 +38,7 @@ assign = AssignAuthorities(
     waterschap=authority,
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
-    custom_nodes={28: "Noordzee", 27: "Noordzee"},  # example of custom nodes (node_id: authority_name
+    custom_nodes={n("bnd:28"): "Noordzee", n("bnd:27"): "Noordzee"},  # example of custom nodes (node_id: authority_name
 )
 model = assign.assign_authorities()
 assign_noordzee(model=model)

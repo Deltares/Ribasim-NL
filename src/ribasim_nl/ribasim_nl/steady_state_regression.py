@@ -1,27 +1,37 @@
 """Regression checks for Basin water-level steady state."""
 
+from typing import TYPE_CHECKING
+
 import pandas as pd
 import xarray as xr
 
-ALLOWED_NON_STEADY_STATE_NODE_IDS = {
-    "DeDommel": {"wet": {1708}},
-    # Boezemgemaal Halfweg pumps from Basin 2770 on the level of Basin 2771. In the wet scenario it pulls 2770 and 5600
-    # about 3 cm below the rest of the boezem every other day or so, also with fixed levels. In the dry scenario
-    # Inlaatgemaal AGC supplies the boezem up to 0.5 cm above the level from which Halfweg pumps, so the boezem keeps
-    # cycling, also with daily DiscreteControl
-    "Rijnland": {"dry": {2770, 5600}, "wet": {2770, 5600}},
-    "RijnenIJssel": {"wet": {835}},
-    # Basin 98 of about 4000 m2 receives about 0.35 m3/s from RWZI Arnhem, with Pump 490 as its only way out. If its off
-    # state is chosen, the level rises up to 2 m until DiscreteControl is next evaluated 6 hours later. It also has
+if TYPE_CHECKING:
+    from ribasim_nl.model import Model
+
+# Basins whose level is allowed to vary at the end of a scenario, by their key, see `ribasim_nl.keys`
+ALLOWED_NON_STEADY_STATE_KEYS = {
+    "DeDommel": {"wet": {"up:DO85-gm1"}},
+    # Boezemgemaal Halfweg pumps from the Basin next to it on the level of the Basin in the middle of the boezem. In
+    # the wet scenario it pulls that Basin and its storing Basin about 3 cm below the rest of the boezem every other day
+    # or so, also with fixed levels. In the dry scenario Inlaatgemaal AGC supplies the boezem up to 0.5 cm above the
+    # level from which Halfweg pumps, so the boezem keeps cycling, also with daily DiscreteControl
+    "Rijnland": {
+        scenario: {"RIJNLANDSBOEZEM_dummy_id_281/285", "bergend:RIJNLANDSBOEZEM_dummy_id_281/285"}
+        for scenario in ("dry", "wet")
+    },
+    "RijnenIJssel": {"wet": {"up:LV80320076___1"}},
+    # This Basin of about 4000 m2 receives about 0.35 m3/s from RWZI Arnhem, with one Pump as its only way out. If its
+    # off state is chosen, the level rises up to 2 m until DiscreteControl is next evaluated 6 hours later. It also has
     # short dips of 2 cm or more, which fail this check if they land on the second-to-last day
-    "Rivierenland": {"wet": {98}},
-    "StichtseRijnlanden": {"wet": {1877}},
+    "Rivierenland": {"wet": {"driel_dummy_id_30"}},
+    "StichtseRijnlanden": {"wet": {"up:SL0008"}},
 }
 
 
-def allowed_non_steady_state_node_ids(authority: str | None, scenario: str | None) -> set[int]:
-    """Return approved level-instability exceptions for a model scenario."""
-    return ALLOWED_NON_STEADY_STATE_NODE_IDS.get(authority, {}).get(scenario, set())
+def allowed_non_steady_state_node_ids(model: "Model", authority: str | None, scenario: str | None) -> set[int]:
+    """Return the node IDs of the approved level-instability exceptions for a model scenario."""
+    keys = ALLOWED_NON_STEADY_STATE_KEYS.get(authority or "", {}).get(scenario or "", set())
+    return set(model.node_ids(sorted(keys)))
 
 
 def steady_state_results(

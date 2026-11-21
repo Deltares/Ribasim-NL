@@ -28,93 +28,6 @@ AUTHORITY: str = "RijnenIJssel"  # authority
 SHORT_NAME: str = "wrij"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
-drain_nodes = [59]
-supply_nodes = [654, 479, 437, 438, 677, 409, 1190, 390, 428]
-flushing_nodes = {
-    320: 3,
-    337: 0.9,
-    161: 0.1,
-    349: 0.2,  # 0.1-0.3 m3/s volgens waterschap
-}
-flow_control_nodes = [306]
-
-outlet_max_flow_rate_by_node_id = {
-    120: 1.3,  # Lochem
-    90: 0.6,  # Herkel
-}
-outlet_max_flow_rate_from_results = {
-    65: 56,  # Stokkersbrug
-    68: 29,  # Buurserbeek Gaathuizenweg 52
-    169: 96,  # Het Klooster
-    322: 29,  # ST80160035
-    329: 26,  # Kuipersbrug
-    466: 17,  # DR09180001
-    471: 2,  # DR80740011
-    472: 2,  # AF80740003
-    493: 2,  # DR84620035
-    516: 26,  # St96110095
-    575: 26,  # ST80160105
-    584: 29,  # ST80180034
-    587: 54,  # Voorst
-    591: 20,  # ST96230089
-    1194: 27,  # ST96210074
-}
-outlet_max_flow_rate_coupled_by_node_id = {
-    390: 2,  # gekoppeld max=0.96, huidige max=0.00, link=700040
-    409: 11,  # gekoppeld max=6.45, huidige max=0.00, link=700489
-    428: 3,  # gekoppeld max=1.48, huidige max=0.00, link=700214
-    1190: 12,  # gekoppeld max=7.13, huidige max=0.00, link=701396
-}
-pump_max_flow_rate_by_node_id = {
-    654: 1.4,  # Schipbeek
-}
-drain_nodes = [59]
-supply_nodes = [654, 479, 437, 438, 677, 409, 1190, 390, 428]
-flushing_nodes = {
-    320: 3,
-    337: 0.9,
-    161: 0.1,
-    349: 0.2,  # 0.1-0.3 m3/s volgens waterschap
-}
-flow_control_nodes = [306]
-
-outlet_max_flow_rate_by_node_id = {
-    120: 1.3,  # Lochem
-    90: 0.6,  # Herkel
-}
-outlet_max_flow_rate_from_results = {
-    65: 56,  # Stokkersbrug
-    68: 29,  # Buurserbeek Gaathuizenweg 52
-    169: 96,  # Het Klooster
-    322: 29,  # ST80160035
-    329: 26,  # Kuipersbrug
-    466: 17,  # DR09180001
-    471: 2,  # DR80740011
-    472: 2,  # AF80740003
-    493: 2,  # DR84620035
-    516: 26,  # St96110095
-    575: 26,  # ST80160105
-    584: 29,  # ST80180034
-    587: 54,  # Voorst
-    591: 20,  # ST96230089
-    1194: 27,  # ST96210074
-    436: 0,  # Bredevoort richting Keizersbeek (doet niets in normale situaties)
-}
-outlet_max_flow_rate_coupled_by_node_id = {
-    390: 2,  # gekoppeld max=0.96, huidige max=0.00, link=700040
-    409: 11,  # gekoppeld max=6.45, huidige max=0.00, link=700489
-    428: 3,  # gekoppeld max=1.48, huidige max=0.00, link=700214
-    1190: 12,  # gekoppeld max=7.13, huidige max=0.00, link=701396
-}
-pump_max_flow_rate_by_node_id = {
-    654: 1.4,  # Schipbeek
-}
-
-# Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
-EXCLUDE_NODES = {436, 578}
-
-# %%
-# Definieren paden en syncen met cloud
 cloud = CloudStorage()
 ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
 ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
@@ -125,31 +38,141 @@ aanvoergebieden_gpkg = cloud.joinpath(rf"{AUTHORITY}/verwerkt/sturing/aanvoergeb
 # %%
 # Read data
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
+
+drain_nodes = [n("ST96410001")]
+supply_nodes = [
+    n("GM96370013"),
+    n("AF96440002"),
+    n("AF54670001"),
+    n("AF54440002"),
+    n("LV80320076___1"),
+    n("DR80220104"),
+    n("DR84460109"),
+    n("AF84250001"),
+    n("DR80810021"),
+]
+flushing_nodes = {
+    n("ST80620025"): 3,
+    n("ST80830001"): 0.9,
+    n("ST80810015"): 0.1,
+    n("ST74510001"): 0.2,  # 0.1-0.3 m3/s volgens waterschap
+}
+flow_control_nodes = [n("ST96410003")]
+
+outlet_max_flow_rate_by_node_id = {
+    n("ST80740031"): 1.3,  # Lochem
+    n("ST84620011"): 0.6,  # Herkel
+}
+outlet_max_flow_rate_from_results = {
+    n("ST80210003"): 56,  # Stokkersbrug
+    n("ST96310009"): 29,  # Buurserbeek Gaathuizenweg 52
+    n("ST54250001"): 96,  # Het Klooster
+    n("ST80160035"): 29,  # ST80160035
+    n("ST80110036"): 26,  # Kuipersbrug
+    n("DR09180001"): 17,  # DR09180001
+    n("DR80740011"): 2,  # DR80740011
+    n("AF80740003"): 2,  # AF80740003
+    n("DR84620035"): 2,  # DR84620035
+    n("St96110095"): 26,  # St96110095
+    n("ST80160105"): 26,  # ST80160105
+    n("ST80180034"): 29,  # ST80180034
+    n("ST54180005"): 54,  # Voorst
+    n("ST96230089"): 20,  # ST96230089
+    n("ST96210074"): 27,  # ST96210074
+}
+outlet_max_flow_rate_coupled_by_node_id = {
+    n("AF84250001"): 2,  # gekoppeld max=0.96, huidige max=0.00, link=700040
+    n("DR80220104"): 11,  # gekoppeld max=6.45, huidige max=0.00, link=700489
+    n("DR80810021"): 3,  # gekoppeld max=1.48, huidige max=0.00, link=700214
+    n("DR84460109"): 12,  # gekoppeld max=7.13, huidige max=0.00, link=701396
+}
+pump_max_flow_rate_by_node_id = {
+    n("GM96370013"): 1.4,  # Schipbeek
+}
+drain_nodes = [n("ST96410001")]
+supply_nodes = [
+    n("GM96370013"),
+    n("AF96440002"),
+    n("AF54670001"),
+    n("AF54440002"),
+    n("LV80320076___1"),
+    n("DR80220104"),
+    n("DR84460109"),
+    n("AF84250001"),
+    n("DR80810021"),
+]
+flushing_nodes = {
+    n("ST80620025"): 3,
+    n("ST80830001"): 0.9,
+    n("ST80810015"): 0.1,
+    n("ST74510001"): 0.2,  # 0.1-0.3 m3/s volgens waterschap
+}
+flow_control_nodes = [n("ST96410003")]
+
+outlet_max_flow_rate_by_node_id = {
+    n("ST80740031"): 1.3,  # Lochem
+    n("ST84620011"): 0.6,  # Herkel
+}
+outlet_max_flow_rate_from_results = {
+    n("ST80210003"): 56,  # Stokkersbrug
+    n("ST96310009"): 29,  # Buurserbeek Gaathuizenweg 52
+    n("ST54250001"): 96,  # Het Klooster
+    n("ST80160035"): 29,  # ST80160035
+    n("ST80110036"): 26,  # Kuipersbrug
+    n("DR09180001"): 17,  # DR09180001
+    n("DR80740011"): 2,  # DR80740011
+    n("AF80740003"): 2,  # AF80740003
+    n("DR84620035"): 2,  # DR84620035
+    n("St96110095"): 26,  # St96110095
+    n("ST80160105"): 26,  # ST80160105
+    n("ST80180034"): 29,  # ST80180034
+    n("ST54180005"): 54,  # Voorst
+    n("ST96230089"): 20,  # ST96230089
+    n("ST96210074"): 27,  # ST96210074
+    n("AF54330002"): 0,  # Bredevoort richting Keizersbeek (doet niets in normale situaties)
+}
+outlet_max_flow_rate_coupled_by_node_id = {
+    n("AF84250001"): 2,  # gekoppeld max=0.96, huidige max=0.00, link=700040
+    n("DR80220104"): 11,  # gekoppeld max=6.45, huidige max=0.00, link=700489
+    n("DR80810021"): 3,  # gekoppeld max=1.48, huidige max=0.00, link=700214
+    n("DR84460109"): 12,  # gekoppeld max=7.13, huidige max=0.00, link=701396
+}
+pump_max_flow_rate_by_node_id = {
+    n("GM96370013"): 1.4,  # Schipbeek
+}
+
+# Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
+EXCLUDE_NODES = {n("AF54330002"), n("AF54110001")}
+
+# %%
+# Definieren paden en syncen met cloud
 
 # set flow_rate of excluded nodes to 0 m3/s
 assert model.outlet.static.df is not None
 model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(list(EXCLUDE_NODES)), "flow_rate"] = 0
 
 outlet_max_flow_rate_by_node_id = {
-    654: 1.4,  # Schipbeek
-    120: 1.3,  # Lochem
-    90: 0.6,  # Herkel
-    437: 0.05,  # Sifon Boven-Slinge
-    438: 0.05,  # Sifon Boven-Slinge
-    63: 48,  # Haarlo -> Bolksbeek (Capaciteit uit DM, 40% van totaal)
-    581: 72,  # Haarlo -> Berkel (60% van totaal)
-    117: 88,  # Aflaatwerk Lochem
-    320: 22,  # Verdeelwerk Lochem Berkel
-    337: 0.9,  # Warken Berkel (Zutphen)
-    161: 0.1,  # Warken Brummeler Laak (Gemaal Helbergen)
-    121: 110,  # Eefde aflaatwerk
-    59: 8,  # Noodoverloop Schipbeek Twentekanaal (uit waterakkoord Twentekanalen)
-    71: 8.87,  # Capaciteit volgens DM rapportage
-    555: 5.3,  # Capaciteit volgens DM rapportage
-    623: 10.3,  # Capaciteit volgens DM rapportage
-    1192: 5.2,  # Capaciteit volgens DM rapportage
-    560: 1.0,  # Capaciteit volgens DM rapportage
-    677: 0.05,  # Verdeelwerk Koppelleiding
+    n("GM96370013"): 1.4,  # Schipbeek
+    n("ST80740031"): 1.3,  # Lochem
+    n("ST84620011"): 0.6,  # Herkel
+    n("AF54670001"): 0.05,  # Sifon Boven-Slinge
+    n("AF54440002"): 0.05,  # Sifon Boven-Slinge
+    n("ST80210009"): 48,  # Haarlo -> Bolksbeek (Capaciteit uit DM, 40% van totaal)
+    n("ST80210011"): 72,  # Haarlo -> Berkel (60% van totaal)
+    n("ST80620020"): 88,  # Aflaatwerk Lochem
+    n("ST80620025"): 22,  # Verdeelwerk Lochem Berkel
+    n("ST80830001"): 0.9,  # Warken Berkel (Zutphen)
+    n("ST80810015"): 0.1,  # Warken Brummeler Laak (Gemaal Helbergen)
+    n("ST80770033"): 110,  # Eefde aflaatwerk
+    n("ST96410001"): 8,  # Noodoverloop Schipbeek Twentekanaal (uit waterakkoord Twentekanalen)
+    n("ST84260024"): 8.87,  # Capaciteit volgens DM rapportage
+    n("GM80950124"): 5.3,  # Capaciteit volgens DM rapportage
+    n("GM66550061"): 10.3,  # Capaciteit volgens DM rapportage
+    n("GM74730001"): 5.2,  # Capaciteit volgens DM rapportage
+    n("GM54990016"): 1.0,  # Capaciteit volgens DM rapportage
+    n("LV80320076___1"): 0.05,  # Verdeelwerk Koppelleiding
 }
 outlet_max_flow_rate_afvoer_by_node_id = {}
 for max_flow_rates in (
@@ -280,34 +303,36 @@ add_controllers_to_uncontrolled_connector_nodes(
 # %%
 
 # Lochem aflaatwerk limiteren tot 32 m3/s
-mask = (model.outlet.static.df.node_id == 117) & (model.outlet.static.df.control_state == "afvoer")
+mask = (model.outlet.static.df.node_id == n("ST80620020")) & (model.outlet.static.df.control_state == "afvoer")
 model.outlet.static.df.loc[mask, "max_flow_rate"] = 32
 
 # Verdeelwerk Lochem Berkel limiteren tot 3 m3/s in aanvoerstand.
-mask = (model.outlet.static.df.node_id == 320) & (model.outlet.static.df.control_state == "aanvoer")
+mask = (model.outlet.static.df.node_id == n("ST80620025")) & (model.outlet.static.df.control_state == "aanvoer")
 model.outlet.static.df.loc[mask, "max_flow_rate"] = 3.1
 
 # Controller 1330: ook bij truth_state FF naar aanvoer.
 assert model.discrete_control.logic.df is not None
-mask = (model.discrete_control.logic.df.node_id == 1330) & (model.discrete_control.logic.df.truth_state == "FF")
+mask = (model.discrete_control.logic.df.node_id == n("discrete_control:ST80620025")) & (
+    model.discrete_control.logic.df.truth_state == "FF"
+)
 model.discrete_control.logic.df.loc[mask, "control_state"] = "aanvoer"
 
 
 # Verdeelwerk Hackfort limiteren tot 0.2 m3/s in aanvoerstand.
-mask = model.outlet.static.df.node_id == 349
+mask = model.outlet.static.df.node_id == n("ST74510001")
 model.outlet.static.df.loc[mask, "max_flow_rate"] = 0.2
 model.outlet.static.df.loc[mask, "flow_rate"] = 0.2
 
 # Noodoverloop Twentekanaal pas bij onvoldoende door sifon (node_id 306)
-mask = model.outlet.static.df.node_id == 59
+mask = model.outlet.static.df.node_id == n("ST96410001")
 model.outlet.static.df.loc[mask, "min_upstream_level"] += 0.1
 mark_level_update_protected(model.outlet.static.df, mask, model=model)
 
 # doorlaten
 min_flow_rates = {
-    320: 3,
-    161: 0.1,
-    337: 0.9,
+    n("ST80620025"): 3,
+    n("ST80810015"): 0.1,
+    n("ST80830001"): 0.9,
 }
 
 set_flow_rate(model.outlet.static.df, max_flow_rate_by_node_id=min_flow_rates, flow_rates=["min_flow_rate"])

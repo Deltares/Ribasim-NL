@@ -27,6 +27,8 @@ qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
 
 # read
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 start_time = time.time()
 # %%
 # parameterize
@@ -41,37 +43,34 @@ print("Elapsed Time:", time.time() - start_time, "seconds")
 
 
 assert model.basin.profile.df is not None
-model.basin.profile.df.loc[(model.basin.profile.df.node_id == 1209) & (model.basin.profile.df.area > 0.1), "area"] = (
-    10000
-)
+model.basin.profile.df.loc[
+    (model.basin.profile.df.node_id == n("up:KDU-5871")) & (model.basin.profile.df.area > 0.1), "area"
+] = 10000
 
 basin_level_overrides = [
-    ([864], -0.5),
-    ([1271], 1.2),
-    ([786], 1.55),
-    ([751], 3.35),
+    ([n("up:KDU-3220")], -0.5),
+    ([n("up:KGM-18")], 1.2),
+    ([n("up:KST-1062")], 1.55),
+    ([n("up:KGM-73")], 3.35),
 ]
 
 apply_basin_level_overrides(model=model, basin_level_overrides=basin_level_overrides)
 
 # Inlaat de Wenden
 assert model.level_boundary.static.df is not None
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 1, "level"] = 0.8
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == n("bnd:1"), "level"] = 0.8
 
 
 assert model.manning_resistance.static.df is not None
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 # Havensluis Elburg
-model.reverse_direction_at_node(477)
+model.reverse_direction_at_node(n("KSL-10"))
 
 # Inlaat Eektermerksluis
 assert model.outlet.static.df is not None
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 606, "meta_code"] = "KSL-8"
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 606, "meta_name"] = "Eektermerksluis"
-
-# Inlaat gemaal de Haar
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 232, "meta_name"] = "Aanvoergemaal de Haar"
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("KDU-3178"), "meta_code"] = "KSL-8"
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("KDU-3178"), "meta_name"] = "Eektermerksluis"
 
 
 # %%

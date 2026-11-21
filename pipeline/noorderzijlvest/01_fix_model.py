@@ -32,6 +32,9 @@ ribasim_toml = ribasim_dir / "model.toml"
 
 # %% read model
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
+lk = model.link_id
 ribasim_toml = cloud.joinpath(authority, "modellen", f"{authority}_fix_model", f"{short_name}.toml")
 network_validator = NetworkValidator(model)
 
@@ -124,7 +127,7 @@ he_outlet_df.set_index("HEIDENT", inplace=True)
 he_df.set_index("HEIDENT", inplace=True)
 
 # niet altijd ligt de coordinaat goed
-he_outlet_df.loc["GPGKST0470", ["geometry"]] = model.manning_resistance[892].geometry
+he_outlet_df.loc["GPGKST0470", ["geometry"]] = model.manning_resistance[n("1681")].geometry
 
 he_outlet_df.to_file(cloud.joinpath(authority, "verwerkt/HydrologischeEenheden_v45_outlets.gpkg"))
 
@@ -149,26 +152,26 @@ model.apply_edits(
 )
 
 
-model.merge_basins(node_id=1231, to_node_id=1280)
-model.merge_basins(node_id=1179, to_node_id=1184)
-model.merge_basins(node_id=1184, to_node_id=1280)
-model.merge_basins(node_id=1034, to_node_id=1280)
-model.merge_basins(node_id=1279, to_node_id=1182)
-model.merge_basins(node_id=1181, to_node_id=1182)
-model.merge_basins(node_id=1408, to_node_id=1182)
-model.merge_basins(node_id=1028, to_node_id=1378)
-model.merge_basins(node_id=1373, to_node_id=1378)
-model.merge_basins(node_id=1032, to_node_id=1182)
+model.merge_basins(node_id=n("up:2667"), to_node_id=n("up:1330"))
+model.merge_basins(node_id=n("up:589"), to_node_id=n("up:KGM014"))
+model.merge_basins(node_id=n("up:KGM014"), to_node_id=n("up:1330"))
+model.merge_basins(node_id=n("up:547"), to_node_id=n("up:1330"))
+model.merge_basins(node_id=n("up:2712"), to_node_id=n("up:KGM015"))
+model.merge_basins(node_id=n("up:2713"), to_node_id=n("up:KGM015"))
+model.merge_basins(node_id=n("up:2699"), to_node_id=n("up:KGM015"))
+model.merge_basins(node_id=n("up:KST0203"), to_node_id=n("up:2860"))
+model.merge_basins(node_id=n("up:2433"), to_node_id=n("up:2860"))
+model.merge_basins(node_id=n("up:2939"), to_node_id=n("up:KGM015"))
 
 # # Van Starkenborghkanaal mergen Manning knopen weg!
-model.merge_basins(node_id=1223, to_node_id=1307)
-model.merge_basins(node_id=1307, to_node_id=1244)
-model.merge_basins(node_id=1244, to_node_id=1186)
-model.merge_basins(node_id=1292, to_node_id=1186)
-model.merge_basins(node_id=1088, to_node_id=1186)
+model.merge_basins(node_id=n("up:2098"), to_node_id=n("up:4013"))
+model.merge_basins(node_id=n("up:4013"), to_node_id=n("up:1202"))
+model.merge_basins(node_id=n("up:1202"), to_node_id=n("up:1460"))
+model.merge_basins(node_id=n("up:1438"), to_node_id=n("up:1460"))
+model.merge_basins(node_id=n("up:1959"), to_node_id=n("up:1460"))
 
-model.merge_basins(node_id=1144, to_node_id=1124)
-model.merge_basins(node_id=1077, to_node_id=1124)
+model.merge_basins(node_id=n("up:168"), to_node_id=n("up:1246"))
+model.merge_basins(node_id=n("up:163"), to_node_id=n("up:1246"))
 
 
 # %% assign Basin / Area using KWKuit
@@ -331,66 +334,93 @@ model.node.df.loc[outlet_mask, "name"] = model.node.df.loc[outlet_mask, "meta_co
 model.replace_flow_boundaries_by_level_boundaries()
 
 # Moved t Noord-Willemskanaal so it connects properly with Hunze and Aa's model
-model.move_node(geometry=Point(233237, 559975), node_id=14)
+model.move_node(geometry=Point(233237, 559975), node_id=n("bnd:14"))
 
 # %% reverse links before junctionfy
-for link_id in [224, 1178, 7, 991, 213, 1152, 519, 1491, 2033, 2032, 12, 997]:
+# the Outlet at boundary 16 is Gemaal Dorkwerd, which pumps out of the Van Starkenborghkanaal
+dorkwerd_node_id = model.downstream_node_id(n("bnd:16"))
+for link_id in [
+    lk("KGM234_i", "up:855"),
+    lk("up:KGM234", "KGM234_i"),
+    lk("KGM003_i", "up:1460"),
+    lk("up:KGM003", "KGM003_i"),
+    lk("KGM155_i", "up:2037"),
+    lk("up:KGM155", "KGM155_i"),
+    lk("KST0129", "up:INL099"),
+    lk("up:KGM015", "KST0129"),
+]:
+    model.reverse_link(link_id=link_id)
+model.reverse_link(from_node_id=dorkwerd_node_id, to_node_id=n("up:1460"))
+model.reverse_link(from_node_id=n("bnd:16"), to_node_id=dorkwerd_node_id)
+for link_id in [lk("KGM007_i", "up:2075"), lk("up:KGM007", "KGM007_i")]:
     model.reverse_link(link_id=link_id)
 
 # Lijst met link_ids die omgedraaid moeten worden nav review Vincent
 reverse_link_ids = [
-    111,
-    1057,  # behorende bij knoop 81 (Inlaat Oldenoord)
-    42,
-    1141,  # behorende bij knoop 1141 (inlaat Oude Badweg)
-    283,
-    1198,  # behorende bij knoop 186 (inlaat Lettelberterbergboezem)
-    37,
-    1022,  # behorende bij knoop 48 (inlaat gemaal De Verbetering)
-    1192,
-    282,  # behorende bij knoop 182 (inlaat gemaal Lettelbert)
-    131,
-    1067,  # behorende bij knoop 1067 (inlaat gemaal Tilburg)
-    73,
-    1064,  # behorende bij knoop 88 (inlaat gemaal De Dijken)
-    30,
-    1015,  # behorende bij knoop 43 (inlaat gemaal Nieuwe Robbengat)
-    290,
-    1196,  # behorende bij knoop 185 (inlaat Stadspark)
-    32,
-    1018,  # behorende bij knoop 45 (inlaat gemaal De Slokkert)
+    lk("KGM063_i", "up:1925"),
+    lk("up:KGM063", "KGM063_i"),  # behorende bij knoop 81 (Inlaat Oldenoord)
+    lk("KGM143_i", "up:KST1071"),
+    lk("up:KGM143", "KGM143_i"),  # behorende bij knoop 1141 (inlaat Oude Badweg)
+    lk("KST5041_i", "up:1401"),
+    lk("up:KST5041", "KST5041_i"),  # behorende bij knoop 186 (inlaat Lettelberterbergboezem)
+    lk("KGM021_i", "up:903"),
+    lk("up:KGM021", "KGM021_i"),  # behorende bij knoop 48 (inlaat gemaal De Verbetering)
+    lk("up:KGM304", "KGM304_i"),
+    lk("KGM304_i", "up:1401"),  # behorende bij knoop 182 (inlaat gemaal Lettelbert)
+    lk("KGM076_i", "up:3922"),
+    lk("up:KGM076", "KGM076_i"),  # behorende bij knoop 1067 (inlaat gemaal Tilburg)
+    lk("KGM074_i", "up:1531"),
+    lk("up:KGM074", "KGM074_i"),  # behorende bij knoop 88 (inlaat gemaal De Dijken)
+    lk("KGM016_i", "up:1246"),
+    lk("up:KGM016", "KGM016_i"),  # behorende bij knoop 43 (inlaat gemaal Nieuwe Robbengat)
+    lk("KST1038_i", "up:KGM021"),
+    lk("up:KST1038", "KST1038_i"),  # behorende bij knoop 185 (inlaat Stadspark)
+    lk("KGM017_i", "up:INL034"),
+    lk("up:KGM017", "KGM017_i"),  # behorende bij knoop 45 (inlaat gemaal De Slokkert)
 ]
 
 # Draai de richting van alle genoemde links om
 for link_id in reverse_link_ids:
     model.reverse_link(link_id=link_id)
 
-model.update_node(node_id=837, node_type="Outlet")  # duiker wordt outlet, was manning
-model.remove_node(node_id=1749, remove_links=True)
-model.remove_node(node_id=12, remove_links=True)
-model.remove_node(node_id=1750, remove_links=True)
-model.remove_node(node_id=13, remove_links=True)
+model.update_node(node_id=n("1331"), node_type="Outlet")  # duiker wordt outlet, was manning
+model.remove_node(node_id=model.downstream_node_id(n("bnd:12")), remove_links=True)
+model.remove_node(node_id=n("bnd:12"), remove_links=True)
+model.remove_node(node_id=model.downstream_node_id(n("bnd:13")), remove_links=True)
+model.remove_node(node_id=n("bnd:13"), remove_links=True)
 
 # voeg inlaat Meerweg toe (n.a.v communicatie met Vincent)
 boundary_node = model.level_boundary.add(Node(geometry=Point(234937, 575821)), [level_data])
 outlet_node = model.outlet.add(Node(name="Meerweg", geometry=Point(234893, 575872)), [outlet_data])
 model.link.add(boundary_node, outlet_node)
-model.link.add(outlet_node, model.basin[1192])
+model.link.add(outlet_node, model.basin[n("up:KST1071")])
 
 # %% Create junctions
 junctionify(model)
 
 # manning_resistances die inlaten of uitlaten horen te zijn
-model.update_node(node_id=943, node_type="Outlet")
-model.update_node(node_id=1017, node_type="Outlet")
-model.update_node(node_id=1753, node_type="Pump", node_properties={"name": "Gemaal Dorkwerd"})
+model.update_node(node_id=n("2433"), node_type="Outlet")
+model.update_node(node_id=n("5122"), node_type="Outlet")
+model.update_node(node_id=dorkwerd_node_id, node_type="Pump", node_properties={"name": "Gemaal Dorkwerd"})
 
 # inlaten gelijk gezet aan WAM portaal: https://wamportaal.noorderzijlvest.nl/wam
-model.node.df.loc[1743, ["name", "meta_code_waterbeheerder"]] = ["Heidenheeminlaat", "INL055"]
-model.node.df.loc[1751, ["name", "meta_code_waterbeheerder"]] = ["Ter Aardinlaat", "INL001"]
-model.node.df.loc[1742, ["name", "meta_code_waterbeheerder"]] = ["Inlaat Huis Ter Heide", "INL114"]
-model.node.df.loc[1739, ["name", "meta_code_waterbeheerder"]] = ["Jonkersbruginlaat", "INL095"]
-model.node.df.loc[728, ["name"]] = ["Sluis Lammerburen"]
+model.node.df.loc[model.downstream_node_id(n("bnd:6")), ["name", "meta_code_waterbeheerder"]] = [
+    "Heidenheeminlaat",
+    "INL055",
+]
+model.node.df.loc[model.downstream_node_id(n("bnd:14")), ["name", "meta_code_waterbeheerder"]] = [
+    "Ter Aardinlaat",
+    "INL001",
+]
+model.node.df.loc[model.downstream_node_id(n("bnd:5")), ["name", "meta_code_waterbeheerder"]] = [
+    "Inlaat Huis Ter Heide",
+    "INL114",
+]
+model.node.df.loc[model.downstream_node_id(n("bnd:2")), ["name", "meta_code_waterbeheerder"]] = [
+    "Jonkersbruginlaat",
+    "INL095",
+]
+model.node.df.loc[n("KSL027"), ["name"]] = ["Sluis Lammerburen"]
 
 #  %% write model
 model.use_validation = True

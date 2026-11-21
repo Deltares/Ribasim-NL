@@ -36,6 +36,8 @@ basin_data = [
 
 # %% read model and watervlakken
 model = Model.read(ribasim_toml)
+# nodes are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 
 network_validator = NetworkValidator(model)
 
@@ -45,18 +47,18 @@ network_validator = NetworkValidator(model)
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291111647
 # an outlet between the basins 1278 and 1446 and their LevelBoundaries
 outlet_data = outlet.Static(flow_rate=[5.0])
-for row in model.link.df[model.link.df.from_node_id.isin([1278, 1446])].itertuples():
+for row in model.link.df[model.link.df.from_node_id.isin([n("up:bnd:2"), n("up:bnd:14")])].itertuples():
     from_node_id, to_node_id = cast(int, row.from_node_id), cast(int, row.to_node_id)
     # drop link from model
     model.remove_link(from_node_id, to_node_id, remove_disconnected_nodes=False)
 
     # eindhovensch kanaal we need to add manning a 99% of the length
-    if to_node_id == 2:
+    if to_node_id == n("bnd:2"):
         geometry = cast(LineString, row.geometry).interpolate(0.99, normalized=True)
         name = ""
         meta_object_type = "openwater"
     else:
-        assert to_node_id == 14, f"basin {from_node_id} drains to {to_node_id}, not LevelBoundary 2 or 14"
+        assert to_node_id == n("bnd:14"), f"basin {from_node_id} drains to {to_node_id}, not LevelBoundary 2 or 14"
         gdf = gpd.read_file(
             hydamo_gpkg,
             layer="duikersifonhevel",
@@ -102,26 +104,34 @@ for row in network_validator.node_internal_basin().itertuples():
 df = model.node.df[model.node.df.node_type == "Basin"]
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291876800
-boundary_node = Node(node_id=28, geometry=model.flow_boundary[28].geometry)
+# the FlowBoundary becomes a LevelBoundary, and keeps its key
+boundary_node = Node(node_id=n("bnd:28"), geometry=model.flow_boundary[n("bnd:28")].geometry, meta_key="bnd:28")
 
-for node_id in [29, 1828, 615, 28, 1329]:
+for node_id in [n("bnd:29"), n("down:OWL30315-st1"), n("OWL30315-st1"), n("bnd:28"), n("down:TB1-KST1")]:
     model.remove_node(node_id, remove_links=True)
 
 level_data = level_boundary.Static(level=[0])
 model.level_boundary.add(boundary_node, [level_data])
 
-model.link.add(model.tabulated_rating_curve[614], model.level_boundary[28])
+model.link.add(model.tabulated_rating_curve[n("TB1-KST1")], model.level_boundary[n("bnd:28")])
 # %%
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2292014475
-model.remove_node(node_id=1898, remove_links=True)
+model.remove_node(node_id=n("down:ow:BEA_7"), remove_links=True)
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2292017813
-model.update_node(989, "Outlet", [outlet.Static(flow_rate=[0])])
-model.update_node(1891, "LevelBoundary", [level_data])
+model.update_node(n("ow:NE1_0"), "Outlet", [outlet.Static(flow_rate=[0])])
+model.update_node(n("down:ow:NE1_0"), "LevelBoundary", [level_data])
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2291988317
 # for from_node_id, to_node_id in [799, 1580, 625, 1123, 597, 978]:
-for from_node_id, to_node_id in [[616, 1032], [1030, 616], [393, 1242], [1852, 393], [353, 1700], [1253, 353]]:
+for from_node_id, to_node_id in [
+    [n("RS1_0_2___0"), n("down:RS1_0_2___0")],
+    [n("up:RS1_0_2___0"), n("RS1_0_2___0")],
+    [n("GE1.3-st2"), n("down:GE1.3-st2")],
+    [n("up:GE1-st11"), n("GE1.3-st2")],
+    [n("TR13-st1"), n("down:TR13-st1")],
+    [n("up:TR1-st1"), n("TR13-st1")],
+]:
     model.reverse_link(from_node_id, to_node_id)
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2292050862
@@ -139,13 +149,15 @@ manning_data = manning_resistance.Static(length=[100], manning_n=[0.03], profile
 
 model.manning_resistance.add(Node(node_id=node_id, geometry=cast(Point, geometry)), [manning_data])
 
-model.link.df = model.link.df[~((model.link.df.from_node_id == 611) & (model.link.df.to_node_id == 1643))]
-model.link.add(model.basin[1643], model.manning_resistance[node_id])
-model.link.add(model.manning_resistance[node_id], model.basin[1182])
-model.link.add(model.tabulated_rating_curve[611], model.basin[1182])
+model.link.df = model.link.df[
+    ~((model.link.df.from_node_id == n("KS48-st1")) & (model.link.df.to_node_id == n("down:KS48-st1")))
+]
+model.link.add(model.basin[n("down:KS48-st1")], model.manning_resistance[node_id])
+model.link.add(model.manning_resistance[node_id], model.basin[n("up:KS40_7___2")])
+model.link.add(model.tabulated_rating_curve[n("KS48-st1")], model.basin[n("up:KS40_7___2")])
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2293457160
-model.update_node(417, "Outlet", [outlet.Static(flow_rate=[0])])
+model.update_node(n("DSH0023156"), "Outlet", [outlet.Static(flow_rate=[0])])
 
 if not network_validator.node_internal_basin().empty:
     raise Exception("nog steeds interne basins")
@@ -184,10 +196,10 @@ basin_node = model.basin.add(
     basin_data,
 )
 
-model.remove_link(from_node_id=664, to_node_id=8, remove_disconnected_nodes=False)
-model.link.add(model.manning_resistance[664], basin_node)
+model.remove_link(from_node_id=n("ow:KD25.1_0"), to_node_id=n("bnd:8"), remove_disconnected_nodes=False)
+model.link.add(model.manning_resistance[n("ow:KD25.1_0")], basin_node)
 model.link.add(basin_node, kst_node)
-model.link.add(kst_node, model.level_boundary[8])
+model.link.add(kst_node, model.level_boundary[n("bnd:8")])
 
 # see: https://github.com/Deltares/Ribasim-NL/issues/102#issuecomment-2293486609
 df = network_validator.link_incorrect_type_connectivity(
@@ -204,12 +216,12 @@ model.add_basin_area(areas_gdf[areas_gdf["code"].isin([2348, 3499, 4273])].union
 # %% Verplaats boundary ruimtelijk van Vugtherstuw (afvoerpijl juiste richting in schematics, cosmetisch!)
 
 new_geom = Point(148523.8, 410424.6)
-model.node.df.at[9, "geometry"] = new_geom  # ty: ignore[invalid-assignment]
+model.node.df.at[n("bnd:9"), "geometry"] = new_geom  # ty: ignore[invalid-assignment]
 
-model.remove_link(from_node_id=627, to_node_id=9, remove_disconnected_nodes=False)
-model.remove_link(from_node_id=121, to_node_id=9, remove_disconnected_nodes=False)
-model.link.add(model.outlet[627], model.level_boundary[9])
-model.link.add(model.outlet[121], model.level_boundary[9])
+model.remove_link(from_node_id=n("ow:DO1.1_0"), to_node_id=n("bnd:9"), remove_disconnected_nodes=False)
+model.remove_link(from_node_id=n("DO1-st3"), to_node_id=n("bnd:9"), remove_disconnected_nodes=False)
+model.link.add(model.outlet[n("ow:DO1.1_0")], model.level_boundary[n("bnd:9")])
+model.link.add(model.outlet[n("DO1-st3")], model.level_boundary[n("bnd:9")])
 
 
 # %% fix_basin_area
@@ -280,24 +292,24 @@ sanitize_node_table(
 
 # add level_boundary at keersop (intake from Kannaal van Bocholt naar Heerentals)
 level_boundary_node = model.level_boundary.add(
-    Node(geometry=Point(152152, 365151)), tables=[level_boundary.Static(level=[0])]
+    Node(geometry=Point(152152, 365151), meta_key="bnd:keersop"), tables=[level_boundary.Static(level=[0])]
 )
 outlet_node = model.outlet.add(
-    Node(geometry=Point(152150, 365169), name="Inlaat kanaal Bocholt naar Heerentals"),
+    Node(geometry=Point(152150, 365169), name="Inlaat kanaal Bocholt naar Heerentals", meta_key="inlaat-keersop"),
     tables=[outlet.Static(flow_rate=[0])],
 )
 model.link.add(level_boundary_node, outlet_node)
-model.link.add(outlet_node, model.basin[1609])
+model.link.add(outlet_node, model.basin[n("up:DSH0017008")])
 
 # label flow-boundaries to buitenlandse-aanvoer
 model.node.df.loc[model.flow_boundary.node.df.index, "meta_categorie"] = "buitenlandse aanvoer"
 
 # fix Dommel en Aa
-model.merge_basins(node_id=1557, to_node_id=1140)
+model.merge_basins(node_id=n("up:ow:SG1_0"), to_node_id=n("up:DO1-st3"))
 
 # no culvert between basins 1859 and 1747 near Soerendonk, this connection caused circular pumping
 # see: https://github.com/Deltares/Ribasim-NL/issues/825
-model.remove_node(643, remove_links=True)
+model.remove_node(n("ow:GA53_1"), remove_links=True)
 
 # %% give the holes that the edits left in the basin areas to a basin
 model.fill_basin_area_holes(areas_gpkg)

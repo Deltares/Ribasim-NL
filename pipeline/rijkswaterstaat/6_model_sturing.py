@@ -13,10 +13,10 @@ from ribasim.nodes import (
     pid_control,
     pump,
 )
+from ribasim_nl.keys import KEY_COLUMN
 from ribasim_nl.rws_kunstwerken import (
     FLOW_DEMAND_TABLE,
     PARALLEL_KWK,
-    RWS_NODE_ID_OFFSET,
     SUBTRACT_PROPERTY,
     discrete_control_tables,
     flow_demand_tables,
@@ -138,6 +138,8 @@ kwk_xlsx = kwk_dir.joinpath("kunstwerken.xlsx")
 all_kwk_df = pd.read_excel(kwk_xlsx, sheet_name="kunstwerken")
 all_kwk_df.loc[:, "code"] = all_kwk_df["code"].astype(str)
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 network = Network.from_network_gpkg(cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg"))
 starttime, endtime = pd.Timestamp(model.starttime), pd.Timestamp(model.endtime)
 
@@ -248,7 +250,7 @@ def update_kwk(gebied: str, kwk, kwk_df: pd.DataFrame) -> None:
         )
         subtract_node_id = None
         if SUBTRACT_PROPERTY in kwk_properties:
-            subtract_node_id = int(kwk_properties[SUBTRACT_PROPERTY]) - RWS_NODE_ID_OFFSET
+            subtract_node_id = n(str(kwk_properties[SUBTRACT_PROPERTY]))
             assert model.node.df.at[subtract_node_id, "node_type"] == "Basin", f"{subtract_node_id} not a Basin"
         unit = "m3/s" if listen_variable(kwk_properties) == "flow_rate" else "m" if subtract_node_id else "m+NAP"
         control_node_id = None
@@ -291,7 +293,7 @@ def listens_to_missing_node(kwk_properties: pd.Series) -> bool:
     """Whether the DiscreteControl of a structure listens to a node that is not in the model yet."""
     if not has_discrete_control(kwk_properties) or "Meetlocatiecode" not in kwk_properties:
         return False
-    return int(kwk_properties["Meetlocatiecode"]) - RWS_NODE_ID_OFFSET not in model.node.df.index
+    return str(kwk_properties["Meetlocatiecode"]) not in set(model.node.df[KEY_COLUMN])
 
 
 assert set(VERDEELSLEUTEL_KWK_FROM_SHEET) <= set(all_kwk_df.loc[~all_kwk_df.in_model, "code"])
@@ -332,10 +334,10 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
             update_kwk(str(gebied), kwk, kwk_df)
 
 # %% Split the Amsterdam-Rijnkanaal north of the Lek in three, see https://github.com/Deltares/Ribasim-NL/issues/916
-# It runs about 59 km from the Prinses Irenesluis to ManningResistance 4695 at the Noordzeekanaal. It is split after
+# It runs about 59 km from the Prinses Irenesluis to the ManningResistance at the Noordzeekanaal. It is split after
 # the control of the other structures, so the IDs of their nodes stay the same, and before the demands are added in
 # 7_model_onttrekkingen, so they and the couplings connect to the section they are at.
-ARK, IRENESLUIS, ARK_END = 5018, 5930, 4695
+ARK, IRENESLUIS, ARK_END = n("Amsterdam-Rijnkanaal@1"), n("39B-002-02"), n("Amsterdam-Rijnkanaal@1>Het IJ")
 flow_df = model.link.df[model.link.df.link_type == "flow"]
 (upstream_link_id,) = flow_df.index[(flow_df.from_node_id == IRENESLUIS) & (flow_df.to_node_id == ARK)]
 (downstream_link_id,) = flow_df.index[(flow_df.from_node_id == ARK) & (flow_df.to_node_id == ARK_END)]
@@ -350,7 +352,7 @@ ark_basin_ids, _ = split_basin_along_route(
     split_points=[Point(133742, 457096), Point(129815, 475689)],
     basin_names=["Amsterdam-Rijnkanaal Utrecht", "Amsterdam-Rijnkanaal Breukelen", "Amsterdam-Rijnkanaal Weesp"],
     manning_names=["ARK-Zuilen", "ARK-Nigtevecht"],
-    manning_n=0.04,  # like ManningResistance 4695
+    manning_n=0.04,  # like the ManningResistance at the end
     profile_slope=1.0,
 )
 assert ark_basin_ids[1] == ARK, "The Basin node of the ARK lies in Breukelen"

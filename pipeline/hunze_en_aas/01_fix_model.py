@@ -23,6 +23,8 @@ model_edits_path = cloud.joinpath(authority, "verwerkt/model_edits.gpkg")
 
 # %% read model
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 network_validator = NetworkValidator(model)
 
 # %% some stuff we'll need again
@@ -70,8 +72,9 @@ actions = [
 ]
 actions = [i for i in actions if i in gpd.list_layers(model_edits_path).name.to_list()]
 model.apply_edits(model_edits_path, actions)
-model.remove_node(node_id=2019, remove_links=True)
-model.remove_node(node_id=17, remove_links=True)
+# the Outlet that the edits connect to this LevelBoundary goes with it
+model.remove_node(node_id=model.upstream_node_id(n("bnd:17")), remove_links=True)
+model.remove_node(node_id=n("bnd:17"), remove_links=True)
 
 # %%
 
@@ -124,8 +127,8 @@ model.node.df.loc[model.outlet.node.df.index.intersection(downstream_node_ids), 
 
 # N.a.v. overleg 22-04-2026
 model.add_and_connect_node(
-    from_basin_id=1954,
-    to_basin_id=1938,
+    from_basin_id=n("up:KIN-O-18160"),
+    to_basin_id=n("up:ow:OAF-O-02557"),
     node_type="Outlet",
     geometry=Point(260556, 577871),
     meta_code_waterbeheerder="Scheemder Verlaat",

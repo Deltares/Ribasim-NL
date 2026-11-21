@@ -20,47 +20,63 @@ SHORT_NAME: str = "hea"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 LEVEL_THRESHOLD_RANGE: float = 0.05
+
+# %%
+# Definieren paden en syncen met cloud
+cloud = CloudStorage()
+ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
+ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
+qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
+aanvoergebieden_gpkg = cloud.joinpath(rf"{AUTHORITY}/verwerkt/sturing/aanvoergebieden.gpkg")
+
+# %%
+# Read data
+model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
+lk = model.link_id
+
 MIN_FLOW_RATE_BY_NODE_ID = {}
 outlet_max_flow_rate_by_node_id = {
-    330: 7.5,  # De Bult
-    767: 3.6,  # Inlaat Purit
-    2014: 0.3,  # Inlaat Verl. Hoogeveense Vaart
-    2011: 0.3,  # Inlaat Verl. Hoogeveense Vaart
-    847: 0.3,  # Inlaat Barriereweg
-    829: 0.0,  # Geen aanvoer vanuit de Eems (i.v.m. zout)
-    822: 0.0,
-    810: 0.0,
-    190: 0.0,
-    162: 0.0,
+    n("KST-E-12800"): 7.5,  # De Bult
+    n("KIN-V-10001"): 3.6,  # Inlaat Purit
+    n("Zuidervaart"): 0.3,  # Inlaat Verl. Hoogeveense Vaart
+    n("loc:266621,527441"): 0.3,  # Inlaat Verl. Hoogeveense Vaart
+    n("KIN-V-10421"): 0.3,  # Inlaat Barriereweg
+    n("KIN-D-15020"): 0.0,  # Geen aanvoer vanuit de Eems (i.v.m. zout)
+    n("KIN-D-15010"): 0.0,
+    n("KIN-D-15100"): 0.0,
+    n("KSL-D-00001"): 0.0,
+    n("KSL-D-00002"): 0.0,
 }
 outlet_max_flow_rate_coupled_by_node_id = {
-    154: 2,  # gekoppeld max=0.92, huidige max=0.00, link=3300493
-    194: 66,  # Vispassage; gekoppeld max=43.20, parameterized=36.20
-    208: 9,  # gekoppeld max=5.82, huidige max=1.39, link=3300617
-    264: 84,  # KST-A-12710; gekoppeld max=55.19, parameterized=30.80
-    275: 9,  # Vispassage de Hemmen; gekoppeld max=5.76, parameterized=3.16
-    290: 51,  # gekoppeld max=33.40, huidige max=33.10, link=3300788
-    291: 3,  # gekoppeld max=1.87, huidige max=0.00, link=3300670
-    302: 9,  # stuw De Hemmen; gekoppeld max=5.76, parameterized=3.16
-    336: 66,  # KST-A-13340; gekoppeld max=43.20, parameterized=36.20
-    411: 3,  # Lange Runde; gekoppeld max=1.38, parameterized=0.34
-    438: 24,  # KST-A-00027; gekoppeld max=15.13, parameterized=11.70
-    440: 24,  # TT Assen; gekoppeld max=15.13, parameterized=11.70
-    477: 84,  # Vispassage; gekoppeld max=55.19, parameterized=30.80
-    497: 9,  # KST-A-11930; gekoppeld max=5.71, parameterized=1.40
-    500: 20,  # gekoppeld max=12.00, huidige max=0.225, link=3300502
-    617: 6,  # gekoppeld max=3.07, huidige max=0.00, link=3300989
-    727: 2,  # parameterized nul; gekoppeld max=0.84
-    754: 3,  # gekoppeld max=1.19, huidige max=0.00, link=3301299
-    781: 2,  # gekoppeld max=0.92, huidige max=0.00, link=3300494
-    787: 2,  # gekoppeld max=0.86, huidige max=0.00, link=3301023
-    840: 2,  # gekoppeld max=0.71, huidige max=0.00, link=3300528
-    852: 2,  # gekoppeld max=0.51, huidige max=0.00, link=3301334
-    1112: 44,  # gekoppeld max=28.69, parameterized=3.25
-    1122: 6,  # gekoppeld max=3.11, huidige max=0.00, link=3300566
-    2008: 2,  # parameterized nul; gekoppeld max=0.32
-    2010: 9,  # gekoppeld max=5.73, parameterized=4.37
-    2015: 3,  # gekoppeld max=1.34, parameterized=0.10
+    n("KSL-W-10002"): 2,  # gekoppeld max=0.92, huidige max=0.00, link=3300493
+    n("KST-A-01089"): 66,  # Vispassage; gekoppeld max=43.20, parameterized=36.20
+    n("KST-A-10110"): 9,  # gekoppeld max=5.82, huidige max=1.39, link=3300617
+    n("KST-A-12710"): 84,  # KST-A-12710; gekoppeld max=55.19, parameterized=30.80
+    n("KST-A-01013"): 9,  # Vispassage de Hemmen; gekoppeld max=5.76, parameterized=3.16
+    n("KST-W-20270"): 51,  # gekoppeld max=33.40, huidige max=33.10, link=3300788
+    n("KST-W-11247"): 3,  # gekoppeld max=1.87, huidige max=0.00, link=3300670
+    n("KST-A-12310"): 9,  # stuw De Hemmen; gekoppeld max=5.76, parameterized=3.16
+    n("KST-A-13340"): 66,  # KST-A-13340; gekoppeld max=43.20, parameterized=36.20
+    n("KST-W-10508"): 3,  # Lange Runde; gekoppeld max=1.38, parameterized=0.34
+    n("KST-A-00027"): 24,  # KST-A-00027; gekoppeld max=15.13, parameterized=11.70
+    n("KST-A-14901"): 24,  # TT Assen; gekoppeld max=15.13, parameterized=11.70
+    n("KST-A-01090"): 84,  # Vispassage; gekoppeld max=55.19, parameterized=30.80
+    n("KST-A-11930"): 9,  # KST-A-11930; gekoppeld max=5.71, parameterized=1.40
+    n("KST-W-20110"): 20,  # gekoppeld max=12.00, huidige max=0.225, link=3300502
+    n("KIN-W-10023"): 6,  # gekoppeld max=3.07, huidige max=0.00, link=3300989
+    n("KIN-V-01001"): 2,  # parameterized nul; gekoppeld max=0.84
+    n("KIN-W-10164"): 3,  # gekoppeld max=1.19, huidige max=0.00, link=3301299
+    n("KIN-W-10008"): 2,  # gekoppeld max=0.92, huidige max=0.00, link=3300494
+    n("KIN-V-11001"): 2,  # gekoppeld max=0.86, huidige max=0.00, link=3301023
+    n("KIN-V-11602"): 2,  # gekoppeld max=0.71, huidige max=0.00, link=3300528
+    n("KIN-V-10298"): 2,  # gekoppeld max=0.51, huidige max=0.00, link=3301334
+    n("ow:OAF-A-00830"): 44,  # gekoppeld max=28.69, parameterized=3.25
+    n("ow:OAF-A-01420"): 6,  # gekoppeld max=3.11, huidige max=0.00, link=3300566
+    n("loc:230145,551112"): 2,  # parameterized nul; gekoppeld max=0.32
+    n("loc:232371,553202"): 9,  # gekoppeld max=5.73, parameterized=4.37
+    n("loc:265474,528755"): 3,  # gekoppeld max=1.34, parameterized=0.10
 }
 outlet_max_flow_rate_afvoer_by_node_id = {}
 for max_flow_rates in (outlet_max_flow_rate_coupled_by_node_id,):
@@ -71,16 +87,17 @@ for max_flow_rates in (outlet_max_flow_rate_coupled_by_node_id,):
         )
 outlet_max_flow_rate_afvoer_by_node_id.update(outlet_max_flow_rate_by_node_id)
 pump_max_flow_rate_by_node_id = {
-    20: 20.0,  # Aanvoergemaal Dorkwerd
-    972: 7.5,  # Aanvoergemaal Kupers
-    70: 4.2,  # Aanvoergemaal Vennix
-    107: 1.92,  # Aanvoergemaal Ter Apelkanaal
+    n("KGM-E-11350"): 20.0,  # Aanvoergemaal Dorkwerd
+    n("KGM-V-13440"): 7.5,  # Aanvoergemaal Kupers
+    n("KGM-V-13200"): 4.2,  # Aanvoergemaal Vennix
+    n("KGM-V-13140"): 1.92,  # Aanvoergemaal Ter Apelkanaal
 }
 ALWAYS_ON_PUMP_MIN_FLOW_RATE_BY_NODE_ID: dict[int, float] = {}
 ALWAYS_ON_PUMP_MAX_DOWNSTREAM_LEVEL: float = 99999.0
 ALWAYS_ON_PUMP_MIN_UPSTREAM_LEVEL_OFFSET: float = -1.0
-DORKWERD_PUMP_NODE_ID = 20
-DORKWERD_LISTEN_NODE_ID = 1261
+DORKWERD_PUMP_NODE_ID = n("KGM-E-11350")
+DORKWERD_LISTEN_KEY = "up:KSL-D-00001"
+DORKWERD_LISTEN_NODE_ID = n(DORKWERD_LISTEN_KEY)
 DORKWERD_THRESHOLD_LOW = 0.533 - LEVEL_THRESHOLD_RANGE / 2
 DORKWERD_THRESHOLD_HIGH = 0.533 + LEVEL_THRESHOLD_RANGE / 2
 DORKWERD_MIN_UPSTREAM_LEVEL = -0.97
@@ -88,28 +105,19 @@ DORKWERD_MAX_DOWNSTREAM_LEVEL = 0.63
 
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 EXCLUDE_NODES = {
-    152,  # Dorkswerdersluis (Scheepvaart)
-    153,  # Sluis Peelo
-    156,  # Vriescheloostersluis (Veelerveen)
-    161,  # Bulsterverlaat (Scheepvaart)
-    165,  # 2e verlaat Stadskanaal
-    167,  # Koppelsluis Pekelerhoofddiep
-    174,  # Koppelsluis (Scheepvaart)
-    183,  # Haansluis (scheepvaart)
-    188,
-    736,  # Springersverlaat 1e verlaat
-    776,
-    832,
+    n("KSL-E-00007"),  # Dorkswerdersluis (Scheepvaart)
+    n("KSL-A-10003"),  # Sluis Peelo
+    n("KSL-W-00004"),  # Vriescheloostersluis (Veelerveen)
+    n("KSL-E-12800"),  # Bulsterverlaat (Scheepvaart)
+    n("KSL-V-13430"),  # 2e verlaat Stadskanaal
+    n("KSL-V-14005"),  # Koppelsluis Pekelerhoofddiep
+    n("KSL-V-00002"),  # Koppelsluis (Scheepvaart)
+    n("KSL-D-00003"),  # Haansluis (scheepvaart)
+    n("KSL-V-13845"),
+    n("KIN-V-00018"),  # Springersverlaat 1e verlaat
+    n("KIN-E-00001"),
+    n("KIN-V-13845"),
 }
-
-
-# %%
-# Definieren paden en syncen met cloud
-cloud = CloudStorage()
-ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
-ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
-qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
-aanvoergebieden_gpkg = cloud.joinpath(rf"{AUTHORITY}/verwerkt/sturing/aanvoergebieden.gpkg")
 
 
 def upstream_basin_target_level(model: Model, node_id: int) -> float | None:
@@ -184,14 +192,11 @@ def configure_dorkwerd_control(model: Model) -> None:
 
     if DORKWERD_LISTEN_NODE_ID in model.node.df.index:
         model.node.df.loc[control_node_id, "name"] = (
-            f"inlaat: {DORKWERD_THRESHOLD_HIGH:.3f}/{DORKWERD_MAX_DOWNSTREAM_LEVEL:.2f} via {DORKWERD_LISTEN_NODE_ID}"
+            f"inlaat: {DORKWERD_THRESHOLD_HIGH:.3f}/{DORKWERD_MAX_DOWNSTREAM_LEVEL:.2f} via {DORKWERD_LISTEN_KEY}"
         )
 
 
 # %%
-# Read data
-model = Model.read(ribasim_toml)
-
 assert model.outlet.static.df is not None
 outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.node_id.astype(int), 10.0)
 
@@ -200,31 +205,35 @@ outlet_max_flow_rate_aanvoer_by_node_id.update(outlet_max_flow_rate_by_node_id)
 
 # fixes (zo snel mogelijk)
 assert model.level_boundary.static.df is not None
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 6, "level"] = 0.0  # Noordzee
-remove_nodes = [152, 534, 678]
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == n("bnd:6"), "level"] = 0.0  # Noordzee
+remove_nodes = [n("KSL-E-00007"), n("KST-E-00089"), n("KIN-E-00006")]
 # 152: Dorkwerdersluis (scheepvaart)
 # 534: Vispassage "de Bult"
 # 678: Koker bij gemaal westerpolder
 
-model.redirect_link(link_id=2853, to_node_id=1987)
+model.redirect_link(link_id=lk("KSL-A-10003", "bnd:12"), to_node_id=n("loc:232284,558753"))
 for node_id in remove_nodes:
     model.remove_node(node_id=node_id, remove_links=True)
 
-model.merge_basins(node_id=1621, to_node_id=1601, are_connected=True)
-model.merge_basins(node_id=1325, to_node_id=1666, are_connected=True)
-model.merge_basins(node_id=1908, to_node_id=1372, are_connected=True)
-model.merge_basins(node_id=1763, to_node_id=1381, are_connected=False)
-model.reverse_direction_at_node(node_id=871)  # inlaat stond verkeerde kant op
-model.reverse_direction_at_node(node_id=691)  # inlaat stond verkeerde kant op
+model.merge_basins(node_id=n("up:KST-W-11365"), to_node_id=n("up:KST-W-00021"), are_connected=True)
+model.merge_basins(node_id=n("up:KIN-W-13405"), to_node_id=n("up:KST-W-11070"), are_connected=True)
+model.merge_basins(node_id=n("up:KIN-H-@2"), to_node_id=n("up:KGM-H-18600"), are_connected=True)
+model.merge_basins(node_id=n("up:KIN-V-13852"), to_node_id=n("up:KIN-V-10019"), are_connected=False)
+model.reverse_direction_at_node(node_id=n("KIN-W-10493"))  # inlaat stond verkeerde kant op
+model.reverse_direction_at_node(node_id=n("KIN-H-16795"))  # inlaat stond verkeerde kant op
 model.update_node(
-    node_id=166, node_type="ManningResistance"
+    node_id=n("KSL-E-19000"), node_type="ManningResistance"
 )  # Grote Slapersluis; hier wordt ook water ingelaten; hopelijk lukt dit met ManningResistance
-model.update_node(node_id=632, node_type="Pump")  # Inlaat Vestdijklaan lijkt een pomp(je) te zijn
-model.update_node(node_id=1111, node_type="Outlet")  # Manning tussen basins met verschillende streefpeilen gaat niet
-model.update_node(node_id=1122, node_type="Outlet")  # Manning tussen basins met verschillende streefpeilen gaat niet
-model.update_node(node_id=854, node_type="Pump")  # Inlaat Vestdijklaan lijkt een pomp(je) te zijn
-model.update_node(node_id=854, node_type="Outlet")  # Uitlaat Nijlandsloop naar Anreperdiep
-for node_id in [147, 192]:
+model.update_node(node_id=n("KIN-A-11644"), node_type="Pump")  # Inlaat Vestdijklaan lijkt een pomp(je) te zijn
+model.update_node(
+    node_id=n("ow:OAF-H-00248"), node_type="Outlet"
+)  # Manning tussen basins met verschillende streefpeilen gaat niet
+model.update_node(
+    node_id=n("ow:OAF-A-01420"), node_type="Outlet"
+)  # Manning tussen basins met verschillende streefpeilen gaat niet
+model.update_node(node_id=n("KIN-A-19160"), node_type="Pump")  # Inlaat Vestdijklaan lijkt een pomp(je) te zijn
+model.update_node(node_id=n("KIN-A-19160"), node_type="Outlet")  # Uitlaat Nijlandsloop naar Anreperdiep
+for node_id in [n("KSL-E-11000"), n("KSL-E-16000")]:
     model.update_node(node_id=node_id, node_type="Outlet")
 for node_id in ALWAYS_ON_PUMP_MIN_FLOW_RATE_BY_NODE_ID:
     model.update_node(node_id=node_id, node_type="Pump", node_properties={"meta_function": "pump"})
@@ -235,17 +244,23 @@ model.pump.static.df.loc[model.pump.static.df.node_id.isin(list(EXCLUDE_NODES)),
 
 
 # capaciteit inlaten/doorlaten
-model.pump.static.df.loc[model.pump.static.df.node_id == 20, "flow_rate"] = 20  # Aanvoergemaal Dorkwerd
-model.pump.static.df.loc[model.pump.static.df.node_id == 972, "flow_rate"] = 7.5  # Aanvoergemaal Küpers
-model.pump.static.df.loc[model.pump.static.df.node_id == 70, "flow_rate"] = 4.2  # Aanvoergemaal Vennix
-model.pump.static.df.loc[model.pump.static.df.node_id == 107, "flow_rate"] = 1.92  # Aanvoergemaal Ter Apelkanaal
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 330, "flow_rate"] = (
+model.pump.static.df.loc[model.pump.static.df.node_id == n("KGM-E-11350"), "flow_rate"] = 20  # Aanvoergemaal Dorkwerd
+model.pump.static.df.loc[model.pump.static.df.node_id == n("KGM-V-13440"), "flow_rate"] = 7.5  # Aanvoergemaal Küpers
+model.pump.static.df.loc[model.pump.static.df.node_id == n("KGM-V-13200"), "flow_rate"] = 4.2  # Aanvoergemaal Vennix
+model.pump.static.df.loc[model.pump.static.df.node_id == n("KGM-V-13140"), "flow_rate"] = (
+    1.92  # Aanvoergemaal Ter Apelkanaal
+)
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("KST-E-12800"), "flow_rate"] = (
     7.5  # De Bult (Afvoer-capaciteit gelijk aan Küpers!)
 )
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 767, "flow_rate"] = 3.6  # Inlaat Purit
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 2014, "flow_rate"] = 0.3  # Inlaat Verl. Hoogeveense Vaart
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 2011, "flow_rate"] = 0.3  # Inlaat Verl. Hoogeveense Vaart
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 847, "flow_rate"] = 0.3  # Inlaat Barriereweg
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("KIN-V-10001"), "flow_rate"] = 3.6  # Inlaat Purit
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("Zuidervaart"), "flow_rate"] = (
+    0.3  # Inlaat Verl. Hoogeveense Vaart
+)
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("loc:266621,527441"), "flow_rate"] = (
+    0.3  # Inlaat Verl. Hoogeveense Vaart
+)
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("KIN-V-10421"), "flow_rate"] = 0.3  # Inlaat Barriereweg
 
 model.node.df[IS_SUPPLY_NODE_COLUMN] = False
 mask = model.node.df["meta_code_waterbeheerder"].str.contains("KIN-", case=False, na=False)
@@ -253,65 +268,86 @@ model.node.df.loc[mask, IS_SUPPLY_NODE_COLUMN] = True
 
 # user-defined drain_nodes
 drain_nodes = [
-    39,
-    50,
-    59,
-    62,
-    71,
-    80,
-    88,
-    99,
-    103,
-    105,
-    112,
-    133,
-    135,
-    179,
-    196,
-    206,
-    231,
-    233,
-    250,
-    253,
-    256,
-    257,
-    285,
-    316,
-    321,
-    325,
-    345,
-    352,
-    369,
-    425,
-    431,
-    507,
-    514,
-    523,
-    524,
-    528,
-    558,
-    603,
-    628,
-    792,
-    801,
-    870,
-    892,
-    966,
-    988,
-    1043,
-    1046,
-    1109,
-    79,
-    297,
-    30,
-    447,
+    n("KGM-W-11661"),
+    n("KGM-H-16645"),
+    n("KGM-H-18430"),
+    n("KGM-W-21635"),
+    n("KGM-H-10407"),
+    n("KGM-W-11685"),
+    n("KGM-A-19550"),
+    n("KGM-V-00010"),
+    n("KGM-V-14270"),
+    n("KGM-W-11350"),
+    n("KGM-H-10180"),
+    n("KGM-W-11635"),
+    n("KGM-F-12610"),
+    n("KSL-V-00006"),
+    n("KST-H-18260"),
+    n("KST-W-13375"),
+    n("KST-W-10490"),
+    n("KST-H-10033"),
+    n("KST-W-11610"),
+    n("KST-H-01061"),
+    n("KST-O-17425"),
+    n("KST-W-10214"),
+    n("KST-W-11575"),
+    n("KST-H-18180"),
+    n("KST-W-11520"),
+    n("KST-H-10111"),
+    n("KST-H-16900"),
+    n("KST-V-13407"),
+    n("KST-W-00069"),
+    n("KST-W-00021"),
+    n("KST-W-11600"),
+    n("KST-W-11110"),
+    n("KST-H-18160"),
+    n("KST-H-16610"),
+    n("KST-W-11585"),
+    n("KST-W-21350"),
+    n("KST-W-10204"),
+    n("KIN-H-10062"),
+    n("KIN-V-13425"),
+    n("KIN-B-12701"),
+    n("KIN-D-15800"),
+    n("KIN-V-11835"),
+    n("KST-H-18270"),
+    n("KST-V-14240"),
+    n("ASM-KSY-H-00012"),
+    n("KDU-H-01405"),
+    n("KDU-H-00602"),
+    n("ow:OAF-H-00654"),
+    n("KGM-O-17495"),
+    n("KST-O-17535"),
+    n("KGM-O-11900"),
+    n("KST-O-17485"),
 ]
 # user-defined supply_nodes
-supply_nodes = [20, 62, 70, 107, 179, 573, 891, 972, 1122]
+supply_nodes = [
+    n("KGM-E-11350"),
+    n("KGM-W-21635"),
+    n("KGM-V-13200"),
+    n("KGM-V-13140"),
+    n("KSL-V-00006"),
+    n("KIN-H-16105"),
+    n("KSL-A-00004"),
+    n("KGM-V-13440"),
+    n("ow:OAF-A-01420"),
+]
 # user-defined flow_control_nodes
-flow_control_nodes = [182, 330, 571, 573, 634, 679, 165, 505, 1017, 1111]
+flow_control_nodes = [
+    n("KSL-V-13320"),
+    n("KST-E-12800"),
+    n("KIN-H-20775"),
+    n("KIN-H-16105"),
+    n("KIN-H-10430"),
+    n("KIN-W-13362"),
+    n("KSL-V-13430"),
+    n("KST-W-10831"),
+    n("KDU-W-03360"),
+    n("ow:OAF-H-00248"),
+]
 # user-defined flushing_nodes voor de overige connectoren
-uncontrolled_flushing_nodes = {192: 1.65}
+uncontrolled_flushing_nodes = {n("KSL-E-16000"): 1.65}
 
 
 # markeer inlaten
@@ -369,7 +405,7 @@ node_functions_df = add_controllers_to_supply_area(
 polygon = aanvoergebieden_df.loc[["Borgerzijtak"], "geometry"].union_all().buffer(1).buffer(-1)
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = [2719]
+ignore_intersecting_links: list[int] = [lk("up:ow:OAF-H-01530", "ow:OAF-H-01530")]
 # 2453: Sifon onder Winschoterdiep
 
 # doorspoeling (op uitlaten)
@@ -401,7 +437,7 @@ node_functions_df = add_controllers_to_supply_area(
 polygon = aanvoergebieden_df.loc[["Oldambt"], "geometry"].union_all().buffer(1).buffer(-1)
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = [2453]
+ignore_intersecting_links: list[int] = [lk("up:KIN-O-18170", "ow:OAF-O-00807")]
 # 2453: Sifon onder Winschoterdiep
 
 # doorspoeling (op uitlaten)
@@ -432,8 +468,7 @@ node_functions_df = add_controllers_to_supply_area(
 polygon = aanvoergebieden_df.loc[["TAK"], "geometry"].union_all().buffer(1).buffer(-1)
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = [3650]
-# 3650: Sifon onder Ter Apelkanaal
+ignore_intersecting_links: list[int] = []
 
 # doorspoeling (op uitlaten)
 flushing_nodes = {}
@@ -463,11 +498,11 @@ node_functions_df = add_controllers_to_supply_area(
 polygon = aanvoergebieden_df.loc[["Fiemel/Westerwolde"], "geometry"].union_all().buffer(1).buffer(-1)
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = [297, 1941]
+ignore_intersecting_links: list[int] = [lk("ow:OAF-O-02682", "up:KAF-W-12346"), lk("up:KST-O-17530", "ow:OAF-O-02682")]
 # 3650: Sifon onder Ter Apelkanaal
 
 # doorspoeling (op uitlaten)
-flushing_nodes = {147: 1.0}
+flushing_nodes = {n("KSL-E-11000"): 1.0}
 
 # toevoegen sturing
 node_functions_df = add_controllers_to_supply_area(
@@ -495,7 +530,11 @@ node_functions_df = add_controllers_to_supply_area(
 polygon = aanvoergebieden_df.loc[["Küpers"], "geometry"].union_all().buffer(1).buffer(-1)
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = [235, 2776, 2778]
+ignore_intersecting_links: list[int] = [
+    lk("ow:OAF-E-00812", "up:KIN-D-15060"),
+    lk("up:ow:OAF-V-01499", "ow:OAF-V-01499"),
+    lk("up:KDU-V-02117", "ow:OAF-V-01998"),
+]
 # 235: Manning richting Winschoterdiep
 # 2776: Manning richting Wildervanckkanaal
 # 2778: Manning richting Pekel Aa
@@ -528,8 +567,7 @@ node_functions_df = add_controllers_to_supply_area(
 polygon = aanvoergebieden_df.loc[["Vennix"], "geometry"].union_all().buffer(1).buffer(-1)
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = [3650]
-# 3650: Sifon onder Ter Apelkanaal
+ignore_intersecting_links: list[int] = []
 
 # doorspoeling (op uitlaten)
 flushing_nodes = {}
@@ -559,7 +597,7 @@ node_functions_df = add_controllers_to_supply_area(
 polygon = aanvoergebieden_df.loc[["Drentse Aa"], "geometry"].union_all().buffer(1).buffer(-1)
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = [2751]
+ignore_intersecting_links: list[int] = [lk("up:ow:OAF-A-01252", "ow:OAF-A-01252")]
 # ###: beschrijving
 
 # doorspoeling (op uitlaten)
@@ -590,7 +628,11 @@ node_functions_df = add_controllers_to_supply_area(
 polygon = aanvoergebieden_df.loc[["Zuidlaardermeer/Winschoterdiep"], "geometry"].union_all().buffer(1).buffer(-1)
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = [2286, 2384, 2607]
+ignore_intersecting_links: list[int] = [
+    lk("up:KIN-H-10014", "ow:OAF-E-00326"),
+    lk("up:KIN-H-10006", "ow:OAF-E-00064"),
+    lk("up:KDU-E-00514", "ow:OAF-E-00443"),
+]
 # 2286: Manning Drentsche Diep
 # 2384: Manning Winschoterdiep
 # 2607: Manning Winschoterdiep
@@ -620,7 +662,7 @@ node_functions_df = add_controllers_to_supply_area(
 # %%
 # Duurswold
 
-node_ids = [829, 822, 810, 190, 162]
+node_ids = [n("KIN-D-15020"), n("KIN-D-15010"), n("KIN-D-15100"), n("KSL-D-00001"), n("KSL-D-00002")]
 model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "flow_rate"] = (
     0  # geen aanvoer vanuit de Eems (i.v.m. zout)
 )
@@ -628,7 +670,7 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(node_ids), "flow_
 polygon = aanvoergebieden_df.loc[["Duurswold"], "geometry"].union_all().buffer(1).buffer(-1)
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = [747]
+ignore_intersecting_links: list[int] = [lk("ow:OAF-D-05075", "up:KGM-D-11400")]
 # 747: sifon onder Eemskanaal, dus helemaal prima
 
 # doorspoeling (op uitlaten)
@@ -673,19 +715,19 @@ add_controllers_to_uncontrolled_connector_nodes(
 # Pomp-capaciteiten op basis van hoogste berekende dynamic debiet, afgerond naar boven.
 # Bestaande handmatige pompwaarden blijven leidend.
 pump_max_flow_rate_from_results = {
-    35: 2,  # Gemaal Breebaart; oude static flow_rate=0.00233
-    53: 1,  # Gemaal Wildervank; oude static flow_rate=0.383
-    65: 2,  # Gemaal Valthermond; oude static flow_rate=0.0917
-    83: 20,  # Gemaal Holtkamp; oude static flow_rate=0.267
-    89: 5,  # gekoppeld max=4.67, huidige max=2.67, link=3300163
-    101: 20,  # Aanvoergemaal Alteveer; oude static flow_rate=0.192
-    116: 1,  # gekoppeld max=0.92, huidige max=0.667, link=3300384
-    118: 2,  # Gemaal Haansvaart; oude static flow_rate=0.0833
-    122: 1,  # Gemaal Herleving; oude static flow_rate=0.3
-    128: 1,  # Gemaal Wildervank Sportterrein; oude static flow_rate=0.333
-    131: 1,  # Aanvoergemaal Veenhuizerstukken; oude static flow_rate=0.117
-    939: 1,  # Aanvoergemaal Nieuw Buinen-Hospers; oude static flow_rate=0.0267
-    958: 1,  # Aanvoergemaal Tweede Exloermond; oude static flow_rate=0.2
+    n("KGM-B-12710"): 2,  # Gemaal Breebaart; oude static flow_rate=0.00233
+    n("KGM-V-13889"): 1,  # Gemaal Wildervank; oude static flow_rate=0.383
+    n("KGM-V-11293"): 2,  # Gemaal Valthermond; oude static flow_rate=0.0917
+    n("KGM-H-10628"): 20,  # Gemaal Holtkamp; oude static flow_rate=0.267
+    n("KGM-D-11430"): 5,  # gekoppeld max=4.67, huidige max=2.67, link=3300163
+    n("KGM-V-11455"): 20,  # Aanvoergemaal Alteveer; oude static flow_rate=0.192
+    n("KGM-D-11490"): 1,  # gekoppeld max=0.92, huidige max=0.667, link=3300384
+    n("KGM-D-11610"): 2,  # Gemaal Haansvaart; oude static flow_rate=0.0833
+    n("KGM-O-11750"): 1,  # Gemaal Herleving; oude static flow_rate=0.3
+    n("KGM-V-13880"): 1,  # Gemaal Wildervank Sportterrein; oude static flow_rate=0.333
+    n("KGM-V-13476"): 1,  # Aanvoergemaal Veenhuizerstukken; oude static flow_rate=0.117
+    n("KGM-V-11535"): 1,  # Aanvoergemaal Nieuw Buinen-Hospers; oude static flow_rate=0.0267
+    n("KGM-V-11346"): 1,  # Aanvoergemaal Tweede Exloermond; oude static flow_rate=0.2
 }
 mask = (
     model.pump.static.df.node_id.isin(pump_max_flow_rate_from_results)
@@ -768,8 +810,8 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
 # Dorkwerd apart overrulen: stuur op de Manning-keten, begrens lokaal op 0.63 m.
 configure_dorkwerd_control(model)
 
-assert model.node.df.at[13, "node_type"] == "LevelBoundary"
-boundary_mask = model.level_boundary.static.df.node_id.eq(13)
+assert model.node.df.at[n("bnd:13"), "node_type"] == "LevelBoundary"
+boundary_mask = model.level_boundary.static.df.node_id.eq(n("bnd:13"))
 assert boundary_mask.sum() == 1
 model.level_boundary.static.df.loc[boundary_mask, "level"] = 6.62
 
