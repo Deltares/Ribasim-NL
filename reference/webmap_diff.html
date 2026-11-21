@@ -193,11 +193,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#ribasim_nl.webmap_diff.geometries_equal" id="toc-ribasim_nl.webmap_diff.geometries_equal" class="nav-link" data-scroll-target="#ribasim_nl.webmap_diff.geometries_equal">geometries_equal</a></li>
   <li><a href="#ribasim_nl.webmap_diff.matched_ids" id="toc-ribasim_nl.webmap_diff.matched_ids" class="nav-link" data-scroll-target="#ribasim_nl.webmap_diff.matched_ids">matched_ids</a></li>
   <li><a href="#ribasim_nl.webmap_diff.node_digests" id="toc-ribasim_nl.webmap_diff.node_digests" class="nav-link" data-scroll-target="#ribasim_nl.webmap_diff.node_digests">node_digests</a></li>
+  <li><a href="#ribasim_nl.webmap_diff.node_translation" id="toc-ribasim_nl.webmap_diff.node_translation" class="nav-link" data-scroll-target="#ribasim_nl.webmap_diff.node_translation">node_translation</a></li>
   <li><a href="#ribasim_nl.webmap_diff.nodes_differ_within" id="toc-ribasim_nl.webmap_diff.nodes_differ_within" class="nav-link" data-scroll-target="#ribasim_nl.webmap_diff.nodes_differ_within">nodes_differ_within</a></li>
   <li><a href="#ribasim_nl.webmap_diff.normalize_columns" id="toc-ribasim_nl.webmap_diff.normalize_columns" class="nav-link" data-scroll-target="#ribasim_nl.webmap_diff.normalize_columns">normalize_columns</a></li>
   <li><a href="#ribasim_nl.webmap_diff.read_basin_areas" id="toc-ribasim_nl.webmap_diff.read_basin_areas" class="nav-link" data-scroll-target="#ribasim_nl.webmap_diff.read_basin_areas">read_basin_areas</a></li>
   <li><a href="#ribasim_nl.webmap_diff.read_result" id="toc-ribasim_nl.webmap_diff.read_result" class="nav-link" data-scroll-target="#ribasim_nl.webmap_diff.read_result">read_result</a></li>
   <li><a href="#ribasim_nl.webmap_diff.results_match_links" id="toc-ribasim_nl.webmap_diff.results_match_links" class="nav-link" data-scroll-target="#ribasim_nl.webmap_diff.results_match_links">results_match_links</a></li>
+  <li><a href="#ribasim_nl.webmap_diff.translate" id="toc-ribasim_nl.webmap_diff.translate" class="nav-link" data-scroll-target="#ribasim_nl.webmap_diff.translate">translate</a></li>
   <li><a href="#ribasim_nl.webmap_diff.values_equal" id="toc-ribasim_nl.webmap_diff.values_equal" class="nav-link" data-scroll-target="#ribasim_nl.webmap_diff.values_equal">values_equal</a></li>
   </ul></li>
   </ul></li>
@@ -214,7 +216,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h1>webmap_diff</h1>
 <p><code>webmap_diff</code></p>
 <p>Compare two Ribasim models for the model viewer, to review the changes of a pull request.</p>
-<p>Nodes are matched by node_id, and links by from_node_id and to_node_id, since links get renumbered. A feature in both models is changed if its geometry, an attribute, its rows in an input table or its Basin / area differ. Initial Basin levels within 1 cm are equal, see <code>TABLE_TOLERANCES</code>. If both models have results, the Basin levels and flow rates that differ are listed too.</p>
+<p>Nodes are matched by their key and water authority, see <code>ribasim_nl.keys</code>, or else by node_id, and links by from_node_id and to_node_id, since nodes and links get renumbered. A feature in both models is changed if its geometry, an attribute, its rows in an input table or its Basin / area differ. Initial Basin levels within 1 cm are equal, see <code>TABLE_TOLERANCES</code>. If both models have results, the Basin levels and flow rates that differ are listed too.</p>
 <section id="functions" class="level2">
 <h2 class="anchored" data-anchor-id="functions">Functions</h2>
 <table class="caption-top table">
@@ -243,7 +245,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="odd">
 <td><a href="#ribasim_nl.webmap_diff.compare_tables">compare_tables</a></td>
-<td>Return the names of the exported input tables whose rows differ, per node_id.</td>
+<td>Return the names of the exported input tables whose rows differ, per node_id of the head model.</td>
 </tr>
 <tr class="even">
 <td><a href="#ribasim_nl.webmap_diff.diff_models">diff_models</a></td>
@@ -266,24 +268,32 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>The row count and an order-sensitive digest of the rows of each node in a table sorted by node_id.</td>
 </tr>
 <tr class="odd">
+<td><a href="#ribasim_nl.webmap_diff.node_translation">node_translation</a></td>
+<td>The node_id in the head model of each node of the base model, or its negated node_id if it is only in the base.</td>
+</tr>
+<tr class="even">
 <td><a href="#ribasim_nl.webmap_diff.nodes_differ_within">nodes_differ_within</a></td>
 <td>The node_ids whose rows in a table differ, with the columns of <code>tolerances</code> equal within their tolerance.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap_diff.normalize_columns">normalize_columns</a></td>
 <td>Columns in a fixed order with dtypes that hash equally for equal values.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.webmap_diff.read_basin_areas">read_basin_areas</a></td>
 <td>Basin / area geometries by node_id, with the areas of a node merged.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.webmap_diff.read_result">read_result</a></td>
 <td>One result variable of an export, with a row per time step and a column per feature id.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.webmap_diff.results_match_links">results_match_links</a></td>
 <td>Whether every link in the flow results connects the same nodes in the model, so the results are not outdated.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.webmap_diff.translate">translate</a></td>
+<td>The node_ids of the base model in the head model, see <code>node_translation</code>: an unknown node keeps its node_id.</td>
 </tr>
 <tr class="even">
 <td><a href="#ribasim_nl.webmap_diff.values_equal">values_equal</a></td>
@@ -315,8 +325,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.webmap_diff.compare_tables" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_diff.compare_tables">compare_tables</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>webmap_diff.compare_tables(base_dir, base_manifest, head_dir, head_manifest)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Return the names of the exported input tables whose rows differ, per node_id.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>webmap_diff.compare_tables(</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    base_dir,</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    base_manifest,</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    head_dir,</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    head_manifest,</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    translation<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Return the names of the exported input tables whose rows differ, per node_id of the head model.</p>
+<p>With a <code>translation</code>, see <code>node_translation</code>, the rows of a node are compared with those of the same node in the base model, whatever its node_id there. Nodes that are only in the base model have their negated node_id.</p>
 </section>
 <section id="ribasim_nl.webmap_diff.diff_models" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_diff.diff_models">diff_models</h3>
@@ -329,7 +346,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    labels<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Compare two models and their <code>export_webmap</code> output, and write the differences as JSON.</p>
-<p>Nodes and links map ids to <code>{"status": "added" | "removed" | "changed", "changes": [...]}</code>, where the changes name the attribute columns, the tables, “geometry” or “Basin / area” that differ. Changed links have a <code>base_id</code> if they were renumbered. Removed links are keyed by their negated base link_id, since that id may be used by another link in the head model. If both models have results, <code>results</code> has the Basin levels and flow rates that differ per head id, see <code>compare_results</code>, otherwise it is None. Results whose links are not those of their model are outdated, and are not compared; <code>results_note</code> then says why. The labels name the models, by default their model names.</p>
+<p>Nodes and links map ids to <code>{"status": "added" | "removed" | "changed", "changes": [...]}</code>, where the changes name the attribute columns, the tables, “geometry” or “Basin / area” that differ. Changed nodes and links have a <code>base_id</code> if they were renumbered. Removed nodes and links are keyed by their negated id in the base model, since that id may be used by another node or link in the head model. <code>base_node_ids</code> has the id in the base model of every renumbered node in both models, changed or not, by its id in the head model, to find its results and tables in the base model. If both models have results, <code>results</code> has the Basin levels and flow rates that differ per head id, see <code>compare_results</code>, otherwise it is None. Results whose links are not those of their model are outdated, and are not compared; <code>results_note</code> then says why. The labels name the models, by default their model names.</p>
 </section>
 <section id="ribasim_nl.webmap_diff.flatten" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_diff.flatten">flatten</h3>
@@ -348,39 +365,56 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.webmap_diff.node_digests" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_diff.node_digests">node_digests</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>webmap_diff.node_digests(path, columns, string_columns<span class="op">=</span>())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>webmap_diff.node_digests(path, columns, string_columns<span class="op">=</span>(), translation<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The row count and an order-sensitive digest of the rows of each node in a table sorted by node_id.</p>
+<p>With a <code>translation</code>, see <code>node_translation</code>, the node_ids are those of the head model.</p>
+</section>
+<section id="ribasim_nl.webmap_diff.node_translation" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_diff.node_translation">node_translation</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>webmap_diff.node_translation(base, head)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The node_id in the head model of each node of the base model, or its negated node_id if it is only in the base.</p>
+<p>Nodes with the same key and water authority are the same node, whatever their node_id, see <code>ribasim_nl.keys</code>. A node without a key in one of the models is the same node as the one with its node_id in the other model, like in models without keys.</p>
 </section>
 <section id="ribasim_nl.webmap_diff.nodes_differ_within" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_diff.nodes_differ_within">nodes_differ_within</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>webmap_diff.nodes_differ_within(base_path, head_path, tolerances)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>webmap_diff.nodes_differ_within(</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    base_path,</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    head_path,</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    tolerances,</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    translation<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The node_ids whose rows in a table differ, with the columns of <code>tolerances</code> equal within their tolerance.</p>
-<p>Rows are matched by node_id and their order per node. The whole table is read, so this is only for small tables.</p>
+<p>Rows are matched by node_id and their order per node. The whole table is read, so this is only for small tables. With a <code>translation</code>, see <code>node_translation</code>, the node_ids of the base table are those of the head model.</p>
 </section>
 <section id="ribasim_nl.webmap_diff.normalize_columns" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_diff.normalize_columns">normalize_columns</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>webmap_diff.normalize_columns(df, columns, string_columns<span class="op">=</span>())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>webmap_diff.normalize_columns(df, columns, string_columns<span class="op">=</span>())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Columns in a fixed order with dtypes that hash equally for equal values.</p>
 <p>Missing columns are null, like an empty column: missing values of <code>string_columns</code>, NaN otherwise.</p>
 </section>
 <section id="ribasim_nl.webmap_diff.read_basin_areas" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_diff.read_basin_areas">read_basin_areas</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>webmap_diff.read_basin_areas(database)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>webmap_diff.read_basin_areas(database)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Basin / area geometries by node_id, with the areas of a node merged.</p>
 </section>
 <section id="ribasim_nl.webmap_diff.read_result" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_diff.read_result">read_result</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>webmap_diff.read_result(export_dir, manifest, kind, variable)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>webmap_diff.read_result(export_dir, manifest, kind, variable)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>One result variable of an export, with a row per time step and a column per feature id.</p>
 </section>
 <section id="ribasim_nl.webmap_diff.results_match_links" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_diff.results_match_links">results_match_links</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>webmap_diff.results_match_links(toml_path, config, links)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>webmap_diff.results_match_links(toml_path, config, links)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Whether every link in the flow results connects the same nodes in the model, so the results are not outdated.</p>
+</section>
+<section id="ribasim_nl.webmap_diff.translate" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.webmap_diff.translate">translate</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>webmap_diff.translate(node_ids, translation)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The node_ids of the base model in the head model, see <code>node_translation</code>: an unknown node keeps its node_id.</p>
 </section>
 <section id="ribasim_nl.webmap_diff.values_equal" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.webmap_diff.values_equal">values_equal</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>webmap_diff.values_equal(base, head)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>webmap_diff.values_equal(base, head)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Element-wise equality where missing values are equal to each other.</p>
 
 
