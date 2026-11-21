@@ -118,9 +118,6 @@ def test_branch_from_route():
     assert branch_from_route(model, 6, basin_id=1, towards_id=2, margin=20.0) == 4
     assert (4, 6) in link_pairs(model)
 
-    with pytest.raises(ValueError, match="should only have a flow link"):
-        branch_from_route(model, 2, basin_id=1, towards_id=3)
-
 
 def test_merge_outflows():
     """Outlet 5 drains through Junctions 9 and 7 into Basin 1, and Outlet 8 through Junction 7."""
@@ -390,6 +387,21 @@ def test_branch_from_route_in_basin_tree():
     junction_id = branch_from_route(model, 6, basin_id=1, towards_id=5)
     assert link_pairs(model) == {(1, 4), (4, 2), (4, 3), (5, junction_id), (junction_id, 1), (junction_id, 6)}
     assert simplified_links(model) == {(1, 2), (1, 3), (5, 1), (1, 6)}
+
+
+def test_branch_from_route_of_node_in_basin_tree():
+    """A node that is fed through a Junction of the tree of the Basin branches off the route like one fed directly."""
+    model = route_model()
+    model.outlet.add(Node(6, Point(75, -20)), [outlet.Static(flow_rate=[1.0])])
+    model.link.add(model.junction[4], model.outlet[6])
+    junction_id = branch_from_route(model, 6, basin_id=1, towards_id=3)
+    location = model.node.df.at[junction_id, "geometry"]
+    assert location.distance(LineString([(50, 0), (100, -10)])) < 1e-9
+    assert link_pairs(model) == {(1, 4), (4, 2), (4, junction_id), (junction_id, 3), (junction_id, 6), (5, 1)}
+
+    # but not one that is fed by another node
+    with pytest.raises(ValueError, match="should only have a flow link"):
+        branch_from_route(model, 1, basin_id=1, towards_id=3)
 
 
 def test_towards_basin():

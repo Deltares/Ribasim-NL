@@ -406,10 +406,14 @@ def branch_from_route(model: Model, node_id: int, basin_id: int, towards_id: int
 
     The branch starts at a Junction at the point of that route nearest to `node_id`, or at the existing Junction if
     that point is within `margin` of one, and runs straight to `node_id`. Returns the node id of that Junction.
+
+    The link into `node_id` comes from the Basin, or from a Junction of its tree, see `Routes`: the regional models
+    merge the links of a Basin into a tree where they share a route.
     """
     flow = model.link.df[model.link.df["link_type"] == "flow"]
     inflow = flow[flow["to_node_id"] == node_id]
-    if inflow["from_node_id"].tolist() != [basin_id]:
+    sources = inflow["from_node_id"].tolist()
+    if len(sources) != 1 or (sources[0] != basin_id and Routes(model).tree_basin(sources[0]) != basin_id):
         raise ValueError(f"Node {node_id} should only have a flow link from Basin {basin_id}.")
     remove_flow_link(model, int(inflow.index[0]))
 
