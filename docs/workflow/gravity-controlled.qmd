@@ -41,7 +41,7 @@ Only the last model of each stage is an output of DVC.
 
 ## 2. Fix
 
-`01_fix_model.py` corrects the input model `{authority}_2024_6_3` by node ID, into a valid Ribasim model `{authority}_fix_model`.
+`01_fix_model.py` corrects the input model `{authority}_2024_6_3` into a valid Ribasim model `{authority}_fix_model`, referring to nodes by their [key](../dev/node-keys.qmd).
 It is the same step as in [Lumping](lumping.qmd#correct-the-model-in-the-fix-script), and most of the edits are in `verwerkt/model_edits.gpkg`.
 
 ## 3. Prepare and parameterize

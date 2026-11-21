@@ -30,50 +30,68 @@ SHORT_NAME: str = "hdsr"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 
+# %%
+# Definieren paden en syncen met cloud
+cloud = CloudStorage()
+ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
+ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
+qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
+aanvoer_path = aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt/4_ribasim/peilgebieden_bewerkt.gpkg")
+
+aanvoergebieden_gpkg = cloud.joinpath(r"StichtseRijnlanden/verwerkt/sturing/aanvoergebieden.gpkg")
+
+
+# %%
+# Read data
+model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
+lk = model.link_id
+
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 # 746: Oudewater sluis
 # 750: Oude Leidseweg Sluis
 # 753: Woerdenseverlaat SLuis
 # 751: Montfoort Sluis
-EXCLUDE_NODES = {486, 745, 746, 750, 753}
+EXCLUDE_NODES = {n("ST0236"), n("SL0010"), n("SL0008"), n("SL0014"), n("SL0006")}
 EXCLUDE_SUPPLY_NODES = []
 outlet_max_flow_rate_from_results = {
-    515: 48,  # ST0225
-    758: 2,  # Zuidersluis
+    n("ST0225"): 48,  # ST0225
+    n("SL0016"): 2,  # Zuidersluis
 }
 outlet_max_flow_rate_coupled_by_node_id = {
-    114: 2,  # gekoppeld max=0.91, huidige max=0.00, link=1400109
-    124: 2,  # gekoppeld max=0.99, huidige max=0.00, link=1400130
-    130: 3,  # gekoppeld max=1.17, huidige max=0.00, link=1400146
-    141: 2,  # gekoppeld max=0.94, huidige max=0.00, link=1400174
-    150: 3,  # gekoppeld max=1.37, huidige max=0.00, link=1400188
-    155: 11,  # gekoppeld max=6.70, huidige max=0.00, link=1400196
-    183: 2,  # gekoppeld max=0.51, huidige max=0.00, link=1400283
-    190: 15,  # gekoppeld max=9.99, huidige max=0.00, link=1400297
-    226: 17,  # gekoppeld max=10.51, huidige max=0.00, link=1400364
-    249: 8,  # gekoppeld max=4.23, huidige max=0.00, link=1400409
-    341: 2,  # gekoppeld max=0.89, huidige max=0.00, link=1400622
-    342: 2,  # gekoppeld max=0.89, huidige max=0.00, link=1400623
-    343: 8,  # gekoppeld max=4.23, huidige max=0.00, link=1400410
-    351: 2,  # gekoppeld max=0.59, huidige max=0.00, link=1400634
-    354: 5,  # gekoppeld max=2.74, huidige max=0.00, link=8000969
-    368: 5,  # gekoppeld max=2.57, huidige max=0.00, link=1400656
-    372: 6,  # gekoppeld max=3.85, huidige max=0.00, link=1400660
-    399: 2,  # gekoppeld max=0.52, huidige max=0.00, link=1400702
-    401: 3,  # gekoppeld max=1.01, huidige max=0.00, link=1400704
-    409: 2,  # gekoppeld max=0.89, huidige max=0.00, link=1400624
-    468: 3,  # gekoppeld max=1.70, huidige max=0.00, link=1400748
-    481: 14,  # gekoppeld max=8.82, huidige max=0.00, link=1400043
-    488: 2,  # gekoppeld max=0.99, huidige max=0.00, link=1400131
-    489: 2,  # gekoppeld max=0.99, huidige max=0.00, link=1400132
-    747: 3,  # gekoppeld max=1.06, huidige max=0.00, link=1400903
-    754: 3,  # gekoppeld max=1.64, huidige max=0.00, link=1401470
-    761: 9,  # gekoppeld max=5.18, huidige max=0.00, link=1402642
-    772: 18,  # gekoppeld max=11.53, huidige max=0.00, link=1400292
-    829: 101,  # ST4148; gekoppeld max=66.29, parameterized=20.00
-    872: 62,  # Kockengen Stuw; gekoppeld max=40.92, parameterized=20.00
-    1042: 3,  # gekoppeld max=1.45, huidige max=0.00, link=1400793
-    1214: 59,  # ST4146; gekoppeld max=38.65, parameterized=20.00
+    n("I6145"): 2,  # gekoppeld max=0.91, huidige max=0.00, link=1400109
+    n("I6038"): 2,  # gekoppeld max=0.99, huidige max=0.00, link=1400130
+    n("AF0090"): 3,  # gekoppeld max=1.17, huidige max=0.00, link=1400146
+    n("I6098"): 2,  # gekoppeld max=0.94, huidige max=0.00, link=1400174
+    n("I1574"): 3,  # gekoppeld max=1.37, huidige max=0.00, link=1400188
+    n("I6053"): 11,  # gekoppeld max=6.70, huidige max=0.00, link=1400196
+    n("I1247"): 2,  # gekoppeld max=0.51, huidige max=0.00, link=1400283
+    n("I6188"): 15,  # gekoppeld max=9.99, huidige max=0.00, link=1400297
+    n("I0021"): 17,  # gekoppeld max=10.51, huidige max=0.00, link=1400364
+    n("I0551"): 8,  # gekoppeld max=4.23, huidige max=0.00, link=1400409
+    n("I0550"): 2,  # gekoppeld max=0.89, huidige max=0.00, link=1400622
+    n("I0553"): 2,  # gekoppeld max=0.89, huidige max=0.00, link=1400623
+    n("I0186"): 8,  # gekoppeld max=4.23, huidige max=0.00, link=1400410
+    n("I6102"): 2,  # gekoppeld max=0.59, huidige max=0.00, link=1400634
+    n("I6116"): 5,  # gekoppeld max=2.74, huidige max=0.00, link=8000969
+    n("I1096"): 5,  # gekoppeld max=2.57, huidige max=0.00, link=1400656
+    n("I1151"): 6,  # gekoppeld max=3.85, huidige max=0.00, link=1400660
+    n("I1435"): 2,  # gekoppeld max=0.52, huidige max=0.00, link=1400702
+    n("I6088"): 3,  # gekoppeld max=1.01, huidige max=0.00, link=1400704
+    n("I2328"): 2,  # gekoppeld max=0.89, huidige max=0.00, link=1400624
+    n("SY0070"): 3,  # gekoppeld max=1.70, huidige max=0.00, link=1400748
+    n("AF0093"): 14,  # gekoppeld max=8.82, huidige max=0.00, link=1400043
+    n("I6036"): 2,  # gekoppeld max=0.99, huidige max=0.00, link=1400131
+    n("I6037"): 2,  # gekoppeld max=0.99, huidige max=0.00, link=1400132
+    n("SL0501"): 3,  # gekoppeld max=1.06, huidige max=0.00, link=1400903
+    n("SL0030"): 3,  # gekoppeld max=1.64, huidige max=0.00, link=1401470
+    n("ST3003"): 9,  # gekoppeld max=5.18, huidige max=0.00, link=1402642
+    n("ST6113"): 18,  # gekoppeld max=11.53, huidige max=0.00, link=1400292
+    n("ST4148"): 101,  # ST4148; gekoppeld max=66.29, parameterized=20.00
+    n("ST1919"): 62,  # Kockengen Stuw; gekoppeld max=40.92, parameterized=20.00
+    n("ST0069"): 3,  # gekoppeld max=1.45, huidige max=0.00, link=1400793
+    n("ST4146"): 59,  # ST4146; gekoppeld max=38.65, parameterized=20.00
 }
 outlet_max_flow_rate_afvoer_by_node_id = {}
 for max_flow_rates in (
@@ -91,34 +109,49 @@ for max_flow_rates in (
 
 # fmt: off
 flow_control_nodes = [
-    134, 207, 405, 527, 636, 777, 778, 809, 814, 977, 1010, 1011, 1033, 1036,
-    1038, 1039, 1050, 1059, 1063, 1107, 1153, 1154, 1155, 1279,
+    n("I5051"), n("I6023"), n("AF0095"), n("I1655"), n("G6025"), n("ST3001"), n("ST3912"), n("ST1066"), n("ST6055"),
+    n("ST1433"), n("ST1257"), n("ST1353"), n("ST4112"), n("ST5011"), n("ST1758"), n("ST5009"), n("ST0477"), n("ST5022"),
+    n("ST1091"), n("ST0826"), n("ST6092"), n("ST0479"), n("ST7263"), n("ST1888"),
 ]
 
 supply_nodes = [
-    103, 358, 424, 425, 476, 481, 486, 506, 536, 542, 543, 553, 554, 564, 581,
-    589, 593, 596, 624, 626, 627, 630, 637, 638, 639, 640, 648, 649, 650, 651,
-    654, 655, 742, 747, 754, 761, 772, 797, 830, 840, 855, 890, 906, 911, 924,
-    962, 976, 987, 1007, 1014, 1022, 1042, 1056, 1082, 1156, 2111,
+    n("I6000"), n("AF0082"), n("I6189"), n("AF0038"), n("D13544"), n("AF0093"), n("ST0236"), n("G0039"), n("G6007"),
+    n("G4031"), n("G8012"), n("G0096"), n("G0007"), n("G6032"), n("G8001"), n("G0005"), n("G8014"), n("G3004"),
+    n("G4481"), n("G2005"), n("G4015"), n("G6020"), n("G0040"), n("G6024"), n("G6023"), n("G0085"), n("G3007"),
+    n("G3012"), n("G1016"), n("G4023"), n("G2014"), n("G0011"), n("SL0003"), n("SL0501"), n("SL0030"), n("ST3003"),
+    n("ST6113"), n("ST0945"), n("ST3928"), n("ST1615"), n("ST4036"), n("ST0946"), n("ST0779"), n("ST0722"), n("ST1194"),
+    n("ST2903"), n("ST0850"), n("ST0409"), n("ST3120"), n("ST0439"), n("ST1319"), n("ST0069"), n("ST0485"), n("ST0243"),
+    n("ST1064"), n("SCHRAALLANDEN"),
 ]
 
 drain_nodes = [
-    139, 168, 173, 185, 198, 230, 298, 347, 411, 467, 477, 513, 545, 551, 554,
-    588, 591, 598, 601, 612, 633, 634, 761, 799, 818, 844, 851, 864, 887, 893, 894,
-    920, 944, 956, 969, 971, 975, 978, 979, 980, 993, 1033, 1077, 1126, 1145, 1168, 1203, 1223,
-    2110,
+    n("I1580"), n("I6118"), n("I2003"), n("AF0032"), n("I1317"), n("I6207"), n("SY3441"), n("SY1901"), n("G0038"),
+    n("G0087"), n("G4022"), n("G0007"), n("G8002"), n("G4027"), n("G0068"), n("G3003"), n("G0089"), n("G1010"),
+    n("G3024"), n("ST3003"), n("ST0360"), n("ST1926"), n("ST1541"), n("ST0014"), n("ST5322"), n("ST3128"), n("ST6050"),
+    n("ST2901"), n("ST1449"), n("ST0895"), n("ST1014"), n("ST0842"), n("ST0010"), n("ST0814"), n("ST4007"), n("ST4022"),
+    n("ST7229"), n("ST0712"), n("ST4112"), n("ST0725"), n("ST8009"), n("ST0003"), n("ST0733"), n("ST4115"), n("ST0815"),
+    n("loc:136117,451389"),
 ]
 
-flushing_nodes = {186: 1.25, 757: 3.0, 919: 5}
+flushing_nodes = {n("I6073"): 1.25, n("SL0009"): 3.0, n("ST2028"): 5}
 
 SUPPLY_AREA_IGNORE_LINKS = {
-    "Kromme Rijn/ARK": [2175],
-    "EVS": [1448],
-    "Lopikerwaard": [404, 1305, 1618, 2271],
-    "Leidsche-Oude Rijn": [292, 384, 762, 847, 1385, 1775, 2169],
-    "Gek. Hollandsche IJssel": [227, 292, 638, 762, 847, 1385, 1775],
+    "Kromme Rijn/ARK": [lk("up:G3004", "ow:H012324")],
+    "EVS": [lk("up:I0427", "ST0003")],
+    "Lopikerwaard": [
+        lk("ow:H057607", "up:OW575"), lk("H057916___3", "up:H071914___1"), lk("up:H057916___3", "H057916___3"),
+        lk("up:H078195", "OW636"),
+    ],
+    "Leidsche-Oude Rijn": [
+        lk("ST6113", "up:ST6098"), lk("H041348___2", "up:H041347___1"), lk("ST0236", "up:ST4058"),
+        lk("G0087", "up:I1042"), lk("up:I1042", "ST0236"), lk("up:G4032", "G0087"), lk("up:G0068", "ST6113"),
+    ],
+    "Gek. Hollandsche IJssel": [
+        lk("ST0771", "up:ST6098"), lk("ST6113", "up:ST6098"), lk("OW618", "up:H063301"), lk("ST0236", "up:ST4058"),
+        lk("G0087", "up:I1042"), lk("up:I1042", "ST0236"), lk("up:G4032", "G0087"),
+    ],
     "Utrecht-Noord": [],
-    "Utrechtse Heuvelrug/Kromme Rijn": [2103],
+    "Utrechtse Heuvelrug/Kromme Rijn": [lk("up:H012352___1", "H012343___2")],
 }
 # fmt: on
 
@@ -154,20 +187,6 @@ def add_supply_area_control(
 
 
 # %%
-# Definieren paden en syncen met cloud
-cloud = CloudStorage()
-ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
-ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
-qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
-aanvoer_path = aanvoer_path = cloud.joinpath(AUTHORITY, "verwerkt/4_ribasim/peilgebieden_bewerkt.gpkg")
-
-aanvoergebieden_gpkg = cloud.joinpath(r"StichtseRijnlanden/verwerkt/sturing/aanvoergebieden.gpkg")
-
-
-# %%
-# Read data
-model = Model.read(ribasim_toml)
-
 assert model.outlet.static.df is not None
 outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.node_id.astype(int), 10.0)
 
@@ -194,51 +213,56 @@ for node_type in CONTROL_NODE_TYPES:
 
 # %% model fixes
 assert model.level_boundary.static.df is not None
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 45, "level"] = -1.4
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == n("bnd:45"), "level"] = -1.4
 
 # doorslag staat normaal open
-model.reverse_link(link_id=1470)
-model.reverse_link(link_id=1063)
+model.reverse_link(link_id=lk("up:H063301", "SL0030"))
+model.reverse_link(link_id=lk("SL0030", "loc:135314,450583"))
 
 # De Pelikaan links omdraaien
-model.reverse_link(link_id=578)
-model.reverse_link(link_id=1447)
-model.reverse_link(link_id=1223)
-model.reverse_link(link_id=2200)
+model.reverse_link(link_id=lk("G4481", "up:I0427"))
+model.reverse_link(link_id=lk("up:I0427", "ST8009"))
+model.reverse_link(link_id=lk("ST8009", "up:G4481"))
+model.reverse_link(link_id=lk("up:G4481", "G4481"))
 
 # 416: I2075
-model.reverse_link(link_id=1399)
-model.reverse_link(link_id=715)
+model.reverse_link(link_id=lk("I2075", "up:I0027"))
+model.reverse_link(link_id=lk("up:G2901", "I2075"))
 
 # 138: I6125
-model.reverse_link(link_id=2649)
-model.reverse_link(link_id=1551)
+model.reverse_link(link_id=lk("I6125", "bnd:15"))
+model.reverse_link(link_id=lk("up:I6125", "I6125"))
 
 # 545: Rijnvliet is afvoergemaal
-model.reverse_link(link_id=847)
-model.reverse_link(link_id=1775)
+model.reverse_link(link_id=lk("G0087", "up:I1042"))
+model.reverse_link(link_id=lk("up:G4032", "G0087"))
 
 # node 2806 is een inlaat, dus flow_direction draaien
-model.reverse_link(link_id=2711)
-model.reverse_link(link_id=2005)
+model.reverse_link(link_id=lk("I0880", "bnd:70"))
+model.reverse_link(link_id=lk("up:I0901", "I0880"))
 
 # Gemaal Terwijde
-model.reverse_link(link_id=2073)
-model.reverse_link(link_id=24)
+model.reverse_link(link_id=lk("up:G0038", "G0038"))
+model.reverse_link(link_id=lk("G0038", "up:I1096"))
 
 # Caspergouw, see https://github.com/Deltares/Ribasim-NL/issues/913: Caspargauw (G3003) drains Basin 1728 to the ARK,
 # and Caspargauw Zemelen (G3004) supplies it, from Basin 1619
-CASPARGAUW, CASPARGAUW_ZEMELEN, CASPERGOUW_BASIN = 601, 596, 1728
+CASPARGAUW, CASPARGAUW_ZEMELEN, CASPERGOUW_BASIN = n("G3003"), n("G3004"), n("up:G3004")
 assert model.node.df.at[CASPARGAUW, "meta_code_waterbeheerder"] == "G3003"
 assert model.node.df.at[CASPARGAUW_ZEMELEN, "meta_code_waterbeheerder"] == "G3004"
-for link_id in (2643, 929, 2172, 743):  # LevelBoundary 9 -> 601 -> 1728 -> 596 -> 1619
+for link_id in (
+    lk("bnd:9", "G3003"),
+    lk("G3003", "up:G3004"),
+    lk("up:G3004", "G3004"),
+    lk("G3004", "up:I2216"),
+):  # LevelBoundary 9 -> 601 -> 1728 -> 596 -> 1619
     model.reverse_link(link_id=link_id)
 assert model.upstream_node_id(CASPARGAUW) == CASPERGOUW_BASIN
 assert model.downstream_node_id(CASPARGAUW_ZEMELEN) == CASPERGOUW_BASIN
 model.node.df.loc[CASPARGAUW_ZEMELEN, IS_SUPPLY_NODE_COLUMN] = True
 assert CASPARGAUW_ZEMELEN in supply_nodes and CASPARGAUW in drain_nodes
 
-model.update_node(node_id=730, node_type="ManningResistance")
+model.update_node(node_id=n("OW689"), node_type="ManningResistance")
 
 # %%
 # Toevoegen aanvoergebieden
@@ -264,7 +288,7 @@ model.outlet.static.df.loc[mask, "min_flow_rate"] = 0.0
 model.outlet.static.df.loc[mask, "max_flow_rate"] = 0.0
 
 # Zuidersluis beetje uitlaat anders vollopen Merwedekanaal benenden Lek
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 758, ["flow_rate", "max_flow_rate"]] = 1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("SL0016"), ["flow_rate", "max_flow_rate"]] = 1
 # %% Toevoegen waar nog geen sturing is toegevoegd
 
 add_controllers_to_uncontrolled_connector_nodes(
@@ -282,15 +306,15 @@ add_controllers_to_uncontrolled_connector_nodes(
 
 # %% Noordergemaal, node=536 slaat pas aan wanneer Wijk van Duurstede net genoeg kan leveren
 assert model.pump.static.df is not None
-mask = model.pump.static.df.node_id == 536
+mask = model.pump.static.df.node_id == n("G6007")
 model.pump.static.df.loc[mask, "max_downstream_level"] -= 0.01
 mark_level_update_protected(model.pump.static.df, mask, model=model)
-mask = model.outlet.static.df.node_id.isin([1344, 1345])
+mask = model.outlet.static.df.node_id.isin([n("ow:H078553")])
 model.outlet.static.df.loc[mask, "max_downstream_level"] -= 0.01
 mark_level_update_protected(model.outlet.static.df, mask, model=model)
 
-# 3 sifons, 468,469,470 onder Ark wordt later ingeschakeld dan inlaat Vreeswijk
-mask = model.outlet.static.df.node_id.isin([468, 469, 470])
+# sifon SY0070 onder het ARK wordt later ingeschakeld dan inlaat Vreeswijk; SY6009 en SY0071 zijn verwijderd
+mask = model.outlet.static.df.node_id.isin([n("SY0070")])
 model.outlet.static.df.loc[mask, "max_downstream_level"] -= 0.01
 mark_level_update_protected(model.outlet.static.df, mask, model=model)
 
@@ -301,53 +325,53 @@ mark_level_update_protected(model.pump.static.df, mask, model=model)
 
 # Pomp-capaciteiten op basis van hoogste berekende dynamic debiet, afgerond naar boven.
 pump_max_flow_rate_from_results = {
-    506: 1,  # Papekopperdijk; oude static flow_rate=0.0667
-    513: 50,  # Terwijde; oude static flow_rate=0.45
-    529: 2,  # Fort Overeind; gekoppeld max=1.26, huidige max=1.00, link=1400825
-    534: 1,  # Zwaan, De; oude static flow_rate=0.4
-    538: 1,  # Wijkersloot; oude static flow_rate=0.25
-    542: 1,  # gekoppeld max=0.75, huidige max=0.00, link=1400841
-    546: 2,  # Ossenwaard; oude static flow_rate=0.333
-    551: 1,  # Biester; oude static flow_rate=0.0617
-    555: 21,  # Vuylcop-West; oude static flow_rate=1.17
-    559: 1,  # Hoon - West, De; oude static flow_rate=0.0667
-    561: 1,  # Gemaal Rijnwijck; oude static flow_rate=0.5
-    568: 1,  # Waalseweg; oude static flow_rate=0.0833
-    578: 9,  # gekoppeld max=8.09, huidige max=0.70, link=1400003
-    579: 1,  # gekoppeld max=0.67, huidige max=0.00, link=1400686
-    585: 3,  # Smidsdijk; oude static flow_rate=1.37
-    588: 4,  # Blokhoven; oude static flow_rate=1.25
-    592: 8,  # Snel En Polanen; oude static flow_rate=0.5
-    593: 1,  # naam onbekend; oude static flow_rate=0.025
-    598: 25,  # Vleuterweide; oude static flow_rate=0.892
-    602: 3,  # Beerschoten; oude static flow_rate=0.5
-    603: 2,  # Fortuin; oude static flow_rate=0.217
-    609: 3,  # Westraven; oude static flow_rate=0.167
-    612: 3,  # gekoppeld max=2.36, huidige max=0.238, link=1400257
-    611: 15,  # Gerverscop; oude static flow_rate=1.58
-    619: 15,  # Kockengen; oude static flow_rate=1.95
-    621: 1,  # Grechtkade; oude static flow_rate=0.00753
-    623: 10,  # Keulevaart, De; oude static flow_rate=5.34
-    624: 2,  # Pelikaan; oude static flow_rate=0.1
-    626: 2,  # Strijp, De; oude static flow_rate=0.0333
-    627: 1,  # Overeind; oude static flow_rate=0.25
-    631: 1,  # Oude Meije; oude static flow_rate=0.533
-    632: 1,  # Toegang, De; oude static flow_rate=0.267
-    633: 2,  # Voordorp; oude static flow_rate=0.833
-    634: 3,  # Hazepad 'T; oude static flow_rate=1.37
-    636: 1,  # Tappersheul; oude static flow_rate=0.0417
-    637: 1,  # Hwvz Diemerbroek 56; oude static flow_rate=0.0667
-    640: 20,  # Schoonhoven; oude static flow_rate=0.167
-    641: 15,  # Hwvz Teckop; oude static flow_rate=0.0333
-    642: 5,  # gekoppeld max=4.20, huidige max=0.45, link=1400211
-    643: 1,  # Heul, De (Zuurhout); oude static flow_rate=0.0583
-    644: 1,  # Tureluur; oude static flow_rate=0.383
-    646: 20,  # Rembrandtkade/Minstroom; oude static flow_rate=0.167
-    647: 5,  # Leesloot; gekoppeld max=4.14, huidige max=1.00, link=1400730
-    649: 1,  # gekoppeld max=0.67, huidige max=0.00, link=1400970
-    651: 3,  # Pothoek; oude static flow_rate=0.2
-    652: 20,  # Moersbergen; oude static flow_rate=0.0833
-    656: 3,  # Weerdenburg; oude static flow_rate=0.133
+    n("G0039"): 1,  # Papekopperdijk; oude static flow_rate=0.0667
+    n("G0038"): 50,  # Terwijde; oude static flow_rate=0.45
+    n("G4028"): 2,  # Fort Overeind; gekoppeld max=1.26, huidige max=1.00, link=1400825
+    n("G5001"): 1,  # Zwaan, De; oude static flow_rate=0.4
+    n("G8013"): 1,  # Wijkersloot; oude static flow_rate=0.25
+    n("G4031"): 1,  # gekoppeld max=0.75, huidige max=0.00, link=1400841
+    n("G3001"): 2,  # Ossenwaard; oude static flow_rate=0.333
+    n("G4022"): 1,  # Biester; oude static flow_rate=0.0617
+    n("G4025"): 21,  # Vuylcop-West; oude static flow_rate=1.17
+    n("G4029"): 1,  # Hoon - West, De; oude static flow_rate=0.0667
+    n("G1003"): 1,  # Gemaal Rijnwijck; oude static flow_rate=0.5
+    n("G0088"): 1,  # Waalseweg; oude static flow_rate=0.0833
+    n("G4056"): 9,  # gekoppeld max=8.09, huidige max=0.70, link=1400003
+    n("G1004"): 1,  # gekoppeld max=0.67, huidige max=0.00, link=1400686
+    n("G3002"): 3,  # Smidsdijk; oude static flow_rate=1.37
+    n("G8002"): 4,  # Blokhoven; oude static flow_rate=1.25
+    n("G4059"): 8,  # Snel En Polanen; oude static flow_rate=0.5
+    n("G8014"): 1,  # naam onbekend; oude static flow_rate=0.025
+    n("G0068"): 25,  # Vleuterweide; oude static flow_rate=0.892
+    n("G1002"): 3,  # Beerschoten; oude static flow_rate=0.5
+    n("G0009"): 2,  # Fortuin; oude static flow_rate=0.217
+    n("G6004"): 3,  # Westraven; oude static flow_rate=0.167
+    n("G0089"): 3,  # gekoppeld max=2.36, huidige max=0.238, link=1400257
+    n("G4039"): 15,  # Gerverscop; oude static flow_rate=1.58
+    n("G4041"): 15,  # Kockengen; oude static flow_rate=1.95
+    n("G4043"): 1,  # Grechtkade; oude static flow_rate=0.00753
+    n("G3025"): 10,  # Keulevaart, De; oude static flow_rate=5.34
+    n("G4481"): 2,  # Pelikaan; oude static flow_rate=0.1
+    n("G2005"): 2,  # Strijp, De; oude static flow_rate=0.0333
+    n("G4015"): 1,  # Overeind; oude static flow_rate=0.25
+    n("G4050"): 1,  # Oude Meije; oude static flow_rate=0.533
+    n("G0029"): 1,  # Toegang, De; oude static flow_rate=0.267
+    n("G1010"): 2,  # Voordorp; oude static flow_rate=0.833
+    n("G3024"): 3,  # Hazepad 'T; oude static flow_rate=1.37
+    n("G6025"): 1,  # Tappersheul; oude static flow_rate=0.0417
+    n("G0040"): 1,  # Hwvz Diemerbroek 56; oude static flow_rate=0.0667
+    n("G0085"): 20,  # Schoonhoven; oude static flow_rate=0.167
+    n("G0043"): 15,  # Hwvz Teckop; oude static flow_rate=0.0333
+    n("G3022"): 5,  # gekoppeld max=4.20, huidige max=0.45, link=1400211
+    n("G4020"): 1,  # Heul, De (Zuurhout); oude static flow_rate=0.0583
+    n("G0006"): 1,  # Tureluur; oude static flow_rate=0.383
+    n("G1006"): 20,  # Rembrandtkade/Minstroom; oude static flow_rate=0.167
+    n("G4371"): 5,  # Leesloot; gekoppeld max=4.14, huidige max=1.00, link=1400730
+    n("G3012"): 1,  # gekoppeld max=0.67, huidige max=0.00, link=1400970
+    n("G4023"): 3,  # Pothoek; oude static flow_rate=0.2
+    n("G0046"): 20,  # Moersbergen; oude static flow_rate=0.0833
+    n("G4311"): 3,  # Weerdenburg; oude static flow_rate=0.133
 }
 mask = (
     model.pump.static.df.node_id.isin(pump_max_flow_rate_from_results)
@@ -382,7 +406,7 @@ def straight_link(model: Model, from_node_id: int, to_node_id: int) -> None:
 # Caspergouw without crossing links, see #913: the drains of Basin 1728 branch off a Junction on the straight line to
 # Caspargouw Stuw (ST3003), and its supplies join on a Junction on the straight line from Caspargauw Zemelen. The
 # connectors are moved apart at least the minimum distance of `tidy_layout`, so it leaves them in place.
-CASPARGOUW_STUW, CASPERGOUW_INLAAT = 761, 1345
+CASPARGOUW_STUW, CASPERGOUW_INLAAT = n("ST3003"), n("ow:H078553")
 (caspergouw_drain_junction,) = {model.upstream_node_id(CASPARGAUW), model.upstream_node_id(CASPARGOUW_STUW)}
 caspergouw_supply_junction = model.downstream_node_id(CASPARGAUW_ZEMELEN)
 assert caspergouw_supply_junction == model.downstream_node_id(CASPERGOUW_INLAAT)
@@ -436,7 +460,7 @@ flow_demand_controlled_node_ids = set(
     .dropna()
     .astype(int)
 )
-manual_max_flow_rate_node_ids = {758}
+manual_max_flow_rate_node_ids = {n("SL0016")}
 protected_max_flow_rate_node_ids = set(EXCLUDE_NODES) | flow_demand_controlled_node_ids | manual_max_flow_rate_node_ids
 for static_df in (model.outlet.static.df, model.pump.static.df):
     assert static_df is not None
@@ -453,8 +477,8 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
 
 # %% Wijk bij Duurstede stuurt op het debiet bij ADCP Amelisweerd, zie #855
 # De control_states heten geen aanvoer/afvoer, zodat de koppelpeil-synchronisatie deze sturing niet aanpast.
-WIJK_BIJ_DUURSTEDE = 481
-AMELISWEERD = 1333  # ManningResistance in de Kromme Rijn benedenstrooms van Basin 1673, bij ADCP Amelisweerd
+WIJK_BIJ_DUURSTEDE = n("AF0093")
+AMELISWEERD = n("H072046")  # ManningResistance in de Kromme Rijn benedenstrooms van Basin 1673, bij ADCP Amelisweerd
 AMELISWEERD_THRESHOLDS = [6.0, 7.0]  # m3/s; regime 1 bij <= 6, regime 2 bij > 6, regime 3 en 4 bij > 7
 WIJK_BIJ_DUURSTEDE_FLOW_RATES = {"regime 1": 5.0, "regime 2": 3.5, "regime 3+4": 1.0}  # m3/s
 FLOW_THRESHOLD_HYSTERESIS = 0.1  # m3/s
@@ -618,8 +642,8 @@ gemaal_control = model.discrete_control.add(
 model.link.add(gemaal_control, gemaal_node)
 
 # %% Namen, zie #855
-model.node.df.loc[168, "name"] = "Oog in Al, spuisluis"
-model.node.df.loc[752, "name"] = "Oog in Al, Muntsluis"
+model.node.df.loc[n("I1580"), "name"] = "Oog in Al, spuisluis"
+model.node.df.loc[n("SL0015"), "name"] = "Oog in Al, Muntsluis"
 
 # Model run
 

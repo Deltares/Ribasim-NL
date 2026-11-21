@@ -8,6 +8,7 @@ import pandas as pd
 import shapely
 
 from ribasim_nl.geometry import SLIVER_WIDTH, is_sliver
+from ribasim_nl.keys import duplicate_key_issues
 from ribasim_nl.profiles import MIN_PROFILE_AREA
 
 if TYPE_CHECKING:
@@ -360,6 +361,7 @@ def validate_model(model: "Model", layout: bool = True) -> None:
         *_flow_demand_capacity_issues(model),
         *_user_demand_return_factor_issues(model),
         *_observation_distance_issues(model),
+        *duplicate_key_issues(model),
         *(_layout_issues(model) if layout else []),
     ]
     if issues:

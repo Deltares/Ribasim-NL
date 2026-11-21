@@ -9,7 +9,7 @@ input models, `ribasim_nl.crossings.model` for the level controlled ones. A scri
 `Node(..., meta_key="...")`. `fill_keys` gives all other nodes a key when the model is written, see `Model.write`.
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 import geopandas as gpd
 import numpy as np
@@ -32,6 +32,47 @@ BOUNDARIES = ["LevelBoundary", "FlowBoundary", "Terminal"]
 # Node types that are named after the nodes they control
 CONTROLLERS = ["DiscreteControl", "ContinuousControl", "PidControl", "FlowDemand", "LevelDemand"]
 STORING = "bergend"
+# Between the water authority and the key of a node, where equal keys are numbered, see `fill_keys`
+_SCOPE_SEPARATOR = "\x1f"
+
+
+class NodeKey(NamedTuple):
+    """A node in a model of several water authorities: its authority and its key."""
+
+    authority: str
+    key: str
+
+
+def resolve_keys(model: "Model", value: Any) -> Any:
+    """Replace every `NodeKey` in a structure of dicts, lists, tuples and sets by the ID of its node in the model.
+
+    The key of a water authority that is not in the model gives None, so a model of some of the authorities can use
+    the same configuration: items of sets and entries of dicts whose key is None are left out. A key that no node of
+    its authority has raises a KeyError.
+    """
+    if isinstance(value, NodeKey):
+        if value.authority not in set(model.node.df[AUTHORITY_COLUMN].dropna().unique()):
+            return None
+        return model.node_id(value.key, authority=value.authority)
+    if isinstance(value, dict):
+        resolved = ((resolve_keys(model, k), resolve_keys(model, v)) for k, v in value.items())
+        return {k: v for k, v in resolved if k is not None}
+    if isinstance(value, (set, frozenset)):
+        return type(value)(i for i in (resolve_keys(model, item) for item in value) if i is not None)
+    if isinstance(value, (list, tuple)) and not isinstance(value, NodeKey):
+        return type(value)(resolve_keys(model, item) for item in value)
+    return value
+
+
+def _authority_scope(node: pd.DataFrame) -> pd.Series:
+    """The water authority of each node, within which its key is unique.
+
+    Empty for all nodes of a model of one water authority, in which only some of the nodes have their authority set.
+    """
+    scope = pd.Series("", index=node.index, dtype=object)
+    if AUTHORITY_COLUMN in node.columns and len(node[AUTHORITY_COLUMN].dropna().unique()) > 1:
+        scope = node[AUTHORITY_COLUMN].astype(object).where(node[AUTHORITY_COLUMN].notna(), "")
+    return scope.astype(str)
 
 
 def nonempty(values: pd.Series) -> pd.Series:
@@ -141,6 +182,45 @@ def lumped_keys(
     return key, kind
 
 
+def named_keys(node: gpd.GeoDataFrame, link: pd.DataFrame) -> pd.Series:
+    """Return the key per node ID for a model that is built from named objects, such as that of Rijkswaterstaat.
+
+    - A connector node gets the code of its structure, `meta_code_waterbeheerder`, or else its name.
+    - A Basin gets its name, the name of its water.
+    - A boundary gets `bnd:` and the code of its measuring location, `meta_meetlocatie_code`, or else its name.
+    - A connector node without code or name gets the keys of the nodes it connects, `<from>><to>`.
+
+    Equal keys get `@1`, `@2` by location. Nodes without any of these get no key here, see `fill_keys`.
+    """
+    key = pd.Series(pd.NA, index=node.index, dtype=object)
+    order = _location_order(node.geometry)
+
+    def column(name: str) -> pd.Series:
+        values = node[name] if name in node.columns else pd.Series(pd.NA, index=node.index, dtype=object)
+        return values.astype(object).where(nonempty(values), pd.NA)
+
+    name = column("name")
+    connector = node["node_type"].isin(CONNECTORS)
+    code = column("meta_code_waterbeheerder")
+    key[connector] = code[connector].where(code[connector].notna(), name[connector])
+    basin = node["node_type"] == "Basin"
+    key[basin] = name[basin]
+    boundary = node["node_type"].isin(BOUNDARIES)
+    location = column("meta_meetlocatie_code")
+    key[boundary] = "bnd:" + location[boundary].where(location[boundary].notna(), name[boundary]).astype(object)
+    key = number_duplicates(key.map(lambda value: value.strip() if isinstance(value, str) else value), order)
+
+    # the other connector nodes, after the nodes they connect
+    flow = link[link["link_type"] == "flow"]
+    unnamed = node.index[connector & key.isna()]
+    upstream = flow[flow["to_node_id"].isin(unnamed)].drop_duplicates("to_node_id").set_index("to_node_id")
+    downstream = flow[flow["from_node_id"].isin(unnamed)].drop_duplicates("from_node_id").set_index("from_node_id")
+    between = upstream["from_node_id"].map(key) + ">" + downstream["to_node_id"].map(key).reindex(upstream.index)
+    between = number_duplicates(between.dropna().astype(object), order, taken=key)
+    key[between.index] = between
+    return key
+
+
 def location_keys(geometry: pd.Series) -> list[str]:
     """Keys of nodes that no source object names: their location in whole metres, `loc:<x>,<y>`."""
     return [f"loc:{round(point.x)},{round(point.y)}" for point in geometry]
@@ -212,13 +292,18 @@ def fill_keys(model: "Model") -> None:
     key[junction] = pd.NA
     order = _location_order(node.geometry)
 
+    # keys are unique per water authority, so equal keys are numbered within the nodes of an authority
+    scope = _authority_scope(node) + _SCOPE_SEPARATOR
+
     def assign(new: pd.Series) -> None:
         """Set the new keys of nodes that have none, numbering the equal ones."""
         new = new[key[new.index].isna() & new.notna()]
         if new.empty:
             return
-        numbered = number_duplicates(new.astype(object), order, taken=key)
-        key[numbered.index] = numbered
+        has_key = key.notna()
+        taken = scope[has_key] + key[has_key].astype(str)
+        numbered = number_duplicates((scope[new.index] + new.astype(str)).astype(object), order, taken=taken)
+        key[numbered.index] = numbered.str.split(_SCOPE_SEPARATOR, n=1).str[1]
 
     def column(name: str) -> pd.Series:
         return node[name] if name in node.columns else pd.Series(pd.NA, index=node.index, dtype=object)
@@ -282,15 +367,25 @@ def fill_keys(model: "Model") -> None:
     model.node.df[KEY_COLUMN] = key.astype("str")
 
 
+def duplicate_key_issues(model: "Model") -> list[str]:
+    """The nodes of a water authority that have the same key, for `ribasim_nl.validation.validate_model`."""
+    node = model.node.df
+    if KEY_COLUMN not in node.columns:
+        return []
+    keys = node.loc[nonempty(node[KEY_COLUMN]), KEY_COLUMN]
+    duplicated = pd.concat([_authority_scope(node)[keys.index], keys], axis=1).duplicated(keep=False)
+    if not duplicated.any():
+        return []
+    examples = keys[duplicated].sort_values(kind="stable").head(20).to_dict()
+    return [f"{int(duplicated.sum())} nodes share their key with another node: {examples}"]
+
+
 def validate_keys(model: "Model") -> None:
     """Check that every node has a key, and that no two nodes of a water authority have the same key."""
-    node = model.node.df
-    keys = node[KEY_COLUMN]
+    keys = model.node.df[KEY_COLUMN]
     missing = keys.index[~nonempty(keys)].tolist()
     if missing:
         raise ValueError(f"{len(missing)} nodes without a key: {missing[:20]}")
-    by = [node[AUTHORITY_COLUMN].astype(object).fillna(""), keys] if AUTHORITY_COLUMN in node.columns else [keys]
-    duplicated = pd.concat(by, axis=1).duplicated(keep=False)
-    if duplicated.any():
-        examples = keys[duplicated].sort_values(kind="stable").head(20).to_dict()
-        raise ValueError(f"{int(duplicated.sum())} nodes share their key with another node: {examples}")
+    issues = duplicate_key_issues(model)
+    if issues:
+        raise ValueError(issues[0])

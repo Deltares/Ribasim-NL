@@ -55,9 +55,9 @@ def read_node_sheet(model: Model, static_data_xlsx: Path, node_type: str) -> pd.
     Rows whose key is not in the model are left out: the sheet can hold more nodes than the model.
     """
     static_data = pd.read_excel(static_data_xlsx, sheet_name=node_type)
-    if KEY not in static_data.columns:
-        return static_data
+    assert KEY in static_data.columns, f"Sheet {node_type} of {static_data_xlsx} has no column `{KEY}`"
     node_id = pd.Series(model.node.df.index, index=model.node.df[KEY_COLUMN])
+    assert node_id.index.is_unique, "The keys of the nodes are not unique"
     static_data = static_data[static_data[KEY].isin(node_id.index)]
     static_data.insert(0, "node_id", static_data[KEY].map(node_id).to_numpy())
     return static_data.drop(columns=KEY)

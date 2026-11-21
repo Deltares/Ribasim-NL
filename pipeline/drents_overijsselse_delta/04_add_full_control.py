@@ -28,8 +28,24 @@ MIN_FLOW_RATE_BY_NODE_ID = {
 }
 
 
+cloud = CloudStorage()
+
+ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
+ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
+qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
+aanvoergebieden_gpkg = cloud.joinpath(AUTHORITY, "verwerkt", "sturing", "aanvoergebieden.gpkg")
+
+
+# %%
+# Read data
+
+model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
+lk = model.link_id
+
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
-EXCLUDE_NODES = {522, 527, 528, 538, 544}
+EXCLUDE_NODES = {n("sluis.3321"), n("sluis.3328"), n("sluis.3329"), n("sluis.1644"), n("sluis.2285")}
 
 
 # %%
@@ -89,26 +105,18 @@ def add_supply_area_control(
 # %%
 # Definieren paden en syncen met cloud
 
-cloud = CloudStorage()
-
-ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
-ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
-qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
-aanvoergebieden_gpkg = cloud.joinpath(AUTHORITY, "verwerkt", "sturing", "aanvoergebieden.gpkg")
-
-
-# %%
-# Read data
-
-model = Model.read(ribasim_toml)
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
-# Extra aanvoerpomp bij basin 1901, met boundary op dezelfde plek/level als boundary 72.
+# Extra aanvoerpomp bij basin up:duikersifonhevel.24641, met boundary op dezelfde plek/level als boundary bnd:72.
 assert model.level_boundary.static.df is not None
-boundary_level = model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 72, "level"].dropna()
+boundary_level = model.level_boundary.static.df.loc[
+    model.level_boundary.static.df.node_id == n("bnd:72"), "level"
+].dropna()
 dod_extra_boundary = model.level_boundary.add(
     Node(
-        geometry=model.level_boundary[72].geometry, name="extra boundary bij 72", meta_couple_authority="Vechtstromen"
+        geometry=model.level_boundary[n("bnd:72")].geometry,
+        name="extra boundary bij 72",
+        meta_couple_authority="Vechtstromen",
     ),
     tables=[level_boundary.Static(level=[float(boundary_level.iloc[0]) if not boundary_level.empty else 0.0])],
 )
@@ -117,7 +125,7 @@ dod_extra_supply_pump = model.pump.add(
     tables=[pump.Static(flow_rate=[1.2], max_flow_rate=[1.2], min_upstream_level=[14.86])],
 )
 model.link.add(dod_extra_boundary, dod_extra_supply_pump)
-model.link.add(dod_extra_supply_pump, model.get_node(1901))
+model.link.add(dod_extra_supply_pump, model.get_node(n("up:duikersifonhevel.24641")))
 
 # %%
 # Linkrichting fixes
@@ -125,23 +133,23 @@ model.link.add(dod_extra_supply_pump, model.get_node(1901))
 
 # fmt: off
 reverse_link_ids = [
-    75, 120, 122, 210, 230, 249, 291, 294, 305, 524, 619, 747, 800, 805, 865, 873,
-    889, 983, 997, 1020, 1021, 1041, 1046, 1097, 1103, 1158, 1165, 1244, 1260, 1265,
-    1350, 1561, 1581, 1604, 1618, 1619, 1635, 1787, 1797, 1874, 1916, 1971, 2009,
-    2050, 2071, 2082, 2093, 2110, 2111, 2122, 2166, 2273, 2280, 2361, 2369, 2402,
-    2415, 2445, 2456, 2526, 2610, 2652, 2669, 2893, 2940, 2944, 2956, 2958, 2992,
-    2993, 3051, 3073,3163,3164,3165,3166,3171,3172
+    lk("duikersifonhevel.285046", "up:duikersifonhevel.285061"), lk("duikersifonhevel.276424", "up:duikersifonhevel.276493"), lk("duikersifonhevel.276450", "up:duikersifonhevel.276493"), lk("duikersifonhevel.778260", "up:duikersifonhevel.283277"), lk("duikersifonhevel.425643", "up:gemaal.11499"), lk("gemaal.11489", "up:duikersifonhevel.283836"), lk("stuw.43402", "up:duikersifonhevel.282439"), lk("duikersifonhevel.285308", "up:duikersifonhevel.282439"), lk("gemaal.11496", "up:ow:hydroobject.367639"), lk("duikersifonhevel.17184", "up:duikersifonhevel.17078"), lk("stuw.2350", "up:duikersifonhevel.16109"), lk("up:duikersifonhevel.23536", "stuw.2095"), lk("duikersifonhevel.24685", "up:duikersifonhevel.25195"), lk("stuw.4307", "up:hydroobject.10168___6"), lk("duikersifonhevel.24642", "up:duikersifonhevel.24641"), lk("gemaal.65", "up:gemaal.94"),
+    lk("stuw.2066", "down:bnd:98"), lk("gemaal.11499", "up:sluis.3335"), lk("up:duikersifonhevel.277495", "gemaal.11524"), lk("gemaal.123", "up:duikersifonhevel.12017"), lk("gemaal.141", "up:stuw.4460"), lk("duikersifonhevel.17221", "up:duikersifonhevel.24754"), lk("ow:hydroobject.10384", "up:sluis.1966"), lk("duikersifonhevel.286295", "up:duikersifonhevel.278402"), lk("duikersifonhevel.278248", "up:stuw.43005"), lk("duikersifonhevel.11883", "up:gemaal.38"), lk("duikersifonhevel.561264", "up:duikersifonhevel.276269"), lk("ow:hydroobject.211426", "up:duikersifonhevel.285494"), lk("up:stuw.2095", "duikersifonhevel.20543"), lk("duikersifonhevel.25036", "up:duikersifonhevel.167820"),
+    lk("duikersifonhevel.167820", "up:stuw.2066"), lk("up:sluis.3335", "duikersifonhevel.425643"), lk("up:duikersifonhevel.402808", "ow:hydroobject.211426"), lk("up:gemaal.11489", "gemaal.11489"), lk("up:gemaal.11496", "gemaal.11496"), lk("up:duikersifonhevel.283277", "stuw.43402"), lk("up:duikersifonhevel.283277", "gemaal.19590"), lk("up:duikersifonhevel.24685", "duikersifonhevel.24685"), lk("up:duikersifonhevel.15715", "stuw.2350"), lk("up:duikersifonhevel.25036", "duikersifonhevel.25036"), lk("stuw.2095", "up:stuw.2095"), lk("up:duikersifonhevel.27203", "stuw.4307"), lk("up:gemaal.141", "gemaal.141"),
+    lk("up:stuw.2066", "stuw.2066"), lk("up:duikersifonhevel.17184", "duikersifonhevel.17184"), lk("up:duikersifonhevel.25321", "gemaal.123"), lk("up:gemaal.11462", "gemaal.11469"), lk("up:duikersifonhevel.20543", "gemaal.65"), lk("duikersifonhevel.20543", "up:duikersifonhevel.20543"), lk("up:duikersifonhevel.286295", "duikersifonhevel.286295"), lk("up:gemaal.11499", "gemaal.11499"), lk("up:gemaal.38", "gemaal.38"), lk("up:duikersifonhevel.17221", "duikersifonhevel.17221"), lk("up:duikersifonhevel.278248", "duikersifonhevel.278248"), lk("up:duikersifonhevel.276424", "duikersifonhevel.276424"), lk("up:duikersifonhevel.285308", "duikersifonhevel.285308"),
+    lk("up:duikersifonhevel.285046", "duikersifonhevel.285046"), lk("up:duikersifonhevel.276904", "duikersifonhevel.561264"), lk("up:duikersifonhevel.276450", "duikersifonhevel.276450"), lk("up:duikersifonhevel.24642", "duikersifonhevel.24642"), lk("up:duikersifonhevel.25618", "ow:hydroobject.10384"), lk("up:duikersifonhevel.24636", "duikersifonhevel.24636"), lk("up:duikersifonhevel.167820", "duikersifonhevel.167820"), lk("sluis.1973", "bnd:28"), lk("bnd:39", "duikersifonhevel.11883"), lk("gemaal.38", "bnd:41"), lk("loc:204572,507737", "duikersifonhevel.778260"), lk("gemaal.19590", "loc:204572,507737"), lk("gemaal.11469", "bnd:63"),
+    lk("gemaal.11524", "bnd:64"), lk("duikersifonhevel.24636", "bnd:102"), lk("loc:197542,525242", "sluis.1973"),lk("bnd:25", "loc:231794,557486"),lk("loc:231794,557486", "up:duikersifonhevel.24754"),lk("bnd:62", "loc:236707,526926"),lk("loc:236707,526926", "up:duikersifonhevel.23536"),lk("loc:240741,541524", "loc:240733,541530"),lk("loc:240733,541530", "up:duikersifonhevel.24641")
 ]
 # fmt: on
 
 for link_id in reverse_link_ids:
     model.reverse_link(link_id=link_id)
 
-model.redirect_link(368, to_node_id=2638)
-model.redirect_link(364, to_node_id=2554)
+model.redirect_link(lk("duikersifonhevel.284720", "up:duikersifonhevel.276575"), to_node_id=n("loc:216070,482387"))
+model.redirect_link(lk("stuw.43135", "loc:216070,482387"), to_node_id=n("up:duikersifonhevel.276575"))
 
 # stuw.43145 is na de nieuwe fix al georienteerd als 1643 -> 3224 -> 2585.
-model.redirect_link(1670, from_node_id=2585, to_node_id=234)
+model.redirect_link(lk("up:stuw.43145", "stuw.43145"), from_node_id=n("loc:206332,496857"), to_node_id=n("stuw.43145"))
 
 
 # %%
@@ -152,98 +160,98 @@ model.redirect_link(1670, from_node_id=2585, to_node_id=234)
 set_static_values(
     model.outlet.static.df,
     {
-        959: 11.0,
-        971: 11.0,
-        1238: 11.0,
-        544: -0.2,
+        n("duikersifonhevel.18943"): 11.0,
+        n("duikersifonhevel.20346"): 11.0,
+        n("duikersifonhevel.20174"): 11.0,
+        n("sluis.2285"): -0.2,
     },
     "min_upstream_level",
 )
 
 for node_id, to_node_id in [
-    (2164, 2120),
-    (1970, 1990),
-    (2294, 1949),
-    (1669, 1670),
-    (2352, 1819),
-    (1920, 1881),  # Noordscheschutsluis
+    (n("up:stuw.2085"), n("up:duikersifonhevel.24720")),
+    (n("up:ow:hydroobject.201870"), n("up:duikersifonhevel.339112")),
+    (n("up:ow:hydroobject.429079"), n("up:duikersifonhevel.284656")),
+    (n("up:stuw.43614"), n("up:stuw.43606")),
+    (n("up:stuw.2141"), n("up:duikersifonhevel.55770")),
+    (n("up:sluis.1964"), n("up:duikersifonhevel.23536")),  # Noordscheschutsluis
 ]:
     model.merge_basins(node_id=node_id, to_node_id=to_node_id, are_connected=True)
 
 # Manning moet outlet zijn
-model.update_node(node_id=1468, node_type="Outlet")
+model.update_node(node_id=n("ow:hydroobject.367639"), node_type="Outlet")
 assert model.outlet.static.df is not None
-mask = model.outlet.static.df.node_id == 1468
+mask = model.outlet.static.df.node_id == n("ow:hydroobject.367639")
 model.outlet.static.df.loc[mask, "min_upstream_level"] = 2.63
 mark_level_update_protected(model.outlet.static.df, mask, model=model)
 
 # Naamcorrectie: node_id 1344 is Zalk, niet Adsum
-model.node.df.loc[1344, "name"] = "Zalk"
+model.node.df.loc[n("gemaal.11411@2"), "name"] = "Zalk"
 
 
 # %%
 # Max-capaciteiten pompen en sluizen
 
 outlet_max_flow_rate_by_node_id = {
-    199: 200.0,  # Vechterweerd
-    2582: 200.0,  # Vechterweerd
-    454: 16.2,  # Paradijssluis
-    387: 14.9,  # Haveltersluis
-    490: 14.5,  # Uffeltersluis
-    445: 12.2,  # Dieversluis
-    446: 12.4,  # Haarsluis
-    370: 13.4,  # Veenesluis
-    1091: 999.9,  # Smildersluis
-    534: 11.0,  # Noordscheschutsluis
-    531: 29.2,  # Nieuwebrugsluis
-    369: 29.6,  # Ossesluis
-    378: 43.3,  # Rogatsluis
-    1012: 0.01,  # kleine duiker
+    n("stuw.50984"): 200.0,  # Vechterweerd
+    n("loc:203907,508001"): 200.0,  # Vechterweerd
+    n("stuw.112142"): 16.2,  # Paradijssluis
+    n("stuw.112141"): 14.9,  # Haveltersluis
+    n("stuw.112140"): 14.5,  # Uffeltersluis
+    n("stuw.112139"): 12.2,  # Dieversluis
+    n("stuw.111818"): 12.4,  # Haarsluis
+    n("stuw.111817"): 13.4,  # Veenesluis
+    n("sluis.1968"): 999.9,  # Smildersluis
+    n("sluis.1964"): 11.0,  # Noordscheschutsluis
+    n("sluis.1963"): 29.2,  # Nieuwebrugsluis
+    n("stuw.112458"): 29.6,  # Ossesluis
+    n("stuw.112457"): 43.3,  # Rogatsluis
+    n("duikersifonhevel.24669"): 0.01,  # kleine duiker
 }
 outlet_max_flow_rate_parameterized_zero_by_node_id = {
-    1022: 100.0,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
-    1287: 100.0,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
-    1406: 100.0,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
+    n("duikersifonhevel.20133"): 100.0,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
+    n("duikersifonhevel.1017472"): 100.0,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
+    n("ow:hydroobject.542376"): 100.0,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
 }
 outlet_max_flow_rate_from_results = {
-    508: 2,  # duikersifonhevel.286070
-    757: 2,  # duikersifonhevel.281013
-    764: 2,  # duikersifonhevel.279722
-    922: 2,  # duikersifonhevel.11883
-    937: 2,  # duikersifonhevel.499162
-    968: 2,  # duikersifonhevel.624652
-    973: 2,  # duikersifonhevel.134543
-    1080: 2,  # duikersifonhevel.748812
-    1179: 2,  # duikersifonhevel.287091
-    1183: 2,  # duikersifonhevel.168460
-    1237: 2,  # duikersifonhevel.12121
-    3193: 3,  # sluis.2281
-    3206: 2,  # Wyberbuurseweg
-    3226: 2,  # Snelweg
-    3228: 2,  # naam onbekend
-    3229: 2,  # naam onbekend
-    3234: 2,  # naam onbekend
+    n("duikersifonhevel.286070"): 2,  # duikersifonhevel.286070
+    n("duikersifonhevel.281013"): 2,  # duikersifonhevel.281013
+    n("duikersifonhevel.279722"): 2,  # duikersifonhevel.279722
+    n("duikersifonhevel.11883"): 2,  # duikersifonhevel.11883
+    n("duikersifonhevel.499162"): 2,  # duikersifonhevel.499162
+    n("duikersifonhevel.624652"): 2,  # duikersifonhevel.624652
+    n("duikersifonhevel.134543"): 2,  # duikersifonhevel.134543
+    n("duikersifonhevel.748812"): 2,  # duikersifonhevel.748812
+    n("duikersifonhevel.287091"): 2,  # duikersifonhevel.287091
+    n("duikersifonhevel.168460"): 2,  # duikersifonhevel.168460
+    n("duikersifonhevel.12121"): 2,  # duikersifonhevel.12121
+    n("sluis.2281"): 3,  # sluis.2281
+    n("Wyberbuurseweg"): 2,  # Wyberbuurseweg
+    n("Snelweg"): 2,  # Snelweg
+    n("loc:229756,516188"): 2,  # naam onbekend
+    n("loc:233438,522718"): 2,  # naam onbekend
+    n("loc:222297,503293"): 2,  # naam onbekend
 }
 outlet_max_flow_rate_coupled_by_node_id = {
-    198: 170,  # gekoppeld max=112.50, huidige max=83.20, link=5900281
-    501: 5,  # duikersifonhevel.599665; gekoppeld max=2.21, parameterized=0.10
-    519: 8,  # gekoppeld max=4.73, huidige max=0.00, link=5900891
-    738: 3,  # duikersifonhevel.285812; gekoppeld max=1.74, parameterized=0.10
-    756: 2,  # gekoppeld max=0.77, huidige max=0.10, link=5900486
-    1064: 8,  # duikersifonhevel.134864; gekoppeld max=4.90, parameterized=0.10
-    1074: 2,  # gekoppeld max=0.66, huidige max=0.00, link=5901233
-    1077: 2,  # gekoppeld max=0.66, huidige max=0.00, link=5901239
-    1171: 3,  # gekoppeld max=1.27, huidige max=0.10, link=5900197
-    1297: 3,  # duikersifonhevel.586543; gekoppeld max=1.88, parameterized=0.10
-    1298: 3,  # duikersifonhevel.586544; gekoppeld max=1.88, parameterized=0.10
-    1324: 2,  # gekoppeld max=0.54, huidige max=0.10, link=5901353
-    1468: 80,  # parameterized nul; gekoppeld max=52.24
-    3193: 5,  # parameterized nul; gekoppeld max=2.75
-    3202: 3,  # gekoppeld max=1.60, huidige max=0.00, link=5903104
-    3231: 2,  # parameterized nul; gekoppeld max=0.15
-    3233: 3,  # parameterized nul; gekoppeld max=1.36
-    3234: 45,  # parameterized nul; gekoppeld max=29.20, huidige max=20.00, link=5903168
-    3235: 2,  # parameterized nul; gekoppeld max=0.77
+    n("stuw.50968"): 170,  # gekoppeld max=112.50, huidige max=83.20, link=5900281
+    n("duikersifonhevel.599665"): 5,  # duikersifonhevel.599665; gekoppeld max=2.21, parameterized=0.10
+    n("sluis.1656"): 8,  # gekoppeld max=4.73, huidige max=0.00, link=5900891
+    n("duikersifonhevel.285812"): 3,  # duikersifonhevel.285812; gekoppeld max=1.74, parameterized=0.10
+    n("duikersifonhevel.281304"): 2,  # gekoppeld max=0.77, huidige max=0.10, link=5900486
+    n("duikersifonhevel.134864"): 8,  # duikersifonhevel.134864; gekoppeld max=4.90, parameterized=0.10
+    n("duikersifonhevel.20131"): 2,  # gekoppeld max=0.66, huidige max=0.00, link=5901233
+    n("duikersifonhevel.24598"): 2,  # gekoppeld max=0.66, huidige max=0.00, link=5901239
+    n("duikersifonhevel.286046"): 3,  # gekoppeld max=1.27, huidige max=0.10, link=5900197
+    n("duikersifonhevel.586543"): 3,  # duikersifonhevel.586543; gekoppeld max=1.88, parameterized=0.10
+    n("duikersifonhevel.586544"): 3,  # duikersifonhevel.586544; gekoppeld max=1.88, parameterized=0.10
+    n("duikersifonhevel.284492"): 2,  # gekoppeld max=0.54, huidige max=0.10, link=5901353
+    n("ow:hydroobject.367639"): 80,  # parameterized nul; gekoppeld max=52.24
+    n("sluis.2281"): 5,  # parameterized nul; gekoppeld max=2.75
+    n("Westeinde_1"): 3,  # gekoppeld max=1.60, huidige max=0.00, link=5903104
+    n("loc:236149,526264"): 2,  # parameterized nul; gekoppeld max=0.15
+    n("loc:236707,526926"): 3,  # parameterized nul; gekoppeld max=1.36
+    n("loc:222297,503293"): 45,  # parameterized nul; gekoppeld max=29.20, huidige max=20.00, link=5903168
+    n("loc:240732,541530"): 2,  # parameterized nul; gekoppeld max=0.77
 }
 outlet_max_flow_rate_afvoer_by_node_id: dict[int, float] = {}
 for max_flow_rates in (
@@ -263,81 +271,80 @@ outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.n
 outlet_max_flow_rate_aanvoer_by_node_id.update(outlet_max_flow_rate_by_node_id)
 
 pump_max_flow_rate_by_node_id = {
-    704: 6.7,  # Paradijssluis
-    645: 6.6,  # Haveltersluis
-    705: 6.3,  # Uffeltersluis
-    669: 6.3,  # Dieversluis
-    665: 5.8,  # Haarsluis
-    631: 5.9,  # Veenesluis
-    346: 6.8,  # Noordscheschutsluis
-    676: 7.1,  # Nieuwebrugsluis
-    694: 7.5,  # Ossesluis
-    647: 8.2,  # Rogatsluis
-    601: 1.0,  # Emsland 1
-    600: 0.16,  # Emsland 2
-    602: 1.06,  # Langewijk
-    603: 1.0,  # De Stouwe
-    563: 0.58,  # 't Raasje -> Raasje
-    565: 0.24,  # Regterveld -> Rechterveld
-    574: 0.12,  # Willem Meijerpolder
-    568: 0.21,  # Stikkenpolder
-    576: 0.06,  # Zwartemeerpolder
-    621: 0.83,  # Mandjeswaard
-    556: 0.32,  # de Pieper
-    573: 0.62,  # Zuiderzeepolder
-    572: 5.50,  # Veneriete
-    3189: 0.35,  # Biesvelden
-    554: 0.27,  # Groot - Cellemuiden -> Groot Cellemuiden
-    567: 0.13,  # Stikkeldrecht
-    1094: 0.83,  # Cellemuiden
-    620: 4.83,  # Nieuw Lutterzijl I -> Lutterzijl Mastenbroek
-    623: 3.75,  # Nieuw Lutterzijl II: Lutterzijl Koekoek
-    3211: 2.23,  # 't Gansje; Node.name is leeg, gevonden via meta_code_waterbeheerder
-    622: 0.11,  # Noorderwaard
-    561: 1.08,  # Benoorden de Willemsvaart -> Ben de Willemsvaart
-    562: 0.08,  # 't Katje -> Katje
-    571: 0.58,  # 't Vosje -> Vosje
-    575: 0.11,  # Zalkerbos -> Zalkerbos en Erfgenamen
-    559: 1.83,  # Adsum; node_id 1344 heeft ook Node.name = Adsum, zie controlelijst
-    1100: 3.00,  # Kamperveen
-    1096: 3.00,  # Roggebot
-    618: 0.03,  # Kardoezenpolder -> Kardoezen
-    619: 0.09,  # Ketelpolder
-    1103: 0.30,  # Inlaat Broekhuizen -> De Broekhuizen
-    210: 1.00,  # De Stouwe
-    598: 0.16,  # De Doorn -> de Doorn
-    596: 5.75,  # Galgerak -> Galgenrak
-    3199: 5.75,  # Galgerak -> Galgenrak
-    599: 20.0,  # Streukelerzijl
-    593: 5.0,  # Kloosterzijl
-    557: 11.17,  # Kostverlorenzijl
-    555: 2.50,  # Spoortipp -> Spoortippe
-    579: 1.16,  # Westerveld
-    604: 3.66,  # Herfte
-    584: 0.66,  # Sekdoorn
-    586: 2.33,  # Lierder&Molenbroek -> Lierder en Molenbroek
-    588: 0.90,  # Bremmelerstraat
-    580: 0.01,  # Linterzijl
-    581: 4.00,  # Langeslag (gemaal) -> Langeslag
-    605: 0.40,  # Vechterweerd
-    195: 0.33,  # Marswetering -> Voorbezinkplas Marswetering
-    590: 8.5,  # Ankersmit
-    1190: 8.5,  # Ankersmit
-    638: 1.17,  # Blijdenstein
-    660: 0.97,  # Trijzen
-    547: 53.3,  # Afvoergemaal Stroink
-    3153: 6.4,  # Aanvoergemaal Stroink
-    648: 3.0,  # Holthe
-    652: 1.5,  # Smildersluis
-    636: 1.3,  # Zwiggeltersluis
-    3192: 127.5,  # Zedemuden
+    n("gemaal.21188"): 6.7,  # Paradijssluis
+    n("gemaal.21189"): 6.6,  # Haveltersluis
+    n("gemaal.21190"): 6.3,  # Uffeltersluis
+    n("gemaal.21191"): 6.3,  # Dieversluis
+    n("gemaal.21193"): 5.8,  # Haarsluis
+    n("gemaal.21192"): 5.9,  # Veenesluis
+    n("stuw.112138"): 6.8,  # Noordscheschutsluis
+    n("gemaal.9451"): 7.1,  # Nieuwebrugsluis
+    n("gemaal.21195"): 7.5,  # Ossesluis
+    n("gemaal.21196"): 8.2,  # Rogatsluis
+    n("gemaal.11494"): 1.0,  # Emsland 1
+    n("gemaal.11493"): 0.16,  # Emsland 2
+    n("gemaal.11495"): 1.06,  # Langewijk
+    n("gemaal.11496"): 1.0,  # De Stouwe
+    n("gemaal.11424"): 0.58,  # 't Raasje -> Raasje
+    n("gemaal.11430"): 0.24,  # Regterveld -> Rechterveld
+    n("gemaal.11443"): 0.12,  # Willem Meijerpolder
+    n("gemaal.11434"): 0.21,  # Stikkenpolder
+    n("gemaal.11445"): 0.06,  # Zwartemeerpolder
+    n("gemaal.11550"): 0.83,  # Mandjeswaard
+    n("gemaal.11404"): 0.32,  # de Pieper
+    n("gemaal.11442"): 0.62,  # Zuiderzeepolder
+    n("gemaal.11440"): 5.50,  # Veneriete
+    n("gemaal.11413"): 0.35,  # Biesvelden
+    n("gemaal.11398"): 0.27,  # Groot - Cellemuiden -> Groot Cellemuiden
+    n("gemaal.11433"): 0.13,  # Stikkeldrecht
+    n("gemaal.11399"): 0.83,  # Cellemuiden
+    n("gemaal.11548"): 4.83,  # Nieuw Lutterzijl I -> Lutterzijl Mastenbroek
+    n("gemaal.11552"): 3.75,  # Nieuw Lutterzijl II: Lutterzijl Koekoek
+    n("Gemaal 't Gansje"): 2.23,  # 't Gansje; Node.name is leeg, gevonden via meta_code_waterbeheerder
+    n("gemaal.11551"): 0.11,  # Noorderwaard
+    n("gemaal.11416"): 1.08,  # Benoorden de Willemsvaart -> Ben de Willemsvaart
+    n("gemaal.11421"): 0.08,  # 't Katje -> Katje
+    n("gemaal.11438"): 0.58,  # 't Vosje -> Vosje
+    n("gemaal.11444"): 0.11,  # Zalkerbos -> Zalkerbos en Erfgenamen
+    n("gemaal.11411@1"): 1.83,  # Adsum; node_id 1344 heeft ook Node.name = Adsum, zie controlelijst
+    n("gemaal.20228"): 3.00,  # Kamperveen
+    n("gemaal.11428"): 3.00,  # Roggebot
+    n("gemaal.11540"): 0.03,  # Kardoezenpolder -> Kardoezen
+    n("gemaal.11541"): 0.09,  # Ketelpolder
+    n("gemaal.19590"): 0.30,  # Inlaat Broekhuizen -> De Broekhuizen
+    n("stuw.43459"): 1.00,  # De Stouwe
+    n("gemaal.11491"): 0.16,  # De Doorn -> de Doorn
+    n("gemaal.11488"): 5.75,  # Galgerak -> Galgenrak
+    n("Galgenrak (KIN)"): 5.75,  # Galgerak -> Galgenrak
+    n("gemaal.11492"): 20.0,  # Streukelerzijl
+    n("gemaal.11483"): 5.0,  # Kloosterzijl
+    n("gemaal.11406"): 11.17,  # Kostverlorenzijl
+    n("gemaal.11403"): 2.50,  # Spoortipp -> Spoortippe
+    n("gemaal.11450"): 1.16,  # Westerveld
+    n("gemaal.11499"): 3.66,  # Herfte
+    n("gemaal.11461"): 0.66,  # Sekdoorn
+    n("gemaal.11464"): 2.33,  # Lierder&Molenbroek -> Lierder en Molenbroek
+    n("gemaal.11466"): 0.90,  # Bremmelerstraat
+    n("gemaal.11452"): 0.01,  # Linterzijl
+    n("gemaal.11453"): 4.00,  # Langeslag (gemaal) -> Langeslag
+    n("gemaal.11506"): 0.40,  # Vechterweerd
+    n("stuw.47752"): 0.33,  # Marswetering -> Voorbezinkplas Marswetering
+    n("gemaal.11472"): 8.5,  # Ankersmit
+    n("gemaal.11472_aanvoer"): 8.5,  # Ankersmit
+    n("gemaal.101"): 1.17,  # Blijdenstein
+    n("gemaal.100"): 0.97,  # Trijzen
+    n("gemaal.19"): 53.3,  # Afvoergemaal Stroink
+    n("gemaal.76"): 3.0,  # Holthe
+    n("gemaal.91"): 1.5,  # Smildersluis
+    n("gemaal.92"): 1.3,  # Zwiggeltersluis
+    n("gemaal.145"): 127.5,  # Zedemuden
     # Todo: Capaciteiten nog navragen
     # 545: ...,   # Sultansmeer
     # 693: ...,   # Weerwille
     # 633: ...,   # Oldenhave
 }
 pump_max_flow_rate_parameterized_zero_by_node_id = {
-    3200: 20.0,  # xlsx max_flow_rate nul; voorkom aanvoerblokkade
+    n("Stroink (KIN)"): 20.0,  # xlsx max_flow_rate nul; voorkom aanvoerblokkade
 }
 pump_max_flow_rate_all_by_node_id = {
     **pump_max_flow_rate_parameterized_zero_by_node_id,
@@ -358,51 +365,51 @@ set_max_flow_rate(model.pump.static.df, pump_max_flow_rate_all_by_node_id)
 
 # fmt: off
 flow_control_nodes = [
-    107, 119, 125, 133, 146, 148, 152, 153, 154, 173, 193, 198, 199, 226, 227, 241,
-    242, 243, 244, 247, 248, 260, 285, 301, 317, 328, 331, 338, 344, 350, 361, 373, 374, 385,
-    401, 403, 408, 414, 421, 423, 426, 427, 439, 442, 451, 458, 517, 602, 605, 610, 673, 913, 937,
-    938, 1088, 1089, 1115, 1152, 1157, 1228, 1263, 1317, 1328, 1347, 1363, 1414, 2662, 2664, 2666,
-    3130, 3136, 3229, 3234
+    n("stuw.2031"), n("stuw.2141"), n("stuw.42900"), n("stuw.42922"), n("stuw.42992"), n("stuw.43008"), n("stuw.43016"), n("stuw.43017"), n("stuw.43019"), n("stuw.43638"), n("stuw.43774"), n("stuw.50968"), n("stuw.50984"), n("stuw.43555"), n("stuw.43560"), n("stuw.43169"),
+    n("stuw.43173"), n("stuw.43174"), n("stuw.43181"), n("stuw.43200"), n("stuw.43201"), n("stuw.43233"), n("stuw.43185"), n("stuw.1772"), n("stuw.558"), n("stuw.618"), n("stuw.1922"), n("stuw.1774"), n("stuw.1836"), n("stuw.2153"), n("stuw.1748"), n("stuw.565"), n("stuw.594"),
+    n("stuw.1830"), n("stuw.1738"), n("stuw.1735"), n("stuw.97401"), n("stuw.557"), n("stuw.16980"), n("stuw.614"), n("stuw.1850"), n("stuw.697"), n("stuw.16978"), n("stuw.1753"), n("stuw.2029"), n("duikersifonhevel.25520"), n("gemaal.11495"), n("gemaal.11506"), n("gemaal.11516"), n("gemaal.153"), n("stuw.115979"), n("duikersifonhevel.499162"),
+    n("duikersifonhevel.561264"), n("stuw.42913"), n("stuw.42958"), n("duikersifonhevel.25618"), n("gemaal.139"), n("stuw.1705"), n("stuw.43206"), n("duikersifonhevel.25043"), n("duikersifonhevel.628820"), n("gemaal.4"), n("stuw.2161"),
+    n("loc:233438,522718"), n("loc:222297,503293")
 ]
 
 supply_nodes = [
-    152, 182, 192, 195, 196, 206, 212, 213, 216, 219, 233, 282, 284, 287, 288, 332,
-    334, 346, 370,372, 440, 464, 503, 508, 511, 517, 526, 545, 549, 552, 562, 563, 564,
-    570, 571, 579, 597, 604, 607, 615, 617, 631, 633, 634, 636, 637, 638, 645, 647,
-    648, 651, 652, 660, 661,665, 669, 676, 693, 694, 699, 704, 708, 712, 713, 715, 723,
-    726, 741, 748, 753, 758, 759, 760, 774, 775, 783, 785, 786, 787, 800, 801, 813,
-    816, 821, 823, 829, 831, 832, 846, 861, 863, 868, 878, 894, 896, 898, 902, 906,
-    914, 918, 920, 933, 936, 949, 951, 954, 965, 968, 969, 972, 976, 977, 983, 984,
-    987, 1002, 1009, 1012, 1024, 1025, 1034, 1035, 1045, 1047, 1050, 1054, 1056, 1058, 1059, 1068,
-    1074, 1077, 1078, 1086, 1103, 1109, 1132, 1141, 1142, 1152, 1182, 1187, 1188, 1190, 1196, 1199,
-    1202, 1203, 1207, 1209, 1211, 1213, 1214, 1216, 1217, 1221, 1231, 1238, 1243, 1246, 1247, 1255,
-    1260, 1261, 1262, 1278, 1279, 1283, 1289, 1291, 1294, 1302, 1303, 1307, 1311, 1312, 1325, 1326,
-    1332, 1336, 1344, 1391, 1401, 1418, 1423, 1444, 1452, 1473, 2650, 2652, 2653, 2657, 2658, 2659,
-    2662, 2665, 2667, 3110, 3116, 3118, 3119, 3122, 3124, 3125, 3126, 3190, 3193, 3196, 3199, 3202,
-    3203, 3224, 3232, 3233,3237
+    n("stuw.43016"), n("stuw.43764"), n("stuw.47752"), n("stuw.43518"), n("stuw.43411"), n("stuw.43476"), n("stuw.43477"), n("stuw.43483"), n("stuw.43527"), n("stuw.43620"), n("stuw.43783"), n("stuw.43621"), n("stuw.43260"), n("stuw.43348"), n("stuw.2350"),
+    n("stuw.118857"), n("stuw.112138"), n("stuw.111817"),n("stuw.2053"), n("stuw.101242"), n("duikersifonhevel.778260"), n("duikersifonhevel.286070"), n("duikersifonhevel.723852"), n("duikersifonhevel.25520"), n("sluis.3327"), n("gemaal.99"), n("gemaal.65"), n("gemaal.11395"), n("gemaal.11421"), n("gemaal.11424"), n("gemaal.11429"),
+    n("stuw.43368"), n("gemaal.11438"), n("gemaal.11450"), n("gemaal.11489"), n("gemaal.11499"), n("gemaal.11511"), n("gemaal.11530"), n("gemaal.11533"), n("gemaal.21192"), n("gemaal.108"), n("gemaal.141"), n("gemaal.92"), n("gemaal.110"), n("gemaal.101"), n("gemaal.21189"), n("gemaal.21196"),
+    n("gemaal.76"), n("gemaal.122"), n("gemaal.91"), n("gemaal.100"), n("gemaal.97"),n("gemaal.21193"), n("gemaal.21191"), n("gemaal.9451"), n("gemaal.98"), n("gemaal.21195"), n("gemaal.94"), n("gemaal.21188"), n("duikersifonhevel.746906"), n("duikersifonhevel.748491"), n("duikersifonhevel.134226"), n("duikersifonhevel.24652"), n("duikersifonhevel.26039"),
+    n("duikersifonhevel.24754"), n("duikersifonhevel.285090"), n("duikersifonhevel.284682"), n("duikersifonhevel.283836"), n("duikersifonhevel.280497"), n("duikersifonhevel.280504"), n("duikersifonhevel.280076"), n("duikersifonhevel.278248"), n("duikersifonhevel.278290"), n("duikersifonhevel.276728"), n("duikersifonhevel.276424"), n("duikersifonhevel.276426"), n("duikersifonhevel.276493"), n("duikersifonhevel.284658"), n("duikersifonhevel.284669"), n("duikersifonhevel.465930"),
+    n("duikersifonhevel.482106"), n("duikersifonhevel.411752"), n("duikersifonhevel.425596"), n("duikersifonhevel.285046"), n("duikersifonhevel.286007"), n("duikersifonhevel.286035"), n("duikersifonhevel.280532"), n("duikersifonhevel.286281"), n("duikersifonhevel.276450"), n("duikersifonhevel.276622"), n("duikersifonhevel.276338"), n("duikersifonhevel.282385"), n("duikersifonhevel.284656"), n("duikersifonhevel.284668"), n("duikersifonhevel.480266"), n("duikersifonhevel.464602"),
+    n("duikersifonhevel.24623"), n("duikersifonhevel.24651"), n("duikersifonhevel.12017"), n("duikersifonhevel.23536"), n("duikersifonhevel.25229"), n("duikersifonhevel.134542"), n("duikersifonhevel.783378"), n("duikersifonhevel.25453"), n("duikersifonhevel.17221"), n("duikersifonhevel.624652"), n("duikersifonhevel.11327"), n("duikersifonhevel.78490"), n("duikersifonhevel.612491"), n("duikersifonhevel.22626"), n("duikersifonhevel.25050"), n("duikersifonhevel.24646"),
+    n("duikersifonhevel.784030"), n("duikersifonhevel.11958"), n("duikersifonhevel.24682"), n("duikersifonhevel.24669"), n("duikersifonhevel.26969"), n("duikersifonhevel.15543"), n("duikersifonhevel.583342"), n("duikersifonhevel.758412"), n("duikersifonhevel.24687"), n("duikersifonhevel.25663"), n("duikersifonhevel.750731"), n("duikersifonhevel.25037"), n("duikersifonhevel.78810"), n("duikersifonhevel.12412"), n("duikersifonhevel.25076"), n("duikersifonhevel.16109"),
+    n("duikersifonhevel.20131"), n("duikersifonhevel.24598"), n("duikersifonhevel.26057"), n("duikersifonhevel.13178"), n("gemaal.19590"), n("stuw.43711"), n("duikersifonhevel.714253"), n("duikersifonhevel.740814"), n("duikersifonhevel.15715"), n("duikersifonhevel.11344"), n("gemaal.11520"), n("gemaal.11478"), n("gemaal.11472_aanvoer"), n("duikersifonhevel.286284"), n("gemaal.11477"),
+    n("duikersifonhevel.777932"), n("duikersifonhevel.777931"), n("duikersifonhevel.280483"), n("duikersifonhevel.283277"), n("duikersifonhevel.284570"), n("stuw.43398"), n("stuw.43429"), n("duikersifonhevel.24685"), n("duikersifonhevel.25195"), n("duikersifonhevel.77530"), n("duikersifonhevel.435130"), n("duikersifonhevel.20174"), n("duikersifonhevel.25225"), n("duikersifonhevel.25053"), n("duikersifonhevel.20051"), n("duikersifonhevel.710427"),
+    n("duikersifonhevel.22973"), n("duikersifonhevel.24690"), n("duikersifonhevel.25599"), n("duikersifonhevel.17092"), n("duikersifonhevel.25321"), n("KOR-03827"), n("duikersifonhevel.402808"), n("duikersifonhevel.24636"), n("duikersifonhevel.26990"), n("duikersifonhevel.595189"), n("duikersifonhevel.16081"), n("duikersifonhevel.17131"), n("duikersifonhevel.24772"), n("duikersifonhevel.18971"), n("duikersifonhevel.584303"), n("duikersifonhevel.277495"),
+    n("duikersifonhevel.275113"), n("duikersifonhevel.213118"), n("gemaal.11411@2"), n("stuw.43416"), n("ow:hydroobject.497881"), n("ow:hydroobject.203309"), n("ow:hydroobject.10384"), n("ow:hydroobject.211426"), n("ow:hydroobject.236366"),
+    n("loc:206536,521945"), n("sluis.2281"), n("duikersifonhevel.25276"), n("Galgenrak (KIN)"), n("Westeinde_1"),
+    n("loc:227572,521656"), n("stuw.43145@2"), n("loc:231794,557486"), n("loc:236707,526926"),n("loc:240733,541530")
 ]
 
 drain_nodes = [
-    106, 111, 113, 116, 122, 137, 143, 144, 145, 150, 152, 157, 159, 161, 165, 168,
-    169, 170, 171, 173, 174, 177, 181, 183, 186, 190, 197, 200, 201, 202, 205, 208, 210,
-    211, 218, 221, 230, 232, 234, 239, 246, 251, 252, 262, 263, 265, 267, 271, 274,
-    276, 293, 295, 296, 297, 300, 304, 305, 307, 309, 311, 315, 322, 323, 324, 325,
-    326, 330, 333, 335, 337, 347, 349, 351, 352, 359, 362, 363, 366, 368, 369, 373,
-    375, 377, 378, 381, 382, 384, 387, 394, 395, 398, 402, 405, 416, 418, 421, 422, 428,
-    431, 436, 437, 438, 444, 445, 446, 447, 452, 454, 456, 461, 468, 469, 473, 475,
-    476, 480, 481, 485, 486, 487, 488, 489, 490, 493, 501, 503, 505, 513, 515, 521,
-    525, 529, 534, 541, 557, 565, 580, 582, 583, 584, 586, 587, 588, 590, 591, 596,
-    599, 608, 609, 614, 616, 623, 624, 625, 627, 630, 640, 642, 643, 644, 646, 649,
-    653, 654, 657, 658, 659, 664, 666, 671, 672, 674, 679, 680, 681, 688, 690, 697,
-    698, 700, 701, 709, 716, 721, 725, 732, 738, 771, 774, 777, 780, 794, 802, 815,
-    816, 841, 849, 851, 852, 854, 859, 873, 884, 886, 893, 900, 909, 919, 922, 932,
-    942, 953, 950,955, 957, 958, 963, 971, 975, 983, 986, 999, 1007, 1017, 1018, 1028, 1032, 1033,1039,
-    1049, 1051, 1052, 1060, 1064, 1066, 1091, 1094, 1096, 1098, 1100, 1101, 1113, 1125, 1129, 1140, 1148,
-    1150, 1154, 1155, 1156, 1159, 1169, 1173, 1175, 1186, 1189, 1193, 1205, 1210, 1215, 1219, 1225,
-    1226, 1233, 1234, 1248, 1257, 1259, 1264, 1268, 1269, 1271, 1273, 1279, 1318, 1320, 1323, 1337,
-    1346, 1350, 1360, 1366, 1368, 1369, 1372, 1373, 1376, 1379, 1380, 1381, 1382, 1386, 1394, 1395,
-    1406, 1409, 1410, 1428, 1433, 1448, 1459, 1460, 1462, 1466, 1482,1512, 3106, 3112, 3128, 3192, 3194,
-    3195, 3198, 3221,3235
+    n("stuw.1769"), n("stuw.606"), n("stuw.2098"), n("stuw.1991"), n("stuw.1859"), n("stuw.42949"), n("stuw.42973"), n("stuw.42989"), n("stuw.42991"), n("stuw.43010"), n("stuw.43016"), n("stuw.43044"), n("stuw.43053"), n("stuw.43058"), n("stuw.43071"), n("stuw.43097"),
+    n("stuw.43107"), n("stuw.43108"), n("stuw.43113"), n("stuw.43638"), n("stuw.43645"), n("stuw.43669"), n("stuw.43679"), n("stuw.43685"), n("stuw.43700"), n("stuw.43735"), n("stuw.49368"), n("stuw.52264"), n("stuw.42899"), n("stuw.42990"), n("stuw.43402"), n("stuw.43419"), n("stuw.43459"),
+    n("stuw.43460"), n("stuw.43522"), n("stuw.43540"), n("stuw.43606"), n("stuw.43615"), n("stuw.43145"), n("stuw.43167"), n("stuw.43197"), n("stuw.43205"), n("stuw.43212"), n("stuw.43257"), n("stuw.43258"), n("stuw.43263"), n("stuw.43357"), n("stuw.58008"), n("stuw.64728"),
+    n("stuw.80728"), n("stuw.2170"), n("stuw.1854"), n("stuw.1927"), n("stuw.1821"), n("stuw.1813"), n("stuw.2280"), n("stuw.2158"), n("stuw.2107"), n("stuw.508"), n("stuw.2159"), n("stuw.1914"), n("stuw.91321"), n("stuw.378"), n("stuw.1817"), n("stuw.2154"),
+    n("stuw.1788"), n("stuw.93883"), n("stuw.1934"), n("stuw.1749"), n("stuw.1929"), n("stuw.105097"), n("stuw.691"), n("stuw.1913"), n("stuw.533"), n("stuw.1736"), n("stuw.118858"), n("stuw.376"), n("stuw.2142"), n("stuw.4419"), n("stuw.112458"), n("stuw.565"),
+    n("stuw.368"), n("stuw.35256"), n("stuw.112457"), n("stuw.491"), n("stuw.4327"), n("stuw.1902"), n("stuw.112141"), n("stuw.1682"), n("stuw.93882"), n("stuw.2270"), n("stuw.4339"), n("stuw.1702"), n("stuw.1904"), n("stuw.93881"), n("stuw.557"), n("stuw.1808"), n("stuw.2040"),
+    n("stuw.1875"), n("stuw.21778"), n("stuw.4236"), n("stuw.607"), n("stuw.2305"), n("stuw.112139"), n("stuw.111818"), n("stuw.1694"), n("stuw.4378"), n("stuw.112142"), n("stuw.93884"), n("stuw.88744"), n("stuw.698"), n("stuw.2094"), n("stuw.1703"), n("stuw.534"),
+    n("stuw.2143"), n("stuw.4424"), n("stuw.1924"), n("stuw.1798"), n("stuw.2273"), n("stuw.2066"), n("stuw.2099"), n("stuw.104474"), n("stuw.112140"), n("stuw.2111"), n("duikersifonhevel.599665"), n("duikersifonhevel.778260"), n("duikersifonhevel.16103"), n("duikersifonhevel.22221"), n("duikersifonhevel.13119"), n("sluis.1653"),
+    n("sluis.3326"), n("sluis.3330"), n("sluis.1964"), n("sluis.1962"), n("gemaal.11406"), n("gemaal.11430"), n("gemaal.11452"), n("gemaal.11454"), n("gemaal.11458"), n("gemaal.11461"), n("gemaal.11464"), n("gemaal.11465"), n("gemaal.11466"), n("gemaal.11472"), n("gemaal.11474"), n("gemaal.11488"),
+    n("gemaal.11492"), n("gemaal.11513"), n("gemaal.11514"), n("gemaal.11529"), n("gemaal.11531"), n("gemaal.11552"), n("gemaal.11553"), n("gemaal.13170"), n("gemaal.43"), n("gemaal.3"), n("gemaal.8"), n("gemaal.49"), n("gemaal.64"), n("gemaal.62"), n("gemaal.70"), n("gemaal.63"),
+    n("gemaal.67"), n("gemaal.23"), n("gemaal.50"), n("gemaal.39"), n("gemaal.59"), n("gemaal.69"), n("gemaal.36"), n("gemaal.6"), n("gemaal.37"), n("gemaal.30"), n("gemaal.32"), n("gemaal.7"), n("gemaal.79"), n("gemaal.33"), n("gemaal.34"), n("gemaal.1"),
+    n("gemaal.40"), n("gemaal.2"), n("gemaal.20"), n("duikersifonhevel.27337"), n("duikersifonhevel.24798"), n("duikersifonhevel.20031"), n("duikersifonhevel.21857"), n("duikersifonhevel.286048"), n("duikersifonhevel.285812"), n("duikersifonhevel.278402"), n("duikersifonhevel.278248"), n("duikersifonhevel.277717"), n("duikersifonhevel.276673"), n("duikersifonhevel.276224"), n("duikersifonhevel.294712"), n("duikersifonhevel.480730"),
+    n("duikersifonhevel.482106"), n("duikersifonhevel.285367"), n("duikersifonhevel.276851"), n("duikersifonhevel.277189"), n("duikersifonhevel.276904"), n("duikersifonhevel.278403"), n("duikersifonhevel.276269"), n("duikersifonhevel.278284"), n("duikersifonhevel.284149"), n("duikersifonhevel.283210"), n("duikersifonhevel.425643"), n("duikersifonhevel.24234"), n("duikersifonhevel.20075"), n("duikersifonhevel.11883"), n("duikersifonhevel.19391"),
+    n("duikersifonhevel.26034"), n("duikersifonhevel.13316"), n("duikersifonhevel.24921"),n("duikersifonhevel.776980"), n("duikersifonhevel.20146"), n("duikersifonhevel.756835"), n("duikersifonhevel.10800"), n("duikersifonhevel.20346"), n("duikersifonhevel.761611"), n("duikersifonhevel.25050"), n("duikersifonhevel.26651"), n("duikersifonhevel.20281"), n("duikersifonhevel.22706"), n("duikersifonhevel.20805"), n("duikersifonhevel.21789"), n("duikersifonhevel.24674"), n("duikersifonhevel.18955"), n("duikersifonhevel.19012"),n("duikersifonhevel.26836"),
+    n("duikersifonhevel.20410"), n("duikersifonhevel.79450"), n("duikersifonhevel.23861"), n("duikersifonhevel.18988"), n("duikersifonhevel.134864"), n("duikersifonhevel.129740"), n("sluis.1968"), n("gemaal.11399"), n("gemaal.11428"), n("gemaal.21"), n("gemaal.20228"), n("gemaal.5"), n("stuw.43781"), n("gemaal.15410"), n("stuw.4460"), n("duikersifonhevel.13045"), n("stuw.2109"),
+    n("stuw.2130"), n("stuw.2004"), n("stuw.2030"), n("stuw.2038"), n("gemaal.11473"), n("stuw.1884"), n("stuw.43529"), n("stuw.43473"), n("gemaal.11471"), n("gemaal.11448"), n("duikersifonhevel.424568"), n("duikersifonhevel.1000048"), n("gemaal.11518"), n("stuw.16982"), n("sluis.1961"), n("stuw.67288"),
+    n("stuw.67304"), n("stuw.43517"), n("stuw.43361"), n("stuw.33621"), n("stuw.1732"), n("gemaal.52"), n("stuw.43076"), n("gemaal.11502"), n("stuw.4262"), n("stuw.29461"), n("stuw.2323"), n("duikersifonhevel.25321"), n("duikersifonhevel.24720"), n("duikersifonhevel.167820"), n("duikersifonhevel.284481"), n("duikersifonhevel.24633"),
+    n("gemaal.119"), n("gemaal.8491"), n("meppelersluis"), n("stuw.2160"), n("stuw.530"), n("stuw.548"), n("stuw.564"), n("stuw.568"), n("stuw.32024"), n("stuw.4391"), n("stuw.473"), n("stuw.119177"), n("stuw_noksloot"), n("stuw.1746"), n("stuw.1988"), n("stuw.88424"),
+    n("ow:hydroobject.542376"), n("ow:hydroobject.13008"), n("ow:hydroobject.7406"), n("ow:hydroobject.10133"), n("ow:hydroobject.9069"), n("ow:hydroobject.200446"), n("ow:hydroobject.601606"), n("ow:hydroobject.203937"), n("ow:hydroobject.201586"), n("ow:hydroobject.214582"), n("ow:hydroobject.353849"),n("ow:hydroobject.11593"), n("gemaal.145"), n("gemaal.27"),
+    n("gemaal.26"), n("gemaal.4330"), n("loc:205276,484889"),n("loc:240732,541530")
 ]
 # fmt: on
 
@@ -555,16 +562,74 @@ print_node_list_diff("drain_nodes", manual_drain_nodes, drain_nodes)
 # Per gebied: links die intersecten die we kunnen negeren.
 
 supply_area_ignore_links = {
-    "Ankersmit": [932, 971, 1144, 2315, 2329, 2330, 2388, 2759, 2766],
-    "Westerveld": [363, 1000, 1001, 3079, 3080],
-    "Overijssels Kanaal": [1057, 1581, 2480, 2685],
-    "Vecht-Twentekanalen": [3079, 3080],
-    "Dedemsvaart": [287, 2453, 1680, 1094, 1274, 2164, 2344, 3079, 3080],
-    "IJsselmeergebied": [1094, 1274, 2164, 2344],
-    "Hoogeveense Vaart": [32, 653, 654, 765, 809, 2499, 2519, 2555, 2572, 2757, 2812, 2970, 3079, 3080],
+    "Ankersmit": [
+        lk("ow:hydroobject.213337", "up:gemaal.11472"),
+        lk("ow:hydroobject.214102", "up:duikersifonhevel.464602"),
+        lk("ow:hydroobject.202351", "up:ow:hydroobject.213739"),
+        lk("up:duikersifonhevel.287090", "ow:hydroobject.214102"),
+        lk("up:duikersifonhevel.285803", "ow:hydroobject.236366"),
+        lk("up:duikersifonhevel.285803", "ow:hydroobject.213337"),
+        lk("up:duikersifonhevel.284644", "ow:hydroobject.203309"),
+        lk("up:ow:hydroobject.465561", "ow:hydroobject.465561"),
+        lk("up:ow:hydroobject.201493", "ow:hydroobject.201493"),
+    ],
+    "Westerveld": [
+        lk("ow:hydroobject.201493", "up:duikersifonhevel.276338"),
+        lk("ow:hydroobject.390680", "up:duikersifonhevel.276338"),
+        lk("bnd:58", "loc:206536,521945"),
+        lk("loc:206536,521945", "bnd:59"),
+    ],
+    "Overijssels Kanaal": [
+        lk("ow:hydroobject.211407", "up:duikersifonhevel.276622"),
+        lk("ow:hydroobject.211426", "up:duikersifonhevel.402808"),
+        lk("up:duikersifonhevel.284666", "ow:hydroobject.211407"),
+        lk("up:KOR-03827", "ow:hydroobject.200957"),
+    ],
+    "Vecht-Twentekanalen": [
+        lk("bnd:58", "loc:206536,521945"),
+        lk("loc:206536,521945", "bnd:59"),
+    ],
+    "Dedemsvaart": [
+        lk("duikersifonhevel.278403", "up:duikersifonhevel.278947"),
+        lk("up:duikersifonhevel.278403", "duikersifonhevel.278403"),
+        lk("up:ow:hydroobject.203632", "ow:hydroobject.203632"),
+        lk("ow:hydroobject.209113", "up:duikersifonhevel.278407"),
+        lk("ow:hydroobject.212111", "up:stuw.43481"),
+        lk("up:duikersifonhevel.284680", "ow:hydroobject.212111"),
+        lk("up:duikersifonhevel.281304", "ow:hydroobject.209113"),
+        lk("bnd:58", "loc:206536,521945"),
+        lk("loc:206536,521945", "bnd:59"),
+    ],
+    "IJsselmeergebied": [
+        lk("ow:hydroobject.209113", "up:duikersifonhevel.278407"),
+        lk("ow:hydroobject.212111", "up:stuw.43481"),
+        lk("up:duikersifonhevel.284680", "ow:hydroobject.212111"),
+        lk("up:duikersifonhevel.281304", "ow:hydroobject.209113"),
+    ],
+    "Hoogeveense Vaart": [
+        lk("hydroobject.10168___6", "up:duikersifonhevel.24682"),
+        lk("ow:hydroobject.10157", "up:duikersifonhevel.23536"),
+        lk("ow:hydroobject.11593", "up:duikersifonhevel.27017"),
+        lk("ow:hydroobject.12723", "up:hydroobject.10168___6"),
+        lk("up:duikersifonhevel.18943", "ow:hydroobject.10133"),
+        lk("up:duikersifonhevel.24682", "ow:hydroobject.10157"),
+        lk("up:duikersifonhevel.100602", "ow:hydroobject.11593"),
+        lk("up:ow:hydroobject.12723", "ow:hydroobject.12723"),
+        lk("up:hydroobject.10168___6", "hydroobject.10168___6"),
+        lk("ow:hydroobject.372441_3_2", "bnd:59"),
+        lk("bnd:58", "loc:206536,521945"),
+        lk("loc:206536,521945", "bnd:59"),
+    ],
     "Wold Aa": [],
-    "Drentse Hoofdvaart": [687, 1024],
-    "BoezemNW": [671, 2246, 2247],
+    "Drentse Hoofdvaart": [
+        lk("ow:hydroobject.9552", "up:stuw.1748"),
+        lk("ow:hydroobject.522565", "up:duikersifonhevel.17219"),
+    ],
+    "BoezemNW": [
+        lk("ow:hydroobject.557104", "up:duikersifonhevel.11301"),
+        lk("up:duikersifonhevel.11301", "ow:hydroobject.427482"),
+        lk("up:duikersifonhevel.11301", "ow:hydroobject.556788-0_2"),
+    ],
 }
 
 for area_name, ignore_intersecting_links in supply_area_ignore_links.items():
@@ -602,12 +667,12 @@ add_controllers_to_uncontrolled_connector_nodes(
 
 # Holthe max_downstream iets lager gezet omdat deze pas aangaat als andere inlaten niet meer kunnen aanleveren.
 assert model.pump.static.df is not None
-mask = model.pump.static.df.node_id == 648
+mask = model.pump.static.df.node_id == n("gemaal.76")
 model.pump.static.df.loc[mask, "max_downstream_level"] -= 0.04
 mark_level_update_protected(model.pump.static.df, mask, model=model)
 
 # Noordscheschutsluis: basin 1920 is gemerged naar 1881; aanvoer stopt 1 cm onder benedenstrooms streefpeil.
-noordscheschutsluis_pump_node_id = 346
+noordscheschutsluis_pump_node_id = n("stuw.112138")
 downstream_basin_ids = model.link.df.loc[
     (model.link.df.from_node_id == noordscheschutsluis_pump_node_id)
     & model.link.df.to_node_id.isin(model.basin.node.df.index),
@@ -643,9 +708,9 @@ mark_level_update_protected(model.pump.static.df, mask, model=model)
 set_static_values(
     model.level_boundary.static.df,
     {
-        100: -0.2,
-        47: -0.2,
-        90: -0.2,
+        n("bnd:100"): -0.2,
+        n("bnd:47"): -0.2,
+        n("bnd:90"): -0.2,
     },
     "level",
 )
@@ -670,11 +735,11 @@ junctionify(model)
 # Pomp-capaciteiten op basis van hoogste berekende dynamic debiet, afgerond naar boven.
 # Bestaande handmatige pompwaarden blijven leidend.
 pump_max_flow_rate_from_results = {
-    607: 2,  # Haverslag; oude static flow_rate=0.764
-    614: 1,  # Holstweg; oude static flow_rate=0.157
-    1095: 1,  # Zwaantje; oude static flow_rate=0
-    1344: 2,  # Adsum; gekoppeld max=1.78, huidige max=1.00, link=5901361
-    1349: 1,  # Oosterbroek Mallegat; oude static flow_rate=0
+    n("gemaal.11511"): 2,  # Haverslag; oude static flow_rate=0.764
+    n("gemaal.11529"): 1,  # Holstweg; oude static flow_rate=0.157
+    n("gemaal.11418"): 1,  # Zwaantje; oude static flow_rate=0
+    n("gemaal.11411@2"): 2,  # Adsum; gekoppeld max=1.78, huidige max=1.00, link=5901361
+    n("gemaal.57"): 1,  # Oosterbroek Mallegat; oude static flow_rate=0
 }
 mask = (
     model.pump.static.df.node_id.isin(pump_max_flow_rate_from_results)
@@ -696,10 +761,10 @@ model.pump.static.df.loc[mask & (model.pump.static.df.control_state == "afvoer")
 # Handmatige ondergrens voor node 3235.
 for static_df in [model.outlet.static.df, model.pump.static.df]:
     assert static_df is not None
-    mask = static_df.node_id == 3235
+    mask = static_df.node_id == n("loc:240732,541530")
     static_df.loc[mask, "min_upstream_level"] = 17.7
     mark_level_update_protected(static_df, mask, model=model)
-    mask = static_df.node_id == 3233
+    mask = static_df.node_id == n("loc:236707,526926")
     static_df.loc[mask, "max_downstream_level"] = 12.94
     mark_level_update_protected(static_df, mask, model=model)
 
@@ -763,16 +828,18 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
     static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 0.0
 
 # Vechterweerd moet in beide richtingen de volledige capaciteit behouden.
-vechterweerd_mask = model.outlet.static.df.node_id.isin([199, 2582])
+vechterweerd_mask = model.outlet.static.df.node_id.isin([n("stuw.50984"), n("loc:203907,508001")])
 model.outlet.static.df.loc[vechterweerd_mask, ["flow_rate", "max_flow_rate"]] = 200.0
 
 # Outlet 2582 is then the same in both control states, so we remove its DiscreteControl and aanvoer state
-control_links = model.link.df[(model.link.df.link_type == "control") & (model.link.df.to_node_id == 2582)]
+control_links = model.link.df[
+    (model.link.df.link_type == "control") & (model.link.df.to_node_id == n("loc:203907,508001"))
+]
 assert len(control_links) == 1, "expected one DiscreteControl for Vechterweerd outlet 2582"
 model.remove_node(int(control_links.from_node_id.iloc[0]), remove_links=True)
 static_df = model.outlet.static.df
-static_df = static_df[~((static_df.node_id == 2582) & (static_df.control_state == "aanvoer"))].copy()
-static_df.loc[static_df.node_id == 2582, "control_state"] = None
+static_df = static_df[~((static_df.node_id == n("loc:203907,508001")) & (static_df.control_state == "aanvoer"))].copy()
+static_df.loc[static_df.node_id == n("loc:203907,508001"), "control_state"] = None
 model.outlet.static.df = static_df
 
 # %%

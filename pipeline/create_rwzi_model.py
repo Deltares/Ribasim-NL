@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 from ribasim import Node
 from ribasim.nodes import flow_boundary
+from ribasim_nl.keys import KEY_COLUMN
 from shapely.geometry import Point
 
 from ribasim_nl import CloudStorage, Model
@@ -549,6 +550,10 @@ for name in sorted(missing_rwzi_names):
 logger.info(f"{'=' * 60}\n")
 
 ribasim_toml.parent.mkdir(parents=True, exist_ok=True)
+# the keys of the nodes, see `ribasim_nl.keys`: an RWZI is known by its code
+rwzi_code = model.node.df["meta_rwzi_code"].astype(int).astype(str)
+is_terminal = model.node.df["node_type"] == "Terminal"
+model.node.df[KEY_COLUMN] = ("rwzi:" + rwzi_code).where(~is_terminal, "rwzi_terminal:" + rwzi_code)
 model.write(ribasim_toml)
 
 # %% Export GeoJSON with model inclusion flag

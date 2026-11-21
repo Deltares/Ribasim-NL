@@ -555,18 +555,18 @@ class Model(ribasim.Model):
                 # itertuples rows are namedtuples, whose `_asdict` ty sees as a column
                 values = cast(Any, row)._asdict()
                 kwargs = {k: v for k, v in values.items() if k in keywords}
-                for argument in NODE_ARGUMENTS.intersection(keywords):
-                    key = values.get(argument.removesuffix("_id") + "_key")
-                    if pd.notna(key):
-                        kwargs[argument] = self.node_id(key)
-                if "link_id" in keywords and pd.notna(values.get("link_from_key")):
-                    kwargs["link_id"] = self.link_id(values["link_from_key"], values["link_to_key"])
-                if drop_na:
-                    kwargs = {k: v for k, v in kwargs.items() if pd.notna(v)}
                 try:
+                    for argument in NODE_ARGUMENTS.intersection(keywords):
+                        key = values.get(argument.removesuffix("_id") + "_key")
+                        if pd.notna(key):
+                            kwargs[argument] = self.node_id(key)
+                    if "link_id" in keywords and pd.notna(values.get("link_from_key")):
+                        kwargs["link_id"] = self.link_id(values["link_from_key"], values["link_to_key"])
+                    if drop_na:
+                        kwargs = {k: v for k, v in kwargs.items() if pd.notna(v)}
                     method(**kwargs)
                 except Exception as e:
-                    e.add_note(f"in model edit {action}({kwargs})")
+                    e.add_note(f"in model edit {action}({kwargs}), row {values['Index']}")
                     raise
 
     def update_nodes(self, node_ids: Iterable[int], node_type: str) -> None:

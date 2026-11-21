@@ -29,6 +29,8 @@ default_level = 0.42 if AANVOER_CONDITIONS else -0.42  # default LevelBoundary l
 
 # process the feedback form and load the model
 ribasim_model = process_feedback_form(paths)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = ribasim_model.node_id
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
@@ -54,7 +56,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     Node(geometry=Point(114698, 551327)),
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
-ribasim_model.link.add(ribasim_model.basin[3], tabulated_rating_curve_node)
+ribasim_model.link.add(ribasim_model.basin[n("peilgebied_1000-01")], tabulated_rating_curve_node)
 ribasim_model.link.add(tabulated_rating_curve_node, level_boundary_node)
 
 # add hevel near Andijk
@@ -66,7 +68,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[66])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("peilgebied_6770-03")])
 
 # add hevel near stedelijk gebied ARK-NZK
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -77,7 +79,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[160])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("peilgebied_04590-03")])
 
 # add hevel near stedelijk gebied ARK-NZK
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -88,7 +90,7 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[221])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("peilgebied_04580-01")])
 
 # add gemaal and LB at boezemgemaal Monnickendam. Zowel af- als aanvoer. Dit blok: aanvoer
 level_boundary_node = ribasim_model.level_boundary.add(
@@ -96,14 +98,14 @@ level_boundary_node = ribasim_model.level_boundary.add(
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(130877, 497615)), [pump.Static(flow_rate=[20])])
 ribasim_model.link.add(level_boundary_node, pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[3])
+ribasim_model.link.add(pump_node, ribasim_model.basin[n("peilgebied_1000-01")])
 
 # add gemaal and LB at boezemgemaal Monnickendam. Zowel af- als aanvoer. Dit blok: afvoer
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(131027, 497613)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(130877, 497625)), [pump.Static(flow_rate=[20])])
-ribasim_model.link.add(ribasim_model.basin[3], pump_node)
+ribasim_model.link.add(ribasim_model.basin[n("peilgebied_1000-01")], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # add gemaal and LB at Waterlandseboezem .
@@ -111,7 +113,7 @@ level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(132115, 495290)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(132040, 495282)), [pump.Static(flow_rate=[10])])
-ribasim_model.link.add(ribasim_model.basin[2], pump_node)
+ribasim_model.link.add(ribasim_model.basin[n("peilgebied_5170-2")], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # add hevelat Schermersluis (ARK-NZK --> boezem)
@@ -123,19 +125,33 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[3])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("peilgebied_1000-01")])
 
-ribasim_model.merge_basins(node_id=201, to_node_id=79, are_connected=False)  # klein snippertje vlakbij IJsselmeer
-ribasim_model.merge_basins(node_id=192, to_node_id=17)  # klein snippertje vlakbij Markermeer
-ribasim_model.merge_basins(node_id=182, to_node_id=2)  # klein snippertje
-ribasim_model.merge_basins(node_id=214, to_node_id=3)  # klein snippertje in boezem
-ribasim_model.merge_basins(node_id=117, to_node_id=6)  # klein gebiedje in enclave peilgebied
-ribasim_model.merge_basins(node_id=218, to_node_id=3)  # klein gebiedje vlakbij boezem
-ribasim_model.merge_basins(node_id=113, to_node_id=3)  # klein gebiedje in boezem
-ribasim_model.merge_basins(node_id=203, to_node_id=21)  # klein gebiedje in duinen
-ribasim_model.merge_basins(node_id=228, to_node_id=193)  # convergence
-ribasim_model.merge_basins(node_id=110, to_node_id=3)  # convergence
-ribasim_model.merge_basins(node_id=148, to_node_id=2)  # convergence
+ribasim_model.merge_basins(
+    node_id=n("peilgebied_6780-02"), to_node_id=n("peilgebied_6700-33"), are_connected=False
+)  # klein snippertje vlakbij IJsselmeer
+ribasim_model.merge_basins(
+    node_id=n("peilgebied_6010-1"), to_node_id=n("peilgebied_6130A-14")
+)  # klein snippertje vlakbij Markermeer
+ribasim_model.merge_basins(node_id=n("peilgebied_5500-1"), to_node_id=n("peilgebied_5170-2"))  # klein snippertje
+ribasim_model.merge_basins(
+    node_id=n("peilgebied_5401-1"), to_node_id=n("peilgebied_1000-01")
+)  # klein snippertje in boezem
+ribasim_model.merge_basins(
+    node_id=n("peilgebied_04804-01"), to_node_id=n("peilgebied_04801-01")
+)  # klein gebiedje in enclave peilgebied
+ribasim_model.merge_basins(
+    node_id=n("peilgebied_03350-01"), to_node_id=n("peilgebied_1000-01")
+)  # klein gebiedje vlakbij boezem
+ribasim_model.merge_basins(
+    node_id=n("peilgebied_04640-01"), to_node_id=n("peilgebied_1000-01")
+)  # klein gebiedje in boezem
+ribasim_model.merge_basins(
+    node_id=n("peilgebied_2040-2030-04"), to_node_id=n("peilgebied_2754 A")
+)  # klein gebiedje in duinen
+ribasim_model.merge_basins(node_id=n("peilgebied_5841-2"), to_node_id=n("peilgebied_5841-6"))  # convergence
+ribasim_model.merge_basins(node_id=n("peilgebied_04952-01"), to_node_id=n("peilgebied_1000-01"))  # convergence
+ribasim_model.merge_basins(node_id=n("peilgebied_5170-8"), to_node_id=n("peilgebied_5170-2"))  # convergence
 
 
 # (re)set 'meta_node_id'-values
@@ -154,7 +170,9 @@ ribasim_param.clean_tables(ribasim_model, waterschap)
 
 # split basins to improve model convergence
 node_cache = NodeMetaCache(ribasim_model)
-splitter = SplitBasins(model=ribasim_model, splitted_basin_path=splitted_basin_3_path, basin_node_id_to_split=3)
+splitter = SplitBasins(
+    model=ribasim_model, splitted_basin_path=splitted_basin_3_path, basin_node_id_to_split=n("peilgebied_1000-01")
+)
 ribasim_model = splitter.run()
 node_cache.set_meta_category(ribasim_model)
 ribasim_model.write(paths.model_dir("feedback") / "ribasim.toml")

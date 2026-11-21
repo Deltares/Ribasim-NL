@@ -19,6 +19,7 @@ from shapely.geometry import LineString, Point
 
 from ribasim_nl import Model, concat
 from ribasim_nl.flow_paths import Routes, split_distance, split_link
+from ribasim_nl.keys import NodeKey, resolve_keys
 from ribasim_nl.reset_index import reset_index
 
 # %%
@@ -212,12 +213,15 @@ def terminal2junction(rwzi_coupled_model, coupling_lookup, *, verbose=False):
 
 # Basins that RWZIs discharge into by RWZI code, instead of the Basin they are in, see #871
 RWZI_BASINS = {
-    12001: 1202759,  # Hollands Noorderkwartier, on the hoofdwater next to doorgaand Basin 1200195
-    17041: 4000278,  # Hollandse Delta, on the hoofdwater next to doorgaand Basin 4000362
-    28002: 3801735,  # Asten, on the hoofdwater next to doorgaand Basin 3801747
-    28003: 3801473,  # Aa en Maas, on the hoofdwater 2.4 km from doorgaand Basin 3801602
-    30021: 8008147,  # Stein, on the Julianakanaal instead of Limburg Basin 6001469
-    30022: 6001422,  # Limburg, on the doorgaand next to hoofdwater Basin 6001434
+    # Hollands Noorderkwartier, on the hoofdwater next to the doorgaand Basin of peilgebied 04853
+    12001: NodeKey("HollandsNoorderkwartier", "peilgebied_1000-01/17"),
+    # Hollandse Delta, the Kanaal door Voorne, on the hoofdwater next to the doorgaand Basin P-V03.003
+    17041: NodeKey("HollandseDelta", "P-V19.001"),
+    28002: NodeKey("AaenMaas", "up:201PP"),  # Asten, on the hoofdwater next to the doorgaand Basin up:2860006
+    28003: NodeKey("AaenMaas", "up:2016"),  # Aa en Maas, on the hoofdwater 2.4 km from the doorgaand Basin up:201JAA@1
+    30021: NodeKey("Rijkswaterstaat", "Julianakanaal@1"),  # Stein, instead of the Limburg Basin up:D_12973
+    # Limburg, on the doorgaand next to the hoofdwater Basin up:W_245098_1___7
+    30022: NodeKey("Limburg", "up:ow:W_241747_0"),
 }
 
 
@@ -274,7 +278,7 @@ def _attach_rwzi_junction(model: Model, junction_id: int, basin_id: int, max_dis
 def attach_rwzi_junctions(
     model: Model,
     max_distance: float = 1000.0,
-    basins: Mapping[int, int] = RWZI_BASINS,
+    basins: Mapping[int, NodeKey | int | None] = RWZI_BASINS,
     authorities: set[str] | None = None,
 ) -> Model:
     """Move each RWZI Junction onto the nearest link of the route of its Basin, see `ribasim_nl.flow_paths.Routes`.
@@ -284,15 +288,15 @@ def attach_rwzi_junctions(
     directly or through the Junctions of its tree, such as the routed links of the doorgaand and hoofdwater Basins,
     except links of bergend Basins. The RWZI Junction then joins the tree of the Basin, so the RWZI discharges into
     the Basin, also on a link out of it. RWZI Junctions without such a link within `max_distance` are left as is,
-    and so are those of `basins` whose Basin is not in the model, or which are attached already.
+    and so are those of `basins` whose Basin is None or not in the model, or which are attached already.
 
     Parameters
     ----------
         model (Model): model with RWZI Junctions, which have a meta_rwzi_code.
         max_distance (float): maximum distance in meters between the RWZI Junction and the link, except for `basins`.
-        basins (Mapping[int, int]): Basin node ids by RWZI code, for RWZIs that do not discharge in the Basin they are in.
-        authorities (set[str] | None): if given, only attach RWZIs of these authorities, and RWZIs of `basins`, whose
-            global Basin ids are only in the model after coupling.
+        basins: Basins by RWZI code, for RWZIs that do not discharge in the Basin they are in: their authority and
+            key, see `ribasim_nl.keys.NodeKey`, or their node ID. With None the RWZI is left as it is.
+        authorities (set[str] | None): if given, only attach RWZIs of these authorities, and RWZIs of `basins`.
 
     Returns
     -------
@@ -313,14 +317,15 @@ def attach_rwzi_junctions(
         ):
             continue
         routes = Routes(model)
-        basin_id = basins.get(int(code), routes.tree_basin(junction_id))
+        other_basin = int(code) in basins
+        basin_id = resolve_keys(model, basins[int(code)]) if other_basin else routes.tree_basin(junction_id)
         if basin_id is None or basin_id not in model.node.df.index:
             continue
         if model.get_node_type(basin_id) != "Basin":
             raise ValueError(
                 f"RWZI {code} should discharge into Basin {basin_id}, not a {model.get_node_type(basin_id)}."
             )
-        limit = math.inf if int(code) in basins else max_distance
+        limit = math.inf if other_basin else max_distance
         attached += _attach_rwzi_junction(model, int(junction_id), basin_id, limit)
 
     logger.info(f"Attached {attached} of {len(rwzi_junctions)} RWZI Junctions to a flow link of their Basin")

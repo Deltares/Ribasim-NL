@@ -36,6 +36,8 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/
 processor = paths.feedback_processor(work_dir=paths.model_dir("profiles"))
 
 ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = ribasim_model.node_id
 
 # reset pump capacity for each pump
 assert ribasim_model.pump.static.df is not None
@@ -56,7 +58,7 @@ ribasim_param.set_aanvoer_flags(
     ribasim_model,
     aanvoergebieden,
     processor,
-    basin_aanvoer_off=104,
+    basin_aanvoer_off=n("GPG-1283_98"),
     aanvoer_enabled=True,
 )
 
@@ -69,47 +71,47 @@ from_to_node_function_table = node_function_table(ribasim_model)
 
 # change outlet functions
 to_supply = (
-    182,
-    183,
-    196,
-    201,
-    356,
-    468,
-    476,
-    479,
-    480,
-    489,
-    494,
-    504,
-    516,
-    524,
-    527,
-    531,
-    534,
-    554,
-    669,
-    691,
-    702,
-    704,
-    705,
-    709,
-    711,
+    n("ow:Inlaat|GPG-1204_4>GPG-1227_103"),
+    n("ow:Inlaat|GPG-1204_4>GPG-1292b_6"),
+    n("KST-1704"),
+    n("ow:Inlaat|GPG-1205_28>GPG-1219_143"),
+    n("ow:KPL-235"),
+    n("KST-1375|GPG-1204_4>GPG-1292a_90"),
+    n("ow:INL-462"),
+    n("ow:INL-260"),
+    n("ow:INL-683"),
+    n("KST-27"),
+    n("ow:INL-249"),
+    n("ow:INL-498"),
+    n("ow:INL-459"),
+    n("KST-1785"),
+    n("ow:INL-423"),
+    n("ow:INL-262"),
+    n("KST-1862"),
+    n("ow:Duiker|GPG-1205_28>GPG-1218_132"),
+    n("loc:93034,442796"),
+    n("loc:99402,450923"),
+    n("loc:97253,444840"),
+    n("loc:95290,445253"),
+    n("loc:94837,442938"),
+    n("loc:95742,441955"),
+    n("loc:89792,437301"),
 )
 to_flow_control = (
     # 182,
     # 183,
-    220,  # basin die boezem voedt
-    341,  # basin die boezem voedt
-    354,
-    358,
-    373,  # basin die boezem voedt
-    561,
-    703,
+    n("KGM-12"),  # basin die boezem voedt
+    n("KGM-108|GPG-1011_36>GPG-1012_56"),  # basin die boezem voedt
+    n("KGM-71|GPG-1134_63>GPG-1360_149"),
+    n("KGM-34"),
+    n("KGM-108|GPG-1011_36>GPG-1005_20"),  # basin die boezem voedt
+    n("KGM-227"),
+    n("loc:94551,440803"),
 )
 to_drain = (
-    364,  # labelled as "aanvoergemaal" but directed from polder to boezem
-    612,
-    467,
+    n("KGM-31"),  # labelled as "aanvoergemaal" but directed from polder to boezem
+    n("ow:Duiker|GPG-1024_137>GPG-1184_17"),
+    n("KST-1859"),
 )
 from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
@@ -158,12 +160,12 @@ ribasim_model = complete_parametrization(
 
 assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df.node_id == 363,
+    ribasim_model.pump.static.df.node_id == n("KGM-87"),
     ("max_flow_rate", "meta_known_flow_rate"),
 ] = 5, True  # actually not known, but its otherwise too low
 
 ribasim_model.pump.static.df.loc[
-    ribasim_model.pump.static.df.node_id == 166,
+    ribasim_model.pump.static.df.node_id == n("KGM-118"),
     ("max_flow_rate", "meta_known_flow_rate"),
 ] = 10, True  # actually not known, but its otherwise too low
 
@@ -171,7 +173,9 @@ ribasim_model.pump.static.df.loc[
 set_design_capacities(ribasim_model, from_to_node_function_table)
 
 assert ribasim_model.outlet.static.df is not None
-ribasim_model.outlet.static.df.loc[ribasim_model.outlet.static.df.node_id == 342, "max_flow_rate"] = 1.0
+ribasim_model.outlet.static.df.loc[
+    ribasim_model.outlet.static.df.node_id == n("KST-1375|GPG-1298_97>GPG-1204_4"), "max_flow_rate"
+] = 1.0
 
 
 write_and_run_forcing_model(ribasim_model, paths)

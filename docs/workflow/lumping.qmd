@@ -14,7 +14,7 @@ flowchart LR
   areas["areas.gpkg<br>areas, drainage areas"] --> lump
   lump(["Lumping<br>00b_lump_model.py"]) --> model["Input model<br>&lt;authority&gt;_2024_6_3"]
   model --> fix(["Fix script<br>01_fix_model.py"])
-  edits["model_edits.gpkg<br>edits by node ID"] --> fix
+  edits["model_edits.gpkg<br>edits by node key"] --> fix
   fix --> fixed["Fix model<br>&lt;authority&gt;_fix_model"]
 
   classDef step fill:#dfedef,stroke:#0c6a77
@@ -96,7 +96,7 @@ Nodes on a KRW water body get `meta_categorie` hoofdwater.
 ::: {.g-col-12 .g-col-lg-5}
 ### 5. Correct the model in the fix script
 
-`pipeline/drents_overijsselse_delta/01_fix_model.py` corrects the input model by node ID.
+`pipeline/drents_overijsselse_delta/01_fix_model.py` corrects the input model, in which it refers to nodes by their [key](../dev/node-keys.qmd).
 It removes and merges nodes, adds basins and connectors, and reverses or redirects links.
 Most edits are rows in `verwerkt/model_edits.gpkg`.
 In this window, `merge_basins` merges basins 1597 and 1665 into 1740, which takes over the 1134 ha of 1665, and `remove_node` removes LevelBoundary 5 and Outlet 535.
@@ -106,8 +106,9 @@ It also checks that every Basin has an area.
 
 ```python
 model = Model.read(input_model_toml)
-# edits by node ID
-model.remove_node(7, remove_links=True)
+# edits by node key
+n = model.node_id
+model.remove_node(n("bnd:7"), remove_links=True)
 # the rows of model_edits.gpkg
 model.apply_edits(model_edits_path, actions)
 ...

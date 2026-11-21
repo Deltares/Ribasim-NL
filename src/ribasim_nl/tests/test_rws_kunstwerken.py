@@ -6,7 +6,6 @@ from ribasim import Node
 from ribasim.nodes import basin, manning_resistance, outlet, tabulated_rating_curve
 from ribasim_nl.rws_kunstwerken import (
     PARALLEL_KWK,
-    RWS_NODE_ID_OFFSET,
     SUBTRACT_PROPERTY,
     ParallelKwk,
     discrete_control_tables,
@@ -48,9 +47,9 @@ def sluis_born() -> pd.DataFrame:
             ["Minimale capaciteit (m3/s)", 0.5],
             ["Maximale capaciteit (m3/s)", 15.7],
             ["Gereviewed door", np.nan],
-            ["Meetlocatiecode", 8008147],
+            ["Meetlocatiecode", "Julianakanaal@1"],
             ["Type sturing", "DiscreteControl"],
-            ["Meetlocatiecode", 8008147],
+            ["Meetlocatiecode", "Julianakanaal@1"],
             ["FlowDemand", "ja"],
             ["Review datum", pd.Timestamp("2026-10-23")],
             [np.nan],
@@ -91,7 +90,7 @@ def test_rating_curve_from_bottom_invalid(q: list[float], h: list[float], bottom
 def test_read_kwk_properties():
     properties = read_kwk_properties(sluis_born())
     assert properties["Kunstwerkcode"] == "60A-001-06"
-    assert properties["Meetlocatiecode"] == 8008147
+    assert properties["Meetlocatiecode"] == "Julianakanaal@1"
     assert "Gereviewed door" not in properties
     # the tables are not properties
     assert "afvoer" not in properties
@@ -214,7 +213,7 @@ def test_read_static_seasonal_thresholds():
             ["Maximale capaciteit (m3/s)", 0.1],
             ["FlowDemand", "ja"],
             ["Type sturing", "DiscreteControl"],
-            ["Meetlocatiecode", 8007826],
+            ["Meetlocatiecode", "Maas@5"],
             [np.nan],
             ["FlowDemand (m3/s)", "Prioriteit"],
             [0.1, 2],
@@ -368,8 +367,8 @@ def test_discrete_control_on_level_difference():
             ["Kunstwerkcode", "44F-002-01"],
             ["Aanvoer Capaciteit (m3/s)", 0.1],
             ["Afvoer Capaciteit (m3/s)", 0],
-            ["Meetlocatiecode", 8004941],
-            [SUBTRACT_PROPERTY, 8005265],
+            ["Meetlocatiecode", "Afgedamde Maas@1"],
+            [SUBTRACT_PROPERTY, "Afgedamde Maas@2"],
             ["Type sturing", "DiscreteControl"],
             [np.nan],
             ["Toestand (control_state)", "Bovengrens (threshold_high)", "Ondergrens (threshold_low)"],
@@ -420,7 +419,7 @@ def pr_bernhardsluis() -> pd.DataFrame:
             ["Aanvoer Capaciteit (m3/s)", 73],
             ["Streefpeil bovenstrooms (m +NAP)", 0],
             ["FlowDemand", "ja"],
-            ["Meetlocatiecode", 8007291],
+            ["Meetlocatiecode", "Waal@3"],
             ["Type sturing", "DiscreteControl"],
             [np.nan],
             ["Toestand (control_state)", "Bovengrens (threshold_high)", "Ondergrens (threshold_low)"],
@@ -457,7 +456,7 @@ def prs_irenesluis_doorspoeling() -> pd.DataFrame:
             ["Aanvoer Capaciteit (m3/s)", 25],
             ["Afvoer Capaciteit (m3/s)", 0],
             ["Minimale capaciteit (m3/s)", 10],
-            ["Meetlocatiecode", 8010764],
+            ["Meetlocatiecode", "ARK-Nigtevecht"],
             ["Meetlocatievariabele", "flow_rate"],
             ["Type sturing", "DiscreteControl"],
             [np.nan],
@@ -517,11 +516,12 @@ def waal_model() -> Model:
     )
     for from_id, to_id in ((1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7)):
         model.link.add(model.get_node(from_id), model.get_node(to_id))
+    model.node.df["meta_key"] = [f"node {node_id}" for node_id in model.node.df.index]
     return model
 
 
-def outlet_sheet(meetlocatiecode: int, variable: str = "level") -> pd.DataFrame:
-    """An aanvoer Outlet with DiscreteControl on the `variable` of node `meetlocatiecode` of the coupled model."""
+def outlet_sheet(meetlocatiecode: str, variable: str = "level") -> pd.DataFrame:
+    """An aanvoer Outlet with DiscreteControl on the `variable` of the node with key `meetlocatiecode`."""
     return sheet(
         [
             ["Ribasim type", "Outlet"],
@@ -539,14 +539,17 @@ def outlet_sheet(meetlocatiecode: int, variable: str = "level") -> pd.DataFrame:
 def test_listen_node():
     model = waal_model()
     # next to it, or connected to the Basin on one side through nodes that do not control the flow
-    assert listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 3), 4) == (3, "upstream")
-    assert listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 7), 4) == (7, "downstream")
+    assert listen_node(model, outlet_sheet("node 3"), 4) == (3, "upstream")
+    assert listen_node(model, outlet_sheet("node 7"), 4) == (7, "downstream")
     # like the Prs. Irenesluis-Doorspoeling, the flow rate of a connector node anywhere
-    assert listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 6, "flow_rate"), 4) == (6, None)
+    assert listen_node(model, outlet_sheet("node 6", "flow_rate"), 4) == (6, None)
     with pytest.raises(AssertionError, match="not a Basin"):
-        listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 6), 4)
+        listen_node(model, outlet_sheet("node 6"), 4)
     with pytest.raises(AssertionError, match="flow rate of Basin"):
-        listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 3, "flow_rate"), 4)
+        listen_node(model, outlet_sheet("node 3", "flow_rate"), 4)
     # a TabulatedRatingCurve controls the level upstream of it
     with pytest.raises(AssertionError, match="not on one side"):
-        listen_node(model, outlet_sheet(RWS_NODE_ID_OFFSET + 1), 4)
+        listen_node(model, outlet_sheet("node 1"), 4)
+    # a key that no node has
+    with pytest.raises(KeyError, match="0 nodes with key"):
+        listen_node(model, outlet_sheet("node 9"), 4)

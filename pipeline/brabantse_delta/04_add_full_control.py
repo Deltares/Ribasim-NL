@@ -19,140 +19,157 @@ SHORT_NAME: str = "wbd"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 
+# %%
+# Definieren paden en syncen met cloud
+cloud = CloudStorage()
+ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
+ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
+qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
+
+aanvoergebieden_gpkg = cloud.joinpath(r"BrabantseDelta/verwerkt/sturing/aanvoergebieden.gpkg")
+
+
+# %%
+# Read data
+model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
+lk = model.link_id
+
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
-EXCLUDE_NODES = {979}
+EXCLUDE_NODES = {n("KSL00217")}
 EXCLUDE_SUPPLY_NODES = []
-MANUAL_BASIN_LEVEL_NODE_IDS = [1354]
+MANUAL_BASIN_LEVEL_NODE_IDS = [n("up:KST02510")]
 outlet_max_flow_rate_from_results = {
-    69: 2,  # Dalum/Spoorbaan
-    71: 2,  # Dalum/Reuverlaan
-    150: 3,  # stuw Galder
-    189: 14,  # stuw Wernhout
-    230: 12,  # stuw Watermolen
-    233: 3,  # Het Laag
-    240: 2,  # KDU01724
-    241: 2,  # KDU18314
-    302: 6,  # Molenbeek verdeelwerk
-    408: 2,  # Haven van Zevenbergen
-    461: 2,  # KDU01655
-    475: 12,  # stuw Wielhoef
-    486: 9,  # stuw Oude Turfvaartsestaat
-    383: 2,  # dynamic max=0.70
-    499: 3,  # Harmonie /vlotterinlaat 1; dynamic max=1.39
-    576: 2,  # Stuw Ruigenhil/Oostdijk
-    577: 2,  # KDU10783
-    580: 2,  # KST01119
-    581: 2,  # KDU10780
-    593: 2,  # KDU14589
-    699: 6,  # Weststadweg Houtsesteeg
-    737: 2,  # KDU32322
-    738: 2,  # KDU24022
-    745: 2,  # Groenvenseweg
-    794: 17,  # Het Vaartje/Waspik
-    936: 9,  # KDU03763
-    955: 2,  # KDU02582
-    971: 2,  # Marksluis
-    991: 5,  # KDU28116
-    1048: 1,  # naam onbekend
-    1055: 2,  # naam onbekend
-    1272: 11,  # naam onbekend
-    2323: 2,  # naam onbekend
+    n("KST00407"): 2,  # Dalum/Spoorbaan
+    n("KST00406"): 2,  # Dalum/Reuverlaan
+    n("KST00207"): 3,  # stuw Galder
+    n("KST00559"): 14,  # stuw Wernhout
+    n("KST00213"): 12,  # stuw Watermolen
+    n("KST00209"): 3,  # Het Laag
+    n("KDU01724"): 2,  # KDU01724
+    n("KDU18314"): 2,  # KDU18314
+    n("KST01827"): 6,  # Molenbeek verdeelwerk
+    n("KST02872"): 2,  # Haven van Zevenbergen
+    n("KDU01655"): 2,  # KDU01655
+    n("KST00558"): 12,  # stuw Wielhoef
+    n("KST01802"): 9,  # stuw Oude Turfvaartsestaat
+    n("KDU04571"): 2,  # dynamic max=0.70
+    n("KST02376"): 3,  # Harmonie /vlotterinlaat 1; dynamic max=1.39
+    n("KST01068"): 2,  # Stuw Ruigenhil/Oostdijk
+    n("KDU10783"): 2,  # KDU10783
+    n("KST01119"): 2,  # KST01119
+    n("KDU10780"): 2,  # KDU10780
+    n("KDU14589"): 2,  # KDU14589
+    n("KST00330"): 6,  # Weststadweg Houtsesteeg
+    n("KDU32322"): 2,  # KDU32322
+    n("KDU24022"): 2,  # KDU24022
+    n("KST00441"): 2,  # Groenvenseweg
+    n("KST00513"): 17,  # Het Vaartje/Waspik
+    n("KDU03763"): 9,  # KDU03763
+    n("KDU02582"): 2,  # KDU02582
+    n("KSL00215"): 2,  # Marksluis
+    n("KDU28116"): 5,  # KDU28116
+    n("ow:OVK12040"): 1,  # naam onbekend
+    n("ow:OVK12037"): 2,  # naam onbekend
+    n("ow:OVK00692"): 11,  # naam onbekend
+    n("inlaat-donge"): 2,  # naam onbekend
     # Hoge source-capaciteiten vervangen door 1.5x de maximale flow uit het dynamic resultaat.
-    105: 1,  # naam onbekend; dynamic max=0.01, oude max=148
-    107: 1,  # naam onbekend; dynamic max=0.03, oude max=148
-    113: 1,  # naam onbekend; dynamic max=0.00, oude max=172
-    254: 1,  # naam onbekend; dynamic max=0.00, oude max=218
-    367: 1,  # naam onbekend; dynamic max=0.30, oude max=400
-    369: 1,  # naam onbekend; dynamic max=0.43, oude max=400
-    371: 1,  # naam onbekend; dynamic max=0.00, oude max=400
-    375: 1,  # naam onbekend; dynamic max=0.37, oude max=400
-    394: 1,  # naam onbekend; dynamic max=0.43, oude max=133
-    398: 1,  # naam onbekend; dynamic max=0.00, oude max=580
-    427: 1,  # naam onbekend; dynamic max=0.00, oude max=400
-    431: 1,  # naam onbekend; dynamic max=0.00, oude max=400
-    440: 1,  # naam onbekend; dynamic max=0.00, oude max=400
-    442: 1,  # naam onbekend; dynamic max=0.00, oude max=400
-    443: 1,  # naam onbekend; dynamic max=0.00, oude max=400
-    444: 1,  # naam onbekend; dynamic max=0.00, oude max=400
-    445: 1,  # naam onbekend; dynamic max=0.03, oude max=400
-    447: 2,  # naam onbekend; dynamic max=0.87, oude max=400
-    463: 2,  # naam onbekend; dynamic max=0.87, oude max=405
-    464: 1,  # naam onbekend; dynamic max=0.00, oude max=400
-    526: 1,  # naam onbekend; dynamic max=0.07, oude max=133
-    528: 1,  # naam onbekend; dynamic max=0.27, oude max=133
-    529: 1,  # naam onbekend; dynamic max=0.10, oude max=133
-    536: 3,  # naam onbekend; dynamic max=1.82, oude max=133
-    552: 1,  # naam onbekend; dynamic max=0.05, oude max=147
-    553: 1,  # naam onbekend; dynamic max=0.03, oude max=580
-    557: 1,  # naam onbekend; dynamic max=0.22, oude max=400
-    559: 1,  # naam onbekend; dynamic max=0.61, oude max=400
-    564: 1,  # naam onbekend; dynamic max=0.16, oude max=580
-    567: 1,  # naam onbekend; dynamic max=0.00, oude max=400
-    570: 1,  # naam onbekend; dynamic max=0.10, oude max=400
-    571: 1,  # naam onbekend; dynamic max=0.00, oude max=400
-    572: 1,  # naam onbekend; dynamic max=0.10, oude max=400
-    573: 1,  # naam onbekend; dynamic max=0.10, oude max=400
-    592: 8,  # naam onbekend; dynamic max=4.73, oude max=423
-    603: 2,  # naam onbekend; dynamic max=0.80, oude max=400
-    619: 1,  # naam onbekend; dynamic max=0.24, oude max=400
-    620: 1,  # naam onbekend; dynamic max=0.08, oude max=402
-    621: 1,  # naam onbekend; dynamic max=0.01, oude max=401
-    622: 1,  # naam onbekend; dynamic max=0.09, oude max=403
-    624: 1,  # naam onbekend; dynamic max=0.50, oude max=404
-    625: 2,  # naam onbekend; dynamic max=0.71, oude max=408
-    626: 1,  # naam onbekend; dynamic max=0.08, oude max=412
-    628: 2,  # naam onbekend; dynamic max=0.95, oude max=401
-    629: 1,  # naam onbekend; dynamic max=0.01, oude max=401
-    630: 1,  # naam onbekend; dynamic max=0.01, oude max=401
-    631: 1,  # naam onbekend; dynamic max=0.08, oude max=401
-    632: 1,  # naam onbekend; dynamic max=0.08, oude max=401
-    633: 1,  # naam onbekend; dynamic max=0.50, oude max=404
-    634: 1,  # naam onbekend; dynamic max=0.08, oude max=402
-    635: 1,  # naam onbekend; dynamic max=0.08, oude max=402
-    636: 1,  # naam onbekend; dynamic max=0.01, oude max=401
-    637: 1,  # naam onbekend; dynamic max=0.01, oude max=401
-    638: 1,  # naam onbekend; dynamic max=0.01, oude max=401
-    640: 1,  # naam onbekend; dynamic max=0.00, oude max=400
-    641: 2,  # naam onbekend; dynamic max=1.23, oude max=400
-    653: 1,  # naam onbekend; dynamic max=0.03, oude max=400
-    655: 1,  # naam onbekend; dynamic max=0.37, oude max=400
-    656: 1,  # naam onbekend; dynamic max=0.37, oude max=400
-    657: 1,  # naam onbekend; dynamic max=0.10, oude max=400
-    658: 1,  # naam onbekend; dynamic max=0.08, oude max=400
-    660: 1,  # naam onbekend; dynamic max=0.00, oude max=400
-    669: 1,  # naam onbekend; dynamic max=0.05, oude max=400
-    671: 1,  # naam onbekend; dynamic max=0.00, oude max=400
-    678: 1,  # naam onbekend; dynamic max=0.00, oude max=218
-    679: 1,  # naam onbekend; dynamic max=0.00, oude max=218
-    680: 1,  # naam onbekend; dynamic max=0.00, oude max=218
-    682: 1,  # naam onbekend; dynamic max=0.08, oude max=218
-    683: 1,  # naam onbekend; dynamic max=0.02, oude max=218
-    684: 1,  # naam onbekend; dynamic max=0.09, oude max=218
-    685: 1,  # naam onbekend; dynamic max=0.08, oude max=218
-    686: 1,  # naam onbekend; dynamic max=0.08, oude max=218
-    688: 1,  # naam onbekend; dynamic max=0.12, oude max=218
-    691: 1,  # naam onbekend; dynamic max=0.12, oude max=218
-    711: 1,  # naam onbekend; dynamic max=0.33, oude max=423
-    715: 1,  # naam onbekend; dynamic max=0.11, oude max=423
-    716: 1,  # naam onbekend; dynamic max=0.33, oude max=423
-    717: 1,  # naam onbekend; dynamic max=0.24, oude max=423
-    718: 1,  # naam onbekend; dynamic max=0.21, oude max=423
-    748: 1,  # naam onbekend; dynamic max=0.05, oude max=148
-    879: 1,  # naam onbekend; dynamic max=0.24, oude max=400
-    880: 1,  # naam onbekend; dynamic max=0.22, oude max=400
-    881: 1,  # naam onbekend; dynamic max=0.02, oude max=133
-    883: 1,  # naam onbekend; dynamic max=0.00, oude max=400
-    885: 6,  # naam onbekend; dynamic max=3.96, oude max=133
-    888: 2,  # naam onbekend; dynamic max=0.85, oude max=133
-    889: 2,  # naam onbekend; dynamic max=0.85, oude max=133
-    890: 1,  # naam onbekend; dynamic max=0.00, oude max=133
-    934: 1,  # naam onbekend; dynamic max=0.37, oude max=133
-    942: 2,  # naam onbekend; dynamic max=0.78, oude max=580
-    944: 2,  # naam onbekend; dynamic max=0.96, oude max=400
-    983: 1,  # naam onbekend; dynamic max=0.00, oude max=400
-    989: 1,  # naam onbekend; dynamic max=0.24, oude max=400
-    992: 1,  # naam onbekend; dynamic max=0.03, oude max=133
-    1085: 1,  # naam onbekend; dynamic max=0.00, oude max=100
+    n("KST00393"): 1,  # naam onbekend; dynamic max=0.01, oude max=148
+    n("KST02717"): 1,  # naam onbekend; dynamic max=0.03, oude max=148
+    n("KST00531"): 1,  # naam onbekend; dynamic max=0.00, oude max=172
+    n("KST02766"): 1,  # naam onbekend; dynamic max=0.00, oude max=218
+    n("KST01414"): 1,  # naam onbekend; dynamic max=0.30, oude max=400
+    n("KDU06955"): 1,  # naam onbekend; dynamic max=0.43, oude max=400
+    n("KDU44883"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
+    n("KDU30201"): 1,  # naam onbekend; dynamic max=0.37, oude max=400
+    n("KDU03347"): 1,  # naam onbekend; dynamic max=0.43, oude max=133
+    n("KDU03125"): 1,  # naam onbekend; dynamic max=0.00, oude max=580
+    n("KST01213"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
+    n("KDU10709"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
+    n("KDU02911"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
+    n("KDU17193"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
+    n("KSL00223"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
+    n("KDU14177"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
+    n("KDU08736"): 1,  # naam onbekend; dynamic max=0.03, oude max=400
+    n("KDU02918"): 2,  # naam onbekend; dynamic max=0.87, oude max=400
+    n("KST02725"): 2,  # naam onbekend; dynamic max=0.87, oude max=405
+    n("KDU26403"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
+    n("KST02139"): 1,  # naam onbekend; dynamic max=0.07, oude max=133
+    n("KST02972"): 1,  # naam onbekend; dynamic max=0.27, oude max=133
+    n("KST01763"): 1,  # naam onbekend; dynamic max=0.10, oude max=133
+    n("KST02353"): 3,  # naam onbekend; dynamic max=1.82, oude max=133
+    n("KST01306"): 1,  # naam onbekend; dynamic max=0.05, oude max=147
+    n("KST01258"): 1,  # naam onbekend; dynamic max=0.03, oude max=580
+    n("KST02518"): 1,  # naam onbekend; dynamic max=0.22, oude max=400
+    n("KST01197"): 1,  # naam onbekend; dynamic max=0.61, oude max=400
+    n("KST01077"): 1,  # naam onbekend; dynamic max=0.16, oude max=580
+    n("KDU22318"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
+    n("KST02973"): 1,  # naam onbekend; dynamic max=0.10, oude max=400
+    n("KST01156"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
+    n("KDU32595"): 1,  # naam onbekend; dynamic max=0.10, oude max=400
+    n("KST01133"): 1,  # naam onbekend; dynamic max=0.10, oude max=400
+    n("KDU00308"): 8,  # naam onbekend; dynamic max=4.73, oude max=423
+    n("KDU09972"): 2,  # naam onbekend; dynamic max=0.80, oude max=400
+    n("KST00340"): 1,  # naam onbekend; dynamic max=0.24, oude max=400
+    n("KST00372"): 1,  # naam onbekend; dynamic max=0.08, oude max=402
+    n("KST00941"): 1,  # naam onbekend; dynamic max=0.01, oude max=401
+    n("KST00327"): 1,  # naam onbekend; dynamic max=0.09, oude max=403
+    n("KST00828"): 1,  # naam onbekend; dynamic max=0.50, oude max=404
+    n("KST00303"): 2,  # naam onbekend; dynamic max=0.71, oude max=408
+    n("KST00852"): 1,  # naam onbekend; dynamic max=0.08, oude max=412
+    n("KST00322"): 2,  # naam onbekend; dynamic max=0.95, oude max=401
+    n("KST00853"): 1,  # naam onbekend; dynamic max=0.01, oude max=401
+    n("KST02799"): 1,  # naam onbekend; dynamic max=0.01, oude max=401
+    n("KST00334"): 1,  # naam onbekend; dynamic max=0.08, oude max=401
+    n("KST00335"): 1,  # naam onbekend; dynamic max=0.08, oude max=401
+    n("KST00302"): 1,  # naam onbekend; dynamic max=0.50, oude max=404
+    n("KDU19798"): 1,  # naam onbekend; dynamic max=0.08, oude max=402
+    n("KST00912"): 1,  # naam onbekend; dynamic max=0.08, oude max=402
+    n("KDU02900"): 1,  # naam onbekend; dynamic max=0.01, oude max=401
+    n("KST02155"): 1,  # naam onbekend; dynamic max=0.01, oude max=401
+    n("KST00308"): 1,  # naam onbekend; dynamic max=0.01, oude max=401
+    n("KST00839"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
+    n("KDU08892"): 2,  # naam onbekend; dynamic max=1.23, oude max=400
+    n("KST01039"): 1,  # naam onbekend; dynamic max=0.03, oude max=400
+    n("KST01034"): 1,  # naam onbekend; dynamic max=0.37, oude max=400
+    n("KDU06613"): 1,  # naam onbekend; dynamic max=0.37, oude max=400
+    n("KST01036"): 1,  # naam onbekend; dynamic max=0.10, oude max=400
+    n("KST00011"): 1,  # naam onbekend; dynamic max=0.08, oude max=400
+    n("KDU44303"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
+    n("KST01054"): 1,  # naam onbekend; dynamic max=0.05, oude max=400
+    n("KST00937"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
+    n("KST02538"): 1,  # naam onbekend; dynamic max=0.00, oude max=218
+    n("KDU24121"): 1,  # naam onbekend; dynamic max=0.00, oude max=218
+    n("KST02708"): 1,  # naam onbekend; dynamic max=0.00, oude max=218
+    n("KDU17373"): 1,  # naam onbekend; dynamic max=0.08, oude max=218
+    n("KST02715"): 1,  # naam onbekend; dynamic max=0.02, oude max=218
+    n("KST02707"): 1,  # naam onbekend; dynamic max=0.09, oude max=218
+    n("KDU17272"): 1,  # naam onbekend; dynamic max=0.08, oude max=218
+    n("KST02712"): 1,  # naam onbekend; dynamic max=0.08, oude max=218
+    n("KST02709"): 1,  # naam onbekend; dynamic max=0.12, oude max=218
+    n("KDU16810"): 1,  # naam onbekend; dynamic max=0.12, oude max=218
+    n("KST00323"): 1,  # naam onbekend; dynamic max=0.33, oude max=423
+    n("KST00324"): 1,  # naam onbekend; dynamic max=0.11, oude max=423
+    n("KST00832"): 1,  # naam onbekend; dynamic max=0.33, oude max=423
+    n("KST00371"): 1,  # naam onbekend; dynamic max=0.24, oude max=423
+    n("KST00856"): 1,  # naam onbekend; dynamic max=0.21, oude max=423
+    n("KST00740"): 1,  # naam onbekend; dynamic max=0.05, oude max=148
+    n("KST00309"): 1,  # naam onbekend; dynamic max=0.24, oude max=400
+    n("KDU07017"): 1,  # naam onbekend; dynamic max=0.22, oude max=400
+    n("KDU02450"): 1,  # naam onbekend; dynamic max=0.02, oude max=133
+    n("KDU22027"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
+    n("KDU04105"): 6,  # naam onbekend; dynamic max=3.96, oude max=133
+    n("KST01784"): 2,  # naam onbekend; dynamic max=0.85, oude max=133
+    n("KDU04190"): 2,  # naam onbekend; dynamic max=0.85, oude max=133
+    n("KDU45824"): 1,  # naam onbekend; dynamic max=0.00, oude max=133
+    n("KDU04504"): 1,  # naam onbekend; dynamic max=0.37, oude max=133
+    n("KDU32069"): 2,  # naam onbekend; dynamic max=0.78, oude max=580
+    n("KDU03256"): 2,  # naam onbekend; dynamic max=0.96, oude max=400
+    n("KDU06019"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
+    n("KST00917"): 1,  # naam onbekend; dynamic max=0.24, oude max=400
+    n("KST01310"): 1,  # naam onbekend; dynamic max=0.03, oude max=133
+    n("ow:OVK04500"): 1,  # naam onbekend; dynamic max=0.00, oude max=100
 }
 outlet_max_flow_rate_afvoer_by_node_id = {}
 for max_flow_rates in (outlet_max_flow_rate_from_results,):
@@ -166,37 +183,60 @@ for max_flow_rates in (outlet_max_flow_rate_from_results,):
 
 # fmt: off
 flow_control_nodes = [
-    244, 332, 363, 408, 501, 529, 553, 570, 601,603, 684, 740, 756, 885
+    n("GEM_KGM00051"), n("KDU02531"), n("KST01786"), n("KST02872"), n("KST01938"), n("KST01763"), n("KST01258"), n("KST02973"), n("KST01109"),n("KDU09972"), n("KST02707"), n("KST00420"), n("KST00878"), n("KDU04105")
 ]
 
 supply_nodes = [
-    72, 218, 240, 241, 331, 338, 383, 410, 432, 499, 503, 511, 554, 563, 569, 574, 589, 600,604, 627,
-    639, 663, 670, 690,704,706, 716, 726, 732, 750, 751, 785, 786, 818, 859, 950, 971, 973, 1055,2323
+    n("KDU00218"), n("GEM_KGM00391"), n("KDU01724"), n("KDU18314"), n("KDU32788"), n("KST02285"), n("KDU04571"), n("KDU02941"), n("KDU03124"), n("KST02376"), n("KDU30006"), n("KST01338"), n("KDU10014"), n("GEM_KGM00205"), n("KDU14555"), n("KST01131"), n("KSL00202"), n("KST01093"),n("KDU09982"), n("KDU17690"),
+    n("KST00887"), n("KST00702"), n("KDU03244"), n("KDU17337"),n("GEM_KGM00067"),n("KST00829"), n("KST00832"), n("KDU13943"), n("KST00457"), n("GEM_KGM00061"), n("GEM_KGM00059"), n("KST00395"), n("KST02306"), n("KST02843"), n("KST01640"), n("GEM_KGM00041"), n("KSL00215"), n("KGM00043"), n("ow:OVK12037"),n("inlaat-donge")
 ]
 
 drain_nodes = [
-    69, 76, 93, 101, 102, 103, 104, 107, 110, 113, 125, 126, 127, 247, 249, 336, 339, 358, 362, 369, 372, 373, 374,
-    382, 425, 434, 448, 455, 460, 470, 488, 500, 512, 513, 526, 528, 541, 545, 546, 564, 571, 575, 609,
-    611, 626, 640, 649, 650, 651, 662, 666, 669, 688, 689, 691, 718, 724, 727, 728, 729, 739, 782, 787,
-    790, 793, 801,806, 886, 887, 932, 939, 940, 941, 946, 958, 959, 962, 988, 990
+    n("KST00407"), n("KST02860"), n("KST00816"), n("KST00741"), n("KST00522"), n("KST00450"), n("KST00505"), n("KST02717"), n("KST00724"), n("KST00531"), n("KST02885"), n("KST00398"), n("KST02890"), n("KDU03581"), n("KST00827"), n("KST02287"), n("KDU05896"), n("KST01787"), n("KST01772"), n("KDU06955"), n("KDU05728"), n("KST02400"), n("KDU30360"),
+    n("GEM_KGM00119"), n("KST02290"), n("GEM_KGM00215"), n("KST00307"), n("GEM_KGM00018"), n("KDU20052"), n("KST02386"), n("KDU11005"), n("KDU03143"), n("KST01913"), n("KST01911"), n("KST02139"), n("KST02972"), n("KST01877"), n("KST01359"), n("KST01904"), n("KST01077"), n("KST01156"), n("KST01117"), n("KGM00105"),
+    n("KST02405"), n("KST00852"), n("KST00839"), n("KST01096"), n("KDU05759"), n("KST01048"), n("KST02966"), n("KST00700"), n("KST01054"), n("KST02709"), n("KST02710"), n("KDU16810"), n("KST00856"), n("KST02949"), n("KDU45058"), n("KST00820"), n("KST02175"), n("KST00477"), n("KST00469"), n("KST01266"),
+    n("GEM_KGM00006"), n("KST00426"), n("KST00413"),n("KST02895"), n("KDU04857"), n("KDU04851"), n("KST00115"), n("KDU04449"), n("KDU30310"), n("KDU30005"), n("KDU32538"), n("KST01960"), n("KDU02470"), n("KDU02457"), n("Theodorushaven"), n("GEM_KGM00206")
 ]
 # fmt: on
 
 SUPPLY_AREA_IGNORE_LINKS = {
     "Dinteloord": [],
     "Donge": [],
-    "Fijnaart": [635],
+    "Fijnaart": [lk("ow:OVK12154", "up:KDU02937")],
     "Hartelweg": [],
-    "Hoeven": [730, 731, 1105, 1106, 1554, 1758, 2233],
-    "Leursche haven": [640, 730, 731, 1071, 1136, 1641, 1643, 1758, 2225, 2226],
+    "Hoeven": [
+        lk("OVK04467-1___2", "up:KDU28032"),
+        lk("ow:OVK04344@2", "up:KDU28032"),
+        lk("ow:OVK04469-1", "up:KST01414"),
+        lk("ow:OVK07869-0", "up:KDU03208"),
+        lk("up:KST01414", "OVK04467-1___2"),
+        lk("up:KDU28032", "ow:OVK07869-0"),
+        lk("up:ow:OVK04469-1", "ow:OVK04469-1"),
+    ],
+    "Leursche haven": [
+        lk("ow:OVK07815", "up:KDU02968"),
+        lk("OVK04467-1___2", "up:KDU28032"),
+        lk("ow:OVK04344@2", "up:KDU28032"),
+        lk("OVK04089___1", "up:GEM_KGM00355"),
+        lk("ow:OVK07819", "up:KDU02941"),
+        lk("up:KDU02941", "ow:OVK07815"),
+        lk("up:KDU03252", "ow:OVK07819"),
+        lk("up:KDU28032", "ow:OVK07869-0"),
+        lk("up:ow:OVK04090", "ow:OVK04090"),
+        lk("up:OVK04089___1", "OVK04089___1"),
+    ],
     "Made": [],
     "Molenpolder": [],
     "Oud Gastel": [],
     "Patersheide": [],
     "Slikken": [],
     "Sprangsloot": [],
-    "Steenbergen": [1028, 2227],
-    "Weimeren": [1071, 2225, 2226],
+    "Steenbergen": [lk("OVK04601___5", "up:ow:OVK04503"), lk("up:KDU19778", "ow:OVK06051")],
+    "Weimeren": [
+        lk("OVK04089___1", "up:GEM_KGM00355"),
+        lk("up:ow:OVK04090", "ow:OVK04090"),
+        lk("up:OVK04089___1", "OVK04089___1"),
+    ],
     "Westplas": [],
 }
 
@@ -233,18 +273,6 @@ def add_supply_area_control(
 
 
 # %%
-# Definieren paden en syncen met cloud
-cloud = CloudStorage()
-ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
-ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
-qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
-
-aanvoergebieden_gpkg = cloud.joinpath(r"BrabantseDelta/verwerkt/sturing/aanvoergebieden.gpkg")
-
-
-# %%
-# Read data
-model = Model.read(ribasim_toml)
 
 assert model.outlet.static.df is not None
 outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.node_id.astype(int), 10.0)
@@ -254,28 +282,28 @@ aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).diss
 # %% Fixes
 
 # model.update_node(node_id=968, node_type="Outlet")  # wordt outlet, was manning
-model.remove_node(977, remove_links=True)
-model.remove_node(829, remove_links=True)
-model.remove_node(1049, remove_links=True)
+model.remove_node(n("KGM00052"), remove_links=True)
+model.remove_node(n("GEM_KGM00053"), remove_links=True)
+model.remove_node(n("ow:OVK12030"), remove_links=True)
 
-model.reverse_link(link_id=469)
-model.reverse_link(link_id=1536)
+model.reverse_link(link_id=lk("KST00114", "up:KST02972"))
+model.reverse_link(link_id=lk("up:GEM_KGM00139", "KST00114"))
 
-model.reverse_link(link_id=2483)
-model.reverse_link(link_id=2228)
+model.reverse_link(link_id=lk("ow:OVK12040", "bnd:36"))
+model.reverse_link(link_id=lk("up:OVK06052", "ow:OVK12040"))
 
-model.reverse_link(link_id=1973)
-model.reverse_link(link_id=861)
-model.reverse_link(link_id=845)
-model.reverse_link(link_id=1253)
+model.reverse_link(link_id=lk("up:KDU00331", "KDU11184"))
+model.reverse_link(link_id=lk("KDU11184", "up:KST00531"))
+model.reverse_link(link_id=lk("KDU03574", "up:KST00724"))
+model.reverse_link(link_id=lk("up:GEM_KGM00051", "KDU03574"))
 
 # Roode Vaart: Outlet 589 laat in vanuit het Hollandsch Diep; Pump 972 blijft de Roode Vaart afmalen
-model.reverse_link(link_id=2458)
-model.reverse_link(link_id=1685)
+model.reverse_link(link_id=lk("KSL00202", "bnd:22"))
+model.reverse_link(link_id=lk("up:KDU02937", "KSL00202"))
 
 ## Dintelsas Volkerak hoort hydraulisch een uitlaat naar RWS te zijn.
 ## Tijdelijk als pomp modelleren, omdat afwatering anders vastloopt op hoge RWS-waterstanden.
-temporary_rws_pump_node_id = 1056
+temporary_rws_pump_node_id = n("ow:OVK12034")
 model.update_node(node_id=temporary_rws_pump_node_id, node_type="Pump")
 model.node.df.loc[temporary_rws_pump_node_id, "name"] = (
     "Dintelsas Volkerak tijdelijke pomp naar RWS (eigenlijk uitlaat)"
@@ -287,14 +315,14 @@ model.pump.static.df.loc[model.pump.static.df.node_id == temporary_rws_pump_node
 
 ## Uitlaat naar het Schelde-Rijnkanaal loopt in gekoppelde runs hydraulisch vast door negatieve delta h.
 ## Tijdelijk als pomp modelleren; hydraulisch hoort dit een uitlaat naar RWS te zijn.
-temporary_zoommeer_pump_node_id = 509
+temporary_zoommeer_pump_node_id = n("KDU45738")
 model.update_node(node_id=temporary_zoommeer_pump_node_id, node_type="Pump")
 model.node.df.loc[temporary_zoommeer_pump_node_id, "name"] = "Zoommeer tijdelijke pomp naar RWS (eigenlijk uitlaat)"
 
 # Flow_rate was te laag ingesteld
-model.pump.static.df.loc[model.pump.static.df.node_id == 376, ["flow_rate", "max_flow_rate"]] = 5
+model.pump.static.df.loc[model.pump.static.df.node_id == n("GEM_KGM00399"), ["flow_rate", "max_flow_rate"]] = 5
 
-model.pump.static.df.loc[model.pump.static.df.node_id == 446, ["flow_rate", "max_flow_rate"]] = 5
+model.pump.static.df.loc[model.pump.static.df.node_id == n("GEM_KGM00073"), ["flow_rate", "max_flow_rate"]] = 5
 
 
 # %%
@@ -335,26 +363,26 @@ add_controllers_to_uncontrolled_connector_nodes(
 # Pomp-capaciteiten op basis van hoogste berekende dynamic debiet, afgerond naar boven.
 # Bestaande handmatige pompwaarden, zoals 376 en 446, blijven leidend.
 pump_max_flow_rate_from_results = {
-    208: 1,  # naam onbekend; oude static flow_rate=0.13
-    244: 1,  # naam onbekend; oude static flow_rate=0.13
-    413: 3,  # naam onbekend; oude static flow_rate=1.58
-    434: 1,  # naam onbekend; oude static flow_rate=0.62
-    453: 1,  # naam onbekend; oude static flow_rate=0.2
-    498: 3,  # naam onbekend; oude static flow_rate=1.9
-    510: 1,  # naam onbekend; oude static flow_rate=0.21
-    527: 4,  # naam onbekend; oude static flow_rate=0.75
-    540: 1,  # naam onbekend; oude static flow_rate=0.2
-    561: 2,  # naam onbekend; dynamic max=0.77, oude static flow_rate=0.5
-    609: 1,  # Canada; oude static flow_rate=0.05
-    623: 1,  # naam onbekend; oude static flow_rate=0.2
-    659: 2,  # naam onbekend; oude static flow_rate=1.58
-    797: 3,  # naam onbekend; oude static flow_rate=1.58
-    800: 2,  # naam onbekend; oude static flow_rate=0.08
-    990: 1,  # naam onbekend; oude static flow_rate=0.04
-    972: 5,  # Roode Vaart naar Hollandsch Diep; 15 mm/dag over de 28.6 km2 die erop afwatert
-    984: 1,  # Gemaal bij Keersluis Leursche Haven; dynamic max=0.54, oude max=120
-    985: 1,  # Gemaal bii Keersluis Laaksche Vaart; dynamic max=0.46, oude max=120
-    509: 24.1,  # Tijdelijke pomp naar Zoommeer; behoud de oude afvoercapaciteit van de uitlaat.
+    n("GEM_KGM00345"): 1,  # naam onbekend; oude static flow_rate=0.13
+    n("GEM_KGM00051"): 1,  # naam onbekend; oude static flow_rate=0.13
+    n("GEM_KGM00311"): 3,  # naam onbekend; oude static flow_rate=1.58
+    n("GEM_KGM00215"): 1,  # naam onbekend; oude static flow_rate=0.62
+    n("GEM_KGM00025"): 1,  # naam onbekend; oude static flow_rate=0.2
+    n("GEM_KGM00022"): 3,  # naam onbekend; oude static flow_rate=1.9
+    n("GEM_KGM00107"): 1,  # naam onbekend; oude static flow_rate=0.21
+    n("GEM_KGM00111"): 4,  # naam onbekend; oude static flow_rate=0.75
+    n("GEM_KGM00350"): 1,  # naam onbekend; oude static flow_rate=0.2
+    n("GEM_KGM00309"): 2,  # naam onbekend; dynamic max=0.77, oude static flow_rate=0.5
+    n("KGM00105"): 1,  # Canada; oude static flow_rate=0.05
+    n("GEM_KGM00003"): 1,  # naam onbekend; oude static flow_rate=0.2
+    n("GEM_KGM00355"): 2,  # naam onbekend; oude static flow_rate=1.58
+    n("GEM_KGM00426"): 3,  # naam onbekend; oude static flow_rate=1.58
+    n("GEM_KGM00038"): 2,  # naam onbekend; oude static flow_rate=0.08
+    n("GEM_KGM00206"): 1,  # naam onbekend; oude static flow_rate=0.04
+    n("KGM00425"): 5,  # Roode Vaart naar Hollandsch Diep; 15 mm/dag over de 28.6 km2 die erop afwatert
+    n("KGM00421"): 1,  # Gemaal bij Keersluis Leursche Haven; dynamic max=0.54, oude max=120
+    n("KGM00420"): 1,  # Gemaal bii Keersluis Laaksche Vaart; dynamic max=0.46, oude max=120
+    n("KDU45738"): 24.1,  # Tijdelijke pomp naar Zoommeer; behoud de oude afvoercapaciteit van de uitlaat.
 }
 mask = (
     model.pump.static.df.node_id.isin(pump_max_flow_rate_from_results)
@@ -390,7 +418,7 @@ flow_demand_controlled_node_ids = set(
     .dropna()
     .astype(int)
 )
-manual_max_flow_rate_node_ids = {376, 446, 509, 1056}
+manual_max_flow_rate_node_ids = {n("GEM_KGM00399"), n("GEM_KGM00073"), n("KDU45738"), n("ow:OVK12034")}
 protected_max_flow_rate_node_ids = set(EXCLUDE_NODES) | flow_demand_controlled_node_ids | manual_max_flow_rate_node_ids
 for static_df in (model.outlet.static.df, model.pump.static.df):
     assert static_df is not None

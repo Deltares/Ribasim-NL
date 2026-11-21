@@ -42,6 +42,8 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/
 processor = paths.feedback_processor(work_dir=paths.model_dir("profiles"))
 
 ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = ribasim_model.node_id
 
 # reset pump capacity for each pump
 assert ribasim_model.pump.static.df is not None
@@ -66,40 +68,39 @@ categorize_nodes(ribasim_model)
 from_to_node_function_table = node_function_table(ribasim_model)
 
 to_drain = (
-    525,
-    530,
-    609,
-    1096,
-    1179,
-    1307,
-    1455,
-    1456,
-    1474,
+    n("403-036-00022"),
+    n("160-036-00028"),
+    n("180-056-00500"),
+    n("078-036-00022"),
+    n("180-036-00049"),
+    n("418-056-00025"),
+    n("loc:95198,455864"),
+    n("loc:104703,453092"),
+    n("loc:113030,489579"),
 )
 to_flow_control = (
-    487,
-    619,
-    625,
-    963,
-    1148,
-    1180,
+    n("ow:247-058-00828-01_31622"),
+    n("416-056-00001"),
+    n("ow:180-033-04433_11074"),
+    n("250-056-00036"),
+    n("180-056-00563"),
 )
 to_supply = (
-    398,
-    535,
-    630,
-    690,
-    885,
-    889,
-    901,
-    1030,
-    1032,
-    1255,
-    1347,
-    1349,
-    1439,
-    1454,
-    1471,
+    n("ow:250-058-02136-01_40731"),
+    n("180-056-00125"),
+    n("180-056-00297"),
+    n("255-036-00021"),
+    n("180-056-00820"),
+    n("263-056-00007"),
+    n("ow:010-058-00017-01_180548"),
+    n("ow:097-033-00012_5252"),
+    n("ow:155-033-00106_5425"),
+    n("180-056-00599"),
+    n("ow:180-033-05435_35928"),
+    n("180-056-00577"),
+    n("loc:113465,448516"),
+    n("loc:85918,460954"),
+    n("loc:102318,491416"),
 )
 from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
@@ -111,12 +112,29 @@ add_controllers(ribasim_model, from_to_node_function_table, remove_duplicates=Tr
 assign_pump_and_basin_names(ribasim_model, paths)
 
 # according data flow_rate of 0
-zero_flow_pumps = [460, 736, 1282, 1435, 1436, 1471, 1472]
+zero_flow_pumps = [
+    n("180-036-00073"),
+    n("426-036-00021"),
+    n("423-036-00021"),
+    n("loc:88593,464205"),
+    n("loc:93134,471673"),
+    n("loc:102318,491416"),
+    n("loc:105373,486990"),
+]
 assert ribasim_model.pump.static.df is not None
 set_flow_rate(ribasim_model.pump.static.df, zero_flow_pumps, 25.0)
 
 # presumably wrong conversion of flow capacity in the data
-increase_flow_rate_pumps = [354, 463, 496, 754, 781, 793, 987, 1179]
+increase_flow_rate_pumps = [
+    n("180-036-00048"),
+    n("180-036-00046"),
+    n("180-036-00057"),
+    n("169-036-00028"),
+    n("242-036-00022"),
+    n("155-036-00022"),
+    n("180-036-00105"),
+    n("180-036-00049"),
+]
 ribasim_model.pump.static.df.loc[
     ribasim_model.pump.static.df["node_id"].isin(increase_flow_rate_pumps), ["flow_rate", "max_flow_rate"]
 ] *= 60
@@ -153,42 +171,42 @@ ribasim_model = complete_parametrization(
     ribasim_model,
     paths,
     custom_nodes={
-        1354: "Noordzee",
-        1367: "Delfland",
-        1481: "StichtseRijnlanden",
-        1485: "StichtseRijnlanden",
-        1486: "StichtseRijnlanden",
-        1487: "StichtseRijnlanden",
-        1488: "StichtseRijnlanden",
-        1489: "StichtseRijnlanden",
-        1490: "StichtseRijnlanden",
+        n("bnd:448-036-00021|RIJNLANDSBOEZEM_dummy_id_280>"): "Noordzee",
+        n("bnd:ow:247-033-00011_550"): "Delfland",
+        n("loc:110865,446289"): "StichtseRijnlanden",
+        n("loc:111786,446255"): "StichtseRijnlanden",
+        n("loc:113790,446726"): "StichtseRijnlanden",
+        n("loc:112442,446074"): "StichtseRijnlanden",
+        n("loc:113639,446227"): "StichtseRijnlanden",
+        n("loc:111784,446219"): "StichtseRijnlanden",
+        n("loc:111811,446252"): "StichtseRijnlanden",
     },
 )
 
 # set the unknown capacities of Pumps and Outlets from the area they drain or supply
 set_design_capacities(ribasim_model, from_to_node_function_table)
 
-# The boezemgemalen drain the boezem in steps of the level of Basin 2771, in the middle of the boezem, rather than of
+# The boezemgemalen drain the boezem in steps of the level of the Basin in the middle of the boezem, rather than of
 # the Basins next to them, see https://github.com/Deltares/Ribasim-NL/issues/906 and
 # https://github.com/Deltares/Ribasim-NL/pull/928#issuecomment-6443645940
-BOEZEM_BASIN = 2771  # streefpeil -0.61 m NAP
-# The Basins next to the gemalen are about 1 cm lower than Basin 2771. With the min_upstream_level of -0.61 m NAP
+BOEZEM_BASIN = n("RIJNLANDSBOEZEM_dummy_id_281/286")  # streefpeil -0.61 m NAP
+# The Basins next to the gemalen are about 1 cm lower than that Basin. With the min_upstream_level of -0.61 m NAP
 # they had, the gemalen would only pump a fraction of their steps, so it is a safety limit below the streefpeil.
 BOEZEM_MIN_UPSTREAM_LEVEL = -0.65
 # (node_id, name, levels [m+NAP] at which the steps switch on, flow rates [m3/s] below and above them, hysteresis [m])
 BOEZEMGEMALEN: tuple[tuple[int, str, list[float], list[float], float | list[float]], ...] = (
     (
-        421,
+        n("448-036-00021|RIJNLANDSBOEZEM_dummy_id_280>"),
         "Katwijk",
         [-0.595, -0.585, -0.575, -0.57, -0.565, -0.56],
         [0.0, 15.0, 30.0, 45.0, 60.0, 75.0, 94.0],
         DEFAULT_LEVEL_STEP_HYSTERESIS,
     ),
     # Halfweg switches on before Spaarndam
-    (834, "Spaarndam", [-0.605], [0.0, 32.0], DEFAULT_LEVEL_STEP_HYSTERESIS),
-    (1474, "Halfweg", [-0.615], [0.0, 33.0], DEFAULT_LEVEL_STEP_HYSTERESIS),
+    (n("464-036-00021"), "Spaarndam", [-0.605], [0.0, 32.0], DEFAULT_LEVEL_STEP_HYSTERESIS),
+    (n("loc:113030,489579"), "Halfweg", [-0.615], [0.0, 33.0], DEFAULT_LEVEL_STEP_HYSTERESIS),
     # Gouda starts at -0.59 m NAP and stops below -0.595 m NAP
-    (1279, "Gouda", [-0.59, -0.57], [0.0, 34.5, 40.0], [0.005, DEFAULT_LEVEL_STEP_HYSTERESIS]),
+    (n("433-036-00021"), "Gouda", [-0.59, -0.57], [0.0, 34.5, 40.0], [0.005, DEFAULT_LEVEL_STEP_HYSTERESIS]),
 )
 for node_id, name, levels, flow_rates, hysteresis in BOEZEMGEMALEN:
     pump_name = ribasim_model.node.df.at[node_id, "name"]
@@ -205,8 +223,7 @@ for node_id, name, levels, flow_rates, hysteresis in BOEZEMGEMALEN:
     )
 
 # Katwijk flushes at least 1.07 m3/s, which a FlowDemand on a Pump sets as its minimum flow rate
-KATWIJK = 421
-katwijk = ribasim_model.pump[KATWIJK]
+katwijk = ribasim_model.pump[n("448-036-00021|RIJNLANDSBOEZEM_dummy_id_280>")]
 doorspoeling = ribasim_model.flow_demand.add(
     Node(geometry=Point(katwijk.geometry.x, katwijk.geometry.y - 20), name="doorspoeling Katwijk"),
     [flow_demand.Static(demand=[1.07], demand_priority=[1])],

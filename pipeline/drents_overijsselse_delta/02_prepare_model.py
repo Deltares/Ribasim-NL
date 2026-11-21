@@ -37,6 +37,8 @@ top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
 # %% init things
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
 lines_gdf = pd.concat(
     [gpd.read_file(hydamo_wm_gpkg, layer="hydroobject"), gpd.read_file(meppelerdiep_gpkg)], ignore_index=True
@@ -62,11 +64,9 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 # %% Quick fix basins
 
 assert model.outlet.static.df is not None
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 1389, "flow_rate"] = 0.1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 2609, "flow_rate"] = 0.1
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 2609, "min_upstream_level"] = 9.35
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 463, "min_upstream_level"] = 9.35
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 463, "flow_rate"] = 0.5
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("stuw.34935"), "flow_rate"] = 0.1
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("stuw.2022"), "min_upstream_level"] = 9.35
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("stuw.2022"), "flow_rate"] = 0.5
 # %%
 
 assert model.basin.area.df is not None
@@ -195,9 +195,6 @@ streefpeil = non_kdu_first.combine_first(all_first)
 streefpeil = streefpeil["min_upstream_level"]
 streefpeil.index.name = "node_id"
 streefpeil.name = "streefpeil"
-
-# manual fix to avoid exception
-streefpeil.loc[2608] = 9.35  # ty: ignore[invalid-assignment]
 static_data.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
 # %% Bepaal min_upstream_level at Manning locations`en vul de nodata basins met deze streefpeilen
@@ -276,13 +273,13 @@ static_data.add_series(node_type="Pump", series=flow_rate)
 
 # %%
 
-model.basin.area.df.loc[model.basin.area.df.node_id == 2190, "meta_streefpeil"] = -0.6
-model.basin.area.df.loc[model.basin.area.df.node_id == 1868, "meta_streefpeil"] = 3.5
-model.basin.area.df.loc[model.basin.area.df.node_id == 1612, "meta_streefpeil"] = float(
-    cast(float, model.basin.area.df.set_index("node_id").at[1769, "meta_streefpeil"])
+model.basin.area.df.loc[model.basin.area.df.node_id == n("up:duikersifonhevel.283210"), "meta_streefpeil"] = -0.6
+model.basin.area.df.loc[model.basin.area.df.node_id == n("up:duikersifonhevel.20901"), "meta_streefpeil"] = 3.5
+model.basin.area.df.loc[model.basin.area.df.node_id == n("up:stuw.1748"), "meta_streefpeil"] = float(
+    cast(float, model.basin.area.df.set_index("node_id").at[n("up:ow:hydroobject.9552"), "meta_streefpeil"])
 )
 
-model.basin.area.df.loc[model.basin.area.df.node_id == 2190, "meta_streefpeil"] = -0.19
+model.basin.area.df.loc[model.basin.area.df.node_id == n("up:duikersifonhevel.283210"), "meta_streefpeil"] = -0.19
 # %%
 
 # get all nodata streefpeilen with their profile_ids and levels

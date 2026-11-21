@@ -11,6 +11,7 @@ from ribasim.nodes import basin, level_boundary, manning_resistance, outlet, pum
 from ribasim.validation import can_connect
 from ribasim_nl.geometry import drop_z, link, polygon_parts, split_basin, split_basin_multi_polygon
 from ribasim_nl.gkw import get_data_from_gkw
+from ribasim_nl.keys import KEY_COLUMN, NODE_ARGUMENTS
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
 from shapely import wkt
@@ -58,6 +59,9 @@ DINKEL_KANAAL = [
 ]
 
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
+lk = model.link_id
 network_validator = NetworkValidator(model)
 
 # %% some stuff we'll need again
@@ -233,11 +237,11 @@ model.node.df.loc[basin_mask, "geometry"] = model.node.df.loc[basin_mask, "geome
 # Toevoegen benedenstroomse randvoorwaarden Beneden Dinkel
 
 # verander basin met node_id 2250 naar type level_boundary
-model.update_node(2250, "LevelBoundary", data=[level_data])
+model.update_node(n("down:DK12209"), "LevelBoundary", data=[level_data])
 
 
 # verplaats basin 1375 naar het hydroobject
-node_id = 1375
+node_id = n("down:ST01112")
 
 model.node.df.loc[node_id, "geometry"] = cast(LineString, hydroobject_gdf.at[3135, "geometry"]).interpolate(  # ty: ignore[invalid-assignment]
     0.5, normalized=True
@@ -255,7 +259,7 @@ model.reset_link_geometry(link_ids=link_ids)
 new_node_ids = iter(range(2265, 2303))
 
 # verbind basins met level_boundaries
-for fid, node_id in [(1, 1375), (2, 1624)]:
+for fid, node_id in [(1, n("down:ST01112")), (2, n("down:ow:WL00364-2"))]:
     boundary_node_geometry = cast(Point, level_boundary_gdf.at[fid, "geometry"])
 
     # line for interpolation
@@ -267,8 +271,10 @@ for fid, node_id in [(1, 1375), (2, 1624)]:
     boundary_node = model.level_boundary.add(
         Node(node_id=next(new_node_ids), geometry=boundary_node_geometry), tables=[level_data]
     )
+    # the model edits remove this second LevelBoundary at the same place, by its key
     level_node = model.level_boundary.add(
-        Node(node_id=next(new_node_ids), geometry=boundary_node_geometry), tables=[level_data]
+        Node(node_id=next(new_node_ids), geometry=boundary_node_geometry, meta_key=f"duplicate:level_boundary:{fid}"),
+        tables=[level_data],
     )
 
     # define manning_resistance_node
@@ -290,7 +296,18 @@ for fid, node_id in [(1, 1375), (2, 1624)]:
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2382565944
 
 # Verwijderen Twentekanaal (zit al bij RWS-HWS)
-remove_node_ids = [1562, 1568, 1801, 1804, 1810, 1900, 2114, 2118, 2119, 32]
+remove_node_ids = [
+    n("up:ST02055"),
+    n("up:ow:WL00588-3"),
+    n("up:DK29483"),
+    n("up:ow:WL01009-6"),
+    n("up:GM00020"),
+    n("up:GM00181"),
+    n("up:SL00015"),
+    n("up:DK31294"),
+    n("up:ow:WL00625-4@2"),
+    n("bnd:32"),
+]
 
 # remove by link so we also remove all resistance nodes in between
 link_df = model.link.df[
@@ -322,8 +339,14 @@ for node_id in connect_node_ids:
 
     _, boundary_node_geometry = nearest_points(node.geometry, twentekanaal_poly.boundary)
 
+    # several of these boundaries are at the same place: their key follows from the node they connect to
     boundary_node = model.level_boundary.add(
-        Node(node_id=next(new_node_ids), geometry=boundary_node_geometry), tables=[level_data]
+        Node(
+            node_id=next(new_node_ids),
+            geometry=boundary_node_geometry,
+            meta_key=f"twentekanaal:{model.node.df.at[node_id, KEY_COLUMN]}",
+        ),
+        tables=[level_data],
     )
 
     # draw link in the correct direction
@@ -337,7 +360,7 @@ for node_id in connect_node_ids:
 # Opruimen situatie rondom gemaal Oude Drostendiep
 
 # pumps met node_id 639, 608 en 603 op te heffen (1 gemaal ipv 3)
-remove_node_ids = [639, 608, 603]
+remove_node_ids = [n("GM00259"), n("GM00257"), n("GM00256")]
 
 for node_id in remove_node_ids:
     model.remove_node(node_id, remove_links=True)
@@ -353,8 +376,8 @@ for row in link_df.itertuples():
     )
 
 # basin met node_id 1436 te verplaatsen naar locatie basin node_id 2259
-basin_id = 1436
-model.node.df.loc[basin_id, "geometry"] = model.basin[2259].geometry  # ty: ignore[invalid-assignment]
+basin_id = n("up:GM00256")
+model.node.df.loc[basin_id, "geometry"] = model.basin[n("up:GM00258")].geometry  # ty: ignore[invalid-assignment]
 link_ids = model.link.df[
     (model.link.df.from_node_id == basin_id) | (model.link.df.to_node_id == basin_id)
 ].index.to_list()
@@ -362,14 +385,14 @@ link_ids = model.link.df[
 model.reset_link_geometry(link_ids=link_ids)
 
 # basin met node_id 2259 opheffen (klein niets-zeggend bakje)
-model.remove_node(2259, remove_links=True)
+model.remove_node(n("up:GM00258"), remove_links=True)
 
 # stuw ST05005 (node_id 361) verbinden met basin met node_id 1436
-model.link.add(model.tabulated_rating_curve[361], model.basin[basin_id])
-model.link.add(model.basin[basin_id], model.pump[635])
+model.link.add(model.tabulated_rating_curve[n("ST05005")], model.basin[basin_id])
+model.link.add(model.basin[basin_id], model.pump[n("GM00258")])
 
 # basin met node_id 2250 verplaatsen naar logische plek bovenstrooms ST05005 en bendenstrooms ST02886 op hydroobjec
-basin_id = 2255
+basin_id = n("up:ST05005")
 model.node.df.loc[basin_id, ["geometry"]] = cast(LineString, hydroobject_gdf.at[6444, "geometry"]).interpolate(  # ty: ignore[invalid-assignment]
     0.5, normalized=True
 )
@@ -382,7 +405,7 @@ model.reset_link_geometry(link_ids=link_ids)
 
 # the part of the area across the line goes to basin 2255
 area = areas_gdf.loc[areas_gdf["code"] == "BC4070775"].union_all()
-split_basin_area_to(model, area, cast(LineString, split_line_gdf.at[9, "geometry"]), 2255)
+split_basin_area_to(model, area, cast(LineString, split_line_gdf.at[9, "geometry"]), n("up:ST05005"))
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2385409772
 
@@ -393,13 +416,13 @@ assert next(new_node_ids, None) is None, "not all nodes got their node ID"
 
 # basin 2224 en manning_resistance 898 (DK28491) opheffen
 # tabulated_rating_cuves 336 (ST03745) en 238 (ST03744) opheffen
-remove_node_ids = [2224, 898, 336, 238]
+remove_node_ids = [n("up:DK28491"), n("DK28491"), n("ST03745"), n("ST03744")]
 
 for node_id in remove_node_ids:
     model.remove_node(node_id, remove_links=True)
 
 # pump 667 (GM00088) verbinden met basin 1495
-model.link.add(model.pump[667], model.basin[1495])
+model.link.add(model.pump[n("GM00088")], model.basin[n("up:SL00018")])
 
 # model.basin.area.df = model.basin.area.df[model.basin.area.df.node_id.isin(model.unassigned_basin_area.node_id)]
 
@@ -407,14 +430,14 @@ model.link.add(model.pump[667], model.basin[1495])
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2387026622
 
 # opruimen basin at Amsterdamscheveld
-model.remove_node(1683, remove_links=True)
+model.remove_node(n("up:ST03258"), remove_links=True)
 
 # verbinden basin node_id 1680 met tabulated_rating_curve node_id 101 en 125
-model.link.add(model.basin[1680], model.tabulated_rating_curve[101])
-model.link.add(model.basin[1680], model.tabulated_rating_curve[125])
+model.link.add(model.basin[n("up:DK18674")], model.tabulated_rating_curve[n("ST03258")])
+model.link.add(model.basin[n("up:DK18674")], model.tabulated_rating_curve[n("ST04330")])
 
 # verbinden pump node_id 622 met basin node_id 1680
-model.link.add(model.pump[622], model.basin[1680])
+model.link.add(model.pump[n("GM00166")], model.basin[n("up:DK18674")])
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2387056481
 
@@ -423,19 +446,19 @@ model.link.add(model.pump[622], model.basin[1680])
 # split basin_area bij manning_resistance node_id 1365
 
 line = cast(LineString, split_line_gdf.at[1, "geometry"])
-split_basin_area_to(model, basin_area_of(model, 1633), line, 1876)
+split_basin_area_to(model, basin_area_of(model, n("up:DK22251")), line, n("up:ow:WL03771-5"))
 
 # hef basin node_id 1901 op
-model.remove_node(1901, remove_links=True)
+model.remove_node(n("up:GM00246"), remove_links=True)
 
 # hef pump node_id 574 (GM00246) en node_id 638 (GM00249) op
-model.remove_node(574, remove_links=True)
-model.remove_node(638, remove_links=True)
+model.remove_node(n("GM00246"), remove_links=True)
+model.remove_node(n("GM00249"), remove_links=True)
 
 # verbind basin node_id 1876 met pump node_ids 626 (GM00248) en 654 (GM00247)
-model.link.add(model.basin[1876], model.pump[626])
-model.link.add(model.basin[1876], model.pump[654])
-model.link.add(model.tabulated_rating_curve[113], model.basin[1876])
+model.link.add(model.basin[n("up:ow:WL03771-5")], model.pump[n("GM00248")])
+model.link.add(model.basin[n("up:ow:WL03771-5")], model.pump[n("GM00247")])
+model.link.add(model.tabulated_rating_curve[n("ST03276")], model.basin[n("up:ow:WL03771-5")])
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2387815013
 
@@ -444,31 +467,31 @@ model.link.add(model.tabulated_rating_curve[113], model.basin[1876])
 
 # split basin_area bij rode lijn
 line = cast(LineString, split_line_gdf.at[2, "geometry"])
-split_basin_area_to(model, basin_area_of(model, 2317), line, 1897)
+split_basin_area_to(model, basin_area_of(model, n("up:DK22039")), line, n("up:DK21370"))
 
 # verwijderen basin 2226, 2258, 2242 en manning_resistance 1366
-for node_id in [2226, 2258, 2242, 1366, 1350]:
+for node_id in [n("up:ST03499"), n("up:ST03138"), n("up:WL03769-1___0"), n("WL02749-0___0"), n("ow:WL03769-0")]:
     model.remove_node(node_id, remove_links=True)
 
 # verbinden tabulated_rating_curves 327 (ST03499) en 510 (ST03198) met basin 1897
-model.link.add(model.basin[1897], model.tabulated_rating_curve[327])
-model.link.add(model.tabulated_rating_curve[510], model.basin[1897])
+model.link.add(model.basin[n("up:DK21370")], model.tabulated_rating_curve[n("ST03499")])
+model.link.add(model.tabulated_rating_curve[n("ST03198")], model.basin[n("up:DK21370")])
 
 # verbinden basin 1897 met tabulated_rating_curve 279 (ST03138)
-model.link.add(model.basin[1897], model.tabulated_rating_curve[279])
+model.link.add(model.basin[n("up:DK21370")], model.tabulated_rating_curve[n("ST03138")])
 
 # verbinden basin 1897 met manning_resistance 1351 en 1352
-model.link.add(model.basin[1897], model.manning_resistance[1351])
-model.link.add(model.basin[1897], model.manning_resistance[1352])
+model.link.add(model.basin[n("up:DK21370")], model.manning_resistance[n("WL03769-1___0")])
+model.link.add(model.basin[n("up:DK21370")], model.manning_resistance[n("ow:WL03696-0")])
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2387888742
 
 # Oplossen situatie Van Echtenskanaal/Scholtenskanaal Klazinaveen
 
 # verplaatsen level_boundary 33 naar splitsing scholtenskanaal/echtenskanaal en omzetten naar basin
-outlet_node_geometry = model.level_boundary[33].geometry
-model.update_node(33, "Basin", data=basin_data)
-model.move_node(node_id=33, geometry=hydroobject_gdf.loc[2679].geometry.boundary.geoms[1])
+outlet_node_geometry = model.level_boundary[n("bnd:33")].geometry
+model.update_node(n("bnd:33"), "Basin", data=basin_data)
+model.move_node(node_id=n("bnd:33"), geometry=hydroobject_gdf.loc[2679].geometry.boundary.geoms[1])
 
 # plaatsen outlet bij oorspronkelijke plaats level_boundary 33
 outlet_node = model.outlet.add(Node(geometry=outlet_node_geometry), tables=[outlet_data])
@@ -479,46 +502,56 @@ boundary_node = model.level_boundary.add(
 )
 
 # toevoegen links vanaf nieuwe basin 33 naar nieuwe outlet naar nieuwe boundary
-model.link.add(model.basin[33], outlet_node, geometry=link(model.basin[33].geometry, outlet_node.geometry))
+model.link.add(
+    model.basin[n("bnd:33")], outlet_node, geometry=link(model.basin[n("bnd:33")].geometry, outlet_node.geometry)
+)
 model.link.add(outlet_node, boundary_node)
 
 # opheffen manning_resistance 1330 bij GM00213
-model.remove_node(1330, remove_links=True)
+model.remove_node(n("WL08126"), remove_links=True)
 
 # verbinden nieuwe basin met outlet en oorspronkijke manning_knopen en pompen in oorspronkelijke richting
-for link_id in [2711, 2712, 2713, 2714, 2708]:
+for link_id in [
+    lk("bnd:33", "DK20536"),
+    lk("bnd:33", "DK25528"),
+    lk("bnd:33", "GM00137"),
+    lk("bnd:33", "GM00213"),
+    lk("bnd:33", "DK17914"),
+]:
     model.reverse_link(link_id=link_id)
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2388009499
 
 # basin met node_id 1873 gaat richting geesburg
-model.move_node(node_id=1873, geometry=hydroobject_gdf.loc[6616].geometry.boundary.geoms[1])
+model.move_node(node_id=n("up:ow:WL07329-0"), geometry=hydroobject_gdf.loc[6616].geometry.boundary.geoms[1])
 assert model.basin.area.df is not None
-model.basin.area.df = model.basin.area.df[model.basin.area.df.node_id != 1873]
+model.basin.area.df = model.basin.area.df[model.basin.area.df.node_id != n("up:ow:WL07329-0")]
 # ege 2700, 2701, 2702 worden opgeheven
-model.link.df = model.link.df[~model.link.df.index.isin([2700, 2701, 2702])]
+model.link.df = model.link.df[
+    ~model.link.df.index.isin([lk("bnd:26", "ow:WL03773-2"), lk("bnd:26", "ow:WL03158-2"), lk("bnd:26", "DK28693")])
+]
 
 # basin 1873 wordt verbonden met manning_resistance 1054
 model.link.add(
-    model.basin[1873],
-    model.manning_resistance[1054],
-    geometry=link(model.basin[1873].geometry, model.manning_resistance[1054].geometry),
+    model.basin[n("up:ow:WL07329-0")],
+    model.manning_resistance[n("DK28693")],
+    geometry=link(model.basin[n("up:ow:WL07329-0")].geometry, model.manning_resistance[n("DK28693")].geometry),
 )
 
 # manning_resistance 1308 en 1331 worden verbonden met basin 1873
 model.link.add(
-    model.manning_resistance[1308],
-    model.basin[1873],
-    geometry=link(model.manning_resistance[1308].geometry, model.basin[1873].geometry),
+    model.manning_resistance[n("ow:WL03158-2")],
+    model.basin[n("up:ow:WL07329-0")],
+    geometry=link(model.manning_resistance[n("ow:WL03158-2")].geometry, model.basin[n("up:ow:WL07329-0")].geometry),
 )
 model.link.add(
-    model.basin[1873],
-    model.manning_resistance[1331],
-    geometry=link(model.basin[1873].geometry, model.manning_resistance[1331].geometry),
+    model.basin[n("up:ow:WL07329-0")],
+    model.manning_resistance[n("ow:WL03773-2")],
+    geometry=link(model.basin[n("up:ow:WL07329-0")].geometry, model.manning_resistance[n("ow:WL03773-2")].geometry),
 )
 
 # level_boundary 26 wordt een outlet
-model.update_node(26, "Outlet", data=[outlet_data])
+model.update_node(n("bnd:26"), "Outlet", data=[outlet_data])
 
 # nieuwe level_boundary benedenstrooms nieuwe outlet 26
 boundary_node = model.level_boundary.add(
@@ -528,12 +561,12 @@ boundary_node = model.level_boundary.add(
 
 # basin 1873 wordt verbonden met outlet en outlet met level_boundary
 model.link.add(
-    model.outlet[26],
-    model.basin[1873],
-    geometry=link(model.outlet[26].geometry, model.basin[1873].geometry),
+    model.outlet[n("bnd:26")],
+    model.basin[n("up:ow:WL07329-0")],
+    geometry=link(model.outlet[n("bnd:26")].geometry, model.basin[n("up:ow:WL07329-0")].geometry),
 )
 
-model.link.add(boundary_node, model.outlet[26])
+model.link.add(boundary_node, model.outlet[n("bnd:26")])
 
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2388334544
@@ -541,7 +574,19 @@ model.link.add(boundary_node, model.outlet[26])
 # Kruising Dinkel/Kanaal Almelo Nordhorn corrigeren
 
 # ege 2700, 2701, 2702 worden opgeheven
-model.link.df = model.link.df[~model.link.df.index.isin([2690, 2691, 2692, 2693, 2694, 2695, 2696])]
+model.link.df = model.link.df[
+    ~model.link.df.index.isin(
+        [
+            lk("ST02130", "bnd:21"),
+            lk("ST01054", "bnd:21"),
+            lk("ST02129", "bnd:21"),
+            lk("DK04325", "bnd:21"),
+            lk("ST01666", "bnd:21"),
+            lk("ST01865", "bnd:21"),
+            lk("ow:WL00317-1", "bnd:21"),
+        ]
+    )
+]
 
 # basin / area splitten bij rode lijn in twee vlakken
 line = cast(LineString, split_line_gdf.at[3, "geometry"])
@@ -566,35 +611,35 @@ model.add_basin_area(MultiPolygon(rest), node_id=kanaal_basin_node.node_id)
 
 # links v.a. tabulated_rating_curve 298 (ST01865) en 448 (ST01666) naar dinkel-basin
 model.link.add(
-    model.tabulated_rating_curve[298],
+    model.tabulated_rating_curve[n("ST01865")],
     dinkel_basin_node,
-    geometry=link(model.tabulated_rating_curve[298].geometry, dinkel_basin_node.geometry),
+    geometry=link(model.tabulated_rating_curve[n("ST01865")].geometry, dinkel_basin_node.geometry),
 )
 
 model.link.add(
-    model.tabulated_rating_curve[448],
+    model.tabulated_rating_curve[n("ST01666")],
     dinkel_basin_node,
-    geometry=link(model.tabulated_rating_curve[448].geometry, dinkel_basin_node.geometry),
+    geometry=link(model.tabulated_rating_curve[n("ST01666")].geometry, dinkel_basin_node.geometry),
 )
 
 # link v.a. manning_resistance 915 naar dinkel basin
 model.link.add(
-    model.manning_resistance[915],
+    model.manning_resistance[n("DK04325")],
     dinkel_basin_node,
-    geometry=link(model.manning_resistance[915].geometry, dinkel_basin_node.geometry),
+    geometry=link(model.manning_resistance[n("DK04325")].geometry, dinkel_basin_node.geometry),
 )
 
 # links v.a. dinkel basin naar tabulate_rating_curves 132 (ST02129) en 474 (ST02130)
 model.link.add(
     dinkel_basin_node,
-    model.tabulated_rating_curve[132],
-    geometry=link(dinkel_basin_node.geometry, model.tabulated_rating_curve[132].geometry),
+    model.tabulated_rating_curve[n("ST02129")],
+    geometry=link(dinkel_basin_node.geometry, model.tabulated_rating_curve[n("ST02129")].geometry),
 )
 
 model.link.add(
     dinkel_basin_node,
-    model.tabulated_rating_curve[474],
-    geometry=link(dinkel_basin_node.geometry, model.tabulated_rating_curve[474].geometry),
+    model.tabulated_rating_curve[n("ST02130")],
+    geometry=link(dinkel_basin_node.geometry, model.tabulated_rating_curve[n("ST02130")].geometry),
 )
 
 # nieuwe manning_resistance in nieuwe dinkel-basin bovenstrooms kanaal
@@ -619,15 +664,15 @@ model.link.add(
 # nieuw kanaal-basin vervinden met tabulated_rating_curve 471 (ST01051)
 model.link.add(
     kanaal_basin_node,
-    model.tabulated_rating_curve[471],
-    geometry=link(kanaal_basin_node.geometry, model.tabulated_rating_curve[471].geometry),
+    model.tabulated_rating_curve[n("ST01054")],
+    geometry=link(kanaal_basin_node.geometry, model.tabulated_rating_curve[n("ST01054")].geometry),
 )
 
 # nieuw kanaal-basin vervinden met manning_resistance 1346
 model.link.add(
     kanaal_basin_node,
-    model.manning_resistance[1346],
-    geometry=link(kanaal_basin_node.geometry, model.manning_resistance[1346].geometry),
+    model.manning_resistance[n("ow:WL00317-1")],
+    geometry=link(kanaal_basin_node.geometry, model.manning_resistance[n("ow:WL00317-1")].geometry),
 )
 
 # nieuwe outletlet bij grensduiker kanaal
@@ -643,64 +688,73 @@ model.link.add(
 )
 
 model.link.add(
-    model.level_boundary[21],
+    model.level_boundary[n("bnd:21")],
     outlet_node,
-    geometry=link(model.level_boundary[21].geometry, outlet_node.geometry),
+    geometry=link(model.level_boundary[n("bnd:21")].geometry, outlet_node.geometry),
 )
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2389192454
-model.reverse_link(link_id=2685)
-model.remove_node(node_id=2229, remove_links=True)
+model.reverse_link(link_id=lk("ST04518", "bnd:16"))
+model.remove_node(node_id=n("up:DK20196_BO"), remove_links=True)
 model.link.add(
-    model.basin[1778],
-    model.outlet[1080],
-    geometry=link(model.basin[1778].geometry, model.outlet[1080].geometry),
+    model.basin[n("up:ST03404")],
+    model.outlet[n("DK20196_BO")],
+    geometry=link(model.basin[n("up:ST03404")].geometry, model.outlet[n("DK20196_BO")].geometry),
 )
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2389198178
-model.reverse_link(link_id=2715)
-model.reverse_link(link_id=2720)
+model.reverse_link(link_id=lk("DK25408", "bnd:34"))
+model.reverse_link(link_id=lk("ow:WL05791-16@1", "bnd:34"))
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2390712613
 
 # Oplossen toplogische situatie kanaal Coevorden
 
 # opheffen basin 2243 en basin 2182
-model.remove_node(2243, remove_links=True)
-model.remove_node(2182, remove_links=True)
-model.remove_node(1351, remove_links=True)
-model.remove_node(1268, remove_links=True)
-model.remove_node(1265, remove_links=True)
+model.remove_node(n("up:ow:WL03769-1"), remove_links=True)
+model.remove_node(n("up:ow:WL05791-16@3"), remove_links=True)
+model.remove_node(n("WL03769-1___0"), remove_links=True)
+model.remove_node(n("ow:WL05791-16@3"), remove_links=True)
+model.remove_node(n("ow:WL03769-1"), remove_links=True)
 
 # # verplaatsen basin 1678 naar kruising waterlopen
-model.move_node(node_id=1678, geometry=hydroobject_gdf.loc[6594].geometry.boundary.geoms[1])
+model.move_node(node_id=n("up:ow:WL03768-2"), geometry=hydroobject_gdf.loc[6594].geometry.boundary.geoms[1])
 
 # onknippen basin bij rode lijn
 line = cast(LineString, split_line_gdf.at[4, "geometry"])
 basin_area_row = model.basin.area.df[model.basin.area.df.contains(line.centroid)].iloc[0]
-split_basin_area_to(model, basin_area_row.geometry, line, 1678)
+split_basin_area_to(model, basin_area_row.geometry, line, n("up:ow:WL03768-2"))
 
 # verwijderen links 809, 814, 807, 810, 1293, 2772
-model.link.df = model.link.df[~model.link.df.index.isin([809, 814, 807, 810, 887])]
+model.link.df = model.link.df[
+    ~model.link.df.index.isin(
+        [
+            lk("GM00197", "up:DK22251"),
+            lk("ow:WL03300", "up:DK22251"),
+            lk("GM00251", "up:DK22251"),
+            lk("GM00093", "up:DK22251"),
+        ]
+    )
+]
 
 
 # verbinden manning 1270, 1127 en pumps 644, 579 en 649 met basin 1678
-for node_id in [1270, 1127]:
+for node_id in [n("ow:WL03300"), n("ow:WL05791-16@2")]:
     model.link.add(
         model.manning_resistance[node_id],
-        model.basin[1678],
-        geometry=link(model.manning_resistance[node_id].geometry, model.basin[1678].geometry),
+        model.basin[n("up:ow:WL03768-2")],
+        geometry=link(model.manning_resistance[node_id].geometry, model.basin[n("up:ow:WL03768-2")].geometry),
     )
 
-for node_id in [644, 579, 649]:
+for node_id in [n("GM00197"), n("GM00251"), n("GM00093")]:
     model.link.add(
         model.pump[node_id],
-        model.basin[1678],
-        geometry=link(model.pump[node_id].geometry, model.basin[1678].geometry),
+        model.basin[n("up:ow:WL03768-2")],
+        geometry=link(model.pump[node_id].geometry, model.basin[n("up:ow:WL03768-2")].geometry),
     )
 
 # verplaatsen manning 1267 naar basin-link tussen 1678 en 1678
-model.move_node(node_id=1267, geometry=hydroobject_gdf.loc[6609].geometry.boundary.geoms[1])
+model.move_node(node_id=n("ow:WL03767"), geometry=hydroobject_gdf.loc[6609].geometry.boundary.geoms[1])
 
 # maak nieuwe manning-node tussen 1678 en 1897
 manning_node = model.manning_resistance.add(
@@ -710,15 +764,15 @@ manning_node = model.manning_resistance.add(
 
 # verbinden basin 1897 met manning-node
 model.link.add(
-    model.basin[1897],
+    model.basin[n("up:DK21370")],
     manning_node,
-    geometry=link(model.basin[1897].geometry, manning_node.geometry),
+    geometry=link(model.basin[n("up:DK21370")].geometry, manning_node.geometry),
 )
 
 model.link.add(
     manning_node,
-    model.basin[1678],
-    geometry=link(manning_node.geometry, model.basin[1678].geometry),
+    model.basin[n("up:ow:WL03768-2")],
+    geometry=link(manning_node.geometry, model.basin[n("up:ow:WL03768-2")].geometry),
 )
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2390952469
@@ -726,23 +780,23 @@ model.link.add(
 # Schoonebekerdiep v.a. Twist Bült
 
 # verplaatsen basin 1909 nabij tabulated_rating_curve 383 (ST03607)
-model.move_node(1909, geometry=hydroobject_gdf.loc[6865].geometry.boundary.geoms[1])
+model.move_node(n("down:bnd:23"), geometry=hydroobject_gdf.loc[6865].geometry.boundary.geoms[1])
 
 # verwijderen links 780 en 778
-model.link.df = model.link.df[~model.link.df.index.isin([780, 778])]
+model.link.df = model.link.df[~model.link.df.index.isin([lk("DK21938", "up:ST03340"), lk("ST03607", "up:ST03340")])]
 
 # toevoegen link tussen tabulated_rating_curve 383 en basin 1909
 model.link.add(
-    model.tabulated_rating_curve[383],
-    model.basin[1909],
-    geometry=link(model.tabulated_rating_curve[383].geometry, model.basin[1909].geometry),
+    model.tabulated_rating_curve[n("ST03607")],
+    model.basin[n("down:bnd:23")],
+    geometry=link(model.tabulated_rating_curve[n("ST03607")].geometry, model.basin[n("down:bnd:23")].geometry),
 )
 
 # toevoegen link tussen manning_resistance 851 en basin 1909
 model.link.add(
-    model.manning_resistance[851],
-    model.basin[1909],
-    geometry=link(model.manning_resistance[851].geometry, model.basin[1909].geometry),
+    model.manning_resistance[n("DK21938")],
+    model.basin[n("down:bnd:23")],
+    geometry=link(model.manning_resistance[n("DK21938")].geometry, model.basin[n("down:bnd:23")].geometry),
 )
 
 # opknippen basin 1538 nabij 1909 en verbinden basin 1909 met 1539 via nieuwe manning_knoop
@@ -753,279 +807,311 @@ manning_node = model.manning_resistance.add(
     tables=[manning_data],
 )
 
-model.node.df.loc[1909, "geometry"] = drop_z(model.basin[1909].geometry)  # ty: ignore[invalid-assignment]
-model.link.add(model.basin[1909], manning_node)
-model.link.add(manning_node, model.basin[1539], geometry=link(manning_node.geometry, model.basin[1539].geometry))
+model.node.df.loc[n("down:bnd:23"), "geometry"] = drop_z(model.basin[n("down:bnd:23")].geometry)  # ty: ignore[invalid-assignment]
+model.link.add(model.basin[n("down:bnd:23")], manning_node)
+model.link.add(
+    manning_node,
+    model.basin[n("up:ST03340")],
+    geometry=link(manning_node.geometry, model.basin[n("up:ST03340")].geometry),
+)
 
 # verwijderen link 2716,2718,2718,2719
-model.link.df = model.link.df[~model.link.df.index.isin([2716, 2717, 2718, 2719])]
+model.link.df = model.link.df[
+    ~model.link.df.index.isin(
+        [lk("ST03247", "bnd:34"), lk("ST03340", "bnd:34"), lk("ST03296", "bnd:34"), lk("ST03580", "bnd:34")]
+    )
+]
 
 # opknippen basin 2181 nabij 1881 en verbinden basin 1881 met 2181 via nieuwe manning_knoop
-model.move_node(1881, geometry=hydroobject_gdf.loc[6919].geometry.boundary.geoms[1])
+model.move_node(n("up:GM00191"), geometry=hydroobject_gdf.loc[6919].geometry.boundary.geoms[1])
 line = cast(LineString, split_line_gdf.at[6, "geometry"])
-split_basin_area_to(model, basin_area_of(model, 2181), line, 1881)
+split_basin_area_to(model, basin_area_of(model, n("up:ow:WL05791-16@2")), line, n("up:GM00191"))
 manning_node = model.manning_resistance.add(
     Node(geometry=cast(Point, line.intersection(cast(LineString, hydroobject_gdf.at[6879, "geometry"])))),
     tables=[manning_data],
 )
-model.node.df.loc[1881, "geometry"] = drop_z(model.basin[1881].geometry)  # ty: ignore[invalid-assignment]
-model.link.add(model.basin[1881], manning_node)
-model.link.add(manning_node, model.basin[2181], geometry=link(manning_node.geometry, model.basin[2181].geometry))
+model.node.df.loc[n("up:GM00191"), "geometry"] = drop_z(model.basin[n("up:GM00191")].geometry)  # ty: ignore[invalid-assignment]
+model.link.add(model.basin[n("up:GM00191")], manning_node)
+model.link.add(
+    manning_node,
+    model.basin[n("up:ow:WL05791-16@2")],
+    geometry=link(manning_node.geometry, model.basin[n("up:ow:WL05791-16@2")].geometry),
+)
 
-for node_id in [139, 251, 267, 205]:
+for node_id in [n("ST03247"), n("ST03296"), n("ST03580"), n("ST03340")]:
     model.link.add(
         model.tabulated_rating_curve[node_id],
-        model.basin[1881],
-        geometry=link(model.tabulated_rating_curve[node_id].geometry, model.basin[1881].geometry),
+        model.basin[n("up:GM00191")],
+        geometry=link(model.tabulated_rating_curve[node_id].geometry, model.basin[n("up:GM00191")].geometry),
     )
 
-model.move_node(1269, cast(LineString, hydroobject_gdf.at[7749, "geometry"]).interpolate(0.5, normalized=True))
+model.move_node(
+    n("ow:WL05791-16@1"), cast(LineString, hydroobject_gdf.at[7749, "geometry"]).interpolate(0.5, normalized=True)
+)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391168839
 
 # Molengoot Hardenberg
 
 # opheffen basin 1903
-model.remove_node(1903, remove_links=True)
+model.remove_node(n("up:GM00101"), remove_links=True)
 
 # verbinden basin 1433 met pump 621
 model.link.add(
-    model.basin[1433],
-    model.pump[621],
-    geometry=link(model.basin[1433].geometry, model.pump[621].geometry),
+    model.basin[n("up:GM00159")],
+    model.pump[n("GM00101")],
+    geometry=link(model.basin[n("up:GM00159")].geometry, model.pump[n("GM00101")].geometry),
 )
 
 # verbinden tabulated_rating_curves 99 en 283 met basin 1433
-for node_id in [99, 283]:
+for node_id in [n("ST03347"), n("ST02896")]:
     model.link.add(
         model.tabulated_rating_curve[node_id],
-        model.basin[1433],
-        geometry=link(model.tabulated_rating_curve[node_id].geometry, model.basin[1433].geometry),
+        model.basin[n("up:GM00159")],
+        geometry=link(model.tabulated_rating_curve[node_id].geometry, model.basin[n("up:GM00159")].geometry),
     )
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2390898004
 
-model.remove_node(1131, remove_links=True)
-model.remove_node(1757, remove_links=True)
+model.remove_node(n("ow:WL01165-19"), remove_links=True)
+model.remove_node(n("up:ST01353"), remove_links=True)
 model.link.add(
-    model.basin[1588],
-    model.tabulated_rating_curve[112],
-    geometry=link(model.basin[1588].geometry, model.tabulated_rating_curve[112].geometry),
+    model.basin[n("up:ow:WL01165-19")],
+    model.tabulated_rating_curve[n("ST01353")],
+    geometry=link(model.basin[n("up:ow:WL01165-19")].geometry, model.tabulated_rating_curve[n("ST01353")].geometry),
 )
 model.link.add(
-    model.basin[1588],
-    model.manning_resistance[57],
-    geometry=link(model.basin[1588].geometry, model.manning_resistance[57].geometry),
+    model.basin[n("up:ow:WL01165-19")],
+    model.manning_resistance[n("vw034_89")],
+    geometry=link(model.basin[n("up:ow:WL01165-19")].geometry, model.manning_resistance[n("vw034_89")].geometry),
 )
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391191673
 
 # verwijderen basin 1905
-model.remove_node(1905, remove_links=True)
+model.remove_node(n("up:DK17739"), remove_links=True)
 
 # verbinden manning_resistance 995 met basin 2148
 model.link.add(
-    model.basin[2148],
-    model.manning_resistance[995],
+    model.basin[n("up:DK02511")],
+    model.manning_resistance[n("DK17739")],
 )
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391460899
 
 # Samenvoegen basin-knopen Overijsselse Vecht & Coevorden Vechtkanaal
-for basin_id in [1845, 2244, 2006, 1846]:
-    model.merge_basins(node_id=basin_id, to_node_id=2222)
+for basin_id in [n("up:DK26272"), n("up:ow:WL03781-13"), n("up:ow:WL06799"), n("up:DK21481")]:
+    model.merge_basins(node_id=basin_id, to_node_id=n("up:ow:WL02747-4"))
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391666745
 
 # Opruimen basins Nieuw-Amsterdam
 
 # opknippen basin 1611 bij rode lijn, area mergen met basin 1879
-basin_polygon = model.basin.area.df.set_index("node_id").at[1611, "geometry"]
+basin_polygon = model.basin.area.df.set_index("node_id").at[n("up:ow:WL03772-1"), "geometry"]
 left_poly, right_poly = split_basin_multi_polygon(
     cast(MultiPolygon, basin_polygon), cast(LineString, split_line_gdf.at[8, "geometry"])
 )
-model.basin.area.df.loc[model.basin.area.df.node_id == 1611, ["geometry"]] = right_poly  # ty: ignore[invalid-assignment]
+model.basin.area.df.loc[model.basin.area.df.node_id == n("up:ow:WL03772-1"), ["geometry"]] = right_poly  # ty: ignore[invalid-assignment]
 
 left_poly = cast(
-    Polygon, cast(MultiPolygon, model.basin.area.df.set_index("node_id").at[1879, "geometry"]).union(left_poly)
+    Polygon,
+    cast(MultiPolygon, model.basin.area.df.set_index("node_id").at[n("up:ow:WL03161"), "geometry"]).union(left_poly),
 )
-model.basin.area.df.loc[model.basin.area.df.node_id == 1879, ["geometry"]] = MultiPolygon([left_poly])  # ty: ignore[invalid-assignment]
+model.basin.area.df.loc[model.basin.area.df.node_id == n("up:ow:WL03161"), ["geometry"]] = MultiPolygon([left_poly])  # ty: ignore[invalid-assignment]
 
 # merge basins 2186, 2173, 2022, 1611, 2185 in basin 1902
-for basin_id in [2186, 2173, 2022, 1611, 2185]:
-    model.merge_basins(node_id=basin_id, to_node_id=1902)
+for basin_id in [
+    n("up:ow:WL06797-1@2"),
+    n("up:ow:WL03772-2"),
+    n("up:ow:WL03162@2"),
+    n("up:ow:WL03772-1"),
+    n("up:DK26372"),
+]:
+    model.merge_basins(node_id=basin_id, to_node_id=n("up:SL00008"))
 
 # verplaats 1902 iets bovenstrooms
-model.move_node(1902, cast(LineString, hydroobject_gdf.at[6615, "geometry"]).boundary.geoms[1])
+model.move_node(n("up:SL00008"), cast(LineString, hydroobject_gdf.at[6615, "geometry"]).boundary.geoms[1])
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391686269
-model.remove_node(2198, remove_links=True)
-model.remove_node(2200, remove_links=True)
-model.link.add(model.basin[2111], model.pump[671])
-model.link.add(model.tabulated_rating_curve[542], model.basin[2111])
-model.link.add(model.pump[671], model.basin[2316])
-model.link.add(model.basin[2316], model.tabulated_rating_curve[542])
+model.remove_node(n("up:ST02804"), remove_links=True)
+model.remove_node(n("up:GM00182"), remove_links=True)
+model.link.add(model.basin[n("up:ow:WL00451-4")], model.pump[n("GM00182")])
+model.link.add(model.tabulated_rating_curve[n("ST02804")], model.basin[n("up:ow:WL00451-4")])
+model.link.add(model.pump[n("GM00182")], model.basin[n("up:ST01676")])
+model.link.add(model.basin[n("up:ST01676")], model.tabulated_rating_curve[n("ST02804")])
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391710413
 
-model.remove_node(2202, remove_links=True)
-model.link.add(model.basin[1590], model.pump[657])
-model.link.add(model.manning_resistance[1058], model.basin[1590])
+model.remove_node(n("up:GM00194"), remove_links=True)
+model.link.add(model.basin[n("up:GM00092")], model.pump[n("GM00194")])
+model.link.add(model.manning_resistance[n("DK26416")], model.basin[n("up:GM00092")])
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391672700
 
 # Merge basin 2176 in 1605
-model.merge_basins(node_id=2176, to_node_id=1605)
+model.merge_basins(node_id=n("up:ow:WL03775-1"), to_node_id=n("up:ST03211"))
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391726774
 # Merge basins 2206 in 1518
-model.merge_basins(node_id=2206, to_node_id=1518, are_connected=False)
+model.merge_basins(node_id=n("up:ST04067"), to_node_id=n("up:ow:WL03440-7"), are_connected=False)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391734144
 # dood takje uit Overijsselse Vecht
-model.remove_node(2210, remove_links=True)
-model.remove_node(1294, remove_links=True)
+model.remove_node(n("up:ow:WL07806"), remove_links=True)
+model.remove_node(n("ow:WL07806"), remove_links=True)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391740603
 
 # Merge basin 2225 met 2304
-model.merge_basins(node_id=2225, to_node_id=2304)
+model.merge_basins(node_id=n("up:DK24425"), to_node_id=n("up:DK18155"))
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391815016
 
 # Wetteringe als laterale inflow
-model.merge_basins(node_id=2231, to_node_id=1853)
+model.merge_basins(node_id=n("up:du"), to_node_id=n("up:ST04838"))
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391750536
 
 # Rondom SL00010 opruimen
-model.remove_node(2230, remove_links=True)
-model.remove_node(2251, remove_links=True)
-model.link.add(model.outlet[41], model.level_boundary[15])
-model.link.add(model.basin[1442], model.pump[664])
-model.link.add(model.basin[1442], model.pump[665])
+model.remove_node(n("up:GM00231"), remove_links=True)
+model.remove_node(n("down:SL00010"), remove_links=True)
+model.link.add(model.outlet[n("SL00010")], model.level_boundary[n("bnd:15")])
+model.link.add(model.basin[n("up:DK25518")], model.pump[n("GM00232")])
+model.link.add(model.basin[n("up:DK25518")], model.pump[n("GM00231")])
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391820198
 
 # Merge basin 2232 in 1591
-model.merge_basins(node_id=2232, to_node_id=1591)
+model.merge_basins(node_id=n("up:DK04860"), to_node_id=n("up:ST01683"))
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391825301
 
 # Basin 2236 naar LevelBoundary
-model.update_node(2236, "LevelBoundary", data=[level_data])
+model.update_node(n("up:ST00558"), "LevelBoundary", data=[level_data])
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391829471
 
 # Merge basin 2246 en 1419
-model.merge_basins(node_id=2246, to_node_id=1419)
+model.merge_basins(node_id=n("up:ow:WL02245-2-0"), to_node_id=n("up:ST00101"))
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391946915
 
 # Opruimen Elsbeek
 
 # Basin 2256 verplaatsen naar punt
-model.move_node(node_id=2256, geometry=hydroobject_gdf.loc[2896].geometry.boundary.geoms[1])
+model.move_node(node_id=n("up:DK29373"), geometry=hydroobject_gdf.loc[2896].geometry.boundary.geoms[1])
 
 # Basin knippen over lijn
-model.basin.area.df = model.basin.area.df[model.basin.area.df.node_id != 2256]
-split_basin_area_to(model, basin_area_of(model, 1422), cast(LineString, split_line_gdf.at[10, "geometry"]), 2256)
+model.basin.area.df = model.basin.area.df[model.basin.area.df.node_id != n("up:DK29373")]
+split_basin_area_to(
+    model, basin_area_of(model, n("up:ST04431")), cast(LineString, split_line_gdf.at[10, "geometry"]), n("up:DK29373")
+)
 
 # Links 446, 1516, 443 en 444 verwijderen
-model.link.df = model.link.df[~model.link.df.index.isin([446, 1516, 443, 444])]
+model.link.df = model.link.df[
+    ~model.link.df.index.isin(
+        [
+            lk("DK11088", "up:ST04431"),
+            lk("up:ST04431", "ow:WL00282-2"),
+            lk("ST04683", "up:ST04431"),
+            lk("ST04448", "up:ST04431"),
+        ]
+    )
+]
 
 # tabulated_rating_curves 202 en 230 verbinden met basin 2256
 model.link.add(
-    model.tabulated_rating_curve[202],
-    model.basin[2256],
-    geometry=link(model.tabulated_rating_curve[202].geometry, model.basin[2256].geometry),
+    model.tabulated_rating_curve[n("ST04683")],
+    model.basin[n("up:DK29373")],
+    geometry=link(model.tabulated_rating_curve[n("ST04683")].geometry, model.basin[n("up:DK29373")].geometry),
 )
 model.link.add(
-    model.tabulated_rating_curve[230],
-    model.basin[2256],
-    geometry=link(model.tabulated_rating_curve[230].geometry, model.basin[2256].geometry),
+    model.tabulated_rating_curve[n("ST04448")],
+    model.basin[n("up:DK29373")],
+    geometry=link(model.tabulated_rating_curve[n("ST04448")].geometry, model.basin[n("up:DK29373")].geometry),
 )
 
 # resistance 954 verbinden met basin 2256
 model.link.add(
-    model.manning_resistance[954],
-    model.basin[2256],
-    geometry=link(model.manning_resistance[954].geometry, model.basin[2256].geometry),
+    model.manning_resistance[n("DK11088")],
+    model.basin[n("up:DK29373")],
+    geometry=link(model.manning_resistance[n("DK11088")].geometry, model.basin[n("up:DK29373")].geometry),
 )
 
 # basin 2256 verbinden met resistance 1106
 model.link.add(
-    model.basin[2256],
-    model.manning_resistance[1106],
-    geometry=link(model.basin[2256].geometry, model.manning_resistance[1106].geometry),
+    model.basin[n("up:DK29373")],
+    model.manning_resistance[n("ow:WL00282-2")],
+    geometry=link(model.basin[n("up:DK29373")].geometry, model.manning_resistance[n("ow:WL00282-2")].geometry),
 )
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391984234
 
 # Merge basin 2261 in basin 1698
-model.merge_basins(node_id=2261, to_node_id=1698)
+model.merge_basins(node_id=n("up:ST02504"), to_node_id=n("up:DK15163"))
 # model.remove_node(390, remove_links=True)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2391995841
 
 # Merge basin 2260 met basin 1645
-model.merge_basins(node_id=2260, to_node_id=1645)
+model.merge_basins(node_id=n("up:ST00875"), to_node_id=n("up:WL00714-11"))
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392010526
 # Merge basin 2220 met basin 1371
-model.merge_basins(node_id=2220, to_node_id=1371, are_connected=False)
+model.merge_basins(node_id=n("up:ST00373"), to_node_id=n("up:DK05134"), are_connected=False)
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392017041
 
 # Kanaal Almelo Nordhorn bij Almelo
-model.merge_basins(node_id=2219, to_node_id=1583, are_connected=False)
-model.merge_basins(node_id=2209, to_node_id=1583, are_connected=False)
+model.merge_basins(node_id=n("up:ST01682"), to_node_id=n("up:ow:WL00448-2"), are_connected=False)
+model.merge_basins(node_id=n("up:GM00207"), to_node_id=n("up:ow:WL00448-2"), are_connected=False)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392022887
 
 # Merge basin 2203 met 2227
-model.merge_basins(node_id=2203, to_node_id=2227, are_connected=False)
-model.remove_node(1219, remove_links=True)
+model.merge_basins(node_id=n("up:ST03006"), to_node_id=n("up:ST03168"), are_connected=False)
+model.remove_node(n("ow:WL03777@2"), remove_links=True)
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392026739
 
 # Merge basin 2014 met 2144
-model.merge_basins(node_id=2014, to_node_id=2144)
+model.merge_basins(node_id=n("up:ST00916"), to_node_id=n("up:DK12629"))
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392030268
 
 # Merge basin 1696 met 1411
-model.merge_basins(node_id=1696, to_node_id=1411)
+model.merge_basins(node_id=n("up:ST00957"), to_node_id=n("up:ow:WL00712-18"))
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392037263
 
 # Merge basin 2264 met 1459
-model.merge_basins(node_id=2264, to_node_id=1459)
+model.merge_basins(node_id=n("up:ow:WL03777@2"), to_node_id=n("up:ST01276"))
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392043973
 
 # Merge basin 2212 en 2310
-model.merge_basins(node_id=2212, to_node_id=2310)
+model.merge_basins(node_id=n("up:ST00239"), to_node_id=n("up:ow:WL06796-14"))
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392048684
 
 # Merge basin 2253 in basin 2228
-model.merge_basins(node_id=2253, to_node_id=2228)
+model.merge_basins(node_id=n("up:ST02015"), to_node_id=n("up:ST02809"))
 
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392052379
 
 # Merge basin 2221 in basin 1634
-model.merge_basins(node_id=2221, to_node_id=1634)
+model.merge_basins(node_id=n("up:WL01863-3"), to_node_id=n("up:ow:WL01863-9"))
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2392076634
 
 # Verbinding rondwaterleiding / Lennelwaterleiding herstellen
-model.merge_basins(node_id=1859, to_node_id=2235, are_connected=False)
+model.merge_basins(node_id=n("up:GM00112"), to_node_id=n("up:ST04476"), are_connected=False)
 
 # %%
 # corrigeren knoop-topologie
@@ -1089,9 +1175,9 @@ sanitize_node_table(
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/890
 # FlowBoundary 25 is the inflow of the Wetteringe, not of the CPK, which is LevelBoundary 34
-assert model.node.df.at[25, "node_type"] == "FlowBoundary", model.node.df.at[25, "node_type"]
-assert model.node.df.at[25, "name"] == "CPK", model.node.df.at[25, "name"]
-model.node.df.loc[25, "name"] = "Wetteringe"
+assert model.node.df.at[n("bnd:25"), "node_type"] == "FlowBoundary", model.node.df.at[n("bnd:25"), "node_type"]
+assert model.node.df.at[n("bnd:25"), "name"] == "CPK", model.node.df.at[n("bnd:25"), "name"]
+model.node.df.loc[n("bnd:25"), "name"] = "Wetteringe"
 
 # %%
 actions = [
@@ -1120,6 +1206,13 @@ for action in actions:
         # filter kwargs by keywords
         # itertuples rows are namedtuples, whose `_asdict` ty sees as a column
         kwargs = cast(Any, row)._asdict()
+        # a layer refers to a node by its key, and to a link by the keys of its two nodes, see `Model.apply_edits`
+        for argument in sorted(NODE_ARGUMENTS):
+            key = kwargs.pop(argument.removesuffix("_id") + "_key", None)
+            if pd.notna(key):
+                kwargs[argument] = n(key)
+        if "link_from_key" in kwargs:
+            kwargs["link_id"] = lk(kwargs.pop("link_from_key"), kwargs.pop("link_to_key"))
         if inspect.getfullargspec(method).varkw != "kwargs":
             keywords = inspect.getfullargspec(method).args
             kwargs = {k: v for k, v in kwargs.items() if k in keywords}
@@ -1129,58 +1222,58 @@ for action in actions:
 
 # fmt: off
 CUSTOM_REDIRECT_LINKS = [
-    {"link_id": 89, "to_node_id": 1561},
-    {"link_id": 1989, "from_node_id": 2333},
-    {"link_id": 1990, "from_node_id": 2333},
+    {"link_id": lk("vw034_89", "up:ST02237"), "to_node_id": n("up:ow:WL01181-5")},
+    {"link_id": lk("up:GM00234", "ST04777"), "from_node_id": n("loc:235324,512655")},
+    {"link_id": lk("up:GM00234", "GM00234"), "from_node_id": n("loc:235324,512655")},
 ]
 
 MERGE_TO_NODE = [
-    (2115, 1405), (1378, 1431), (2211, 1727), (1538, 33), (1963, 1518),
-    (2245, 1818), (2026, 1818), (1412, 2107), (1592, 1765), (1765, 1817),
-    (2159, 1890), (1654, 2163), (1628, 2143), (1821, 2143), (2144, 2143),
-    (2116, 1730), (2177, 1730),
+    (n("up:ow:WL00588-6"), n("up:ST00245")), (n("up:DK12481"), n("up:ow:WL01265-14")), (n("up:DK28022"), n("up:ST02860")), (n("up:DK20536"), n("bnd:33")), (n("up:DK18457"), n("up:ow:WL03440-7")),
+    (n("up:ST02645"), n("up:DK15988")), (n("up:DK13613"), n("up:DK15988")), (n("up:ow:WL00328"), n("up:ST00126")), (n("up:DK15528"), n("up:DK00277")), (n("up:DK00277"), n("up:ow:WL01220-5")),
+    (n("up:ow:WL02781-1"), n("up:DK20616")), (n("up:ow:WL03049-1"), n("up:DK17873")), (n("up:DK14459"), n("up:ow:WL01604-23")), (n("up:ow:WL01604-22"), n("up:ow:WL01604-23")), (n("up:DK12629"), n("up:ow:WL01604-23")),
+    (n("up:ST01777"), n("up:ST03541")), (n("up:DK23361"), n("up:ST03541")),
 ]
 
 NODES_TO_REMOVE = [
-    619, 660, 698, 1243, 1242, 1252, 836, 80, 265, 126,
-    166, 313, 393, 146, 835, 1370, 358, 188, 219, 345,
-    654, 1045, 125, 601, 121, 590, 624, 573, 570, 657,
-    652, 633, 178, 319, 395, 114, 442, 562, 438, 167,
-    561, 456, 673, 1128, 413, 842, 463, 341, 235,
+    n("GM00229"), n("GM00230"), n("DK15887"), n("ow:WL03883"), n("ow:WL01973-6"), n("ow:WL01181-9"), n("DK24276"), n("ST02906"), n("ST02907"), n("ST01741"),
+    n("ST04037"), n("ST02656"), n("ST04039"), n("ST00296"), n("DK08962"), n("ow:WL07333"), n("ST03743"), n("ST03742"), n("ST03741"), n("ST03505"),
+    n("GM00247"), n("DK27313"), n("ST04330"), n("GM00213"), n("ST04019"), n("GM00215"), n("GM00238"), n("GM00243"), n("GM00237"), n("GM00194"),
+    n("GM00209"), n("GM00236"), n("ST02861"), n("ST02274"), n("ST01755"), n("ST00453"), n("ST04679"), n("GM00190"), n("ST03791"), n("ST03792"),
+    n("GM00217"), n("ST03807"), n("GM00202"), n("ow:WL01181-5"), n("ST03940"), n("DK28613"), n("ST02360"), n("ST03436"), n("ST03140"),
 ]
 
 MERGE_TO_BASIN = [
-    (1488, 1834), (1848, 2158), (1891, 2158), (1994, 2158), (1648, 1826),
-    (1646, 1513), (1897, 1678), (2181, 1678), (1678, 1700), (1876, 1633),
-    (2187, 1873), (2174, 1873), (1875, 1879), (1908, 1879), (1902, 1879),
-    (1441, 1879), (1957, 1879), (1717, 1528), (1995, 1442), (2262, 1431),
-    (1853, 1852), (2137, 2138), (1819, 2138), (33, 1377), (1560, 1478),
-    (2228, 2121), (2050, 1812), (1811, 1812), (1386, 2157), (2307, 2157),
-    (1610, 1454), (1664, 1588), (2234, 1418), (2317, 1700), (1982, 1431),
-    (1589, 1431), (1584, 1817), (1817, 2135), (1588, 1561), (1826, 1843),
+    (n("up:DK08962"), n("up:ST01592")), (n("up:ST03588"), n("up:ow:WL02747-62")), (n("up:ow:WL06800-16"), n("up:ow:WL02747-62")), (n("up:ow:WL03418"), n("up:ow:WL02747-62")), (n("up:DK01810"), n("up:GM00178")),
+    (n("up:ST04605"), n("up:ow:WL01909-9")), (n("up:DK21370"), n("up:ow:WL03768-2")), (n("up:ow:WL05791-16@2"), n("up:ow:WL03768-2")), (n("up:ow:WL03768-2"), n("up:DK22015")), (n("up:ow:WL03771-5"), n("up:DK22251")),
+    (n("up:SL00005"), n("up:ow:WL07329-0")), (n("up:DK20930"), n("up:ow:WL07329-0")), (n("up:GM00243"), n("up:ow:WL03161")), (n("up:DK22716"), n("up:ow:WL03161")), (n("up:SL00008"), n("up:ow:WL03161")),
+    (n("up:DK24394"), n("up:ow:WL03161")), (n("up:ow:WL05221"), n("up:ow:WL03161")), (n("up:DK18395"), n("up:SL00004")), (n("up:ow:WL03736"), n("up:DK25518")), (n("up:DK16025"), n("up:ow:WL01265-14")),
+    (n("up:ST04838"), n("up:ow:WL02926-4")), (n("up:ow:WL01442-9"), n("up:ST00220")), (n("up:ow:WL01455-8"), n("up:ST00220")), (n("bnd:33"), n("up:GM00245")), (n("up:ST04024"), n("up:DK15887")),
+    (n("up:ST02809"), n("up:ST00266")), (n("up:ow:WL01069"), n("up:ST01855")), (n("up:ow:WL01068-4-0"), n("up:ST01855")), (n("up:ow:WL02214-7"), n("up:ST01973")), (n("up:ow:WL02261-5"), n("up:ST01973")),
+    (n("up:ow:WL02102-0"), n("up:ST02615")), (n("up:ow:WL01165-16"), n("up:ow:WL01165-19")), (n("up:ST03536"), n("up:DK21454")), (n("up:DK22039"), n("up:DK22015")), (n("up:DK15943"), n("up:ow:WL01265-14")),
+    (n("up:ST02640"), n("up:ow:WL01265-14")), (n("up:ow:WL01220-1"), n("up:ow:WL01220-5")), (n("up:ow:WL01220-5"), n("up:ow:WL01181-0")), (n("up:ow:WL01165-19"), n("up:ow:WL01181-5")), (n("up:GM00178"), n("up:DK04366")),
 ]
 
 FULL_CONTROL_REDIRECT_LINKS = [
-    {"link_id": 1400, "from_node_id": 2300},
-    {"link_id": 1183, "to_node_id": 1575},
+    {"link_id": lk("up:DK14315", "DK14315"), "from_node_id": n("twentekanaal:ST02055")},
+    {"link_id": lk("DK17636", "up:DK18155"), "to_node_id": n("up:ST03459")},
 ]
 
 FULL_CONTROL_REVERSE_LINK_IDS = [
-    39, 2105, 1328, 104, 1684, 547, 1001, 1732, 1423, 1013,
-    255, 2407, 725, 2201, 249, 2113, 1782, 664, 1086, 2261,
-    2079, 2713, 2681, 2824, 1062, 2180, 1173, 1343, 427, 1712,
-    36, 1777, 1674, 549, 2822, 1337, 27, 1891, 796, 2383,
-    131, 1953, 1183, 1993,
+    lk("GM00146", "up:SL00017"), lk("up:GM00146", "GM00146"), lk("ST04531", "up:SL00004"), lk("down:ST04531", "ST04531"), lk("up:DK25843", "ST02973"), lk("ST02973", "up:DK27007"), lk("DK28737", "up:ST03347"), lk("up:DK28737", "DK28737"), lk("up:DK20369", "DK29136"), lk("DK29136", "up:DK21846"),
+    lk("ow:WL03296-2", "up:ST03198"), lk("up:DK24977", "ow:WL03296-2"), lk("DK22336", "up:ow:WL02926-4"), lk("up:DK17294", "DK26410"), lk("DK26410", "up:ST03198"), lk("up:DK22336", "DK22336"), lk("up:ST02994", "ST02994"), lk("ST02994", "up:ow:WL03046-5"), lk("DK21875", "up:ST03086"), lk("up:DK21875", "DK21875"),
+    lk("up:DK19428", "GM00137"), lk("GM00137", "bnd:33"), lk("GM00231", "bnd:15"), lk("up:DK25518", "GM00231"), lk("DK21040", "up:ow:WL03325-10"), lk("up:DK17966", "DK21040"), lk("down:DK20932", "DK20932"), lk("DK20932", "up:DK17947"), lk("DK09836", "up:ST00610"), lk("up:DK09836", "DK09836"),
+    lk("ST03588", "up:SL00017"), lk("up:ST03588", "ST03588"), lk("up:ST03326", "ST04266"), lk("ST04266", "up:ST03026"), lk("SL00010", "bnd:15"), lk("up:DK25518", "SL00010"), lk("DK01810", "up:ow:WL00588-6"), lk("up:DK01810", "DK01810"), lk("DK25430", "up:DK18674"), lk("up:DK25430", "DK25430"),
+    lk("GM00106", "up:ST03194"), lk("up:GM00106", "GM00106"), lk("DK17636", "up:DK18155"), lk("up:DK17636", "DK17636"),
 ]
 # fmt: on
 
 # --- Connectivity and topology edits ---
 redirect_links(model, CUSTOM_REDIRECT_LINKS)
 merge_basin_pairs(model, MERGE_TO_NODE)
-model.merge_basins(node_id=2254, to_node_id=1493, are_connected=False)
+model.merge_basins(node_id=n("up:GM00048"), to_node_id=n("up:ST04058"), are_connected=False)
 model.remove_nodes(NODES_TO_REMOVE, remove_links=True)
 merge_basin_pairs(model, MERGE_TO_BASIN)
-reverse_links(model, [1171, 1475])
+reverse_links(model, [lk("DK23050", "up:DK17947"), lk("up:DK23050", "DK23050")])
 
 # --- Full-control topology fixes moved here to keep node_ids stable for steering ---
 redirect_links(model, FULL_CONTROL_REDIRECT_LINKS)
@@ -1192,17 +1285,17 @@ assert model.basin.profile.df is not None
 assert model.basin.static.df is not None
 assert model.basin.state.df is not None
 
-basin_1843_area_df = model.basin.area.df.loc[model.basin.area.df.node_id == 1843].copy()
+basin_1843_area_df = model.basin.area.df.loc[model.basin.area.df.node_id == n("up:DK04366")].copy()
 if basin_1843_area_df.empty:
-    raise ValueError("Geen bestaande basin_area gevonden voor node_id 1843")
+    raise ValueError("Geen bestaande basin_area gevonden voor Basin up:DK04366")
 
 old_basin_1843_geometry = basin_1843_area_df.geometry.union_all()
 if old_basin_1843_geometry.geom_type == "Polygon":
     old_basin_1843_geometry = MultiPolygon([old_basin_1843_geometry])
 elif old_basin_1843_geometry.geom_type != "MultiPolygon":
-    raise ValueError(f"Oude geometry voor node_id 1843 heeft ongeldig type: {old_basin_1843_geometry.geom_type}")
+    raise ValueError(f"Oude geometry voor Basin up:DK04366 heeft ongeldig type: {old_basin_1843_geometry.geom_type}")
 
-old_basin_1843_node_geometry = model.basin[1843].geometry
+old_basin_1843_node_geometry = model.basin[n("up:DK04366")].geometry
 
 streefpeil_1843 = first_meta_streefpeil(basin_1843_area_df)
 
@@ -1229,33 +1322,33 @@ new_basin_geometry = clean_basin_area_geometry(
 )
 new_basin_1843_geometry = clean_basin_area_geometry(
     old_basin_1843_geometry.difference(new_basin_geometry),
-    label="node_id 1843",
+    label="Basin up:DK04366",
 )
 basin_2148_geometry = clean_basin_area_geometry(
     basin_2148_area_df.geometry.union_all(),
     label="OBJECTID 1753",
 )
 
-model.basin.area.df = model.basin.area.df.loc[model.basin.area.df.node_id != 1843].copy()
-model.add_basin_area(geometry=new_basin_1843_geometry, node_id=1843, meta_streefpeil=streefpeil_1843)
-model.move_node(node_id=1843, geometry=Point(237696.58, 496023.31))
+model.basin.area.df = model.basin.area.df.loc[model.basin.area.df.node_id != n("up:DK04366")].copy()
+model.add_basin_area(geometry=new_basin_1843_geometry, node_id=n("up:DK04366"), meta_streefpeil=streefpeil_1843)
+model.move_node(node_id=n("up:DK04366"), geometry=Point(237696.58, 496023.31))
 
-basin_2148_area_existing_df = model.basin.area.df.loc[model.basin.area.df.node_id == 2148].copy()
+basin_2148_area_existing_df = model.basin.area.df.loc[model.basin.area.df.node_id == n("up:DK02511")].copy()
 if basin_2148_area_existing_df.empty:
-    raise ValueError("Geen bestaande basin_area gevonden voor node_id 2148")
+    raise ValueError("Geen bestaande basin_area gevonden voor Basin up:DK02511")
 
 streefpeil_2148 = first_meta_streefpeil(basin_2148_area_existing_df)
-model.basin.area.df = model.basin.area.df.loc[model.basin.area.df.node_id != 2148].copy()
-model.add_basin_area(geometry=basin_2148_geometry, node_id=2148, meta_streefpeil=streefpeil_2148)
+model.basin.area.df = model.basin.area.df.loc[model.basin.area.df.node_id != n("up:DK02511")].copy()
+model.add_basin_area(geometry=basin_2148_geometry, node_id=n("up:DK02511"), meta_streefpeil=streefpeil_2148)
 
 new_basin_node_id = 2340
 model.basin.add(Node(node_id=new_basin_node_id, geometry=old_basin_1843_node_geometry, name="Basin Westerhaar aanvoer"))
 
 for basin_table in [model.basin.profile, model.basin.static, model.basin.state]:
     table_df = basin_table.df
-    source_rows = table_df.loc[table_df["node_id"] == 1843].copy()
+    source_rows = table_df.loc[table_df["node_id"] == n("up:DK04366")].copy()
     if source_rows.empty:
-        raise ValueError(f"Geen brondata gevonden voor basin-tabel {type(basin_table).__name__} en node_id 1843")
+        raise ValueError(f"Geen brondata gevonden voor basin-tabel {type(basin_table).__name__} en Basin up:DK04366")
     source_rows.loc[:, "node_id"] = new_basin_node_id
     basin_table.df = pd.concat([table_df, source_rows], ignore_index=True)
 
@@ -1266,11 +1359,16 @@ model.add_basin_area(
 )
 
 aanvoer_pump = model.pump.add(
-    Node(node_id=2341, geometry=Point(238834.91, 496511.08), name="Aanvoergemaal Westerhaar"),
+    Node(
+        node_id=2341,
+        geometry=Point(238834.91, 496511.08),
+        name="Aanvoergemaal Westerhaar",
+        meta_key="aanvoergemaal-westerhaar",
+    ),
     tables=[pump_data],
 )
-model.link.add(model.basin[1843], aanvoer_pump)
-model.link.add(aanvoer_pump, model.basin[1455])
+model.link.add(model.basin[n("up:DK04366")], aanvoer_pump)
+model.link.add(aanvoer_pump, model.basin[n("up:ST01677")])
 
 westerhaar_uitlaat_outlet = model.outlet.add(
     Node(node_id=2342, geometry=Point(238833.885, 496508.498), name="Uitlaat Westerhaar"),
@@ -1278,54 +1376,58 @@ westerhaar_uitlaat_outlet = model.outlet.add(
 )
 if not (
     can_connect(model.basin[new_basin_node_id].node_type, "Outlet")
-    and can_connect("Outlet", model.basin[1843].node_type)
+    and can_connect("Outlet", model.basin[n("up:DK04366")].node_type)
 ):
     raise ValueError(
         "Gevraagde route met Outlet is ongeldig: "
-        f"{model.basin[new_basin_node_id].node_type} -> Outlet -> {model.basin[1843].node_type} "
-        f"(nodes: {new_basin_node_id} -> {westerhaar_uitlaat_outlet.node_id} -> 1843)."
+        f"{model.basin[new_basin_node_id].node_type} -> Outlet -> {model.basin[n('up:DK04366')].node_type} "
+        f"(nodes: {new_basin_node_id} -> {westerhaar_uitlaat_outlet.node_id} -> up:DK04366)."
     )
 model.link.add(model.basin[new_basin_node_id], westerhaar_uitlaat_outlet)
-model.link.add(westerhaar_uitlaat_outlet, model.basin[1843])
+model.link.add(westerhaar_uitlaat_outlet, model.basin[n("up:DK04366")])
 
 inlaatstuw_outlet = model.outlet.add(
     Node(node_id=2343, geometry=Point(243225.458, 495478.36), name="Inlaatstuw"),
     tables=[outlet_data],
 )
-model.link.add(model.basin[1844], inlaatstuw_outlet)
-model.link.add(inlaatstuw_outlet, model.basin[1450])
+model.link.add(model.basin[n("up:ow:WL01711-4")], inlaatstuw_outlet)
+model.link.add(inlaatstuw_outlet, model.basin[n("up:DK30436_BO")])
 
 inlaat_outlet_1708 = model.outlet.add(
     Node(node_id=2344, geometry=Point(238366.036, 496286.96), name="Inlaat"),
     tables=[outlet_data],
 )
-model.link.add(model.basin[1843], inlaat_outlet_1708)
-model.link.add(inlaat_outlet_1708, model.basin[1708])
+model.link.add(model.basin[n("up:DK04366")], inlaat_outlet_1708)
+model.link.add(inlaat_outlet_1708, model.basin[n("up:DK02627")])
 
 uitlaat_outlet_1569 = model.outlet.add(
     Node(node_id=2345, geometry=Point(241738.30642, 513291.13972), name="Uitlaat"),
     tables=[outlet_data],
 )
-model.link.add(model.basin[2068], uitlaat_outlet_1569)
-model.link.add(uitlaat_outlet_1569, model.basin[1569])
+model.link.add(model.basin[n("down:DK20932")], uitlaat_outlet_1569)
+model.link.add(uitlaat_outlet_1569, model.basin[n("up:GM00115")])
 
 redirect_links(
     model,
     [
-        {"link_id": 525, "to_node_id": new_basin_node_id},
-        {"link_id": 1737, "from_node_id": new_basin_node_id},
-        {"link_id": 1890, "from_node_id": 1843},
-        {"link_id": 102, "to_node_id": 1843},
-        {"link_id": 1891, "to_node_id": 1843},
-        {"link_id": 1889, "from_node_id": 1843},
-        {"link_id": 1403, "from_node_id": new_basin_node_id},
-        {"link_id": 523, "to_node_id": new_basin_node_id},
-        {"link_id": 2840, "from_node_id": 2341, "to_node_id": new_basin_node_id},
+        {"link_id": lk("GM00009", "up:DK04366"), "to_node_id": new_basin_node_id},
+        {"link_id": lk("up:DK04366", "ST01745"), "from_node_id": new_basin_node_id},
+        {"link_id": lk("up:DK04366", "DK31244"), "from_node_id": n("up:DK04366")},
+        {"link_id": lk("GM00007", "up:DK04366"), "to_node_id": n("up:DK04366")},
+        {"link_id": lk("DK01810", "up:DK04366"), "to_node_id": n("up:DK04366")},
+        {"link_id": lk("up:DK04366", "ST00724"), "from_node_id": n("up:DK04366")},
+        {"link_id": lk("up:DK04366", "GM00178"), "from_node_id": new_basin_node_id},
+        {"link_id": lk("ST01763", "up:DK04366"), "to_node_id": new_basin_node_id},
+        {
+            "link_id": lk("aanvoergemaal-westerhaar", "up:ST01677"),
+            "from_node_id": aanvoer_pump.node_id,
+            "to_node_id": new_basin_node_id,
+        },
     ],
 )
 
-from_node = model.get_node(2298)
-to_node = model.get_node(1583)
+from_node = model.get_node(n("twentekanaal:ow:WL00448-2"))
+to_node = model.get_node(n("up:ow:WL00448-2"))
 if not (can_connect(from_node.node_type, "Outlet") and can_connect("Outlet", to_node.node_type)):
     raise ValueError(
         f"Gevraagde route met Outlet is ongeldig: {from_node.node_type} -> Outlet -> {to_node.node_type} "
@@ -1338,8 +1440,8 @@ extra_connection_node = model.outlet.add(
 model.link.add(from_node, extra_connection_node)
 model.link.add(extra_connection_node, to_node)
 
-from_node = model.get_node(1575)
-to_node = model.get_node(2304)
+from_node = model.get_node(n("up:ST03459"))
+to_node = model.get_node(n("up:DK18155"))
 if not (can_connect(from_node.node_type, "Outlet") and can_connect("Outlet", to_node.node_type)):
     raise ValueError(
         f"Gevraagde route met Outlet is ongeldig: {from_node.node_type} -> Outlet -> {to_node.node_type} "
@@ -1355,44 +1457,44 @@ model.link.add(nieuwe_drostendiep_outlet, to_node)
 # Deze GDB-typefix stond pre-refactor in 04_add_full_control.py, dus na 02_prepare_model.
 # Dynamisch opnieuw zoeken in 01 geeft andere matches omdat link-/nodegeometrie dan nog niet geprepareerd is.
 # Daarom de pre-refactor uitkomst vastzetten, zodat de refactor geen node-types en sturing verandert.
-gdb_outlet_node_ids = [1184, 1336, 1337, 1368, 1369]
+gdb_outlet_node_ids = [n("ow:WL00262"), n("WL05569___3"), n("WL02126-1___4"), n("WL00510-1___16"), n("WL00510-1___6")]
 gdb_pump_node_ids = []
 
 # fmt: off
 OUTLET_TYPE_FIX_NODE_IDS = [
-    1147, 1307, 1032, 1304, 1340, 1314, 1301, 1329, 1359, 1146,
-    1251, 1140, 1335, 1237, 1238, 1177, 1153, 1156, 1359, 1136,
-    1137, 1168, 1169, 1167, 1353, 1142, *gdb_outlet_node_ids,
+    n("ow:WL00714-0-0"), n("ow:WL03182-7"), n("DK17636"), n("ow:WL06694-3"), n("ow:WL01052-0"), n("ow:WL03325-2"), n("ow:WL03296-2"), n("WL02311"), n("WL01863-2___4"), n("ow:WL01391-35"),
+    n("ow:WL01374-2"), n("ow:WL01052-8"), n("WL00964-3___3"), n("ow:WL00609-4-0-0"), n("ow:WL00607-1-0-0"), n("ow:WL00840-0"), n("ow:WL00859-0"), n("ow:WL05820-5"), n("WL01863-2___4"), n("ow:WL02102-15"),
+    n("ow:WL01959-32"), n("ow:WL01803-3"), n("ow:WL01758-3"), n("ow:WL01863-9"), n("WL02926-0___1"), n("ow:WL08175"), *gdb_outlet_node_ids,
 ]
 
 MANNING_TYPE_FIX_NODE_IDS = [
-    778, 882, 824, 689, 692, 908, 868, 724, 893, 863,
-    293, 937, 894, 749, 936, 878, 713, 200, 869, 958,
-    952, 822, 768, 49, 771, 801, 806, 859,
+    n("DK24519"), n("DK24281"), n("DK11840"), n("DK04546"), n("DK01390"), n("DK25487"), n("DK13262"), n("DK25521"), n("DK19287"), n("DK21305"),
+    n("ST02645"), n("DK28416"), n("DK01495"), n("DK29791"), n("DK06236"), n("DK31895"), n("DK23689"), n("ST03127"), n("DK00105"), n("DK29066"),
+    n("DK03265"), n("DK06275"), n("DK01810"), n("SL00002"), n("DK22561"), n("DK25247"), n("DK23608"), n("DK20623"),
 ]
 
 OBSOLETE_NODE_IDS = [
-    1141, 614, 88, 129, 48, 147, 1151, 497, 462, 417,
-    1142, 3008, 431, 288, 631, 637, 328, 699, 505, 206,
-    321, 392, 488, 1343, 305, 330, 51, 719, 380, 711,
+    n("ow:WL07883"), n("GM00130"), n("ST03877"), n("ST03798"), n("SL00013"), n("ST03845"), n("ow:WL05469"), n("ST00298"), n("ST00508"), n("ST00724"),
+    n("ow:WL08175"), n("ST02866"), n("ST00803"), n("GM00047"), n("GM00221"), n("ST01973"), n("DK21646"), n("ST03711"), n("ST01269"),
+    n("ST03905"), n("ST00856"), n("ST00872"), n("WL01698-3_4_inlaat"), n("ST01592"), n("ST03819"), n("SL00012"), n("DK28532"), n("ST00837"), n("DK04366"),
 ]
 
 CONNECTED_BASIN_MERGES = [
-    (1904, 1675), (1389, 2138), (2194, 2138), (1443, 1371), (1571, 1371),
-    (2241, 1864), (1869, 1621), (2215, 1978), (1987, 1433), (2263, 1721),
-    (1973, 1551), (1988, 1775), (2101, 1775), (1496, 1838), (2196, 1838),
-    (2072, 1540), (1976, 1540), (1770, 1540), (2314, 1627), (2058, 2138),
-    (1738, 2138), (2233, 1529), (1529, 1444), (1630, 2123), (1966, 1467),
+    (n("up:ST02862"), n("up:ST00803")), (n("up:DK03265"), n("up:ST00220")), (n("up:DK06275"), n("up:ST00220")), (n("up:DK10091"), n("up:DK05134")), (n("up:DK13817"), n("up:DK05134")),
+    (n("up:ST03266"), n("up:ow:WL03325-10")), (n("up:ST03620"), n("up:DK25702")), (n("up:DK19061"), n("up:DK18861")), (n("up:DK26826"), n("up:GM00159")), (n("up:DK11462"), n("up:DK00769")),
+    (n("up:DK22326"), n("up:DK25843")), (n("up:DK18408"), n("up:ST03261")), (n("up:DK23188"), n("up:ST03261")), (n("up:DK29530"), n("up:ST04517")), (n("up:ow:WL07085"), n("up:ST04517")),
+    (n("up:ow:WL01769"), n("up:ow:WL01764-19")), (n("up:DK06993"), n("up:ow:WL01764-19")), (n("up:DK01920"), n("up:ow:WL01764-19")), (n("up:DK32117"), n("up:ow:WL01823-5")), (n("up:DK00102"), n("up:ST00220")),
+    (n("up:DK05222"), n("up:ST00220")), (n("up:GM00146"), n("up:ST04475")), (n("up:ST04475"), n("up:ow:WL07638-3")), (n("up:ow:WL00712-6"), n("up:ST00579")), (n("up:ow:WL00733"), n("up:ST02542")),
 ]
 
 UNCONNECTED_BASIN_MERGES = [
-    (2094, 1681), (1863, 1779), (1787, 2333), (1642, 1510),
+    (n("up:DK23461"), n("up:DK17294")), (n("up:DK22829"), n("up:DK25792")), (n("up:ST03347"), n("loc:235324,512655")), (n("up:ST04383"), n("up:DK27338")),
 ]
 
 FINAL_BASIN_MERGES = [
-    (1405, 1730), (2178, 1730),  # Kanaal Almelo Haandrik
-    (1873, 1878), (1879, 1878),  # Verlengde Hoogeveensche Vaart
-    (1633, 1700),  # Stieltjeskanaalsluis
+    (n("up:ST00245"), n("up:ST03541")), (n("up:DK17947"), n("up:ST03541")),  # Kanaal Almelo Haandrik
+    (n("up:ow:WL07329-0"), n("up:DK20656")), (n("up:ow:WL03161"), n("up:DK20656")),  # Verlengde Hoogeveensche Vaart
+    (n("up:DK22251"), n("up:DK22015")),  # Stieltjeskanaalsluis
 ]
 # fmt: on
 
@@ -1401,7 +1503,7 @@ model.update_nodes(MANNING_TYPE_FIX_NODE_IDS, "ManningResistance")
 model.update_nodes(gdb_pump_node_ids, "Pump")
 model.remove_nodes(OBSOLETE_NODE_IDS, remove_links=True)
 
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 2300, "level"] = 15.33
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == n("twentekanaal:ST02055"), "level"] = 15.33
 
 merge_basin_pairs(model, CONNECTED_BASIN_MERGES)
 merge_basin_pairs(model, UNCONNECTED_BASIN_MERGES, are_connected=False)

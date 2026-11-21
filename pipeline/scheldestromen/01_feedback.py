@@ -27,6 +27,8 @@ default_level = 0.42 if AANVOER_CONDITIONS else -0.42  # default LevelBoundary l
 
 # process the feedback form and load the model
 ribasim_model = process_feedback_form(paths)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = ribasim_model.node_id
 
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
@@ -37,12 +39,14 @@ ribasim_param.validate_manning_basins(ribasim_model)
 # model specific tweaks
 # the vrij-afwaterende basins are a multipolygon, in a single basin (189). Only retain the largest value
 assert ribasim_model.basin.area.df is not None
-exploded_basins = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == 189].explode(
+exploded_basins = ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df["node_id"] == n("GPG351")].explode(
     index_parts=False
 )
 exploded_basins["area"] = exploded_basins.area
 largest_polygon = exploded_basins.sort_values(by="area", ascending=False).iloc[0]
-ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df.node_id == 189, "geometry"] = largest_polygon["geometry"]
+ribasim_model.basin.area.df.loc[ribasim_model.basin.area.df.node_id == n("GPG351"), "geometry"] = largest_polygon[
+    "geometry"
+]
 
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
@@ -61,14 +65,14 @@ level_boundary_node = ribasim_model.level_boundary.add(
 pump_node = ribasim_model.pump.add(Node(geometry=Point(74504, 382443)), [pump.Static(flow_rate=[0.1])])
 ribasim_model.node.df.loc[pump_node.node_id, "meta_node_id"] = pump_node.node_id
 ribasim_model.link.add(level_boundary_node, pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[133])
+ribasim_model.link.add(pump_node, ribasim_model.basin[n("GPG1382")])
 
 # add a pump and links to a newly created level boundary
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(65450, 374986)), [level_boundary.Static(level=[default_level])]
 )
 pump_node = ribasim_model.pump.add(Node(geometry=Point(65429, 374945)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.link.add(ribasim_model.basin[148], pump_node)
+ribasim_model.link.add(ribasim_model.basin[n("GPG733")], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
 
 # add a TRC and LB from Belgium
@@ -80,22 +84,28 @@ tabulated_rating_curve_node = ribasim_model.tabulated_rating_curve.add(
     [tabulated_rating_curve.Static(level=[0.0, 0.1234], flow_rate=[0.0, 0.1234])],
 )
 ribasim_model.link.add(level_boundary_node, tabulated_rating_curve_node)
-ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[1])
+ribasim_model.link.add(tabulated_rating_curve_node, ribasim_model.basin[n("GPG1294")])
 inlaat_structures.append(tabulated_rating_curve_node.node_id)  # convert the node to aanvoer later on
 
 # connection with Belgium
-ribasim_model.remove_node(29, True)
+ribasim_model.remove_node(n("GPG1296"), True)
 level_boundary_node = ribasim_model.level_boundary.add(
     Node(geometry=Point(35147, 362794)), [level_boundary.Static(level=[default_level])]
 )
-ribasim_model.link.add(level_boundary_node, ribasim_model.tabulated_rating_curve[491])
-ribasim_model.link.add(level_boundary_node, ribasim_model.tabulated_rating_curve[547])
-ribasim_model.link.add(level_boundary_node, ribasim_model.tabulated_rating_curve[334])
-ribasim_model.link.add(level_boundary_node, ribasim_model.tabulated_rating_curve[554])
-ribasim_model.link.add(ribasim_model.tabulated_rating_curve[227], level_boundary_node)
-ribasim_model.link.add(ribasim_model.tabulated_rating_curve[381], level_boundary_node)
-inlaat_structures.extend([491, 547, 334, 554])
-inlaat_structures.append(309)
+ribasim_model.link.add(level_boundary_node, ribasim_model.tabulated_rating_curve[n("ow:KDU51133")])
+ribasim_model.link.add(level_boundary_node, ribasim_model.tabulated_rating_curve[n("ow:KDU49150")])
+ribasim_model.link.add(
+    level_boundary_node, ribasim_model.tabulated_rating_curve[n("ow:dummy_globalid_hydroobject_38780")]
+)
+ribasim_model.link.add(level_boundary_node, ribasim_model.tabulated_rating_curve[n("ow:KDU25204")])
+ribasim_model.link.add(ribasim_model.tabulated_rating_curve[n("KST779")], level_boundary_node)
+ribasim_model.link.add(
+    ribasim_model.tabulated_rating_curve[n("ow:dummy_globalid_hydroobject_43572")], level_boundary_node
+)
+inlaat_structures.extend(
+    [n("ow:KDU51133"), n("ow:KDU49150"), n("ow:dummy_globalid_hydroobject_38780"), n("ow:KDU25204")]
+)
+inlaat_structures.append(n("ow:KDU2752"))
 
 # (re) set 'meta_node_id'
 for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
@@ -119,8 +129,8 @@ for node in inlaat_structures:
 # its name and capacity are assigned from the 'gemaal' layer in the forcing stage
 pump_node = ribasim_model.pump.add(Node(geometry=Point(57403, 390161)), [pump.Static(flow_rate=[0.1])])
 ribasim_model.node.df.loc[pump_node.node_id, "meta_node_id"] = pump_node.node_id
-ribasim_model.link.add(ribasim_model.basin[138], pump_node)
-ribasim_model.link.add(pump_node, ribasim_model.basin[142])
+ribasim_model.link.add(ribasim_model.basin[n("GPG120")], pump_node)
+ribasim_model.link.add(pump_node, ribasim_model.basin[n("GPG1070")])
 
 ribasim_param.clean_tables(ribasim_model, waterschap)
 ribasim_model.write(paths.model_dir("feedback") / "ribasim.toml")

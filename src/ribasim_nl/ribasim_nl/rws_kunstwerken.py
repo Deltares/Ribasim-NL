@@ -9,7 +9,8 @@ state while the level of the listened Basin is above the thresholds, and in the 
 them. The `Toestand (control_state)` column of the thresholds names the function of the structure, and does not
 change this. A pump that supplies a canal therefore pumps while the canal is below its thresholds. With
 `Meetlocatiecode aftrek` the structure switches on the level difference with that Basin, rather than on a level, and
-with `Meetlocatievariabele` flow_rate on the flow rate of the connector node of the `Meetlocatiecode`.
+with `Meetlocatievariabele` flow_rate on the flow rate of the connector node of the `Meetlocatiecode`. Both refer to
+a node by its key, see `ribasim_nl.keys`.
 
 A structure in `PARALLEL_KWK` is next to another structure, between the same Basins, so it has no place of its own in
 the network. `5_model_netwerk` leaves it out, and `6_model_sturing` adds it.
@@ -26,7 +27,7 @@ import shapely.ops
 from ribasim.nodes import discrete_control, flow_demand, outlet, pump, tabulated_rating_curve
 from shapely.geometry import LineString, Point
 
-from ribasim_nl.aquo import waterbeheercode
+from ribasim_nl.keys import NodeKey
 from ribasim_nl.model import Model
 from ribasim_nl.network import Network
 from ribasim_nl.validation import CONNECTOR_NODE_TYPES
@@ -63,8 +64,6 @@ LOCAL_CONTROL = {"lokaal", "geen"}
 LISTEN_VARIABLES = ("level", "flow_rate")
 # Node types between Basins that do not control the flow, so a DiscreteControl may listen across them
 FREE_FLOW_NODE_TYPES = {"Basin", "ManningResistance", "LinearResistance", "Junction"}
-# A Meetlocatiecode is the ID of a node in the coupled model, see `ribasim_nl.aquo`
-RWS_NODE_ID_OFFSET = waterbeheercode["Rijkswaterstaat"] * 100_000
 YES_NO = {"ja": True, "nee": False}
 
 
@@ -127,10 +126,10 @@ PARALLEL_KWK = {
 }
 
 
-# Per Basin, by its ID in the hws model, an area beyond its basin area in which its links are routed, see
+# Per Basin, by its key, an area beyond its basin area in which its links are routed, see
 # `ribasim_nl.flow_paths.rebuild_rws_junction_trees`. The Pr. Bernhardsluis and its omloopriool take water from the Waal
 # at Tiel, along the canal, to the locks 1.4 km from the Waal in the area of the Amsterdam-Rijnkanaal.
-ROUTING_AREAS = {7291: shapely.box(159400.0, 433200.0, 160300.0, 434900.0)}
+ROUTING_AREAS = {NodeKey("Rijkswaterstaat", "Waal@3"): shapely.box(159400.0, 433200.0, 160300.0, 434900.0)}
 
 
 def main_route(network: Network, structures: Mapping[str, ParallelKwk] = PARALLEL_KWK) -> gpd.GeoDataFrame:
@@ -459,7 +458,7 @@ def listen_node(
 ) -> tuple[int, Literal["upstream", "downstream"] | None]:
     """The node that switches the DiscreteControl of structure `node_id`, and the side of the structure of a Basin.
 
-    The Meetlocatiecode is the ID of that node in the coupled model. Without it, an afvoer structure listens to the
+    The Meetlocatiecode is the key of that node. Without it, an afvoer structure listens to the
     Basin upstream, and an aanvoer structure to the Basin downstream. A DiscreteControl on a flow rate listens to a
     connector node anywhere. A Basin should be next to the structure, or connected to the Basin on one side of it,
     possibly through other Basins without structures in between, like the Veluwerandmeren.
@@ -471,8 +470,7 @@ def listen_node(
         f"Expected one node up- and downstream of {node_id}, got {upstream} and {downstream}"
     )
     if "Meetlocatiecode" in kwk_properties:
-        listen_id = int(kwk_properties["Meetlocatiecode"]) - RWS_NODE_ID_OFFSET
-        assert listen_id in model.node.df.index, f"Meetlocatiecode {kwk_properties['Meetlocatiecode']} not in the model"
+        listen_id = model.node_id(str(kwk_properties["Meetlocatiecode"]))
     else:
         label = read_control_thresholds(kwk_df)["control_state"].iloc[0]
         listen_id = int(upstream if label == "afvoer" else downstream)

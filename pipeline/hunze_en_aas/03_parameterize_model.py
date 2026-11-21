@@ -28,6 +28,8 @@ qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
 
 # read
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
 start_time = time.time()
@@ -35,15 +37,15 @@ start_time = time.time()
 # %% fixes basins and profiles
 
 basin_level_overrides = [
-    ([1338], 7.1),
-    ([1432], 6),
-    ([1680], 6),
-    ([1617], 1.75),
-    ([1325], 5.1),
-    ([1311], 3.3),
-    ([1832], 3.3),
-    ([1416], 17.7),
-    ([1832], 11.5),
+    ([n("up:KST-W-10430")], 7.1),
+    ([n("up:KIN-W-10112")], 6),
+    ([n("up:KST-W-20248")], 6),
+    ([n("up:KST-W-00138")], 1.75),
+    ([n("up:KIN-W-13405")], 5.1),
+    ([n("up:KDU-W-04114")], 3.3),
+    ([n("up:KST-V-10207")], 3.3),
+    ([n("up:KST-V-00133")], 17.7),
+    ([n("up:KST-V-10207")], 11.5),
 ]
 
 # %%
@@ -72,17 +74,17 @@ model.outlet.static.df.max_flow_rate = model.outlet.static.df.flow_rate
 model.outlet.static.df.flow_rate = 100.0
 # %% Fixes
 assert model.pump.static.df is not None
-model.pump.static.df.loc[model.pump.static.df.node_id == 27, "max_flow_rate"] = 5.0
-model.pump.static.df.loc[model.pump.static.df.node_id == 64, "max_flow_rate"] = 1.0
-model.pump.static.df.loc[model.pump.static.df.node_id == 71, "max_flow_rate"] = 5.0
-model.pump.static.df.loc[model.pump.static.df.node_id == 82, "max_flow_rate"] = 2.0
-model.pump.static.df.loc[model.pump.static.df.node_id == 114, "max_flow_rate"] = 1.0
-model.pump.static.df.loc[model.pump.static.df.node_id == 123, "max_flow_rate"] = 5.0
-model.pump.static.df.loc[model.pump.static.df.node_id == 29, "max_flow_rate"] = 1.0
-model.pump.static.df.loc[model.pump.static.df.node_id == 68, "max_flow_rate"] = 1.0
-model.pump.static.df.loc[model.pump.static.df.node_id == 58, "max_flow_rate"] = 5.0
-model.pump.static.df.loc[model.pump.static.df.node_id == 59, "max_flow_rate"] = 5.0
-model.pump.static.df.loc[model.pump.static.df.node_id == 133, "max_flow_rate"] = 3.0
+model.pump.static.df.loc[model.pump.static.df.node_id == n("KGM-V-14410"), "max_flow_rate"] = 5.0
+model.pump.static.df.loc[model.pump.static.df.node_id == n("KGM-W-11175"), "max_flow_rate"] = 1.0
+model.pump.static.df.loc[model.pump.static.df.node_id == n("KGM-H-10407"), "max_flow_rate"] = 5.0
+model.pump.static.df.loc[model.pump.static.df.node_id == n("KGM-V-13890"), "max_flow_rate"] = 2.0
+model.pump.static.df.loc[model.pump.static.df.node_id == n("KGM-V-10387"), "max_flow_rate"] = 1.0
+model.pump.static.df.loc[model.pump.static.df.node_id == n("KGM-H-10160"), "max_flow_rate"] = 5.0
+model.pump.static.df.loc[model.pump.static.df.node_id == n("KGM-A-11646"), "max_flow_rate"] = 1.0
+model.pump.static.df.loc[model.pump.static.df.node_id == n("KGM-W-11405"), "max_flow_rate"] = 1.0
+model.pump.static.df.loc[model.pump.static.df.node_id == n("KGM-D-11510"), "max_flow_rate"] = 5.0
+model.pump.static.df.loc[model.pump.static.df.node_id == n("KGM-H-18430"), "max_flow_rate"] = 5.0
+model.pump.static.df.loc[model.pump.static.df.node_id == n("KGM-W-11635"), "max_flow_rate"] = 3.0
 
 # %%
 # Write model

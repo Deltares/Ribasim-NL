@@ -40,6 +40,8 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/
 processor = paths.feedback_processor(work_dir=paths.model_dir("profiles"))
 
 ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = ribasim_model.node_id
 
 # reset pump capacity for each pump
 assert ribasim_model.pump.static.df is not None
@@ -48,10 +50,15 @@ ribasim_model.pump.static.df["flow_rate"] = 10 / 60  # 10m3/min
 ribasim_model = set_boundary_conditions(ribasim_model, paths, level_boundary_levels=(-0.42, 0.42))
 
 assert ribasim_model.level_boundary.time.df is not None
-ribasim_model.level_boundary.time.df.loc[ribasim_model.level_boundary.time.df["node_id"] == 583, "level"] = -2.0
-ribasim_model.level_boundary.time.df.loc[ribasim_model.level_boundary.time.df["node_id"] == 585, "level"] = -2.0
 ribasim_model.level_boundary.time.df.loc[
-    (ribasim_model.level_boundary.time.df.node_id == 635) & (ribasim_model.level_boundary.time.df.level == -0.4),
+    ribasim_model.level_boundary.time.df["node_id"] == n("bnd:ow:dummy_globalid_hydroobject_70945"), "level"
+] = -2.0
+ribasim_model.level_boundary.time.df.loc[
+    ribasim_model.level_boundary.time.df["node_id"] == n("bnd:ow:dummy_globalid_hydroobject_70947"), "level"
+] = -2.0
+ribasim_model.level_boundary.time.df.loc[
+    (ribasim_model.level_boundary.time.df.node_id == n("loc:74861,382484"))
+    & (ribasim_model.level_boundary.time.df.level == -0.4),
     "level",
 ] = 0.4  # change value of a single LB during summer time
 
@@ -67,21 +74,21 @@ categorize_nodes(ribasim_model)
 from_to_node_function_table = node_function_table(ribasim_model)
 
 to_drain = (
-    194,
-    271,
-    302,
-    316,
-    322,
-    412,
-    413,
-    414,
-    415,
+    n("ow:dummy_globalid_hydroobject_39536"),
+    n("Gemaal Catharinapolder"),
+    n("KST559"),
+    n("KST307"),
+    n("Gemaal Walsoorden"),
+    n("ow:dummy_globalid_hydroobject_70964"),
+    n("ow:dummy_globalid_hydroobject_70965"),
+    n("ow:dummy_globalid_hydroobject_38515"),
+    n("ow:dummy_globalid_hydroobject_21"),
 )
-to_flow_control = (252, 505)
+to_flow_control = (n("KST976"), n("Gemaal Langeweg"))
 to_supply = (
-    206,
-    265,
-    312,
+    n("KST822"),
+    n("KST479"),
+    n("ow:KDU71741"),
 )
 from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
@@ -89,69 +96,69 @@ from_to_node_function_table = set_node_functions(
 
 # check for flow_control-/supply-nodes outside supplied-basins
 supply_connectors = (
-    234,
-    241,
-    260,
-    309,
-    334,
-    384,
-    422,
-    505,
-    526,  # non-official supplying pumps?
-    258,
-    266,
-    452,
-    462,
-    473,
-    477,
-    486,
-    491,
-    531,
-    546,
-    547,
-    554,
-    640,  # inflow from Belgium
-    252,
-    265,
-    206,  # unknown
-    312,
-    357,
-    359,
-    363,
-    364,
-    432,
-    474,
-    487,
-    211,
-    220,
-    242,
-    253,
-    283,
-    305,
-    306,
-    310,
-    323,
-    343,
-    344,
-    346,
-    347,
-    353,
-    370,
-    425,
-    426,
-    427,
-    428,
-    429,
-    430,
-    431,
-    435,
-    464,
-    631,
-    632,
-    634,
-    371,
-    523,
-    636,
+    n("Gemaal Philippinekanaal"),
+    n("Gemaal Dijckmeesterpolder"),
+    n("Gemaal Pietersdijk"),
+    n("ow:KDU2752"),
+    n("ow:dummy_globalid_hydroobject_38780"),
+    n("Gemaal Angelinapolder"),
+    n("Gemaal Goese Sas"),
+    n("Gemaal Langeweg"),
+    n("Gemaal Spanjaardweg"),  # non-official supplying pumps?
+    n("ow:dummy_globalid_hydroobject_4778"),
+    n("ow:dummy_globalid_hydroobject_5115"),
+    n("ow:KDU65290"),
+    n("ow:KDU65398"),
+    n("ow:KDU64977"),
+    n("ow:KDU35357"),
+    n("ow:KDU64982"),
+    n("ow:KDU51133"),
+    n("ow:KDU65284"),
+    n("ow:KDU35393"),
+    n("ow:KDU49150"),
+    n("ow:KDU25204"),
+    n("loc:43486,357740"),  # inflow from Belgium
+    n("KST976"),
+    n("KST479"),
+    n("KST822"),  # unknown
+    n("ow:KDU71741"),
+    n("Inlaat Campweg"),
+    n("Gemaal Lageweg, Bruintjeskreek"),
+    n("KST19"),
+    n("KST15"),
+    n("Gemaal De Luyster"),
+    n("ow:KDU71954"),
+    n("KST1146"),
+    n("ow:KDU1858"),
+    n("KST118"),
+    n("KST78"),
+    n("KST1179"),
+    n("KST112"),
+    n("Gemaal Bosweg, noord"),
+    n("KST101"),
+    n("Gemaal Kadijk"),
+    n("Gemaal Koningsweg"),
+    n("KST81"),
+    n("KST305"),
+    n("Gemaal Derde Dijk"),
+    n("Gemaal Postweg, Tholen"),
+    n("Gemaal Poortvlietsedijk"),
+    n("KST632"),
+    n("Inlaat Deurloo"),
+    n("Gemaal De Eendracht"),
+    n("Inlaat Oud Kijkuit"),
+    n("Gemaal Drie Grote Polders"),
+    n("Inlaat Drie Grote Polders"),
+    n("Gemaal Van Haaften"),
+    n("Inlaat Van Haaften"),
+    n("Gemaal Loohoek"),
+    n("KST76"),
+    n("loc:61949,396914"),
+    n("loc:61951,396911"),
+    n("loc:61946,396912"),
+    n("KST56"),
+    n("KST58"),
+    n("loc:74504,382443"),
 )
 if not all(
     from_to_node_function_table[from_to_node_function_table["function"] == "supply"].index.isin(supply_connectors)
@@ -207,13 +214,13 @@ ribasim_model = complete_parametrization(
     paths,
     rws_buffer=2000,  # mainly neighbouring RWS, so increase buffer. Not too much, due to nodes within Belgium.
     custom_nodes={
-        567: "Rijkswaterstaat",
-        578: "Rijkswaterstaat",
-        584: "Rijkswaterstaat",  # Westerschelde
-        639: "Buitenland",
-        641: "Buitenland",
-        1119: "Buitenland",
-        1188: "Buitenland",
+        n("bnd:Gemaal Cadzand"): "Rijkswaterstaat",
+        n("bnd:ow:dummy_globalid_hydroobject_37373"): "Rijkswaterstaat",
+        n("bnd:ow:dummy_globalid_hydroobject_70946"): "Rijkswaterstaat",  # Westerschelde
+        n("loc:43290,356428"): "Buitenland",
+        n("loc:35147,362794"): "Buitenland",
+        n("loc:14328,372314"): "Buitenland",
+        n("loc:14370,370568"): "Buitenland",
     },
 )
 
@@ -222,8 +229,8 @@ set_design_capacities(ribasim_model, from_to_node_function_table)
 
 # Gemaal Postweg pumps into basin 142, which aggregates peilgebieden with target levels up to -1.1 m NAP,
 # so do not limit it by the -1.8 m NAP target level of that basin, see #844
-postweg = 1189
-assert ribasim_model.node.df.at[postweg, "name"] == "Gemaal Postweg, Kapelle", "Node ID of Gemaal Postweg changed"
+postweg = n("loc:57403,390161")
+assert ribasim_model.node.df.at[postweg, "name"] == "Gemaal Postweg, Kapelle", "Expected Gemaal Postweg at this node"
 assert ribasim_model.pump.static.df is not None
 ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == postweg, "max_downstream_level"] = math.inf
 

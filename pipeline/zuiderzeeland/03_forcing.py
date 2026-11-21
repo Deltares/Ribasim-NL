@@ -36,6 +36,8 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/peilgebieden.
 processor = paths.feedback_processor(work_dir=paths.model_dir("profiles"))
 
 ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = ribasim_model.node_id
 
 # reset pump capacity for each pump
 assert ribasim_model.pump.static.df is not None
@@ -49,8 +51,8 @@ categorize_nodes(ribasim_model, supply_outlets=False)
 
 from_to_node_function_table = node_function_table(ribasim_model)
 
-to_supply = (453, 493, 525, 659, 664, 672)
-to_flow_control = (617,)
+to_supply = (n("ow:ALMERE578"), n("OP4115"), n("ow:110344581"), n("OP2005"), n("OP2404"), n("OP4105"))
+to_flow_control = (n("ow:40344"),)
 to_drain = ()
 from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
@@ -69,21 +71,22 @@ ribasim_model.pump.static.df["meta_known_flow_rate"] = False
 
 KNOWN_PUMP_CAPACITIES = {
     # based on Excel for D-HYDRO model
-    364: 4.44,
-    708: 2.78,
-    517: 3.00,
-    564: 1.22,
+    n("OP3140"): 4.44,
+    n("OP3100"): 2.78,
+    n("OP3160"): 3.00,
+    n("OP3080"): 1.22,
     # based on Gemalen stichting, https://www.gemalen.nl/gemaal_per_waterschap.asp?ws=Waterschap+Zuiderzeeland
-    719: 1,  # Leeghwater, unknown capacity, 1 m3/s based on expert judgement
-    857: 500 * 4 / 60,  # Wortman, also the capacity on the website of the water board and in its delivery
-    853: 770 * 2 / 60,  # Blocq van Kuffeler, Lage Vaart
-    855: 935 * 2 / 60,  # Blocq van Kuffeler, Hoge Vaart
-    787: 500 * 2 / 60,  # Colijn, Lage Vaart
-    788: 580 / 60,  # Colijn, Hoge Vaart
-    766: 580 * 2 / 60,  # Lovink; the website of the water board has 550 m3/min per pump, its delivery 16.67 m3/s
-    814: 800 * 3 / 60,  # Vissering
-    527: 620 * 2 / 60,  # Smeenge, also on the website of the water board; its delivery has 20 m3/s
-    815: 720 * 3 / 60,  # Buma
+    n("OP2601"): 1,  # Leeghwater, unknown capacity, 1 m3/s based on expert judgement
+    # Wortman, also the capacity on the website of the water board and in its delivery
+    n("loc:157251,501708"): 500 * 4 / 60,
+    n("loc:143959,492198"): 770 * 2 / 60,  # Blocq van Kuffeler, Lage Vaart
+    n("loc:143927,492229"): 935 * 2 / 60,  # Blocq van Kuffeler, Hoge Vaart
+    n("P2300"): 500 * 2 / 60,  # Colijn, Lage Vaart
+    n("IW4570"): 580 / 60,  # Colijn, Hoge Vaart
+    n("P2400"): 580 * 2 / 60,  # Lovink; the website of the water board has 550 m3/min per pump, its delivery 16.67 m3/s
+    n("P2200"): 800 * 3 / 60,  # Vissering
+    n("P2100"): 620 * 2 / 60,  # Smeenge, also on the website of the water board; its delivery has 20 m3/s
+    n("P2000"): 720 * 3 / 60,  # Buma
 }
 for node_id, capacity in KNOWN_PUMP_CAPACITIES.items():
     assert ribasim_model.get_node_type(node_id) == "Pump", f"Expected a Pump for node {node_id}"
@@ -102,7 +105,8 @@ set_manning_resistance_outside_bergend(ribasim_model, length=100.0, manning_n=0.
 
 # Gemaal Wortman only starts 12 cm above the -6.20 m NAP of the Lage Vaart, for sustainability and capacity, see
 # https://www.zuiderzeeland.nl/wat-doet-het-waterschap/gemalen-in-flevoland/gemaal-wortman/
-WORTMAN, WORTMAN_CONTROL, WORTMAN_START_LEVEL = 857, 5556, -6.20 + 0.12
+WORTMAN, WORTMAN_CONTROL = n("loc:157251,501708"), n("discrete_control:loc:157251,501708")
+WORTMAN_START_LEVEL = -6.20 + 0.12
 assert ribasim_model.upstream_node_id(WORTMAN, link_type="control") == WORTMAN_CONTROL
 condition_df = ribasim_model.discrete_control.condition.df
 assert condition_df is not None
@@ -117,17 +121,17 @@ ribasim_model = complete_parametrization(
     ribasim_model,
     paths,
     custom_nodes={
-        820: "Rijkswaterstaat",
-        834: "Rijkswaterstaat",
-        857: "Rijkswaterstaat",
-        873: "Rijkswaterstaat",
-        875: "Rijkswaterstaat",
-        876: "Rijkswaterstaat",
-        879: "Rijkswaterstaat",
-        858: "Rijkswaterstaat",
-        872: "Rijkswaterstaat",
-        874: "Rijkswaterstaat",
-        880: "Rijkswaterstaat",
+        n("bnd:IW4545"): "Rijkswaterstaat",
+        n("bnd:P2100"): "Rijkswaterstaat",
+        n("loc:157251,501708"): "Rijkswaterstaat",
+        n("loc:195198,519068"): "Rijkswaterstaat",
+        n("loc:193131,525102"): "Rijkswaterstaat",
+        n("loc:193293,522692"): "Rijkswaterstaat",
+        n("loc:189473,515427"): "Rijkswaterstaat",
+        n("loc:193502,526518"): "Rijkswaterstaat",
+        n("loc:195210,519077"): "Rijkswaterstaat",
+        n("loc:193142,525102"): "Rijkswaterstaat",
+        n("loc:192223,521469"): "Rijkswaterstaat",
     },
     known_pump_flow_rates=None,
 )
@@ -137,8 +141,8 @@ set_design_capacities(ribasim_model, from_to_node_function_table)
 
 # increase max flow rate of some specific outlets which have high drainage rates
 for static_df, node_ids in (
-    (ribasim_model.outlet.static.df, [337, 371, 416, 474]),
-    (ribasim_model.pump.static.df, [914]),
+    (ribasim_model.outlet.static.df, [n("ow:40964"), n("ow:N:K005/100"), n("ow:O:S069/S069/N"), n("ow:72354")]),
+    (ribasim_model.pump.static.df, [n("loc:176616,508796")]),
 ):
     assert static_df is not None
     set_flow_rate(static_df, node_ids, 1.0)

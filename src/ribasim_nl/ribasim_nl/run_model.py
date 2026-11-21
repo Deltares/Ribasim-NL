@@ -56,7 +56,7 @@ def run_model_and_control(
     control = Control(ribasim_toml=ribasim_toml, qlr_path=qlr_path)
     control.run(metrics=STATIC_FORCING_METRICS)
     control.validate_result_conditions(
-        allowed_non_steady_state_node_ids=allowed_non_steady_state_node_ids(authority, scenario)
+        allowed_non_steady_state_node_ids=allowed_non_steady_state_node_ids(model, authority, scenario)
     )
     return Model.read(ribasim_toml)
 

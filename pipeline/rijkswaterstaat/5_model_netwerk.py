@@ -16,6 +16,7 @@ from ribasim.nodes import (
     tabulated_rating_curve,
 )
 from ribasim_nl.case_conversions import pascal_to_snake_case
+from ribasim_nl.keys import KEY_COLUMN, named_keys
 from ribasim_nl.rws_kunstwerken import (
     PARALLEL_KWK,
     rating_curve_from_bottom,
@@ -707,7 +708,10 @@ for row in model.manning_resistance.static.df.itertuples():
 # The ManningResistance between these Basins becomes the Q(h) relation of an LSM calculation, of the flow downstream of
 # the branch to the Amsterdam-Rijnkanaal, with the level at Tiel. It stays downstream of the branch, so the
 # Pr. Bernhardsluis takes its water from the Basin upstream of it, to whose level it is controlled.
-TIEL, TIEL_UPSTREAM_BASIN = 6630, 7291
+# The nodes get their keys here, by which they are referred to from here on, see docs/dev/node-keys.qmd
+model.node.df[KEY_COLUMN] = named_keys(model.node.df, model.link.df)
+n = model.node_id
+TIEL, TIEL_UPSTREAM_BASIN = n("Waal@3>Waal@2"), n("Waal@3")
 qh_tiel = pd.read_excel(kwk_dir / "QhTielWaal.xlsx", sheet_name="Qh-relatie", usecols=["H", "Q_ds"])
 # The fit of Q_ds decreases above 10.1 m, far above the levels at Tiel in the simulation, so the table ends there
 qh_tiel = qh_tiel[~(qh_tiel["Q_ds"].diff() <= 0).cummax()].rename(columns={"Q_ds": "Q"})

@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -11,6 +11,7 @@ from ribasim.geometry.node import NodeSchema
 from shapely.geometry import LineString, Point
 
 from ribasim_nl import Model
+from ribasim_nl.keys import KEY_COLUMN
 
 logger = logging.getLogger(__name__)
 
@@ -34,10 +35,17 @@ mapping = {
 
 
 class RibasimFeedbackProcessor:
-    _basin_aanvoer_on: tuple[int, ...] | None = None
-    _basin_aanvoer_off: tuple[int, ...] | None = None
-    _outlet_aanvoer_on: tuple[int, ...] | None = None
-    _outlet_aanvoer_off: tuple[int, ...] | None = None
+    """Apply the feedback form of a water authority to its input model.
+
+    The form refers to nodes by their key, see `ribasim_nl.keys`: in the columns `Node key` of the sheet
+    `Feedback_Formulier`, the column `key` of `Node_Data`, and the columns `Basin key`, `Pump key` and `Outlet key` of
+    the other sheets. A row that adds a node gives the key of the new node in the `Node key` of its section.
+    """
+
+    _basin_aanvoer_on: tuple[str, ...] | None = None
+    _basin_aanvoer_off: tuple[str, ...] | None = None
+    _outlet_aanvoer_on: tuple[str, ...] | None = None
+    _outlet_aanvoer_off: tuple[str, ...] | None = None
 
     def __init__(
         self,
@@ -86,9 +94,20 @@ class RibasimFeedbackProcessor:
     @staticmethod
     def load_node_type(feedback_excel) -> pd.DataFrame:
         df = pd.read_excel(feedback_excel, sheet_name="Node_Data")
-        df = df[df["node_id"].notna()]
-        df = df.set_index("node_id")
+        df = df[df["key"].notna()]
+        df = df.set_index("key")
         return df
+
+    def node_id(self, key: Any) -> int:
+        """The ID of the node of the model with a key of the form, which raises if there is no such node."""
+        if pd.isna(key):
+            raise KeyError("no node key")
+        return self.model.node_id(str(key))
+
+    def node_ids(self, keys: pd.Series) -> pd.Series:
+        """The IDs of the nodes of the model with the keys of a column of the form, missing for the keys of no node."""
+        node_id = pd.Series(self.model.node.df.index, index=self.model.node.df[KEY_COLUMN])
+        return keys.astype(object).map(node_id)
 
     @staticmethod
     def load_ribasim_model(ribasim_toml) -> Model:
@@ -105,14 +124,8 @@ class RibasimFeedbackProcessor:
         outputdir = Path(self.output_folder)
         self.model.write(outputdir / "ribasim.toml")
 
-    def update_dataframe_with_new_node_ids(self, node_id_map) -> pd.DataFrame:
-        for old_id, new_id in node_id_map.items():
-            self.df.replace(old_id, new_id, inplace=True)
-        return self.df
-
     def process_model(self) -> None:
         self.setup_logging()
-        node_id_map = {}
 
         try:
             for index, row in self.df.iterrows():
@@ -121,18 +134,14 @@ class RibasimFeedbackProcessor:
                     if row["Actie"] == "Verwijderen":
                         self.remove_node(row)
                     elif row["Actie"] == "Toevoegen":
-                        new_node_id = self.add_node(row)
-                        if new_node_id is not None:
-                            node_id_map[int(row["Node ID"])] = new_node_id
-                            self.df.at[index, "Verwerkt"] = new_node_id
+                        self.add_node(row)
                     elif row["Actie"] == "Aanpassen":
                         if row["Verbinding"] == "Node":
                             new_node_id = self.adjust_node(row)
                             if new_node_id is not None:
-                                node_id_map[int(row["Node ID.2"])] = new_node_id
                                 self.df.at[index, "Verwerkt"] = new_node_id
                         elif row["Verbinding"] in ("Edge", "Link") and row["Aanpassing"] == "Stroomrichting Omdraaien":
-                            self.adjust_links(row, node_id_map)
+                            self.adjust_links(row)
                 except Exception as e:
                     logger.error(f"Error processing {row['Actie']}, {row['Verbinding']}, at index {index}: {e}")
         finally:
@@ -146,7 +155,7 @@ class RibasimFeedbackProcessor:
         try:
             key = row["Node Type"]
             key = mapping[key]
-            node_id = int(row["Node ID"])
+            node_id = self.node_id(row["Node key"])
             logger.info(f"Node ID: {node_id}")
             value = getattr(self.model, key, None)
 
@@ -178,7 +187,7 @@ class RibasimFeedbackProcessor:
             return rows_to_remove
 
         except Exception as e:
-            logger.error(f"Error removing node {row['Node ID']}: {e}")
+            logger.error(f"Error removing node {row['Node key']}: {e}")
 
     def add_node(self, row) -> None:
         try:
@@ -205,6 +214,10 @@ class RibasimFeedbackProcessor:
                     if col.startswith("meta_"):
                         template_row[col] = np.nan
                 template_row["meta_node_id"] = node_id
+                # the key of the new node, by which the rows that follow refer to it
+                new_key = row["Node key.1"]
+                if KEY_COLUMN in template_row.columns and pd.notna(new_key):
+                    template_row[KEY_COLUMN] = str(new_key)
                 self.model.node.df = GeoDataFrame[NodeSchema](pd.concat([df_node, template_row]))
 
                 # Add to type-specific tables
@@ -247,24 +260,24 @@ class RibasimFeedbackProcessor:
                 if key in ["level_boundary", "flow_boundary", "terminal"]:
                     new_node = getattr(self.model, key)[node_id]
 
-                    if pd.notna(row["Node ID A"]):
-                        node_type_a = self.df_node_types.loc[int(row["Node ID A"])].node_type
+                    if pd.notna(row["Node key A"]):
+                        node_type_a = self.df_node_types.loc[row["Node key A"]].node_type
                         node_type_a = mapping[str(node_type_a)]
-                        node_a = getattr(self.model, node_type_a)[int(row["Node ID A"])]
+                        node_a = getattr(self.model, node_type_a)[self.node_id(row["Node key A"])]
                         self.model.link.add(new_node, node_a)
                     else:
-                        logger.warning(f"'Node ID A' is NaN for node type {key} at index {row.name}")
+                        logger.warning(f"'Node key A' is NaN for node type {key} at index {row.name}")
                 else:
-                    if pd.isna(row["Node ID A"]) or pd.isna(row["Node ID B"]):
-                        logger.error(f"'Node ID A' or 'Node ID B' is NaN for node type {key} at index {row.name}")
+                    if pd.isna(row["Node key A"]) or pd.isna(row["Node key B"]):
+                        logger.error(f"'Node key A' or 'Node key B' is NaN for node type {key} at index {row.name}")
                         return None
                     new_node = getattr(self.model, key)[node_id]
-                    node_type_a = self.df_node_types.loc[int(row["Node ID A"])].node_type
-                    node_type_b = self.df_node_types.loc[int(row["Node ID B"])].node_type
+                    node_type_a = self.df_node_types.loc[row["Node key A"]].node_type
+                    node_type_b = self.df_node_types.loc[row["Node key B"]].node_type
                     node_type_a = mapping[str(node_type_a)]
                     node_type_b = mapping[str(node_type_b)]
-                    node_a = getattr(self.model, node_type_a)[int(row["Node ID A"])]
-                    node_b = getattr(self.model, node_type_b)[int(row["Node ID B"])]
+                    node_a = getattr(self.model, node_type_a)[self.node_id(row["Node key A"])]
+                    node_b = getattr(self.model, node_type_b)[self.node_id(row["Node key B"])]
                     self.model.link.add(node_a, new_node)
                     self.model.link.add(new_node, node_b)
 
@@ -277,7 +290,7 @@ class RibasimFeedbackProcessor:
                             "subnetwork_id": np.nan,
                         }
                     ],
-                    index=[node_id],
+                    index=[node_id if pd.isna(new_key) else str(new_key)],
                 )
 
                 self.df_node_types = pd.concat([self.df_node_types, new_node_type_row])
@@ -290,9 +303,10 @@ class RibasimFeedbackProcessor:
     def adjust_node(self, row) -> int | None:
         try:
             # Get the old node type and id
-            key = self.df_node_types.loc[int(row["Node ID.2"])].node_type
+            node_key = row["Node key.2"]
+            key = self.df_node_types.loc[node_key].node_type
             key = mapping[str(key)]
-            node_id = int(row["Node ID.2"])
+            node_id = self.node_id(node_key)
             logger.info(f"Node ID: {node_id}")
             # node_id_old = node_id
             value = getattr(self.model, key, None)
@@ -335,6 +349,9 @@ class RibasimFeedbackProcessor:
                     if col.startswith("meta_"):
                         template_row[col] = np.nan
                 template_row["meta_node_id"] = node_id
+                # the node keeps its key
+                if KEY_COLUMN in template_row.columns:
+                    template_row[KEY_COLUMN] = str(node_key)
                 self.model.node.df = GeoDataFrame[NodeSchema](pd.concat([df_node, template_row]))
 
                 # Add to type-specific tables
@@ -394,10 +411,10 @@ class RibasimFeedbackProcessor:
             logger.error(f"Error adjusting node at row: {row}", exc_info=True)
             return None
 
-    def adjust_links(self, row, node_id_map) -> None:
+    def adjust_links(self, row) -> None:
         try:
-            node_a = int(node_id_map.get(row["Node ID A.1"], row["Node ID A.1"]))
-            node_b = int(node_id_map.get(row["Node ID B.1"], row["Node ID B.1"]))
+            node_a = self.node_id(row["Node key A.1"])
+            node_b = self.node_id(row["Node key B.1"])
 
             df_row_a_b = self.model.link.df[
                 (self.model.link.df["from_node_id"] == node_a) & (self.model.link.df["to_node_id"] == node_b)
@@ -457,26 +474,27 @@ class RibasimFeedbackProcessor:
     def update_target_levels(self) -> None:
         # read sheet with the updated the target levels
         df_TL = pd.read_excel(self.feedback_excel, sheet_name="Streefpeilen", header=0)
-        df_TL = df_TL.sort_values(by=["Basin node_id"]).reset_index(drop=True)
         if len(df_TL) > 0:  # if the sheet is filled in, proceed
             assert self.model.basin.state.df is not None
             assert self.model.basin.area.df is not None
             # print warning if there are non existing basins
-            existing_basins = self.model.basin.node.df.index.to_numpy()
-            non_existing_basins = df_TL.loc[~df_TL["Basin node_id"].isin(existing_basins)]
+            df_TL["node_id"] = self.node_ids(df_TL["Basin key"])
+            non_existing_basins = df_TL.loc[~df_TL["node_id"].isin(self.model.basin.node.df.index)]
             if len(non_existing_basins) > 0:
                 print("Warning! Following basins do not exist:\n", non_existing_basins, "\n")
+            level = df_TL.dropna(subset="node_id").set_index("node_id")["Streefpeil"].astype(float)
+            assert level.index.is_unique, "Basins with several target levels in the feedback form"
 
             # update streefpeilen in the .state table
-            self.model.basin.state.df.loc[
-                self.model.basin.state.df.node_id.isin(df_TL["Basin node_id"].to_numpy()), "level"
-            ] = df_TL.Streefpeil.astype(float).to_numpy()
+            state_df = self.model.basin.state.df
+            listed = state_df.node_id.isin(level.index)
+            state_df.loc[listed, "level"] = state_df.loc[listed, "node_id"].map(level).to_numpy()
 
             # update streefpeilen in the .area table
             self.model.basin.area.df["meta_streefpeil"] = self.model.basin.area.df["meta_streefpeil"].astype(object)
-            self.model.basin.area.df.loc[
-                self.model.basin.area.df.node_id.isin(df_TL["Basin node_id"].to_numpy()), "meta_streefpeil"
-            ] = df_TL.Streefpeil.astype(float).to_numpy()
+            area_df = self.model.basin.area.df
+            listed = area_df.node_id.isin(level.index)
+            area_df.loc[listed, "meta_streefpeil"] = area_df.loc[listed, "node_id"].map(level).to_numpy()
             print("The target levels (streefpeilen) have been updated.")
 
     def functie_gemalen(self) -> None:
@@ -490,6 +508,7 @@ class RibasimFeedbackProcessor:
             assert self.model.pump.static.df is not None
             # print warning if there are non existing pumps
             existing_pumps = self.model.pump.node.df.index.to_numpy()
+            df_FG["Pump node_id"] = self.node_ids(df_FG["Pump key"])
             non_existing_pumps = df_FG.loc[~df_FG["Pump node_id"].isin(existing_pumps)]
             if len(non_existing_pumps) > 0:
                 print("Warning! Following pumps do not exist:\n", non_existing_pumps, "\n")
@@ -500,9 +519,9 @@ class RibasimFeedbackProcessor:
             allround_pumps = df_FG.loc[df_FG["Aanvoer / afvoer?"].str.lower() == "aanvoer & afvoer"]
 
             # extract pump IDs and make them unique
-            aanvoer_pump_ids = np.unique(aanvoer_pumps["Pump node_id"].to_numpy(dtype=int))
-            afvoer_pump_ids = np.unique(afvoer_pumps["Pump node_id"].to_numpy(dtype=int))
-            allround_pump_ids = np.unique(allround_pumps["Pump node_id"].to_numpy(dtype=int))
+            aanvoer_pump_ids = np.unique(aanvoer_pumps["Pump node_id"].dropna().to_numpy(dtype=int))
+            afvoer_pump_ids = np.unique(afvoer_pumps["Pump node_id"].dropna().to_numpy(dtype=int))
+            allround_pump_ids = np.unique(allround_pumps["Pump node_id"].dropna().to_numpy(dtype=int))
 
             # clean up pump-IDs
             double_ids = []
@@ -552,15 +571,11 @@ class RibasimFeedbackProcessor:
         else:
             df.dropna(axis=0, inplace=True)
             if len(df) == 0:
-                aanvoer_ids: list[int] = []
-                afvoer_ids: list[int] = []
+                aanvoer_ids: list[str] = []
+                afvoer_ids: list[str] = []
             else:
-                aanvoer_ids = (
-                    df.loc[df["Aanvoer / afvoer?"].str.lower() == "aanvoer", "Basin ID"].to_numpy(dtype=int).tolist()
-                )
-                afvoer_ids = (
-                    df.loc[df["Aanvoer / afvoer?"].str.lower() == "afvoer", "Basin ID"].to_numpy(dtype=int).tolist()
-                )
+                aanvoer_ids = df.loc[df["Aanvoer / afvoer?"].str.lower() == "aanvoer", "Basin key"].astype(str).tolist()
+                afvoer_ids = df.loc[df["Aanvoer / afvoer?"].str.lower() == "afvoer", "Basin key"].astype(str).tolist()
 
             self._basin_aanvoer_on = tuple(aanvoer_ids)
             self._basin_aanvoer_off = tuple(afvoer_ids)
@@ -583,19 +598,13 @@ class RibasimFeedbackProcessor:
         else:
             df.dropna(axis=0, inplace=True)
             if len(df) == 0:
-                aanvoer_ids: list[int] = []
-                afvoer_ids: list[int] = []
+                aanvoer_ids: list[str] = []
+                afvoer_ids: list[str] = []
             else:
                 aanvoer_ids = (
-                    df.loc[df["Aanvoer / afvoer?"].str.lower() == "aanvoer", "Outlet node_id"]
-                    .to_numpy(dtype=int)
-                    .tolist()
+                    df.loc[df["Aanvoer / afvoer?"].str.lower() == "aanvoer", "Outlet key"].astype(str).tolist()
                 )
-                afvoer_ids = (
-                    df.loc[df["Aanvoer / afvoer?"].str.lower() == "afvoer", "Outlet node_id"]
-                    .to_numpy(dtype=int)
-                    .tolist()
-                )
+                afvoer_ids = df.loc[df["Aanvoer / afvoer?"].str.lower() == "afvoer", "Outlet key"].astype(str).tolist()
 
             self._outlet_aanvoer_on = tuple(aanvoer_ids)
             self._outlet_aanvoer_off = tuple(afvoer_ids)
@@ -606,10 +615,10 @@ class RibasimFeedbackProcessor:
             )
 
     @property
-    def basin_aanvoer_on(self) -> tuple[int, ...] | None:
+    def basin_aanvoer_on(self) -> tuple[str, ...] | None:
         """Basin 'aanvoer'-flagging: True
 
-        :return: basin-IDs
+        :return: keys of the Basins
         :rtype: tuple
         """
         if self._basin_aanvoer_on is None:
@@ -618,10 +627,10 @@ class RibasimFeedbackProcessor:
         return self._basin_aanvoer_on
 
     @property
-    def basin_aanvoer_off(self) -> tuple[int, ...] | None:
+    def basin_aanvoer_off(self) -> tuple[str, ...] | None:
         """Basin 'aanvoer'-flagging: False
 
-        :return: basin-IDs
+        :return: keys of the Basins
         :rtype: tuple
         """
         if self._basin_aanvoer_off is None:
@@ -630,10 +639,10 @@ class RibasimFeedbackProcessor:
         return self._basin_aanvoer_off
 
     @property
-    def outlet_aanvoer_on(self) -> tuple[int, ...] | None:
+    def outlet_aanvoer_on(self) -> tuple[str, ...] | None:
         """Oulet 'aanvoer'-flagging: True
 
-        :return: outlet-IDs
+        :return: keys of the Outlets
         :rtype: tuple
         """
         if self._outlet_aanvoer_on is None:
@@ -642,10 +651,10 @@ class RibasimFeedbackProcessor:
         return self._outlet_aanvoer_on
 
     @property
-    def outlet_aanvoer_off(self) -> tuple[int, ...] | None:
+    def outlet_aanvoer_off(self) -> tuple[str, ...] | None:
         """Outlet 'aanvoer'-flagging: False
 
-        :return: outlet-IDs
+        :return: keys of the Outlets
         :rtype: tuple
         """
         if self._outlet_aanvoer_off is None:

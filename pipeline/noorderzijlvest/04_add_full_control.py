@@ -22,25 +22,41 @@ AUTHORITY: str = "Noorderzijlvest"  # authority
 SHORT_NAME: str = "nzv"  # short_name used in toml-file
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
+
+# %%
+# Definieren paden en syncen met cloud
+cloud = CloudStorage()
+ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
+ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
+qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
+aanvoergebieden_gpkg = cloud.joinpath(r"Noorderzijlvest/verwerkt/sturing/aanvoergebieden.gpkg")
+
+# %%
+# Read data
+model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
+lk = model.link_id
+
 SCHUTVERLIES_FLOW_RATE_BY_NODE_ID = {
     #    1756: 1.5,  # Oostersluis
 }
 # Gaarkeuken supplies on the level of the Van Starkenborghkanaal with the relation of the Landelijk Sobek Model (LSM3),
 # and keeps its source limit on the Fryslân boezem, see https://github.com/Deltares/Ribasim-NL/issues/878
-GAARKEUKEN_OUTLET_NODE_ID = 1741
-GAARKEUKEN_LISTEN_NODE_ID = 1186  # Van Starkenborghkanaal
+GAARKEUKEN_OUTLET_NODE_ID = n("loc:216814,585025")
+GAARKEUKEN_LISTEN_NODE_ID = n("up:1460")  # Van Starkenborghkanaal
 GAARKEUKEN_MIN_UPSTREAM_LEVEL = -0.93
 GAARKEUKEN_CONTROL = [(-2.0, 24.0), (-1.0, 24.0), (-0.95, 10.0), (-0.94, 8.7), (-0.93, 0.0)]  # level [m+NAP], m3/s
 # Gaarkeukensluis: schutverlies
-GAARKEUKENSLUIS_NODE_ID = 1744
+GAARKEUKENSLUIS_NODE_ID = n("loc:216796,585120")
 GAARKEUKENSLUIS_FLOW_RATE = 0.1
 GAARKEUKENSLUIS_MAX_FLOW_RATE = 0.2
 OUTLET_FLOW_RATE_AFVOER_OVERRIDE_BY_NODE_ID = {
-    724: 400.0,
-    728: 9999.0,
-    732: 50.0,
+    n("KSL011"): 400.0,
+    n("KSL027"): 9999.0,
+    n("KSL999"): 50.0,
     # 1748: 0.0,Checken!
-    1753: 5.0,
+    n("loc:229841,586106"): 5.0,
     # 1754: 0.0,Checken!
     # 1755: 0.0,Checken!
 }
@@ -57,15 +73,18 @@ OUTLET_FLOW_RATE_AFVOER_OVERRIDE_BY_NODE_ID = {
 # 1746: Roggenkampsluis
 # 1756: Oostersluis
 # 1752: Dokwerdersluis
-EXCLUDE_NODES = {716, 722, 725, 1738, 1740, 1744, 1745, 1746, 1752, 1756}
-
-# %%
-# Definieren paden en syncen met cloud
-cloud = CloudStorage()
-ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
-ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
-qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
-aanvoergebieden_gpkg = cloud.joinpath(r"Noorderzijlvest/verwerkt/sturing/aanvoergebieden.gpkg")
+EXCLUDE_NODES = {
+    n("INL499"),
+    n("KSL001"),
+    n("KSL014"),
+    n("loc:233144,581396"),
+    n("loc:239038,584076"),
+    n("loc:216796,585120"),
+    n("loc:252330,592176"),
+    n("loc:256891,593879"),
+    n("loc:229863,586135"),
+    n("loc:235444,583009"),
+}
 
 
 def configure_gaarkeuken_control(model: Model) -> None:
@@ -92,10 +111,8 @@ def configure_gaarkeuken_control(model: Model) -> None:
 
 
 # %%
-# Read data
-model = Model.read(ribasim_toml)
 assert model.level_boundary.static.df is not None
-model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == 16, "level"] = -1.0
+model.level_boundary.static.df.loc[model.level_boundary.static.df.node_id == n("bnd:16"), "level"] = -1.0
 
 assert model.outlet.static.df is not None
 outlet_flow_rate_afvoer_by_node_id = (
@@ -200,14 +217,14 @@ ignore_intersecting_links: list[int] = []
 # doorspoeling (op uitlaten)
 # 41: Spijksterpompen
 # 412: Grote Herculesstuw
-flushing_nodes = {41: 0.4, 412: 0.2}
+flushing_nodes = {n("KGM015"): 0.4, n("KST0169"): 0.2}
 
 # handmatig opgegeven drain nodes (uitlaten) definieren
 # 40: Noordpolder
 # 412: Marnerwaard
 # 442: Marnerwaard
 # 837: Spijksterpompen
-drain_nodes = [40, 442, 387, 837]
+drain_nodes = [n("KGM014"), n("KST0243"), n("KST0120"), n("1331")]
 
 # handmatig opgegeven supply nodes (inlaten)
 # 136: Nieuwstad
@@ -220,7 +237,17 @@ drain_nodes = [40, 442, 387, 837]
 # 121: Slikken
 # 184: Buiten
 
-supply_nodes = [136, 139, 943, 125, 107, 112, 116, 121, 184]
+supply_nodes = [
+    n("KGM140"),
+    n("KGM144"),
+    n("2433"),
+    n("KGM126"),
+    n("KGM107"),
+    n("KGM112"),
+    n("KGM116"),
+    n("KGM121"),
+    n("KGM307"),
+]
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -245,7 +272,7 @@ polygon = cast(Polygon | MultiPolygon, aanvoergebieden_df.at["Jonkersvaart", "ge
 
 # links die intersecten die we kunnen negeren
 # 1810: sloot naast prallelweg (A7) die vrij afwatert op Oude Diep
-ignore_intersecting_links: list[int] = [1810]
+ignore_intersecting_links: list[int] = [lk("up:175", "175")]
 
 # doorspoeling (op uitlaten)
 # 357: KST0159 Trambaanstuw
@@ -255,17 +282,24 @@ ignore_intersecting_links: list[int] = [1810]
 # 401: KST0148 Mastuw
 # 501: KST0379 Ooster Lietsstuw
 # 383: KST0113 Lage Rietstuw
-flushing_nodes = {357: 0.02, 393: 0.012, 350: 0.015, 401: 0.017, 501: 0.034, 383: 0.013}
+flushing_nodes = {
+    n("KST0069"): 0.02,
+    n("KST0135"): 0.012,
+    n("KST0053"): 0.015,
+    n("KST0148"): 0.017,
+    n("KST0379"): 0.034,
+    n("KST0113"): 0.013,
+}
 
 # handmatig opgegeven drain nodes (uitlaten) definieren
 # 551: KST0556
 # 652: KST1072
-drain_nodes = [551, 652]
+drain_nodes = [n("KST0566"), n("KST1072")]
 
 # handmatig opgegeven supply nodes (inlaten)
 # 37: Diepswal
 # 38: Jonkersvaart
-supply_nodes = [37, 38]
+supply_nodes = [n("KGM010"), n("KGM011")]
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -298,9 +332,9 @@ ignore_intersecting_links: list[int] = []
 flushing_nodes = {}
 
 # Peizerdiep: geen doorspoelvraag, alleen verdeling over doorlaten.
-flow_control_nodes = [391, 419]
-supply_flow_rate = {391: 0.043 * 0.75, 419: 0.043 * 0.25}
-drain_flow_rate = {391: 100.0, 419: 0.0}
+flow_control_nodes = [n("KST0130"), n("KST0183")]
+supply_flow_rate = {n("KST0130"): 0.043 * 0.75, n("KST0183"): 0.043 * 0.25}
+drain_flow_rate = {n("KST0130"): 100.0, n("KST0183"): 0.0}
 
 # handmatig opgegeven drain nodes (uitlaten) definieren
 # node_id: Naam
@@ -340,13 +374,13 @@ model.outlet.static.df.loc[mask, "max_flow_rate"] = 0.0
 # 728: Lamerburen Schutsluis (bij complex De Waterwolf)
 # 640: KST1027
 # 641: KST1030
-flow_control_nodes = [728, 640, 641]
+flow_control_nodes = [n("KSL027"), n("KST1027"), n("KST1030")]
 
 # 39 Zuidhornder Zuidertocht
 # 165: Harssensbosch
 # 680: KST9970
 # 1753: Gemaal Dorkwerd
-supply_nodes = [39, 680, 165, 1741, 1753]
+supply_nodes = [n("KGM013"), n("KST9970"), n("KGM230"), n("loc:216814,585025"), n("loc:229841,586106")]
 
 drain_nodes = []
 

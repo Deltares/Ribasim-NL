@@ -18,6 +18,7 @@ import pandas as pd
 import xarray as xr
 
 from ribasim_nl.goodness_of_fit import compare_observations, read_table
+from ribasim_nl.keys import AUTHORITY_COLUMN, KEY_COLUMN
 from ribasim_nl.webmap import model_results_dir, read_config
 
 # Metrics per group, as written to the metrics file of DVC
@@ -51,7 +52,7 @@ class Limit:
 class KeyLevel:
     """A Basin of the main water system, of which the 1st and 99th percentile of the levels should be in a range."""
 
-    node_id: int
+    key: str  # the key of the Basin of Rijkswaterstaat, see `ribasim_nl.keys`
     name: str
     low: float  # m NAP
     high: float  # m NAP
@@ -59,15 +60,17 @@ class KeyLevel:
 
 # Basins of Rijkswaterstaat, with a range around the target levels of the Peilbesluiten
 KEY_LEVELS = (
-    KeyLevel(8006803, "IJsselmeer", -0.6, 0.1),  # -0.40 in winter, -0.10 to -0.40 in summer
-    KeyLevel(8005792, "Markermeer", -0.65, 0.0),  # -0.40 in winter, -0.10 to -0.30 in summer
-    KeyLevel(8008077, "Veluwemeer", -0.4, 0.2),  # -0.05
-    KeyLevel(8004210, "Noordzeekanaal", -0.6, -0.2),  # -0.40
-    KeyLevel(8005018, "Amsterdam-Rijnkanaal Breukelen", -0.6, -0.2),  # -0.40, the same section as the Noordzeekanaal
-    KeyLevel(8002609, "Volkerak", -0.3, 0.3),  # 0.00
-    KeyLevel(8001814, "Haringvliet", -0.3, 0.6),
-    KeyLevel(8010592, "Twentekanaal (Kanaal Zutphen-Enschede)", 9.8, 10.4),  # 10.00 between Eefde and Delden
-    KeyLevel(8008147, "Julianakanaal", 43.8, 44.3),  # 44.00 above Born
+    KeyLevel("IJsselmeer@5", "IJsselmeer", -0.6, 0.1),  # -0.40 in winter, -0.10 to -0.40 in summer
+    KeyLevel("Markermeer", "Markermeer", -0.65, 0.0),  # -0.40 in winter, -0.10 to -0.30 in summer
+    KeyLevel("Veluwemeer", "Veluwemeer", -0.4, 0.2),  # -0.05
+    KeyLevel("Noordzeekanaal", "Noordzeekanaal", -0.6, -0.2),  # -0.40
+    # -0.40, the same section as the Noordzeekanaal
+    KeyLevel("Amsterdam-Rijnkanaal@1", "Amsterdam-Rijnkanaal Breukelen", -0.6, -0.2),
+    KeyLevel("Volkerak", "Volkerak", -0.3, 0.3),  # 0.00
+    KeyLevel("Haringvliet", "Haringvliet", -0.3, 0.6),
+    # 10.00 between Eefde and Delden
+    KeyLevel("Twentekanaal (Kanaal Zutphen-Enschede)@1", "Twentekanaal (Kanaal Zutphen-Enschede)", 9.8, 10.4),
+    KeyLevel("Julianakanaal@1", "Julianakanaal", 43.8, 44.3),  # 44.00 above Born
 )
 
 # Observation nodes of the main water system, by name, with the minimum Kling-Gupta efficiency of the discharge
@@ -144,17 +147,22 @@ def key_discharge_metrics(comparison: pd.DataFrame) -> dict[str, float]:
 def key_level_metrics(database: Path, results_dir: Path) -> tuple[dict[str, float], dict[str, float]]:
     """The 1st and 99th percentile of the levels of the `KEY_LEVELS`, by name."""
     with closing(sqlite3.connect(database)) as con:
-        names = read_table(con, "Node", "node_id, name").set_index("node_id")["name"]
-    node_ids = [key.node_id for key in KEY_LEVELS]
+        nodes = read_table(con, "Node", f"node_id, name, {KEY_COLUMN}, {AUTHORITY_COLUMN}")
+    nodes = nodes[nodes[AUTHORITY_COLUMN] == "Rijkswaterstaat"].set_index(KEY_COLUMN)
+    assert nodes.index.is_unique, "The keys of the nodes of Rijkswaterstaat are not unique"
+    names, ids = nodes["name"].to_dict(), nodes["node_id"].astype(int).to_dict()
+    node_ids: dict[str, int] = {}
     for key in KEY_LEVELS:
-        assert names.get(key.node_id) == key.name, f"Basin #{key.node_id} is not named {key.name}"
+        assert key.key in ids, f"No node of Rijkswaterstaat has key {key.key}"
+        assert names[key.key] == key.name, f"Basin {key.key} is not named {key.name}"
+        node_ids[key.name] = ids[key.key]
     with xr.open_dataset(results_dir / "basin.nc") as ds:
-        level = ds["level"].sel(node_id=node_ids).to_pandas()
+        level = ds["level"].sel(node_id=list(node_ids.values())).to_pandas()
     assert isinstance(level, pd.DataFrame)
     p01, p99 = level.quantile(0.01), level.quantile(0.99)
     return (
-        {key.name: float(p01[key.node_id]) for key in KEY_LEVELS},
-        {key.name: float(p99[key.node_id]) for key in KEY_LEVELS},
+        {name: float(p01[node_id]) for name, node_id in node_ids.items()},
+        {name: float(p99[node_id]) for name, node_id in node_ids.items()},
     )
 
 

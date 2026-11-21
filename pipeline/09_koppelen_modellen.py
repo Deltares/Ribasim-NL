@@ -30,6 +30,8 @@ from ribasim_nl.flow_paths import (
     remove_flow_link,
 )
 from ribasim_nl.junctions import junctionify
+from ribasim_nl.keys import NodeKey as K
+from ribasim_nl.keys import resolve_keys
 from ribasim_nl.layout import move_nodes, resolve_overlaps, separate_nodes
 from ribasim_nl.model import find_toml
 from ribasim_nl.network_snapping import line_reader, snap_to_waterways
@@ -78,107 +80,116 @@ fairway_gpkg = data_dir / "Basisgegevens/OSM/waterway_fairway.gpkg"
 couple_lhm: bool = True
 sub_models: list[str] = []
 
+# The tables below refer to a node by its water authority and its key, `K("<authority>", "<key>")`, see
+# docs/dev/node-keys.qmd. `resolve_keys` replaces these by the node IDs of the model that is coupled, where a table is
+# used: a node of an authority that is not in the model gives None, a key that no node of its authority has an error.
 remove_nodes = [
-    3401752,  # Dokwerd NZV
-    3400015,  # Dokwerd NZV
-    3400016,  # Dokwerd NZV
-    3401753,  # Dokwerd NZV
-    3400017,  # Dokkumer Nieuwe Zijlen NZV
-    3400018,  # Dokkumer Nieuwe Zijlen NZV
-    3401754,  # Dokkumer Nieuwe Zijlen NZV
-    3401755,  # Dokkumer Nieuwe Zijlen NZV
-    203706,  # Inlaat hoort bij NZV
-    203840,  # Inlaat hoort bij NZV
-    202773,  # "Gaarkeuken" Fryslân
-    203809,  # "Gaarkeuken" Fryslân
-    6002493,  # reparatie Helenavaart Limburg
-    6000004,  # losse Limburg-boundary zonder flow-link
-    6000120,  # losse Limburg-boundary zonder flow-link
-    6000109,  # parallel aan AaenMaas FlowDemand-inlaat 3800601
-    6000800,  # parallel aan AaenMaas FlowDemand-inlaat 3800601
-    6002497,  # parallel aan doorlaat 6002496 tussen hetzelfde Limburg/AaenMaas basin-paar
-    3800052,  # forceren koppeling kanaal van Deurne
-    3800447,  # forceren koppeling kanaal van Deurne
-    3802017,  # verwijderen rand binnenstad
-    3800049,  # verwijderen rand binnenstad
-    3803092,  # verwijderen zijtak Helanvaart Limburg
-    3800036,  # verwijderen zijtak Helanvaart Limburg
-    3800037,  # losse AaenMaas-boundary zonder flow-link
-    4402318,  # parallele node Purit Vschtromen
+    K("Noorderzijlvest", "loc:229863,586135"),  # Dokwerd NZV
+    K("Noorderzijlvest", "bnd:15"),  # Dokwerd NZV
+    K("Noorderzijlvest", "bnd:16"),  # Dokwerd NZV
+    K("Noorderzijlvest", "loc:229841,586106"),  # Dokwerd NZV
+    K("Noorderzijlvest", "bnd:17"),  # Dokkumer Nieuwe Zijlen NZV
+    K("Noorderzijlvest", "bnd:18"),  # Dokkumer Nieuwe Zijlen NZV
+    K("Noorderzijlvest", "loc:206391,592712"),  # Dokkumer Nieuwe Zijlen NZV
+    K("Noorderzijlvest", "loc:206483,592560"),  # Dokkumer Nieuwe Zijlen NZV
+    K("WetterskipFryslan", "ow:KDU0034109"),  # Inlaat hoort bij NZV
+    K("WetterskipFryslan", "bnd:ow:KDU0034109"),  # Inlaat hoort bij NZV
+    K("WetterskipFryslan", "ow:OAF-F1020450"),  # "Gaarkeuken" Fryslân
+    K("WetterskipFryslan", "bnd:ow:OAF-F1020450"),  # "Gaarkeuken" Fryslân
+    K("Limburg", "loc:189059,384157"),  # reparatie Helenavaart Limburg
+    K("Limburg", "bnd:109"),  # parallel aan AaenMaas FlowDemand-inlaat 2611054
+    K("Limburg", "S_282446"),  # parallel aan AaenMaas FlowDemand-inlaat 2611054
+    K("AaenMaas", "bnd:52"),  # forceren koppeling kanaal van Deurne
+    K("AaenMaas", "3100004"),  # forceren koppeling kanaal van Deurne
+    K("AaenMaas", "loc:148512,410583"),  # verwijderen rand binnenstad
+    K("AaenMaas", "bnd:49"),  # verwijderen rand binnenstad
+    K("AaenMaas", "loc:192486,378114"),  # verwijderen zijtak Helanvaart Limburg
+    K("AaenMaas", "bnd:36"),  # verwijderen zijtak Helanvaart Limburg
+    K("Vechtstromen", "loc:263698,528136"),  # parallele node Purit Vschtromen
 ]
 
 # Pumps with min_upstream_level below upstream basin bottom; reset to NA
 reset_pump_min_upstream_level = [
-    5900602,  # min_upstream_level (2.61) below upstream Basin #4402052 bottom (3.3)
+    # min_upstream_level (2.61) below the bottom (3.3) of upstream Basin up:GM00192 of Vechtstromen
+    K("DrentsOverijsselseDelta", "gemaal.11495"),
 ]
 
 # Outlets with min_upstream_level below upstream basin bottom; reset to NA
 reset_outlet_min_upstream_level = [
-    3300727,  # min_upstream_level (14.76) below upstream Basin #4401600 bottom (16.3)
+    # min_upstream_level (14.76) below the bottom (16.3) of upstream Basin up:ow:WL03774-2-0 of Vechtstromen
+    K("HunzeenAas", "KIN-V-01001"),
 ]
 
 # Outlets with min_upstream_level below the effective upstream Basin bottom; clamp to validation-safe level
 minimum_outlet_min_upstream_level = {
-    3800291: 15.1,  # aanvoer min_upstream_level (9.36) below upstream Basin #3801452 bottom (15.1)
+    # aanvoer min_upstream_level (9.36) below the bottom (15.1) of upstream Basin up:108HOL
+    K("AaenMaas", "108HOL"): 15.1,
 }
 
 # force LevelBoundary node_id to Basin node_id, overriding the automatic coupling
 forced_coupling = {
-    3400005: 5901608,
-    203787: 200184,  # ivm ontbreken Grootegaster tocht bij NZV
-    203804: 200184,  # ivm ontbreken Grootegaster tocht bij NZV
-    5900028: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
-    5900029: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
-    5900030: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
-    5900031: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
-    5900032: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
-    5900033: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
-    5900034: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
-    5900096: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
-    5900097: 8009406,  # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
-    1500551: 4000298,  # verbind Winsemius met Brielse Meer ipv Hartelkanaal.
-    1500543: 8001616,  # verbind vdBurg met open zee ipv Nieuwe Waterweg
-    1301498: 1300169,  # LevelBoundary buiten de boezem van HDSR geplaatst
-    1301499: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
-    1301496: 1402004,  # LevelBoundary buiten de boezem van HDSR geplaatst
-    1301495: 1404801,  # LevelBoundary buiten de boezem van HDSR geplaatst; inlaat vanaf bovenstroomse TRC-basin
-    1301492: 1402100,  # LevelBoundary buiten de boezem van HDSR geplaatst; pomp naar benedenstroomse TRC-basin
-    4400015: 5903236,  # LB ligt op exact dezelfde locatie
-    4402348: 5900072,  # LB ligt op exact dezelfde locatie
-    6000124: 6002492,  # Reparatie Helenavaart
-    6000125: 3801280,  # Forceren Kanaal van Deurne
-    3800038: 6002495,  # Helenavaart Limburg neemt water uit het Kanaal van Deurne, niet uit de nabije De Beulen
-    3800053: 3801280,  # Forceren Kanaal van Deurne
-    2700009: 3801394,  # Vuchterstuw naar Binnenstad
-    3800048: 3801394,  # Aansluiten Drongelens kanaal op Binnenstad
-    3300009: 4401377,  # Levelboundary takt niet aan op Verlengde Hoogeveense Vaart
-    6000003: 3801961,  # Forceren zijtak Helanvaart Limburg
-    3800029: 6002294,  # Defensiekanaal Limburg: voorkom koppeling via Junction 6003577
-    3801958: 6002408,  # AaenMaas FlowDemand-inlaat 3800601 koppelen aan Limburg-basin
-    # Dokkumer Nieuwe Zijlen, zie #824: Fryslân-uitlaten en inlaat 203888 op de NZV-junction 3404398, waarin de aan- en
-    # afvoer van NZV-basin 3401124 samenkomen
-    203885: 3404398,
-    203887: 3404398,
-    203898: 3404398,
-    203900: 3404398,
+    K("Noorderzijlvest", "bnd:5"): K("DrentsOverijsselseDelta", "up:duikersifonhevel.13178"),
+    # ivm ontbreken Grootegaster tocht bij NZV
+    K("WetterskipFryslan", "bnd:ow:OAF-F1019555"): K("WetterskipFryslan", "PBH0094352"),
+    # ivm ontbreken Vollehovenmeer en Kadoelenmeer, voorkom dat WDOD met ZZL gekoppeld wordt
+    **{
+        K("DrentsOverijsselseDelta", f"bnd:{boundary_id}"): K("Rijkswaterstaat", "Zwarte Meer")
+        for boundary_id in (28, 29, 30, 31, 32, 33, 34, 96, 97)
+    },
+    # verbind Winsemius met Brielse Meer ipv Hartelkanaal.
+    K("Delfland", "bnd:6E55DFD8-873B-47E5-9DB2-84DE58B82F9B|>AHD 1"): K("HollandseDelta", "P-V21.004"),
+    # verbind vdBurg met open zee ipv Nieuwe Waterweg
+    K("Delfland", "bnd:CB812DC4-0F96-4BBB-9520-F001440BA7C8"): K("Rijkswaterstaat", "loc:61734,445900"),
+    # LevelBoundary buiten de boezem van HDSR geplaatst
+    K("Rijnland", "loc:114888,447657"): K("Rijnland", "WW-41B_dummy_id_129"),
+    K("Rijnland", "loc:113301,451503"): K("StichtseRijnlanden", "up:H034561___25"),
+    K("Rijnland", "loc:113648,453108"): K("StichtseRijnlanden", "up:H034561___25"),
+    # inlaat vanaf bovenstroomse TRC-basin
+    K("Rijnland", "loc:113762,453622"): K("StichtseRijnlanden", "bergend:up:H034560___0"),
+    # pomp naar benedenstroomse TRC-basin
+    K("Rijnland", "loc:113762,453619"): K("StichtseRijnlanden", "up:H034560___0"),
+    K("Vechtstromen", "bnd:15"): K("DrentsOverijsselseDelta", "loc:240741,541524"),  # LB ligt op exact dezelfde locatie
+    K("Vechtstromen", "bnd:15@2"): K("DrentsOverijsselseDelta", "bnd:72"),  # LB ligt op exact dezelfde locatie
+    K("Limburg", "bnd:124"): K("Limburg", "loc:189487,383501"),  # Reparatie Helenavaart
+    K("Limburg", "bnd:125"): K("AaenMaas", "up:261BR"),  # Forceren Kanaal van Deurne
+    # Helenavaart Limburg neemt water uit het Kanaal van Deurne, niet uit de nabije De Beulen
+    K("AaenMaas", "bnd:38"): K("Limburg", "loc:191446,372816"),
+    K("AaenMaas", "bnd:53"): K("AaenMaas", "up:261BR"),  # Forceren Kanaal van Deurne
+    K("DeDommel", "bnd:9"): K("AaenMaas", "up:1160500___3"),  # Vuchterstuw naar Binnenstad
+    K("AaenMaas", "bnd:48"): K("AaenMaas", "up:1160500___3"),  # Aansluiten Drongelens kanaal op Binnenstad
+    # Levelboundary takt niet aan op Verlengde Hoogeveense Vaart
+    K("HunzeenAas", "bnd:9"): K("Vechtstromen", "up:GM00245"),
+    K("Limburg", "bnd:3"): K("AaenMaas", "up:3200005"),  # Forceren zijtak Helanvaart Limburg
+    # Defensiekanaal Limburg: voorkom koppeling via de Junction van dit Basin
+    K("AaenMaas", "bnd:29"): K("Limburg", "up:S_281999"),
+    # AaenMaas FlowDemand-inlaat 2611054 koppelen aan Limburg-basin
+    K("AaenMaas", "up:2611054"): K("Limburg", "up:S_98244"),
+    # Dokkumer Nieuwe Zijlen, zie #824: Fryslân-uitlaten en de inlaat op de NZV-junction, waarin de aan- en afvoer van
+    # NZV-basin up:1246 samenkomen
+    **{
+        K("WetterskipFryslan", key): K("Noorderzijlvest", "junction:KGM196>iKGM128#4x5")
+        for key in ("loc:206469,592738", "loc:206516,592761", "loc:206572,592599", "loc:206437,592726")
+    },
 }
 
 # Connector nodes whose link with a Rijkswaterstaat Basin starts straight, to be routed over its water, see
 # `route_links_between_models`, rather than from the Rijkswaterstaat waterway nearest to them, see `get_rws_link`
 straight_rws_links = {
-    1100514,  # Opvoergemaal Steenenbeer, uit het IJmeer en niet via de Muidertrekvaart en het ARK, zie #916
-    1101053,  # Zeesluis Muiden, uit het IJmeer en niet via de Muidertrekvaart en het ARK, zie #916
+    # uit het IJmeer en niet via de Muidertrekvaart en het ARK, zie #916
+    K("AmstelGooienVecht", "KGM00452"),  # Opvoergemaal Steenenbeer
+    K("AmstelGooienVecht", "loc:133336,482556"),  # Zeesluis Muiden
 }
 
 # Nodes to move after coupling, by (dx, dy) in meters
-node_offsets: dict[int, tuple[float, float]] = {}
+node_offsets: dict[K, tuple[float, float]] = {}
 
 # Outlets that are open water connections, converted to ManningResistance after coupling, removing their control
 outlet_to_manning_resistance = {
-    1100600: {"profile_width": 10.0, "manning_n": 0.02},  # open water Angstel - ARK, zie #820
+    # open water Angstel - ARK, zie #820
+    K("AmstelGooienVecht", "ow:dummy_globalid_hydroobject_7140"): {"profile_width": 10.0, "manning_n": 0.02},
     # open water van Stichtse Rijnlanden naar AmstelGooienVecht, met de breedte van het BGT-water, zie #912. OW690 en
     # vistrap OW694 blijven Outlets, zie https://github.com/Deltares/Ribasim-NL/pull/928#issuecomment-6437301792
-    1400719: {"profile_width": 40.0, "manning_n": 0.03},  # OW669
+    K("StichtseRijnlanden", "OW669"): {"profile_width": 40.0, "manning_n": 0.03},
 }
 
 
@@ -187,18 +198,18 @@ class UserDemandConfig(TypedDict):
 
     name: str
     geometry: Point
-    from_basin_id: int
-    to_basin_id: int
+    from_basin_id: K
+    to_basin_id: K
     demand: float
-    branch_towards_id: NotRequired[int]
+    branch_towards_id: NotRequired[K]
 
 
 class RouteJunctionConfig(TypedDict):
     """Links from a Basin to nodes, merged into a Junction on a link of that Basin, see `change_routes`."""
 
-    basin_id: int
-    node_ids: list[int]
-    link_id: int
+    basin_id: K
+    node_ids: list[K]
+    link: tuple[K, K]  # the nodes that the link is from and to
 
 
 # UserDemands across models, added after coupling with straight links (pipelines), with the location in RD
@@ -206,16 +217,16 @@ user_demands: list[UserDemandConfig] = [
     {
         "name": "Evides Industriewater DWP Maasvlakte",  # zie #857
         "geometry": Point(65911, 439586),
-        "from_basin_id": 4000298,  # Brielse Meer
-        "to_basin_id": 8001886,  # Beerkanaal, 2e Maasvlakte
+        "from_basin_id": K("HollandseDelta", "P-V21.004"),  # Brielse Meer
+        "to_basin_id": K("Rijkswaterstaat", "Beerkanaal"),  # 2e Maasvlakte
         "demand": 0.222,  # 800 m3/uur netto capaciteit
     },
     {
         "name": "Evides Industriewater DWP Botlek",  # zie #857
         "geometry": Point(76710, 433932),
-        "from_basin_id": 4000234,  # Scheepvaart- en Voedingskanaal, zie #871
-        "branch_towards_id": 4002322,  # vanaf de route naar ManningResistance 4002322, zie #871
-        "to_basin_id": 8002247,  # Calandkanaal
+        "from_basin_id": K("HollandseDelta", "P-V21.003"),  # Scheepvaart- en Voedingskanaal, zie #871
+        "branch_towards_id": K("HollandseDelta", "ow:B28504"),  # vanaf de route naar deze ManningResistance, zie #871
+        "to_basin_id": K("Rijkswaterstaat", "Calandkanaal"),
         "demand": 0.388,  # 1400 m3/uur netto capaciteit
     },
 ]
@@ -224,33 +235,48 @@ USER_DEMAND_MIN_LEVEL_OFFSET = 0.1  # above the bottom of the source Basin
 
 # Nodes whose link from a Basin branches off the route from that Basin towards another node, see `branch_from_route`
 route_branches = {
-    1200327: (1202747, 1200393),  # HHNK-uitlaat vanaf de route naar uitlaat 1200393, zie #871
-    1500460: (4000298, 4001451),  # Gemaal Winsemius vanaf de route naar Stenen Baak, zie #871
+    # HHNK-uitlaat vanaf de route naar de uitlaat op OAF-CS-26166, zie #871
+    K("HollandsNoorderkwartier", "KST-JL-2228|peilgebied_1000-01>peilgebied_04751-17"): (
+        K("HollandsNoorderkwartier", "peilgebied_1000-01/5"),
+        K("HollandsNoorderkwartier", "ow:OAF-CS-26166_12546"),
+    ),
+    # Gemaal Winsemius vanaf de route naar Stenen Baak, zie #871
+    K("Delfland", "6E55DFD8-873B-47E5-9DB2-84DE58B82F9B|>AHD 1"): (
+        K("HollandseDelta", "P-V21.004"),
+        K("HollandseDelta", "09816GM"),
+    ),
 }
+
+# The inlaten of the Boven Regge
+BOVEN_REGGE = [K("Vechtstromen", "DK11735"), K("Vechtstromen", "ow:WL07352-1"), K("Vechtstromen", "ow:WL07353")]
 
 # Links from a Basin to nodes, merged into a Junction on a link of that Basin, see `merge_inflows` and `place_on_link`
 route_junctions_on_link: list[RouteJunctionConfig] = [
     # inlaten Boven Regge op de Schipbeek, zie #861
-    {"basin_id": 700797, "node_ids": [4401049, 4401103, 4401104], "link_id": 700438},
+    {
+        "basin_id": K("RijnenIJssel", "up:AF9637001"),
+        "node_ids": BOVEN_REGGE,
+        "link": (K("RijnenIJssel", "ST96370007"), K("RijnenIJssel", "up:AF9637001")),
+    },
 ]
 
 # Nodes connected directly to the first Junction downstream that their routes share, see `merge_outflows`
 merged_outflows = [
-    [4401049, 4401103, 4401104],  # inlaten Boven Regge, zie #861
+    BOVEN_REGGE,  # zie #861
 ]
 
 # Node names to set after coupling
 node_names = {
-    203899: "Dokkumer Nieuwe Zijlen schutsluis",  # zie #824
-    203901: "Dokkumer Nieuwe Zijlen stuw",  # zie #824
+    K("WetterskipFryslan", "loc:206421,592530"): "Dokkumer Nieuwe Zijlen schutsluis",  # zie #824
+    K("WetterskipFryslan", "loc:206360,592679"): "Dokkumer Nieuwe Zijlen stuw",  # zie #824
 }
 
 # Static metadata of connector nodes to set after coupling, e.g. levels that were boundary placeholders
 connector_static_meta = {
-    203886: {"meta_to_level": -0.60},  # zie #824
-    203888: {"meta_from_level": -2.35},  # zie #824
-    203899: {"meta_to_level": -0.60},  # zie #824
-    203901: {"meta_to_level": -0.60},  # zie #824
+    K("WetterskipFryslan", "loc:206449,592819"): {"meta_to_level": -0.60},  # zie #824
+    K("WetterskipFryslan", "loc:206508,592803"): {"meta_from_level": -2.35},  # zie #824
+    K("WetterskipFryslan", "loc:206421,592530"): {"meta_to_level": -0.60},  # zie #824
+    K("WetterskipFryslan", "loc:206360,592679"): {"meta_to_level": -0.60},  # zie #824
 }
 
 
@@ -307,8 +333,8 @@ def initialize_models(toml_file: Path) -> tuple[Model, Network, gpd.GeoDataFrame
     remove_seasonal_levels(model)
 
     # Remove nodes if exists, with the control nodes that only control them, since their ids are not stable
-    for i in remove_nodes:
-        if i not in model.node.df.index:
+    for i in resolve_keys(model, remove_nodes):
+        if i is None:
             continue
         controlled = model.link.df.loc[model.link.df["from_node_id"] == i, "to_node_id"].tolist()
         if model.get_node_type(i) == "DiscreteControl" and controlled:
@@ -331,7 +357,12 @@ def initialize_models(toml_file: Path) -> tuple[Model, Network, gpd.GeoDataFrame
 
 
 def create_link_geometry(
-    couple_authority: str, boundary_node_authority: str, kwargs: dict, network: Network, couple_with_basin_id: int
+    couple_authority: str,
+    boundary_node_authority: str,
+    kwargs: dict,
+    network: Network,
+    couple_with_basin_id: int,
+    straight_node_ids: set[int],
 ) -> LineString:
     """Create appropriate link geometry based on authority type.
 
@@ -347,13 +378,15 @@ def create_link_geometry(
         Network object for RWS links
     couple_with_basin_id : int
         Basin ID to couple with
+    straight_node_ids : set[int]
+        The nodes of `straight_rws_links`
 
     Returns
     -------
     LineString
         LineString geometry for the link
     """
-    straight = {kwargs["from_node"].node_id, kwargs["to_node"].node_id} & straight_rws_links
+    straight = {kwargs["from_node"].node_id, kwargs["to_node"].node_id} & straight_node_ids
     if couple_authority == "Rijkswaterstaat" and not straight:
         if kwargs["meta_to_authority"] != boundary_node_authority:  # uitlaat
             geometry = get_rws_link(
@@ -465,6 +498,8 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: gpd.G
     ].index.to_list()
 
     all_link_table = []
+    forced_basin_ids = resolve_keys(model, forced_coupling)
+    straight_node_ids = resolve_keys(model, straight_rws_links)
     # the links added below do not change the Junctions, so the routes only change where a node is removed
     routes = Routes(model)
 
@@ -486,26 +521,13 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: gpd.G
             continue
 
         # we check if coupling is overruled
-        if boundary_node_id in forced_coupling:
-            couple_with_basin_id = forced_coupling[boundary_node_id]
-            if couple_with_basin_id not in model.node.df.index:
-                # determine the authority that owns the missing target node
-                target_prefix = couple_with_basin_id // 10**5
-                target_authority = _prefix_to_authority.get(target_prefix)
-                included_authorities = set(model.node.df["meta_waterbeheerder"].dropna().unique())
-                if target_authority and target_authority not in included_authorities:
-                    logger.warning(
-                        "Forced coupling target %d (%s) not in model (authority not included), skipping %s.",
-                        couple_with_basin_id,
-                        target_authority,
-                        boundary_node,
-                    )
-                else:
-                    raise KeyError(
-                        f"Forced coupling target {couple_with_basin_id} not found in model, "
-                        f"but its authority '{target_authority}' is included. "
-                        f"Check forced_coupling for boundary node {boundary_node_id}."
-                    )
+        if boundary_node_id in forced_basin_ids:
+            couple_with_basin_id = forced_basin_ids[boundary_node_id]
+            if couple_with_basin_id is None:
+                logger.warning(
+                    "Forced coupling target of %s is of an authority that is not in the model, skipping.",
+                    boundary_node,
+                )
                 continue
         else:
             # Check whether there are very close LB from the other authority
@@ -591,7 +613,7 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: gpd.G
         # Add links with geometry
         for kwargs in link_table:
             geometry = create_link_geometry(
-                couple_authority, boundary_node_authority, kwargs, network, couple_with_basin_id
+                couple_authority, boundary_node_authority, kwargs, network, couple_with_basin_id, straight_node_ids
             )
 
             # Check for cycles: the connector already flows from or into the Basin it would be coupled to
@@ -617,18 +639,18 @@ def fix_basin_profiles(model: Model) -> None:
         model: Model to fix profiles for
     """
     assert model.pump.static.df is not None
-    for pump_id in reset_pump_min_upstream_level:
+    for pump_id in resolve_keys(model, reset_pump_min_upstream_level):
         mask = model.pump.static.df.node_id == pump_id
         if mask.any():
             model.pump.static.df.loc[mask, "min_upstream_level"] = -math.inf
 
     assert model.outlet.static.df is not None
-    for outlet_id in reset_outlet_min_upstream_level:
+    for outlet_id in resolve_keys(model, reset_outlet_min_upstream_level):
         mask = model.outlet.static.df.node_id == outlet_id
         if mask.any():
             model.outlet.static.df.loc[mask, "min_upstream_level"] = -math.inf
 
-    for outlet_id, min_upstream_level in minimum_outlet_min_upstream_level.items():
+    for outlet_id, min_upstream_level in resolve_keys(model, minimum_outlet_min_upstream_level).items():
         mask = model.outlet.static.df.node_id == outlet_id
         if mask.any():
             current = finite_levels(model.outlet.static.df.loc[mask, "min_upstream_level"])
@@ -664,8 +686,13 @@ def fix_basin_profiles(model: Model) -> None:
                 model.basin.profile.df.loc[(mask[mask]).index[0], "level"] = min_level - MIN_BASIN_OUTLET_DIFF
 
 
-def node_in_model(model: Model, node_id: int) -> bool:
-    """Check if a configured node is in the model, raising if its authority is included but the node is not."""
+def node_in_model(model: Model, node_id: int | None) -> bool:
+    """Check if a configured node is in the model, raising if its authority is included but the node is not.
+
+    A node of an authority that is not in the model is None, see `resolve_keys`.
+    """
+    if node_id is None:
+        return False
     if node_id in model.node.df.index:
         return True
     authority = _prefix_to_authority.get(node_id // 10**5)
@@ -676,11 +703,11 @@ def node_in_model(model: Model, node_id: int) -> bool:
 
 def update_node_metadata(model: Model) -> None:
     """Set the configured node names and connector static metadata."""
-    for node_id, name in node_names.items():
+    for node_id, name in resolve_keys(model, node_names).items():
         if node_in_model(model, node_id):
             model.node.df.loc[node_id, "name"] = name
 
-    for node_id, meta in connector_static_meta.items():
+    for node_id, meta in resolve_keys(model, connector_static_meta).items():
         if not node_in_model(model, node_id):
             continue
         static_df = model.get_component(model.get_node_type(node_id)).static.df
@@ -694,7 +721,7 @@ def update_node_metadata(model: Model) -> None:
 def move_configured_nodes(model: Model) -> None:
     """Move the configured nodes by their offsets, see `node_offsets`."""
     locations = {}
-    for node_id, (dx, dy) in node_offsets.items():
+    for node_id, (dx, dy) in resolve_keys(model, node_offsets).items():
         if node_in_model(model, node_id):
             point = cast(Point, model.node.df.at[node_id, "geometry"])
             locations[node_id] = Point(point.x + dx, point.y + dy)
@@ -703,7 +730,7 @@ def move_configured_nodes(model: Model) -> None:
 
 def convert_outlets_to_manning_resistance(model: Model) -> None:
     """Convert the configured Outlets between two Basins to ManningResistance, removing their controllers."""
-    for node_id, parameters in outlet_to_manning_resistance.items():
+    for node_id, parameters in resolve_keys(model, outlet_to_manning_resistance).items():
         if not node_in_model(model, node_id):
             continue
         node_type = model.get_node_type(node_id)
@@ -750,7 +777,7 @@ def route_links_between_models(model: Model, network: Network) -> None:
 def add_user_demands(model: Model) -> None:
     """Add the configured UserDemands between Basins of different models, see `user_demands`."""
     assert model.basin.profile.df is not None
-    for config in user_demands:
+    for config in resolve_keys(model, user_demands):
         from_basin_id, to_basin_id = config["from_basin_id"], config["to_basin_id"]
         if not (node_in_model(model, from_basin_id) and node_in_model(model, to_basin_id)):
             continue
@@ -782,17 +809,20 @@ def add_user_demands(model: Model) -> None:
 
 def change_routes(model: Model) -> None:
     """Change the configured routes, see `route_branches`, `route_junctions_on_link` and `merged_outflows`."""
-    for node_id, (basin_id, towards_id) in route_branches.items():
+    for node_id, (basin_id, towards_id) in resolve_keys(model, route_branches).items():
         if node_in_model(model, node_id) and node_in_model(model, basin_id):
             branch_from_route(model, node_id, basin_id, towards_id)
 
-    for config in route_junctions_on_link:
+    for config in resolve_keys(model, route_junctions_on_link):
         basin_id, node_ids = config["basin_id"], config["node_ids"]
         if all(node_in_model(model, i) for i in [basin_id, *node_ids]):
             junction_id = merge_inflows(model, basin_id, node_ids)
-            place_on_link(model, junction_id, basin_id, config["link_id"])
+            from_node_id, to_node_id = config["link"]
+            links = model.link.df
+            (link_id,) = links.index[(links["from_node_id"] == from_node_id) & (links["to_node_id"] == to_node_id)]
+            place_on_link(model, junction_id, basin_id, int(link_id))
 
-    for node_ids in merged_outflows:
+    for node_ids in resolve_keys(model, merged_outflows):
         if all(node_in_model(model, i) for i in node_ids):
             merge_outflows(model, node_ids)
 
@@ -820,14 +850,13 @@ def merge_coupling_trees(model: Model, network: Network) -> None:
     nodes, flow = model.node.df, model.link.df[model.link.df["link_type"] == "flow"]
     authority = nodes["meta_waterbeheerder"]
     between = flow.index[flow["from_node_id"].map(authority).to_numpy() != flow["to_node_id"].map(authority).to_numpy()]
-    rws_offset = waterbeheercode["Rijkswaterstaat"] * 100_000
     rebuilt, _ = rebuild_rws_junction_trees(
         model,
         rws_basins_between_models(model),
         top10nl_gpkg,
         fairway_gpkg,
         main_route(network),
-        routing_areas={rws_offset + basin_id: area for basin_id, area in ROUTING_AREAS.items()},
+        routing_areas=resolve_keys(model, ROUTING_AREAS),
     )
     junctionify(model)
     merge_basin_trees(

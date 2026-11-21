@@ -35,6 +35,8 @@ top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
 # %% init things
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
 
 
@@ -274,8 +276,8 @@ flow_rate.name = "flow_rate"
 static_data.add_series(node_type="Pump", series=flow_rate)
 
 # %% fixes
-static_data.basin.loc[static_data.basin.node_id == 1939, "streefpeil"] = -1.27
-static_data.basin.loc[static_data.basin.node_id == 1946, "streefpeil"] = -1.27
+static_data.basin.loc[static_data.basin.node_id == n("up:KIN-D-15550"), "streefpeil"] = -1.27
+static_data.basin.loc[static_data.basin.node_id == n("up:KIN-D-15820"), "streefpeil"] = -1.27
 
 # %%
 # get all nodata streefpeilen with their profile_ids and levels

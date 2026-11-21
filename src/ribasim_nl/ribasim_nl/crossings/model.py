@@ -788,17 +788,17 @@ def _identifiers(layer: pd.DataFrame) -> pd.Series:
     return identifiers[~identifiers.index.duplicated(keep="first")]
 
 
-def _names(values: pd.Series, identifiers: pd.Series, first: bool = False) -> pd.Series:
-    """The identifiers of the objects of each crossing, a comma separated list of globalids, joined by `+`.
+def _smallest_identifier(values: pd.Series, identifiers: pd.Series) -> pd.Series:
+    """The smallest identifier of the objects of each crossing, a comma separated list of globalids.
 
-    :param first: only the smallest identifier of each crossing, for the hydroobjects, of which a crossing can have many
+    A crossing can have many objects, such as the weirs between two areas. Its smallest identifier stays the same when
+    other objects are added to it or removed from it.
     """
 
     def name(value: Any) -> Any:
         if pd.isna(value):
             return pd.NA
-        names = sorted(str(identifiers.get(globalid, globalid.strip("{}"))) for globalid in str(value).split(","))
-        return names[0] if first else "+".join(names)
+        return min(str(identifiers.get(globalid, globalid.strip("{}"))) for globalid in str(value).split(","))
 
     return values.map(name).astype(object)
 
@@ -809,9 +809,10 @@ def crossing_keys(
     """The key per node ID, from the source data of the node, see `ribasim_nl.keys`.
 
     - A Basin gets the code of its aggregation area or peilgebied.
-    - A node at a crossing gets the code of its gemaal or stuw, or else `ow:` and the code of its hydroobject. Where
-      several crossings have the same, they also get the codes of the areas they connect, `<code>|<from>><to>`, and
-      after that a number in the order of their location, `@1`.
+    - A node at a crossing gets the code of its gemaal, or else of its stuw, or else `ow:` and the code of its
+      hydroobject: the smallest code if it has several. Where several crossings have the same, they also get the
+      codes of the areas they connect, `<code>|<from>><to>`, and after that a number in the order of their location,
+      `@1`.
     - A boundary node beside a crossing gets `bnd:` and the key of that crossing.
     """
     area = _identifiers(post_processed_data["peilgebied"])
@@ -833,9 +834,11 @@ def crossing_keys(
     )
     key[basin_key.index] = number_duplicates(basin_key, basin_order)
 
-    structure = _names(crossings["gemaal"], _identifiers(post_processed_data["gemaal"]))
-    stuw = _names(crossings["stuw"], _identifiers(post_processed_data["stuw"]))
-    open_water = "ow:" + _names(crossings["hydroobject"], _identifiers(post_processed_data["hydroobject"]), first=True)
+    structure = _smallest_identifier(crossings["gemaal"], _identifiers(post_processed_data["gemaal"]))
+    stuw = _smallest_identifier(crossings["stuw"], _identifiers(post_processed_data["stuw"]))
+    open_water = "ow:" + _smallest_identifier(
+        crossings["hydroobject"], _identifiers(post_processed_data["hydroobject"])
+    )
     connector = structure.where(structure.notna(), stuw)
     connector = connector.where(connector.notna(), open_water)
     assert connector.notna().all(), "crossings without a gemaal, stuw or hydroobject"

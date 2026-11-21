@@ -7,6 +7,7 @@ from pandera.typing import DataFrame
 from ribasim.schemas import FlowBoundaryTimeSchema, LevelBoundaryTimeSchema
 from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
 from ribasim_nl.flow_paths import rebuild_rws_junction_trees
+from ribasim_nl.keys import resolve_keys
 from ribasim_nl.layout import tidy_layout
 from ribasim_nl.observations import add_observations, link_observations
 from ribasim_nl.regional_model import ENDTIME, STARTTIME, read_lhm_budgets
@@ -19,6 +20,8 @@ cloud = CloudStorage()
 
 ribasim_toml = cloud.joinpath("Rijkswaterstaat/modellen/hws_demand/hws.toml")
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 
 rwzi_model_path = cloud.joinpath("Rijkswaterstaat/modellen/rwzi/rwzi.toml")
 rwzi_coverage_path = rwzi_model_path.parent / "meta/RWZI_coordinates_model_coverage.geojson"
@@ -193,11 +196,11 @@ model = merge_rwzi_model(
 # Schelde. The RWZIs have their label from merge_rwzi_model.
 model.node.df.loc[lobith_node_id, "meta_categorie"] = "Rijn"
 model.node.df.loc[monsin_node_id, "meta_categorie"] = "Maas"
-model.node.df.loc[[358, 2302], "meta_categorie"] = "buitenlandse aanvoer"
+model.node.df.loc[[n("loc:44217,358803"), n("loc:75398,374208")], "meta_categorie"] = "buitenlandse aanvoer"
 # All LevelBoundaries lie on the sea, except the one on the Schelde at the Belgian border. koppelen keeps these labels
 # as boundaries.
 model.node.df.loc[model.level_boundary.node.df.index, "meta_couple_authority"] = "Noordzee"
-model.node.df.loc[2309, "meta_couple_authority"] = "Buitenland"
+model.node.df.loc[n("loc:79328,376119"), "meta_couple_authority"] = "Buitenland"
 assign_lhm_fractions(model)
 
 # add Observation nodes with measured discharges
@@ -211,7 +214,7 @@ rebuild_rws_junction_trees(
     top10nl_gpkg,
     fairway_gpkg,
     main_route(network),
-    routing_areas=ROUTING_AREAS,
+    routing_areas=resolve_keys(model, ROUTING_AREAS),
 )
 # and observe series that combine the inflows and outflows of a Basin, through its tree
 model = link_observations(model, "Rijkswaterstaat")

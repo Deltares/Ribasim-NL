@@ -31,58 +31,89 @@ SHORT_NAME: str = "aam"
 CONTROL_NODE_TYPES = ["Outlet", "Pump"]
 IS_SUPPLY_NODE_COLUMN: str = "meta_supply_node"
 
+# %%
+# Definieren paden en syncen met cloud
+cloud = CloudStorage()
+ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
+ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
+qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
+aanvoergebieden_gpkg = cloud.joinpath(r"AaenMaas/verwerkt/sturing/aanvoergebieden.gpkg")
+aanvoerpunten_path = cloud.joinpath("AaenMaas/verwerkt/1_ontvangen_data/wateraanvoer-10-4-2026/Inlaten_verdelen.gdb")
+aanvoerpunten_layer = "Wateraanvoersysteem"
+
+
+# %%
+# Read data
+model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
+lk = model.link_id
+
 # Sluizen die geen rol hebben in de waterverdeling (aanvoer/afvoer), maar wel in het model zitten
 # 745: Sluis Engelen, alles via Crevecoeur
-EXCLUDE_NODES = {247, 584, 745, 955, 956, 960, 980, 680, 237, 270, 330, 737}
+EXCLUDE_NODES = {
+    n("211LH"),
+    n("2110005"),
+    n("Henriëttesluis"),
+    n("211MP"),
+    n("211MI"),
+    n("211SPV"),
+    n("211LK"),
+    n("2110162"),
+    n("203A"),
+    n("119IZW"),
+    n("268A"),
+    n("201JVL"),
+}
 outlet_max_flow_rate_by_node_id = {
-    161: 12.0,  # Schabbert
+    n("257IA"): 12.0,  # Schabbert
 }
 outlet_max_flow_rate_parameterized_zero_by_node_id = {
-    236: 5,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
-    472: 5,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
-    653: 5,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
-    1089: 50,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
-    2017: 300.0,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
+    n("217BKK"): 5,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
+    n("2341029"): 5,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
+    n("1130018"): 5,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
+    n("2030225___3"): 50,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
+    n("loc:148512,410583"): 300.0,  # xlsx max_flow_rate nul; voorkom afvoerblokkade
 }
 outlet_max_flow_rate_from_results = {
-    203: 9,  # 114P17
-    211: 2,  # 203KDZ
-    246: 2,  # 294EC
-    309: 9,  # 201JSL
-    316: 60,  # 253M
-    338: 18,  # 248KA
-    375: 2,  # 201BGS
-    524: 8,  # 2530328
-    538: 62,  # 2510112
-    552: 10,  # 3200005
-    622: 21,  # 2110137
-    668: 6,  # 201JAA
-    710: 21,  # 2480021
-    794: 5,  # 203K
-    826: 36,  # 248K
-    836: 15,  # 253R
-    837: 36,  # 253LD
-    839: 41,  # 253J
-    915: 35,  # 107P12
-    916: 29,  # 107P13
-    917: 30,  # 107P14
-    1056: 15,  # 2530128
-    1115: 8,  # 1047240___3
-    3092: 27,  # Zijtak Helenavaart Limburg
-    3093: 5,  # Helenavaart Limburg
+    n("114P17"): 9,  # 114P17
+    n("203KDZ"): 2,  # 203KDZ
+    n("294EC"): 2,  # 294EC
+    n("201JSL"): 9,  # 201JSL
+    n("253M"): 60,  # 253M
+    n("248KA"): 18,  # 248KA
+    n("201BGS"): 2,  # 201BGS
+    n("2530328"): 8,  # 2530328
+    n("2510112"): 62,  # 2510112
+    n("3200005"): 10,  # 3200005
+    n("2110137"): 21,  # 2110137
+    n("201JAA@1"): 6,  # 201JAA
+    n("2480021"): 21,  # 2480021
+    n("203K"): 5,  # 203K
+    n("248K"): 36,  # 248K
+    n("253R"): 15,  # 253R
+    n("253LD"): 36,  # 253LD
+    n("253J"): 41,  # 253J
+    n("107P12"): 35,  # 107P12
+    n("107P13"): 29,  # 107P13
+    n("107P14"): 30,  # 107P14
+    n("2530128"): 15,  # 2530128
+    n("1047240___3"): 8,  # 1047240___3
+    n("loc:192486,378114"): 27,  # Zijtak Helenavaart Limburg
+    n("loc:190367,375169"): 5,  # Helenavaart Limburg
 }
 outlet_max_flow_rate_coupled_by_node_id = {
-    198: 8,  # 104CU; gekoppeld max=4.21, parameterized=3.76
-    221: 15,  # 116HDW; gekoppeld max=9.90, huidige max=6.00, link=3802084
-    652: 12,  # parameterized nul; gekoppeld max=7.65
-    853: 5,  # 113SBW; gekoppeld max=2.59, parameterized=1.21
-    1047: 3,  # parameterized nul; gekoppeld max=1.23
-    1067: 14,  # gekoppeld max=8.74, huidige max=2.00, link=3800983
-    1070: 23,  # parameterized nul; gekoppeld max=14.83
-    1093: 3,  # gekoppeld max=1.27, parameterized=0.39
-    3097: 2,  # parameterized nul; gekoppeld max=0.67
-    84: 9,  # gekoppeld max=5.66, huidige max=0.664, link=3800017
-    985: 3,  # gekoppeld max=1.17, huidige max=0.00, link=3800208
+    n("104CU"): 8,  # 104CU; gekoppeld max=4.21, parameterized=3.76
+    n("116HDW"): 15,  # 116HDW; gekoppeld max=9.90, huidige max=6.00, link=3802084
+    n("2940006"): 12,  # parameterized nul; gekoppeld max=7.65
+    n("113SBW"): 5,  # 113SBW; gekoppeld max=2.59, parameterized=1.21
+    n("2041790___1"): 3,  # parameterized nul; gekoppeld max=1.23
+    n("ow:1160120"): 14,  # gekoppeld max=8.74, huidige max=2.00, link=3800983
+    n("1160440___4"): 23,  # parameterized nul; gekoppeld max=14.83
+    n("ow:3200030"): 3,  # gekoppeld max=1.27, parameterized=0.39
+    n("loc:148450,410398"): 2,  # parameterized nul; gekoppeld max=0.67
+    n("202DBR"): 9,  # gekoppeld max=5.66, huidige max=0.664, link=3800017
+    n("104FTW"): 3,  # gekoppeld max=1.17, huidige max=0.00, link=3800208
 }
 outlet_max_flow_rate_afvoer_by_node_id = {}
 for max_flow_rates in (
@@ -97,266 +128,258 @@ for max_flow_rates in (
         )
 outlet_max_flow_rate_afvoer_by_node_id.update(outlet_max_flow_rate_by_node_id)
 pump_max_flow_rate_by_node_id = {
-    100: 5.0,  # Gemaal Veluwe
+    n("211VEL"): 5.0,  # Gemaal Veluwe
 }
 
 flushing_nodes: dict[int, float] = {}
 drain_nodes = [
-    85,
-    92,
-    280,
-    312,
-    353,
-    369,
-    400,
-    1089,
-    534,
-    558,
-    1047,
-    106,
-    130,
-    153,
-    157,
-    186,
-    207,
-    250,
-    268,
-    275,
-    299,
-    350,
-    385,
-    408,
-    419,
-    621,
-    804,
-    628,
-    818,
-    1051,
-    83,
-    107,
-    139,
-    150,
-    170,
-    210,
-    244,
-    256,
-    342,
-    388,
-    421,
-    304,
-    487,
-    597,
-    982,
-    345,
-    486,
-    656,
-    670,
-    795,
-    797,
-    1046,
-    847,
-    760,
-    905,
-    122,
-    843,
-    318,
-    324,
-    669,
-    676,
-    529,
-    539,
-    217,
-    294,
-    668,
-    549,
-    288,
-    469,
-    479,
-    632,
-    81,
-    919,
-    920,
-    366,
-    452,
-    615,
-    922,
-    194,
-    151,
-    182,
-    144,
-    509,
-    594,
-    667,
-    1016,
-    272,
-    370,
-    409,
-    430,
-    459,
-    96,
-    221,
-    923,
-    924,
-    940,
-    941,
-    2017,
-    998,
-    937,
-    112,
-    159,
-    198,
-    394,
-    135,
-    257,
-    138,
-    336,
-    356,
-    395,
-    321,
-    252,
-    119,
-    410,
-    414,
-    736,
-    126,
-    488,
-    925,
-    209,
-    551,
-    265,
-    266,
-    303,
-    341,
-    398,
-    872,
-    444,
-    120,
-    267,
-    281,
-    292,
-    360,
-    470,
-    613,
-    571,
-    577,
-    691,
-    747,
-    777,
-    748,
-    891,
-    911,
-    971,
-    981,
-    1067,
+    n("234WHK"),
+    n("234MIE"),
+    n("254B"),
+    n("234CA"),
+    n("234CK"),
+    n("261OKB"),
+    n("234CN"),
+    n("2030225___3"),
+    n("2110562"),
+    n("2040667"),
+    n("2041790___1"),
+    n("205BLW"),
+    n("204BK"),
+    n("204BI"),
+    n("227VEN"),
+    n("205LFT"),
+    n("204B"),
+    n("211HA"),
+    n("211LA"),
+    n("227BA"),
+    n("204TRS"),
+    n("204AA"),
+    n("205C"),
+    n("204BA"),
+    n("211HE"),
+    n("2110514"),
+    n("204D"),
+    n("2270021"),
+    n("227B"),
+    n("ow:2113865"),
+    n("205BEU"),
+    n("206PLD"),
+    n("250A"),
+    n("251A"),
+    n("253AAW"),
+    n("256A"),
+    n("253A"),
+    n("246A"),
+    n("245A"),
+    n("205MOL"),
+    n("240A"),
+    n("217A"),
+    n("2010005"),
+    n("2320026"),
+    n("224KDW"),
+    n("203VWW"),
+    n("2170333"),
+    n("2170184"),
+    n("ow:2171320"),
+    n("203J"),
+    n("206EA"),
+    n("2171570___3"),
+    n("261BE"),
+    n("261JK"),
+    n("261CQA"),
+    n("248A"),
+    n("253B"),
+    n("253LEA"),
+    n("287DB"),
+    n("2751"),
+    n("2920028"),
+    n("2940205"),
+    n("2940153"),
+    n("201PVB"),
+    n("201L"),
+    n("201JAA@1"),
+    n("2740007"),
+    n("234NVW"),
+    n("2170131"),
+    n("2170097"),
+    n("2340750"),
+    n("114SAM"),
+    n("107GTB"),
+    n("107BOE"),
+    n("107VHS"),
+    n("1070307"),
+    n("1140146"),
+    n("108KKS"),
+    n("108BRO"),
+    n("108HES"),
+    n("108HQS"),
+    n("108TDE"),
+    n("1140199"),
+    n("1140208"),
+    n("114DWS"),
+    n("1143650___0"),
+    n("117NSK"),
+    n("117MW"),
+    n("117MU"),
+    n("1170274"),
+    n("1170286"),
+    n("AKW895"),
+    n("116HDW"),
+    n("116BIN"),
+    n("116PKS"),
+    n("118DL"),
+    n("118DG"),
+    n("loc:148512,410583"),
+    n("118PVW"),
+    n("118AYS"),
+    n("104HPN"),
+    n("104FXW"),
+    n("104CU"),
+    n("104CY"),
+    n("104STA"),
+    n("103KTS"),
+    n("104MSB"),
+    n("104ESU"),
+    n("104AF"),
+    n("104CT"),
+    n("104ESW"),
+    n("104AA"),
+    n("104STU"),
+    n("104N"),
+    n("104F"),
+    n("108STW"),
+    n("104ASZ"),
+    n("1040515"),
+    n("102DDP"),
+    n("102CEV"),
+    n("1020332"),
+    n("104FKW"),
+    n("102BFS"),
+    n("104SRO"),
+    n("103HOE"),
+    n("104FRW"),
+    n("104UDL"),
+    n("1020252"),
+    n("201O"),
+    n("104FTX"),
+    n("201R"),
+    n("238A"),
+    n("201Q"),
+    n("1140125"),
+    n("AKW762DK4"),
+    n("1070039"),
+    n("2110664"),
+    n("2270181"),
+    n("201PP"),
+    n("234A"),
+    n("201N"),
+    n("201T"),
+    n("261JAA"),
+    n("211NA"),
+    n("ow:1160120"),
 ]
-supply_nodes: list[int] = [2015, 307, 309]
+supply_nodes: list[int] = [n("loc:149521,410704"), n("116KRU"), n("201JSL")]
 flow_control_nodes = [
-    203,
-    3097,
-    1093,
-    681,
-    774,
-    775,
-    776,
-    934,
-    974,
-    130,
-    140,
-    #  283,
-    347,
-    377,
-    481,
-    496,
-    552,
-    628,
-    766,
-    767,
-    573,
-    718,
-    768,
-    806,
-    808,
-    810,
-    813,
-    814,
-    815,
-    818,
-    819,
-    821,
-    948,
-    957,
-    1050,
-    243,
-    155,
-    212,
-    332,
-    823,
-    824,
-    1051,
-    1062,
-    100,
-    205,
-    239,
-    413,
-    438,
-    526,
-    533,
-    790,
-    791,
-    952,
-    328,
-    361,
-    352,
-    708,
-    154,
-    158,
-    177,
-    338,
-    538,
-    622,
-    710,
-    826,
-    828,
-    954,
-    383,
-    269,
-    886,
-    748,
-    218,
-    469,
-    127,
-    249,
-    697,
-    863,
-    864,
-    362,
-    490,
-    494,
-    915,
-    755,
-    271,
-    857,
-    858,
-    866,
-    867,
-    868,
-    990,
-    380,
-    849,
-    859,
-    865,
-    1001,
-    1014,
-    1018,
-    1058,
-    370,
-    722,
-    1070,
-    333,
-    701,
-    822,
-    917,
-    916,
+    n("114P17"),
+    n("loc:148450,410398"),
+    n("ow:3200030"),
+    n("2340879"),
+    n("234F"),
+    n("234BUY"),
+    n("234C"),
+    n("234D"),
+    n("234SLA"),
+    n("204BK"),
+    n("205DA"),
+    #  n("275P"),
+    n("211J"),
+    n("211L"),
+    n("2040231"),
+    n("2040779"),
+    n("3200005"),
+    n("2270021"),
+    n("211G"),
+    n("211EA"),
+    n("2040882"),
+    n("2052"),
+    n("211D"),
+    n("211M"),
+    n("211I"),
+    n("211E"),
+    n("211BVP"),
+    n("211B"),
+    n("211A"),
+    n("227B"),
+    n("201VST"),
+    n("201D"),
+    n("204BF"),
+    n("227DPT"),
+    n("2113600"),
+    n("201BEU"),
+    n("201G"),
+    n("201B"),
+    n("201C"),
+    n("201F"),
+    n("201H"),
+    n("ow:2113865"),
+    n("2010630"),
+    n("211VEL"),
+    n("217FA"),
+    n("203IA"),
+    n("217AC"),
+    n("2030270"),
+    n("2030319"),
+    n("2170576"),
+    n("217I"),
+    n("217H"),
+    n("217J"),
+    n("261VGD"),
+    n("2611073"),
+    n("253U"),
+    n("251P"),
+    n("248KA"),
+    n("2510112"),
+    n("2110137"),
+    n("2480021"),
+    n("248K"),
+    n("248E"),
+    n("211MLA"),
+    n("287A"),
+    n("294E"),
+    n("294C"),
+    n("201N"),
+    n("234CC"),
+    n("2170131"),
+    n("108HOO"),
+    n("108HH"),
+    n("1100074"),
+    n("107A3"),
+    n("1080080"),
+    n("1140087"),
+    n("107P12"),
+    n("107P07"),
+    n("107P11"),
+    n("108HUL"),
+    n("108PAP"),
+    n("107P10"),
+    n("107P09"),
+    n("107P08"),
+    n("107P01"),
+    n("110GG"),
+    n("114AQS"),
+    n("108GZ"),
+    n("1142610"),
+    n("ow:1144290"),
+    n("ow:1100670"),
+    n("1142560"),
+    n("117MW"),
+    n("1180220"),
+    n("1160440___4"),
+    n("204GDD"),
+    n("201E"),
+    n("107P14"),
+    n("107P13"),
 ]
 
 
@@ -444,20 +467,6 @@ def add_discharge_supply_nodes(
 
 
 # %%
-# Definieren paden en syncen met cloud
-cloud = CloudStorage()
-ribasim_model_dir = cloud.joinpath(AUTHORITY, "modellen", f"{AUTHORITY}_parameterized_model")
-ribasim_toml = ribasim_model_dir / f"{SHORT_NAME}.toml"
-qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_aanvoer.qlr")
-aanvoergebieden_gpkg = cloud.joinpath(r"AaenMaas/verwerkt/sturing/aanvoergebieden.gpkg")
-aanvoerpunten_path = cloud.joinpath("AaenMaas/verwerkt/1_ontvangen_data/wateraanvoer-10-4-2026/Inlaten_verdelen.gdb")
-aanvoerpunten_layer = "Wateraanvoersysteem"
-
-
-# %%
-# Read data
-model = Model.read(ribasim_toml)
-
 assert model.outlet.static.df is not None
 outlet_max_flow_rate_aanvoer_by_node_id = dict.fromkeys(model.outlet.static.df.node_id.astype(int), 10.0)
 
@@ -472,102 +481,102 @@ model.outlet.static.df.loc[model.outlet.static.df.node_id.isin(list(EXCLUDE_NODE
 
 # fixes
 # Schabbert
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 161, "flow_rate"] = 12
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("257IA"), "flow_rate"] = 12
 
 # Was manning, wordt outlet, duiker
-model.update_node(node_id=549, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=670, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=486, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=656, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=537, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=627, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=631, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=669, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=712, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=464, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=491, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=483, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=491, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=595, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=697, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=1043, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=720, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=610, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=450, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=706, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=529, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=539, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=652, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=675, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=676, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=511, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=655, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=558, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=1047, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=630, node_type="Outlet")  # wordt outlet, was Manning
-model.update_node(node_id=444, node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2740007"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("ow:2171320"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2170333"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2170184"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2870102"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2750399"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2750346"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2751"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("1070125"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("1070573"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("1140047"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("1140037"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("1140047"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("1070417"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("1100074"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2800165___6"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2800041"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2810019"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2790078"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2800108"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2940205"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2940153"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2940006"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2920087"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2920028"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2830012"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2110915"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2040667"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("2041790___1"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("1020095"), node_type="Outlet")  # wordt outlet, was Manning
+model.update_node(node_id=n("1020252"), node_type="Outlet")  # wordt outlet, was Manning
 
-model.remove_node(820, remove_links=True)
-model.remove_node(1054, remove_links=True)
-model.remove_node(156, remove_links=True)
-model.remove_node(3093, remove_links=True)  # Parallel De Halte
-model.remove_node(37, remove_links=True)  # Boundary Parallel De Halte
+model.remove_node(n("201LGS"), remove_links=True)
+model.remove_node(n("2011600"), remove_links=True)
+model.remove_node(n("261OKK"), remove_links=True)
+model.remove_node(n("loc:190367,375169"), remove_links=True)  # Parallel De Halte
+model.remove_node(n("bnd:37"), remove_links=True)  # Boundary Parallel De Halte
 # Mierlo wordt aanvoer als afvoer gemaal
-model.update_node(node_id=92, node_type="Pump")  # wordt outlet, was outlet
-model.update_node(node_id=226, node_type="Pump")  # wordt outlet, was outlet
+model.update_node(node_id=n("234MIE"), node_type="Pump")  # wordt outlet, was outlet
+model.update_node(node_id=n("234FL"), node_type="Pump")  # wordt outlet, was outlet
 
 
 # Teveel inlaten naar Oefeltse Raam
-model.remove_node(574, remove_links=True)
+model.remove_node(n("1140529"), remove_links=True)
 
 
 # %%
 # Toevoegen alle aanvoer-knopen met flow_demand
 meta_codes = {
     # algemeen
-    246: "294EC",
-    298: "WSL_Meij",
-    968: "275JD",
-    875: "287GB",
-    397: "287DF",
-    894: "275ZKS",
-    367: "261LGD",
+    n("294EC"): "294EC",
+    n("292F"): "WSL_Meij",
+    n("275JD"): "275JD",
+    n("287GB"): "287GB",
+    n("287DF"): "287DF",
+    n("275KDN"): "275ZKS",
+    n("261BR"): "261LGD",
     # Bakelse Aa
-    3095: "261CZA",
-    601: "261JS",
-    905: "261CQA",
-    761: "261JN",
+    n("loc:188904,384285"): "261CZA",
+    n("2611054"): "261JS",
+    n("261CQA"): "261CQA",
+    n("261JN"): "261JN",
     # Peelsche Loop
-    358: "261N",
-    535: "253V",
-    3091: "251U",
-    417: "253LG",
-    829: "251LAA",
+    n("261JI"): "261N",
+    n("2530001"): "253V",
+    n("loc:186922,393204"): "251U",
+    n("253LG"): "253LG",
+    n("251LAA"): "251LAA",
     # Maaskant-Oost
-    #   203: "114P18",
-    850: "114FF",
-    144: "108TDE",
-    2022: "WSL_VBMB",
-    657: "114LAC",
-    3089: "114WRD",
+    #   n("114P17"): "114P18",
+    n("114FF"): "114FF",
+    n("108TDE"): "108TDE",
+    n("loc:197255,397851"): "WSL_VBMB",
+    n("1140510"): "114LAC",
+    n("Inlaatgemaal Waranda"): "114WRD",
     # Maaskant-Midden
-    160: "104MGT",
-    392: "103BIB",
+    n("104MGT"): "104MGT",
+    n("103BIB"): "103BIB",
     # Mierlo
-    226: "234FL_1",
-    340: "217L",
+    n("234FL"): "234FL_1",
+    n("217M"): "217L",
     # Whkanaal
-    314: "234CJ",
+    n("234CJ"): "234CJ",
     # Z_W West
-    211: "203KDZ",
+    n("203KDZ"): "203KDZ",
     # Helmond
-    737: "201JVL",
+    n("201JVL"): "201JVL",
     # Peelrijt Dommel
-    3094: "280X",
+    n("loc:174792,378640"): "280X",
     # Hurkske Aa
-    161: "257IA",
-    93: "254BAA",
-    191: "235VGZ",
+    n("257IA"): "257IA",
+    n("254BAA"): "254BAA",
+    n("235A"): "235VGZ",
 }
 
 for node_id, code in meta_codes.items():
@@ -617,10 +626,10 @@ discharge_supply_nodes = {
 }
 
 # checken in laatste file Aa en Maas; dit kúnnen geen inlaten zijn
-# discharge_supply_nodes.pop(283, None)
-discharge_supply_nodes.pop(383, None)
-discharge_supply_nodes.pop(957, None)
-discharge_supply_nodes.pop(100, None)
+# discharge_supply_nodes.pop(n("275P"), None)
+discharge_supply_nodes.pop(n("287A"), None)
+discharge_supply_nodes.pop(n("227DPT"), None)
+discharge_supply_nodes.pop(n("211VEL"), None)
 
 # FlowDemand-inlaten krijgen hun debiet uit FlowDemand, niet uit afvoer-capaciteit overrides.
 for node_id in discharge_supply_nodes:
@@ -631,49 +640,49 @@ discharge_supply_df.to_file(cloud.joinpath("AaenMaas/verwerkt/sturing/aanvoerpun
 
 # add level supply nodes, no flow-demand-node, but discrete control on downstream basin level
 level_supply_nodes = [
-    80,
-    99,
-    149,
-    160,
-    161,
-    166,
-    181,
-    183,
-    186,
-    #  203,
-    208,
-    211,
-    215,
-    227,
-    231,
-    246,
-    251,
-    276,
-    278,
-    308,
-    335,
-    355,
-    375,
-    379,
-    392,
-    406,
-    510,
-    521,
-    527,
-    531,
-    566,
-    625,
-    630,
-    640,
-    723,
-    731,
-    734,
-    753,
-    850,
-    909,
-    985,
-    2020,
-    3086,
+    n("AKW787@1"),
+    n("117ENG"),
+    n("201VSB"),
+    n("104MGT"),
+    n("257IA"),
+    n("203NWH"),
+    n("104DA"),
+    n("211UWE"),
+    n("205LFT"),
+    #  n("114P17"),
+    n("211RBW"),
+    n("203KDZ"),
+    n("102CLS"),
+    n("253BCA"),
+    n("117NS"),
+    n("294EC"),
+    n("211DRF"),
+    n("205GVN"),
+    n("205WRS"),
+    n("101ITW"),
+    n("275JK"),
+    n("234SSW"),
+    n("201BGS"),
+    n("227BBA"),
+    n("103BIB"),
+    n("238BSW"),
+    n("2340748"),
+    n("2400055"),
+    n("2110597"),
+    n("2170697"),
+    n("1040271"),
+    n("2030323"),
+    n("1020095"),
+    n("2110006"),
+    n("1170165"),
+    n("204KLW"),
+    n("116VMW"),
+    n("108AA"),
+    n("114FF"),
+    n("261JJ"),
+    n("104FTW"),
+    n("loc:198625,397452"),
+    n("loc:188889,379433"),
 ]
 
 double_defined = [i for i in level_supply_nodes if i in discharge_supply_nodes]
@@ -688,16 +697,16 @@ model.node.df[IS_SUPPLY_NODE_COLUMN] = model.node.df.index.isin(all_nodes)
 
 
 # Gemaal Veluwe
-model.update_node(node_id=100, node_type="Pump")  # wordt outlet, was outlet
-model.pump.static.df.loc[model.pump.static.df.node_id == 100, "flow_rate"] = 5
+model.update_node(node_id=n("211VEL"), node_type="Pump")  # wordt outlet, was outlet
+model.pump.static.df.loc[model.pump.static.df.node_id == n("211VEL"), "flow_rate"] = 5
 
 # Gemaal Kameren
-model.update_node(node_id=95, node_type="Pump")  # wordt outlet, was outlet
+model.update_node(node_id=n("211GOW"), node_type="Pump")  # wordt outlet, was outlet
 
 
 # Grote Wetering is een gemaal
-model.update_node(node_id=105, node_type="Pump")  # wordt pump was outlet
-model.pump.static.df.loc[model.pump.static.df.node_id == 105, "flow_rate"] = 1
+model.update_node(node_id=n("204GRW"), node_type="Pump")  # wordt pump was outlet
+model.pump.static.df.loc[model.pump.static.df.node_id == n("204GRW"), "flow_rate"] = 1
 
 
 # %%
@@ -715,25 +724,20 @@ if isinstance(polygon, MultiPolygon):
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
 ignore_intersecting_links: list[int] = [
-    440,
-    575,
-    600,
-    621,
-    640,
-    668,
-    718,
-    725,
-    968,
-    969,
-    1229,
-    1434,
-    1562,
-    1670,
-    1671,
-    1672,
-    1674,
-    1944,
-    2936,
+    lk("2342655", "up:2343"),
+    lk("2340643", "up:2342570"),
+    lk("2341056", "up:234SLO"),
+    lk("2340606", "up:ow:2342340"),
+    lk("2340650", "up:2342655"),
+    lk("2340556", "up:2344550"),
+    lk("2340572", "up:2344550"),
+    lk("2341105", "up:234BUY"),
+    lk("2343870", "up:234BUY"),
+    lk("up:2030230___3", "2030230___3"),
+    lk("up:2340589", "2340589"),
+    lk("up:2340441", "2340441"),
+    lk("up:2343", "2345"),
+    lk("up:2341070", "2341070"),
 ]
 
 # toevoegen sturing
@@ -768,32 +772,27 @@ if isinstance(polygon, MultiPolygon):
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
 ignore_intersecting_links: list[int] = [
-    43,
-    59,
-    60,
-    237,
-    299,
-    309,
-    460,
-    470,
-    479,
-    485,
-    636,
-    729,
-    979,
-    1027,
-    1348,
-    1443,
-    1450,
-    1526,
-    1542,
-    1552,
-    1617,
-    1635,
-    1672,
-    1712,
-    1962,
-    713,
+    lk("2052", "up:2050229"),
+    lk("2040546", "up:204E"),
+    lk("2270181", "up:2011065___1"),
+    lk("2040398", "up:204BK"),
+    lk("2320026", "up:232HAM"),
+    lk("2110656", "up:211BMD"),
+    lk("2110915", "up:2110631"),
+    lk("2110664", "up:2040903"),
+    lk("ow:2113865", "up:ow:2011330"),
+    lk("up:2052", "2052"),
+    lk("up:2040474", "2040474"),
+    lk("up:2110692", "2110692"),
+    lk("up:2040524", "2040524"),
+    lk("up:2110597", "2110597"),
+    lk("up:2040546", "2040849"),
+    lk("up:2110909", "2110909"),
+    lk("up:2110514", "2110514"),
+    lk("up:2040398", "2040398"),
+    lk("up:2343", "2345"),
+    lk("up:ow:2113865", "ow:2113865"),
+    lk("2040667", "up:204D"),
 ]
 
 # toevoegen sturing
@@ -828,29 +827,22 @@ if isinstance(polygon, MultiPolygon):
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
 ignore_intersecting_links: list[int] = [
-    5,
-    6,
-    7,
-    16,
-    40,
-    43,
-    172,
-    173,
-    258,
-    299,
-    460,
-    466,
-    467,
-    479,
-    979,
-    1146,
-    1227,
-    1397,
-    1440,
-    1483,
-    1610,
-    1962,
-    1978,
+    lk("2050175", "up:ow:2011330"),
+    lk("2011270___3", "up:ow:2011330"),
+    lk("2300025", "up:2010992"),
+    lk("2016", "up:2010630"),
+    lk("ow:2010580", "up:2010630"),
+    lk("2010048", "up:201EPD"),
+    lk("2270181", "up:2011065___1"),
+    lk("2230024", "up:201B"),
+    lk("2180009", "up:201B"),
+    lk("2320026", "up:232HAM"),
+    lk("ow:2113865", "up:ow:2011330"),
+    lk("up:2010048", "2010048"),
+    lk("up:2130024", "2130024"),
+    lk("up:2230024", "2230024"),
+    lk("up:2180009", "2180009"),
+    lk("up:ow:2113865", "ow:2113865"),
 ]
 
 # toevoegen sturing
@@ -886,23 +878,18 @@ if isinstance(polygon, MultiPolygon):
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
 ignore_intersecting_links: list[int] = [
-    5,
-    6,
-    7,
-    221,
-    253,
-    265,
-    266,
-    267,
-    622,
-    624,
-    638,
-    694,
-    1469,
-    1479,
-    1670,
-    1671,
-    1672,
+    lk("2050175", "up:ow:2011330"),
+    lk("2011270___3", "up:ow:2011330"),
+    lk("2170131", "up:217J"),
+    lk("ow:2171320", "up:2170674"),
+    lk("2345", "up:ow:2343550"),
+    lk("2170228", "up:217FA"),
+    lk("2170184", "up:217FA"),
+    lk("2170097", "up:217EJ"),
+    lk("2170697", "up:2170131"),
+    lk("up:2170228", "2170228"),
+    lk("up:2170097", "2170097"),
+    lk("up:2343", "2345"),
 ]
 
 # toevoegen sturing
@@ -938,7 +925,16 @@ if isinstance(polygon, MultiPolygon):
 
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = [487, 489, 745, 754, 755, 760, 1586, 1623]
+ignore_intersecting_links: list[int] = [
+    lk("2610884", "up:ow:2614050"),
+    lk("2613715", "up:ow:2614050"),
+    lk("2610781", "up:261BF"),
+    lk("2751015___1", "up:275F"),
+    lk("2751488", "up:275F"),
+    lk("2750346", "up:2751488"),
+    lk("up:2610884", "2610884"),
+    lk("up:2750399", "2750399"),
+]
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -971,7 +967,7 @@ if isinstance(polygon, MultiPolygon):
 
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = [767, 1259]
+ignore_intersecting_links: list[int] = [lk("2110099", "up:2110005"), lk("up:2110099", "2110099")]
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -1004,7 +1000,13 @@ if isinstance(polygon, MultiPolygon):
 
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = [472, 704, 781, 1409, 1650]
+ignore_intersecting_links: list[int] = [
+    lk("2751", "up:275JB"),
+    lk("2790002", "up:279H"),
+    lk("2920028", "up:292C"),
+    lk("up:2790002", "2790002"),
+    lk("up:2870108", "2870108"),
+]
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -1039,7 +1041,12 @@ if isinstance(polygon, MultiPolygon):
 
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = [327, 328, 384, 385]
+ignore_intersecting_links: list[int] = [
+    lk("2940212", "up:294E"),
+    lk("2940153", "up:294E"),
+    lk("2940189", "up:294C"),
+    lk("2940205", "up:294C"),
+]
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -1072,7 +1079,12 @@ if isinstance(polygon, MultiPolygon):
 
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = [706, 968, 969, 1229, 1944]
+ignore_intersecting_links: list[int] = [
+    lk("2740007", "up:201M"),
+    lk("2341105", "up:234BUY"),
+    lk("2343870", "up:234BUY"),
+    lk("up:2030230___3", "2030230___3"),
+]
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -1107,7 +1119,19 @@ if isinstance(polygon, MultiPolygon):
 
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = [273, 274, 440, 605, 606, 607, 1518, 1648, 1674, 221, 638, 694, 1479]
+ignore_intersecting_links: list[int] = [
+    lk("2340718", "up:234BKS"),
+    lk("2342655", "up:2343"),
+    lk("2340746", "up:2343090"),
+    lk("2340750", "up:2343090"),
+    lk("up:2340739", "2340739"),
+    lk("up:2340728", "2340728"),
+    lk("up:2341070", "2341070"),
+    lk("2170131", "up:217J"),
+    lk("2170097", "up:217EJ"),
+    lk("2170697", "up:2170131"),
+    lk("up:2170097", "2170097"),
+]
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -1143,36 +1167,33 @@ if isinstance(polygon, MultiPolygon):
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
 ignore_intersecting_links: list[int] = [
-    138,
-    143,
-    175,
-    190,
-    388,
-    476,
-    499,
-    528,
-    529,
-    603,
-    604,
-    648,
-    649,
-    659,
-    660,
-    676,
-    801,
-    981,
-    1254,
-    1458,
-    1459,
-    1481,
-    1498,
-    1544,
-    1570,
-    1611,
-    1660,
-    1694,
-    1930,
-    1933,
+    lk("1070370", "up:107P03"),
+    lk("1080529", "up:108GAR"),
+    lk("1070413", "up:108KAM"),
+    lk("1102", "up:108FB"),
+    lk("1070417", "up:107EBS"),
+    lk("201NLR", "up:205BEU"),
+    lk("1070039", "up:107P14"),
+    lk("1100047", "up:1101330___1"),
+    lk("1100122", "up:1101330___1"),
+    lk("1140125", "up:114AQS"),
+    lk("1140532", "up:114AQS"),
+    lk("1140047", "up:1140521"),
+    lk("1070231", "up:107P08"),
+    lk("1070271", "up:107P08"),
+    lk("1090085", "up:1090038"),
+    lk("1142560", "up:1142610"),
+    lk("up:1100122", "1100122"),
+    lk("up:1100122", "1102"),
+    lk("up:1140037", "1140037"),
+    lk("up:1070231", "1070231"),
+    lk("up:1140532", "1140532"),
+    lk("up:1070039", "1070039"),
+    lk("up:1140146", "1140146"),
+    lk("up:1080529", "1080529"),
+    lk("up:1080371", "1080371"),
+    lk("up:1145950___1", "1145950___1"),
+    lk("up:1101410___1", "1101410___1"),
 ]
 
 # toevoegen sturing
@@ -1207,7 +1228,7 @@ if isinstance(polygon, MultiPolygon):
 
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
-ignore_intersecting_links: list[int] = [928, 930, 282, 2018]
+ignore_intersecting_links: list[int] = []
 
 # toevoegen sturing
 add_controllers_to_supply_area(
@@ -1243,22 +1264,21 @@ if isinstance(polygon, MultiPolygon):
 # links die intersecten die we kunnen negeren
 # link_id: beschrijving
 ignore_intersecting_links: list[int] = [
-    408,
-    60,
-    237,
-    258,
-    362,
-    376,
-    420,
-    654,
-    656,
-    657,
-    994,
-    997,
-    1065,
-    1435,
-    1492,
-    1530,
+    lk("1087610___2", "up:1080970"),
+    lk("2052", "up:2050229"),
+    lk("2010048", "up:201EPD"),
+    lk("1087515___5", "up:1087610___2"),
+    lk("1012", "up:1010401"),
+    lk("1030273", "up:102CLS"),
+    lk("1040669", "up:1041980"),
+    lk("ow:1041060", "up:1041980"),
+    lk("1041470___1", "up:1041980"),
+    lk("ow:1048400@3", "up:1010401"),
+    lk("ow:1048300", "up:ow:1048400@2"),
+    lk("up:1040582", "1040582"),
+    lk("up:1040690", "1040690"),
+    lk("up:1040669", "1040669"),
+    lk("up:1040395", "1040395"),
 ]
 
 # toevoegen sturing
@@ -1319,31 +1339,31 @@ add_controllers_to_uncontrolled_connector_nodes(
 # %%
 
 # Crevecoeur
-mask = (model.outlet.static.df.node_id == 2018) & (model.outlet.static.df.control_state == "afvoer")
+mask = (model.outlet.static.df.node_id == n("AKW839")) & (model.outlet.static.df.control_state == "afvoer")
 model.outlet.static.df.loc[mask, "flow_rate"] = 300
 model.outlet.static.df.loc[mask, "max_flow_rate"] = 300
 
 # 220: #253ZOM Deze stuw zit niet in model en lastig in te bouwen met huidige basins. Daarom Outlet 220 (253BG) en flow op 0 gezet
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 220, "flow_rate"] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("253BG"), "flow_rate"] = 0
 
 # Procentuele Verdeling Peelsche Loop uitlaten naar aanvoergebied Leygraaf opgelegd door flow_rate
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 680, "flow_rate"] = 50
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 955, "flow_rate"] = 25
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 956, "flow_rate"] = 20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 584, "flow_rate"] = 5
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 247, "flow_rate"] = 0
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 960, "flow_rate"] = 16.67
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 980, "flow_rate"] = 5
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("2110162"), "flow_rate"] = 50
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("211MP"), "flow_rate"] = 25
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("211MI"), "flow_rate"] = 20
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("2110005"), "flow_rate"] = 5
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("211LH"), "flow_rate"] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("211SPV"), "flow_rate"] = 16.67
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("211LK"), "flow_rate"] = 5
 
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 680, "max_flow_rate"] = 50
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 955, "max_flow_rate"] = 25
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 956, "max_flow_rate"] = 20
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 584, "max_flow_rate"] = 5
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 247, "max_flow_rate"] = 0
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 960, "max_flow_rate"] = 16.67
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 980, "max_flow_rate"] = 5
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("2110162"), "max_flow_rate"] = 50
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("211MP"), "max_flow_rate"] = 25
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("211MI"), "max_flow_rate"] = 20
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("2110005"), "max_flow_rate"] = 5
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("211LH"), "max_flow_rate"] = 0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("211SPV"), "max_flow_rate"] = 16.67
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("211LK"), "max_flow_rate"] = 5
 
-reverse_link_ids = [226, 1172]
+reverse_link_ids = [lk("235A", "up:2011600"), lk("up:2320035", "235A")]
 
 
 for link_id in reverse_link_ids:
@@ -1351,33 +1371,50 @@ for link_id in reverse_link_ids:
 
 
 # Inlaat Sambeek
-model.update_node(node_id=3089, node_type="Pump")  # wordt pump was outlet
-model.pump.static.df.loc[model.pump.static.df.node_id == 3089, "flow_rate"] = 0
-mask = model.pump.static.df.node_id == 3089
+model.update_node(node_id=n("Inlaatgemaal Waranda"), node_type="Pump")  # wordt pump was outlet
+model.pump.static.df.loc[model.pump.static.df.node_id == n("Inlaatgemaal Waranda"), "flow_rate"] = 0
+mask = model.pump.static.df.node_id == n("Inlaatgemaal Waranda")
 model.pump.static.df.loc[mask, "min_upstream_level"] = 10.36
 
 
-model.update_node(node_id=124, node_type="Pump")  # wordt pump, was outlet
-model.pump.static.df.loc[model.pump.static.df.node_id == 124, "flow_rate"] = 0
+model.update_node(node_id=n("114HKS"), node_type="Pump")  # wordt pump, was outlet
+model.pump.static.df.loc[model.pump.static.df.node_id == n("114HKS"), "flow_rate"] = 0
 
 # Gemaal Mierlo
-model.update_node(node_id=226, node_type="Pump")  # wordt pump, was outlet
-model.pump.static.df.loc[model.pump.static.df.node_id == 226, "flow_rate"] = 0
+model.update_node(node_id=n("234FL"), node_type="Pump")  # wordt pump, was outlet
+model.pump.static.df.loc[model.pump.static.df.node_id == n("234FL"), "flow_rate"] = 0
 
 # Inlaten aan Drongelens kanaal krijgen pd.NA bij min_upstream_level
-mask = model.outlet.static.df.node_id.isin([98, 103])
+mask = model.outlet.static.df.node_id.isin([n("117BSL"), n("VRKW118")])
 model.outlet.static.df.loc[mask, "min_upstream_level"] = -math.inf
 mark_level_update_protected(model.outlet.static.df, mask, model=model)
 
-boundary_ids = [9, 13, 39, 38, 53, 1958, 1568, 3085, 33, 32, 31, 59, 54, 44, 42, 64, 63]
+boundary_ids = [
+    n("bnd:9"),
+    n("bnd:13"),
+    n("bnd:39"),
+    n("bnd:38"),
+    n("bnd:53"),
+    n("up:2611054"),
+    n("up:261OKK"),
+    n("loc:195714,406068"),
+    n("bnd:33"),
+    n("bnd:32"),
+    n("bnd:31"),
+    n("bnd:59"),
+    n("bnd:54"),
+    n("bnd:44"),
+    n("bnd:42"),
+    n("bnd:64"),
+    n("bnd:63"),
+]
 assert model.level_boundary.static.df is not None
 mask = model.level_boundary.static.df["node_id"].isin(boundary_ids)
 model.level_boundary.static.df.loc[mask, "level"] = model.level_boundary.static.df.loc[mask, "level"] + 0.04
 
 
 boundary_levels = {
-    37: 31,
-    38: 31,
+    n("bnd:38"): 31,
 }
 
 for node_id, level in boundary_levels.items():
@@ -1385,17 +1422,17 @@ for node_id, level in boundary_levels.items():
 
 
 # 201JSL is een RWS-inlaat naar Aa en Maas, geen afvoer richting Aa en Maas.
-mask = (model.outlet.static.df.node_id == 309) & (model.outlet.static.df.control_state == "aanvoer")
+mask = (model.outlet.static.df.node_id == n("201JSL")) & (model.outlet.static.df.control_state == "aanvoer")
 model.outlet.static.df.loc[mask, "flow_rate"] = 20
 model.outlet.static.df.loc[mask, "max_flow_rate"] = 20
-mask = (model.outlet.static.df.node_id == 309) & (model.outlet.static.df.control_state == "afvoer")
+mask = (model.outlet.static.df.node_id == n("201JSL")) & (model.outlet.static.df.control_state == "afvoer")
 model.outlet.static.df.loc[mask, "flow_rate"] = 0
 model.outlet.static.df.loc[mask, "max_flow_rate"] = 0
 
 # Pomp-capaciteiten op basis van hoogste berekende dynamic debiet, afgerond naar boven.
 pump_max_flow_rate_from_results = {
-    83: 2,  # naam onbekend; oude static flow_rate=0.333
-    733: 1,  # Fortunaweg; oude static flow_rate=0.05
+    n("205BEU"): 2,  # naam onbekend; oude static flow_rate=0.333
+    n("108FOW"): 1,  # Fortunaweg; oude static flow_rate=0.05
 }
 mask = (
     model.pump.static.df.node_id.isin(pump_max_flow_rate_from_results)
@@ -1448,7 +1485,7 @@ flow_demand_controlled_node_ids = set(
 )
 manual_max_flow_rate_node_ids = set(outlet_max_flow_rate_by_node_id)
 manual_max_flow_rate_node_ids.update(pump_max_flow_rate_by_node_id)
-manual_max_flow_rate_node_ids.add(309)
+manual_max_flow_rate_node_ids.add(n("201JSL"))
 protected_max_flow_rate_node_ids = set(EXCLUDE_NODES) | flow_demand_controlled_node_ids | manual_max_flow_rate_node_ids
 for static_df in (model.outlet.static.df, model.pump.static.df):
     afvoer_mask = (

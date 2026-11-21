@@ -236,7 +236,7 @@ flow_demand_controlled_node_ids = set(
     .astype(int)
 )
 manual_max_flow_rate_node_ids = set(outlet_max_flow_rate_by_node_id)
-manual_max_flow_rate_node_ids.add(379)
+manual_max_flow_rate_node_ids.add(n("DL1.10-st1"))
 protected_max_flow_rate_node_ids = set(EXCLUDE_NODES) | flow_demand_controlled_node_ids | manual_max_flow_rate_node_ids
 for static_df in (model.outlet.static.df, model.pump.static.df):
     assert static_df is not None

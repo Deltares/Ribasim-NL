@@ -2,6 +2,7 @@ import geopandas as gpd
 import pytest
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, manning_resistance, pump, user_demand
+from ribasim_nl.keys import duplicate_key_issues
 from ribasim_nl.validation import (
     _basin_area_issues,
     _connector_through_junction_issues,
@@ -47,6 +48,19 @@ def model() -> Model:
     ):
         model.link.add(from_node, to_node)
     return model
+
+
+def test_duplicate_keys(model):
+    """No two nodes of a water authority have the same key, see `ribasim_nl.keys`."""
+    assert duplicate_key_issues(model) == []
+    model.node.df["meta_key"] = ["a", "b", "c", "c", "d", None, None, "e"]
+    (issue,) = duplicate_key_issues(model)
+    assert issue.startswith("2 nodes share their key with another node")
+    with pytest.raises(ValueError, match="2 nodes share their key"):
+        model.validate_ribasim_nl(layout=False)
+    # but nodes of different water authorities can
+    model.node.df["meta_waterbeheerder"] = ["A", "A", "A", "B", "B", "B", "B", "B"]
+    assert duplicate_key_issues(model) == []
 
 
 def test_basin_area_issues(model):

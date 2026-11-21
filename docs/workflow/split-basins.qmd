@@ -57,7 +57,7 @@ For example:
 splitter = SplitBasins(
     model=ribasim_model,
     splitted_basin_path=splitted_basin_16_path,
-    basin_node_id_to_split=16,
+    basin_node_id_to_split=ribasim_model.node_id("3.01_dummy_id_92"),
     geometry_tolerance=1.0,
     printing=False,
 )
@@ -91,6 +91,7 @@ The original basin geometry is not cut by the script itself; the basin parts mus
 ### 2. Create new basin nodes
 
 The script creates a new basin node for each polygon in the split basin layer. The node geometry is placed at the polygon representative point.
+Its [key](../dev/node-keys.qmd) is the key of the original basin and the ID of the polygon in the layer, such as `PBH0248142/1`, by which later scripts refer to it.
 
 The basin table rows of the original basin are copied to each new basin node to retain the (meta)data.
 This includes available rows in:

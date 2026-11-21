@@ -48,6 +48,8 @@ waterinlaten = cloud.joinpath(authority, r"verwerkt/1_ontvangen_data/aanvulling 
 
 # %% init things
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
@@ -182,9 +184,9 @@ static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=Tr
 
 # --- Load Feedback data ---
 feedback_df = pd.read_excel(feedback_xlsx, sheet_name="Streefpeilen")
-feedback_df.drop_duplicates("Basin node_id", inplace=True)
-feedback_df.set_index("Basin node_id", inplace=True)
-feedback_df.index.name = "node_id"
+# the rows of the nodes that are in the model, which the sheet refers to by their key
+feedback_df = feedback_df[feedback_df["Node key"].isin(model.node.df["meta_key"])]
+feedback_df.index = pd.Index(model.node_ids(feedback_df["Node key"]), name="node_id")
 
 # Fill Streefpeil ZP with Maatg. kruinhoogte (m NAP) where missing
 min_upstream_level_fb = feedback_df["Streefpeil ZP"]
@@ -196,8 +198,8 @@ min_upstream_level_fb.name = "min_upstream_level"
 static_data.add_series(node_type="Outlet", series=min_upstream_level_fb, fill_na=True)
 
 # %%custum, zomerpeil Overijsselsche Vecht bij waterlevl boundary kloppen niet, uit DOD gehaald
-static_data.outlet.loc[static_data.outlet.node_id == 1289, "min_upstream_level"] = 1.25
-static_data.outlet.loc[static_data.outlet.node_id == 1290, "min_upstream_level"] = 1.25
+static_data.outlet.loc[static_data.outlet.node_id == n("ow:WL01909-9"), "min_upstream_level"] = 1.25
+static_data.outlet.loc[static_data.outlet.node_id == n("ow:WL02747-62"), "min_upstream_level"] = 1.25
 # %% Bepaal min_upstream_level pumps from peilenkaart
 static_data.reset_data_frame(node_type="Pump")
 assert static_data.pump is not None
@@ -335,7 +337,7 @@ static_data.add_series(node_type="Pump", series=valid_values, fill_na=False)
 static_data.pump.loc[static_data.pump.flow_rate.isna(), "flow_rate"] = 100.0
 
 # %% some customs
-model.remove_node(2297)
+model.remove_node(n("twentekanaal:GM00241"))
 
 # # koppelen
 ws_grenzen_path = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg")
@@ -345,7 +347,13 @@ assign = AssignAuthorities(
     waterschap=authority,
     ws_grenzen_path=ws_grenzen_path,
     RWS_grenzen_path=RWS_grenzen_path,
-    custom_nodes={21: "Buitenland", 34: "Buitenland", 2250: "Buitenland", 2265: "Buitenland", 2268: "Buitenland"},
+    custom_nodes={
+        n("bnd:21"): "Buitenland",
+        n("bnd:34"): "Buitenland",
+        n("down:DK12209"): "Buitenland",
+        n("loc:262808,497990"): "Buitenland",
+        n("loc:261075,495482"): "Buitenland",
+    },
 )
 model = assign.assign_authorities()
 

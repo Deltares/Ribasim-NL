@@ -39,6 +39,8 @@ aanvoer_path = cloud.joinpath(waterschap, "aangeleverd/Na_levering/Wateraanvoer/
 processor = paths.feedback_processor(work_dir=paths.model_dir("profiles"))
 
 ribasim_model = Model.read(paths.model_dir("profiles") / "ribasim.toml")
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = ribasim_model.node_id
 
 # Resolve geometry-based drain node lookups before snapping relocates these nodes, so the
 # hard-coded coordinates still match the original node locations (used much further below).
@@ -55,14 +57,20 @@ for _drain_point in _drain_points:
 to_drain_node_ids = tuple(to_drain_node_ids)
 
 # Appelscha, see https://github.com/Deltares/Ribasim-NL/issues/831
-# Basin 340 (AP-051, AP-143, GPG-F13117) with its bergend Basin 8125, and Basin 1001 (GPG-F13118) are already
-# represented by Drents Overijsselse Delta, so they and the doorlaten 3064 and 3065 between them are removed.
-for node_id in (3064, 3065, 15882, 8125, 340, 1001):
+# The Basins of PBH0090243 (AP-051, AP-143, GPG-F13117) and PBH0198500 (GPG-F13118) are already represented by
+# Drents Overijsselse Delta, so they and the two doorlaten between them are removed.
+for node_id in (n("ow:KDU0038503"), n("ow:None_281"), n("PBH0090243"), n("PBH0198500")):
     ribasim_model.remove_node(node_id, remove_links=True)
-# Basin 554 (AP-141, AP-142) drains via outlets 2018 and 2236 into Drents Overijsselse Delta, instead of being supplied
-APPELSCHA_OUTLETS = (2018, 2236)
-# LevelBoundary -> Outlet -> Basin 554, by their nodes, since the feedback form numbers the links anew
-for from_node_id, to_node_id in ((3782, 2018), (2018, 554), (3789, 2236), (2236, 554)):
+# The Basin of PBH0088673 (AP-141, AP-142) drains via two outlets into Drents Overijsselse Delta, instead of being
+# supplied
+APPELSCHA_OUTLETS = (n("ow:KDU0020889"), n("ow:OAF-S3065"))
+# LevelBoundary -> Outlet -> Basin, by their nodes, since the feedback form numbers the links anew
+for from_node_id, to_node_id in (
+    (n("bnd:ow:KDU0020889"), n("ow:KDU0020889")),
+    (n("ow:KDU0020889"), n("PBH0088673")),
+    (n("bnd:ow:OAF-S3065"), n("ow:OAF-S3065")),
+    (n("ow:OAF-S3065"), n("PBH0088673")),
+):
     ribasim_model.reverse_link(from_node_id=from_node_id, to_node_id=to_node_id)
 
 # Read outlet_aanvoer_on BEFORE set_boundary_conditions, of which find_upstream_downstream_target_levels strips meta columns
@@ -98,7 +106,20 @@ categorize_nodes(ribasim_model, supply_outlets=False)
 # remove non-free flowing outlets (which flow against gravity) based on the difference in streefpeil and the threshold
 ribasim_model = ribasim_param.remove_non_free_flowing_outlets(
     ribasim_model=ribasim_model,
-    to_exclude=[2183, 1394, 3302, 2625, 2910, 3497, 2209, 2547, 2705, 1123, 2398, 1037, 2209],
+    to_exclude=[
+        n("ow:OAF-W2156"),
+        n("ow:KDU0013220"),
+        n("ow:KDU0024902"),
+        n("Code_onbekend_3084"),
+        n("ow:KDU0013941"),
+        n("ow:None_3249"),
+        n("ow:KDU0023693"),
+        n("KST0050159"),
+        n("KST0006695"),
+        n("ow:None_9641"),
+        n("ow:OVK0128641"),
+        n("ow:KDU0023693"),
+    ],
     threshold=0.02,
     printing=True,
 )
@@ -107,41 +128,50 @@ from_to_node_function_table = node_function_table(ribasim_model)
 
 # manually change the function of some nodes based upon model inspection
 to_supply = (
-    1312,
-    1347,
-    1512,
-    1596,
-    1647,
-    1747,
-    2128,
-    2398,
-    2434,
-    2445,
-    2616,
-    2624,
-    2670,
-    2773,
-    2783,
-    2812,
-    2857,
-    2982,
-    3023,
-    3150,
-    3188,
-    3228,
-    3272,
-    3376,
-    3411,
-    3452,
-    3760,
-    3880,
-    3882,
-    3884,
-    3888,
+    n("ow:OVK0134991"),
+    n("ow:OVK0136074"),
+    n("ow:OVK0139927"),
+    n("ow:OAF0183279"),
+    n("ow:KDU0041885"),
+    n("KST0007211"),
+    n("ow:None_9641"),
+    n("KST0008708"),
+    n("ow:OVK0140396"),
+    n("ow:OVK0194473|PBH0252717>PBH0099287"),
+    n("Code_onbekend_5644"),
+    n("ow:OVK0166269"),
+    n("ow:OAF-F1020450"),
+    n("ow:OAF-F1021304"),
+    n("ow:OVK0237869"),
+    n("ow:KDU0014875"),
+    n("ow:KDU0015727"),
+    n("ow:OAF-F1021392"),
+    n("ow:KDU0012166"),
+    n("Code_onbekend_4056"),
+    n("ow:None_759"),
+    n("ow:KDU0035574"),
+    n("ow:KDU0011383"),
+    n("ow:KDU0022894"),
+    n("ow:KDU0014829"),
+    n("ow:None_9717"),
+    n("loc:128115,586097"),
+    n("loc:129831,587677"),
+    n("loc:207500,587902"),
+    n("loc:206508,592803"),
 )
-to_flow_control = (2452, 3068)
+to_flow_control = (n("KST0006157"), n("ow:KDU0015040"))
 
-to_drain = (2147, 2751, 2944, 3041, 3494, 3568, 3709, *to_drain_node_ids, *APPELSCHA_OUTLETS)
+to_drain = (
+    n("ow:OAF-F1019555"),
+    n("KGM0000153"),
+    n("ow:OAF-F1019650"),
+    n("ow:OAF-F1021117"),
+    n("ow:KDU0047366"),
+    n("KGM0001380"),
+    n("KGM0003006"),
+    *to_drain_node_ids,
+    *APPELSCHA_OUTLETS,
+)
 
 from_to_node_function_table = set_node_functions(
     from_to_node_function_table, to_supply=to_supply, to_flow_control=to_flow_control, to_drain=to_drain
@@ -153,8 +183,10 @@ add_controllers(ribasim_model, from_to_node_function_table, remove_duplicates=Tr
 assign_pump_and_basin_names(ribasim_model, paths)
 
 assert ribasim_model.pump.static.df is not None
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 2700, "max_flow_rate"] = 172 / 60
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 3891, "max_flow_rate"] = 7340 / 60
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == n("KGM0003563"), "max_flow_rate"] = 172 / 60
+ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == n("loc:174976,539741"), "max_flow_rate"] = (
+    7340 / 60
+)
 
 # Manning resistance
 # there is a MR without geometry and without links for some reason
@@ -165,18 +197,17 @@ ribasim_model = complete_parametrization(
     ribasim_model,
     paths,
     custom_nodes={
-        3820: "Noordzee",
-        5022: "Rijkswaterstaat",
-        10958: "Rijkswaterstaat",
+        n("bnd:ow:OAF-F1021117"): "Noordzee",
+        n("loc:158166,553915"): "Rijkswaterstaat",
     },
     fill_na_authority="Noordzee",
 )
 
 assert ribasim_model.pump.static.df is not None
-ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df.node_id == 3863, "meta_known_flow_rate"] = (
-    False  # unknown capacity, set temp value
-)
-set_flow_rate(ribasim_model.pump.static.df, [3863], 0.1)
+ribasim_model.pump.static.df.loc[
+    ribasim_model.pump.static.df.node_id == n("loc:171210,558399"), "meta_known_flow_rate"
+] = False  # unknown capacity, set temp value
+set_flow_rate(ribasim_model.pump.static.df, [n("loc:171210,558399")], 0.1)
 
 # set the unknown capacities of Pumps and Outlets from the area they drain or supply
 set_design_capacities(ribasim_model, from_to_node_function_table)
@@ -208,7 +239,7 @@ ribasim_model.node.df.loc[appelscha_control_ids, "name"] = "uitlaat: 9.40/9.38 [
 # The Pikmeer is far from these structures in the model, so the Basins next to them get safety limits around the
 # streefpeil of -0.52 m NAP, with which inlets do not overfill them and drains do not empty them.
 # Makkum, Workum and Hindelopen keep their DiscreteControl.
-PIKMEER_BASIN = 7669
+PIKMEER_BASIN = n("PBH0248142/1")
 
 
 class LevelControlOptions(TypedDict, total=False):
@@ -224,32 +255,42 @@ DRAIN_LIMIT: LevelControlOptions = {"min_upstream_level": -0.60}
 LAUWERSMEER_LIMIT: LevelControlOptions = {"max_downstream_level": -0.60}
 # (node_id, name, [(level [m+NAP], flow_rate [m3/s]), ...], keyword arguments)
 BOEZEM_CONTROLS: tuple[tuple[int, str, list[tuple[float, float]], LevelControlOptions], ...] = (
-    (3892, "inlaat: Lemmer/Teroelsterkolk", [(-1.0, 46), (-0.55, 46), (-0.53, 23), (-0.52, 0)], INLET_LIMIT),
-    (3023, "inlaat: Tacozijl", [(-1.0, 23), (-0.56, 23), (-0.54, 11), (-0.53, 0)], INLET_LIMIT),
     (
-        3897,
+        n("loc:174961,539814"),
+        "inlaat: Lemmer/Teroelsterkolk",
+        [(-1.0, 46), (-0.55, 46), (-0.53, 23), (-0.52, 0)],
+        INLET_LIMIT,
+    ),
+    (n("ow:OAF-F1021392"), "inlaat: Tacozijl", [(-1.0, 23), (-0.56, 23), (-0.54, 11), (-0.53, 0)], INLET_LIMIT),
+    (
+        n("loc:153406,543502"),
         "inlaat: Stavoren",
         [(-1.0, 33), (-0.65, 33), (-0.61, 22), (-0.58, 11), (-0.56, 5.5), (-0.54, 0)],
         INLET_LIMIT,
     ),
-    (2436, "uitlaat: Woudagemaal", [(-1.0, 0), (-0.5, 0), (-0.47, 65), (-0.42, 72)], DRAIN_LIMIT),
-    (3894, "uitlaat: Hooglandgemaal", [(-1.0, 0), (-0.5, 0), (-0.47, 76), (-0.42, 116)], DRAIN_LIMIT),
+    (n("KGM0000014"), "uitlaat: Woudagemaal", [(-1.0, 0), (-0.5, 0), (-0.47, 65), (-0.42, 72)], DRAIN_LIMIT),
+    (
+        n("loc:153456,543428"),
+        "uitlaat: Hooglandgemaal",
+        [(-1.0, 0), (-0.5, 0), (-0.47, 76), (-0.42, 116)],
+        DRAIN_LIMIT,
+    ),
     # The drains below are closed under -0.52 m NAP, so level control takes priority over flushing (doorspoeling).
     # Harlingen drains the tide-averaged spui to the Waddenzee at mean sea level, so it is a Pump instead of an Outlet.
     (
-        3041,
+        n("ow:OAF-F1021117"),
         "uitlaat: Harlingen",
         [(-1.0, 0), (-0.53, 0), (-0.52, 5.1), (-0.50, 10), (-0.42, 30)],
         DRAIN_LIMIT | {"node_type": "Pump"},
     ),
     (
-        3899,
+        n("loc:206421,592530"),
         "uitlaat: Dokkumer Nieuwe Zijlen schutsluis",
         [(-1.0, 0), (-0.53, 0), (-0.52, 1.8), (-0.50, 5.8), (-0.42, 12)],
         DRAIN_LIMIT | LAUWERSMEER_LIMIT,
     ),
     (
-        3901,
+        n("loc:206360,592679"),
         "uitlaat: Dokkumer Nieuwe Zijlen stuw",
         [(-1.0, 0), (-0.53, 0), (-0.52, 4), (-0.50, 6), (-0.42, 22)],
         DRAIN_LIMIT | LAUWERSMEER_LIMIT,
@@ -263,12 +304,12 @@ for node_id, name, points, kwargs in BOEZEM_CONTROLS:
 
 # The inlets from the IJsselmeer have no name in the source data, see https://github.com/Deltares/Ribasim-NL/issues/1010
 INLET_NAMES = {
-    2783: "Hindeloopen",
-    3023: "Inlaat Tacozijl",
-    3591: "Makkum-inlaat Suderseewei",
-    3890: "Sluis Makkum",
-    3892: "Inlaat Teroelsterkolk",
-    3897: "Inlaat Johan Friso sluis",
+    n("ow:OAF-F1021304"): "Hindeloopen",
+    n("ow:OAF-F1021392"): "Inlaat Tacozijl",
+    n("ow:KDU0011599"): "Makkum-inlaat Suderseewei",
+    n("loc:156038,563082"): "Sluis Makkum",
+    n("loc:174961,539814"): "Inlaat Teroelsterkolk",
+    n("loc:153406,543502"): "Inlaat Johan Friso sluis",
 }
 for node_id, name in INLET_NAMES.items():
     node_type = ribasim_model.get_node_type(node_id)

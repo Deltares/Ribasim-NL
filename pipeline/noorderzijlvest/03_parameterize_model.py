@@ -27,6 +27,8 @@ qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
 
 # read
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 
 start_time = time.time()
 # %%
@@ -37,7 +39,7 @@ assert model.manning_resistance.static.df is not None
 model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 # %%
-basin_level_overrides = [([1132], 3.45)]
+basin_level_overrides = [([n("up:INL080")], 3.45)]
 apply_basin_level_overrides(model=model, basin_level_overrides=basin_level_overrides)
 
 # %%

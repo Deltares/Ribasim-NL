@@ -35,13 +35,13 @@ ribasim_toml = ribasim_dir / f"{short_name}.toml"
 # %%
 # read
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 start_time = time.time()
 
 # %%
 # parameterize
-manual_basin_level_node_ids = [1801]
 assert model.basin.area.df is not None
-model.basin.area.df.loc[model.basin.area.df.node_id == 1801, "meta_streefpeil"] = -0.25
 model.parameterize(
     static_data_xlsx=static_data_xlsx,
     evaporation_mm_per_day=1,
@@ -66,34 +66,32 @@ model.manning_resistance.static.df.loc[:, "manning_n"] = 0.03
 
 # Fix afvoer
 assert model.outlet.static.df is not None
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 375, "flow_rate"] = 0.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("201BGS"), "flow_rate"] = 0.0
 
 # fix basin_levels
 basin_level_overrides = [
     # Peil niet consistent voor sturing
-    ([1331], 2.83),
-    ([1446], 11.6),
-    ([1665], 9.3),
-    ([1419], 18.15),
-    ([1852], 18.15),
-    ([1149], 6.95),
-    ([1475], 22.95),
-    ([1572], 25.7),
-    ([1565], 23.5),
-    ([1885], 23.5),
-    ([1959], 23.5),
-    ([1280], 30.75),
-    ([1961], 30.75),
-    ([1849], 30.75),
-    ([1462], 30.75),
-    ([2495], 30.75),
+    ([n("up:ow:2011330")], 2.83),
+    ([n("up:201G")], 11.6),
+    ([n("up:217FA")], 9.3),
+    ([n("up:2010340___2")], 18.15),
+    ([n("up:201DDK")], 18.15),
+    ([n("up:2113405___1")], 6.95),
+    ([n("up:201R")], 22.95),
+    ([n("up:2940212")], 25.7),
+    ([n("up:2910006")], 23.5),
+    ([n("up:2920069")], 23.5),
+    ([n("up:261BR")], 30.75),
+    ([n("up:3200005")], 30.75),
+    ([n("up:275KDN")], 30.75),
+    ([n("up:2751")], 30.75),
 ]
 
 apply_basin_level_overrides(model=model, basin_level_overrides=basin_level_overrides)
 
 boundary_level_overrides = {
-    37: 31.0,
-    38: 31.0,
+    n("bnd:37"): 31.0,
+    n("bnd:38"): 31.0,
 }
 
 apply_level_boundary_overrides(model, boundary_level_overrides)
@@ -103,13 +101,13 @@ apply_level_boundary_overrides(model, boundary_level_overrides)
 
 
 # make pump nodes
-model.update_nodes([100, 95, 105, 113], "Pump")
+model.update_nodes([n("211VEL"), n("211GOW"), n("204GRW"), n("211HDS")], "Pump")
 # %%
 clear_ungated_outlet_levels(model)
 
-model.outlet.static.df.loc[model.outlet.static.df.node_id.isin([98, 103, 221]), "min_upstream_level"] = (
-    2.2  # peil drongelens kanaal
-)
+model.outlet.static.df.loc[
+    model.outlet.static.df.node_id.isin([n("117BSL"), n("VRKW118"), n("116HDW")]), "min_upstream_level"
+] = 2.2  # peil drongelens kanaal
 
 # %%
 # optionele checks

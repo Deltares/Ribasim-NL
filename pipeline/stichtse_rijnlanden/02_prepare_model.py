@@ -32,6 +32,8 @@ top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 
 # %% init things
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
 network = Network(lines_gdf=gpd.read_file(hydroobject_gpkg, layer="hydroobject"), tolerance=0.2)
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
@@ -296,25 +298,25 @@ static_data.add_series(node_type="Pump", series=flow_rate)
 # add date on node_id
 flow_rate = pd.Series(
     {
-        602: 0.5,
-        578: 0.7,
-        554: 0.75,
-        596: 0.9,
-        584: 1,
-        587: 1,
-        588: 1.25,
-        616: 1.75,
-        608: 1.8,
-        619: 1.95,
-        600: 2.5,
-        601: 3.3,
-        617: 4,
-        623: 5.34,
-        557: 5.5,
-        542: 7,
-        541: 11.2,
-        536: 12,
-        567: 14,
+        n("G1002"): 0.5,
+        n("G4056"): 0.7,
+        n("G0007"): 0.75,
+        n("G3004"): 0.9,
+        n("G0090"): 1,
+        n("G4026"): 1,
+        n("G8002"): 1.25,
+        n("G4065"): 1.75,
+        n("G4251"): 1.8,
+        n("G4041"): 1.95,
+        n("G4046"): 2.5,
+        n("G3003"): 3.3,
+        n("G0058"): 4,
+        n("G3025"): 5.34,
+        n("G4066"): 5.5,
+        n("G4031"): 7,
+        n("G5002"): 11.2,
+        n("G6007"): 12,
+        n("G8000"): 14,
     },
     name="flow_rate",
 )
@@ -324,22 +326,22 @@ static_data.add_series(node_type="Pump", series=flow_rate)
 # %%
 flow_rate = pd.Series(
     {
-        752: 56,
-        755: 25,
-        252: 10,  # inlaat Vreeswijk (i.o. Epke)
-        757: 16,  # weertsluis (op basis van waterakkoord)
-        756: 12,
-        468: 12,
-        481: 10,
-        753: 7,
-        754: 7,
-        141: 6.2,
-        742: 6.2,
-        761: 6,
-        100: 3,
-        758: 0,
-        186: 1.25,  # Westriool (waterakkoord)
-        919: 15,  # Werkhoven, de rest moet langs Caspargouw. I.o. Epke
+        n("SL0015"): 56,
+        n("SL0005"): 25,
+        n("I6119"): 10,  # inlaat Vreeswijk (i.o. Epke)
+        n("SL0009"): 16,  # weertsluis (op basis van waterakkoord)
+        n("SL0011"): 12,
+        n("SY0070"): 12,
+        n("AF0093"): 10,
+        n("SL0006"): 7,
+        n("SL0030"): 7,
+        n("I6098"): 6.2,
+        n("SL0003"): 6.2,
+        n("ST3003"): 6,
+        n("I1523"): 3,
+        n("SL0016"): 0,
+        n("I6073"): 1.25,  # Westriool (waterakkoord)
+        n("ST2028"): 15,  # Werkhoven, de rest moet langs Caspargouw. I.o. Epke
     },
     name="flow_rate",
 )
