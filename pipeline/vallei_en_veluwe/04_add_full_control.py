@@ -101,7 +101,6 @@ def remove_basin_with_level_boundaries(
 
     boundary_data = [level_boundary.Static(level=[boundary_level])]
     link_ids_to_remove = links_to_basin.index.to_list()
-    next_boundary_node_id = max(int(model.node.df.index.max()) + 1, 10000)
     boundary_connector_node_ids = []
     model.remove_links(link_ids_to_remove)
     # the names of the new boundaries refer to nodes by their key, see docs/dev/node-keys.qmd
@@ -121,13 +120,11 @@ def remove_basin_with_level_boundaries(
             )
             boundary_node = model.level_boundary.add(
                 Node(
-                    node_id=next_boundary_node_id,
                     geometry=boundary_geometry,
                     name=f"Boundary basin {keys[basin_id]} - {keys[connector_id]}",
                 ),
                 boundary_data,
             )
-            next_boundary_node_id += 1
             boundary_connector_node_ids.append(connector_id)
             model.link.add(boundary_node, model.get_node(connector_id), geometry=boundary_link_geometry)
         else:
@@ -138,13 +135,11 @@ def remove_basin_with_level_boundaries(
             boundary_link_geometry = cast(LineString, substring(link_geometry, 0, distance))
             boundary_node = model.level_boundary.add(
                 Node(
-                    node_id=next_boundary_node_id,
                     geometry=boundary_geometry,
                     name=f"Boundary basin {keys[basin_id]} - {keys[connector_id]}",
                 ),
                 boundary_data,
             )
-            next_boundary_node_id += 1
             boundary_connector_node_ids.append(connector_id)
             model.link.add(model.get_node(connector_id), boundary_node, geometry=boundary_link_geometry)
 

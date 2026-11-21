@@ -54,12 +54,6 @@ cloud = CloudStorage()
 # Structures of a verdeelsleutel, which 5_model_netwerk adds, that are replaced by their own sheet
 # Keersluis Limmel gets a DiscreteControl that closes it at a high Maas, see https://github.com/Deltares/Ribasim-NL/issues/922
 VERDEELSLEUTEL_KWK_FROM_SHEET = ["61F-001-01"]
-# New structures and their control get free IDs, so the IDs of the nodes added after them stay the same: the structures
-# next to another one, see `PARALLEL_KWK`, and all structures in these areas
-GEBIEDEN_WITH_FREE_IDS = {"ARK-IJ-NZK", "IJsselmeer-Markermeer", "Rijn", "Rijn-Maasmonding", "Waal"}
-# The DiscreteControl of these structures takes the ID of the ContinuousControl of the QQ relation that it replaced, so
-# the IDs of the nodes added after them stay the same, see https://github.com/Deltares/Ribasim-NL/issues/973
-CONTROL_NODE_IDS = {"39B-002-02": 10724, "39D-001-02": 10725}  # Prs. Irenesluis-Peilbeheer, Pr. Bernhardsluis
 
 
 # %% functies
@@ -73,21 +67,14 @@ def read_outlet(kwk_df, listen_side: Literal["upstream", "downstream"] | None = 
         return read_static(kwk_df, "Outlet", listen_side)
 
 
-def add_flow_demand(model: Model, node_id: int, tables: list, name: str, demand_node_id: int | None = None) -> None:
+def add_flow_demand(model: Model, node_id: int, tables: list, name: str) -> None:
     """Add a FlowDemand node next to structure `node_id`, as the minimum flow through it."""
     point = cast(Point, model.node.df.at[node_id, "geometry"])
-    demand_node = model.flow_demand.add(
-        Node(
-            model.next_node_id if demand_node_id is None else demand_node_id,
-            Point(point.x + 20, point.y - 20),
-            name=name,
-        ),
-        tables,
-    )
+    demand_node = model.flow_demand.add(Node(model.next_node_id, Point(point.x + 20, point.y - 20), name=name), tables)
     model.link.add(demand_node, model.get_node(node_id))
 
 
-def add_parallel_kwk(model: Model, network: Network, code: str, name: str, node_type: str, node_id: int) -> None:
+def add_parallel_kwk(model: Model, network: Network, code: str, name: str, node_type: str) -> None:
     """Add the structure with `code` next to its main structure, see `PARALLEL_KWK`, with a Static table to replace."""
     parallel = PARALLEL_KWK[code]
     main_id = model.find_node_id(meta_code_waterbeheerder=parallel.main)
@@ -100,7 +87,9 @@ def add_parallel_kwk(model: Model, network: Network, code: str, name: str, node_
     main_point = cast(Point, model.node.df.at[main_id, "geometry"])
     point = Point(parallel.xy) if parallel.xy else Point(main_point.x + parallel.offset, main_point.y + parallel.offset)
     static = {"Outlet": outlet.Static, "Pump": pump.Static}[node_type](flow_rate=[0.0])
-    node = model.get_component(node_type).add(Node(node_id, point, name=name, meta_code_waterbeheerder=code), [static])
+    node = model.get_component(node_type).add(
+        Node(model.next_node_id, point, name=name, meta_code_waterbeheerder=code), [static]
+    )
     model.link.add(model.get_node(int(upstream)), node)
     downstream_line = None
     if parallel.downstream_network_node is not None:
@@ -143,22 +132,16 @@ n = model.node_id
 network = Network.from_network_gpkg(cloud.joinpath("Rijkswaterstaat/verwerkt/netwerk.gpkg"))
 starttime, endtime = pd.Timestamp(model.starttime), pd.Timestamp(model.endtime)
 
-# %% IDs that no node has
-free_node_ids = iter(sorted(set(range(1, model.next_node_id)) - set(model.node.df.index)))
-
 # %% Itereren over kunstwerken
 
 
-def update_kwk(gebied: str, kwk, kwk_df: pd.DataFrame) -> None:
-    """Update structure `kwk` of `gebied` from its sheet, and add its control and FlowDemand."""
+def update_kwk(kwk, kwk_df: pd.DataFrame) -> None:
+    """Update structure `kwk` from its sheet, and add its control and FlowDemand."""
     kwk_properties = read_kwk_properties(kwk_df)
-    free_ids = gebied in GEBIEDEN_WITH_FREE_IDS or kwk.code in PARALLEL_KWK
 
     # a structure next to another one is not in the network yet
     if kwk.code in PARALLEL_KWK:
-        add_parallel_kwk(
-            model, network, str(kwk.code), str(kwk.naam), kwk_properties["Ribasim type"], next(free_node_ids)
-        )
+        add_parallel_kwk(model, network, str(kwk.code), str(kwk.naam), kwk_properties["Ribasim type"])
 
     # find existing node_id in model
     node_id = model.find_node_id(meta_code_waterbeheerder=str(kwk_properties["Kunstwerkcode"]))
@@ -253,19 +236,12 @@ def update_kwk(gebied: str, kwk, kwk_df: pd.DataFrame) -> None:
             subtract_node_id = n(str(kwk_properties[SUBTRACT_PROPERTY]))
             assert model.node.df.at[subtract_node_id, "node_type"] == "Basin", f"{subtract_node_id} not a Basin"
         unit = "m3/s" if listen_variable(kwk_properties) == "flow_rate" else "m" if subtract_node_id else "m+NAP"
-        control_node_id = None
-        if kwk.code in CONTROL_NODE_IDS:
-            control_node_id = CONTROL_NODE_IDS[kwk.code]
-            assert control_node_id not in model.node.df.index, f"Node {control_node_id} for {kwk.naam} already exists"
-        elif free_ids:
-            control_node_id = next(free_node_ids)
         model.add_control_node(
             to_node_id=node_id,
             data=discrete_control_tables(kwk_df, listen_node_id, starttime, endtime, subtract_node_id),
             ctrl_type="DiscreteControl",
             node_offset=20,
             node_properties={"name": f"{label}: {levels} [{unit}]"},
-            node_id=control_node_id,
         )
 
     # check if structure has a minimum flow, such as the losses of a lock
@@ -280,13 +256,7 @@ def update_kwk(gebied: str, kwk, kwk_df: pd.DataFrame) -> None:
         assert all(table.df is not None for table in tables)
         demand = max(cast(pd.DataFrame, table.df)["demand"].max() for table in tables)
         assert demand <= max_flow_rate, f"FlowDemand {demand} of {kwk.naam} above its capacity {max_flow_rate}"
-        add_flow_demand(
-            model,
-            node_id,
-            tables,
-            name=f"minimum debiet {kwk.naam}: {demand} [m3/s]",
-            demand_node_id=next(free_node_ids) if free_ids else None,
-        )
+        add_flow_demand(model, node_id, tables, name=f"minimum debiet {kwk.naam}: {demand} [m3/s]")
 
 
 def listens_to_missing_node(kwk_properties: pd.Series) -> bool:
@@ -299,7 +269,6 @@ def listens_to_missing_node(kwk_properties: pd.Series) -> bool:
 assert set(VERDEELSLEUTEL_KWK_FROM_SHEET) <= set(all_kwk_df.loc[~all_kwk_df.in_model, "code"])
 all_kwk_df = all_kwk_df[all_kwk_df.in_model | all_kwk_df.code.isin(VERDEELSLEUTEL_KWK_FROM_SHEET)]
 assert set(PARALLEL_KWK) <= set(all_kwk_df.code), "Expected the structures next to another one in kunstwerken.xlsx"
-assert set(CONTROL_NODE_IDS) <= set(all_kwk_df.code), "Expected the structures with a control node ID"
 # the structures that listen to a section of the Amsterdam-Rijnkanaal, which is split below
 after_split = []
 for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
@@ -329,9 +298,9 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
             f"FlowDemand table and property of {kwk.naam} differ"
         )
         if listens_to_missing_node(kwk_properties):
-            after_split.append((str(gebied), kwk, kwk_df))
+            after_split.append((kwk, kwk_df))
         else:
-            update_kwk(str(gebied), kwk, kwk_df)
+            update_kwk(kwk, kwk_df)
 
 # %% Split the Amsterdam-Rijnkanaal north of the Lek in three, see https://github.com/Deltares/Ribasim-NL/issues/916
 # It runs about 59 km from the Prinses Irenesluis to the ManningResistance at the Noordzeekanaal. It is split after
@@ -365,10 +334,10 @@ model.manning_resistance.static.df.loc[model.manning_resistance.static.df.node_i
 )
 
 # %% The structures that listen to a section of the Amsterdam-Rijnkanaal, such as the Prinses Irenesluis, see #973
-for gebied, kwk, kwk_df in after_split:
+for kwk, kwk_df in after_split:
     print(f"updating {kwk.naam}")
     assert not listens_to_missing_node(read_kwk_properties(kwk_df)), f"{kwk.naam} listens to a node not in the model"
-    update_kwk(gebied, kwk, kwk_df)
+    update_kwk(kwk, kwk_df)
 
 # %% The Goereese sluis drains to the sea along its channel and the fairway, which are not in the network
 goereese_sluis = model.find_node_id(meta_code_waterbeheerder="37C-001-01")

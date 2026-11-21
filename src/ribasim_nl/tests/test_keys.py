@@ -231,12 +231,17 @@ def test_apply_edits_by_key(model, tmp_path):
     gpd.GeoDataFrame({"link_from_key": ["up:st2"], "link_to_key": ["st2"]}, geometry=[Point(25, 0)], crs=28992).to_file(
         edits_gpkg, layer="reverse_link"
     )
-    gpd.GeoDataFrame({"key": ["new basin"]}, geometry=[Point(60, 0)], crs=28992).to_file(edits_gpkg, layer="add_basin")
+    # a node ID in the layer is not used: the new Basin gets the next one
+    gpd.GeoDataFrame({"key": ["new basin"], "node_id": [99]}, geometry=[Point(60, 0)], crs=28992).to_file(
+        edits_gpkg, layer="add_basin"
+    )
+    next_node_id = model.next_node_id
 
     model.apply_edits(edits_gpkg, ["update_node", "reverse_link", "add_basin"])
     assert model.get_node_type(3) == "Pump"
     assert model.link_id("st2", "up:st2") in model.link.df.index
-    assert model.get_node_type(model.node_id("new basin")) == "Basin"
+    assert model.node_id("new basin") == next_node_id != 99
+    assert model.get_node_type(next_node_id) == "Basin"
 
     # a key that no node has fails, and the error tells which edit
     gpd.GeoDataFrame({"node_key": ["st9"], "node_type": ["Pump"]}, geometry=[Point(0, 0)], crs=28992).to_file(

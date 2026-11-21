@@ -37,14 +37,6 @@ CODES = {
     "Vechtstromen": "NL44",
 }
 
-# the node IDs that fix scripts gave basins that the 2024 lumping left out, by their 2024 node ID, where these are not
-# the next node IDs of the input model, see `ribasim_nl.lumping.model.number_lost_basins`
-LOST_BASIN_NODE_IDS = {
-    "DeDommel": {1278: 1278, 1446: 1446},
-    "Limburg": {1743: 2472, 2286: 2474, 1957: 2476, 2151: 2478, 2014: 2480},
-    "Vechtstromen": {node_id: node_id + 947 for node_id in range(1356, 1371)},
-}
-
 authorities = sys.argv[1:]
 assert authorities, "pass the authorities as arguments"
 
@@ -67,7 +59,6 @@ for authority in authorities:
         krw,
         drainage_areas=drainage_areas,
         max_gap_area=5000.0,
-        lost_basin_node_ids=LOST_BASIN_NODE_IDS.get(authority),
     )
     # the keys of the nodes, by which the scripts that follow refer to them, see `ribasim_nl.keys`
     layers = {layer.lower(): layer for layer in pyogrio.list_layers(hydamo_gpkg)[:, 0]}

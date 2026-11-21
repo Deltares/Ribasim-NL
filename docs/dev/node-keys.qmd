@@ -67,15 +67,15 @@ model.reverse_link(link_id=lk("up:KS52-st2", "KS52-st2"))
 `n` returns the ID of the one node with a key, and raises a `KeyError` if there is none or more than one.
 A link has no key: `lk` returns the ID of the link between two nodes.
 
-- **Model edits.** A layer of `model_edits.gpkg` refers to a node in a column `<name>_key`, which `Model.apply_edits` passes to the argument `<name>_id` of the edit method: `node_key`, `to_basin_key`. It refers to a link in the columns `link_from_key` and `link_to_key`. The layer `add_basin` gives the new Basin a key in its column `key`.
+- **Model edits.** A layer of `model_edits.gpkg` refers to a node in a column `<name>_key`, which `Model.apply_edits` passes to the argument `<name>_id` of the edit method: `node_key`, `to_basin_key`. It refers to a link in the columns `link_from_key` and `link_to_key`. The layer `add_basin` gives the new Basin a key in its column `key`; a node ID in the layer is not used.
 - **`static_data.xlsx`.** The sheets `Pump`, `Outlet` and `Basin` refer to a node in their column `key`.
 - **Feedback forms.** The sheet `Feedback_Formulier` refers to nodes in its `Node key` columns. A row that adds a node gives the key of the new node, by which later rows and scripts refer to it. The sheets with target levels, pump functions and supply areas refer to nodes in a `Basin key`, `Pump key` or `Outlet key` column.
 - **The coupled model.** The tables of `pipeline/09_koppelen_modellen.py` and of the package refer to a node by its water authority and key, `NodeKey("Noorderzijlvest", "KGM056")`. `ribasim_nl.keys.resolve_keys` replaces them by the node IDs of the model that is coupled. In a script, `model.node_id("KGM056", authority="Noorderzijlvest")` does the same for one node.
 
 ## Add a node
 
-A node that a script adds gets a key by the rules above.
-Give it a key yourself where it is referred to later, so that the reference reads well:
+A node that a script adds gets the next free node ID, and a key by the rules above.
+Do not give it a node ID, and give it a key yourself where it is referred to later, so that the reference reads well:
 
 ```python
 model.outlet.add(Node(geometry=Point(152150, 365169), meta_key="inlaat-keersop"), tables=[...])

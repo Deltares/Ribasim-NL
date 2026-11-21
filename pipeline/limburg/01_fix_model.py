@@ -77,12 +77,11 @@ model.merge_basins(node_id=n("up:loc:189487,338737"), to_node_id=n("up:S_226716"
 # %% https://github.com/Deltares/Ribasim-NL/issues/154#issuecomment-2426151899
 
 # Corrigeren ontbrekende basins en outlets nabij modelrand
-# an outlet between the basins at the model boundary, which the lumping adds back, and their LevelBoundaries, with the
-# node IDs they got when this script added these basins too
+# an outlet between the basins at the model boundary, which the lumping adds back, and their LevelBoundaries
 # geen kdu bij 2202
 geometry = cast(LineString, hydroobject_gdf.at[3099, "geometry"])
 basin_id = n("up:bnd:37")
-outlet_node = model.outlet.add(Node(node_id=basin_id + 1, geometry=geometry.interpolate(271)), tables=[outlet_data])
+outlet_node = model.outlet.add(Node(geometry=geometry.interpolate(271)), tables=[outlet_data])
 model.redirect_link(link_id=lk("up:bnd:37", "bnd:37"), from_node_id=outlet_node.node_id)
 model.link.add(model.basin[basin_id], outlet_node)
 model.move_node(basin_id, geometry.boundary.geoms[0])
@@ -96,7 +95,6 @@ for basin_id, fid, link_id in (
     kdu = duiker_gdf.loc[fid]
     outlet_node = model.outlet.add(
         Node(
-            node_id=basin_id + 1,
             name=kdu.code,
             geometry=cast(Point, kdu.geometry.interpolate(0.5, normalized=True)),
             meta_object_type="duikersifonhevel",

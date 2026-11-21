@@ -274,7 +274,6 @@ stages:
         - data/${item.authority}/verwerkt/postprocessed.gpkg
         - data/${item.authority}/verwerkt/crossings.gpkg
         - data/${item.authority}/verwerkt/shortest_path.gpkg
-        - data/${item.authority}/verwerkt/boezemmodel_ids.gpkg
       outs:
         - data/${item.authority}/modellen/${item.authority}_boezemmodel_${item.version}
   parameterized_aa_en_maas:

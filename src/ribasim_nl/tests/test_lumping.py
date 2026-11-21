@@ -227,9 +227,6 @@ def test_number_lost_basins():
         # L3 is not found, so it stays out, and its link as it was
         (1, 7),
     ]
-    # node IDs that a fix script gave
-    new_nodes, _ = number_lost_basins(nodes, links, lost, node_ids={9: 100})
-    assert new_nodes.set_index("meta_id").loc[[11, 12], "node_id"].tolist() == [5, 100]
 
 
 def test_fill_holes():

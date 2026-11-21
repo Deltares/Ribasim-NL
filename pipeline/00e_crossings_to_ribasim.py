@@ -3,9 +3,8 @@
 
 The peilgebieden or aggregation areas of `verwerkt/postprocessed.gpkg` become Basins, the crossings of
 `verwerkt/crossings.gpkg` connector nodes, and the links to the boezems follow the paths of `verwerkt/shortest_path.gpkg`.
-The nodes and links are numbered after the input model of 2024, `verwerkt/boezemmodel_ids.gpkg`, to which the feedback
-forms and scripts refer. Writes the model and `database_checks.gpkg`, see `ribasim_nl.crossings.model` and
-`ribasim_nl.crossings.renumber`.
+The feedback forms and scripts refer to its nodes by their key, see `ribasim_nl.crossings.model.crossing_keys`.
+Writes the model and `database_checks.gpkg`, see `ribasim_nl.crossings.model`.
 
 Usage: pixi run python pipeline/00e_crossings_to_ribasim.py <authority>
 """
@@ -13,7 +12,6 @@ Usage: pixi run python pipeline/00e_crossings_to_ribasim.py <authority>
 import sys
 
 from ribasim_nl.crossings.model import Options, boezem_model
-from ribasim_nl.crossings.renumber import Reference, renumber_checks, renumber_nodes
 
 from ribasim_nl import CloudStorage
 
@@ -65,10 +63,6 @@ for authority in authorities:
     model, checks = boezem_model(
         verwerkt / "postprocessed.gpkg", verwerkt / "crossings.gpkg", verwerkt / "shortest_path.gpkg", options
     )
-    mapping = renumber_nodes(model, Reference.read(verwerkt / "boezemmodel_ids.gpkg"))
-    renumber_checks(checks, mapping)
-    changed = sum(old != new for old, new in mapping.items())
-    print(f"{changed} of {len(mapping)} nodes renumbered after the input model of 2024")
     model_dir = cloud.model_dir(authority, f"boezemmodel_{version}")
     model.write(model_dir / "ribasim.toml")
     for name, layer in checks.items():

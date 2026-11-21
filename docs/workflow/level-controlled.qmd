@@ -59,7 +59,7 @@ Where HKV corrected the delivered data by hand, it applies these corrections, `v
 ### 3. The input model
 
 `pipeline/00e_crossings_to_ribasim.py` makes the input model `modellen/<water board>_boezemmodel_<version>`: the aggregation areas become Basins, and the crossings connector nodes.
-It numbers the nodes and links after the input model of 2024, `verwerkt/boezemmodel_ids.gpkg`, to which the feedback forms and scripts refer, by matching the nodes by type and location, see `ribasim_nl.crossings.renumber`.
+The feedback forms and scripts refer to its nodes by their [key](../dev/node-keys.qmd), which follows from the crossing or the area of the node.
 :::
 ::: {.g-col-12 .g-col-lg-7}
 ![The input model. Each aggregation area is one Basin, in its own colour, with straight links to the structures on its boundary.](https://s3.deltares.nl/ribasim-nl/doc-image/figures/level-3-input-model.png){fig-alt="Coloured Basin areas each with a blue Basin node, and straight links to black connector nodes on their boundaries."}

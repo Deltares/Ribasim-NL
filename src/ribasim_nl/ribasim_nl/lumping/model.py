@@ -2,7 +2,7 @@
 
 import itertools
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
 import geopandas as gpd
@@ -177,9 +177,8 @@ def number_lost_basins(
     nodes: gpd.GeoDataFrame,
     links: gpd.GeoDataFrame,
     lost: gpd.GeoDataFrame,
-    node_ids: Mapping[int, int] | None = None,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """Give the basins that were left out in 2024 the node IDs that the fix scripts gave them, and connect them.
+    """Add the basins that were left out in 2024 and that the fix scripts added, with the next node IDs, and connect them.
 
     In 2024, a basin was left out of the input model if a boundary or split node had its node ID, or if it was the
     basin of a LevelBoundary without split node. Its links then ended at another node, or at none, and links to a node
@@ -187,11 +186,9 @@ def number_lost_basins(
     ID at each end of a link that `ribasim_nl.NetworkValidator.node_invalid_connectivity` finds further than
     `LINK_END_TOLERANCE` from its node, in the order of the links, from end before to end. Like that validator, this
     checks the end of a link whose start is at its node only if the node of the end exists. The lost basins found are
-    added with these node IDs, so the references to them remain valid, and connected to all links that end on them.
-    The others remain left out, and their links as they were. `lost` holds the basins with their 2024 node ID.
-    `node_ids` maps the 2024 node ID of lost basins that a fix script numbered otherwise to the node ID it gave them.
+    added in this order, and connected to all links that end on them. The others remain left out, and their links as
+    they were. `lost` holds the basins with their 2024 node ID.
     """
-    node_ids = dict(node_ids or {})
     assert lost["node_id"].is_unique
     links = links.drop_duplicates(subset=["from_node_id", "to_node_id", "link_type", "geometry"])
     geometry = links.geometry.to_numpy()
@@ -207,10 +204,7 @@ def number_lost_basins(
     found = invalid[:, None] & ~np.column_stack(at_node) & np.column_stack(on_lost)
     position, end = np.nonzero(found)
     found_ids = pd.unique(np.column_stack(end_node_ids)[position, end])
-    assert set(node_ids) <= set(found_ids), f"no lost basins {sorted(set(node_ids) - set(found_ids))} to number"
-    assert not set(node_ids.values()) & set(nodes["node_id"]), "a lost basin gets the node ID of another node"
-    next_node_ids = (i for i in itertools.count(nodes["node_id"].max() + 1) if i not in node_ids.values())
-    new_node_id = {i: node_ids[i] if i in node_ids else next(next_node_ids) for i in found_ids}
+    new_node_id = dict(zip(found_ids, itertools.count(nodes["node_id"].max() + 1), strict=False))
 
     links = links.copy()
     for column, ids, on_basin in zip(columns, end_node_ids, on_lost, strict=True):
@@ -232,13 +226,12 @@ def lumped_model(
     drainage_areas: gpd.GeoDataFrame | None = None,
     max_gap_area: float = 0.0,
     harde_knip: Sequence[str] = (),
-    lost_basin_node_ids: Mapping[int, int] | None = None,
 ) -> Model:
     """A Ribasim model of a lumped network, with default tables.
 
     Nodes on a KRW water body have `meta_categorie` hoofdwater, the others doorgaand. The links are numbered in their
     order, as in 2024, see `nodes_and_links`. Each node ID is used once, for the first node with it. The basins that
-    were left out in 2024 are numbered after the other nodes, or with `lost_basin_node_ids`, see `number_lost_basins`.
+    were left out in 2024 are numbered after the other nodes, see `number_lost_basins`.
     Every area goes to a basin, preferably one in its drainage area, and the gaps between the basin areas up to
     `max_gap_area` m² are filled, see `ribasim_nl.lumping.network.assign_areas`.
     """
@@ -261,7 +254,7 @@ def lumped_model(
     links.index = pd.RangeIndex(1, len(links) + 1, name="link_id")
     links = links.drop_duplicates(subset=["from_node_id", "from_node_type", "to_node_id", "to_node_type"])
     links["link_type"] = "flow"
-    nodes, links = number_lost_basins(nodes, links, lost_basins, lost_basin_node_ids)
+    nodes, links = number_lost_basins(nodes, links, lost_basins)
     nodes = nodes.drop(columns=["boundary_without_split_node"])
 
     # the basin areas of the basins in the model
