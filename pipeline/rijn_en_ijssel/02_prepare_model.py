@@ -33,6 +33,8 @@ DIE_WILD_LEVEL_DOWNSTREAM = 11.2  # downstream of the Hoher Absturz [m NAP]
 
 # %% init things
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 ribasim_toml = ribasim_dir.with_name(f"{authority}_prepare_model") / ribasim_toml.name
 
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
@@ -106,11 +108,13 @@ levels = (
 min_upstream_level = pd.Series(levels, index=node_ids, name="min_upstream_level")
 min_upstream_level.index.name = "node_id"
 
-static_data.outlet.loc[static_data.outlet.node_id == 119, "min_upstream_level"] = 10.0  # here profiles are messed-up
+static_data.outlet.loc[static_data.outlet.node_id == n("ST80740036"), "min_upstream_level"] = (
+    10.0  # here profiles are messed-up
+)
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 # Die Wild has no levels in Germany: split the drop between 's Heerenberg (12.04) and the Oude Rijn (11.19) over its two
 # structures, see 01_fix_model.py and https://github.com/Deltares/Ribasim-NL/issues/992
-static_data.outlet.loc[static_data.outlet.node_id == 514, "min_upstream_level"] = DIE_WILD_LEVEL_UPSTREAM
+static_data.outlet.loc[static_data.outlet.node_id == n("qbw_9638"), "min_upstream_level"] = DIE_WILD_LEVEL_UPSTREAM
 
 
 # %%
@@ -129,7 +133,7 @@ static_data.fill_min_upstream_level_from_profiles("Pump", profiles_df, divisor=3
 static_data.reset_data_frame(node_type="Basin")
 
 assert static_data.basin is not None
-static_data.basin.loc[static_data.basin.node_id == 49, "streefpeil"] = DIE_WILD_LEVEL_DOWNSTREAM
+static_data.basin.loc[static_data.basin.node_id == n("bnd:49"), "streefpeil"] = DIE_WILD_LEVEL_DOWNSTREAM
 
 # Vind Basin nodes zonder streefpeil
 static_data.fill_streefpeil_from_downstream_levels(include_pumps=True)

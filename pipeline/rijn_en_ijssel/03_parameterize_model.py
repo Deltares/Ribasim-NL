@@ -34,19 +34,27 @@ qlr_path = cloud.joinpath("Basisgegevens/QGIS_qlr/output_controle_vaw_afvoer.qlr
 
 # read
 model = Model.read(ribasim_toml)
+# nodes and links are referred to by their key, see docs/dev/node-keys.qmd
+n = model.node_id
 aanvoergebieden_df = gpd.read_file(aanvoergebieden_gpkg, fid_as_index=True).dissolve(by="aanvoergebied")
 
 start_time = time.time()
 # %%
 # %% wat basin-peilen zetten n.a.v. full control-checks
-manual_basin_level_node_ids = [1068, 777, 1085, 793, 857]
+manual_basin_level_node_ids = [
+    n("up:AF96910003"),
+    n("up:LV80350043"),
+    n("up:ST80830069"),
+    n("up:ST96420004"),
+    n("up:LV54390021"),
+]
 assert model.basin.area.df is not None
-model.basin.area.df.loc[model.basin.area.df.node_id == 1068, "meta_streefpeil"] = 8.55
-model.basin.area.df.loc[model.basin.area.df.node_id == 777, "meta_streefpeil"] = 26.406666666666666
-model.basin.area.df.loc[model.basin.area.df.node_id == 1085, "meta_streefpeil"] = 5.5
-model.basin.area.df.loc[model.basin.area.df.node_id == 793, "meta_streefpeil"] = 10.7
-model.basin.area.df.loc[model.basin.area.df.node_id == 857, "meta_streefpeil"] = 11.60
-model.basin.area.df.loc[model.basin.area.df.node_id == 1011, "meta_streefpeil"] = 6.5
+model.basin.area.df.loc[model.basin.area.df.node_id == n("up:AF96910003"), "meta_streefpeil"] = 8.55
+model.basin.area.df.loc[model.basin.area.df.node_id == n("up:LV80350043"), "meta_streefpeil"] = 26.406666666666666
+model.basin.area.df.loc[model.basin.area.df.node_id == n("up:ST80830069"), "meta_streefpeil"] = 5.5
+model.basin.area.df.loc[model.basin.area.df.node_id == n("up:ST96420004"), "meta_streefpeil"] = 10.7
+model.basin.area.df.loc[model.basin.area.df.node_id == n("up:LV54390021"), "meta_streefpeil"] = 11.60
+model.basin.area.df.loc[model.basin.area.df.node_id == n("up:ST80830014"), "meta_streefpeil"] = 6.5
 
 
 # parameterize
@@ -69,9 +77,9 @@ sync_parameterized_manning_basin_levels(
 # %% fixes
 
 assert model.outlet.static.df is not None
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 471, "flow_rate"] = 0.0
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 472, "flow_rate"] = 0.0
-model.outlet.static.df.loc[model.outlet.static.df.node_id == 119, "min_upstream_level"] = 11.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("DR80740011"), "flow_rate"] = 0.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("AF80740003"), "flow_rate"] = 0.0
+model.outlet.static.df.loc[model.outlet.static.df.node_id == n("ST80740036"), "min_upstream_level"] = 11.0
 
 # %%
 

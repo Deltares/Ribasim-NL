@@ -8,6 +8,7 @@ laterals of the model. Nodes on the KRW water bodies of `verwerkt/4_ribasim/krw.
 """
 
 import geopandas as gpd
+from ribasim_nl.keys import KEY_COLUMN, lumped_keys
 from ribasim_nl.lumping.dhydro import read_dhydro_network, select_split_nodes
 from ribasim_nl.lumping.hydamo import read_areas
 from ribasim_nl.lumping.model import lumped_model, read_krw
@@ -77,4 +78,7 @@ split_nodes = select_split_nodes(
 )
 lumped = lump_network(network, split_nodes, boundaries, areas, laterals=laterals)
 model = lumped_model(lumped, "NL34", read_krw(verwerkt / "4_ribasim/krw.gpkg"), harde_knip=HARDE_KNIP)
+# the keys of the nodes, by which the scripts that follow refer to them, see `ribasim_nl.keys`. All connector nodes
+# have the name of their structure or grid edge in the D-HYDRO model
+model.node.df[KEY_COLUMN], _ = lumped_keys(model.node.df, model.link.df, hydroobject=None)
 model.write(cloud.model_dir(authority, "2024_6_3") / "model.toml")
