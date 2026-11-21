@@ -17,13 +17,15 @@ import pyarrow.parquet as pq
 import shapely
 import xarray as xr
 
+from ribasim_nl.keys import KEY_COLUMN
 from ribasim_nl.webmap import model_results_dir, read_config, read_features
 
 # Geometries that differ less than this, in model CRS units (m), are equal
 GEOMETRY_TOLERANCE = 0.01
 TABLE_BATCH_ROWS = 1 << 20
-# Ids of the regional models, renumbered together with the links, so differences are no change
-IGNORED_COLUMNS = {"meta_link_id_waterbeheerder"}
+# Ids of the regional models, renumbered together with the links, so differences are no change. The key of a node
+# identifies it, see `ribasim_nl.keys`: a model that gets keys does not change in every node.
+IGNORED_COLUMNS = {"meta_link_id_waterbeheerder", KEY_COLUMN}
 # The result variable compared per result set, with the absolute and relative tolerance below which results are
 # equal. The relative tolerance applies to the largest magnitude of a feature, and is chosen above solver noise.
 RESULT_VARIABLES = {"basin": ("level", 1e-3, 0.0), "flow": ("flow_rate", 1e-3, 1e-2)}

@@ -171,6 +171,17 @@ def test_compare_features_renumbered():
     assert removed == {}
 
 
+def test_compare_features_ignores_keys():
+    """The key of a node identifies it, so nodes do not change when the model gets keys."""
+
+    def nodes(**columns):
+        return gpd.GeoDataFrame({"node_id": [1, 2], **columns}, geometry=[Point(0, 0), Point(1, 0)])
+
+    diff, removed = compare_features(nodes(name=["a", "b"]), nodes(name=["a", "x"], meta_key=["A", "B"]), "node_id")
+    assert diff == {2: {"status": "changed", "changes": ["name"]}}
+    assert removed == {}
+
+
 def test_compare_tables_missing_columns(tmp_path):
     """A new column without values for a node does not change the rows of that node.
 
