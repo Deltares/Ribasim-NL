@@ -83,6 +83,31 @@ model.outlet.add(Node(geometry=Point(152150, 365169), meta_key="inlaat-keersop")
 
 A node that replaces another one, such as a FlowBoundary that becomes a LevelBoundary, gets the key of the node it replaces.
 
+## Find a node by an old node ID
+
+Issues, pull requests and feedback of water authorities name nodes by the node ID of the model of that moment.
+To find such a node in the latest model, give its ID with the date on which it was right, or with the commit of a link to the [model viewer](viewer.qmd#links-to-a-version):
+
+```sh
+pixi run node-key 1100540 1100695 --date 2026-11-19
+pixi run node-key 203892 --commit 21ce19f26c
+pixi run node-key --link 1100306 --date 2026-11-19
+```
+
+It prints a Markdown table with the key of each node, its node ID now, and a link to it in the model viewer:
+
+| node ID | type | name | key | node ID now | matched by |
+| --- | --- | --- | --- | --- | --- |
+| 1100540 | Pump | Poldergemaal Dooijersluis | [AmstelGooienVecht:KGM00534](https://ribasim.nl/viewer#node=AmstelGooienVecht:KGM00534) | 1100540 | name |
+| 1100695 | Outlet |  | [AmstelGooienVecht:KST00098](https://ribasim.nl/viewer#node=AmstelGooienVecht:KST00098) | 1100695 | node ID, 125 m away |
+
+Leave the issue as it was written, and add the table as a comment.
+
+- `--date` takes the model of `main` at the end of that day. Without a date or commit, the IDs are those of the latest model.
+- A link has no key, so `--link` finds it by its nodes.
+- The nodes are read from the model of the commit in the model viewer. That needs no credentials, but the model must still be published there.
+- Models from before November 2026 have no keys. Their nodes are matched with the first model with keys: by location, else by name, else by node ID. The table says which. Check a node that is matched by its ID and moved far. A Junction is only matched by its location, since the Junction trees are rebuilt in every run.
+
 ## Not a node ID
 
 Not every integer in a script is a node ID.

@@ -13,7 +13,8 @@ This keeps the DVC data of:
 
 Of the model viewer previews below `doc-image/webmap/`, see `ribasim_nl.webmap_publish`, it keeps those of the kept
 runs, of the latest published main, those published in the last `--grace-days` days, and the previews of open pull
-requests and of the last `--keep-prs` pull requests, with the previews they are compared with. The records of pull
+requests and of the last `--keep-prs` pull requests, with the previews they are compared with. It also keeps the
+first model with keys, with which `scripts/node_key.py` matches the nodes of older models. The records of pull
 requests and differences that show a deleted preview are deleted with it, and so are the files that no kept preview
 uses.
 
@@ -43,6 +44,7 @@ from typing import Any
 import yaml
 from minio import Minio
 from minio.deleteobjects import DeleteObject
+from node_key import FIRST_KEYED_COMMIT
 from ribasim_nl.settings import settings
 from ribasim_nl.webmap_publish import (
     BUCKET_NAME,
@@ -413,6 +415,10 @@ def main() -> int:
         hashes |= md5s(document)
         if md5 := export_md5(document):
             exports.add(md5)
+
+    first_keyed = export_md5(yaml.load(git("show", f"{FIRST_KEYED_COMMIT}:dvc.lock"), Loader=yaml.CSafeLoader))
+    assert first_keyed is not None, f"No {STAGE} output in the dvc.lock of {FIRST_KEYED_COMMIT}"
+    exports.add(first_keyed)
 
     bucket = Bucket()
     dvc_objects = bucket.objects(DVC_PREFIX)
