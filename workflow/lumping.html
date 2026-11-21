@@ -366,7 +366,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   areas["areas.gpkg&lt;br&gt;areas, drainage areas"] --&gt; lump
   lump(["Lumping&lt;br&gt;00b_lump_model.py"]) --&gt; model["Input model&lt;br&gt;&amp;lt;authority&amp;gt;_2024_6_3"]
   model --&gt; fix(["Fix script&lt;br&gt;01_fix_model.py"])
-  edits["model_edits.gpkg&lt;br&gt;edits by node ID"] --&gt; fix
+  edits["model_edits.gpkg&lt;br&gt;edits by node key"] --&gt; fix
   fix --&gt; fixed["Fix model&lt;br&gt;&amp;lt;authority&amp;gt;_fix_model"]
 
   classDef step fill:#dfedef,stroke:#0c6a77
@@ -466,17 +466,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="grid step">
 <section id="correct-the-model-in-the-fix-script" class="level3 g-col-12 g-col-lg-5">
 <h3 class="anchored" data-anchor-id="correct-the-model-in-the-fix-script">5. Correct the model in the fix script</h3>
-<p><code>pipeline/drents_overijsselse_delta/01_fix_model.py</code> corrects the input model by node ID. It removes and merges nodes, adds basins and connectors, and reverses or redirects links. Most edits are rows in <code>verwerkt/model_edits.gpkg</code>. In this window, <code>merge_basins</code> merges basins 1597 and 1665 into 1740, which takes over the 1134 ha of 1665, and <code>remove_node</code> removes LevelBoundary 5 and Outlet 535.</p>
+<p><code>pipeline/drents_overijsselse_delta/01_fix_model.py</code> corrects the input model, in which it refers to nodes by their <a href="../dev/node-keys.html">key</a>. It removes and merges nodes, adds basins and connectors, and reverses or redirects links. Most edits are rows in <code>verwerkt/model_edits.gpkg</code>. In this window, <code>merge_basins</code> merges basins 1597 and 1665 into 1740, which takes over the 1134 ha of 1665, and <code>remove_node</code> removes LevelBoundary 5 and Outlet 535.</p>
 <p>The last step, <code>Model.fill_basin_area_holes</code>, gives every part of an area that the edits left without a basin to a basin, by the same rules as the lumping. It also checks that every Basin has an area.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> Model.read(input_model_toml)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># edits by node ID</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>model.remove_node(<span class="dv">7</span>, remove_links<span class="op">=</span><span class="va">True</span>)</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># the rows of model_edits.gpkg</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>model.apply_edits(model_edits_path, actions)</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>...</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># last: every area to a Basin</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>model.fill_basin_area_holes(areas_gpkg)</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>model.write(fix_model_toml)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># edits by node key</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>n <span class="op">=</span> model.node_id</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>model.remove_node(n(<span class="st">"bnd:7"</span>), remove_links<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># the rows of model_edits.gpkg</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>model.apply_edits(model_edits_path, actions)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>...</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># last: every area to a Basin</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>model.fill_basin_area_holes(areas_gpkg)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>model.write(fix_model_toml)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <div class="g-col-12 g-col-lg-7">
 <div class="quarto-figure quarto-figure-center">

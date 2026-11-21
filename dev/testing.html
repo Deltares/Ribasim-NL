@@ -242,6 +242,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">Reproducing models</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/node-keys.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Node keys</span></a>
+  </div>
+</li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
@@ -330,7 +336,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="result-regression-testing" class="level2">
 <h2 class="anchored" data-anchor-id="result-regression-testing">Result regression testing</h2>
 <p>The dry and wet steady-state scenarios guard against a Basin losing its ability to maintain its water level. The <code>forcing_*</code> DVC stages of the level controlled models, also in <code>repro.sh</code>, run and check the dry and wet models. The <code>bergend_*</code> stages of the gravity controlled models write them, and run and check them only with <code>MODEL_EXEC = True</code> in their <code>04_add_full_control.py</code>, which is off in the pipeline. A Basin is steady-state when its final water level differs by at most 0.01 m from the mean of the final 24 hours and its storage remains positive throughout the simulation.</p>
-<p>Known level-instability exceptions are kept as explicit scenario-specific Basin node IDs in <code>ribasim_nl.steady_state_regression</code>. Exceptions do not bypass the positive-storage check, and an exception for a missing Basin ID fails the run.</p>
+<p>Known level-instability exceptions are kept as explicit scenario-specific Basin keys in <code>ribasim_nl.steady_state_regression</code>. Exceptions do not bypass the positive-storage check, and an exception for a key that no Basin has fails the run.</p>
 <p>Scenario results are available for inspection in each model’s <code>results</code> directory, including <code>output_controle.gpkg</code> and <code>output_controle.qlr</code>.</p>
 </section>
 <section id="coupled-model-result-checks" class="level2">

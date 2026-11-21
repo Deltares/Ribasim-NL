@@ -427,7 +427,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>splitter <span class="op">=</span> SplitBasins(</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    model<span class="op">=</span>ribasim_model,</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    splitted_basin_path<span class="op">=</span>splitted_basin_16_path,</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    basin_node_id_to_split<span class="op">=</span><span class="dv">16</span>,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    basin_node_id_to_split<span class="op">=</span>ribasim_model.node_id(<span class="st">"3.01_dummy_id_92"</span>),</span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    geometry_tolerance<span class="op">=</span><span class="fl">1.0</span>,</span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    printing<span class="op">=</span><span class="va">False</span>,</span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>)</span>
@@ -461,7 +461,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="create-new-basin-nodes" class="level3">
 <h3 class="anchored" data-anchor-id="create-new-basin-nodes">2. Create new basin nodes</h3>
-<p>The script creates a new basin node for each polygon in the split basin layer. The node geometry is placed at the polygon representative point.</p>
+<p>The script creates a new basin node for each polygon in the split basin layer. The node geometry is placed at the polygon representative point. Its <a href="../dev/node-keys.html">key</a> is the key of the original basin and the ID of the polygon in the layer, such as <code>PBH0248142/1</code>, by which later scripts refer to it.</p>
 <p>The basin table rows of the original basin are copied to each new basin node to retain the (meta)data. This includes available rows in:</p>
 <ul>
 <li><code>model.basin.profile</code></li>

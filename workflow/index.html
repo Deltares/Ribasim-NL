@@ -540,9 +540,9 @@ window.Quarto = {
 </section>
 <section id="sec-node-ids" class="level2">
 <h2 class="anchored" data-anchor-id="sec-node-ids">Node IDs</h2>
-<p>Scripts and edit files refer to nodes by their ID, in the model of the authority. Merging keeps these unique by prefixing them with the <code>waterbeheercode</code> of the authority, see <code>ribasim_nl.aquo</code>:</p>
+<p>Merging keeps the node IDs of the models of the authorities unique by prefixing them with the <code>waterbeheercode</code> of the authority, see <code>ribasim_nl.aquo</code>:</p>
 <p><span class="math display">\[\text{node ID in the coupled model} = \text{waterbeheercode} \times 100\,000 + \text{node ID in the regional model}\]</span></p>
-<p>So 203892 is node 3892 of Wetterskip Fryslân, with code 2, and 8009406 is node 9406 of Rijkswaterstaat, with code 80. The model viewer shows the same IDs. Fix a problem in the stages of the authority where possible, rather than in the coupling, so that the regional model and the nationwide model stay alike.</p>
+<p>So 203892 is node 3892 of Wetterskip Fryslân, with code 2, and 8009406 is node 9406 of Rijkswaterstaat, with code 80. The model viewer shows the same IDs. Scripts and edit files do not refer to nodes by their ID, but by their <a href="../dev/node-keys.html">key</a>, which follows from the source data. Fix a problem in the stages of the authority where possible, rather than in the coupling, so that the regional model and the nationwide model stay alike.</p>
 <p>The IDs must stay the same on every run, or all these references break, see <a href="../dev/reproducing-models.html">Reproducing models</a>.</p>
 
 

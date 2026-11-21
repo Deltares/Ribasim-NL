@@ -36,7 +36,7 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../dev/viewer.html" rel="next">
+<link href="../dev/node-keys.html" rel="next">
 <link href="../dev/pull-requests.html" rel="prev">
 <link href="../assets/favicon.ico" rel="icon">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
@@ -207,6 +207,12 @@ ul.task-list li input[type="checkbox"] {
  <span class="menu-text">Reproducing models</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/node-keys.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Node keys</span></a>
+  </div>
+</li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
@@ -287,7 +293,7 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>Many scripts refer to the nodes, links and areas of a model by their ID, row number or geometry: the <code>01_fix_model.py</code> scripts and <code>model_edits.gpkg</code> files of the <a href="../workflow/gravity-controlled.html">gravity controlled</a> models, and the feedback forms of the <a href="../workflow/level-controlled.html">level controlled</a> models. A model that is rebuilt from its source data must therefore get the same IDs, or all these references break. This page describes how the input models of the gravity controlled (<a href="https://github.com/Deltares/Ribasim-NL/issues/903">#903</a>) and level controlled models were reproduced, and the differences between library versions that were found on the way.</p>
+<p>Until November 2026, scripts referred to the nodes and links of a model by their ID: the <code>01_fix_model.py</code> scripts and <code>model_edits.gpkg</code> files of the <a href="../workflow/gravity-controlled.html">gravity controlled</a> models, and the feedback forms of the <a href="../workflow/level-controlled.html">level controlled</a> models. A model that was rebuilt from its source data therefore had to get the same IDs, or all these references would break. They now refer to nodes by their <a href="../dev/node-keys.html">key</a>, which follows from the source data, but the models still get the same IDs: some scripts refer to areas and source data by row number or geometry, and the same IDs make runs comparable. This page describes how the input models of the gravity controlled (<a href="https://github.com/Deltares/Ribasim-NL/issues/903">#903</a>) and level controlled models were reproduced, and the differences between library versions that were found on the way.</p>
 <section id="the-input-models-of-the-gravity-controlled-models" class="level2">
 <h2 class="anchored" data-anchor-id="the-input-models-of-the-gravity-controlled-models">The input models of the gravity controlled models</h2>
 <p>In July 2024, Sweco made the input models <code>&lt;authority&gt;_2024_6_3</code> of the 11 gravity controlled water authorities with <code>ribasim_lumping</code>, at commit <code>65c7ef53</code> of <a href="https://github.com/Deltares/Ribasim-NL/pull/118">#118</a>, in four notebooks: apply manual changes to the HyDAMO data, lump the network into basins, and convert the result into a Ribasim model. This code is ported to <code>ribasim_nl.lumping</code>, and the DVC pipeline runs it:</p>
@@ -320,7 +326,7 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="the-node-ids" class="level3">
 <h3 class="anchored" data-anchor-id="the-node-ids">The node IDs</h3>
-<p><code>ribasim_nl.crossings.renumber</code> numbers the nodes and links of the input models after those of 2024, <code>verwerkt/boezemmodel_ids.gpkg</code>, to which the feedback forms, the feedback scripts and the coupling refer. Basins match by the overlap of their areas, the other nodes by type and location, first those that connect the same Basins; nodes that are left match a node of the same type between the same Basins within 250 m. Unmatched nodes get IDs after the highest of 2024; links get the ID of the link between the same nodes. The feedback step numbers the links anew, in their order, so a link that is added or removed before it shifts the IDs of the links after it; the scripts that follow refer to links by their nodes.</p>
+<p><code>ribasim_nl.crossings.renumber</code> numbers the nodes and links of the input models after those of 2024, <code>verwerkt/boezemmodel_ids.gpkg</code>, to which the feedback forms, the feedback scripts and the coupling referred before they referred to nodes by their <a href="../dev/node-keys.html">key</a>. Basins match by the overlap of their areas, the other nodes by type and location, first those that connect the same Basins; nodes that are left match a node of the same type between the same Basins within 250 m. Unmatched nodes get IDs after the highest of 2024; links get the ID of the link between the same nodes. The feedback step numbers the links anew, in their order, so a link that is added or removed before it shifts the IDs of the links after it; the scripts that follow refer to links by their nodes.</p>
 <p>With exactly the same postprocessed data, the input models have the same IDs, but the coordinate noise above swaps a few nodes at the same place: the renumbering changes 6 nodes of Amstel, Gooi en Vecht and 8 of Zuiderzeeland back. The crossings of Wetterskip Fryslân of May 2025 cannot be reproduced: the same code on the same data finds some stacked crossings in another order, with numpy 2.2 and GEOS 3.13, with or without AVX2 and AVX-512, and so does the port. After the renumbering, 3852 of its 3853 nodes keep their ID; 9 of them, crossings that moved along the boundary of their peilgebied, are 4 to 134 m from where they were, and one pump that the feedback form does not use is gone.</p>
 <p>In Hollandse Delta, a hydro-object crosses the boundary between peilgebieden 94 and 95 almost in parallel, so the direction of the crossing depends on rounding: GEOS 3.12 found it from 95 to 94, GEOS 3.14 also from 94 to 95. <code>pipeline/00c_parse_crossings.py</code> excludes the second, and checks that it is found.</p>
 </section>
@@ -446,7 +452,7 @@ ul.task-list li input[type="checkbox"] {
 <p>These remain:</p>
 <ul>
 <li><strong>Edits of the lumping inputs.</strong> Splitting basin areas with lines, or removing and renaming them with <code>model_edits.gpkg</code>, can become edits of the split nodes, boundaries and areas that the lumping reads, which have stable codes. The tolerant <code>Model.select_basin_area</code> only bridges until then. The area split lines of Stichtse Rijnlanden, for instance, were drawn on the basin areas of 2024. Splitting <code>areas.gpkg</code> along them before the lumping gives 20 of the 28 basins that need them an area by drainage.</li>
-<li><strong>Node IDs.</strong> They follow from the order of the boundaries, split nodes and basins, so a new split node renumbers all basins after it. That breaks the references to node IDs in the remaining fix scripts, in <code>model_edits.gpkg</code>, and in <code>pipeline/09_koppelen_modellen.py</code>. Move the fixes of an authority together, and where references remain, refer to nodes by a stable key, such as their code.</li>
+<li><strong>Node IDs.</strong> They follow from the order of the boundaries, split nodes and basins, so a new split node renumbers all basins after it. The fix scripts, <code>model_edits.gpkg</code> and <code>pipeline/09_koppelen_modellen.py</code> refer to nodes by their <a href="../dev/node-keys.html">key</a>, so that no longer breaks them. What still gives nodes a fixed ID can go: the IDs of the lost basins, and the IDs that fix scripts give to the nodes they add.</li>
 </ul>
 
 
@@ -936,8 +942,8 @@ ul.task-list li input[type="checkbox"] {
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../dev/viewer.html" class="pagination-link" aria-label="Model viewer">
-        <span class="nav-page-text">Model viewer</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../dev/node-keys.html" class="pagination-link" aria-label="Node keys">
+        <span class="nav-page-text">Node keys</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
