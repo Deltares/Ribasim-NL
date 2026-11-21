@@ -34,11 +34,13 @@ import {
   ResultColors,
   statusColors,
 } from "./diff";
+import { isId } from "./matching";
 import {
   ALWAYS_SHOWN_TYPES,
   authorityName,
   authorityRows,
-  linkLabel,
+  idLabel,
+  idText,
   loadNetwork,
   loadSearchIndex,
   networkAuthorities,
@@ -143,11 +145,17 @@ function hashParams(): URLSearchParams {
   return new URLSearchParams(location.hash.slice(1));
 }
 
-function selectionFromHash(): Selection | null {
+/**
+ * The selected feature in the hash: a node by its water authority and key, which stay the same when it is renumbered,
+ * like `node=Rijkswaterstaat:Markermeer`, or a node or link by its id.
+ */
+function selectionFromHash(network: Network): Selection | null {
   const params = hashParams();
   for (const kind of ["node", "link"] as const) {
-    const id = Number(params.get(kind));
-    if (params.has(kind) && Number.isInteger(id)) return { kind, id };
+    const value = params.get(kind);
+    if (value === null) continue;
+    const id = kind === "node" && !isId(value) ? network.nodeByRef.get(value) : Number(value);
+    if (id !== undefined && Number.isInteger(id)) return { kind, id };
   }
   return null;
 }
@@ -172,15 +180,19 @@ function writeHash(updates: Record<string, string | null>): void {
     if (value === null) params.delete(key);
     else params.set(key, value);
   }
-  // Keep MapLibre's `map=zoom/lat/lon` readable instead of percent-encoded
-  history.replaceState(history.state, "", `#${params.toString().replaceAll("%2F", "/")}`);
+  // Keep MapLibre's `map=zoom/lat/lon` and the reference of a node readable instead of percent-encoded
+  const hash = params.toString().replaceAll("%2F", "/").replaceAll("%3A", ":").replaceAll("%40", "@");
+  history.replaceState(history.state, "", `#${hash}`);
 }
 
-function writeSelectionToHash(selection: Selection | null): void {
-  writeHash({
-    node: selection?.kind === "node" ? String(selection.id) : null,
-    link: selection?.kind === "link" ? String(selection.id) : null,
-  });
+/** Write the selection to the hash: a node by its reference if it has one of its own, see `selectionFromHash`. */
+function writeSelectionToHash(selection: Selection | null, network: Network): void {
+  let node: string | null = null;
+  if (selection?.kind === "node") {
+    const ref = network.nodeRef[network.nodeRow.get(selection.id) ?? -1] ?? null;
+    node = ref !== null && network.nodeByRef.get(ref) === selection.id ? ref : String(selection.id);
+  }
+  writeHash({ node, link: selection?.kind === "link" ? String(selection.id) : null });
 }
 
 /** Per-feature colors, widths and values of the current time step, indexed like the features of a layer group. */
@@ -567,7 +579,8 @@ class Viewer {
     // Observation nodes are colored, by how well their results fit the measurements, also compared with the base
     const kinds: Kind[] = this.comparison ? [] : ["flow", "basin"];
     if (results.observation) {
-      this.observations = await Observations.load(results.observation, this.comparison?.base.results?.observation);
+      const base = this.comparison?.base.results?.observation;
+      this.observations = await Observations.load(results.observation, base, (id) => this.network.baseNodeId.get(id));
       kinds.push("observation");
     }
     if (kinds.length === 0) return;
@@ -825,11 +838,11 @@ class Viewer {
     }
   }
 
-  /** The ids of the removed and changed Basin / areas in the base model. */
+  /** The ids in the base model of the removed and changed Basin / areas. */
   private baseAreaIds(): number[] {
     return [...(this.comparison?.diff.nodes ?? [])]
       .filter(([, diff]) => diff.status === "removed" || diff.changes.includes("Basin / area"))
-      .map(([id]) => id);
+      .flatMap(([id]) => this.network.baseNodeId.get(id) ?? []);
   }
 
   /** The outlines of the removed and changed Basin / areas in the base model. */
@@ -1233,12 +1246,12 @@ class Viewer {
           : nodeType === "Observation"
             ? this.observationTooltip(selection.id, info.index)
             : "";
-      return { text: `${nodeType} #${selection.id}${extra}${status}` };
+      return { text: `${nodeType} ${idLabel(selection.id)}${extra}${status}` };
     }
     const row = network.linkRow.get(selection.id)!;
     const extra = network.linkType[row] === "flow" ? value(this.flowColoring, "flow") : "";
     return {
-      text: `${network.linkType[row]} link ${linkLabel(selection.id)}\n${network.fromNodeId[row]} → ${network.toNodeId[row]}${extra}${status}`,
+      text: `${network.linkType[row]} link ${idLabel(selection.id)}\n${idText(network.fromNodeId[row])} → ${idText(network.toNodeId[row])}${extra}${status}`,
     };
   }
 
@@ -1277,7 +1290,7 @@ class Viewer {
     if (selection?.kind === "node") {
       this.map.setFeatureState({ source: "basin_area", sourceLayer: "basin_area", id: selection.id }, { selected: true });
     }
-    writeSelectionToHash(selection);
+    writeSelectionToHash(selection, this.network);
     this.render();
     if (selection) this.panel.show(selection);
     else this.panel.hide();
@@ -1500,7 +1513,7 @@ class Viewer {
       ? network.nodeType[network.nodeRow.get(selection.id)!]
       : network.linkType[network.linkRow.get(selection.id)!];
     return {
-      label: isNode ? `${type} #${selection.id}` : `${type} link ${linkLabel(selection.id)}`,
+      label: `${type}${isNode ? "" : " link"} ${idLabel(selection.id)}`,
       detail,
       symbol: isNode ? this.nodeSymbol(type) : this.linkSymbol(type),
       choose: () => {
@@ -1698,14 +1711,14 @@ async function main(): Promise<void> {
     const [network, iconAtlas] = await Promise.all([networkPromise, icons, map.once("style.load")]);
     status.textContent = "Drawing the model…";
     const viewer = new Viewer(map, root, manifest, network, iconAtlas, comparison);
-    const selection = selectionFromHash();
+    const selection = selectionFromHash(network);
     if (selection) {
       viewer.select(selection);
       if (!hasView) viewer.zoomTo(selection);
     }
     // A pasted link or going back in history only changes the hash, which selects another feature
     addEventListener("hashchange", () => {
-      const next = selectionFromHash();
+      const next = selectionFromHash(network);
       if (next?.kind === viewer.selected()?.kind && next?.id === viewer.selected()?.id) return;
       viewer.select(next);
       if (next) viewer.zoomTo(next);

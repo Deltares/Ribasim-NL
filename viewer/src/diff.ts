@@ -8,7 +8,7 @@ import {
   type ResultDiff,
   type ResultKind,
 } from "./data";
-import { linkLabel, type Group, type Network } from "./network";
+import { idLabel, type Group, type Network } from "./network";
 import type { Selection } from "./panel";
 
 export type Rgba = [number, number, number, number];
@@ -176,10 +176,10 @@ function featureList(
       const row = kind === "node" ? network.nodeRow.get(id) : network.linkRow.get(id);
       const label =
         row === undefined
-          ? `#${id}`
+          ? idLabel(id)
           : kind === "node"
-            ? `${network.nodeType[row]} #${id}`
-            : `${network.linkType[row]} link ${linkLabel(id)}`;
+            ? `${network.nodeType[row]} ${idLabel(id)}`
+            : `${network.linkType[row]} link ${idLabel(id)}`;
       const link = el("a", { href: "#" }, label);
       link.addEventListener("click", (event) => {
         event.preventDefault();
@@ -204,7 +204,7 @@ function resultList(kind: ResultKind, results: ResultColors, go: (selection: Sel
   const list = el("ul", { className: "diff-list" });
   for (const id of ids.slice(0, MAX_LISTED)) {
     const selection: Selection = kind === "basin" ? { kind: "node", id } : { kind: "link", id };
-    const link = el("a", { href: "#" }, kind === "basin" ? `Basin #${id}` : `flow link ${linkLabel(id)}`);
+    const link = el("a", { href: "#" }, kind === "basin" ? `Basin #${id}` : `flow link ${idLabel(id)}`);
     link.addEventListener("click", (event) => {
       event.preventDefault();
       go(selection);

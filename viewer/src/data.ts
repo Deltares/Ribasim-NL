@@ -116,7 +116,7 @@ export interface FeatureDiff {
   status: DiffStatus;
   /** Attribute columns, tables, "geometry" or "Basin / area" that differ */
   changes: string[];
-  /** The id in the base model of a changed link that was renumbered */
+  /** The id in the base model of a changed node or link that was renumbered */
   base_id?: number;
 }
 
@@ -140,9 +140,14 @@ export interface ModelDiff {
   base: { model: string; toml: string; label: string };
   head: { model: string; toml: string; label: string };
   config: { key: string; base: string | null; head: string | null }[];
+  /** Removed nodes and links are keyed by their negated base id, which may be in use in the head model */
   nodes: Map<number, FeatureDiff>;
-  /** Removed links are keyed by their negated base id, which may be in use in the head model */
   links: Map<number, FeatureDiff>;
+  /**
+   * The id in the base model of the nodes in both models that were renumbered, changed or not, by their id in the
+   * head model: nodes are matched by their key, see `ribasim_nl.keys`
+   */
+  base_node_ids: Map<number, number>;
   /** Only if both models have results that are not outdated */
   results: Record<ResultKind, ResultDiff> | null;
   /** Why the results are not compared, if they are outdated */
@@ -266,13 +271,24 @@ async function loadManifest(base: URL, files: URL = base): Promise<Manifest> {
 
 function featureDiffs(record: Record<string, FeatureDiff>): Map<number, FeatureDiff> {
   const diffs = new Map<number, FeatureDiff>();
-  for (const [id, diff] of Object.entries(record)) {
-    if (!Number.isInteger(Number(id)) || !DIFF_STATUSES.includes(diff.status) || !Array.isArray(diff.changes)) {
-      throw new Error(`Invalid difference for id ${id}`);
+  for (const [key, diff] of Object.entries(record)) {
+    const id = Number(key);
+    if (!Number.isInteger(id) || !DIFF_STATUSES.includes(diff.status) || !Array.isArray(diff.changes)) {
+      throw new Error(`Invalid difference for id ${key}`);
     }
-    diffs.set(Number(id), diff);
+    // Removed nodes had their base id before nodes were matched by key
+    diffs.set(diff.status === "removed" ? -Math.abs(id) : id, diff);
   }
   return diffs;
+}
+
+function baseNodeIds(record: Record<string, number> = {}): Map<number, number> {
+  const ids = new Map<number, number>();
+  for (const [id, baseId] of Object.entries(record)) {
+    if (!Number.isInteger(Number(id)) || !Number.isInteger(baseId)) throw new Error(`Invalid base id of node ${id}`);
+    ids.set(Number(id), baseId);
+  }
+  return ids;
 }
 
 type RawResultDiff = Omit<ResultDiff, "differences"> & { differences: Record<string, number | null> };
@@ -289,11 +305,21 @@ function resultDiff(raw: RawResultDiff): ResultDiff {
 }
 
 async function loadDiff(url: URL): Promise<ModelDiff> {
-  type RawDiff = Omit<ModelDiff, "nodes" | "links" | "results"> &
-    Record<"nodes" | "links", Record<string, FeatureDiff>> & { results: Record<ResultKind, RawResultDiff> | null };
+  type RawDiff = Omit<ModelDiff, "nodes" | "links" | "base_node_ids" | "results"> &
+    Record<"nodes" | "links", Record<string, FeatureDiff>> & {
+      // Not in the differences of before nodes were matched by key
+      base_node_ids?: Record<string, number>;
+      results: Record<ResultKind, RawResultDiff> | null;
+    };
   const raw = await fetchJson<RawDiff>(url);
   const results = raw.results && { basin: resultDiff(raw.results.basin), flow: resultDiff(raw.results.flow) };
-  return { ...raw, nodes: featureDiffs(raw.nodes), links: featureDiffs(raw.links), results };
+  return {
+    ...raw,
+    nodes: featureDiffs(raw.nodes),
+    links: featureDiffs(raw.links),
+    base_node_ids: baseNodeIds(raw.base_node_ids),
+    results,
+  };
 }
 
 /** The local model to compare with, if `?base_data=<url>&diff=<url>` are given. */

@@ -8,6 +8,7 @@ import {
   type Manifest,
 } from "./data";
 import type { FlowGraph, FlowNeighbor } from "./fractions";
+import { matchLinks, nodeRef, nodesByRef, nodesFromBase } from "./matching";
 import { searchedColumns, TextIndex, type FeatureKind } from "./search";
 
 /**
@@ -52,6 +53,10 @@ export interface Network {
   nodeX: Float32Array;
   nodeY: Float32Array;
   nodeRow: Map<number, number>;
+  /** The reference of each node, by which a link to the viewer names it, null without a key, see `nodeRef` */
+  nodeRef: (string | null)[];
+  /** Node ids by reference, without the references of several nodes */
+  nodeByRef: Map<string, number>;
   nodeGroups: Group[];
   /** The storing ('bergend') Basins of the head model, empty if its nodes have no categories */
   storingBasins: Set<number>;
@@ -72,9 +77,14 @@ export interface Network {
   /** Rows of the base model by id, only when comparing models */
   baseNodeRow: Map<number, number>;
   baseLinkRow: Map<number, number>;
+  /**
+   * The id in the base model of each node that is in it, by its id here: a renumbered node has another id there, and
+   * a removed node has its negated base id here
+   */
+  baseNodeId: Map<number, number>;
   /** The base id of each link in both models, matched on its nodes since links get renumbered */
   baseLinkId: Map<number, number>;
-  /** The ids of the flow links out of each node in the base model, by node id */
+  /** The ids of the flow links out of each node in the base model, by its id in the base model */
   baseOutflows: Map<number, number[]>;
 }
 
@@ -200,6 +210,15 @@ async function readNetwork(manifest: Manifest): Promise<Columns> {
   return { nodes, links };
 }
 
+/** The reference of each node of a model, see `nodeRef`, or null for a model without keys. */
+async function readNodeRefs(manifest: Manifest): Promise<(string | null)[] | null> {
+  const { nodes } = manifest.files;
+  const [hasKey, hasAuthority] = await Promise.all([hasColumn(nodes, "meta_key"), hasColumn(nodes, "meta_waterbeheerder")]);
+  if (!hasKey) return null;
+  const columns = await readColumns(nodes, ["meta_key", ...(hasAuthority ? ["meta_waterbeheerder"] : [])]);
+  return columns.meta_key.map((key, row) => nodeRef(columns.meta_waterbeheerder?.[row], key));
+}
+
 async function readStoringBasins(manifest: Manifest): Promise<Set<number>> {
   if (!(await hasColumn(manifest.files.nodes, "meta_categorie"))) return new Set();
   const { node_id, meta_categorie } = await readColumns(manifest.files.nodes, ["node_id", "meta_categorie"]);
@@ -259,12 +278,14 @@ function linkGroup(type: string, rows: number[], coords: ArrayLike<number>[], lo
   };
 }
 
-/** Whether a feature of the base model was removed; removed links are keyed by their negated id. */
-const isRemoved = (diffs: Map<number, FeatureDiff> | undefined, sign: 1 | -1) => (id: number) =>
-  diffs?.get(sign * id)?.status === "removed";
+/** Whether a feature of the base model was removed; removed features are keyed by their negated id. */
+const isRemoved = (diffs: Map<number, FeatureDiff> | undefined) => (id: number) => diffs?.get(-id)?.status === "removed";
 
-/** The label of a link id; removed links have their negated id in the base model. */
-export const linkLabel = (id: number) => (id < 0 ? `#${-id} (base)` : `#${id}`);
+/** A node or link id as it is shown; removed features have their negated id in the base model. */
+export const idText = (id: number) => (id < 0 ? `${-id} (base)` : `${id}`);
+
+/** The label of a node or link id, see `idText`. */
+export const idLabel = (id: number) => `#${idText(id)}`;
 
 /**
  * The names and codes of the nodes and links, to search them, see `searchedColumns`. When comparing models, those of
@@ -277,10 +298,10 @@ export async function loadSearchIndex(manifest: Manifest, comparison: Comparison
     [manifest.files.links, "link", (id) => id],
   ];
   if (comparison) {
-    const removedNode = isRemoved(comparison.diff.nodes, 1);
-    const removedLink = isRemoved(comparison.diff.links, -1);
+    const removedNode = isRemoved(comparison.diff.nodes);
+    const removedLink = isRemoved(comparison.diff.links);
     files.push(
-      [comparison.base.files.nodes, "node", (id) => (removedNode(id) ? id : null)],
+      [comparison.base.files.nodes, "node", (id) => (removedNode(id) ? -id : null)],
       [comparison.base.files.links, "link", (id) => (removedLink(id) ? -id : null)],
     );
   }
@@ -407,36 +428,34 @@ function outflows(links: Columns["links"]): Map<number, number[]> {
   return result;
 }
 
-/** The base id of each link in both models by head id, matched on the from and to node like `webmap_diff`. */
-function matchLinks(head: Columns["links"], base: Columns["links"]): Map<number, number> {
-  const key = (links: Columns["links"], row: number) => `${links.from_node_id[row]}-${links.to_node_id[row]}`;
-  const baseIds = new Map(base.link_id.map((id, row) => [key(base, row), Number(id)]));
-  const matched = new Map<number, number>();
-  head.link_id.forEach((id, row) => {
-    const baseId = baseIds.get(key(head, row));
-    if (baseId !== undefined) matched.set(Number(id), baseId);
-  });
-  return matched;
-}
-
 /**
  * The nodes and links of a model, grouped by type. When comparing models, removed features are added from the
  * base model, and only the features that differ, also in their results, and those of `ALWAYS_SHOWN_TYPES` are
  * grouped by type; the other unchanged features form the context.
  */
 export async function loadNetwork(manifest: Manifest, comparison: Comparison | null = null): Promise<Network> {
-  const [head, base, storingBasins] = await Promise.all([
+  const [head, base, storingBasins, headRefs, baseRefs] = await Promise.all([
     readNetwork(manifest),
     comparison ? readNetwork(comparison.base) : null,
     readStoringBasins(manifest),
+    readNodeRefs(manifest),
+    comparison ? readNodeRefs(comparison.base) : null,
   ]);
   const diff = comparison?.diff;
+  // The nodes of the base model have their id in the head model; removed nodes and links their negated id
+  const fromBaseNode = nodesFromBase(base?.nodes.node_id ?? [], diff?.base_node_ids ?? new Map(), isRemoved(diff?.nodes));
+  const fromBase = (baseId: number) => fromBaseNode.get(baseId) ?? baseId;
 
-  const nodes = mergedRows(head.nodes.node_id, base?.nodes.node_id, isRemoved(diff?.nodes, 1));
-  const nodeId = Int32Array.from(nodes.pick(head.nodes.node_id, base?.nodes.node_id) as number[]);
+  const nodes = mergedRows(head.nodes.node_id, base?.nodes.node_id, isRemoved(diff?.nodes));
+  const headNodes = head.nodes.node_id.length;
+  const nodeId = Int32Array.from(nodes.pick(head.nodes.node_id, base?.nodes.node_id) as number[], (id, row) =>
+    row < headNodes ? id : -id,
+  );
   const nodeType = toStrings(nodes.pick(head.nodes.node_type, base?.nodes.node_type));
   const nodeX = Float32Array.from(nodes.pick(head.nodes.x, base?.nodes.x) as number[]);
   const nodeY = Float32Array.from(nodes.pick(head.nodes.y, base?.nodes.y) as number[]);
+  const noRefs = (ids: unknown[] | undefined) => ids?.map(() => null);
+  const nodeRefs = nodes.pick(headRefs ?? noRefs(head.nodes.node_id)!, baseRefs ?? noRefs(base?.nodes.node_id)) as (string | null)[];
   const nodeLocal = new Int32Array(nodeId.length).fill(-1);
   const nodeGrouped = (row: number) =>
     !diff ||
@@ -447,11 +466,13 @@ export async function loadNetwork(manifest: Manifest, comparison: Comparison | n
     .map(([type, rows]) => nodeGroup(type, rows.filter(nodeGrouped), nodeX, nodeY, (row, i) => (nodeLocal[row] = i)))
     .filter((group) => group.rows.length > 0);
 
-  const links = mergedRows(head.links.link_id, base?.links.link_id, isRemoved(diff?.links, -1));
+  const links = mergedRows(head.links.link_id, base?.links.link_id, isRemoved(diff?.links));
   const headLinks = head.links.link_id.length;
   const linkId = Int32Array.from(links.pick(head.links.link_id, base?.links.link_id) as number[], (id, row) =>
     row < headLinks ? id : -id,
   );
+  const linkEnd = (headIds: unknown[], baseIds: unknown[] | undefined) =>
+    Int32Array.from(links.pick(headIds, baseIds) as number[], (id, row) => (row < headLinks ? id : fromBase(id)));
   const linkType = toStrings(links.pick(head.links.link_type, base?.links.link_type));
   const coords = links.pick(head.links.coords, base?.links.coords) as ArrayLike<number>[];
   const linkLocal = new Int32Array(linkId.length).fill(-1);
@@ -484,13 +505,15 @@ export async function loadNetwork(manifest: Manifest, comparison: Comparison | n
     nodeX,
     nodeY,
     nodeRow: indexById(nodeId),
+    nodeRef: nodeRefs,
+    nodeByRef: nodesByRef(nodeId, nodeRefs),
     nodeGroups,
     storingBasins,
     nodeLocal,
     linkId,
     linkType,
-    fromNodeId: Int32Array.from(links.pick(head.links.from_node_id, base?.links.from_node_id) as number[]),
-    toNodeId: Int32Array.from(links.pick(head.links.to_node_id, base?.links.to_node_id) as number[]),
+    fromNodeId: linkEnd(head.links.from_node_id, base?.links.from_node_id),
+    toNodeId: linkEnd(head.links.to_node_id, base?.links.to_node_id),
     linkRow: indexById(linkId),
     linkGroups,
     linkLocal,
@@ -499,7 +522,8 @@ export async function loadNetwork(manifest: Manifest, comparison: Comparison | n
     context,
     baseNodeRow: base ? indexById(Int32Array.from(base.nodes.node_id as number[])) : new Map(),
     baseLinkRow: base ? indexById(Int32Array.from(base.links.link_id as number[])) : new Map(),
-    baseLinkId: base ? matchLinks(head.links, base.links) : new Map(),
+    baseNodeId: new Map([...fromBaseNode].map(([baseId, id]) => [id, baseId])),
+    baseLinkId: base ? matchLinks(head.links, base.links, fromBase) : new Map(),
     baseOutflows: base ? outflows(base.links) : new Map(),
   };
 }

@@ -92,6 +92,21 @@ def test_node_mapping_matches_by_location_first():
     assert node_mapping(base, head).to_dict() == {1: 1, 2: 3, 3: 2}
 
 
+def test_node_mapping_matches_by_key_first():
+    """Nodes with the same key and water authority are the same node, wherever they are and whatever their ID."""
+    base = nodes({1: ("Basin", 0.0), 2: ("Outlet", 10.0), 3: ("Outlet", 20.0), 4: ("Outlet", 30.0)})
+    base["meta_key"] = ["a", "st1", "st1", "st2"]
+    base["meta_waterbeheerder"] = ["A", "A", "B", "A"]
+    # all nodes have another ID, Outlet st1 of A moved, and Outlet st2 has no key in this run but is where it was
+    head = nodes({11: ("Basin", 0.0), 12: ("Outlet", 15.0), 13: ("Outlet", 20.0), 14: ("Outlet", 30.0)})
+    head["meta_key"] = ["a", "st1", "st1", None]
+    head["meta_waterbeheerder"] = ["A", "A", "B", "A"]
+    assert node_mapping(base, head).to_dict() == {1: 11, 2: 12, 3: 13, 4: 14}
+    # a key does not match a node of another type
+    head.loc[12, "node_type"] = "Pump"
+    assert node_mapping(base, head)[2] == -2
+
+
 def test_node_mapping_moved_and_removed():
     base = nodes({1: ("Basin", 0.0), 2: ("Basin", 10.0), 3: ("Outlet", 20.0), 4: ("Pump", 50.0)})
     # 1 moved, the type of 3 changed so it is another node, and 4 is removed

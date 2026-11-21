@@ -122,6 +122,8 @@ export class Observations {
     readonly head: Fits,
     /** Only when comparing with a base model that has them */
     readonly base: Fits | null,
+    /** The id in the base model of an Observation node that is in it, which is another one if it was renumbered */
+    private readonly baseId: (id: number) => number | undefined,
   ) {
     this.groups = Object.entries(results.variables).map(([variable, difference]) => ({
       label: difference.label,
@@ -130,9 +132,13 @@ export class Observations {
     this.byKey = new Map(this.groups.flatMap((group) => group.choices.map((choice) => [choice.key, choice])));
   }
 
-  static async load(results: ObservationResults, base?: ObservationResults): Promise<Observations> {
+  static async load(
+    results: ObservationResults,
+    base?: ObservationResults,
+    baseId: (id: number) => number | undefined = (id) => id,
+  ): Promise<Observations> {
     const [head, baseFits] = await Promise.all([loadFits(results), base ? loadFits(base) : null]);
-    return new Observations(results, head, baseFits);
+    return new Observations(results, head, baseFits, baseId);
   }
 
   private choices(variable: string, difference: ResultVariable): ObservationChoice[] {
@@ -176,8 +182,14 @@ export class Observations {
     if (choice.metric === "difference") throw new Error("The difference changes with the time step");
     const head = metricValue(this.head.get(choice.variable)?.get(nodeId), choice.metric);
     if (!choice.change) return head;
-    const base = metricValue(this.base?.get(choice.variable)?.get(nodeId), choice.metric);
+    const base = metricValue(this.baseFit(choice.variable, nodeId), choice.metric);
     return choice.metric === "bias" ? Math.abs(head) - Math.abs(base) : head - base;
+  }
+
+  /** The fit of an Observation node in the base model, if it has one. */
+  private baseFit(variable: string, nodeId: number): Fit | undefined {
+    const baseId = this.baseId(nodeId);
+    return baseId === undefined ? undefined : this.base?.get(variable)?.get(baseId);
   }
 
   /** The name of an Observation node, if it has one. */
@@ -206,7 +218,7 @@ export class Observations {
     if (!fit) return "not compared";
     if (fit.days < minDays) return `${fit.days} of the ${minDays} days needed`;
     if (choice.change) {
-      const base = this.base?.get(choice.variable)?.get(nodeId);
+      const base = this.baseFit(choice.variable, nodeId);
       if (!base) return "not compared in the base model";
       if (base.days < minDays) return `${base.days} of the ${minDays} days needed in the base model`;
     }

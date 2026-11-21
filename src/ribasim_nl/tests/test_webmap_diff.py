@@ -23,6 +23,7 @@ from ribasim_nl.webmap_diff import (
     diff_models,
     matched_ids,
     node_digests,
+    node_translation,
 )
 from ribasim_nl.webmap_local import checkout_model, export_cached, make_handler, parse_range, resolve_commit
 from shapely.geometry import LineString, MultiPolygon, Point, box
@@ -90,7 +91,8 @@ def test_diff_models(tmp_path):
     nodes = diff["nodes"]
     assert nodes["1"] == {"status": "changed", "changes": ["Basin / profile", "Basin / area"]}
     assert nodes["2"] == {"status": "changed", "changes": ["name"]}
-    assert nodes["3"]["status"] == "removed"
+    # Removed nodes have their negated id, since another node of the head model can have that id
+    assert nodes["-3"]["status"] == "removed"
     assert nodes["4"]["status"] == "added"
     # Links are matched on their nodes, so the link to the replaced boundary is replaced as well,
     # and the renumbered link is unchanged
@@ -104,6 +106,88 @@ def test_diff_models(tmp_path):
     same = diff_models(base_toml, base_toml, base_dir, base_dir, tmp_path / "same.json", ("main", "head"))
     assert same["nodes"] == {} and same["links"] == {} and same["config"] == []
     assert same["base"]["label"] == "main" and same["head"]["label"] == "head"
+
+
+def _write_keyed_model(path, first_id: int, name: str, level: float):
+    """Basin -> TabulatedRatingCurve -> LevelBoundary with keys, numbered from `first_id`."""
+    model = Model(starttime="2020-01-01", endtime="2020-01-03", crs="EPSG:28992")
+    basin_node = model.basin.add(
+        Node(first_id, Point(150_000, 450_000), meta_key="basin", meta_waterbeheerder="A"),
+        [
+            basin.Profile(area=[10.0, 100.0], level=[0.0, 1.0]),
+            basin.State(level=[0.5]),
+            basin.Area(geometry=[MultiPolygon([box(149_900, 449_900, 150_000, 450_100)])]),
+        ],
+    )
+    rating = model.tabulated_rating_curve.add(
+        Node(first_id + 1, Point(150_100, 450_000), name=name, meta_key="weir", meta_waterbeheerder="A"),
+        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 1.0])],
+    )
+    boundary = model.level_boundary.add(
+        Node(first_id + 2, Point(150_200, 450_050), meta_key="boundary", meta_waterbeheerder="A"),
+        [level_boundary.Static(level=[level])],
+    )
+    model.link.add(basin_node, rating, link_id=first_id + 10)
+    model.link.add(rating, boundary, link_id=first_id + 11)
+    toml = path / "model.toml"
+    model.write(toml)
+    return toml
+
+
+def test_diff_models_renumbered_nodes(tmp_path):
+    """Nodes with the same key are the same node, whatever their node_id, see `ribasim_nl.keys`."""
+    base_toml = _write_keyed_model(tmp_path / "base", 1, name="", level=0.0)
+    # The nodes and links have other ids, the weir has a name and the level of the boundary differs
+    head_toml = _write_keyed_model(tmp_path / "head", 2, name="weir", level=0.5)
+    base_dir, head_dir = tmp_path / "base_webmap", tmp_path / "head_webmap"
+    export_webmap(base_toml, None, base_dir)
+    export_webmap(head_toml, None, head_dir)
+    diff = diff_models(base_toml, head_toml, base_dir, head_dir, tmp_path / "diff.json")
+    # Node 2 of the base model is the Basin of the head model, and node 3 its weir
+    assert diff["nodes"] == {
+        "3": {"status": "changed", "changes": ["name"], "base_id": 2},
+        "4": {"status": "changed", "changes": ["LevelBoundary / static"], "base_id": 3},
+    }
+    assert diff["links"] == {}
+    # also of the unchanged Basin, to find its results in the base model
+    assert diff["base_node_ids"] == {"2": 1, "3": 2, "4": 3}
+
+    # Without keys the same models differ in every node: nodes 2 and 3 are another node, 1 is removed and 4 added
+    for toml in (base_toml, head_toml):
+        model = Model.read(toml)
+        model.node.df = model.node.df.drop(columns="meta_key")
+        model.write(toml)
+    export_webmap(base_toml, None, base_dir)
+    export_webmap(head_toml, None, head_dir)
+    diff = diff_models(base_toml, head_toml, base_dir, head_dir, tmp_path / "diff.json")
+    assert {id: node["status"] for id, node in diff["nodes"].items()} == {
+        "-1": "removed",
+        "2": "changed",
+        "3": "changed",
+        "4": "added",
+    }
+    assert diff["base_node_ids"] == {}
+
+
+def test_node_translation():
+    base = pd.DataFrame(
+        {
+            "node_id": [1, 2, 3, 4, 5],
+            "meta_key": ["a", "a", "b", None, "gone"],
+            "meta_waterbeheerder": ["A", "B", "A", "A", "A"],
+        }
+    )
+    head = pd.DataFrame(
+        {
+            "node_id": [3, 2, 1, 4, 5],
+            "meta_key": ["a", "a", "b", None, "new"],
+            "meta_waterbeheerder": ["A", "B", "A", "A", "A"],
+        }
+    )
+    # by key and water authority, or else by node_id; a node that is only in the base model has its negated node_id
+    assert node_translation(base, head).to_dict() == {1: 3, 2: 2, 3: 1, 4: 4, 5: -5}
+    # models without keys match by node_id
+    assert node_translation(base[["node_id"]], head[["node_id"]].iloc[:3]).to_dict() == {1: 1, 2: 2, 3: 3, 4: -4, 5: -5}
 
 
 def test_diff_models_results(tmp_path):
