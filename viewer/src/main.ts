@@ -34,6 +34,7 @@ import {
   ResultColors,
   statusColors,
 } from "./diff";
+import { isId } from "./matching";
 import {
   ALWAYS_SHOWN_TYPES,
   authorityName,
@@ -144,11 +145,17 @@ function hashParams(): URLSearchParams {
   return new URLSearchParams(location.hash.slice(1));
 }
 
-function selectionFromHash(): Selection | null {
+/**
+ * The selected feature in the hash: a node by its water authority and key, which stay the same when it is renumbered,
+ * like `node=Rijkswaterstaat:Markermeer`, or a node or link by its id.
+ */
+function selectionFromHash(network: Network): Selection | null {
   const params = hashParams();
   for (const kind of ["node", "link"] as const) {
-    const id = Number(params.get(kind));
-    if (params.has(kind) && Number.isInteger(id)) return { kind, id };
+    const value = params.get(kind);
+    if (value === null) continue;
+    const id = kind === "node" && !isId(value) ? network.nodeByRef.get(value) : Number(value);
+    if (id !== undefined && Number.isInteger(id)) return { kind, id };
   }
   return null;
 }
@@ -173,15 +180,19 @@ function writeHash(updates: Record<string, string | null>): void {
     if (value === null) params.delete(key);
     else params.set(key, value);
   }
-  // Keep MapLibre's `map=zoom/lat/lon` readable instead of percent-encoded
-  history.replaceState(history.state, "", `#${params.toString().replaceAll("%2F", "/")}`);
+  // Keep MapLibre's `map=zoom/lat/lon` and the reference of a node readable instead of percent-encoded
+  const hash = params.toString().replaceAll("%2F", "/").replaceAll("%3A", ":").replaceAll("%40", "@");
+  history.replaceState(history.state, "", `#${hash}`);
 }
 
-function writeSelectionToHash(selection: Selection | null): void {
-  writeHash({
-    node: selection?.kind === "node" ? String(selection.id) : null,
-    link: selection?.kind === "link" ? String(selection.id) : null,
-  });
+/** Write the selection to the hash: a node by its reference if it has one of its own, see `selectionFromHash`. */
+function writeSelectionToHash(selection: Selection | null, network: Network): void {
+  let node: string | null = null;
+  if (selection?.kind === "node") {
+    const ref = network.nodeRef[network.nodeRow.get(selection.id) ?? -1] ?? null;
+    node = ref !== null && network.nodeByRef.get(ref) === selection.id ? ref : String(selection.id);
+  }
+  writeHash({ node, link: selection?.kind === "link" ? String(selection.id) : null });
 }
 
 /** Per-feature colors, widths and values of the current time step, indexed like the features of a layer group. */
@@ -1279,7 +1290,7 @@ class Viewer {
     if (selection?.kind === "node") {
       this.map.setFeatureState({ source: "basin_area", sourceLayer: "basin_area", id: selection.id }, { selected: true });
     }
-    writeSelectionToHash(selection);
+    writeSelectionToHash(selection, this.network);
     this.render();
     if (selection) this.panel.show(selection);
     else this.panel.hide();
@@ -1700,14 +1711,14 @@ async function main(): Promise<void> {
     const [network, iconAtlas] = await Promise.all([networkPromise, icons, map.once("style.load")]);
     status.textContent = "Drawing the model…";
     const viewer = new Viewer(map, root, manifest, network, iconAtlas, comparison);
-    const selection = selectionFromHash();
+    const selection = selectionFromHash(network);
     if (selection) {
       viewer.select(selection);
       if (!hasView) viewer.zoomTo(selection);
     }
     // A pasted link or going back in history only changes the hash, which selects another feature
     addEventListener("hashchange", () => {
-      const next = selectionFromHash();
+      const next = selectionFromHash(network);
       if (next?.kind === viewer.selected()?.kind && next?.id === viewer.selected()?.id) return;
       viewer.select(next);
       if (next) viewer.zoomTo(next);

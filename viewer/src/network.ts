@@ -8,7 +8,7 @@ import {
   type Manifest,
 } from "./data";
 import type { FlowGraph, FlowNeighbor } from "./fractions";
-import { matchLinks, nodesFromBase } from "./matching";
+import { matchLinks, nodeRef, nodesByRef, nodesFromBase } from "./matching";
 import { searchedColumns, TextIndex, type FeatureKind } from "./search";
 
 /**
@@ -53,6 +53,10 @@ export interface Network {
   nodeX: Float32Array;
   nodeY: Float32Array;
   nodeRow: Map<number, number>;
+  /** The reference of each node, by which a link to the viewer names it, null without a key, see `nodeRef` */
+  nodeRef: (string | null)[];
+  /** Node ids by reference, without the references of several nodes */
+  nodeByRef: Map<string, number>;
   nodeGroups: Group[];
   /** The storing ('bergend') Basins of the head model, empty if its nodes have no categories */
   storingBasins: Set<number>;
@@ -204,6 +208,15 @@ async function readNetwork(manifest: Manifest): Promise<Columns> {
     readColumns(manifest.files.links, ["link_id", "link_type", "from_node_id", "to_node_id", "coords"]),
   ]);
   return { nodes, links };
+}
+
+/** The reference of each node of a model, see `nodeRef`, or null for a model without keys. */
+async function readNodeRefs(manifest: Manifest): Promise<(string | null)[] | null> {
+  const { nodes } = manifest.files;
+  const [hasKey, hasAuthority] = await Promise.all([hasColumn(nodes, "meta_key"), hasColumn(nodes, "meta_waterbeheerder")]);
+  if (!hasKey) return null;
+  const columns = await readColumns(nodes, ["meta_key", ...(hasAuthority ? ["meta_waterbeheerder"] : [])]);
+  return columns.meta_key.map((key, row) => nodeRef(columns.meta_waterbeheerder?.[row], key));
 }
 
 async function readStoringBasins(manifest: Manifest): Promise<Set<number>> {
@@ -421,10 +434,12 @@ function outflows(links: Columns["links"]): Map<number, number[]> {
  * grouped by type; the other unchanged features form the context.
  */
 export async function loadNetwork(manifest: Manifest, comparison: Comparison | null = null): Promise<Network> {
-  const [head, base, storingBasins] = await Promise.all([
+  const [head, base, storingBasins, headRefs, baseRefs] = await Promise.all([
     readNetwork(manifest),
     comparison ? readNetwork(comparison.base) : null,
     readStoringBasins(manifest),
+    readNodeRefs(manifest),
+    comparison ? readNodeRefs(comparison.base) : null,
   ]);
   const diff = comparison?.diff;
   // The nodes of the base model have their id in the head model; removed nodes and links their negated id
@@ -439,6 +454,8 @@ export async function loadNetwork(manifest: Manifest, comparison: Comparison | n
   const nodeType = toStrings(nodes.pick(head.nodes.node_type, base?.nodes.node_type));
   const nodeX = Float32Array.from(nodes.pick(head.nodes.x, base?.nodes.x) as number[]);
   const nodeY = Float32Array.from(nodes.pick(head.nodes.y, base?.nodes.y) as number[]);
+  const noRefs = (ids: unknown[] | undefined) => ids?.map(() => null);
+  const nodeRefs = nodes.pick(headRefs ?? noRefs(head.nodes.node_id)!, baseRefs ?? noRefs(base?.nodes.node_id)) as (string | null)[];
   const nodeLocal = new Int32Array(nodeId.length).fill(-1);
   const nodeGrouped = (row: number) =>
     !diff ||
@@ -488,6 +505,8 @@ export async function loadNetwork(manifest: Manifest, comparison: Comparison | n
     nodeX,
     nodeY,
     nodeRow: indexById(nodeId),
+    nodeRef: nodeRefs,
+    nodeByRef: nodesByRef(nodeId, nodeRefs),
     nodeGroups,
     storingBasins,
     nodeLocal,

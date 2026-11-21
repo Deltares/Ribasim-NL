@@ -190,6 +190,8 @@ The viewer therefore puts the commit of the model it shows in the page URL, so a
 
 Commits may be shortened; pinned links use 10 characters.
 The view and selection after `#` are kept.
+A selected node is named by its water authority and [key](node-keys.qmd), like `#node=Rijkswaterstaat:Markermeer`, so the link shows the same node in a version in which it has another id.
+A node without a key, and a link, are named by their id, like `#node=203892`, which also selects a node with a key.
 If a pinned model is no longer that of the latest `main`, the viewer says so, with a link to the latest `main` at the same place.
 The viewer knows the commit of `main` since the docs are built and published for each push to `main`, so after a merge it shows the previous `main` until that is done.
 Links to a pull request are not pinned, since it is usually published before its `dvc.lock` is committed.

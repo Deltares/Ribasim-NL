@@ -3,6 +3,31 @@
  * `ribasim_nl.webmap_diff`. No imports, so Node runs its tests as they are, see `matching.test.ts`.
  */
 
+/**
+ * The reference of a node in a link to the viewer: its water authority and key, like `Rijkswaterstaat:Markermeer`,
+ * which stay the same when the node is renumbered, see `ribasim_nl.keys`. Null for a node without a key.
+ */
+export function nodeRef(authority: unknown, key: unknown): string | null {
+  if (typeof key !== "string" || key === "") return null;
+  return `${typeof authority === "string" ? authority : ""}:${key}`;
+}
+
+/** Whether a node in a link to the viewer is given by its id, and not by its reference, which has a colon. */
+export const isId = (value: string) => /^-?\d+$/.test(value);
+
+/** The ids of the nodes by their reference, without the references that several nodes have. */
+export function nodesByRef(nodeIds: ArrayLike<number>, refs: (string | null)[]): Map<string, number> {
+  const nodes = new Map<string, number>();
+  const ambiguous = new Set<string>();
+  refs.forEach((ref, row) => {
+    if (ref === null) return;
+    if (nodes.has(ref)) ambiguous.add(ref);
+    nodes.set(ref, nodeIds[row]);
+  });
+  for (const ref of ambiguous) nodes.delete(ref);
+  return nodes;
+}
+
 /** The ids of links and of their nodes, by row. */
 export interface LinkEnds {
   link_id: unknown[];
