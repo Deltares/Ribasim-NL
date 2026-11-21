@@ -387,7 +387,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="grid step">
 <section id="the-input-model-1" class="level3 g-col-12 g-col-lg-5">
 <h3 class="anchored" data-anchor-id="the-input-model-1">3. The input model</h3>
-<p><code>pipeline/00e_crossings_to_ribasim.py</code> makes the input model <code>modellen/&lt;water board&gt;_boezemmodel_&lt;version&gt;</code>: the aggregation areas become Basins, and the crossings connector nodes. It numbers the nodes and links after the input model of 2024, <code>verwerkt/boezemmodel_ids.gpkg</code>, to which the feedback forms and scripts refer, by matching the nodes by type and location, see <code>ribasim_nl.crossings.renumber</code>.</p>
+<p><code>pipeline/00e_crossings_to_ribasim.py</code> makes the input model <code>modellen/&lt;water board&gt;_boezemmodel_&lt;version&gt;</code>: the aggregation areas become Basins, and the crossings connector nodes. The feedback forms and scripts refer to its nodes by their <a href="../dev/node-keys.html">key</a>, which follows from the crossing or the area of the node.</p>
 </section>
 <div class="g-col-12 g-col-lg-7">
 <div class="quarto-figure quarto-figure-center">
