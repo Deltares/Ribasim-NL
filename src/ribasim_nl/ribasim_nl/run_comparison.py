@@ -6,7 +6,8 @@ The metrics of `ribasim_nl.result_validation` are aggregates, which can hide lar
 largest differences as Markdown, for the `describe-run` skill: the network, levels, flows, exchange between
 authorities, water balance, Basin areas, Observations and solver. Without `--head` it reads the working tree.
 
-Node IDs can shift between runs, so nodes are matched by their type and location first, see `node_mapping`.
+Node IDs can shift between runs, so nodes are matched by their key, or else by their type and location, see
+`node_mapping`.
 This finds where the runs differ, and what changed in the input next to it, but it does not trace a difference to
 its cause. Runs at a commit are read with DVC, from the DVC cache or remote, into the cache of the model viewer.
 """
@@ -27,6 +28,7 @@ from dvc.api import DVCFileSystem
 
 from ribasim_nl.aquo import authority_by_code, authority_code
 from ribasim_nl.flow_paths import Routes
+from ribasim_nl.keys import AUTHORITY_COLUMN, KEY_COLUMN
 from ribasim_nl.webmap import read_features
 from ribasim_nl.webmap_diff import read_basin_areas
 from ribasim_nl.webmap_local import CACHE_DIR, REPO_DIR, resolve_commit
@@ -155,43 +157,59 @@ def read_run(commit: str | None) -> Run:
 def node_mapping(base: gpd.GeoDataFrame, head: gpd.GeoDataFrame) -> pd.Series:
     """The node_id in `head` of each node_id in `base`, with the negated ID for a node that is only in `base`.
 
-    Nodes of the same type at the same location are the same node, whatever their ID. Other Observations are the same
-    node if they have the same name, since the layout moves them and their ID says nothing about the series they
-    measure. The others are the same node if they have the same ID and type, so they moved.
+    Nodes of the same type with the same key and water authority are the same node, whatever their ID or location,
+    see `ribasim_nl.keys`. Of the others, nodes of the same type at the same location are the same node. Other
+    Observations are the same node if they have the same name, since the layout moves them and their ID says nothing
+    about the series they measure. The others are the same node if they have the same ID and type, so they moved.
     """
+    mapping = pd.Series(-base.index.to_numpy(), index=base.index, name="node_id")
 
-    def locations(nodes: gpd.GeoDataFrame) -> pd.DataFrame:
+    def unmatched() -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+        """The nodes of both runs that are not matched yet."""
+        matched = mapping[mapping > 0]
+        return base[~base.index.isin(matched.index)], head[~head.index.isin(matched.to_numpy())]
+
+    def match(base_table: pd.DataFrame, head_table: pd.DataFrame) -> None:
+        """Match the nodes of which all columns but the node ID are equal, and unique in their run."""
+        on = [column for column in base_table.columns if column != "node_id"]
+        tables = [table.drop_duplicates(on, keep=False) for table in (base_table, head_table)]
+        pairs = tables[0].merge(tables[1], on=on, suffixes=("_base", "_head"))
+        mapping[pairs["node_id_base"].to_numpy()] = pairs["node_id_head"].to_numpy()
+
+    def keys(nodes: gpd.GeoDataFrame) -> pd.DataFrame:
+        if KEY_COLUMN not in nodes.columns:
+            return pd.DataFrame({"node_id": [], "node_type": [], "authority": [], "key": []})
+        authority = nodes[AUTHORITY_COLUMN] if AUTHORITY_COLUMN in nodes.columns else pd.Series("", index=nodes.index)
         table = pd.DataFrame(
             {
-                "node_type": nodes["node_type"],
-                "x": nodes.geometry.x.round(LOCATION_DECIMALS),
-                "y": nodes.geometry.y.round(LOCATION_DECIMALS),
-            },
-            index=nodes.index,
+                "node_id": nodes.index,
+                "node_type": nodes["node_type"].to_numpy(),
+                "authority": authority.astype(object).where(authority.notna(), "").to_numpy(),
+                "key": nodes[KEY_COLUMN].to_numpy(),
+            }
         )
-        return table.drop_duplicates(keep=False).rename_axis("node_id").reset_index()
+        return table[table["key"].notna()]
 
-    pairs = locations(base).merge(locations(head), on=["node_type", "x", "y"], suffixes=("_base", "_head"))
-    mapping = pd.Series(-base.index.to_numpy(), index=base.index, name="node_id")
-    mapping[pairs["node_id_base"].to_numpy()] = pairs["node_id_head"].to_numpy()
+    def locations(nodes: gpd.GeoDataFrame) -> pd.DataFrame:
+        return pd.DataFrame(
+            {
+                "node_id": nodes.index,
+                "node_type": nodes["node_type"].to_numpy(),
+                "x": nodes.geometry.x.round(LOCATION_DECIMALS).to_numpy(),
+                "y": nodes.geometry.y.round(LOCATION_DECIMALS).to_numpy(),
+            }
+        )
 
-    def open_observations(nodes: gpd.GeoDataFrame, matched: pd.Series) -> pd.Series:
-        """The node_id by name of the Observations that are not matched yet, without ambiguous names."""
-        names = nodes.loc[(nodes["node_type"] == "Observation") & ~nodes.index.isin(matched), "name"]
-        names = names[~names.duplicated(keep=False)]
-        return pd.Series(names.index.to_numpy(), index=names.to_numpy())
+    def observation_names(nodes: gpd.GeoDataFrame) -> pd.DataFrame:
+        observations = nodes[nodes["node_type"] == "Observation"]
+        return pd.DataFrame({"node_id": observations.index, "name": observations["name"].to_numpy()})
 
-    named = pd.concat(
-        [open_observations(base, pairs["node_id_base"]), open_observations(head, pairs["node_id_head"])],
-        axis=1,
-        join="inner",
-        keys=["node_id_base", "node_id_head"],
-    )
-    mapping[named["node_id_base"].to_numpy()] = named["node_id_head"].to_numpy()
+    for table in (keys, locations, observation_names):
+        open_base, open_head = unmatched()
+        match(table(open_base), table(open_head))
 
-    open_base = base.index.difference(pd.Index(pairs["node_id_base"])).difference(pd.Index(named["node_id_base"]))
-    open_head = head.index.difference(pd.Index(pairs["node_id_head"])).difference(pd.Index(named["node_id_head"]))
-    same_id = open_base.intersection(open_head)
+    open_base, open_head = unmatched()
+    same_id = open_base.index.intersection(open_head.index)
     same_type = base.loc[same_id, "node_type"] == head.loc[same_id, "node_type"]
     moved = same_id[same_type & (base.loc[same_id, "node_type"] != "Observation")]
     mapping.loc[moved] = moved.to_numpy()
