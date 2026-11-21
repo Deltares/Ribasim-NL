@@ -32,8 +32,6 @@ model = Model.read(ribasim_toml)
 # nodes and links are referred to by their key, see docs/dev/node-keys.qmd
 n = model.node_id
 lk = model.link_id
-HOHER_ABSTURZ_NODE_ID = n("ST16120018")
-DIE_WILD_MANNING_NODE_ID = n("up:ST16120018")
 
 network_validator = NetworkValidator(model)
 
@@ -181,7 +179,7 @@ model.merge_basins(node_id=n("up:DR96430054"), to_node_id=n("up:DR96540001"))
 # %% connect 's Heerenberg (286) with the Oude Rijn (1036) along Die Wild in Germany, instead of over two boundaries
 # see https://github.com/Deltares/Ribasim-NL/issues/992
 # LevelBoundary 837 and FlowBoundary 49 are this waterway, so they become Basins. Between them is the Hoher Absturz, and
-# downstream of them a ManningResistance. The new nodes reuse IDs that were removed above, to keep the IDs of later nodes.
+# downstream of them a ManningResistance.
 die_wild_gdf = gpd.read_file(gsk3e_gpkg, layer="waterways", where="GEWKZ3E = '279982' AND ABSNAME = 'Die Wild'")
 assert len(die_wild_gdf) == 1
 die_wild = cast(LineString, die_wild_gdf.geometry.iloc[0].reverse())  # GSK3E draws waterways in upstream direction
@@ -191,7 +189,6 @@ model.update_node(node_id=n("bnd:49"), node_type="Basin", data=basin_data)
 model.node.df.loc[[n("down:ST08410055"), n("bnd:49")], "meta_categorie"] = pd.NA
 outlet_node = model.outlet.add(
     Node(
-        node_id=HOHER_ABSTURZ_NODE_ID,
         name="qbw_9638",
         geometry=hoher_absturz,
         meta_object_type="stuw",
@@ -201,7 +198,6 @@ outlet_node = model.outlet.add(
 model.remove_links([lk("bnd:49", "up:ST09210004")])
 manning_node = model.manning_resistance.add(
     Node(
-        node_id=DIE_WILD_MANNING_NODE_ID,
         geometry=die_wild.interpolate(
             (
                 die_wild.project(model.basin[n("bnd:49")].geometry)

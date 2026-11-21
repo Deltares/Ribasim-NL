@@ -704,11 +704,9 @@ class Model(ribasim.Model):
         set_df_unvalidated(self.link, self.link.df[~self.link.df.index.isin(link_ids)])
         self.link._used_link_ids.node_ids.difference_update(link_ids)
 
-    def add_basin(self, node_id=None, geometry=None, tables=None, key: str | None = None, **kwargs) -> None:
-        """Add a Basin, with the next free node ID if none is given, and optionally with a `key`."""
+    def add_basin(self, geometry=None, tables=None, key: str | None = None, **kwargs) -> None:
+        """Add a Basin with the next free node ID, and optionally with a `key`, by which it is referred to later."""
         assert geometry is not None, "a Basin needs a geometry"
-        if node_id is None or pd.isna(node_id):
-            node_id = self.next_node_id
         if key is not None and pd.notna(key):
             kwargs[KEY_COLUMN] = key
         # define node properties
@@ -726,7 +724,7 @@ class Model(ribasim.Model):
         if tables is None:
             tables = DEFAULT_TABLES.basin
 
-        self.basin.add(Node(node_id=node_id, geometry=geometry, name=name, **node_properties), tables=tables)
+        self.basin.add(Node(geometry=geometry, name=name, **node_properties), tables=tables)
 
     def connect_basins(self, from_basin_id, to_basin_id, node_type, geometry, tables=None, name="", **kwargs) -> None:
         if pd.isna(name):

@@ -254,10 +254,6 @@ model.reset_link_geometry(link_ids=link_ids)
 # verplaats basin 1375 naar het hydroobject
 
 
-# The nodes added here keep the node IDs they got when this script added the basins 2303 to 2317 after them, which
-# the lumping adds now, so the references to them remain valid
-new_node_ids = iter(range(2265, 2303))
-
 # verbind basins met level_boundaries
 for fid, node_id in [(1, n("down:ST01112")), (2, n("down:ow:WL00364-2"))]:
     boundary_node_geometry = cast(Point, level_boundary_gdf.at[fid, "geometry"])
@@ -268,20 +264,16 @@ for fid, node_id in [(1, n("down:ST01112")), (2, n("down:ow:WL00364-2"))]:
     line_geometry = LineString((basin_node_geometry, boundary_node_geometry))
 
     # define level_boundary_node
-    boundary_node = model.level_boundary.add(
-        Node(node_id=next(new_node_ids), geometry=boundary_node_geometry), tables=[level_data]
-    )
+    boundary_node = model.level_boundary.add(Node(geometry=boundary_node_geometry), tables=[level_data])
     # the model edits remove this second LevelBoundary at the same place, by its key
     level_node = model.level_boundary.add(
-        Node(node_id=next(new_node_ids), geometry=boundary_node_geometry, meta_key=f"duplicate:level_boundary:{fid}"),
+        Node(geometry=boundary_node_geometry, meta_key=f"duplicate:level_boundary:{fid}"),
         tables=[level_data],
     )
 
     # define manning_resistance_node
     outlet_node_geometry = line_geometry.interpolate(line_geometry.length - 20)
-    outlet_node = model.outlet.add(
-        Node(node_id=next(new_node_ids), geometry=outlet_node_geometry), tables=[outlet_data]
-    )
+    outlet_node = model.outlet.add(Node(geometry=outlet_node_geometry), tables=[outlet_data])
 
     from_node_id = model.basin[node_id].node_id
     to_node_id = outlet_node.node_id
@@ -342,7 +334,6 @@ for node_id in connect_node_ids:
     # several of these boundaries are at the same place: their key follows from the node they connect to
     boundary_node = model.level_boundary.add(
         Node(
-            node_id=next(new_node_ids),
             geometry=boundary_node_geometry,
             meta_key=f"twentekanaal:{model.node.df.at[node_id, KEY_COLUMN]}",
         ),
@@ -408,8 +399,6 @@ area = areas_gdf.loc[areas_gdf["code"] == "BC4070775"].union_all()
 split_basin_area_to(model, area, cast(LineString, split_line_gdf.at[9, "geometry"]), n("up:ST05005"))
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2385409772
-
-assert next(new_node_ids, None) is None, "not all nodes got their node ID"
 
 # %% see: https://github.com/Deltares/Ribasim-NL/issues/146#issuecomment-2386671759
 
@@ -1341,8 +1330,9 @@ streefpeil_2148 = first_meta_streefpeil(basin_2148_area_existing_df)
 model.basin.area.df = model.basin.area.df.loc[model.basin.area.df.node_id != n("up:DK02511")].copy()
 model.add_basin_area(geometry=basin_2148_geometry, node_id=n("up:DK02511"), meta_streefpeil=streefpeil_2148)
 
-new_basin_node_id = 2340
-model.basin.add(Node(node_id=new_basin_node_id, geometry=old_basin_1843_node_geometry, name="Basin Westerhaar aanvoer"))
+new_basin_node_id = model.basin.add(
+    Node(geometry=old_basin_1843_node_geometry, name="Basin Westerhaar aanvoer")
+).node_id
 
 for basin_table in [model.basin.profile, model.basin.static, model.basin.state]:
     table_df = basin_table.df
@@ -1360,7 +1350,6 @@ model.add_basin_area(
 
 aanvoer_pump = model.pump.add(
     Node(
-        node_id=2341,
         geometry=Point(238834.91, 496511.08),
         name="Aanvoergemaal Westerhaar",
         meta_key="aanvoergemaal-westerhaar",
@@ -1371,7 +1360,7 @@ model.link.add(model.basin[n("up:DK04366")], aanvoer_pump)
 model.link.add(aanvoer_pump, model.basin[n("up:ST01677")])
 
 westerhaar_uitlaat_outlet = model.outlet.add(
-    Node(node_id=2342, geometry=Point(238833.885, 496508.498), name="Uitlaat Westerhaar"),
+    Node(geometry=Point(238833.885, 496508.498), name="Uitlaat Westerhaar"),
     tables=[outlet_data],
 )
 if not (
@@ -1387,21 +1376,21 @@ model.link.add(model.basin[new_basin_node_id], westerhaar_uitlaat_outlet)
 model.link.add(westerhaar_uitlaat_outlet, model.basin[n("up:DK04366")])
 
 inlaatstuw_outlet = model.outlet.add(
-    Node(node_id=2343, geometry=Point(243225.458, 495478.36), name="Inlaatstuw"),
+    Node(geometry=Point(243225.458, 495478.36), name="Inlaatstuw"),
     tables=[outlet_data],
 )
 model.link.add(model.basin[n("up:ow:WL01711-4")], inlaatstuw_outlet)
 model.link.add(inlaatstuw_outlet, model.basin[n("up:DK30436_BO")])
 
 inlaat_outlet_1708 = model.outlet.add(
-    Node(node_id=2344, geometry=Point(238366.036, 496286.96), name="Inlaat"),
+    Node(geometry=Point(238366.036, 496286.96), name="Inlaat"),
     tables=[outlet_data],
 )
 model.link.add(model.basin[n("up:DK04366")], inlaat_outlet_1708)
 model.link.add(inlaat_outlet_1708, model.basin[n("up:DK02627")])
 
 uitlaat_outlet_1569 = model.outlet.add(
-    Node(node_id=2345, geometry=Point(241738.30642, 513291.13972), name="Uitlaat"),
+    Node(geometry=Point(241738.30642, 513291.13972), name="Uitlaat"),
     tables=[outlet_data],
 )
 model.link.add(model.basin[n("down:DK20932")], uitlaat_outlet_1569)
@@ -1434,7 +1423,7 @@ if not (can_connect(from_node.node_type, "Outlet") and can_connect("Outlet", to_
         f"(nodes: {from_node.node_id} -> {to_node.node_id})."
     )
 extra_connection_node = model.outlet.add(
-    Node(node_id=2346, geometry=Point(241321.928, 486550.60)),
+    Node(geometry=Point(241321.928, 486550.60)),
     tables=[outlet_data],
 )
 model.link.add(from_node, extra_connection_node)
@@ -1448,7 +1437,7 @@ if not (can_connect(from_node.node_type, "Outlet") and can_connect("Outlet", to_
         f"(nodes: {from_node.node_id} -> {to_node.node_id})."
     )
 nieuwe_drostendiep_outlet = model.outlet.add(
-    Node(node_id=2347, geometry=Point(250205.53, 524562.22), name="Uitlaat Nieuwe Drostendiep"),
+    Node(geometry=Point(250205.53, 524562.22), name="Uitlaat Nieuwe Drostendiep"),
     tables=[outlet_data],
 )
 model.link.add(from_node, nieuwe_drostendiep_outlet)

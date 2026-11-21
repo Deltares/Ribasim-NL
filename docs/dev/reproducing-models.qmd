@@ -4,7 +4,7 @@ title: "Reproducing models"
 
 Until November 2026, scripts referred to the nodes and links of a model by their ID: the `01_fix_model.py` scripts and `model_edits.gpkg` files of the [gravity controlled](../workflow/gravity-controlled.qmd) models, and the feedback forms of the [level controlled](../workflow/level-controlled.qmd) models.
 A model that was rebuilt from its source data therefore had to get the same IDs, or all these references would break.
-They now refer to nodes by their [key](node-keys.qmd), which follows from the source data, but the models still get the same IDs: some scripts refer to areas and source data by row number or geometry, and the same IDs make runs comparable.
+They now refer to nodes by their [key](node-keys.qmd), which follows from the source data, and nothing gives a node a fixed ID anymore: a node gets the next free ID, and the tools that compare models and runs match nodes by key.
 This page describes how the input models of the gravity controlled ([#903](https://github.com/Deltares/Ribasim-NL/issues/903)) and level controlled models were reproduced, and the differences between library versions that were found on the way.
 
 ## The input models of the gravity controlled models
@@ -16,7 +16,7 @@ This code is ported to `ribasim_nl.lumping`, and the DVC pipeline runs it:
 - `pipeline/00b_lump_model.py` lumps the HyDAMO network of 10 water authorities into their input model.
 - `pipeline/noorderzijlvest/00_lump_model.py` lumps the D-HYDRO model of Noorderzijlvest.
 
-All node IDs and link IDs of the 11 input models are reproduced.
+All node IDs and link IDs of the 11 input models are reproduced, but for 21 basins that the lumping of 2024 left out, see [Moving fixes into the lumping](#sec-moving-fixes): 2 in De Dommel, 4 in Limburg and 15 in Vechtstromen. They get the IDs after those of the other nodes, and no longer the IDs that the fix scripts gave them.
 In Limburg, whose input data differs from the data of the run in 2024, 4 nodes get another name.
 The basin areas are no longer reproduced, since the lumping now gives every area to a basin, see [Moving fixes into the lumping](#sec-moving-fixes).
 
@@ -26,7 +26,7 @@ HKV made the input models `<authority>_boezemmodel_<version>` of the 10 level co
 Wetterskip Fryslân followed on 19 and 20 May 2025, at commit `50638080` of [#331](https://github.com/Deltares/Ribasim-NL/pull/331).
 This code is ported to `ribasim_nl.crossings`, together with the scripts that turned the data the water authorities delivered into the postprocessed data, see [Level controlled](../workflow/level-controlled.qmd).
 
-All node IDs, link IDs and tables of the 10 input models are reproduced from the deliveries, but for one pump of Wetterskip Fryslân, see below.
+All tables of the 10 input models are reproduced from the deliveries, but for one pump of Wetterskip Fryslân, and the node IDs of 7 of them, see [below](#the-node-ids).
 Some links to and from the boezems get another geometry, since they follow shortest paths, of which a few now take another route of the same length or have their vertices in another order, and some nodes and areas differ by less than a centimetre, see [GEOS](#sec-geos).
 
 ### The postprocessed data
@@ -52,14 +52,13 @@ Other findings:
 
 ### The node IDs
 
-`ribasim_nl.crossings.renumber` numbers the nodes and links of the input models after those of 2024, `verwerkt/boezemmodel_ids.gpkg`, to which the feedback forms, the feedback scripts and the coupling referred before they referred to nodes by their [key](node-keys.qmd).
-Basins match by the overlap of their areas, the other nodes by type and location, first those that connect the same Basins; nodes that are left match a node of the same type between the same Basins within 250 m.
-Unmatched nodes get IDs after the highest of 2024; links get the ID of the link between the same nodes.
+The input models keep the IDs that `ribasim_nl.crossings.model` gives their nodes and links, in the order of the crossings.
+Until the feedback forms, the feedback scripts and the coupling referred to nodes by their [key](node-keys.qmd), the nodes and links were numbered after those of the input models of 2024.
 The feedback step numbers the links anew, in their order, so a link that is added or removed before it shifts the IDs of the links after it; the scripts that follow refer to links by their nodes.
 
-With exactly the same postprocessed data, the input models have the same IDs, but the coordinate noise above swaps a few nodes at the same place: the renumbering changes 6 nodes of Amstel, Gooi en Vecht and 8 of Zuiderzeeland back.
+With exactly the same postprocessed data, 7 input models have the IDs of 2024. The coordinate noise above swaps a few nodes at the same place: 9 nodes of Amstel, Gooi en Vecht and 8 of Zuiderzeeland have another ID.
 The crossings of Wetterskip Fryslân of May 2025 cannot be reproduced: the same code on the same data finds some stacked crossings in another order, with numpy 2.2 and GEOS 3.13, with or without AVX2 and AVX-512, and so does the port.
-After the renumbering, 3852 of its 3853 nodes keep their ID; 9 of them, crossings that moved along the boundary of their peilgebied, are 4 to 134 m from where they were, and one pump that the feedback form does not use is gone.
+Of its 3852 nodes, 3033 have another ID than in 2025; 9 of them, crossings that moved along the boundary of their peilgebied, are 4 to 134 m from where they were, and one pump that the feedback form does not use is gone.
 
 In Hollandse Delta, a hydro-object crosses the boundary between peilgebieden 94 and 95 almost in parallel, so the direction of the crossing depends on rounding: GEOS 3.12 found it from 95 to 94, GEOS 3.14 also from 94 to 95.
 `pipeline/00c_parse_crossings.py` excludes the second, and checks that it is found.
@@ -137,10 +136,10 @@ The `01_fix_model.py` scripts correct the input models afterwards.
 Now that the pipeline makes the input models, most of these fixes can move into the lumping or its inputs, or the lumping algorithm can change, so that the input models are right from the start.
 These have moved:
 
-- **Lost basins.** The lumping of 2024 left out the basins whose ID was taken by a split node, and those at a LevelBoundary without split node, while links still referred to them. The fix scripts added them again, and removed the duplicate links. `ribasim_nl.lumping.model.number_lost_basins` now does that, with the IDs the fix scripts gave them.
+- **Lost basins.** The lumping of 2024 left out the basins whose ID was taken by a split node, and those at a LevelBoundary without split node, while links still referred to them. The fix scripts added them again, and removed the duplicate links. `ribasim_nl.lumping.model.number_lost_basins` now does that.
 - **Basin areas.** Every area of `verwerkt/3_input/areas.gpkg` goes to a basin, see `ribasim_nl.lumping.network.assign_areas`: the basin it drains to, or else the basin with whose areas it shares the longest border, preferably in its drainage area. Each basin gets one MultiPolygon, and gaps between them up to 5000 m² are filled. The fix scripts no longer fill holes from `verwerkt/4_ribasim/areas.gpkg`, which differed from it for 3 authorities. As their last step, they fill the holes that their own edits leave with `Model.fill_basin_area_holes`, by the same rules, which also checks that every Basin has a basin area. A Basin that a fix script adds gets its areas by their code, since the area that its node lies in can be far too small. Parts outside the model are excluded there, such as the Twentekanaal of the Rijkswaterstaat model in Vechtstromen.
+- **Node IDs.** They follow from the order of the boundaries, split nodes and basins, so a new split node renumbers all basins after it. The fix scripts, `model_edits.gpkg` and `pipeline/09_koppelen_modellen.py` refer to nodes by their [key](node-keys.qmd), so that no longer breaks them. Nothing gives a node a fixed ID anymore: the lost basins, and the nodes that the fix scripts and model edits add, get the next free ID.
 
 These remain:
 
 - **Edits of the lumping inputs.** Splitting basin areas with lines, or removing and renaming them with `model_edits.gpkg`, can become edits of the split nodes, boundaries and areas that the lumping reads, which have stable codes. The tolerant `Model.select_basin_area` only bridges until then. The area split lines of Stichtse Rijnlanden, for instance, were drawn on the basin areas of 2024. Splitting `areas.gpkg` along them before the lumping gives 20 of the 28 basins that need them an area by drainage.
-- **Node IDs.** They follow from the order of the boundaries, split nodes and basins, so a new split node renumbers all basins after it. The fix scripts, `model_edits.gpkg` and `pipeline/09_koppelen_modellen.py` refer to nodes by their [key](node-keys.qmd), so that no longer breaks them. What still gives nodes a fixed ID can go: the IDs of the lost basins, and the IDs that fix scripts give to the nodes they add.

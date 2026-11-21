@@ -588,11 +588,8 @@ set_flow_regime_control(
 # Het gemaal vervangt de noodpompen in droge perioden: het pompt als Amelisweerd in regime 1 zit, en de Lek te laag
 # staat voor de inlaat, die niet onder zijn min_upstream_level inlaat. De bovengrens op de Lek is dat level, dus bij het
 # peil van de LevelBoundary in het regionale model blijft het gemaal uit.
-# Vrije node IDs, want volgnummers zouden de IDs van de bergende Basins verschuiven, waar koppelen naar verwijst.
-GEMAAL_KROMME_RIJN, GEMAAL_KROMME_RIJN_CONTROL = 2106, 2107
 GEMAAL_KROMME_RIJN_FLOW_RATE = 9.0  # m3/s
 LEK_THRESHOLD_RANGE = 0.04  # m
-assert not {GEMAAL_KROMME_RIJN, GEMAAL_KROMME_RIJN_CONTROL} & set(model.node.df.index), "Expected free node IDs"
 
 lek, kromme_rijn = model.upstream_node_id(WIJK_BIJ_DUURSTEDE), model.downstream_node_id(WIJK_BIJ_DUURSTEDE)
 assert isinstance(lek, int | np.integer) and isinstance(kromme_rijn, int | np.integer)
@@ -603,7 +600,7 @@ lek_threshold = float(inlaat["min_upstream_level"].iloc[0])
 inlaat_point = cast(Point, model.node.df.at[WIJK_BIJ_DUURSTEDE, "geometry"])
 
 gemaal_node = model.pump.add(
-    Node(GEMAAL_KROMME_RIJN, Point(inlaat_point.x + 20, inlaat_point.y - 20), name="Gemaal Kromme Rijn"),
+    Node(geometry=Point(inlaat_point.x + 20, inlaat_point.y - 20), name="Gemaal Kromme Rijn"),
     [
         pump.Static(
             control_state=["gemaal aan", "gemaal uit"],
@@ -618,8 +615,7 @@ model.link.add(gemaal_node, model.get_node(int(kromme_rijn)))
 
 gemaal_control = model.discrete_control.add(
     Node(
-        GEMAAL_KROMME_RIJN_CONTROL,
-        Point(inlaat_point.x + 40, inlaat_point.y - 40),
+        geometry=Point(inlaat_point.x + 40, inlaat_point.y - 40),
         name=f"debiet Amelisweerd: {AMELISWEERD_THRESHOLDS[0]:.0f} [m3/s] en Lek: {lek_threshold} [m+NAP]",
     ),
     [
