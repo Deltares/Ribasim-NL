@@ -650,6 +650,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>flow_paths.branch_from_route(model, node_id, basin_id, towards_id, margin<span class="op">=</span><span class="fl">1.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Let the link from <code>basin_id</code> into <code>node_id</code> branch off the route between <code>basin_id</code> and <code>towards_id</code>.</p>
 <p>The branch starts at a Junction at the point of that route nearest to <code>node_id</code>, or at the existing Junction if that point is within <code>margin</code> of one, and runs straight to <code>node_id</code>. Returns the node id of that Junction.</p>
+<p>The link into <code>node_id</code> comes from the Basin, or from a Junction of its tree, see <code>Routes</code>: the regional models merge the links of a Basin into a tree where they share a route.</p>
 </section>
 <section id="ribasim_nl.flow_paths.branch_off_routes" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.branch_off_routes">branch_off_routes</h3>
