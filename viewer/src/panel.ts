@@ -36,7 +36,7 @@ import {
   type UsedWaters,
 } from "./fractions";
 import { LevelDiagram, type LevelSeries, type LevelSide } from "./levels";
-import { flowGraph, linkLabel, type Network, pastJunctions } from "./network";
+import { flowGraph, idLabel, type Network, pastJunctions } from "./network";
 import { fitFacts, loadFits, loadObservedLinks, type Fits } from "./observations";
 import { addSubstances } from "./timebar";
 
@@ -605,7 +605,7 @@ export class Panel {
   private linkLink(row: number, other: "from" | "to"): HTMLElement {
     const { linkId, linkType, fromNodeId, toNodeId } = this.network;
     const id = linkId[row];
-    const link = el("a", { href: "#" }, `${linkType[row]} link ${linkLabel(id)}`);
+    const link = el("a", { href: "#" }, `${linkType[row]} link ${idLabel(id)}`);
     link.addEventListener("click", (event) => {
       event.preventDefault();
       this.callbacks.select({ kind: "link", id });
@@ -652,6 +652,7 @@ export class Panel {
   private baseRow(selection: Selection, diff: FeatureDiff | undefined): Promise<Row> | undefined {
     if (diff?.status !== "changed") return undefined;
     const base = this.comparison!.base;
+    // Nodes and links are renumbered
     const baseId = diff.base_id ?? selection.id;
     const row = (selection.kind === "node" ? this.network.baseNodeRow : this.network.baseLinkRow).get(baseId);
     if (row === undefined) return undefined;
@@ -662,25 +663,27 @@ export class Panel {
   private async resultRows(kind: "basin" | "flow", id: number, diff: FeatureDiff | undefined): Promise<Row[]> {
     const idColumn = kind === "basin" ? "node_id" : "link_id";
     const source = this.source(diff).results;
-    // Removed links have their negated base id
-    const sourceId = diff?.status === "removed" && kind === "flow" ? -id : id;
+    // Removed nodes and links have their negated base id
+    const sourceId = Math.abs(id);
     const head = source ? await readRowsById(source[kind].by_id, idColumn, sourceId) : [];
     const base = this.comparison?.base.results;
     if (!base || diff?.status === "removed" || diff?.status === "added") return head;
-    // Links are renumbered, so also unchanged links can have another id in the base model
-    const baseId = kind === "flow" ? this.network.baseLinkId.get(id) : id;
+    // Nodes and links are renumbered, so also unchanged ones can have another id in the base model
+    const baseId = (kind === "flow" ? this.network.baseLinkId : this.network.baseNodeId).get(id);
     if (baseId === undefined) return head;
     return mergeOnTime(head, await readRowsById(base[kind].by_id, idColumn, baseId));
   }
 
   /** The concentration of a substance in a Basin, merged with that of the base model when both have it. */
   private async concentrationRows(id: number, substance: string, diff: FeatureDiff | undefined): Promise<Row[]> {
-    const read = async (set: ResultSet | undefined) =>
-      set && substance in set.variables ? readRowsById(set.by_id, "node_id", id, ["time", substance]) : [];
-    const head = await read(this.source(diff).results?.concentration);
+    const read = async (set: ResultSet | undefined, nodeId: number) =>
+      set && substance in set.variables ? readRowsById(set.by_id, "node_id", nodeId, ["time", substance]) : [];
+    // A removed Basin has its negated base id
+    const head = await read(this.source(diff).results?.concentration, Math.abs(id));
     const base = this.comparison?.base.results?.concentration;
-    if (!base || diff?.status === "removed" || diff?.status === "added") return head;
-    return mergeOnTime(head, await read(base));
+    const baseId = this.network.baseNodeId.get(id);
+    if (!base || diff?.status === "removed" || baseId === undefined) return head;
+    return mergeOnTime(head, await read(base, baseId));
   }
 
   /**
@@ -814,7 +817,7 @@ export class Panel {
   /** The label of a node of the shown model, like "Terminal #3". */
   private nodeName(id: number): string {
     const row = this.network.nodeRow.get(id);
-    return row === undefined ? `#${id}` : `${this.network.nodeType[row]} #${id}`;
+    return row === undefined ? idLabel(id) : `${this.network.nodeType[row]} ${idLabel(id)}`;
   }
 
   /** The Junctions in the Junction / static table of the shown model, which divide the flow they receive. */
@@ -989,9 +992,11 @@ export class Panel {
       const changed = diff?.status === "changed" && diff.changes.includes(name);
       const head = tables.find((table) => table.name === name);
       const baseTable = changed ? baseTables.find((table) => table.name === name) : undefined;
+      // A removed node has its negated base id, and a renumbered node has another id in the base model
+      const baseId = this.network.baseNodeId.get(nodeId);
       return [
-        ...(head ? [tableSection(head, nodeId, width, changed ? `${name} (changed)` : name)] : []),
-        ...(baseTable ? [tableSection(baseTable, nodeId, width, `${name}${BASE}`)] : []),
+        ...(head ? [tableSection(head, Math.abs(nodeId), width, changed ? `${name} (changed)` : name)] : []),
+        ...(baseTable && baseId !== undefined ? [tableSection(baseTable, baseId, width, `${name}${BASE}`)] : []),
       ];
     });
   }
@@ -1011,7 +1016,7 @@ export class Panel {
       const row = network.nodeRow.get(selection.id);
       if (row === undefined) return this.hide();
       const nodeType = network.nodeType[row];
-      sections.push(this.header(`${nodeType} #${selection.id}`, selection, diff), ...this.changes(selection, diff), attributes);
+      sections.push(this.header(`${nodeType} ${idLabel(selection.id)}`, selection, diff), ...this.changes(selection, diff), attributes);
 
       const incoming: HTMLElement[] = [];
       const outgoing: HTMLElement[] = [];
@@ -1114,7 +1119,7 @@ export class Panel {
       const row = network.linkRow.get(selection.id);
       if (row === undefined) return this.hide();
       sections.push(
-        this.header(`${network.linkType[row]} link ${linkLabel(selection.id)}`, selection, diff),
+        this.header(`${network.linkType[row]} link ${idLabel(selection.id)}`, selection, diff),
         el("p", {}, "From ", this.nodeLink(network.fromNodeId[row]), " to ", this.nodeLink(network.toNodeId[row])),
         ...this.changes(selection, diff),
         attributes,
@@ -1321,9 +1326,12 @@ export class Panel {
       this.observedLinks(nodeId, observedId),
       base?.observation ? loadObservedLinks(base.observation) : null,
     ]);
-    // Links are renumbered and can lead to renumbered nodes, so without the exported links of the base model, the
-    // outflows of the observed node, which keeps its id, are those of the base model
-    const baseOutflows = baseLinks?.get(nodeId) ?? network.baseOutflows.get(observedId) ?? [];
+    // Nodes and links are renumbered, so the Observation node and the observed node can have another id in the base
+    // model; without the exported links of the base model, the outflows of the observed node are those of that model
+    const baseNode = network.baseNodeId.get(nodeId);
+    const baseObserved = network.baseNodeId.get(observedId);
+    const inBase = <T>(map: Map<number, T> | null | undefined, id: number | undefined) => (id === undefined ? undefined : map?.get(id));
+    const baseOutflows = inBase(baseLinks, baseNode) ?? inBase(network.baseOutflows, baseObserved) ?? [];
     const columns = ["observed", "simulated", ...(base ? [`simulated${BASE}`] : [])];
     const variables = [...new Set(observations.map((observation) => String(observation.variable)))].sort((a, b) => a.localeCompare(b));
     if (variables.length === 0) return ["No observed values."];
@@ -1331,7 +1339,7 @@ export class Panel {
       variables.map(async (variable) => {
         const [simulated, baseSimulated] = await Promise.all([
           this.simulatedRows(results, observedType, observedId, variable, outflows),
-          this.simulatedRows(base, observedType, observedId, variable, baseOutflows),
+          baseObserved === undefined ? [] : this.simulatedRows(base, observedType, baseObserved, variable, baseOutflows),
         ]);
         const byTime = new Map<number, Row>();
         const add = (rows: Row[], column: string, value: (row: Row) => unknown) => {
@@ -1352,8 +1360,8 @@ export class Panel {
         const rows = [...byTime.values()].sort((a, b) => (a.time as Date).getTime() - (b.time as Date).getTime());
         const chart = timeChart(rows, width, columns);
         const title = `${variable} of ${observedType} #${observedId}`;
-        const fit = (model: Fits | null) => model?.get(variable)?.get(nodeId);
-        const facts = fits ? [fitFacts(fit(fits), fit(baseFits), results!.observation!.min_days, baseFits !== null)] : [];
+        const fit = (model: Fits | null, id: number | undefined) => inBase(model?.get(variable), id);
+        const facts = fits ? [fitFacts(fit(fits, nodeId), fit(baseFits, baseNode), results!.observation!.min_days, baseFits !== null)] : [];
         if (!chart) return [el("h4", {}, title), ...facts, "Too few values to chart."];
         return [
           el("h4", {}, title),

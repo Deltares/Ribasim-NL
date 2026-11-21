@@ -38,7 +38,8 @@ import {
   ALWAYS_SHOWN_TYPES,
   authorityName,
   authorityRows,
-  linkLabel,
+  idLabel,
+  idText,
   loadNetwork,
   loadSearchIndex,
   networkAuthorities,
@@ -567,7 +568,8 @@ class Viewer {
     // Observation nodes are colored, by how well their results fit the measurements, also compared with the base
     const kinds: Kind[] = this.comparison ? [] : ["flow", "basin"];
     if (results.observation) {
-      this.observations = await Observations.load(results.observation, this.comparison?.base.results?.observation);
+      const base = this.comparison?.base.results?.observation;
+      this.observations = await Observations.load(results.observation, base, (id) => this.network.baseNodeId.get(id));
       kinds.push("observation");
     }
     if (kinds.length === 0) return;
@@ -825,11 +827,11 @@ class Viewer {
     }
   }
 
-  /** The ids of the removed and changed Basin / areas in the base model. */
+  /** The ids in the base model of the removed and changed Basin / areas. */
   private baseAreaIds(): number[] {
     return [...(this.comparison?.diff.nodes ?? [])]
       .filter(([, diff]) => diff.status === "removed" || diff.changes.includes("Basin / area"))
-      .map(([id]) => id);
+      .flatMap(([id]) => this.network.baseNodeId.get(id) ?? []);
   }
 
   /** The outlines of the removed and changed Basin / areas in the base model. */
@@ -1233,12 +1235,12 @@ class Viewer {
           : nodeType === "Observation"
             ? this.observationTooltip(selection.id, info.index)
             : "";
-      return { text: `${nodeType} #${selection.id}${extra}${status}` };
+      return { text: `${nodeType} ${idLabel(selection.id)}${extra}${status}` };
     }
     const row = network.linkRow.get(selection.id)!;
     const extra = network.linkType[row] === "flow" ? value(this.flowColoring, "flow") : "";
     return {
-      text: `${network.linkType[row]} link ${linkLabel(selection.id)}\n${network.fromNodeId[row]} → ${network.toNodeId[row]}${extra}${status}`,
+      text: `${network.linkType[row]} link ${idLabel(selection.id)}\n${idText(network.fromNodeId[row])} → ${idText(network.toNodeId[row])}${extra}${status}`,
     };
   }
 
@@ -1500,7 +1502,7 @@ class Viewer {
       ? network.nodeType[network.nodeRow.get(selection.id)!]
       : network.linkType[network.linkRow.get(selection.id)!];
     return {
-      label: isNode ? `${type} #${selection.id}` : `${type} link ${linkLabel(selection.id)}`,
+      label: `${type}${isNode ? "" : " link"} ${idLabel(selection.id)}`,
       detail,
       symbol: isNode ? this.nodeSymbol(type) : this.linkSymbol(type),
       choose: () => {

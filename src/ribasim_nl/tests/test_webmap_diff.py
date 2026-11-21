@@ -149,6 +149,8 @@ def test_diff_models_renumbered_nodes(tmp_path):
         "4": {"status": "changed", "changes": ["LevelBoundary / static"], "base_id": 3},
     }
     assert diff["links"] == {}
+    # also of the unchanged Basin, to find its results in the base model
+    assert diff["base_node_ids"] == {"2": 1, "3": 2, "4": 3}
 
     # Without keys the same models differ in every node: nodes 2 and 3 are another node, 1 is removed and 4 added
     for toml in (base_toml, head_toml):
@@ -164,6 +166,7 @@ def test_diff_models_renumbered_nodes(tmp_path):
         "3": "changed",
         "4": "added",
     }
+    assert diff["base_node_ids"] == {}
 
 
 def test_node_translation():

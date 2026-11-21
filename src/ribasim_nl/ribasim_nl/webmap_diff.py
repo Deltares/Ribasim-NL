@@ -415,6 +415,8 @@ def diff_models(
     changes name the attribute columns, the tables, "geometry" or "Basin / area" that differ.
     Changed nodes and links have a `base_id` if they were renumbered. Removed nodes and links are keyed by their
     negated id in the base model, since that id may be used by another node or link in the head model.
+    `base_node_ids` has the id in the base model of every renumbered node in both models, changed or not, by its id
+    in the head model, to find its results and tables in the base model.
     If both models have results, `results` has the Basin levels and flow rates that differ per head id,
     see `compare_results`, otherwise it is None. Results whose links are not those of their model are outdated,
     and are not compared; `results_note` then says why. The labels name the models, by default their model names.
@@ -455,6 +457,7 @@ def diff_models(
     matched = translation[translation > 0]
     # The node_id in the base model of the nodes in both models, by their node_id in the head model
     base_node_ids = pd.Series(matched.index.to_numpy(), index=pd.Index(matched.to_numpy(), name="node_id"))
+    renumbered = base_node_ids[base_node_ids.to_numpy() != base_node_ids.index.to_numpy()]
     for node_id, changes in node_changes.items():
         if node_id in base_node_ids.index:
             entry = nodes.setdefault(node_id, {"status": "changed", "changes": []})
@@ -496,6 +499,7 @@ def diff_models(
         "config": compare_config(base_config, head_config),
         "nodes": {str(id): nodes[id] for id in sorted(nodes)},
         "links": {str(id): links[id] for id in sorted(links)},
+        "base_node_ids": {str(id): int(renumbered[id]) for id in sorted(renumbered.index)},
         "results": results,
         "results_note": results_note,
     }
