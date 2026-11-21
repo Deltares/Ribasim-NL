@@ -26,6 +26,7 @@ of `FIRST_KEYED_COMMIT` published.
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import urllib.parse
@@ -39,12 +40,25 @@ import pandas as pd
 import pyarrow.parquet as pq
 import requests
 from ribasim_nl.keys import AUTHORITY_COLUMN, KEY_COLUMN
-from ribasim_nl.webmap_publish import BUCKET_NAME, MINIO_SERVER, PREFIX, VIEWER_URL, export_hash, lock_at, snapshot_name
+from ribasim_nl.webmap_local import resolve_commit
+from ribasim_nl.webmap_publish import (
+    BUCKET_NAME,
+    MINIO_SERVER,
+    MODEL,
+    PREFIX,
+    STORED_FILE,
+    VIEWER_URL,
+    export_hash,
+    lock_at,
+    snapshot_name,
+)
 
 REPO_DIR = Path(__file__).resolve().parents[1]
 CACHE_DIR = REPO_DIR / ".cache" / "node_key"
 STORE_URL = f"https://{MINIO_SERVER}/{BUCKET_NAME}/{PREFIX}"
 MAIN = "origin/main"
+# The manifest of a snapshot of the model viewer, see `ribasim_nl.webmap_publish.snapshot_name`
+SNAPSHOT = re.compile(rf"{re.escape(MODEL)}/snapshots/[0-9a-f]{{32}}/manifest\.json")
 # The first run of main in which the nodes have a key, of #1067
 FIRST_KEYED_COMMIT = "cdecdaf91bc715377e2293c821c79ddf8381acba"
 NODE_COLUMNS = ["node_id", "node_type", "name", "x", "y", KEY_COLUMN, AUTHORITY_COLUMN]
@@ -84,12 +98,16 @@ class Version:
 
 def git(*args: str) -> str:
     """Run a git command in this repository and return its stripped output."""
-    return subprocess.run(["git", *args], check=True, capture_output=True, text=True, cwd=REPO_DIR).stdout.strip()
+    # The arguments are constants, the hash of a commit, see `resolve`, and a formatted date, see `main_on`
+    result = subprocess.run(["git", *args], check=True, capture_output=True, text=True, cwd=REPO_DIR)  # NOSONAR
+    return result.stdout.strip()
 
 
 def resolve(revision: str) -> str:
     """The commit hash of a git revision."""
-    return git("rev-parse", "--verify", "--end-of-options", f"{revision}^{{commit}}")
+    commit = resolve_commit(revision, REPO_DIR)
+    assert commit is not None, f"{revision} is not a git revision of this repository"
+    return commit
 
 
 def main_on(date: str) -> str:
@@ -106,9 +124,12 @@ def download(name: str) -> Path:
 
     Raises a FileNotFoundError if the model viewer has no such file.
     """
+    # The name comes from a manifest: only the manifest of a snapshot and the files it stores are read
+    is_file = name.startswith("files/") and STORED_FILE.fullmatch(name.removeprefix("files/"))
+    assert is_file or SNAPSHOT.fullmatch(name), f"Not a file of a model in the model viewer: {name}"
     path = CACHE_DIR / name
     if not path.is_file():
-        response = requests.get(STORE_URL + name, timeout=300)
+        response = requests.get(STORE_URL + name, timeout=300)  # NOSONAR: the name is checked above
         if response.status_code == 404:
             raise FileNotFoundError(STORE_URL + name)
         response.raise_for_status()

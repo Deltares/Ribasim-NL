@@ -4,10 +4,12 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
 from node_key import (
     Version,
+    download,
     lookup_link,
     lookup_node,
     match_keyless,
@@ -179,3 +181,10 @@ def test_report():
         "| 1 | Outlet | a\\|b | [AGV:KST 1\\|x>y](https://ribasim.nl/viewer#node=AGV:KST%201%7Cx%3Ey) | 1 | key |"
     )
     assert lines[3] == "| 2 |  |  |  |  | not a node of this model |"
+
+
+@pytest.mark.parametrize("name", ["files/../../secret.txt", "../x.parquet", "files/abc.parquet/..", "main.json"])
+def test_download_only_reads_model_files(name):
+    """Names from a manifest cannot reach other files of the server, or outside the cache."""
+    with pytest.raises(AssertionError, match="Not a file of a model"):
+        download(name)
