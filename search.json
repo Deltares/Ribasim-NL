@@ -1425,7 +1425,7 @@
     "href": "dev/dvc.html#clean-up-the-remote",
     "title": "DVC (Data Version Control)",
     "section": "Clean up the remote",
-    "text": "Clean up the remote\nEvery run pushes its outputs, so the remote fills up. To delete the data that no kept commit uses:\npixi run prune-remote           # list what it would delete in logs/prune-remote\npixi run prune-remote --delete  # delete it\nIt keeps the data of:\n\nthe last 30 runs of main, its last commits that changed dvc.lock;\nevery version of the source data, the .dvc files of all commits of main;\nall commits of open pull requests, and the tips of branches that are not merged;\neverything uploaded in the last 3 days, such as a run that is pushed but not committed yet.\n\nPreviews in the model viewer are kept for the runs it keeps, and for the last 30 pull requests that have one. An older commit of main can no longer pull its outputs, but they can be reproduced from its source data. Do not use dvc gc: git worktrees share the cache of the main checkout, which it would also clean, and it has no grace period. See Reproducing pull requests for how the full runs of pull requests and of main are recorded.",
+    "text": "Clean up the remote\nEvery run pushes its outputs, so the remote fills up. To delete the data that no kept commit uses:\npixi run prune-remote           # list what it would delete in logs/prune-remote\npixi run prune-remote --delete  # delete it\nIt keeps the data of:\n\nthe last 30 runs of main, its last commits that changed dvc.lock;\nevery version of the source data, the .dvc files of all commits of main;\nall commits of open pull requests, and the tips of branches that are not merged;\neverything uploaded in the last 3 days, such as a run that is pushed but not committed yet.\n\nPreviews in the model viewer are kept for the runs it keeps, for the last 30 pull requests that have one, and for the first model with keys, with which older node IDs are looked up. An older commit of main can no longer pull its outputs, but they can be reproduced from its source data. Do not use dvc gc: git worktrees share the cache of the main checkout, which it would also clean, and it has no grace period. See Reproducing pull requests for how the full runs of pull requests and of main are recorded.",
     "crumbs": [
       "Contributing",
       "Running the pipeline",
@@ -1638,6 +1638,18 @@
     "title": "Node keys",
     "section": "Add a node",
     "text": "Add a node\nA node that a script adds gets the next free node ID, and a key by the rules above. Do not give it a node ID, and give it a key yourself where it is referred to later, so that the reference reads well:\nmodel.outlet.add(Node(geometry=Point(152150, 365169), meta_key=\"inlaat-keersop\"), tables=[...])\nA node that replaces another one, such as a FlowBoundary that becomes a LevelBoundary, gets the key of the node it replaces.",
+    "crumbs": [
+      "Contributing",
+      "Running the pipeline",
+      "Node keys"
+    ]
+  },
+  {
+    "objectID": "dev/node-keys.html#find-a-node-by-an-old-node-id",
+    "href": "dev/node-keys.html#find-a-node-by-an-old-node-id",
+    "title": "Node keys",
+    "section": "Find a node by an old node ID",
+    "text": "Find a node by an old node ID\nIssues, pull requests and feedback of water authorities name nodes by the node ID of the model of that moment. To find such a node in the latest model, give its ID with the date on which it was right, or with the commit of a link to the model viewer:\npixi run node-key 1100540 1100695 --date 2026-11-19\npixi run node-key 203892 --commit 21ce19f26c\npixi run node-key --link 1100306 --date 2026-11-19\nIt prints a Markdown table with the key of each node, its node ID now, and a link to it in the model viewer:\n\n\n\nnode ID\ntype\nname\nkey\nnode ID now\nmatched by\n\n\n\n\n1100540\nPump\nPoldergemaal Dooijersluis\nAmstelGooienVecht:KGM00534\n1100540\nname\n\n\n1100695\nOutlet\n\nAmstelGooienVecht:KST00098\n1100695\nnode ID, 125 m away\n\n\n\nLeave the issue as it was written, and add the table as a comment.\n\n--date takes the model of main at the end of that day. Without a date or commit, the IDs are those of the latest model.\nA link has no key, so --link finds it by its nodes.\nThe nodes are read from the model of the commit in the model viewer. That needs no credentials, but the model must still be published there.\nModels from before November 2026 have no keys. Their nodes are matched with the first model with keys: by location, else by name, else by node ID. The table says which. Check a node that is matched by its ID and moved far. A Junction is only matched by its location, since the Junction trees are rebuilt in every run.",
     "crumbs": [
       "Contributing",
       "Running the pipeline",

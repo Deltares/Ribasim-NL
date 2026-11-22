@@ -295,6 +295,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#the-key-of-a-node" id="toc-the-key-of-a-node" class="nav-link active" data-scroll-target="#the-key-of-a-node">The key of a node</a></li>
   <li><a href="#refer-to-a-node" id="toc-refer-to-a-node" class="nav-link" data-scroll-target="#refer-to-a-node">Refer to a node</a></li>
   <li><a href="#add-a-node" id="toc-add-a-node" class="nav-link" data-scroll-target="#add-a-node">Add a node</a></li>
+  <li><a href="#find-a-node-by-an-old-node-id" id="toc-find-a-node-by-an-old-node-id" class="nav-link" data-scroll-target="#find-a-node-by-an-old-node-id">Find a node by an old node ID</a></li>
   <li><a href="#not-a-node-id" id="toc-not-a-node-id" class="nav-link" data-scroll-target="#not-a-node-id">Not a node ID</a></li>
   </ul>
 </nav>
@@ -504,6 +505,51 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>A node that a script adds gets the next free node ID, and a key by the rules above. Do not give it a node ID, and give it a key yourself where it is referred to later, so that the reference reads well:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>model.outlet.add(Node(geometry<span class="op">=</span>Point(<span class="dv">152150</span>, <span class="dv">365169</span>), meta_key<span class="op">=</span><span class="st">"inlaat-keersop"</span>), tables<span class="op">=</span>[...])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>A node that replaces another one, such as a FlowBoundary that becomes a LevelBoundary, gets the key of the node it replaces.</p>
+</section>
+<section id="find-a-node-by-an-old-node-id" class="level2">
+<h2 class="anchored" data-anchor-id="find-a-node-by-an-old-node-id">Find a node by an old node ID</h2>
+<p>Issues, pull requests and feedback of water authorities name nodes by the node ID of the model of that moment. To find such a node in the latest model, give its ID with the date on which it was right, or with the commit of a link to the <a href="../dev/viewer.html#links-to-a-version">model viewer</a>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run node-key 1100540 1100695 <span class="at">--date</span> 2026-11-19</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run node-key 203892 <span class="at">--commit</span> 21ce19f26c</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run node-key <span class="at">--link</span> 1100306 <span class="at">--date</span> 2026-11-19</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>It prints a Markdown table with the key of each node, its node ID now, and a link to it in the model viewer:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>node ID</th>
+<th>type</th>
+<th>name</th>
+<th>key</th>
+<th>node ID now</th>
+<th>matched by</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1100540</td>
+<td>Pump</td>
+<td>Poldergemaal Dooijersluis</td>
+<td><a href="https://ribasim.nl/viewer#node=AmstelGooienVecht:KGM00534">AmstelGooienVecht:KGM00534</a></td>
+<td>1100540</td>
+<td>name</td>
+</tr>
+<tr class="even">
+<td>1100695</td>
+<td>Outlet</td>
+<td></td>
+<td><a href="https://ribasim.nl/viewer#node=AmstelGooienVecht:KST00098">AmstelGooienVecht:KST00098</a></td>
+<td>1100695</td>
+<td>node ID, 125 m away</td>
+</tr>
+</tbody>
+</table>
+<p>Leave the issue as it was written, and add the table as a comment.</p>
+<ul>
+<li><code>--date</code> takes the model of <code>main</code> at the end of that day. Without a date or commit, the IDs are those of the latest model.</li>
+<li>A link has no key, so <code>--link</code> finds it by its nodes.</li>
+<li>The nodes are read from the model of the commit in the model viewer. That needs no credentials, but the model must still be published there.</li>
+<li>Models from before November 2026 have no keys. Their nodes are matched with the first model with keys: by location, else by name, else by node ID. The table says which. Check a node that is matched by its ID and moved far. A Junction is only matched by its location, since the Junction trees are rebuilt in every run.</li>
+</ul>
 </section>
 <section id="not-a-node-id" class="level2">
 <h2 class="anchored" data-anchor-id="not-a-node-id">Not a node ID</h2>
