@@ -3,7 +3,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 import shapely
-from ribasim_nl.geometry import connected_parts, line_between, polygon_parts, union_polygons, without_slivers
+from ribasim_nl.geometry import (
+    connected_parts,
+    left_of_end,
+    line_between,
+    polygon_parts,
+    union_polygons,
+    without_slivers,
+)
 from shapely.geometry import GeometryCollection, LineString, MultiPolygon, Point, Polygon, box
 
 
@@ -55,3 +62,17 @@ def test_line_between():
     assert list(line_between(line, Point(2, 0), Point(4, 0)).coords) == [(2, 0), (4, 0)]
     with pytest.raises(AssertionError, match="must lie before"):
         line_between(line, Point(10, 5), Point(5, 1))
+
+
+def test_left_of_end():
+    # square to the last segment with a length
+    assert left_of_end(LineString([(0, 0), (10, 0), (10, 0)]), 20).equals(Point(10, 20))
+    # a link of which the offset curve breaks into parts at its sharp bends, of which the last one ends near its start
+    end = np.array([495, -252])
+    line = LineString([(0, 0), (-5, -10), (-4, -10), (-4, -6), (0, -33), tuple(end)])
+    assert line.parallel_offset(20, "left").geom_type == "MultiLineString"
+    offset = np.array(left_of_end(line, 20).coords[0]) - end
+    direction = end - np.array([0, -33])
+    assert np.hypot(*offset) == pytest.approx(20)
+    assert np.dot(offset, direction) == pytest.approx(0, abs=1e-9)
+    assert direction[0] * offset[1] - direction[1] * offset[0] > 0  # on the left

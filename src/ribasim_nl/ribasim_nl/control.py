@@ -30,6 +30,7 @@ from ribasim_nl.coupling_level_common import (
     truthy,
 )
 from ribasim_nl.downstream import downstream_nodes
+from ribasim_nl.seasonal_levels import set_season_thresholds
 
 LOG = logging.getLogger(__name__)
 
@@ -2325,6 +2326,20 @@ def set_continuous_level_control(
 DEFAULT_LEVEL_STEP_HYSTERESIS = 0.0025  # m
 
 
+def _validate_level_steps(node_id: int, threshold_high: pd.Series, threshold_low: pd.Series) -> None:
+    """Check the levels at which the steps of `set_discrete_level_control` switch on and off.
+
+    A step can only be on while the steps below it are, so each step switches off above where the one below switches
+    on, and the truth states are a run of T followed by F.
+    """
+    high, low = threshold_high.to_numpy(dtype=float), threshold_low.to_numpy(dtype=float)
+    if not (all(map(math.isfinite, [*high, *low])) and (low < high).all() and (low[1:] >= high[:-1]).all()):
+        raise ValueError(
+            f"Expected finite levels for node {node_id} that ascend by more than their hysteresis, "
+            f"got on/off {list(zip(high.tolist(), low.tolist(), strict=True))}"
+        )
+
+
 def set_discrete_level_control(
     model: Model,
     node_id: int,
@@ -2333,6 +2348,7 @@ def set_discrete_level_control(
     flow_rate: Sequence[float],
     *,
     hysteresis: float | Sequence[float] = DEFAULT_LEVEL_STEP_HYSTERESIS,
+    season_thresholds: Mapping[str, Sequence[tuple[float, float]]] | None = None,
     min_upstream_level: float = -math.inf,
     max_downstream_level: float = math.inf,
     name: str | None = None,
@@ -2352,6 +2368,9 @@ def set_discrete_level_control(
     :param level: ascending levels [m+NAP] at which the steps switch on
     :param flow_rate: flow rates [m3/s] below the first level and above each level, one more than `level`
     :param hysteresis: how far below its level each step switches off [m], for all steps or per step
+    :param season_thresholds: per season, the levels [m+NAP] at which each step switches on and off, as
+        (threshold_high, threshold_low), instead of `level` and `hysteresis` following the target level of the Basin
+        over the year, see `ribasim_nl.seasonal_levels.set_season_thresholds`
     :param min_upstream_level: min_upstream_level of the node
     :param max_downstream_level: max_downstream_level of the node
     :param name: name of the DiscreteControl node
@@ -2368,15 +2387,12 @@ def set_discrete_level_control(
     if len(hysteresis_series) != len(threshold_high) or not hysteresis_series.gt(0).all():
         raise ValueError(f"Expected a positive hysteresis per level for node {node_id}, got {hysteresis}")
     threshold_low = threshold_high - hysteresis_series
-    # A step can only be on while the steps below it are, so each step switches off above where the one below
-    # switches on, and the truth states are a run of T followed by F.
-    if not (
-        threshold_high.map(math.isfinite).all()
-        and (threshold_low.iloc[1:].to_numpy() >= threshold_high.iloc[:-1].to_numpy()).all()
-    ):
-        raise ValueError(
-            f"Expected finite levels for node {node_id} that ascend by more than their hysteresis, got {list(level)}"
-        )
+    _validate_level_steps(node_id, threshold_high, threshold_low)
+    for season, pairs in (season_thresholds or {}).items():
+        if len(pairs) != len(threshold_high):
+            raise ValueError(f"Expected {len(threshold_high)} thresholds for node {node_id} in {season}, got {pairs}")
+        season_high, season_low = (pd.Series(values, dtype=float) for values in zip(*pairs, strict=True))
+        _validate_level_steps(node_id, season_high, season_low)
     if not (flow_rates.map(math.isfinite).all() and flow_rates.ge(0).all()):
         raise ValueError(f"Expected finite, non-negative flow rates for node {node_id}, got {list(flow_rate)}")
     max_flow_rate = float(flow_rates.max())
@@ -2412,4 +2428,6 @@ def set_discrete_level_control(
     condition_df = model.discrete_control.condition.df
     assert condition_df is not None
     mark_threshold_update_protected(condition_df, condition_df.node_id == control_id)
+    if season_thresholds is not None:
+        set_season_thresholds(model, control_id, season_thresholds)
     return control_id

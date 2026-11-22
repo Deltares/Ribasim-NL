@@ -238,8 +238,11 @@ ribasim_model.node.df.loc[appelscha_control_ids, "name"] = "uitlaat: 9.40/9.38 [
 # with the relations of the Landelijk Sobek Model (LSM3), see https://github.com/Deltares/Ribasim-NL/issues/878.
 # The Pikmeer is far from these structures in the model, so the Basins next to them get safety limits around the
 # streefpeil of -0.52 m NAP, with which inlets do not overfill them and drains do not empty them.
-# Makkum, Workum and Hindelopen keep their DiscreteControl.
+# Makkum, Workum and Hindelopen keep their DiscreteControl. The relations are tuned to the measured discharges, see
+# https://github.com/Deltares/Ribasim-NL/issues/1060. Teroelsterkolk reacts to the Basin it lets in to, rather than to
+# the Pikmeer.
 PIKMEER_BASIN = n("PBH0248142/1")
+TEROELSTERKOLK_BASIN = n("PBH0099100")
 
 
 class LevelControlOptions(TypedDict, total=False):
@@ -253,26 +256,42 @@ class LevelControlOptions(TypedDict, total=False):
 INLET_LIMIT: LevelControlOptions = {"max_downstream_level": -0.45}
 DRAIN_LIMIT: LevelControlOptions = {"min_upstream_level": -0.60}
 LAUWERSMEER_LIMIT: LevelControlOptions = {"max_downstream_level": -0.60}
-# (node_id, name, [(level [m+NAP], flow_rate [m3/s]), ...], keyword arguments)
-BOEZEM_CONTROLS: tuple[tuple[int, str, list[tuple[float, float]], LevelControlOptions], ...] = (
+# (node_id, name, listen_node_id, [(level [m+NAP], flow_rate [m3/s]), ...], keyword arguments)
+BOEZEM_CONTROLS: tuple[tuple[int, str, int, list[tuple[float, float]], LevelControlOptions], ...] = (
     (
         n("loc:174961,539814"),
         "inlaat: Lemmer/Teroelsterkolk",
+        TEROELSTERKOLK_BASIN,
         [(-1.0, 46), (-0.55, 46), (-0.53, 23), (-0.52, 0)],
         INLET_LIMIT,
     ),
-    (n("ow:OAF-F1021392"), "inlaat: Tacozijl", [(-1.0, 23), (-0.56, 23), (-0.54, 11), (-0.53, 0)], INLET_LIMIT),
+    (
+        n("ow:OAF-F1021392"),
+        "inlaat: Tacozijl",
+        PIKMEER_BASIN,
+        [(-1.0, 35), (-0.56, 30), (-0.54, 23), (-0.53, 11), (-0.52, 0)],
+        INLET_LIMIT,
+    ),
     (
         n("loc:153406,543502"),
         "inlaat: Stavoren",
-        [(-1.0, 33), (-0.65, 33), (-0.61, 22), (-0.58, 11), (-0.56, 5.5), (-0.54, 0)],
+        PIKMEER_BASIN,
+        [(-1.0, 33), (-0.65, 33), (-0.61, 22), (-0.58, 11), (-0.56, 5.5), (-0.54, 3), (-0.53, 0)],
         INLET_LIMIT,
     ),
-    (n("KGM0000014"), "uitlaat: Woudagemaal", [(-1.0, 0), (-0.5, 0), (-0.47, 65), (-0.42, 72)], DRAIN_LIMIT),
+    # The Woudagemaal only pumps when the other gemalen fall short
+    (
+        n("KGM0000014"),
+        "uitlaat: Woudagemaal",
+        PIKMEER_BASIN,
+        [(-1.0, 0), (-0.5, 0), (-0.40, 0), (-0.39, 72)],
+        DRAIN_LIMIT,
+    ),
     (
         n("loc:153456,543428"),
         "uitlaat: Hooglandgemaal",
-        [(-1.0, 0), (-0.5, 0), (-0.47, 76), (-0.42, 116)],
+        PIKMEER_BASIN,
+        [(-1.0, 0), (-0.49, 0), (-0.47, 116), (-0.42, 122.5)],
         DRAIN_LIMIT,
     ),
     # The drains below are closed under -0.52 m NAP, so level control takes priority over flushing (doorspoeling).
@@ -280,26 +299,30 @@ BOEZEM_CONTROLS: tuple[tuple[int, str, list[tuple[float, float]], LevelControlOp
     (
         n("ow:OAF-F1021117"),
         "uitlaat: Harlingen",
-        [(-1.0, 0), (-0.53, 0), (-0.52, 5.1), (-0.50, 10), (-0.42, 30)],
+        PIKMEER_BASIN,
+        [(-1.0, 0), (-0.53, 0), (-0.52, 5.1), (-0.50, 10), (-0.40, 30)],
         DRAIN_LIMIT | {"node_type": "Pump"},
     ),
+    # The stuw drains before the schutsluis, which only takes the peaks
     (
         n("loc:206421,592530"),
         "uitlaat: Dokkumer Nieuwe Zijlen schutsluis",
-        [(-1.0, 0), (-0.53, 0), (-0.52, 1.8), (-0.50, 5.8), (-0.42, 12)],
+        PIKMEER_BASIN,
+        [(-1.0, 0), (-0.53, 0), (-0.52, 0), (-0.50, 0), (-0.40, 30)],
         DRAIN_LIMIT | LAUWERSMEER_LIMIT,
     ),
     (
         n("loc:206360,592679"),
         "uitlaat: Dokkumer Nieuwe Zijlen stuw",
-        [(-1.0, 0), (-0.53, 0), (-0.52, 4), (-0.50, 6), (-0.42, 22)],
+        PIKMEER_BASIN,
+        [(-1.0, 0), (-0.53, 0), (-0.52, 5.8), (-0.50, 22), (-0.40, 60)],
         DRAIN_LIMIT | LAUWERSMEER_LIMIT,
     ),
 )
-for node_id, name, points, kwargs in BOEZEM_CONTROLS:
+for node_id, name, listen_node_id, points, kwargs in BOEZEM_CONTROLS:
     levels, flow_rates = zip(*points, strict=True)
     set_continuous_level_control(
-        ribasim_model, node_id, PIKMEER_BASIN, level=levels, flow_rate=flow_rates, name=name, **kwargs
+        ribasim_model, node_id, listen_node_id, level=levels, flow_rate=flow_rates, name=name, **kwargs
     )
 
 # The inlets from the IJsselmeer have no name in the source data, see https://github.com/Deltares/Ribasim-NL/issues/1010

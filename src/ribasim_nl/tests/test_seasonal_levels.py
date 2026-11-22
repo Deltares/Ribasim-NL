@@ -16,6 +16,7 @@ from ribasim_nl.seasonal_levels import (
     season_switch,
     seasonal_differences,
     seasonal_thresholds,
+    set_season_thresholds,
 )
 from shapely.geometry import MultiPolygon, Point, Polygon, box
 
@@ -257,6 +258,80 @@ def test_seasonal_thresholds():
     # in winter, and in summer with the bounds of the target level
     np.testing.assert_allclose(low, [[-0.725, -0.6], [0.675, 0.45], [-0.71, -0.51]])
     np.testing.assert_allclose(high, [[-0.675, -0.45], [0.725, 0.6], [-0.69, -0.49]])
+
+
+def test_given_seasonal_thresholds():
+    regimes = pd.DataFrame(
+        {
+            "meta_streefpeil": [-0.5],
+            **{
+                f"{level}_{season}": [-0.5]
+                for level in ("streefpeil", "ondergrens", "bovengrens")
+                for season in SEASONS
+            },
+        },
+        index=[1],
+    )
+    conditions = pd.DataFrame(
+        {
+            "basin": [1, 1],
+            "weight": [1.0, 1.0],
+            "threshold_low": [-0.5025, -0.5025],
+            "threshold_high": [-0.5, -0.5],
+            # the second condition switches at other levels in winter only
+            "meta_threshold_low_winter": [np.nan, -0.5275],
+            "meta_threshold_high_winter": [np.nan, -0.52],
+        }
+    )
+    low, high = seasonal_thresholds(conditions, seasonal_differences(regimes), pd.Series([0.0, 1.0]))
+    np.testing.assert_allclose(low, [[-0.5025, -0.5025], [-0.5275, -0.5025]])
+    np.testing.assert_allclose(high, [[-0.5, -0.5], [-0.52, -0.5]])
+
+
+def test_set_season_thresholds(model):
+    # the drain switches at its own levels in each season, rather than following the target level
+    set_season_thresholds(model, AAM + 7, {"zomer": [(-0.49, -0.5)], "winter": [(-0.68, -0.7)]})
+    fixed = control_tables_of(model)
+    apply_seasonal_levels(model, peilgebied(summer=-0.5, winter=-0.7))
+    condition = model.discrete_control.condition.df.set_index(["node_id", "compound_variable_id"])
+    drain = condition.loc[(AAM + 7, 1)]
+    assert drain["threshold_high"].tolist() == pytest.approx([-0.68, -0.49, -0.68, -0.68])
+    assert drain["threshold_low"].tolist() == pytest.approx([-0.7, -0.5, -0.7, -0.7])
+    assert drain["meta_fixed_threshold_high"].tolist() == pytest.approx([-0.475] * 4)
+    # the inlet still follows the target level
+    inlet = condition.loc[(AAM + 6, 1)]
+    assert inlet["threshold_high"].tolist() == pytest.approx([-0.675, -0.475, -0.675, -0.675])
+    # without the seasons, the drain has its fixed thresholds and keeps those per season
+    remove_seasonal_levels(model)
+    for name, df in control_tables_of(model).items():
+        pd.testing.assert_frame_equal(df, fixed[name], check_dtype=False)
+
+
+def test_set_season_thresholds_without_level_management(model):
+    with pytest.raises(AssertionError, match="thresholds"):
+        set_season_thresholds(model, AAM + 7, {"zomer": [(-0.49, -0.5)]})
+    # a condition on a Basin without a level management has no seasons to switch between
+    variable = model.discrete_control.variable.df
+    variable.loc[variable["node_id"] == AAM + 7, "variable"] = "flow_rate"
+    set_season_thresholds(model, AAM + 7, {"zomer": [(-0.49, -0.5)], "winter": [(-0.68, -0.7)]})
+    with pytest.raises(AssertionError, match="Thresholds per season"):
+        apply_seasonal_levels(model, peilgebied(summer=-0.5, winter=-0.7))
+
+
+def test_flow_regime_without_seasons(model):
+    # a DiscreteControl that only listens to a flow rate sets the levels of its control states for the whole year
+    variable = model.discrete_control.variable.df
+    variable.loc[variable["node_id"] == AAM + 7, ["listen_node_id", "variable"]] = [AAM + 2, "flow_rate"]
+    apply_seasonal_levels(model, peilgebied(summer=-0.5, winter=-0.7))
+    static = model.outlet.static.df
+    assert set(static.loc[static["node_id"] == AAM + 4, "control_state"]) == {"aanvoer", "afvoer"}
+    assert static.loc[static["node_id"] == AAM + 4, "min_upstream_level"].tolist() == pytest.approx([-0.5, -0.5])
+    assert set(static.loc[static["node_id"] == AAM + 2, "control_state"]) == {
+        "aanvoer winter",
+        "aanvoer zomer",
+        "afvoer winter",
+        "afvoer zomer",
+    }
 
 
 def test_apply_seasonal_levels(model, tmp_path):

@@ -12,6 +12,7 @@ from ribasim_nl.validation import (
     _manning_resistance_issues,
     _observation_distance_issues,
     _uncontrolled_control_state_issues,
+    _unused_listen_link_issues,
     _user_demand_return_factor_issues,
 )
 from shapely.geometry import MultiPolygon, Point, Polygon, box
@@ -218,6 +219,17 @@ def test_uncontrolled_control_states(controlled_outlet_model):
     issues = _uncontrolled_control_state_issues(model)
     assert len(issues) == 1
     assert "Outlet" in issues[0] and "[2]" in issues[0]
+
+
+def test_unused_listen_link(controlled_outlet_model):
+    model = controlled_outlet_model
+    assert _unused_listen_link_issues(model) == []
+    # Ribasim keeps the listen link when the DiscreteControl listens to another node
+    model.discrete_control.variable.df.loc[model.discrete_control.variable.df.node_id == 4, "listen_node_id"] = 8
+    (link_id,) = model.link.df.index[model.link.df.link_type == "listen"]
+    assert _unused_listen_link_issues(model) == [
+        f"Listen links must lead to a control node that listens to their node; invalid link IDs: [{link_id}]"
+    ]
 
 
 def test_flow_demand_capacity(controlled_outlet_model):

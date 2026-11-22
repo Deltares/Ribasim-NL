@@ -29,7 +29,14 @@ from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.downstream import downstream_nodes
-from ribasim_nl.geometry import polygon_parts, split_basin, split_line, union_polygons, without_slivers
+from ribasim_nl.geometry import (
+    left_of_end,
+    polygon_parts,
+    split_basin,
+    split_line,
+    union_polygons,
+    without_slivers,
+)
 from ribasim_nl.keys import AUTHORITY_COLUMN, KEY_COLUMN, NODE_ARGUMENTS, fill_keys, validate_keys
 from ribasim_nl.lumping.hydamo import read_areas
 from ribasim_nl.lumping.network import fill_holes
@@ -623,11 +630,7 @@ class Model(ribasim.Model):
                 raise TypeError(f"to_node_id is a list ({to_node_id}. node_geom should be defined (is None))")
             else:
                 linestring = self.link.df[self.link.df["to_node_id"] == to_node_id].iloc[0].geometry
-                lo = linestring.parallel_offset(node_offset, "left")
-                if lo.geom_type == "MultiLineString":
-                    node_geom = Point(lo.geoms[-1].coords[-1])
-                else:
-                    node_geom = Point(lo.coords[-1])
+                node_geom = left_of_end(linestring, node_offset)
                 to_node_id = [to_node_id]
 
         if node_id is None:

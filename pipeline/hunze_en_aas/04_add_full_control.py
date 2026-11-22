@@ -96,7 +96,9 @@ ALWAYS_ON_PUMP_MIN_FLOW_RATE_BY_NODE_ID: dict[int, float] = {}
 ALWAYS_ON_PUMP_MAX_DOWNSTREAM_LEVEL: float = 99999.0
 ALWAYS_ON_PUMP_MIN_UPSTREAM_LEVEL_OFFSET: float = -1.0
 DORKWERD_PUMP_NODE_ID = n("KGM-E-11350")
-DORKWERD_LISTEN_KEY = "up:KSL-D-00001"
+# Dorkwerd pumps on the level of the Basin it pumps into at Groningen, rather than of the Eemskanaal at Delfzijl, see
+# https://github.com/Deltares/Ribasim-NL/issues/1060
+DORKWERD_LISTEN_KEY = "up:KIN-E-00001"
 DORKWERD_LISTEN_NODE_ID = n(DORKWERD_LISTEN_KEY)
 DORKWERD_THRESHOLD_LOW = 0.533 - LEVEL_THRESHOLD_RANGE / 2
 DORKWERD_THRESHOLD_HIGH = 0.533 + LEVEL_THRESHOLD_RANGE / 2
@@ -176,6 +178,10 @@ def configure_dorkwerd_control(model: Model) -> None:
         raise ValueError(f"Expected one discrete control condition row for Dorkwerd control {control_node_id}")
 
     model.discrete_control.variable.df.loc[variable_mask, "listen_node_id"] = DORKWERD_LISTEN_NODE_ID
+    # Ribasim does not update the listen link with the variable
+    links = model.link.df
+    model.link.df = links[~(links["link_type"].eq("listen") & links["to_node_id"].eq(control_node_id))]
+    model.link.add(model.get_node(DORKWERD_LISTEN_NODE_ID), model.get_node(control_node_id))
     model.discrete_control.condition.df.loc[condition_mask, "threshold_low"] = DORKWERD_THRESHOLD_LOW
     model.discrete_control.condition.df.loc[condition_mask, "threshold_high"] = DORKWERD_THRESHOLD_HIGH
     mark_threshold_update_protected(model.discrete_control.condition.df, condition_mask)

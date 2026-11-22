@@ -284,6 +284,21 @@ def line_between(line: LineString, start: Point, end: Point) -> LineString:
     return LineString([start, *part.coords[1:-1], end])
 
 
+def left_of_end(line: LineString, distance: float) -> Point:
+    """The point at `distance` to the left of the end of `line`, square to its last segment.
+
+    This is where the offset curve of the line ends, also when that curve would break into parts at the bends of a long
+    line, which made `parallel_offset` place a point far from the end.
+    """
+    coords = np.asarray(line.coords)[:, :2]
+    segments = np.diff(coords, axis=0)
+    lengths = np.hypot(segments[:, 0], segments[:, 1])
+    assert (lengths > 0).any(), f"Line without length: {line}"
+    dx, dy = segments[lengths > 0][-1] / lengths[lengths > 0][-1]
+    x, y = coords[-1]
+    return Point(x - dy * distance, y + dx * distance)
+
+
 def link(point_from: Point, point_to: Point) -> LineString:
     """Create a LineString geometry between two Point geometries, dropping z-coordinate if any
 

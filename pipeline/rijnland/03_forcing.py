@@ -4,7 +4,6 @@ import ribasim_nl.ribasim_parametrization as ribasim_param
 from ribasim import Node
 from ribasim.nodes import flow_demand
 from ribasim_nl.control import (
-    DEFAULT_LEVEL_STEP_HYSTERESIS,
     set_discrete_level_control,
     set_flow_rate,
     set_node_functions,
@@ -193,31 +192,57 @@ BOEZEM_BASIN = n("RIJNLANDSBOEZEM_dummy_id_281/286")  # streefpeil -0.61 m NAP
 # The Basins next to the gemalen are about 1 cm lower than that Basin. With the min_upstream_level of -0.61 m NAP
 # they had, the gemalen would only pump a fraction of their steps, so it is a safety limit below the streefpeil.
 BOEZEM_MIN_UPSTREAM_LEVEL = -0.65
-# (node_id, name, levels [m+NAP] at which the steps switch on, flow rates [m3/s] below and above them, hysteresis [m])
-BOEZEMGEMALEN: tuple[tuple[int, str, list[float], list[float], float | list[float]], ...] = (
+# The levels at which the steps switch on and off differ per season, tuned to the measured discharges, see
+# https://github.com/Deltares/Ribasim-NL/issues/1062. Without the seasons, the steps have those of the summer, in which
+# the boezem has the streefpeil of its Basin.
+# (node_id, name, flow rates [m3/s] below and above the steps, per season the levels [m+NAP] at which each step
+# switches on and off)
+BOEZEMGEMALEN: tuple[tuple[int, str, list[float], dict[str, list[tuple[float, float]]]], ...] = (
     (
         n("448-036-00021|RIJNLANDSBOEZEM_dummy_id_280>"),
         "Katwijk",
-        [-0.595, -0.585, -0.575, -0.57, -0.565, -0.56],
         [0.0, 15.0, 30.0, 45.0, 60.0, 75.0, 94.0],
-        DEFAULT_LEVEL_STEP_HYSTERESIS,
+        {
+            "zomer": [
+                (-0.59, -0.595),
+                (-0.585, -0.5875),
+                (-0.575, -0.5775),
+                (-0.57, -0.5725),
+                (-0.565, -0.5675),
+                (-0.56, -0.5625),
+            ],
+            "winter": [
+                (-0.62, -0.625),
+                (-0.615, -0.6175),
+                (-0.6, -0.6025),
+                (-0.595, -0.5975),
+                (-0.59, -0.5925),
+                (-0.585, -0.5875),
+            ],
+        },
     ),
     # Halfweg switches on before Spaarndam
-    (n("464-036-00021"), "Spaarndam", [-0.605], [0.0, 32.0], DEFAULT_LEVEL_STEP_HYSTERESIS),
-    (n("loc:113030,489579"), "Halfweg", [-0.615], [0.0, 33.0], DEFAULT_LEVEL_STEP_HYSTERESIS),
-    # Gouda starts at -0.59 m NAP and stops below -0.595 m NAP
-    (n("433-036-00021"), "Gouda", [-0.59, -0.57], [0.0, 34.5, 40.0], [0.005, DEFAULT_LEVEL_STEP_HYSTERESIS]),
+    (n("464-036-00021"), "Spaarndam", [0.0, 32.0], {"zomer": [(-0.6, -0.6025)], "winter": [(-0.63, -0.6375)]}),
+    (n("loc:113030,489579"), "Halfweg", [0.0, 33.0], {"zomer": [(-0.615, -0.6175)], "winter": [(-0.64, -0.6475)]}),
+    (
+        n("433-036-00021"),
+        "Gouda",
+        [0.0, 34.5, 40.0],
+        {"zomer": [(-0.5925, -0.595), (-0.565, -0.5675)], "winter": [(-0.6225, -0.625), (-0.6, -0.6025)]},
+    ),
 )
-for node_id, name, levels, flow_rates, hysteresis in BOEZEMGEMALEN:
+for node_id, name, flow_rates, steps in BOEZEMGEMALEN:
     pump_name = ribasim_model.node.df.at[node_id, "name"]
     assert pump_name == f"Boezemgemaal {name}", pump_name
+    levels = [on for on, _ in steps["zomer"]]
     set_discrete_level_control(
         ribasim_model,
         node_id,
         BOEZEM_BASIN,
         level=levels,
         flow_rate=flow_rates,
-        hysteresis=hysteresis,
+        hysteresis=[round(on - off, 4) for on, off in steps["zomer"]],
+        season_thresholds=steps,
         min_upstream_level=BOEZEM_MIN_UPSTREAM_LEVEL,
         name=f"peil boezem: {'/'.join(f'{level:g}' for level in levels)} [m+NAP]",
     )
