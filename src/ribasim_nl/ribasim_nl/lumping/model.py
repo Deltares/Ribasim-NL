@@ -248,7 +248,11 @@ def lumped_model(
         nodes["node_id"].duplicated(keep="first") | nodes["boundary_without_split_node"]
     )
     nodes, lost_basins = nodes.loc[~lost], nodes.loc[lost]
-    assert nodes["node_id"].is_unique
+    duplicated = nodes.loc[nodes["node_id"].duplicated(keep=False), ["node_id", "node_type", "name"]]
+    assert duplicated.empty, (
+        "boundaries and split nodes with the same node ID, which happens if a boundary is left out since it is not "
+        f"on the network, see `ribasim_nl.lumping.hydamo.read_boundaries`:\n{duplicated}"
+    )
     nodes = nodes[nodes["node_type"].isin(NODE_TYPES)]
 
     links.index = pd.RangeIndex(1, len(links) + 1, name="link_id")

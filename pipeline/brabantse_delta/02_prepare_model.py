@@ -29,7 +29,7 @@ link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
 
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 damo_profiles_gpkg = cloud.joinpath(authority, "verwerkt/profielen.gpkg")
-peilgebieden_path = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
+peilgebieden_path = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/peilgebieden.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 network_gpkg = cloud.joinpath(authority, "verwerkt/network.gpkg")
 sturing_xlsx = cloud.joinpath(
@@ -94,7 +94,7 @@ if "code" in pump_df.columns:
 
 
 # %% Bewerk peilenkaart
-peilgebieden_path_editted = peilgebieden_path.parent.joinpath("peilgebieden_bewerkt.gpkg")
+peilgebieden_path_editted = hydamo_gpkg.parent.joinpath("peilgebieden_bewerkt.gpkg")
 peilgebieden_df = gpd.read_file(peilgebieden_path, layer="peilgebiedpraktijk")
 
 # fill with zomerpeil
@@ -214,7 +214,7 @@ streefpeil = static_data.basin.set_index("node_id")["streefpeil"]
 
 # Handmatige fixes
 streefpeil[n("up:KST02130")] = 0.1
-streefpeil[n("up:KDU60018")] = 0.1
+streefpeil[n("up:ow:OVK99994")] = 0.1
 streefpeil[n("up:KST01483")] = 1.2  # Basin Turfvaart meetpunt
 streefpeil[n("up:GEM_KGM00384")] = 0.15
 streefpeil[n("up:KST02382")] = -0.5

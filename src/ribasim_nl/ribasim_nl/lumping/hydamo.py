@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import pyogrio
 
+from ribasim_nl.lumping.connect import connect_lines
 from ribasim_nl.lumping.network import Network
 from ribasim_nl.lumping.utils import (
     drop_duplicate_geometries,
@@ -30,12 +31,19 @@ def _list_layers(path: Path) -> list[str]:
     return list(pyogrio.list_layers(path)[:, 0])
 
 
-def apply_hydamo_changes(source: Path, removals: Path, additions: Path, target: Path) -> None:
+def apply_hydamo_changes(
+    source: Path, removals: Path, additions: Path, target: Path, connect_distance: float | None = None
+) -> None:
     """Write the HyDAMO layers of `source` to `target`, with the objects of `removals` removed and `additions` added.
 
     Objects are removed by `code`, else `globalid`, else geometry. As in 2024, layers in `additions` get a column
     `index`, with the row numbers before the additions. Layers without geometries are written as attribute tables.
     The columns keep their types, unlike in 2024, when some were written as text.
+
+    With `connect_distance`, the hydroobjects that end within that distance of each other are connected after the
+    changes, see `ribasim_nl.lumping.connect.connect_lines`. An added hydroobject then need not end exactly on the
+    one it connects to, and that one need not be split there by hand. Every removal must then remove an object, and
+    the hydroobjects with a code must each have their own.
     """
     assert source != target
     target.unlink(missing_ok=True)
@@ -48,6 +56,8 @@ def apply_hydamo_changes(source: Path, removals: Path, additions: Path, target: 
             remove = gpd.read_file(removals, layer=layer)
             key = next((c for c in ("code", "globalid") if c in gdf.columns and c in remove.columns), None)
             if key is not None:
+                missing = sorted(set(remove[key].dropna()) - set(gdf[key]))
+                assert connect_distance is None or not missing, f"{layer}: no objects to remove with {key} {missing}"
                 gdf = gdf.loc[~gdf[key].isin(remove[key])]
             else:
                 gdf = gdf.loc[~gdf.geometry.normalize().isin(remove.geometry.normalize())]
@@ -67,6 +77,10 @@ def apply_hydamo_changes(source: Path, removals: Path, additions: Path, target: 
             # an empty layer would turn the types of its columns into object
             gdf = (pd.concat([gdf, add]) if len(add) > 0 else gdf).reset_index()
             logger.info(f"{layer}: added {len(add)} objects")
+        if connect_distance is not None and layer.lower() == "hydroobject":
+            duplicated = sorted(gdf.loc[gdf["code"].duplicated() & gdf["code"].notna(), "code"])
+            assert not duplicated, f"{layer}: several objects with the codes {duplicated}"
+            gdf = connect_lines(gdf, connect_distance)
         if isinstance(gdf, gpd.GeoDataFrame) and not gdf.geometry.isna().all():
             pyogrio.write_dataframe(gdf, target, layer=layer, promote_to_multi=False)
         else:

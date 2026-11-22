@@ -22,6 +22,20 @@ stages:
     outs:
       - data/Rijkswaterstaat/modellen/rwzi
   # The input models of the gravity controlled models, see docs/dev/reproducing-models.qmd
+  # The HyDAMO data of the national GKW-HyDAMO package, see docs/dev/gkw-hydamo.qmd
+  gkw_hydamo:
+    foreach:
+      brabantse_delta:
+        authority: BrabantseDelta
+        date: "20261120"
+    do:
+      cmd: pixi run python pipeline/00_gkw_hydamo.py ${item.authority} ${item.date}
+      deps:
+        - pipeline/00_gkw_hydamo.py
+        - src/ribasim_nl/ribasim_nl
+        - data/${item.authority}/verwerkt/1_ontvangen_data/gkw_hydamo_${item.date}.gpkg
+      outs:
+        - data/${item.authority}/verwerkt/2_voorbewerking/hydamo.gpkg
   hydamo:
     foreach:
       brabantse_delta: BrabantseDelta
@@ -322,6 +336,7 @@ stages:
       - data/Basisgegevens/RWS_waterschaps_grenzen/Rijkswaterstaat.gpkg
       - data/BrabantseDelta/modellen/BrabantseDelta_2024_6_3
       - data/BrabantseDelta/verwerkt/4_ribasim/hydamo.gpkg
+      - data/BrabantseDelta/verwerkt/1_ontvangen_data/peilgebieden.gpkg
       - data/BrabantseDelta/verwerkt/3_input/areas.gpkg
       - data/BrabantseDelta/verwerkt/model_edits.gpkg
       - data/BrabantseDelta/verwerkt/1_ontvangen_data/GML/dwarsprofiel.gml
@@ -1411,7 +1426,7 @@ stages:
       - src/ribasim_nl/ribasim_nl
       - data/AaenMaas/verwerkt/downloads
       - data/AmstelGooienVecht/aangeleverd/Na_levering/vigerende_peilgebieden.gpkg
-      - data/BrabantseDelta/verwerkt/4_ribasim/hydamo.gpkg
+      - data/BrabantseDelta/verwerkt/1_ontvangen_data/peilgebieden.gpkg
       - data/DeDommel/verwerkt/4_ribasim/hydamo.gpkg
       - data/Delfland/aangeleverd/Na_levering/Watersysteem.gdb
       - data/DrentsOverijsselseDelta/verwerkt/4_ribasim/hydamo.gpkg

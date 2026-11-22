@@ -111,7 +111,6 @@ outlet_max_flow_rate_from_results = {
     n("KST01133"): 1,  # naam onbekend; dynamic max=0.10, oude max=400
     n("KDU00308"): 8,  # naam onbekend; dynamic max=4.73, oude max=423
     n("KDU09972"): 2,  # naam onbekend; dynamic max=0.80, oude max=400
-    n("KST00340"): 1,  # naam onbekend; dynamic max=0.24, oude max=400
     n("KST00372"): 1,  # naam onbekend; dynamic max=0.08, oude max=402
     n("KST00941"): 1,  # naam onbekend; dynamic max=0.01, oude max=401
     n("KST00327"): 1,  # naam onbekend; dynamic max=0.09, oude max=403
@@ -131,7 +130,6 @@ outlet_max_flow_rate_from_results = {
     n("KST00308"): 1,  # naam onbekend; dynamic max=0.01, oude max=401
     n("KST00839"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
     n("KDU08892"): 2,  # naam onbekend; dynamic max=1.23, oude max=400
-    n("KST01039"): 1,  # naam onbekend; dynamic max=0.03, oude max=400
     n("KST01034"): 1,  # naam onbekend; dynamic max=0.37, oude max=400
     n("KDU06613"): 1,  # naam onbekend; dynamic max=0.37, oude max=400
     n("KST01036"): 1,  # naam onbekend; dynamic max=0.10, oude max=400
@@ -155,7 +153,6 @@ outlet_max_flow_rate_from_results = {
     n("KST00371"): 1,  # naam onbekend; dynamic max=0.24, oude max=423
     n("KST00856"): 1,  # naam onbekend; dynamic max=0.21, oude max=423
     n("KST00740"): 1,  # naam onbekend; dynamic max=0.05, oude max=148
-    n("KST00309"): 1,  # naam onbekend; dynamic max=0.24, oude max=400
     n("KDU07017"): 1,  # naam onbekend; dynamic max=0.22, oude max=400
     n("KDU02450"): 1,  # naam onbekend; dynamic max=0.02, oude max=133
     n("KDU22027"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
@@ -167,7 +164,6 @@ outlet_max_flow_rate_from_results = {
     n("KDU32069"): 2,  # naam onbekend; dynamic max=0.78, oude max=580
     n("KDU03256"): 2,  # naam onbekend; dynamic max=0.96, oude max=400
     n("KDU06019"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
-    n("KST00917"): 1,  # naam onbekend; dynamic max=0.24, oude max=400
     n("KST01310"): 1,  # naam onbekend; dynamic max=0.03, oude max=133
     n("ow:OVK04500"): 1,  # naam onbekend; dynamic max=0.00, oude max=100
 }
