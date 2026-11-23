@@ -64,6 +64,7 @@ It fails if a removal no longer removes an object, or if two hydroobjects have t
 - **Split nodes and boundaries.** `ribasim_input.gpkg` holds their location, and the code and type of the structure of each split node, so the [keys](node-keys.qmd) of the nodes do not change with the data. A split node that is further than 1 m from the hydroobjects is left out by the lumping, and one that no longer separates two basins is not used.
 - **Open water split nodes.** A split node on open water is named after its hydroobject. The split nodes that the lumping of 2024 named after the edge they were exactly on, such as `OVK01598___1`, have that name in `ribasim_input.gpkg` now: whether a point is exactly on a line depends on the last digits of the coordinates.
 - **Peilgebieden.** The peilgebieden of Brabantse Delta in the package have target levels without the type of level: summer, winter or fixed. They remain those of the delivery of 2023, `1_ontvangen_data/peilgebieden.gpkg`.
+- **Target levels.** The Basins in `parameters/static_data.xlsx` keep the target level they have there, see `StaticData.keep_streefpeil`. A level that `02_prepare_model.py` derives from the profiles follows the Basin node, which moves when the hydroobjects change: one Basin got a target level 5 cm lower, which lowered the level up to which the pumping stations that discharge into it may pump by 5 cm too, so that in the coupled model they stopped and the polders behind them filled up. A new Basin gets the derived level.
 
 ## New hydroobjects that are left out {#sec-excluded}
 
@@ -73,6 +74,7 @@ Two kinds of new hydroobjects are therefore in `EXCLUDED`, until they get a spli
 - a hydroobject that bypasses a structure with a split node, such as a fish passage around a weir, which would leave that structure out of the model;
 - a hydroobject that connects two basins of the model without a structure between them, which would make them one basin.
 
+Where a hydroobject now continues to a junction that it did not reach in 2023, which joins two basins, a split node of type `harde_knip` in `ribasim_input.gpkg` cuts it, as in the data of 2023.
 Where the watercourse of a structure itself is replaced, the model follows the data: the split node of a weir that is gone is removed, and its basins become one.
 
 ## Update the data of an authority
@@ -84,3 +86,4 @@ Where the watercourse of a structure itself is replaced, the model follows the d
    - links that are reversed, where a hydroobject is drawn in the other direction.
 3. Decide per difference: move or remove the split node, exclude the new hydroobject, or add a hydroobject by hand where the data has a gap, for instance at a culvert.
 4. Refer to the nodes that got another key by that key in the scripts, `model_edits.gpkg` and `static_data.xlsx` of the authority. A key that is gone raises a `KeyError` where it is used.
+5. Keep the target levels of `static_data.xlsx`, with `StaticData.keep_streefpeil` in `02_prepare_model.py`, and compare the Basins and the static tables of the Pumps and Outlets of the full control model with the previous one, by key.

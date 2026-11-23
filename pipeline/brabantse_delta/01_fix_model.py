@@ -75,7 +75,7 @@ for link_id in link_ids:
     model.reverse_link(link_id=link_id)
 
 # %% Connector nodes whose hydroobject is drawn against the flow in the HyDAMO data of 2026, unlike in that of 2023
-for key in ["KDU11679", "KDU42101", "KDU42112", "KDU45089", "KDU60018", "KST00839", "ow:OVK04871"]:
+for key in ["KDU11679", "KDU42101", "KDU42112", "KDU45089", "KDU60018", "KST00839", "KST00917", "ow:OVK04871"]:
     node_id = n(key)
     links = model.link.df
     for link_id in links.index[(links.from_node_id == node_id) | (links.to_node_id == node_id)]:

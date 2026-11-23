@@ -56,8 +56,6 @@ EXCLUDED = {
         "OVK12582", "OVK12584", "OVK12585", "OVK12587", "OVK12588", "OVK12589", "OVK12593", "OVK12594",
         "OVK12605", "OVK12606", "OVK12613", "OVK12614", "OVK12626", "OVK12634", "OVK12686", "OVK12687",
         "OVK12768",
-        # Moerdijk, around (103700, 411000), where new watercourses along the edges of an area replace those within it
-        "OVK12789", "OVK12790", "OVK12830", "OVK12897", "OVK12898", "OVK12899", "OVK12900",
         # the old Donge, the supply route of https://github.com/Deltares/Ribasim-NL/issues/1055
         "OVK06910", "OVK12689",
     ],

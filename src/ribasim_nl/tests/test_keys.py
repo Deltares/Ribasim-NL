@@ -14,7 +14,7 @@ from ribasim_nl.keys import (
     resolve_keys,
     validate_keys,
 )
-from ribasim_nl.parametrization.static_data_xlsx import read_node_sheet
+from ribasim_nl.parametrization.static_data_xlsx import StaticData, read_node_sheet
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 
 from ribasim_nl import Model
@@ -390,3 +390,31 @@ def test_read_node_sheet(model, tmp_path):
     outlets = read_node_sheet(model, xlsx, "Outlet")
     assert outlets.columns.tolist() == ["node_id", "flow_rate"]
     assert outlets.set_index("node_id")["flow_rate"].to_dict() == {4: 2.0, 3: 1.0}
+
+
+def test_keep_streefpeil(model, tmp_path):
+    """The Basins in the Basin sheet of a workbook keep the streefpeil they have there, the others the derived one."""
+    static_data = StaticData(model=model, xlsx_path=tmp_path / "static_data_template.xlsx")
+    static_data.reset_data_frame(node_type="Basin")
+    derived = pd.Series([1.0, 2.0], index=pd.Index([1, 2], name="node_id"), name="streefpeil")
+    static_data.add_series(node_type="Basin", series=derived)
+    static_data.add_series(node_type="Basin", series=derived.map({1.0: "p1", 2.0: "p2"}).rename("profielid"))
+
+    def keep(sheet: dict[str, list]) -> pd.DataFrame:
+        xlsx = tmp_path / "static_data.xlsx"
+        pd.DataFrame(sheet).to_excel(xlsx, sheet_name="Basin", index=False)
+        static_data.keep_streefpeil(xlsx)
+        assert static_data.basin is not None
+        return static_data.basin.set_index("node_id")
+
+    # a Basin that is not in the model is left out, one without a level in the sheet keeps the derived one
+    basins = keep(
+        {"key": ["up:st2", "up:st9", "up:st1"], "profielid": [None, "p9", "p0"], "streefpeil": [2.5, 9, None]}
+    )
+    assert basins["streefpeil"].to_dict() == {1: 1.0, 2: 2.5}
+    assert basins.at[1, "profielid"] == "p1"
+    # the kept level is not that of the derived profile
+    assert pd.isna(basins.at[2, "profielid"])
+
+    with pytest.raises(AssertionError, match="no Basin"):
+        keep({"key": ["st1"], "profielid": [None], "streefpeil": [1.0]})

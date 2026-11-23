@@ -326,6 +326,25 @@ class StaticData(BaseModel):
         streefpeil.index.name = "node_id"
         self.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
+    def keep_streefpeil(self, static_data_xlsx: Path) -> None:
+        """Give the Basins in the Basin sheet of a workbook the streefpeil, and the profielid, they have there.
+
+        A streefpeil that is derived from the network, such as from the profiles on the links of a Basin, follows the
+        geometry of those links, which start at the Basin node: it changes when the node moves, as it does when the
+        hydroobjects are updated. The Basins that are not in the sheet, or have no streefpeil there, keep theirs.
+
+        Args:
+            static_data_xlsx: workbook with a sheet `Basin` that has the columns `key`, `streefpeil` and `profielid`
+        """
+        assert self.basin is not None, "reset the Basin data frame first"
+        kept = read_node_sheet(self.model, static_data_xlsx, "Basin").set_index("node_id")
+        assert kept.index.is_unique, f"Sheet Basin of {static_data_xlsx} has a Basin more than once"
+        not_basins = kept.index.difference(pd.Index(self.basin["node_id"]))
+        assert not_basins.empty, f"Sheet Basin of {static_data_xlsx} has nodes that are no Basin: {list(not_basins)}"
+        kept = kept[kept["streefpeil"].notna()]
+        for column in ("profielid", "streefpeil"):
+            self.add_series(node_type="Basin", series=kept[column])
+
     def update_model_basin_levels(self, profile_ids: bool = True) -> None:
         """Set the meta_streefpeil, and optionally the meta_profiellijnid, of the Basin / area table of the model.
 
