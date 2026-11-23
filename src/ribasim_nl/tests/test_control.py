@@ -4,6 +4,7 @@ from ribasim import Node
 from ribasim.nodes import basin, discrete_control, level_boundary, outlet
 from ribasim_nl.control import set_continuous_level_control, set_discrete_level_control
 from ribasim_nl.coupling_level_common import LEVEL_UPDATE_PROTECTION_COLUMN, THRESHOLD_UPDATE_PROTECTION_COLUMN
+from ribasim_nl.seasonal_levels import SEASON_THRESHOLD_COLUMNS
 from shapely.geometry import MultiPolygon, Point, Polygon
 
 from ribasim_nl import Model
@@ -146,6 +147,8 @@ def test_set_discrete_level_control(model):
     assert sorted(model.link.df.index) == [1, 2, 3, 4, 5, 6]
     listen_links = model.link.df[model.link.df.link_type == "listen"]
     assert listen_links[["from_node_id", "to_node_id"]].values.tolist() == [[3, control_id]]
+    # next to the end of the link to the Outlet, on its left
+    assert model.node.df.at[control_id, "geometry"].equals(Point(1000, 20))
 
     condition = model.discrete_control.condition.df
     assert condition.condition_id.tolist() == [1, 2]
@@ -178,3 +181,38 @@ def test_set_discrete_level_control(model):
 def test_set_discrete_level_control_invalid(model, level, flow_rate, hysteresis):
     with pytest.raises(ValueError):
         set_discrete_level_control(model, 2, listen_node_id=3, level=level, flow_rate=flow_rate, hysteresis=hysteresis)
+
+
+def test_set_discrete_level_control_per_season(model):
+    control_id = set_discrete_level_control(
+        model,
+        2,
+        listen_node_id=3,
+        level=[-0.59, -0.57],
+        flow_rate=[0.0, 34.5, 40.0],
+        season_thresholds={"zomer": [(-0.59, -0.595), (-0.57, -0.5725)], "winter": [(-0.62, -0.625), (-0.6, -0.6025)]},
+    )
+    condition = model.discrete_control.condition.df
+    assert (condition.node_id == control_id).all()
+    np.testing.assert_allclose(condition[SEASON_THRESHOLD_COLUMNS["winter"]], [[-0.625, -0.62], [-0.6025, -0.6]])
+    np.testing.assert_allclose(condition[SEASON_THRESHOLD_COLUMNS["zomer"]], [[-0.595, -0.59], [-0.5725, -0.57]])
+
+
+@pytest.mark.parametrize(
+    "winter",
+    [
+        [(-0.62, -0.625)],  # one step less
+        [(-0.62, -0.625), (-0.621, -0.6225)],  # a step switches off below where the one below switches on
+        [(-0.62, -0.615), (-0.6, -0.6025)],  # switches off above where it switches on
+    ],
+)
+def test_set_discrete_level_control_per_season_invalid(model, winter):
+    with pytest.raises(ValueError):
+        set_discrete_level_control(
+            model,
+            2,
+            listen_node_id=3,
+            level=[-0.59, -0.57],
+            flow_rate=[0.0, 34.5, 40.0],
+            season_thresholds={"zomer": [(-0.59, -0.595), (-0.57, -0.5725)], "winter": winter},
+        )

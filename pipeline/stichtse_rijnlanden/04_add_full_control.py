@@ -475,12 +475,19 @@ for static_df in (model.outlet.static.df, model.pump.static.df):
     afvoer_mask = static_df["control_state"].eq("afvoer") & static_df["node_id"].isin(aanvoer_only_node_ids)
     static_df.loc[afvoer_mask, ["flow_rate", "max_flow_rate"]] = 0.0
 
-# %% Wijk bij Duurstede stuurt op het debiet bij ADCP Amelisweerd, zie #855
-# De control_states heten geen aanvoer/afvoer, zodat de koppelpeil-synchronisatie deze sturing niet aanpast.
+# %% De Kromme Rijn wordt gestuurd op het debiet bij ADCP Amelisweerd, zie #855
+# De control_states heten geen aanvoer/afvoer, zodat de koppelpeil-synchronisatie deze sturing niet aanpast. Het regime
+# gaat voor de zomer- en winterpeilen, zie #1063, dus de inlaat bij Wijk bij Duurstede en het gemaal ernaast hebben
+# geen max_downstream_level, en de stuwen bij Cothen en Werkhoven houden het peil van het regime.
 WIJK_BIJ_DUURSTEDE = n("AF0093")
 AMELISWEERD = n("H072046")  # ManningResistance in de Kromme Rijn benedenstrooms van Basin 1673, bij ADCP Amelisweerd
 AMELISWEERD_THRESHOLDS = [6.0, 7.0]  # m3/s; regime 1 bij <= 6, regime 2 bij > 6, regime 3 en 4 bij > 7
-WIJK_BIJ_DUURSTEDE_FLOW_RATES = {"regime 1": 5.0, "regime 2": 3.5, "regime 3+4": 1.0}  # m3/s
+AMELISWEERD_NAME = "debiet Amelisweerd: 6/7 [m3/s]"
+REGIMES = ["regime 1", "regime 2", "regime 3+4"]
+WIJK_BIJ_DUURSTEDE_FLOW_RATES = [5.0, 3.5, 1.0]  # m3/s per regime
+# het peil bovenstrooms van de stuw [m+NAP] per regime; de referentie van Werkhoven ligt 1 km bovenstrooms, in hetzelfde
+# peilgebied als de Basin voor de stuw
+REGIME_LEVELS = {n("ST3001"): [2.42, 2.33, 2.23], n("ST2028"): [1.80, 1.90, 2.00]}  # Cothen en Werkhoven
 FLOW_THRESHOLD_HYSTERESIS = 0.1  # m3/s
 
 
@@ -489,32 +496,33 @@ def set_flow_regime_control(
     node_id: int,
     listen_node_id: int,
     thresholds: list[float],
-    flow_rates: dict[str, float],
+    regimes: dict[str, dict[str, float]],
+    base_state: str,
     name: str,
 ) -> None:
-    """Let the DiscreteControl of Outlet `node_id` set its flow rate per regime of the flow at `listen_node_id`.
+    """Let the DiscreteControl of Outlet `node_id` set its parameters per regime of the flow at `listen_node_id`.
 
-    Regime i applies while the flow exceeds i of the ascending `thresholds`. The levels of the aanvoer state are kept.
+    Regime i applies while the flow exceeds i of the ascending `thresholds`. Each regime gets the static row of
+    `base_state`, with the values of `regimes`. A FlowDemand on the node is kept.
     """
-    assert len(flow_rates) == len(thresholds) + 1, "Expected one flow rate per regime"
+    assert len(regimes) == len(thresholds) + 1, "Expected one regime more than thresholds"
     assert thresholds == sorted(thresholds), "Expected ascending thresholds"
     assert model.get_node_type(node_id) == "Outlet", f"Expected Outlet for node {node_id}"
     assert model.get_node_type(listen_node_id) in {"ManningResistance", "Outlet", "Pump", "TabulatedRatingCurve"}
 
     links = model.link.df
-    control_node_ids = links.loc[(links.link_type == "control") & (links.to_node_id == node_id), "from_node_id"]
+    control_links = links[(links.link_type == "control") & (links.to_node_id == node_id)]
+    control_node_ids = control_links.loc[control_links.from_node_id.map(model.get_node_type) == "DiscreteControl"]
     assert len(control_node_ids) == 1, f"Expected one DiscreteControl for node {node_id}, got {len(control_node_ids)}"
-    control_node_id = int(control_node_ids.iloc[0])
+    control_node_id = int(control_node_ids.from_node_id.iloc[0])
     assert (links.loc[links.link_type == "control", "from_node_id"] == control_node_id).sum() == 1
 
     static = model.outlet.static.df
     assert static is not None
-    aanvoer = static[(static.node_id == node_id) & (static.control_state == "aanvoer")]
-    assert len(aanvoer) == 1, f"Expected one aanvoer row for node {node_id}"
-    regime_rows = [
-        aanvoer.assign(control_state=state, flow_rate=flow_rate, max_flow_rate=flow_rate)
-        for state, flow_rate in flow_rates.items()
-    ]
+    base = static[(static.node_id == node_id) & (static.control_state == base_state)]
+    assert len(base) == 1, f"Expected one {base_state} row for node {node_id}"
+    assert all(set(values) <= set(static.columns) for values in regimes.values()), f"Unknown columns in {regimes}"
+    regime_rows = [base.assign(control_state=state, **values) for state, values in regimes.items()]
     model.outlet.static.df = pd.concat([static[static.node_id != node_id], *regime_rows], ignore_index=True)
 
     # the old listen link is removed, and a new one added
@@ -561,7 +569,7 @@ def set_flow_regime_control(
         )
     )
     # with ascending thresholds, the truth states are a run of T followed by F
-    states = list(flow_rates)
+    states = list(regimes)
     truth_states = ["T" * i + "F" * (len(thresholds) - i) for i in range(len(states))]
     dc.logic.df = DataFrame[DiscreteControlLogicSchema](
         pd.concat(
@@ -580,9 +588,23 @@ set_flow_regime_control(
     node_id=WIJK_BIJ_DUURSTEDE,
     listen_node_id=AMELISWEERD,
     thresholds=AMELISWEERD_THRESHOLDS,
-    flow_rates=WIJK_BIJ_DUURSTEDE_FLOW_RATES,
-    name="debiet Amelisweerd: 6/7 [m3/s]",
+    regimes={
+        state: {"flow_rate": flow_rate, "max_flow_rate": flow_rate, "max_downstream_level": np.inf}
+        for state, flow_rate in zip(REGIMES, WIJK_BIJ_DUURSTEDE_FLOW_RATES, strict=True)
+    },
+    base_state="aanvoer",
+    name=AMELISWEERD_NAME,
 )
+for weir, levels in REGIME_LEVELS.items():
+    set_flow_regime_control(
+        model,
+        node_id=weir,
+        listen_node_id=AMELISWEERD,
+        thresholds=AMELISWEERD_THRESHOLDS,
+        regimes={state: {"min_upstream_level": level} for state, level in zip(REGIMES, levels, strict=True)},
+        base_state="afvoer",
+        name=AMELISWEERD_NAME,
+    )
 
 # %% Gemaal Kromme Rijn, naast de inlaat bij Wijk bij Duurstede, zie #978
 # Het gemaal vervangt de noodpompen in droge perioden: het pompt als Amelisweerd in regime 1 zit, en de Lek te laag
@@ -595,7 +617,7 @@ lek, kromme_rijn = model.upstream_node_id(WIJK_BIJ_DUURSTEDE), model.downstream_
 assert isinstance(lek, int | np.integer) and isinstance(kromme_rijn, int | np.integer)
 assert model.get_node_type(int(lek)) == "LevelBoundary", f"Expected the Lek upstream of {WIJK_BIJ_DUURSTEDE}"
 inlaat = model.outlet.static.df[model.outlet.static.df.node_id == WIJK_BIJ_DUURSTEDE]
-assert inlaat[["min_upstream_level", "max_downstream_level"]].nunique().eq(1).all(), "Expected one level per side"
+assert (inlaat["min_upstream_level"] == inlaat["min_upstream_level"].iloc[0]).all(), "Expected one min_upstream_level"
 lek_threshold = float(inlaat["min_upstream_level"].iloc[0])
 inlaat_point = cast(Point, model.node.df.at[WIJK_BIJ_DUURSTEDE, "geometry"])
 
@@ -606,7 +628,6 @@ gemaal_node = model.pump.add(
             control_state=["gemaal aan", "gemaal uit"],
             flow_rate=[GEMAAL_KROMME_RIJN_FLOW_RATE, 0.0],
             max_flow_rate=[GEMAAL_KROMME_RIJN_FLOW_RATE] * 2,
-            max_downstream_level=[float(inlaat["max_downstream_level"].iloc[0])] * 2,
         )
     ],
 )

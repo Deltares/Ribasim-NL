@@ -15,8 +15,10 @@ https://github.com/Deltares/Ribasim-NL/issues/893:
    level management of the largest area of them, also none.
 2. The thresholds of the DiscreteControl conditions on the level of a Basin follow its target level. Thresholds with
    the default band of `DEFAULT_LEVEL_THRESHOLD_RANGE` around a level get the bounds of the target level instead.
+   Conditions with thresholds per season, see `set_season_thresholds`, get those.
 3. The Outlets and Pumps controlled by a DiscreteControl node get a winter and a summer variant of each control state,
-   with the levels of that season. A condition on the season switches between them.
+   with the levels of that season. A condition on the season switches between them. A DiscreteControl node that only
+   listens to flow rates, such as one on a flow regime, sets the levels of its control states for the whole year.
 4. The initial level of a Basin follows its target level at the start of the model.
 
 The levels change at once, at the begin of the transitions between summer and winter. A gradual transition needs
@@ -29,7 +31,7 @@ The fixed levels and thresholds are kept in the `meta_fixed_` columns for this.
 """
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 
 import geopandas as gpd
@@ -71,6 +73,9 @@ THRESHOLDS = ["threshold_low", "threshold_high"]
 # The fixed levels and thresholds, to remove the seasons again
 FIXED_LEVELS = [f"meta_fixed_{column}" for column in LEVEL_LIMITS]
 FIXED_THRESHOLDS = [f"meta_fixed_{column}" for column in THRESHOLDS]
+# The thresholds of a condition per season, which it gets instead of following the target level, see
+# `set_season_thresholds`
+SEASON_THRESHOLD_COLUMNS = {season: [f"meta_{column}_{season}" for column in THRESHOLDS] for season in SEASONS}
 
 META_COLUMNS = {
     "peilgebied": "meta_peilgebied",
@@ -284,7 +289,8 @@ def seasonal_thresholds(
     """The thresholds over the year of conditions on the level of one Basin each, with the same transitions.
 
     The thresholds move with the target level of their Basin. Thresholds with the default band around a level get
-    the bounds of the target level around that level instead.
+    the bounds of the target level around that level instead. Conditions with thresholds per season, in the columns
+    `SEASON_THRESHOLD_COLUMNS`, get those.
 
     :param conditions: the conditions, with the `basin` and the `weight` of their variable, which is 1 or -1
     :param differences: see `seasonal_differences`
@@ -292,25 +298,61 @@ def seasonal_thresholds(
     :return: `threshold_low` and `threshold_high`, with a row per condition and a column per time of `season`
     """
     basin = differences.loc[conditions["basin"]]
-
-    def over_year(column: str) -> np.ndarray:
-        winter = basin[f"{column}_winter"].to_numpy()[:, None]
-        summer = basin[f"{column}_zomer"].to_numpy()[:, None]
-        return winter + (summer - winter) * season.to_numpy()[None, :]
-
-    delta, below, above = over_year("delta"), over_year("below"), over_year("above")
-    weight = conditions["weight"].to_numpy()[:, None]
-    low = conditions["threshold_low"].to_numpy(dtype=float)[:, None]
-    high = conditions["threshold_high"].to_numpy(dtype=float)[:, None]
-    # A weight of -1 negates the level, so the bound below the level becomes the threshold above it
-    center = (low + high) / 2 + weight * delta
+    weight = conditions["weight"].to_numpy()
+    low = conditions["threshold_low"].to_numpy(dtype=float)
+    high = conditions["threshold_high"].to_numpy(dtype=float)
     default_band = np.abs(high - low - DEFAULT_LEVEL_THRESHOLD_RANGE) < BAND_TOLERANCE
-    threshold_low = np.where(default_band, center - np.where(weight > 0, below, above), low + weight * delta)
-    threshold_high = np.where(default_band, center + np.where(weight > 0, above, below), high + weight * delta)
+    in_season = {}
+    for name in SEASONS:
+        delta, below, above = (basin[f"{column}_{name}"].to_numpy() for column in ("delta", "below", "above"))
+        # A weight of -1 negates the level, so the bound below the level becomes the threshold above it
+        center = (low + high) / 2 + weight * delta
+        season_low = np.where(default_band, center - np.where(weight > 0, below, above), low + weight * delta)
+        season_high = np.where(default_band, center + np.where(weight > 0, above, below), high + weight * delta)
+        given_low, given_high = (
+            conditions[column].to_numpy(dtype=float) if column in conditions else np.full(len(conditions), np.nan)
+            for column in SEASON_THRESHOLD_COLUMNS[name]
+        )
+        in_season[name] = (
+            np.where(np.isnan(given_low), season_low, given_low),
+            np.where(np.isnan(given_high), season_high, given_high),
+        )
+    switch = season.to_numpy()[None, :]
+    threshold_low, threshold_high = (
+        winter[:, None] + (summer - winter)[:, None] * switch
+        for winter, summer in zip(in_season["winter"], in_season["zomer"], strict=True)
+    )
+    low, high = low[:, None], high[:, None]
     # Keep the thresholds that do not change exactly as they were
     threshold_low = np.where(np.abs(threshold_low - low) < BAND_TOLERANCE, low, threshold_low.round(4))
     threshold_high = np.where(np.abs(threshold_high - high) < BAND_TOLERANCE, high, threshold_high.round(4))
     return threshold_low, threshold_high
+
+
+def set_season_thresholds(model: Model, node_id: int, thresholds: Mapping[str, Sequence[tuple[float, float]]]) -> None:
+    """Give the conditions of DiscreteControl `node_id` thresholds per season, instead of following the target level.
+
+    `apply_seasonal_levels` switches between them, when the conditions are on the level of a Basin with a level
+    management. Without the seasons, the conditions have their fixed thresholds.
+
+    :param model: model to update in place
+    :param node_id: DiscreteControl node
+    :param thresholds: per season of `SEASONS`, the (threshold_high, threshold_low) of each condition, in the order of
+        `compound_variable_id` and `condition_id`
+    """
+    condition_df = model.discrete_control.condition.df
+    assert condition_df is not None
+    keys = ["compound_variable_id", "condition_id"]
+    rows = condition_df.loc[condition_df["node_id"] == node_id].sort_values(keys, kind="stable")
+    assert not rows.empty, f"DiscreteControl #{node_id} has no conditions"
+    assert not rows.duplicated(keys).any(), f"DiscreteControl #{node_id} already changes over time"
+    assert set(thresholds) == set(SEASONS), f"Expected thresholds for {SEASONS}, got {list(thresholds)}"
+    for season, pairs in thresholds.items():
+        assert len(pairs) == len(rows), f"Expected {len(rows)} thresholds for DiscreteControl #{node_id} in {season}"
+        high, low = np.array(pairs, dtype=float).T
+        assert np.isfinite(high).all() and (low <= high).all(), f"Invalid thresholds in {season}: {list(pairs)}"
+        for column, values in zip(SEASON_THRESHOLD_COLUMNS[season], (low, high), strict=True):
+            condition_df.loc[rows.index, column] = values
 
 
 def _over_year(rows: pd.DataFrame, times: pd.Index) -> pd.DataFrame:
@@ -485,6 +527,13 @@ def apply_seasonal_levels(
     timed = set(conditions.loc[rows_per_condition > 1, "node_id"]) | set(node_df.index[cyclic_time])
     on_seasonal_basin = conditions["basin"].notna() & ~conditions["node_id"].isin(timed)
     seasonal_conditions = conditions.loc[on_seasonal_basin].astype({"basin": int})
+    # Thresholds per season switch with the level management of the Basin of their condition
+    season_columns = [column for columns in SEASON_THRESHOLD_COLUMNS.values() for column in columns]
+    given = conditions.reindex(columns=season_columns).notna().any(axis=1)
+    assert not (given & ~on_seasonal_basin).any(), (
+        "Thresholds per season of conditions that are not on the level of a Basin with a level management: "
+        f"DiscreteControl {sorted(set(conditions.loc[given & ~on_seasonal_basin, 'node_id']))}"
+    )
 
     # Conditions of which the thresholds change over the year get a row per time, the others keep one row
     condition_df = condition_df.assign(**dict.fromkeys(FIXED_THRESHOLDS, np.nan))
@@ -515,7 +564,10 @@ def apply_seasonal_levels(
     ]
     assert control_links["to_node_id"].is_unique, "An Outlet or Pump is controlled by more than one DiscreteControl"
     controller = control_links.set_index("to_node_id")["from_node_id"]
-    controller = controller.loc[~controller.isin(timed)]
+    # A DiscreteControl node that only listens to flow rates, such as one on a flow regime, sets the levels of its
+    # control states for the whole year, see https://github.com/Deltares/Ribasim-NL/issues/1063
+    on_flow = variable_df["variable"].eq("flow_rate").groupby(variable_df["node_id"]).all()
+    controller = controller.loc[~controller.isin(timed) & ~controller.isin(on_flow.index[on_flow])]
     neighbors = _neighbors(model, controller.index.tolist())
     profile_df = model.basin.profile.df
     assert profile_df is not None

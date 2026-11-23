@@ -278,6 +278,37 @@ def _listen_to_junction_issues(model: "Model") -> list[str]:
     return [f"Control nodes must not listen to a Junction; invalid (control, Junction) node IDs: {sorted(set(pairs))}"]
 
 
+def _unused_listen_link_issues(model: "Model") -> list[str]:
+    """Return listen links to a control node that does not listen to their node, which misleads readers of the model.
+
+    Ribasim adds the listen links of the `listen_node_id` of a control node when its control link is added, but does
+    not remove them when the `listen_node_id` changes.
+    """
+    listened = set()
+    for table in (
+        model.discrete_control.variable.df,
+        model.continuous_control.variable.df,
+        model.pid_control.static.df,
+        model.pid_control.time.df,
+    ):
+        if table is not None:
+            listened |= set(zip(table["listen_node_id"].tolist(), table["node_id"].tolist(), strict=True))
+    links = model.link.df
+    listen = links[links["link_type"] == "listen"]
+    unused = [
+        link_id
+        for link_id, pair in zip(
+            listen.index.tolist(),
+            zip(listen["from_node_id"].tolist(), listen["to_node_id"].tolist(), strict=True),
+            strict=True,
+        )
+        if pair not in listened
+    ]
+    if not unused:
+        return []
+    return [f"Listen links must lead to a control node that listens to their node; invalid link IDs: {sorted(unused)}"]
+
+
 def _flow_demand_capacity_issues(model: "Model") -> list[str]:
     """Return FlowDemand nodes whose demand exceeds the max_flow_rate of their Pump or Outlet.
 
@@ -358,6 +389,7 @@ def validate_model(model: "Model", layout: bool = True) -> None:
         *_connector_through_junction_issues(model),
         *_manning_resistance_issues(model),
         *_listen_to_junction_issues(model),
+        *_unused_listen_link_issues(model),
         *_flow_demand_capacity_issues(model),
         *_user_demand_return_factor_issues(model),
         *_observation_distance_issues(model),
