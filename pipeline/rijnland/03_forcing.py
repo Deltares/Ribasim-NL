@@ -193,8 +193,8 @@ BOEZEM_BASIN = n("RIJNLANDSBOEZEM_dummy_id_281/286")  # streefpeil -0.61 m NAP
 # they had, the gemalen would only pump a fraction of their steps, so it is a safety limit below the streefpeil.
 BOEZEM_MIN_UPSTREAM_LEVEL = -0.65
 # The levels at which the steps switch on and off differ per season, tuned to the measured discharges, see
-# https://github.com/Deltares/Ribasim-NL/issues/1062. Without the seasons, the steps have those of the summer, in which
-# the boezem has the streefpeil of its Basin.
+# https://github.com/Deltares/Ribasim-NL/issues/1062 and https://github.com/Deltares/Ribasim-NL/pull/1076. Without the
+# seasons, the steps have those of the summer, in which the boezem has the streefpeil of its Basin.
 # (node_id, name, flow rates [m3/s] below and above the steps, per season the levels [m+NAP] at which each step
 # switches on and off)
 BOEZEMGEMALEN: tuple[tuple[int, str, list[float], dict[str, list[tuple[float, float]]]], ...] = (
@@ -214,21 +214,21 @@ BOEZEMGEMALEN: tuple[tuple[int, str, list[float], dict[str, list[tuple[float, fl
             "winter": [
                 (-0.62, -0.625),
                 (-0.615, -0.6175),
+                (-0.61, -0.6125),
+                (-0.605, -0.6075),
                 (-0.6, -0.6025),
                 (-0.595, -0.5975),
-                (-0.59, -0.5925),
-                (-0.585, -0.5875),
             ],
         },
     ),
     # Halfweg switches on before Spaarndam
-    (n("464-036-00021"), "Spaarndam", [0.0, 32.0], {"zomer": [(-0.6, -0.6025)], "winter": [(-0.63, -0.6375)]}),
-    (n("loc:113030,489579"), "Halfweg", [0.0, 33.0], {"zomer": [(-0.615, -0.6175)], "winter": [(-0.64, -0.6475)]}),
+    (n("464-036-00021"), "Spaarndam", [0.0, 32.0], {"zomer": [(-0.6, -0.6025)], "winter": [(-0.625, -0.6325)]}),
+    (n("loc:113030,489579"), "Halfweg", [0.0, 33.0], {"zomer": [(-0.615, -0.6175)], "winter": [(-0.65, -0.6575)]}),
     (
         n("433-036-00021"),
         "Gouda",
         [0.0, 34.5, 40.0],
-        {"zomer": [(-0.5925, -0.595), (-0.565, -0.5675)], "winter": [(-0.6225, -0.625), (-0.6, -0.6025)]},
+        {"zomer": [(-0.59, -0.595), (-0.57, -0.5725)], "winter": [(-0.615, -0.62), (-0.6, -0.6025)]},
     ),
 )
 for node_id, name, flow_rates, steps in BOEZEMGEMALEN:

@@ -96,9 +96,10 @@ ALWAYS_ON_PUMP_MIN_FLOW_RATE_BY_NODE_ID: dict[int, float] = {}
 ALWAYS_ON_PUMP_MAX_DOWNSTREAM_LEVEL: float = 99999.0
 ALWAYS_ON_PUMP_MIN_UPSTREAM_LEVEL_OFFSET: float = -1.0
 DORKWERD_PUMP_NODE_ID = n("KGM-E-11350")
-# Dorkwerd pumps on the level of the Basin it pumps into at Groningen, rather than of the Eemskanaal at Delfzijl, see
-# https://github.com/Deltares/Ribasim-NL/issues/1060
-DORKWERD_LISTEN_KEY = "up:KIN-E-00001"
+# Dorkwerd pumps on the level of the boezem 13 km from it, joined to the Basin it pumps into by ManningResistances.
+# On that Basin it stopped too soon, and on the Eemskanaal at Delfzijl it did not react to Groningen, see
+# https://github.com/Deltares/Ribasim-NL/issues/1060 and https://github.com/Deltares/Ribasim-NL/pull/1076
+DORKWERD_LISTEN_KEY = "up:ow:OAF-E-00569"
 DORKWERD_LISTEN_NODE_ID = n(DORKWERD_LISTEN_KEY)
 DORKWERD_THRESHOLD_LOW = 0.533 - LEVEL_THRESHOLD_RANGE / 2
 DORKWERD_THRESHOLD_HIGH = 0.533 + LEVEL_THRESHOLD_RANGE / 2
