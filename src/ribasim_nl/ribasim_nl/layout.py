@@ -39,7 +39,10 @@ MOVABLE_NODE_TYPES = (
 
 
 def _set_link_ends(model: Model, node_ids: typing.Iterable[int]) -> None:
-    """Make the links of nodes start and end at the current node locations, keeping their other coordinates."""
+    """Make the links of nodes start and end at the current node locations, keeping their other coordinates.
+
+    A link without a geometry gets a straight line.
+    """
     links = model.link.df
     node_ids = set(node_ids)
     affected = links.index[links["from_node_id"].isin(node_ids) | links["to_node_id"].isin(node_ids)]
@@ -48,6 +51,9 @@ def _set_link_ends(model: Model, node_ids: typing.Iterable[int]) -> None:
     ends = shapely.get_coordinates(nodes.loc[links.loc[affected, "to_node_id"]].to_numpy())
     geometries = []
     for line, start, end in zip(links.loc[affected, "geometry"], starts, ends, strict=True):
+        if line is None:
+            geometries.append(shapely.LineString([start, end]))
+            continue
         coords = np.array(typing.cast(shapely.LineString, line).coords)[:, :2]
         coords[0] = start
         coords[-1] = end

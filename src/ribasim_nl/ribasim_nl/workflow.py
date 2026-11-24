@@ -385,6 +385,8 @@ def write_and_run_forcing_model(
     def snap(model: Model) -> Model:
         """Move Pumps and Outlets to their structures, route links along the hydro-objects, and merge them.
 
+        The nodes of the input model are at their structures already, see `ribasim_nl.crossings.model.boezem_model`, so
+        this moves the nodes that the feedback forms added or made an Outlet, see `ribasim_nl.structure_locations`.
         Basin nodes are moved to the center of their network, see `ribasim_nl.network_snapping.route_basin_links`.
         """
         move_to_structures(model, Crossings.read(paths.crossings))
