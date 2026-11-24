@@ -26,6 +26,7 @@ from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 
 from ribasim_nl.keys import KEY_COLUMN, number_duplicates
 from ribasim_nl.model import Model
+from ribasim_nl.structure_locations import Crossings, identifiers, move_to_structures
 
 CRS = "EPSG:28992"
 
@@ -774,20 +775,6 @@ def add_relevant_names(
     tables.nodes["Pump"] = pump_node.rename(columns={"meta_name": "name"}).drop_duplicates()
 
 
-def _identifiers(layer: pd.DataFrame) -> pd.Series:
-    """The identifier of the objects of a layer, by globalid: their code, or their globalid if the code is a dummy.
-
-    The postprocessing gives the objects without a code or without a globalid a dummy one from their row number.
-    """
-    layer = layer.rename(columns={"CODE": "code"})
-    code = layer["code"].astype(object)
-    globalid = layer["globalid"].astype(object).astype(str)
-    dummy = code.isna() | code.astype(str).str.startswith("dummy")
-    identifier = code.astype(str).str.strip().where(~dummy, globalid.str.strip("{}"))
-    identifiers = pd.Series(identifier.to_numpy(), index=globalid.to_numpy())
-    return identifiers[~identifiers.index.duplicated(keep="first")]
-
-
 def _smallest_identifier(values: pd.Series, identifiers: pd.Series) -> pd.Series:
     """The smallest identifier of the objects of each crossing, a comma separated list of globalids.
 
@@ -815,7 +802,7 @@ def crossing_keys(
       `@1`.
     - A boundary node beside a crossing gets `bnd:` and the key of that crossing.
     """
-    area = _identifiers(post_processed_data["peilgebied"])
+    area = identifiers(post_processed_data["peilgebied"])
     key = pd.Series(pd.NA, index=pd.Index(nodes["node_id"].to_numpy()), dtype=object)
 
     # the Basins are numbered after their areas, see `assign_node_ids`
@@ -834,11 +821,9 @@ def crossing_keys(
     )
     key[basin_key.index] = number_duplicates(basin_key, basin_order)
 
-    structure = _smallest_identifier(crossings["gemaal"], _identifiers(post_processed_data["gemaal"]))
-    stuw = _smallest_identifier(crossings["stuw"], _identifiers(post_processed_data["stuw"]))
-    open_water = "ow:" + _smallest_identifier(
-        crossings["hydroobject"], _identifiers(post_processed_data["hydroobject"])
-    )
+    structure = _smallest_identifier(crossings["gemaal"], identifiers(post_processed_data["gemaal"]))
+    stuw = _smallest_identifier(crossings["stuw"], identifiers(post_processed_data["stuw"]))
+    open_water = "ow:" + _smallest_identifier(crossings["hydroobject"], identifiers(post_processed_data["hydroobject"]))
     connector = structure.where(structure.notna(), stuw)
     connector = connector.where(connector.notna(), open_water)
     assert connector.notna().all(), "crossings without a gemaal, stuw or hydroobject"
@@ -944,4 +929,13 @@ def boezem_model(
     model = to_model(tables, options.endtime)
     keys = crossing_keys(nodes, links, crossings, post_processed_data)
     model.node.df[KEY_COLUMN] = keys.reindex(model.node.df.index).astype("str")
+    place_at_structures(model, crossings_path)
     return model, check
+
+
+def place_at_structures(model: Model, crossings_path: Path) -> None:
+    """Move the connector nodes to the structure they represent, see `ribasim_nl.structure_locations`.
+
+    This is done last, as the other steps find the gemaal of a Pump at the location of its crossing.
+    """
+    move_to_structures(model, Crossings.read(crossings_path))
