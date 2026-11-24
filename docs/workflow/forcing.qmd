@@ -61,6 +61,7 @@ flowchart LR
 
 `merge_rwzi_model` adds the plants that discharge in the model, within 100 m of a Basin that is not bergend, or 3000 m in the main water system, and removes the others.
 `attach_rwzi_junctions` then moves each Junction onto the nearest route into or out of its Basin.
+A few plants discharge into another Basin than the one they are in, listed in `ribasim_nl.rwzi.RWZI_BASINS`. They are attached in the regional model if that Basin is in it, and else in the coupled model.
 
 ## Fractions
 

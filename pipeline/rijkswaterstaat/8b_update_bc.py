@@ -6,6 +6,7 @@ import pandas as pd
 from pandera.typing import DataFrame
 from ribasim.schemas import FlowBoundaryTimeSchema, LevelBoundaryTimeSchema
 from ribasim_nl.assign_lhm_fractions import assign_lhm_fractions
+from ribasim_nl.bgt_water import BGT_WATER
 from ribasim_nl.flow_paths import rebuild_rws_junction_trees
 from ribasim_nl.keys import resolve_keys
 from ribasim_nl.layout import tidy_layout
@@ -218,7 +219,7 @@ rebuild_rws_junction_trees(
 )
 # and observe series that combine the inflows and outflows of a Basin, through its tree
 model = link_observations(model, "Rijkswaterstaat")
-model = tidy_layout(model)
+model = tidy_layout(model, water_path=BGT_WATER)
 model.clean_basin_area()
 
 # %%

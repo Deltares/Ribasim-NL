@@ -211,10 +211,14 @@ def terminal2junction(rwzi_coupled_model, coupling_lookup, *, verbose=False):
     return rwzi_coupled_model
 
 
-# Basins that RWZIs discharge into by RWZI code, instead of the Basin they are in, see #871
+# Basins that RWZIs discharge into by RWZI code, instead of the Basin they are in, see #871 and #1078
 RWZI_BASINS = {
+    # Amsterdam-West, in the Rijnland Basin GH-080.04_dummy_id_6, discharges into the Noordzeekanaal
+    11014: NodeKey("Rijkswaterstaat", "Noordzeekanaal"),
     # Hollands Noorderkwartier, on the hoofdwater next to the doorgaand Basin of peilgebied 04853
     12001: NodeKey("HollandsNoorderkwartier", "peilgebied_1000-01/17"),
+    # Oosthuizen, on the hoofdwater next to the doorgaand Basin peilgebied_5400-67
+    12026: NodeKey("HollandsNoorderkwartier", "peilgebied_1000-01/10"),
     # Hollandse Delta, the Kanaal door Voorne, on the hoofdwater next to the doorgaand Basin P-V03.003
     17041: NodeKey("HollandseDelta", "P-V19.001"),
     28002: NodeKey("AaenMaas", "up:201PP"),  # Asten, on the hoofdwater next to the doorgaand Basin up:2860006
