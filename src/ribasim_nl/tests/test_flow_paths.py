@@ -333,6 +333,25 @@ def test_merge_basin_trees_through_rwzi():
     assert merge_basin_trees(model) == []
 
 
+def test_merge_basin_trees_rwzi_branched_off():
+    """The link of Outlet 3 beyond RWZI Junction 8 branches off before it, so the Junction stays fixed."""
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    model.basin.add(
+        Node(1, Point(0, 0)), [basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]), basin.State(level=[0.5])]
+    )
+    for node_id, point in ((2, Point(-50, 0)), (3, Point(10, 30))):
+        model.outlet.add(Node(node_id, point), [outlet.Static(flow_rate=[1.0])])
+    model.flow_boundary.add(Node(7, Point(30, -20), meta_rwzi_code=1.0), [flow_boundary.Static(flow_rate=[0.1])])
+    model.junction.add(Node(8, Point(30, 0), meta_rwzi_code=1.0))
+    model.link.add(model.basin[1], model.outlet[2])
+    model.link.add(model.basin[1], model.junction[8], geometry=LineString([(0, 0), (30, 0)]))
+    model.link.add(model.junction[8], model.outlet[3], geometry=LineString([(30, 0), (10, 30)]))
+    model.link.add(model.flow_boundary[7], model.junction[8])
+    pairs = link_pairs(model)
+    assert merge_basin_trees(model, branch=[int(model.link.df.index[2])]) == []
+    assert link_pairs(model) == pairs
+
+
 def test_rwzi_junctions():
     """Only an RWZI Junction that splits a link is attached, see `attach_rwzi_junctions`."""
     model = route_model()

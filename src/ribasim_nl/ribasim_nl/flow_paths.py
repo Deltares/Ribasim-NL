@@ -1097,23 +1097,34 @@ def merge_basin_trees(
     # first find the trees that change, to read the lines around them at once
     changes = []
     for basin_id in sorted(nodes.index[nodes["node_type"] == "Basin"].tolist()):
-        junctions, tree_link_ids, reached = junction_tree(routes, basin_id, fixed)
+        # an RWZI Junction at which the routes no longer split, as a route that passed it now branches off before it,
+        # stays fixed, see `branch_off_routes`
+        basin_fixed = set(fixed)
+        while True:
+            junctions, tree_link_ids, reached = junction_tree(routes, basin_id, basin_fixed)
+            if len(reached) < 2:
+                break
+            paths = routes.paths(basin_id)
+            ends = [(node_id, link_id) for link_id, node_id in reached.items()]
+            origin = _coord(model, basin_id)
+            kept = {_coord(model, junction_id): junction_id for junction_id in sorted(junctions & attached)}
+            assert len(kept) == len(junctions & attached), f"RWZI Junctions of Basin {basin_id} at the same location"
+            coords = {}
+            for key, (node_id, link_id) in enumerate(ends):
+                parts = route_parts(model, basin_id, paths[link_id])
+                route = _dedupe([origin, *(c for part in parts for c in _coords(part))])
+                route = route if len(route) >= 2 else [origin, _coord(model, node_id)]
+                coords[key] = _insert_points(route, kept.keys()) if kept else route
+            branched = branch_off_routes(
+                coords, {key for key, (_, link_id) in enumerate(ends) if link_id in branch}, max_branch_distance
+            )
+            splits = {line[-1] for _, end, line in tree_links(branched) if end != "root" and end[0] == "junction"}
+            unsplit = {junction_id for location, junction_id in kept.items() if location not in splits}
+            if not unsplit:
+                break
+            basin_fixed |= unsplit
         if len(reached) < 2:
             continue
-        paths = routes.paths(basin_id)
-        ends = [(node_id, link_id) for link_id, node_id in reached.items()]
-        origin = _coord(model, basin_id)
-        kept = {_coord(model, junction_id): junction_id for junction_id in sorted(junctions & attached)}
-        assert len(kept) == len(junctions & attached), f"RWZI Junctions of Basin {basin_id} at the same location"
-        coords = {}
-        for key, (node_id, link_id) in enumerate(ends):
-            parts = route_parts(model, basin_id, paths[link_id])
-            route = _dedupe([origin, *(c for part in parts for c in _coords(part))])
-            route = route if len(route) >= 2 else [origin, _coord(model, node_id)]
-            coords[key] = _insert_points(route, kept.keys()) if kept else route
-        branched = branch_off_routes(
-            coords, {key for key, (_, link_id) in enumerate(ends) if link_id in branch}, max_branch_distance
-        )
         # the tree as the nodes reached beyond each of its links between the Basin and Junctions
         current = {frozenset(k for k, (_, i) in enumerate(ends) if link_id in paths[i]) for link_id in tree_link_ids}
         if branched == coords and _tree_splits(tree_links(coords)) == current:
