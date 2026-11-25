@@ -3,7 +3,7 @@
 import ribasim_nl.ribasim_parametrization as ribasim_param
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
-from ribasim_nl.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form
+from ribasim_nl.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form, write_feedback_model
 from shapely import Point
 
 from ribasim_nl import CloudStorage
@@ -133,4 +133,4 @@ ribasim_model.link.add(ribasim_model.basin[n("GPG120")], pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[n("GPG1070")])
 
 ribasim_param.clean_tables(ribasim_model, waterschap)
-ribasim_model.write(paths.model_dir("feedback") / "ribasim.toml")
+write_feedback_model(ribasim_model, paths)

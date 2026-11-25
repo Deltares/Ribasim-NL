@@ -21,6 +21,7 @@ from shapely.ops import linemerge, split, substring, unary_union
 
 from ribasim_nl import Model
 from ribasim_nl.keys import KEY_COLUMN, nonempty
+from ribasim_nl.structure_locations import crossing_points
 
 # https://github.com/Deltares/Ribasim-NL/issues/554
 
@@ -198,9 +199,9 @@ class SplitBasins:
             # determine closest distance from the connector nodes to the new basins and redirect the connectors to the closest new basin
             for connector_node_id in connector_node_ids_from_original_basin:
                 connector_node_id = int(connector_node_id)
-                connector_node_geometry = typing.cast(
-                    BaseGeometry, self.model.node.df.at[connector_node_id, "geometry"]
-                )
+                # at its crossing, on the boundary of the Basin, if the node is at its structure, see
+                # `ribasim_nl.structure_locations`
+                (connector_node_geometry,) = crossing_points(self.model.node.df.loc[[connector_node_id]])
 
                 closest_basin_node_id = None
                 closest_distance = float("inf")

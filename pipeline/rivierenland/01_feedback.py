@@ -7,7 +7,7 @@ import ribasim_nl.ribasim_parametrization as ribasim_param
 import shapely
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
-from ribasim_nl.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form
+from ribasim_nl.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form, write_feedback_model
 from shapely import LineString, Point
 from shapely.geometry import Polygon
 
@@ -377,4 +377,4 @@ for outlet_id in (n("ow:WTG_096609"), n("ow:WTG_096614|dummy_globalid_peilgebied
     )
 
 ribasim_param.clean_tables(ribasim_model, waterschap)
-ribasim_model.write(paths.model_dir("feedback") / "ribasim.toml")
+write_feedback_model(ribasim_model, paths)

@@ -26,7 +26,7 @@ from ribasim_nl.control import (
     get_node_table_with_from_to_node_ids,
     remove_duplicate_controls,
 )
-from ribasim_nl.keys import KEY_COLUMN
+from ribasim_nl.keys import KEY_COLUMN, fill_keys
 from ribasim_nl.network_snapping import line_reader, read_hydro_objects, snap_model
 from ribasim_nl.regional_model import ENDTIME, STARTTIME, add_inflows, add_lhm_forcing, finish_regional_model
 from ribasim_nl.ribasim_feedback_processor import RibasimFeedbackProcessor
@@ -137,8 +137,8 @@ class WaterBoardPaths:
 def process_feedback_form(paths: WaterBoardPaths, use_validation: bool = True) -> Model:
     """Apply the feedback form to the base model, and read the resulting model.
 
-    The nodes of the base model are at their structures, see `ribasim_nl.structure_locations`. The nodes that the form
-    adds on a crossing, or turns into another type, are placed at theirs, see `update_structures`.
+    The nodes that the form adds or turns into another type are placed at their structures when the model of the
+    feedback stage is written, see `write_feedback_model`.
 
     With `use_validation=False` the model is written without validation, for forms that leave the model
     temporarily invalid.
@@ -149,9 +149,23 @@ def process_feedback_form(paths: WaterBoardPaths, use_validation: bool = True) -
         warnings.simplefilter(action="ignore", category=FutureWarning)
         model = Model.read(work_dir / "ribasim.toml")
         model.set_crs("EPSG:28992")
-    # the form removes and adds nodes and changes their type, so match the nodes without a structure again
-    update_structures(model, Crossings.read(paths.crossings))
     return model
+
+
+def write_feedback_model(model: Model, paths: WaterBoardPaths) -> None:
+    """Place the nodes that the feedback stage added or changed at their structures, and write its model.
+
+    The nodes of the base model are at their structures, see `ribasim_nl.structure_locations`. The feedback form and
+    the script remove nodes, add nodes and change their type, so the nodes without a structure are matched again, see
+    `update_structures`. The nodes get their keys first, see `ribasim_nl.keys.fill_keys`, so that the key of a node
+    that is added at a location does not depend on where it is placed.
+
+    :param model: model of the feedback stage
+    :param paths: paths of the water board
+    """
+    fill_keys(model)
+    update_structures(model, Crossings.read(paths.crossings))
+    model.write(paths.model_dir("feedback") / "ribasim.toml")
 
 
 def check_basin_meta_categorie(model: Model) -> None:

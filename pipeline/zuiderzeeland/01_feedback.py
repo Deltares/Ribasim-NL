@@ -4,7 +4,7 @@ import ribasim_nl.ribasim_parametrization as ribasim_param
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from ribasim_nl.split_basins import NodeMetaCache, SplitBasins
-from ribasim_nl.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form
+from ribasim_nl.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form, write_feedback_model
 from shapely import Point
 
 from ribasim_nl import CloudStorage
@@ -564,5 +564,5 @@ for splitted_basin_path, basin_id in zip(
     ribasim_model = splitter.run()
 
 node_cache.set_meta_category(ribasim_model)
-ribasim_model.write(paths.model_dir("feedback") / "ribasim.toml")
+write_feedback_model(ribasim_model, paths)
 del node_cache

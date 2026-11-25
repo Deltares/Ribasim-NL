@@ -3,9 +3,14 @@ import pytest
 from ribasim import Node
 from ribasim.nodes import basin, flow_demand, outlet, pump
 from ribasim_nl.structure_locations import (
+    CODE_COLUMN,
+    CROSSING_COLUMNS,
     Crossings,
+    crossing_points,
+    drop_crossing_locations,
     move_to_structures,
     structure_locations,
+    update_structures,
 )
 from shapely.geometry import LineString, Point
 
@@ -91,6 +96,28 @@ def test_outlet_to_stuw():
     assert structure_locations(both, table) == {2: "s1"}, "the nearest Outlet"
 
 
+def test_nodes_that_become_outlets():
+    # a TabulatedRatingCurve and a FlowBoundary of the input model become Outlets, so they get a stuw
+    table = crossings([STUW_CROSSING])
+    for node_type in ("TabulatedRatingCurve", "FlowBoundary"):
+        assert structure_locations(nodes({1: (node_type, Point(100, 400))}), table) == {1: "s2"}
+    assert structure_locations(nodes({1: ("ManningResistance", Point(100, 400))}), table) == {}
+
+
+def test_placed_nodes_keep_their_structure():
+    table = crossings([PUMP_CROSSING])
+    # Pump 1 is at gemaal g1 already, with its code, so it gets no structure again, and Pump 2 does not get g1
+    placed = nodes({1: ("Pump", Point(130, 0)), 2: ("Pump", Point(100, 0))})
+    placed[CODE_COLUMN] = ["g1", None]
+    assert structure_locations(placed, table) == {}
+    # nor if a node without a code stands at the gemaal, like one that a script added there
+    assert structure_locations(placed.assign(**{CODE_COLUMN: None}), table) == {}
+    # a Pump with a code that still lies on its crossing is not matched again
+    placed = nodes({1: ("Pump", Point(100, 0))})
+    placed[CODE_COLUMN] = ["other"]
+    assert structure_locations(placed, table) == {}
+
+
 def test_crossings_validation():
     with pytest.raises(AssertionError, match="miss the columns"):
         Crossings(gpd.GeoDataFrame(geometry=[Point(0, 0)], crs=CRS), *[gpd.GeoSeries([], crs=CRS)] * 3)
@@ -122,6 +149,73 @@ def test_move_to_structures():
     links = model.link.df.set_index(["from_node_id", "to_node_id"]).geometry
     assert list(links[(1, 3)].coords) == [(0, 0), (130, 0)]
     assert list(links[(4, 3)].coords) == [(140, 0), (130, 0)]
+    # the moved node keeps the location of its crossing, which `crossing_points` gives
+    assert model.node.df[CROSSING_COLUMNS].dropna().to_dict("index") == {
+        3: {"meta_crossing_x": 100.0, "meta_crossing_y": 0.0}
+    }
+    at_crossing = crossing_points(model.node.df)
+    assert at_crossing[3].equals(Point(100, 0)) and at_crossing[5].equals(Point(100, 20))
+    assert crossing_points(model.pump.node.df)[3].equals(Point(100, 0))
     # a node that is at its structure already is not moved again
     assert move_to_structures(model, crossings([PUMP_CROSSING | {"geometry": Point(130, 0)}])) == {}
     assert model.node.df.geometry[3].equals(Point(130, 0))
+    assert move_to_structures(model, crossings([PUMP_CROSSING, OPEN_CROSSING])) == {}
+    assert model.node.df.geometry[3].equals(Point(130, 0))
+    drop_crossing_locations(model)
+    assert not set(CROSSING_COLUMNS) & set(model.node.df.columns)
+    assert crossing_points(model.node.df)[3].equals(Point(130, 0))
+
+
+def structure_model() -> Model:
+    """Basin 1 -> Pump 3 and Outlet 5 -> Basin 2, both on a crossing between A and B."""
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs=CRS)
+    for node_id, x in ((1, 0), (2, 200)):
+        model.basin.add(
+            Node(node_id, Point(x, 0)), [basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]), basin.State(level=[0.5])]
+        )
+    model.pump.add(Node(3, Point(100, 0)), [pump.Static(flow_rate=[1.0])])
+    model.outlet.add(Node(5, Point(100, 20)), [outlet.Static(flow_rate=[1.0])])
+    for node in (model.pump[3], model.outlet[5]):
+        model.link.add(model.basin[1], node)
+        model.link.add(node, model.basin[2])
+    return model
+
+
+def test_move_link_without_geometry():
+    model = structure_model()
+    links = model.link.df
+    link_id = links.index[(links["from_node_id"] == 3) & (links["to_node_id"] == 2)]
+    links.loc[link_id, "geometry"] = None
+    move_to_structures(model, crossings([PUMP_CROSSING]))
+    assert list(model.link.df.geometry[link_id[0]].coords) == [(130, 0), (200, 0)]
+
+
+def test_update_structures():
+    table = crossings([PUMP_CROSSING, OPEN_CROSSING, CULVERT_CROSSING])
+    model = structure_model()
+    # the stuw behind the culvert goes to the Outlet, the gemaal to the Pump
+    assert move_to_structures(model, table) == {3: "g1", 5: "s1"}
+    nodes_df = model.node.df
+    assert nodes_df[CODE_COLUMN].dropna().to_dict() == {3: "g1", 5: "s1"}
+
+    # nothing changed, so nothing moves
+    assert update_structures(model, table) == {}
+    assert nodes_df.geometry[3].equals(Point(130, 0)) and nodes_df.geometry[5].equals(Point(160, 50))
+
+    # a feedback form turns the Pump into an Outlet, which clears its code, and removes the Outlet at the stuw
+    nodes_df.loc[3, "node_type"] = "Outlet"
+    nodes_df.loc[3, CODE_COLUMN] = None
+    model.remove_node(5, remove_links=True)
+    assert update_structures(model, table) == {3: "s1"}
+    nodes_df = model.node.df
+    assert nodes_df.geometry[3].equals(Point(160, 50)), "from its crossing to the stuw that is free now"
+    assert nodes_df.loc[3, CROSSING_COLUMNS].tolist() == [100.0, 0.0]
+    assert nodes_df.at[3, CODE_COLUMN] == "s1"
+    links = model.link.df.set_index(["from_node_id", "to_node_id"]).geometry
+    assert list(links[(1, 3)].coords) == [(0, 0), (160, 50)]
+
+    # without a stuw it goes back to its crossing
+    nodes_df.loc[3, CODE_COLUMN] = None
+    assert update_structures(model, crossings([PUMP_CROSSING, OPEN_CROSSING])) == {}
+    assert model.node.df.geometry[3].equals(Point(100, 0))
+    assert model.node.df.loc[3, CROSSING_COLUMNS].isna().all()

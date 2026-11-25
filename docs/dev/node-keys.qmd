@@ -10,7 +10,7 @@ A node ID is the next free number, and nothing may depend on its value.
 
 The key is in the node column `meta_key`, and is unique in the model of a water authority.
 In the coupled model a node is identified by its authority, `meta_waterbeheerder`, and its key.
-A key is set when the node is created, and does not change after that, also when the type or the name of the node changes, or another Basin is merged into it.
+A key is set when the node is created, and does not change after that, also when the type or the name of the node changes, when the node is moved, or when another Basin is merged into it.
 
 The models that are built from source data set the keys of their nodes.
 
@@ -44,9 +44,10 @@ Every other node gets a key when the model is written, or when a key is looked u
 | Control or demand node | the node type and the key of the node it controls, the smallest if it controls several | `discrete_control:GA1-st9` |
 | Part of a Basin that is split from a file, `SplitBasins` | the key of the Basin and the ID of the part in the file | `PBH0248142/1` |
 | Junction | `junction:<from>><to>#<n>x<m>`: the smallest key of the n nodes that flow into it, and of the m nodes it flows to | |
-| Any other node | its location in whole metres | `loc:152150,365169` |
+| Any other node | its location in whole metres, when it gets its key | `loc:152150,365169` |
 
 Equal keys get a number, `@1`, `@2`, in an order that follows from the data: along the hydroobject, or by location.
+The nodes of a level controlled input model get their keys at their crossings, before they are placed at their structures, see [Layout](../workflow/layout.qmd#routing-the-links). A LevelBoundary that is added beside such a node is placed beside its crossing, so its `loc:` key does not depend on where the node is drawn.
 The keys of the Junctions are set again every time, since their trees are rebuilt along the way.
 `Model.write` checks that every node has a key and that no two nodes of a water authority have the same one.
 

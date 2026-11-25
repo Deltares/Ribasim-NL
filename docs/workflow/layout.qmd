@@ -15,15 +15,24 @@ None of this changes the results.
 ## Routing the links
 
 The input model of a level controlled water authority has a connector node where a hydro-object crosses the boundary of a peilgebied, see [Level controlled](level-controlled.qmd).
-The structure itself is often some distance along the hydro-object, so at the end of the forcing stage `ribasim_nl.structure_locations.move_to_structures` first moves these nodes to their structure:
+The structure itself is often some distance along the hydro-object, so `ribasim_nl.structure_locations.move_to_structures` places these nodes at their structure when the input model is made, in `ribasim_nl.crossings.model.boezem_model`:
 
-- A Pump moves to the gemaal that its crossing is matched with, if that is within 100 m.
-- An Outlet moves to the stuw that its crossing is matched with. An Outlet without one stands for all crossings between its two areas that have no structure of their own. It moves to a stuw within 250 m that lies on a hydro-object of one of these crossings, or on a hydro-object that touches it, such as the weir behind an inlet culvert.
+- A Pump is placed at the gemaal that its crossing is matched with, if that is within 100 m.
+- A node that is or becomes an Outlet is placed at the stuw that its crossing is matched with. One without a stuw stands for all crossings between its two areas that have no structure of their own. It is placed at a stuw within 250 m that lies on a hydro-object of one of these crossings, or on a hydro-object that touches it, such as the weir behind an inlet culvert.
 - A structure gets one node, the nearest one.
 
 A node with a structure gets its code in `meta_code_waterbeheerder`.
-The koppeltabel of the measured discharges refers to nodes by their key, see [Node keys](../dev/node-keys.qmd), so a moved node is found where it is.
-This is not done when the input model is made, since the parametrization depends on where nodes are, such as within supply areas, and a node whose type a feedback form changes gets its key from its location.
+The feedback form and the script of the feedback stage remove nodes, add nodes and change their type, so before that stage writes its model, `update_structures` matches the nodes without a structure again, see `ribasim_nl.workflow.write_feedback_model`: a Pump that became an Outlet goes back to its crossing and from there to a stuw, and a node that is added on a crossing goes to the structure of that crossing.
+Scripts, the feedback forms and the koppeltabel of the measured discharges refer to nodes by their key, see [Node keys](../dev/node-keys.qmd), so a node is found wherever it is drawn.
+
+A moved node keeps the location of its crossing in `meta_crossing_x` and `meta_crossing_y` up to the end of the forcing stage, which removes these columns.
+The crossing lies on the boundary of the two areas that the node connects, and the parametrization looks at that location, `ribasim_nl.structure_locations.crossing_points`, in three places:
+
+- A Pump gets the name and the capacity of the gemaal nearest to its crossing, in `AssignMetaData.add_meta_to_pumps`.
+- A LevelBoundary that is added beside a node is placed beside its crossing, in `FlowBoundaries_to_LevelBoundaries` and `reassign_level_boundaries`. Its location gives it its key and the water authority it is coupled with.
+- When a Basin is split, a node goes to the part nearest to its crossing, in `SplitBasins`.
+
+So the models are the same as when the nodes were moved at the end of the forcing stage, and only the geometries of nodes and links differ.
 
 Then `ribasim_nl.network_snapping.snap_model` aligns the layout with the hydro-objects in `verwerkt/profielen/network.gpkg`, which are written by the [profile generation](profile-generation.qmd):
 

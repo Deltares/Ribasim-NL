@@ -59,6 +59,7 @@ Where HKV corrected the delivered data by hand, it applies these corrections, `v
 ### 3. The input model
 
 `pipeline/00e_crossings_to_ribasim.py` makes the input model `modellen/<water board>_boezemmodel_<version>`: the aggregation areas become Basins, and the crossings connector nodes.
+A connector node is placed at the gemaal or stuw of its crossing, see [Layout](layout.qmd#routing-the-links).
 The feedback forms and scripts refer to its nodes by their [key](../dev/node-keys.qmd), which follows from the crossing or the area of the node.
 :::
 ::: {.g-col-12 .g-col-lg-7}

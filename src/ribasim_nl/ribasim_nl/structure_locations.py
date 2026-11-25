@@ -292,7 +292,8 @@ def move_to_structures(
     # a node that is moved again keeps the location of its crossing
     has_crossing = set(nodes.index[nodes[CROSSING_COLUMNS[0]].notna()])
     first = [node_id for node_id in moved if node_id not in has_crossing]
-    nodes.loc[first, CROSSING_COLUMNS] = [[crossing_of[node_id].x, crossing_of[node_id].y] for node_id in first]
+    if first:
+        nodes.loc[first, CROSSING_COLUMNS] = [[crossing_of[node_id].x, crossing_of[node_id].y] for node_id in first]
     pumps = int((nodes.loc[list(moved), "node_type"] == "Pump").sum())
     LOG.info(f"Moved {pumps} Pumps to their gemaal and {len(moved) - pumps} Outlets to their stuw")
     return moved

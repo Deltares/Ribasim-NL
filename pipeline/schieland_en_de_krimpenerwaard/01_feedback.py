@@ -3,7 +3,7 @@
 import ribasim_nl.ribasim_parametrization as ribasim_param
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
-from ribasim_nl.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form
+from ribasim_nl.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form, write_feedback_model
 from shapely import Point
 
 from ribasim_nl import CloudStorage
@@ -272,4 +272,4 @@ for node in inlaat_structures:
 # We don't call full clean_tables here as it strips LB static data for converted Terminal nodes
 ribasim_param.update_meta(ribasim_model, waterschap)
 
-ribasim_model.write(paths.model_dir("feedback") / "ribasim.toml")
+write_feedback_model(ribasim_model, paths)

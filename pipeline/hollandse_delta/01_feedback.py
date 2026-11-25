@@ -6,7 +6,7 @@ import ribasim_nl.ribasim_parametrization as ribasim_param
 from ribasim import Node
 from ribasim.nodes import level_boundary, pump, tabulated_rating_curve
 from ribasim_nl.geometry import polygon_parts, union_polygons
-from ribasim_nl.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form
+from ribasim_nl.workflow import UNKNOWN_STREEFPEIL, WaterBoardPaths, process_feedback_form, write_feedback_model
 from shapely import MultiPolygon, Point
 
 from ribasim_nl import CloudStorage
@@ -598,4 +598,4 @@ ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, def
 ribasim_param.add_outlets(ribasim_model, delta_crest_level=0.10)
 
 ribasim_param.clean_tables(ribasim_model, waterschap)
-ribasim_model.write(paths.model_dir("feedback") / "ribasim.toml")
+write_feedback_model(ribasim_model, paths)
