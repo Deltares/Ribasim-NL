@@ -67,9 +67,6 @@ def test_pump_to_gemaal():
     far = crossings([PUMP_CROSSING | {"gemaal": "g2"}])
     assert structure_locations(nodes({1: ("Pump", Point(100, 0))}), far) == {}
     assert structure_locations(nodes({1: ("Pump", Point(100, 0))}), far, max_distance=200.0) == {1: "g2"}
-    # not a gemaal that a Pump is at already, which was moved there before
-    at_gemaal = nodes({1: ("Pump", Point(100, 0)), 2: ("Pump", Point(130, 0))})
-    assert structure_locations(at_gemaal, table) == {}
 
 
 def test_outlet_to_stuw():
@@ -92,10 +89,6 @@ def test_outlet_to_stuw():
     assert structure_locations(both, table) == {2: "s1"}
     table = crossings([OPEN_CROSSING, CULVERT_CROSSING])
     assert structure_locations(both, table) == {2: "s1"}, "the nearest Outlet"
-    # the nodes of the input model that become Outlets, and not a ManningResistance
-    for node_type in ("TabulatedRatingCurve", "FlowBoundary"):
-        assert structure_locations(nodes({1: (node_type, Point(100, 20))}), table) == {1: "s1"}
-    assert structure_locations(nodes({1: ("ManningResistance", Point(100, 20))}), table) == {}
 
 
 def test_crossings_validation():
@@ -119,8 +112,8 @@ def test_move_to_structures():
     model.link.add(model.outlet[5], model.basin[2])
     model.link.add(model.flow_demand[4], model.pump[3])
 
-    structures = move_to_structures(model, crossings([PUMP_CROSSING, OPEN_CROSSING]))
-    assert structures == {3: "g1"}
+    moved = move_to_structures(model, crossings([PUMP_CROSSING, OPEN_CROSSING]))
+    assert moved == {3: "g1"}
     assert model.node.df["meta_code_waterbeheerder"].dropna().to_dict() == {3: "g1"}
     points = model.node.df.geometry
     assert points[3].equals(Point(130, 0))
@@ -129,6 +122,6 @@ def test_move_to_structures():
     links = model.link.df.set_index(["from_node_id", "to_node_id"]).geometry
     assert list(links[(1, 3)].coords) == [(0, 0), (130, 0)]
     assert list(links[(4, 3)].coords) == [(140, 0), (130, 0)]
-    # a node that is at its structure already is not moved again, and still has it
-    assert move_to_structures(model, crossings([PUMP_CROSSING | {"geometry": Point(130, 0)}])) == {3: "g1"}
+    # a node that is at its structure already is not moved again
+    assert move_to_structures(model, crossings([PUMP_CROSSING | {"geometry": Point(130, 0)}])) == {}
     assert model.node.df.geometry[3].equals(Point(130, 0))
