@@ -1,15 +1,23 @@
-"""Move the Pumps and Outlets of a level controlled model to the structures they represent.
+"""Place the Pumps and Outlets of a level controlled model at the structures they represent.
 
 The input model of a level controlled water authority has a connector node where a hydro-object crosses the boundary
 of a peilgebied, see `ribasim_nl.crossings`. The gemaal or stuw that controls the flow there often lies some distance
 along the hydro-object, and one crossing stands for all crossings between two peilgebieden without a structure of their
-own. A node on a crossing is then drawn on another watercourse than its structure, and the links to it follow that
-watercourse, see `ribasim_nl.network_snapping`.
+own. A node on a crossing would then be drawn on another watercourse than its structure, and the links to it would
+follow that watercourse, see `ribasim_nl.network_snapping`.
 
-`move_to_structures` moves each Pump to its gemaal and each Outlet to its stuw, see `structure_locations`, at the end
-of the forcing stage, after the parametrization, which depends on where nodes are, such as within supply areas. This
-only changes the geometry of nodes, which Ribasim does not use in the simulation. Other data, such as the koppeltabel
-of the measured discharges, refers to these nodes by their key, see `ribasim_nl.observations`.
+`move_to_structures` moves each Pump to its gemaal and each node that is or becomes an Outlet to its stuw, see
+`structure_locations`, when the input model is made, see `ribasim_nl.crossings.model.boezem_model`, and records the
+code of the structure in `CODE_COLUMN`. The feedback form removes nodes, adds nodes and changes their type, so
+`update_structures` matches the nodes without a structure again right after it is applied, see
+`ribasim_nl.workflow.process_feedback_form`.
+
+A moved node keeps the location of its crossing in the `CROSSING_COLUMNS` up to the end of the forcing stage. The
+crossing lies on the boundary between the two areas that the node connects, which is what the parametrization looks
+at: the gemaal whose name and capacity a Pump gets is the one nearest to its crossing, see
+`ribasim_nl.assign_parametrization.AssignMetaData.add_meta_to_pumps`, and a boundary node that is added beside a node
+is placed beside its crossing, which sets its key and its water authority. `crossing_points` gives these locations.
+Other data refers to nodes by their key, see `ribasim_nl.crossings.model.crossing_keys`.
 """
 
 import logging
@@ -24,7 +32,7 @@ import pandas as pd
 import shapely
 import shapely.affinity
 
-from ribasim_nl.crossings.model import identifiers
+from ribasim_nl.keys import nonempty
 from ribasim_nl.layout import move_nodes
 from ribasim_nl.model import Model
 
@@ -44,6 +52,12 @@ ON_LINE_TOLERANCE = 2.0
 # which the coordinates in the plane are the same
 RD_NEW = "EPSG:28992"
 RD_EPSG = (28992, 7415)
+# The node types that are or become Outlets, see `ribasim_nl.ribasim_parametrization.add_outlets`, and represent a stuw
+OUTLET_TYPES = ("Outlet", "TabulatedRatingCurve", "FlowBoundary")
+# The node column with the code of the structure of a node
+CODE_COLUMN = "meta_code_waterbeheerder"
+# The node columns with the location of the crossing of a node that is moved to its structure [m]
+CROSSING_COLUMNS = ["meta_crossing_x", "meta_crossing_y"]
 
 
 @dataclass(frozen=True)
@@ -56,7 +70,7 @@ class Crossings:
     :param gemaal: the location of each gemaal, by globalid
     :param stuw: the location of each stuw, by globalid
     :param lines: the hydro-objects and culverts, by globalid
-    :param codes: the code of each gemaal and stuw, by globalid, see `ribasim_nl.crossings.model.identifiers`
+    :param codes: the code of each gemaal and stuw, by globalid, see `identifiers`
     """
 
     rows: gpd.GeoDataFrame
@@ -102,6 +116,20 @@ class Crossings:
         )
 
 
+def identifiers(layer: pd.DataFrame) -> pd.Series:
+    """The identifier of the objects of a layer, by globalid: their code, or their globalid if the code is a dummy.
+
+    The postprocessing gives the objects without a code or without a globalid a dummy one from their row number.
+    """
+    layer = layer.rename(columns={"CODE": "code"})
+    code = layer["code"].astype(object)
+    globalid = layer["globalid"].astype(object).astype(str)
+    dummy = code.isna() | code.astype(str).str.startswith("dummy")
+    identifier = code.astype(str).str.strip().where(~dummy, globalid.str.strip("{}"))
+    identifiers = pd.Series(identifier.to_numpy(), index=globalid.to_numpy())
+    return identifiers[~identifiers.index.duplicated(keep="first")]
+
+
 def _ids(value: object) -> list[str]:
     """The globalids in a cell of the crossings, which are separated by commas."""
     return [i for i in value.split(",") if i] if isinstance(value, str) else []
@@ -117,21 +145,25 @@ def structure_locations(
 ) -> dict[int, str]:
     """The gemaal of each Pump and the stuw of each Outlet that lies on a crossing, by the globalid of the structure.
 
-    A Pump gets a gemaal that its crossing is matched with. An Outlet gets a stuw that its crossing is matched with,
-    or else a stuw on or just behind a hydro-object of another crossing between the same two areas: on one of the
-    hydro-objects of that crossing, or on a hydro-object that touches them. Such an Outlet stands for all crossings
-    between these areas without a structure of their own, of which the input model keeps one.
+    The nodes of `OUTLET_TYPES` count as Outlets. A Pump gets a gemaal that its crossing is matched with. An Outlet gets
+    a stuw that its crossing is matched with, or else a stuw on or just behind a hydro-object of another crossing
+    between the same two areas: on one of the hydro-objects of that crossing, or on a hydro-object that touches them.
+    Such an Outlet stands for all crossings between these areas without a structure of their own, of which the input
+    model keeps one.
 
     A structure is at most `max_distance` from its crossing, and a stuw of another crossing at most `max_outlet_move`
     from the Outlet. A structure gets one node: the nearest go first, and stuwen that the crossing of an Outlet is
     matched with before those of other crossings. Ties go to the lowest node id and globalid.
 
-    :param nodes: the nodes, with their node_type
+    A node with the code of a structure in `CODE_COLUMN` is at its structure already, and gets no other one. The
+    structure at the location of such a node, or of another node that is not on a crossing, is taken.
+
+    :param nodes: the nodes, with their node_type, and possibly the `CODE_COLUMN`
     :param crossings: the crossings and structures of the water authority
     :param max_distance: maximum distance between a crossing and the structure of its node
     :param max_outlet_move: maximum distance between an Outlet and a stuw of another crossing
     :param tolerance: maximum distance between a node and its crossing, and between hydro-objects that touch
-    :return: per node with a structure, its globalid
+    :return: per node that gets a structure, its globalid
     """
     rows = crossings.rows
     row_points = rows.geometry.to_numpy()
@@ -143,6 +175,8 @@ def structure_locations(
     stuw_ids = crossings.stuw.index.to_numpy()
     stuw_points = crossings.stuw.to_numpy()
     stuw_tree = shapely.STRtree(stuw_points)
+    structure_ids = np.concatenate([crossings.gemaal.index.to_numpy(), stuw_ids])
+    structure_tree = shapely.STRtree(np.concatenate([crossings.gemaal.to_numpy(), stuw_points]))
     rows_between: dict[tuple[str, str], list[int]] = defaultdict(list)
     for i, pair in enumerate(zip(rows["area_from"], rows["area_to"], strict=True)):
         if isinstance(pair[0], str) and isinstance(pair[1], str):
@@ -164,10 +198,19 @@ def structure_locations(
 
     # the structures each node may get: (0 for those its own crossing is matched with, distance, node id, globalid)
     candidates: list[tuple[int, float, int, str]] = []
-    connectors = nodes[nodes["node_type"].isin(["Pump", "Outlet"])]
-    for node_id, node_type, point in zip(connectors.index, connectors["node_type"], connectors.geometry, strict=True):
+    taken: set[str] = set()
+    connectors = nodes[nodes["node_type"].isin(["Pump", *OUTLET_TYPES])]
+    has_code = (
+        nonempty(connectors[CODE_COLUMN]).to_numpy()
+        if CODE_COLUMN in connectors.columns
+        else np.zeros(len(connectors), dtype=bool)
+    )
+    for node_id, node_type, point, placed in zip(
+        connectors.index, connectors["node_type"], connectors.geometry, has_code, strict=True
+    ):
         at_node = np.sort(row_tree.query(point, predicate="dwithin", distance=tolerance))
-        if len(at_node) == 0:
+        if placed or len(at_node) == 0:
+            taken |= set(structure_ids[structure_tree.query(point, predicate="dwithin", distance=tolerance)].tolist())
             continue
         column = "gemaal" if node_type == "Pump" else "stuw"
         structures = getattr(crossings, column)
@@ -176,7 +219,7 @@ def structure_locations(
             distance = float(point.distance(structures[globalid]))
             if distance <= max_distance:
                 candidates.append((0, distance, int(node_id), globalid))
-        if node_type == "Outlet":
+        if node_type != "Pump":
             pairs = {(rows["area_from"].iat[row], rows["area_to"].iat[row]) for row in at_node}
             near = row_tree.query(point, predicate="dwithin", distance=max_outlet_move + max_distance)
             others = sorted({row for pair in pairs for row in rows_between.get(pair, [])} & set(near.tolist()))
@@ -186,7 +229,6 @@ def structure_locations(
                     candidates.append((1, distance, int(node_id), str(stuw_ids[stuw])))
 
     result: dict[int, str] = {}
-    taken: set[str] = set()
     for _, _, node_id, globalid in sorted(candidates):
         if node_id not in result and globalid not in taken:
             result[node_id] = globalid
@@ -199,9 +241,9 @@ def move_to_structures(
 ) -> dict[int, str]:
     """Move the Pumps and Outlets on a crossing to the structure they represent, see `structure_locations`.
 
-    The control nodes of a moved node move along with it, and its links are redrawn as straight lines by
-    `ribasim_nl.network_snapping.snap_to_network`, which routes them. A node with a structure gets its code in
-    `meta_code_waterbeheerder`, as the nodes of the gravity controlled models.
+    The control nodes of a moved node move along with it, and the ends of its links, which are routed at the end of
+    the forcing stage, see `ribasim_nl.network_snapping.snap_to_network`. A node with a structure gets its code in
+    `CODE_COLUMN`, as the nodes of the gravity controlled models.
 
     :param model: Ribasim model of a level controlled water authority
     :param crossings: the crossings and structures of the water authority
@@ -213,6 +255,7 @@ def move_to_structures(
     points = pd.concat([crossings.gemaal, crossings.stuw])
     locations: dict[int, shapely.Point] = {}
     moved: dict[int, str] = {}
+    crossing_of: dict[int, shapely.Point] = {}
     control = links[links["link_type"] == "control"]
     controlled = control.groupby("from_node_id")["to_node_id"].agg(list)
     for node_id, globalid in structures.items():
@@ -222,19 +265,71 @@ def move_to_structures(
             continue
         locations[node_id] = new
         moved[node_id] = globalid
+        crossing_of[node_id] = old
         # the nodes that only control this node keep their place next to it
         for control_id in control.loc[control["to_node_id"] == node_id, "from_node_id"]:
             if controlled[control_id] == [node_id]:
                 point = typing.cast(shapely.Point, nodes.at[control_id, "geometry"])
                 locations[int(control_id)] = shapely.affinity.translate(point, new.x - old.x, new.y - old.y)
+    # a link without a geometry, which is a straight line once the model is written, gets that line now
+    missing = links.index[
+        links.geometry.isna() & (links["from_node_id"].isin(locations) | links["to_node_id"].isin(locations))
+    ]
+    if len(missing) > 0:
+        starts = nodes.geometry[links.loc[missing, "from_node_id"]]
+        ends = nodes.geometry[links.loc[missing, "to_node_id"]]
+        lines = [shapely.LineString([start, end]) for start, end in zip(starts, ends, strict=True)]
+        links.loc[missing, "geometry"] = gpd.GeoSeries(lines, index=missing, crs=links.crs)
     move_nodes(model, locations)
-    if "meta_code_waterbeheerder" not in nodes.columns:
-        nodes["meta_code_waterbeheerder"] = pd.Series(None, index=nodes.index, dtype=object)
-    nodes.loc[list(structures), "meta_code_waterbeheerder"] = [
+    if CODE_COLUMN not in nodes.columns:
+        nodes[CODE_COLUMN] = pd.Series(None, index=nodes.index, dtype=object)
+    nodes.loc[list(structures), CODE_COLUMN] = [
         crossings.codes.get(globalid, globalid.strip("{}")) for globalid in structures.values()
     ]
-    node_types = nodes.loc[list(moved), "node_type"].value_counts().to_dict()
-    LOG.info(
-        f"Moved {node_types.get('Pump', 0)} Pumps to their gemaal and {node_types.get('Outlet', 0)} Outlets to their stuw"
-    )
+    for column in CROSSING_COLUMNS:
+        if column not in nodes.columns:
+            nodes[column] = np.nan
+    # a node that is moved again keeps the location of its crossing
+    has_crossing = set(nodes.index[nodes[CROSSING_COLUMNS[0]].notna()])
+    first = [node_id for node_id in moved if node_id not in has_crossing]
+    nodes.loc[first, CROSSING_COLUMNS] = [[crossing_of[node_id].x, crossing_of[node_id].y] for node_id in first]
+    pumps = int((nodes.loc[list(moved), "node_type"] == "Pump").sum())
+    LOG.info(f"Moved {pumps} Pumps to their gemaal and {len(moved) - pumps} Outlets to their stuw")
     return moved
+
+
+def crossing_points(nodes: gpd.GeoDataFrame) -> gpd.GeoSeries:
+    """The location of each node, or of its crossing if the node is moved to its structure, see `CROSSING_COLUMNS`."""
+    points = gpd.GeoSeries(nodes.geometry.copy())
+    if set(CROSSING_COLUMNS) <= set(nodes.columns):
+        x, y = (nodes[column].astype(float) for column in CROSSING_COLUMNS)
+        moved = (x.notna() & y.notna()).to_numpy()
+        if moved.any():
+            points[moved] = gpd.points_from_xy(x[moved], y[moved])
+    return points
+
+
+def update_structures(model: Model, crossings: Crossings) -> dict[int, str]:
+    """Match the nodes without a structure again, after nodes are removed or added, or changed to another type.
+
+    A moved node without the code of a structure, such as a Pump that a feedback form made an Outlet, which clears its
+    code, see `ribasim_nl.ribasim_feedback_processor.RibasimFeedbackProcessor.adjust_node`, goes back to its crossing
+    first. Then the nodes on a crossing without a structure get one, see `move_to_structures`: a stuw for a node that
+    became an Outlet, the structure of a node that was removed, or that of a node that was added on a crossing. Nodes
+    that have a structure keep it.
+
+    :return: per moved node, the globalid of its structure
+    """
+    nodes = model.node.df
+    if set(CROSSING_COLUMNS) <= set(nodes.columns):
+        has_code = nonempty(nodes[CODE_COLUMN]) if CODE_COLUMN in nodes.columns else pd.Series(False, index=nodes.index)
+        back = nodes.index[nodes[CROSSING_COLUMNS[0]].notna() & ~has_code]
+        points = crossing_points(nodes)
+        move_nodes(model, {int(node_id): typing.cast(shapely.Point, points[node_id]) for node_id in back})
+        nodes.loc[back, CROSSING_COLUMNS] = np.nan
+    return move_to_structures(model, crossings)
+
+
+def drop_crossing_locations(model: Model) -> None:
+    """Remove the `CROSSING_COLUMNS`, once the parametrization that looks at the crossings is done."""
+    model.node.df = model.node.df.drop(columns=[c for c in CROSSING_COLUMNS if c in model.node.df.columns])

@@ -29,6 +29,7 @@ from ribasim_nl import Model, supply
 from ribasim_nl.case_conversions import pascal_to_snake_case
 from ribasim_nl.control_layout import DEFAULT_LEVEL_THRESHOLD_RANGE
 from ribasim_nl.ribasim_feedback_processor import RibasimFeedbackProcessor
+from ribasim_nl.structure_locations import crossing_points
 
 logger = logging.getLogger(__name__)
 
@@ -358,9 +359,10 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0) -> None:
     nodes_FlowBoundary["meta_old_node_id"] = nodes_FlowBoundary.meta_node_id  # store for later
     nodes_FlowBoundary["node_id"] = max_id + nodes_FlowBoundary.index + 1  # implement new id's
     # nodes_FlowBoundary["node_id"] = nodes_FlowBoundary.meta_node_id.copy()
-    nodes_FlowBoundary["geometry"] = nodes_FlowBoundary.geometry.translate(
-        xoff=-1, yoff=-1
-    )  # move the points 1 meter to the lower left (diagonally)
+    # move the points 1 meter to the lower left (diagonally), from the crossing of a node that is at its structure,
+    # see `ribasim_nl.structure_locations`
+    connector_points = nodes_FlowBoundary.geometry.copy()
+    nodes_FlowBoundary["geometry"] = crossing_points(nodes_FlowBoundary).translate(xoff=-1, yoff=-1)
     nodes_FlowBoundary["node_type"] = "LevelBoundary"
 
     # set the new node_id; overrule the old
@@ -398,7 +400,7 @@ def FlowBoundaries_to_LevelBoundaries(ribasim_model, default_level=0) -> None:
     # find the geometries, based on the from and to points
     lines_LB = pd.DataFrame()
     lines_LB["from_point"] = nodes_FlowBoundary.geometry
-    lines_LB["to_point"] = nodes_FlowBoundary.geometry.translate(xoff=1, yoff=1)  # = original coordinates
+    lines_LB["to_point"] = connector_points.to_numpy()  # = original coordinates
 
     # create the linestrings, and plug them into the df of links_LB
     if len(lines_LB) > 0:
@@ -2297,8 +2299,10 @@ def reassign_level_boundaries(
         """
         (_c_type,) = ribasim_model.node.df.loc[ribasim_model.node.df.index == c_id, "node_type"]
         _c_node = getattr(ribasim_model, pascal_to_snake_case(_c_type))[c_id]
+        # beside the crossing of a node that is at its structure, see `ribasim_nl.structure_locations`
+        (_c_point,) = crossing_points(ribasim_model.node.df.loc[[c_id]])
         _lb_node = ribasim_model.level_boundary.add(
-            ribasim.Node(geometry=Point(_c_node.geometry.x + dx, _c_node.geometry.y + dy)),
+            ribasim.Node(geometry=Point(_c_point.x + dx, _c_point.y + dy)),
             [level_boundary.Static(level=[level])],
         )
         return _c_node, _lb_node

@@ -9,6 +9,7 @@ from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl import CloudStorage, Model
 from ribasim_nl.control import is_off_state, off_states
+from ribasim_nl.structure_locations import crossing_points
 
 
 class AssignMetaData:
@@ -164,6 +165,9 @@ class AssignMetaData:
         # Add columns which do not exist yet
         restore_cols = self._add_unassigned_columns("pump", mapper)
 
+        # a Pump at its gemaal is looked up at its crossing, see `ribasim_nl.structure_locations`
+        pump_points = crossing_points(self.model.pump.node.df)
+
         # Add matching unassigned pumps to the ribasim model
         visited: dict[int, Any] = {}
         for row in self.model.pump.node.df.itertuples():
@@ -174,8 +178,8 @@ class AssignMetaData:
                 continue
 
             # Check if there are multiple overlapping pumps (within 1cm)
-            geometry = cast(Point, row.geometry)
-            rows = self.model.pump.node.df.sindex.query(geometry.buffer(0.01), predicate="intersects")
+            geometry = cast(Point, pump_points.loc[cast(int, row.Index)])
+            rows = pump_points.sindex.query(geometry.buffer(0.01), predicate="intersects")
             node_id = self.model.pump.node.df.index[rows].tolist()
             node_id_str = ", ".join(map(str, node_id))
             if row.Index not in node_id:

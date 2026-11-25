@@ -24,8 +24,9 @@ from ribasim.geometry.link import LinkSchema
 from ribasim.geometry.node import NodeSchema
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 
-from ribasim_nl.keys import KEY_COLUMN, number_duplicates
+from ribasim_nl.keys import KEY_COLUMN, fill_keys, number_duplicates
 from ribasim_nl.model import Model
+from ribasim_nl.structure_locations import Crossings, identifiers, move_to_structures
 
 CRS = "EPSG:28992"
 
@@ -774,20 +775,6 @@ def add_relevant_names(
     tables.nodes["Pump"] = pump_node.rename(columns={"meta_name": "name"}).drop_duplicates()
 
 
-def identifiers(layer: pd.DataFrame) -> pd.Series:
-    """The identifier of the objects of a layer, by globalid: their code, or their globalid if the code is a dummy.
-
-    The postprocessing gives the objects without a code or without a globalid a dummy one from their row number.
-    """
-    layer = layer.rename(columns={"CODE": "code"})
-    code = layer["code"].astype(object)
-    globalid = layer["globalid"].astype(object).astype(str)
-    dummy = code.isna() | code.astype(str).str.startswith("dummy")
-    identifier = code.astype(str).str.strip().where(~dummy, globalid.str.strip("{}"))
-    identifiers = pd.Series(identifier.to_numpy(), index=globalid.to_numpy())
-    return identifiers[~identifiers.index.duplicated(keep="first")]
-
-
 def _smallest_identifier(values: pd.Series, identifiers: pd.Series) -> pd.Series:
     """The smallest identifier of the objects of each crossing, a comma separated list of globalids.
 
@@ -942,4 +929,8 @@ def boezem_model(
     model = to_model(tables, options.endtime)
     keys = crossing_keys(nodes, links, crossings, post_processed_data)
     model.node.df[KEY_COLUMN] = keys.reindex(model.node.df.index).astype("str")
+    # the nodes get their keys at their crossings, as equal keys are numbered by location, see `fill_keys`
+    fill_keys(model)
+    # last, as the steps above find the gemaal of a Pump at the location of its crossing
+    move_to_structures(model, Crossings.read(crossings_path))
     return model, check

@@ -31,7 +31,7 @@ from ribasim_nl.network_snapping import line_reader, read_hydro_objects, snap_mo
 from ribasim_nl.regional_model import ENDTIME, STARTTIME, add_inflows, add_lhm_forcing, finish_regional_model
 from ribasim_nl.ribasim_feedback_processor import RibasimFeedbackProcessor
 from ribasim_nl.settings import settings
-from ribasim_nl.structure_locations import Crossings, move_to_structures
+from ribasim_nl.structure_locations import Crossings, drop_crossing_locations, update_structures
 
 # streefpeil used where it is unknown; we need one to create the profiles, Q(h)-relations, and af- and aanslag peil
 UNKNOWN_STREEFPEIL = 0.00012345
@@ -137,6 +137,9 @@ class WaterBoardPaths:
 def process_feedback_form(paths: WaterBoardPaths, use_validation: bool = True) -> Model:
     """Apply the feedback form to the base model, and read the resulting model.
 
+    The nodes of the base model are at their structures, see `ribasim_nl.structure_locations`. The nodes that the form
+    adds on a crossing, or turns into another type, are placed at theirs, see `update_structures`.
+
     With `use_validation=False` the model is written without validation, for forms that leave the model
     temporarily invalid.
     """
@@ -146,6 +149,8 @@ def process_feedback_form(paths: WaterBoardPaths, use_validation: bool = True) -
         warnings.simplefilter(action="ignore", category=FutureWarning)
         model = Model.read(work_dir / "ribasim.toml")
         model.set_crs("EPSG:28992")
+    # the form removes and adds nodes and changes their type, so match the nodes without a structure again
+    update_structures(model, Crossings.read(paths.crossings))
     return model
 
 
@@ -383,11 +388,11 @@ def write_and_run_forcing_model(
     bound_supply_inflows(model)
 
     def snap(model: Model) -> Model:
-        """Move Pumps and Outlets to their structures, route links along the hydro-objects, and merge them.
+        """Route links along the hydro-objects, and merge them.
 
         Basin nodes are moved to the center of their network, see `ribasim_nl.network_snapping.route_basin_links`.
         """
-        move_to_structures(model, Crossings.read(paths.crossings))
+        drop_crossing_locations(model)
         model = snap_model(
             model,
             paths.profielen_dir,

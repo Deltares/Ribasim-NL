@@ -12,6 +12,7 @@ from shapely.geometry import LineString, Point
 
 from ribasim_nl import Model
 from ribasim_nl.keys import KEY_COLUMN
+from ribasim_nl.structure_locations import CROSSING_COLUMNS
 
 logger = logging.getLogger(__name__)
 
@@ -349,9 +350,13 @@ class RibasimFeedbackProcessor:
                     if col.startswith("meta_"):
                         template_row[col] = np.nan
                 template_row["meta_node_id"] = node_id
-                # the node keeps its key
+                # the node keeps its key, and the location of its crossing if it is at a structure, where
+                # `ribasim_nl.structure_locations.update_structures` finds the structure of its new type
                 if KEY_COLUMN in template_row.columns:
                     template_row[KEY_COLUMN] = str(node_key)
+                for column in CROSSING_COLUMNS:
+                    if column in template_row.columns and column in node_row.columns and not node_row.empty:
+                        template_row[column] = node_row[column].iloc[0]
                 self.model.node.df = GeoDataFrame[NodeSchema](pd.concat([df_node, template_row]))
 
                 # Add to type-specific tables
