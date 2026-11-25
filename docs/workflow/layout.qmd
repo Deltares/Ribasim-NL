@@ -15,14 +15,15 @@ None of this changes the results.
 ## Routing the links
 
 The input model of a level controlled water authority has a connector node where a hydro-object crosses the boundary of a peilgebied, see [Level controlled](level-controlled.qmd).
-The structure itself is often some distance along the hydro-object, so when the input model is made, `ribasim_nl.structure_locations.move_to_structures` moves these nodes to their structure, and records its code in `meta_code_waterbeheerder`:
+The structure itself is often some distance along the hydro-object, so at the end of the forcing stage `ribasim_nl.structure_locations.move_to_structures` first moves these nodes to their structure:
 
 - A Pump moves to the gemaal that its crossing is matched with, if that is within 100 m.
 - An Outlet moves to the stuw that its crossing is matched with. An Outlet without one stands for all crossings between its two areas that have no structure of their own. It moves to a stuw within 250 m that lies on a hydro-object of one of these crossings, or on a hydro-object that touches it, such as the weir behind an inlet culvert.
 - A structure gets one node, the nearest one.
 
-The forcing stage does the same for the nodes that the feedback forms add or turn into an Outlet, at a structure that has no node yet.
-The koppeltabel of the measured discharges refers to these nodes by their key, see [Node keys](../dev/node-keys.qmd).
+A node with a structure gets its code in `meta_code_waterbeheerder`.
+The koppeltabel of the measured discharges refers to nodes by their key, see [Node keys](../dev/node-keys.qmd), so a moved node is found where it is.
+This is not done when the input model is made, since the parametrization depends on where nodes are, such as within supply areas, and a node whose type a feedback form changes gets its key from its location.
 
 Then `ribasim_nl.network_snapping.snap_model` aligns the layout with the hydro-objects in `verwerkt/profielen/network.gpkg`, which are written by the [profile generation](profile-generation.qmd):
 
