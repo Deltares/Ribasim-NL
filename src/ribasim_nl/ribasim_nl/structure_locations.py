@@ -8,16 +8,18 @@ follow that watercourse, see `ribasim_nl.network_snapping`.
 
 `move_to_structures` moves each Pump to its gemaal and each node that is or becomes an Outlet to its stuw, see
 `structure_locations`, when the input model is made, see `ribasim_nl.crossings.model.boezem_model`, and records the
-code of the structure in `CODE_COLUMN`. The feedback form removes nodes, adds nodes and changes their type, so
-`update_structures` matches the nodes without a structure again right after it is applied, see
-`ribasim_nl.workflow.process_feedback_form`.
+code of the structure in `CODE_COLUMN`. The feedback form and the script of the feedback stage remove nodes, add nodes
+and change their type, so `update_structures` matches the nodes without a structure again before that stage writes its
+model, see `ribasim_nl.workflow.write_feedback_model`. The forcing stage no longer moves nodes to structures.
 
-A moved node keeps the location of its crossing in the `CROSSING_COLUMNS` up to the end of the forcing stage. The
-crossing lies on the boundary between the two areas that the node connects, which is what the parametrization looks
-at: the gemaal whose name and capacity a Pump gets is the one nearest to its crossing, see
-`ribasim_nl.assign_parametrization.AssignMetaData.add_meta_to_pumps`, and a boundary node that is added beside a node
-is placed beside its crossing, which sets its key and its water authority. `crossing_points` gives these locations.
-Other data refers to nodes by their key, see `ribasim_nl.crossings.model.crossing_keys`.
+A moved node keeps the location of its crossing in the `CROSSING_COLUMNS` up to the end of the forcing stage, see
+`drop_crossing_locations`. The crossing lies on the boundary between the two areas that the node connects, which is
+what the parametrization looks at, with `crossing_points`: the gemaal whose name and capacity a Pump gets is the one
+nearest to its crossing, see `ribasim_nl.assign_parametrization.AssignMetaData.add_meta_to_pumps`, a boundary node that
+is added beside a node is placed beside its crossing, which sets its key and its water authority, see
+`ribasim_nl.ribasim_parametrization.FlowBoundaries_to_LevelBoundaries`, and a node of a Basin that is split goes to the
+part nearest to its crossing, see `ribasim_nl.split_basins.SplitBasins`. Other data refers to nodes by their key, see
+`ribasim_nl.crossings.model.crossing_keys`.
 """
 
 import logging
