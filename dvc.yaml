@@ -787,6 +787,8 @@ stages:
       - pipeline/delfland/01_feedback.py
       - src/ribasim_nl/ribasim_nl
       - data/Delfland/modellen/Delfland_boezemmodel_2024_12_0
+      # the structures of the nodes that the form and the script add or change
+      - data/Delfland/verwerkt/crossings.gpkg
       - data/Delfland/verwerkt/Feedback Formulier/feedback_formulier_Delfland.xlsx
       - data/Delfland/verwerkt/Splitting_basins/Opgeknipte_basin_2.gpkg
       - data/Delfland/verwerkt/Splitting_basins/Opgeknipte_basin_9.gpkg
@@ -799,6 +801,8 @@ stages:
       - pipeline/amstel_gooi_en_vecht/01_feedback.py
       - src/ribasim_nl/ribasim_nl
       - data/AmstelGooienVecht/modellen/AmstelGooienVecht_boezemmodel_2024_12_0
+      # the structures of the nodes that the form and the script add or change
+      - data/AmstelGooienVecht/verwerkt/crossings.gpkg
       - data/AmstelGooienVecht/verwerkt/Feedback Formulier/feedback_formulier_AmstelGooienVecht.xlsx
     outs:
       - data/AmstelGooienVecht/modellen/AmstelGooienVecht_feedback
@@ -808,6 +812,8 @@ stages:
       - pipeline/hollands_noorderkwartier/01_feedback.py
       - src/ribasim_nl/ribasim_nl
       - data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_boezemmodel_2024_12_0
+      # the structures of the nodes that the form and the script add or change
+      - data/HollandsNoorderkwartier/verwerkt/crossings.gpkg
       - data/HollandsNoorderkwartier/verwerkt/Feedback Formulier/feedback_formulier_HollandsNoorderkwartier.xlsx
       - data/HollandsNoorderkwartier/verwerkt/Splitting_basins/Opgeknipte_basin_3.gpkg
     outs:
@@ -818,6 +824,8 @@ stages:
       - pipeline/hollandse_delta/01_feedback.py
       - src/ribasim_nl/ribasim_nl
       - data/HollandseDelta/modellen/HollandseDelta_boezemmodel_2024_12_3
+      # the structures of the nodes that the form and the script add or change
+      - data/HollandseDelta/verwerkt/crossings.gpkg
       - data/HollandseDelta/verwerkt/Feedback Formulier/feedback_formulier_HollandseDelta.xlsx
     outs:
       - data/HollandseDelta/modellen/HollandseDelta_feedback
@@ -827,6 +835,8 @@ stages:
       - pipeline/rijnland/01_feedback.py
       - src/ribasim_nl/ribasim_nl
       - data/Rijnland/modellen/Rijnland_boezemmodel_2024_12_3
+      # the structures of the nodes that the form and the script add or change
+      - data/Rijnland/verwerkt/crossings.gpkg
       - data/Rijnland/verwerkt/Feedback Formulier/feedback_formulier_Rijnland.xlsx
       - data/Rijnland/verwerkt/Splitting_basins/Opgeknipte_basin_1.gpkg
       - data/Rijnland/verwerkt/Splitting_basins/Opgeknipte_basin_15.gpkg
@@ -839,6 +849,8 @@ stages:
       - pipeline/rivierenland/01_feedback.py
       - src/ribasim_nl/ribasim_nl
       - data/Rivierenland/modellen/Rivierenland_boezemmodel_2024_12_0
+      # the structures of the nodes that the form and the script add or change
+      - data/Rivierenland/verwerkt/crossings.gpkg
       - data/Rivierenland/verwerkt/Feedback Formulier/feedback_formulier_Rivierenland.xlsx
       - data/Rivierenland/aangeleverd/Na_levering/gaten.gpkg
     outs:
@@ -849,6 +861,8 @@ stages:
       - pipeline/scheldestromen/01_feedback.py
       - src/ribasim_nl/ribasim_nl
       - data/Scheldestromen/modellen/Scheldestromen_boezemmodel_2024_12_0
+      # the structures of the nodes that the form and the script add or change
+      - data/Scheldestromen/verwerkt/crossings.gpkg
       - data/Scheldestromen/verwerkt/Feedback Formulier/feedback_formulier_Scheldestromen.xlsx
     outs:
       - data/Scheldestromen/modellen/Scheldestromen_feedback
@@ -858,6 +872,8 @@ stages:
       - pipeline/schieland_en_de_krimpenerwaard/01_feedback.py
       - src/ribasim_nl/ribasim_nl
       - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_boezemmodel_2024_12_1
+      # the structures of the nodes that the form and the script add or change
+      - data/SchielandendeKrimpenerwaard/verwerkt/crossings.gpkg
       - data/SchielandendeKrimpenerwaard/verwerkt/Feedback Formulier/feedback_formulier_SchielandendeKrimpenerwaard.xlsx
     outs:
       - data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_feedback
@@ -867,6 +883,8 @@ stages:
       - pipeline/wetterskip_fryslan/01_feedback.py
       - src/ribasim_nl/ribasim_nl
       - data/WetterskipFryslan/modellen/WetterskipFryslan_boezemmodel_2025_5_1
+      # the structures of the nodes that the form and the script add or change
+      - data/WetterskipFryslan/verwerkt/crossings.gpkg
       - data/WetterskipFryslan/verwerkt/Feedback Formulier/feedback_formulier_WetterskipFryslan.xlsx
       - data/WetterskipFryslan/aangeleverd/Na_levering/gaarkeuken.gpkg
       - data/WetterskipFryslan/verwerkt/Splitting_basins/Opgeknipte_basin_6.gpkg
@@ -880,6 +898,8 @@ stages:
       - pipeline/zuiderzeeland/01_feedback.py
       - src/ribasim_nl/ribasim_nl
       - data/Zuiderzeeland/modellen/Zuiderzeeland_boezemmodel_2024_12_0
+      # the structures of the nodes that the form and the script add or change
+      - data/Zuiderzeeland/verwerkt/crossings.gpkg
       - data/Zuiderzeeland/verwerkt/Feedback Formulier/feedback_formulier_Zuiderzeeland.xlsx
       - data/Zuiderzeeland/verwerkt/Splitting_basins/Opgeknipte_basin_16.gpkg
       - data/Zuiderzeeland/verwerkt/Splitting_basins/Opgeknipte_basin_31.gpkg
