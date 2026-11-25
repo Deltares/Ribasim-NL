@@ -935,7 +935,7 @@ def _insert_points(coords: list[Coord], points: typing.Collection[Coord], tolera
         length2 = dx * dx + dy * dy
         on = []
         for p in points:
-            if length2 == 0.0 or p in (a, b):
+            if length2 <= 0.0 or p in (a, b):
                 continue
             t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / length2
             if 0.0 < t < 1.0 and np.hypot(a[0] + t * dx - p[0], a[1] + t * dy - p[1]) <= tolerance:

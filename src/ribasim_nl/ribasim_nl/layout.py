@@ -213,7 +213,7 @@ class Water:
         assert max_distance <= self.margin, f"Water is read up to {self.margin} m around a tile, not {max_distance} m"
         geometries, tree = self._near(point)
         index, distance = tree.query_nearest(point, max_distance=max_distance, return_distance=True, all_matches=False)
-        if len(index) == 0 or distance[0] == 0.0:
+        if len(index) == 0 or distance[0] <= 0.0:
             return None
         polygon = geometries[index[0]]
         (x0, y0), (x1, y1) = shapely.get_coordinates(shapely.shortest_line(point, polygon))
