@@ -570,9 +570,9 @@ def combine_nodes(
     10 m from its ends if possible. The other nodes get a straight link to the Junction there, and the Junctions they
     leave are pruned, see `prune_junction`. Each node keeps exchanging water with the same nodes, which is asserted.
 
-    Nothing changes if the nodes do not share a Basin, if a node is more than `max_distance` from the Junction, or if
-    a Junction between only some of the nodes and the Basin has other links than flow links, such as an observed
-    Junction, of which the flow rate would change.
+    Nothing changes if the nodes do not share a Basin, if a node is more than `max_distance` from the Junction, if a
+    node lies between another node and the Basin, or if a Junction between only some of the nodes and the Basin has
+    other links than flow links, such as an observed Junction, of which the flow rate would change.
 
     :param model: Ribasim model
     :param node_ids: nodes to combine, at least two
@@ -599,6 +599,9 @@ def combine_nodes(
             parent_link = routes.parent_link(junction_id)
             assert parent_link is not None, f"Junction {junction_id} is not in the tree of Basin {basin_id}"
             junction_id = routes.other_node(parent_link, junction_id)
+    # a node between another node and the Basin, such as a Junction found by its location, is not combined with it
+    if set(sides) & set.union(*ancestors.values()):
+        return None
     shared = set.intersection(*ancestors.values())
     if (set.union(*ancestors.values()) - shared) & other_links:
         return None

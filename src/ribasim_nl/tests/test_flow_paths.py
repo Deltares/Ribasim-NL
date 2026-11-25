@@ -414,6 +414,9 @@ def test_combine_nodes():
     # not from far away
     assert combine_nodes(model, [3, 5], max_distance=50.0) is None
     assert simplified_links(model) == links_before and len(model.node.df) == 5
+    # not Junction 4 with Outlet 3, of which it is between Outlet 3 and the Basin
+    assert combine_nodes(model, [3, 4]) is None
+    assert simplified_links(model) == links_before and len(model.node.df) == 5
 
     junction_id = combine_nodes(model, [3, 5])
     assert junction_id is not None
