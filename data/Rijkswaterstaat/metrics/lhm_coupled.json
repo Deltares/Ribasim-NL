@@ -1,6 +1,6 @@
 {
   "solver": {
-    "computation_time": 2.0,
+    "computation_time": 1.8,
     "rhs_calls": 1488000.0,
     "mean_dt": 199.1,
     "dt_p05": 116.0,
@@ -8,7 +8,7 @@
   },
   "observations": {
     "compared": 652.0,
-    "median_nse": 0.04086,
+    "median_nse": 0.04084,
     "median_kge": 0.08564
   },
   "discharge_kge": {
