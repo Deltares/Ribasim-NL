@@ -7,6 +7,8 @@ from ribasim_nl.network_snapping import (
     BEYOND_AREA_COST,
     Waterways,
     _BasinNetwork,
+    _share_paths,
+    _stretches,
     _WaterRaster,
     culverts_in,
     insert_points,
@@ -39,6 +41,21 @@ def test_route_basin_links():
     location, routes = route_basin_links(Point(50, 10), connectors, lines, [True, True])
     assert location.equals(Point(50, 10))
     assert routes[1] == [(50, 10), (50, 0), (100, 0), (100, 100)]
+
+
+def test_route_basin_links_leaves_where_it_passes():
+    """The route passes Outlet 1 at 5 m, on its way to the nearest point of the line that the Outlet is nearest to."""
+    lines = [
+        LineString([(0, 0), (100, 0)]),
+        LineString([(100, 0), (100, 40)]),
+        LineString([(100, 40), (70, 4)]),
+    ]
+    # the Outlet is 1 m from the third line, and the route along the first line passes it at 5 m
+    _, routes = route_basin_links(Point(0, 0), {1: Point(72, 5)}, lines, [True] * 3)
+    assert routes[1] == [(0, 0), (72, 0), (72, 5)]
+    # 30 m from the first line it follows the lines to the node: a straight line costs more than a line
+    _, routes = route_basin_links(Point(0, 0), {1: Point(91, 30)}, lines, [True] * 3)
+    assert shapely.LineString(routes[1]).simplify(0.0).coords[:3] == [(0, 0), (100, 0), (100, 40)]
 
 
 def test_route_basin_links_center():
@@ -353,6 +370,59 @@ def test_snap_to_waterways_beyond_area(tmp_path):
     assert model.link.df.geometry.iloc[0].coords[:] == [(50, 0), (400, 0), (800, 0), (800, 30)]
 
 
+def test_share_paths():
+    """Two nodes 50 m apart on wide water: the one with the longer path follows the path of the other."""
+    water = box(0, 0, 1000, 200)
+    raster = _WaterRaster(water, water, land_cost=20.0, max_cells=1_000_000)
+    coords = {"a": [(0.0, 100.0), (500.0, 100.0), (900.0, 100.0)], "b": [(0.0, 100.0), (450.0, 150.0), (900.0, 150.0)]}
+    points = {"a": Point(900, 100), "b": Point(900, 150)}
+    shared = _share_paths(coords, points, 100.0, raster, max_land=100.0)
+    assert shared == {"a": coords["a"], "b": [*coords["a"], (900.0, 150.0)]}
+    # a node in a cell of the lines has a path of that cell alone, which the other node branches off
+    single = {"a": [(900.0, 100.0)], "b": coords["b"]}
+    assert _share_paths(single, points, 100.0, raster, max_land=100.0) == {
+        "a": [(900.0, 100.0)],
+        "b": [(900.0, 100.0), (900.0, 150.0)],
+    }
+    # not if they are further apart, or if the branch would cross too much land
+    assert _share_paths(coords, points, 40.0, raster, max_land=100.0) == coords
+    canals = shapely.union_all([box(0, 90, 1000, 110), box(0, 140, 1000, 160), box(0, 90, 20, 160)])
+    raster = _WaterRaster(canals, water, land_cost=20.0, max_cells=1_000_000)
+    assert _share_paths(coords, points, 100.0, raster, max_land=10.0) == coords
+
+
+def test_route_basin_links_share_paths():
+    """Nodes side by side across wide water share the route over water up to where they part, then go straight.
+
+    The nearby nodes branch off at the end of the path of the first, the cell of its node, which its route keeps, and
+    no route passes through another node.
+    """
+    nodes = {1: Point(503, 603), 2: Point(553, 597), 3: Point(603, 600)}
+    _, routes = route_basin_links(
+        Point(0, 0),
+        nodes,
+        [LineString([(0, 0), (1000, 0)])],
+        [True],
+        water=box(-10, -50, 1010, 1000),
+        area=box(-20, -60, 1020, 1010),
+    )
+    assert routes.keys() == nodes.keys()
+    shared = routes[2][:-1]
+    assert len(shared) > 2 and shapely.LineString(shared).length > 1000.0
+    for key, point in nodes.items():
+        assert routes[key] == [*shared, (point.x, point.y)]
+
+
+def test_route_basin_links_route_off_the_lines():
+    """A route of the Basin that touches none of the lines does not keep the other links from being routed."""
+    lines = [LineString([(-500, 20), (1000, 20)])]
+    expected = [(0.0, 0.0), (0.0, 20.0), (800.0, 20.0), (800.0, 30.0)]
+    _, routes = route_basin_links(
+        Point(0, 0), {1: Point(800, 30)}, lines, [True], routes=[LineString([(0, 0), (-5, -10), (-10, -30)])]
+    )
+    assert routes == {1: expected}
+
+
 def test_insert_points():
     coords = [(0.0, 0.0), (10.0, 0.0), (10.0, 10.0)]
     # only points strictly between two coordinates, in the order of the route
@@ -406,11 +476,24 @@ def test_route_basin_links_routes():
     lines = [LineString([(40, -50), (40, 80)]), LineString([(0, 10), (100, 10)])]
     connectors = {1: Point(40, 80), 2: Point(70, 5)}
     _, routes = route_basin_links(Point(0, 0), connectors, lines, [False, False], cost=[3.0, 3.0], routes=[route])
-    assert routes[1] == [(0, 0), (40, 0), (40, 80)]
-    assert routes[2] == [(0, 0), (40, 0), (70, 0), (70, 5)]
+    # but for points on these lines where the other node is near them
+    assert shapely.LineString(routes[1]).simplify(0.0).coords[:] == [(0, 0), (40, 0), (40, 80)]
+    assert shapely.LineString(routes[2]).simplify(0.0).coords[:] == [(0, 0), (70, 0), (70, 5)]
     # without the route they follow the ditches only
     _, routes = route_basin_links(Point(0, 0), connectors, lines, [False, False], cost=[3.0, 3.0])
     assert (70, 0) not in routes.get(2, [])
+
+
+def test_route_basin_links_shared_routes():
+    """Routes that share their first part are one line there, so a point attached to it is in all routes along it."""
+    trunk = [(0, 0), (100, 0), (200, 0)]
+    existing = [LineString([*trunk, (300, 10 * i)]) for i in range(7)]
+    assert sorted(len(stretch) for stretch in _stretches([line.coords[:] for line in existing])) == [2] * 7 + [3]
+    # node 1 is attached to the shared part, which the route to node 2 follows past it
+    connectors = {1: Point(50, 5), 2: Point(310, 60)}
+    _, routes = route_basin_links(Point(0, 0), connectors, [], [], routes=existing)
+    assert routes[1] == [(0, 0), (50, 0), (50, 5)]
+    assert routes[2] == [(0, 0), (50, 0), (100, 0), (200, 0), (300, 60), (310, 60)]
 
 
 def test_snap_to_network_joins_routes():

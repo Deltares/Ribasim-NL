@@ -20,7 +20,7 @@ from geopandas.geodataframe import GeoDataFrame
 from shapely.geometry import LineString, Point
 
 from ribasim_nl import Model, concat
-from ribasim_nl.flow_paths import Routes, split_distance, split_link
+from ribasim_nl.flow_paths import Routes, prune_junction, split_distance, split_link
 from ribasim_nl.keys import NodeKey, resolve_keys
 from ribasim_nl.network_snapping import OTHER_LINE_COST, Coord, LineReader, reach_area, route_basin_links
 from ribasim_nl.reset_index import reset_index
@@ -309,7 +309,10 @@ def _attach_rwzi_junction(
     if distances.empty or distances.min() > max_distance:
         return False
 
+    # the Junction that its link came from only passes flow on if it joined just these routes, see `prune_junction`
+    neighbor = routes.next_node(outflow[0], upstream=False)
     model.remove_links(outflow)
+    prune_junction(model, neighbor)
     routes = Routes(model)
     link_ids = candidates(routes)
     branch = None if read_lines is None else _branch_along_waterways(model, basin_id, point, link_ids, read_lines)

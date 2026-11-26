@@ -5,9 +5,12 @@ from ribasim import Node
 from ribasim.nodes import basin, manning_resistance, outlet
 from ribasim_nl.bgt_water import write_bgt_water
 from ribasim_nl.layout import (
+    NODE_SPACING,
     Water,
     coincident_nodes,
+    junction_areas,
     junctions_onto_water,
+    move_nodes,
     offset_links,
     overlapping_links,
     place_bergend_nodes,
@@ -102,6 +105,29 @@ def test_separate_nodes(model):
     assert model.link.df.geometry.iloc[2].coords[-1] == nodes[4].coords[0]
 
 
+def test_separate_nodes_spacing(model):
+    """By default nodes stay close to where they were, `NODE_SPACING` apart."""
+    separate_nodes(model)
+    nodes = model.node.df.geometry
+    assert nodes[3].equals(Point(500, 0))
+    assert nodes[4].distance(nodes[3]) == pytest.approx(NODE_SPACING)
+
+
+def test_move_nodes_trim(model):
+    """A link forgets its points within the distance that its node moved, and does not hook back to where it was."""
+    link_id = model.link.df.index[2]
+    to_node_id = int(model.link.df.at[link_id, "to_node_id"])
+    start = model.link.df.at[link_id, "geometry"].coords[0]
+    x, y = model.node.df.geometry[to_node_id].coords[0]
+    # a point 30 m and one 4 m before the node, which moves 10 m to the side
+    model.link.df.loc[[link_id], "geometry"] = [LineString([start, (x - 30, y), (x - 4, y), (x, y)])]
+    kept = model.model_copy(deep=True)
+    move_nodes(kept, {to_node_id: Point(x, y + 10)})
+    assert kept.link.df.at[link_id, "geometry"].coords[:] == [start, (x - 30, y), (x - 4, y), (x, y + 10)]
+    move_nodes(model, {to_node_id: Point(x, y + 10)}, trim=True)
+    assert model.link.df.at[link_id, "geometry"].coords[:] == [start, (x - 30, y), (x, y + 10)]
+
+
 def test_tidy_layout(model):
     issues = _layout_issues(model)
     assert len(issues) == 2
@@ -125,6 +151,30 @@ def test_resolve_observation_overlaps(model):
     assert len(observation_overlaps()) == 1
     resolve_overlaps(model)
     assert observation_overlaps() == []
+
+
+def test_junctions_onto_water_of_own_basin(tmp_path):
+    """Junction 3 of the tree of Basin 1 is 8 m east of a canal that is not in the area of Basin 1, and stays."""
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    add_basin(model, 1, Point(100, 0), box(12, -500, 500, 500))
+    model.outlet.add(Node(2, Point(100, 100)), [outlet.Static(flow_rate=[1.0])])
+    model.junction.add(Node(3, Point(18, 50)))
+    model.link.add(model.basin[1], model.junction[3])
+    model.link.add(model.junction[3], model.outlet[2])
+    path = tmp_path / "bgt_water.parquet"
+    water = gpd.GeoDataFrame({"lokaalID": ["canal", "ditch"]}, geometry=[box(0, -100, 10, 100), box(30, 40, 40, 60)])
+    write_bgt_water(water.set_crs("EPSG:28992"), path)
+    assert junction_areas(model).keys() == {3}
+
+    # only the ditch in its area counts, which is 12 m away
+    junctions_onto_water(model, Water(path), max_distance=10.0)
+    assert model.node.df.geometry[3].coords[:] == [(18.0, 50.0)]
+    junctions_onto_water(model, Water(path))
+    assert model.node.df.geometry[3].coords[:] == [(30.5, 50.0)]
+    # without the area of a Basin all water counts
+    model.node.df.loc[[3], "geometry"] = [Point(18, 50)]
+    junctions_onto_water(model, Water(path), areas={})
+    assert model.node.df.geometry[3].coords[:] == [(9.5, 50.0)]
 
 
 def test_junctions_onto_water(tmp_path):

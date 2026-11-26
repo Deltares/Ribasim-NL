@@ -395,8 +395,35 @@ def test_digitized_points():
     assert Digitized(lines, [route], points=[(10.0, 0.0)]).along(route) is True
 
 
-def test_merge_basin_trees_branch():
+def test_tree_links_join():
+    """Routes that split twice within 10 m get one Junction, unless the second one is to be kept."""
+    routes = {
+        1: [(0.0, 0.0), (100.0, 0.0), (110.0, 0.0), (200.0, 50.0)],
+        2: [(0.0, 0.0), (100.0, 0.0), (110.0, 0.0), (200.0, -50.0)],
+        3: [(0.0, 0.0), (100.0, 0.0), (150.0, 80.0)],
+    }
+
+    def junctions(**kwargs) -> list[tuple[float, float]]:
+        return sorted(c[-1] for _, end, c in tree_links(routes, **kwargs) if end != "root" and end[0] == "junction")
+
+    assert junctions() == [(100.0, 0.0), (110.0, 0.0)]
+    assert junctions(join=25.0, keep={(110.0, 0.0)}) == [(100.0, 0.0), (110.0, 0.0)]
+    assert junctions(join=25.0) == [(100.0, 0.0)]
+    # the links out of the joined Junction go straight to their next point from the one before it
+    ends = {end[1]: coords for _, end, coords in tree_links(routes, join=25.0) if end != "root" and end[0] == "end"}
+    assert ends == {
+        1: [(100.0, 0.0), (200.0, 50.0)],
+        2: [(100.0, 0.0), (200.0, -50.0)],
+        3: [(100.0, 0.0), (150.0, 80.0)],
+    }
+    # and a Junction that close to the start is joined with the start
+    assert junctions(join=150.0) == []
+
+
+def test_merge_basin_trees_branch(monkeypatch):
     """The inflow of Outlet 6 was routed along other lines, and branches off the tree at its nearest point."""
+    # the two Junctions of this small model are 20 m apart
+    monkeypatch.setattr("ribasim_nl.flow_paths.JUNCTION_DISTANCE", 0.0)
     model = route_model()
     model.outlet.add(Node(6, Point(30, 20)), [outlet.Static(flow_rate=[1.0])])
     model.link.add(model.outlet[6], model.basin[1], geometry=LineString([(30, 20), (0, 20), (0, 0)]))
