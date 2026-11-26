@@ -1320,9 +1320,17 @@ def snap_to_waterways(
     :return: updated Ribasim model
     """
     assert model.basin.area.df is not None
-    basin_ids = set(model.link.df.loc[link_ids, ["from_node_id", "to_node_id"]].to_numpy().ravel())
-    areas = model.basin.area.df[model.basin.area.df["node_id"].isin(basin_ids)]
-    mask = shapely.union_all(areas.geometry.buffer(tolerance).to_numpy())
+    ends = model.link.df.loc[link_ids, ["from_node_id", "to_node_id"]].to_numpy()
+    areas = model.basin.area.df[model.basin.area.df["node_id"].isin(set(ends.ravel()))]
+    # the waterways around the Basins, and around the straight lines to the nodes beyond that, see `reach_area`
+    by_basin = areas.dissolve(by="node_id").geometry
+    points = model.node.df.geometry
+    strips = []
+    for node_ids in ends.tolist():
+        for basin_id, node_id in (node_ids, node_ids[::-1]):
+            if basin_id in by_basin.index and points[node_id].distance(by_basin[basin_id]) > tolerance:
+                strips.append(reach_area([points[node_id]], by_basin[basin_id]))
+    mask = shapely.union_all([*areas.geometry.buffer(tolerance).to_numpy(), *strips])
     waterways = read_main_waterways(top10nl_path, mask, main_route)
     water = gpd.read_file(top10nl_path, layer="top10nl_waterdeel_vlak", mask=mask)
     LOG.info(f"Routing {len(link_ids)} links along the Top10NL waterways")

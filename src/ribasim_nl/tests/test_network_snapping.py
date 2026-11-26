@@ -17,6 +17,7 @@ from ribasim_nl.network_snapping import (
     route_basin_links,
     route_over_water,
     snap_to_network,
+    snap_to_waterways,
 )
 from shapely.geometry import LineString, Point, box
 
@@ -327,6 +328,29 @@ def test_snap_to_network_routing_areas():
         from_3, from_4 = result.link.df.geometry.tolist()
         assert list(from_3.coords) == [(900, 300), (500, 0), (100, 0), (50, 0)]
         assert list(from_4.coords) == [(900, -300), (500, 0), (100, 0), (50, 0)]
+
+
+def test_snap_to_waterways_beyond_area(tmp_path):
+    """The Top10NL is read around the straight line to a node beyond the basin area as well."""
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    model.basin.add(
+        Node(1, Point(50, 0)),
+        [
+            basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]),
+            basin.State(level=[0.5]),
+            basin.Area(geometry=[shapely.MultiPolygon([box(0, -50, 100, 50)])]),
+        ],
+    )
+    model.outlet.add(Node(2, Point(800, 30)), [outlet.Static(flow_rate=[1.0])])
+    model.link.add(model.basin[1], model.outlet[2])
+    top10nl_path = tmp_path / "top10nl.gpkg"
+    ditch = gpd.GeoDataFrame(geometry=[LineString([(50, 0), (400, 0), (800, 0)])], crs="EPSG:28992")
+    ditch.to_file(top10nl_path, layer="top10nl_waterdeel_lijn")
+    pond = gpd.GeoDataFrame(geometry=[box(0, -5, 10, 5)], crs="EPSG:28992")
+    pond.to_file(top10nl_path, layer="top10nl_waterdeel_vlak")
+
+    model = snap_to_waterways(model, top10nl_path, model.link.df.index.tolist())
+    assert model.link.df.geometry.iloc[0].coords[:] == [(50, 0), (400, 0), (800, 0), (800, 30)]
 
 
 def test_insert_points():
