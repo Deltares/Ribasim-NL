@@ -19,6 +19,7 @@ from ribasim_nl.flow_paths import (
     merge_basin_trees,
     merge_inflows,
     merge_outflows,
+    open_water_basins,
     place_on_link,
     prune_junction,
     rebuild_junction_trees,
@@ -254,32 +255,49 @@ def test_rebuild_junction_trees():
 def test_rebuild_junction_trees_routing_areas():
     """Like the Pr. Bernhardsluis, a node far from its Basin follows the waterways of a routing area to it."""
 
-    def routed_coords(routing_areas: dict | None) -> list[tuple[float, float]]:
+    def routed_coords(line: LineString, routing_areas: dict | None = None) -> list[tuple[float, float]]:
         model = route_model()
         model.basin.area.df = gpd.GeoDataFrame({"node_id": [1]}, geometry=[box(-150, -50, 150, 50)], crs="EPSG:28992")
-        model.outlet.add(Node(7, Point(400, 100)), [outlet.Static(flow_rate=[1.0])])
+        model.outlet.add(Node(7, Point(line.coords[-1])), [outlet.Static(flow_rate=[1.0])])
         model.link.add(model.basin[1], model.outlet[7])
-        line = LineString([(-100, 0), (300, 0), (400, 100)])
         waterways = gpd.GeoDataFrame({"main-route": [True]}, geometry=[line], crs="EPSG:28992")
         rebuild_junction_trees(model, [1], waterways, routing_areas=routing_areas)
         (geometry,) = model.link.df.loc[model.link.df["to_node_id"] == 7, "geometry"]
         return geometry.coords[:]
 
-    # beyond the area of the Basin it branches off straight
-    assert (300, 0) not in routed_coords(None)
-    assert routed_coords({1: box(150, -50, 450, 150)})[-2:] == [(300, 0), (400, 100)]
+    # beyond the area of the Basin it follows the waterway around the straight line to it
+    assert routed_coords(LineString([(-100, 0), (300, 0), (400, 100)]))[-2:] == [(300, 0), (400, 100)]
+    # a waterway that strays further from that line is only followed in a routing area, else it branches off straight
+    detour = LineString([(-100, 0), (300, 0), (300, -300), (700, -300), (700, 100), (600, 100)])
+    assert (700, -300) not in routed_coords(detour)
+    assert routed_coords(detour, {1: box(150, -350, 750, 150)})[-3:] == [(700, -300), (700, 100), (600, 100)]
 
 
-def test_rebuild_rws_junction_trees_lake(tmp_path):
+def test_open_water_basins():
+    """Basin 1 is 300 m by 100 m, so on average 75 m wide."""
+    model = rebuild_model()
+    assert open_water_basins(model, [1]) == set()
+    model.basin.area.df = gpd.GeoDataFrame({"node_id": [1]}, geometry=[box(0, 0, 4000, 3000)], crs="EPSG:28992")
+    assert open_water_basins(model, [1]) == {1}
+
+
+def test_rebuild_rws_junction_trees_lake(tmp_path, monkeypatch):
     """The Basin of a lake follows the fairways and the main route, as `test_rebuild_junction_trees` its waterway."""
     model = rebuild_model()
-    model.node.df.loc[1, "name"] = "IJsselmeer"
+    monkeypatch.setattr("ribasim_nl.flow_paths.OPEN_WATER_WIDTH", 50.0)
+    # Outlet 7 lies beyond the shore, at the end of a ditch of the Top10NL
+    model.outlet.add(Node(7, Point(100, 300)), [outlet.Static(flow_rate=[1.0])])
+    model.link.add(model.basin[1], model.outlet[7])
+    top10nl_path = tmp_path / "top10nl.gpkg"
+    ditch = gpd.GeoDataFrame(geometry=[LineString([(100, 0), (100, 300)])], crs="EPSG:28992")
+    ditch.to_file(top10nl_path, layer="top10nl_waterdeel_lijn")
+    lake = gpd.GeoDataFrame(geometry=[box(-150, -50, 150, 50)], crs="EPSG:28992")
+    lake.to_file(top10nl_path, layer="top10nl_waterdeel_vlak")
     fairway_path = tmp_path / "fairway.gpkg"
     gpd.GeoDataFrame(geometry=[LineString([(-100, 0), (0, 0)])], crs="EPSG:28992").to_file(fairway_path)
     main_route = gpd.GeoDataFrame(geometry=[LineString([(0, 0), (100, 0)])], crs="EPSG:28992")
     links_before = simplified_links(model)
-    # the Top10NL is not read for a lake
-    rebuild_rws_junction_trees(model, [1], tmp_path / "top10nl.gpkg", fairway_path, main_route)
+    rebuild_rws_junction_trees(model, [1], top10nl_path, fairway_path, main_route)
 
     assert simplified_links(model) == links_before
     geometries = model.link.df.set_index(["from_node_id", "to_node_id"])["geometry"]
@@ -287,6 +305,9 @@ def test_rebuild_rws_junction_trees_lake(tmp_path):
     assert model.node.df.at[junction_id, "geometry"].coords[:] == [(100, 0)]
     assert geometries[(1, junction_id)].coords[:] == [(0, 0), (100, 0)]
     assert geometries[(5, 1)].coords[:] == [(-100, 0), (0, 0)]
+    # from the route over the lake along the ditch
+    along_ditch = geometries[(junction_id, 7)].coords[:]
+    assert along_ditch[0] == (100, 0) and along_ditch[-1] == (100, 300) and {x for x, _ in along_ditch} == {100}
 
 
 def test_merge_basin_trees():

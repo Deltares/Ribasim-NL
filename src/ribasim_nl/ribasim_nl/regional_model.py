@@ -135,12 +135,12 @@ def finish_regional_model(
     The layout only changes the geometry, after all parametrization: the Basin areas are made valid, without slivers
     (see `Model.clean_basin_area`), `snap` routes the links along the waterways known for the authority, after which
     the BGT profile of ManningResistances follows their new links (see `update_manning_resistance_reach`), the RWZIs
-    discharge on the links into their Basins (see #860), and nodes and links are moved apart, with the Junctions on the
-    BGT water, see `ribasim_nl.layout.tidy_layout`. The inflows and outflows of each Basin share one Junction tree, see
-    `merge_basin_trees`, through which more series can be observed, see `ribasim_nl.observations`, which gives the
-    nodes of a series a Junction of their own where the tree has none. Then the model gets the summer and winter
-    levels of the peilgebieden of the authority, see `ribasim_nl.seasonal_levels`. The results get `performance.xlsx`
-    and `output_controle.gpkg`.
+    discharge on the links into their Basins, along the waterway to them (see #860 and `attach_rwzi_junctions`), and
+    nodes and links are moved apart, with the Junctions on the BGT water, see `ribasim_nl.layout.tidy_layout`. The
+    inflows and outflows of each Basin share one Junction tree, see `merge_basin_trees`, through which more series can
+    be observed, see `ribasim_nl.observations`, which gives the nodes of a series a Junction of their own where the
+    tree has none. Then the model gets the summer and winter levels of the peilgebieden of the authority, see
+    `ribasim_nl.seasonal_levels`. The results get `performance.xlsx` and `output_controle.gpkg`.
 
     :param model: parametrized model
     :param toml_file: TOML file to write the model to
@@ -154,7 +154,7 @@ def finish_regional_model(
     model = snap(model)
     update_manning_resistance_reach(model, read_manning_water(model))
     # the RWZIs that discharge into a Basin of another model are attached in the coupled model
-    model = attach_rwzi_junctions(model)
+    model = attach_rwzi_junctions(model, read_lines=read_lines)
     model = add_observations(model, authority)
     # after the last nodes are added, such that only the IDs of the Junctions change
     merge_basin_trees(model, read_lines)

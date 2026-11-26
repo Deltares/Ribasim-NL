@@ -52,6 +52,11 @@ _prefix_to_authority = {v: k for k, v in waterbeheercode.items()}
 
 # Constants
 SNAP_DISTANCE = 20
+# Maximum distance between a boundary node and the nearest Basin area of the authority it is coupled with [m]. A
+# boundary further away lies at the coast, the border, or an area that is not modelled, such as the dunes, and
+# stays a boundary: its nearest Basin is not where its water comes from or goes to, see #1079. The connections of the
+# model that run through water outside the Basin areas are up to 8 km long.
+MAX_COUPLING_DISTANCE = 10_000.0
 MIN_LEVEL_DIFF = 0.04  # Minimum level difference for the control
 MIN_BASIN_OUTLET_DIFF = 0.5
 COUPLING_LEVEL_UPSTREAM_SUPPLY_OFFSET = -0.04
@@ -560,6 +565,16 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: gpd.G
             # Can happen if we don't couple all models
             if len(distances) == 0:
                 print(f"Cannot find {couple_authority} basin area for {boundary_node}.")
+                continue
+
+            if distances.min() > MAX_COUPLING_DISTANCE:
+                logger.warning(
+                    "Boundary node %s is %.0f km from the nearest Basin of %s, more than %.0f km: not coupled.",
+                    boundary_node,
+                    distances.min() / 1000,
+                    couple_authority,
+                    MAX_COUPLING_DISTANCE / 1000,
+                )
                 continue
 
             # Couple with closest basin area
@@ -1095,7 +1110,9 @@ def couple_model(toml_file: Path) -> None:
     route_links_between_models(model, network)
     add_user_demands(model)
     # the RWZIs of Rijkswaterstaat and those that discharge into another model, see #860 and #871
-    attach_rwzi_junctions(model, authorities={"Rijkswaterstaat"})
+    attach_rwzi_junctions(
+        model, authorities={"Rijkswaterstaat"}, read_lines=line_reader([top10nl_gpkg], main_route(network))
+    )
     change_routes(model)
     # series measured on links between models can only be observed in the coupled model
     link_observations(model)
