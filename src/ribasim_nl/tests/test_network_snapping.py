@@ -7,6 +7,7 @@ from ribasim_nl.network_snapping import (
     BEYOND_AREA_COST,
     Waterways,
     _BasinNetwork,
+    _share_paths,
     _WaterRaster,
     culverts_in,
     insert_points,
@@ -351,6 +352,21 @@ def test_snap_to_waterways_beyond_area(tmp_path):
 
     model = snap_to_waterways(model, top10nl_path, model.link.df.index.tolist())
     assert model.link.df.geometry.iloc[0].coords[:] == [(50, 0), (400, 0), (800, 0), (800, 30)]
+
+
+def test_share_paths():
+    """Two nodes 50 m apart on wide water: the one with the longer path follows the path of the other."""
+    water = box(0, 0, 1000, 200)
+    raster = _WaterRaster(water, water, land_cost=20.0, max_cells=1_000_000)
+    coords = {"a": [(0.0, 100.0), (500.0, 100.0), (900.0, 100.0)], "b": [(0.0, 100.0), (450.0, 150.0), (900.0, 150.0)]}
+    points = {"a": Point(900, 100), "b": Point(900, 150)}
+    shared = _share_paths(coords, points, 100.0, raster, max_land=100.0)
+    assert shared == {"a": coords["a"], "b": [*coords["a"], (900.0, 150.0)]}
+    # not if they are further apart, or if the branch would cross too much land
+    assert _share_paths(coords, points, 40.0, raster, max_land=100.0) == coords
+    canals = shapely.union_all([box(0, 90, 1000, 110), box(0, 140, 1000, 160), box(0, 90, 20, 160)])
+    raster = _WaterRaster(canals, water, land_cost=20.0, max_cells=1_000_000)
+    assert _share_paths(coords, points, 100.0, raster, max_land=10.0) == coords
 
 
 def test_insert_points():

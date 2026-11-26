@@ -25,6 +25,7 @@ from ribasim_nl.model import Model
 from ribasim_nl.network_snapping import (
     LineReader,
     Waterways,
+    attach_to_tree,
     insert_points,
     reach_area,
     read_lake_waterways,
@@ -819,7 +820,8 @@ def build_basin_tree(
 ) -> tuple[list[int], list[int]]:
     """Connect the nodes reached by the Basin tree of `basin_id` along their routes, with Junctions where they split.
 
-    Inflows and outflows share one tree, see `Routes`. The links to the nodes reached keep their ids and direction.
+    Inflows and outflows share one tree, see `Routes`, of which Junctions less than `JUNCTION_DISTANCE` apart are one,
+    see `tree_links`. The links to the nodes reached keep their ids and direction.
     The other links point towards the Basin or away from it, see `towards_basin`, given the nodes beyond them.
 
     :param ends: per key, the node reached and its link, which still exists
@@ -831,7 +833,7 @@ def build_basin_tree(
     :return: the ids of the links that changed or are new, and of the new Junctions
     """
     reuse = {} if reuse is None else reuse
-    tree = tree_links(coords)
+    tree = tree_links(coords, JUNCTION_DISTANCE, reuse.keys())
     children: dict[_TreeNode, list[_TreeNode]] = defaultdict(list)
     for start, end, _ in tree:
         children[start].append(end)
@@ -943,12 +945,47 @@ class _Trie:
         self.ends: list[int] = []
 
 
-def tree_links(routes: dict[int, list[Coord]]) -> list[tuple[_TreeNode, _TreeNode, list[Coord]]]:
+# Junctions of a tree that are less than this far apart along their route are one Junction [m]. Routes often split
+# twice within a few metres, such as where the Pumps of a gemaal join and where the next waterway branches off, which
+# draws as a cluster of Junctions.
+JUNCTION_DISTANCE = 25.0
+
+
+def _join_junctions(
+    links: list[tuple[_TreeNode, _TreeNode, list[Coord]]], distance: float, keep: typing.Container[Coord]
+) -> list[tuple[_TreeNode, _TreeNode, list[Coord]]]:
+    """Join each Junction of a tree with the Junction, or the start, before it, if their link is shorter than `distance`.
+
+    The links out of a joined Junction then start at the one before it, and go straight to their next point.
+    Junctions at the locations to `keep` are not joined with the one before them.
+    """
+    location: dict[_TreeNode, Coord] = {}
+    joined: dict[_TreeNode, _TreeNode] = {}
+    result = []
+    for start, end, coords in links:
+        location.setdefault(start, coords[0])
+        if start in joined:
+            start = joined[start]
+            coords = [location[start], *coords[1:]]
+        if end != "root" and end[0] == "junction":
+            if LineString(coords).length < distance and coords[-1] not in keep:
+                joined[end] = start
+                continue
+            location[end] = coords[-1]
+        result.append((start, end, coords))
+    return result
+
+
+def tree_links(
+    routes: dict[int, list[Coord]], join: float = 0.0, keep: typing.Container[Coord] = ()
+) -> list[tuple[_TreeNode, _TreeNode, list[Coord]]]:
     """The links of the tree of routes that all start at the same point, with a Junction where they split.
 
     The last segment of each route is its own, so a route that is part of another one still ends in a branch.
 
     :param routes: per key, the coordinates of a route
+    :param join: Junctions less than this far apart along their route become one, see `_join_junctions`
+    :param keep: locations of Junctions that are not joined with the one before them
     :return: the links from the start "root" to Junctions ("junction", number), and to the end ("end", key) of each
         route, with their coordinates, such that the link into a Junction comes before the links out of it
     """
@@ -972,53 +1009,7 @@ def tree_links(routes: dict[int, list[Coord]]) -> list[tuple[_TreeNode, _TreeNod
             start, coords = junction, [coords[-1]]
         links.extend((start, ("end", key), [*coords, routes[key][-1]]) for key in node.ends)
         stack.extend((child, start, [*coords, coord]) for coord, child in node.children.items())
-    return links
-
-
-def attach_to_tree(routes: dict[int, list[Coord]], start: Coord, points: dict[int, Coord]) -> dict[int, list[Coord]]:
-    """Attach points to the tree of routes from `start`, each with a straight line from the nearest point of the tree.
-
-    The points nearest to the tree are attached first, such that the others can branch off their lines. Where a line
-    branches off a segment, a point is inserted in all routes along that segment, such that they share it.
-
-    :param routes: per key, the coordinates of a route from `start`
-    :param start: the start of the routes, from which the first point is attached if there are no routes
-    :param points: per key, a point to attach
-    :return: the routes, with a route to each point
-    """
-    routes = {key: list(coords) for key, coords in routes.items()}
-    remaining = dict(points)
-    while remaining:
-        segments = list(
-            {(start, start)} | {(a, b) for coords in routes.values() for a, b in itertools.pairwise(coords)}
-        )
-        a, b = (np.array([segment[i] for segment in segments]) for i in (0, 1))
-        keys = list(remaining)
-        p = np.array([remaining[key] for key in keys])
-        ab = b - a
-        lengths = np.maximum((ab**2).sum(axis=1), 1e-12)
-        t = np.clip(((p[:, None, :] - a[None]) * ab[None]).sum(axis=2) / lengths, 0.0, 1.0)
-        nearest = a[None] + t[..., None] * ab[None]
-        distance = np.hypot(*(nearest - p[:, None, :]).transpose(2, 0, 1))
-        i, j = np.unravel_index(np.argmin(distance), distance.shape)
-        segment = segments[j]
-        key = keys[i]
-        if t[i, j] <= 0.0 or t[i, j] >= 1.0:
-            branch = segment[0] if t[i, j] <= 0.0 else segment[1]
-        else:
-            branch = (float(nearest[i, j, 0]), float(nearest[i, j, 1]))
-            for coords in routes.values():
-                for k in range(len(coords) - 1):
-                    if (coords[k], coords[k + 1]) == segment:
-                        coords.insert(k + 1, branch)
-                        break
-        prefix = [start]
-        for coords in routes.values():
-            if branch in coords:
-                prefix = coords[: coords.index(branch) + 1]
-                break
-        routes[key] = _dedupe([*prefix, branch, remaining.pop(key)])
-    return routes
+    return _join_junctions(links, join, keep) if join > 0.0 else links
 
 
 # Maximum distance between a node and the routes of its Basin to branch its link off them [m], like the distance within
@@ -1111,7 +1102,11 @@ def merge_basin_trees(
             branched = branch_off_routes(
                 coords, {key for key, (_, link_id) in enumerate(ends) if link_id in branch}, max_branch_distance
             )
-            splits = {line[-1] for _, end, line in tree_links(branched) if end != "root" and end[0] == "junction"}
+            splits = {
+                line[-1]
+                for _, end, line in tree_links(branched, JUNCTION_DISTANCE, kept.keys())
+                if end != "root" and end[0] == "junction"
+            }
             unsplit = {junction_id for location, junction_id in kept.items() if location not in splits}
             if not unsplit:
                 break
@@ -1120,7 +1115,7 @@ def merge_basin_trees(
             continue
         # the tree as the nodes reached beyond each of its links between the Basin and Junctions
         current = {frozenset(k for k, (_, i) in enumerate(ends) if link_id in paths[i]) for link_id in tree_link_ids}
-        if branched == coords and _tree_splits(tree_links(coords)) == current:
+        if branched == coords and _tree_splits(tree_links(coords, JUNCTION_DISTANCE, kept.keys())) == current:
             continue
         sides = {key: routes.subtree(link_id) for key, (_, link_id) in enumerate(ends)}
         changes.append((basin_id, junctions, tree_link_ids, ends, branched, sides, kept))

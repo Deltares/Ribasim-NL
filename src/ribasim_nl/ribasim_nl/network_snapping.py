@@ -416,6 +416,52 @@ def insert_points(coords: list[Coord], points: typing.Collection[Coord], toleran
     return result
 
 
+def attach_to_tree(routes: dict[int, list[Coord]], start: Coord, points: dict[int, Coord]) -> dict[int, list[Coord]]:
+    """Attach points to the tree of routes from `start`, each with a straight line from the nearest point of the tree.
+
+    The points nearest to the tree are attached first, such that the others can branch off their lines. Where a line
+    branches off a segment, a point is inserted in all routes along that segment, such that they share it.
+
+    :param routes: per key, the coordinates of a route from `start`
+    :param start: the start of the routes, from which the first point is attached if there are no routes
+    :param points: per key, a point to attach
+    :return: the routes, with a route to each point
+    """
+    routes = {key: list(coords) for key, coords in routes.items()}
+    remaining = dict(points)
+    while remaining:
+        segments = list(
+            {(start, start)} | {(a, b) for coords in routes.values() for a, b in itertools.pairwise(coords)}
+        )
+        a, b = (np.array([segment[i] for segment in segments]) for i in (0, 1))
+        keys = list(remaining)
+        p = np.array([remaining[key] for key in keys])
+        ab = b - a
+        lengths = np.maximum((ab**2).sum(axis=1), 1e-12)
+        t = np.clip(((p[:, None, :] - a[None]) * ab[None]).sum(axis=2) / lengths, 0.0, 1.0)
+        nearest = a[None] + t[..., None] * ab[None]
+        distance = np.hypot(*(nearest - p[:, None, :]).transpose(2, 0, 1))
+        i, j = np.unravel_index(np.argmin(distance), distance.shape)
+        segment = segments[j]
+        key = keys[i]
+        if t[i, j] <= 0.0 or t[i, j] >= 1.0:
+            branch = segment[0] if t[i, j] <= 0.0 else segment[1]
+        else:
+            branch = (float(nearest[i, j, 0]), float(nearest[i, j, 1]))
+            for coords in routes.values():
+                for k in range(len(coords) - 1):
+                    if (coords[k], coords[k + 1]) == segment:
+                        coords.insert(k + 1, branch)
+                        break
+        prefix = [start]
+        for coords in routes.values():
+            if branch in coords:
+                prefix = coords[: coords.index(branch) + 1]
+                break
+        routes[key] = _dedupe([*prefix, branch, remaining.pop(key)])
+    return routes
+
+
 def reach_area(
     points: typing.Iterable[shapely.Point],
     target: shapely.Geometry,
@@ -571,7 +617,7 @@ def route_basin_links(
         if sources and far:
             paths = raster.paths(sources, {key: raster.cell_of(point) for key, point in far.items()})
             paths = {key: path for key, path in paths.items() if raster.land(path) <= max_land}
-            water_coords |= raster.coords(paths)
+            water_coords |= _share_paths(raster.coords(paths), far, max_attach_distance, raster, max_land)
         for key, coords in water_coords.items():
             start = shapely.Point(coords[0])
             to_attach[("water", key)] = (start, network.nearest_edge(start, candidates))
@@ -606,6 +652,43 @@ def route_basin_links(
                 if len(from_center) >= min_routed_fraction * len(connectors):
                     return center_point, from_center
     return basin_point, route(basin_point, anchor)
+
+
+def _share_paths(
+    coords: dict[typing.Hashable, list[Coord]],
+    points: typing.Mapping[typing.Hashable, shapely.Point],
+    distance: float,
+    raster: "_WaterRaster",
+    max_land: float,
+) -> dict[typing.Hashable, list[Coord]]:
+    """Let nodes within `distance` of each other follow the path over water of the one with the shortest path.
+
+    On wide water the least-cost paths to two nodes next to each other part where they start, and run side by side
+    from there, such as those to the two Outlets of a sluice. Instead, the node with the longer path follows the
+    shorter path of a node near it, and branches off straight from the point of that path nearest to it, see
+    `attach_to_tree`, if that crosses at most `max_land` of land.
+
+    :param coords: per key, the coordinates of its path over water, to the cell of its node
+    :param points: the node of each key
+    :return: the paths, of which the last coordinate is that of the node for a path that follows another
+    """
+    result: dict[typing.Hashable, list[Coord]] = {}
+    for key in sorted(coords, key=lambda k: (shapely.LineString(coords[k]).length, str(k))):
+        point = points[key]
+        near = [other for other in result if points[other].distance(point) <= distance]
+        result[key] = coords[key]
+        if not near:
+            continue
+        nearest = min(near, key=lambda other: (points[other].distance(point), str(other)))
+        # the paths that start where the path of that node does share its coordinates, and the point where one branches
+        group = [other for other in result if other != key and result[other][0] == result[nearest][0]]
+        attached = attach_to_tree(
+            dict(enumerate(result[other] for other in group)), result[nearest][0], {-1: (point.x, point.y)}
+        )
+        if raster.land_along(shapely.LineString(attached[-1][-2:])) <= max_land:
+            result[key] = attached.pop(-1)
+            result |= dict(zip(group, attached.values(), strict=True))
+    return result
 
 
 class _WaterRaster:

@@ -32,7 +32,14 @@ from ribasim_nl.flow_paths import (
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.keys import NodeKey as K
 from ribasim_nl.keys import resolve_keys
-from ribasim_nl.layout import Water, junctions_onto_water, move_nodes, resolve_overlaps, separate_nodes
+from ribasim_nl.layout import (
+    Water,
+    junction_areas,
+    junctions_onto_water,
+    move_nodes,
+    resolve_overlaps,
+    separate_nodes,
+)
 from ribasim_nl.model import find_toml
 from ribasim_nl.network_snapping import line_reader, snap_to_waterways
 from ribasim_nl.observations import link_observations
@@ -1109,21 +1116,24 @@ def couple_model(toml_file: Path) -> None:
     remove_invalid_topology_nodes(model)
     route_links_between_models(model, network)
     add_user_demands(model)
-    # the RWZIs of Rijkswaterstaat and those that discharge into another model, see #860 and #871
-    attach_rwzi_junctions(
-        model, authorities={"Rijkswaterstaat"}, read_lines=line_reader([top10nl_gpkg], main_route(network))
-    )
     change_routes(model)
     # series measured on links between models can only be observed in the coupled model
     link_observations(model)
     merge_coupling_trees(model, network)
+    # the RWZIs of Rijkswaterstaat and those that discharge into another model, see #860 and #871. They join the trees
+    # once these are rebuilt: an RWZI Junction on a link is kept as it is when the tree of its Basin is rebuilt, with
+    # the links behind it, and the other routes of the Basin would run beside these links, as along the Lek.
+    attach_rwzi_junctions(
+        model, authorities={"Rijkswaterstaat"}, read_lines=line_reader([top10nl_gpkg], main_route(network))
+    )
     # and series that combine the inflows and outflows of a Basin through its merged tree
     link_observations(model, combine=True)
     # the layout of the models is already tidy, see `tidy_layout`, so only put the Junctions of the coupling on the
     # water, move apart nodes on top of each other, and offset links that still overlap
     water = Water()
-    junctions_onto_water(model, water, node_ids=set(model.junction.node.df.index) - junctions)
-    separate_nodes(model, water=water)
+    areas = junction_areas(model)
+    junctions_onto_water(model, water, node_ids=set(model.junction.node.df.index) - junctions, areas=areas)
+    separate_nodes(model, water=water, areas=areas)
     resolve_overlaps(model, max_iterations=10)
     coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)
     run_configured_coupling_level_check(coupled_toml_file)

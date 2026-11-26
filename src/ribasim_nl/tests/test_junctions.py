@@ -64,8 +64,10 @@ def test_junctionify():
     assert (8, 6) in links.index
 
 
-def test_merge_basin_trees_after_junctionify():
+def test_merge_basin_trees_after_junctionify(monkeypatch):
     """Outlet 2 drains into Basin 1 and Outlet 3 is fed by it along a shared route, which becomes one tree."""
+    # the Junction of this small model is 5 m from its Basin
+    monkeypatch.setattr("ribasim_nl.flow_paths.JUNCTION_DISTANCE", 0.0)
     model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
     model.basin.add(
         Node(1, Point(0, 0)), [basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]), basin.State(level=[0.5])]

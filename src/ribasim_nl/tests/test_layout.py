@@ -8,6 +8,7 @@ from ribasim_nl.layout import (
     NODE_SPACING,
     Water,
     coincident_nodes,
+    junction_areas,
     junctions_onto_water,
     move_nodes,
     offset_links,
@@ -150,6 +151,30 @@ def test_resolve_observation_overlaps(model):
     assert len(observation_overlaps()) == 1
     resolve_overlaps(model)
     assert observation_overlaps() == []
+
+
+def test_junctions_onto_water_of_own_basin(tmp_path):
+    """Junction 3 of the tree of Basin 1 is 8 m east of a canal that is not in the area of Basin 1, and stays."""
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    add_basin(model, 1, Point(100, 0), box(12, -500, 500, 500))
+    model.outlet.add(Node(2, Point(100, 100)), [outlet.Static(flow_rate=[1.0])])
+    model.junction.add(Node(3, Point(18, 50)))
+    model.link.add(model.basin[1], model.junction[3])
+    model.link.add(model.junction[3], model.outlet[2])
+    path = tmp_path / "bgt_water.parquet"
+    water = gpd.GeoDataFrame({"lokaalID": ["canal", "ditch"]}, geometry=[box(0, -100, 10, 100), box(30, 40, 40, 60)])
+    write_bgt_water(water.set_crs("EPSG:28992"), path)
+    assert junction_areas(model).keys() == {3}
+
+    # only the ditch in its area counts, which is 12 m away
+    junctions_onto_water(model, Water(path), max_distance=10.0)
+    assert model.node.df.geometry[3].coords[:] == [(18.0, 50.0)]
+    junctions_onto_water(model, Water(path))
+    assert model.node.df.geometry[3].coords[:] == [(30.5, 50.0)]
+    # without the area of a Basin all water counts
+    model.node.df.loc[[3], "geometry"] = [Point(18, 50)]
+    junctions_onto_water(model, Water(path), areas={})
+    assert model.node.df.geometry[3].coords[:] == [(9.5, 50.0)]
 
 
 def test_junctions_onto_water(tmp_path):
