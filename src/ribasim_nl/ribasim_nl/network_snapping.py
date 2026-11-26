@@ -61,6 +61,13 @@ BEYOND_AREA_COST = 2.0
 REACH = 250.0
 REACH_RATIO = 0.25
 MAX_REACH = 1000.0
+# A connector node is attached to its nearest line, and its route may leave the lines earlier, at the nearest point of
+# one of this many other lines near the node that the route passes, see `route_basin_links`. The straight line from
+# there to the node then costs `STRAIGHT_COST` per metre. That is much more than a line, so a route follows the lines
+# to the node rather than crossing the land to it, such as the ditch that an RWZI discharges on, and only leaves
+# early where it would pass the node and hook back to it.
+NEARBY_LINES = 4
+STRAIGHT_COST = 10.0
 
 type Coord = tuple[float, float]
 # reads the lines within an area, see `line_reader`
@@ -514,6 +521,7 @@ def route_basin_links(
     The hydro-objects are connected by the `culverts`, and dangling ends are connected to other parts of the network
     if the gap is small or crossed over `water`, see `_BasinNetwork.bridge_gaps`. Then only the longest connected part
     of the network is used. Each connector node is attached to its nearest hydro-object within `max_attach_distance`.
+    Where its route passes nearer to the node on another line near it, the route leaves the lines there.
     Connector nodes farther away are attached over the `water` within `area` instead, along the least-cost path over
     water that crosses at most `max_land` of land, see `_WaterRaster`. All routes follow the cheapest paths from the
     Basin node, by the length of the lines times their `cost` per metre, such that routes share their common parts
@@ -598,10 +606,15 @@ def route_basin_links(
         to_attach[-2] = (basin_point, network.nearest_edge(basin_point, candidates))
     far: dict[typing.Hashable, shapely.Point] = {}
     for key, point in connectors.items():
-        edge = network.nearest_edge(point, candidates)
-        distance = network.geometries[edge].distance(point)
+        distances = shapely.distance(point, network.geometries[candidates])
+        order = np.argsort(distances, kind="stable")
+        distance = float(distances[order[0]])
         if distance <= max_attach_distance and (basin_area is not None or distance < point.distance(basin_point)):
-            to_attach[key] = (point, edge)
+            to_attach[key] = (point, int(candidates[order[0]]))
+            # the other lines near the node, where its route leaves the lines if that is shorter, see `route`
+            for i in order[1 : 1 + NEARBY_LINES].tolist():
+                if distances[i] <= max_attach_distance:
+                    to_attach[("near", key, i)] = (point, int(candidates[i]))
         else:
             far[key] = point
 
@@ -624,14 +637,38 @@ def route_basin_links(
     attached = network.split(to_attach)
     anchor = attached.pop(-1)
     home = attached.pop(-2, None)
+    nearby: dict[typing.Hashable, list[Coord]] = defaultdict(list)
+    for request in [k for k in attached if isinstance(k, tuple) and k[0] == "near"]:
+        nearby[request[1]].append(attached.pop(request))
+
+    def leave(
+        path: list[Coord], cost: typing.Mapping[Coord, float], key: typing.Hashable, point: shapely.Point
+    ) -> list[Coord]:
+        """The path up to where its route leaves the lines for the node: on a line near the node, see `NEARBY_LINES`.
+
+        A node is attached to the nearest point of its nearest line. Its route can pass the node on another line
+        before it gets there, and would then hook back to the node from further on. It leaves the lines where the
+        cost of the path and of the straight line to the node, see `STRAIGHT_COST`, is least.
+        """
+
+        def total(node: Coord) -> float:
+            return cost[node] + STRAIGHT_COST * float(np.hypot(point.x - node[0], point.y - node[1]))
+
+        passed = {node: i for i, node in enumerate(path)}
+        on_path = sorted((passed[node], node) for node in nearby.get(key, []) if node in passed)
+        best = min([node for _, node in on_path] + [path[-1]], key=total)
+        return path[: passed[best] + 1]
 
     def route(location: shapely.Point, start: Coord) -> dict[int, list[Coord]]:
         """The routes from a location, which enter the network at `start`, to the connector nodes."""
-        paths = nx.single_source_dijkstra_path(network.graph, start, weight="weight")
+        cost, paths = typing.cast(
+            tuple[dict[Coord, float], dict[Coord, list[Coord]]],
+            nx.single_source_dijkstra(network.graph, start, weight="weight"),
+        )
         routes = {}
         for key, point in connectors.items():
             if key in attached:
-                middle = network.path_coords(paths[attached[key]])
+                middle = network.path_coords(leave(paths[attached[key]], cost, key, point))
             elif ("water", key) in attached:
                 middle = [*network.path_coords(paths[attached[("water", key)]]), *water_coords[key][1:-1]]
             else:
@@ -672,8 +709,13 @@ def _share_paths(
     :param points: the node of each key
     :return: the paths, of which the last coordinate is that of the node for a path that follows another
     """
+
+    def length(key: typing.Hashable) -> float:
+        # the path of a node in a cell of the lines is that cell alone
+        return shapely.LineString(coords[key]).length if len(coords[key]) > 1 else 0.0
+
     result: dict[typing.Hashable, list[Coord]] = {}
-    for key in sorted(coords, key=lambda k: (shapely.LineString(coords[k]).length, str(k))):
+    for key in sorted(coords, key=lambda k: (length(k), str(k))):
         point = points[key]
         near = [other for other in result if points[other].distance(point) <= distance]
         result[key] = coords[key]
@@ -685,8 +727,9 @@ def _share_paths(
         attached = attach_to_tree(
             dict(enumerate(result[other] for other in group)), result[nearest][0], {-1: (point.x, point.y)}
         )
-        if raster.land_along(shapely.LineString(attached[-1][-2:])) <= max_land:
-            result[key] = attached.pop(-1)
+        branch = attached.pop(-1)
+        if len(branch) > 1 and raster.land_along(shapely.LineString(branch[-2:])) <= max_land:
+            result[key] = branch
             result |= dict(zip(group, attached.values(), strict=True))
     return result
 
