@@ -6,16 +6,16 @@ along the hydro-object, and one crossing stands for all crossings between two pe
 own. A node on a crossing is then drawn on another watercourse than its structure, and the links to it follow that
 watercourse, see `ribasim_nl.network_snapping`.
 
-`move_to_structures` moves each Pump to its gemaal and each Outlet to its stuw, see `structure_locations`. This only
-changes the geometry of nodes, which Ribasim does not use in the simulation. Other data, such as the koppeltabel of the
-measured discharges, refers to these nodes by the location of their crossing, which a moved node keeps in the columns
-`CROSSING_COLUMNS`, see `reference_points`.
+`move_to_structures` moves each Pump to its gemaal and each Outlet to its stuw, see `structure_locations`, at the end
+of the forcing stage, after the parametrization, which depends on where nodes are, such as within supply areas. This
+only changes the geometry of nodes, which Ribasim does not use in the simulation. Other data, such as the koppeltabel
+of the measured discharges, refers to these nodes by their key, see `ribasim_nl.observations`.
 """
 
 import logging
 import typing
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import geopandas as gpd
@@ -24,6 +24,7 @@ import pandas as pd
 import shapely
 import shapely.affinity
 
+from ribasim_nl.crossings.model import identifiers
 from ribasim_nl.layout import move_nodes
 from ribasim_nl.model import Model
 
@@ -43,8 +44,6 @@ ON_LINE_TOLERANCE = 2.0
 # which the coordinates in the plane are the same
 RD_NEW = "EPSG:28992"
 RD_EPSG = (28992, 7415)
-# The node columns with the location of the crossing of a node that is moved to its structure [m, EPSG:28992]
-CROSSING_COLUMNS = ["meta_crossing_x", "meta_crossing_y"]
 
 
 @dataclass(frozen=True)
@@ -57,12 +56,14 @@ class Crossings:
     :param gemaal: the location of each gemaal, by globalid
     :param stuw: the location of each stuw, by globalid
     :param lines: the hydro-objects and culverts, by globalid
+    :param codes: the code of each gemaal and stuw, by globalid, see `ribasim_nl.crossings.model.identifiers`
     """
 
     rows: gpd.GeoDataFrame
     gemaal: gpd.GeoSeries
     stuw: gpd.GeoSeries
     lines: gpd.GeoSeries
+    codes: pd.Series = field(default_factory=lambda: pd.Series(dtype=object))
 
     def __post_init__(self) -> None:
         missing = {"hydroobject", "gemaal", "stuw", "area_from", "area_to"} - set(self.rows.columns)
@@ -91,11 +92,13 @@ class Crossings:
             rows[f"area_{side}"] = area
         lines = pd.concat([layer("hydroobject"), layer("duikersifonhevel")])
         lines = lines[~lines.index.duplicated()]
+        codes = pd.concat([identifiers(read(name, ["globalid", "code"])) for name in ("gemaal", "stuw")])
         return cls(
             gpd.GeoDataFrame(rows[["hydroobject", "gemaal", "stuw", "area_from", "area_to", "geometry"]]),
             layer("gemaal"),
             layer("stuw"),
             gpd.GeoSeries(lines, crs=RD_NEW),
+            codes[~codes.index.duplicated(keep="first")],
         )
 
 
@@ -191,31 +194,14 @@ def structure_locations(
     return result
 
 
-def reference_points(nodes: gpd.GeoDataFrame) -> gpd.GeoSeries:
-    """The location by which other data refers to each node: its crossing if it is moved to its structure.
-
-    :param nodes: the nodes of a model, possibly with the `CROSSING_COLUMNS` of `move_to_structures`
-    :return: the location of the crossing of the nodes that have one, and of the node itself for the others
-    """
-    points = nodes.geometry
-    if not set(CROSSING_COLUMNS) <= set(nodes.columns):
-        return points
-    x, y = (nodes[column].to_numpy(dtype=float) for column in CROSSING_COLUMNS)
-    moved = ~np.isnan(x)
-    assert (moved == ~np.isnan(y)).all(), "A crossing has both an x and a y coordinate"
-    reference = points.to_numpy().copy()
-    reference[moved] = shapely.points(x[moved], y[moved])
-    return gpd.GeoSeries(reference, index=nodes.index, crs=nodes.crs)
-
-
 def move_to_structures(
     model: Model, crossings: Crossings, *, max_distance: float = MAX_STRUCTURE_DISTANCE
 ) -> dict[int, str]:
     """Move the Pumps and Outlets on a crossing to the structure they represent, see `structure_locations`.
 
     The control nodes of a moved node move along with it, and its links are redrawn as straight lines by
-    `ribasim_nl.network_snapping.snap_to_network`, which routes them. A moved node keeps the location of its crossing
-    in the `CROSSING_COLUMNS`, see `reference_points`.
+    `ribasim_nl.network_snapping.snap_to_network`, which routes them. A node with a structure gets its code in
+    `meta_code_waterbeheerder`, as the nodes of the gravity controlled models.
 
     :param model: Ribasim model of a level controlled water authority
     :param crossings: the crossings and structures of the water authority
@@ -241,12 +227,12 @@ def move_to_structures(
             if controlled[control_id] == [node_id]:
                 point = typing.cast(shapely.Point, nodes.at[control_id, "geometry"])
                 locations[int(control_id)] = shapely.affinity.translate(point, new.x - old.x, new.y - old.y)
-    for column in CROSSING_COLUMNS:
-        if column not in nodes.columns:
-            nodes[column] = np.nan
-    crossing = shapely.get_coordinates(nodes.geometry.loc[list(moved)].to_numpy())
-    nodes.loc[list(moved), CROSSING_COLUMNS] = crossing
     move_nodes(model, locations)
+    if "meta_code_waterbeheerder" not in nodes.columns:
+        nodes["meta_code_waterbeheerder"] = pd.Series(None, index=nodes.index, dtype=object)
+    nodes.loc[list(structures), "meta_code_waterbeheerder"] = [
+        crossings.codes.get(globalid, globalid.strip("{}")) for globalid in structures.values()
+    ]
     node_types = nodes.loc[list(moved), "node_type"].value_counts().to_dict()
     LOG.info(
         f"Moved {node_types.get('Pump', 0)} Pumps to their gemaal and {node_types.get('Outlet', 0)} Outlets to their stuw"
