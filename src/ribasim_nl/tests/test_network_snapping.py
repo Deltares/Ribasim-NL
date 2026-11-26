@@ -4,14 +4,20 @@ import shapely
 from ribasim import Node
 from ribasim.nodes import basin, outlet
 from ribasim_nl.network_snapping import (
+    BEYOND_AREA_COST,
+    Waterways,
     _BasinNetwork,
     _WaterRaster,
     culverts_in,
+    insert_points,
+    reach_area,
     read_lake_waterways,
     read_lines_on_water,
+    route_basin,
     route_basin_links,
     route_over_water,
     snap_to_network,
+    snap_to_waterways,
 )
 from shapely.geometry import LineString, Point, box
 
@@ -315,12 +321,119 @@ def test_snap_to_network_routing_areas():
         crs=model.crs,
     )
 
-    unrouted = snap_to_network(model.model_copy(deep=True), hydro_objects, route_water=False)
-    assert all(len(line.coords) == 2 for line in unrouted.link.df.geometry), (
-        "Outside the basin area without routing area"
-    )
-
+    # nodes outside the basin area are reached along the waterways around the straight line to them, see `reach_area`
+    reached = snap_to_network(model.model_copy(deep=True), hydro_objects, route_water=False)
     routed = snap_to_network(model, hydro_objects, route_water=False, routing_areas={1: box(0, -400, 1000, 400)})
-    from_3, from_4 = routed.link.df.geometry.tolist()
-    assert list(from_3.coords) == [(900, 300), (500, 0), (100, 0), (50, 0)]
-    assert list(from_4.coords) == [(900, -300), (500, 0), (100, 0), (50, 0)]
+    for result in (reached, routed):
+        from_3, from_4 = result.link.df.geometry.tolist()
+        assert list(from_3.coords) == [(900, 300), (500, 0), (100, 0), (50, 0)]
+        assert list(from_4.coords) == [(900, -300), (500, 0), (100, 0), (50, 0)]
+
+
+def test_snap_to_waterways_beyond_area(tmp_path):
+    """The Top10NL is read around the straight line to a node beyond the basin area as well."""
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    model.basin.add(
+        Node(1, Point(50, 0)),
+        [
+            basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]),
+            basin.State(level=[0.5]),
+            basin.Area(geometry=[shapely.MultiPolygon([box(0, -50, 100, 50)])]),
+        ],
+    )
+    model.outlet.add(Node(2, Point(800, 30)), [outlet.Static(flow_rate=[1.0])])
+    model.link.add(model.basin[1], model.outlet[2])
+    top10nl_path = tmp_path / "top10nl.gpkg"
+    ditch = gpd.GeoDataFrame(geometry=[LineString([(50, 0), (400, 0), (800, 0)])], crs="EPSG:28992")
+    ditch.to_file(top10nl_path, layer="top10nl_waterdeel_lijn")
+    pond = gpd.GeoDataFrame(geometry=[box(0, -5, 10, 5)], crs="EPSG:28992")
+    pond.to_file(top10nl_path, layer="top10nl_waterdeel_vlak")
+
+    model = snap_to_waterways(model, top10nl_path, model.link.df.index.tolist())
+    assert model.link.df.geometry.iloc[0].coords[:] == [(50, 0), (400, 0), (800, 0), (800, 30)]
+
+
+def test_insert_points():
+    coords = [(0.0, 0.0), (10.0, 0.0), (10.0, 10.0)]
+    # only points strictly between two coordinates, in the order of the route
+    points = [(7.0, 0.0), (3.0, 0.0), (10.0, 0.0), (10.0, 4.0), (5.0, 5.0)]
+    assert insert_points(coords, points) == [(0.0, 0.0), (3.0, 0.0), (7.0, 0.0), (10.0, 0.0), (10.0, 4.0), (10.0, 10.0)]
+
+
+def test_reach_area():
+    """The strips reach 250 m to both sides, or a quarter of their length, up to 1000 m."""
+    kwargs = {"width": 250.0, "ratio": 0.25, "max_width": 1000.0}
+    area = reach_area([Point(1000, 0), Point(0, 2000)], Point(0, 0), **kwargs)
+    assert area.contains(Point(500, 249)) and not area.contains(Point(500, 251))
+    assert area.contains(Point(499, 1000)) and not area.contains(Point(501, 1000))
+    area = reach_area([Point(8000, 0)], Point(0, 0), **kwargs)
+    assert area.contains(Point(4000, 999)) and not area.contains(Point(4000, 1001))
+
+
+def test_route_basin_gap():
+    """A canal of another authority splits the area in two, and the hydro-object that crosses it is clipped."""
+    area = shapely.MultiPolygon([box(0, -50, 100, 50), box(200, -50, 300, 50)])
+    lines = gpd.GeoDataFrame({"main-route": [True]}, geometry=[LineString([(0, 0), (300, 0)])], crs="EPSG:28992")
+    waterways = Waterways(lines)
+    within = waterways.within(area)
+    assert [list(line.coords) for line in within["lines"]] == [[(0, 0), (100, 0)], [(200, 0), (300, 0)]]
+    # beyond the area a line costs more: a third of this one
+    beyond = waterways.within(box(0, -50, 300, 50), area)
+    assert np.allclose(beyond["cost"], [1 + (BEYOND_AREA_COST - 1) / 3])
+
+    # the Outlet beyond the canal is reached through the strip around the straight line to it
+    _, routes = route_basin(Point(50, 0), {1: Point(290, 5)}, waterways, area)
+    assert routes[1] == [(50, 0), (290, 0), (290, 5)]
+    # and not if it is too far from that strip
+    lines = gpd.GeoDataFrame(
+        {"main-route": [True, True, True]},
+        geometry=[
+            LineString([(-300, 0), (100, 0)]),
+            LineString([(100, 0), (100, 400), (200, 400), (200, 0)]),
+            LineString([(200, 0), (300, 0)]),
+        ],
+        crs="EPSG:28992",
+    )
+    area = shapely.MultiPolygon([box(-300, -50, 100, 50), box(200, -50, 300, 50)])
+    _, routes = route_basin(Point(50, 0), {1: Point(290, 5)}, Waterways(lines), area)
+    assert routes == {}
+
+
+def test_route_basin_links_routes():
+    """New links follow the routes of the other links of their Basin, and leave them where a line crosses them."""
+    route = LineString([(0, 0), (100, 0)])
+    # a ditch that crosses the route without a point in common, and one beside it
+    lines = [LineString([(40, -50), (40, 80)]), LineString([(0, 10), (100, 10)])]
+    connectors = {1: Point(40, 80), 2: Point(70, 5)}
+    _, routes = route_basin_links(Point(0, 0), connectors, lines, [False, False], cost=[3.0, 3.0], routes=[route])
+    assert routes[1] == [(0, 0), (40, 0), (40, 80)]
+    assert routes[2] == [(0, 0), (40, 0), (70, 0), (70, 5)]
+    # without the route they follow the ditches only
+    _, routes = route_basin_links(Point(0, 0), connectors, lines, [False, False], cost=[3.0, 3.0])
+    assert (70, 0) not in routes.get(2, [])
+
+
+def test_snap_to_network_joins_routes():
+    """A link that is routed later follows the route of Outlet 2, which gets a point where it branches off."""
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    model.basin.add(
+        Node(1, Point(0, 0)),
+        [
+            basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]),
+            basin.State(level=[0.5]),
+            basin.Area(geometry=[shapely.MultiPolygon([box(-10, -50, 210, 50)])]),
+        ],
+    )
+    for node_id, point in ((2, Point(200, 0)), (3, Point(150, 30))):
+        model.outlet.add(Node(node_id, point), [outlet.Static(flow_rate=[1.0])])
+    model.link.add(model.basin[1], model.outlet[2], geometry=LineString([(0, 0), (100, 4), (200, 0)]))
+    model.link.add(model.basin[1], model.outlet[3])
+    first, second = model.link.df.index
+    # a ditch of the Top10NL beside the route
+    ditches = gpd.GeoDataFrame(
+        {"main-route": [False], "cost": [3.0]}, geometry=[LineString([(0, 40), (200, 40)])], crs="EPSG:28992"
+    )
+    model = snap_to_network(model, ditches, move_basins=False, link_ids=[second])
+    branch = model.link.df.at[second, "geometry"].coords[:]
+    assert branch[:2] == [(0, 0), (100, 4)] and branch[-1] == (150, 30) and len(branch) == 4
+    assert model.link.df.at[first, "geometry"].coords[:] == [(0, 0), (100, 4), branch[2], (200, 0)]
