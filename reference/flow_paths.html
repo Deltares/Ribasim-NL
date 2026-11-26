@@ -188,7 +188,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </ul></li>
   <li><a href="#functions" id="toc-functions" class="nav-link" data-scroll-target="#functions">Functions</a>
   <ul class="collapse">
-  <li><a href="#ribasim_nl.flow_paths.attach_to_tree" id="toc-ribasim_nl.flow_paths.attach_to_tree" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.attach_to_tree">attach_to_tree</a></li>
   <li><a href="#ribasim_nl.flow_paths.branch_from_route" id="toc-ribasim_nl.flow_paths.branch_from_route" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.branch_from_route">branch_from_route</a></li>
   <li><a href="#ribasim_nl.flow_paths.branch_off_routes" id="toc-ribasim_nl.flow_paths.branch_off_routes" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.branch_off_routes">branch_off_routes</a></li>
   <li><a href="#ribasim_nl.flow_paths.build_basin_tree" id="toc-ribasim_nl.flow_paths.build_basin_tree" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.build_basin_tree">build_basin_tree</a></li>
@@ -200,12 +199,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#ribasim_nl.flow_paths.merge_basin_trees" id="toc-ribasim_nl.flow_paths.merge_basin_trees" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.merge_basin_trees">merge_basin_trees</a></li>
   <li><a href="#ribasim_nl.flow_paths.merge_inflows" id="toc-ribasim_nl.flow_paths.merge_inflows" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.merge_inflows">merge_inflows</a></li>
   <li><a href="#ribasim_nl.flow_paths.merge_outflows" id="toc-ribasim_nl.flow_paths.merge_outflows" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.merge_outflows">merge_outflows</a></li>
+  <li><a href="#ribasim_nl.flow_paths.open_water_basins" id="toc-ribasim_nl.flow_paths.open_water_basins" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.open_water_basins">open_water_basins</a></li>
   <li><a href="#ribasim_nl.flow_paths.place_on_link" id="toc-ribasim_nl.flow_paths.place_on_link" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.place_on_link">place_on_link</a></li>
   <li><a href="#ribasim_nl.flow_paths.prune_junction" id="toc-ribasim_nl.flow_paths.prune_junction" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.prune_junction">prune_junction</a></li>
   <li><a href="#ribasim_nl.flow_paths.rebuild_junction_trees" id="toc-ribasim_nl.flow_paths.rebuild_junction_trees" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.rebuild_junction_trees">rebuild_junction_trees</a></li>
   <li><a href="#ribasim_nl.flow_paths.rebuild_rws_junction_trees" id="toc-ribasim_nl.flow_paths.rebuild_rws_junction_trees" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.rebuild_rws_junction_trees">rebuild_rws_junction_trees</a></li>
   <li><a href="#ribasim_nl.flow_paths.remove_flow_link" id="toc-ribasim_nl.flow_paths.remove_flow_link" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.remove_flow_link">remove_flow_link</a></li>
   <li><a href="#ribasim_nl.flow_paths.route_parts" id="toc-ribasim_nl.flow_paths.route_parts" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.route_parts">route_parts</a></li>
+  <li><a href="#ribasim_nl.flow_paths.rwzi_junctions" id="toc-ribasim_nl.flow_paths.rwzi_junctions" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.rwzi_junctions">rwzi_junctions</a></li>
   <li><a href="#ribasim_nl.flow_paths.simplified_links" id="toc-ribasim_nl.flow_paths.simplified_links" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.simplified_links">simplified_links</a></li>
   <li><a href="#ribasim_nl.flow_paths.split_distance" id="toc-ribasim_nl.flow_paths.split_distance" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.split_distance">split_distance</a></li>
   <li><a href="#ribasim_nl.flow_paths.split_link" id="toc-ribasim_nl.flow_paths.split_link" class="nav-link" data-scroll-target="#ribasim_nl.flow_paths.split_link">split_link</a></li>
@@ -250,7 +251,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </table>
 <section id="ribasim_nl.flow_paths.Digitized" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.Digitized">Digitized</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>flow_paths.Digitized(lines, routes<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>flow_paths.Digitized(lines, routes<span class="op">=</span><span class="va">None</span>, points<span class="op">=</span>())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The direction in which lines are digitized, to follow it where routes run along them.</p>
 <p>Routes along lines, see <code>ribasim_nl.network_snapping.route_basin_links</code>, take the coordinates of the lines, so each of their segments is a segment of a line, digitized in the direction of the route, or against it.</p>
 <section id="methods" class="level4">
@@ -479,52 +480,52 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td><a href="#ribasim_nl.flow_paths.attach_to_tree">attach_to_tree</a></td>
-<td>Attach points to the tree of routes from <code>start</code>, each with a straight line from the nearest point of the tree.</td>
-</tr>
-<tr class="even">
 <td><a href="#ribasim_nl.flow_paths.branch_from_route">branch_from_route</a></td>
 <td>Let the link from <code>basin_id</code> into <code>node_id</code> branch off the route between <code>basin_id</code> and <code>towards_id</code>.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.flow_paths.branch_off_routes">branch_off_routes</a></td>
 <td>Let routes from the same point follow the other routes up to their point nearest to its end, and go straight on.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.flow_paths.build_basin_tree">build_basin_tree</a></td>
 <td>Connect the nodes reached by the Basin tree of <code>basin_id</code> along their routes, with Junctions where they split.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.flow_paths.combine_nodes">combine_nodes</a></td>
 <td>Give nodes that exchange water with the same Basin a Junction of their own, which combines exactly them.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.flow_paths.drainage_capacity">drainage_capacity</a></td>
 <td>The flow that each node can pass in the drainage situation, to choose the direction of Basin tree links.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.flow_paths.fixed_junctions">fixed_junctions</a></td>
 <td>The Junctions that are kept as they are when Basin trees are rebuilt.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.flow_paths.geometry_along">geometry_along</a></td>
 <td>The line from <code>start_id</code> along a path of links, see <code>Routes.paths</code>, to <code>distance</code> along its last link.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.flow_paths.junction_tree">junction_tree</a></td>
 <td>The Junctions of the Basin trees of <code>basin_id</code>, see <code>Routes</code>, up to the Junctions in <code>fixed</code>, and what they reach.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.flow_paths.merge_basin_trees">merge_basin_trees</a></td>
 <td>Give each Basin one Junction tree for its inflows and outflows, along the current routes of its links.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.flow_paths.merge_inflows">merge_inflows</a></td>
 <td>Replace the flow links from <code>basin_id</code> to <code>node_ids</code> by a link to a new Junction, with straight links on.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.flow_paths.merge_outflows">merge_outflows</a></td>
 <td>Connect <code>node_ids</code> with straight links to the first Junction downstream that all of their routes pass.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.flow_paths.open_water_basins">open_water_basins</a></td>
+<td>The Basins whose area is open water: on average more than <code>OPEN_WATER_WIDTH</code> wide.</td>
 </tr>
 <tr class="odd">
 <td><a href="#ribasim_nl.flow_paths.place_on_link">place_on_link</a></td>
@@ -551,115 +552,50 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>The geometries of the links of a path from <code>start_id</code>, each in the direction away from <code>start_id</code>.</td>
 </tr>
 <tr class="odd">
+<td><a href="#ribasim_nl.flow_paths.rwzi_junctions">rwzi_junctions</a></td>
+<td>The RWZI Junctions, see <code>ribasim_nl.rwzi.attach_rwzi_junctions</code>, only those attached to a route or not.</td>
+</tr>
+<tr class="even">
 <td><a href="#ribasim_nl.flow_paths.simplified_links">simplified_links</a></td>
 <td>The flow links between nodes other than plain Junctions that Ribasim makes of the flow links, see <code>Routes</code>.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.flow_paths.split_distance">split_distance</a></td>
 <td>The distance along <code>geometry</code> of the point nearest to <code>point</code>, at least <code>margin</code> from its ends if possible.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.flow_paths.split_link">split_link</a></td>
 <td>Split a flow link at <code>distance</code> along it with a Junction: <code>node_id</code> moved there, or else a new one.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.flow_paths.towards_basin">towards_basin</a></td>
 <td>Whether a link of a Basin tree points towards its Basin, given the nodes beyond it that flow in and out.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="#ribasim_nl.flow_paths.tree_links">tree_links</a></td>
 <td>The links of the tree of routes that all start at the same point, with a Junction where they split.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim_nl.flow_paths.tree_sides">tree_sides</a></td>
 <td>The Basin that all nodes exchange water with through one link each, directly or through its Basin tree.</td>
 </tr>
 </tbody>
 </table>
-<section id="ribasim_nl.flow_paths.attach_to_tree" class="level3">
-<h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.attach_to_tree">attach_to_tree</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>flow_paths.attach_to_tree(routes, start, points)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Attach points to the tree of routes from <code>start</code>, each with a straight line from the nearest point of the tree.</p>
-<p>The points nearest to the tree are attached first, such that the others can branch off their lines. Where a line branches off a segment, a point is inserted in all routes along that segment, such that they share it.</p>
-<section id="parameters" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h4>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 5%">
-<col style="width: 20%">
-<col style="width: 64%">
-<col style="width: 8%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-<th>Default</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>routes</td>
-<td>dict[int, list[Coord]]</td>
-<td>per key, the coordinates of a route from <code>start</code></td>
-<td><em>required</em></td>
-</tr>
-<tr class="even">
-<td>start</td>
-<td>Coord</td>
-<td>the start of the routes, from which the first point is attached if there are no routes</td>
-<td><em>required</em></td>
-</tr>
-<tr class="odd">
-<td>points</td>
-<td>dict[int, Coord]</td>
-<td>per key, a point to attach</td>
-<td><em>required</em></td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="returns-1" class="level4 doc-section doc-section-returns">
-<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-1">Returns</h4>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 10%">
-<col style="width: 36%">
-<col style="width: 52%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td></td>
-<td>dict[int, list[Coord]]</td>
-<td>the routes, with a route to each point</td>
-</tr>
-</tbody>
-</table>
-</section>
-</section>
 <section id="ribasim_nl.flow_paths.branch_from_route" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.branch_from_route">branch_from_route</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>flow_paths.branch_from_route(model, node_id, basin_id, towards_id, margin<span class="op">=</span><span class="fl">1.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>flow_paths.branch_from_route(model, node_id, basin_id, towards_id, margin<span class="op">=</span><span class="fl">1.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Let the link from <code>basin_id</code> into <code>node_id</code> branch off the route between <code>basin_id</code> and <code>towards_id</code>.</p>
 <p>The branch starts at a Junction at the point of that route nearest to <code>node_id</code>, or at the existing Junction if that point is within <code>margin</code> of one, and runs straight to <code>node_id</code>. Returns the node id of that Junction.</p>
 <p>The link into <code>node_id</code> comes from the Basin, or from a Junction of its tree, see <code>Routes</code>: the regional models merge the links of a Basin into a tree where they share a route.</p>
 </section>
 <section id="ribasim_nl.flow_paths.branch_off_routes" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.branch_off_routes">branch_off_routes</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>flow_paths.branch_off_routes(coords, branch, max_distance<span class="op">=</span>MAX_BRANCH_DISTANCE)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>flow_paths.branch_off_routes(coords, branch, max_distance<span class="op">=</span>MAX_BRANCH_DISTANCE)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Let routes from the same point follow the other routes up to their point nearest to its end, and go straight on.</p>
 <p>This is for the routes of links that are added after the links of a Basin are routed, such as those from another model: routed along other lines, they run beside the routes of the Basin without a point in common. The routes whose ends are nearest to the other routes branch off first, so the others can branch off them, see <code>attach_to_tree</code>.</p>
 <p>A route is kept if its end is more than <code>max_distance</code> from the other routes. Routes that are a straight line do not follow water, so no route branches off them.</p>
-<section id="parameters-1" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-1">Parameters</h4>
+<section id="parameters" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 10%">
@@ -697,8 +633,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="returns-2" class="level4 doc-section doc-section-returns">
-<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-2">Returns</h4>
+<section id="returns-1" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-1">Returns</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 7%">
@@ -724,19 +660,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.flow_paths.build_basin_tree" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.build_basin_tree">build_basin_tree</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>flow_paths.build_basin_tree(</span>
-<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
-<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>    basin_id,</span>
-<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>    ends,</span>
-<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>    coords,</span>
-<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>    sides,</span>
-<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>    capacity,</span>
-<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>    digitized<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>flow_paths.build_basin_tree(</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>    basin_id,</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>    ends,</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>    coords,</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>    sides,</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>    capacity,</span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>    digitized<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>    reuse<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Connect the nodes reached by the Basin tree of <code>basin_id</code> along their routes, with Junctions where they split.</p>
-<p>Inflows and outflows share one tree, see <code>Routes</code>. The links to the nodes reached keep their ids and direction. The other links point towards the Basin or away from it, see <code>towards_basin</code>, given the nodes beyond them.</p>
-<section id="parameters-2" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
+<p>Inflows and outflows share one tree, see <code>Routes</code>, of which Junctions less than <code>JUNCTION_DISTANCE</code> apart are one, see <code>tree_links</code>. The links to the nodes reached keep their ids and direction. The other links point towards the Basin or away from it, see <code>towards_basin</code>, given the nodes beyond them.</p>
+<section id="parameters-1" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-1">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 6%">
@@ -783,11 +720,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>the lines the routes follow, see <code>towards_basin</code></td>
 <td><code>None</code></td>
 </tr>
+<tr class="even">
+<td>reuse</td>
+<td>typing.Mapping[Coord, int] | None</td>
+<td>per location, a Junction without links that is the Junction of the tree there, which must be one</td>
+<td><code>None</code></td>
+</tr>
 </tbody>
 </table>
 </section>
-<section id="returns-3" class="level4 doc-section doc-section-returns">
-<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-3">Returns</h4>
+<section id="returns-2" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-2">Returns</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 6%">
@@ -813,12 +756,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.flow_paths.combine_nodes" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.combine_nodes">combine_nodes</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>flow_paths.combine_nodes(model, node_ids, max_distance<span class="op">=</span>MAX_COMBINE_DISTANCE)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>flow_paths.combine_nodes(model, node_ids, max_distance<span class="op">=</span>MAX_COMBINE_DISTANCE)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Give nodes that exchange water with the same Basin a Junction of their own, which combines exactly them.</p>
 <p>The flow rate of that Junction is the net flow of these nodes into the Basin, see <code>Routes.flow_rate_links</code>, such as that of a gemaal and the inlet next to it, of which the links meet at the Basin node, or run side by side. The link of the node with the lowest id, see <code>tree_sides</code>, is split at its point nearest to the other nodes, at least 10 m from its ends if possible. The other nodes get a straight link to the Junction there, and the Junctions they leave are pruned, see <code>prune_junction</code>. Each node keeps exchanging water with the same nodes, which is asserted.</p>
-<p>Nothing changes if the nodes do not share a Basin, if a node is more than <code>max_distance</code> from the Junction, or if a Junction between only some of the nodes and the Basin has other links than flow links, such as an observed Junction, of which the flow rate would change.</p>
-<section id="parameters-3" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-3">Parameters</h4>
+<p>Nothing changes if the nodes do not share a Basin, if a node is more than <code>max_distance</code> from the Junction, if a node lies between another node and the Basin, or if a Junction between only some of the nodes and the Basin has other links than flow links, such as an observed Junction, of which the flow rate would change.</p>
+<section id="parameters-2" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 11%">
@@ -856,8 +799,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="returns-4" class="level4 doc-section doc-section-returns">
-<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-4">Returns</h4>
+<section id="returns-3" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-3">Returns</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 10%">
@@ -883,29 +826,29 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.flow_paths.drainage_capacity" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.drainage_capacity">drainage_capacity</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>flow_paths.drainage_capacity(model)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>flow_paths.drainage_capacity(model)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The flow that each node can pass in the drainage situation, to choose the direction of Basin tree links.</p>
 <p>For Pumps and Outlets the largest <code>flow_rate</code> or <code>max_flow_rate</code> without control state, or in a control state with “afvoer”. ManningResistances, and placeholders and missing maxima, are unlimited (infinite). Also the LinearResistances, TabulatedRatingCurves, FlowBoundaries and UserDemands, by their largest flow or demand.</p>
 </section>
 <section id="ribasim_nl.flow_paths.fixed_junctions" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.fixed_junctions">fixed_junctions</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>flow_paths.fixed_junctions(model)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>flow_paths.fixed_junctions(model)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The Junctions that are kept as they are when Basin trees are rebuilt.</p>
-<p>These are observed, or listened to, or found by their code, like the RWZI Junctions, see <code>ribasim_nl.rwzi.attach_rwzi_junctions</code>.</p>
+<p>These are observed, or listened to, or found by their code, like the RWZI Junctions, see <code>ribasim_nl.rwzi.attach_rwzi_junctions</code>. <code>merge_basin_trees</code> merges the trees through the RWZI Junctions that are attached to a route.</p>
 </section>
 <section id="ribasim_nl.flow_paths.geometry_along" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.geometry_along">geometry_along</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>flow_paths.geometry_along(model, start_id, path, distance)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>flow_paths.geometry_along(model, start_id, path, distance)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The line from <code>start_id</code> along a path of links, see <code>Routes.paths</code>, to <code>distance</code> along its last link.</p>
 <p><code>distance</code> is measured along the last link in its own direction.</p>
 </section>
 <section id="ribasim_nl.flow_paths.junction_tree" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.junction_tree">junction_tree</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>flow_paths.junction_tree(routes, basin_id, fixed<span class="op">=</span>())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>flow_paths.junction_tree(routes, basin_id, fixed<span class="op">=</span>())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The Junctions of the Basin trees of <code>basin_id</code>, see <code>Routes</code>, up to the Junctions in <code>fixed</code>, and what they reach.</p>
 <p>Junctions in <code>fixed</code> are not part of the tree but reached by it, like the other nodes. Links of the Basin with plain Junctions of other groups are left out.</p>
-<section id="returns-5" class="level4 doc-section doc-section-returns">
-<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-5">Returns</h4>
+<section id="returns-4" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-4">Returns</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 4%">
@@ -931,16 +874,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.flow_paths.merge_basin_trees" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.merge_basin_trees">merge_basin_trees</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>flow_paths.merge_basin_trees(</span>
-<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
-<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>    read_lines<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>    branch<span class="op">=</span>(),</span>
-<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>    max_branch_distance<span class="op">=</span>MAX_BRANCH_DISTANCE,</span>
-<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>flow_paths.merge_basin_trees(</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>    read_lines<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>    branch<span class="op">=</span>(),</span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>    max_branch_distance<span class="op">=</span>MAX_BRANCH_DISTANCE,</span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Give each Basin one Junction tree for its inflows and outflows, along the current routes of its links.</p>
 <p>The routes of the links of a Basin are followed through the Junctions of its Basin trees, see <code>Routes</code>, up to the <code>fixed_junctions</code>, and joined where they share their coordinates from the Basin node on, see <code>build_basin_tree</code>. The links to <code>branch</code> first branch off the other routes of their Basin, see <code>branch_off_routes</code>. A Basin whose tree would not change is left as it is. Each node keeps exchanging water with the same nodes, which is asserted.</p>
-<section id="parameters-4" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-4">Parameters</h4>
+<p>The routes are also followed through the RWZI Junctions that are attached to a route, see <code>rwzi_junctions</code>, which stay where they are, with their code. The routes that run along the link that such a Junction split get its location as well, so that they stay joined beyond it, instead of running side by side from there.</p>
+<section id="parameters-3" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-3">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 10%">
@@ -978,8 +922,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="returns-6" class="level4 doc-section doc-section-returns">
-<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-6">Returns</h4>
+<section id="returns-5" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-5">Returns</h4>
 <table class="caption-top table">
 <thead>
 <tr class="header">
@@ -1000,15 +944,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.flow_paths.merge_inflows" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.merge_inflows">merge_inflows</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>flow_paths.merge_inflows(model, basin_id, node_ids)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>flow_paths.merge_inflows(model, basin_id, node_ids)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Replace the flow links from <code>basin_id</code> to <code>node_ids</code> by a link to a new Junction, with straight links on.</p>
 <p>The Junction is at the centroid of <code>node_ids</code>, see <code>place_on_link</code> to move it. Returns its node id.</p>
 </section>
 <section id="ribasim_nl.flow_paths.merge_outflows" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.merge_outflows">merge_outflows</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>flow_paths.merge_outflows(model, node_ids)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>flow_paths.merge_outflows(model, node_ids)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Connect <code>node_ids</code> with straight links to the first Junction downstream that all of their routes pass.</p>
 <p>The Junctions they passed before are pruned. Returns the node id of the Junction.</p>
+</section>
+<section id="ribasim_nl.flow_paths.open_water_basins" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.open_water_basins">open_water_basins</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>flow_paths.open_water_basins(model, basin_ids)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The Basins whose area is open water: on average more than <code>OPEN_WATER_WIDTH</code> wide.</p>
+<p>The average width of an area is twice its surface over its perimeter, which is the width of a long strip.</p>
 </section>
 <section id="ribasim_nl.flow_paths.place_on_link" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.place_on_link">place_on_link</h3>
@@ -1031,16 +981,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>    tolerance<span class="op">=</span><span class="fl">10.0</span>,</span>
 <span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a>    water<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a>    routing_areas<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a>    open_water<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb34-9"><a href="#cb34-9" aria-hidden="true" tabindex="-1"></a>    beyond<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb34-10"><a href="#cb34-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Route the flow links of Basins along the waterways, with one Junction tree per Basin, split where they split.</p>
-<p>The Junctions of the Basin trees of a Basin, see <code>junction_tree</code>, are removed, except the <code>fixed_junctions</code>. The links to the nodes they reach are routed from the Basin node along the shortest paths of one network, see <code>ribasim_nl.network_snapping.route_basin_links</code>, such that its inflows and outflows share one tree, see <code>build_basin_tree</code>. With open <code>water</code>, such as a lake, the waterways are connected over it, and nodes far from them are routed over it, straight from the nearest point of the waterways from which that is possible. The others branch off straight from the nearest point of these routes, see <code>attach_to_tree</code>. Each node keeps exchanging water with the same nodes, which is asserted, and the links to the nodes reached keep their link ids. Nodes are not moved and links are not offset, see <code>ribasim_nl.layout.tidy_layout</code>.</p>
-<section id="parameters-5" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-5">Parameters</h4>
+<p>The Junctions of the Basin trees of a Basin, see <code>junction_tree</code>, are removed, except the <code>fixed_junctions</code>. The links to the nodes they reach are routed from the Basin node along the shortest paths of one network, see <code>ribasim_nl.network_snapping.route_basin</code>, such that its inflows and outflows share one tree, see <code>build_basin_tree</code>. Nodes far from the waterways are routed over the <code>water</code>, and nodes that are not reached within the area of the Basin along the waterways and the water around the straight line to them. With open <code>water</code>, such as a lake, the waterways are connected over it, and nodes far from them are routed over it, straight from the nearest point of the waterways from which that is possible. The nodes that are then not reached, such as those beyond the shore of a lake, follow these routes and the waterways <code>beyond</code> from where they leave them, if given. The nodes that are still not reached branch off straight from the nearest point of these routes, see <code>attach_to_tree</code>. Each node keeps exchanging water with the same nodes, which is asserted, and the links to the nodes reached keep their link ids. Nodes are not moved and links are not offset, see <code>ribasim_nl.layout.tidy_layout</code>.</p>
+<section id="parameters-4" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-4">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 3%">
-<col style="width: 12%">
-<col style="width: 80%">
+<col style="width: 4%">
+<col style="width: 14%">
+<col style="width: 76%">
 <col style="width: 3%">
 </colgroup>
 <thead>
@@ -1067,7 +1019,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td>waterways</td>
 <td>gpd.GeoDataFrame</td>
-<td>waterways with a boolean “main-route” column, see <code>ribasim_nl.network_snapping.snap_to_network</code></td>
+<td>waterways with a boolean “main-route” column, and optionally a “cost” column with their cost per metre, see <code>ribasim_nl.network_snapping.snap_to_network</code></td>
 <td><em>required</em></td>
 </tr>
 <tr class="even">
@@ -1079,7 +1031,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td>water</td>
 <td>gpd.GeoDataFrame | None</td>
-<td>open water, over which the waterways are connected and nodes far from them are routed to them, see <code>ribasim_nl.network_snapping.route_basin_links</code>, defaults to None. The waterways on it, such as fairways, are not digitized in the direction of the flow, so they do not set the direction of links, see <code>towards_basin</code>.</td>
+<td>water surfaces, over which nodes far from the waterways are routed to them, see <code>ribasim_nl.network_snapping.route_basin_links</code>, defaults to None</td>
 <td><code>None</code></td>
 </tr>
 <tr class="even">
@@ -1088,11 +1040,23 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>per Basin, an area beyond its basin area in which the waterways are used as well, for connector nodes that are connected to it over a long distance, defaults to None</td>
 <td><code>None</code></td>
 </tr>
+<tr class="odd">
+<td>open_water</td>
+<td>bool</td>
+<td>whether the <code>water</code> is open water, such as a lake, over which the waterways are connected as well. The waterways on it, such as fairways, are not digitized in the direction of the flow, so they do not set the direction of links, see <code>towards_basin</code>.</td>
+<td><code>True</code></td>
+</tr>
+<tr class="even">
+<td>beyond</td>
+<td>Waterways | None</td>
+<td>the waterways and water along which the nodes that are not reached are routed from the routes of the others, such as those of the Top10NL around a lake, defaults to None</td>
+<td><code>None</code></td>
+</tr>
 </tbody>
 </table>
 </section>
-<section id="returns-7" class="level4 doc-section doc-section-returns">
-<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-7">Returns</h4>
+<section id="returns-6" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-6">Returns</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 7%">
@@ -1126,17 +1090,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a>    main_route,</span>
 <span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a>    tolerance<span class="op">=</span><span class="fl">250.0</span>,</span>
 <span id="cb35-8"><a href="#cb35-8" aria-hidden="true" tabindex="-1"></a>    routing_areas<span class="op">=</span><span class="va">None</span>,</span>
-<span id="cb35-9"><a href="#cb35-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb35-9"><a href="#cb35-9" aria-hidden="true" tabindex="-1"></a>    lake_hydro_objects<span class="op">=</span>(),</span>
+<span id="cb35-10"><a href="#cb35-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Rebuild the Junctions of Rijkswaterstaat Basins along the waterways and a main route, see <code>rebuild_junction_trees</code>.</p>
-<p>This is used for the hws model and again after coupling, such that its Basins keep their routes. Its connector nodes are often outside the area of their Basin, so waterways up to <code>tolerance</code> around it are used. These are the Top10NL water lines, except for the Basins of the <code>LAKES</code>, named after them. These follow the fairways, and cross their own water to the nodes on their shores, see <code>ribasim_nl.network_snapping.read_lake_waterways</code>.</p>
-<section id="parameters-6" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-6">Parameters</h4>
+<p>This is used for the hws model and again after coupling, such that its Basins keep their routes. Its connector nodes are often outside the area of their Basin, so waterways up to <code>tolerance</code> around it are used. These are the Top10NL water lines, which cost more per metre than the main route, and nodes far from them are routed over the Top10NL water surfaces. The Basins of open water, see <code>open_water_basins</code>, such as lakes and estuaries, follow the fairways instead, and cross their own water to the nodes on their shores, see <code>ribasim_nl.network_snapping.read_lake_waterways</code>. The nodes beyond their shores follow these routes, and the Top10NL from where they leave them.</p>
+<section id="parameters-5" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-5">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 7%">
-<col style="width: 23%">
-<col style="width: 63%">
 <col style="width: 5%">
+<col style="width: 12%">
+<col style="width: 79%">
+<col style="width: 3%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -1189,11 +1154,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>per Basin, an area beyond its basin area in which the waterways are used as well, see <code>rebuild_junction_trees</code>, defaults to None</td>
 <td><code>None</code></td>
 </tr>
+<tr class="even">
+<td>lake_hydro_objects</td>
+<td>typing.Sequence[pathlib.Path]</td>
+<td>network.gpkg files of the water authorities around the lakes, whose hydro-objects on the water of a lake are its waterways too, such as the channels of harbours, see <code>read_lines_on_water</code>. Nodes in a harbour then join the lake along its channel, rather than straight from the nearest fairway across the land.</td>
+<td><code>()</code></td>
+</tr>
 </tbody>
 </table>
 </section>
-<section id="returns-8" class="level4 doc-section doc-section-returns">
-<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-8">Returns</h4>
+<section id="returns-7" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-7">Returns</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 7%">
@@ -1227,29 +1198,35 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>flow_paths.route_parts(model, start_id, path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The geometries of the links of a path from <code>start_id</code>, each in the direction away from <code>start_id</code>.</p>
 </section>
+<section id="ribasim_nl.flow_paths.rwzi_junctions" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.rwzi_junctions">rwzi_junctions</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb38"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>flow_paths.rwzi_junctions(model, attached<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The RWZI Junctions, see <code>ribasim_nl.rwzi.attach_rwzi_junctions</code>, only those attached to a route or not.</p>
+<p>An RWZI Junction that is attached splits a flow link, so it has more flow links than the one from its RWZI and the one to its Basin.</p>
+</section>
 <section id="ribasim_nl.flow_paths.simplified_links" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.simplified_links">simplified_links</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb38"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>flow_paths.simplified_links(model)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb39"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>flow_paths.simplified_links(model)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The flow links between nodes other than plain Junctions that Ribasim makes of the flow links, see <code>Routes</code>.</p>
 </section>
 <section id="ribasim_nl.flow_paths.split_distance" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.split_distance">split_distance</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb39"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>flow_paths.split_distance(geometry, point, margin<span class="op">=</span><span class="fl">1.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb40"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>flow_paths.split_distance(geometry, point, margin<span class="op">=</span><span class="fl">1.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The distance along <code>geometry</code> of the point nearest to <code>point</code>, at least <code>margin</code> from its ends if possible.</p>
 </section>
 <section id="ribasim_nl.flow_paths.split_link" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.split_link">split_link</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb40"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>flow_paths.split_link(model, link_id, distance, node_id<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb41"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>flow_paths.split_link(model, link_id, distance, node_id<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Split a flow link at <code>distance</code> along it with a Junction: <code>node_id</code> moved there, or else a new one.</p>
 <p>Returns the node id of the Junction. Other links of an existing <code>node_id</code> move their ends along.</p>
 </section>
 <section id="ribasim_nl.flow_paths.towards_basin" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.towards_basin">towards_basin</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb41"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>flow_paths.towards_basin(inflows, outflows, capacity, digitized_away<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb42"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>flow_paths.towards_basin(inflows, outflows, capacity, digitized_away<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Whether a link of a Basin tree points towards its Basin, given the nodes beyond it that flow in and out.</p>
 <p>The direction does not change the simulation, only the sign of the flow of the link in the results. A link that only carries inflows points towards the Basin, and one that only carries outflows away from it. A link that carries both follows the main flow: the direction in which the lines it follows are digitized, if they decide, else the side with the larger <code>drainage_capacity</code>, else the side with more nodes, else away from the Basin.</p>
-<section id="parameters-7" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-7">Parameters</h4>
+<section id="parameters-6" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-6">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 12%">
@@ -1278,17 +1255,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.flow_paths.tree_links" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.tree_links">tree_links</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb42"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>flow_paths.tree_links(routes)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb43"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a>flow_paths.tree_links(routes, join<span class="op">=</span><span class="fl">0.0</span>, keep<span class="op">=</span>())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The links of the tree of routes that all start at the same point, with a Junction where they split.</p>
 <p>The last segment of each route is its own, so a route that is part of another one still ends in a branch.</p>
-<section id="parameters-8" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-8">Parameters</h4>
+<section id="parameters-7" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-7">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 9%">
-<col style="width: 32%">
-<col style="width: 43%">
-<col style="width: 14%">
+<col style="width: 5%">
+<col style="width: 20%">
+<col style="width: 64%">
+<col style="width: 8%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -1305,11 +1282,23 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>per key, the coordinates of a route</td>
 <td><em>required</em></td>
 </tr>
+<tr class="even">
+<td>join</td>
+<td>float</td>
+<td>Junctions less than this far apart along their route become one, see <code>_join_junctions</code></td>
+<td><code>0.0</code></td>
+</tr>
+<tr class="odd">
+<td>keep</td>
+<td>typing.Container[Coord]</td>
+<td>locations of Junctions that are not joined with the one before them</td>
+<td><code>()</code></td>
+</tr>
 </tbody>
 </table>
 </section>
-<section id="returns-9" class="level4 doc-section doc-section-returns">
-<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-9">Returns</h4>
+<section id="returns-8" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-8">Returns</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 3%">
@@ -1335,11 +1324,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.flow_paths.tree_sides" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.flow_paths.tree_sides">tree_sides</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb43"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a>flow_paths.tree_sides(routes, node_ids)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb44"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>flow_paths.tree_sides(routes, node_ids)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The Basin that all nodes exchange water with through one link each, directly or through its Basin tree.</p>
 <p>If the nodes have two such Basins, like structures next to each other between two Basins, it is the one downstream of the node with the lowest id.</p>
-<section id="returns-10" class="level4 doc-section doc-section-returns">
-<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-10">Returns</h4>
+<section id="returns-9" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-9">Returns</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 3%">

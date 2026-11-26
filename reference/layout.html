@@ -181,9 +181,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul>
   <li><a href="#ribasim_nl.layout" id="toc-ribasim_nl.layout" class="nav-link active" data-scroll-target="#ribasim_nl.layout">layout</a>
   <ul class="collapse">
+  <li><a href="#classes" id="toc-classes" class="nav-link" data-scroll-target="#classes">Classes</a>
+  <ul class="collapse">
+  <li><a href="#ribasim_nl.layout.Water" id="toc-ribasim_nl.layout.Water" class="nav-link" data-scroll-target="#ribasim_nl.layout.Water">Water</a></li>
+  </ul></li>
   <li><a href="#functions" id="toc-functions" class="nav-link" data-scroll-target="#functions">Functions</a>
   <ul class="collapse">
   <li><a href="#ribasim_nl.layout.coincident_nodes" id="toc-ribasim_nl.layout.coincident_nodes" class="nav-link" data-scroll-target="#ribasim_nl.layout.coincident_nodes">coincident_nodes</a></li>
+  <li><a href="#ribasim_nl.layout.junction_areas" id="toc-ribasim_nl.layout.junction_areas" class="nav-link" data-scroll-target="#ribasim_nl.layout.junction_areas">junction_areas</a></li>
+  <li><a href="#ribasim_nl.layout.junctions_onto_water" id="toc-ribasim_nl.layout.junctions_onto_water" class="nav-link" data-scroll-target="#ribasim_nl.layout.junctions_onto_water">junctions_onto_water</a></li>
   <li><a href="#ribasim_nl.layout.move_nodes" id="toc-ribasim_nl.layout.move_nodes" class="nav-link" data-scroll-target="#ribasim_nl.layout.move_nodes">move_nodes</a></li>
   <li><a href="#ribasim_nl.layout.offset_links" id="toc-ribasim_nl.layout.offset_links" class="nav-link" data-scroll-target="#ribasim_nl.layout.offset_links">offset_links</a></li>
   <li><a href="#ribasim_nl.layout.overlapping_links" id="toc-ribasim_nl.layout.overlapping_links" class="nav-link" data-scroll-target="#ribasim_nl.layout.overlapping_links">overlapping_links</a></li>
@@ -207,6 +213,149 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p><code>layout</code></p>
 <p>Layout of a model on the map: nodes not on top of each other, and links without overlapping segments.</p>
 <p>This only changes node and link geometries, which Ribasim does not use in the simulation.</p>
+<section id="classes" class="level2">
+<h2 class="anchored" data-anchor-id="classes">Classes</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="#ribasim_nl.layout.Water">Water</a></td>
+<td>The water surfaces of the BGT, read per tile when they are needed, see <code>ribasim_nl.bgt_water.read_bgt_water</code>.</td>
+</tr>
+</tbody>
+</table>
+<section id="ribasim_nl.layout.Water" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.layout.Water">Water</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>layout.Water(path<span class="op">=</span>BGT_WATER, tile<span class="op">=</span><span class="fl">5000.0</span>, margin<span class="op">=</span>MAX_WATER_DISTANCE)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The water surfaces of the BGT, read per tile when they are needed, see <code>ribasim_nl.bgt_water.read_bgt_water</code>.</p>
+<section id="parameters" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 6%">
+<col style="width: 6%">
+<col style="width: 69%">
+<col style="width: 17%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>path</td>
+<td>Path</td>
+<td>GeoParquet file of the BGT water</td>
+<td><code>BGT_WATER</code></td>
+</tr>
+<tr class="even">
+<td>tile</td>
+<td>float</td>
+<td>size of the tiles that are read [m]</td>
+<td><code>5000.0</code></td>
+</tr>
+<tr class="odd">
+<td>margin</td>
+<td>float</td>
+<td>water that is read around a tile, within which points of the tile are looked up [m]</td>
+<td><code>MAX_WATER_DISTANCE</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="methods" class="level4">
+<h4 class="anchored" data-anchor-id="methods">Methods</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="#ribasim_nl.layout.Water.contains">contains</a></td>
+<td>Whether a point lies on the water, or on its edge.</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.layout.Water.onto">onto</a></td>
+<td>The nearest point of the water to a point on land, and <code>inside</code> further in that direction if still water.</td>
+</tr>
+</tbody>
+</table>
+<section id="ribasim_nl.layout.Water.contains" class="level5">
+<h5 class="anchored" data-anchor-id="ribasim_nl.layout.Water.contains">contains</h5>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>layout.Water.contains(point)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Whether a point lies on the water, or on its edge.</p>
+</section>
+<section id="ribasim_nl.layout.Water.onto" class="level5">
+<h5 class="anchored" data-anchor-id="ribasim_nl.layout.Water.onto">onto</h5>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>layout.Water.onto(point, max_distance, inside<span class="op">=</span><span class="fl">0.5</span>, within<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The nearest point of the water to a point on land, and <code>inside</code> further in that direction if still water.</p>
+<section id="parameters-1" class="level6 doc-section doc-section-parameters">
+<h6 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-1">Parameters</h6>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 6%">
+<col style="width: 22%">
+<col style="width: 60%">
+<col style="width: 9%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>within</td>
+<td>shapely.Geometry | None</td>
+<td>only the water within this area counts, defaults to None (all water)</td>
+<td><code>None</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns" class="level6 doc-section doc-section-returns">
+<h6 class="doc-section doc-section-returns anchored" data-anchor-id="returns">Returns</h6>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 7%">
+<col style="width: 21%">
+<col style="width: 70%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td></td>
+<td>shapely.Point | None</td>
+<td>None if the point lies on the water, or more than <code>max_distance</code> from it</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+</section>
+</section>
+</section>
 <section id="functions" class="level2">
 <h2 class="anchored" data-anchor-id="functions">Functions</h2>
 <table class="caption-top table">
@@ -220,6 +369,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td><a href="#ribasim_nl.layout.coincident_nodes">coincident_nodes</a></td>
 <td>Pairs of node ids that are within <code>distance</code> of each other, as an array of shape (2, n).</td>
+</tr>
+<tr class="even">
+<td><a href="#ribasim_nl.layout.junction_areas">junction_areas</a></td>
+<td>Per Junction of a Basin tree, see <code>ribasim_nl.flow_paths.Routes</code>, the area of its Basin.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.layout.junctions_onto_water">junctions_onto_water</a></td>
+<td>Move the Junctions that lie on land, within <code>max_distance</code> of the water, onto the water, see <code>Water.onto</code>.</td>
 </tr>
 <tr class="even">
 <td><a href="#ribasim_nl.layout.move_nodes">move_nodes</a></td>
@@ -253,32 +410,111 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </table>
 <section id="ribasim_nl.layout.coincident_nodes" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.layout.coincident_nodes">coincident_nodes</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>layout.coincident_nodes(model, distance)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>layout.coincident_nodes(model, distance)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Pairs of node ids that are within <code>distance</code> of each other, as an array of shape (2, n).</p>
+</section>
+<section id="ribasim_nl.layout.junction_areas" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.layout.junction_areas">junction_areas</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>layout.junction_areas(model)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Per Junction of a Basin tree, see <code>ribasim_nl.flow_paths.Routes</code>, the area of its Basin.</p>
+<p>A Junction is part of the routes of its Basin, so where it is moved to tidy the layout, it stays in this area: not on the water of a neighbor on the other side of a dike, or behind the structure that its routes lead to.</p>
+</section>
+<section id="ribasim_nl.layout.junctions_onto_water" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.layout.junctions_onto_water">junctions_onto_water</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>layout.junctions_onto_water(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    water,</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    max_distance<span class="op">=</span>MAX_WATER_DISTANCE,</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    node_ids<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    trim<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    areas<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Move the Junctions that lie on land, within <code>max_distance</code> of the water, onto the water, see <code>Water.onto</code>.</p>
+<p>A Junction is where routes join or split, which belongs on the water, but routes can share a stretch over land, such as through a culvert or from a structure on a dike. Only the water in the area of its Basin counts, see <code>junction_areas</code>: a Junction next to a gemaal on a dike does not move onto the river behind it. The ends of its links move along, and with <code>trim</code> the links go straight to the Junction from the distance of the move, see <code>move_nodes</code>.</p>
+<section id="parameters-2" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-2">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 6%">
+<col style="width: 34%">
+<col style="width: 51%">
+<col style="width: 7%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>node_ids</td>
+<td>typing.Collection[int] | None</td>
+<td>the Junctions to move, defaults to all Junctions</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td>areas</td>
+<td>typing.Mapping[int, shapely.Geometry] | None</td>
+<td>per Junction, the area of its Basin, defaults to None (<code>junction_areas</code>)</td>
+<td><code>None</code></td>
+</tr>
+</tbody>
+</table>
+</section>
 </section>
 <section id="ribasim_nl.layout.move_nodes" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.layout.move_nodes">move_nodes</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>layout.move_nodes(model, locations)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>layout.move_nodes(model, locations, trim<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Move nodes, and the ends of their links along.</p>
+<section id="parameters-3" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-3">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 4%">
+<col style="width: 4%">
+<col style="width: 83%">
+<col style="width: 6%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>trim</td>
+<td>bool</td>
+<td>let the links go straight to the moved nodes from the distance of the move, see <code>_set_link_ends</code>, for small moves that tidy the layout</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+</section>
 </section>
 <section id="ribasim_nl.layout.offset_links" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.layout.offset_links">offset_links</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>layout.offset_links(model, distance<span class="op">=</span><span class="fl">5.0</span>, link_ids<span class="op">=</span><span class="va">None</span>, bend<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>layout.offset_links(model, distance<span class="op">=</span><span class="fl">5.0</span>, link_ids<span class="op">=</span><span class="va">None</span>, bend<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Offset links to the right of their direction, like traffic, keeping their ends at their nodes.</p>
 <p>Links that share a route in opposite directions, such as the inflows and outflows of a Basin, then no longer overlap, while links that share a route in the same direction stay together. With <code>bend</code>, straight links get a point halfway that is offset as well.</p>
 </section>
 <section id="ribasim_nl.layout.overlapping_links" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.layout.overlapping_links">overlapping_links</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>layout.overlapping_links(model, min_length)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>layout.overlapping_links(model, min_length)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Pairs of flow and observation link ids that overlap over more than <code>min_length</code>, as an array of shape (2, n).</p>
 </section>
 <section id="ribasim_nl.layout.place_bergend_nodes" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.layout.place_bergend_nodes">place_bergend_nodes</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>layout.place_bergend_nodes(model, distance<span class="op">=</span><span class="fl">100.0</span>, directions<span class="op">=</span><span class="dv">16</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>layout.place_bergend_nodes(model, distance<span class="op">=</span><span class="fl">100.0</span>, directions<span class="op">=</span><span class="dv">16</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Place each bergend Basin <code>distance</code> from its doorgaand Basin, and its connector halfway.</p>
 <p>The direction is the one with the most room to other links and nodes, within the area of the doorgaand Basin. If no direction fits at <code>distance</code>, half that distance is tried, and so on, and finally also directions outside the area.</p>
-<section id="parameters" class="level4 doc-section doc-section-parameters">
-<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters">Parameters</h4>
+<section id="parameters-4" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-4">Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 11%">
@@ -319,27 +555,61 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.layout.resolve_overlaps" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.layout.resolve_overlaps">resolve_overlaps</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>layout.resolve_overlaps(model, distance<span class="op">=</span><span class="fl">5.0</span>, min_length<span class="op">=</span><span class="fl">1.0</span>, max_iterations<span class="op">=</span><span class="dv">5</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>layout.resolve_overlaps(model, distance<span class="op">=</span><span class="fl">5.0</span>, min_length<span class="op">=</span><span class="fl">1.0</span>, max_iterations<span class="op">=</span><span class="dv">5</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Offset links that still overlap other links further to their right, see <code>offset_links</code>.</p>
 <p>These are for instance the links of neighboring Basins along a shared waterway.</p>
 </section>
 <section id="ribasim_nl.layout.separate_nodes" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.layout.separate_nodes">separate_nodes</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>layout.separate_nodes(model, min_distance<span class="op">=</span><span class="fl">10.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>layout.separate_nodes(</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    min_distance<span class="op">=</span>NODE_SPACING,</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    water<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    trim<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    areas<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Move nodes that are within <code>min_distance</code> of another node, such that no nodes are on top of each other.</p>
-<p>Of two such nodes, the most movable one is moved, see <code>MOVABLE_NODE_TYPES</code>; Basins are never moved. It is moved to the first free location around the other node, starting in the direction away from it.</p>
+<p>Of two such nodes, the most movable one is moved, see <code>MOVABLE_NODE_TYPES</code>; Basins are never moved. It is moved to the first free location around the other node, starting in the direction away from it. A Junction goes to the first free location in the area of its Basin, see <code>junction_areas</code>, and of these to the first one on the <code>water</code>, if given and there is one. With <code>trim</code>, the links of a moved node go straight to it from the distance of the move, see <code>move_nodes</code>.</p>
+<section id="parameters-5" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-5">Parameters</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 5%">
+<col style="width: 34%">
+<col style="width: 52%">
+<col style="width: 7%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>areas</td>
+<td>typing.Mapping[int, shapely.Geometry] | None</td>
+<td>per Junction, the area of its Basin, defaults to None (<code>junction_areas</code>)</td>
+<td><code>None</code></td>
+</tr>
+</tbody>
+</table>
+</section>
 </section>
 <section id="ribasim_nl.layout.tidy_layout" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.layout.tidy_layout">tidy_layout</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>layout.tidy_layout(</span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    offset<span class="op">=</span><span class="fl">5.0</span>,</span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    min_distance<span class="op">=</span><span class="fl">10.0</span>,</span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    bergend_distance<span class="op">=</span><span class="fl">100.0</span>,</span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>layout.tidy_layout(</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    offset<span class="op">=</span><span class="fl">5.0</span>,</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    min_distance<span class="op">=</span>NODE_SPACING,</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>    bergend_distance<span class="op">=</span><span class="fl">100.0</span>,</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>    water_path<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Make the layout of a model readable: no nodes on top of each other, and no overlapping links.</p>
-<p>The inflows and outflows of a Basin share one Junction tree, see <code>ribasim_nl.flow_paths.Routes</code>, so links stay on their route, and only links that still overlap are offset. See <code>place_bergend_nodes</code>, <code>separate_nodes</code> and <code>resolve_overlaps</code>.</p>
+<p>The inflows and outflows of a Basin share one Junction tree, see <code>ribasim_nl.flow_paths.Routes</code>, so links stay on their route, and only links that still overlap are offset. See <code>place_bergend_nodes</code>, <code>separate_nodes</code> and <code>resolve_overlaps</code>. With the BGT water of <code>water_path</code>, see <code>Water</code>, Junctions are put on the water, see <code>junctions_onto_water</code>, and kept there when they are moved apart, both within the area of their Basin, see <code>junction_areas</code>. The links of the nodes that are moved go straight to them from the distance of the move, see <code>move_nodes</code>, so they do not hook back to where a node was.</p>
 
 
 </section>

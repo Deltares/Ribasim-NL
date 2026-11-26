@@ -418,7 +418,7 @@ ul.task-list li input[type="checkbox"] {
 </div>
 </div>
 </div>
-<p><code>merge_rwzi_model</code> adds the plants that discharge in the model, within 100 m of a Basin that is not bergend, or 3000 m in the main water system, and removes the others. <code>attach_rwzi_junctions</code> then moves each Junction onto the nearest route into or out of its Basin.</p>
+<p><code>merge_rwzi_model</code> adds the plants that discharge in the model, within 100 m of a Basin that is not bergend, or 3000 m in the main water system, and removes the others. <code>attach_rwzi_junctions</code> then moves each Junction onto a route into or out of its Basin: where the waterway from its discharge point joins that route, or else at the nearest point, see <a href="../workflow/layout.html">Layout</a>. A few plants discharge into another Basin than the one they are in, listed in <code>ribasim_nl.rwzi.RWZI_BASINS</code>. They are attached in the regional model if that Basin is in it, and else in the coupled model.</p>
 </section>
 <section id="fractions" class="level2">
 <h2 class="anchored" data-anchor-id="fractions">Fractions</h2>

@@ -376,15 +376,17 @@ ul.task-list li input[type="checkbox"] {
   near --&gt;|"more than one"| stays
   near --&gt;|one| pair{"Two Outlets in opposite directions,&lt;br&gt;both with or both without control?"}
   pair --&gt;|yes| merged["Merge into one Outlet"]
-  pair --&gt;|no| basin
-  near --&gt;|none| basin["Connect to the nearest Basin / area&lt;br&gt;of the other authority"]
+  pair --&gt;|no| far
+  near --&gt;|none| far{"Nearest Basin / area of the&lt;br&gt;other authority within 10 km?"}
+  far --&gt;|no| stays
+  far --&gt;|yes| basin["Connect to that Basin"]
 </pre>
 </div>
 <p></p><figcaption> What happens to a LevelBoundary with a <code>meta_couple_authority</code>.</figcaption> </figure><p></p>
 </div>
 </div>
 </div>
-<p>Connecting to the nearest Basin is the easiest and most common case. It relinks the connector nodes of the boundary, for instance an Outlet, so an inflow into the boundary becomes an outlet into the Basin, and an outflow becomes an inlet from it. If a path in the opposite direction already exists, that path and the connector are removed instead, to avoid a cycle. <code>replace_listen_node_id</code> points control nodes that listened to the boundary to the node that replaces it. For the Basins of Rijkswaterstaat, the new link follows the topology of <code>Rijkswaterstaat/verwerkt/netwerk.gpkg</code>, instead of a direct line. No new control nodes are added.</p>
+<p>Connecting to the nearest Basin is the easiest and most common case. It relinks the connector nodes of the boundary, for instance an Outlet, so an inflow into the boundary becomes an outlet into the Basin, and an outflow becomes an inlet from it. If a path in the opposite direction already exists, that path and the connector are removed instead, to avoid a cycle. A boundary more than 10 km from the Basin areas of the authority it would be coupled with stays a boundary. It lies at the coast, the border, or an area that is not modelled, such as the dunes near Wassenaar, and its nearest Basin is not where its water comes from or goes to (<a href="https://github.com/Deltares/Ribasim-NL/pull/1079">#1079</a>). <code>replace_listen_node_id</code> points control nodes that listened to the boundary to the node that replaces it. For the Basins of Rijkswaterstaat, the new link follows the topology of <code>Rijkswaterstaat/verwerkt/netwerk.gpkg</code>, instead of a direct line. No new control nodes are added.</p>
 <p>Two LevelBoundaries close to one another, especially between two water boards, are treated as duplicates, and merged if they meet the conditions above.</p>
 <p>Where two Pumps, or an Outlet and a Pump, meet at a border, or Outlets do not meet these conditions, they are handled as a connector to a Basin. That leaves duplicate connector nodes in place, and might duplicate a flow. Still to do are couplings for <code>Pump | LevelBoundary . LevelBoundary | Pump</code> and <code>Pump | LevelBoundary . LevelBoundary | Outlet</code>, and investigating whether other connections happen.</p>
 <div class="quarto-layout-panel" data-layout-ncol="2">
@@ -421,9 +423,10 @@ ul.task-list li input[type="checkbox"] {
 <li><strong>Remove invalid nodes</strong>, with a warning: <code>remove_invalid_topology_nodes</code> removes nodes that the coupling left without a valid topology.</li>
 <li><strong>Route the links</strong> between models over Top10NL, with <code>netwerk.gpkg</code> as the main route. A link stays straight if it is listed in <code>straight_rws_links</code>, such as those of the Zeesluis Muiden (<a href="https://github.com/Deltares/Ribasim-NL/issues/916">#916</a>).</li>
 <li><strong>Add user demands</strong> that cross models, such as the Evides drinking water of the Maasvlakte (<a href="https://github.com/Deltares/Ribasim-NL/issues/857">#857</a>).</li>
-<li><strong>Attach RWZIs</strong> to the routes of Basins that only exist after coupling. For instance, RWZI Stein discharges to the Julianakanaal instead of a Basin of Limburg.</li>
 <li><strong>Link observations</strong> that measure on links between models, which need the coupled network, see <code>ribasim_nl.observations</code>.</li>
-<li><strong>Tidy the layout</strong>, see <a href="../workflow/layout.html">Layout</a>, and link the observations that need the merged Junction trees.</li>
+<li><strong>Merge the routes</strong> of the links between models into the Junction trees of their Basins, see <a href="../workflow/layout.html">Layout</a>.</li>
+<li><strong>Attach RWZIs</strong> to the routes of Basins that only exist after coupling. For instance, RWZI Stein discharges to the Julianakanaal instead of a Basin of Limburg. This follows the previous step: an RWZI Junction on a link is kept when the tree of its Basin is rebuilt, with the links behind it, and the other routes would run beside those.</li>
+<li><strong>Tidy the layout</strong>, and link the observations that need the merged Junction trees.</li>
 <li><strong>Write the model</strong>, validate it with <code>validate_ribasim_nl</code>, and write the links that were added to <code>link.gpkg</code>.</li>
 <li><strong>Correct the coupling levels</strong>, see below.</li>
 <li><strong>Apply the <a href="../workflow/seasonal-levels.html">summer and winter levels</a></strong> again, without changing the initial state, since the final state of the regional models already follows the seasons.</li>
