@@ -5,9 +5,11 @@ from ribasim import Node
 from ribasim.nodes import basin, manning_resistance, outlet
 from ribasim_nl.bgt_water import write_bgt_water
 from ribasim_nl.layout import (
+    NODE_SPACING,
     Water,
     coincident_nodes,
     junctions_onto_water,
+    move_nodes,
     offset_links,
     overlapping_links,
     place_bergend_nodes,
@@ -100,6 +102,29 @@ def test_separate_nodes(model):
     assert nodes[3].equals(Point(500, 0))
     assert nodes[4].distance(nodes[3]) == pytest.approx(10)
     assert model.link.df.geometry.iloc[2].coords[-1] == nodes[4].coords[0]
+
+
+def test_separate_nodes_spacing(model):
+    """By default nodes stay close to where they were, `NODE_SPACING` apart."""
+    separate_nodes(model)
+    nodes = model.node.df.geometry
+    assert nodes[3].equals(Point(500, 0))
+    assert nodes[4].distance(nodes[3]) == pytest.approx(NODE_SPACING)
+
+
+def test_move_nodes_trim(model):
+    """A link forgets its points within the distance that its node moved, and does not hook back to where it was."""
+    link_id = model.link.df.index[2]
+    to_node_id = int(model.link.df.at[link_id, "to_node_id"])
+    start = model.link.df.at[link_id, "geometry"].coords[0]
+    x, y = model.node.df.geometry[to_node_id].coords[0]
+    # a point 30 m and one 4 m before the node, which moves 10 m to the side
+    model.link.df.loc[[link_id], "geometry"] = [LineString([start, (x - 30, y), (x - 4, y), (x, y)])]
+    kept = model.model_copy(deep=True)
+    move_nodes(kept, {to_node_id: Point(x, y + 10)})
+    assert kept.link.df.at[link_id, "geometry"].coords[:] == [start, (x - 30, y), (x - 4, y), (x, y + 10)]
+    move_nodes(model, {to_node_id: Point(x, y + 10)}, trim=True)
+    assert model.link.df.at[link_id, "geometry"].coords[:] == [start, (x - 30, y), (x, y + 10)]
 
 
 def test_tidy_layout(model):

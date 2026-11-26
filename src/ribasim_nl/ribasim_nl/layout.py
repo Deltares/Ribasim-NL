@@ -38,8 +38,12 @@ MOVABLE_NODE_TYPES = (
 )
 
 
-def _set_link_ends(model: Model, node_ids: typing.Iterable[int]) -> None:
-    """Make the links of nodes start and end at the current node locations, keeping their other coordinates."""
+def _set_link_ends(model: Model, node_ids: typing.Iterable[int], trim: bool = False) -> None:
+    """Make the links of nodes start and end at the current node locations, keeping their other coordinates.
+
+    With `trim`, a link drops the points that lie within the distance that its end moved from where that end was.
+    Otherwise it first runs to where the node was, and hooks back from there to where the node is.
+    """
     links = model.link.df
     node_ids = set(node_ids)
     affected = links.index[links["from_node_id"].isin(node_ids) | links["to_node_id"].isin(node_ids)]
@@ -49,18 +53,30 @@ def _set_link_ends(model: Model, node_ids: typing.Iterable[int]) -> None:
     geometries = []
     for line, start, end in zip(links.loc[affected, "geometry"], starts, ends, strict=True):
         coords = np.array(typing.cast(shapely.LineString, line).coords)[:, :2]
+        if trim and len(coords) > 2:
+            keep = np.ones(len(coords), dtype=bool)
+            for old, new in ((coords[0], start), (coords[-1], end)):
+                moved = np.hypot(*(new - old))
+                if moved > 0.0:
+                    keep &= np.hypot(*(coords - old).T) > moved
+            keep[[0, -1]] = True
+            coords = coords[keep]
         coords[0] = start
         coords[-1] = end
         geometries.append(shapely.LineString(coords))
     links.loc[affected, "geometry"] = gpd.GeoSeries(geometries, index=affected, crs=links.crs)
 
 
-def move_nodes(model: Model, locations: dict[int, shapely.Point]) -> None:
-    """Move nodes, and the ends of their links along."""
+def move_nodes(model: Model, locations: dict[int, shapely.Point], trim: bool = False) -> None:
+    """Move nodes, and the ends of their links along.
+
+    :param trim: let the links go straight to the moved nodes from the distance of the move, see `_set_link_ends`,
+        for small moves that tidy the layout
+    """
     if not locations:
         return
     model.node.df.loc[list(locations), "geometry"] = gpd.GeoSeries(locations, crs=model.node.df.crs)
-    _set_link_ends(model, locations)
+    _set_link_ends(model, locations, trim)
 
 
 def place_bergend_nodes(model: Model, distance: float = 100.0, directions: int = 16) -> None:
@@ -176,6 +192,11 @@ def offset_links(
 
 # Maximum distance over which a Junction on land is moved onto the water [m]
 MAX_WATER_DISTANCE = 25.0
+# Minimum distance between nodes [m]. The nodes of one structure, such as the Pumps of a gemaal, their control nodes
+# and the Junction where their links join, are at the same place, and are moved this far apart. The icons of the
+# model viewer are 2.3 m wide at its zoom level 20, and 4.6 m at 19. With 10 m a fifth of the nodes of Rivierenland
+# moved, 15 m on average, and a gemaal was drawn over 45 m.
+NODE_SPACING = 3.0
 
 
 class Water:
@@ -221,12 +242,15 @@ class Water:
         return further if polygon.contains(further) else shapely.Point(x1, y1)
 
 
-def separate_nodes(model: Model, min_distance: float = 10.0, water: Water | None = None) -> None:
+def separate_nodes(
+    model: Model, min_distance: float = NODE_SPACING, water: Water | None = None, trim: bool = True
+) -> None:
     """Move nodes that are within `min_distance` of another node, such that no nodes are on top of each other.
 
     Of two such nodes, the most movable one is moved, see `MOVABLE_NODE_TYPES`; Basins are never moved. It is moved to
     the first free location around the other node, starting in the direction away from it, or for a Junction the first
-    free location on the `water`, if given and there is one.
+    free location on the `water`, if given and there is one. With `trim`, the links of a moved node go straight to it
+    from the distance of the move, see `move_nodes`.
     """
     nodes = model.node.df
     ids = nodes.index.to_numpy()
@@ -291,7 +315,7 @@ def separate_nodes(model: Model, min_distance: float = 10.0, water: Water | None
             grid[cell(found)].add(k)
             locations[int(ids[k])] = shapely.Point(found)
     LOG.info(f"Moved {len(locations)} nodes away from other nodes")
-    move_nodes(model, locations)
+    move_nodes(model, locations, trim)
 
 
 def junctions_onto_water(
@@ -299,11 +323,13 @@ def junctions_onto_water(
     water: Water,
     max_distance: float = MAX_WATER_DISTANCE,
     node_ids: typing.Collection[int] | None = None,
+    trim: bool = True,
 ) -> None:
     """Move the Junctions that lie on land, within `max_distance` of the water, onto the water, see `Water.onto`.
 
     A Junction is where routes join or split, which belongs on the water, but routes can share a stretch over land,
-    such as through a culvert or from a structure on a dike. The ends of its links move along.
+    such as through a culvert or from a structure on a dike. The ends of its links move along, and with `trim` the
+    links go straight to the Junction from the distance of the move, see `move_nodes`.
 
     :param node_ids: the Junctions to move, defaults to all Junctions
     """
@@ -317,7 +343,7 @@ def junctions_onto_water(
         if location is not None:
             locations[int(typing.cast(int, node_id))] = location
     LOG.info(f"Moved {len(locations)} of {len(junctions)} Junctions onto the water")
-    move_nodes(model, locations)
+    move_nodes(model, locations, trim)
 
 
 def resolve_overlaps(model: Model, distance: float = 5.0, min_length: float = 1.0, max_iterations: int = 5) -> None:
@@ -338,7 +364,7 @@ def tidy_layout(
     model: Model,
     *,
     offset: float = 5.0,
-    min_distance: float = 10.0,
+    min_distance: float = NODE_SPACING,
     bergend_distance: float = 100.0,
     water_path: Path | None = None,
 ) -> Model:
@@ -347,7 +373,8 @@ def tidy_layout(
     The inflows and outflows of a Basin share one Junction tree, see `ribasim_nl.flow_paths.Routes`, so links stay on
     their route, and only links that still overlap are offset. See `place_bergend_nodes`, `separate_nodes` and
     `resolve_overlaps`. With the BGT water of `water_path`, see `Water`, Junctions are put on the water, see
-    `junctions_onto_water`, and kept there when they are moved apart.
+    `junctions_onto_water`, and kept there when they are moved apart. The links of the nodes that are moved go
+    straight to them from the distance of the move, see `move_nodes`, so they do not hook back to where a node was.
     """
     place_bergend_nodes(model, bergend_distance)
     water = None if water_path is None else Water(water_path)

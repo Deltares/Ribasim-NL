@@ -64,7 +64,8 @@ Where the merged tree has no such Junction, for instance because the links of a 
 
 - Bergend Basins are placed 100 m from their doorgaand Basin.
 - Junctions within 25 m of the BGT water, but not on it, move onto the water.
-- Nodes that are still within 10 m of each other are moved apart, Junctions to a free place on the water if there is one.
+- Nodes that are still within 3 m of each other are moved apart, Junctions to a free place on the water if there is one. The nodes of one structure are at the same place: the Pumps of a gemaal, their control nodes, and the Junction where their links join. They stay within a few metres of the structure, and their icons in the model viewer are apart from zoom level 20.
+- A link of a node that is moved goes straight to the node from the distance of the move, so it does not hook back to where the node was.
 - Links that still overlap, such as those of neighbouring Basins along a shared waterway, are offset 5 m.
 
 The gravity controlled models get the same layout step at the end of their dynamic stage, and `ribasim_nl.validation.validate_model` checks it.
