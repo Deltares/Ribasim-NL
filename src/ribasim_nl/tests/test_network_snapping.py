@@ -391,6 +391,38 @@ def test_share_paths():
     assert _share_paths(coords, points, 100.0, raster, max_land=10.0) == coords
 
 
+def test_route_basin_links_share_paths():
+    """Nodes side by side across wide water share the route over water up to where they part, then go straight.
+
+    The nearby nodes branch off at the end of the path of the first, the cell of its node, which its route keeps, and
+    no route passes through another node.
+    """
+    nodes = {1: Point(503, 603), 2: Point(553, 597), 3: Point(603, 600)}
+    _, routes = route_basin_links(
+        Point(0, 0),
+        nodes,
+        [LineString([(0, 0), (1000, 0)])],
+        [True],
+        water=box(-10, -50, 1010, 1000),
+        area=box(-20, -60, 1020, 1010),
+    )
+    assert routes.keys() == nodes.keys()
+    shared = routes[2][:-1]
+    assert len(shared) > 2 and shapely.LineString(shared).length > 1000.0
+    for key, point in nodes.items():
+        assert routes[key] == [*shared, (point.x, point.y)]
+
+
+def test_route_basin_links_route_off_the_lines():
+    """A route of the Basin that touches none of the lines does not keep the other links from being routed."""
+    lines = [LineString([(-500, 20), (1000, 20)])]
+    expected = [(0.0, 0.0), (0.0, 20.0), (800.0, 20.0), (800.0, 30.0)]
+    _, routes = route_basin_links(
+        Point(0, 0), {1: Point(800, 30)}, lines, [True], routes=[LineString([(0, 0), (-5, -10), (-10, -30)])]
+    )
+    assert routes == {1: expected}
+
+
 def test_insert_points():
     coords = [(0.0, 0.0), (10.0, 0.0), (10.0, 10.0)]
     # only points strictly between two coordinates, in the order of the route

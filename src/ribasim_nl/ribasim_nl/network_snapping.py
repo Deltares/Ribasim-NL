@@ -563,7 +563,8 @@ def route_basin_links(
     possible, see `_WaterRaster.attach_straight`.
 
     The `routes` that other links of the Basin already follow are part of the network, see `_BasinNetwork.add_routes`.
-    Then the part of the network with these routes is used, such that the links share them.
+    Then the longest part of the network with these routes is used, such that the links share them, unless the longest
+    part reaches more of the connector nodes, as when a route touches none of the lines.
 
     If `basin_area` is given, the Basin node is moved to the center of the network within that area, see
     `_BasinNetwork.center`: the point from which the routes to its connector nodes, and to the point of the network
@@ -619,12 +620,23 @@ def route_basin_links(
             raster = _WaterRaster(water, area, land_cost=20.0, max_cells=1_000_000)
             network.connect_over_raster(raster, water, max_land)
 
-    # use the longest connected part of the network, typically the main waterway, or the longest with a route
+    # use the longest connected part of the network, typically the main waterway, or the longest with a route, unless
+    # that reaches fewer connector nodes
     lengths = np.bincount(network.component, weights=shapely.length(network.geometries))
+    part = int(np.argmax(lengths))
     is_route = np.array([bool(network.graph.edges[e].get("route")) for e in network.edges], dtype=bool)
     if is_route.any():
-        lengths = np.where(np.bincount(network.component, weights=is_route) > 0, lengths, -1.0)
-    candidates = np.flatnonzero(network.component == np.argmax(lengths))
+        with_route = int(np.argmax(np.where(np.bincount(network.component, weights=is_route) > 0, lengths, -1.0)))
+
+        def reached(component: int) -> int:
+            geometries = network.geometries[network.component == component]
+            return sum(
+                float(shapely.distance(point, geometries).min()) <= max_attach_distance for point in connectors.values()
+            )
+
+        if with_route == part or reached(with_route) >= reached(part):
+            part = with_route
+    candidates = np.flatnonzero(network.component == part)
 
     # where the Basin node is not moved, it is attached to the main route, if available
     main = candidates[network.main[candidates]]
@@ -689,6 +701,14 @@ def route_basin_links(
         best = min([node for _, node in on_path] + [path[-1]], key=total)
         return path[: passed[best] + 1]
 
+    # A path over water ends at the cell of its node, which its route replaces by the node, unless another path branches
+    # off there, see `_share_paths`: then the route keeps it, so the two share their path up to there.
+    branch_points = {c for coords in water_coords.values() for c in coords[1:-1]}
+
+    def water_tail(key: typing.Hashable) -> list[Coord]:
+        coords = water_coords[key]
+        return coords[1:] if coords[-1] in branch_points else coords[1:-1]
+
     def route(location: shapely.Point, start: Coord) -> dict[int, list[Coord]]:
         """The routes from a location, which enter the network at `start`, to the connector nodes."""
         cost, paths = typing.cast(
@@ -700,7 +720,7 @@ def route_basin_links(
             if key in attached:
                 middle = network.path_coords(leave(paths[attached[key]], cost, key, point))
             elif ("water", key) in attached:
-                middle = [*network.path_coords(paths[attached[("water", key)]]), *water_coords[key][1:-1]]
+                middle = [*network.path_coords(paths[attached[("water", key)]]), *water_tail(key)]
             else:
                 continue
             coords = _dedupe([(location.x, location.y), *middle, (point.x, point.y)])
@@ -733,7 +753,9 @@ def _share_paths(
     On wide water the least-cost paths to two nodes next to each other part where they start, and run side by side
     from there, such as those to the two Outlets of a sluice. Instead, the node with the longer path follows the
     shorter path of a node near it, and branches off straight from the point of that path nearest to it, see
-    `attach_to_tree`, if that crosses at most `max_land` of land.
+    `attach_to_tree`, if that crosses at most `max_land` of land. It may branch off at the end of a path, the cell of
+    the other node, which the route of that node then keeps, see `route_basin_links`, but not at the end of a path that
+    follows another, which is a node.
 
     :param coords: per key, the coordinates of its path over water, to the cell of its node
     :param points: the node of each key
@@ -745,6 +767,7 @@ def _share_paths(
         return shapely.LineString(coords[key]).length if len(coords[key]) > 1 else 0.0
 
     result: dict[typing.Hashable, list[Coord]] = {}
+    follows: set[typing.Hashable] = set()
     for key in sorted(coords, key=lambda k: (length(k), str(k))):
         point = points[key]
         near = [other for other in result if points[other].distance(point) <= distance]
@@ -754,13 +777,14 @@ def _share_paths(
         nearest = min(near, key=lambda other: (points[other].distance(point), str(other)))
         # the paths that start where the path of that node does share its coordinates, and the point where one branches
         group = [other for other in result if other != key and result[other][0] == result[nearest][0]]
-        attached = attach_to_tree(
-            dict(enumerate(result[other] for other in group)), result[nearest][0], {-1: (point.x, point.y)}
-        )
+        trees = {i: result[other][:-1] if other in follows else result[other] for i, other in enumerate(group)}
+        attached = attach_to_tree(trees, result[nearest][0], {-1: (point.x, point.y)})
         branch = attached.pop(-1)
         if len(branch) > 1 and raster.land_along(shapely.LineString(branch[-2:])) <= max_land:
             result[key] = branch
-            result |= dict(zip(group, attached.values(), strict=True))
+            for i, other in enumerate(group):
+                result[other] = [*attached[i], result[other][-1]] if other in follows else attached[i]
+            follows.add(key)
     return result
 
 
