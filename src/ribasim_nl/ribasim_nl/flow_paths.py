@@ -1315,8 +1315,10 @@ def rebuild_rws_junction_trees(
             far = [point for point in (_point(model, i) for i in reached) if point.distance(area) > tolerance]
             extra.append(reach_area(far, area))
         mask = shapely.union_all([*areas.geometry.buffer(tolerance).to_numpy(), *extra])
-        land = read_main_waterways(top10nl_path, mask, main_route)
         land_water = gpd.read_file(top10nl_path, layer="top10nl_waterdeel_vlak", mask=mask, columns=[])
+        # beyond a lake only the Top10NL: its routes follow the main route already, split where it meets the fairways,
+        # and a route along the main route itself would run beside them
+        land = read_main_waterways(top10nl_path, mask, None if lake else main_route)
         if lake:
             waterways = read_lake_waterways(fairway_path, mask, main_route)
             if lake_hydro_objects:

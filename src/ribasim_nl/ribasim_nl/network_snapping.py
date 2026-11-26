@@ -101,6 +101,35 @@ def _split_coords(coords: list[Coord], distances: list[float]) -> list[list[Coor
     return pieces
 
 
+def _stretches(routes: typing.Iterable[list[Coord]]) -> list[list[Coord]]:
+    """The stretches of routes between their ends and the points where they split or join, each once.
+
+    Routes from the same point share the coordinates of their common part, see `route_basin_links`. As edges of a
+    network they would overlap there, and a point attached to one of them would be missing from the routes that follow
+    another one, so these would not share their coordinates.
+    """
+    segments = nx.Graph()
+    ends: set[Coord] = set()
+    for coords in routes:
+        if len(coords) >= 2:
+            nx.add_path(segments, coords)
+            ends |= {coords[0], coords[-1]}
+    breaks = ends | {node for node, degree in segments.degree if degree != 2}
+    stretches = []
+    seen: set[frozenset[Coord]] = set()
+    for start in sorted(breaks):
+        for neighbor in sorted(segments[start]):
+            if frozenset((start, neighbor)) in seen:
+                continue
+            stretch = [start, neighbor]
+            while stretch[-1] not in breaks:
+                (following,) = set(segments[stretch[-1]]) - {stretch[-2]}
+                stretch.append(following)
+            seen |= {frozenset(segment) for segment in itertools.pairwise(stretch)}
+            stretches.append(stretch)
+    return stretches
+
+
 class _BasinNetwork:
     """Graph of the hydro-objects within a single basin area, onto which points can be attached.
 
@@ -177,11 +206,12 @@ class _BasinNetwork:
         Such routes are often drawn along other lines than those of the network, like the waterways of the model of
         their water authority, without a point in common with them. They cost as much per metre as the lines of the
         water authority, so new routes follow them rather than a line of the Top10NL next to them, and they count as
-        main route.
+        main route. The part that routes share is one edge, see `_stretches`.
         """
-        for line in routes:
-            coords = _dedupe([(float(x), float(y)) for x, y in shapely.get_coordinates(line)])
-            if len(coords) < 2 or coords[0] == coords[-1]:
+        for coords in _stretches(
+            _dedupe([(float(x), float(y)) for x, y in shapely.get_coordinates(line)]) for line in routes
+        ):
+            if coords[0] == coords[-1]:
                 continue
             u, v = coords[0], coords[-1]
             weight = shapely.LineString(coords).length

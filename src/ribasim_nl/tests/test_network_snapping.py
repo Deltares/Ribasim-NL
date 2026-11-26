@@ -8,6 +8,7 @@ from ribasim_nl.network_snapping import (
     Waterways,
     _BasinNetwork,
     _share_paths,
+    _stretches,
     _WaterRaster,
     culverts_in,
     insert_points,
@@ -449,6 +450,18 @@ def test_route_basin_links_routes():
     # without the route they follow the ditches only
     _, routes = route_basin_links(Point(0, 0), connectors, lines, [False, False], cost=[3.0, 3.0])
     assert (70, 0) not in routes.get(2, [])
+
+
+def test_route_basin_links_shared_routes():
+    """Routes that share their first part are one line there, so a point attached to it is in all routes along it."""
+    trunk = [(0, 0), (100, 0), (200, 0)]
+    existing = [LineString([*trunk, (300, 10 * i)]) for i in range(7)]
+    assert sorted(len(stretch) for stretch in _stretches([line.coords[:] for line in existing])) == [2] * 7 + [3]
+    # node 1 is attached to the shared part, which the route to node 2 follows past it
+    connectors = {1: Point(50, 5), 2: Point(310, 60)}
+    _, routes = route_basin_links(Point(0, 0), connectors, [], [], routes=existing)
+    assert routes[1] == [(0, 0), (50, 0), (50, 5)]
+    assert routes[2] == [(0, 0), (50, 0), (100, 0), (200, 0), (300, 60), (310, 60)]
 
 
 def test_snap_to_network_joins_routes():

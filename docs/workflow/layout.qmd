@@ -79,5 +79,6 @@ A link between two regional models follows the routes of the links of its Basin,
 A link that is still straight, with its node within 100 m of the routes of its Basin, follows them up to the nearest point and goes straight from there, see `ribasim_nl.flow_paths.branch_off_routes`.
 In open water the network of Rijkswaterstaat only has a few straight lines, so there the routes follow the fairways of OpenStreetMap ([#1010](https://github.com/Deltares/Ribasim-NL/issues/1010)). Open water is a Basin that is on average more than 750 m wide, twice its area over its perimeter, such as the IJsselmeer, the Markermeer, the Oosterschelde and the Haringvliet.
 Nodes on the shore branch off straight from the nearest point of a fairway from which the line crosses at most 100 m of land, and nodes close together share such a line.
+Nodes beyond the shore follow these routes, and the Top10NL water lines from where they leave them.
 The hydro-objects of the water authorities on the water of a lake, such as the channel of a harbour, are part of its network, joined to the fairways along the cheapest path over water, so the nodes in a harbour follow its channel ([#1078](https://github.com/Deltares/Ribasim-NL/issues/1078)).
 The Junctions that the coupling adds move onto the BGT water, as in the regional models.
