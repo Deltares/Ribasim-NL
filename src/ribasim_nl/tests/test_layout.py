@@ -1,9 +1,13 @@
+import geopandas as gpd
 import pytest
 import shapely
 from ribasim import Node
 from ribasim.nodes import basin, manning_resistance, outlet
+from ribasim_nl.bgt_water import write_bgt_water
 from ribasim_nl.layout import (
+    Water,
     coincident_nodes,
+    junctions_onto_water,
     offset_links,
     overlapping_links,
     place_bergend_nodes,
@@ -121,3 +125,29 @@ def test_resolve_observation_overlaps(model):
     assert len(observation_overlaps()) == 1
     resolve_overlaps(model)
     assert observation_overlaps() == []
+
+
+def test_junctions_onto_water(tmp_path):
+    """Junction 3 is 8 m east of a canal, and moves onto it, Junction 4 lies on the water, and 5 is too far."""
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    add_basin(model, 1, Point(0, 0), box(-500, -500, 500, 500))
+    model.outlet.add(Node(2, Point(100, 100)), [outlet.Static(flow_rate=[1.0])])
+    for node_id, point in ((3, Point(18, 50)), (4, Point(5, -50)), (5, Point(200, 0))):
+        model.junction.add(Node(node_id, point))
+    model.link.add(model.basin[1], model.junction[3], geometry=LineString([(0, 0), (10, 25), (18, 50)]))
+    model.link.add(model.junction[3], model.outlet[2])
+    model.link.add(model.junction[4], model.basin[1])
+    model.link.add(model.junction[5], model.junction[4])
+    path = tmp_path / "bgt_water.parquet"
+    canal = gpd.GeoDataFrame({"lokaalID": ["canal"]}, geometry=[box(0, -100, 10, 100)], crs="EPSG:28992")
+    write_bgt_water(canal, path)
+
+    junctions_onto_water(model, Water(path))
+    nodes = model.node.df.geometry
+    assert nodes[3].coords[:] == [(9.5, 50.0)]
+    assert nodes[4].coords[:] == [(5.0, -50.0)]
+    assert nodes[5].coords[:] == [(200.0, 0.0)]
+    # the links move along, keeping their other points
+    links = model.link.df.set_index(["from_node_id", "to_node_id"]).geometry
+    assert links[(1, 3)].coords[:] == [(0, 0), (10, 25), (9.5, 50)]
+    assert links[(3, 2)].coords[0] == (9.5, 50.0)

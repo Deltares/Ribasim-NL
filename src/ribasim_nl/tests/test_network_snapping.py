@@ -6,7 +6,9 @@ from ribasim.nodes import basin, outlet
 from ribasim_nl.network_snapping import (
     _BasinNetwork,
     _WaterRaster,
+    culverts_in,
     read_lake_waterways,
+    read_lines_on_water,
     route_basin_links,
     route_over_water,
     snap_to_network,
@@ -99,6 +101,25 @@ def test_route_basin_links_bridges_gaps():
     assert routes == bridged
 
 
+def test_culverts_in():
+    """A culvert under a canal between two parts of a basin area is taken whole, others are clipped to the area."""
+    area = box(0, -10, 40, 10).union(box(70, -10, 110, 10))
+    geometries = np.array(
+        [
+            shapely.MultiLineString([[(35, 0), (75, 0)]]),  # under the canal between x = 40 and 70
+            shapely.MultiLineString([[(30, 5), (50, 5)]]),  # out of the area
+            shapely.MultiLineString([[(200, 0), (210, 0)]]),  # far away
+        ]
+    )
+    culverts = culverts_in(geometries, shapely.STRtree(geometries), area)
+    assert [list(c.coords) for c in culverts] == [[(35, 0), (75, 0)], [(30, 5), (40, 5)]]
+
+    # the culvert connects the hydro-objects on either side, so the connector beyond the canal is routed
+    lines = [LineString([(0, 0), (35, 0)]), LineString([(75, 0), (110, 0)])]
+    _, routes = route_basin_links(Point(0, 0), {1: Point(110, 0)}, lines, [True, True], culverts=[culverts[0]])
+    assert routes == {1: [(0, 0), (35, 0), (75, 0), (110, 0)]}
+
+
 def test_route_over_water():
     # a lake without hydro-objects, with a dike of 20 m between the lake and the connector
     water = box(0, 0, 1000, 100)
@@ -109,6 +130,38 @@ def test_route_over_water():
     assert shapely.LineString(coords).difference(water.buffer(10)).length <= 50
     # crossing much land is not accepted
     assert route_over_water(Point(10, 50), {1: Point(990, 150)}, box(0, 0, 500, 100), area) == {}
+
+
+def test_route_basin_links_harbour():
+    """A harbour channel behind a pier is joined to the fairway of the lake through the mouth of the harbour."""
+    lake, mouth, harbour = box(0, 0, 1000, 400), box(300, 400, 340, 450), box(0, 450, 400, 550)
+    pier = box(0, 400, 300, 450)
+    water = shapely.union_all([lake, mouth, harbour])
+    area = box(-10, -10, 1010, 560)
+    fairway, channel = LineString([(500, 0), (500, 400)]), LineString([(320, 470), (30, 500)])
+    connectors = {1: Point(20, 520)}
+    _, routes = route_basin_links(
+        Point(500, 200), connectors, [fairway, channel], [True, False], water=water, area=area, open_water=True
+    )
+    route = LineString(routes[1])
+    assert route.coords[0] == (500, 200) and route.coords[-1] == (20, 520)
+    assert route.intersection(pier).length == 0.0
+    assert route.distance(Point(30, 500)) < 1e-6
+    # no detour around the start of the path over water
+    assert all(x <= 500 for x, _ in route.coords)
+
+
+def test_read_lines_on_water(tmp_path):
+    """Only the parts of the hydro-objects on the water, such as a harbour channel, not the ditches on land."""
+    path = tmp_path / "network.gpkg"
+    lines = [LineString([(-50, 50), (50, 50)]), LineString([(-50, -50), (-10, -50)])]
+    gpd.GeoDataFrame({"main-route": [False, False]}, geometry=lines, crs="EPSG:28992").to_file(
+        path, layer="hydro_objects"
+    )
+    on_water = read_lines_on_water([path], box(0, 0, 100, 100))
+    assert [list(line.coords) for line in on_water.geometry] == [[(0, 50), (50, 50)]]
+    assert not on_water["main-route"].any()
+    assert read_lines_on_water([], box(0, 0, 100, 100)).empty
 
 
 def test_connect_over_water():

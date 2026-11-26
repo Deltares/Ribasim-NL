@@ -32,7 +32,7 @@ from ribasim_nl.flow_paths import (
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.keys import NodeKey as K
 from ribasim_nl.keys import resolve_keys
-from ribasim_nl.layout import move_nodes, resolve_overlaps, separate_nodes
+from ribasim_nl.layout import Water, junctions_onto_water, move_nodes, resolve_overlaps, separate_nodes
 from ribasim_nl.model import find_toml
 from ribasim_nl.network_snapping import line_reader, snap_to_waterways
 from ribasim_nl.observations import link_observations
@@ -77,6 +77,12 @@ COUPLING_LEVEL_APPLY_AUTHORITIES = {
 data_dir = settings.ribasim_nl_data_dir
 top10nl_gpkg = data_dir / "Basisgegevens/Top10NL/top10nl_Compleet.gpkg"
 fairway_gpkg = data_dir / "Basisgegevens/OSM/waterway_fairway.gpkg"
+# the hydro-objects of the water authorities around the lakes, of which those on the water of a lake, such as the
+# channels of harbours, are waterways of the lake as well, see `rebuild_rws_junction_trees` and #1078
+lake_hydro_objects = [
+    data_dir / f"{authority}/verwerkt/profielen/network.gpkg"
+    for authority in ("AmstelGooienVecht", "HollandsNoorderkwartier", "WetterskipFryslan", "Zuiderzeeland")
+]
 couple_lhm: bool = True
 sub_models: list[str] = []
 
@@ -857,6 +863,7 @@ def merge_coupling_trees(model: Model, network: Network) -> None:
         fairway_gpkg,
         main_route(network),
         routing_areas=resolve_keys(model, ROUTING_AREAS),
+        lake_hydro_objects=lake_hydro_objects,
     )
     junctionify(model)
     merge_basin_trees(
@@ -1078,6 +1085,7 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
 def couple_model(toml_file: Path) -> None:
     """Couple the models merged in `toml_file`, and write the coupled model next to it."""
     model, network, basin_areas_df = initialize_models(toml_file)
+    junctions = set(model.junction.node.df.index)
     all_link_table = process_boundary_nodes(model, network, basin_areas_df)
     update_node_metadata(model)
     move_configured_nodes(model)
@@ -1094,9 +1102,11 @@ def couple_model(toml_file: Path) -> None:
     merge_coupling_trees(model, network)
     # and series that combine the inflows and outflows of a Basin through its merged tree
     link_observations(model, combine=True)
-    # the layout of the models is already tidy, see `tidy_layout`, so only move apart nodes on top of each other, and
-    # offset links that still overlap
-    separate_nodes(model)
+    # the layout of the models is already tidy, see `tidy_layout`, so only put the Junctions of the coupling on the
+    # water, move apart nodes on top of each other, and offset links that still overlap
+    water = Water()
+    junctions_onto_water(model, water, node_ids=set(model.junction.node.df.index) - junctions)
+    separate_nodes(model, water=water)
     resolve_overlaps(model, max_iterations=10)
     coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)
     run_configured_coupling_level_check(coupled_toml_file)

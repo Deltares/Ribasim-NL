@@ -26,7 +26,7 @@ The koppeltabel of the measured discharges refers to nodes by that location, so 
 
 Then `ribasim_nl.network_snapping.snap_model` aligns the layout with the hydro-objects in `verwerkt/profielen/network.gpkg`, which are written by the [profile generation](profile-generation.qmd):
 
-- Links between a Basin and a connector node follow the hydro-objects. The Top10NL water lines fill the gaps between them: they cost 3 times as much per metre, since the Top10NL has every ditch, and the shortest route would leave the hydro-objects wherever a ditch cuts a corner. Hydro-objects are only connected where there is evidence: the culverts (`duikersifonhevel`) of the crossings data, gaps of at most 2 m, and gaps across BGT water surfaces. Connector nodes far from the hydro-objects are connected over the BGT water surfaces, crossing at most 100 m of land.
+- Links between a Basin and a connector node follow the hydro-objects. The Top10NL water lines fill the gaps between them: they cost 3 times as much per metre, since the Top10NL has every ditch, and the shortest route would leave the hydro-objects wherever a ditch cuts a corner. Hydro-objects are only connected where there is evidence: the culverts (`duikersifonhevel`) of the crossings data, gaps of at most 2 m, and gaps across BGT water surfaces. A culvert with both ends in the basin area is used whole, such as a siphon under a canal of another Basin ([#1078](https://github.com/Deltares/Ribasim-NL/issues/1078)). Connector nodes far from the hydro-objects are connected over the BGT water surfaces, crossing at most 100 m of land.
 - Basin nodes are moved to the centre of this network within their basin area: the point from which the routes to their connector nodes are cheapest in total. The point of the network nearest to where the Basin node was counts as one more node to reach, so a Basin with a single connector node stays there.
 - Links stay straight if no such route is found, or if it is not less than `ribasim_nl.link_geometries.MAX_STRAIGHT_LINE_RATIO` times longer than the straight line, the same threshold as for the gravity controlled models. A Basin node also stays where it is if fewer than half of its links can be routed from the centre.
 
@@ -44,6 +44,7 @@ flowchart LR
 
 The inflows and outflows of a Basin share one Junction tree, so each waterway is drawn once, see `ribasim_nl.flow_paths.merge_basin_trees`.
 The trees are merged after the last nodes are added to a model, so only the IDs of Junctions change.
+An RWZI Junction that discharges on a route stays where it is, and the other routes along the link it split join there, so they do not run side by side beyond it ([#1065](https://github.com/Deltares/Ribasim-NL/issues/1065)).
 Ribasim connects a group of Junctions with one Basin as a neighbour with that Basin, in the direction of the link of each other neighbour with the group, see [Junction](https://ribasim.org/reference/node/junction.html).
 The direction of the links within the tree, and with the Basin, does not change the simulation, only the sign of their flow, see `ribasim_nl.flow_paths.towards_basin`.
 A link that only carries inflows points towards the Basin, and one that only carries outflows away from it.
@@ -55,7 +56,8 @@ A measured series that adds the flows of several nodes is observed on a Junction
 Where the merged tree has no such Junction, for instance because the links of a gemaal and the inlet next to it meet at the Basin node, `ribasim_nl.flow_paths.combine_nodes` makes one on the link of the first node, if the nodes are within 250 m of it.
 
 - Bergend Basins are placed 100 m from their doorgaand Basin.
-- Nodes that are still within 10 m of each other are moved apart.
+- Junctions within 25 m of the BGT water, but not on it, move onto the water.
+- Nodes that are still within 10 m of each other are moved apart, Junctions to a free place on the water if there is one.
 - Links that still overlap, such as those of neighbouring Basins along a shared waterway, are offset 5 m.
 
 The gravity controlled models get the same layout step at the end of their dynamic stage, and `ribasim_nl.validation.validate_model` checks it.
@@ -66,3 +68,5 @@ A link between two regional models is routed along Top10NL, not along the lines 
 Where the routes of the Basin pass within 100 m of the node of such a link, the link follows them up to that point and goes straight from there, see `ribasim_nl.flow_paths.branch_off_routes`.
 In the IJsselmeer, Markermeer, IJmeer and Gouwzee, the network of Rijkswaterstaat only has a few straight lines, so there the routes follow the fairways of OpenStreetMap ([#1010](https://github.com/Deltares/Ribasim-NL/issues/1010)).
 Nodes on the shore branch off straight from the nearest point of a fairway from which the line crosses at most 100 m of land, and nodes close together share such a line.
+The hydro-objects of the water authorities on the water of a lake, such as the channel of a harbour, are part of its network, joined to the fairways along the cheapest path over water, so the nodes in a harbour follow its channel ([#1078](https://github.com/Deltares/Ribasim-NL/issues/1078)).
+The Junctions that the coupling adds move onto the BGT water, as in the regional models.

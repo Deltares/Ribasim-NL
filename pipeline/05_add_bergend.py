@@ -14,6 +14,10 @@ FIND_POST_FIXES = ["full_control_model"]
 SELECTION: set = {"RijnenIJssel"}
 REBUILD = True
 RUN_MODEL: bool = False
+# Basins by authority and key whose storing basin is connected with a ManningResistance as well, outside supplied areas
+MANNING_BASINS = {
+    "StichtseRijnlanden": ["up:OW687"],  # the Grecht, see #1078
+}
 
 # authorities provided as arguments, else in SELECTION, else all
 authorities = cloud.select_authorities(sys.argv[1:], fallback=SELECTION)
@@ -36,7 +40,9 @@ for authority in authorities:
 
         # storing basins in supplied areas (meta_aanvoer) get a ManningResistance, so they can be supplied too
         supply_areas = gpd.read_file(cloud.joinpath(authority, "verwerkt", "sturing", "aanvoergebieden.gpkg"))
-        manning_basin_ids = supply_area_basin_ids(model, supply_areas)
+        manning_basin_ids = supply_area_basin_ids(model, supply_areas) | set(
+            model.node_ids(MANNING_BASINS.get(authority, []))
+        )
         print(f"{len(manning_basin_ids)} storing basins in supplied areas are connected with a ManningResistance")
 
         # add berging

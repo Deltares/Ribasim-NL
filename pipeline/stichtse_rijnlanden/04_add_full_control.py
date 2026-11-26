@@ -350,7 +350,6 @@ pump_max_flow_rate_from_results = {
     n("G0089"): 3,  # gekoppeld max=2.36, huidige max=0.238, link=1400257
     n("G4039"): 15,  # Gerverscop; oude static flow_rate=1.58
     n("G4041"): 15,  # Kockengen; oude static flow_rate=1.95
-    n("G4043"): 1,  # Grechtkade; oude static flow_rate=0.00753
     n("G3025"): 10,  # Keulevaart, De; oude static flow_rate=5.34
     n("G4481"): 2,  # Pelikaan; oude static flow_rate=0.1
     n("G2005"): 2,  # Strijp, De; oude static flow_rate=0.0333
