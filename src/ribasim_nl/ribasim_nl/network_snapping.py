@@ -951,8 +951,9 @@ class Waterways:
         cost = self.cost[idx]
         if home is not None and len(lines) > 0:
             shapely.prepare(home)
-            inside = shapely.contains_properly(home, lines).astype(float)
-            crossing = (inside == 0.0) & shapely.intersects(home, lines)
+            within = shapely.contains_properly(home, lines)
+            inside = within.astype(float)
+            crossing = ~within & shapely.intersects(home, lines)
             inside[crossing] = shapely.length(shapely.intersection(lines[crossing], home)) / np.maximum(
                 shapely.length(lines[crossing]), 1e-9
             )
