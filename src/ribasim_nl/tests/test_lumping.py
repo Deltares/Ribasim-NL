@@ -290,7 +290,7 @@ def test_apply_hydamo_changes_connects(tmp_path: Path):
         apply_hydamo_changes(source, removals, additions, target, connect_distance=0.5)
     hydroobject.iloc[[1]].to_file(removals, layer="hydroobject")
     added.assign(code="H1").to_file(additions, layer="hydroobject")
-    with pytest.raises(AssertionError, match="several objects with the codes \\['H1'\\]"):
+    with pytest.raises(AssertionError, match="several hydroobjects with the codes \\['H1'\\]"):
         apply_hydamo_changes(source, removals, additions, target, connect_distance=0.5)
 
 

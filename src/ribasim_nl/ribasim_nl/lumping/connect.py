@@ -19,6 +19,22 @@ logger = logging.getLogger(__name__)
 type Coordinate = tuple[float, ...]
 
 
+def _join_next(chains: list[tuple[int, list[Coordinate]]]) -> bool:
+    """Join the first chain that ends where another one starts, with that one, and return whether there was one.
+
+    A chain is a row number, which a joined chain keeps of the first, and coordinates. A closed chain is not joined.
+    """
+    for i, (row, first) in enumerate(chains):
+        if first[0] == first[-1]:
+            continue
+        j = next((j for j, (_, other) in enumerate(chains) if j != i and other[0] == first[-1]), None)
+        if j is not None:
+            chains[i] = (row, [*first, *chains[j][1][1:]])
+            del chains[j]
+            return True
+    return False
+
+
 def join_parts(lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """Make the lines with the same code into one line where they follow each other, and remove the Z coordinates.
 
@@ -34,17 +50,8 @@ def join_parts(lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     rows, codes, geometries = [], [], []
     for code, group in lines[duplicated].groupby("code", sort=True):
         chains = [(row, list(line.coords)) for row, line in zip(group.index, group.geometry, strict=True)]
-        joined = True
-        while joined:
-            joined = False
-            for i, (_, first) in enumerate(chains):
-                j = next((j for j, (_, other) in enumerate(chains) if j != i and other[0] == first[-1]), None)
-                # a closed line is not joined with itself
-                if j is not None and first[0] != first[-1]:
-                    chains[i] = (chains[i][0], [*first, *chains[j][1][1:]])
-                    del chains[j]
-                    joined = True
-                    break
+        while _join_next(chains):
+            pass
         lengths = [LineString(coords).length for _, coords in chains]
         order = np.argsort(-np.array(lengths), kind="stable")
         for n, position in enumerate(order):
@@ -127,6 +134,73 @@ def _insert(coords: list[Coordinate], point: Coordinate) -> tuple[list[Coordinat
     return (after if LineString(after).length < LineString(before).length else before), nearest
 
 
+def _ends_to_insert(lines: gpd.GeoDataFrame, buffer_distance: float) -> dict[int, list[Coordinate]]:
+    """Per line, the loose ends within `buffer_distance` of it that are not one of its own ends, in order of the ends.
+
+    A loose end is one at which no line starts, or no line ends.
+    """
+    _, start, end = _ends(lines)
+    starts, ends = set(start), set(end)
+    loose = [point for point in dict.fromkeys(start + end) if point not in starts or point not in ends]
+    points = shapely.points([point[:2] for point in loose])
+    tree = shapely.STRtree(lines.geometry.to_numpy())
+    i_point, i_line = tree.query(points, predicate="dwithin", distance=buffer_distance)
+    # in the order of the ends, then of the lines
+    order = np.lexsort((i_line, i_point))
+    to_insert: dict[int, list[Coordinate]] = {}
+    for p, row in zip(i_point[order].tolist(), i_line[order].tolist(), strict=True):
+        if loose[p] not in (start[row], end[row]):
+            to_insert.setdefault(row, []).append(loose[p])
+    return to_insert
+
+
+def _insert_ends(
+    coords: list[Coordinate], points: list[Coordinate], inserted: set[Coordinate]
+) -> tuple[list[Coordinate], list[Coordinate]]:
+    """Insert `points` in a line, see `_insert`, but, as in 2024, not next to an end of the line in `inserted`.
+
+    Returns the new coordinates of the line, and the points that are inserted, which are added to `inserted`.
+    """
+    line_inserted = []
+    for point in points:
+        new_coords, nearest = _insert(coords, point)
+        if (nearest == 0 and coords[0] in inserted) or (nearest == len(coords) - 1 and coords[-1] in inserted):
+            continue
+        coords = new_coords
+        inserted.add(point)
+        line_inserted.append(point)
+    return coords, line_inserted
+
+
+def _split_lines(lines: gpd.GeoDataFrame, to_insert: dict[int, list[Coordinate]]) -> gpd.GeoDataFrame:
+    """The pieces of the lines in `to_insert` between the ends that are inserted in them, see `split_at_junctions`."""
+    coords = [list(line.coords) for line in lines.geometry]
+    code = lines["code"].to_numpy(dtype=object)
+    has_code = lines["code"].notna().to_numpy()
+    inserted: set[Coordinate] = set()
+    rows, codes, geometries = [], [], []
+    for row in sorted(to_insert, key=lambda row: (not has_code[row], code[row] if has_code[row] else row)):
+        line_coords, line_inserted = _insert_ends(coords[row], to_insert[row], inserted)
+        cuts = sorted({0, len(line_coords) - 1, *(line_coords.index(point) for point in line_inserted)})
+        for n, (first, last) in enumerate(itertools.pairwise(cuts)):
+            rows.append(row)
+            codes.append(f"{code[row]}-{n}" if has_code[row] else None)
+            geometries.append(LineString(line_coords[first : last + 1]))
+    pieces = lines.iloc[rows].copy()
+    pieces["code"] = codes
+    return pieces.set_geometry(gpd.GeoSeries(geometries, index=pieces.index, crs=lines.crs))
+
+
+def _remove_short_pieces(
+    lines: gpd.GeoDataFrame, is_piece: np.ndarray, length: float = 0.5
+) -> tuple[gpd.GeoDataFrame, np.ndarray]:
+    """Remove the pieces of at most `length` m where another line starts where they start, or ends where they end."""
+    _, start, end = _ends(lines)
+    shared = pd.Series(start, dtype=object).duplicated(keep=False) | pd.Series(end, dtype=object).duplicated(keep=False)
+    short = is_piece & (lines.length.to_numpy() <= length) & shared.to_numpy()
+    return lines[~short].reset_index(drop=True), is_piece[~short]
+
+
 def split_at_junctions(lines: gpd.GeoDataFrame, buffer_distance: float = 0.5) -> gpd.GeoDataFrame:
     """Split the lines where another line ends on them within `buffer_distance`, so that they connect there.
 
@@ -148,59 +222,18 @@ def split_at_junctions(lines: gpd.GeoDataFrame, buffer_distance: float = 0.5) ->
     is_piece = np.zeros(len(lines), dtype=bool)
     previous = 0
     while True:
-        coords, start, end = _ends(lines)
-        starts, ends = set(start), set(end)
-        loose = [point for point in dict.fromkeys(start + end) if point not in starts or point not in ends]
-        points = shapely.points([point[:2] for point in loose])
-        tree = shapely.STRtree(lines.geometry.to_numpy())
-        i_point, i_line = tree.query(points, predicate="dwithin", distance=buffer_distance)
-        # in the order of the ends, then of the lines
-        order = np.lexsort((i_line, i_point))
-        to_insert: dict[int, list[Coordinate]] = {}
-        for p, row in zip(i_point[order].tolist(), i_line[order].tolist(), strict=True):
-            if loose[p] not in (start[row], end[row]):
-                to_insert.setdefault(row, []).append(loose[p])
-        n_unconnected = len({point for line_points in to_insert.values() for point in line_points})
+        to_insert = _ends_to_insert(lines, buffer_distance)
+        n_unconnected = len({point for points in to_insert.values() for point in points})
         logger.info(f"{n_unconnected} ends of lines to connect to a line within {buffer_distance} m")
         if n_unconnected in (0, previous):
             return lines
         previous = n_unconnected
 
-        code = lines["code"].to_numpy(dtype=object)
-        has_code = lines["code"].notna().to_numpy()
-        inserted: set[Coordinate] = set()
-        rows, codes, geometries = [], [], []
-        for row in sorted(to_insert, key=lambda row: (not has_code[row], code[row] if has_code[row] else row)):
-            line_coords = coords[row]
-            line_inserted = []
-            for point in to_insert[row]:
-                new_coords, nearest = _insert(line_coords, point)
-                # as in 2024, not next to an end of the line that was itself inserted in a line
-                if (nearest == 0 and line_coords[0] in inserted) or (
-                    nearest == len(line_coords) - 1 and line_coords[-1] in inserted
-                ):
-                    continue
-                line_coords = new_coords
-                inserted.add(point)
-                line_inserted.append(point)
-            cuts = sorted({0, len(line_coords) - 1, *(line_coords.index(point) for point in line_inserted)})
-            for n, (first, last) in enumerate(itertools.pairwise(cuts)):
-                rows.append(row)
-                codes.append(f"{code[row]}-{n}" if has_code[row] else None)
-                geometries.append(LineString(line_coords[first : last + 1]))
-        pieces = lines.iloc[rows].copy()
-        pieces["code"] = codes
-        pieces = pieces.set_geometry(gpd.GeoSeries(geometries, index=pieces.index, crs=lines.crs))
+        pieces = _split_lines(lines, to_insert)
         keep = ~np.isin(np.arange(len(lines)), list(to_insert))
         is_piece = np.concatenate([is_piece[keep], np.ones(len(pieces), dtype=bool)])
         lines = gpd.GeoDataFrame(pd.concat([lines[keep], pieces], ignore_index=True), geometry="geometry")
-
-        _, start, end = _ends(lines)
-        shared = pd.Series(start, dtype=object).duplicated(keep=False) | pd.Series(end, dtype=object).duplicated(
-            keep=False
-        )
-        short = is_piece & (lines.length.to_numpy() <= 0.5) & shared.to_numpy()
-        lines, is_piece = lines[~short].reset_index(drop=True), is_piece[~short]
+        lines, is_piece = _remove_short_pieces(lines, is_piece)
 
 
 def connect_lines(lines: gpd.GeoDataFrame, distance: float = 0.5) -> gpd.GeoDataFrame:
