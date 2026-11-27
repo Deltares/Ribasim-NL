@@ -11,24 +11,25 @@ The data of Brabantse Delta now comes from the national GKW-HyDAMO package ([#10
 The water authorities deliver their HyDAMO data to the Gegevensknooppunt waterschappen (GkW) of Het Waterschapshuis, which passes on the objects that pass its checks, see its [dashboard](https://datastromen.hetwaterschapshuis.nl/hydamo).
 NHI publishes the result as one GeoPackage of all authorities, [`gkw-hydamo-package.zip`](https://nhipackages.blob.core.windows.net/packages/gkw-hydamo-package.zip).
 
-- **It has no versions:** the file is replaced in place. So the data of an authority is extracted from it, and kept as source data under the date of the package.
-- **Codes are not unique nationally:** the objects of an authority are those with a `nen3610id` that starts with `NL.WBHCODE.<waterbeheercode>.`.
+- **It has no versions:** the file is replaced in place. So DVC tracks a copy of its GeoPackage, `data/Basisgegevens/GKW-HyDAMO/LHM_HyDAMO.gpkg`, which all authorities share. The `desc` in its `.dvc` file gives the date on which it was published.
+- **Codes are not unique nationally:** the objects of an authority are those with a `nen3610id` that starts with `NL.WBHCODE.<waterbeheercode>.`, see `ribasim_nl.lumping.gkw_hydamo.read_authority`.
 
-Extract the data of an authority with:
+Update the copy to the latest package with:
 
 ```sh
-pixi run python scripts/extract_gkw_hydamo.py BrabantseDelta
-pixi run dvc add data/BrabantseDelta/verwerkt/1_ontvangen_data/gkw_hydamo_<date>.gpkg
+pixi run python scripts/download_gkw_hydamo.py
+pixi run dvc add data/Basisgegevens/GKW-HyDAMO/LHM_HyDAMO.gpkg
 ```
 
-This downloads the package, 1.8 GB, into `.cache/gkw_hydamo` unless it is there already.
-Give the date of the new extract to the stage `gkw_hydamo` of the authority in `dvc.yaml`.
+This downloads the package, 1.8 GB, and unpacks its GeoPackage, 5.4 GB.
+Put the date that the script logs in the `desc` of `LHM_HyDAMO.gpkg.dvc`, which `dvc add` keeps.
+The stages `gkw_hydamo` of all authorities then run again.
 
-## From the extract to the network
+## From the package to the network
 
 ```{mermaid}
 flowchart LR
-  extract["1_ontvangen_data/<br>gkw_hydamo_&lt;date&gt;.gpkg"] -->|"gkw_hydamo<br>00_gkw_hydamo.py"| prepared["2_voorbewerking/<br>hydamo.gpkg"]
+  package["Basisgegevens/GKW-HyDAMO/<br>LHM_HyDAMO.gpkg"] -->|"gkw_hydamo<br>00_gkw_hydamo.py"| prepared["2_voorbewerking/<br>hydamo.gpkg"]
   prepared -->|"hydamo<br>00a_process_hydamo.py"| network["4_ribasim/<br>hydamo.gpkg"]
   edits["3_input/hydamo_verwijderen.gpkg<br>3_input/hydamo_toevoegen.gpkg"] --> network
   network -->|"lumped<br>00b_lump_model.py"| model["input model"]
@@ -79,11 +80,14 @@ Where the watercourse of a structure itself is replaced, the model follows the d
 
 ## Update the data of an authority
 
-1. Extract the data, and run the stages `gkw_hydamo`, `hydamo` and `lumped` of the authority.
-2. Compare the input model with the previous one, by key:
+For an update of the package, start at step 2. To move another authority to the package:
+
+1. Add the authority to the stage `gkw_hydamo` in `dvc.yaml`, to `CATEGORIES` in `pipeline/00_gkw_hydamo.py`, and to `GKW_AUTHORITIES` in `pipeline/00a_process_hydamo.py`. `2_voorbewerking/hydamo.gpkg` is then an output of the stage, so remove its `.dvc` file. Which identifiers of the data of 2023 and 2024 are still in the package differs per authority, see [#1075](https://github.com/Deltares/Ribasim-NL/issues/1075).
+2. Run the stages `gkw_hydamo`, `hydamo` and `lumped` of the authority.
+3. Compare the input model with the previous one, by key:
    - connector nodes that are gone: their split node is off the hydroobjects, or bypassed;
    - Basins that are gone, which are merged or named after another connector node, and Basins without outflow, where a watercourse is interrupted;
    - links that are reversed, where a hydroobject is drawn in the other direction.
-3. Decide per difference: move or remove the split node, exclude the new hydroobject, or add a hydroobject by hand where the data has a gap, for instance at a culvert.
-4. Refer to the nodes that got another key by that key in the scripts, `model_edits.gpkg` and `static_data.xlsx` of the authority. A key that is gone raises a `KeyError` where it is used.
-5. Keep the target levels of `static_data.xlsx`, with `StaticData.keep_streefpeil` in `02_prepare_model.py`, and compare the Basins and the static tables of the Pumps and Outlets of the full control model with the previous one, by key.
+4. Decide per difference: move or remove the split node, exclude the new hydroobject, or add a hydroobject by hand where the data has a gap, for instance at a culvert.
+5. Refer to the nodes that got another key by that key in the scripts, `model_edits.gpkg` and `static_data.xlsx` of the authority. A key that is gone raises a `KeyError` where it is used.
+6. Keep the target levels of `static_data.xlsx`, with `StaticData.keep_streefpeil` in `02_prepare_model.py`, and compare the Basins and the static tables of the Pumps and Outlets of the full control model with the previous one, by key.

@@ -1,20 +1,19 @@
 # %%
-"""Prepare the HyDAMO data of a water authority from its extract of the national GKW-HyDAMO package.
+"""Prepare the HyDAMO data of a water authority from the national GKW-HyDAMO package.
 
-Writes `verwerkt/2_voorbewerking/hydamo.gpkg` from `verwerkt/1_ontvangen_data/gkw_hydamo_<date>.gpkg`, the extract that
-`scripts/extract_gkw_hydamo.py` made of the package of that date. Its hydroobjects are those of the categories in
-`CATEGORIES`, with the others in `CODES` and without those in `EXCLUDED`, made into lines that connect, see
-`ribasim_nl.lumping.gkw_hydamo.prepare_hydroobjects`. The structures are those of the extract.
+Writes `verwerkt/2_voorbewerking/hydamo.gpkg` from the objects of the authority in
+`Basisgegevens/GKW-HyDAMO/LHM_HyDAMO.gpkg`, see `ribasim_nl.lumping.gkw_hydamo`. Its hydroobjects are those of the
+categories in `CATEGORIES`, with the others in `CODES` and without those in `EXCLUDED`, made into lines that connect, see
+`ribasim_nl.lumping.gkw_hydamo.prepare_hydroobjects`. The structures are those of the package.
 
-Usage: pixi run python pipeline/00_gkw_hydamo.py <authority> <date>
+Usage: pixi run python pipeline/00_gkw_hydamo.py <authority>
 """
 
 import logging
 import sys
 
-import geopandas as gpd
 import pyogrio
-from ribasim_nl.lumping.gkw_hydamo import prepare_hydroobjects
+from ribasim_nl.lumping.gkw_hydamo import prepare_hydroobjects, read_authority
 from ribasim_nl.lumping.hydamo import STRUCTURE_LAYERS
 
 from ribasim_nl import CloudStorage
@@ -62,25 +61,23 @@ EXCLUDED = {
 }  # fmt: skip
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
-assert len(sys.argv) == 3, "pass the authority and the date of its extract as arguments"
-authority, date = sys.argv[1:]
+assert len(sys.argv) == 2, "pass the authority as argument"
+authority = sys.argv[1]
 cloud.validate_authority(authority)
 assert authority in CATEGORIES, f"no categories of hydroobjects for {authority}"
 
-verwerkt = cloud.joinpath(authority, "verwerkt")
-extract = verwerkt / f"1_ontvangen_data/gkw_hydamo_{date}.gpkg"
-target = verwerkt / "2_voorbewerking/hydamo.gpkg"
+target = cloud.joinpath(authority, "verwerkt/2_voorbewerking/hydamo.gpkg")
 target.parent.mkdir(parents=True, exist_ok=True)
 target.unlink(missing_ok=True)
 
 hydroobject = prepare_hydroobjects(
-    gpd.read_file(extract, layer="hydroobject"),
+    read_authority(authority, "hydroobject"),
     CATEGORIES[authority],
     codes=CODES.get(authority, ()),
     excluded=EXCLUDED.get(authority, ()),
 )
 pyogrio.write_dataframe(hydroobject, target, layer="hydroobject", promote_to_multi=False)
-layers = set(pyogrio.list_layers(extract)[:, 0])
 for layer in STRUCTURE_LAYERS:
-    if layer in layers:
-        pyogrio.write_dataframe(gpd.read_file(extract, layer=layer), target, layer=layer, promote_to_multi=False)
+    structures = read_authority(authority, layer)
+    if len(structures) > 0:
+        pyogrio.write_dataframe(structures, target, layer=layer)

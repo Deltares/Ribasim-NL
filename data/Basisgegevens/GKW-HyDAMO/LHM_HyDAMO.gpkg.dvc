@@ -1,0 +1,6 @@
+outs:
+- md5: 4bf013e4bafc523045dec621e86fd1c4
+  size: 5392658432
+  hash: md5
+  path: LHM_HyDAMO.gpkg
+  desc: GKW-HyDAMO package of NHI, published 2026-11-20

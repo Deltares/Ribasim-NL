@@ -22,20 +22,18 @@ stages:
     outs:
       - data/Rijkswaterstaat/modellen/rwzi
   # The input models of the gravity controlled models, see docs/dev/reproducing-models.qmd
-  # The HyDAMO data of the national GKW-HyDAMO package, see docs/dev/gkw-hydamo.qmd
+  # The HyDAMO data from the national GKW-HyDAMO package, see docs/dev/gkw-hydamo.qmd
   gkw_hydamo:
     foreach:
-      brabantse_delta:
-        authority: BrabantseDelta
-        date: "20261120"
+      brabantse_delta: BrabantseDelta
     do:
-      cmd: pixi run python pipeline/00_gkw_hydamo.py ${item.authority} ${item.date}
+      cmd: pixi run python pipeline/00_gkw_hydamo.py ${item}
       deps:
         - pipeline/00_gkw_hydamo.py
         - src/ribasim_nl/ribasim_nl
-        - data/${item.authority}/verwerkt/1_ontvangen_data/gkw_hydamo_${item.date}.gpkg
+        - data/Basisgegevens/GKW-HyDAMO/LHM_HyDAMO.gpkg
       outs:
-        - data/${item.authority}/verwerkt/2_voorbewerking/hydamo.gpkg
+        - data/${item}/verwerkt/2_voorbewerking/hydamo.gpkg
   hydamo:
     foreach:
       brabantse_delta: BrabantseDelta

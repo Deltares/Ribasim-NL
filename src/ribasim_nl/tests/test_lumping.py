@@ -7,7 +7,7 @@ import pyogrio
 import pytest
 from ribasim_nl.lumping.connect import connect_lines, join_parts, snap_ends, split_at_junctions
 from ribasim_nl.lumping.dhydro import read_ini_sections
-from ribasim_nl.lumping.gkw_hydamo import extract_authority, prepare_hydroobjects, select_hydroobjects
+from ribasim_nl.lumping.gkw_hydamo import prepare_hydroobjects, read_authority, select_hydroobjects
 from ribasim_nl.lumping.hydamo import (
     apply_hydamo_changes,
     read_areas,
@@ -412,9 +412,9 @@ def test_select_hydroobjects():
     assert prepared["code"].tolist() == ["S"]
 
 
-def test_extract_authority(tmp_path: Path):
+def test_read_authority(tmp_path: Path):
     """The objects of a water authority are selected by their nen3610id, since codes are not unique nationally."""
-    package, target = tmp_path / "package.gpkg", tmp_path / "extract.gpkg"
+    package = tmp_path / "package.gpkg"
     ids = ["NL.WBHCODE.25.Hydroobject.1", "NL.WBHCODE.27.Hydroobject.1", "NL.WBHCODE.2.Hydroobject.1"]
     line = LineString([(0, 0), (10, 0)])
     gpd.GeoDataFrame({"code": ["H1", "H1", "H1"], "nen3610id": ids}, geometry=[line] * 3, crs=CRS).to_file(
@@ -423,12 +423,15 @@ def test_extract_authority(tmp_path: Path):
     gpd.GeoDataFrame({"code": ["S1"], "nen3610id": ["NL.WBHCODE.27.Stuw.1"]}, geometry=[Point(0, 0)], crs=CRS).to_file(
         package, layer="stuw"
     )
-    extract_authority(package, "BrabantseDelta", target, layers=["hydroobject", "stuw"])
-    # the layer without objects of the authority is left out
-    assert pyogrio.list_layers(target)[:, 0].tolist() == ["hydroobject"]
-    assert gpd.read_file(target)["nen3610id"].tolist() == ["NL.WBHCODE.25.Hydroobject.1"]
-    with pytest.raises(AssertionError, match="no layers \\['gemaal'\\]"):
-        extract_authority(package, "BrabantseDelta", target, layers=["gemaal"])
+    pyogrio.write_dataframe(
+        pd.DataFrame({"code": ["P1"], "nen3610id": ["NL.WBHCODE.25.Pomp.1"]}), package, layer="pomp"
+    )
+
+    hydroobject = read_authority("BrabantseDelta", "hydroobject", package)
+    assert hydroobject["nen3610id"].tolist() == ["NL.WBHCODE.25.Hydroobject.1"]
+    assert read_authority("BrabantseDelta", "stuw", package).empty
+    with pytest.raises(AssertionError, match="no geometries"):
+        read_authority("BrabantseDelta", "pomp", package)
 
 
 @pytest.fixture
