@@ -24,7 +24,7 @@ flowchart LR
 ## Merging
 
 `pipeline/08_samenvoegen_modellen.py` reads each model, makes its IDs unique with `prefix_index`, see [Node IDs](index.qmd#sec-node-ids), and appends all its tables with `concat`.
-The original IDs stay available in `meta_node_id_waterbeheerder` and `meta_link_id_waterbeheerder`, and `meta_waterbeheerder` holds the authority.
+`meta_waterbeheerder` holds the authority, which together with the key identifies a node, see [Node keys](../dev/node-keys.qmd).
 The merged model starts with the settings of the model of the main water system, and the solver settings are set here.
 
 ## Connecting the models

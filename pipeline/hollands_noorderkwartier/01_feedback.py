@@ -154,11 +154,6 @@ ribasim_model.merge_basins(node_id=n("peilgebied_04952-01"), to_node_id=n("peilg
 ribasim_model.merge_basins(node_id=n("peilgebied_5170-8"), to_node_id=n("peilgebied_5170-2"))  # convergence
 
 
-# (re)set 'meta_node_id'-values
-for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
-    mask = ribasim_model.node.df["node_type"] == node_type
-    ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
-
 # convert all boundary nodes to LevelBoundaries
 ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
 ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)

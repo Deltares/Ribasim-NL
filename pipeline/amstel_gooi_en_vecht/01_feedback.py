@@ -238,11 +238,6 @@ for basin_to_explode in multipolygon_basins:
         largest_polygon["geometry"]
     )
 
-# set all 'meta_node_id'-values
-for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
-    mask = ribasim_model.node.df["node_type"] == node_type
-    ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
-
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"

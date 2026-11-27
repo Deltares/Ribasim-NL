@@ -24,9 +24,15 @@ from ribasim_nl.webmap import model_results_dir, read_config, read_features
 # Geometries that differ less than this, in model CRS units (m), are equal
 GEOMETRY_TOLERANCE = 0.01
 TABLE_BATCH_ROWS = 1 << 20
-# Ids of the regional models, renumbered together with the nodes and links, so differences are no change. The key of a
-# node identifies it, see `ribasim_nl.keys`: a model that gets keys does not change in every node.
-IGNORED_COLUMNS = {"meta_link_id_waterbeheerder", "meta_node_id_waterbeheerder", "meta_node_id", KEY_COLUMN}
+# Copies of node and link IDs that the models had until November 2026, so that a model without them does not change in
+# every node. The key of a node identifies it, see `ribasim_nl.keys`: a model that gets keys does not change either.
+IGNORED_COLUMNS = {
+    "meta_link_id_waterbeheerder",
+    "meta_node_id_waterbeheerder",
+    "meta_node_id",
+    "meta_old_node_id",
+    KEY_COLUMN,
+}
 # Columns of input tables with the node_id of another node than that of the row
 NODE_ID_COLUMNS = ["listen_node_id"]
 # The result variable compared per result set, with the absolute and relative tolerance below which results are
@@ -299,7 +305,9 @@ def compare_tables(
             node_digests(path, columns, string_columns, translation if path is paths[0] else None) if path else empty
             for path in paths
         )
-        joined = base_digests.join(head_digests, how="outer", lsuffix="_base", rsuffix="_head")
+        joined = base_digests.merge(
+            head_digests, how="outer", left_index=True, right_index=True, suffixes=("_base", "_head")
+        )
         differs = ~(
             (joined["rows_base"] == joined["rows_head"]) & (joined["digest_base"] == joined["digest_head"])
         ).to_numpy()

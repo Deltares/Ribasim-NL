@@ -93,6 +93,28 @@ def _dissolve_geometry(geometry: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return geometry.dissolve()[["geometry"]].reset_index(drop=True)
 
 
+def storing_basins(model: Model) -> pd.Series:
+    """The Basin that each storing ('bergend') Basin stores for, indexed by the storing Basin.
+
+    A storing Basin flows through a ManningResistance to the Basin it stores for, see `ribasim_nl.profiles.implement`.
+
+    :param model: Ribasim model
+    :return: node ID of the Basin stored for, indexed by the node ID of the storing Basin
+    """
+    node_df = model.node.df
+    if "meta_categorie" not in node_df.columns:
+        return pd.Series(dtype="int64")
+    node_type = node_df["node_type"]
+    storing_ids = node_df.index[(node_type == "Basin") & (node_df["meta_categorie"] == "bergend")]
+    flow = model.link.df[model.link.df["link_type"] == "flow"]
+    to_manning = flow[flow["from_node_id"].isin(storing_ids)]
+    to_manning = to_manning[to_manning["to_node_id"].map(node_type).eq("ManningResistance").to_numpy()]
+    from_manning = flow[flow["from_node_id"].isin(to_manning["to_node_id"])].set_index("from_node_id")["to_node_id"]
+    assert from_manning.index.is_unique, "A ManningResistance of a storing Basin has more than one outflow"
+    assert to_manning["from_node_id"].is_unique, "A storing Basin has more than one ManningResistance"
+    return to_manning.set_index("from_node_id")["to_node_id"].map(from_manning)
+
+
 class SupplyBasin:
     """Labelling of Ribasim's basin nodes as 'aanvoergebieden' based on geometry data."""
 
@@ -137,13 +159,13 @@ class SupplyBasin:
 
         # mark basins as 'aanvoergebieden'
         nodes_in_polygons["meta_aanvoer"] = nodes_in_polygons["index_right"].notna()
-        nodes_in_polygons.reset_index(inplace=True)
+        nodes_in_polygons = nodes_in_polygons.reset_index()
 
         # update basin areas
         basin_areas = self.basin_areas
 
         basin_areas = basin_areas.merge(nodes_in_polygons[["node_id", "meta_aanvoer"]], how="left", on="node_id")
-        basin_areas.dropna(subset=["meta_aanvoer"], inplace=True)
+        basin_areas = basin_areas.dropna(subset=["meta_aanvoer"])
 
         # updated data: basin areas
         self.basin_areas = basin_areas.copy(deep=True)
@@ -200,7 +222,7 @@ class SupplyBasin:
             raise KeyError(msg)
 
     def __modify_aanvoer(self, bool_supply: bool, *node_id: int) -> pd.DataFrame:
-        """Modify basins' 'aanvoer'-labelling based on their node-ID.
+        """Modify basins' 'aanvoer'-labelling based on their node-ID, together with their storing basins.
 
         :param bool_supply: value of the 'aanvoer'-label
         :param node_id: basin node-ID
@@ -215,13 +237,15 @@ class SupplyBasin:
         basin_areas = self.basin_areas
         self.__df_check(basin_areas)
 
-        # modify basin nodes 'aanvoer'-label
+        # modify basin nodes 'aanvoer'-label, and that of the storing basins, which belong to the same area
+        storing = storing_basins(self.model)
         for n in node_id:
             if n not in basin_areas["node_id"].values:
                 msg = f"Node-ID {n} not found as basin node-ID."
                 raise ValueError(msg)
 
-            basin_areas.loc[basin_areas["meta_node_id"] == n, "meta_aanvoer"] = bool_supply
+            basin_ids = [n, *storing.index[storing == n]]
+            basin_areas.loc[basin_areas["node_id"].isin(basin_ids), "meta_aanvoer"] = bool_supply
             print(f'Basin {n} "meta_aanvoer" set to {bool_supply}')
 
         # updated data: basin nodes

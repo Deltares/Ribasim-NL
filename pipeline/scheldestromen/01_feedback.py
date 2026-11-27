@@ -63,7 +63,6 @@ level_boundary_node = ribasim_model.level_boundary.add(
 )
 
 pump_node = ribasim_model.pump.add(Node(geometry=Point(74504, 382443)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.node.df.loc[pump_node.node_id, "meta_node_id"] = pump_node.node_id
 ribasim_model.link.add(level_boundary_node, pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[n("GPG1382")])
 
@@ -107,11 +106,6 @@ inlaat_structures.extend(
 )
 inlaat_structures.append(n("ow:KDU2752"))
 
-# (re) set 'meta_node_id'
-for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
-    mask = ribasim_model.node.df["node_type"] == node_type
-    ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
-
 # convert all boundary nodes to LevelBoundaries
 ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
 ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)
@@ -128,7 +122,6 @@ for node in inlaat_structures:
 # added last, so the node IDs of the nodes added above do not change
 # its name and capacity are assigned from the 'gemaal' layer in the forcing stage
 pump_node = ribasim_model.pump.add(Node(geometry=Point(57403, 390161)), [pump.Static(flow_rate=[0.1])])
-ribasim_model.node.df.loc[pump_node.node_id, "meta_node_id"] = pump_node.node_id
 ribasim_model.link.add(ribasim_model.basin[n("GPG120")], pump_node)
 ribasim_model.link.add(pump_node, ribasim_model.basin[n("GPG1070")])
 

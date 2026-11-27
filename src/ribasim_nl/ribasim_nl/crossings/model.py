@@ -458,7 +458,6 @@ def _node_table(rows: pd.DataFrame, node_type: str) -> pd.DataFrame:
             "geometry": rows["geometry"],
         }
     )
-    node["meta_node_id"] = node["node_id"].astype(int)
     return node.set_index("node_id")
 
 
@@ -517,7 +516,6 @@ def network_tables(nodes: pd.DataFrame, links: pd.DataFrame) -> Tables:
         geometry="geometry",
         crs=CRS,
     )
-    area["meta_node_id"] = area["node_id"].astype(int)
     tables.tables["Basin / area"] = area
 
     # TabulatedRatingCurve, with two dummy points

@@ -230,11 +230,6 @@ ribasim_model.link.add(
     ribasim_model.basin[n("dummy_code_BZM 1_10")],
 )
 
-# (re)set 'meta_node_id'-values
-for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
-    mask = ribasim_model.node.df["node_type"] == node_type
-    ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
-
 # check basin area
 ribasim_param.validate_basin_area(ribasim_model)
 

@@ -523,11 +523,6 @@ for node_id in inlaat_pump:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == node_id, "meta_func_aanvoer"] = 1
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == node_id, "meta_func_afvoer"] = 0
 
-# (re)set 'meta_node_id'-values
-for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
-    mask = ribasim_model.node.df["node_type"] == node_type
-    ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
-
 # change unknown streefpeilen to a default streefpeil
 assert ribasim_model.basin.area.df is not None
 ribasim_model.basin.area.df.loc[

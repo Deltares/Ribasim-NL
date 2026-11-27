@@ -346,15 +346,6 @@ for aanvoer_pump in aanvoer_pumps:
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == aanvoer_pump, "meta_func_aanvoer"] = 1
     ribasim_model.pump.static.df.loc[ribasim_model.pump.static.df["node_id"] == aanvoer_pump, "meta_func_afvoer"] = 0
 
-# (re)set meta_node_id
-ribasim_model.node.df.loc[ribasim_model.level_boundary.node.df.index, "meta_node_id"] = (
-    ribasim_model.level_boundary.node.df.index
-)
-ribasim_model.node.df.loc[ribasim_model.tabulated_rating_curve.node.df.index, "meta_node_id"] = (
-    ribasim_model.tabulated_rating_curve.node.df.index
-)
-ribasim_model.node.df.loc[ribasim_model.pump.node.df.index, "meta_node_id"] = ribasim_model.pump.node.df.index
-
 # convert all boundary nodes to LevelBoundaries
 ribasim_param.Terminals_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)  # clean
 ribasim_param.FlowBoundaries_to_LevelBoundaries(ribasim_model=ribasim_model, default_level=default_level)

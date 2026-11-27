@@ -195,11 +195,6 @@ for name, outlet_point, ark_point, basin_id, to_vecht, flow_rate in ARK_VECHT_LO
         Node(geometry=outlet_point, name=name),
         [outlet.Static(flow_rate=[flow_rate], max_flow_rate=[flow_rate])],
     )
-    # `clean_tables` keeps the tables of the nodes by their meta_node_id
-    ribasim_model.node.df.loc[[boundary_node.node_id, outlet_node.node_id], "meta_node_id"] = [
-        boundary_node.node_id,
-        outlet_node.node_id,
-    ]
     ark_vecht_outlet_ids.append(outlet_node.node_id)
     ark_boundary_ids.append(boundary_node.node_id)
     basin_node = ribasim_model.basin[basin_id]
