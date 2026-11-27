@@ -65,6 +65,8 @@ export interface Network {
   fromNodeId: Int32Array;
   toNodeId: Int32Array;
   linkRow: Map<number, number>;
+  /** The path of each link row, as x and y pairs */
+  linkCoords: ArrayLike<number>[];
   linkGroups: Group[];
   /** Index within its group, for each node or link row, or -1 for the context */
   nodeLocal: Int32Array;
@@ -515,6 +517,7 @@ export async function loadNetwork(manifest: Manifest, comparison: Comparison | n
     fromNodeId: linkEnd(head.links.from_node_id, base?.links.from_node_id),
     toNodeId: linkEnd(head.links.to_node_id, base?.links.to_node_id),
     linkRow: indexById(linkId),
+    linkCoords: coords,
     linkGroups,
     linkLocal,
     nodeFileRow: nodes.fileRow,

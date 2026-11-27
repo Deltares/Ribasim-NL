@@ -80,9 +80,17 @@ import {
 import { TimeBar, type FlowStyle, type Kind } from "./timebar";
 
 const HIDDEN_BY_DEFAULT = new Set(["ContinuousControl", "DiscreteControl", "PidControl", "control", "listen"]);
-// Slate ink for the hovered and selected feature, which leaves the status colors to the differences
-const HIGHLIGHT: [number, number, number, number] = [30, 42, 50, 255];
-const HIGHLIGHT_CSS = "#1e2a32";
+// The hovered and selected feature keep their colors, which tell node types, flows and differences apart, and get
+// a red outline that stands out from the base map, the black edges of the Basin areas and the status colors
+const OUTLINE: Color = [235, 0, 40];
+const OUTLINE_CSS = "rgb(235, 0, 40)";
+// A white edge keeps the outline visible on red flows or levels and on a dark base map
+const OUTLINE_CASING: Color = [255, 255, 255];
+const OUTLINE_PX = 2.5;
+const OUTLINE_CASING_PX = 1.5;
+const HOVER_OPACITY = 0.5;
+// Slate ink for the edge of the Observation nodes colored by their fit
+const INK: [number, number, number, number] = [30, 42, 50, 255];
 // A quiet base map when comparing models, so the status colors stand out
 const COMPARISON_BASEMAP = "grey";
 const NO_DATA: [number, number, number, number] = [170, 170, 170, 255];
@@ -120,8 +128,9 @@ const OVERLAY_SOURCES = new Set(["basin_area", "basin_area_base", "waterboards"]
 const DIFF_RING_SCALE = 0.75;
 const DIFF_RING_MIN_ZOOM = 10;
 const DIFF_DOT_PX = 3;
-// The ring around the selected node, relative to the icon size
-const SELECTION_RING_SCALE = 0.9;
+// The ring around the hovered and selected node, relative to the icon size
+const OUTLINE_RING_SCALE = 0.9;
+const CONTEXT_LINK_WIDTH_PX = 1;
 // The radius of the Observation nodes colored by their fit, zoomed out and in; those without a value are half as large
 const FIT_RADIUS_PX: [number, number] = [4, 7];
 // Room around the features and places that are zoomed to
@@ -292,6 +301,7 @@ class Viewer {
   private basemap: string;
   private basinAreaColors: { scale: ColorScale; values: Float32Array } | null = null;
   private selection: Selection | null = null;
+  private hovered: Selection | null = null;
   private readonly overlay: MapboxOverlay;
   private readonly panel: Panel;
   private frames: ResultFrames | null = null;
@@ -367,7 +377,11 @@ class Viewer {
     this.updateFilterValues();
 
     // Interleaved mode reads `map.transform`, which maplibre-gl 6 no longer exposes
-    this.overlay = new MapboxOverlay({ interleaved: false, getTooltip: (info) => this.tooltip(info) });
+    this.overlay = new MapboxOverlay({
+      interleaved: false,
+      getTooltip: (info) => this.tooltip(info),
+      onHover: (info) => this.hover(info),
+    });
     map.addControl(this.overlay);
     this.panel = new Panel(root, manifest, network, comparison, {
       select: (selection) => this.select(selection),
@@ -785,20 +799,19 @@ class Viewer {
       "source-layer": "basin_area",
       paint: {
         "fill-color": [
-          "case",
-          ["boolean", ["feature-state", "selected"], false],
-          HIGHLIGHT_CSS,
-          ["to-color", ["coalesce", ["feature-state", "color"], ["feature-state", "diff"], "#f7f7f7"]],
+          "to-color",
+          ["coalesce", ["feature-state", "color"], ["feature-state", "diff"], ["case", ["boolean", ["feature-state", "selected"], false], OUTLINE_CSS, "#f7f7f7"]],
         ],
-        // Unfilled as in QGIS; transparent fills are still found by queryRenderedFeatures for clicks
+        // Unfilled as in QGIS; transparent fills are still found by queryRenderedFeatures for clicks. The selected
+        // area keeps its color, or is lightly filled to keep the map below visible
         "fill-opacity": [
           "case",
-          ["boolean", ["feature-state", "selected"], false],
-          0.3,
           ["!=", ["feature-state", "color"], null],
           0.75,
           ["!=", ["feature-state", "diff"], null],
           0.35,
+          ["boolean", ["feature-state", "selected"], false],
+          0.15,
           0,
         ],
       },
@@ -811,20 +824,23 @@ class Viewer {
       minzoom: BASIN_OUTLINE_MIN_ZOOM,
       paint: {
         "line-color": "#000",
-        // The selected area has a thick outline, its fill is light to keep the map below visible
-        "line-width": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          BASIN_OUTLINE_MIN_ZOOM,
-          ["case", ["boolean", ["feature-state", "selected"], false], 2, 0.3],
-          12,
-          ["case", ["boolean", ["feature-state", "selected"], false], 3, 1.36],
-        ],
+        "line-width": ["interpolate", ["linear"], ["zoom"], BASIN_OUTLINE_MIN_ZOOM, 0.3, 12, 1.36],
         "line-opacity": ["interpolate", ["linear"], ["zoom"], BASIN_OUTLINE_MIN_ZOOM, 0.4, 11, 1],
       },
     });
     this.addBaseAreas();
+    // A layer of its own, on top of the edges of the areas it borders or overlaps
+    map.addLayer({
+      id: "basin_area_selected",
+      type: "line",
+      source: "basin_area",
+      "source-layer": "basin_area",
+      filter: this.selectedAreaFilter(),
+      paint: {
+        "line-color": OUTLINE_CSS,
+        "line-width": ["interpolate", ["linear"], ["zoom"], BASIN_OUTLINE_MIN_ZOOM, 2, 12, 3],
+      },
+    });
     this.colorDiffAreas();
     this.filterBasinAreas();
     if (manifest.files.waterboards) {
@@ -864,17 +880,11 @@ class Viewer {
   }
 
   private nodeLayer(group: Group) {
-    const selected =
-      this.selection?.kind === "node" ? this.network.nodeRow.get(this.selection.id) : undefined;
-    const isSelected = selected !== undefined && this.network.nodeType[selected] === group.type;
     const common = {
       data: group.data,
       visible: this.visible.get(group.type),
       ...this.filterProps(this.filterValues.get(group)),
       pickable: true,
-      autoHighlight: true,
-      highlightColor: HIGHLIGHT,
-      highlightedObjectIndex: isSelected ? this.network.nodeLocal[selected] : -1,
     };
     const color = NODE_STYLES[group.type] ?? DEFAULT_NODE_COLOR;
     if (this.map.getZoom() < NODE_ICON_MIN_ZOOM) {
@@ -923,16 +933,21 @@ class Viewer {
     });
   }
 
+  /** The width in pixels of the links of a group, per link when the width shows the flow. */
+  private linkWidth(group: Group): number | Float32Array {
+    const coloring = group.type === "flow" ? this.flowColoring : null;
+    const flowStyle: FlowStyle | null = coloring ? (this.timeBar?.state.flowStyle ?? "color") : null;
+    if (coloring && flowStyle === "width") return coloring.widths;
+    // Colored links are wider, so the color is visible
+    return flowStyle === "color" || this.diffColors.get(group) ? 2 * LINK_WIDTH_PX : LINK_WIDTH_PX;
+  }
+
   private linkLayer(group: Group) {
-    const selected =
-      this.selection?.kind === "link" ? this.network.linkRow.get(this.selection.id) : undefined;
-    const isSelected = selected !== undefined && this.network.linkType[selected] === group.type;
     const coloring = group.type === "flow" ? this.flowColoring : null;
     const flowStyle: FlowStyle | null = coloring ? (this.timeBar?.state.flowStyle ?? "color") : null;
     const style = LINK_STYLES[group.type] ?? DEFAULT_LINK_STYLE;
     const diffColors = this.diffColors.get(group);
-    // Colored links are wider, so the color is visible
-    const byWidth = coloring !== null && flowStyle === "width";
+    const width = this.linkWidth(group);
     const filter = this.filterProps(this.filterValues.get(group));
     return new PathLayer({
       id: `link-${group.type}`,
@@ -948,12 +963,8 @@ class Viewer {
             ? (_: unknown, { index }: { index: number }) => diffColors.subarray(index * 4, index * 4 + 4) as unknown as Color
             : style.color,
       widthUnits: "pixels",
-      getWidth: byWidth
-        ? (_: unknown, { index }: { index: number }) => coloring.widths[index]
-        : flowStyle === "color" || diffColors
-          ? 2 * LINK_WIDTH_PX
-          : LINK_WIDTH_PX,
-      widthMinPixels: byWidth ? 0 : 1,
+      getWidth: typeof width === "number" ? width : (_: unknown, { index }: { index: number }) => width[index],
+      widthMinPixels: typeof width === "number" ? 1 : 0,
       ...filter,
       updateTriggers: {
         ...filter.updateTriggers,
@@ -963,9 +974,6 @@ class Viewer {
       extensions: [...filter.extensions, ...(style.dashed ? DASHED : [])],
       ...(style.dashed ? { getDashArray: DASH_ARRAY, dashJustified: true } : {}),
       pickable: true,
-      autoHighlight: true,
-      highlightColor: HIGHLIGHT,
-      highlightedObjectIndex: isSelected ? this.network.linkLocal[selected] : -1,
     });
   }
 
@@ -1049,13 +1057,6 @@ class Viewer {
   private contextLayers() {
     const context = this.network.context;
     if (!context) return [];
-    const { selection } = this;
-    const selected = (kind: "node" | "link") => {
-      if (selection?.kind !== kind) return -1;
-      const row = (kind === "node" ? this.network.nodeRow : this.network.linkRow).get(selection.id);
-      const local = kind === "node" ? context.nodeLocal : context.linkLocal;
-      return row === undefined ? -1 : (local.get(row) ?? -1);
-    };
     const visible = this.visible.get("unchanged");
     return [
       new PathLayer({
@@ -1067,11 +1068,8 @@ class Viewer {
         visible,
         getColor: CONTEXT_COLOR,
         widthUnits: "pixels",
-        getWidth: 1,
+        getWidth: CONTEXT_LINK_WIDTH_PX,
         pickable: true,
-        autoHighlight: true,
-        highlightColor: HIGHLIGHT,
-        highlightedObjectIndex: selected("link"),
       }),
       new ScatterplotLayer({
         id: "context-node",
@@ -1084,9 +1082,6 @@ class Viewer {
         radiusMinPixels: 1.5,
         radiusMaxPixels: NODE_ICON_SIZE_PX / 4,
         pickable: true,
-        autoHighlight: true,
-        highlightColor: HIGHLIGHT,
-        highlightedObjectIndex: selected("node"),
       }),
     ];
   }
@@ -1117,26 +1112,85 @@ class Viewer {
     ];
   }
 
-  /** A ring in the highlight color around the selected node, so it stands out from the status rings. */
-  private selectionLayer() {
-    const row = this.selection?.kind === "node" ? this.network.nodeRow.get(this.selection.id) : undefined;
-    if (row === undefined) return [];
-    return [
-      new ScatterplotLayer<number>({
-        id: "selection",
-        data: [row],
-        getPosition: (nodeRow) => [this.network.nodeX[nodeRow], this.network.nodeY[nodeRow]],
-        stroked: true,
-        filled: false,
-        lineWidthUnits: "pixels",
-        getLineWidth: 2.5,
-        getLineColor: HIGHLIGHT,
-        radiusUnits: "meters",
-        getRadius: NODE_ICON_SIZE_M * SELECTION_RING_SCALE,
-        radiusMinPixels: 9,
-        radiusMaxPixels: NODE_ICON_SIZE_PX * SELECTION_RING_SCALE + 3,
-      }),
-    ];
+  /** The features with an outline: the selected one, and the hovered one, fainter. */
+  private outlined(): { feature: Selection; name: string; opacity: number }[] {
+    const { selection, hovered } = this;
+    const outlined = selection ? [{ feature: selection, name: "selected", opacity: 1 }] : [];
+    if (hovered && (hovered.kind !== selection?.kind || hovered.id !== selection.id)) {
+      outlined.push({ feature: hovered, name: "hovered", opacity: HOVER_OPACITY });
+    }
+    return outlined;
+  }
+
+  /** A red ring with a white edge around the outlined nodes, on top of the other nodes and the status rings. */
+  private nodeOutlineLayers() {
+    const { network } = this;
+    return this.outlined().flatMap(({ feature, name, opacity }) => {
+      const row = feature.kind === "node" ? network.nodeRow.get(feature.id) : undefined;
+      if (row === undefined) return [];
+      const lines: [string, Color, number][] = [
+        ["casing", OUTLINE_CASING, OUTLINE_PX + 2 * OUTLINE_CASING_PX],
+        ["line", OUTLINE, OUTLINE_PX],
+      ];
+      return lines.map(
+        ([part, color, width]) =>
+          new ScatterplotLayer<number>({
+            id: `${name}-node-${part}`,
+            data: [row],
+            getPosition: (nodeRow) => [network.nodeX[nodeRow], network.nodeY[nodeRow]],
+            opacity,
+            stroked: true,
+            filled: false,
+            lineWidthUnits: "pixels",
+            getLineWidth: width,
+            getLineColor: color,
+            radiusUnits: "meters",
+            getRadius: NODE_ICON_SIZE_M * OUTLINE_RING_SCALE,
+            radiusMinPixels: 9,
+            radiusMaxPixels: NODE_ICON_SIZE_PX * OUTLINE_RING_SCALE + 3,
+          }),
+      );
+    });
+  }
+
+  /** A red band with a white edge along the outlined links, below the links, so they keep their colors. */
+  private linkOutlineLayers() {
+    const { network } = this;
+    return this.outlined().flatMap(({ feature, name, opacity }) => {
+      const row = feature.kind === "link" ? network.linkRow.get(feature.id) : undefined;
+      if (row === undefined) return [];
+      const local = network.linkLocal[row];
+      const group = local < 0 ? undefined : network.linkGroups.find((g) => g.type === network.linkType[row]);
+      const widths = group ? this.linkWidth(group) : CONTEXT_LINK_WIDTH_PX;
+      const width = Math.max(1, typeof widths === "number" ? widths : widths[local]);
+      const lines: [string, Color, number][] = [
+        ["casing", OUTLINE_CASING, width + 2 * (OUTLINE_PX + OUTLINE_CASING_PX)],
+        ["line", OUTLINE, width + 2 * OUTLINE_PX],
+      ];
+      return lines.map(
+        ([part, color, lineWidth]) =>
+          new PathLayer<number>({
+            id: `${name}-link-${part}`,
+            data: [row],
+            getPath: (linkRow) => network.linkCoords[linkRow] as number[],
+            _pathType: "open",
+            positionFormat: "XY",
+            opacity,
+            getColor: color,
+            widthUnits: "pixels",
+            getWidth: lineWidth,
+            capRounded: true,
+            jointRounded: true,
+          }),
+      );
+    });
+  }
+
+  private hover(info: PickingInfo): void {
+    const hovered = this.picked(info);
+    if (hovered?.kind === this.hovered?.kind && hovered?.id === this.hovered?.id) return;
+    this.hovered = hovered;
+    this.render();
   }
 
   /** The Observation nodes colored by how well their results fit the measurements, on top of the other nodes. */
@@ -1144,8 +1198,6 @@ class Viewer {
     const colored = this.observationColoring;
     const group = this.group("Observation");
     if (!colored || !group) return [];
-    const selected = this.selection?.kind === "node" ? this.network.nodeRow.get(this.selection.id) : undefined;
-    const isSelected = selected !== undefined && this.network.nodeType[selected] === group.type;
     const radius = FIT_RADIUS_PX[this.map.getZoom() >= NODE_ICON_MIN_ZOOM ? 1 : 0];
     const filter = this.filterProps(this.filterValues.get(group));
     return [
@@ -1156,7 +1208,7 @@ class Viewer {
         getFillColor: (_: unknown, { index }: { index: number }) =>
           colored.colors.subarray(index * 4, index * 4 + 4) as unknown as Color,
         stroked: true,
-        getLineColor: HIGHLIGHT,
+        getLineColor: INK,
         lineWidthUnits: "pixels",
         getLineWidth: 1,
         radiusUnits: "pixels",
@@ -1165,9 +1217,6 @@ class Viewer {
         ...filter,
         updateTriggers: { ...filter.updateTriggers, getFillColor: colored.version, getRadius: [colored.version, radius] },
         pickable: true,
-        autoHighlight: true,
-        highlightColor: HIGHLIGHT,
-        highlightedObjectIndex: isSelected ? this.network.nodeLocal[selected] : -1,
       }),
     ];
   }
@@ -1186,17 +1235,18 @@ class Viewer {
     this.overlay.setProps({
       layers: [
         ...this.contextLayers(),
+        ...this.linkOutlineLayers(),
         ...network.linkGroups.map((g) => this.linkLayer(g)),
         ...network.linkGroups.map((g) => this.arrowLayer(g)),
         ...(rings ? this.ringLayer() : []),
         ...nodeGroups.map((g) => this.nodeLayer(g)),
         ...(rings ? [] : this.ringLayer()),
         ...this.observationLayer(),
-        ...this.selectionLayer(),
+        ...this.nodeOutlineLayers(),
         this.labelLayer(),
       ],
     });
-    for (const id of ["basin_area", "basin_area_outline", "basin_area_base"]) {
+    for (const id of ["basin_area", "basin_area_outline", "basin_area_base", "basin_area_selected"]) {
       if (this.map.getLayer(id)) {
         this.map.setLayoutProperty(id, "visibility", this.visible.get("basin_area") ? "visible" : "none");
       }
@@ -1277,6 +1327,11 @@ class Viewer {
     this.select(null);
   }
 
+  /** The Basin / area of the selected node, if any. */
+  private selectedAreaFilter(): maplibregl.ExpressionSpecification {
+    return areaFilter(this.selection?.kind === "node" ? [this.selection.id] : []);
+  }
+
   selected(): Selection | null {
     return this.selection;
   }
@@ -1290,6 +1345,7 @@ class Viewer {
     if (selection?.kind === "node") {
       this.map.setFeatureState({ source: "basin_area", sourceLayer: "basin_area", id: selection.id }, { selected: true });
     }
+    if (this.map.getLayer("basin_area_selected")) this.map.setFilter("basin_area_selected", this.selectedAreaFilter());
     writeSelectionToHash(selection, this.network);
     this.render();
     if (selection) this.panel.show(selection);
