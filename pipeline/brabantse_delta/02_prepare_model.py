@@ -65,7 +65,7 @@ damo_profiles = DAMOProfiles(
 # fix link geometries and profiles
 profiles_df = damo_profiles.process_profiles()
 profiles_df.to_file(profiles_gpkg)
-profiles_df.set_index("profiel_id", inplace=True)
+profiles_df = profiles_df.set_index("profiel_id")
 add_link_profile_ids(model, profiles=damo_profiles, id_col="code")
 fix_link_geometries(model, network)
 model.link.df.reset_index().to_file(link_geometries_gpkg)
@@ -77,7 +77,7 @@ if "meta_code_waterbeheerder" not in model.basin.area.columns():
     model.basin.area.df["meta_code_waterbeheerder"] = pd.Series(dtype=str)
 
 if "meta_streefpeil" in model.basin.area.columns():
-    model.basin.area.df.drop(columns="meta_streefpeil", inplace=True)
+    model.basin.area.df = model.basin.area.df.drop(columns="meta_streefpeil")
 model.basin.area.df["meta_streefpeil"] = pd.Series(dtype=float)
 
 # %%
@@ -111,9 +111,9 @@ peilgebieden_df[peilgebieden_df["streefpeil"].notna()].to_file(peilgebieden_path
 
 # %%# OUTLET en Pump frome excel sturingsbestand
 # --- Load Peilregister data ---
-peilregister_df = pd.read_excel(sturing_xlsx, sheet_name="Samengevoegd2")
-peilregister_df.drop_duplicates("code_verbeterd", inplace=True)
-peilregister_df.set_index("code_verbeterd", inplace=True)
+peilregister_df = pd.read_excel(sturing_xlsx, sheet_name="Samengevoegd2", engine="calamine")
+peilregister_df = peilregister_df.drop_duplicates("code_verbeterd")
+peilregister_df = peilregister_df.set_index("code_verbeterd")
 peilregister_df.index.name = "code"
 
 # Extract min_upstream_level, excluding invalid placeholder
@@ -212,7 +212,7 @@ static_data.keep_streefpeil(parameters_dir / "static_data.xlsx")
 
 
 # # update model basin-data
-model.basin.area.df.set_index("node_id", inplace=True)
+area_df = model.basin.area.df.set_index("node_id")
 assert static_data.basin is not None
 streefpeil = static_data.basin.set_index("node_id")["streefpeil"]
 
@@ -223,13 +223,14 @@ streefpeil[n("up:KST01483")] = 1.2  # Basin Turfvaart meetpunt
 streefpeil[n("up:GEM_KGM00384")] = 0.15
 streefpeil[n("up:KST02382")] = -0.5
 
-model.basin.area.df.loc[streefpeil.index, "meta_streefpeil"] = streefpeil
+area_df.loc[streefpeil.index, "meta_streefpeil"] = streefpeil
 profiellijnid = static_data.basin.set_index("node_id")["profielid"]
-model.basin.area.df.loc[streefpeil.index, "meta_profiellijnid"] = profiellijnid
+area_df.loc[streefpeil.index, "meta_profiellijnid"] = profiellijnid
 
-model.basin.area.df.reset_index(drop=False, inplace=True)
-model.basin.area.df.index += 1
-model.basin.area.df.index.name = "fid"
+area_df = area_df.reset_index(drop=False)
+area_df.index += 1
+area_df.index.name = "fid"
+model.basin.area.df = area_df
 
 # # koppelen
 ws_grenzen_path = cloud.joinpath("Basisgegevens/RWS_waterschaps_grenzen/waterschap.gpkg")

@@ -123,7 +123,7 @@ with rasterio.open(
                 print("drop duplicates")
                 gdf["x"] = gdf.geometry.x.astype(int)
                 gdf["y"] = gdf.geometry.y.astype(int)
-                gdf.drop_duplicates(["x", "y"], inplace=True)
+                gdf = gdf.drop_duplicates(["x", "y"])
 
                 print("make cube")
                 cube = make_geocube(

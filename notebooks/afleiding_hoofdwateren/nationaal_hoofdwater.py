@@ -57,7 +57,7 @@ if RE_DISSOLVE:
     for k, v in MAP_SLUIZEN.items():
         watervlak_gdf.loc[watervlak_gdf.sluisnaam == k, ["naam"]] = v
 
-    exclude_names_df = pd.read_excel(recategorize_xlsx, sheet_name="TOP10NL_EXCLUDE_NAMES")
+    exclude_names_df = pd.read_excel(recategorize_xlsx, sheet_name="TOP10NL_EXCLUDE_NAMES", engine="calamine")
 
     watervlak_gdf = watervlak_gdf.loc[~watervlak_gdf.naam.isin(exclude_names_df["naam"])]
 
@@ -156,7 +156,7 @@ watervlak_diss_gdf.loc[watervlak_diss_gdf.naam.isna(), ["categorie"]] = None
 watervlak_diss_gdf.loc[watervlak_diss_gdf.index.isin(reset_fids), ["categorie"]] = None
 watervlak_diss_gdf.loc[watervlak_diss_gdf.naam.isin(reset_names), ["categorie"]] = None
 
-to_nationaal_hw_df = pd.read_excel(recategorize_xlsx, sheet_name="TOP10NL_TO_NATIONAL_HW")
+to_nationaal_hw_df = pd.read_excel(recategorize_xlsx, sheet_name="TOP10NL_TO_NATIONAL_HW", engine="calamine")
 
 watervlak_diss_gdf.loc[watervlak_diss_gdf.naam.isin(to_nationaal_hw_df["naam"]), ["categorie"]] = "nationaal hoofdwater"
 

@@ -127,7 +127,7 @@ hydamo_path = cloud.joinpath("Rijkswaterstaat/verwerkt/hydamo.gpkg")
 
 # media Excel
 kwk_media = pd.read_csv(kwk_media_path)
-kwk_media.set_index("code", inplace=True)
+kwk_media = kwk_media.set_index("code")
 
 # geoDataFrames
 nis_hws_gdf = gpd.read_file(nis_hws)
@@ -186,7 +186,7 @@ nis_points_gdf = pd.concat(
         nis_hwvn_gdf[nis_hwvn_gdf["complex_code"].isin(ADD_NIS)],
     ]
 )
-nis_points_gdf.rename(columns={"kw_naam": "naam", "kw_code": "code", "kw_soort": "soort"}, inplace=True)
+nis_points_gdf = nis_points_gdf.rename(columns={"kw_naam": "naam", "kw_code": "code", "kw_soort": "soort"})
 nis_points_gdf.loc[:, ["beheerder", "sector", "bron"]] = (
     "Rijkswaterstaat",
     "water",
@@ -215,7 +215,7 @@ baseline_kwk_add_gdf = baseline_kwk_add_gdf[[i for i in COLUMNS if i in baseline
 
 # kunstwerken uit OSM
 osm_kunstwerken_gdf.loc[:, ["geometry"]] = osm_kunstwerken_gdf.centroid
-osm_kunstwerken_gdf.rename(columns={"name": "naam", "osm_id": "code"}, inplace=True)
+osm_kunstwerken_gdf = osm_kunstwerken_gdf.rename(columns={"name": "naam", "osm_id": "code"})
 
 osm_kunstwerken_gdf.loc[:, ["complex_naam"]] = osm_kunstwerken_gdf["naam"]
 
@@ -234,9 +234,8 @@ osm_kunstwerken_gdf = osm_kunstwerken_gdf[[i for i in COLUMNS if i in osm_kunstw
 primaire_kwk_add_gdf = primaire_kunstwerken_gdf[primaire_kunstwerken_gdf["kd_code1"].isin(ADD_PRIMAIRE_KERINGEN)]
 
 # alles hernoemen naar juiste kolomnamen
-primaire_kwk_add_gdf.rename(
+primaire_kwk_add_gdf = primaire_kwk_add_gdf.rename(
     columns={"kd_code1": "code", "kd_naam": "naam", "naam_compl": "complex_naam"},
-    inplace=True,
 )
 
 primaire_kwk_add_gdf.loc[:, ["beheerder", "sector", "bron"]] = (

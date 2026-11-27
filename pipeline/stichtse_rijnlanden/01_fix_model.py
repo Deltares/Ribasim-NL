@@ -562,7 +562,7 @@ df = pd.concat(
     ],
     ignore_index=True,
 )
-df.set_index("code", inplace=True)
+df = df.set_index("code")
 names = df["naam"].str.title()
 
 # set meta_gestuwd in basins

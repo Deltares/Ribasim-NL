@@ -98,7 +98,7 @@ class NetworkValidator:
 
         if invalid_nodes:
             df = gpd.GeoDataFrame(invalid_nodes, crs=node_df.crs)
-            df.drop_duplicates(inplace=True)
+            df = df.drop_duplicates()
         else:
             df = gpd.GeoDataFrame({"node_id": []}, geometry=gpd.GeoSeries(), crs=node_df.crs)
 

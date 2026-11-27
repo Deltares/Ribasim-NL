@@ -40,8 +40,9 @@ def read_lobith(debieten_xlsx: Path, starttime, endtime) -> pd.Series:
         sheet_name="10min",
         parse_dates=[time_colname],
         date_format="%Y/%m/%d %H:%M",
+        engine="calamine",
     )
-    df.set_index(time_colname, inplace=True)
+    df = df.set_index(time_colname)
     df.index.name = "time"
     df = df.loc[starttime:endtime]
 
@@ -61,8 +62,9 @@ def read_monsin(debieten_xlsx: Path, starttime, endtime) -> pd.Series:
         sheet_name="hourly",
         parse_dates=[time_colname],
         date_format="%Y/%m/%d %H:%M",
+        engine="calamine",
     )
-    df.set_index(time_colname, inplace=True)
+    df = df.set_index(time_colname)
     df.index.name = "time"
     df = df.loc[starttime:endtime]
 

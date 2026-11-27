@@ -51,8 +51,8 @@ def cumulative_area(df: pd.DataFrame) -> pd.Series:
     pd.Series
         Series with cumulative area
     """
-    df.reset_index(drop=True, inplace=True)
-    df.sort_values("level", inplace=True)
+    df = df.reset_index(drop=True)
+    df = df.sort_values("level")
 
     dx = df["level"] - df["level"].shift(fill_value=0)
     dy = df["width"] - df["width"].shift(fill_value=0)

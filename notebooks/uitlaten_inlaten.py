@@ -47,7 +47,7 @@ def upload_file(url, path):
 # - Nu masken we (nog) op kunstwerken die we uit files kunnen trekken
 
 
-kunstwerken_df = pd.read_excel(kunstwerken_xlsx)
+kunstwerken_df = pd.read_excel(kunstwerken_xlsx, engine="calamine")
 kunstwerken_df["user_id"] = None
 files_mask = ~kunstwerken_df["damo_bestand"].isna()
 data = {}

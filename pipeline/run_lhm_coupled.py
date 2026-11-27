@@ -55,9 +55,20 @@ assert endtime <= config["endtime"], f"The run ends at {endtime}, after the mode
 config["endtime"] = endtime
 config["results_dir"] = results_dir
 
-# During a reproduction `dvc.lock` is updated before it is committed, so it does not count as a change
+# During a reproduction `dvc.lock` and the metrics are updated before they are committed, so they do not count as a change
 commit = git("rev-parse", "HEAD").strip()
-dirty = git("status", "--porcelain", "--untracked-files=no", "--", ":/", ":!/dvc.lock") != ""
+dirty = (
+    git(
+        "status",
+        "--porcelain",
+        "--untracked-files=no",
+        "--",
+        ":/",
+        ":!/dvc.lock",
+        ":!/data/Rijkswaterstaat/metrics/lhm_coupled.json",
+    )
+    != ""
+)
 
 # DVC removes the outputs of a stage before running it; this also removes them when the script is run directly
 shutil.rmtree(run_dir, ignore_errors=True)

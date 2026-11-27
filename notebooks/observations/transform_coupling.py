@@ -121,7 +121,7 @@ def LaadKoppeltabel(loc_koppeltabel, eerste_tabel=False):
     parsed columns 'link_id_parsed' and 'geometry_parsed'.
 
     """
-    koppeltabel = pd.read_excel(loc_koppeltabel)
+    koppeltabel = pd.read_excel(loc_koppeltabel, engine="calamine")
 
     def parse_list_column(series):
         def safe_eval(x):

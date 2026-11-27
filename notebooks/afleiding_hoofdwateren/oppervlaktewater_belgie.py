@@ -33,7 +33,7 @@ for row in basins_osm_gdf.itertuples():
     df = water_lines[water_lines.intersects(row.geometry)].clip(row.geometry)
     df = df[df.name.notna()]
     df["length"] = df.geometry.length
-    df.sort_values("length", ascending=False, inplace=True)
+    df = df.sort_values("length", ascending=False)
     if not df.empty:
         basins_osm_gdf.loc[row.Index, ["naam"]] = df["name"].to_list()[0]
 

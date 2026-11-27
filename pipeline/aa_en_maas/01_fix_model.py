@@ -345,15 +345,15 @@ for row in basin_node_edits_gdf[basin_node_edits_gdf["to_area_code"].notna()].it
 
 # %% merge_basins
 selection = basin_node_edits_gdf[basin_node_edits_gdf["to_node_key"].notna()]
-for row in selection.fillna({"connected": True}).itertuples():
+for row in selection.fillna({"connected": 1}).itertuples():
     model.merge_basins(
-        node_id=n(cast(str, row.node_key)), to_node_id=n(cast(str, row.to_node_key)), are_connected=row.connected
+        node_id=n(cast(str, row.node_key)), to_node_id=n(cast(str, row.to_node_key)), are_connected=bool(row.connected)
     )
 
 mask = internal_basin_edits_gdf["to_node_key"].notna() & internal_basin_edits_gdf["add_object"].isna()
-for row in internal_basin_edits_gdf[mask].fillna({"connected": True}).itertuples():
+for row in internal_basin_edits_gdf[mask].fillna({"connected": 1}).itertuples():
     model.merge_basins(
-        node_id=n(cast(str, row.node_key)), to_node_id=n(cast(str, row.to_node_key)), are_connected=row.connected
+        node_id=n(cast(str, row.node_key)), to_node_id=n(cast(str, row.to_node_key)), are_connected=bool(row.connected)
     )
 
 # %% add and connect nodes
@@ -578,7 +578,7 @@ model.node.df.loc[
 
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
-df.set_index("code", inplace=True)
+df = df.set_index("code")
 names = df["naam"]
 
 

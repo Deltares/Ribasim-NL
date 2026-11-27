@@ -99,7 +99,7 @@ for row in network_validator.node_internal_basin().itertuples():
         ):
             model.remove_node(row.Index)
             model.remove_node(link_select_df.iloc[0]["from_node_id"])
-            model.link.df.drop(index=link_select_df.index[0], inplace=True)
+            model.link.df = model.link.df.drop(index=link_select_df.index[0])
 
 df = model.node.df[model.node.df.node_type == "Basin"]
 
@@ -251,7 +251,7 @@ model.node.df.loc[model.node.df["meta_categorie"].isna(), "meta_categorie"] = "h
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = get_data_from_gkw(layers=["sluis", "gemaal", "stuw", "duiker"], authority=authority)
 df = df[df.code.notna()]
-df.set_index("code", inplace=True)
+df = df.set_index("code")
 names = df["naam"]
 
 

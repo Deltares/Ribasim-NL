@@ -30,9 +30,6 @@ ignore = [
     "D400",
     "D401",
     "E501",  # TODO https://docs.astral.sh/ruff/rules/line-too-long/
-    "F403",  # TODO https://docs.astral.sh/ruff/rules/undefined-local-with-import-star/
-    "F405",  # TODO https://docs.astral.sh/ruff/rules/undefined-local-with-import-star-usage/
-    "PD002",
     "PD003",
     "PD008",
     "PD009",

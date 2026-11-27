@@ -221,11 +221,11 @@ streefpeil = combined.set_index("node_id").loc[valid_ids.to_list(), ["min_upstre
 streefpeil["basin_node_id"] = valid_ids.loc[valid_ids.isin(streefpeil.index)].index
 streefpeil["node_id"] = streefpeil.index  # outlet/pump node_id
 streefpeil = streefpeil.set_index("basin_node_id")
-streefpeil.dropna(inplace=True)
+streefpeil = streefpeil.dropna()
 
 
 # Sorteer per groep zodat de kleinste 'min_upstream_level' bovenaan staat
-streefpeil = streefpeil.sort_index().sort_values(by="min_upstream_level", inplace=False)
+streefpeil = streefpeil.sort_index().sort_values(by="min_upstream_level")
 non_kdu_values = streefpeil[streefpeil["code"].str.startswith("ST") | (streefpeil["source"] == "pump")]
 non_kdu_first = non_kdu_values.groupby(level=0).first()
 all_first = streefpeil.groupby(level=0).first()

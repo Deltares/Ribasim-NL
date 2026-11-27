@@ -291,7 +291,7 @@ def LaadKoppeltabel(loc_koppeltabel, apply_for_water_authority: str | list[str] 
     parsed columns 'link_id_parsed' and 'geometry_parsed'.
 
     """
-    koppeltabel = pd.read_excel(loc_koppeltabel)
+    koppeltabel = pd.read_excel(loc_koppeltabel, engine="calamine")
 
     # filter for water authority if specified
     if apply_for_water_authority is not None:
@@ -330,7 +330,7 @@ def LaadSpecifiekeBewerking(loc_specifics) -> pd.DataFrame:
     The function `LaadSpecifiekeBewerking` is returning the data read from an Excel file
     located at the path specified by the `loc_specifics` parameter as a pd.DataFrame
     """
-    specifics = pd.read_excel(loc_specifics, header=0)
+    specifics = pd.read_excel(loc_specifics, header=0, engine="calamine")
 
     return specifics
 
@@ -852,7 +852,7 @@ def BerekenModelEindbeoordeling(
         beoor_kleuren = _BEOOR_KLEUREN
 
     # Open de validatie-Excel zonder alle sheets tegelijk in geheugen te laden
-    xl = pd.ExcelFile(validatie_xlsx)
+    xl = pd.ExcelFile(validatie_xlsx, engine="calamine")
     detail_rijen: list[dict] = []
     samenvatting_rijen: list[dict] = []
 
@@ -1975,9 +1975,9 @@ def LoadMeasurements(meas_folder) -> dict[str, pd.DataFrame]:
     for key, file in meas_files.items():
         df = pd.read_csv(Path(meas_folder) / file)
         if "Unnamed: 0" in df.columns:
-            df.rename(columns={"Unnamed: 0": "time"}, inplace=True)
+            df = df.rename(columns={"Unnamed: 0": "time"})
         elif "Datum" in df.columns:
-            df.rename(columns={"Datum": "time"}, inplace=True)
+            df = df.rename(columns={"Datum": "time"})
         else:
             print(f"Cannot identify date/time column in {file}. Expected 'Unnamed: 0' or 'Datum'.")
             continue
@@ -2479,7 +2479,7 @@ def _lhm41_laad_decade_tijdreeks(ts_root: str | Path, waterschap: str, fig_name_
     if not path.exists():
         print(f"  Tijdreeks niet gevonden: {path}")
         return None
-    df = pd.read_excel(path, sheet_name="Decade")
+    df = pd.read_excel(path, sheet_name="Decade", engine="calamine")
     df = df.iloc[:, :3].copy()
     df.columns = ["Datum", "meting", "Ribasim"]
     df["Datum"] = pd.to_datetime(df["Datum"])

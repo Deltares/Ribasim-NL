@@ -360,8 +360,8 @@ def get_rating_curve(row, min_level: float, maaiveld: float | None = None) -> ta
     flow_rate = flow_rate / 1000 * row.geometry.area / 86400
 
     df = pd.DataFrame({"level": np.round(level, decimals=2), "flow_rate": np.round(flow_rate, decimals=5)})
-    df.drop_duplicates("level", keep="first", inplace=True)
-    df.drop_duplicates("flow_rate", keep="last", inplace=True)
+    df = df.drop_duplicates("level", keep="first")
+    df = df.drop_duplicates("flow_rate", keep="last")
 
     return tabulated_rating_curve.Static(level=df.level, flow_rate=df.flow_rate)
 

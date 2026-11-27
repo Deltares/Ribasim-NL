@@ -653,8 +653,8 @@ ER_df_wide["PO4"] = ER_df_wide["P"] * 0.5
 ER_df_wide["AAP"] = ER_df_wide["P"] * 0.4
 ER_df_wide["OOP"] = ER_df_wide["P"] * 0.1
 
-ER_df_wide["time"] = pd.to_datetime(ER_df_wide.Year, format="%Y")
-ER_df_wide.rename(columns={"NodeId": "node_id"}, inplace=True)
+ER_df_wide["time"] = pd.to_datetime(ER_df_wide.Year.astype(str), format="%Y")
+ER_df_wide = ER_df_wide.rename(columns={"NodeId": "node_id"})
 
 loads_df = ER_df_wide.melt(
     id_vars=["node_id", "time"],

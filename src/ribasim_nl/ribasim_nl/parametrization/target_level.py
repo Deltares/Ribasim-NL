@@ -21,7 +21,7 @@ def upstream_target_levels(
     """
     # get upstream node_id from link_table
     df = model.link.df[model.link.df["to_node_id"].isin(node_ids)][["to_node_id", "from_node_id"]]
-    df.set_index("to_node_id", inplace=True)
+    df = df.set_index("to_node_id")
     df.index.name = "node_id"
     df.columns = ["upstream_node_id"]
 
@@ -57,7 +57,7 @@ def downstream_target_levels(
     """
     # get downstream node_id from link_table
     df = model.link.df[model.link.df["from_node_id"].isin(node_ids)][["from_node_id", "to_node_id"]]
-    df.set_index("from_node_id", inplace=True)
+    df = df.set_index("from_node_id")
     df.index.name = "node_id"
     df.columns = ["downstream_node_id"]
 

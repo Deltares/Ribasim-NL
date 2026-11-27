@@ -29,7 +29,7 @@ def get_codes_df() -> DataFrame:
     # read BGT_CSV if CODES_DF is None
     if CODES_DF is None:
         CODES_DF = pd.read_csv(CODES_CSV)
-        CODES_DF.set_index(CODES_DF.name.str.lower(), inplace=True)
+        CODES_DF = CODES_DF.set_index(CODES_DF.name.str.lower())
         CODES_DF["wbh_code"] = CODES_DF.wbh_code.apply(lambda x: f"{int(x):02}" if not pd.isna(x) else None)
     return CODES_DF.copy()
 

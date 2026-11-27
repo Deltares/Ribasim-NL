@@ -149,7 +149,6 @@ assign_pump_and_basin_names(ribasim_model, paths, param_name="HHSK.gpkg", pump_m
 #     ribasim_model.pump.static.df["node_id"].isin(increase_flow_rate_pumps), "flow_rate"
 # ] *= 60
 
-ribasim_model.manning_resistance.node.df.dropna(subset="geometry", inplace=True)
 set_manning_resistance_outside_bergend(ribasim_model, length=10.0, manning_n=0.01)
 
 ribasim_model = complete_parametrization(

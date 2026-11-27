@@ -54,7 +54,7 @@ def read_node_sheet(model: Model, static_data_xlsx: Path, node_type: str) -> pd.
 
     Rows whose key is not in the model are left out: the sheet can hold more nodes than the model.
     """
-    static_data = pd.read_excel(static_data_xlsx, sheet_name=node_type)
+    static_data = pd.read_excel(static_data_xlsx, sheet_name=node_type, engine="calamine")
     assert KEY in static_data.columns, f"Sheet {node_type} of {static_data_xlsx} has no column `{KEY}`"
     node_id = pd.Series(model.node.df.index, index=model.node.df[KEY_COLUMN])
     assert node_id.index.is_unique, "The keys of the nodes are not unique"
@@ -115,7 +115,7 @@ class StaticData(BaseModel):
     @property
     def description(self) -> pd.DataFrame:
         df = pd.DataFrame(self.description_list)
-        df.sort_values(by=["sheet", "kolom"], inplace=True)
+        df = df.sort_values(by=["sheet", "kolom"])
         return df[["sheet", "kolom", "beschrijving"]]
 
     def reset_data_frame(self, node_type):
@@ -128,7 +128,7 @@ class StaticData(BaseModel):
                 node_type=node_type,
                 meta_columns=["meta_code_waterbeheerder", "name"],
             )
-            df.rename(columns={"meta_code_waterbeheerder": "code"}, inplace=True)
+            df = df.rename(columns={"meta_code_waterbeheerder": "code"})
             if node_type == "Pump":
                 df["categorie"] = "Afvoergemaal"
             if node_type == "Outlet":
@@ -142,7 +142,7 @@ class StaticData(BaseModel):
                 node_type=node_type,
                 meta_columns=["meta_categorie"],
             )
-            df.set_index("node_id", inplace=True)
+            df = df.set_index("node_id")
 
             # add meta_code_waterbeheerder
             assert self.model.basin.area.df is not None
@@ -164,7 +164,7 @@ class StaticData(BaseModel):
             df["profielid"] = pd.Series(dtype=str)
 
             # sanitize
-            df.rename(columns={"meta_categorie": "categorie"}, inplace=True)
+            df = df.rename(columns={"meta_categorie": "categorie"})
             df = df.reset_index(drop=False)[["node_id", "categorie", "code_peilgebied", "profielid", "streefpeil"]]
         setattr(self, pascal_to_snake_case(node_type), df)
         return getattr(self, pascal_to_snake_case(node_type))
@@ -269,10 +269,10 @@ class StaticData(BaseModel):
         streefpeil["basin_node_id"] = valid_ids.loc[valid_ids.isin(streefpeil.index)].index
         streefpeil["node_id"] = streefpeil.index  # outlet/pump node_id
         streefpeil = streefpeil.set_index("basin_node_id")
-        streefpeil.dropna(inplace=True)
+        streefpeil = streefpeil.dropna()
 
         # sort so that the lowest min_upstream_level of each Basin comes first
-        streefpeil = streefpeil.sort_index().sort_values(by="min_upstream_level", inplace=False)
+        streefpeil = streefpeil.sort_index().sort_values(by="min_upstream_level")
         level_setting = streefpeil[sets_level(streefpeil["code"]) | (streefpeil["source"] == "pump")]
         level_setting_first = level_setting.groupby(level=0).first()
         all_first = streefpeil.groupby(level=0).first()
@@ -359,16 +359,17 @@ class StaticData(BaseModel):
         basin = self._data_frame("Basin").set_index("node_id")
         area_df = self.model.basin.area.df
         assert area_df is not None
-        area_df.set_index("node_id", inplace=True)
+        area_df = area_df.set_index("node_id")
         streefpeil = basin["streefpeil"]
         area_df.loc[streefpeil.index, "meta_streefpeil"] = streefpeil
         if profile_ids:
             profiellijnid = basin["profielid"]
             area_df.loc[streefpeil.index, "meta_profiellijnid"] = profiellijnid
-        area_df.reset_index(drop=False, inplace=True)
+        area_df = area_df.reset_index(drop=False)
         area_df.index += 1
         area_df.index.name = "fid"
         area_df["meta_streefpeil"] = pd.to_numeric(area_df["meta_streefpeil"], errors="coerce")
+        self.model.basin.area.df = area_df
 
     def write(self) -> None:
         # remove exel if exists
@@ -394,7 +395,7 @@ class StaticData(BaseModel):
 
         # fix formatting
         wb = load_workbook(self.xlsx_path)
-        for sheet_name in pd.ExcelFile(self.xlsx_path).sheet_names:
+        for sheet_name in pd.ExcelFile(self.xlsx_path, engine="calamine").sheet_names:
             ws = wb[sheet_name]
 
             # freeze panes

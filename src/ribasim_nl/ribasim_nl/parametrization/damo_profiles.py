@@ -31,7 +31,7 @@ class DAMOProfiles(BaseModel):
             self.network = Network(lines_gdf=self.model.link.df)
 
         # drop duplicated profile-lines
-        self.profile_line_df.drop_duplicates(self.profile_line_id_col, inplace=True)
+        self.profile_line_df = self.profile_line_df.drop_duplicates(self.profile_line_id_col)
 
         # drop NA geometries
         self.profile_line_df = self.profile_line_df[self.profile_line_df.geometry.notna()]
@@ -184,9 +184,9 @@ class DAMOProfiles(BaseModel):
             df = df.copy()
             if df.codevolgnummer.duplicated().any():
                 df["distance_on_line"] = [geometry.project(i) for i in df.geometry]
-                df.sort_values("distance_on_line", inplace=True)
+                df = df.sort_values("distance_on_line")
                 df.loc[:, "codevolgnummer"] = [i + 1 for i in range(len(df))]
-            df.set_index("codevolgnummer", inplace=True)
+            df = df.set_index("codevolgnummer")
             has_water = df.within_water.any()
             width_at_water_level = (
                 cast(Point, df.at[df[df.within_water].index.min(), "geometry"]).distance(

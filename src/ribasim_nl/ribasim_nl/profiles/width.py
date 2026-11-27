@@ -160,5 +160,5 @@ def estimate_width(
     # assign representative width estimates to the hydro-objects
     hydro_objects["width"] = hydro_objects["index_bgt"].apply(representative_width)
     if drop_na:
-        hydro_objects.dropna(subset="width", inplace=True, ignore_index=True)
+        hydro_objects = hydro_objects.dropna(subset="width", ignore_index=True)
     return hydro_objects

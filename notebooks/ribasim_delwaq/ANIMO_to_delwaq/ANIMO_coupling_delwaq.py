@@ -882,7 +882,7 @@ df_dry_weight_cum_loads_hru_kg[species_list] = df_dry_weight_cum_loads_hru_kg[sp
 
 loads_df = df_dry_weight_loads_per_basin_kg_day.copy()
 
-loads_df.rename(columns={"basin_id": "node_id"}, inplace=True)
+loads_df = loads_df.rename(columns={"basin_id": "node_id"})
 loads_df["node_id"] = loads_df["node_id"].astype(int)
 
 loads_df["NO3"] = loads_df["cNO3N"]

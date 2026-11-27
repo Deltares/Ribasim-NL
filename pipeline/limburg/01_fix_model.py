@@ -329,9 +329,9 @@ for row in add_basin_area_gdf.itertuples():
 
 # merge basins
 selection_df = basin_node_edits_gdf[basin_node_edits_gdf["to_node_key"].notna()]
-for row in selection_df.fillna({"connected": True}).itertuples():
+for row in selection_df.fillna({"connected": 1}).itertuples():
     model.merge_basins(
-        node_id=n(cast(str, row.node_key)), to_node_id=n(cast(str, row.to_node_key)), are_connected=row.connected
+        node_id=n(cast(str, row.node_key)), to_node_id=n(cast(str, row.to_node_key)), are_connected=bool(row.connected)
     )
 
 # %% reverse links
@@ -553,7 +553,7 @@ df = pd.concat(
     ],
     ignore_index=True,
 )
-df.set_index("code", inplace=True)
+df = df.set_index("code")
 names = df["naam"]
 
 sanitize_node_table(

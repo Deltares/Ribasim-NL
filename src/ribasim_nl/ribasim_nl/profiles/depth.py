@@ -36,7 +36,7 @@ def make_depth_profiles(
     profile_lines = profile_points.groupby(col_profile_id)["geometry"].apply(
         lambda g: shapely.LineString(g) if len(g) > 1 else None
     )
-    profile_lines.dropna(inplace=True)
+    profile_lines = profile_lines.dropna()
     return gpd.GeoDataFrame({"line_id": profile_lines.index}, geometry=profile_lines.values, crs=profile_points.crs)
 
 
@@ -123,7 +123,7 @@ def depth_from_hydrotopes(
     hydro_objects["ht_code"] = best[col_fid]
     hydro_objects["depth"] = best["depth"]
     if drop_na:
-        hydro_objects.dropna(subset="depth", inplace=True, ignore_index=True)
+        hydro_objects = hydro_objects.dropna(subset="depth", ignore_index=True)
 
     # return updated hydro-objects
     return hydro_objects
@@ -246,7 +246,7 @@ def depth_from_measurements(
 
     # update depth estimate
     temp["depth"] = temp["index_xs"].apply(representative_depth)
-    temp.dropna(subset="depth", inplace=True)
+    temp = temp.dropna(subset="depth")
     hydro_objects.update(temp[temp["depth"] > 0])
 
     # add cross-section coupling

@@ -139,7 +139,7 @@ basins_gdf.loc[:, ["geometry"]] = basins_gdf.geometry.apply(lambda x: exterior_p
 basins_gdf.loc[:, ["geometry"]] = basins_gdf.buffer(0.1).buffer(-0.1)
 basins_gdf = basins_gdf[basins_gdf.geometry.area > 1]
 # # re-index and add basin_id
-basins_gdf.reset_index(inplace=True, drop=True)
+basins_gdf = basins_gdf.reset_index(drop=True)
 basins_gdf.loc[:, ["basin_id"]] = basins_gdf.index + 1
 basins_gdf.to_file(basins_gpkg, layer="ribasim_basins")
 # %% sample profiles

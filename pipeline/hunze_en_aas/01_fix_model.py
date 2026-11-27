@@ -99,7 +99,7 @@ model.node.df.loc[model.outlet.node.df.index[model.outlet.node.df["meta_categori
 
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
-df.set_index("code", inplace=True)
+df = df.set_index("code")
 names = df["naam"]
 
 # set meta_gestuwd in basins

@@ -464,7 +464,7 @@ def spatial_match(
         raise ValueError("shape_koppeling_path must be a string or a GeoDataFrame")
 
     # Verwijderen locaties zonder geometry
-    shape_koppeling.dropna(subset=["geometry"], inplace=True)
+    shape_koppeling = shape_koppeling.dropna(subset=["geometry"])
 
     if apply_mapping:
         shape_koppeling["Waterschap"] = shape_koppeling["Waterschap"].map(waterschap_mapping)

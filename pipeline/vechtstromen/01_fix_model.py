@@ -1124,7 +1124,7 @@ model = reset_static_tables(model)
 
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
-df.set_index("code", inplace=True)
+df = df.set_index("code")
 names = df["naam"]
 
 # set meta_gestuwd in basins
@@ -1190,7 +1190,7 @@ for action in actions:
     method = getattr(model, action)
     df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
     if "order" in df.columns:
-        df.sort_values("order", inplace=True)
+        df = df.sort_values("order")
     for row in df.itertuples():
         # filter kwargs by keywords
         # itertuples rows are namedtuples, whose `_asdict` ty sees as a column

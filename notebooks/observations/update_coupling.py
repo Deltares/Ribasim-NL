@@ -44,8 +44,8 @@ def update_koppeltabel_with_feedback(
     - pd.DataFrame: Updated koppeltabel DataFrame.
     """
     # Read the input and feedback koppeltabels
-    input_koppeltabel = pd.read_excel(input_koppeltabel_path)
-    feedback_koppeltabel = pd.read_excel(feedback_koppeltabel_path)
+    input_koppeltabel = pd.read_excel(input_koppeltabel_path, engine="calamine")
+    feedback_koppeltabel = pd.read_excel(feedback_koppeltabel_path, engine="calamine")
 
     excel_specifieke_bewerking = feedback_koppeltabel[["Waterschap", "MeetreeksC", "Aan/Af", "Specifiek"]].copy()
 
@@ -234,7 +234,7 @@ def update_koppeltabel_with_feedback(
     # if 'Waterschap' in input_koppeltabel.columns:
     #     input_koppeltabel = input_koppeltabel.sort_values(by='Waterschap', ascending=True)
 
-    input_koppeltabel.reset_index(drop=True, inplace=True)
+    input_koppeltabel = input_koppeltabel.reset_index(drop=True)
 
     # Save the updated koppeltabel
     input_koppeltabel.to_excel(opslaan_path, index=False)
