@@ -36,7 +36,7 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../dev/node-keys.html" rel="next">
+<link href="../dev/gkw-hydamo.html" rel="next">
 <link href="../dev/pull-requests.html" rel="prev">
 <link href="../assets/favicon.ico" rel="icon">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
@@ -209,6 +209,12 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../dev/gkw-hydamo.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">HyDAMO data from GKW</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../dev/node-keys.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Node keys</span></a>
   </div>
@@ -302,7 +308,8 @@ ul.task-list li input[type="checkbox"] {
 <li><code>pipeline/00b_lump_model.py</code> lumps the HyDAMO network of 10 water authorities into their input model.</li>
 <li><code>pipeline/noorderzijlvest/00_lump_model.py</code> lumps the D-HYDRO model of Noorderzijlvest.</li>
 </ul>
-<p>All node IDs and link IDs of the 11 input models are reproduced, but for 21 basins that the lumping of 2024 left out, see <a href="#sec-moving-fixes">Moving fixes into the lumping</a>: 2 in De Dommel, 4 in Limburg and 15 in Vechtstromen. They get the IDs after those of the other nodes, and no longer the IDs that the fix scripts gave them. In Limburg, whose input data differs from the data of the run in 2024, 4 nodes get another name. The basin areas are no longer reproduced, since the lumping now gives every area to a basin, see <a href="#sec-moving-fixes">Moving fixes into the lumping</a>.</p>
+<p>The input model of Brabantse Delta is no longer that of 2024: since November 2026 its HyDAMO data comes from the national GKW-HyDAMO package, see <a href="../dev/gkw-hydamo.html">HyDAMO data from GKW</a>.</p>
+<p>All node IDs and link IDs of the 11 input models were reproduced, but for 21 basins that the lumping of 2024 left out, see <a href="#sec-moving-fixes">Moving fixes into the lumping</a>: 2 in De Dommel, 4 in Limburg and 15 in Vechtstromen. They get the IDs after those of the other nodes, and no longer the IDs that the fix scripts gave them. In Limburg, whose input data differs from the data of the run in 2024, 4 nodes get another name. The basin areas are no longer reproduced, since the lumping now gives every area to a basin, see <a href="#sec-moving-fixes">Moving fixes into the lumping</a>.</p>
 </section>
 <section id="sec-level-controlled" class="level2">
 <h2 class="anchored" data-anchor-id="sec-level-controlled">The input models of the level controlled models</h2>
@@ -942,8 +949,8 @@ ul.task-list li input[type="checkbox"] {
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../dev/node-keys.html" class="pagination-link" aria-label="Node keys">
-        <span class="nav-page-text">Node keys</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../dev/gkw-hydamo.html" class="pagination-link" aria-label="HyDAMO data from GKW">
+        <span class="nav-page-text">HyDAMO data from GKW</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
