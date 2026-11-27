@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import pyogrio
 
+from ribasim_nl.lumping.connect import connect_lines
 from ribasim_nl.lumping.network import Network
 from ribasim_nl.lumping.utils import (
     drop_duplicate_geometries,
@@ -30,12 +31,65 @@ def _list_layers(path: Path) -> list[str]:
     return list(pyogrio.list_layers(path)[:, 0])
 
 
-def apply_hydamo_changes(source: Path, removals: Path, additions: Path, target: Path) -> None:
+def _remove_objects(gdf: gpd.GeoDataFrame, remove: gpd.GeoDataFrame, layer: str, strict: bool) -> gpd.GeoDataFrame:
+    """The objects of `gdf` without those of `remove`, by `code`, else `globalid`, else geometry.
+
+    With `strict`, every object of `remove` with a code or globalid must be in `gdf`.
+    """
+    key = next((c for c in ("code", "globalid") if c in gdf.columns and c in remove.columns), None)
+    if key is None:
+        return gdf.loc[~gdf.geometry.normalize().isin(remove.geometry.normalize())]
+    missing = sorted(set(remove[key].dropna()) - set(gdf[key]))
+    assert not (strict and missing), f"{layer}: no objects to remove with {key} {missing}"
+    return gdf.loc[~gdf[key].isin(remove[key])]
+
+
+def _add_objects(gdf: gpd.GeoDataFrame, add: gpd.GeoDataFrame, layer: str) -> gpd.GeoDataFrame:
+    """The objects of `gdf` and `add`, with a column `index` with the row numbers before.
+
+    The added objects get the CRS of `gdf`, and the types of its columns where they allow.
+    """
+    if isinstance(add, gpd.GeoDataFrame) and add.crs is not None:
+        assert gdf.crs is not None, f"{layer}: the additions have a CRS, the source has not"
+        add = add.to_crs(gdf.crs)
+    for column in add.columns.intersection(gdf.columns).drop("geometry", errors="ignore"):
+        if add[column].dtype != gdf[column].dtype:
+            try:
+                add[column] = add[column].astype(gdf[column].dtype)
+            except (TypeError, ValueError):
+                logger.warning(f"{layer}: column {column} of the additions has another type")
+    # an empty layer would turn the types of its columns into object
+    return (pd.concat([gdf, add]) if len(add) > 0 else gdf).reset_index()
+
+
+def _connect_hydroobjects(hydroobject: gpd.GeoDataFrame, distance: float) -> gpd.GeoDataFrame:
+    """The hydroobjects connected where they end within `distance` of each other, if each code is used only once."""
+    duplicated = sorted(hydroobject.loc[hydroobject["code"].duplicated() & hydroobject["code"].notna(), "code"])
+    assert not duplicated, f"several hydroobjects with the codes {duplicated}"
+    return connect_lines(hydroobject, distance)
+
+
+def _write_layer(gdf: gpd.GeoDataFrame, target: Path, layer: str) -> None:
+    """Write a layer, or an attribute table if it has no geometries."""
+    if isinstance(gdf, gpd.GeoDataFrame) and not gdf.geometry.isna().all():
+        pyogrio.write_dataframe(gdf, target, layer=layer, promote_to_multi=False)
+    else:
+        pyogrio.write_dataframe(pd.DataFrame(gdf.drop(columns="geometry", errors="ignore")), target, layer=layer)
+
+
+def apply_hydamo_changes(
+    source: Path, removals: Path, additions: Path, target: Path, connect_distance: float | None = None
+) -> None:
     """Write the HyDAMO layers of `source` to `target`, with the objects of `removals` removed and `additions` added.
 
     Objects are removed by `code`, else `globalid`, else geometry. As in 2024, layers in `additions` get a column
     `index`, with the row numbers before the additions. Layers without geometries are written as attribute tables.
     The columns keep their types, unlike in 2024, when some were written as text.
+
+    With `connect_distance`, the hydroobjects that end within that distance of each other are connected after the
+    changes, see `ribasim_nl.lumping.connect.connect_lines`. An added hydroobject then need not end exactly on the
+    one it connects to, and that one need not be split there by hand. Every removal must then remove an object, and
+    the hydroobjects with a code must each have their own.
     """
     assert source != target
     target.unlink(missing_ok=True)
@@ -46,31 +100,15 @@ def apply_hydamo_changes(source: Path, removals: Path, additions: Path, target: 
         gdf = gpd.read_file(source, layer=layer)
         if layer in removal_layers:
             remove = gpd.read_file(removals, layer=layer)
-            key = next((c for c in ("code", "globalid") if c in gdf.columns and c in remove.columns), None)
-            if key is not None:
-                gdf = gdf.loc[~gdf[key].isin(remove[key])]
-            else:
-                gdf = gdf.loc[~gdf.geometry.normalize().isin(remove.geometry.normalize())]
+            gdf = _remove_objects(gdf, remove, layer, strict=connect_distance is not None)
             logger.info(f"{layer}: removed {len(remove)} objects")
         if layer in addition_layers:
             add = gpd.read_file(additions, layer=layer)
-            if isinstance(add, gpd.GeoDataFrame) and add.crs is not None:
-                assert gdf.crs is not None, f"{layer}: the additions have a CRS, the source has not"
-                add = add.to_crs(gdf.crs)
-            # keep the column types of the source, where the additions allow
-            for column in add.columns.intersection(gdf.columns).drop("geometry", errors="ignore"):
-                if add[column].dtype != gdf[column].dtype:
-                    try:
-                        add[column] = add[column].astype(gdf[column].dtype)
-                    except (TypeError, ValueError):
-                        logger.warning(f"{layer}: column {column} of the additions has another type")
-            # an empty layer would turn the types of its columns into object
-            gdf = (pd.concat([gdf, add]) if len(add) > 0 else gdf).reset_index()
+            gdf = _add_objects(gdf, add, layer)
             logger.info(f"{layer}: added {len(add)} objects")
-        if isinstance(gdf, gpd.GeoDataFrame) and not gdf.geometry.isna().all():
-            pyogrio.write_dataframe(gdf, target, layer=layer, promote_to_multi=False)
-        else:
-            pyogrio.write_dataframe(pd.DataFrame(gdf.drop(columns="geometry", errors="ignore")), target, layer=layer)
+        if connect_distance is not None and layer.lower() == "hydroobject":
+            gdf = _connect_hydroobjects(gdf, connect_distance)
+        _write_layer(gdf, target, layer)
 
 
 def read_areas(path: Path, layer: str | None = None, code_column: str = "CODE") -> gpd.GeoDataFrame:

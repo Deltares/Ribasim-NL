@@ -11,4 +11,7 @@ see `docs/dev/reproducing-models.qmd`.
 3. `ribasim_nl.lumping.network.lump_network` splits it at the split nodes into basins.
 4. `ribasim_nl.lumping.model.lumped_model` converts the lumped network into a Ribasim model, giving every area to a
    basin.
+
+The HyDAMO data of 2023 and 2024 was prepared by hand and with scripts of then. `ribasim_nl.lumping.gkw_hydamo` prepares
+that of the national GKW-HyDAMO package instead, see `docs/dev/gkw-hydamo.qmd`.
 """

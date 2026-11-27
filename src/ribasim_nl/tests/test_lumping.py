@@ -5,7 +5,9 @@ import numpy as np
 import pandas as pd
 import pyogrio
 import pytest
+from ribasim_nl.lumping.connect import connect_lines, join_parts, snap_ends, split_at_junctions
 from ribasim_nl.lumping.dhydro import read_ini_sections
+from ribasim_nl.lumping.gkw_hydamo import prepare_hydroobjects, read_authority, select_hydroobjects
 from ribasim_nl.lumping.hydamo import (
     apply_hydamo_changes,
     read_areas,
@@ -256,6 +258,180 @@ def test_apply_hydamo_changes(tmp_path: Path):
     pd.testing.assert_frame_equal(gpd.read_file(target, layer="hydroobject"), hydroobject)
     # a layer without geometries is written as attribute table
     assert pyogrio.read_dataframe(target, layer="pomp")["code"].tolist() == ["P1"]
+
+
+def test_apply_hydamo_changes_connects(tmp_path: Path):
+    """With a connect distance, an added hydroobject splits the one it ends on, and the removals are checked."""
+    source, removals, additions, target = (tmp_path / f"{name}.gpkg" for name in ("hydamo", "remove", "add", "target"))
+    hydroobject = gpd.GeoDataFrame(
+        {"code": ["H1", "H2"]},
+        geometry=[LineString([(0, 0), (100, 0)]), LineString([(0, 50), (100, 50)])],
+        crs=CRS,
+    )
+    hydroobject.to_file(source, layer="hydroobject")
+    hydroobject.iloc[[1]].to_file(removals, layer="hydroobject")
+    # ends 0.2 m beside H1, and has no code
+    added = gpd.GeoDataFrame({"code": [None]}, geometry=[LineString([(40, 30), (40, 0.2)])], crs=CRS)
+    added.to_file(additions, layer="hydroobject")
+
+    apply_hydamo_changes(source, removals, additions, target, connect_distance=0.5)
+    result = gpd.read_file(target, layer="hydroobject")
+    assert result["code"].fillna("").tolist() == ["", "H1-0", "H1-1"]
+    assert result.geometry.iloc[1].coords[-1] == result.geometry.iloc[2].coords[0] == (40.0, 0.2)
+    # without a connect distance the hydroobjects stay as they are
+    apply_hydamo_changes(source, removals, additions, target)
+    assert gpd.read_file(target, layer="hydroobject")["code"].fillna("").tolist() == ["H1", ""]
+
+    # a removal that removes nothing is an error, and so are two hydroobjects with the same code
+    gpd.GeoDataFrame({"code": ["H9"]}, geometry=[LineString([(0, 0), (1, 1)])], crs=CRS).to_file(
+        removals, layer="hydroobject"
+    )
+    with pytest.raises(AssertionError, match="no objects to remove with code \\['H9'\\]"):
+        apply_hydamo_changes(source, removals, additions, target, connect_distance=0.5)
+    hydroobject.iloc[[1]].to_file(removals, layer="hydroobject")
+    added.assign(code="H1").to_file(additions, layer="hydroobject")
+    with pytest.raises(AssertionError, match="several hydroobjects with the codes \\['H1'\\]"):
+        apply_hydamo_changes(source, removals, additions, target, connect_distance=0.5)
+
+
+def test_join_parts():
+    lines = gpd.GeoDataFrame(
+        {"code": ["A", "A", "B", "B", "C", None, None], "naam": ["a1", "a2", "b1", "b2", "c", "x", "y"]},
+        geometry=[
+            # the second part of A ends where the first starts
+            LineString([(10, 0, 5), (20, 0, 5)]),
+            LineString([(0, 0, 5), (10, 0, 5)]),
+            # the parts of B do not follow each other
+            LineString([(0, 10), (5, 10)]),
+            LineString([(0, 20), (30, 20)]),
+            # the parts of C do, in one geometry
+            MultiLineString([[(0, 30), (10, 30)], [(10, 30), (20, 30)]]),
+            LineString([(0, 40), (10, 40)]),
+            LineString([(10, 40), (20, 40)]),
+        ],
+        crs=CRS,
+    )
+    joined = join_parts(lines)
+    assert not joined.geometry.has_z.any()
+    # the lines without code are not joined
+    assert joined["code"].fillna("").tolist() == ["", "", "A", "B", "B.2", "C"]
+    joined = joined.set_index("code")
+    assert joined.geometry["A"].equals(LineString([(0, 0), (10, 0), (20, 0)]))
+    assert joined.at["A", "naam"] == "a2"
+    # the longest part keeps the code
+    assert joined.geometry["B"].length == 30
+    assert joined.geometry["B.2"].length == 5
+    assert joined.geometry["C"].equals(LineString([(0, 30), (10, 30), (20, 30)]))
+
+
+def test_snap_ends():
+    lines = gpd.GeoDataFrame(
+        {"code": ["A", "B", "C", "D"]},
+        geometry=[
+            LineString([(0, 0), (10, 0)]),
+            LineString([(10.2, 0.1), (20, 0)]),
+            LineString([(10.2, 0.1), (10, 10)]),
+            # shorter than the tolerance
+            LineString([(20, 0), (20.3, 0)]),
+        ],
+        crs=CRS,
+    )
+    snapped = snap_ends(lines, 0.5).set_index("code").geometry
+    # the end of A moves to the coordinate that two lines start at
+    assert snapped["A"].coords[-1] == (10.2, 0.1)
+    assert snapped["B"].equals(lines.geometry[1])
+    assert snapped["D"].equals(lines.geometry[3])
+    assert snap_ends(lines, 0.1).geometry.equals(lines.geometry)
+
+
+def test_split_at_junctions():
+    lines = gpd.GeoDataFrame(
+        {"code": ["B", "A", "C", "D", None, "E"]},
+        geometry=[
+            LineString([(0, 0), (50, 0), (100, 0)]),
+            # ends 0.2 m beside B, and D starts on it
+            LineString([(40, 30), (40, 0.2)]),
+            # ends 0.3 m beyond the end of B
+            LineString([(100.3, 20), (100.3, 0)]),
+            LineString([(40, 20), (60, 20)]),
+            # E ends on a line without code
+            LineString([(0, 100), (100, 100)]),
+            LineString([(50, 120), (50, 100)]),
+        ],
+        crs=CRS,
+    )
+    split = split_at_junctions(lines, 0.5)
+    # the lines that are not split, then the pieces in order of the code of their line, those without code last
+    assert split["code"].fillna("").tolist() == ["D", "E", "A-0", "A-1", "B-0", "B-1", "C-0", "", ""]
+    geometry = split.set_index("code").geometry
+    assert geometry["A-0"].equals(LineString([(40, 30), (40, 20)]))
+    assert geometry["B-0"].equals(LineString([(0, 0), (40, 0.2)]))
+    # B is extended to the end of C, which is renamed though it stays as it is
+    assert geometry["B-1"].equals(LineString([(40, 0.2), (50, 0), (100, 0), (100.3, 0)]))
+    assert geometry["C-0"].equals(lines.geometry[2])
+    assert split.geometry.iloc[-2].equals(LineString([(0, 100), (50, 100)]))
+    # nothing is left to connect
+    pd.testing.assert_frame_equal(split_at_junctions(split, 0.5), split)
+    with pytest.raises(AssertionError, match="named after its code"):
+        split_at_junctions(pd.concat([lines, lines.iloc[[0]]]), 0.5)
+
+
+def test_connect_lines():
+    """Ends that nearly meet are joined, instead of extending one line to the other and renaming it."""
+    lines = gpd.GeoDataFrame(
+        {"code": ["A", "B"]},
+        geometry=[LineString([(0, 0, 1), (10, 0, 1)]), LineString([(10.0005, 0, 1), (20, 0, 1)])],
+        crs=CRS,
+    )
+    assert split_at_junctions(lines, 0.5)["code"].tolist() == ["A-0", "B-0"]
+    connected = connect_lines(lines, 0.5)
+    assert connected["code"].tolist() == ["A", "B"]
+    assert connected.geometry[0].coords[-1] == connected.geometry[1].coords[0]
+    assert not connected.geometry.has_z.any()
+
+
+def test_select_hydroobjects():
+    hydroobject = gpd.GeoDataFrame(
+        {"code": ["P", "S", "T"], "categorieoppwaterlichaam": ["primair", "secundair", "tertiair"]},
+        geometry=[LineString([(0, 0), (10, 0)]), LineString([(10, 0), (10, 10)]), LineString([(10, 0), (20, 0)])],
+        crs=CRS,
+    )
+    assert select_hydroobjects(hydroobject, ["primair"])["code"].tolist() == ["P"]
+    assert select_hydroobjects(hydroobject, ["primair"], ["T"])["code"].tolist() == ["P", "T"]
+    assert select_hydroobjects(hydroobject, ["primair", "secundair"], excluded=["P"])["code"].tolist() == ["S"]
+    with pytest.raises(AssertionError, match="no hydroobjects with codes \\['X'\\]"):
+        select_hydroobjects(hydroobject, ["primair"], ["X"])
+    with pytest.raises(AssertionError, match="no hydroobjects of categories"):
+        select_hydroobjects(hydroobject, ["overig"])
+    # an excluded hydroobject must be one that the categories select, and not be selected by its code as well
+    with pytest.raises(AssertionError, match="excluded hydroobjects \\['S'\\] are not of categories"):
+        select_hydroobjects(hydroobject, ["primair"], excluded=["S"])
+    with pytest.raises(AssertionError, match="both selected and excluded"):
+        select_hydroobjects(hydroobject, ["primair"], ["T"], excluded=["T"])
+    prepared = prepare_hydroobjects(hydroobject, ["primair", "secundair"], excluded=["P"])
+    assert prepared["code"].tolist() == ["S"]
+
+
+def test_read_authority(tmp_path: Path):
+    """The objects of a water authority are selected by their nen3610id, since codes are not unique nationally."""
+    package = tmp_path / "package.gpkg"
+    ids = ["NL.WBHCODE.25.Hydroobject.1", "NL.WBHCODE.27.Hydroobject.1", "NL.WBHCODE.2.Hydroobject.1"]
+    line = LineString([(0, 0), (10, 0)])
+    gpd.GeoDataFrame({"code": ["H1", "H1", "H1"], "nen3610id": ids}, geometry=[line] * 3, crs=CRS).to_file(
+        package, layer="hydroobject"
+    )
+    gpd.GeoDataFrame({"code": ["S1"], "nen3610id": ["NL.WBHCODE.27.Stuw.1"]}, geometry=[Point(0, 0)], crs=CRS).to_file(
+        package, layer="stuw"
+    )
+    pyogrio.write_dataframe(
+        pd.DataFrame({"code": ["P1"], "nen3610id": ["NL.WBHCODE.25.Pomp.1"]}), package, layer="pomp"
+    )
+
+    hydroobject = read_authority("BrabantseDelta", "hydroobject", package)
+    assert hydroobject["nen3610id"].tolist() == ["NL.WBHCODE.25.Hydroobject.1"]
+    assert read_authority("BrabantseDelta", "stuw", package).empty
+    with pytest.raises(AssertionError, match="no geometries"):
+        read_authority("BrabantseDelta", "pomp", package)
 
 
 @pytest.fixture

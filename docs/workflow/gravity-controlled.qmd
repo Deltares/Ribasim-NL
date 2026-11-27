@@ -36,6 +36,7 @@ Only the last model of each stage is an output of DVC.
 ## 1. The input model
 
 `pipeline/00a_process_hydamo.py` applies the manual changes to the HyDAMO data of 7 water authorities, and `pipeline/00b_lump_model.py` lumps the data of 10 into an input model.
+For Brabantse Delta, `pipeline/00_gkw_hydamo.py` first prepares the HyDAMO data from the national GKW-HyDAMO package, see [HyDAMO data from GKW](../dev/gkw-hydamo.qmd).
 `pipeline/noorderzijlvest/00_lump_model.py` lumps the D-HYDRO model of Noorderzijlvest.
 [Lumping](lumping.qmd) shows this step by step, and [Reproducing models](../dev/reproducing-models.qmd) how they keep the IDs of the models that Sweco made in 2024.
 

@@ -1,0 +1,93 @@
+---
+title: "HyDAMO data from GKW"
+---
+
+The input models of the [gravity controlled](../workflow/gravity-controlled.qmd) water authorities are [lumped](../workflow/lumping.qmd) from HyDAMO data: the hydroobjects, which are the watercourses, and the structures on them.
+Most of that data was delivered by the water authorities in 2023 and 2024.
+The data of Brabantse Delta now comes from the national GKW-HyDAMO package ([#1075](https://github.com/Deltares/Ribasim-NL/issues/1075)), and the other authorities can follow.
+
+## The package
+
+The water authorities deliver their HyDAMO data to the Gegevensknooppunt waterschappen (GkW) of Het Waterschapshuis, which passes on the objects that pass its checks, see its [dashboard](https://datastromen.hetwaterschapshuis.nl/hydamo).
+NHI publishes the result as one GeoPackage of all authorities, [`gkw-hydamo-package.zip`](https://nhipackages.blob.core.windows.net/packages/gkw-hydamo-package.zip).
+
+- **It has no versions:** the file is replaced in place. So DVC tracks a copy of its GeoPackage, `data/Basisgegevens/GKW-HyDAMO/LHM_HyDAMO.gpkg`, which all authorities share. The `desc` in its `.dvc` file gives the date on which it was published.
+- **Codes are not unique nationally:** the objects of an authority are those with a `nen3610id` that starts with `NL.WBHCODE.<waterbeheercode>.`, see `ribasim_nl.lumping.gkw_hydamo.read_authority`.
+
+Update the copy to the latest package with:
+
+```sh
+pixi run python scripts/download_gkw_hydamo.py
+pixi run dvc add data/Basisgegevens/GKW-HyDAMO/LHM_HyDAMO.gpkg
+```
+
+This downloads the package, 1.8 GB, and unpacks its GeoPackage, 5.4 GB.
+Put the date that the script logs in the `desc` of `LHM_HyDAMO.gpkg.dvc`, which `dvc add` keeps.
+The stages `gkw_hydamo` of all authorities then run again.
+
+## From the package to the network
+
+```{mermaid}
+flowchart LR
+  package["Basisgegevens/GKW-HyDAMO/<br>LHM_HyDAMO.gpkg"] -->|"gkw_hydamo<br>00_gkw_hydamo.py"| prepared["2_voorbewerking/<br>hydamo.gpkg"]
+  prepared -->|"hydamo<br>00a_process_hydamo.py"| network["4_ribasim/<br>hydamo.gpkg"]
+  edits["3_input/hydamo_verwijderen.gpkg<br>3_input/hydamo_toevoegen.gpkg"] --> network
+  network -->|"lumped<br>00b_lump_model.py"| model["input model"]
+  nodes["3_input/ribasim_input.gpkg<br>3_input/areas.gpkg"] --> model
+```
+
+`pipeline/00_gkw_hydamo.py` selects the hydroobjects that the network is lumped from, with three lists per authority:
+
+- `CATEGORIES`: the categories of hydroobjects, `primair` for Brabantse Delta.
+- `CODES`: hydroobjects of other categories that the network needs as well. For Brabantse Delta these are 71 watercourses of the delivery of 2023 that are secundair or tertiair since, with a new code.
+- `EXCLUDED`: hydroobjects of these categories that are left out, see [below](#sec-excluded).
+
+The lumping connects hydroobjects only where their ends have the same coordinates.
+`ribasim_nl.lumping.connect` therefore makes the selected hydroobjects into lines that connect:
+
+| Step | What it does | Code of the result |
+|:-----|:-------------|:-------------------|
+| `join_parts` | Parts of a hydroobject that follow each other, delivered as a multi-part line or as objects with the same code, become one line | The parts that are left get `<code>.2`, `.3` |
+| `snap_ends` | Ends within 1 m of each other get the same coordinate | |
+| `split_at_junctions` | A line is split where another one ends on it within 1 m | The pieces get `<code>-0`, `-1`, along the line |
+
+`split_at_junctions` is a port of the preprocessing of 2024, and gives the pieces the codes they got then.
+`snap_ends` is new: in the package, the ends of about 1100 hydroobjects of Brabantse Delta miss the end of their neighbour by less than a millimetre.
+Without it, these lines would all be extended to each other, and renamed `<code>-0`.
+The distance of 1 m, `ribasim_nl.lumping.gkw_hydamo.CONNECT_DISTANCE`, connects the 9 junctions of Brabantse Delta that miss each other by 0.5 to 0.95 m. A larger distance would also connect the watercourses on either side of a pumping station.
+
+`pipeline/00a_process_hydamo.py` then removes the objects of `hydamo_verwijderen.gpkg`, by their code, adds those of `hydamo_toevoegen.gpkg`, and connects the hydroobjects again.
+So a hydroobject that is added by hand connects where it ends within 1 m of another one, which is split there.
+It fails if a removal no longer removes an object, or if two hydroobjects have the same code, as can happen when the data is updated.
+
+## What does not follow the data
+
+- **Split nodes and boundaries.** `ribasim_input.gpkg` holds their location, and the code and type of the structure of each split node, so the [keys](node-keys.qmd) of the nodes do not change with the data. A split node that is further than 1 m from the hydroobjects is left out by the lumping, and one that no longer separates two basins is not used.
+- **Open water split nodes.** A split node on open water is named after its hydroobject. The split nodes that the lumping of 2024 named after the edge they were exactly on, such as `OVK01598___1`, have that name in `ribasim_input.gpkg` now: whether a point is exactly on a line depends on the last digits of the coordinates.
+- **Peilgebieden.** The peilgebieden of Brabantse Delta in the package have target levels without the type of level: summer, winter or fixed. They remain those of the delivery of 2023, `1_ontvangen_data/peilgebieden.gpkg`.
+- **Target levels.** The Basins in `parameters/static_data.xlsx` keep the target level they have there, see `StaticData.keep_streefpeil`. A level that `02_prepare_model.py` derives from the profiles follows the Basin node, which moves when the hydroobjects change: one Basin got a target level 5 cm lower, which lowered the level up to which the pumping stations that discharge into it may pump by 5 cm too, so that in the coupled model they stopped and the polders behind them filled up. A new Basin gets the derived level.
+
+## New hydroobjects that are left out {#sec-excluded}
+
+A hydroobject that is new in the package can change the model without anyone choosing that: the lumping makes one basin of all hydroobjects that are connected without a split node between them.
+Two kinds of new hydroobjects are therefore in `EXCLUDED`, until they get a split node of their own:
+
+- a hydroobject that bypasses a structure with a split node, such as a fish passage around a weir, which would leave that structure out of the model;
+- a hydroobject that connects two basins of the model without a structure between them, which would make them one basin.
+
+Where a hydroobject now continues to a junction that it did not reach in 2023, which joins two basins, a split node of type `harde_knip` in `ribasim_input.gpkg` cuts it, as in the data of 2023.
+Where the watercourse of a structure itself is replaced, the model follows the data: the split node of a weir that is gone is removed, and its basins become one.
+
+## Update the data of an authority
+
+For an update of the package, start at step 2. To move another authority to the package:
+
+1. Add the authority to the stage `gkw_hydamo` in `dvc.yaml`, to `CATEGORIES` in `pipeline/00_gkw_hydamo.py`, and to `GKW_AUTHORITIES` in `pipeline/00a_process_hydamo.py`. `2_voorbewerking/hydamo.gpkg` is then an output of the stage, so remove its `.dvc` file. Which identifiers of the data of 2023 and 2024 are still in the package differs per authority, see [#1075](https://github.com/Deltares/Ribasim-NL/issues/1075).
+2. Run the stages `gkw_hydamo`, `hydamo` and `lumped` of the authority.
+3. Compare the input model with the previous one, by key:
+   - connector nodes that are gone: their split node is off the hydroobjects, or bypassed;
+   - Basins that are gone, which are merged or named after another connector node, and Basins without outflow, where a watercourse is interrupted;
+   - links that are reversed, where a hydroobject is drawn in the other direction.
+4. Decide per difference: move or remove the split node, exclude the new hydroobject, or add a hydroobject by hand where the data has a gap, for instance at a culvert.
+5. Refer to the nodes that got another key by that key in the scripts, `model_edits.gpkg` and `static_data.xlsx` of the authority. A key that is gone raises a `KeyError` where it is used.
+6. Keep the target levels of `static_data.xlsx`, with `StaticData.keep_streefpeil` in `02_prepare_model.py`, and compare the Basins and the static tables of the Pumps and Outlets of the full control model with the previous one, by key.

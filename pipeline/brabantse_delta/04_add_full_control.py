@@ -131,7 +131,6 @@ outlet_max_flow_rate_from_results = {
     n("KST00308"): 1,  # naam onbekend; dynamic max=0.01, oude max=401
     n("KST00839"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
     n("KDU08892"): 2,  # naam onbekend; dynamic max=1.23, oude max=400
-    n("KST01039"): 1,  # naam onbekend; dynamic max=0.03, oude max=400
     n("KST01034"): 1,  # naam onbekend; dynamic max=0.37, oude max=400
     n("KDU06613"): 1,  # naam onbekend; dynamic max=0.37, oude max=400
     n("KST01036"): 1,  # naam onbekend; dynamic max=0.10, oude max=400

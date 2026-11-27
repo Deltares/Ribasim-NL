@@ -29,7 +29,7 @@ link_geometries_gpkg = parameters_dir / "link_geometries.gpkg"
 
 hydamo_gpkg = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
 damo_profiles_gpkg = cloud.joinpath(authority, "verwerkt/profielen.gpkg")
-peilgebieden_path = cloud.joinpath(authority, "verwerkt/4_ribasim/hydamo.gpkg")
+peilgebieden_path = cloud.joinpath(authority, "verwerkt/1_ontvangen_data/peilgebieden.gpkg")
 top10NL_gpkg = cloud.joinpath("Basisgegevens/Top10NL/top10nl_Compleet.gpkg")
 network_gpkg = cloud.joinpath(authority, "verwerkt/network.gpkg")
 sturing_xlsx = cloud.joinpath(
@@ -94,7 +94,7 @@ if "code" in pump_df.columns:
 
 
 # %% Bewerk peilenkaart
-peilgebieden_path_editted = peilgebieden_path.parent.joinpath("peilgebieden_bewerkt.gpkg")
+peilgebieden_path_editted = hydamo_gpkg.parent.joinpath("peilgebieden_bewerkt.gpkg")
 peilgebieden_df = gpd.read_file(peilgebieden_path, layer="peilgebiedpraktijk")
 
 # fill with zomerpeil
@@ -206,6 +206,10 @@ static_data.add_series(node_type="Pump", series=flow_rate)
 # get all nodata streefpeilen with their profile_ids and levels
 static_data.fill_streefpeil_from_profiles(damo_profiles, profiles_df, divisor=3)
 
+# The Basins of static_data.xlsx keep the level they have there, so only new Basins get the level derived above:
+# that level follows the location of the Basin node, which moves when the hydroobjects are updated
+static_data.keep_streefpeil(parameters_dir / "static_data.xlsx")
+
 
 # # update model basin-data
 model.basin.area.df.set_index("node_id", inplace=True)
@@ -214,7 +218,7 @@ streefpeil = static_data.basin.set_index("node_id")["streefpeil"]
 
 # Handmatige fixes
 streefpeil[n("up:KST02130")] = 0.1
-streefpeil[n("up:KDU60018")] = 0.1
+streefpeil[n("up:ow:OVK99994")] = 0.1
 streefpeil[n("up:KST01483")] = 1.2  # Basin Turfvaart meetpunt
 streefpeil[n("up:GEM_KGM00384")] = 0.15
 streefpeil[n("up:KST02382")] = -0.5

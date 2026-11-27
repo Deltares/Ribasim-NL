@@ -186,6 +186,12 @@ class StaticData(BaseModel):
             mask = mask & df[series.name].isna()
         df.loc[mask, series.name] = series[df[mask][col]].to_numpy()
 
+    def _data_frame(self, node_type: str) -> pd.DataFrame:
+        """The data frame of `node_type`, which `reset_data_frame` or `add_series` made."""
+        df = getattr(self, pascal_to_snake_case(node_type))
+        assert df is not None, f"reset the {node_type} data frame first"
+        return df
+
     def fill_min_upstream_level_from_profiles(
         self, node_type: Literal["Outlet", "Pump"], profiles_df: pd.DataFrame, divisor: float = 2
     ) -> None:
@@ -196,8 +202,7 @@ class StaticData(BaseModel):
             profiles_df: profiles indexed by profile id, with bottom_level and invert_level
             divisor: the level is at 1/divisor of the profile depth above the bottom level
         """
-        df = getattr(self, pascal_to_snake_case(node_type))
-        assert df is not None, f"reset the {node_type} data frame first"
+        df = self._data_frame(node_type)
         link_df = self.model.link.df
         node_ids = df[df.min_upstream_level.isna()].node_id.to_numpy()
         profile_ids = [
@@ -217,8 +222,8 @@ class StaticData(BaseModel):
             profiles_df: processed profiles indexed by profile id, with bottom_level and invert_level
             divisor: the level is at 1/divisor of the profile depth above the bottom level
         """
-        assert self.basin is not None, "reset the Basin data frame first"
-        node_ids = self.basin[self.basin.streefpeil.isna()].node_id.to_numpy()
+        basin = self._data_frame("Basin")
+        node_ids = basin[basin.streefpeil.isna()].node_id.to_numpy()
         profile_ids = [damo_profiles.get_profile_id(node_id) for node_id in node_ids]
         levels = profile_level(profiles_df, profile_ids, divisor=divisor)
         index = pd.Index(node_ids, name="node_id")
@@ -326,20 +331,39 @@ class StaticData(BaseModel):
         streefpeil.index.name = "node_id"
         self.add_series(node_type="Basin", series=streefpeil, fill_na=True)
 
+    def keep_streefpeil(self, static_data_xlsx: Path) -> None:
+        """Give the Basins in the Basin sheet of a workbook the streefpeil, and the profielid, they have there.
+
+        A streefpeil that is derived from the network, such as from the profiles on the links of a Basin, follows the
+        geometry of those links, which start at the Basin node: it changes when the node moves, as it does when the
+        hydroobjects are updated. The Basins that are not in the sheet, or have no streefpeil there, keep theirs.
+
+        Args:
+            static_data_xlsx: workbook with a sheet `Basin` that has the columns `key`, `streefpeil` and `profielid`
+        """
+        basin = self._data_frame("Basin")
+        kept = read_node_sheet(self.model, static_data_xlsx, "Basin").set_index("node_id")
+        assert kept.index.is_unique, f"Sheet Basin of {static_data_xlsx} has a Basin more than once"
+        not_basins = kept.index.difference(pd.Index(basin["node_id"]))
+        assert not_basins.empty, f"Sheet Basin of {static_data_xlsx} has nodes that are no Basin: {list(not_basins)}"
+        kept = kept[kept["streefpeil"].notna()]
+        for column in ("profielid", "streefpeil"):
+            self.add_series(node_type="Basin", series=kept[column])
+
     def update_model_basin_levels(self, profile_ids: bool = True) -> None:
         """Set the meta_streefpeil, and optionally the meta_profiellijnid, of the Basin / area table of the model.
 
         Args:
             profile_ids: also set the meta_profiellijnid from the profielid
         """
-        assert self.basin is not None, "reset the Basin data frame first"
+        basin = self._data_frame("Basin").set_index("node_id")
         area_df = self.model.basin.area.df
         assert area_df is not None
         area_df.set_index("node_id", inplace=True)
-        streefpeil = self.basin.set_index("node_id")["streefpeil"]
+        streefpeil = basin["streefpeil"]
         area_df.loc[streefpeil.index, "meta_streefpeil"] = streefpeil
         if profile_ids:
-            profiellijnid = self.basin.set_index("node_id")["profielid"]
+            profiellijnid = basin["profielid"]
             area_df.loc[streefpeil.index, "meta_profiellijnid"] = profiellijnid
         area_df.reset_index(drop=False, inplace=True)
         area_df.index += 1

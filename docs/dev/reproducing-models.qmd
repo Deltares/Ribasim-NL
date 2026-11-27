@@ -16,7 +16,9 @@ This code is ported to `ribasim_nl.lumping`, and the DVC pipeline runs it:
 - `pipeline/00b_lump_model.py` lumps the HyDAMO network of 10 water authorities into their input model.
 - `pipeline/noorderzijlvest/00_lump_model.py` lumps the D-HYDRO model of Noorderzijlvest.
 
-All node IDs and link IDs of the 11 input models are reproduced, but for 21 basins that the lumping of 2024 left out, see [Moving fixes into the lumping](#sec-moving-fixes): 2 in De Dommel, 4 in Limburg and 15 in Vechtstromen. They get the IDs after those of the other nodes, and no longer the IDs that the fix scripts gave them.
+The input model of Brabantse Delta is no longer that of 2024: since November 2026 its HyDAMO data comes from the national GKW-HyDAMO package, see [HyDAMO data from GKW](gkw-hydamo.qmd).
+
+All node IDs and link IDs of the 11 input models were reproduced, but for 21 basins that the lumping of 2024 left out, see [Moving fixes into the lumping](#sec-moving-fixes): 2 in De Dommel, 4 in Limburg and 15 in Vechtstromen. They get the IDs after those of the other nodes, and no longer the IDs that the fix scripts gave them.
 In Limburg, whose input data differs from the data of the run in 2024, 4 nodes get another name.
 The basin areas are no longer reproduced, since the lumping now gives every area to a basin, see [Moving fixes into the lumping](#sec-moving-fixes).
 

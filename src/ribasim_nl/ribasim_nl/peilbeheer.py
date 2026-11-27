@@ -319,7 +319,7 @@ SOURCES: dict[str, list[Source]] = {
     ],
     "BrabantseDelta": [
         Source(
-            "BrabantseDelta/verwerkt/4_ribasim/hydamo.gpkg",
+            "BrabantseDelta/verwerkt/1_ontvangen_data/peilgebieden.gpkg",
             layer="peilgebiedpraktijk",
             code="CODE",
             by="WS_TYPE_PEILBEHEER",
