@@ -19,20 +19,31 @@ logger = logging.getLogger(__name__)
 type Coordinate = tuple[float, ...]
 
 
-def _join_next(chains: list[tuple[int, list[Coordinate]]]) -> bool:
-    """Join the first chain that ends where another one starts, with that one, and return whether there was one.
+def _next_join(chains: list[tuple[int, list[Coordinate]]]) -> tuple[int, int] | None:
+    """The positions of the first chain that ends where another one starts, and of that one, if there is one.
 
-    A chain is a row number, which a joined chain keeps of the first, and coordinates. A closed chain is not joined.
+    A closed chain is not joined.
     """
-    for i, (row, first) in enumerate(chains):
+    for i, (_, first) in enumerate(chains):
         if first[0] == first[-1]:
             continue
         j = next((j for j, (_, other) in enumerate(chains) if j != i and other[0] == first[-1]), None)
         if j is not None:
-            chains[i] = (row, [*first, *chains[j][1][1:]])
-            del chains[j]
-            return True
-    return False
+            return i, j
+    return None
+
+
+def _join_chains(chains: list[tuple[int, list[Coordinate]]]) -> list[tuple[int, list[Coordinate]]]:
+    """Join the chains of which one ends where another starts, until none do.
+
+    A chain is a row number, which a joined chain keeps of the first, and coordinates.
+    """
+    chains = list(chains)
+    while (pair := _next_join(chains)) is not None:
+        i, j = pair
+        chains[i] = (chains[i][0], [*chains[i][1], *chains[j][1][1:]])
+        del chains[j]
+    return chains
 
 
 def join_parts(lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -49,9 +60,7 @@ def join_parts(lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         return lines
     rows, codes, geometries = [], [], []
     for code, group in lines[duplicated].groupby("code", sort=True):
-        chains = [(row, list(line.coords)) for row, line in zip(group.index, group.geometry, strict=True)]
-        while _join_next(chains):
-            pass
+        chains = _join_chains([(row, list(line.coords)) for row, line in zip(group.index, group.geometry, strict=True)])
         lengths = [LineString(coords).length for _, coords in chains]
         order = np.argsort(-np.array(lengths), kind="stable")
         for n, position in enumerate(order):
