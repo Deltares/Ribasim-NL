@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from ribasim_nl.crossings.model import Options, boezem_model, to_object
-from ribasim_nl.crossings.parse import ParseCrossings, pandas2_strings, sort_index_2024, sort_values_2024
+from ribasim_nl.crossings.parse import ParseCrossings, sort_index_2024, sort_values_2024
 from ribasim_nl.crossings.postprocess import apply_edits, derive_edits
 from ribasim_nl.crossings.shortest_path import connect_components, shortest_paths
 from shapely.geometry import LineString, Point, box
@@ -32,17 +32,6 @@ def test_sort_values_2024():
     rows = np.array([i for i, v in enumerate(values) if not np.isnan(v)])
     # the missing values last, in their order
     assert sort_values_2024(df, "value")["row"].tolist() == [*rows[ORDER], 3, len(values) - 1]
-
-
-def test_pandas2_strings():
-    def missing() -> tuple[object, object]:
-        series = pd.Series(["a", None])
-        return series.dtype, series.iloc[1]
-
-    # strings as object, missing as None, which do not differ from each other, unlike NaN
-    dtype, value = pandas2_strings(missing)()
-    assert pd.api.types.is_object_dtype(dtype)
-    assert value is None
 
 
 def test_to_object():
@@ -132,6 +121,10 @@ def test_boezem_model(tmp_path: Path, postprocessed: Path):
     assert (crossing["peilgebied_from"], crossing["peilgebied_to"], crossing["gemaal"]) == ("pB", "pA", "g1")
     assert (crossing["agg_area_from"], crossing["agg_area_to"]) == ("B", "A")
     assert crossing.geometry.distance(Point(100, 50)) < 1e-6
+    # strings as object, as in pandas 2, which the 2024 code relies on
+    for df in [*cross.df_gpkg.values(), df_hydro, df_crossings]:
+        assert not any(isinstance(dtype, pd.StringDtype) for dtype in df.dtypes)
+    assert pd.api.types.is_object_dtype(df_crossings["peilgebied_from"])
 
     paths = shortest_paths(crossings_path)
     shortest_path_path = tmp_path / "shortest_path.gpkg"
