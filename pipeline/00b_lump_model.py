@@ -2,7 +2,9 @@
 """Lump the HyDAMO network of a water authority into its input model, `modellen/<authority>_2024_6_3`.
 
 The hydroobjects of `verwerkt/4_ribasim/hydamo.gpkg` are split in edges of about 250 m, and lumped into basins at the
-split nodes of `verwerkt/3_input/ribasim_input.gpkg`. Every area of `verwerkt/3_input/areas.gpkg` goes to a basin,
+split nodes of `verwerkt/3_input/ribasim_input.gpkg`. A split node that is not on the network is an error, and so is one
+that a hydroobject bypasses, unless that gets a split node of its own or is left out, see
+`ribasim_nl.lumping.hydamo.read_network_without_bypasses`. Every area of `verwerkt/3_input/areas.gpkg` goes to a basin,
 preferably one in its drainage area, and the gaps between them up to 5000 m² are filled. Nodes on the KRW water bodies
 of `verwerkt/4_ribasim/krw.gpkg` are hoofdwater. See `ribasim_nl.lumping`.
 
@@ -14,7 +16,7 @@ import sys
 import geopandas as gpd
 import pyogrio
 from ribasim_nl.keys import KEY_COLUMN, lumped_keys
-from ribasim_nl.lumping.hydamo import read_areas, read_boundaries, read_hydamo_network, read_split_nodes
+from ribasim_nl.lumping.hydamo import read_areas, read_boundaries, read_network_without_bypasses
 from ribasim_nl.lumping.model import lumped_model, read_krw
 from ribasim_nl.lumping.network import lump_network
 from ribasim_nl.lumping.utils import read_layer
@@ -37,6 +39,10 @@ CODES = {
     "Vechtstromen": "NL44",
 }
 
+# the split nodes that are not on the network, which the lumping of 2024 left out: a pumping station and a weir 0.5 m
+# apart, near the end of an edge
+OFF_NETWORK = {"AaenMaas": ["116VMW", "116VEE"]}
+
 authorities = sys.argv[1:]
 assert authorities, "pass the authorities as arguments"
 
@@ -44,12 +50,13 @@ for authority in authorities:
     print(authority)
     verwerkt = cloud.joinpath(authority, "verwerkt")
     hydamo_gpkg = verwerkt / "4_ribasim/hydamo.gpkg"
-    network = read_hydamo_network(hydamo_gpkg, dx=250.0)
+    ribasim_input = verwerkt / "3_input/ribasim_input.gpkg"
+    split_nodes, network = read_network_without_bypasses(
+        hydamo_gpkg, ribasim_input, dx=250.0, buffer_distance=1.0, off_network=OFF_NETWORK.get(authority, ())
+    )
     areas_gpkg = verwerkt / "3_input/areas.gpkg"
     areas = read_areas(areas_gpkg, "areas")
     drainage_areas = read_layer(areas_gpkg, "drainage_areas", explode=False, code_column="CODE")
-    ribasim_input = verwerkt / "3_input/ribasim_input.gpkg"
-    split_nodes, network = read_split_nodes(ribasim_input, "split_nodes", network, buffer_distance=1.0)
     boundaries = read_boundaries(ribasim_input, "boundaries", network.nodes, buffer_distance=1.0)
     lumped = lump_network(network, split_nodes, boundaries, areas, remove_isolated=True)
     krw = read_krw(verwerkt / "4_ribasim/krw.gpkg")

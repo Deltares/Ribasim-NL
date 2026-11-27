@@ -13,10 +13,11 @@ from ribasim_nl.lumping.hydamo import (
     read_areas,
     read_boundaries,
     read_hydamo_network,
+    read_network_without_bypasses,
     read_split_nodes,
 )
 from ribasim_nl.lumping.model import lumped_model, number_lost_basins, read_krw
-from ribasim_nl.lumping.network import area_basins, assign_areas, fill_holes, lump_network
+from ribasim_nl.lumping.network import area_basins, assign_areas, fill_holes, find_bypasses, lump_network, separates
 from ribasim_nl.lumping.utils import merge_grouped, quicksort_order, read_layer, split_edges_by_dx
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon, box
 
@@ -398,17 +399,14 @@ def test_select_hydroobjects():
     )
     assert select_hydroobjects(hydroobject, ["primair"])["code"].tolist() == ["P"]
     assert select_hydroobjects(hydroobject, ["primair"], ["T"])["code"].tolist() == ["P", "T"]
-    assert select_hydroobjects(hydroobject, ["primair", "secundair"], excluded=["P"])["code"].tolist() == ["S"]
     with pytest.raises(AssertionError, match="no hydroobjects with codes \\['X'\\]"):
         select_hydroobjects(hydroobject, ["primair"], ["X"])
     with pytest.raises(AssertionError, match="no hydroobjects of categories"):
         select_hydroobjects(hydroobject, ["overig"])
-    # an excluded hydroobject must be one that the categories select, and not be selected by its code as well
-    with pytest.raises(AssertionError, match="excluded hydroobjects \\['S'\\] are not of categories"):
-        select_hydroobjects(hydroobject, ["primair"], excluded=["S"])
-    with pytest.raises(AssertionError, match="both selected and excluded"):
-        select_hydroobjects(hydroobject, ["primair"], ["T"], excluded=["T"])
-    prepared = prepare_hydroobjects(hydroobject, ["primair", "secundair"], excluded=["P"])
+    # a hydroobject that the categories select already is not selected by its code
+    with pytest.raises(AssertionError, match="are of categories"):
+        select_hydroobjects(hydroobject, ["primair"], ["P"])
+    prepared = prepare_hydroobjects(hydroobject, ["secundair"])
     assert prepared["code"].tolist() == ["S"]
 
 
@@ -538,3 +536,116 @@ def test_lumped_model(lumping_input: Path):
     assert model.basin.profile.df is not None
     assert model.basin.profile.df["node_id"].tolist() == [5, 5, 6, 6]
     assert model.pump.static.df is None
+
+
+@pytest.fixture
+def bypass_input(tmp_path: Path) -> Path:
+    """A watercourse from x=0 to 200 with a weir at x=100, and a newer fish passage from x=90 to 110 around it.
+
+    The watercourse is in three pieces, as `ribasim_nl.lumping.connect` splits it where the fish passage ends on it.
+    It flows from a FlowBoundary at x=0 to a LevelBoundary at x=200.
+    """
+    hydamo = tmp_path / "hydamo.gpkg"
+    gpd.GeoDataFrame(
+        {
+            "code": ["A-0", "A-1", "A-2", "F"],
+            "created_date": [None, None, None, "2025-05-19"],
+        },
+        geometry=[
+            LineString([(0, 0), (90, 0)]),
+            LineString([(90, 0), (110, 0)]),
+            LineString([(110, 0), (200, 0)]),
+            LineString([(90, 0), (100, 10), (110, 0)]),
+        ],
+        crs=CRS,
+    ).to_file(hydamo, layer="hydroobject")
+    gpd.GeoDataFrame({"code": ["S1"]}, geometry=[Point(100, 0)], crs=CRS).to_file(hydamo, layer="stuw")
+    ribasim_input = tmp_path / "ribasim_input.gpkg"
+    gpd.GeoDataFrame(
+        # the split node takes its ID and type from the weir
+        {"split_node": [1], "split_node_id": [None], "object_type": [None], "object_function": [""]},
+        geometry=[Point(100, 0)],
+        crs=CRS,
+    ).to_file(ribasim_input, layer="split_nodes")
+    gpd.GeoDataFrame(
+        {"boundary_name": ["in", "out"], "boundary_type": ["FlowBoundary", None]},
+        geometry=[Point(0, 0), Point(200, 0)],
+        crs=CRS,
+    ).to_file(ribasim_input, layer="boundaries")
+    return tmp_path
+
+
+def test_find_bypasses(bypass_input: Path):
+    """The fish passage bypasses the weir, and the way around it is the fish passage and the pieces next to it."""
+    network = read_hydamo_network(bypass_input / "hydamo.gpkg", dx=250.0)
+    assert network.edges["hydroobject"].tolist() == ["A-0", "A-1", "A-2", "F"]
+    split_nodes, network = read_split_nodes(bypass_input / "ribasim_input.gpkg", "split_nodes", network, 1.0)
+    graph, bypasses = find_bypasses(network, split_nodes)
+    (bypass,) = bypasses
+    edges = network.edges.set_index("edge_no")
+    assert set(edges.loc[bypass.edge_nos, "hydroobject"]) == {"A-1", "F"}
+    fish_passage = list(edges.index[edges["hydroobject"] == "F"])
+    anchors = {n for n in graph if n >= 998_000_000_000}
+    # without the fish passage the weir separates, but a side without another split node is not enough
+    assert not separates(graph, bypass, fish_passage, anchors)
+    boundaries = read_boundaries(bypass_input / "ribasim_input.gpkg", "boundaries", network.nodes, buffer_distance=1.0)
+    assert separates(graph, bypass, fish_passage, anchors | set(boundaries["node_no"]))
+    # without the network the split node does not
+    network = read_hydamo_network(bypass_input / "hydamo.gpkg", dx=250.0, exclude=["F"])
+    split_nodes, network = read_split_nodes(bypass_input / "ribasim_input.gpkg", "split_nodes", network, 1.0)
+    assert find_bypasses(network, split_nodes)[1] == []
+
+
+def test_read_network_without_bypasses(bypass_input: Path):
+    """The newer fish passage is left out, but not if it is longer than the limit, or as old as the weir."""
+    hydamo, ribasim_input = bypass_input / "hydamo.gpkg", bypass_input / "ribasim_input.gpkg"
+    split_nodes, network = read_network_without_bypasses(hydamo, ribasim_input, dx=250.0, buffer_distance=1.0)
+    assert "F" not in set(network.edges["hydroobject"])
+    assert split_nodes["split_node_id"].tolist() == ["S1"]
+    with pytest.raises(AssertionError, match="S1: the way around it is \\['A-1', 'F'\\]"):
+        read_network_without_bypasses(hydamo, ribasim_input, dx=250.0, buffer_distance=1.0, max_bypass_length=20.0)
+    hydroobject = gpd.read_file(hydamo, layer="hydroobject")
+    hydroobject.assign(created_date=None).to_file(hydamo, layer="hydroobject")
+    with pytest.raises(AssertionError, match="split nodes that are bypassed"):
+        read_network_without_bypasses(hydamo, ribasim_input, dx=250.0, buffer_distance=1.0)
+
+
+def test_read_split_nodes_off_network(bypass_input: Path):
+    """A split node that is not on the network is an error, unless it is known."""
+    ribasim_input = bypass_input / "ribasim_input.gpkg"
+    gpd.GeoDataFrame(
+        {"split_node": [1, 2], "split_node_id": [None, "S2"], "object_type": [None, "stuw"], "object_function": ""},
+        geometry=[Point(100, 0), Point(50, 30)],
+        crs=CRS,
+    ).to_file(ribasim_input, layer="split_nodes")
+    network = read_hydamo_network(bypass_input / "hydamo.gpkg", dx=250.0, exclude=["F"])
+    with pytest.raises(AssertionError, match="not on the network"):
+        read_split_nodes(ribasim_input, "split_nodes", network, buffer_distance=1.0)
+    split_nodes, _ = read_split_nodes(ribasim_input, "split_nodes", network, buffer_distance=1.0, off_network=["S2"])
+    assert split_nodes["split_node_id"].tolist() == ["S1"]
+    with pytest.raises(AssertionError, match="on the network after all"):
+        read_split_nodes(ribasim_input, "split_nodes", network, buffer_distance=1.0, off_network=["S1", "S2"])
+
+
+def test_apply_hydamo_changes_removes_pieces(tmp_path: Path):
+    """With connected lines, a removal by code also removes the pieces the line was split into."""
+    source, removals, additions, target = (tmp_path / f"{name}.gpkg" for name in ("hydamo", "remove", "add", "target"))
+    gpd.GeoDataFrame(
+        {"code": ["H1-0", "H1-1", "H10", "H2"]},
+        geometry=[
+            LineString([(0, 0), (50, 0)]),
+            LineString([(50, 0), (100, 0)]),
+            LineString([(0, 9), (9, 9)]),
+            LineString([(0, 50), (100, 50)]),
+        ],
+        crs=CRS,
+    ).to_file(source, layer="hydroobject")
+    gpd.GeoDataFrame({"code": ["H1"]}, geometry=[LineString([(0, 0), (1, 1)])], crs=CRS).to_file(
+        removals, layer="hydroobject"
+    )
+    gpd.GeoDataFrame({"code": []}, geometry=[], crs=CRS).to_file(additions, layer="hydroobject")
+    apply_hydamo_changes(source, removals, additions, target, connect_distance=0.5)
+    assert sorted(gpd.read_file(target, layer="hydroobject")["code"]) == ["H10", "H2"]
+    # without connecting, as for the data of 2024, only the code itself
+    apply_hydamo_changes(source, removals, additions, target)
+    assert sorted(gpd.read_file(target, layer="hydroobject")["code"]) == ["H1-0", "H1-1", "H10", "H2"]
