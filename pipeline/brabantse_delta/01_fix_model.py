@@ -75,11 +75,12 @@ for link_id in link_ids:
     model.reverse_link(link_id=link_id)
 
 # %% Connector nodes whose hydroobject is drawn against the flow in the HyDAMO data of 2026, unlike in that of 2023
-# and the new weirs KST02897 and KST02913 and gate AKN00862 of the Westelijke Langstraat, whose levels are higher
-# downstream. Culvert KDU11679 follows the new layout of the Westelijke Langstraat, parallel to the new weir KST02910
+# and the new weir KST02897 and gate AKN00862 of the Westelijke Langstraat, whose levels are higher downstream.
+# Culvert KDU11679 follows the new layout of the Westelijke Langstraat, parallel to the new weir KST02910. The new weir
+# KST02913 keeps its direction, up to up:ow:OVK00398-1: reversed, it lets back into the polder of GEM_KGM00006 what
+# that pumps out
 for key in [
-    "KDU42101", "KDU42112", "KDU45089", "KDU60018", "KST00839", "KST00917", "ow:OVK04871", "KST02897", "KST02913",
-    "AKN00862",
+    "KDU42101", "KDU42112", "KDU45089", "KDU60018", "KST00839", "KST00917", "ow:OVK04871", "KST02897", "AKN00862",
 ]:  # fmt: skip
     node_id = n(key)
     links = model.link.df

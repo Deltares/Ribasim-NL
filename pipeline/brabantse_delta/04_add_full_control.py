@@ -193,7 +193,9 @@ drain_nodes = [
     n("KST00407"), n("KST02860"), n("KST00816"), n("KST00741"), n("KST00522"), n("KST00450"), n("KST00505"), n("KST02717"), n("KST00724"), n("KST00531"), n("KST02885"), n("KST00398"), n("KST02890"), n("KDU03581"), n("KST00827"), n("KST02287"), n("KDU05896"), n("KST01787"), n("KST01772"), n("KDU06955"), n("KDU05728"), n("KST02400"), n("KDU30360"),
     n("GEM_KGM00119"), n("KST02290"), n("GEM_KGM00215"), n("KST00307"), n("GEM_KGM00018"), n("KDU20052"), n("KST02386"), n("KDU11005"), n("KDU03143"), n("KST01913"), n("KST01911"), n("KST02139"), n("KST02972"), n("KST01877"), n("KST01359"), n("KST01904"), n("KST01077"), n("KST01156"), n("KST01117"), n("KGM00105"),
     n("KST02405"), n("KST00852"), n("KST00839"), n("KST01096"), n("KDU05759"), n("KST01048"), n("KST02966"), n("KST00700"), n("KST01054"), n("KST02709"), n("KST02710"), n("KDU16810"), n("KST00856"), n("KST02949"), n("KDU45058"), n("KST00820"), n("KST02175"), n("KST00477"), n("KST00469"), n("KST01266"),
-    n("GEM_KGM00006"), n("KST00426"), n("KST00413"),n("KST02895"), n("KDU04857"), n("KDU04851"), n("KST00115"), n("KDU04449"), n("KDU30310"), n("KDU30005"), n("KDU32538"), n("KST01960"), n("KDU02470"), n("KDU02457"), n("Theodorushaven"), n("GEM_KGM00206")
+    n("GEM_KGM00006"), n("KST00426"), n("KST00413"),n("KST02895"), n("KDU04857"), n("KDU04851"), n("KST00115"), n("KDU04449"), n("KDU30310"), n("KDU30005"), n("KDU32538"), n("KST01960"), n("KDU02470"), n("KDU02457"), n("Theodorushaven"), n("GEM_KGM00206"),
+    # the new pumping station Petgatten of the Westelijke Langstraat, which drains its polder up to a higher level
+    n("KGM00429"),
 ]
 # fmt: on
 
