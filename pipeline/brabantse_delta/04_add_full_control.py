@@ -88,7 +88,6 @@ outlet_max_flow_rate_from_results = {
     n("KST01213"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
     n("KDU10709"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
     n("KDU02911"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
-    n("KDU17193"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
     n("KSL00223"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
     n("KDU14177"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
     n("KDU08736"): 1,  # naam onbekend; dynamic max=0.03, oude max=400
@@ -120,7 +119,6 @@ outlet_max_flow_rate_from_results = {
     n("KST00852"): 1,  # naam onbekend; dynamic max=0.08, oude max=412
     n("KST00322"): 2,  # naam onbekend; dynamic max=0.95, oude max=401
     n("KST00853"): 1,  # naam onbekend; dynamic max=0.01, oude max=401
-    n("KST02799"): 1,  # naam onbekend; dynamic max=0.01, oude max=401
     n("KST00334"): 1,  # naam onbekend; dynamic max=0.08, oude max=401
     n("KST00335"): 1,  # naam onbekend; dynamic max=0.08, oude max=401
     n("KST00302"): 1,  # naam onbekend; dynamic max=0.50, oude max=404
@@ -133,8 +131,6 @@ outlet_max_flow_rate_from_results = {
     n("KDU08892"): 2,  # naam onbekend; dynamic max=1.23, oude max=400
     n("KST01034"): 1,  # naam onbekend; dynamic max=0.37, oude max=400
     n("KDU06613"): 1,  # naam onbekend; dynamic max=0.37, oude max=400
-    n("KST01036"): 1,  # naam onbekend; dynamic max=0.10, oude max=400
-    n("KST00011"): 1,  # naam onbekend; dynamic max=0.08, oude max=400
     n("KDU44303"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
     n("KST01054"): 1,  # naam onbekend; dynamic max=0.05, oude max=400
     n("KST00937"): 1,  # naam onbekend; dynamic max=0.00, oude max=400
@@ -187,7 +183,10 @@ flow_control_nodes = [
 
 supply_nodes = [
     n("KDU00218"), n("GEM_KGM00391"), n("KDU01724"), n("KDU18314"), n("KDU32788"), n("KST02285"), n("KDU04571"), n("KDU02941"), n("KDU03124"), n("KST02376"), n("KDU30006"), n("KST01338"), n("KDU10014"), n("GEM_KGM00205"), n("KDU14555"), n("KST01131"), n("KSL00202"), n("KST01093"),n("KDU09982"), n("KDU17690"),
-    n("KST00887"), n("KST00702"), n("KDU03244"), n("KDU17337"),n("GEM_KGM00067"),n("KST00829"), n("KST00832"), n("KDU13943"), n("KST00457"), n("GEM_KGM00061"), n("GEM_KGM00059"), n("KST00395"), n("KST02306"), n("KST02843"), n("KST01640"), n("GEM_KGM00041"), n("KSL00215"), n("KGM00043"), n("ow:OVK12037"),n("inlaat-donge")
+    n("KST00887"), n("KST00702"), n("KDU03244"), n("KDU17337"),n("GEM_KGM00067"),n("KST00829"), n("KST00832"), n("KDU13943"), n("KST00457"), n("GEM_KGM00061"), n("GEM_KGM00059"), n("KST00395"), n("KST02306"), n("KST02843"), n("KST01640"), n("GEM_KGM00041"), n("KSL00215"), n("KGM00043"), n("ow:OVK12037"),n("inlaat-donge"),
+    # the supply routes of https://github.com/Deltares/Ribasim-NL/issues/1055: from the Wilhelminakanaal above Sluis III,
+    # and along the old Donge
+    n("KST02534"), n("KST02866"),
 ]
 
 drain_nodes = [
@@ -296,6 +295,17 @@ model.reverse_link(link_id=lk("KDU11184", "up:KST00531"))
 model.reverse_link(link_id=lk("KDU03574", "up:KST00724"))
 model.reverse_link(link_id=lk("up:GEM_KGM00051", "KDU03574"))
 
+# https://github.com/Deltares/Ribasim-NL/issues/1055: the Wilhelminakanaal above Sluis III, from which KST02534 lets in,
+# is at 12.55 m, the min_upstream_level of Sluis III. koppelen couples the boundary to it
+assert model.level_boundary.static.df is not None
+level_boundary = model.level_boundary.static.df
+level_boundary.loc[level_boundary.node_id == n("bnd:63"), "level"] = 12.55
+
+# https://github.com/Deltares/Ribasim-NL/issues/1055: KST02917 drains up:KST00507 into up:KDU01599 as an overflow, see
+# below
+model.reverse_link(link_id=lk("up:KDU01599", "KST02917"))
+model.reverse_link(link_id=lk("KST02917", "up:KST00507"))
+
 # Roode Vaart: Outlet 589 laat in vanuit het Hollandsch Diep; Pump 972 blijft de Roode Vaart afmalen
 model.reverse_link(link_id=lk("KSL00202", "bnd:22"))
 model.reverse_link(link_id=lk("up:KDU02937", "KSL00202"))
@@ -358,6 +368,15 @@ add_controllers_to_uncontrolled_connector_nodes(
     flow_rate_afvoer=100.0,
     max_flow_rate_afvoer=outlet_max_flow_rate_afvoer_by_node_id,
 )
+
+# https://github.com/Deltares/Ribasim-NL/issues/1055: the overflow KST02917 drains up:KST00507 from 2 cm above the
+# target level that weir KST00507 keeps
+OVERFLOW_OFFSET = 0.02
+overflow, overflow_control = n("KST02917"), n("discrete_control:KST02917")
+assert model.outlet.static.df is not None and model.discrete_control.condition.df is not None
+static, condition = model.outlet.static.df, model.discrete_control.condition.df
+static.loc[static.node_id == overflow, "min_upstream_level"] += OVERFLOW_OFFSET
+condition.loc[condition.node_id == overflow_control, ["threshold_high", "threshold_low"]] += OVERFLOW_OFFSET
 
 # Pomp-capaciteiten op basis van hoogste berekende dynamic debiet, afgerond naar boven.
 # Bestaande handmatige pompwaarden, zoals 376 en 446, blijven leidend.

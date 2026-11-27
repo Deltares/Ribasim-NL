@@ -6,7 +6,7 @@ import pandas as pd
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet
 from ribasim_nl.geometry import drop_z
-from ribasim_nl.gkw import get_data_from_gkw
+from ribasim_nl.lumping.gkw_hydamo import read_authority
 from ribasim_nl.reset_static_tables import reset_static_tables
 from ribasim_nl.sanitize_node_table import sanitize_node_table
 from shapely.geometry import LineString, Point
@@ -75,11 +75,19 @@ for link_id in link_ids:
     model.reverse_link(link_id=link_id)
 
 # %% Connector nodes whose hydroobject is drawn against the flow in the HyDAMO data of 2026, unlike in that of 2023
-for key in ["KDU11679", "KDU42101", "KDU42112", "KDU45089", "KDU60018", "KST00839", "KST00917", "ow:OVK04871"]:
+# and the new weirs KST02897 and KST02913 and gate AKN00862 of the Westelijke Langstraat, whose levels are higher
+# downstream. Culvert KDU11679 follows the new layout of the Westelijke Langstraat, parallel to the new weir KST02910
+for key in [
+    "KDU42101", "KDU42112", "KDU45089", "KDU60018", "KST00839", "KST00917", "ow:OVK04871", "KST02897", "KST02913",
+    "AKN00862",
+]:  # fmt: skip
     node_id = n(key)
     links = model.link.df
     for link_id in links.index[(links.from_node_id == node_id) | (links.to_node_id == node_id)]:
         model.reverse_link(link_id=link_id)
+# the new weir KST02908 of the Westelijke Langstraat, whose watercourses are both drawn away from it, drains up:AKN00862
+# at -0.40 m into up:GEM_KGM00006 at -1.14 m
+model.reverse_link(link_id=lk("KST02908", "up:AKN00862"))
 
 # %% https://github.com/Deltares/Ribasim-NL/issues/152#issuecomment-2428677846
 # Toevoegen Donge
@@ -159,9 +167,9 @@ model.merge_basins(node_id=n("up:ow:OVK11364"), to_node_id=n("up:KST02884"), are
 model.merge_basins(node_id=n("up:KDU00321"), to_node_id=n("up:GEM_KGM00431"), are_connected=True)
 model.merge_basins(node_id=n("up:ow:OVK11370"), to_node_id=n("up:ow:OVK11374"), are_connected=True)
 model.merge_basins(node_id=n("up:ow:OVK11374"), to_node_id=n("up:ow:OVK11373-0"), are_connected=True)
-# into the Basin above weir KST00814, which holds part of OVK11373 in the HyDAMO data of 2026. The Basin below that
-# weir, up:KST02907, is therefore no longer merged with it
-model.merge_basins(node_id=n("up:ow:OVK11373-0"), to_node_id=n("up:KST00814"), are_connected=True)
+# into the Basin of the rest of OVK11373: weir KST00814, on a secundair watercourse, is not in the network. The Basin
+# below weir KST02907 is not merged with it
+model.merge_basins(node_id=n("up:ow:OVK11373-0"), to_node_id=n("up:ow:OVK11373-2"), are_connected=True)
 model.merge_basins(node_id=n("up:ow:OVK11371"), to_node_id=n("up:ow:OVK11363"), are_connected=True)
 model.merge_basins(node_id=n("up:OVK11367-0"), to_node_id=n("up:ow:OVK11363"), are_connected=True)
 model.merge_basins(node_id=n("up:ow:OVK01991"), to_node_id=n("up:KST00209"), are_connected=True)
@@ -182,8 +190,8 @@ model.merge_basins(node_id=n("up:ow:OVK12128"), to_node_id=n("up:OVK06052"), are
 model.merge_basins(node_id=n("up:KST01776"), to_node_id=n("up:KDU04391"), are_connected=True)
 model.merge_basins(node_id=n("up:ow:OVK02843"), to_node_id=n("up:OVK02836"), are_connected=True)
 model.merge_basins(node_id=n("up:ow:OVK02936"), to_node_id=n("up:ow:OVK02908"), are_connected=True)
-model.merge_basins(node_id=n("up:OVK02836"), to_node_id=n("up:OVK02837"), are_connected=True)
-model.merge_basins(node_id=n("up:OVK02837"), to_node_id=n("up:KST00207"), are_connected=True)
+model.merge_basins(node_id=n("up:OVK02836"), to_node_id=n("up:KST02985"), are_connected=True)
+model.merge_basins(node_id=n("up:KST02985"), to_node_id=n("up:KST00207"), are_connected=True)
 model.merge_basins(node_id=n("up:KST01493"), to_node_id=n("up:ow:OVK03186"), are_connected=True)
 model.merge_basins(node_id=n("up:KDU24269"), to_node_id=n("up:KST00209"), are_connected=True)
 model.merge_basins(node_id=n("up:GEM_KGM00053"), to_node_id=n("up:KST00792"), are_connected=True)
@@ -223,7 +231,8 @@ for node_id in model.manning_resistance.node.df[
 model.node.df.loc[model.node.df["meta_categorie"].isna(), "meta_categorie"] = "hoofdwater"
 
 # name-column contains the code we want to keep, meta_name the name we want to have
-df = get_data_from_gkw(layers=["sluis", "gemaal", "stuw"], authority=authority)
+# the names of the structures, from the GKW-HyDAMO package that the network is lumped from
+df = pd.concat([read_authority(authority, layer) for layer in ["sluis", "gemaal", "stuw"]], ignore_index=True)
 df.set_index("code", inplace=True)
 names = df["naam"]
 

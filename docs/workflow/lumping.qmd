@@ -45,6 +45,7 @@ It also holds the boundaries, where water enters or leaves the area of the autho
 
 The lumping cuts the watercourses into edges of about 250 m, and then cuts the network at every split node.
 Each piece that stays connected is a basin.
+A split node that is not on the network, or that the network bypasses so that it separates nothing, is an error, unless the lumping can leave out a new watercourse around it, such as a fish passage, see [HyDAMO data from GKW](../dev/gkw-hydamo.qmd#sec-bypasses).
 
 A basin between a boundary and the split node next to it is dropped, and the boundary connects straight to that split node.
 Where a boundary has no split node, its basin stays.
