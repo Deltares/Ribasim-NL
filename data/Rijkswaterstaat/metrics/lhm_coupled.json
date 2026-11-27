@@ -1,14 +1,14 @@
 {
   "solver": {
-    "computation_time": 1.8,
-    "rhs_calls": 1482000.0,
-    "mean_dt": 199.9,
-    "dt_p05": 120.3,
-    "rejected_fraction": 0.08156
+    "computation_time": 1.9,
+    "rhs_calls": 1479000.0,
+    "mean_dt": 200.6,
+    "dt_p05": 119.6,
+    "rejected_fraction": 0.08103
   },
   "observations": {
     "compared": 654.0,
-    "median_nse": 0.0409,
+    "median_nse": 0.04104,
     "median_kge": 0.08724
   },
   "discharge_kge": {
@@ -31,7 +31,7 @@
     "Noordzeekanaal": -0.3972,
     "Amsterdam-Rijnkanaal Breukelen": -0.3825,
     "Volkerak": -0.1335,
-    "Haringvliet": 0.02198,
+    "Haringvliet": 0.02211,
     "Twentekanaal (Kanaal Zutphen-Enschede)": 9.977,
     "Julianakanaal": 44.04
   },
@@ -41,8 +41,8 @@
     "Veluwemeer": -0.03919,
     "Noordzeekanaal": -0.3927,
     "Amsterdam-Rijnkanaal Breukelen": -0.3552,
-    "Volkerak": 0.1149,
-    "Haringvliet": 0.08694,
+    "Volkerak": 0.1164,
+    "Haringvliet": 0.08637,
     "Twentekanaal (Kanaal Zutphen-Enschede)": 9.985,
     "Julianakanaal": 44.07
   }
