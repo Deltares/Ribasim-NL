@@ -88,6 +88,9 @@ What the lumping cannot see is a new hydroobject that joins two basins that were
 These, and new watercourses with new structures, such as the new layout of the Westelijke Langstraat, get a split node in `ribasim_input.gpkg` at their weir, pumping station, gate or culvert.
 Where a hydroobject now continues to a junction that it did not reach in 2023, which joins two basins, a split node of type `harde_knip` cuts it, as in the data of 2023.
 Where the watercourse of a structure itself is replaced, the model follows the data: the split node of a weir that is gone is removed, and its basins become one, unless new structures take its place, as the new weirs on OVK12719 take the place of KST00677.
+In a freely draining area, a weir can be replaced by a meandering reach, which keeps most of the level difference by the slope of its bed.
+There the split node stays on the new reach, as an Outlet below whose level nothing flows, such as KST00690 on OVK12707 between 4.43 and 2.63 m.
+A ManningResistance would not keep that difference: at the small flows of such a stream, mostly below 0.2 m³/s, it would let the upstream Basin drain to nearly the level downstream, whatever its resistance.
 
 ## Update the data of an authority
 
