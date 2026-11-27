@@ -5,116 +5,116 @@ stages:
     deps:
     - path: data/AaenMaas/modellen/AaenMaas_dynamic_model
       hash: md5
-      md5: fdd7b6d6e440f8bd90bda728087496a4.dir
+      md5: f9f73ddc24896833e395b3281960a49d.dir
       size: 97008796
       nfiles: 5
     - path: data/AmstelGooienVecht/modellen/AmstelGooienVecht_forcing
       hash: md5
-      md5: c2d3acdb39cfd45c2f41ec65cd95e693.dir
-      size: 44765148
+      md5: 796b32031f2a760693a52ed747d45d8d.dir
+      size: 44773340
       nfiles: 5
     - path: data/BrabantseDelta/modellen/BrabantseDelta_dynamic_model
       hash: md5
-      md5: 45f87ea1c3145407da41bc27f988a1f0.dir
-      size: 113593113
+      md5: 8b82055bd8328bebee741d2e378e4a98.dir
+      size: 113559385
       nfiles: 5
     - path: data/DeDommel/modellen/DeDommel_dynamic_model
       hash: md5
-      md5: 494756f0be2108f309a27fbbe61e98fe.dir
-      size: 123256171
+      md5: a7a34bd726e4a8878f5cf6cc06e08b01.dir
+      size: 123293035
       nfiles: 5
     - path: data/Delfland/modellen/Delfland_forcing
       hash: md5
-      md5: 7f28ecee0403fbc33ab1e1a89351056b.dir
-      size: 19922623
+      md5: 8bf216082ba21a47560332e5bf2ffeb0.dir
+      size: 19947199
       nfiles: 5
     - path: 
         data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_dynamic_model
       hash: md5
-      md5: d2045cb0834df21c55ca7668270ddf67.dir
-      size: 89597601
+      md5: 99983f1ffa41937f6c05ca7729737443.dir
+      size: 89613985
       nfiles: 5
     - path: 
         data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_forcing
       hash: md5
-      md5: 6f57e9eada6b7f9bb50697a00d14ba4e.dir
-      size: 48741128
+      md5: 4e5cad81920cfb4b7803040d5ac5ef20.dir
+      size: 48712456
       nfiles: 5
     - path: data/HollandseDelta/modellen/HollandseDelta_forcing
       hash: md5
-      md5: 998e4e0b459dd536d452533a0ef9b126.dir
-      size: 70393576
+      md5: 402b1fc90c343aa0d4d8005a60b2dca1.dir
+      size: 70352616
       nfiles: 5
     - path: data/HunzeenAas/modellen/HunzeenAas_dynamic_model
       hash: md5
-      md5: ce424045b2139119bf0ad896a25d411f.dir
+      md5: 9c81e6d8c5b7f1e2229e1b2a98679a46.dir
       size: 76591259
       nfiles: 5
     - path: data/Limburg/modellen/Limburg_dynamic_model
       hash: md5
-      md5: 8b04d0004f8c47eddb3ca384d7acd3b7.dir
-      size: 141611831
+      md5: 58ed7262cbc688def6e158d7b841f456.dir
+      size: 141656887
       nfiles: 5
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_dynamic_model
       hash: md5
-      md5: 37b70021df4b8648d5303502e95470a3.dir
-      size: 91062529
+      md5: f2c40f29186a0a845a31e1196e20930c.dir
+      size: 91033857
       nfiles: 5
     - path: data/Rijkswaterstaat/modellen/hws_transient
       hash: md5
-      md5: 21df041d9c92acdd9408066552ac804e.dir
-      size: 67217300
+      md5: a80587839c7a4f0b7bbc82a3214debe5.dir
+      size: 67237780
       nfiles: 3
     - path: data/RijnenIJssel/modellen/RijnenIJssel_dynamic_model
       hash: md5
-      md5: 91c6f167ef4ee58a225e28649dbf6c54.dir
-      size: 56398017
+      md5: 6de084318fc66f00694a0f5e05689fb0.dir
+      size: 56389825
       nfiles: 5
     - path: data/Rijnland/modellen/Rijnland_forcing
       hash: md5
-      md5: 6f5ac194493720795bd90aabc20ed98d.dir
-      size: 59358746
+      md5: 0dcb571f46bf6227807818d1ee0c9371.dir
+      size: 59325978
       nfiles: 5
     - path: data/Rivierenland/modellen/Rivierenland_forcing
       hash: md5
-      md5: daa8315df16533f212c8eaf378061a53.dir
-      size: 43130822
+      md5: 0be02e7fbd84084859521aa117663071.dir
+      size: 43691974
       nfiles: 5
     - path: data/Scheldestromen/modellen/Scheldestromen_forcing
       hash: md5
-      md5: efe642a68bd1d4db1acc1f33fab390a3.dir
-      size: 32919571
+      md5: c7d082f5f6759eb2bfc63e042bdb129e.dir
+      size: 32931859
       nfiles: 5
     - path: 
         data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_forcing
       hash: md5
-      md5: 3cfd63483072b3908da7813a3db7d14f.dir
-      size: 23344867
+      md5: 21997e242a4420c6102f5894b3f84074.dir
+      size: 23394019
       nfiles: 5
     - path: data/StichtseRijnlanden/modellen/StichtseRijnlanden_dynamic_model
       hash: md5
-      md5: 5479d31d3b6b875d1a83008b7e2b7c48.dir
-      size: 89833361
+      md5: f499b428f04b85fed10340862a50c671.dir
+      size: 89694849
       nfiles: 5
     - path: data/ValleienVeluwe/modellen/ValleienVeluwe_dynamic_model
       hash: md5
-      md5: 8f3337e8241722f59ff3cff87621542c.dir
-      size: 79779426
+      md5: e2ad2a5189bb1396c2f139e187cfa1ab.dir
+      size: 79795810
       nfiles: 5
     - path: data/Vechtstromen/modellen/Vechtstromen_dynamic_model
       hash: md5
-      md5: 91f7c097002831e074d4616009b9c1a8.dir
-      size: 100489036
+      md5: 9ee885af6c4643dd4d40749c7f8e451e.dir
+      size: 100501324
       nfiles: 5
     - path: data/WetterskipFryslan/modellen/WetterskipFryslan_forcing
       hash: md5
-      md5: 88ecb07bfe7783b0de4c93a670c39c90.dir
-      size: 142555024
+      md5: 4ecd082ee18c7812866b0c090fed3e6d.dir
+      size: 142690192
       nfiles: 5
     - path: data/Zuiderzeeland/modellen/Zuiderzeeland_forcing
       hash: md5
-      md5: 1596598f7b3111587a352e2b47348f81.dir
-      size: 33925694
+      md5: 2da6b34e919fea5a8fb6ff049ecc1790.dir
+      size: 33860158
       nfiles: 5
     - path: pipeline/08_samenvoegen_modellen.py
       hash: md5
@@ -122,14 +122,14 @@ stages:
       size: 7181
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: 6b68656ecfa3f5be702edac470f8337d.dir
-      size: 1332883389
+      md5: 4e9d6c1e9f31d6c990304f505ab25ca3.dir
+      size: 1333148709
       nfiles: 3
   bathymetry:
     cmd: pixi run python pipeline/rijkswaterstaat/1_bathymetrie.py
@@ -171,6 +171,14 @@ stages:
   koppelen:
     cmd: pixi run python pipeline/09_koppelen_modellen.py
     deps:
+    - path: data/AmstelGooienVecht/verwerkt/profielen/network.gpkg
+      hash: md5
+      md5: 44a92feb6b819d4a4be106b0e348e32f
+      size: 5627904
+    - path: data/Basisgegevens/BGT/bgt_water.parquet
+      hash: md5
+      md5: f5342688a1cde6171a0c32276ff04728
+      size: 1516460371
     - path: data/Basisgegevens/OSM/waterway_fairway.gpkg
       hash: md5
       md5: b8a1f0010907f266879ec311f55c3d36
@@ -187,12 +195,16 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
+    - path: data/HollandsNoorderkwartier/verwerkt/profielen/network.gpkg
+      hash: md5
+      md5: a39227070205f59e537ba84d6395b08c
+      size: 36941824
     - path: data/Rijkswaterstaat/modellen/lhm_parts
       hash: md5
-      md5: 6b68656ecfa3f5be702edac470f8337d.dir
-      size: 1332883389
+      md5: 4e9d6c1e9f31d6c990304f505ab25ca3.dir
+      size: 1333148709
       nfiles: 3
     - path: data/Rijkswaterstaat/verwerkt/netwerk.gpkg
       hash: md5
@@ -202,20 +214,28 @@ stages:
       hash: md5
       md5: 434f90e89863d7ac2b6df64dd1af00a8
       size: 66547712
+    - path: data/WetterskipFryslan/verwerkt/profielen/network.gpkg
+      hash: md5
+      md5: c67240a41ccf668daed396844bda08b7
+      size: 37359616
+    - path: data/Zuiderzeeland/verwerkt/profielen/network.gpkg
+      hash: md5
+      md5: fbe784f7d110414ea2392934d5531f05
+      size: 7884800
     - path: pipeline/09_koppelen_modellen.py
       hash: md5
-      md5: f08577f8e64977b652a23036294050e7
-      size: 51614
+      md5: c6eaab726c1408f61bb016963b1280cf
+      size: 53618
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: c7c253b3e995499bd4af985580905833.dir
-      size: 1334198205
+      md5: f3a5d128dc82c7a09b45ec9c287a553b.dir
+      size: 1334635557
       nfiles: 4
   rwzi:
     cmd: pixi run python pipeline/create_rwzi_model.py
@@ -240,9 +260,9 @@ stages:
       size: 21207
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rijkswaterstaat/modellen/rwzi
       hash: md5
@@ -287,8 +307,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -318,13 +338,13 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/AaenMaas/modellen/AaenMaas_dynamic_model
       hash: md5
-      md5: fdd7b6d6e440f8bd90bda728087496a4.dir
+      md5: f9f73ddc24896833e395b3281960a49d.dir
       size: 97008796
       nfiles: 5
   dynamic@brabantse_delta:
@@ -360,8 +380,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -374,8 +394,8 @@ stages:
       size: 25518595
     - path: data/BrabantseDelta/modellen/BrabantseDelta_bergend_model
       hash: md5
-      md5: db139bae2856562a966877965f993ecf.dir
-      size: 11747569
+      md5: de966d84129eb6b54a53b04d5405d8f0.dir
+      size: 11780337
       nfiles: 2
     - path: data/Rijkswaterstaat/modellen/rwzi
       hash: md5
@@ -396,14 +416,14 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/BrabantseDelta/modellen/BrabantseDelta_dynamic_model
       hash: md5
-      md5: 45f87ea1c3145407da41bc27f988a1f0.dir
-      size: 113593113
+      md5: 8b82055bd8328bebee741d2e378e4a98.dir
+      size: 113559385
       nfiles: 5
   dynamic@de_dommel:
     cmd: pixi run python pipeline/07_add_dynamic_forcing.py DeDommel
@@ -438,8 +458,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -474,14 +494,14 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/DeDommel/modellen/DeDommel_dynamic_model
       hash: md5
-      md5: 494756f0be2108f309a27fbbe61e98fe.dir
-      size: 123256171
+      md5: a7a34bd726e4a8878f5cf6cc06e08b01.dir
+      size: 123293035
       nfiles: 5
   dynamic@drents_overijsselse_delta:
     cmd: pixi run python pipeline/07_add_dynamic_forcing.py 
@@ -517,8 +537,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -554,15 +574,15 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: 
         data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_dynamic_model
       hash: md5
-      md5: d2045cb0834df21c55ca7668270ddf67.dir
-      size: 89597601
+      md5: 99983f1ffa41937f6c05ca7729737443.dir
+      size: 89613985
       nfiles: 5
   dynamic@hunze_en_aas:
     cmd: pixi run python pipeline/07_add_dynamic_forcing.py HunzeenAas
@@ -597,8 +617,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -633,13 +653,13 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/HunzeenAas/modellen/HunzeenAas_dynamic_model
       hash: md5
-      md5: ce424045b2139119bf0ad896a25d411f.dir
+      md5: 9c81e6d8c5b7f1e2229e1b2a98679a46.dir
       size: 76591259
       nfiles: 5
   dynamic@limburg:
@@ -675,8 +695,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -711,14 +731,14 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Limburg/modellen/Limburg_dynamic_model
       hash: md5
-      md5: 8b04d0004f8c47eddb3ca384d7acd3b7.dir
-      size: 141611831
+      md5: 58ed7262cbc688def6e158d7b841f456.dir
+      size: 141656887
       nfiles: 5
   dynamic@noorderzijlvest:
     cmd: pixi run python pipeline/07_add_dynamic_forcing.py Noorderzijlvest
@@ -753,8 +773,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -789,14 +809,14 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_dynamic_model
       hash: md5
-      md5: 37b70021df4b8648d5303502e95470a3.dir
-      size: 91062529
+      md5: f2c40f29186a0a845a31e1196e20930c.dir
+      size: 91033857
       nfiles: 5
   dynamic@rijn_en_ijssel:
     cmd: pixi run python pipeline/07_add_dynamic_forcing.py RijnenIJssel
@@ -831,8 +851,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -867,14 +887,14 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/RijnenIJssel/modellen/RijnenIJssel_dynamic_model
       hash: md5
-      md5: 91c6f167ef4ee58a225e28649dbf6c54.dir
-      size: 56398017
+      md5: 6de084318fc66f00694a0f5e05689fb0.dir
+      size: 56389825
       nfiles: 5
   dynamic@stichtse_rijnlanden:
     cmd: pixi run python pipeline/07_add_dynamic_forcing.py StichtseRijnlanden
@@ -909,8 +929,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -932,8 +952,8 @@ stages:
       size: 66547712
     - path: data/StichtseRijnlanden/modellen/StichtseRijnlanden_bergend_model
       hash: md5
-      md5: c5533b85809104871638a277726baffc.dir
-      size: 25075953
+      md5: 63e4060652ed84925e221dcfd71f4894.dir
+      size: 25051377
       nfiles: 2
     - path: pipeline/07_add_dynamic_forcing.py
       hash: md5
@@ -945,14 +965,14 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/StichtseRijnlanden/modellen/StichtseRijnlanden_dynamic_model
       hash: md5
-      md5: 5479d31d3b6b875d1a83008b7e2b7c48.dir
-      size: 89833361
+      md5: f499b428f04b85fed10340862a50c671.dir
+      size: 89694849
       nfiles: 5
   dynamic@vallei_en_veluwe:
     cmd: pixi run python pipeline/07_add_dynamic_forcing.py ValleienVeluwe
@@ -987,8 +1007,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -1023,14 +1043,14 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/ValleienVeluwe/modellen/ValleienVeluwe_dynamic_model
       hash: md5
-      md5: 8f3337e8241722f59ff3cff87621542c.dir
-      size: 79779426
+      md5: e2ad2a5189bb1396c2f139e187cfa1ab.dir
+      size: 79795810
       nfiles: 5
   dynamic@vechtstromen:
     cmd: pixi run python pipeline/07_add_dynamic_forcing.py Vechtstromen
@@ -1065,8 +1085,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -1101,14 +1121,14 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Vechtstromen/modellen/Vechtstromen_dynamic_model
       hash: md5
-      md5: 91f7c097002831e074d4616009b9c1a8.dir
-      size: 100489036
+      md5: 9ee885af6c4643dd4d40749c7f8e451e.dir
+      size: 100501324
       nfiles: 5
   hws_demand:
     cmd:
@@ -1241,9 +1261,9 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rijkswaterstaat/modellen/hws_demand
       hash: md5
@@ -1258,6 +1278,10 @@ stages:
     cmd:
     - pixi run python pipeline/rijkswaterstaat/8b_update_bc.py
     deps:
+    - path: data/Basisgegevens/BGT/bgt_water.parquet
+      hash: md5
+      md5: f5342688a1cde6171a0c32276ff04728
+      size: 1516460371
     - path: data/Basisgegevens/LHM/4.3/results/LHM_433_budgets_update_makkink
       hash: md5
       md5: 0c4ae661e4387aaafe136c6eaefba437.dir
@@ -1279,8 +1303,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -1312,18 +1336,18 @@ stages:
       size: 3731456
     - path: pipeline/rijkswaterstaat/8b_update_bc.py
       hash: md5
-      md5: 9c155db296726933a7e084e8c562e553
-      size: 7968
+      md5: ce114a01be9de679e2f4ae923611af23
+      size: 8033
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rijkswaterstaat/modellen/hws_transient
       hash: md5
-      md5: 21df041d9c92acdd9408066552ac804e.dir
-      size: 67217300
+      md5: a80587839c7a4f0b7bbc82a3214debe5.dir
+      size: 67237780
       nfiles: 3
   parameterized_rijn_en_ijssel:
     cmd:
@@ -1406,9 +1430,9 @@ stages:
       size: 3774
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/RijnenIJssel/modellen/RijnenIJssel_parameterized_model
       hash: md5
@@ -1493,9 +1517,9 @@ stages:
       size: 3103
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/ValleienVeluwe/modellen/ValleienVeluwe_parameterized_model
       hash: md5
@@ -1607,9 +1631,9 @@ stages:
       size: 5287
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Vechtstromen/modellen/Vechtstromen_parameterized_model
       hash: md5
@@ -1696,9 +1720,9 @@ stages:
       size: 3807
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/AaenMaas/modellen/AaenMaas_parameterized_model
       hash: md5
@@ -1738,17 +1762,13 @@ stages:
       size: 11001376768
     - path: data/BrabantseDelta/modellen/BrabantseDelta_2024_6_3
       hash: md5
-      md5: 910a5c479c92d7fe6d4bd60dad273867.dir
-      size: 4575473
+      md5: 97a23fd6f35cad634368236b20659022.dir
+      size: 4624625
       nfiles: 2
     - path: data/BrabantseDelta/verwerkt/1_ontvangen_data/GML/dwarsprofiel.gml
       hash: md5
       md5: 542e46cf029574112b0726ffab41c4bc
       size: 80136845
-    - path: data/BrabantseDelta/verwerkt/1_ontvangen_data/peilgebieden.gpkg
-      hash: md5
-      md5: 98e0a87925aebc29f2e7958b7d7e3b19
-      size: 1077248
     - path: 
         data/BrabantseDelta/verwerkt/1_ontvangen_data/sturing_gemalen_stuwen_22-5-2022/sturingGemalenStuwen_v2.xlsx
       hash: md5
@@ -1760,46 +1780,46 @@ stages:
       size: 13918208
     - path: data/BrabantseDelta/verwerkt/4_ribasim/hydamo.gpkg
       hash: md5
-      md5: c3008a38a19618ea6cb473d4aa4a47e1
-      size: 20619264
+      md5: 11930775e846be74a0d02f38ac9743cd
+      size: 29360128
     - path: data/BrabantseDelta/verwerkt/model_edits.gpkg
       hash: md5
-      md5: d2fc06d6d70bc5a78e17e373c1134bab
+      md5: 5b78ce4844ed1c96c4769638227fd30e
       size: 1191936
     - path: data/BrabantseDelta/verwerkt/parameters/static_data.xlsx
       hash: md5
-      md5: 643ebd1974402784f317ce92bceb88ed
-      size: 72572
+      md5: a806b476f71bee983afd8bd71ac6256b
+      size: 72699
     - path: data/BrabantseDelta/verwerkt/sturing/aanvoergebieden.gpkg
       hash: md5
       md5: ab0b4aa43675b2e160d07a783f9c28ab
       size: 8286208
     - path: pipeline/brabantse_delta/01_fix_model.py
       hash: md5
-      md5: 0336caa6d39c997b6d94e046d0db1b56
-      size: 13348
+      md5: ab3adf25cad8f2cb6702904e409a8b60
+      size: 13241
     - path: pipeline/brabantse_delta/02_prepare_model.py
       hash: md5
-      md5: 4d962ac1c42645dce74c0c63b4174b13
-      size: 9612
+      md5: 40f98728e54e7c98e0d61942ffb65aee
+      size: 9324
     - path: pipeline/brabantse_delta/03_parameterize_model.py
       hash: md5
-      md5: 7791995c6070ad5a6247f6c367424213
-      size: 4959
+      md5: 2341931a23967551c1db0c70272ee6fd
+      size: 4964
     - path: pipeline/brabantse_delta/_preprocess_profielen.py
       hash: md5
       md5: 1880582ff83234cfc885eac3287d0827
       size: 727
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/BrabantseDelta/modellen/BrabantseDelta_parameterized_model
       hash: md5
-      md5: 6b188c73ddf324fa2292f64a644d7d6f.dir
-      size: 7213297
+      md5: 9096dff661538707a785b6e8e8abd175.dir
+      size: 7184625
       nfiles: 3
   parameterized_de_dommel:
     cmd:
@@ -1870,9 +1890,9 @@ stages:
       size: 1941
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/DeDommel/modellen/DeDommel_parameterized_model
       hash: md5
@@ -1981,9 +2001,9 @@ stages:
       size: 8919
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: 
         data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_parameterized_model
@@ -2073,9 +2093,9 @@ stages:
       size: 4207
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/HunzeenAas/modellen/HunzeenAas_parameterized_model
       hash: md5
@@ -2162,9 +2182,9 @@ stages:
       size: 684
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Limburg/modellen/Limburg_parameterized_model
       hash: md5
@@ -2242,9 +2262,9 @@ stages:
       size: 1874
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_parameterized_model
       hash: md5
@@ -2318,35 +2338,35 @@ stages:
       size: 819200
     - path: data/StichtseRijnlanden/verwerkt/parameters/static_data.xlsx
       hash: md5
-      md5: 1bf2ce628fe53c71576b2b1c6b4436cf
-      size: 59946
+      md5: 369614da2c68945b24b19a3690656c4f
+      size: 59992
     - path: data/StichtseRijnlanden/verwerkt/sturing/aanvoergebieden.gpkg
       hash: md5
       md5: 12adb75bb7e256cb35c58d76e0e74c32
       size: 6311936
     - path: pipeline/stichtse_rijnlanden/01_fix_model.py
       hash: md5
-      md5: 7262d6e404eb0fadb0aa982a99b1e3b8
-      size: 30013
+      md5: cde4dc6b0d8a34010b387811ae929320
+      size: 30947
     - path: pipeline/stichtse_rijnlanden/02_prepare_model.py
       hash: md5
-      md5: 47a05595e875b22064a5c66ae439d2db
-      size: 13374
+      md5: bc7ffb38ab390c9e8fbe9a2bf4acedbc
+      size: 14613
     - path: pipeline/stichtse_rijnlanden/03_parameterize_model.py
       hash: md5
       md5: b19146e64581fd811f46e0c89226e1c6
       size: 4072
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: 
         data/StichtseRijnlanden/modellen/StichtseRijnlanden_parameterized_model
       hash: md5
-      md5: f6bf9a15d29de6e20fed6ca2d4d9ea47.dir
-      size: 18260209
+      md5: aeeb3999e53195978d25c50b778e3251.dir
+      size: 18268401
       nfiles: 3
     - path: data/StichtseRijnlanden/verwerkt/4_ribasim/peilgebieden_bewerkt.gpkg
       hash: md5
@@ -2386,17 +2406,17 @@ stages:
       size: 561756752
     - path: pipeline/05_add_bergend.py
       hash: md5
-      md5: 8f010329745e63698ee602df38702b0d
-      size: 1846
+      md5: bdb77909ccec51432de5c79806045427
+      size: 2131
     - path: pipeline/aa_en_maas/04_add_full_control.py
       hash: md5
       md5: 1a367079673974c3023fed7552794d48
       size: 48336
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/AaenMaas/modellen/AaenMaas_bergend_model
       hash: md5
@@ -2422,8 +2442,8 @@ stages:
       size: 561756752
     - path: data/BrabantseDelta/modellen/BrabantseDelta_parameterized_model
       hash: md5
-      md5: 6b188c73ddf324fa2292f64a644d7d6f.dir
-      size: 7213297
+      md5: 9096dff661538707a785b6e8e8abd175.dir
+      size: 7184625
       nfiles: 3
     - path: data/BrabantseDelta/verwerkt/sturing/aanvoergebieden.gpkg
       hash: md5
@@ -2431,22 +2451,22 @@ stages:
       size: 8286208
     - path: pipeline/05_add_bergend.py
       hash: md5
-      md5: 8f010329745e63698ee602df38702b0d
-      size: 1846
+      md5: bdb77909ccec51432de5c79806045427
+      size: 2131
     - path: pipeline/brabantse_delta/04_add_full_control.py
       hash: md5
-      md5: 2b945a91206b9f0c1e313de731ae2910
-      size: 22896
+      md5: fe2316a0916f847218154a7874c669b6
+      size: 22967
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/BrabantseDelta/modellen/BrabantseDelta_bergend_model
       hash: md5
-      md5: db139bae2856562a966877965f993ecf.dir
-      size: 11747569
+      md5: de966d84129eb6b54a53b04d5405d8f0.dir
+      size: 11780337
       nfiles: 2
   bergend_de_dommel:
     cmd:
@@ -2476,17 +2496,17 @@ stages:
       size: 8286208
     - path: pipeline/05_add_bergend.py
       hash: md5
-      md5: 8f010329745e63698ee602df38702b0d
-      size: 1846
+      md5: bdb77909ccec51432de5c79806045427
+      size: 2131
     - path: pipeline/de_dommel/04_add_full_control.py
       hash: md5
       md5: 54de1cfdaa0888da8e3dac4e2325ac8a
       size: 11402
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/DeDommel/modellen/DeDommel_bergend_model
       hash: md5
@@ -2530,17 +2550,17 @@ stages:
       size: 151552
     - path: pipeline/05_add_bergend.py
       hash: md5
-      md5: 8f010329745e63698ee602df38702b0d
-      size: 1846
+      md5: bdb77909ccec51432de5c79806045427
+      size: 2131
     - path: pipeline/drents_overijsselse_delta/04_add_full_control.py
       hash: md5
       md5: ec0314083926491f18b1813ba1a5642e
       size: 49444
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: 
         data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_bergend_model
@@ -2576,17 +2596,17 @@ stages:
       size: 8286208
     - path: pipeline/05_add_bergend.py
       hash: md5
-      md5: 8f010329745e63698ee602df38702b0d
-      size: 1846
+      md5: bdb77909ccec51432de5c79806045427
+      size: 2131
     - path: pipeline/hunze_en_aas/04_add_full_control.py
       hash: md5
       md5: 4967c687305d4c6a8ccc8816470bb019
       size: 33577
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/HunzeenAas/modellen/HunzeenAas_bergend_model
       hash: md5
@@ -2621,17 +2641,17 @@ stages:
       size: 5521408
     - path: pipeline/05_add_bergend.py
       hash: md5
-      md5: 8f010329745e63698ee602df38702b0d
-      size: 1846
+      md5: bdb77909ccec51432de5c79806045427
+      size: 2131
     - path: pipeline/limburg/04_add_full_control.py
       hash: md5
       md5: ccdc699a181d97b383845ed3be398296
       size: 36530
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Limburg/modellen/Limburg_bergend_model
       hash: md5
@@ -2666,17 +2686,17 @@ stages:
       size: 4530176
     - path: pipeline/05_add_bergend.py
       hash: md5
-      md5: 8f010329745e63698ee602df38702b0d
-      size: 1846
+      md5: bdb77909ccec51432de5c79806045427
+      size: 2131
     - path: pipeline/noorderzijlvest/04_add_full_control.py
       hash: md5
       md5: 0b500d6a2e3518e4e70912d44ef790a7
       size: 14219
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_bergend_model
       hash: md5
@@ -2711,17 +2731,17 @@ stages:
       size: 8286208
     - path: pipeline/05_add_bergend.py
       hash: md5
-      md5: 8f010329745e63698ee602df38702b0d
-      size: 1846
+      md5: bdb77909ccec51432de5c79806045427
+      size: 2131
     - path: pipeline/rijn_en_ijssel/04_add_full_control.py
       hash: md5
       md5: ca778a9da1f942a2c9247973bbcb2fcf
       size: 15181
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/RijnenIJssel/modellen/RijnenIJssel_bergend_model
       hash: md5
@@ -2748,8 +2768,8 @@ stages:
     - path: 
         data/StichtseRijnlanden/modellen/StichtseRijnlanden_parameterized_model
       hash: md5
-      md5: f6bf9a15d29de6e20fed6ca2d4d9ea47.dir
-      size: 18260209
+      md5: aeeb3999e53195978d25c50b778e3251.dir
+      size: 18268401
       nfiles: 3
     - path: data/StichtseRijnlanden/verwerkt/4_ribasim/peilgebieden_bewerkt.gpkg
       hash: md5
@@ -2761,22 +2781,22 @@ stages:
       size: 6311936
     - path: pipeline/05_add_bergend.py
       hash: md5
-      md5: 8f010329745e63698ee602df38702b0d
-      size: 1846
+      md5: bdb77909ccec51432de5c79806045427
+      size: 2131
     - path: pipeline/stichtse_rijnlanden/04_add_full_control.py
       hash: md5
-      md5: 96be17aeb1e9c3d713a1d5372e2af4aa
-      size: 30531
+      md5: c7c03d17159a36ffe53bdd8195a547c4
+      size: 30467
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/StichtseRijnlanden/modellen/StichtseRijnlanden_bergend_model
       hash: md5
-      md5: c5533b85809104871638a277726baffc.dir
-      size: 25075953
+      md5: 63e4060652ed84925e221dcfd71f4894.dir
+      size: 25051377
       nfiles: 2
   bergend_vallei_en_veluwe:
     cmd:
@@ -2813,17 +2833,17 @@ stages:
       size: 8286208
     - path: pipeline/05_add_bergend.py
       hash: md5
-      md5: 8f010329745e63698ee602df38702b0d
-      size: 1846
+      md5: bdb77909ccec51432de5c79806045427
+      size: 2131
     - path: pipeline/vallei_en_veluwe/04_add_full_control.py
       hash: md5
       md5: d3a89ee9b5a6a2cbd96abef9f32a8cef
       size: 31103
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/ValleienVeluwe/modellen/ValleienVeluwe_bergend_model
       hash: md5
@@ -2863,17 +2883,17 @@ stages:
       size: 4960256
     - path: pipeline/05_add_bergend.py
       hash: md5
-      md5: 8f010329745e63698ee602df38702b0d
-      size: 1846
+      md5: bdb77909ccec51432de5c79806045427
+      size: 2131
     - path: pipeline/vechtstromen/04_add_full_control.py
       hash: md5
       md5: 7e0591a269d1fc1a78af3f3913739bfd
       size: 39431
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Vechtstromen/modellen/Vechtstromen_bergend_model
       hash: md5
@@ -2911,9 +2931,9 @@ stages:
       size: 12430
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Delfland/modellen/Delfland_feedback
       hash: md5
@@ -2940,9 +2960,9 @@ stages:
       size: 12515
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/AmstelGooienVecht/modellen/AmstelGooienVecht_feedback
       hash: md5
@@ -2974,9 +2994,9 @@ stages:
       size: 8406
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: 
         data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_feedback
@@ -3003,9 +3023,9 @@ stages:
       size: 36805
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/HollandseDelta/modellen/HollandseDelta_feedback
       hash: md5
@@ -3043,9 +3063,9 @@ stages:
       size: 5814
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rijnland/modellen/Rijnland_feedback
       hash: md5
@@ -3075,9 +3095,9 @@ stages:
       size: 18309
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rivierenland/modellen/Rivierenland_feedback
       hash: md5
@@ -3103,9 +3123,9 @@ stages:
       size: 6325
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Scheldestromen/modellen/Scheldestromen_feedback
       hash: md5
@@ -3132,9 +3152,9 @@ stages:
       size: 13489
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: 
         data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_feedback
@@ -3181,9 +3201,9 @@ stages:
       size: 26527
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/WetterskipFryslan/modellen/WetterskipFryslan_feedback
       hash: md5
@@ -3224,9 +3244,9 @@ stages:
       size: 30680
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Zuiderzeeland/modellen/Zuiderzeeland_feedback
       hash: md5
@@ -3269,9 +3289,9 @@ stages:
       size: 9929
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Delfland/modellen/Delfland_profiles
       hash: md5
@@ -3318,9 +3338,9 @@ stages:
       size: 9929
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/AmstelGooienVecht/modellen/AmstelGooienVecht_profiles
       hash: md5
@@ -3368,9 +3388,9 @@ stages:
       size: 9929
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: 
         data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_profiles
@@ -3423,9 +3443,9 @@ stages:
       size: 9929
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/HollandseDelta/modellen/HollandseDelta_profiles
       hash: md5
@@ -3482,9 +3502,9 @@ stages:
       size: 1514
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rijnland/modellen/Rijnland_profiles
       hash: md5
@@ -3532,9 +3552,9 @@ stages:
       size: 684
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rivierenland/modellen/Rivierenland_profiles
       hash: md5
@@ -3587,9 +3607,9 @@ stages:
       size: 1197
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Scheldestromen/modellen/Scheldestromen_profiles
       hash: md5
@@ -3643,9 +3663,9 @@ stages:
       size: 1060
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: 
         data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_profiles
@@ -3693,9 +3713,9 @@ stages:
       size: 695
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/WetterskipFryslan/modellen/WetterskipFryslan_profiles
       hash: md5
@@ -3742,9 +3762,9 @@ stages:
       size: 965
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Zuiderzeeland/modellen/Zuiderzeeland_profiles
       hash: md5
@@ -3796,8 +3816,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -3859,14 +3879,14 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Delfland/modellen/Delfland_forcing
       hash: md5
-      md5: 7f28ecee0403fbc33ab1e1a89351056b.dir
-      size: 19922623
+      md5: 8bf216082ba21a47560332e5bf2ffeb0.dir
+      size: 19947199
       nfiles: 5
   forcing_amstel_gooi_en_vecht:
     cmd: pixi run python pipeline/amstel_gooi_en_vecht/03_forcing.py
@@ -3943,8 +3963,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -3974,14 +3994,14 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/AmstelGooienVecht/modellen/AmstelGooienVecht_forcing
       hash: md5
-      md5: c2d3acdb39cfd45c2f41ec65cd95e693.dir
-      size: 44765148
+      md5: 796b32031f2a760693a52ed747d45d8d.dir
+      size: 44773340
       nfiles: 5
   forcing_hollands_noorderkwartier:
     cmd: pixi run python pipeline/hollands_noorderkwartier/03_forcing.py
@@ -4024,8 +4044,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -4091,15 +4111,15 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: 
         data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_forcing
       hash: md5
-      md5: 6f57e9eada6b7f9bb50697a00d14ba4e.dir
-      size: 48741128
+      md5: 4e5cad81920cfb4b7803040d5ac5ef20.dir
+      size: 48712456
       nfiles: 5
   forcing_hollandse_delta:
     cmd: pixi run python pipeline/hollandse_delta/03_forcing.py
@@ -4142,8 +4162,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -4205,14 +4225,14 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/HollandseDelta/modellen/HollandseDelta_forcing
       hash: md5
-      md5: 998e4e0b459dd536d452533a0ef9b126.dir
-      size: 70393576
+      md5: 402b1fc90c343aa0d4d8005a60b2dca1.dir
+      size: 70352616
       nfiles: 5
   forcing_rijnland:
     cmd: pixi run python pipeline/rijnland/03_forcing.py
@@ -4255,8 +4275,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -4318,14 +4338,14 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rijnland/modellen/Rijnland_forcing
       hash: md5
-      md5: 6f5ac194493720795bd90aabc20ed98d.dir
-      size: 59358746
+      md5: 0dcb571f46bf6227807818d1ee0c9371.dir
+      size: 59325978
       nfiles: 5
   forcing_rivierenland:
     cmd: pixi run python pipeline/rivierenland/03_forcing.py
@@ -4372,8 +4392,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -4435,14 +4455,14 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rivierenland/modellen/Rivierenland_forcing
       hash: md5
-      md5: daa8315df16533f212c8eaf378061a53.dir
-      size: 43130822
+      md5: 0be02e7fbd84084859521aa117663071.dir
+      size: 43691974
       nfiles: 5
   forcing_scheldestromen:
     cmd: pixi run python pipeline/scheldestromen/03_forcing.py
@@ -4485,8 +4505,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -4548,14 +4568,14 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Scheldestromen/modellen/Scheldestromen_forcing
       hash: md5
-      md5: efe642a68bd1d4db1acc1f33fab390a3.dir
-      size: 32919571
+      md5: c7d082f5f6759eb2bfc63e042bdb129e.dir
+      size: 32931859
       nfiles: 5
   forcing_schieland_en_de_krimpenerwaard:
     cmd: pixi run python pipeline/schieland_en_de_krimpenerwaard/03_forcing.py
@@ -4598,8 +4618,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -4664,15 +4684,15 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: 
         data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_forcing
       hash: md5
-      md5: 3cfd63483072b3908da7813a3db7d14f.dir
-      size: 23344867
+      md5: 21997e242a4420c6102f5894b3f84074.dir
+      size: 23394019
       nfiles: 5
   forcing_wetterskip_fryslan:
     cmd: pixi run python pipeline/wetterskip_fryslan/03_forcing.py
@@ -4715,8 +4735,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -4780,14 +4800,14 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/WetterskipFryslan/modellen/WetterskipFryslan_forcing
       hash: md5
-      md5: 88ecb07bfe7783b0de4c93a670c39c90.dir
-      size: 142555024
+      md5: 4ecd082ee18c7812866b0c090fed3e6d.dir
+      size: 142690192
       nfiles: 5
   forcing_zuiderzeeland:
     cmd: pixi run python pipeline/zuiderzeeland/03_forcing.py
@@ -4830,8 +4850,8 @@ stages:
     - path: 
         data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       hash: md5
-      md5: d79fb426514be2a0c743143fac333d91
-      size: 96593
+      md5: 400d719629c8ca5c1e93599e143d5bbf
+      size: 107064
     - path: 
         data/Basisgegevens/resultaatvergelijking/meetreeksen_2026/Metingen_aanvoer_dag_totaal.csv
       hash: md5
@@ -4892,14 +4912,14 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Zuiderzeeland/modellen/Zuiderzeeland_forcing
       hash: md5
-      md5: 1596598f7b3111587a352e2b47348f81.dir
-      size: 33925694
+      md5: 2da6b34e919fea5a8fb6ff049ecc1790.dir
+      size: 33860158
       nfiles: 5
   export_webmap:
     cmd: pixi run python pipeline/export_webmap.py
@@ -4910,8 +4930,8 @@ stages:
       size: 4665344
     - path: data/Rijkswaterstaat/runs/lhm_coupled_delwaq
       hash: md5
-      md5: 14d92bcfdb0478b3161eefbb34a0671a.dir
-      size: 7834553870
+      md5: cbaae5871efc8882d895ff6cc10fd24c.dir
+      size: 8078089172
       nfiles: 56
     - path: pipeline/export_webmap.py
       hash: md5
@@ -4919,22 +4939,22 @@ stages:
       size: 670
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rijkswaterstaat/webmap/lhm_coupled
       hash: md5
-      md5: a70af376248bec6f0e1950ddd402d390.dir
-      size: 2949123914
+      md5: 339ff9f039aac4fbc3092822a95c0b50.dir
+      size: 2966865635
       nfiles: 39
   run_lhm_coupled:
     cmd: pixi run python pipeline/run_lhm_coupled.py
     deps:
     - path: data/Rijkswaterstaat/modellen/lhm_coupled
       hash: md5
-      md5: c7c253b3e995499bd4af985580905833.dir
-      size: 1334198205
+      md5: f3a5d128dc82c7a09b45ec9c287a553b.dir
+      size: 1334635557
       nfiles: 4
     - path: pipeline/run_lhm_coupled.py
       hash: md5
@@ -4946,22 +4966,22 @@ stages:
       size: 5843
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rijkswaterstaat/runs/lhm_coupled
       hash: md5
-      md5: 0953defa86e0a373715bb0ece300f443.dir
-      size: 2520615591
+      md5: 8f1a2c51fa7b416bc2fa2c573140604e.dir
+      size: 2529325922
       nfiles: 11
   validate_lhm_coupled:
     cmd: pixi run python pipeline/validate_lhm_coupled.py
     deps:
     - path: data/Rijkswaterstaat/runs/lhm_coupled
       hash: md5
-      md5: 0953defa86e0a373715bb0ece300f443.dir
-      size: 2520615591
+      md5: 8f1a2c51fa7b416bc2fa2c573140604e.dir
+      size: 2529325922
       nfiles: 11
     - path: pipeline/validate_lhm_coupled.py
       hash: md5
@@ -4969,18 +4989,18 @@ stages:
       size: 1084
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rijkswaterstaat/metrics/lhm_coupled.json
       hash: md5
-      md5: 72eefaad58fbe478284acbf900462d2d
-      size: 1233
+      md5: 60ef3977f588b57affa13210125d481a
+      size: 1234
     - path: data/Rijkswaterstaat/metrics/lhm_coupled_observations.csv
       hash: md5
-      md5: e2af9080424cc7264b25380da844704d
-      size: 73190
+      md5: 3f8cd705c011e0a4cb71452383cb09eb
+      size: 73404
   peilbeheer:
     cmd: pixi run python pipeline/peilbeheer.py
     deps:
@@ -4994,10 +5014,10 @@ stages:
       hash: md5
       md5: 66627340e34be0e5937b4e96d38b9741
       size: 3891200
-    - path: data/BrabantseDelta/verwerkt/1_ontvangen_data/peilgebieden.gpkg
+    - path: data/BrabantseDelta/verwerkt/4_ribasim/hydamo.gpkg
       hash: md5
-      md5: 98e0a87925aebc29f2e7958b7d7e3b19
-      size: 1077248
+      md5: 11930775e846be74a0d02f38ac9743cd
+      size: 29360128
     - path: data/DeDommel/verwerkt/4_ribasim/hydamo.gpkg
       hash: md5
       md5: 9ff2ce6647b850c4d1321df20fa0cfe6
@@ -5072,9 +5092,9 @@ stages:
       size: 1035
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rijkswaterstaat/verwerkt/peilbeheer.gpkg
       hash: md5
@@ -5085,30 +5105,30 @@ stages:
     deps:
     - path: data/BrabantseDelta/verwerkt/2_voorbewerking/hydamo.gpkg
       hash: md5
-      md5: 184e39eb236ee78ebdd99aa7d0b901e0
-      size: 20578304
+      md5: 63c8db024506804e247f82cabe257d57
+      size: 29048832
     - path: data/BrabantseDelta/verwerkt/3_input/hydamo_toevoegen.gpkg
       hash: md5
-      md5: bebb4a52fd18b94610767f5de2dd76b1
-      size: 139264
+      md5: 333c6c1d7115ae2ffc1e1b64ec7b9735
+      size: 27074560
     - path: data/BrabantseDelta/verwerkt/3_input/hydamo_verwijderen.gpkg
       hash: md5
-      md5: 7b3f1bb45bb9bfcff2e347a97c247183
-      size: 135168
+      md5: 70aee1aa03619a23630b09fc92e69c88
+      size: 27074560
     - path: pipeline/00a_process_hydamo.py
       hash: md5
-      md5: b6e7dbcf0a81aa041f8b01a5d3a1a54e
-      size: 1595
+      md5: 5503b334b1580b47bb41f897214704ca
+      size: 1133
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/BrabantseDelta/verwerkt/4_ribasim/hydamo.gpkg
       hash: md5
-      md5: c3008a38a19618ea6cb473d4aa4a47e1
-      size: 20619264
+      md5: 11930775e846be74a0d02f38ac9743cd
+      size: 29360128
   hydamo@drents_overijsselse_delta:
     cmd: pixi run python pipeline/00a_process_hydamo.py DrentsOverijsselseDelta
     deps:
@@ -5127,13 +5147,13 @@ stages:
       size: 14934016
     - path: pipeline/00a_process_hydamo.py
       hash: md5
-      md5: b6e7dbcf0a81aa041f8b01a5d3a1a54e
-      size: 1595
+      md5: 5503b334b1580b47bb41f897214704ca
+      size: 1133
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/DrentsOverijsselseDelta/verwerkt/4_ribasim/hydamo.gpkg
       hash: md5
@@ -5156,13 +5176,13 @@ stages:
       size: 18178048
     - path: pipeline/00a_process_hydamo.py
       hash: md5
-      md5: b6e7dbcf0a81aa041f8b01a5d3a1a54e
-      size: 1595
+      md5: 5503b334b1580b47bb41f897214704ca
+      size: 1133
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/HunzeenAas/verwerkt/4_ribasim/hydamo.gpkg
       hash: md5
@@ -5185,13 +5205,13 @@ stages:
       size: 87212032
     - path: pipeline/00a_process_hydamo.py
       hash: md5
-      md5: b6e7dbcf0a81aa041f8b01a5d3a1a54e
-      size: 1595
+      md5: 5503b334b1580b47bb41f897214704ca
+      size: 1133
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Limburg/verwerkt/4_ribasim/hydamo.gpkg
       hash: md5
@@ -5214,13 +5234,13 @@ stages:
       size: 14934016
     - path: pipeline/00a_process_hydamo.py
       hash: md5
-      md5: b6e7dbcf0a81aa041f8b01a5d3a1a54e
-      size: 1595
+      md5: 5503b334b1580b47bb41f897214704ca
+      size: 1133
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/RijnenIJssel/verwerkt/4_ribasim/hydamo.gpkg
       hash: md5
@@ -5243,13 +5263,13 @@ stages:
       size: 114688
     - path: pipeline/00a_process_hydamo.py
       hash: md5
-      md5: b6e7dbcf0a81aa041f8b01a5d3a1a54e
-      size: 1595
+      md5: 5503b334b1580b47bb41f897214704ca
+      size: 1133
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/StichtseRijnlanden/verwerkt/4_ribasim/hydamo.gpkg
       hash: md5
@@ -5272,13 +5292,13 @@ stages:
       size: 14934016
     - path: pipeline/00a_process_hydamo.py
       hash: md5
-      md5: b6e7dbcf0a81aa041f8b01a5d3a1a54e
-      size: 1595
+      md5: 5503b334b1580b47bb41f897214704ca
+      size: 1133
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Vechtstromen/verwerkt/4_ribasim/hydamo.gpkg
       hash: md5
@@ -5309,9 +5329,9 @@ stages:
       size: 2867
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/AaenMaas/modellen/AaenMaas_2024_6_3
       hash: md5
@@ -5327,12 +5347,12 @@ stages:
       size: 13918208
     - path: data/BrabantseDelta/verwerkt/3_input/ribasim_input.gpkg
       hash: md5
-      md5: 8d7d1a5e900e7f5c606b4619d4df8b95
+      md5: 451ed4a22b04f72a9f22019dd323d678
       size: 405504
     - path: data/BrabantseDelta/verwerkt/4_ribasim/hydamo.gpkg
       hash: md5
-      md5: c3008a38a19618ea6cb473d4aa4a47e1
-      size: 20619264
+      md5: 11930775e846be74a0d02f38ac9743cd
+      size: 29360128
     - path: data/BrabantseDelta/verwerkt/4_ribasim/krw.gpkg
       hash: md5
       md5: 01404cb2115b32f0a66f04c97c8b91da
@@ -5343,14 +5363,14 @@ stages:
       size: 2867
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/BrabantseDelta/modellen/BrabantseDelta_2024_6_3
       hash: md5
-      md5: 910a5c479c92d7fe6d4bd60dad273867.dir
-      size: 4575473
+      md5: 97a23fd6f35cad634368236b20659022.dir
+      size: 4624625
       nfiles: 2
   lumped@de_dommel:
     cmd: pixi run python pipeline/00b_lump_model.py DeDommel
@@ -5377,9 +5397,9 @@ stages:
       size: 2867
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/DeDommel/modellen/DeDommel_2024_6_3
       hash: md5
@@ -5411,9 +5431,9 @@ stages:
       size: 2867
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: 
         data/DrentsOverijsselseDelta/modellen/DrentsOverijsselseDelta_2024_6_3
@@ -5446,9 +5466,9 @@ stages:
       size: 2867
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/HunzeenAas/modellen/HunzeenAas_2024_6_3
       hash: md5
@@ -5480,9 +5500,9 @@ stages:
       size: 2867
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Limburg/modellen/Limburg_2024_6_3
       hash: md5
@@ -5514,9 +5534,9 @@ stages:
       size: 2867
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/RijnenIJssel/modellen/RijnenIJssel_2024_6_3
       hash: md5
@@ -5548,9 +5568,9 @@ stages:
       size: 2867
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/StichtseRijnlanden/modellen/StichtseRijnlanden_2024_6_3
       hash: md5
@@ -5582,9 +5602,9 @@ stages:
       size: 2867
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/ValleienVeluwe/modellen/ValleienVeluwe_2024_6_3
       hash: md5
@@ -5616,9 +5636,9 @@ stages:
       size: 2867
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Vechtstromen/modellen/Vechtstromen_2024_6_3
       hash: md5
@@ -5653,9 +5673,9 @@ stages:
       size: 2805
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Noorderzijlvest/modellen/Noorderzijlvest_2024_6_3
       hash: md5
@@ -5683,9 +5703,9 @@ stages:
       size: 2688
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: 
         data/AmstelGooienVecht/modellen/AmstelGooienVecht_boezemmodel_2024_12_0
@@ -5714,9 +5734,9 @@ stages:
       size: 2688
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Delfland/modellen/Delfland_boezemmodel_2024_12_0
       hash: md5
@@ -5745,9 +5765,9 @@ stages:
       size: 2688
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: 
         data/HollandsNoorderkwartier/modellen/HollandsNoorderkwartier_boezemmodel_2024_12_0
@@ -5776,9 +5796,9 @@ stages:
       size: 2688
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/HollandseDelta/modellen/HollandseDelta_boezemmodel_2024_12_3
       hash: md5
@@ -5806,9 +5826,9 @@ stages:
       size: 2688
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rijnland/modellen/Rijnland_boezemmodel_2024_12_3
       hash: md5
@@ -5836,9 +5856,9 @@ stages:
       size: 2688
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rivierenland/modellen/Rivierenland_boezemmodel_2024_12_0
       hash: md5
@@ -5866,9 +5886,9 @@ stages:
       size: 2688
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Scheldestromen/modellen/Scheldestromen_boezemmodel_2024_12_0
       hash: md5
@@ -5897,9 +5917,9 @@ stages:
       size: 2688
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: 
         data/SchielandendeKrimpenerwaard/modellen/SchielandendeKrimpenerwaard_boezemmodel_2024_12_1
@@ -5928,9 +5948,9 @@ stages:
       size: 2688
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: 
         data/WetterskipFryslan/modellen/WetterskipFryslan_boezemmodel_2025_5_1
@@ -5959,9 +5979,9 @@ stages:
       size: 2688
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Zuiderzeeland/modellen/Zuiderzeeland_boezemmodel_2024_12_0
       hash: md5
@@ -5981,9 +6001,9 @@ stages:
       size: 1938
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/AmstelGooienVecht/verwerkt/crossings.gpkg
       hash: md5
@@ -6002,9 +6022,9 @@ stages:
       size: 1938
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Delfland/verwerkt/crossings.gpkg
       hash: md5
@@ -6023,9 +6043,9 @@ stages:
       size: 1938
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/HollandsNoorderkwartier/verwerkt/crossings.gpkg
       hash: md5
@@ -6044,9 +6064,9 @@ stages:
       size: 1938
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/HollandseDelta/verwerkt/crossings.gpkg
       hash: md5
@@ -6065,9 +6085,9 @@ stages:
       size: 1938
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rijnland/verwerkt/crossings.gpkg
       hash: md5
@@ -6086,9 +6106,9 @@ stages:
       size: 1938
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rivierenland/verwerkt/crossings.gpkg
       hash: md5
@@ -6107,9 +6127,9 @@ stages:
       size: 1938
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Scheldestromen/verwerkt/crossings.gpkg
       hash: md5
@@ -6129,9 +6149,9 @@ stages:
       size: 1938
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/SchielandendeKrimpenerwaard/verwerkt/crossings.gpkg
       hash: md5
@@ -6150,9 +6170,9 @@ stages:
       size: 1938
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/WetterskipFryslan/verwerkt/crossings.gpkg
       hash: md5
@@ -6171,9 +6191,9 @@ stages:
       size: 1938
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Zuiderzeeland/verwerkt/crossings.gpkg
       hash: md5
@@ -6207,9 +6227,9 @@ stages:
       size: 6270
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/AmstelGooienVecht/verwerkt/postprocessed.gpkg
       hash: md5
@@ -6246,9 +6266,9 @@ stages:
       size: 6202
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Delfland/verwerkt/postprocessed.gpkg
       hash: md5
@@ -6289,9 +6309,9 @@ stages:
       size: 10259
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/HollandsNoorderkwartier/verwerkt/postprocessed.gpkg
       hash: md5
@@ -6330,9 +6350,9 @@ stages:
       size: 10001
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/HollandseDelta/verwerkt/postprocessed.gpkg
       hash: md5
@@ -6369,9 +6389,9 @@ stages:
       size: 10240
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rijnland/verwerkt/postprocessed.gpkg
       hash: md5
@@ -6411,9 +6431,9 @@ stages:
       size: 6578
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rivierenland/verwerkt/postprocessed.gpkg
       hash: md5
@@ -6453,9 +6473,9 @@ stages:
       size: 7206
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Scheldestromen/verwerkt/postprocessed.gpkg
       hash: md5
@@ -6492,9 +6512,9 @@ stages:
       size: 6848
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/SchielandendeKrimpenerwaard/verwerkt/postprocessed.gpkg
       hash: md5
@@ -6515,9 +6535,9 @@ stages:
       size: 11410
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/WetterskipFryslan/verwerkt/postprocessed.gpkg
       hash: md5
@@ -6567,9 +6587,9 @@ stages:
       size: 5637
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Zuiderzeeland/verwerkt/postprocessed.gpkg
       hash: md5
@@ -6588,9 +6608,9 @@ stages:
       size: 1031
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/AmstelGooienVecht/verwerkt/shortest_path.gpkg
       hash: md5
@@ -6609,9 +6629,9 @@ stages:
       size: 1031
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Delfland/verwerkt/shortest_path.gpkg
       hash: md5
@@ -6630,9 +6650,9 @@ stages:
       size: 1031
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/HollandsNoorderkwartier/verwerkt/shortest_path.gpkg
       hash: md5
@@ -6651,9 +6671,9 @@ stages:
       size: 1031
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/HollandseDelta/verwerkt/shortest_path.gpkg
       hash: md5
@@ -6672,9 +6692,9 @@ stages:
       size: 1031
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rijnland/verwerkt/shortest_path.gpkg
       hash: md5
@@ -6693,9 +6713,9 @@ stages:
       size: 1031
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rivierenland/verwerkt/shortest_path.gpkg
       hash: md5
@@ -6714,9 +6734,9 @@ stages:
       size: 1031
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Scheldestromen/verwerkt/shortest_path.gpkg
       hash: md5
@@ -6736,9 +6756,9 @@ stages:
       size: 1031
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/SchielandendeKrimpenerwaard/verwerkt/shortest_path.gpkg
       hash: md5
@@ -6757,9 +6777,9 @@ stages:
       size: 1031
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/WetterskipFryslan/verwerkt/shortest_path.gpkg
       hash: md5
@@ -6778,9 +6798,9 @@ stages:
       size: 1031
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Zuiderzeeland/verwerkt/shortest_path.gpkg
       hash: md5
@@ -6791,8 +6811,8 @@ stages:
     deps:
     - path: data/Rijkswaterstaat/runs/lhm_coupled
       hash: md5
-      md5: 0953defa86e0a373715bb0ece300f443.dir
-      size: 2520615591
+      md5: 8f1a2c51fa7b416bc2fa2c573140604e.dir
+      size: 2529325922
       nfiles: 11
     - path: pipeline/hws_plus.py
       hash: md5
@@ -6800,14 +6820,14 @@ stages:
       size: 400
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: data/Rijkswaterstaat/modellen/hws_plus
       hash: md5
-      md5: bd9d90ef80b473e42d1c8e7ffd1e75d1.dir
-      size: 677195491
+      md5: 81e62b4a28ea95945ad9effd865bcd7d.dir
+      size: 691441379
       nfiles: 3
   delwaq:
     cmd:
@@ -6910,8 +6930,8 @@ stages:
       nfiles: 1
     - path: data/Rijkswaterstaat/runs/lhm_coupled
       hash: md5
-      md5: 0953defa86e0a373715bb0ece300f443.dir
-      size: 2520615591
+      md5: 8f1a2c51fa7b416bc2fa2c573140604e.dir
+      size: 2529325922
       nfiles: 11
     - path: notebooks/ribasim_delwaq/00_copy_lhm_run.py
       hash: md5
@@ -6964,25 +6984,25 @@ stages:
       nfiles: 3
     - path: src/ribasim_nl/ribasim_nl
       hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
+      md5: d47097a8f675ee4173c1ccef49716017.dir
+      size: 2358171
+      nfiles: 124
     outs:
     - path: 
         data/Basisgegevens/Delwaq/ANIMO/aangeleverd/shapes/lhm_coupled_delwaq
       hash: md5
-      md5: c81e81c8c03195529e441710f6cafb1c.dir
-      size: 111382824
+      md5: 594eda5c2e40befafdae918aa9e5151e.dir
+      size: 111385654
       nfiles: 5
     - path: data/Basisgegevens/Delwaq/ANIMO/output
       hash: md5
-      md5: 235eef666dd41ff1b18944be845f826a.dir
-      size: 43304165
+      md5: 3355bc24c71dc4116a59363faf6bf06f.dir
+      size: 43308416
       nfiles: 1
     - path: data/Basisgegevens/Delwaq/Emissieregistratie/output
       hash: md5
-      md5: 7ab4f659c8553eb804b3a321815c79a3.dir
-      size: 22540852
+      md5: f36e7d25fa69d032d9d0da808c4ad072.dir
+      size: 22527914
       nfiles: 1
     - path: data/Basisgegevens/Delwaq/IM/output
       hash: md5
@@ -6991,33 +7011,11 @@ stages:
       nfiles: 1
     - path: data/Basisgegevens/Delwaq/Zinfo/output
       hash: md5
-      md5: e41eaa4f376dcc7502d7039ba95cf0ec.dir
+      md5: 32673220237aac58adc643513ad8b75d.dir
       size: 1853286
       nfiles: 1
     - path: data/Rijkswaterstaat/runs/lhm_coupled_delwaq
       hash: md5
-      md5: 14d92bcfdb0478b3161eefbb34a0671a.dir
-      size: 7834553870
+      md5: cbaae5871efc8882d895ff6cc10fd24c.dir
+      size: 8078089172
       nfiles: 56
-  gkw_hydamo@brabantse_delta:
-    cmd: pixi run python pipeline/00_gkw_hydamo.py BrabantseDelta 20261120
-    deps:
-    - path: 
-        data/BrabantseDelta/verwerkt/1_ontvangen_data/gkw_hydamo_20261120.gpkg
-      hash: md5
-      md5: 55a0ace99d19535ecc495f1791c1cffa
-      size: 41902080
-    - path: pipeline/00_gkw_hydamo.py
-      hash: md5
-      md5: b9f26a1e08f8da8f6605da31c63ad4e5
-      size: 4708
-    - path: src/ribasim_nl/ribasim_nl
-      hash: md5
-      md5: aae12c08d7da13ef8bcc4fd155ceceec.dir
-      size: 2324533
-      nfiles: 126
-    outs:
-    - path: data/BrabantseDelta/verwerkt/2_voorbewerking/hydamo.gpkg
-      hash: md5
-      md5: 184e39eb236ee78ebdd99aa7d0b901e0
-      size: 20578304

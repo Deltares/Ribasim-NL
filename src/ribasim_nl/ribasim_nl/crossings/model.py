@@ -774,7 +774,7 @@ def add_relevant_names(
     tables.nodes["Pump"] = pump_node.rename(columns={"meta_name": "name"}).drop_duplicates()
 
 
-def _identifiers(layer: pd.DataFrame) -> pd.Series:
+def identifiers(layer: pd.DataFrame) -> pd.Series:
     """The identifier of the objects of a layer, by globalid: their code, or their globalid if the code is a dummy.
 
     The postprocessing gives the objects without a code or without a globalid a dummy one from their row number.
@@ -815,7 +815,7 @@ def crossing_keys(
       `@1`.
     - A boundary node beside a crossing gets `bnd:` and the key of that crossing.
     """
-    area = _identifiers(post_processed_data["peilgebied"])
+    area = identifiers(post_processed_data["peilgebied"])
     key = pd.Series(pd.NA, index=pd.Index(nodes["node_id"].to_numpy()), dtype=object)
 
     # the Basins are numbered after their areas, see `assign_node_ids`
@@ -834,11 +834,9 @@ def crossing_keys(
     )
     key[basin_key.index] = number_duplicates(basin_key, basin_order)
 
-    structure = _smallest_identifier(crossings["gemaal"], _identifiers(post_processed_data["gemaal"]))
-    stuw = _smallest_identifier(crossings["stuw"], _identifiers(post_processed_data["stuw"]))
-    open_water = "ow:" + _smallest_identifier(
-        crossings["hydroobject"], _identifiers(post_processed_data["hydroobject"])
-    )
+    structure = _smallest_identifier(crossings["gemaal"], identifiers(post_processed_data["gemaal"]))
+    stuw = _smallest_identifier(crossings["stuw"], identifiers(post_processed_data["stuw"]))
+    open_water = "ow:" + _smallest_identifier(crossings["hydroobject"], identifiers(post_processed_data["hydroobject"]))
     connector = structure.where(structure.notna(), stuw)
     connector = connector.where(connector.notna(), open_water)
     assert connector.notna().all(), "crossings without a gemaal, stuw or hydroobject"

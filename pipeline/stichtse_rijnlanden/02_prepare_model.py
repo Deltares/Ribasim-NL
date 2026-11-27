@@ -4,11 +4,13 @@ from typing import cast
 
 import geopandas as gpd
 import pandas as pd
+import shapely
 from ribasim_nl.assign_authorities import AssignAuthorities
 from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.link_geometries import fix_link_geometries
+from ribasim_nl.network_snapping import lines_in, route_basin_links
 from ribasim_nl.parametrization.static_data_xlsx import StaticData
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point
 
 from ribasim_nl import CloudStorage, Model, Network
 
@@ -42,6 +44,27 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
 # fix link geometries
 fix_link_geometries(model, network)
+
+# the inlets from the Grecht into polder Oud-Kamerik follow the ditches of the polder, rather than the Grecht, which is
+# the shortest way along the hydro-objects, see #1078
+OUD_KAMERIK = n("up:G0019")
+basin_areas = model.basin.area.df
+assert basin_areas is not None
+oud_kamerik_area = basin_areas.loc[basin_areas["node_id"] == OUD_KAMERIK].union_all().buffer(10.0)
+hydroobject_lines = shapely.force_2d(network.lines_gdf.geometry.explode().to_numpy())
+_, oud_kamerik_lines = lines_in(hydroobject_lines, shapely.STRtree(hydroobject_lines), oud_kamerik_area)
+grechtkade_inlets = {
+    model.link_id(key, "up:G0019"): cast(Point, model.node.df.at[n(key), "geometry"]) for key in ("I1692", "I6013")
+}
+_, routes = route_basin_links(
+    cast(Point, model.node.df.at[OUD_KAMERIK, "geometry"]),
+    grechtkade_inlets,
+    list(oud_kamerik_lines),
+    [False] * len(oud_kamerik_lines),
+)
+assert routes.keys() == grechtkade_inlets.keys(), f"Not routed: {grechtkade_inlets.keys() - routes.keys()}"
+for link_id, coords in routes.items():
+    model.link.df.loc[[link_id], "geometry"] = gpd.GeoSeries([LineString(coords[::-1])], index=[link_id], crs=model.crs)
 model.link.df.reset_index().to_file(link_geometries_gpkg)
 
 

@@ -32,7 +32,14 @@ from ribasim_nl.flow_paths import (
 from ribasim_nl.junctions import junctionify
 from ribasim_nl.keys import NodeKey as K
 from ribasim_nl.keys import resolve_keys
-from ribasim_nl.layout import move_nodes, resolve_overlaps, separate_nodes
+from ribasim_nl.layout import (
+    Water,
+    junction_areas,
+    junctions_onto_water,
+    move_nodes,
+    resolve_overlaps,
+    separate_nodes,
+)
 from ribasim_nl.model import find_toml
 from ribasim_nl.network_snapping import line_reader, snap_to_waterways
 from ribasim_nl.observations import link_observations
@@ -52,6 +59,11 @@ _prefix_to_authority = {v: k for k, v in waterbeheercode.items()}
 
 # Constants
 SNAP_DISTANCE = 20
+# Maximum distance between a boundary node and the nearest Basin area of the authority it is coupled with [m]. A
+# boundary further away lies at the coast, the border, or an area that is not modelled, such as the dunes, and
+# stays a boundary: its nearest Basin is not where its water comes from or goes to, see #1079. The connections of the
+# model that run through water outside the Basin areas are up to 8 km long.
+MAX_COUPLING_DISTANCE = 10_000.0
 MIN_LEVEL_DIFF = 0.04  # Minimum level difference for the control
 MIN_BASIN_OUTLET_DIFF = 0.5
 COUPLING_LEVEL_UPSTREAM_SUPPLY_OFFSET = -0.04
@@ -77,6 +89,12 @@ COUPLING_LEVEL_APPLY_AUTHORITIES = {
 data_dir = settings.ribasim_nl_data_dir
 top10nl_gpkg = data_dir / "Basisgegevens/Top10NL/top10nl_Compleet.gpkg"
 fairway_gpkg = data_dir / "Basisgegevens/OSM/waterway_fairway.gpkg"
+# the hydro-objects of the water authorities around the lakes, of which those on the water of a lake, such as the
+# channels of harbours, are waterways of the lake as well, see `rebuild_rws_junction_trees` and #1078
+lake_hydro_objects = [
+    data_dir / f"{authority}/verwerkt/profielen/network.gpkg"
+    for authority in ("AmstelGooienVecht", "HollandsNoorderkwartier", "WetterskipFryslan", "Zuiderzeeland")
+]
 couple_lhm: bool = True
 sub_models: list[str] = []
 
@@ -556,6 +574,16 @@ def process_boundary_nodes(model: Model, network: Network, basin_areas_df: gpd.G
                 print(f"Cannot find {couple_authority} basin area for {boundary_node}.")
                 continue
 
+            if distances.min() > MAX_COUPLING_DISTANCE:
+                logger.warning(
+                    "Boundary node %s is %.0f km from the nearest Basin of %s, more than %.0f km: not coupled.",
+                    boundary_node,
+                    distances.min() / 1000,
+                    couple_authority,
+                    MAX_COUPLING_DISTANCE / 1000,
+                )
+                continue
+
             # Couple with closest basin area
             couple_with_basin_id = cast(int, distances.idxmin())
 
@@ -857,6 +885,7 @@ def merge_coupling_trees(model: Model, network: Network) -> None:
         fairway_gpkg,
         main_route(network),
         routing_areas=resolve_keys(model, ROUTING_AREAS),
+        lake_hydro_objects=lake_hydro_objects,
     )
     junctionify(model)
     merge_basin_trees(
@@ -1078,6 +1107,7 @@ def merge_lb(model: Model, lb_neighbors: pd.DataFrame, boundary_node_id: int):
 def couple_model(toml_file: Path) -> None:
     """Couple the models merged in `toml_file`, and write the coupled model next to it."""
     model, network, basin_areas_df = initialize_models(toml_file)
+    junctions = set(model.junction.node.df.index)
     all_link_table = process_boundary_nodes(model, network, basin_areas_df)
     update_node_metadata(model)
     move_configured_nodes(model)
@@ -1086,17 +1116,24 @@ def couple_model(toml_file: Path) -> None:
     remove_invalid_topology_nodes(model)
     route_links_between_models(model, network)
     add_user_demands(model)
-    # the RWZIs of Rijkswaterstaat and those that discharge into another model, see #860 and #871
-    attach_rwzi_junctions(model, authorities={"Rijkswaterstaat"})
     change_routes(model)
     # series measured on links between models can only be observed in the coupled model
     link_observations(model)
     merge_coupling_trees(model, network)
+    # the RWZIs of Rijkswaterstaat and those that discharge into another model, see #860 and #871. They join the trees
+    # once these are rebuilt: an RWZI Junction on a link is kept as it is when the tree of its Basin is rebuilt, with
+    # the links behind it, and the other routes of the Basin would run beside these links, as along the Lek.
+    attach_rwzi_junctions(
+        model, authorities={"Rijkswaterstaat"}, read_lines=line_reader([top10nl_gpkg], main_route(network))
+    )
     # and series that combine the inflows and outflows of a Basin through its merged tree
     link_observations(model, combine=True)
-    # the layout of the models is already tidy, see `tidy_layout`, so only move apart nodes on top of each other, and
-    # offset links that still overlap
-    separate_nodes(model)
+    # the layout of the models is already tidy, see `tidy_layout`, so only put the Junctions of the coupling on the
+    # water, move apart nodes on top of each other, and offset links that still overlap
+    water = Water()
+    areas = junction_areas(model)
+    junctions_onto_water(model, water, node_ids=set(model.junction.node.df.index) - junctions, areas=areas)
+    separate_nodes(model, water=water, areas=areas)
     resolve_overlaps(model, max_iterations=10)
     coupled_toml_file = save_model_and_outputs(model, all_link_table, toml_file)
     run_configured_coupling_level_check(coupled_toml_file)

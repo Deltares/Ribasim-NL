@@ -24,10 +24,15 @@ from ribasim_nl.layout import move_nodes
 from ribasim_nl.model import Model
 from ribasim_nl.network_snapping import (
     LineReader,
-    lines_in,
+    Waterways,
+    attach_to_tree,
+    insert_points,
+    reach_area,
     read_lake_waterways,
+    read_lines_on_water,
     read_main_waterways,
-    route_basin_links,
+    route_basin,
+    with_branch_points,
 )
 
 LOG = logging.getLogger(__name__)
@@ -94,11 +99,16 @@ class Routes:
         self.plain = set(self.node_types.index[self.node_types == "Junction"].tolist()) - set(routed)
         self._out: dict[int, list[int]] = defaultdict(list)
         self._in: dict[int, list[int]] = defaultdict(list)
+        # the nodes of each link, as looking them up in the table is slow
+        self._from: dict[int, int] = {}
+        self._to: dict[int, int] = {}
         for link_id, from_node_id, to_node_id in zip(
             self.flow.index.tolist(), self.flow["from_node_id"].tolist(), self.flow["to_node_id"].tolist(), strict=True
         ):
             self._out[from_node_id].append(link_id)
             self._in[to_node_id].append(link_id)
+            self._from[link_id] = from_node_id
+            self._to[link_id] = to_node_id
         self._ends: dict[tuple[int, bool], frozenset[int]] = {}
         self._groups()
 
@@ -148,8 +158,8 @@ class Routes:
 
     def other_node(self, link_id: int, node_id: int) -> int:
         """The node at the other end of a flow link."""
-        from_node_id = _end(self.flow, link_id, upstream=True)
-        return _end(self.flow, link_id, upstream=False) if from_node_id == node_id else from_node_id
+        from_node_id = self._from[link_id]
+        return self._to[link_id] if from_node_id == node_id else from_node_id
 
     def links_at(self, node_id: int, upstream: bool) -> list[int]:
         """The flow links into `node_id` if `upstream`, else out of it."""
@@ -157,7 +167,7 @@ class Routes:
 
     def next_node(self, link_id: int, upstream: bool) -> int:
         """The node a flow link comes from if `upstream`, else goes to."""
-        return _end(self.flow, link_id, upstream)
+        return self._from[link_id] if upstream else self._to[link_id]
 
     def tree_basin(self, node_id: int) -> int | None:
         """The Basin of the Basin tree of a plain Junction, if it is in one."""
@@ -569,9 +579,9 @@ def combine_nodes(
     10 m from its ends if possible. The other nodes get a straight link to the Junction there, and the Junctions they
     leave are pruned, see `prune_junction`. Each node keeps exchanging water with the same nodes, which is asserted.
 
-    Nothing changes if the nodes do not share a Basin, if a node is more than `max_distance` from the Junction, or if
-    a Junction between only some of the nodes and the Basin has other links than flow links, such as an observed
-    Junction, of which the flow rate would change.
+    Nothing changes if the nodes do not share a Basin, if a node is more than `max_distance` from the Junction, if a
+    node lies between another node and the Basin, or if a Junction between only some of the nodes and the Basin has
+    other links than flow links, such as an observed Junction, of which the flow rate would change.
 
     :param model: Ribasim model
     :param node_ids: nodes to combine, at least two
@@ -598,6 +608,9 @@ def combine_nodes(
             parent_link = routes.parent_link(junction_id)
             assert parent_link is not None, f"Junction {junction_id} is not in the tree of Basin {basin_id}"
             junction_id = routes.other_node(parent_link, junction_id)
+    # a node between another node and the Basin, such as a Junction found by its location, is not combined with it
+    if set(sides) & set.union(*ancestors.values()):
+        return None
     shared = set.intersection(*ancestors.values())
     if (set.union(*ancestors.values()) - shared) & other_links:
         return None
@@ -721,20 +734,31 @@ class Digitized:
     """
 
     def __init__(
-        self, lines: typing.Iterable[shapely.Geometry], routes: typing.Iterable[list[Coord]] | None = None
+        self,
+        lines: typing.Iterable[shapely.Geometry],
+        routes: typing.Iterable[list[Coord]] | None = None,
+        points: typing.Collection[Coord] = (),
     ) -> None:
-        """Take the direction of the segments of `lines`, only of those along `routes` if given."""
+        """Take the direction of the segments of `lines`, only of those along `routes` if given.
+
+        :param points: points inserted into the routes where they lie on a segment, see `ribasim_nl.network_snapping.insert_points`, which split
+            the segments of the lines in the same way
+        """
         geometries = shapely.force_2d(np.asarray(list(lines), dtype=object))
         xy, index = shapely.get_coordinates(geometries, return_index=True)
         same = index[1:] == index[:-1]
         needed = None
         if routes is not None:
             needed = {pair for route in routes for a, b in itertools.pairwise(route) for pair in ((a, b), (b, a))}
+        on_routes = None if needed is None else {c for pair in needed for c in pair}
         # the segments digitized from their first to their second coordinate
         self.segments: set[tuple[Coord, Coord]] = set()
         for a, b in zip(map(tuple, xy[:-1][same].tolist()), map(tuple, xy[1:][same].tolist()), strict=True):
-            if needed is None or (a, b) in needed:
-                self.segments.add((a, b))
+            if on_routes is not None and (a not in on_routes or b not in on_routes):
+                continue
+            for c, d in itertools.pairwise(insert_points([a, b], points) if points else [a, b]):
+                if needed is None or (c, d) in needed:
+                    self.segments.add((c, d))
         # segments digitized both ways have no direction
         self.segments -= {(b, a) for a, b in self.segments}
 
@@ -792,10 +816,12 @@ def build_basin_tree(
     sides: dict[int, tuple[frozenset[int], frozenset[int]]],
     capacity: typing.Mapping[int, float],
     digitized: Digitized | None = None,
+    reuse: typing.Mapping[Coord, int] | None = None,
 ) -> tuple[list[int], list[int]]:
     """Connect the nodes reached by the Basin tree of `basin_id` along their routes, with Junctions where they split.
 
-    Inflows and outflows share one tree, see `Routes`. The links to the nodes reached keep their ids and direction.
+    Inflows and outflows share one tree, see `Routes`, of which Junctions less than `JUNCTION_DISTANCE` apart are one,
+    see `tree_links`. The links to the nodes reached keep their ids and direction.
     The other links point towards the Basin or away from it, see `towards_basin`, given the nodes beyond them.
 
     :param ends: per key, the node reached and its link, which still exists
@@ -803,9 +829,11 @@ def build_basin_tree(
     :param sides: per key, the nodes beyond the link that flow into the Basin, and out of it, see `Routes.subtree`
     :param capacity: the `drainage_capacity` of the model
     :param digitized: the lines the routes follow, see `towards_basin`
+    :param reuse: per location, a Junction without links that is the Junction of the tree there, which must be one
     :return: the ids of the links that changed or are new, and of the new Junctions
     """
-    tree = tree_links(coords)
+    reuse = {} if reuse is None else reuse
+    tree = tree_links(coords, JUNCTION_DISTANCE, reuse.keys())
     children: dict[_TreeNode, list[_TreeNode]] = defaultdict(list)
     for start, end, _ in tree:
         children[start].append(end)
@@ -834,7 +862,12 @@ def build_basin_tree(
             else:
                 if tree_node[1] not in junctions:
                     # the link into a Junction comes first, and ends at its location
-                    junctions[tree_node[1]] = model.junction.add(Node(geometry=Point(line_coords[-1]))).node_id
+                    location = line_coords[-1]
+                    junctions[tree_node[1]] = (
+                        reuse[location]
+                        if location in reuse
+                        else model.junction.add(Node(geometry=Point(location))).node_id
+                    )
                 node_ids.append(junctions[tree_node[1]])
         geometry = LineString(line_coords)
         if end != "root" and end[0] == "end":
@@ -851,10 +884,13 @@ def build_basin_tree(
                 node_ids, geometry = node_ids[::-1], geometry.reverse()
             model.link.add(model.get_node(node_ids[0]), model.get_node(node_ids[1]), geometry=geometry)
             changed.append(int(model.link.df.index[-1]))
+    unused = set(reuse.values()) - set(junctions.values())
+    assert not unused, f"The tree of Basin {basin_id} has no Junction at the location of Junctions {sorted(unused)}"
+    new = [junction_id for junction_id in junctions.values() if junction_id not in set(reuse.values())]
     if "meta_waterbeheerder" in model.node.df.columns:
         authority = typing.cast(str, model.node.df.at[basin_id, "meta_waterbeheerder"])
-        model.node.df.loc[list(junctions.values()), "meta_waterbeheerder"] = authority
-    return changed, list(junctions.values())
+        model.node.df.loc[new, "meta_waterbeheerder"] = authority
+    return changed, new
 
 
 def _tree_splits(tree: list[tuple[_TreeNode, _TreeNode, list[Coord]]]) -> set[frozenset[int]]:
@@ -875,13 +911,30 @@ def fixed_junctions(model: Model) -> set[int]:
     """The Junctions that are kept as they are when Basin trees are rebuilt.
 
     These are observed, or listened to, or found by their code, like the RWZI Junctions, see
-    `ribasim_nl.rwzi.attach_rwzi_junctions`.
+    `ribasim_nl.rwzi.attach_rwzi_junctions`. `merge_basin_trees` merges the trees through the RWZI Junctions that are
+    attached to a route.
     """
-    nodes, links = model.node.df, model.link.df
+    links = model.link.df
     fixed = set(links.loc[links["link_type"] != "flow", ["from_node_id", "to_node_id"]].to_numpy().ravel().tolist())
-    if "meta_rwzi_code" in nodes.columns:
-        fixed |= set(nodes.index[(nodes["node_type"] == "Junction") & nodes["meta_rwzi_code"].notna()].tolist())
-    return fixed
+    return fixed | rwzi_junctions(model)
+
+
+def rwzi_junctions(model: Model, attached: bool | None = None) -> set[int]:
+    """The RWZI Junctions, see `ribasim_nl.rwzi.attach_rwzi_junctions`, only those attached to a route or not.
+
+    An RWZI Junction that is attached splits a flow link, so it has more flow links than the one from its RWZI and the
+    one to its Basin.
+    """
+    nodes = model.node.df
+    if "meta_rwzi_code" not in nodes.columns:
+        return set()
+    junctions = nodes.index[(nodes["node_type"] == "Junction") & nodes["meta_rwzi_code"].notna()]
+    if attached is None:
+        return set(junctions.tolist())
+    flow = model.link.df[model.link.df["link_type"] == "flow"]
+    degree = pd.concat([flow["from_node_id"], flow["to_node_id"]]).value_counts()
+    is_attached = degree.reindex(junctions, fill_value=0).to_numpy() > 2
+    return set(junctions[is_attached == attached].tolist())
 
 
 class _Trie:
@@ -892,12 +945,47 @@ class _Trie:
         self.ends: list[int] = []
 
 
-def tree_links(routes: dict[int, list[Coord]]) -> list[tuple[_TreeNode, _TreeNode, list[Coord]]]:
+# Junctions of a tree that are less than this far apart along their route are one Junction [m]. Routes often split
+# twice within a few metres, such as where the Pumps of a gemaal join and where the next waterway branches off, which
+# draws as a cluster of Junctions.
+JUNCTION_DISTANCE = 25.0
+
+
+def _join_junctions(
+    links: list[tuple[_TreeNode, _TreeNode, list[Coord]]], distance: float, keep: typing.Container[Coord]
+) -> list[tuple[_TreeNode, _TreeNode, list[Coord]]]:
+    """Join each Junction of a tree with the Junction, or the start, before it, if their link is shorter than `distance`.
+
+    The links out of a joined Junction then start at the one before it, and go straight to their next point.
+    Junctions at the locations to `keep` are not joined with the one before them.
+    """
+    location: dict[_TreeNode, Coord] = {}
+    joined: dict[_TreeNode, _TreeNode] = {}
+    result = []
+    for start, end, coords in links:
+        location.setdefault(start, coords[0])
+        if start in joined:
+            start = joined[start]
+            coords = [location[start], *coords[1:]]
+        if end != "root" and end[0] == "junction":
+            if LineString(coords).length < distance and coords[-1] not in keep:
+                joined[end] = start
+                continue
+            location[end] = coords[-1]
+        result.append((start, end, coords))
+    return result
+
+
+def tree_links(
+    routes: dict[int, list[Coord]], join: float = 0.0, keep: typing.Container[Coord] = ()
+) -> list[tuple[_TreeNode, _TreeNode, list[Coord]]]:
     """The links of the tree of routes that all start at the same point, with a Junction where they split.
 
     The last segment of each route is its own, so a route that is part of another one still ends in a branch.
 
     :param routes: per key, the coordinates of a route
+    :param join: Junctions less than this far apart along their route become one, see `_join_junctions`
+    :param keep: locations of Junctions that are not joined with the one before them
     :return: the links from the start "root" to Junctions ("junction", number), and to the end ("end", key) of each
         route, with their coordinates, such that the link into a Junction comes before the links out of it
     """
@@ -921,53 +1009,7 @@ def tree_links(routes: dict[int, list[Coord]]) -> list[tuple[_TreeNode, _TreeNod
             start, coords = junction, [coords[-1]]
         links.extend((start, ("end", key), [*coords, routes[key][-1]]) for key in node.ends)
         stack.extend((child, start, [*coords, coord]) for coord, child in node.children.items())
-    return links
-
-
-def attach_to_tree(routes: dict[int, list[Coord]], start: Coord, points: dict[int, Coord]) -> dict[int, list[Coord]]:
-    """Attach points to the tree of routes from `start`, each with a straight line from the nearest point of the tree.
-
-    The points nearest to the tree are attached first, such that the others can branch off their lines. Where a line
-    branches off a segment, a point is inserted in all routes along that segment, such that they share it.
-
-    :param routes: per key, the coordinates of a route from `start`
-    :param start: the start of the routes, from which the first point is attached if there are no routes
-    :param points: per key, a point to attach
-    :return: the routes, with a route to each point
-    """
-    routes = {key: list(coords) for key, coords in routes.items()}
-    remaining = dict(points)
-    while remaining:
-        segments = list(
-            {(start, start)} | {(a, b) for coords in routes.values() for a, b in itertools.pairwise(coords)}
-        )
-        a, b = (np.array([segment[i] for segment in segments]) for i in (0, 1))
-        keys = list(remaining)
-        p = np.array([remaining[key] for key in keys])
-        ab = b - a
-        lengths = np.maximum((ab**2).sum(axis=1), 1e-12)
-        t = np.clip(((p[:, None, :] - a[None]) * ab[None]).sum(axis=2) / lengths, 0.0, 1.0)
-        nearest = a[None] + t[..., None] * ab[None]
-        distance = np.hypot(*(nearest - p[:, None, :]).transpose(2, 0, 1))
-        i, j = np.unravel_index(np.argmin(distance), distance.shape)
-        segment = segments[j]
-        key = keys[i]
-        if t[i, j] <= 0.0 or t[i, j] >= 1.0:
-            branch = segment[0] if t[i, j] <= 0.0 else segment[1]
-        else:
-            branch = (float(nearest[i, j, 0]), float(nearest[i, j, 1]))
-            for coords in routes.values():
-                for k in range(len(coords) - 1):
-                    if (coords[k], coords[k + 1]) == segment:
-                        coords.insert(k + 1, branch)
-                        break
-        prefix = [start]
-        for coords in routes.values():
-            if branch in coords:
-                prefix = coords[: coords.index(branch) + 1]
-                break
-        routes[key] = _dedupe([*prefix, branch, remaining.pop(key)])
-    return routes
+    return _join_junctions(links, join, keep) if join > 0.0 else links
 
 
 # Maximum distance between a node and the routes of its Basin to branch its link off them [m], like the distance within
@@ -1019,6 +1061,10 @@ def merge_basin_trees(
     routes of their Basin, see `branch_off_routes`. A Basin whose tree would not change is left as it is. Each node
     keeps exchanging water with the same nodes, which is asserted.
 
+    The routes are also followed through the RWZI Junctions that are attached to a route, see `rwzi_junctions`, which
+    stay where they are, with their code. The routes that run along the link that such a Junction split get its
+    location as well, so that they stay joined beyond it, instead of running side by side from there.
+
     :param read_lines: reads the lines that the routes follow within an area, to follow the direction in which they
         are digitized, see `towards_basin`
     :param branch: links between a node and its Basin, or the tree of its Basin, to branch off the routes of that Basin
@@ -1028,32 +1074,51 @@ def merge_basin_trees(
     before = simplified_links(model)
     # the trees of different Basins do not share links, so changing one leaves the routes of the others as they are
     routes = Routes(model)
-    fixed = fixed_junctions(model)
+    attached = rwzi_junctions(model, attached=True)
+    fixed = fixed_junctions(model) - attached
     capacity = drainage_capacity(model)
     nodes = model.node.df
     # first find the trees that change, to read the lines around them at once
     changes = []
     for basin_id in sorted(nodes.index[nodes["node_type"] == "Basin"].tolist()):
-        junctions, tree_link_ids, reached = junction_tree(routes, basin_id, fixed)
+        # an RWZI Junction at which the routes no longer split, as a route that passed it now branches off before it,
+        # stays fixed, see `branch_off_routes`
+        basin_fixed = set(fixed)
+        while True:
+            junctions, tree_link_ids, reached = junction_tree(routes, basin_id, basin_fixed)
+            if len(reached) < 2:
+                break
+            paths = routes.paths(basin_id)
+            ends = [(node_id, link_id) for link_id, node_id in reached.items()]
+            origin = _coord(model, basin_id)
+            kept = {_coord(model, junction_id): junction_id for junction_id in sorted(junctions & attached)}
+            assert len(kept) == len(junctions & attached), f"RWZI Junctions of Basin {basin_id} at the same location"
+            coords = {}
+            for key, (node_id, link_id) in enumerate(ends):
+                parts = route_parts(model, basin_id, paths[link_id])
+                route = _dedupe([origin, *(c for part in parts for c in _coords(part))])
+                route = route if len(route) >= 2 else [origin, _coord(model, node_id)]
+                coords[key] = insert_points(route, kept.keys()) if kept else route
+            branched = branch_off_routes(
+                coords, {key for key, (_, link_id) in enumerate(ends) if link_id in branch}, max_branch_distance
+            )
+            splits = {
+                line[-1]
+                for _, end, line in tree_links(branched, JUNCTION_DISTANCE, kept.keys())
+                if end != "root" and end[0] == "junction"
+            }
+            unsplit = {junction_id for location, junction_id in kept.items() if location not in splits}
+            if not unsplit:
+                break
+            basin_fixed |= unsplit
         if len(reached) < 2:
             continue
-        paths = routes.paths(basin_id)
-        ends = [(node_id, link_id) for link_id, node_id in reached.items()]
-        origin = _coord(model, basin_id)
-        coords = {}
-        for key, (node_id, link_id) in enumerate(ends):
-            parts = route_parts(model, basin_id, paths[link_id])
-            route = _dedupe([origin, *(c for part in parts for c in _coords(part))])
-            coords[key] = route if len(route) >= 2 else [origin, _coord(model, node_id)]
-        branched = branch_off_routes(
-            coords, {key for key, (_, link_id) in enumerate(ends) if link_id in branch}, max_branch_distance
-        )
         # the tree as the nodes reached beyond each of its links between the Basin and Junctions
         current = {frozenset(k for k, (_, i) in enumerate(ends) if link_id in paths[i]) for link_id in tree_link_ids}
-        if branched == coords and _tree_splits(tree_links(coords)) == current:
+        if branched == coords and _tree_splits(tree_links(coords, JUNCTION_DISTANCE, kept.keys())) == current:
             continue
         sides = {key: routes.subtree(link_id) for key, (_, link_id) in enumerate(ends)}
-        changes.append((basin_id, junctions, tree_link_ids, ends, branched, sides))
+        changes.append((basin_id, junctions, tree_link_ids, ends, branched, sides, kept))
 
     digitized = None
     if read_lines is not None and changes:
@@ -1061,13 +1126,14 @@ def merge_basin_trees(
             [shapely.MultiPoint([c for route in change[4].values() for c in route]).envelope for change in changes]
         )
         routes_coords = [route for change in changes for route in change[4].values()]
-        digitized = Digitized(read_lines(shapely.buffer(area, 1.0)), routes_coords)
+        points = [location for change in changes for location in change[6]]
+        digitized = Digitized(read_lines(shapely.buffer(area, 1.0)), routes_coords, points)
     new_junctions: list[int] = []
-    for basin_id, junctions, tree_link_ids, ends, coords, sides in changes:
+    for basin_id, junctions, tree_link_ids, ends, coords, sides, kept in changes:
         model.remove_links(tree_link_ids)
-        for junction_id in sorted(junctions):
+        for junction_id in sorted(junctions - set(kept.values())):
             model.remove_node(junction_id)
-        new_junctions.extend(build_basin_tree(model, basin_id, ends, coords, sides, capacity, digitized)[1])
+        new_junctions.extend(build_basin_tree(model, basin_id, ends, coords, sides, capacity, digitized, kept)[1])
     after = simplified_links(model)
     assert after == before, f"Merging the Basin trees changed the links {sorted(after ^ before)[:10]}"
     return new_junctions
@@ -1080,27 +1146,38 @@ def rebuild_junction_trees(
     tolerance: float = 10.0,
     water: gpd.GeoDataFrame | None = None,
     routing_areas: typing.Mapping[int, shapely.Geometry] | None = None,
+    open_water: bool = True,
+    beyond: Waterways | None = None,
 ) -> tuple[list[int], list[int]]:
     """Route the flow links of Basins along the waterways, with one Junction tree per Basin, split where they split.
 
     The Junctions of the Basin trees of a Basin, see `junction_tree`, are removed, except the `fixed_junctions`. The
     links to the nodes they reach are routed from the Basin node along the shortest paths of one network, see
-    `ribasim_nl.network_snapping.route_basin_links`, such that its inflows and outflows share one tree, see
-    `build_basin_tree`. With open `water`, such as a lake, the waterways are connected over it, and nodes far from
-    them are routed over it, straight from the nearest point of the waterways from which that is possible. The others
-    branch off straight from the nearest point of these routes, see `attach_to_tree`. Each node keeps exchanging water
-    with the same nodes, which is asserted, and the links to the nodes reached keep their link ids. Nodes are not moved
-    and links are not offset, see `ribasim_nl.layout.tidy_layout`.
+    `ribasim_nl.network_snapping.route_basin`, such that its inflows and outflows share one tree, see
+    `build_basin_tree`. Nodes far from the waterways are routed over the `water`, and nodes that are not reached
+    within the area of the Basin along the waterways and the water around the straight line to them. With open
+    `water`, such as a lake, the waterways are connected over it, and nodes far from them are routed over it, straight
+    from the nearest point of the waterways from which that is possible. The nodes that are then not reached, such as
+    those beyond the shore of a lake, follow these routes and the waterways `beyond` from where they leave them, if
+    given. The nodes that are still not reached branch off straight from the nearest point of these routes, see
+    `attach_to_tree`. Each node keeps exchanging water with
+    the same nodes, which is asserted, and the links to the nodes reached keep their link ids. Nodes are not moved and
+    links are not offset, see `ribasim_nl.layout.tidy_layout`.
 
     :param model: Ribasim model
     :param basin_ids: Basins to rebuild the Junctions of
-    :param waterways: waterways with a boolean "main-route" column, see `ribasim_nl.network_snapping.snap_to_network`
+    :param waterways: waterways with a boolean "main-route" column, and optionally a "cost" column with their cost per
+        metre, see `ribasim_nl.network_snapping.snap_to_network`
     :param tolerance: buffer around the basin area within which waterways are used, defaults to 10.0
-    :param water: open water, over which the waterways are connected and nodes far from them are routed to them, see
-        `ribasim_nl.network_snapping.route_basin_links`, defaults to None. The waterways on it, such as fairways, are
-        not digitized in the direction of the flow, so they do not set the direction of links, see `towards_basin`.
+    :param water: water surfaces, over which nodes far from the waterways are routed to them, see
+        `ribasim_nl.network_snapping.route_basin_links`, defaults to None
     :param routing_areas: per Basin, an area beyond its basin area in which the waterways are used as well, for
         connector nodes that are connected to it over a long distance, defaults to None
+    :param open_water: whether the `water` is open water, such as a lake, over which the waterways are connected as
+        well. The waterways on it, such as fairways, are not digitized in the direction of the flow, so they do not set
+        the direction of links, see `towards_basin`.
+    :param beyond: the waterways and water along which the nodes that are not reached are routed from the routes of
+        the others, such as those of the Top10NL around a lake, defaults to None
 
     :return: the ids of the links and of the Junctions that are new or changed
     """
@@ -1111,11 +1188,8 @@ def rebuild_junction_trees(
     fixed = fixed_junctions(model)
     capacity = drainage_capacity(model)
     areas = model.basin.area.df.dissolve(by="node_id").geometry
-    waterway_geometries = shapely.force_2d(waterways.geometry.to_numpy())
-    waterway_tree = shapely.STRtree(waterway_geometries)
-    main_route = waterways["main-route"].to_numpy(dtype=bool)
-    water_geometries = np.array([]) if water is None else shapely.force_2d(water.geometry.to_numpy())
-    water_tree = shapely.STRtree(water_geometries)
+    sources = Waterways(waterways, water=water)
+    open_water = open_water and water is not None
 
     old_link_ids = set(model.link.df.index)
     changed: list[int] = []
@@ -1135,19 +1209,15 @@ def rebuild_junction_trees(
         area = areas[basin_id].buffer(tolerance)
         if basin_id in routing_areas:
             area = area.union(routing_areas[basin_id])
-        idx, lines = lines_in(waterway_geometries, waterway_tree, area)
-        basin_water = shapely.intersection(
-            shapely.union_all(water_geometries[water_tree.query(area, predicate="intersects")]), area
-        )
-        _, routed = route_basin_links(
-            basin_point,
-            {key: _point(model, node_id) for key, (node_id, _) in enumerate(ends)},
-            list(lines),
-            list(main_route[idx]),
-            water=None if basin_water.is_empty else basin_water,
-            area=area,
-            open_water=True,
-        )
+        points = {key: _point(model, node_id) for key, (node_id, _) in enumerate(ends)}
+        _, routed = route_basin(basin_point, points, sources, area, open_water=open_water)
+        if beyond is not None and routed and len(routed) < len(points):
+            lines = [LineString(coords) for coords in routed.values()]
+            unreached = {key: point for key, point in points.items() if key not in routed}
+            _, more = route_basin(basin_point, unreached, beyond, area, routes=lines)
+            # the routes found before get a point where one of these leaves them
+            branched = with_branch_points(lines, more.values())
+            routed = {key: branched.get(i, coords) for i, (key, coords) in enumerate(routed.items())} | more
         coords = attach_to_tree(
             routed,
             (basin_point.x, basin_point.y),
@@ -1158,7 +1228,10 @@ def rebuild_junction_trees(
         model.remove_links(tree_link_ids)
         for junction_id in sorted(junctions):
             model.remove_node(junction_id)
-        digitized = Digitized(lines, coords.values()) if water is None else None
+        digitized = None
+        if not open_water:
+            reach = shapely.MultiPoint([c for route in coords.values() for c in route]).envelope.buffer(1.0)
+            digitized = Digitized(sources.lines[sources.tree.query(reach)], coords.values())
         changed_links, junction_ids = build_basin_tree(model, basin_id, ends, coords, sides, capacity, digitized)
         changed.extend(changed_links)
         new_junctions.extend(junction_ids)
@@ -1169,9 +1242,22 @@ def rebuild_junction_trees(
     return sorted({*changed, *new_links} & set(model.link.df.index)), new_junctions
 
 
-# The lakes in which the network of Rijkswaterstaat has a few straight lines between its Basins and structures, rather
-# than the waterways of OpenStreetMap, see pipeline/rijkswaterstaat/3_netwerk.py
-LAKES = ("IJsselmeer", "Markermeer", "IJmeer", "Gouwzee")
+# A Basin that is on average wider than this is open water [m]: a lake or an estuary, where the network of
+# Rijkswaterstaat has a few straight lines between its Basins and structures, rather than the waterways of
+# OpenStreetMap, see pipeline/rijkswaterstaat/3_netwerk.py. The widest river Basin is the Nieuwe Waterweg, 620 m, and
+# the narrowest lakes with fairways across them are the Zwarte Meer, 830 m, and the eastern Oosterschelde, 770 m.
+OPEN_WATER_WIDTH = 750.0
+
+
+def open_water_basins(model: Model, basin_ids: typing.Collection[int]) -> set[int]:
+    """The Basins whose area is open water: on average more than `OPEN_WATER_WIDTH` wide.
+
+    The average width of an area is twice its surface over its perimeter, which is the width of a long strip.
+    """
+    assert model.basin.area.df is not None
+    areas = model.basin.area.df[model.basin.area.df["node_id"].isin(list(basin_ids))].dissolve(by="node_id").geometry
+    width = 2 * areas.area / areas.length
+    return set(width.index[width > OPEN_WATER_WIDTH].tolist())
 
 
 def rebuild_rws_junction_trees(
@@ -1182,13 +1268,17 @@ def rebuild_rws_junction_trees(
     main_route: gpd.GeoDataFrame,
     tolerance: float = 250.0,
     routing_areas: typing.Mapping[int, shapely.Geometry] | None = None,
+    lake_hydro_objects: typing.Sequence[pathlib.Path] = (),
 ) -> tuple[list[int], list[int]]:
     """Rebuild the Junctions of Rijkswaterstaat Basins along the waterways and a main route, see `rebuild_junction_trees`.
 
     This is used for the hws model and again after coupling, such that its Basins keep their routes. Its connector
     nodes are often outside the area of their Basin, so waterways up to `tolerance` around it are used. These are the
-    Top10NL water lines, except for the Basins of the `LAKES`, named after them. These follow the fairways, and cross
-    their own water to the nodes on their shores, see `ribasim_nl.network_snapping.read_lake_waterways`.
+    Top10NL water lines, which cost more per metre than the main route, and nodes far from them are routed over the
+    Top10NL water surfaces. The Basins of open water, see `open_water_basins`, such as lakes and estuaries, follow the
+    fairways instead, and cross their own water to the nodes on their shores, see
+    `ribasim_nl.network_snapping.read_lake_waterways`. The nodes beyond their shores follow these routes, and the
+    Top10NL from where they leave them.
 
     :param model: Ribasim model
     :param basin_ids: Basins to rebuild the Junctions of
@@ -1198,12 +1288,18 @@ def rebuild_rws_junction_trees(
     :param tolerance: buffer around the basin area within which waterways are used, defaults to 250.0
     :param routing_areas: per Basin, an area beyond its basin area in which the waterways are used as well, see
         `rebuild_junction_trees`, defaults to None
+    :param lake_hydro_objects: network.gpkg files of the water authorities around the lakes, whose hydro-objects on the
+        water of a lake are its waterways too, such as the channels of harbours, see `read_lines_on_water`. Nodes in a
+        harbour then join the lake along its channel, rather than straight from the nearest fairway across the land.
 
     :return: the ids of the links and of the Junctions that are new or changed
     """
     assert model.basin.area.df is not None
     routing_areas = {} if routing_areas is None else routing_areas
-    is_lake = model.node.df.loc[sorted(basin_ids), "name"].isin(LAKES)
+    lakes = open_water_basins(model, basin_ids)
+    is_lake = pd.Series([basin_id in lakes for basin_id in sorted(basin_ids)], index=sorted(basin_ids))
+    routes = Routes(model)
+    fixed = fixed_junctions(model)
     changed: list[int] = []
     junctions: list[int] = []
     for lake in (False, True):
@@ -1212,16 +1308,34 @@ def rebuild_rws_junction_trees(
         if areas.empty:
             continue
         extra = [routing_areas[i] for i in ids if i in routing_areas]
+        # the waterways around the Basins, and around the straight lines to the nodes beyond that
+        by_basin = areas.dissolve(by="node_id").geometry
+        for basin_id, area in by_basin.items():
+            reached = junction_tree(routes, typing.cast(int, basin_id), fixed)[2].values()
+            far = [point for point in (_point(model, i) for i in reached) if point.distance(area) > tolerance]
+            extra.append(reach_area(far, area))
         mask = shapely.union_all([*areas.geometry.buffer(tolerance).to_numpy(), *extra])
+        land_water = gpd.read_file(top10nl_path, layer="top10nl_waterdeel_vlak", mask=mask, columns=[])
+        # beyond a lake only the Top10NL: its routes follow the main route already, split where it meets the fairways,
+        # and a route along the main route itself would run beside them
+        land = read_main_waterways(top10nl_path, mask, None if lake else main_route)
         if lake:
             waterways = read_lake_waterways(fairway_path, mask, main_route)
+            if lake_hydro_objects:
+                on_lakes = read_lines_on_water(lake_hydro_objects, shapely.union_all(areas.geometry.to_numpy()))
+                waterways = gpd.GeoDataFrame(pd.concat([waterways, on_lakes], ignore_index=True), crs=waterways.crs)
             changed_links, new_junctions = rebuild_junction_trees(
-                model, ids, waterways, tolerance, water=areas, routing_areas=routing_areas
+                model,
+                ids,
+                waterways,
+                tolerance,
+                water=areas,
+                routing_areas=routing_areas,
+                beyond=Waterways(land, water=land_water),
             )
         else:
-            waterways = read_main_waterways(top10nl_path, mask, main_route)
             changed_links, new_junctions = rebuild_junction_trees(
-                model, ids, waterways, tolerance, routing_areas=routing_areas
+                model, ids, land, tolerance, water=land_water, routing_areas=routing_areas, open_water=False
             )
         changed.extend(changed_links)
         junctions.extend(new_junctions)

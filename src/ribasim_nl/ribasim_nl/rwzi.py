@@ -13,13 +13,16 @@ from pathlib import Path
 from typing import cast
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
+import shapely
 from geopandas.geodataframe import GeoDataFrame
 from shapely.geometry import LineString, Point
 
 from ribasim_nl import Model, concat
-from ribasim_nl.flow_paths import Routes, split_distance, split_link
+from ribasim_nl.flow_paths import Routes, prune_junction, split_distance, split_link
 from ribasim_nl.keys import NodeKey, resolve_keys
+from ribasim_nl.network_snapping import OTHER_LINE_COST, Coord, LineReader, reach_area, route_basin_links
 from ribasim_nl.reset_index import reset_index
 
 # %%
@@ -211,10 +214,14 @@ def terminal2junction(rwzi_coupled_model, coupling_lookup, *, verbose=False):
     return rwzi_coupled_model
 
 
-# Basins that RWZIs discharge into by RWZI code, instead of the Basin they are in, see #871
+# Basins that RWZIs discharge into by RWZI code, instead of the Basin they are in, see #871 and #1078
 RWZI_BASINS = {
+    # Amsterdam-West, in the Rijnland Basin GH-080.04_dummy_id_6, discharges into the Noordzeekanaal
+    11014: NodeKey("Rijkswaterstaat", "Noordzeekanaal"),
     # Hollands Noorderkwartier, on the hoofdwater next to the doorgaand Basin of peilgebied 04853
     12001: NodeKey("HollandsNoorderkwartier", "peilgebied_1000-01/17"),
+    # Oosthuizen, on the hoofdwater next to the doorgaand Basin peilgebied_5400-67
+    12026: NodeKey("HollandsNoorderkwartier", "peilgebied_1000-01/10"),
     # Hollandse Delta, the Kanaal door Voorne, on the hoofdwater next to the doorgaand Basin P-V03.003
     17041: NodeKey("HollandseDelta", "P-V19.001"),
     28002: NodeKey("AaenMaas", "up:201PP"),  # Asten, on the hoofdwater next to the doorgaand Basin up:2860006
@@ -229,7 +236,49 @@ def _is_bergend(nodes: pd.DataFrame, node_ids: typing.Iterable[int]) -> bool:
     return "meta_categorie" in nodes.columns and bool((nodes.loc[list(node_ids), "meta_categorie"] == "bergend").any())
 
 
-def _attach_rwzi_junction(model: Model, junction_id: int, basin_id: int, max_distance: float) -> bool:
+def _branch_along_waterways(
+    model: Model, basin_id: int, point: Point, link_ids: list[int], read_lines: LineReader
+) -> tuple[int, float, list[Coord]] | None:
+    """Where the route along the waterways from a Basin to a point leaves the links of the routes of that Basin.
+
+    The links are part of the network, see `ribasim_nl.network_snapping.route_basin_links`, next to the waterways
+    around the straight line from the point to the nearest link, see `ribasim_nl.network_snapping.reach_area`, which
+    cost `ribasim_nl.network_snapping.OTHER_LINE_COST` times as much per metre. So the route follows the links up to
+    where the waterway to the point branches off.
+
+    :return: the link, the distance along it, and the coordinates of the route from there to the point, or None if
+        there is no such route
+    """
+    geometries = model.link.df.geometry[link_ids].to_numpy()
+    tree = shapely.STRtree(geometries)
+    area = reach_area([point], geometries[tree.nearest(point)])
+    lines = shapely.get_parts(shapely.force_2d(read_lines(area)))
+    lines = lines[shapely.get_type_id(lines) == shapely.GeometryType.LINESTRING]
+    _, routed = route_basin_links(
+        cast(Point, model.node.df.at[basin_id, "geometry"]),
+        {0: point},
+        list(lines),
+        [False] * len(lines),
+        cost=[OTHER_LINE_COST] * len(lines),
+        routes=list(geometries),
+    )
+    coords = routed.get(0, [])
+    # the last coordinate of the route on one of the links, where it leaves them
+    for i in range(len(coords) - 1, -1, -1):
+        location = Point(coords[i])
+        on_links = np.sort(tree.query(location, predicate="dwithin", distance=1e-6))
+        if len(on_links) > 0:
+            # a link that it lies on between its ends, if any
+            along = shapely.line_locate_point(geometries[on_links], location)
+            inner = on_links[(along > 1e-6) & (along < shapely.length(geometries[on_links]) - 1e-6)]
+            link = int(inner[0] if len(inner) > 0 else on_links[0])
+            return link_ids[link], split_distance(geometries[link], location), coords[i:]
+    return None
+
+
+def _attach_rwzi_junction(
+    model: Model, junction_id: int, basin_id: int, max_distance: float, read_lines: LineReader | None = None
+) -> bool:
     """Attach an RWZI Junction to the route of `basin_id`, see `attach_rwzi_junctions`. Returns whether it did."""
     nodes = model.node.df  # the nodes used below are not removed
     routes = Routes(model)
@@ -260,18 +309,29 @@ def _attach_rwzi_junction(model: Model, junction_id: int, basin_id: int, max_dis
     if distances.empty or distances.min() > max_distance:
         return False
 
+    # the Junction that its link came from only passes flow on if it joined just these routes, see `prune_junction`
+    neighbor = routes.next_node(outflow[0], upstream=False)
     model.remove_links(outflow)
+    prune_junction(model, neighbor)
     routes = Routes(model)
-    link_id = cast(int, model.link.df.loc[candidates(routes)].distance(point).idxmin())
-    geometry = cast(LineString, routes.flow.at[link_id, "geometry"])
+    link_ids = candidates(routes)
+    branch = None if read_lines is None else _branch_along_waterways(model, basin_id, point, link_ids, read_lines)
+    if branch is None:
+        link_id = cast(int, model.link.df.loc[link_ids].distance(point).idxmin())
+        distance = split_distance(cast(LineString, routes.flow.at[link_id, "geometry"]), point)
+        waterway: list[Coord] = []
+    else:
+        link_id, distance, waterway = branch
     # the RWZI Junction joins the Basin tree, so the RWZI discharges into the Basin, see `Routes`
-    split_link(model, link_id, split_distance(geometry, point), junction_id)
+    split_link(model, link_id, distance, junction_id)
     location = cast(Point, model.node.df.at[junction_id, "geometry"])
-    model.link.df.loc[inflow, "geometry"] = gpd.GeoSeries(
-        [LineString([cast(Point, nodes.at[routes.next_node(i, True), "geometry"]), location]) for i in inflow],
-        index=inflow,
-        crs=model.link.df.crs,
-    )
+    # from the RWZI along the waterway, if any, to the Junction
+    geometries = []
+    for i in inflow:
+        rwzi = cast(Point, nodes.at[routes.next_node(i, True), "geometry"])
+        coords = [(rwzi.x, rwzi.y), *waterway[:0:-1], (location.x, location.y)]
+        geometries.append(LineString([c for k, c in enumerate(coords) if k == 0 or c != coords[k - 1]]))
+    model.link.df.loc[inflow, "geometry"] = gpd.GeoSeries(geometries, index=inflow, crs=model.link.df.crs)
     return True
 
 
@@ -280,15 +340,20 @@ def attach_rwzi_junctions(
     max_distance: float = 1000.0,
     basins: Mapping[int, NodeKey | int | None] = RWZI_BASINS,
     authorities: set[str] | None = None,
+    read_lines: LineReader | None = None,
 ) -> Model:
-    """Move each RWZI Junction onto the nearest link of the route of its Basin, see `ribasim_nl.flow_paths.Routes`.
+    """Move each RWZI Junction onto a link of the route of its Basin, see `ribasim_nl.flow_paths.Routes`.
 
     An RWZI Junction, see `terminal2junction`, is located at the discharge point, with a straight link to the
-    Basin it is in, or to `basins[meta_rwzi_code]` if given. Instead, it splits the nearest flow link of this Basin,
+    Basin it is in, or to `basins[meta_rwzi_code]` if given. Instead, it splits a flow link of this Basin,
     directly or through the Junctions of its tree, such as the routed links of the doorgaand and hoofdwater Basins,
     except links of bergend Basins. The RWZI Junction then joins the tree of the Basin, so the RWZI discharges into
     the Basin, also on a link out of it. RWZI Junctions without such a link within `max_distance` are left as is,
     and so are those of `basins` whose Basin is None or not in the model, or which are attached already.
+
+    With `read_lines`, the link is split where the waterway from the discharge point joins the route, and the link
+    from the RWZI follows that waterway, see `_branch_along_waterways`. Otherwise, and where no waterway leads to the
+    route, the link is split at its point nearest to the discharge point, with a straight link from the RWZI.
 
     Parameters
     ----------
@@ -297,6 +362,7 @@ def attach_rwzi_junctions(
         basins: Basins by RWZI code, for RWZIs that do not discharge in the Basin they are in: their authority and
             key, see `ribasim_nl.keys.NodeKey`, or their node ID. With None the RWZI is left as it is.
         authorities (set[str] | None): if given, only attach RWZIs of these authorities, and RWZIs of `basins`.
+        read_lines: reads the waterways within an area, see `ribasim_nl.network_snapping.line_reader`.
 
     Returns
     -------
@@ -326,7 +392,7 @@ def attach_rwzi_junctions(
                 f"RWZI {code} should discharge into Basin {basin_id}, not a {model.get_node_type(basin_id)}."
             )
         limit = math.inf if other_basin else max_distance
-        attached += _attach_rwzi_junction(model, int(junction_id), basin_id, limit)
+        attached += _attach_rwzi_junction(model, int(junction_id), basin_id, limit, read_lines)
 
     logger.info(f"Attached {attached} of {len(rwzi_junctions)} RWZI Junctions to a flow link of their Basin")
     return model

@@ -296,6 +296,12 @@
 
 .ribasim-viewer table.attributes {
   width: 100%;
+  /* The names keep their width when a value is long, such as a node key, which wraps instead */
+  table-layout: fixed;
+}
+
+.ribasim-viewer table.attributes td {
+  overflow-wrap: anywhere;
 }
 
 .ribasim-viewer th,

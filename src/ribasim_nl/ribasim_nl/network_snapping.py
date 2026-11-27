@@ -9,6 +9,12 @@ the hydro-objects leave a gap. A Basin node is moved to the center of its networ
 stays where it is, with a straight line to the network. Links that share a route can afterwards be merged with
 `ribasim_nl.junctions.junctionify`.
 
+A connector node that cannot be reached within the basin area, such as one beyond a canal that splits the area, or one
+that the model connects over a distance, is routed along the lines and the water around the straight line to it as well,
+see `reach_area`, where a route costs more per metre, see `BEYOND_AREA_COST`. Links that are routed after the other
+links of their Basin, such as those from another model, follow the routes of these links where they can, see
+`_BasinNetwork.add_routes`.
+
 This relies on the network of hydro-objects written by the network-based profile-generation:
 src/ribasim_nl/ribasim_nl/profiles/*.py.
 """
@@ -45,6 +51,23 @@ CONNECTOR_NODE_TYPES = "ManningResistance", "Outlet", "Pump"
 OTHER_LINE_COST = 3.0
 # A Basin node at the center of its network is at least this far from its connector nodes, if possible [m]
 BASIN_CLEARANCE = 25.0
+# Cost per metre of lines beyond the area of a Basin, relative to those within it, see `reach_area`. Routes stay within
+# the area where they can, and do not cut through the area of a neighbor.
+BEYOND_AREA_COST = 2.0
+# Half the width of the strip around the straight line to a connector node that cannot be reached within the area of
+# its Basin, in which lines and water are used as well [m]: at least `REACH`, a fraction `REACH_RATIO` of the length
+# of the strip, and at most `MAX_REACH`, see `reach_area`. Waterways do not run straight, and over a longer distance
+# they stray further from the line.
+REACH = 250.0
+REACH_RATIO = 0.25
+MAX_REACH = 1000.0
+# A connector node is attached to its nearest line, and its route may leave the lines earlier, at the nearest point of
+# one of this many other lines near the node that the route passes, see `route_basin_links`. The straight line from
+# there to the node then costs `STRAIGHT_COST` per metre. That is much more than a line, so a route follows the lines
+# to the node rather than crossing the land to it, such as the ditch that an RWZI discharges on, and only leaves
+# early where it would pass the node and hook back to it.
+NEARBY_LINES = 4
+STRAIGHT_COST = 10.0
 
 type Coord = tuple[float, float]
 # reads the lines within an area, see `line_reader`
@@ -76,6 +99,35 @@ def _split_coords(coords: list[Coord], distances: list[float]) -> list[list[Coor
         inner = [(x, y) for x, y in piece.coords][1:-1] if piece.geom_type == "LineString" else []
         pieces.append([a, *inner, b])
     return pieces
+
+
+def _stretches(routes: typing.Iterable[list[Coord]]) -> list[list[Coord]]:
+    """The stretches of routes between their ends and the points where they split or join, each once.
+
+    Routes from the same point share the coordinates of their common part, see `route_basin_links`. As edges of a
+    network they would overlap there, and a point attached to one of them would be missing from the routes that follow
+    another one, so these would not share their coordinates.
+    """
+    segments = nx.Graph()
+    ends: set[Coord] = set()
+    for coords in routes:
+        if len(coords) >= 2:
+            nx.add_path(segments, coords)
+            ends |= {coords[0], coords[-1]}
+    breaks = ends | {node for node, degree in segments.degree if degree != 2}
+    stretches = []
+    seen: set[frozenset[Coord]] = set()
+    for start in sorted(breaks):
+        for neighbor in sorted(segments[start]):
+            if frozenset((start, neighbor)) in seen:
+                continue
+            stretch = [start, neighbor]
+            while stretch[-1] not in breaks:
+                (following,) = set(segments[stretch[-1]]) - {stretch[-2]}
+                stretch.append(following)
+            seen |= {frozenset(segment) for segment in itertools.pairwise(stretch)}
+            stretches.append(stretch)
+    return stretches
 
 
 class _BasinNetwork:
@@ -144,9 +196,53 @@ class _BasinNetwork:
                 factor = data["weight"] / length
                 for piece in pieces:
                     weight = factor * shapely.LineString(piece).length
-                    self.graph.add_edge(piece[0], piece[-1], weight=weight, coords=piece, main=data["main"])
+                    self.graph.add_edge(piece[0], piece[-1], **{**data, "weight": weight, "coords": piece})
         self._index()
         return attached
+
+    def add_routes(self, routes: typing.Iterable[shapely.LineString]) -> None:
+        """Add routes that links already follow as edges, connected to the other edges where they cross or touch.
+
+        Such routes are often drawn along other lines than those of the network, like the waterways of the model of
+        their water authority, without a point in common with them. They cost as much per metre as the lines of the
+        water authority, so new routes follow them rather than a line of the Top10NL next to them, and they count as
+        main route. The part that routes share is one edge, see `_stretches`.
+        """
+        for coords in _stretches(
+            _dedupe([(float(x), float(y)) for x, y in shapely.get_coordinates(line)]) for line in routes
+        ):
+            if coords[0] == coords[-1]:
+                continue
+            u, v = coords[0], coords[-1]
+            weight = shapely.LineString(coords).length
+            if self.graph.has_edge(u, v) and (self.graph[u][v].get("route") or self.graph[u][v]["weight"] <= weight):
+                self.graph[u][v]["route"] = True
+                continue
+            self.graph.add_edge(u, v, weight=weight, coords=coords, main=True, route=True)
+        self._index()
+        is_route = np.array([bool(self.graph.edges[e].get("route")) for e in self.edges], dtype=bool)
+        if not is_route.any() or is_route.all():
+            return
+        route_edges = np.flatnonzero(is_route)
+        pairs = self.tree.query(self.geometries[route_edges], predicate="intersects")
+        requests: dict[typing.Hashable, tuple[shapely.Point, int]] = {}
+        for route_edge, other in zip(route_edges[pairs[0]].tolist(), pairs[1].tolist(), strict=True):
+            if is_route[other]:
+                continue
+            crossing = shapely.intersection(self.geometries[route_edge], self.geometries[other])
+            # the points where they cross, and the ends of the stretches that they share
+            points = shapely.get_parts(shapely.boundary(shapely.get_parts(crossing))).tolist()
+            points += [part for part in shapely.get_parts(crossing) if part.geom_type == "Point"]
+            for point in points:
+                requests[(len(requests), 0)] = (point, route_edge)
+                requests[(len(requests), 1)] = (point, other)
+        attached = self.split(requests)
+        for (number, side), a in attached.items():
+            if side == 0:
+                b = attached[(number + 1, 1)]
+                if a != b and not self.graph.has_edge(a, b):
+                    self.graph.add_edge(a, b, weight=shapely.LineString([a, b]).length, coords=[a, b], main=False)
+        self._index()
 
     def add_culverts(self, culverts: list[shapely.LineString], snap: float) -> None:
         """Add culverts as edges, between the hydro-objects nearest to their ends within `snap`.
@@ -236,6 +332,44 @@ class _BasinNetwork:
                 self.graph.add_edge(a, b, weight=shapely.LineString([a, b]).length, coords=[a, b], main=False)
                 self._index()
 
+    def connect_over_raster(self, raster: "_WaterRaster", water: shapely.Geometry, max_land: float) -> None:
+        """Connect the other parts of the network on the water to the longest one, along least-cost paths over water.
+
+        This is for parts that no straight line over water reaches, see `connect_over_water`, such as the channel of a
+        harbour behind its piers. Only parts that lie mostly on `water` are connected, not waterways beyond its shore.
+        Each part is connected from its cell that is cheapest to reach from the longest part, see
+        `_WaterRaster.nearest_paths`, if that path crosses at most `max_land` of land.
+        """
+        lengths = np.bincount(self.component, weights=shapely.length(self.geometries))
+        on_water = np.bincount(
+            self.component, weights=shapely.length(shapely.intersection(self.geometries, water)), minlength=len(lengths)
+        )
+        main = int(np.argmax(lengths))
+        main_edges = np.flatnonzero(self.component == main)
+        sources = np.flatnonzero(raster.rasterize(list(self.geometries[main_edges])).ravel()).tolist()
+        targets = {
+            int(part): np.flatnonzero(raster.rasterize(list(self.geometries[self.component == part])).ravel())
+            for part in np.unique(self.component)
+            if part != main and on_water[part] >= 0.5 * lengths[part]
+        }
+        paths = {
+            part: path for part, path in raster.nearest_paths(sources, targets).items() if raster.land(path) <= max_land
+        }
+        coords = raster.coords(paths)
+        requests: dict[typing.Hashable, tuple[shapely.Point, int]] = {}
+        for part, line in coords.items():
+            start, end = shapely.Point(line[0]), shapely.Point(line[-1])
+            requests[(part, 0)] = (start, self.nearest_edge(start, main_edges))
+            requests[(part, 1)] = (end, self.nearest_edge(end, np.flatnonzero(self.component == part)))
+        attached = self.split(requests)
+        for part, line in coords.items():
+            a, b = attached[(part, 0)], attached[(part, 1)]
+            if a != b:
+                # the cell centres at the ends are replaced by the points of the network nearest to them
+                path = _dedupe([a, *line[1:-1], b])
+                self.graph.add_edge(a, b, weight=shapely.LineString(path).length, coords=path, main=False)
+        self._index()
+
     def center(
         self,
         targets: typing.Iterable[Coord],
@@ -301,6 +435,90 @@ def _dedupe(coords: list[Coord]) -> list[Coord]:
     return [c for i, c in enumerate(coords) if i == 0 or c != coords[i - 1]]
 
 
+def insert_points(coords: list[Coord], points: typing.Collection[Coord], tolerance: float = 1e-6) -> list[Coord]:
+    """Insert the points that lie on a segment of a route, strictly between its coordinates, into that segment."""
+    result = [coords[0]]
+    for a, b in itertools.pairwise(coords):
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        length2 = dx * dx + dy * dy
+        on = []
+        for p in points:
+            if length2 <= 0.0 or p in (a, b):
+                continue
+            t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / length2
+            if 0.0 < t < 1.0 and np.hypot(a[0] + t * dx - p[0], a[1] + t * dy - p[1]) <= tolerance:
+                on.append((t, p))
+        result.extend(p for _, p in sorted(on))
+        result.append(b)
+    return result
+
+
+def attach_to_tree(routes: dict[int, list[Coord]], start: Coord, points: dict[int, Coord]) -> dict[int, list[Coord]]:
+    """Attach points to the tree of routes from `start`, each with a straight line from the nearest point of the tree.
+
+    The points nearest to the tree are attached first, such that the others can branch off their lines. Where a line
+    branches off a segment, a point is inserted in all routes along that segment, such that they share it.
+
+    :param routes: per key, the coordinates of a route from `start`
+    :param start: the start of the routes, from which the first point is attached if there are no routes
+    :param points: per key, a point to attach
+    :return: the routes, with a route to each point
+    """
+    routes = {key: list(coords) for key, coords in routes.items()}
+    remaining = dict(points)
+    while remaining:
+        segments = list(
+            {(start, start)} | {(a, b) for coords in routes.values() for a, b in itertools.pairwise(coords)}
+        )
+        a, b = (np.array([segment[i] for segment in segments]) for i in (0, 1))
+        keys = list(remaining)
+        p = np.array([remaining[key] for key in keys])
+        ab = b - a
+        lengths = np.maximum((ab**2).sum(axis=1), 1e-12)
+        t = np.clip(((p[:, None, :] - a[None]) * ab[None]).sum(axis=2) / lengths, 0.0, 1.0)
+        nearest = a[None] + t[..., None] * ab[None]
+        distance = np.hypot(*(nearest - p[:, None, :]).transpose(2, 0, 1))
+        i, j = np.unravel_index(np.argmin(distance), distance.shape)
+        segment = segments[j]
+        key = keys[i]
+        if t[i, j] <= 0.0 or t[i, j] >= 1.0:
+            branch = segment[0] if t[i, j] <= 0.0 else segment[1]
+        else:
+            branch = (float(nearest[i, j, 0]), float(nearest[i, j, 1]))
+            for coords in routes.values():
+                for k in range(len(coords) - 1):
+                    if (coords[k], coords[k + 1]) == segment:
+                        coords.insert(k + 1, branch)
+                        break
+        prefix = [start]
+        for coords in routes.values():
+            if branch in coords:
+                prefix = coords[: coords.index(branch) + 1]
+                break
+        routes[key] = _dedupe([*prefix, branch, remaining.pop(key)])
+    return routes
+
+
+def reach_area(
+    points: typing.Iterable[shapely.Point],
+    target: shapely.Geometry,
+    width: float = REACH,
+    ratio: float = REACH_RATIO,
+    max_width: float = MAX_REACH,
+) -> shapely.Geometry:
+    """The strips around the straight lines from points to the nearest point of a target.
+
+    A connector node that is not reached within the area of its Basin is routed in this area as well: along the
+    waterways between the node and the routes of the Basin, or the Basin node. Each strip reaches `width` to both
+    sides of its line and beyond its ends, or `ratio` times the length of the line if that is more, up to `max_width`.
+    """
+    strips = []
+    for point in points:
+        line = shapely.shortest_line(point, target)
+        strips.append(line.buffer(min(max(width, ratio * line.length), max_width)))
+    return shapely.union_all(strips)
+
+
 # Maximum length of land that a route over the BGT water surfaces crosses [m]. Water surfaces end at bridges and
 # culverts, and a raster cell of 10 m more or less of water decides whether a route is found: with 50 m, removing the
 # historic versions of the BGT objects left dozens of links per polder authority straight instead of routed.
@@ -326,20 +544,27 @@ def route_basin_links(
     max_straight_line_ratio: float = MAX_STRAIGHT_LINE_RATIO,
     min_routed_fraction: float = 0.5,
     open_water: bool = False,
+    routes: typing.Sequence[shapely.LineString] = (),
 ) -> tuple[shapely.Point, dict[int, list[Coord]]]:
     """Route the links between a Basin node and its connector nodes along the hydro-objects in the basin.
 
     The hydro-objects are connected by the `culverts`, and dangling ends are connected to other parts of the network
     if the gap is small or crossed over `water`, see `_BasinNetwork.bridge_gaps`. Then only the longest connected part
     of the network is used. Each connector node is attached to its nearest hydro-object within `max_attach_distance`.
+    Where its route passes nearer to the node on another line near it, the route leaves the lines there.
     Connector nodes farther away are attached over the `water` within `area` instead, along the least-cost path over
     water that crosses at most `max_land` of land, see `_WaterRaster`. All routes follow the cheapest paths from the
     Basin node, by the length of the lines times their `cost` per metre, such that routes share their common parts
     exactly.
 
     If the `water` is `open_water`, such as a lake, the other parts of the network are first connected to the longest
-    one over it, see `_BasinNetwork.connect_over_water`, and connector nodes far from the network are attached by
-    straight lines where possible, see `_WaterRaster.attach_straight`.
+    one over it, see `_BasinNetwork.connect_over_water`, or else along the least-cost path over it, see
+    `_BasinNetwork.connect_over_raster`, and connector nodes far from the network are attached by straight lines where
+    possible, see `_WaterRaster.attach_straight`.
+
+    The `routes` that other links of the Basin already follow are part of the network, see `_BasinNetwork.add_routes`.
+    Then the longest part of the network with these routes is used, such that the links share them, unless the longest
+    part reaches more of the connector nodes, as when a route touches none of the lines.
 
     If `basin_area` is given, the Basin node is moved to the center of the network within that area, see
     `_BasinNetwork.center`: the point from which the routes to its connector nodes, and to the point of the network
@@ -366,6 +591,7 @@ def route_basin_links(
     :param max_straight_line_ratio: maximum ratio between route length and straight line length
     :param min_routed_fraction: minimum fraction of the links that can be routed to move the Basin node
     :param open_water: whether the `water` is open water, such as a lake
+    :param routes: routes from the Basin node that other links of the Basin already follow
 
     :return: the (possibly moved) location of the Basin node, and per routed connector key the coordinates from the
         Basin node to the connector node
@@ -376,6 +602,8 @@ def route_basin_links(
         return basin_point, {}
     network = _BasinNetwork(lines, main_route, cost)
     use_water = water is not None and area is not None
+    if routes:
+        network.add_routes(routes)
     if len(network.edges) == 0:
         if not use_water:
             return basin_point, {}
@@ -385,12 +613,30 @@ def route_basin_links(
     if culverts:
         network.add_culverts(culverts, culvert_snap)
     network.bridge_gaps(max_gap, water, max_water_gap)
+    raster = None
     if open_water and water is not None:
         network.connect_over_water(water)
+        if use_water and len(np.unique(network.component)) > 1:
+            raster = _WaterRaster(water, area, land_cost=20.0, max_cells=1_000_000)
+            network.connect_over_raster(raster, water, max_land)
 
-    # use the longest connected part of the network, typically the main waterway
+    # use the longest connected part of the network, typically the main waterway, or the longest with a route, unless
+    # that reaches fewer connector nodes
     lengths = np.bincount(network.component, weights=shapely.length(network.geometries))
-    candidates = np.flatnonzero(network.component == np.argmax(lengths))
+    part = int(np.argmax(lengths))
+    is_route = np.array([bool(network.graph.edges[e].get("route")) for e in network.edges], dtype=bool)
+    if is_route.any():
+        with_route = int(np.argmax(np.where(np.bincount(network.component, weights=is_route) > 0, lengths, -1.0)))
+
+        def reached(component: int) -> int:
+            geometries = network.geometries[network.component == component]
+            return sum(
+                float(shapely.distance(point, geometries).min()) <= max_attach_distance for point in connectors.values()
+            )
+
+        if with_route == part or reached(with_route) >= reached(part):
+            part = with_route
+    candidates = np.flatnonzero(network.component == part)
 
     # where the Basin node is not moved, it is attached to the main route, if available
     main = candidates[network.main[candidates]]
@@ -402,17 +648,23 @@ def route_basin_links(
         to_attach[-2] = (basin_point, network.nearest_edge(basin_point, candidates))
     far: dict[typing.Hashable, shapely.Point] = {}
     for key, point in connectors.items():
-        edge = network.nearest_edge(point, candidates)
-        distance = network.geometries[edge].distance(point)
+        distances = shapely.distance(point, network.geometries[candidates])
+        order = np.argsort(distances, kind="stable")
+        distance = float(distances[order[0]])
         if distance <= max_attach_distance and (basin_area is not None or distance < point.distance(basin_point)):
-            to_attach[key] = (point, edge)
+            to_attach[key] = (point, int(candidates[order[0]]))
+            # the other lines near the node, where its route leaves the lines if that is shorter, see `route`
+            for i in order[1 : 1 + NEARBY_LINES].tolist():
+                if distances[i] <= max_attach_distance:
+                    to_attach[("near", key, i)] = (point, int(candidates[i]))
         else:
             far[key] = point
 
     # connectors far from the network are attached over water, to the nearest cell of the network
     water_coords: dict[typing.Hashable, list[Coord]] = {}
     if use_water and far:
-        raster = _WaterRaster(water, area, land_cost=20.0, max_cells=1_000_000)
+        if raster is None:
+            raster = _WaterRaster(water, area, land_cost=20.0, max_cells=1_000_000)
         if open_water:
             water_coords = raster.attach_straight(network.geometries[candidates], far, max_land)
             far = {key: point for key, point in far.items() if key not in water_coords}
@@ -420,23 +672,55 @@ def route_basin_links(
         if sources and far:
             paths = raster.paths(sources, {key: raster.cell_of(point) for key, point in far.items()})
             paths = {key: path for key, path in paths.items() if raster.land(path) <= max_land}
-            water_coords |= raster.coords(paths)
+            water_coords |= _share_paths(raster.coords(paths), far, max_attach_distance, raster, max_land)
         for key, coords in water_coords.items():
             start = shapely.Point(coords[0])
             to_attach[("water", key)] = (start, network.nearest_edge(start, candidates))
     attached = network.split(to_attach)
     anchor = attached.pop(-1)
     home = attached.pop(-2, None)
+    nearby: dict[typing.Hashable, list[Coord]] = defaultdict(list)
+    for request in [k for k in attached if isinstance(k, tuple) and k[0] == "near"]:
+        nearby[request[1]].append(attached.pop(request))
+
+    def leave(
+        path: list[Coord], cost: typing.Mapping[Coord, float], key: typing.Hashable, point: shapely.Point
+    ) -> list[Coord]:
+        """The path up to where its route leaves the lines for the node: on a line near the node, see `NEARBY_LINES`.
+
+        A node is attached to the nearest point of its nearest line. Its route can pass the node on another line
+        before it gets there, and would then hook back to the node from further on. It leaves the lines where the
+        cost of the path and of the straight line to the node, see `STRAIGHT_COST`, is least.
+        """
+
+        def total(node: Coord) -> float:
+            return cost[node] + STRAIGHT_COST * float(np.hypot(point.x - node[0], point.y - node[1]))
+
+        passed = {node: i for i, node in enumerate(path)}
+        on_path = sorted((passed[node], node) for node in nearby.get(key, []) if node in passed)
+        best = min([node for _, node in on_path] + [path[-1]], key=total)
+        return path[: passed[best] + 1]
+
+    # A path over water ends at the cell of its node, which its route replaces by the node, unless another path branches
+    # off there, see `_share_paths`: then the route keeps it, so the two share their path up to there.
+    branch_points = {c for coords in water_coords.values() for c in coords[1:-1]}
+
+    def water_tail(key: typing.Hashable) -> list[Coord]:
+        coords = water_coords[key]
+        return coords[1:] if coords[-1] in branch_points else coords[1:-1]
 
     def route(location: shapely.Point, start: Coord) -> dict[int, list[Coord]]:
         """The routes from a location, which enter the network at `start`, to the connector nodes."""
-        paths = nx.single_source_dijkstra_path(network.graph, start, weight="weight")
+        cost, paths = typing.cast(
+            tuple[dict[Coord, float], dict[Coord, list[Coord]]],
+            nx.single_source_dijkstra(network.graph, start, weight="weight"),
+        )
         routes = {}
         for key, point in connectors.items():
             if key in attached:
-                middle = network.path_coords(paths[attached[key]])
+                middle = network.path_coords(leave(paths[attached[key]], cost, key, point))
             elif ("water", key) in attached:
-                middle = [*network.path_coords(paths[attached[("water", key)]]), *water_coords[key][1:-1]]
+                middle = [*network.path_coords(paths[attached[("water", key)]]), *water_tail(key)]
             else:
                 continue
             coords = _dedupe([(location.x, location.y), *middle, (point.x, point.y)])
@@ -451,10 +735,57 @@ def route_basin_links(
         if center is not None:
             center_point = shapely.Point(center)
             if min(center_point.distance(p) for p in connectors.values()) > 1.0:
-                routes = route(center_point, center)
-                if len(routes) >= min_routed_fraction * len(connectors):
-                    return center_point, routes
+                from_center = route(center_point, center)
+                if len(from_center) >= min_routed_fraction * len(connectors):
+                    return center_point, from_center
     return basin_point, route(basin_point, anchor)
+
+
+def _share_paths(
+    coords: dict[typing.Hashable, list[Coord]],
+    points: typing.Mapping[typing.Hashable, shapely.Point],
+    distance: float,
+    raster: "_WaterRaster",
+    max_land: float,
+) -> dict[typing.Hashable, list[Coord]]:
+    """Let nodes within `distance` of each other follow the path over water of the one with the shortest path.
+
+    On wide water the least-cost paths to two nodes next to each other part where they start, and run side by side
+    from there, such as those to the two Outlets of a sluice. Instead, the node with the longer path follows the
+    shorter path of a node near it, and branches off straight from the point of that path nearest to it, see
+    `attach_to_tree`, if that crosses at most `max_land` of land. It may branch off at the end of a path, the cell of
+    the other node, which the route of that node then keeps, see `route_basin_links`, but not at the end of a path that
+    follows another, which is a node.
+
+    :param coords: per key, the coordinates of its path over water, to the cell of its node
+    :param points: the node of each key
+    :return: the paths, of which the last coordinate is that of the node for a path that follows another
+    """
+
+    def length(key: typing.Hashable) -> float:
+        # the path of a node in a cell of the lines is that cell alone
+        return shapely.LineString(coords[key]).length if len(coords[key]) > 1 else 0.0
+
+    result: dict[typing.Hashable, list[Coord]] = {}
+    follows: set[typing.Hashable] = set()
+    for key in sorted(coords, key=lambda k: (length(k), str(k))):
+        point = points[key]
+        near = [other for other in result if points[other].distance(point) <= distance]
+        result[key] = coords[key]
+        if not near:
+            continue
+        nearest = min(near, key=lambda other: (points[other].distance(point), str(other)))
+        # the paths that start where the path of that node does share its coordinates, and the point where one branches
+        group = [other for other in result if other != key and result[other][0] == result[nearest][0]]
+        trees = {i: result[other][:-1] if other in follows else result[other] for i, other in enumerate(group)}
+        attached = attach_to_tree(trees, result[nearest][0], {-1: (point.x, point.y)})
+        branch = attached.pop(-1)
+        if len(branch) > 1 and raster.land_along(shapely.LineString(branch[-2:])) <= max_land:
+            result[key] = branch
+            for i, other in enumerate(group):
+                result[other] = [*attached[i], result[other][-1]] if other in follows else attached[i]
+            follows.add(key)
+    return result
 
 
 class _WaterRaster:
@@ -511,6 +842,27 @@ class _WaterRaster:
             if cell not in source_set and predecessors[cell] < 0:
                 continue
             path = [cell]
+            while path[-1] not in source_set:
+                path.append(int(predecessors[path[-1]]))
+            paths[key] = path[::-1]
+        return paths
+
+    def nearest_paths[K: typing.Hashable](
+        self, sources: list[int], targets: typing.Mapping[K, np.ndarray]
+    ) -> dict[K, list[int]]:
+        """Per key, the least-cost path from the nearest of the sources to the cheapest to reach of its target cells."""
+        if not sources or not targets:
+            return {}
+        distances, predecessors, _ = scipy.sparse.csgraph.dijkstra(
+            self.graph, directed=False, indices=sources, return_predecessors=True, min_only=True
+        )
+        source_set = set(sources)
+        paths = {}
+        for key, cells in targets.items():
+            cells = cells[np.isfinite(distances[cells])]
+            if len(cells) == 0:
+                continue
+            path = [int(cells[np.argmin(distances[cells])])]
             while path[-1] not in source_set:
                 path.append(int(predecessors[path[-1]]))
             paths[key] = path[::-1]
@@ -587,7 +939,7 @@ class _WaterRaster:
             attached[key] = _dedupe([*prefix, (point.x, point.y)])
         return attached
 
-    def coords(self, paths: dict[typing.Hashable, list[int]]) -> dict[typing.Hashable, list[Coord]]:
+    def coords[K: typing.Hashable](self, paths: typing.Mapping[K, list[int]]) -> dict[K, list[Coord]]:
         """Simplified coordinates of paths that start at the sources, the same where paths share cells.
 
         The paths form a tree from the sources, so they are split where the number of paths through a cell changes,
@@ -701,10 +1053,206 @@ def _bergend_nodes(model: Model, basin_id: int) -> list[int]:
 
 def lines_in(geometries: np.ndarray, tree: shapely.STRtree, area: shapely.Geometry) -> tuple[np.ndarray, np.ndarray]:
     """Indices and LineString parts of the geometries clipped to an area."""
+    shapely.prepare(area)
     idx = tree.query(area, predicate="intersects")
-    parts, part_index = shapely.get_parts(shapely.intersection(geometries[idx], area), return_index=True)
+    # only the geometries that cross the boundary of the area are clipped
+    crossing = ~shapely.contains_properly(area, geometries[idx])
+    parts, part_index = shapely.get_parts(geometries[idx[~crossing]], return_index=True)
+    clipped, clipped_index = shapely.get_parts(shapely.intersection(geometries[idx[crossing]], area), return_index=True)
+    position = np.concatenate([np.flatnonzero(~crossing)[part_index], np.flatnonzero(crossing)[clipped_index]])
+    parts = np.concatenate([parts, clipped])
+    order = np.argsort(position, kind="stable")
+    position, parts = position[order], parts[order]
     is_line = shapely.get_type_id(parts) == shapely.GeometryType.LINESTRING
-    return idx[part_index[is_line]], parts[is_line]
+    return idx[position[is_line]], parts[is_line]
+
+
+def culverts_in(geometries: np.ndarray, tree: shapely.STRtree, area: shapely.Geometry) -> np.ndarray:
+    """LineString parts of the culverts within an area.
+
+    A culvert with both ends in the area is taken whole, also where it leaves the area in between, such as a siphon
+    under a canal that is not part of the area: clipped, it would not connect the hydro-objects on either side. The
+    other culverts are clipped to the area, see `lines_in`.
+    """
+    parts = shapely.get_parts(geometries[tree.query(area, predicate="intersects")])
+    parts = parts[shapely.get_type_id(parts) == shapely.GeometryType.LINESTRING]
+    shapely.prepare(area)
+    whole = shapely.contains(area, shapely.get_point(parts, 0)) & shapely.contains(area, shapely.get_point(parts, -1))
+    _, clipped = lines_in(parts[~whole], shapely.STRtree(parts[~whole]), area)
+    return np.concatenate([parts[whole], clipped])
+
+
+class Waterways:
+    """The lines, culverts and water surfaces along which the links of Basins are routed, see `route_basin_links`.
+
+    :param lines: lines, with a boolean "main-route" column, and optionally a "cost" column with their cost per metre
+    :param culverts: culverts (lines) that connect the lines, defaults to None
+    :param water: water surfaces (polygons), across which the lines may be connected, defaults to None
+    """
+
+    def __init__(
+        self,
+        lines: gpd.GeoDataFrame,
+        culverts: gpd.GeoDataFrame | None = None,
+        water: gpd.GeoDataFrame | None = None,
+    ) -> None:
+        self.lines = shapely.force_2d(lines.geometry.to_numpy())
+        self.tree = shapely.STRtree(self.lines)
+        self.main_route = lines["main-route"].to_numpy(dtype=bool)
+        self.cost = lines["cost"].to_numpy(dtype=float) if "cost" in lines.columns else np.ones(len(lines))
+        assert (self.cost > 0).all(), "The cost per metre of a line must be positive"
+        self.culverts = shapely.force_2d(culverts.geometry.to_numpy()) if culverts is not None else np.array([])
+        self.culvert_tree = shapely.STRtree(self.culverts)
+        self.water = shapely.force_2d(water.geometry.to_numpy()) if water is not None else np.array([])
+        self.water_tree = shapely.STRtree(self.water)
+
+    def water_in(self, area: shapely.Geometry) -> shapely.Geometry:
+        """The water surface within an area."""
+        return shapely.intersection(
+            shapely.union_all(self.water[self.water_tree.query(area, predicate="intersects")]), area
+        )
+
+    def within(
+        self,
+        area: shapely.Geometry,
+        home: shapely.Geometry | None = None,
+        home_water: shapely.Geometry | None = None,
+    ) -> dict[str, typing.Any]:
+        """The lines, culverts and water within an area, as the arguments of `route_basin_links`.
+
+        The lines are clipped to the area, which keeps those crossing its boundary connected. The part of a line
+        beyond `home`, if given, costs `BEYOND_AREA_COST` times as much per metre.
+
+        :param area: the area
+        :param home: the part of the area in which the lines keep their cost, such as the area of the Basin
+        :param home_water: the water within `home`, if it is known, to which that of the rest of the area is added
+        """
+        idx, lines = lines_in(self.lines, self.tree, area)
+        cost = self.cost[idx]
+        if home is not None and len(lines) > 0:
+            shapely.prepare(home)
+            within = shapely.contains_properly(home, lines)
+            inside = within.astype(float)
+            crossing = ~within & shapely.intersects(home, lines)
+            inside[crossing] = shapely.length(shapely.intersection(lines[crossing], home)) / np.maximum(
+                shapely.length(lines[crossing]), 1e-9
+            )
+            cost = cost * (BEYOND_AREA_COST - (BEYOND_AREA_COST - 1.0) * np.clip(inside, 0.0, 1.0))
+        if home is None or home_water is None:
+            water = self.water_in(area)
+        else:
+            water = shapely.union(home_water, self.water_in(shapely.difference(area, home)))
+        return {
+            "lines": list(lines),
+            "main_route": self.main_route[idx].tolist(),
+            "cost": cost.tolist(),
+            "culverts": list(culverts_in(self.culverts, self.culvert_tree, area)),
+            "water": None if shapely.is_empty(water) else water,
+        }
+
+
+def route_basin(
+    basin_point: shapely.Point,
+    connectors: dict[int, shapely.Point],
+    waterways: Waterways,
+    area: shapely.Geometry,
+    *,
+    route_water: bool = True,
+    routes: typing.Sequence[shapely.LineString] = (),
+    **kwargs: typing.Any,
+) -> tuple[shapely.Point, dict[int, list[Coord]]]:
+    """Route the links of a Basin along the waterways within an area, and beyond it to the nodes not reached in it.
+
+    A connector node that is not reached along the lines within the area, see `route_basin_links`, lies far from
+    them, beyond a gap in the area, such as a canal of another authority that splits it, or outside it, where the
+    model connects it over a distance. All links are then routed again, also over the water surface, and with the
+    waterways around the straight lines from these nodes to the routes found, see `reach_area`, where a line costs
+    `BEYOND_AREA_COST` times as much per metre. These routes are used if they reach more nodes.
+
+    :param basin_point: location of the Basin node
+    :param connectors: locations of the connector nodes, by key
+    :param waterways: the lines, culverts and water to route along
+    :param area: the area of the Basin within which it is routed
+    :param route_water: route nodes far from the lines over the water surface, defaults to True
+    :param routes: routes from the Basin node that other links of the Basin already follow
+    :param kwargs: other arguments of `route_basin_links`
+
+    :return: the (possibly moved) location of the Basin node, and per routed connector key the coordinates from the
+        Basin node to the connector node
+    """
+
+    def route(sources: dict[str, typing.Any], within: shapely.Geometry | None) -> tuple[shapely.Point, dict]:
+        return route_basin_links(
+            basin_point,
+            connectors,
+            sources["lines"],
+            sources["main_route"],
+            cost=sources["cost"],
+            culverts=sources["culverts"],
+            water=sources["water"],
+            area=within,
+            routes=routes,
+            **kwargs,
+        )
+
+    # the water surface is only rasterized where the lines do not reach all nodes, or to connect them over open water
+    sources = waterways.within(area)
+    location, routed = route(sources, area if route_water and kwargs.get("open_water") else None)
+    unreached = [point for key, point in connectors.items() if key not in routed]
+    if unreached:
+        target = shapely.union_all([basin_point, *routes, *(shapely.LineString(c) for c in routed.values())])
+        wider = shapely.union(area, reach_area(unreached, target))
+        empty = shapely.GeometryCollection()
+        home_water = empty if sources["water"] is None else sources["water"]
+        further, more = route(waterways.within(wider, area, home_water), wider if route_water else None)
+        if len(more) > len(routed):
+            return further, more
+    return location, routed
+
+
+def with_branch_points(
+    lines: typing.Sequence[shapely.LineString], routes: typing.Iterable[list[Coord]]
+) -> dict[int, list[Coord]]:
+    """The lines that get a point where one of the routes joins or leaves them, by their number.
+
+    Routes that follow a line, see `_BasinNetwork.add_routes`, then share all its coordinates up to there, so
+    `ribasim_nl.flow_paths.merge_basin_trees` can merge them.
+    """
+    if len(lines) == 0:
+        return {}
+    known = {(float(x), float(y)) for x, y in shapely.get_coordinates(np.asarray(lines, dtype=object))}
+    vertices = sorted({c for coords in routes for c in coords} - known)
+    if not vertices:
+        return {}
+    tree = shapely.STRtree([shapely.Point(vertex) for vertex in vertices])
+    result = {}
+    for number, line in enumerate(lines):
+        on_line = tree.query(line, predicate="dwithin", distance=1e-6)
+        if len(on_line) > 0:
+            coords = [(float(x), float(y)) for x, y in shapely.get_coordinates(line)]
+            with_points = insert_points(coords, [vertices[i] for i in np.sort(on_line)])
+            if len(with_points) > len(coords):
+                result[number] = with_points
+    return result
+
+
+def _route_links(
+    model: Model, basin_ids: typing.Iterable[int], exclude: typing.Collection[int]
+) -> dict[int, list[int]]:
+    """Per Basin, the flow links of its routes, see `ribasim_nl.flow_paths.Routes.paths`, that follow water.
+
+    These are the links with a geometry of more than two points, without those in `exclude`.
+    """
+    # flow_paths builds on this module
+    from ribasim_nl.flow_paths import Routes
+
+    routes = Routes(model)
+    geometries = model.link.df.geometry
+    result = {}
+    for basin_id in basin_ids:
+        link_ids = sorted({link_id for path in routes.paths(basin_id).values() for link_id in path} - set(exclude))
+        result[basin_id] = [i for i in link_ids if shapely.get_num_points(geometries[i]) > 2]
+    return result
 
 
 def snap_to_network(
@@ -765,14 +1313,11 @@ def snap_to_network(
         selected = selected[selected["meta_categorie"] != "bergend"]
 
     areas = model.basin.area.df.dissolve(by="node_id")["geometry"]
-    ho_geometries = shapely.force_2d(hydro_objects.geometry.to_numpy())
-    tree = shapely.STRtree(ho_geometries)
-    main_route = hydro_objects["main-route"].to_numpy(dtype=bool)
-    cost = hydro_objects["cost"].to_numpy(dtype=float) if "cost" in hydro_objects.columns else np.ones(len(main_route))
-    culvert_geometries = shapely.force_2d(culverts.geometry.to_numpy()) if culverts is not None else np.array([])
-    culvert_tree = shapely.STRtree(culvert_geometries)
-    water_geometries = shapely.force_2d(water.geometry.to_numpy()) if water is not None else np.array([])
-    water_tree = shapely.STRtree(water_geometries)
+    waterways = Waterways(hydro_objects, culverts, water)
+    # the routes that the other links of these Basins follow already, which the links routed here join
+    existing: dict[int, list[int]] = {}
+    if link_ids is not None:
+        existing = _route_links(model, selected["basin_id"].unique().tolist(), set(selected.index))
 
     new_geometries: dict[int, shapely.LineString] = {}
     new_locations: dict[int, shapely.Point] = {}
@@ -784,25 +1329,19 @@ def snap_to_network(
         area = areas[basin_id].buffer(tolerance)
         if basin_id in routing_areas:
             area = area.union(routing_areas[basin_id])
-        idx, lines = lines_in(ho_geometries, tree, area)
-        _, basin_culverts = lines_in(culvert_geometries, culvert_tree, area)
-        basin_water = shapely.intersection(
-            shapely.union_all(water_geometries[water_tree.query(area, predicate="intersects")]), area
-        )
         basin_point = typing.cast(shapely.Point, nodes.at[basin_id, "geometry"])
         connectors = {
             int(typing.cast(int, link_id)): typing.cast(shapely.Point, nodes.at[cid, "geometry"])
             for link_id, cid in group["connector_id"].items()
         }
-        location, routes = route_basin_links(
+        route_ids = existing.get(typing.cast(int, basin_id), [])
+        location, routes = route_basin(
             basin_point,
             connectors,
-            list(lines),
-            list(main_route[idx]),
-            cost=cost[idx].tolist(),
-            culverts=list(basin_culverts),
-            water=None if basin_water.is_empty else basin_water,
-            area=area if route_water else None,
+            waterways,
+            area,
+            route_water=route_water,
+            routes=[typing.cast(shapely.LineString, links.at[i, "geometry"]) for i in route_ids],
             basin_area=areas[basin_id] if move_basins else None,
         )
         if not location.equals(basin_point):
@@ -811,6 +1350,9 @@ def snap_to_network(
             if to_basin[link_id]:
                 coords = coords[::-1]
             new_geometries[link_id] = shapely.LineString(coords)
+        # the routes that these links follow get a point where they leave them
+        branched = with_branch_points(links.geometry[route_ids].tolist(), routes.values())
+        new_geometries |= {route_ids[number]: shapely.LineString(coords) for number, coords in branched.items()}
 
     LOG.info(f"Routed {len(new_geometries)} of {len(selected)} links along the hydro-objects")
     model.link.df.loc[list(new_geometries), "geometry"] = gpd.GeoSeries(new_geometries, crs=model.link.df.crs)
@@ -866,19 +1408,22 @@ def read_main_waterways(
 ) -> gpd.GeoDataFrame:
     """The Top10NL water lines within a mask, and the lines of the `main_route` as its main route.
 
+    The water lines cost `OTHER_LINE_COST` times as much per metre as the main route, like next to the hydro-objects
+    of a water authority, see `snap_model`: the Top10NL has every ditch, also those along a main waterway.
+
     :param top10nl_path: Top10NL GeoPackage
     :param mask: area to read
     :param main_route: lines of the main route, such as a network of main waterways, defaults to None
 
-    :return: the waterways, with a boolean "main-route" column
+    :return: the waterways, with a boolean "main-route" column and their "cost" per metre
     """
-    waterways = [read_waterways(top10nl_path, mask)]
+    waterways = [read_waterways(top10nl_path, mask).assign(cost=OTHER_LINE_COST)]
     if main_route is not None:
         lines = main_route.explode(ignore_index=True)
         lines = lines[lines.geom_type == "LineString"]
         waterways.append(
             gpd.GeoDataFrame(
-                {"main-route": np.ones(len(lines), dtype=bool)},
+                {"main-route": np.ones(len(lines), dtype=bool), "cost": np.ones(len(lines))},
                 geometry=shapely.force_2d(lines.geometry.to_numpy()),
                 crs=lines.crs,
             )
@@ -909,6 +1454,25 @@ def read_lake_waterways(
     return gpd.GeoDataFrame({"main-route": np.ones(len(parts), dtype=bool)}, geometry=parts, crs=main_route.crs)
 
 
+def read_lines_on_water(paths: typing.Sequence[pathlib.Path], water: shapely.Geometry) -> gpd.GeoDataFrame:
+    """The parts of the hydro-objects in the network.gpkg files of `paths` that lie on `water`, such as harbour channels.
+
+    See `read_hydro_objects`. They are not the main route, and are clipped to `water`.
+
+    :param paths: the network.gpkg files of the profile-generation of water authorities
+    :param water: water surface, such as the area of a lake Basin
+    """
+    frames = [gpd.read_file(path, layer="hydro_objects", mask=water) for path in paths]
+    crs = {frame.crs for frame in frames}
+    assert len(crs) <= 1, f"Hydro-objects in different coordinate reference systems: {crs}"
+    geometries = np.concatenate([np.array([], dtype=object), *(frame.geometry.to_numpy() for frame in frames)])
+    parts = shapely.get_parts(shapely.intersection(shapely.force_2d(geometries), water))
+    parts = parts[(shapely.get_type_id(parts) == shapely.GeometryType.LINESTRING) & (shapely.length(parts) > 0)]
+    return gpd.GeoDataFrame(
+        {"main-route": np.zeros(len(parts), dtype=bool)}, geometry=parts, crs=next(iter(crs), "EPSG:28992")
+    )
+
+
 def straight_flow_link_ids(model: Model) -> list[int]:
     """The flow links with a straight geometry."""
     flow = model.link.df[model.link.df["link_type"] == "flow"]
@@ -937,9 +1501,17 @@ def snap_to_waterways(
     :return: updated Ribasim model
     """
     assert model.basin.area.df is not None
-    basin_ids = set(model.link.df.loc[link_ids, ["from_node_id", "to_node_id"]].to_numpy().ravel())
-    areas = model.basin.area.df[model.basin.area.df["node_id"].isin(basin_ids)]
-    mask = shapely.union_all(areas.geometry.buffer(tolerance).to_numpy())
+    ends = model.link.df.loc[link_ids, ["from_node_id", "to_node_id"]].to_numpy()
+    areas = model.basin.area.df[model.basin.area.df["node_id"].isin(set(ends.ravel()))]
+    # the waterways around the Basins, and around the straight lines to the nodes beyond that, see `reach_area`
+    by_basin = areas.dissolve(by="node_id").geometry
+    points = model.node.df.geometry
+    strips = []
+    for node_ids in ends.tolist():
+        for basin_id, node_id in (node_ids, node_ids[::-1]):
+            if basin_id in by_basin.index and points[node_id].distance(by_basin[basin_id]) > tolerance:
+                strips.append(reach_area([points[node_id]], by_basin[basin_id]))
+    mask = shapely.union_all([*areas.geometry.buffer(tolerance).to_numpy(), *strips])
     waterways = read_main_waterways(top10nl_path, mask, main_route)
     water = gpd.read_file(top10nl_path, layer="top10nl_waterdeel_vlak", mask=mask)
     LOG.info(f"Routing {len(link_ids)} links along the Top10NL waterways")

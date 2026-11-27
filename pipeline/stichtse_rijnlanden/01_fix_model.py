@@ -442,6 +442,24 @@ model.merge_basins(node_id=n("up:G4451"), to_node_id=n("up:H017235___1"))
 model.merge_basins(node_id=n("up:H017235___1"), to_node_id=n("up:G1003"))
 model.merge_basins(node_id=n("up:G1003"), to_node_id=n("up:H012352___1"))
 model.merge_basins(node_id=n("up:G0004"), to_node_id=n("up:H012352___1"))
+# the Grecht from Oud-Kamerik (G0019) to OW687 is one Basin, without the ManningResistances in between, see #1078
+model.merge_basins(node_id=n("up:ow:H041596"), to_node_id=n("up:I0899"))
+model.merge_basins(node_id=n("up:I0899"), to_node_id=n("up:OW687"))
+# Gemaal Grechtkade (G4043) is no longer there, in HyDAMO and in GKW-HyDAMO. In its place the Grechtkade inlet I6013 lets
+# water from the Grecht into polder Oud-Kamerik, see #1078
+(grechtkade_inlet,) = afsluitmiddel_gdf.loc[afsluitmiddel_gdf["code"] == "I6013", "geometry"]
+model.remove_node(n("G4043"), remove_links=True)
+grechtkade_node = model.outlet.add(
+    Node(
+        geometry=Point(grechtkade_inlet.x, grechtkade_inlet.y),
+        name="I6013",
+        meta_object_type="afsluitmiddel",
+        meta_key="I6013",
+    ),
+    tables=[outlet_data],
+)
+model.link.add(model.basin[n("up:G4043")], grechtkade_node)
+model.link.add(grechtkade_node, model.basin[n("up:G0019")])
 model.redirect_link(link_id=lk("up:H078195", "H078195"), from_node_id=n("up:H058524___12"))
 model.update_node(node_id=n("H078195"), node_type="Outlet")
 model.update_node(node_id=n("H015594"), node_type="Outlet")

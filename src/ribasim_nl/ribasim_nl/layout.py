@@ -6,11 +6,13 @@ This only changes node and link geometries, which Ribasim does not use in the si
 import logging
 import typing
 from collections import defaultdict
+from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
 import shapely
 
+from ribasim_nl.bgt_water import BGT_WATER, read_bgt_water
 from ribasim_nl.model import Model
 
 LOG = logging.getLogger(__name__)
@@ -36,8 +38,12 @@ MOVABLE_NODE_TYPES = (
 )
 
 
-def _set_link_ends(model: Model, node_ids: typing.Iterable[int]) -> None:
-    """Make the links of nodes start and end at the current node locations, keeping their other coordinates."""
+def _set_link_ends(model: Model, node_ids: typing.Iterable[int], trim: bool = False) -> None:
+    """Make the links of nodes start and end at the current node locations, keeping their other coordinates.
+
+    With `trim`, a link drops the points that lie within the distance that its end moved from where that end was.
+    Otherwise it first runs to where the node was, and hooks back from there to where the node is.
+    """
     links = model.link.df
     node_ids = set(node_ids)
     affected = links.index[links["from_node_id"].isin(node_ids) | links["to_node_id"].isin(node_ids)]
@@ -47,18 +53,30 @@ def _set_link_ends(model: Model, node_ids: typing.Iterable[int]) -> None:
     geometries = []
     for line, start, end in zip(links.loc[affected, "geometry"], starts, ends, strict=True):
         coords = np.array(typing.cast(shapely.LineString, line).coords)[:, :2]
+        if trim and len(coords) > 2:
+            keep = np.ones(len(coords), dtype=bool)
+            for old, new in ((coords[0], start), (coords[-1], end)):
+                moved = np.hypot(*(new - old))
+                if moved > 0.0:
+                    keep &= np.hypot(*(coords - old).T) > moved
+            keep[[0, -1]] = True
+            coords = coords[keep]
         coords[0] = start
         coords[-1] = end
         geometries.append(shapely.LineString(coords))
     links.loc[affected, "geometry"] = gpd.GeoSeries(geometries, index=affected, crs=links.crs)
 
 
-def move_nodes(model: Model, locations: dict[int, shapely.Point]) -> None:
-    """Move nodes, and the ends of their links along."""
+def move_nodes(model: Model, locations: dict[int, shapely.Point], trim: bool = False) -> None:
+    """Move nodes, and the ends of their links along.
+
+    :param trim: let the links go straight to the moved nodes from the distance of the move, see `_set_link_ends`,
+        for small moves that tidy the layout
+    """
     if not locations:
         return
     model.node.df.loc[list(locations), "geometry"] = gpd.GeoSeries(locations, crs=model.node.df.crs)
-    _set_link_ends(model, locations)
+    _set_link_ends(model, locations, trim)
 
 
 def place_bergend_nodes(model: Model, distance: float = 100.0, directions: int = 16) -> None:
@@ -172,12 +190,112 @@ def offset_links(
     links.loc[flow.index, "geometry"] = gpd.GeoSeries(geometries, index=flow.index, crs=links.crs)
 
 
-def separate_nodes(model: Model, min_distance: float = 10.0) -> None:
+# Maximum distance over which a Junction on land is moved onto the water [m]
+MAX_WATER_DISTANCE = 25.0
+# Minimum distance between nodes [m]. The nodes of one structure, such as the Pumps of a gemaal, their control nodes
+# and the Junction where their links join, are at the same place, and are moved this far apart. The icons of the
+# model viewer are 2.3 m wide at its zoom level 20, and 4.6 m at 19. With 10 m a fifth of the nodes of Rivierenland
+# moved, 15 m on average, and a gemaal was drawn over 45 m.
+NODE_SPACING = 3.0
+
+
+class Water:
+    """The water surfaces of the BGT, read per tile when they are needed, see `ribasim_nl.bgt_water.read_bgt_water`.
+
+    :param path: GeoParquet file of the BGT water
+    :param tile: size of the tiles that are read [m]
+    :param margin: water that is read around a tile, within which points of the tile are looked up [m]
+    """
+
+    def __init__(self, path: Path = BGT_WATER, tile: float = 5000.0, margin: float = MAX_WATER_DISTANCE) -> None:
+        self.path, self.tile, self.margin = path, tile, margin
+        self._tiles: dict[tuple[int, int], tuple[np.ndarray, shapely.STRtree]] = {}
+
+    def _near(self, point: shapely.Point) -> tuple[np.ndarray, shapely.STRtree]:
+        """The water of the tile of a point, with its margin."""
+        key = (int(np.floor(point.x / self.tile)), int(np.floor(point.y / self.tile)))
+        if key not in self._tiles:
+            x, y = key[0] * self.tile, key[1] * self.tile
+            area = shapely.box(x, y, x + self.tile, y + self.tile).buffer(self.margin)
+            geometries = read_bgt_water(area, path=self.path, columns=["geometry"]).geometry.to_numpy()
+            self._tiles[key] = geometries, shapely.STRtree(geometries)
+        return self._tiles[key]
+
+    def contains(self, point: shapely.Point) -> bool:
+        """Whether a point lies on the water, or on its edge."""
+        _, tree = self._near(point)
+        return len(tree.query(point, predicate="intersects")) > 0
+
+    def onto(
+        self,
+        point: shapely.Point,
+        max_distance: float,
+        inside: float = 0.5,
+        within: shapely.Geometry | None = None,
+    ) -> shapely.Point | None:
+        """The nearest point of the water to a point on land, and `inside` further in that direction if still water.
+
+        :param within: only the water within this area counts, defaults to None (all water)
+        :return: None if the point lies on the water, or more than `max_distance` from it
+        """
+        assert max_distance <= self.margin, f"Water is read up to {self.margin} m around a tile, not {max_distance} m"
+        if self.contains(point):
+            return None
+        geometries, tree = self._near(point)
+        best: tuple[float, shapely.Geometry] | None = None
+        for index in np.sort(tree.query(point, predicate="dwithin", distance=max_distance)).tolist():
+            water = geometries[index] if within is None else shapely.intersection(geometries[index], within)
+            distance = float(shapely.distance(point, water))  # nan for water outside the area
+            if distance <= max_distance and (best is None or distance < best[0]):
+                best = (distance, water)
+        if best is None or best[0] <= 0.0:
+            return None
+        distance, water = best
+        (x0, y0), (x1, y1) = shapely.get_coordinates(shapely.shortest_line(point, water))
+        further = shapely.Point(x1 + (x1 - x0) * inside / distance, y1 + (y1 - y0) * inside / distance)
+        return further if water.contains(further) else shapely.Point(x1, y1)
+
+
+def junction_areas(model: Model) -> dict[int, shapely.Geometry]:
+    """Per Junction of a Basin tree, see `ribasim_nl.flow_paths.Routes`, the area of its Basin.
+
+    A Junction is part of the routes of its Basin, so where it is moved to tidy the layout, it stays in this area: not
+    on the water of a neighbor on the other side of a dike, or behind the structure that its routes lead to.
+    """
+    # flow_paths builds on this module
+    from ribasim_nl.flow_paths import Routes
+
+    if model.basin.area.df is None:
+        return {}
+    areas = model.basin.area.df.dissolve(by="node_id").geometry
+    routes = Routes(model)
+    result = {}
+    for junction_id in sorted(routes.plain):
+        basin_id = routes.tree_basin(junction_id)
+        if basin_id is not None and basin_id in areas.index:
+            result[junction_id] = areas[basin_id]
+    shapely.prepare(np.array(list(result.values()), dtype=object))
+    return result
+
+
+def separate_nodes(
+    model: Model,
+    min_distance: float = NODE_SPACING,
+    water: Water | None = None,
+    trim: bool = True,
+    areas: typing.Mapping[int, shapely.Geometry] | None = None,
+) -> None:
     """Move nodes that are within `min_distance` of another node, such that no nodes are on top of each other.
 
     Of two such nodes, the most movable one is moved, see `MOVABLE_NODE_TYPES`; Basins are never moved. It is moved to
-    the first free location around the other node, starting in the direction away from it.
+    the first free location around the other node, starting in the direction away from it. A Junction goes to the
+    first free location in the area of its Basin, see `junction_areas`, and of these to the first one on the `water`,
+    if given and there is one. With `trim`, the links of a moved node go straight to it from the distance of the move,
+    see `move_nodes`.
+
+    :param areas: per Junction, the area of its Basin, defaults to None (`junction_areas`)
     """
+    areas = junction_areas(model) if areas is None else areas
     nodes = model.node.df
     ids = nodes.index.to_numpy()
     xy = shapely.get_coordinates(nodes.geometry.to_numpy())[:, :2].copy()
@@ -217,23 +335,73 @@ def separate_nodes(model: Model, min_distance: float = 10.0) -> None:
         return True
 
     angles = np.linspace(0, 2 * np.pi, 12, endpoint=False)
+    is_junction = (nodes["node_type"] == "Junction").to_numpy()
     locations: dict[int, shapely.Point] = {}
     for k in sorted(partner, key=lambda k: ids[k]):
         if free(xy[k], k):
             continue
         q = xy[partner[k]]
         away = np.arctan2(*(xy[k] - q)[::-1]) if np.hypot(*(xy[k] - q)) > 1e-3 else 0.0
-        for radius in min_distance * np.array([1.0, 1.5, 2.0, 3.0, 4.0]):
-            candidates = q + radius * np.column_stack([np.cos(away + angles), np.sin(away + angles)])
-            found = next((c for c in candidates if free(c, k)), None)
-            if found is not None:
-                grid[cell(xy[k])].discard(k)
-                xy[k] = found
-                grid[cell(found)].add(k)
-                locations[int(ids[k])] = shapely.Point(found)
-                break
+        around = (
+            c
+            for radius in min_distance * np.array([1.0, 1.5, 2.0, 3.0, 4.0])
+            for c in q + radius * np.column_stack([np.cos(away + angles), np.sin(away + angles)])
+            if free(c, k)
+        )
+        if is_junction[k]:
+            area = areas.get(int(ids[k]))
+
+            def rank(c: np.ndarray, area: shapely.Geometry | None = area) -> tuple[bool, bool]:
+                """Outside the area of its Basin last, and of the others those on land last."""
+                point = shapely.Point(c)
+                outside = area is not None and not bool(shapely.contains(area, point))
+                return outside, water is not None and not water.contains(point)
+
+            # `min` takes the first of the best
+            found = min(around, key=rank, default=None)
+        else:
+            found = next(around, None)
+        if found is not None:
+            grid[cell(xy[k])].discard(k)
+            xy[k] = found
+            grid[cell(found)].add(k)
+            locations[int(ids[k])] = shapely.Point(found)
     LOG.info(f"Moved {len(locations)} nodes away from other nodes")
-    move_nodes(model, locations)
+    move_nodes(model, locations, trim)
+
+
+def junctions_onto_water(
+    model: Model,
+    water: Water,
+    max_distance: float = MAX_WATER_DISTANCE,
+    node_ids: typing.Collection[int] | None = None,
+    trim: bool = True,
+    areas: typing.Mapping[int, shapely.Geometry] | None = None,
+) -> None:
+    """Move the Junctions that lie on land, within `max_distance` of the water, onto the water, see `Water.onto`.
+
+    A Junction is where routes join or split, which belongs on the water, but routes can share a stretch over land,
+    such as through a culvert or from a structure on a dike. Only the water in the area of its Basin counts, see
+    `junction_areas`: a Junction next to a gemaal on a dike does not move onto the river behind it. The ends of its
+    links move along, and with `trim` the links go straight to the Junction from the distance of the move, see
+    `move_nodes`.
+
+    :param node_ids: the Junctions to move, defaults to all Junctions
+    :param areas: per Junction, the area of its Basin, defaults to None (`junction_areas`)
+    """
+    areas = junction_areas(model) if areas is None else areas
+    nodes = model.node.df
+    junctions = nodes[nodes["node_type"] == "Junction"]
+    if node_ids is not None:
+        junctions = junctions[junctions.index.isin(list(node_ids))]
+    locations: dict[int, shapely.Point] = {}
+    for node_id, point in junctions.geometry.items():
+        node_id = int(typing.cast(int, node_id))
+        location = water.onto(typing.cast(shapely.Point, point), max_distance, within=areas.get(node_id))
+        if location is not None:
+            locations[node_id] = location
+    LOG.info(f"Moved {len(locations)} of {len(junctions)} Junctions onto the water")
+    move_nodes(model, locations, trim)
 
 
 def resolve_overlaps(model: Model, distance: float = 5.0, min_length: float = 1.0, max_iterations: int = 5) -> None:
@@ -254,17 +422,25 @@ def tidy_layout(
     model: Model,
     *,
     offset: float = 5.0,
-    min_distance: float = 10.0,
+    min_distance: float = NODE_SPACING,
     bergend_distance: float = 100.0,
+    water_path: Path | None = None,
 ) -> Model:
     """Make the layout of a model readable: no nodes on top of each other, and no overlapping links.
 
     The inflows and outflows of a Basin share one Junction tree, see `ribasim_nl.flow_paths.Routes`, so links stay on
     their route, and only links that still overlap are offset. See `place_bergend_nodes`, `separate_nodes` and
-    `resolve_overlaps`.
+    `resolve_overlaps`. With the BGT water of `water_path`, see `Water`, Junctions are put on the water, see
+    `junctions_onto_water`, and kept there when they are moved apart, both within the area of their Basin, see
+    `junction_areas`. The links of the nodes that are moved go straight to them from the distance of the move, see
+    `move_nodes`, so they do not hook back to where a node was.
     """
     place_bergend_nodes(model, bergend_distance)
-    separate_nodes(model, min_distance)
+    water = None if water_path is None else Water(water_path)
+    areas = junction_areas(model)
+    if water is not None:
+        junctions_onto_water(model, water, areas=areas)
+    separate_nodes(model, min_distance, water, areas=areas)
     resolve_overlaps(model, offset)
     return model
 

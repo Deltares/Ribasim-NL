@@ -1,3 +1,4 @@
+import numpy as np
 from ribasim import Node
 from ribasim.nodes import basin, flow_boundary, outlet
 from ribasim_nl.flow_paths import simplified_links
@@ -38,6 +39,21 @@ def test_attach_rwzi_junctions():
     assert set(links.index) == {(2, 3), (3, 6), (6, 4), (4, 1), (5, 6)}
     assert links[(3, 6)].coords[-1] == links[(6, 4)].coords[0] == location.coords[0]
     assert links[(5, 6)].coords[:] == [(60, 30), location.coords[0]]
+
+
+def test_attach_rwzi_junctions_along_waterway():
+    """The RWZI discharges on a ditch, which joins the link from Outlet 3 further on than its nearest point."""
+    ditch = LineString([(60, 20), (80, 20), (80, 2.5)])
+    model = attach_rwzi_junctions(rwzi_model(), read_lines=lambda area: np.array([ditch]))
+    assert model.node.df.at[6, "geometry"].coords[:] == [(80, 2.5)]
+    links = model.link.df.set_index(["from_node_id", "to_node_id"]).geometry
+    assert set(links.index) == {(2, 3), (3, 6), (6, 4), (4, 1), (5, 6)}
+    assert links[(5, 6)].coords[:] == [(60, 30), (60, 20), (80, 20), (80, 2.5)]
+    assert links[(3, 6)].coords[:] == [(90, 0), (80, 2.5)]
+    # without a waterway to the link, it is attached at the nearest point, as without `read_lines`
+    straight = attach_rwzi_junctions(rwzi_model(), read_lines=lambda area: np.array([], dtype=object))
+    nearest = attach_rwzi_junctions(rwzi_model()).node.df.geometry
+    assert straight.node.df.geometry.geom_equals_exact(nearest, tolerance=1e-6).all()
 
 
 def test_attach_rwzi_junctions_too_far():

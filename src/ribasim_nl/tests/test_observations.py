@@ -3,15 +3,16 @@ import pandas as pd
 import pytest
 from ribasim import Node
 from ribasim.nodes import basin, observation, outlet
+from ribasim_nl.keys import NodeKey
 from ribasim_nl.observations import (
     LinkEnd,
+    _keys,
     _points,
     _signs,
     _strings,
     add_observation_nodes,
     link_observations,
 )
-from ribasim_nl.structure_locations import CROSSING_COLUMNS
 from shapely.geometry import Point
 
 from ribasim_nl import Model
@@ -108,41 +109,61 @@ def test_add_observation_nodes():
     assert first["value"].tolist() == [-2.0, -4.0]
 
 
-def test_observe_node_at_structure():
-    """An Outlet that is moved to its structure is found where the koppeltabel knows it, at its crossing."""
+def test_observe_node_by_key():
+    """An Outlet that is moved to its structure, 40 m from where the koppeltabel knows it, is found by its key."""
     model = Model(starttime="2020-01-01", endtime="2020-01-03", crs="EPSG:28992")
     for node_id, x in ((1, 0), (4, 100)):
         model.basin.add(
-            Node(node_id, Point(x, 0)), [basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]), basin.State(level=[0.5])]
+            Node(node_id, Point(x, 0), meta_key=f"P{node_id}"),
+            [basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]), basin.State(level=[0.5])],
         )
-    # Outlet 2 is moved 40 m from its crossing, to where Outlet 3 would be found within the tolerance for moved nodes
-    model.outlet.add(Node(2, Point(50, 40)), [outlet.Static(flow_rate=[1.0])])
-    model.outlet.add(Node(3, Point(50, 70)), [outlet.Static(flow_rate=[1.0])])
+    # Outlet 3 is nearer to the location in the koppeltabel than Outlet 2, which has the key
+    model.outlet.add(Node(2, Point(50, 40), meta_key="KST-2"), [outlet.Static(flow_rate=[1.0])])
+    model.outlet.add(Node(3, Point(50, 20), meta_key="KST-3"), [outlet.Static(flow_rate=[1.0])])
     for node_id in (2, 3):
         model.link.add(model.basin[1], model.outlet[node_id])
         model.link.add(model.outlet[node_id], model.basin[4])
-    coupling = gpd.GeoDataFrame(
-        {
-            "MeetreeksC": ["stuw"],
-            "Aan/Af": ["Afvoer"],
-            "negate": [False],
-            "ends": [[LinkEnd("Outlet", Point(50, 0), "Basin", True)]],
-            "signs": [[1]],
-            "koppeling": [""],
-        },
-        geometry=[Point(50, 45)],
-        crs="EPSG:28992",
-    )
+
+    def coupling(key: NodeKey) -> gpd.GeoDataFrame:
+        return gpd.GeoDataFrame(
+            {
+                "MeetreeksC": ["stuw"],
+                "Aan/Af": ["Afvoer"],
+                "negate": [False],
+                "ends": [[LinkEnd("Outlet", Point(50, 0), "Basin", True, key)]],
+                "signs": [[1]],
+                "koppeling": [""],
+            },
+            geometry=[Point(50, 45)],
+            crs="EPSG:28992",
+        )
+
     measurements = {"Afvoer": pd.DataFrame({"stuw": 1.0}, index=pd.date_range("2020-01-01", "2020-01-03", name="time"))}
 
-    unmoved = add_observation_nodes(model.model_copy(deep=True), coupling, measurements)
-    assert (unmoved.link.df["link_type"] == "observation").sum() == 0
+    def observed(model: Model) -> list[int]:
+        return model.link.df.loc[model.link.df["link_type"] == "observation", "to_node_id"].tolist()
 
-    model.node.df[CROSSING_COLUMNS] = float("nan")
-    model.node.df.loc[2, CROSSING_COLUMNS] = [50.0, 0.0]
-    model = add_observation_nodes(model, coupling, measurements)
-    links = model.link.df[model.link.df["link_type"] == "observation"]
-    assert links["to_node_id"].tolist() == [2]
+    key = NodeKey("Rijnland", "KST-2")
+    assert observed(
+        add_observation_nodes(model.model_copy(deep=True), coupling(key), measurements, own="Rijnland")
+    ) == [2]
+    # a node of another water authority is in another model
+    other = add_observation_nodes(
+        model.model_copy(deep=True), coupling(NodeKey("Delfland", "KST-2")), measurements, own="Rijnland"
+    )
+    assert observed(other) == []
+    assert other.node.df["meta_koppeling"].dropna().tolist() == ["Delfland node 'KST-2' is in another model"]
+    # in a model of several water authorities, the key is that of a node of its water authority
+    model.node.df["meta_waterbeheerder"] = "Rijnland"
+    assert observed(add_observation_nodes(model.model_copy(deep=True), coupling(key), measurements)) == [2]
+    missing = add_observation_nodes(model, coupling(NodeKey("Rijnland", "KST-9")), measurements)
+    assert observed(missing) == []
+    assert missing.node.df["meta_koppeling"].dropna().tolist() == ["no Rijnland node 'KST-9'"]
+
+
+def test_keys():
+    assert _keys('[["Rijnland", "KGM-1"], null]', 2) == [NodeKey("Rijnland", "KGM-1"), None]
+    assert _keys(float("nan"), 2) == [None, None]
 
 
 def basin_tree_model(towards_basin: bool) -> Model:

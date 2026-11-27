@@ -3,10 +3,8 @@ import pytest
 from ribasim import Node
 from ribasim.nodes import basin, flow_demand, outlet, pump
 from ribasim_nl.structure_locations import (
-    CROSSING_COLUMNS,
     Crossings,
     move_to_structures,
-    reference_points,
     structure_locations,
 )
 from shapely.geometry import LineString, Point
@@ -116,6 +114,7 @@ def test_move_to_structures():
 
     moved = move_to_structures(model, crossings([PUMP_CROSSING, OPEN_CROSSING]))
     assert moved == {3: "g1"}
+    assert model.node.df["meta_code_waterbeheerder"].dropna().to_dict() == {3: "g1"}
     points = model.node.df.geometry
     assert points[3].equals(Point(130, 0))
     assert points[4].equals(Point(140, 0)), "The control node stays next to the Pump"
@@ -123,12 +122,6 @@ def test_move_to_structures():
     links = model.link.df.set_index(["from_node_id", "to_node_id"]).geometry
     assert list(links[(1, 3)].coords) == [(0, 0), (130, 0)]
     assert list(links[(4, 3)].coords) == [(140, 0), (130, 0)]
-    # other data finds the Pump where it was, and the nodes that are not moved where they are
-    assert model.node.df.loc[3, CROSSING_COLUMNS].tolist() == [100.0, 0.0]
-    assert model.node.df.loc[[4, 5], CROSSING_COLUMNS].isna().all(axis=None)
-    reference = reference_points(model.node.df)
-    assert reference[3].equals(Point(100, 0)) and reference[4].equals(Point(140, 0))
-    assert reference_points(model.node.df.drop(columns=CROSSING_COLUMNS)).equals(model.node.df.geometry)
     # a node that is at its structure already is not moved again
     assert move_to_structures(model, crossings([PUMP_CROSSING | {"geometry": Point(130, 0)}])) == {}
-    assert model.node.df.loc[3, CROSSING_COLUMNS].tolist() == [100.0, 0.0]
+    assert model.node.df.geometry[3].equals(Point(130, 0))

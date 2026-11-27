@@ -1405,6 +1405,8 @@ stages:
       - pixi run python pipeline/rijkswaterstaat/8b_update_bc.py
     deps:
       - data/Rijkswaterstaat/modellen/hws_demand
+      # the Junctions on the water
+      - data/Basisgegevens/BGT/bgt_water.parquet
       - data/Rijkswaterstaat/modellen/rwzi
       - data/Rijkswaterstaat/aangeleverd/Matroos_debieten_2017_2022_Lobith_Monsin.xlsx
       - data/Rijkswaterstaat/verwerkt/netwerk.gpkg
@@ -1482,6 +1484,13 @@ stages:
       - src/ribasim_nl/ribasim_nl
       - data/Basisgegevens/Top10NL/top10nl_Compleet.gpkg
       - data/Basisgegevens/OSM/waterway_fairway.gpkg
+      # the Junctions of the coupling on the water
+      - data/Basisgegevens/BGT/bgt_water.parquet
+      # the hydro-objects on the water of the lakes, such as the channels of harbours
+      - data/AmstelGooienVecht/verwerkt/profielen/network.gpkg
+      - data/HollandsNoorderkwartier/verwerkt/profielen/network.gpkg
+      - data/WetterskipFryslan/verwerkt/profielen/network.gpkg
+      - data/Zuiderzeeland/verwerkt/profielen/network.gpkg
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Transformed_koppeltabel_versie_rapportage_26062026_Feedback_Verwerkt_HydroLogic.xlsx
       - data/Basisgegevens/resultaatvergelijking/koppeltabel_2026/Specifiek_bewerking_versierapportage_26062026.xlsx
       - data/Rijkswaterstaat/modellen/lhm_parts

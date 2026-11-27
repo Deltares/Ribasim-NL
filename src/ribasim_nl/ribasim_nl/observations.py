@@ -5,9 +5,8 @@ by `ribasim_nl.analyse_results`. Each series gets an Observation node at the mea
 values. If the series is measured on a single link, the Observation node observes the `flow_rate` of the connector
 node of that link. If it adds and subtracts the flows of multiple links, it observes a Junction with that flow, the
 net flow of the nodes beyond its link towards its Basin, see `ribasim_nl.flow_paths.Routes.flow_rate_links`. These
-nodes are found by their type and location, which do not change when links are renumbered: the location in the input
-model, also for nodes that are moved to their structure, see `ribasim_nl.structure_locations`. Other Observation nodes
-are not linked, as a reminder; `meta_koppeling` says why.
+nodes are found by their water authority and key, see `read_coupling`, and Junctions by their type and location. Other
+Observation nodes are not linked, as a reminder; `meta_koppeling` says why.
 
 Series are linked before the Basin trees of a model are merged, see `ribasim_nl.flow_paths.merge_basin_trees`, which
 keeps the observed Junctions, and the others again after, see `link_observations`, as a merged tree can combine the
@@ -15,6 +14,7 @@ inflows and outflows of a Basin. If no Junction combines exactly the nodes of a 
 then get one, see `ribasim_nl.flow_paths.combine_nodes`.
 """
 
+import json
 import logging
 import re
 import typing
@@ -29,9 +29,9 @@ from ribasim.schemas import ObservationTimeSchema
 
 from ribasim_nl.coupling_level_network import first_non_junction
 from ribasim_nl.flow_paths import Routes, combine_nodes, tree_sides
+from ribasim_nl.keys import NodeKey
 from ribasim_nl.model import Model
 from ribasim_nl.settings import settings
-from ribasim_nl.structure_locations import reference_points
 
 LOG = logging.getLogger(__name__)
 
@@ -82,11 +82,14 @@ class LinkEnd(typing.NamedTuple):
     geometry: shapely.Point
     other_type: str
     upstream: bool  # whether the other node is upstream
+    key: NodeKey | None = None  # the key of the node, see `read_coupling`
 
 
-def _link_end(from_type: str, from_point: shapely.Point, to_type: str, to_point: shapely.Point) -> LinkEnd | None:
-    """The preferred node to observe of a koppeltabel link, if any."""
-    ends = [LinkEnd(from_type, from_point, to_type, False), LinkEnd(to_type, to_point, from_type, True)]
+def _link_end(
+    from_type: str, from_point: shapely.Point, to_type: str, to_point: shapely.Point, key: NodeKey | None = None
+) -> LinkEnd | None:
+    """The preferred node to observe of a koppeltabel link, if any, with its `key` if known."""
+    ends = [LinkEnd(from_type, from_point, to_type, False, key), LinkEnd(to_type, to_point, from_type, True, key)]
     ends = [end for end in ends if end.node_type in OBSERVED_NODE_TYPES]
     return min(ends, key=lambda end: OBSERVED_NODE_TYPES.index(end.node_type)) if ends else None
 
@@ -110,8 +113,20 @@ def _signs(operation: str | float | None, count: int) -> list[int] | None:
     return [signs[i] for i in range(1, count + 1)]
 
 
+def _keys(value: object, count: int) -> list[NodeKey | None]:
+    """Parse the node keys in a koppeltabel cell like '[["Rijnland", "KGM-1"], null]', or none if it is empty."""
+    if not isinstance(value, str):
+        return [None] * count
+    keys = [None if key is None else NodeKey(*key) for key in json.loads(value)]
+    assert len(keys) == count, f"{len(keys)} node keys for {count} links"
+    return keys
+
+
 def read_coupling(authority: str) -> gpd.GeoDataFrame:
     """The series of an authority, with the nodes to observe of their links.
+
+    The koppeltabel names the node at each end of a link by its type and location, and the node to observe by its
+    water authority and key in the column `new_node_keys`, except for Junctions, whose keys follow from the routes.
 
     :return: a table with columns MeetreeksC, Aan/Af, negate (whether the measurement has the opposite sign of the
         flow_rate), ends (the `LinkEnd` per link, or None if the series does not add the flows of the links or a link
@@ -130,8 +145,10 @@ def read_coupling(authority: str) -> gpd.GeoDataFrame:
         from_points, to_points = _points(row["new_from_node_geometry"]), _points(row["new_to_node_geometry"])
         assert len(from_types) == len(to_types) == len(from_points) == len(to_points), row["MeetreeksC"]
         operation = specifics.get((row["MeetreeksC"], row["Aan/Af"]))
+        keys = _keys(row.get("new_node_keys"), len(from_types))
         ends: list[LinkEnd | None] | None = [
-            _link_end(*link) for link in zip(from_types, from_points, to_types, to_points, strict=True)
+            _link_end(*link, key=key)
+            for link, key in zip(zip(from_types, from_points, to_types, to_points, strict=True), keys, strict=True)
         ]
         signs = _signs(operation, len(from_types))
         koppeling = ""
@@ -179,7 +196,7 @@ def add_observations(model: Model, authority: str) -> Model:
     :return: updated Ribasim model
     """
     coupling = read_coupling(authority)
-    model = add_observation_nodes(model, coupling, read_measurements())
+    model = add_observation_nodes(model, coupling, read_measurements(), own=authority)
     links = model.link.df[model.link.df["link_type"] == "observation"]
     LOG.info(f"{authority} has {len(coupling)} Observation nodes, of which {len(links)} are linked")
     return model
@@ -254,22 +271,37 @@ class _Graph:
         return None
 
 
+def _match_key(model: Model, key: NodeKey, own: str | None) -> tuple[int | None, str]:
+    """The node with a key, or None and why there is none.
+
+    :param own: the water authority of a model of one water authority, or None for a model of several, such as the
+        coupled model, in which keys are unique per water authority
+    """
+    if own is not None and key.authority != own:
+        return None, f"{key.authority} node {key.key!r} is in another model"
+    try:
+        return model.node_id(key.key, authority=None if own is not None else key.authority), ""
+    except KeyError:
+        return None, f"no {key.authority} node {key.key!r}"
+
+
 def _match(
-    model: Model, end: LinkEnd, graph: _Graph, tolerance: float, moved_tolerance: float
+    model: Model, end: LinkEnd, graph: _Graph, tolerance: float, moved_tolerance: float, own: str | None = None
 ) -> tuple[int | None, str]:
     """The model node of a `LinkEnd`, or None and why there is none.
 
+    A node with a key is found by its key, see `_match_key`, and the others, Junctions, by their location.
     Nodes on top of each other are moved apart, see `ribasim_nl.layout.separate_nodes`, so if there is no node within
-    `tolerance`, the nearest node within `moved_tolerance` is used. A node that is moved to its structure is found
-    where the koppeltabel knows it, at its crossing, see `ribasim_nl.structure_locations.reference_points`. If there is
-    no node of the type of the koppeltabel, an Outlet may be a Pump instead, or the other way around, see
-    `INTERCHANGEABLE_TYPES`.
+    `tolerance`, the nearest node within `moved_tolerance` is used. If there is no node of the type of the koppeltabel,
+    an Outlet may be a Pump instead, or the other way around, see `INTERCHANGEABLE_TYPES`.
     """
+    if end.key is not None:
+        return _match_key(model, end.key, own)
     nodes = model.node.df
 
     def nearby(node_type: str) -> list:
         candidates = nodes[nodes["node_type"] == node_type]
-        distance = reference_points(candidates).distance(end.geometry)
+        distance = candidates.distance(end.geometry)
         within = list(candidates.index[distance <= tolerance])
         if not within and moved_tolerance > tolerance:
             # the nearest node within moved_tolerance, as the node may have been moved
@@ -305,18 +337,25 @@ def _combine(model: Model, signs: dict[int, int], graph: _Graph) -> bool:
 
 
 def _observed_node(
-    model: Model, row: pd.Series, graph: _Graph, tolerance: float, moved_tolerance: float, combine: bool = False
+    model: Model,
+    row: pd.Series,
+    graph: _Graph,
+    tolerance: float,
+    moved_tolerance: float,
+    combine: bool = False,
+    own: str | None = None,
 ) -> tuple[int | None, int, str]:
     """The node to observe for a series of `read_coupling`, or None and why there is none.
 
     With `combine`, the nodes of a series that no Junction combines get such a Junction, if possible, see `_combine`.
+    `own` is the water authority of a model of one water authority, see `_match_key`.
 
     :return: the node, the sign of its flow rate relative to the series, and why there is no node
     """
     ends, signs = row["ends"], row["signs"]
     if not isinstance(ends, list):
         return None, 1, row["koppeling"]
-    matches = [_match(model, end, graph, tolerance, moved_tolerance) for end in ends]
+    matches = [_match(model, end, graph, tolerance, moved_tolerance, own) for end in ends]
     unmatched = [reason for node_id, reason in matches if node_id is None]
     if unmatched:
         return None, 1, unmatched[0]
@@ -342,14 +381,19 @@ def _link(model: Model, observation_id: int, node_id: int, graph: _Graph) -> Non
 
 
 def add_observation_nodes(
-    model: Model, coupling: gpd.GeoDataFrame, measurements: dict[str, pd.DataFrame], tolerance: float = 1.0
+    model: Model,
+    coupling: gpd.GeoDataFrame,
+    measurements: dict[str, pd.DataFrame],
+    tolerance: float = 1.0,
+    own: str | None = None,
 ) -> Model:
     """Add Observation nodes for the series in `coupling`, see `read_coupling` and `read_measurements`.
 
     :param model: Ribasim model
     :param coupling: series with the node to observe
     :param measurements: measured discharges
-    :param tolerance: maximum distance between the node to observe in `coupling` and in the model
+    :param tolerance: maximum distance between a Junction to observe in `coupling` and in the model
+    :param own: the water authority of a model of one water authority, see `_match_key`
 
     :return: updated Ribasim model
     """
@@ -358,7 +402,7 @@ def add_observation_nodes(
     graph = _Graph(model)
     times: list[pd.DataFrame] = [] if model.observation.time.df is None else [model.observation.time.df]
     for _, row in coupling.iterrows():
-        node_id, sign, koppeling = _observed_node(model, row, graph, tolerance, tolerance)
+        node_id, sign, koppeling = _observed_node(model, row, graph, tolerance, tolerance, own=own)
         observation = model.observation.add(
             Node(geometry=row["geometry"], name=row["MeetreeksC"], meta_aan_af=row["Aan/Af"], meta_koppeling=koppeling)
         )
@@ -402,9 +446,9 @@ def link_observations(
     observed flow rate has the opposite sign, so do the measured values.
 
     :param model: Ribasim model
-    :param authority: water authority of the Observation nodes as named in the koppeltabel, or else the
-        meta_waterbeheerder of each node
-    :param tolerance: maximum distance between the node to observe in the koppeltabel and in the model
+    :param authority: water authority of the Observation nodes as named in the koppeltabel, and of the model, or else
+        the meta_waterbeheerder of each node, in a model of several water authorities
+    :param tolerance: maximum distance between a Junction to observe in the koppeltabel and in the model
     :param moved_tolerance: maximum distance to a node that was moved to separate it from other nodes, see `_match`
     :param combine: give the nodes of a series that no Junction combines such a Junction, see `_combine`, once the
         Basin trees of the model are merged, as merging them removes Junctions that are not observed yet
@@ -426,7 +470,7 @@ def link_observations(
         for observation_id, observation in group.iterrows():
             observation_id = int(typing.cast(int, observation_id))
             row = coupling.loc[(observation["name"], observation["meta_aan_af"])]
-            node_id, sign, koppeling = _observed_node(model, row, graph, tolerance, moved_tolerance, combine)
+            node_id, sign, koppeling = _observed_node(model, row, graph, tolerance, moved_tolerance, combine, authority)
             if node_id is not None:
                 _link(model, observation_id, node_id, graph)
                 if sign == -1 and time is not None:
