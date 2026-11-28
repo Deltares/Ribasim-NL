@@ -124,7 +124,7 @@ kwk_dir = cloud.joinpath("Rijkswaterstaat/verwerkt/kunstwerken")
 kwk_xlsx = kwk_dir.joinpath("kunstwerken.xlsx")
 
 # %%Inlezen
-all_kwk_df = pd.read_excel(kwk_xlsx, sheet_name="kunstwerken")
+all_kwk_df = pd.read_excel(kwk_xlsx, sheet_name="kunstwerken", engine="calamine")
 all_kwk_df.loc[:, "code"] = all_kwk_df["code"].astype(str)
 model = Model.read(ribasim_toml)
 # nodes and links are referred to by their key, see docs/dev/node-keys.qmd
@@ -284,7 +284,7 @@ for gebied, kwks_df in all_kwk_df.groupby(by="gebied"):
         if kwk.naam not in sheet_names:
             raise ValueError(f"{kwk.naam} not a sheet in {file_name}")
 
-        kwk_df = pd.read_excel(file_name, sheet_name=cast(str, kwk.naam))
+        kwk_df = pd.read_excel(file_name, sheet_name=cast(str, kwk.naam), engine="calamine")
         kwk_properties = read_kwk_properties(kwk_df)
 
         # check if code-value is the same in both Excels

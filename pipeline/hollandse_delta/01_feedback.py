@@ -577,11 +577,6 @@ ribasim_model.remove_node(n("03306GM"), True)
 
 ribasim_model.remove_node(n("loc:103744,429819"), True)
 
-# (re) set 'meta_node_id'
-for node_type in ["LevelBoundary", "TabulatedRatingCurve", "Pump"]:
-    mask = ribasim_model.node.df["node_type"] == node_type
-    ribasim_model.node.df.loc[mask, "meta_node_id"] = ribasim_model.node.df.loc[mask].index
-
 # change unknown streefpeilen to a default streefpeil
 ribasim_model.basin.area.df.loc[
     ribasim_model.basin.area.df["meta_streefpeil"] == "Onbekend streefpeil", "meta_streefpeil"

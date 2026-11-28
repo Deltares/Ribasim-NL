@@ -57,7 +57,7 @@ def points2lines_general(
         LOG.critical("No datapoints within the basin collection: Empty GeoDataFrame")
         return points
     lines = make_depth_profiles(points)
-    lines.rename(columns={"line_id": "profiellijnid"}, inplace=True)
+    lines = lines.rename(columns={"line_id": "profiellijnid"})
     return lines
 
 
@@ -73,7 +73,7 @@ def points2lines_agv(cloud: CloudStorage = CloudStorage()) -> gpd.GeoDataFrame: 
     fn = cloud.joinpath("Basisgegevens", "profielen", "AGV", "metingprofielpunt.gml")
     points = gpd.read_file(fn)
     lines = make_depth_profiles(points, col_profile_id="metingProfielLijnID")
-    lines.rename(columns={"line_id": "profiellijnid"}, inplace=True)
+    lines = lines.rename(columns={"line_id": "profiellijnid"})
     return lines
 
 
@@ -95,7 +95,7 @@ def points2lines_delfland(cloud: CloudStorage = CloudStorage()) -> gpd.GeoDataFr
         lambda r: shapely.LineString([(x, y, r["BodemHo"]) for x, y in r["geometry_lines"].geoms[0].coords]), axis=1
     )
     out = gpd.GeoDataFrame({"OBJECTID": out["OBJECTID"]}, geometry=out["geometry"], crs=lines.crs)
-    out.rename(columns={"OBJECTID": "profiellijnid"}, inplace=True)
+    out = out.rename(columns={"OBJECTID": "profiellijnid"})
     return out
 
 
@@ -131,7 +131,7 @@ def points2lines_scheldestromen(cloud: CloudStorage = CloudStorage(), *, buffer:
     lines = gpd.read_file(fn, layer="profiellijn", columns=["PRO_ID"])
     out = sorted_sjoin(points, lines, how="left", predicate="dwithin", distance=buffer, rsuffix="line")
     out = make_depth_profiles(out.dropna(subset=["PRO_ID"]), col_profile_id="PRO_ID")
-    out.rename(columns={"line_id": "profiellijnid"}, inplace=True)
+    out = out.rename(columns={"line_id": "profiellijnid"})
     return out
 
 

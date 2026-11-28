@@ -84,7 +84,7 @@ def find_toml(model_dir: Path) -> Path:
 def read_results(filepath: Path) -> pd.DataFrame:
     df = xr.open_dataset(filepath).to_dataframe().reset_index()
     if "time" in df.columns:
-        df.set_index("time", inplace=True)
+        df = df.set_index("time")
     return df
 
 
@@ -92,8 +92,11 @@ def node_properties_to_table(table, node_properties, node_id) -> None:
     """Set node properties (columns) of one node in the model's Node table."""
     node_df = table._parent.node.df
     for column, value in node_properties.items():
-        # `.at` is much faster than `.loc[node_id, [column]]` and falls back to `.loc` for new columns
-        node_df.at[node_id, column] = value
+        # `.at` is much faster than `.loc[node_id, [column]]`, but only sets existing cells
+        if column in node_df.columns and node_id in node_df.index:
+            node_df.at[node_id, column] = value
+        else:
+            node_df.loc[node_id, column] = value
 
 
 def set_df_unvalidated(table: Any, df: pd.DataFrame | None) -> None:
@@ -245,7 +248,7 @@ class Model(ribasim.Model):
             df = self.basin_outstate.df
         else:
             df = self.basin_results.df.loc[time_stamp][["node_id", "level"]]
-            df.reset_index(inplace=True, drop=True)
+            df = df.reset_index(drop=True)
         df.index += 1
         df.index.name = "fid"
 
@@ -550,7 +553,7 @@ class Model(ribasim.Model):
             keywords = inspect.getfullargspec(method).args
             df = gpd.read_file(edits_gpkg, layer=action, fid_as_index=True)
             if sort_by_order and "order" in df.columns:
-                df.sort_values("order", inplace=True)
+                df = df.sort_values("order")
             for row in df.itertuples():
                 # itertuples rows are namedtuples, whose `_asdict` ty sees as a column
                 values = cast(Any, row)._asdict()

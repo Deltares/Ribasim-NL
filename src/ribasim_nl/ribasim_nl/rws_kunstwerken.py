@@ -168,7 +168,7 @@ def read_rating_curve(kwk_df: pd.DataFrame) -> tabulated_rating_curve.Static:
     qh_df = kwk_df.loc[kwk_df.Eigenschap.to_list().index("Q(h) relatie") + 2 :][["Eigenschap", "Waarde"]].rename(
         columns={"Eigenschap": "level", "Waarde": "flow_rate"}
     )
-    qh_df.dropna(inplace=True)
+    qh_df = qh_df.dropna()
     return tabulated_rating_curve.Static(level=qh_df["level"].to_list(), flow_rate=qh_df["flow_rate"].to_list())
 
 

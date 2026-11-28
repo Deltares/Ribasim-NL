@@ -28,7 +28,7 @@ def add_streefpeil(model: Model, peilgebieden_path: Path, layername: str | None,
         model.basin.area.df["meta_code_waterbeheerder"] = pd.Series(dtype=str)
 
     if "meta_streefpeil" in model.basin.area.df.columns:
-        model.basin.area.df.drop(columns="meta_streefpeil", inplace=True)
+        model.basin.area.df = model.basin.area.df.drop(columns="meta_streefpeil")
     model.basin.area.df["meta_streefpeil"] = pd.Series(dtype=float)
 
     # Prepare basin geometries

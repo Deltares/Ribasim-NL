@@ -133,9 +133,9 @@ def read_coupling(authority: str) -> gpd.GeoDataFrame:
         has no node to observe), signs (per link the sign of its flow in the series), koppeling (why ends is None) and
         geometry of the measurement location
     """
-    coupling = pd.read_excel(COUPLING_XLSX)
+    coupling = pd.read_excel(COUPLING_XLSX, engine="calamine")
     coupling = coupling[coupling["Waterschap"] == authority]
-    specifics = pd.read_excel(SPECIFICS_XLSX)
+    specifics = pd.read_excel(SPECIFICS_XLSX, engine="calamine")
     specifics = specifics[specifics["Waterschap"] == authority].set_index(["MeetreeksC", "Aan/Af"])["Specifiek"]
     assert specifics.index.is_unique, f"Duplicate specific operations for {authority}"
 

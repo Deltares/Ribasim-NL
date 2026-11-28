@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any, ClassVar, Literal, Self, cast
 
 import geopandas as gpd
-import numpy as np
 import pandas as pd
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
 
@@ -113,6 +112,10 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
         "geotype",
         "layer_name",
     ]
+
+    def __new__(cls, *args: Any, **kwargs: Any) -> Self:
+        """Accept the arguments of `__init__`, which the `__new__` of the geopandas stubs does not know."""
+        return super().__new__(cls)
 
     def __init__(
         self,
@@ -229,8 +232,7 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
         """
         if extra_attributes is None:
             extra_attributes = {}
-        if not self.empty:
-            self.delete_all()
+        assert self.empty, f"The layer {self.layer_name!r} already has data"
 
         # reproject to crs if necessary
         if (gdf.crs is not None) and ("geometry" in self.required_columns):
@@ -264,12 +266,6 @@ class ExtendedGeoDataFrame(gpd.GeoDataFrame):
         for k, v in extra_attributes.items():
             if k not in self.columns:
                 self[k] = v
-
-    def delete_all(self) -> None:
-        """Empty the dataframe"""
-        if not self.empty:
-            self.iloc[:, 0] = np.nan
-            self.dropna(inplace=True)
 
     def snap_to_branch(self, branches, snap_method, maxdist=5) -> None:
         """
@@ -477,7 +473,7 @@ class HyDAMO:
                     schema = getattr(self, layer)._get_schema()
                     schema_cols = [*list(schema["properties"].keys()), "geometry"]
                     drop_cols = [i for i in gdf.columns if i not in schema_cols]
-                    gdf.drop(columns=drop_cols, inplace=True)
+                    gdf = gdf.drop(columns=drop_cols)
 
                     for column, dtype in schema["properties"].items():
                         if column not in gdf.columns:
@@ -489,7 +485,7 @@ class HyDAMO:
 
                     # Write the normalized GeoDataFrame to the GeoPackage.
                     if gdf.index.name in gdf.columns:
-                        gdf.reset_index(drop=True, inplace=True)
+                        gdf = gdf.reset_index(drop=True)
                     gdf.to_file(file_path, layer=layer, driver="GPKG")
                 else:
                     # write gdf to geopackage as is

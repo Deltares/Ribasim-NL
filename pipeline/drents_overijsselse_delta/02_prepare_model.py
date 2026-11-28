@@ -58,7 +58,7 @@ profiles_df.to_file(profiles_gpkg)
 add_link_profile_ids(model, profiles=damo_profiles)
 fix_link_geometries(model, network)
 model.link.df.reset_index().to_file(link_geometries_gpkg)
-profiles_df.set_index("profiel_id", inplace=True)
+profiles_df = profiles_df.set_index("profiel_id")
 static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
 # %% Quick fix basins
@@ -74,7 +74,7 @@ if "meta_code_waterbeheerder" not in model.basin.area.df.columns:
     model.basin.area.df["meta_code_waterbeheerder"] = pd.Series(dtype=str)
 
 if "meta_streefpeil" in model.basin.area.df.columns:
-    model.basin.area.df.drop(columns="meta_streefpeil", inplace=True)
+    model.basin.area.df = model.basin.area.df.drop(columns="meta_streefpeil")
 model.basin.area.df["meta_streefpeil"] = pd.Series(dtype=float)
 
 
@@ -174,10 +174,10 @@ streefpeil = combined.set_index("node_id").loc[valid_ids.to_list(), ["min_upstre
 streefpeil["basin_node_id"] = valid_ids.loc[valid_ids.isin(streefpeil.index)].index
 streefpeil["node_id"] = streefpeil.index  # outlet/pump node_id
 streefpeil = streefpeil.set_index("basin_node_id")
-streefpeil.dropna(inplace=True)
+streefpeil = streefpeil.dropna()
 
 # Sorteer per groep zodat de kleinste 'min_upstream_level' bovenaan staat
-streefpeil = streefpeil.sort_index().sort_values(by="min_upstream_level", inplace=False)
+streefpeil = streefpeil.sort_index().sort_values(by="min_upstream_level")
 non_kdu_values = streefpeil[~streefpeil["code"].str.startswith("KDU") | (streefpeil["source"] == "pump")]
 non_kdu_first = non_kdu_values.groupby(level=0).first()
 all_first = streefpeil.groupby(level=0).first()

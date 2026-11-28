@@ -61,7 +61,7 @@ network = Network(lines_gdf=gpd.read_file(hydamo_gpkg, layer="hydroobject"), tol
 profile_line_df = gpd.read_file(profiellijn_shp).to_crs(28992)
 profile_line_df = profile_line_df[profile_line_df["SOORTPROFI"] == 7]
 profile_point_df = gpd.read_file(profielpunt_shp).to_crs(28992)
-profile_point_df.rename(columns={"METINGPROF": "profiellijnid", "CODEVOLGNU": "codevolgnummer"}, inplace=True)
+profile_point_df = profile_point_df.rename(columns={"METINGPROF": "profiellijnid", "CODEVOLGNU": "codevolgnummer"})
 
 profile_point_df = profile_point_df[(profile_point_df.geometry.z != 0) | (profile_point_df.geometry.z > 50)]
 damo_profiles = DAMOProfiles(
@@ -86,7 +86,7 @@ fix_link_geometries(model, network)
 add_link_profile_ids(model, profiles=profiles_df, id_col="profiel_id")
 model.link.df.reset_index().to_file(link_geometries_gpkg)
 
-profiles_df.set_index("profiel_id", inplace=True)
+profiles_df = profiles_df.set_index("profiel_id")
 # %%
 
 # add link profiles
@@ -97,16 +97,16 @@ if "meta_code_waterbeheerder" not in model.basin.area.columns():
     model.basin.area.df["meta_code_waterbeheerder"] = pd.Series(dtype=str)
 
 if "meta_streefpeil" in model.basin.area.columns():
-    model.basin.area.df.drop(columns="meta_streefpeil", inplace=True)
+    model.basin.area.df = model.basin.area.df.drop(columns="meta_streefpeil")
 model.basin.area.df["meta_streefpeil"] = pd.Series(dtype=float)
 
 # %%
 # OUTLET
 static_data.reset_data_frame(node_type="Outlet")
 # --- Load Peilregister data ---
-peilregister_df = pd.read_excel(peilregister_xlsx, sheet_name="Blad2")
-peilregister_df.drop_duplicates("KXXIDENT", inplace=True)
-peilregister_df.set_index("KXXIDENT", inplace=True)
+peilregister_df = pd.read_excel(peilregister_xlsx, sheet_name="Blad2", engine="calamine")
+peilregister_df = peilregister_df.drop_duplicates("KXXIDENT")
+peilregister_df = peilregister_df.set_index("KXXIDENT")
 peilregister_df.index.name = "code"
 
 # Extract min_upstream_level, excluding invalid placeholder
@@ -183,7 +183,7 @@ min_upstream_level.index.name = "node_id"
 static_data.add_series(node_type="Outlet", series=min_upstream_level, fill_na=True)
 
 # --- Load Feedback data ---
-feedback_df = pd.read_excel(feedback_xlsx, sheet_name="Streefpeilen")
+feedback_df = pd.read_excel(feedback_xlsx, sheet_name="Streefpeilen", engine="calamine")
 # the rows of the nodes that are in the model, which the sheet refers to by their key
 feedback_df = feedback_df[feedback_df["Node key"].isin(model.node.df["meta_key"])]
 feedback_df.index = pd.Index(model.node_ids(feedback_df["Node key"]), name="node_id")
@@ -308,8 +308,8 @@ static_data.update_model_basin_levels()
 waterinlaten_gdf = gpd.read_file(waterinlaten)
 
 # --- Load Waterinlaten data ---
-waterinlaten_gdf.drop_duplicates("IDENT", inplace=True)
-waterinlaten_gdf.set_index("IDENT", inplace=True)
+waterinlaten_gdf = waterinlaten_gdf.drop_duplicates("IDENT")
+waterinlaten_gdf = waterinlaten_gdf.set_index("IDENT")
 waterinlaten_gdf.index.name = "code"
 
 # --- Filter data for Outlet ---
@@ -321,9 +321,9 @@ static_data.add_series(node_type="Outlet", series=valid_values, fill_na=False)
 
 # %% aanvoer of aanvoergemaal
 # --- Load Feedback data ---
-feedback_df = pd.read_excel(feedback_xlsx, sheet_name="Functie gemalen")
-feedback_df.drop_duplicates("Pump node_id", inplace=True)
-feedback_df.set_index("Pump node_id", inplace=True)
+feedback_df = pd.read_excel(feedback_xlsx, sheet_name="Functie gemalen", engine="calamine")
+feedback_df = feedback_df.drop_duplicates("Pump node_id")
+feedback_df = feedback_df.set_index("Pump node_id")
 feedback_df.index.name = "code"
 
 # Fill Streefpeil ZP with Maatg. kruinhoogte (m NAP) where missing

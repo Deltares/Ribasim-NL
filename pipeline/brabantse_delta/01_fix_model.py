@@ -224,7 +224,7 @@ model.node.df.loc[model.node.df["meta_categorie"].isna(), "meta_categorie"] = "h
 
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = get_data_from_gkw(layers=["sluis", "gemaal", "stuw"], authority=authority)
-df.set_index("code", inplace=True)
+df = df.set_index("code")
 names = df["naam"]
 
 sanitize_node_table(

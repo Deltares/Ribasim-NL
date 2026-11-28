@@ -9,6 +9,8 @@ from shapely.geometry.base import BaseGeometry
 
 from ribasim_nl import CloudStorage, Model
 from ribasim_nl.control import is_off_state, off_states
+from ribasim_nl.keys import KEY_COLUMN
+from ribasim_nl.split_basins import is_split_part
 
 
 class AssignMetaData:
@@ -232,9 +234,16 @@ class AssignMetaData:
 
         # Add the matching areas to the ribasim model
         assert self.model.basin.area.df is not None
+        # A storing ('bergend') Basin shares the area of the Basin it stores for, and a part of a split Basin is a part
+        # of a larger area, so neither is named after an aggregation area that lies within it
+        node_df = self.model.node.df
+        skipped = set()
+        if "meta_categorie" in node_df.columns:
+            skipped |= set(node_df.index[node_df["meta_categorie"] == "bergend"])
+        if KEY_COLUMN in node_df.columns:
+            skipped |= set(node_df.index[node_df[KEY_COLUMN].map(is_split_part).astype(bool)])
         for row in self.model.basin.area.df.itertuples():
-            if hasattr(row, "meta_node_id") and row.node_id != row.meta_node_id:
-                # Skip "bergend"
+            if row.node_id in skipped:
                 continue
 
             # Find overlapping area(s)

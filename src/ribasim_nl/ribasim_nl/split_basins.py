@@ -1,6 +1,7 @@
 """Split basins in a Ribasim model, based on pre-split basin polygons, or along a route."""
 
 import math
+import re
 import typing
 from collections.abc import Sequence
 from itertools import combinations
@@ -21,6 +22,23 @@ from shapely.ops import linemerge, split, substring, unary_union
 
 from ribasim_nl import Model
 from ribasim_nl.keys import KEY_COLUMN, nonempty
+
+# the key of a part of a Basin that is split from a file ends in the ID of the part in the file, see `split_part_key`
+_SPLIT_PART_SUFFIX = re.compile(r"/\d+$")
+
+
+def split_part_key(basin_key: str, part_id: int) -> str:
+    """The key of a part of a Basin that is split from a file: the key of the Basin and the ID of the part in the file.
+
+    See docs/dev/node-keys.qmd.
+    """
+    return f"{basin_key}/{part_id}"
+
+
+def is_split_part(key: object) -> bool:
+    """Whether a node key is that of a part of a Basin that is split from a file, see `split_part_key`."""
+    return isinstance(key, str) and _SPLIT_PART_SUFFIX.search(key) is not None
+
 
 # https://github.com/Deltares/Ribasim-NL/issues/554
 
@@ -261,7 +279,7 @@ class SplitBasins:
         for new_basin in self.splitted_basin_gdf.itertuples():
             geometry = typing.cast(BaseGeometry, new_basin.geometry)
             new_node_id = self.model.next_node_id
-            key = {KEY_COLUMN: f"{parent_key}/{new_basin.Index}"} if has_key else {}
+            key = {KEY_COLUMN: split_part_key(str(parent_key), typing.cast(int, new_basin.Index))} if has_key else {}
             self.model.basin.add(
                 Node(node_id=new_node_id, geometry=geometry.representative_point(), **key),
                 tables=[],
@@ -281,8 +299,7 @@ class SplitBasins:
             if self.printing:
                 print(
                     f"Split basin {self.basin_node_id_to_split}: created basin {new_node_id} "
-                    f"from split feature node_id={getattr(new_basin, 'node_id', None)}, "
-                    f"meta_node_id={getattr(new_basin, 'meta_node_id', None)}"
+                    f"from split feature node_id={getattr(new_basin, 'node_id', None)}"
                 )
 
         return newly_created_basins

@@ -127,7 +127,6 @@ def read_control_static_tables(
                 "name",
                 "meta_waterbeheerder",
                 "meta_code_waterbeheerder",
-                "meta_node_id_waterbeheerder",
             ]
         ],
         on=["node_id", "node_type"],

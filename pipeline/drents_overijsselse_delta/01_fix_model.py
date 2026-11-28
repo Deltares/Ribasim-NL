@@ -622,7 +622,7 @@ model.node.df.loc[
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
 df.loc[:, "code"] = df.nen3610id.str.removeprefix("NL.WBHCODE.59.").str.lower()
-df.set_index("code", inplace=True)
+df = df.set_index("code")
 names = df["naam"]
 
 

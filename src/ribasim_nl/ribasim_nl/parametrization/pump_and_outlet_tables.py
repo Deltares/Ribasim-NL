@@ -34,12 +34,12 @@ def create_static_df(
 
     # update data with static data in Excel
     if static_data_xlsx is not None:
-        static_data_sheets = pd.ExcelFile(static_data_xlsx).sheet_names
+        static_data_sheets = pd.ExcelFile(static_data_xlsx, engine="calamine").sheet_names
         if node_type in static_data_sheets:
             # in case node_id doesn't exist in the Excel-table
             static_data = read_node_sheet(model, static_data_xlsx, node_type)
             if "node_id" not in static_data.columns:
-                static_data.set_index("code", inplace=True)
+                static_data = static_data.set_index("code")
 
                 # in case there is more defined in static_data than in the model
                 static_data = static_data[static_data.index.isin(static_df[code_column])]
@@ -51,15 +51,15 @@ def create_static_df(
                 static_data = static_data[static_data.node_id.isin(static_df["node_id"])]
 
             static_data.columns = [i if i in static_df.columns else f"meta_{i}" for i in static_data.columns]
-            static_data.set_index("node_id", inplace=True)
+            static_data = static_data.set_index("node_id")
 
-            static_df.set_index("node_id", inplace=True)
+            static_df = static_df.set_index("node_id")
             for col in static_data.columns:
                 series = static_data[static_data[col].notna()][col]
                 if col == "flow_rate":
                     series = series.apply(round_to_significant_digits)
                 static_df.loc[series.index.to_numpy(), col] = series
-            static_df.reset_index(inplace=True)
+            static_df = static_df.reset_index()
 
     return static_df
 
@@ -77,7 +77,7 @@ def defaults_to_static_df(model: Model, static_df: pd.DataFrame, static_data_xls
         pd.DataFrame: DataFrame in format of static table
     """
     # update-function from defaults
-    defaults_df = pd.read_excel(static_data_xlsx, sheet_name="defaults", index_col=0)
+    defaults_df = pd.read_excel(static_data_xlsx, sheet_name="defaults", index_col=0, engine="calamine")
     for row in defaults_df.itertuples():
         category = row.Index
         mask = static_df["meta_categorie"] == category
@@ -128,11 +128,11 @@ def defaults_to_static_df(model: Model, static_df: pd.DataFrame, static_data_xls
             upstream_levels = upstream_target_levels(model=model, node_ids=static_df[mask][sub_mask].node_id.tolist())
 
             # assign upstream levels to static_df
-            static_df.set_index("node_id", inplace=True)
+            static_df = static_df.set_index("node_id")
             static_df.loc[upstream_levels.index, "min_upstream_level"] = (
                 upstream_levels - upstream_level_offset
             ).round(2)
-            static_df.reset_index(inplace=True)
+            static_df = static_df.reset_index()
         sub_mask = static_df[mask]["max_downstream_level"].isna()
         if sub_mask.any():
             # calculate downstream_levels
@@ -142,11 +142,11 @@ def defaults_to_static_df(model: Model, static_df: pd.DataFrame, static_data_xls
             )
 
             # assign upstream levels to static_df
-            static_df.set_index("node_id", inplace=True)
+            static_df = static_df.set_index("node_id")
             static_df.loc[downstream_levels.index, "max_downstream_level"] = (
                 downstream_levels + downstream_level_offset
             ).round(2)
-            static_df.reset_index(inplace=True)
+            static_df = static_df.reset_index()
 
     return static_df
 
@@ -168,5 +168,5 @@ def update_pump_outlet_static(
     assert static_data_xlsx is not None
     static_df = defaults_to_static_df(model=model, static_df=static_df, static_data_xlsx=static_data_xlsx)
     # sanitize df and update model
-    static_df.drop(columns=["meta_code_waterbeheerder"], inplace=True)
+    static_df = static_df.drop(columns=["meta_code_waterbeheerder"])
     model.get_component(node_type).static.df = static_df

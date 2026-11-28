@@ -32,9 +32,9 @@ def update_level_boundary_static(
     # update data with static data in Excel
     if static_data_xlsx is not None:
         node_type = "LevelBoundary"
-        static_data_sheets = pd.ExcelFile(static_data_xlsx).sheet_names
+        static_data_sheets = pd.ExcelFile(static_data_xlsx, engine="calamine").sheet_names
         if node_type in static_data_sheets:
-            static_data = pd.read_excel(static_data_xlsx, sheet_name=node_type).set_index("code")
+            static_data = pd.read_excel(static_data_xlsx, sheet_name=node_type, engine="calamine").set_index("code")
 
             # in case there is more defined in static_data than in the model
             static_data = static_data[static_data.index.isin(static_df[code_column])]
@@ -44,13 +44,13 @@ def update_level_boundary_static(
             static_data.columns = [i if i in static_df.columns else f"meta_{i}" for i in static_data.columns]
             static_data = static_data.set_index("node_id")
 
-            static_df.set_index("node_id", inplace=True)
+            static_df = static_df.set_index("node_id")
             for col in static_data.columns:
                 series = static_data[static_data[col].notna()][col]
                 if col == "flow_rate":
                     series = series.apply(round_to_precision, args=(0.01,))
                 static_df.loc[series.index.to_numpy(), col] = series
-            static_df.reset_index(inplace=True)
+            static_df = static_df.reset_index()
 
     # make sure inlets/outlets work
     mask = static_df.level.isna()

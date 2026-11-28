@@ -340,14 +340,13 @@ def process_zinfo_data(zinfo_file_path: str) -> pd.DataFrame:
     unique_values = combined_df["par"].unique()
     logger.info(f"Unieke parameters beschikbaar in de Zinfo data zijn: : {unique_values}")
 
-    combined_df.rename(
+    combined_df = combined_df.rename(
         columns={
             "d": "Begindatum",
             "ist": "Meetobject.code",
             "par": "Parameter.code",
             "Waarde": "Numeriekewaarde",
         },
-        inplace=True,
     )
     combined_df["Meetobject.code"] = combined_df["Meetobject.code"].str.replace(
         r"\.([^.]*)\.(.*)", r"\1_\2", regex=True

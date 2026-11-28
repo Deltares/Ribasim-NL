@@ -322,14 +322,6 @@ def protected_controller_threshold_updates(
         if "meta_waterbeheerder" in node_df.columns
         else {}
     )
-    node_meta_id_by_id = (
-        {
-            as_int(node_id): meta_id
-            for node_id, meta_id in node_df.set_index("node_id")["meta_node_id_waterbeheerder"].to_dict().items()
-        }
-        if "meta_node_id_waterbeheerder" in node_df.columns
-        else {}
-    )
     flow_demand_links = link_df[
         link_df["link_type"].fillna("").eq("control")
         & link_df["from_node_id"].map(node_type_by_id).eq("FlowDemand")
@@ -352,8 +344,6 @@ def protected_controller_threshold_updates(
         if target_node_id in flow_demand_target_node_ids:
             continue
         if not sync_from_static_level and is_missing(node_authority_by_id.get(target_node_id)):
-            continue
-        if not sync_from_static_level and is_missing(node_meta_id_by_id.get(target_node_id)):
             continue
 
         control_name = node_name_by_id.get(control_node_id)
@@ -474,7 +464,6 @@ def protected_controller_threshold_updates(
                         "node_type": node_type_by_id.get(target_node_id),
                         "functie": function,
                         "meta_waterbeheerder": node_authority_by_id.get(target_node_id),
-                        "meta_node_id_waterbeheerder": node_meta_id_by_id.get(target_node_id),
                         "control_node_id": control_node_id,
                         "control_name": control_name,
                         "condition_fid": as_int(condition_row.condition_fid),

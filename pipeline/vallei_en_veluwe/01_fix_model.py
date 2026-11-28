@@ -282,7 +282,7 @@ for row in model.node.df[model.node.df.node_type == "TabulatedRatingCurve"].iter
 
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
-df.set_index("code", inplace=True)
+df = df.set_index("code")
 names = df["naam"]
 
 # set meta_gestuwd in basins

@@ -234,7 +234,7 @@ class SetDynamicForcing:
                 final_time_df = meteo_means.copy()
             model.basin.time.df = DataFrame[BasinTimeSchema](final_time_df)
             assert model.basin.time.df is not None
-            model.basin.time.df.fillna(0, inplace=True)
+            model.basin.time.df = model.basin.time.df.fillna(0)
 
         else:
             current_df = model.basin.time.df
@@ -246,20 +246,18 @@ class SetDynamicForcing:
                 how="left",
                 suffixes=("_existing", "_new"),
             )
-            current_df.rename(
+            current_df = current_df.rename(
                 columns={
                     "time_existing": "time",
                     "potential_evaporation_new": "potential_evaporation",
                     "precipitation_new": "precipitation",
                 },
-                inplace=True,
             )
-            current_df.drop(
+            current_df = current_df.drop(
                 columns=["time_new", "conv_time", "potential_evaporation_existing", "precipitation_existing"],
-                inplace=True,
             )
             model.basin.time.df = current_df
-            model.basin.time.df.fillna(0, inplace=True)
+            model.basin.time.df = model.basin.time.df.fillna(0)
 
         # Reset the static information
         model.basin.static.df = None

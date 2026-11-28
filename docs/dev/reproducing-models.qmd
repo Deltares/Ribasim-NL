@@ -92,7 +92,7 @@ That of May 2025: Python 3.13.3, numpy 2.2.5, pandas 2.2.3, shapely 2.1.0 with G
 | Ribasim 2025.3 | Changed the geometries of the basin areas when assigned, so their names were not set | No names for the basins of Wetterskip Fryslân | `crossings.model.Options.add_names` names the pumps only |
 | geopandas < 1 | `overlay` fixes invalid polygons with `buffer(0)`, keeps the polygonal parts of collections, and with pandas < 2.2 groups the intersections by the polygon of the second table | Which basin gets an unassigned area | No longer emulated |
 | pandas < 3 | Formats a missing string in an f-string as `None` | The IDs of edges that are split | In `lumping.utils.split_edges_by_dx` |
-| pandas < 3 | Strings are objects with `None` for missing values, which are equal. In pandas 3 they are `NaN`, which are not. | Extra crossings between two missing peilgebieden | `crossings.parse.pandas2_strings` and `crossings.model.to_object` |
+| pandas < 3 | Strings are objects with `None` for missing values, which are equal. In pandas 3 they are `NaN`, which are not. | Extra crossings between two missing peilgebieden | `crossings.model.to_object` |
 | Python | The order of a `set` of strings differs per process | The order of the IDs in the columns `stuw` and `gemaal` of the crossings, but not the model | They are sorted |
 | GEOS | See [below](#sec-geos) | The geometry of the basin areas, and of links along shortest paths, and one crossing | Not emulated |
 

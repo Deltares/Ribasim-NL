@@ -110,9 +110,7 @@ obs_xy = Path(root_dir, "data/Basisgegevens/Validatie/Waterkwaliteit", xy_filena
 df_xy = pd.read_csv(obs_xy, sep=";")
 
 df_xy = df_xy[["lokaleCode", "geometriePunt.X_RD", "geometriePunt.Y_RD"]]
-df_xy.rename(
-    {"lokaleCode": "loc_Code", "geometriePunt.X_RD": "loc_X", "geometriePunt.Y_RD": "loc_Y"}, axis=1, inplace=True
-)
+df_xy = df_xy.rename({"lokaleCode": "loc_Code", "geometriePunt.X_RD": "loc_X", "geometriePunt.Y_RD": "loc_Y"}, axis=1)
 
 # %% convert xy df to shapefile
 # combine lat and lon column to a shapely Point() object
@@ -226,7 +224,7 @@ nodes_combined = pd.concat([nodes_doorgaand, nodes_hoofdwater], ignore_index=Fal
 nodes_combined_selectedcols = nodes_combined[["node_type", "meta_categorie", "geometry"]]
 basins_doorgaand = basins.merge(nodes_combined_selectedcols, on="node_id", how="right")
 
-basins_doorgaand.rename(columns={"geometry_x": "geometry"}, inplace=True)
+basins_doorgaand = basins_doorgaand.rename(columns={"geometry_x": "geometry"})
 basins_doorgaand.set_geometry("geometry", inplace=True)
 # add attributes to nodes in nmodel.node.df: WKP_monitoring_code
 basins_doorgaand_joined_monlocs = sjoin_within(df_monitoringlocaties, basins_doorgaand[["node_id", "geometry"]])

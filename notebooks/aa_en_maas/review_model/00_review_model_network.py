@@ -23,7 +23,7 @@ modelfouten_gpkg = cloud.joinpath(authority, "verwerkt/modelfouten.gpkg")
 # %% verwijderen duplicated links
 
 duplicated_links = len(model.link.df[model.link.df.duplicated()])
-model.link.df.drop_duplicates(inplace=True)
+model.link.df = model.link.df.drop_duplicates()
 
 # %% wegschrijven fouten
 

@@ -19,25 +19,25 @@ def populate_function_column(model: Model, node_type: Literal["Pump", "Outlet"],
     -------
         Model: updated model
     """
-    static_data_sheets = pd.ExcelFile(static_data_xlsx).sheet_names
+    static_data_sheets = pd.ExcelFile(static_data_xlsx, engine="calamine").sheet_names
     # update function - column
     if node_type in static_data_sheets:
         table = model.get_component(node_type).node
         # add node_id to static_data
         static_data = read_node_sheet(model, static_data_xlsx, node_type)
         if "node_id" not in static_data.columns:
-            static_data.set_index("code", inplace=True)
+            static_data = static_data.set_index("code")
             static_data = static_data[static_data.index.isin(table.df["meta_code_waterbeheerder"])]
             static_data.loc[:, "node_id"] = (
                 table.df.reset_index().set_index("meta_code_waterbeheerder").loc[static_data.index].node_id
             )
-            static_data.set_index("node_id", inplace=True)
+            static_data = static_data.set_index("node_id")
         else:
-            static_data.set_index("node_id", inplace=True)
+            static_data = static_data.set_index("node_id")
             static_data = static_data[static_data.index.isin(table.df.index.to_numpy())]
 
         # add function to node via categorie
-        defaults_df = pd.read_excel(static_data_xlsx, sheet_name="defaults", index_col=0)
+        defaults_df = pd.read_excel(static_data_xlsx, sheet_name="defaults", index_col=0, engine="calamine")
         static_data["meta_function"] = static_data["categorie"].map(defaults_df["function"])
 
         model.node.df.loc[static_data.index, "meta_function"] = static_data["meta_function"]

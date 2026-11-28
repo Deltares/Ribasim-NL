@@ -150,7 +150,7 @@ basin_profile_df = pd.read_csv(basin_profile_path)[["level", "area", "id"]].set_
 
 # %% kunstwerken inlezen
 
-kwks_df = pd.read_excel(kwk_xlsx, sheet_name="kunstwerken")
+kwks_df = pd.read_excel(kwk_xlsx, sheet_name="kunstwerken", engine="calamine")
 
 
 kwks_df.loc[:, "code"] = kwks_df["code"].astype(str)
@@ -170,7 +170,7 @@ network.overlay(basin_poly_gdf[["basin_id", "geometry"]])  # basin_id toekennen 
 links_gdf = network.links
 network_union_lines = links_gdf.union_all()
 
-basin_poly_gdf.set_index("basin_id", inplace=True)  # basin_id is Index
+basin_poly_gdf = basin_poly_gdf.set_index("basin_id")  # basin_id is Index
 
 # maken van lijstjes waarmee we later het netwerk kunnen tekenen per basin
 basin_poly_gdf["nodes_from"] = [[] for _ in range(len(basin_poly_gdf))]
@@ -190,7 +190,7 @@ model = Model(starttime="2017-01-01", endtime="2020-01-01", crs="EPSG:28992")
 # Toevoegen Boundaries
 # We voegen de boundaries toe aan het netwerk
 
-level_ijsselmeer_df = pd.read_excel(ijsselmeer_markermeer_path, sheet_name="IJsselmeer", skiprows=4)
+level_ijsselmeer_df = pd.read_excel(ijsselmeer_markermeer_path, sheet_name="IJsselmeer", skiprows=4, engine="calamine")
 # onder de tabel kan nog een bron staan
 level_ijsselmeer_datum = pd.to_datetime(level_ijsselmeer_df["datum"], errors="coerce").dropna()
 level_ijsselmeer_df = level_ijsselmeer_df.loc[level_ijsselmeer_datum.index]
@@ -199,7 +199,7 @@ level_ijsselmeer_df.index = level_ijsselmeer_datum.dt.day_of_year
 
 def get_level(timestamp, level_ijsselmeer_df):
     return level_ijsselmeer_df.at[
-        level_ijsselmeer_df.index[level_ijsselmeer_df.index <= timestamp.dayofyear].max(),
+        level_ijsselmeer_df.index[level_ijsselmeer_df.index <= timestamp.day_of_year].max(),
         "level",
     ]
 
@@ -282,7 +282,7 @@ for gebied, flow_kwk_df in kwks_df[mask].groupby(by="gebied"):
         node = Node(node_id, cast(Point, point), name=row.naam, meta_code_waterbeheerder=row.code)
 
         # haal alle eigenschappen op
-        kwk_df = pd.read_excel(file_name, sheet_name=cast(str, row.naam))
+        kwk_df = pd.read_excel(file_name, sheet_name=cast(str, row.naam), engine="calamine")
         kwk_properties = read_kwk_properties(kwk_df)
 
         # check if code-value is the same in both Excels
@@ -353,7 +353,9 @@ outlets_gdf = gpd.read_file(outlets_path)
 for verdeelsleutel in VERDEELSLEUTELS:
     print(f"verdeelsleutel: {verdeelsleutel}")
 
-    verdeelsleutel_df = pd.read_excel(verdeelsleutels_xlsx, sheet_name=f"Verdeelsleutel {verdeelsleutel}")
+    verdeelsleutel_df = pd.read_excel(
+        verdeelsleutels_xlsx, sheet_name=f"Verdeelsleutel {verdeelsleutel}", engine="calamine"
+    )
 
     verdeelsleutel_properties = read_kwk_properties(verdeelsleutel_df)
 
@@ -364,7 +366,7 @@ for verdeelsleutel in VERDEELSLEUTELS:
         if i.startswith("Verdeling")
     ]:
         print(f"verdeling: {verdeling}")
-        verdeling_df = pd.read_excel(verdeelsleutels_xlsx, sheet_name=verdeling)
+        verdeling_df = pd.read_excel(verdeelsleutels_xlsx, sheet_name=verdeling, engine="calamine")
         verdeling_properties = read_kwk_properties(verdeling_df)
         waterlichamen = [i for i in verdeling_properties.keys() if i.startswith("waterlichaam")]  # noqa: SIM118
         qhq_df = verdeling_df.loc[verdeling_df.Eigenschap.to_list().index("QHQ relatie") + 2 :].iloc[
@@ -493,9 +495,9 @@ for row in basin_poly_gdf.itertuples():
         len(network.upstream_nodes(i)) + len(network.downstream_nodes(i)) for i in basin_boundary_nodes.index
     ]
 
-    basin_boundary_nodes.sort_values(by="count", ascending=False, inplace=True)
+    basin_boundary_nodes = basin_boundary_nodes.sort_values(by="count", ascending=False)
     basin_boundary_nodes.loc[:, ["sum"]] = basin_boundary_nodes["upstream"] + basin_boundary_nodes["downstream"]
-    basin_boundary_nodes.drop_duplicates("sum", inplace=True)
+    basin_boundary_nodes = basin_boundary_nodes.drop_duplicates("sum")
     connected = basin_poly_gdf.at[row.Index, "neighbor_basins"]
     basin_boundary_nodes = basin_boundary_nodes[~basin_boundary_nodes["upstream"].isin(connected)]
     basin_boundary_nodes = basin_boundary_nodes[~basin_boundary_nodes["downstream"].isin(connected)]
@@ -712,7 +714,7 @@ for row in model.manning_resistance.static.df.itertuples():
 model.node.df[KEY_COLUMN] = named_keys(model.node.df, model.link.df)
 n = model.node_id
 TIEL, TIEL_UPSTREAM_BASIN = n("Waal@3>Waal@2"), n("Waal@3")
-qh_tiel = pd.read_excel(kwk_dir / "QhTielWaal.xlsx", sheet_name="Qh-relatie", usecols=["H", "Q_ds"])
+qh_tiel = pd.read_excel(kwk_dir / "QhTielWaal.xlsx", sheet_name="Qh-relatie", usecols=["H", "Q_ds"], engine="calamine")
 # The fit of Q_ds decreases above 10.1 m, far above the levels at Tiel in the simulation, so the table ends there
 qh_tiel = qh_tiel[~(qh_tiel["Q_ds"].diff() <= 0).cummax()].rename(columns={"Q_ds": "Q"})
 assert qh_tiel["H"].max() >= 10.0, f"The Q(h) relation of Tiel ends at {qh_tiel['H'].max()} m"

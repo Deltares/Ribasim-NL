@@ -520,7 +520,7 @@ for authority in AUTHORITIES:
 
     # structures voor kunstwerken
     structures_src_df = gpd.read_file(kunstwerken_gpkg, fid_as_index=True)
-    structures_src_df.rename(columns={"name": "naam", "meta_code_waterbeheerder": "code"}, inplace=True)
+    structures_src_df = structures_src_df.rename(columns={"name": "naam", "meta_code_waterbeheerder": "code"})
     if "functie" not in structures_src_df.columns:
         structures_src_df["functie"] = pd.Series(dtype=str)
 

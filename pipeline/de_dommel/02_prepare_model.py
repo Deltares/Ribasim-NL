@@ -36,9 +36,11 @@ static_data = StaticData(model=model, xlsx_path=static_data_xlsx)
 
 # %%
 profile_line_df = gpd.read_file(hydamo_gpkg, layer="profiellijn")
-profile_line_df.rename(columns={"GLOBALID": "globalid"}, inplace=True)
+profile_line_df = profile_line_df.rename(columns={"GLOBALID": "globalid"})
 profile_point_df = gpd.read_file(hydamo_gpkg, layer="profielpunt")
-profile_point_df.rename(columns={"PROFIELLIJNID": "profiellijnid", "CODEVOLGNUMMER": "codevolgnummer"}, inplace=True)
+profile_point_df = profile_point_df.rename(
+    columns={"PROFIELLIJNID": "profiellijnid", "CODEVOLGNUMMER": "codevolgnummer"}
+)
 network = Network(lines_gdf=gpd.read_file(hydamo_gpkg, layer="hydroobject"))
 damo_profiles = DAMOProfiles(
     model=model,
@@ -54,7 +56,7 @@ add_link_profile_ids(model, profiles=damo_profiles)
 fix_link_geometries(model, network)
 model.link.df.reset_index().to_file(link_geometries_gpkg)
 
-profiles_df.set_index("profiel_id", inplace=True)
+profiles_df = profiles_df.set_index("profiel_id")
 # %%
 
 # add link profiles

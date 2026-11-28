@@ -188,7 +188,7 @@ def single_profile_nodes(
 
     # modify storing profiles table
     out_storing = df.loc[df["storing_basin"], ["node_id", "level_storing", "area_storing"]].reset_index(drop=True)
-    out_storing.rename(columns={"level_storing": "level", "area_storing": "area"}, inplace=True)
+    out_storing = out_storing.rename(columns={"level_storing": "level", "area_storing": "area"})
 
     # add non-used 'storage'-column to tables
     out_flowing["storage"] = None
@@ -264,7 +264,6 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
 
     # Modify existing basins ('doorgaand'). Use a standard profile where no
     # generated profile is available.
-    ribasim_model.node.df = ribasim_model.node.df.assign(meta_node_id=ribasim_model.node.df.index)
     _basin_profile = ribasim_model.basin.profile.df.copy()
     missing_profile_ids = _basin_profile.loc[~_basin_profile["node_id"].isin(df_flowing["node_id"]), "node_id"].unique()
     df_flowing = pd.concat(
@@ -298,7 +297,8 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     basin_area = basin_area[basin_area["node_id"].isin(storing_ids)].copy(deep=True)
     assert all(basin_profile["node_id"].isin(storing_ids)), "Storing profiles should only contain storing node IDs"
 
-    # node ID incrementation
+    # node ID incrementation, keeping the ID of the flowing basin of each storing basin
+    basin_node["flowing_id"] = basin_node.index
     incr_node_id = int(ribasim_model.next_node_id - 1)
     basin_node.index += incr_node_id
     basin_static["node_id"] += incr_node_id
@@ -330,7 +330,7 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     manning_node = (
         manning_node.rename(columns={"manning_id": "node_id", "manning_geometry": "geometry"})
         .set_index("node_id")
-        .assign(node_type="ManningResistance", meta_node_id=manning_node.index)
+        .assign(node_type="ManningResistance")
     )
 
     # create static table: ManningResistance
@@ -351,8 +351,8 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
         )
     )
     mf_link = (
-        basin_node.reset_index(drop=False)[["manning_id", "meta_node_id", "link_mf_geometry"]]
-        .rename(columns={"manning_id": "from_node_id", "meta_node_id": "to_node_id", "link_mf_geometry": "geometry"})
+        basin_node.reset_index(drop=False)[["manning_id", "flowing_id", "link_mf_geometry"]]
+        .rename(columns={"manning_id": "from_node_id", "flowing_id": "to_node_id", "link_mf_geometry": "geometry"})
         .assign(
             link_type="flow",
             meta_from_node_type="ManningResistance",
@@ -363,11 +363,10 @@ def set_basin_profiles(ribasim_model: Model, water_authority: str, **kwargs) -> 
     link = pd.concat([sm_link, mf_link], axis=0, ignore_index=True)
     incr_link_id = ribasim_model.link.df.index.max() + 1
     link["link_id"] = link.index + incr_link_id
-    link.set_index("link_id", inplace=True)
+    link = link.set_index("link_id")
 
     # clean up basin node table ('bergend')
-    basin_node = basin_node[["node_type", "meta_node_id", "meta_categorie", "geometry"]]
-    basin_node["meta_node_id"] = basin_node.index
+    basin_node = basin_node[["node_type", "meta_categorie", "geometry"]]
 
     # concatenate all newly generated tables to Ribasim model
     # > Node-table

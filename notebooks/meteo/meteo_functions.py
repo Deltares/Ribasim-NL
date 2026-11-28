@@ -228,7 +228,7 @@ def CombineMeteoIntoDF(meteo_per_node: dict, start_date: str, end_date: str):
     full_time_df = pd.concat(list_of_dfs, ignore_index=True)
 
     # Rename the original columns to the necessary column headers for Ribasim
-    full_time_df.rename(columns={"evp": "potential_evaporation", "prec": "precipitation"}, inplace=True)
+    full_time_df = full_time_df.rename(columns={"evp": "potential_evaporation", "prec": "precipitation"})
 
     return full_time_df
 
@@ -266,7 +266,7 @@ def AddMeteoModel(meteo_means: pd.DataFrame, model, start_date, end_date):
             final_time_df = meteo_means.copy()
 
         model.basin.time.df = final_time_df
-        model.basin.time.df.fillna(0, inplace=True)
+        model.basin.time.df = model.basin.time.df.fillna(0)
 
     else:
         current_df = model.basin.time.df
@@ -279,20 +279,19 @@ def AddMeteoModel(meteo_means: pd.DataFrame, model, start_date, end_date):
             suffixes=("_existing", "_new"),
         )
 
-        current_df.rename(
+        current_df = current_df.rename(
             columns={
                 "time_existing": "time",
                 "potential_evaporation_new": "potential_evaporation",
                 "precipitation_new": "precipitation",
             },
-            inplace=True,
         )
-        current_df.drop(
-            columns=["time_new", "conv_time", "potential_evaporation_existing", "precipitation_existing"], inplace=True
+        current_df = current_df.drop(
+            columns=["time_new", "conv_time", "potential_evaporation_existing", "precipitation_existing"]
         )
 
         model.basin.time.df = current_df
-        model.basin.time.df.fillna(0, inplace=True)
+        model.basin.time.df = model.basin.time.df.fillna(0)
     # Reset the static information
     model.basin.static.df = None
 

@@ -48,8 +48,6 @@ level_boundary_node = ribasim_model.level_boundary.add(
 pump_node = ribasim_model.pump.add(Node(geometry=Point(122475, 491317)), [pump.Static(flow_rate=[11.67])])
 ribasim_model.link.add(ribasim_model.basin[n("peilgebied_5170-2")], pump_node)
 ribasim_model.link.add(pump_node, level_boundary_node)
-ribasim_model.node.df.loc[level_boundary_node.node_id, "meta_node_id"] = level_boundary_node.node_id
-ribasim_model.node.df.loc[pump_node.node_id, "meta_node_id"] = pump_node.node_id
 
 # a manning node misses at splitted boezem due to awkward basin shape
 manning_node = ribasim_model.manning_resistance.add(
@@ -58,7 +56,6 @@ manning_node = ribasim_model.manning_resistance.add(
 )
 ribasim_model.link.add(ribasim_model.basin[n("peilgebied_1000-01/27")], manning_node)
 ribasim_model.link.add(manning_node, ribasim_model.basin[n("peilgebied_1000-01/15")])
-ribasim_model.node.df.loc[manning_node.node_id, "meta_node_id"] = manning_node.node_id
 
 # reset pump capacity for each pump
 assert ribasim_model.pump.static.df is not None

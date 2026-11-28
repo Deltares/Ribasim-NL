@@ -45,20 +45,19 @@ def upload_file(url, path):
 
 
 # skip first rows
-kunstwerken_df = pd.read_excel(kunstwerken_xlsx, skiprows=6)
+kunstwerken_df = pd.read_excel(kunstwerken_xlsx, skiprows=6, engine="calamine")
 
 # drop irrelevant columns
 columns = kunstwerken_df.columns[1:13]
 kunstwerken_df = kunstwerken_df.loc[:, columns]
 
 # rename columns into our liking
-kunstwerken_df.rename(
+kunstwerken_df = kunstwerken_df.rename(
     columns={
         "Unnamed: 1": "organisatie",
         "Y coördinaat RD": "y",
         "X coördinaat RD": "x",
     },
-    inplace=True,
 )
 
 # drop no-data rows

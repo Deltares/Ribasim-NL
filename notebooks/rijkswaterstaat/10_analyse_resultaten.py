@@ -37,6 +37,7 @@ meting_df = pd.read_excel(
     cloud.joinpath("Rijkswaterstaat/aangeleverd/debieten_Rijn_Maas_2023_2024.xlsx"),
     header=[0, 1, 2, 3],
     index_col=[0],
+    engine="calamine",
 )
 meting_df = meting_df[(meting_df.index > start_time) & (meting_df.index < end_time)]
 meting_df = meting_df.resample("D").mean()

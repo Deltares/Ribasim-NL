@@ -81,13 +81,13 @@ for row in osm_basins_gdf.itertuples():
     data += [select_gdf]
 
 network_lines_gdf = pd.concat(data, ignore_index=True)
-network_lines_gdf.drop_duplicates("original_index", inplace=True)
+network_lines_gdf = network_lines_gdf.drop_duplicates("original_index")
 
 
 # %%
 print("osm lijnen samenvoegen met extra lijnen")
-extra_lines_gdf.rename(columns={"naam": "name"}, inplace=True)
-network_lines_gdf.rename(columns={"osm_id": "id"}, inplace=True)
+extra_lines_gdf = extra_lines_gdf.rename(columns={"naam": "name"})
+network_lines_gdf = network_lines_gdf.rename(columns={"osm_id": "id"})
 network_lines_gdf = pd.concat(
     [
         network_lines_gdf,
@@ -164,7 +164,7 @@ network = Network(network_lines_gdf, tolerance=1, id_col="id", name_col="name")
 
 print("write to hydamo")
 lines = network.links
-lines.rename(columns={"name": "naam"}, inplace=True)
+lines = lines.rename(columns={"name": "naam"})
 lines.to_file(hydamo_path, layer="hydroobject")
 
 # %%

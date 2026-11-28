@@ -54,7 +54,7 @@ basin_df = basin_df[basin_df.index > start_time]
 
 # Read Excel file and sheet names
 excel_file_path = cloud.joinpath("Rijkswaterstaat/aangeleverd/RWsOS-IWP_debieten_2023_2024.xlsx")
-sheet_names = pd.ExcelFile(excel_file_path).sheet_names
+sheet_names = pd.ExcelFile(excel_file_path, engine="calamine").sheet_names
 found_names = set()
 
 
@@ -75,7 +75,7 @@ for sheet_name in sheet_names:
     print(f"Processing sheet: {sheet_name}")
 
     # Read and process headers
-    meting_header_df = pd.read_excel(excel_file_path, sheet_name=sheet_name, header=None, nrows=7)
+    meting_header_df = pd.read_excel(excel_file_path, sheet_name=sheet_name, header=None, nrows=7, engine="calamine")
     meting_headers = meting_header_df.iloc[5].tolist()
 
     available_names = [name for name in CONFIG if name in meting_headers and name not in found_names]
@@ -94,6 +94,7 @@ for sheet_name in sheet_names:
         usecols=usecols,
         index_col=0,
         parse_dates=True,
+        engine="calamine",
     )
 
     # Filter to the desired time range and print data for Venlo
@@ -155,6 +156,7 @@ meting_df = pd.read_excel(
     cloud.joinpath("Rijkswaterstaat/aangeleverd/debieten_Rijn_Maas_2023_2024.xlsx"),
     header=[0, 1, 2, 3, 4, 5, 6, 7, 8],
     index_col=[0],
+    engine="calamine",
 )
 
 

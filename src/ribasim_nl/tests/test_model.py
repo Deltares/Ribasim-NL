@@ -284,7 +284,6 @@ def test_prefix_index(model):
 
     model = prefix_index(model, prefix_id=7, max_digits=4)
     assert model.node.df.index.to_list() == [70001, 70002, 70003, 70004, 70005, 70006, 70007]
-    assert model.node.df["meta_node_id_waterbeheerder"].to_list() == [1, 2, 3, 4, 5, 6, 7]
     assert model.link.df.from_node_id.to_list()[:2] == [70001, 70004]
     assert model.outlet.static.df.node_id.to_list() == [70004, 70005, 70006]
     assert model.outlet.static.df.node_id.dtype == "int32"

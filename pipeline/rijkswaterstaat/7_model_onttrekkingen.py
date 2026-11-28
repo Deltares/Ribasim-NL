@@ -155,7 +155,7 @@ for basin_id in ark_basin_ids:
 # %% add basin_node_ids to network
 assert model.basin.area.df is not None
 basin_area_gdf = model.basin.area.df.copy()
-basin_area_gdf.rename(columns={"node_id": "basin_id"}, inplace=True)
+basin_area_gdf = basin_area_gdf.rename(columns={"node_id": "basin_id"})
 network.overlay(basin_area_gdf)  # basin_id toekennen aan netwerk
 
 # network_nodes_df = network.nodes
@@ -164,7 +164,7 @@ network.overlay(basin_area_gdf)  # basin_id toekennen aan netwerk
 
 # %% Drinkwater
 drinkwater_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Drinkwater_oppervlaktewater")
-drinkwater_gdf.dropna(subset=["productie"], inplace=True)
+drinkwater_gdf = drinkwater_gdf.dropna(subset=["productie"])
 
 
 priority = 1
@@ -187,7 +187,7 @@ for row in drinkwater_gdf.itertuples():
 energie_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Energiecentrales")
 
 energie_inlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Energiecentrales-inlaat")
-energie_inlet_gdf.drop_duplicates("osm_id_Energiecentrales", inplace=True)
+energie_inlet_gdf = energie_inlet_gdf.drop_duplicates("osm_id_Energiecentrales")
 
 mask = ~energie_inlet_gdf.naam.isin(["Centrale Bergum", "Pallas Reactor"])
 
@@ -231,11 +231,11 @@ for row in energie_inlet_gdf[mask].itertuples():
 industrie_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Industrieen")
 
 industrie_inlet_gdf = gpd.read_file(onttrekkingen_gpkg, layer="Industrie-inlaat")
-industrie_inlet_gdf.rename(columns={"debiet(m3/s)": "demand"}, inplace=True)
+industrie_inlet_gdf = industrie_inlet_gdf.rename(columns={"debiet(m3/s)": "demand"})
 industrie_inlet_gdf.loc[:, "basin_id"] = industrie_inlet_gdf.geometry.apply(  # ty: ignore[no-matching-overload]
     lambda x: basin_area_gdf.set_index("basin_id").distance(x).idxmin()
 )
-industrie_inlet_gdf.drop_duplicates(["osm_id_Industrieen", "basin_id"], inplace=True)
+industrie_inlet_gdf = industrie_inlet_gdf.drop_duplicates(["osm_id_Industrieen", "basin_id"])
 industrie_inlet_gdf = industrie_inlet_gdf[industrie_inlet_gdf["demand"] != 0]
 
 mask = ~industrie_inlet_gdf.naam.isin(["Avebe", "Evides Geervliet", "Evides Veerweg", "Evides KPE Zinker"])
@@ -249,7 +249,7 @@ point = cast(Point, industrie_outlet_gdf.at[index, "geometry"])
 point = maas_line.interpolate(maas_line.project(point))
 industrie_outlet_gdf.loc[index, "geometry"] = point  # ty: ignore[invalid-assignment]
 
-industrie_outlet_gdf.rename(columns={"debiet(m3/s)": "return_flow"}, inplace=True)
+industrie_outlet_gdf = industrie_outlet_gdf.rename(columns={"debiet(m3/s)": "return_flow"})
 
 noordzee_outlet = Point(99060, 500050)
 noordzee_plants = ["Crown van Gelder", "Tata Steel"]

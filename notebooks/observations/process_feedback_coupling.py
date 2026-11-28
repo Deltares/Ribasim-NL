@@ -191,7 +191,7 @@ new_filename = f"{base_without_feedback}_Feedback_Verwerkt_{partij}{input_path.s
 path_recente_koppeltabel = cloud.joinpath(output_path, new_filename)
 path_recente_koppeltabel_gpkg = cloud.joinpath(output_path, f"{base_without_feedback}_Feedback_Verwerkt_{partij}.gpkg")
 
-Laatst_verwerkte_koppeltabel = pd.read_excel(path_recente_koppeltabel)
+Laatst_verwerkte_koppeltabel = pd.read_excel(path_recente_koppeltabel, engine="calamine")
 
 # Apply the conversion to the geometry column
 Laatst_verwerkte_koppeltabel["geometry"] = Laatst_verwerkte_koppeltabel["geometry"].apply(convert_to_point)

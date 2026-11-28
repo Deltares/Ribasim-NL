@@ -81,7 +81,7 @@ def process_zinfo_quantity_data(file_path, starttime, endtime):
     logger.info("Duplicates are summed over the day \n")
 
     df_pivot = df_summed.pivot(index="time", columns="RWZI_ids", values="debiet_m3d")
-    df_pivot.reset_index(inplace=True)
+    df_pivot = df_pivot.reset_index()
 
     logger.info("Zinfo data: \n %s", df_pivot.head())
 
@@ -198,7 +198,7 @@ def process_rws_quantity_data(db_belasting, gdf_excluded):
     -------
         DataFrame: gemiddelde dagafvoeren van de RWZI's die niet in de Zinfo database zitten.
     """
-    df_belasting = pd.read_excel(db_belasting)
+    df_belasting = pd.read_excel(db_belasting, engine="calamine")
     rwzi_codes_excl = gdf_excluded["RwziCode"].unique()
 
     # Filter for parameter code '085' (corresponding with RWZI discharge)
@@ -215,7 +215,7 @@ def process_rws_quantity_data(db_belasting, gdf_excluded):
     df_afvoeren_excluded["time"] = df_afvoeren_excluded["Jaar"].astype(str) + "-01-01"
     df_afvoeren_pivot = df_afvoeren_excluded.pivot(index="time", columns="Naam rwzi", values="Waarde")
 
-    df_afvoeren_pivot.reset_index(inplace=True)
+    df_afvoeren_pivot = df_afvoeren_pivot.reset_index()
     df_afvoeren_pivot["time"] = pd.to_datetime(df_afvoeren_pivot["time"])
 
     logger.info("Distributing annual values evenly across daily time series...")
@@ -495,7 +495,7 @@ print(df_rws_influentdebieten.head())
 rwzi_flow_data_idxed = rwzi_flow_data.set_index("time")
 df_daily_values_idxed = df_rws_influentdebieten.set_index("time")
 rwzi_flow_data_all = rwzi_flow_data_idxed.combine_first(df_daily_values_idxed)
-rwzi_flow_data_all.reset_index(inplace=True)
+rwzi_flow_data_all = rwzi_flow_data_all.reset_index()
 
 rwzi_flow_data_all = rwzi_flow_data_all[
     (rwzi_flow_data_all["time"] >= starttime) & (rwzi_flow_data_all["time"] < endtime)

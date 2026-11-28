@@ -123,8 +123,8 @@ he_outlet_df.loc[~mask, "geometry"] = he_df.loc[~mask, "HEIDENT"].map(
 assert he_outlet_df.geometry.notna().all(), "not every he has an outlet"
 
 he_outlet_df.loc[:, "HEIDENT"] = he_df["HEIDENT"]
-he_outlet_df.set_index("HEIDENT", inplace=True)
-he_df.set_index("HEIDENT", inplace=True)
+he_outlet_df = he_outlet_df.set_index("HEIDENT")
+he_df = he_df.set_index("HEIDENT")
 
 # niet altijd ligt de coordinaat goed
 he_outlet_df.loc["GPGKST0470", ["geometry"]] = model.manning_resistance[n("1681")].geometry
@@ -281,7 +281,7 @@ for row in he_df[he_df["node_id"].isna()].itertuples():
 data = []
 for node_id, df in he_df[he_df["node_id"].notna()].groupby("node_id"):
     geometry = cast(gpd.GeoDataFrame, df).union_all()
-    df.sort_values("OPVAFWZP", inplace=True)
+    df = df.sort_values("OPVAFWZP")
     streefpeil = df.iloc[0].OPVAFWZP
     code = df.iloc[0].GPGIDENT
 
@@ -308,7 +308,7 @@ for row in model.node.df[model.node.df.node_type == "TabulatedRatingCurve"].iter
 
 # get a name series from GKW-data
 df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
-df.set_index("code", inplace=True)
+df = df.set_index("code")
 names = df["naam"]
 names.loc["KSL011"] = "R.J. Cleveringensluizen"
 

@@ -30,12 +30,13 @@ result = resp.json()
 locaties_df = gpd.GeoDataFrame(result["LocatieLijst"], geometry=gpd.GeoSeries(), crs=25831)
 locaties_df.loc[:, "geometry"] = locaties_df.apply((lambda x: Point(x.X, x.Y)), axis=1)
 locaties_df.to_crs(28992, inplace=True)
-locaties_df.drop(columns="Coordinatenstelsel", inplace=True)
+locaties_df = locaties_df.drop(columns="Coordinatenstelsel")
 
 
 waterinfo_legenda_grenzen_df = pd.read_excel(
     r"d:\projecten\D2306.LHM_RIBASIM\02.brongegevens\Rijkswaterstaat\aangeleverd\waterinfo-legenda-grenzen-20231019.xlsx",
     sheet_name="ParameterLimits",
+    engine="calamine",
 )
 
 

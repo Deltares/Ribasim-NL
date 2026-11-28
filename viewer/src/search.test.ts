@@ -46,7 +46,7 @@ test("searchedColumns keeps names and codes, and leaves out categories", () => {
     meta_code_waterbeheerder: ["KGM-1", "KGM-2", null, "", null, null],
     meta_rwzi_codeist: ["NL.1", "NL.1", "NL.2", "NL.2", null, null],
     meta_categorie: ["bergend", "bergend", "bergend", "bergend", "bergend", "doorgaand"],
-    meta_node_id: [1, 2, 3, 4, 5, 6],
+    meta_streefpeil: [-0.4, -0.4, -0.4, -0.6, -0.6, -0.6],
   };
   assert.deepEqual(searchedColumns(table), ["name", "meta_code_waterbeheerder", "meta_rwzi_codeist"]);
 });

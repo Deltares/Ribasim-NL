@@ -16,7 +16,7 @@ for authority in cloud.water_authorities:
 
         # duplicated links
         duplicated_links = len(model.link.df[model.link.df.duplicated()])
-        model.link.df.drop_duplicates(inplace=True)
+        model.link.df = model.link.df.drop_duplicates()
 
         # non existing nodes
         mask = model.link.df.to_node_id.isin(model.node.df.index) & model.link.df.from_node_id.isin(model.node.df.index)

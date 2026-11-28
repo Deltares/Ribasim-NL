@@ -1124,7 +1124,7 @@ model = reset_static_tables(model)
 
 # name-column contains the code we want to keep, meta_name the name we want to have
 df = get_data_from_gkw(authority=authority, layers=["gemaal", "stuw", "sluis"])
-df.set_index("code", inplace=True)
+df = df.set_index("code")
 names = df["naam"]
 
 # set meta_gestuwd in basins
@@ -1190,7 +1190,7 @@ for action in actions:
     method = getattr(model, action)
     df = gpd.read_file(model_edits_gpkg, layer=action, fid_as_index=True)
     if "order" in df.columns:
-        df.sort_values("order", inplace=True)
+        df = df.sort_values("order")
     for row in df.itertuples():
         # filter kwargs by keywords
         # itertuples rows are namedtuples, whose `_asdict` ty sees as a column
@@ -1202,9 +1202,12 @@ for action in actions:
                 kwargs[argument] = n(key)
         if "link_from_key" in kwargs:
             kwargs["link_id"] = lk(kwargs.pop("link_from_key"), kwargs.pop("link_to_key"))
-        if inspect.getfullargspec(method).varkw != "kwargs":
-            keywords = inspect.getfullargspec(method).args
-            kwargs = {k: v for k, v in kwargs.items() if k in keywords}
+        spec = inspect.getfullargspec(method)
+        if spec.varkw != "kwargs":
+            kwargs = {k: v for k, v in kwargs.items() if k in spec.args}
+        else:
+            # the other columns become node properties, except the row number, and the node IDs of before the keys
+            kwargs = {k: v for k, v in kwargs.items() if k in spec.args or (k != "Index" and k not in NODE_ARGUMENTS)}
         method(**kwargs)
 
 # %% Custom model adjustments

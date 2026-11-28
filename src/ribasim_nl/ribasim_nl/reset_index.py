@@ -10,11 +10,9 @@ def _map_node_ids(node_ids: pd.Series | pd.Index, node_index: pd.Series) -> np.n
     return node_index.loc[np.asarray(node_ids)].to_numpy()
 
 
-def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: str | None = "waterbeheerder") -> Model:
+def reindex_nodes(model: Model, node_index: pd.Series) -> Model:
     """Reindex all model-nodes to a new node_index series"""
     # reindex the node table
-    if original_index_postfix is not None:
-        model.node.df[f"meta_node_id_{original_index_postfix}"] = model.node.df.index.astype("int32")
     model.node.df.index = pd.Index(_map_node_ids(model.node.df.index, node_index).tolist(), name="node_id")
 
     # re-number from_node_id and to_node_id
@@ -38,16 +36,13 @@ def reindex_nodes(model: Model, node_index: pd.Series, original_index_postfix: s
     return model
 
 
-def prefix_index(
-    model: Model, prefix_id: int, max_digits: int = 4, original_index_postfix: str | None = "waterbeheerder"
-) -> Model:
+def prefix_index(model: Model, prefix_id: int, max_digits: int = 4) -> Model:
     """Reindex node-tables and links with a prefix and a max number of digits
 
     Args:
         model (Model): Model to be reindexed
         prefix_id (int): integer used as prefix
         max_digits (int, optional): max digits in original node_ids. Defaults to 4.
-        original_index_postfix (str | None, optional): if provided the original index will be stored in a meta-column. Defaults to "waterbeheerder".
 
     Returns
     -------
@@ -73,7 +68,7 @@ def prefix_index(
     node_index = pd.Series(
         data=[int(f"{prefix_id}{node_id:0>{max_digits}}") for node_id in node_ids], index=node_ids
     ).astype("int32")
-    model = reindex_nodes(model=model, node_index=node_index, original_index_postfix=original_index_postfix)
+    model = reindex_nodes(model=model, node_index=node_index)
 
     # create an link_index and reindex links
     link_ids = model.link.df.index
@@ -91,24 +86,16 @@ def prefix_index(
     model.link.df.index = pd.Index(
         [int(f"{prefix_id}{link_id:0>{max_digits}}") for link_id in link_ids], name="link_id"
     )
-
-    # keep original index if
-    if original_index_postfix is not None:
-        model.link.df[f"meta_link_id_{original_index_postfix}"] = link_ids.astype("int32")
-
     return model
 
 
-def reset_index(
-    model: Model, node_start=1, link_start=1, original_index_postfix: str | None = "waterbeheerder"
-) -> Model:
+def reset_index(model: Model, node_start=1, link_start=1) -> Model:
     """Reset a model index to a given node_start and link_start number. Will result in sub-sequent node_ids and link_ids from node_start and link_start.
 
     Args:
         model (Model): Model to be reindexed
         node_start (int, optional): start node_id. Defaults to 1.
         link_start (int, optional): start link_id. Defaults to 1.
-        original_index_postfix (str | None, optional): if provided the original index will be stored in a meta-column. Defaults to "waterbeheerder".
 
     Returns
     -------
@@ -122,7 +109,7 @@ def reset_index(
     if not ((node_start == node_id_min) and (expected_length == len(model.node.df))):
         # create a re-index for nodes
         node_index = pd.Series(data=[i + node_start for i in range(len(node_ids))], index=node_ids).astype("int32")
-        model = reindex_nodes(model=model, node_index=node_index, original_index_postfix=original_index_postfix)
+        model = reindex_nodes(model=model, node_index=node_index)
 
         # only reset nodes if we have to
         link_ids = model.link.df.index
@@ -133,8 +120,4 @@ def reset_index(
         if not ((link_start == link_id_min) and (expected_length == len(model.link.df))):
             # create a re-index for links
             model.link.df.index = pd.Index([i + link_start for i in range(len(link_ids))], name="link_id")
-
-        # keep original index if
-        if original_index_postfix is not None:
-            model.link.df[f"meta_link_id_{original_index_postfix}"] = link_ids
     return model

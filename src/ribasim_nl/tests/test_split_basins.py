@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from ribasim import Node
 from ribasim.nodes import basin, level_boundary, outlet
-from ribasim_nl.split_basins import split_basin_along_route
+from ribasim_nl.split_basins import is_split_part, split_basin_along_route, split_part_key
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 
 from ribasim_nl import Model, junctionify
@@ -106,3 +106,12 @@ def test_split_basin_along_route_invalid(model):
     with pytest.raises(ValueError, match="one more Basin name"):
         split_basin_along_route(model, 3, route, [Point(1000, 0), Point(2000, 0)], **kwargs)
     assert np.isclose(model.basin.profile.df.area.sum(), 301000.0)
+
+
+def test_split_part_key():
+    assert split_part_key("PBH0248142", 1) == "PBH0248142/1"
+    assert is_split_part(split_part_key("PBH0248142", 1))
+    # keys from the source data can hold a slash as well
+    assert not is_split_part("Steenenmuur/ Bevert_dummy_id_12")
+    assert not is_split_part("bergend:PBH0248142")
+    assert not is_split_part(None)

@@ -10,6 +10,7 @@ import pandas as pd
 import shapely
 from networkx import NetworkXNoPath
 from ribasim import Node
+from ribasim.input_base import TableModel
 from ribasim.nodes import manning_resistance, user_demand
 from ribasim_nl.aquo import waterbeheercode
 from ribasim_nl.coupling_level_apply import (
@@ -306,13 +307,14 @@ def replace_listen_node_id(model: Model, old_node_id: int, new_node_id: int | No
     Returns True if any references were found.
     """
     has_control = False
-    tables = [
-        model.discrete_control.variable.df,
-        model.continuous_control.variable.df,
-        model.pid_control.static.df,
-        model.pid_control.time.df,
+    tables: list[TableModel] = [
+        model.discrete_control.variable,
+        model.continuous_control.variable,
+        model.pid_control.static,
+        model.pid_control.time,
     ]
-    for df in tables:
+    for table in tables:
+        df = table.df
         if df is None:
             continue
         mask = df.listen_node_id == old_node_id
@@ -321,7 +323,7 @@ def replace_listen_node_id(model: Model, old_node_id: int, new_node_id: int | No
             if new_node_id is not None:
                 df.loc[mask, "listen_node_id"] = new_node_id
             else:
-                df.drop(df.index[mask], inplace=True)
+                table.df = df.drop(df.index[mask])
     return has_control
 
 

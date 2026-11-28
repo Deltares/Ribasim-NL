@@ -21,7 +21,7 @@ waterdeel_df = gpd.read_file(dir / "bgt_waterdeel_current.gpkg")
 # * eenheden omschrijven naar m3/s
 
 verdeelpunten_df = pd.read_excel(
-    cloud.joinpath("Landelijk/waterverdeling/verdeelpunten.xlsx"), sheet_name="verdeelpunten"
+    cloud.joinpath("Landelijk/waterverdeling/verdeelpunten.xlsx"), sheet_name="verdeelpunten", engine="calamine"
 )
 verdeelpunten_df = gpd.GeoDataFrame(verdeelpunten_df, geometry=gpd.GeoSeries(None, crs=28992))
 

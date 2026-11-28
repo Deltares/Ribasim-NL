@@ -106,7 +106,7 @@ class AssignAuthorities:
         ws_grenzen = ws_grenzen.explode()
         ws_grenzen["area"] = ws_grenzen.area
         ws_grenzen = ws_grenzen.loc[ws_grenzen.area > 10000000]  # remove some small polygons
-        ws_grenzen.reset_index(drop=True, inplace=True)
+        ws_grenzen = ws_grenzen.reset_index(drop=True)
 
         # add RWS_grenzen. Buffer and dissolve it
         RWS_grenzen["geometry"] = RWS_grenzen.buffer(self.RWS_buffer)
@@ -118,7 +118,7 @@ class AssignAuthorities:
         """Clips the waterboard boundaries by removing the RWS areas and applies a buffer to the remaining polygons."""
         # Remove the RWS area in each WS
         ws_grenzen_cut_out = gpd.overlay(ws_grenzen, RWS_grenzen, how="symmetric_difference", keep_geom_type=True)
-        ws_grenzen_cut_out.dropna(subset="area", inplace=True)
+        ws_grenzen_cut_out = ws_grenzen_cut_out.dropna(subset="area")
 
         # add a name to the RWS area
         RWS_grenzen["naam"] = "Rijkswaterstaat"

@@ -28,7 +28,7 @@ df = pd.read_parquet(input_file)
 # -----------------------------------------------------------------------------
 
 df["time"] = pd.to_datetime(df.time, format="%Y")
-df.rename(columns={"basin_id": "node_id"}, inplace=True)
+df = df.rename(columns={"basin_id": "node_id"})
 df["node_id"] = df["node_id"].astype(int)
 
 df["NO3"] = df["cNO3N"]

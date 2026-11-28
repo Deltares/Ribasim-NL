@@ -87,13 +87,13 @@ class RibasimFeedbackProcessor:
 
     @staticmethod
     def load_feedback(feedback_excel) -> pd.DataFrame:
-        df = pd.read_excel(feedback_excel, sheet_name="Feedback_Formulier", skiprows=7)
+        df = pd.read_excel(feedback_excel, sheet_name="Feedback_Formulier", skiprows=7, engine="calamine")
         df = df[df["Actie"].notna()]
         return df
 
     @staticmethod
     def load_node_type(feedback_excel) -> pd.DataFrame:
-        df = pd.read_excel(feedback_excel, sheet_name="Node_Data")
+        df = pd.read_excel(feedback_excel, sheet_name="Node_Data", engine="calamine")
         df = df[df["key"].notna()]
         df = df.set_index("key")
         return df
@@ -213,7 +213,6 @@ class RibasimFeedbackProcessor:
                 for col in template_row.columns:
                     if col.startswith("meta_"):
                         template_row[col] = np.nan
-                template_row["meta_node_id"] = node_id
                 # the key of the new node, by which the rows that follow refer to it
                 new_key = row["Node key.1"]
                 if KEY_COLUMN in template_row.columns and pd.notna(new_key):
@@ -245,7 +244,6 @@ class RibasimFeedbackProcessor:
                                         last_row[col] = np.nan
 
                                 new_row_df = pd.DataFrame([last_row])
-                                new_row_df["meta_node_id"] = node_id
                                 new_row_df.index.name = "fid"
 
                                 # drop unused columns to avoid a warning
@@ -348,7 +346,6 @@ class RibasimFeedbackProcessor:
                 for col in template_row.columns:
                     if col.startswith("meta_"):
                         template_row[col] = np.nan
-                template_row["meta_node_id"] = node_id
                 # the node keeps its key
                 if KEY_COLUMN in template_row.columns:
                     template_row[KEY_COLUMN] = str(node_key)
@@ -377,7 +374,6 @@ class RibasimFeedbackProcessor:
                                         last_row[col] = np.nan
 
                                 new_row_df = pd.DataFrame([last_row])
-                                new_row_df["meta_node_id"] = node_id
                                 new_row_df.index.name = "fid"
 
                                 # drop unused columns to avoid a warning
@@ -473,7 +469,7 @@ class RibasimFeedbackProcessor:
 
     def update_target_levels(self) -> None:
         # read sheet with the updated the target levels
-        df_TL = pd.read_excel(self.feedback_excel, sheet_name="Streefpeilen", header=0)
+        df_TL = pd.read_excel(self.feedback_excel, sheet_name="Streefpeilen", header=0, engine="calamine")
         if len(df_TL) > 0:  # if the sheet is filled in, proceed
             assert self.model.basin.state.df is not None
             assert self.model.basin.area.df is not None
@@ -500,9 +496,13 @@ class RibasimFeedbackProcessor:
     def functie_gemalen(self) -> None:
         # read sheet with the updated the pump functions
         try:
-            df_FG = pd.read_excel(self.feedback_excel, sheet_name="Functie gemalen", header=0, usecols="A:B")
+            df_FG = pd.read_excel(
+                self.feedback_excel, sheet_name="Functie gemalen", header=0, usecols="A:B", engine="calamine"
+            )
         except ValueError:
-            df_FG = pd.read_excel(self.feedback_excel, sheet_name="Aan_afvoer_gemalen", header=0, usecols="A:B")
+            df_FG = pd.read_excel(
+                self.feedback_excel, sheet_name="Aan_afvoer_gemalen", header=0, usecols="A:B", engine="calamine"
+            )
 
         if len(df_FG) > 0:  # if the sheet is filled in, proceed
             assert self.model.pump.static.df is not None
@@ -563,13 +563,13 @@ class RibasimFeedbackProcessor:
         """Extract corrections on basin 'aanvoer'-flagging from the feedback forms."""
         sheet_name = "Aan_afvoer_basins"
         try:
-            df = pd.read_excel(self.feedback_excel, sheet_name=sheet_name, usecols="A:B")
+            df = pd.read_excel(self.feedback_excel, sheet_name=sheet_name, usecols="A:B", engine="calamine")
         except ValueError:
             logger.info(f'No "{sheet_name}"-worksheet in "{self.feedback_excel}": Skipped corrections.')
             self._basin_aanvoer_on = ()
             self._basin_aanvoer_off = ()
         else:
-            df.dropna(axis=0, inplace=True)
+            df = df.dropna(axis=0)
             if len(df) == 0:
                 aanvoer_ids: list[str] = []
                 afvoer_ids: list[str] = []
@@ -590,13 +590,13 @@ class RibasimFeedbackProcessor:
         # TODO: Remove this 'missing worksheet'-catch in the future
         sheet_name = "Aan_afvoer_outlets"
         try:
-            df = pd.read_excel(self.feedback_excel, sheet_name=sheet_name, usecols="A:B")
+            df = pd.read_excel(self.feedback_excel, sheet_name=sheet_name, usecols="A:B", engine="calamine")
         except ValueError:
             logger.info(f'No "{sheet_name}"-worksheet in "{self.feedback_excel}": Skipped corrections.')
             self._outlet_aanvoer_on = ()
             self._outlet_aanvoer_off = ()
         else:
-            df.dropna(axis=0, inplace=True)
+            df = df.dropna(axis=0)
             if len(df) == 0:
                 aanvoer_ids: list[str] = []
                 afvoer_ids: list[str] = []
