@@ -5,7 +5,9 @@ subnetworks, the basins. Each basin gets connections to its split nodes and boun
 that drain to it or border its other areas. The node IDs follow from the order of these steps, see `ribasim_nl.lumping`.
 """
 
+import itertools
 import logging
+from collections.abc import Collection
 from dataclasses import dataclass, field
 
 import geopandas as gpd
@@ -179,6 +181,85 @@ def check_split_nodes_used(
     split_nodes.loc[~split_nodes["status"], "split_type"] = "no_split"
     logger.info(f"{(~split_nodes['status']).sum()} split nodes are not used")
     return split_nodes
+
+
+@dataclass
+class Bypass:
+    """A split node that no longer separates two basins, since the network connects its sides along another way."""
+
+    split_node: int
+    # the nodes of the graph on either side of the split node
+    sides: tuple[int, int]
+    # the `edge_no` of the edges of the shortest way between them
+    edge_nos: list[int]
+
+
+def _original_edge(graph: nx.DiGraph, u: int, v: int, edge_nos: dict[tuple[int, int], int]) -> int:
+    """The `edge_no` of the network edge that the graph edge between `u` and `v` is (part of), see `split_graph`."""
+    for n in (u, v):
+        if SPLIT_EDGE_OFFSET <= n < SPLIT_NODE_OFFSET:
+            return (n - SPLIT_EDGE_OFFSET) // 1_000
+    original = {n: (n - SPLIT_NODE_OFFSET) // 1_000 if n >= SPLIT_NODE_OFFSET else n for n in (u, v)}
+    a, b = (u, v) if graph.has_edge(u, v) else (v, u)
+    return edge_nos[(original[a], original[b])]
+
+
+def find_bypasses(network: Network, split_nodes: gpd.GeoDataFrame) -> tuple[nx.Graph, list[Bypass]]:
+    """The split nodes that no longer separate two basins, see `check_split_nodes_used`, and the shortest way around.
+
+    A split node is bypassed when the network connects its sides along another way, such as a fish passage around a
+    weir. The shortest way is by straight distance between the nodes. Split nodes of type `harde_knip` are left out,
+    since they only cut. Returns the bypasses, and the undirected graph of the network split at the split nodes, with
+    the `edge_no` of each of its edges.
+    """
+    graph = create_graph(network.nodes, network.edges)
+    graph, split_nodes = split_graph(graph, split_nodes, network.edges)
+    nodes, edges = add_basins_to_nodes_and_edges(graph, network.nodes, network.edges, split_nodes)
+    status = check_split_nodes_used(split_nodes, nodes, edges)
+    unused = status[~status["status"] & (status["object_type"] != "harde_knip")]
+
+    edges = network.edges
+    edge_nos = {(u, v): e for u, v, e in zip(edges["from_node"], edges["to_node"], edges["edge_no"], strict=True)}
+    undirected = graph.to_undirected()
+    nx.set_edge_attributes(
+        undirected, {(u, v): _original_edge(graph, u, v, edge_nos) for u, v in undirected.edges}, "edge_no"
+    )
+    pos = nx.get_node_attributes(graph, "pos")
+
+    def distance(u: int, v: int, _: dict) -> float:
+        return float(np.hypot(pos[u][0] - pos[v][0], pos[u][1] - pos[v][1]))
+
+    bypasses = []
+    for split_node, edge_no, graph_node_no in zip(
+        unused["split_node"].astype(int), unused["edge_no"].astype(int), unused["graph_node_no"], strict=True
+    ):
+        if edge_no != -1:
+            sides = [SPLIT_EDGE_OFFSET + edge_no * 1_000 + 1, SPLIT_EDGE_OFFSET + edge_no * 1_000 + 2]
+        else:
+            assert isinstance(graph_node_no, tuple), f"split node {split_node} is not on the graph"
+            sides = list(graph_node_no)
+        pair = next((p for p in itertools.combinations(sides, 2) if nx.has_path(undirected, *p)), None)
+        assert pair is not None, f"split node {split_node} separates nothing, but its sides are not connected"
+        path = nx.shortest_path(undirected, *pair, weight=distance)
+        way = sorted({undirected.edges[u, v]["edge_no"] for u, v in itertools.pairwise(path)})
+        bypasses.append(Bypass(split_node=int(split_node), sides=pair, edge_nos=way))
+    return undirected, bypasses
+
+
+def separates(graph: nx.Graph, bypass: Bypass, edge_nos: Collection[int], anchors: Collection[int]) -> bool:
+    """Whether the split node of `bypass` separates its sides without the edges `edge_nos`, see `find_bypasses`.
+
+    Each side must then still reach one of `anchors`, other than the sides, such as another split node or a
+    boundary, so that the edges are not the only connection of a side to the rest of the network.
+    """
+    removed = set(edge_nos)
+    view = nx.restricted_view(graph, [], [(u, v) for u, v, e in graph.edges(data="edge_no") if e in removed])
+    a, b = bypass.sides
+    side_a = nx.node_connected_component(view, a)
+    if b in side_a:
+        return False
+    others = set(anchors) - set(bypass.sides)
+    return bool(side_a & others) and bool(nx.node_connected_component(view, b) & others)
 
 
 def _valid_polygon(code: object, geometry: BaseGeometry | None) -> Polygon | MultiPolygon | None:

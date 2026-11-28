@@ -4,9 +4,9 @@ from typing import cast
 import geopandas as gpd
 import pandas as pd
 from ribasim_nl.assign_authorities import AssignAuthorities
-from ribasim_nl.gkw import get_data_from_gkw
 from ribasim_nl.link_geometries import fix_link_geometries
 from ribasim_nl.link_profiles import add_link_profile_ids
+from ribasim_nl.lumping.gkw_hydamo import read_authority
 from ribasim_nl.parametrization.damo_profiles import DAMOProfiles
 from ribasim_nl.parametrization.static_data_xlsx import StaticData
 from shapely.geometry import LineString
@@ -196,8 +196,8 @@ static_data.fill_min_upstream_level_from_profiles("Pump", profiles_df, divisor=3
 static_data.fill_streefpeil_from_downstream_levels(include_pumps=True)
 
 # %%
-## PUMP.flow_rate
-gkw_gemaal_df = get_data_from_gkw(authority=authority, layers=["gemaal"])
+## PUMP.flow_rate, from the GKW-HyDAMO package that the network is lumped from
+gkw_gemaal_df = read_authority(authority, "gemaal")
 flow_rate = gkw_gemaal_df.set_index("code")["maximalecapaciteit"] / 60  # m3/minuut to m3/s
 flow_rate.name = "flow_rate"
 static_data.add_series(node_type="Pump", series=flow_rate)

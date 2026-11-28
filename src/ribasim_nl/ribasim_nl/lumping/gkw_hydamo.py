@@ -46,20 +46,14 @@ def read_authority(authority: str, layer: str, package: Path = GKW_HYDAMO) -> gp
 
 
 def select_hydroobjects(
-    hydroobject: gpd.GeoDataFrame,
-    categories: Collection[str],
-    codes: Collection[str] = (),
-    excluded: Collection[str] = (),
+    hydroobject: gpd.GeoDataFrame, categories: Collection[str], codes: Collection[str] = ()
 ) -> gpd.GeoDataFrame:
-    """The hydroobjects of `categories`, with those with a code in `codes`, and without those in `excluded`."""
-    missing = (set(codes) | set(excluded)) - set(hydroobject["code"])
+    """The hydroobjects of `categories`, with those with a code in `codes`."""
+    missing = set(codes) - set(hydroobject["code"])
     assert not missing, f"no hydroobjects with codes {sorted(missing)}"
-    both = set(codes) & set(excluded)
-    assert not both, f"hydroobjects {sorted(both)} are both selected and excluded"
     selected = hydroobject[hydroobject[CATEGORY_COLUMN].isin(categories) | hydroobject["code"].isin(codes)]
-    not_selected = set(excluded) - set(selected["code"])
-    assert not not_selected, f"excluded hydroobjects {sorted(not_selected)} are not of categories {sorted(categories)}"
-    selected = selected[~selected["code"].isin(excluded)]
+    already = set(codes) & set(hydroobject.loc[hydroobject[CATEGORY_COLUMN].isin(categories), "code"])
+    assert not already, f"hydroobjects {sorted(already)} are of categories {sorted(categories)} already"
     assert not selected.empty, f"no hydroobjects of categories {sorted(categories)}"
     assert selected["code"].notna().all(), "hydroobjects without code"
     return selected
@@ -69,15 +63,14 @@ def prepare_hydroobjects(
     hydroobject: gpd.GeoDataFrame,
     categories: Collection[str],
     codes: Collection[str] = (),
-    excluded: Collection[str] = (),
     connect_distance: float = CONNECT_DISTANCE,
 ) -> gpd.GeoDataFrame:
-    """The hydroobjects of `categories` and with `codes`, without `excluded`, as lines that connect.
+    """The hydroobjects of `categories` and with `codes`, as lines that connect.
 
     Every line gets its own code, see `ribasim_nl.lumping.connect.join_parts`, and the lines that end within
     `connect_distance` of each other are connected, see `ribasim_nl.lumping.connect.connect_lines`.
     """
-    lines = join_parts(select_hydroobjects(hydroobject, categories, codes, excluded))
+    lines = join_parts(select_hydroobjects(hydroobject, categories, codes))
     lines = connect_lines(lines, connect_distance)
     assert lines["code"].is_unique
     return lines

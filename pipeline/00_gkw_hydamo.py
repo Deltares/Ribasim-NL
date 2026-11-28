@@ -3,8 +3,9 @@
 
 Writes `verwerkt/2_voorbewerking/hydamo.gpkg` from the objects of the authority in
 `Basisgegevens/GKW-HyDAMO/LHM_HyDAMO.gpkg`, see `ribasim_nl.lumping.gkw_hydamo`. Its hydroobjects are those of the
-categories in `CATEGORIES`, with the others in `CODES` and without those in `EXCLUDED`, made into lines that connect, see
-`ribasim_nl.lumping.gkw_hydamo.prepare_hydroobjects`. The structures are those of the package.
+categories in `CATEGORIES`, with the others in `CODES`, made into lines that connect, see
+`ribasim_nl.lumping.gkw_hydamo.prepare_hydroobjects`. The structures are those of the package. New hydroobjects that
+bypass a structure are handled by the lumping, see `ribasim_nl.lumping.hydamo.read_network_without_bypasses`.
 
 Usage: pixi run python pipeline/00_gkw_hydamo.py <authority>
 """
@@ -26,39 +27,12 @@ CATEGORIES = {"BrabantseDelta": ["primair"]}
 # The hydroobjects of other categories that the network needs as well, by their code
 CODES = {
     "BrabantseDelta": [
-        # in the delivery of 2023 that the model was built on, since then secundair or tertiair with a new code
-        "OWL00272", "OWL00536", "OWL00537", "OWL00538", "OWL27191", "OWL40023", "OWL40054", "OWL40055", "OWL40056",
-        "OWL40106", "OWL40127", "OWL40128", "OWL40340", "OWL40342", "OWL40347", "OWL40354", "OWL40377", "OWL40433",
-        "OWL41194", "OWL41213", "OWL41215", "OWL41216", "OWL41228", "OWL41237", "OWL41238", "OWL41244", "OWL41245",
-        "OWL41275", "OWL41276", "OWL41277", "OWL41302", "OWL41303", "OWL41304", "OWL41305", "OWL41306", "OWL41307",
-        "OWL41308", "OWL41309", "OWL41310", "OWL41311", "OWL41324", "OWL41326", "OWL41377", "OWL41380", "OWL41387",
-        "OWL41388", "OWL41389", "OWL41438", "OWL41439", "OWL41440", "OWL41462", "OWL41465", "OWL41467", "OWL41468",
-        "OWL41469", "OWL41471", "OWL41472", "OWL41473", "OWL41474", "OWL41475", "OWL41476", "OWL41477", "OWL41478",
-        "OWL41500", "OWL41501", "OWL41502", "OWL41540", "OWL41562", "OWL41573", "OWL41574", "OWL41597",
+        # the supply routes of https://github.com/Deltares/Ribasim-NL/issues/1055: OWL00015 from inlet KST02534 at the
+        # Wilhelminakanaal, and OWL00537 with weir KST02867, which the old Donge supplies
+        "OWL00015",
+        "OWL00537",
     ],
-}  # fmt: skip
-
-# The hydroobjects of these categories that the network is not lumped from, by their code. These are new since the
-# delivery of 2023 that the model was built on, and bypass a structure that the model has a node on, or connect two
-# of its Basins without a structure. To use one, give it a split node in `verwerkt/3_input/ribasim_input.gpkg`.
-EXCLUDED = {
-    "BrabantseDelta": [
-        # fish passages around a weir or pumping station
-        "OVK12628", "OVK12629", "OVK12630", "OVK12631", "OVK12633", "OVK12637", "OVK12638", "OVK12640",
-        "OVK12641", "OVK12642", "OVK12643", "OVK12672", "OVK12812", "OVK12825", "OVK12826", "OVK12827",
-        "OVK50059", "OVK50062",
-        # other watercourses around a structure, or between two Basins
-        "OVK08708", "OVK12366", "OVK12567", "OVK12627", "OVK12632", "OVK12708", "OVK12718", "OVK12719",
-        "OVK12809", "OVK12828", "OVK21910", "OVK22014", "OVK22020",
-        # Westelijke Langstraat, where the watercourses were laid out anew, with new weirs
-        "OVK12563", "OVK12565", "OVK12566", "OVK12569", "OVK12570", "OVK12571", "OVK12580", "OVK12581",
-        "OVK12582", "OVK12584", "OVK12585", "OVK12587", "OVK12588", "OVK12589", "OVK12593", "OVK12594",
-        "OVK12605", "OVK12606", "OVK12613", "OVK12614", "OVK12626", "OVK12634", "OVK12686", "OVK12687",
-        "OVK12768",
-        # the old Donge, the supply route of https://github.com/Deltares/Ribasim-NL/issues/1055
-        "OVK06910", "OVK12689",
-    ],
-}  # fmt: skip
+}
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 assert len(sys.argv) == 2, "pass the authority as argument"
@@ -74,7 +48,6 @@ hydroobject = prepare_hydroobjects(
     read_authority(authority, "hydroobject"),
     CATEGORIES[authority],
     codes=CODES.get(authority, ()),
-    excluded=EXCLUDED.get(authority, ()),
 )
 pyogrio.write_dataframe(hydroobject, target, layer="hydroobject", promote_to_multi=False)
 for layer in STRUCTURE_LAYERS:

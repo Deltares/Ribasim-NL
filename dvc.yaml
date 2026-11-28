@@ -335,6 +335,7 @@ stages:
       - data/BrabantseDelta/modellen/BrabantseDelta_2024_6_3
       - data/BrabantseDelta/verwerkt/4_ribasim/hydamo.gpkg
       - data/BrabantseDelta/verwerkt/1_ontvangen_data/peilgebieden.gpkg
+      - data/Basisgegevens/GKW-HyDAMO/LHM_HyDAMO.gpkg
       - data/BrabantseDelta/verwerkt/3_input/areas.gpkg
       - data/BrabantseDelta/verwerkt/model_edits.gpkg
       - data/BrabantseDelta/verwerkt/1_ontvangen_data/GML/dwarsprofiel.gml
