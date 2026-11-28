@@ -355,7 +355,7 @@ ul.task-list li input[type="checkbox"] {
 </div>
 <section id="merging" class="level2">
 <h2 class="anchored" data-anchor-id="merging">Merging</h2>
-<p><code>pipeline/08_samenvoegen_modellen.py</code> reads each model, makes its IDs unique with <code>prefix_index</code>, see <a href="../workflow/index.html#sec-node-ids">Node IDs</a>, and appends all its tables with <code>concat</code>. The original IDs stay available in <code>meta_node_id_waterbeheerder</code> and <code>meta_link_id_waterbeheerder</code>, and <code>meta_waterbeheerder</code> holds the authority. The merged model starts with the settings of the model of the main water system, and the solver settings are set here.</p>
+<p><code>pipeline/08_samenvoegen_modellen.py</code> reads each model, makes its IDs unique with <code>prefix_index</code>, see <a href="../workflow/index.html#sec-node-ids">Node IDs</a>, and appends all its tables with <code>concat</code>. <code>meta_waterbeheerder</code> holds the authority, which together with the key identifies a node, see <a href="../dev/node-keys.html">Node keys</a>. The merged model starts with the settings of the model of the main water system, and the solver settings are set here.</p>
 </section>
 <section id="connecting-the-models" class="level2">
 <h2 class="anchored" data-anchor-id="connecting-the-models">Connecting the models</h2>

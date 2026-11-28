@@ -190,6 +190,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#functions" id="toc-functions" class="nav-link" data-scroll-target="#functions">Functions</a>
   <ul class="collapse">
   <li><a href="#ribasim_nl.supply.special_load_geometry" id="toc-ribasim_nl.supply.special_load_geometry" class="nav-link" data-scroll-target="#ribasim_nl.supply.special_load_geometry">special_load_geometry</a></li>
+  <li><a href="#ribasim_nl.supply.storing_basins" id="toc-ribasim_nl.supply.storing_basins" class="nav-link" data-scroll-target="#ribasim_nl.supply.storing_basins">storing_basins</a></li>
   </ul></li>
   </ul></li>
   </ul>
@@ -710,6 +711,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><a href="#ribasim_nl.supply.special_load_geometry">special_load_geometry</a></td>
 <td>Loading geometry data in a non-straightforward way.</td>
 </tr>
+<tr class="even">
+<td><a href="#ribasim_nl.supply.storing_basins">storing_basins</a></td>
+<td>The Basin that each storing (‘bergend’) Basin stores for, indexed by the storing Basin.</td>
+</tr>
 </tbody>
 </table>
 <section id="ribasim_nl.supply.special_load_geometry" class="level3">
@@ -866,6 +871,57 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td></td>
 <td>ValueError</td>
 <td>if not enough layers of the <em>.gpkg-/</em>.gdb-file are provided</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="ribasim_nl.supply.storing_basins" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.supply.storing_basins">storing_basins</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>supply.storing_basins(model)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The Basin that each storing (‘bergend’) Basin stores for, indexed by the storing Basin.</p>
+<p>A storing Basin flows through a ManningResistance to the Basin it stores for, see <code>ribasim_nl.profiles.implement</code>.</p>
+<section id="parameters-7" class="level4 doc-section doc-section-parameters">
+<h4 class="doc-section doc-section-parameters anchored" data-anchor-id="parameters-7">Parameters</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>model</td>
+<td>Model</td>
+<td>Ribasim model</td>
+<td><em>required</em></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns-7" class="level4 doc-section doc-section-returns">
+<h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-7">Returns</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 8%">
+<col style="width: 11%">
+<col style="width: 80%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td></td>
+<td>pd.Series</td>
+<td>node ID of the Basin stored for, indexed by the node ID of the storing Basin</td>
 </tr>
 </tbody>
 </table>

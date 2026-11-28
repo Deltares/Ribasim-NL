@@ -226,14 +226,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </table>
 <section id="ribasim_nl.reset_index.prefix_index" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.reset_index.prefix_index">prefix_index</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>reset_index.prefix_index(</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    prefix_id,</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    max_digits<span class="op">=</span><span class="dv">4</span>,</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    original_index_postfix<span class="op">=</span><span class="st">'waterbeheerder'</span>,</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>reset_index.prefix_index(model, prefix_id, max_digits<span class="op">=</span><span class="dv">4</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Reindex node-tables and links with a prefix and a max number of digits</p>
-<p>Args: model (Model): Model to be reindexed prefix_id (int): integer used as prefix max_digits (int, optional): max digits in original node_ids. Defaults to 4. original_index_postfix (str | None, optional): if provided the original index will be stored in a meta-column. Defaults to “waterbeheerder”.</p>
+<p>Args: model (Model): Model to be reindexed prefix_id (int): integer used as prefix max_digits (int, optional): max digits in original node_ids. Defaults to 4.</p>
 <section id="returns" class="level4 doc-section doc-section-returns">
 <h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns">Returns</h4>
 <pre><code>Model: reindexed model</code></pre>
@@ -245,23 +240,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="ribasim_nl.reset_index.reindex_nodes" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.reset_index.reindex_nodes">reindex_nodes</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>reset_index.reindex_nodes(</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    node_index,</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    original_index_postfix<span class="op">=</span><span class="st">'waterbeheerder'</span>,</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>reset_index.reindex_nodes(model, node_index)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Reindex all model-nodes to a new node_index series</p>
 </section>
 <section id="ribasim_nl.reset_index.reset_index" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.reset_index.reset_index">reset_index</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>reset_index.reset_index(</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    node_start<span class="op">=</span><span class="dv">1</span>,</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    link_start<span class="op">=</span><span class="dv">1</span>,</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    original_index_postfix<span class="op">=</span><span class="st">'waterbeheerder'</span>,</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>reset_index.reset_index(model, node_start<span class="op">=</span><span class="dv">1</span>, link_start<span class="op">=</span><span class="dv">1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Reset a model index to a given node_start and link_start number. Will result in sub-sequent node_ids and link_ids from node_start and link_start.</p>
-<p>Args: model (Model): Model to be reindexed node_start (int, optional): start node_id. Defaults to 1. link_start (int, optional): start link_id. Defaults to 1. original_index_postfix (str | None, optional): if provided the original index will be stored in a meta-column. Defaults to “waterbeheerder”.</p>
+<p>Args: model (Model): Model to be reindexed node_start (int, optional): start node_id. Defaults to 1. link_start (int, optional): start link_id. Defaults to 1.</p>
 <section id="returns-1" class="level4 doc-section doc-section-returns">
 <h4 class="doc-section doc-section-returns anchored" data-anchor-id="returns-1">Returns</h4>
 <pre><code>Model: reindexed model</code></pre>

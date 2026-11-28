@@ -188,7 +188,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </ul></li>
   <li><a href="#functions" id="toc-functions" class="nav-link" data-scroll-target="#functions">Functions</a>
   <ul class="collapse">
+  <li><a href="#ribasim_nl.split_basins.is_split_part" id="toc-ribasim_nl.split_basins.is_split_part" class="nav-link" data-scroll-target="#ribasim_nl.split_basins.is_split_part">is_split_part</a></li>
   <li><a href="#ribasim_nl.split_basins.split_basin_along_route" id="toc-ribasim_nl.split_basins.split_basin_along_route" class="nav-link" data-scroll-target="#ribasim_nl.split_basins.split_basin_along_route">split_basin_along_route</a></li>
+  <li><a href="#ribasim_nl.split_basins.split_part_key" id="toc-ribasim_nl.split_basins.split_part_key" class="nav-link" data-scroll-target="#ribasim_nl.split_basins.split_part_key">split_part_key</a></li>
   </ul></li>
   </ul></li>
   </ul>
@@ -335,25 +337,38 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
+<td><a href="#ribasim_nl.split_basins.is_split_part">is_split_part</a></td>
+<td>Whether a node key is that of a part of a Basin that is split from a file, see <code>split_part_key</code>.</td>
+</tr>
+<tr class="even">
 <td><a href="#ribasim_nl.split_basins.split_basin_along_route">split_basin_along_route</a></td>
 <td>Split a Basin in sections along <code>route</code>, connected in the direction of <code>route</code> by ManningResistances.</td>
 </tr>
+<tr class="odd">
+<td><a href="#ribasim_nl.split_basins.split_part_key">split_part_key</a></td>
+<td>The key of a part of a Basin that is split from a file: the key of the Basin and the ID of the part in the file.</td>
+</tr>
 </tbody>
 </table>
+<section id="ribasim_nl.split_basins.is_split_part" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.split_basins.is_split_part">is_split_part</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>split_basins.is_split_part(key)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Whether a node key is that of a part of a Basin that is split from a file, see <code>split_part_key</code>.</p>
+</section>
 <section id="ribasim_nl.split_basins.split_basin_along_route" class="level3">
 <h3 class="anchored" data-anchor-id="ribasim_nl.split_basins.split_basin_along_route">split_basin_along_route</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>split_basins.split_basin_along_route(</span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    basin_id,</span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    route,</span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    split_points,</span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    basin_names,</span>
-<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    manning_names,</span>
-<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
-<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>    manning_n,</span>
-<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>    profile_slope,</span>
-<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>    cross_section_length<span class="op">=</span><span class="fl">5000.0</span>,</span>
-<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>split_basins.split_basin_along_route(</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    model,</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    basin_id,</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    route,</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    split_points,</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    basin_names,</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    manning_names,</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>    manning_n,</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>    profile_slope,</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>    cross_section_length<span class="op">=</span><span class="fl">5000.0</span>,</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Split a Basin in sections along <code>route</code>, connected in the direction of <code>route</code> by ManningResistances.</p>
 <p><code>route</code> runs through the Basin area in the direction of flow, for instance along the links of its main channel. The ManningResistances lie on it at the points nearest to <code>split_points</code>, where the Basin area is cut across it. The section that contains the Basin node keeps it; the others get a new Basin node on the route, halfway between where their inflows and outflows join it, so their links do not run back along the route. Each section gets the profile of the Basin with its area scaled by the share of the section in the length of the route within the Basin, so the volume is divided in proportion, and copies of the other tables of the Basin. The flow links of the Basin, which keep their IDs, move to the section where they join the route, and run along the route to its node. The ManningResistances get <code>manning_n</code>, <code>profile_slope</code>, the width of the Basin area across the route, and the length of their links, which run along the route from Basin node to Basin node.</p>
 <section id="parameters" class="level4 doc-section doc-section-parameters">
@@ -454,9 +469,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 </tbody>
 </table>
-
-
 </section>
+</section>
+<section id="ribasim_nl.split_basins.split_part_key" class="level3">
+<h3 class="anchored" data-anchor-id="ribasim_nl.split_basins.split_part_key">split_part_key</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>split_basins.split_part_key(basin_key, part_id)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The key of a part of a Basin that is split from a file: the key of the Basin and the ID of the part in the file.</p>
+<p>See docs/dev/node-keys.qmd.</p>
+
+
 </section>
 </section>
 </section>
