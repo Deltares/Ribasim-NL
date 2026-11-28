@@ -1,14 +1,14 @@
 {
   "solver": {
     "computation_time": 1.8,
-    "rhs_calls": 1482000.0,
-    "mean_dt": 199.9,
-    "dt_p05": 120.3,
-    "rejected_fraction": 0.08156
+    "rhs_calls": 1502000.0,
+    "mean_dt": 197.9,
+    "dt_p05": 117.6,
+    "rejected_fraction": 0.08306
   },
   "observations": {
     "compared": 654.0,
-    "median_nse": 0.0409,
+    "median_nse": 0.04084,
     "median_kge": 0.08724
   },
   "discharge_kge": {
@@ -20,8 +20,8 @@
     "Tiel Waal": 0.9316,
     "Haringvlietsluizen binnen": 0.7986,
     "Maasmond": 0.4388,
-    "Den Oever buiten": 0.39,
-    "Kornwerderzand buiten": 0.1577,
+    "Den Oever buiten": 0.3898,
+    "Kornwerderzand buiten": 0.1576,
     "IJmuiden binnen": 0.5155
   },
   "level_p01": {
@@ -31,7 +31,7 @@
     "Noordzeekanaal": -0.3972,
     "Amsterdam-Rijnkanaal Breukelen": -0.3825,
     "Volkerak": -0.1335,
-    "Haringvliet": 0.02198,
+    "Haringvliet": 0.02207,
     "Twentekanaal (Kanaal Zutphen-Enschede)": 9.977,
     "Julianakanaal": 44.04
   },
@@ -42,7 +42,7 @@
     "Noordzeekanaal": -0.3927,
     "Amsterdam-Rijnkanaal Breukelen": -0.3552,
     "Volkerak": 0.1149,
-    "Haringvliet": 0.08694,
+    "Haringvliet": 0.08662,
     "Twentekanaal (Kanaal Zutphen-Enschede)": 9.985,
     "Julianakanaal": 44.07
   }
